@@ -16,15 +16,15 @@ use    utilities_mod, only : register_module, initialize_utilities,            &
                              do_nml_file, do_nml_term, get_next_filename,      &
                              open_file, close_file, finalize_utilities
 use   parse_args_mod, only : get_args_from_string
-use     location_mod, only : location_type, get_location, set_location,        &
-                             write_location
+use     location_mod, only : location_type
 use      obs_def_mod, only : obs_def_type, get_obs_def_time,                   &
                              get_obs_def_type_of_obs, get_obs_def_location
 use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
 use time_manager_mod, only : time_type, operator(>), print_time, set_time,     &
-                             print_date, set_calendar_type,                    &
+                             print_date, set_calendar_type, operator(+),       &
                              operator(==), get_calendar_type, NO_CALENDAR,     &
-                             operator(-), set_time_missing, operator(<)
+                             operator(-), set_time_missing, operator(<),       &
+                             operator(/), get_time, month_name, get_date
 use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
                              init_obs, assignment(=), get_obs_def,             &
                              static_init_obs_sequence,                         &
@@ -50,7 +50,7 @@ type(obs_type)          :: obs_in, next_obs_in
 logical                 :: is_this_last
 integer                 :: size_seq_in
 integer                 :: num_copies_in, num_qc_in
-integer                 :: iunit, io, i, fnum
+integer                 :: iunit, io, i, fnum, ounit
 integer                 :: num_input_files = 0
 integer                 :: max_num_obs, file_id
 character(len=129)      :: read_format
@@ -58,6 +58,8 @@ logical                 :: pre_I_format, cal
 character(len=512)      :: msgstring, msgstring1, msgstring2, msgstring3
 type(obs_def_type)      :: this_obs_def
 type(time_type)         :: obs_time
+!integer                 :: mid_day, mid_sec
+character(len=32)       :: mid_string
 
 ! could go into namelist if you wanted more control
 integer, parameter      :: print_every = 5000
@@ -89,10 +91,12 @@ character(len=256)   :: filename_in(MAX_IN_FILES) = ''
 character(len=256)   :: filelist_in = ''
 character(len=32)    :: calendar = 'Gregorian'
 logical              :: filenames_from_terminal = .false.
+logical              :: counts_only = .false.
+character(len=256)   :: output_file = ''
 
 
-namelist /obs_info_nml/ filename_in, filelist_in, &
-                        calendar, filenames_from_terminal
+namelist /obs_info_nml/ filename_in, filelist_in, counts_only, &
+                        calendar, filenames_from_terminal, output_file
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -124,6 +128,16 @@ if (filenames_from_terminal) then
    call parse_filenames_from_stdin(num_input_files, filename_in)
 else
    call handle_filenames(filename_in, filelist_in, num_input_files)
+endif
+
+if (output_file /= '') then
+   ounit = open_file(output_file, action='write')
+   write(msgstring, *) 'Output counts will be written to text file: '
+   write(msgstring1,*)  trim(output_file)
+   call error_handler(E_MSG,'obs_info',msgstring, &
+                      text2=msgstring1)
+else
+   ounit = 0
 endif
 
 ! end of namelist processing and setup
@@ -188,9 +202,6 @@ do fnum = 1, num_input_files
          call update(all_obs, obs_time)
          call update(oinfo(obs_type_ind), obs_time)
    
-         call write_location(0, location, charstring = string)
-         !write(*, *) trim(string) // '  ' // trim(get_name_for_type_of_obs(obs_type_ind))
-   
          call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
    
       enddo ObsLoop
@@ -200,20 +211,28 @@ do fnum = 1, num_input_files
       call error_handler(E_MSG,'obs_info', msgstring)
    endif
    
-   print*, 'Totals for all obs types:'
-   print*, '  Count: ', all_obs%count
-   call print_date(all_obs%first_time, '.  First obs:')
-   call print_date(all_obs%last_time,  '.   Last obs:')
-   print*, '---------------------------------------------------------'
-   
+   if (.not. counts_only) then
+      write(ounit, *) 'Totals for all obs types:'
+      write(ounit, *) '  Count: ', all_obs%count
+      call print_date(all_obs%first_time, '.  First obs:', ounit)
+      call print_date(all_obs%last_time,  '.   Last obs:', ounit)
+      write(ounit, *) '---------------------------------------------------------'
+   endif
    
    ! print out the results
    ALLTYPES: do i=0, max_defined_types_of_obs
       if (oinfo(i)%count == 0) cycle ALLTYPES
-      write(msgstring, '(A,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
-      call error_handler(E_MSG, '', msgstring)
-      call print_date(oinfo(i)%first_time, '.  First obs:')
-      call print_date(oinfo(i)%last_time,  '.   Last obs:')
+      if (counts_only) then
+         call compute_times(oinfo(i)%first_time, oinfo(i)%last_time, avg_string=mid_string)
+         write(ounit, '(A,I8,A,A36,I8,2A)') "'"//trim(filename_in(fnum))//"', ", &
+                                             i, ", ", &
+                                             trim(get_name_for_type_of_obs(i))//", ", &
+                                             oinfo(i)%count, ", ", trim(mid_string)
+      else
+         write(ounit, '(A,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
+         call print_date(oinfo(i)%first_time, '.  First obs:', ounit)
+         call print_date(oinfo(i)%last_time,  '.   Last obs:', ounit)
+      endif
    enddo ALLTYPES
    
    call destroy_obs_sequence(seq_in)
@@ -246,6 +265,7 @@ end subroutine setup
 !---------------------------------------------------------------------
 subroutine shutdown()
 
+call close_file(ounit)
 call finalize_utilities('obs_info')
 
 end subroutine shutdown
@@ -570,7 +590,7 @@ character(len=512) :: inline
 ! waiting for input.  comment this out if it gets annoying.
 print *, 'reading input filename(s) from terminal'
 
-read (*, '(A512)'), inline
+read (*, *) inline
 call get_args_from_string(inline, num_in, filenames)
 
 end subroutine parse_filenames_from_stdin
@@ -668,6 +688,34 @@ call error_handler(E_ERR,'obs_info', msgstring, &
 
 end subroutine handle_filenames
 
+!---------------------------------------------------------------------
+
+subroutine compute_times(first_time, last_time, avg_day, avg_sec, avg_string)
+type(time_type),  intent(in)  :: first_time
+type(time_type),  intent(in)  :: last_time
+integer,          intent(out), optional :: avg_day
+integer,          intent(out), optional :: avg_sec
+character(len=*), intent(out), optional :: avg_string
+
+type(time_type)  :: avg_time
+integer          :: yr, mo, dy, hr, mn, sc
+character(len=9) :: mon_name
+
+avg_time = (first_time + last_time) / 2
+
+if (present(avg_day) .and. present(avg_sec)) then
+   call get_time(avg_time, avg_sec, avg_day)
+else if (present(avg_sec)) then
+   call get_time(avg_time, avg_sec)
+endif
+
+if (present(avg_string)) then
+   call get_date(avg_time, yr,mo,dy,hr,mn,sc)
+   mon_name = month_name(mo) 
+   write(avg_string, "(I2.2,'-',A3,'-',I4,' ',I2.2,':',I2.2,':',I2.2 )") dy, mon_name, yr, hr, mn, sc 
+endif
+
+end subroutine compute_times
 
 !---------------------------------------------------------------------
 end program obs_info
