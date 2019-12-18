@@ -4,14 +4,13 @@
 !
 ! DART $Id$
 
-!> prints out a quick table of obs types and counts, overall start and
+!> Prints out a quick table of obs types and counts, overall start and
 !> stop times, and metadata strings and counts.
-!> you can get more info by running the obs_diag program.
-!>
+!> You can get more info by running the obs_diag program.
 !> right now this program counts up the number of obs for each
-!> possible 'DART quality control' value (0-7).  (it could also
+!> possible 'DART quality control' value (0-8). (it could also
 !> check for a 'posterior ensemble mean' copy and count how
-!> many are missing_r8 and how many are not.)   it does the
+!> many are missing_r8 and how many are not.) It does the
 !> former right now.
 
 program obs_assim_count
@@ -21,25 +20,33 @@ use    utilities_mod, only : register_module, initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
-                             open_file, close_file, finalize_utilities
+                             open_file, close_file, finalize_utilities,        &
+                             file_exist
 use     location_mod, only : location_type, get_location, set_location,        &
                              LocationName, read_location, operator(/=),        &
                              write_location
-use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs
-use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
+use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs,&
+                             get_obs_def_location, read_obs_def,               &
+                             set_obs_def_time
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, &
+                             get_index_for_type_of_obs, read_type_of_obs_table
 use time_manager_mod, only : time_type, operator(>), print_time, set_time,     &
                              print_date, set_calendar_type,                    &
                              operator(/=), get_calendar_type, NO_CALENDAR,     &
                              operator(-)
-use obs_sequence_mod, only : obs_sequence_type, obs_type,                      &
+use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
                              init_obs, assignment(=), get_obs_def,             &
-                             static_init_obs_sequence,                         &
+                             init_obs_sequence, static_init_obs_sequence,      &
                              read_obs_seq_header, read_obs_seq, get_num_obs,   &
-                             get_first_obs, get_next_obs,                      &
+                             get_first_obs, get_last_obs, get_next_obs,        &
                              insert_obs_in_seq, get_num_copies, get_num_qc,    &
                              get_copy_meta_data, get_qc_meta_data,             &
+                             set_copy_meta_data, set_qc_meta_data,             &
                              destroy_obs, destroy_obs_sequence,                &
-                             get_obs_key, get_obs_def, get_qc
+                             delete_seq_head, delete_seq_tail,                 &
+                             get_num_key_range, get_obs_key, get_qc,           &
+                             copy_partial_obs, get_next_obs_from_key,          &
+                             get_obs_def, set_obs_def
 
 implicit none
 
@@ -48,14 +55,13 @@ character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
 
 type(obs_sequence_type) :: seq_in
 integer                 :: size_seq_in
 integer                 :: num_copies_in, num_qc_in
-integer                 :: iunit, io
+integer                 :: iunit, io, ifile
 integer                 :: max_num_obs, file_id
-character(len = 129)    :: read_format
+character(len = 129)    :: read_format, filename_in
 logical                 :: pre_I_format, cal
 character(len = 256)    :: msgstring, msgstring1, msgstring2
 
@@ -63,25 +69,57 @@ character(len = 256)    :: msgstring, msgstring1, msgstring2
 integer, parameter      :: print_every = 5000
 
 ! lazy, pick big number.  make it bigger if too small.
-integer, parameter :: max_obs_input_types = 500
+integer, parameter :: max_obs_input_types = 800
+
+! 8 is now failed vert convert
+integer, parameter :: MAX_DART_QC = 8
+
+integer, parameter :: QC_STR_LEN = 20
+
+character(len=QC_STR_LEN) :: qc_meaning(0:MAX_DART_QC) = &
+ (/ "Assimilated_OK      ", &
+    "Evaluated_OK        ", &
+    "Prior_only_Assim_OK ", &
+    "Prior_only_Eval_OK  ", &
+    "Forward_Op_failed   ", &
+    "Namelist_Excluded   ", &
+    "Bad_incoming_QC     ", &
+    "Outlier_Failed      ", &
+    "Bad_Vert_Convert    " /)
+
+! if the user gives us an output file and asks for counts_only,
+! print some stuff to the log & stdout too, but open this file
+! and print the counts there as well.
+integer :: output_unit = -1
+
+! first time through a loop 
+logical :: first_time
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 
+character(len = 256) :: obs_sequence_name = ''
+character(len = 256) :: obs_sequence_list = ''
+character(len = 256) :: output_file = ''
 
-character(len = 160) :: filename_in = ''
+logical :: stats_by_obs_type = .false.
+logical :: counts_only       = .false.
+logical :: print_metadata    = .false.
+logical :: print_time_info   = .true.
 
-character(len=32)    :: calendar      = 'Gregorian'
+character(len=32) :: calendar    = 'Gregorian'
 
 
 namelist /obs_assim_count_nml/ &
-         filename_in, calendar
+         obs_sequence_name, obs_sequence_list, output_file, &
+         calendar, stats_by_obs_type, counts_only, print_metadata, &
+         print_time_info
 
 !----------------------------------------------------------------
 ! Start of the program:
 !
-! Process each input observation sequence file in turn, optionally
-! selecting observations to insert into the output sequence file.
+! Process each input observation sequence file in turn, collecting
+! and printing stats from each input file.
 !----------------------------------------------------------------
 
 call setup()
@@ -100,41 +138,79 @@ if (do_nml_term()) write(     *     , nml=obs_assim_count_nml)
 ! and last timestamps in the obs_seq files.
 call set_calendar_type(calendar)
 
-! set a logial to see if we have a calendar or not
+! set a logical to see if we have a calendar or not
 cal = (get_calendar_type() /= NO_CALENDAR)
+
+! Check the user input for sanity
+if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
+   write(msgstring1,*)'specify "obs_sequence_name" or "obs_sequence_list"'
+   write(msgstring2,*)'set other to an empty string ... i.e. ""'
+   call error_handler(E_ERR, 'obs_assim_count', msgstring1, &
+                   source, revision, revdate, text2=msgstring2)
+endif
+
+if (counts_only) &
+   call error_handler(E_MSG, 'obs_assim_count', 'printing summary counts only')
+
+if (output_file /= '') &
+   output_unit = open_file(output_file, action='write', form='formatted')
 
 ! if you add anything to the namelist, you can process it here.
 
 ! end of namelist processing and setup
 
+ifile = 0
+ObsFileLoop : do      ! until we run out of names
 
-! single pass algorithm (unlike other obs tools).
+   ifile = ifile + 1
 
-call read_obs_seq_header(filename_in, num_copies_in, num_qc_in, &
-   size_seq_in, max_num_obs, file_id, read_format, pre_I_format, &
-   close_the_file = .true.)
+   if (obs_sequence_list == '') then
+      if (ifile > 1) exit ObsFileLoop
+      filename_in = obs_sequence_name
+   else
+      filename_in = get_next_filename(obs_sequence_list,ifile)
+      if (filename_in == '') exit ObsFileLoop
+   endif
 
-if (max_num_obs == 0) then
-   write(msgstring,*) 'No obs in input sequence file ', trim(filename_in)
-   call error_handler(E_ERR,'obs_assim_count',msgstring)
-endif
+   if ( .not. file_exist(filename_in) ) then
+      write(msgstring1,*)'cannot open ', trim(filename_in)
+      call error_handler(E_ERR,'obs_assim_count:',msgstring1,source,revision,revdate)
+   endif
 
-write(msgstring, *) 'Starting to process input sequence file: '
-write(msgstring1,*)  trim(filename_in)
-call error_handler(E_MSG,'obs_assim_count',msgstring, &
-                   text2=msgstring1)
+   ! Read in information about observation sequence so we can allocate
+   ! observations. We need info about how many copies, qc values, etc.
 
-call read_obs_seq(filename_in, 0, 0, 0, seq_in)
+   call read_obs_seq_header(filename_in, num_copies_in, num_qc_in, &
+      size_seq_in, max_num_obs, file_id, read_format, pre_I_format, &
+      close_the_file = .true.)
+   
+   if (max_num_obs == 0) then
+      write(msgstring,*) 'No obs in input sequence file ', trim(filename_in)
+      call error_handler(E_MSG,'obs_assim_count',msgstring)
+      cycle ObsFileLoop
+   endif
+   
+   write(msgstring, *) 'Starting to process input sequence file: '
+   write(msgstring1,*)  trim(filename_in)
+   call error_handler(E_MSG,'obs_assim_count',msgstring, &
+                      text2=msgstring1)
+   
+   call read_obs_seq(filename_in, 0, 0, 0, seq_in)
+   
+   ! sanity check - ensure the linked list times are in increasing time order
+   call validate_obs_seq_time(seq_in, filename_in)
+   
+   ! the counting up is done here now.
+   call compute_and_print_obs_seq_info(seq_in, filename_in, output_unit)
+   
+   ! clean up
+   call destroy_obs_sequence(seq_in)
 
-! sanity check - ensure the linked list times are in increasing time order
-call validate_obs_seq_time(seq_in, filename_in)
+enddo ObsFileLoop
 
-! the counting up is done here now.
-call print_obs_seq_info(seq_in, filename_in)
-
-! clean up
-
-call destroy_obs_sequence(seq_in)
+! see comment where the output_unit variable is declared
+if (output_file /= '') &
+   call close_file(output_unit)
 
 call shutdown()
 
@@ -151,7 +227,7 @@ subroutine setup()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_assim_count')
-call register_module(source, revision, revdate)
+call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 end subroutine setup
@@ -166,8 +242,6 @@ end subroutine shutdown
 
 
 !---------------------------------------------------------------------
-subroutine print_obs_seq_info(seq_in, filename)
-
 ! you can get more info by running the obs_diag program, but this
 ! prints out a quick table of obs types and counts, overall start and
 ! stop times, and metadata strings and counts.
@@ -176,23 +250,30 @@ subroutine print_obs_seq_info(seq_in, filename)
 ! how many are missing_r8 and how many are not.   it could also count
 ! up the 'DART quality control' settings?  start with the latter for now.
 
+subroutine compute_and_print_obs_seq_info(seq_in, filename, ounit)
+
 type(obs_sequence_type), intent(in) :: seq_in
-character(len=*), intent(in)        :: filename
+character(len=*),        intent(in) :: filename
+integer,                 intent(in) :: ounit
 
 type(obs_type)     :: obs, next_obs
 type(obs_def_type) :: this_obs_def
 logical            :: is_there_one, is_this_last
 integer            :: size_seq_in
-integer            :: i
+integer            :: i, qc_int, obt
 integer            :: this_obs_type
-integer            :: type_count(0:max_defined_types_of_obs), identity_count, qc_count(0:8), qcindex
+integer            :: type_count(0:max_defined_types_of_obs), identity_count, qc_count(0:MAX_DART_QC), qcindex
+integer            :: qc_count_by_type(0:MAX_DART_QC, 0:max_defined_types_of_obs)
 real(r8)           :: qcval(1)
+character(len=32)  :: this_obs_name
 
 
 ! Initialize counters
 type_count(:) = 0
 identity_count = 0
 qc_count(:) = 0
+qc_count_by_type(:,:) = 0
+
 
 size_seq_in = get_num_obs(seq_in)
 if (size_seq_in == 0) then
@@ -206,15 +287,16 @@ call init_obs(     obs, get_num_copies(seq_in), get_num_qc(seq_in))
 call init_obs(next_obs, get_num_copies(seq_in), get_num_qc(seq_in))
 
 ! find the dart qc copy, if there is one
-qcindex = get_dartqc_index(seq_in)
+qcindex = get_dartqc_index(seq_in, filename)
 
 ! blank line
 call error_handler(E_MSG,'',' ')
 
-write(msgstring,*) 'Processing sequence file ', trim(filename)
+write(msgstring,*) 'Processing sequence file: ', trim(filename)
 call error_handler(E_MSG,'',msgstring)
 
-call print_metadata(seq_in, filename)
+if (print_metadata) &
+   call print_seq_metadata(seq_in, filename)
 
 !-------------------------------------------------------------
 ! Start to process obs from seq_in
@@ -229,11 +311,17 @@ endif
 ! process it here
 is_this_last = .false.
 
-call get_obs_def(obs, this_obs_def)
-call print_time(get_obs_def_time(this_obs_def), ' First timestamp: ')
-! does not work with NO_CALENDAR
-if (cal) call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
+! blank line
+call error_handler(E_MSG, '', ' ')
 
+call get_obs_def(obs, this_obs_def)
+if (print_time_info) then
+   call print_time(get_obs_def_time(this_obs_def), ' First obs time: ')
+   ! should, but does not work with NO_CALENDAR
+   if (cal) call print_date(get_obs_def_time(this_obs_def), ' First obs date: ')
+endif
+
+! collect data counts
 ObsLoop : do while ( .not. is_this_last)
 
    call get_obs_def(obs, this_obs_def)
@@ -247,73 +335,179 @@ ObsLoop : do while ( .not. is_this_last)
 !   if(this_obs_type > 0)print *, 'obs name = ', get_name_for_type_of_obs(this_obs_type)
    if (qcindex > 0) then
       call get_qc(obs, qcval, qcindex)
-      qc_count(nint(qcval(1))) = qc_count(nint(qcval(1))) + 1
+      qc_int = nint(qcval(1))
+      qc_count(qc_int) = qc_count(qc_int) + 1
+      if (this_obs_type >= 0) &
+         qc_count_by_type(qc_int,this_obs_type) = qc_count_by_type(qc_int,this_obs_type) + 1
    endif
 
    call get_next_obs(seq_in, obs, next_obs, is_this_last)
    if (.not. is_this_last) then 
       obs = next_obs
    else
-      call print_time(get_obs_def_time(this_obs_def), '  Last timestamp: ')
-      if (cal) call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
+      if (print_time_info) then
+         call print_time(get_obs_def_time(this_obs_def), '  Last obs time: ')
+         if (cal) call print_date(get_obs_def_time(this_obs_def), '  Last obs date: ')
+         call error_handler(E_MSG, '', ' ')
+      endif
    endif
 
 enddo ObsLoop
 
+! how to output - depends on 'counts_only', 'stats_by_obs_type' settings and
+! whether input file has DART QCs or not.
 
-write(msgstring, *) 'Number of obs processed  :          ', size_seq_in
-call error_handler(E_MSG, '', msgstring)
-write(msgstring, *) '---------------------------------------------------------'
-call error_handler(E_MSG, '', msgstring)
-do i = 0, max_defined_types_of_obs
-   if (type_count(i) > 0) then 
-      write(msgstring, '(a32,i8,a)') trim(get_name_for_type_of_obs(i)), &
-                                     type_count(i), ' obs'
-      call error_handler(E_MSG, '', msgstring)
+! FIXME: this is very messy.  get it working and then refactor so there 
+! isn't such a deep set of nested if/else/thens.
+
+if (counts_only) then
+   if (qcindex > 0) then
+      if (stats_by_obs_type) then
+         first_time = .true.
+         do obt = 0, max_defined_types_of_obs
+            if (sum(qc_count_by_type(:,obt)) <= 0) cycle
+            this_obs_name = get_name_for_type_of_obs(obt)
+   
+            ! print a header, and then try to make the rest of the lines have
+            ! all the info on a single line.  (easier to grep, and to read into
+            ! matlab for stats, i hope.)
+            if (first_time) call print_header('DART QC results:', &
+               'Obs_type, QC value, QC meaning, count_of_that_QC_value, total_obs_of_this_type', &
+               first_time)
+
+            do i=0, MAX_DART_QC
+               if (qc_count_by_type(i,obt) > 0) then
+                  write(msgstring, '(a34,a4,i1,a22,2(i12))') trim(this_obs_name), ' QC ', i, qc_meaning(i), &
+                                                          qc_count_by_type(i,obt), sum(qc_count_by_type(:,obt))
+                  call error_handler(E_MSG, '', msgstring)
+                  if (ounit >= 0) write(ounit, '(A)') trim(msgstring)
+               endif
+            enddo
+         enddo
+      else
+         first_time = .true.
+
+         ! print a header, and then try to make the rest of the lines have
+         ! all the info on a single line.  (easier to grep, and to read into
+         ! matlab for stats, i hope.)
+         if (first_time) call print_header('DART QC results:', &
+            'QC value, count_of_that_QC_value, total_obs', &
+            first_time)
+
+         do i=0, MAX_DART_QC
+            if (qc_count(i) > 0) then
+               write(msgstring, '(a22,a4,i1,2(i12))') qc_meaning(i), ' QC ', i, qc_count(i), sum(qc_count(:))
+               call error_handler(E_MSG, '', msgstring)
+               if (ounit >= 0) write(ounit, '(A)') trim(msgstring)
+            endif
+         enddo
+      endif
+   else
+      if (stats_by_obs_type) then
+         first_time = .true.
+         do obt = 0, max_defined_types_of_obs
+            if (type_count(obt) <= 0) cycle
+            this_obs_name = get_name_for_type_of_obs(obt)
+   
+            ! print a header, and then try to make the rest of the lines have
+            ! all the info on a single line.  (easier to grep, and to read into
+            ! matlab for stats, i hope.)
+            if (first_time) call print_header('DART Obs results:', &
+               'Obs_type, total_obs_of_this_type', &
+               first_time)
+
+            write(msgstring, '(a34,1(i12))') trim(this_obs_name), type_count(obt)
+            call error_handler(E_MSG, '', msgstring)
+            if (ounit >= 0) write(ounit, '(A)') trim(msgstring)
+         enddo
+      else
+         first_time = .true.
+         call print_header('DART QC results:', &
+            'QC value, count_of_that_QC_value, total_obs', &
+            first_time)
+
+         do i=0, MAX_DART_QC
+            if (qc_count(i) > 0) then
+               write(msgstring, '(3(i12))') i, qc_count(i), sum(qc_count(:))
+               call error_handler(E_MSG, '', msgstring)
+               if (ounit >= 0) write(ounit, '(A)') trim(msgstring)
+            endif
+         enddo
+      endif
    endif
-enddo
-if (identity_count > 0) then 
-   write(msgstring, '(a32,i8,a)') 'Identity observations', &
-                                  identity_count, ' obs'
+else
+   
+   write(msgstring, *) 'Number of obs processed  :          ', size_seq_in
    call error_handler(E_MSG, '', msgstring)
-endif
-if (qcindex > 0) then
-   call error_handler(E_MSG, '', ' ')
-   write(msgstring, *) 'DART QC results: '
+   write(msgstring, *) '---------------------------------------------------------'
    call error_handler(E_MSG, '', msgstring)
-   do i=0, 7
-      if (qc_count(i) > 0) then
-         write(msgstring, '(a16,2(i8))') 'DART QC value', i, &
-                                        qc_count(i)
+   do i = 1, max_defined_types_of_obs
+      if (type_count(i) > 0) then 
+         write(msgstring, '(a32,i12,a)') trim(get_name_for_type_of_obs(i)), &
+                                        type_count(i), ' obs'
          call error_handler(E_MSG, '', msgstring)
       endif
    enddo
-   write(msgstring, *) 'Total obs: ', sum(qc_count(:))
-   call error_handler(E_MSG, '', msgstring)
+   if (identity_count > 0) then 
+      write(msgstring, '(a32,i12,a)') 'Identity observations', &
+                                     identity_count, ' obs'
+      call error_handler(E_MSG, '', msgstring)
+   endif
+   if (qcindex > 0) then
+      call error_handler(E_MSG, '', ' ')
+      write(msgstring, *) 'DART QC results for Total obs: ', sum(qc_count(:))
+      call error_handler(E_MSG, '', msgstring)
+      do i=0, MAX_DART_QC
+         if (qc_count(i) > 0) then
+            write(msgstring, '(a22,a4,i1,i12)') qc_meaning(i), ' QC ', i, qc_count(i)
+            call error_handler(E_MSG, '', msgstring)
+         endif
+      enddo
+   
+      if (stats_by_obs_type) then
+         do obt = 0, max_defined_types_of_obs
+            if (sum(qc_count_by_type(:,obt)) <= 0) cycle
+            this_obs_name = get_name_for_type_of_obs(obt)
+   
+            call error_handler(E_MSG, '', ' ')
+            write(msgstring, *) 'Total '//trim(this_obs_name)//' obs: ', sum(qc_count_by_type(:,obt))
+            call error_handler(E_MSG, '', msgstring)
+            do i=0, MAX_DART_QC
+               if (qc_count_by_type(i,obt) > 0) then
+                  write(msgstring, '(a22,a4,i1,i12)') qc_meaning(i), ' QC ', i, &
+                                                      qc_count_by_type(i,obt)
+                  call error_handler(E_MSG, '', msgstring)
+               endif
+            enddo
+         enddo
+      endif
+   endif
+   
+   ! another blank line
+   call error_handler(E_MSG, '', ' ')
 endif
-
-! another blank line
-call error_handler(E_MSG, '', ' ')
 
 ! Time to clean up
 
 call destroy_obs(     obs)
 call destroy_obs(next_obs)
 
-end subroutine print_obs_seq_info
+end subroutine compute_and_print_obs_seq_info
 
 
 !---------------------------------------------------------------------
-subroutine validate_obs_seq_time(seq, filename)
 
-! this eventually belongs in the obs_seq_mod code, but for now
-! try it out here.  we just fixed a hole in the interactive create
+! something like this eventually belongs in the obs_seq_mod code, but 
+! for now try it out here.  we just fixed a hole in the interactive create
 ! routine which would silently let you create out-of-time-order
 ! linked lists, which gave no errors but didn't assimilate the
 ! right obs at the right time when running filter.   this runs
 ! through the times in the entire sequence, ensuring they are
 ! monotonically increasing in time.  this should help catch any
-! bad files which were created with older versions of code.
+! bad files which were created with older versions of code, or
+! created by users with python...
+
+subroutine validate_obs_seq_time(seq, filename)
 
 type(obs_sequence_type), intent(in) :: seq
 character(len=*),        intent(in) :: filename
@@ -415,14 +609,12 @@ end subroutine validate_obs_seq_time
 
 
 !---------------------------------------------------------------------
-subroutine print_metadata(seq, fname)
-
-!
 ! print out the metadata strings, trimmed
-!
+
+subroutine print_seq_metadata(seq, fname)
 
 type(obs_sequence_type), intent(in) :: seq
-character(len=*), optional :: fname
+character(len=*) :: fname
 
 integer :: num_copies , num_qc, i
 character(len=metadatalength) :: str
@@ -453,25 +645,23 @@ QCMetaData : do i=1, num_qc
 
 enddo QCMetaData
 
-end subroutine print_metadata
+end subroutine print_seq_metadata
 
 
 !---------------------------------------------------------------------
+! return the index number of the dart qc copy (-1 if none)
+
 function get_dartqc_index(seq, fname)
 
-!
-! return the index number of the dart qc copy (-1 if none)
-!
-
 type(obs_sequence_type), intent(in) :: seq
-character(len=*), optional :: fname
+character(len=*) :: fname
 integer :: get_dartqc_index
 
 integer :: num_qc, i
 character(len=metadatalength) :: str
 character(len=255) :: msgstring3
 
-num_qc     = get_num_qc(    seq)
+num_qc = get_num_qc(seq)
 
 if ( num_qc < 0 ) then
    write(msgstring3,*)' illegal qc metadata count in file '//trim(fname)
@@ -493,7 +683,27 @@ get_dartqc_index = -1
 
 end function get_dartqc_index
 
+!---------------------------------------------------------------------
+
+subroutine print_header(string1, string2, first)
+
+character(len=*), intent(in)    :: string1
+character(len=*), intent(in)    :: string2
+logical,          intent(inout) :: first
+ 
+if (.not. first) return
+
+call error_handler(E_MSG, '', ' ')
+call error_handler(E_MSG, '', string1)
+
+call error_handler(E_MSG, '', string2)
+call error_handler(E_MSG, '', ' ')
+
+first = .false.
+
+end subroutine print_header
 
 !---------------------------------------------------------------------
+
 end program obs_assim_count
 
