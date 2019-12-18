@@ -4,24 +4,7 @@
    calendar = 'Gregorian'
    stats_by_obs_type = .false.
    counts_only = .false.
+   output_file = .false.
    print_metadata = .false.
    print_time_info = .true.
    /
-
-
-character(len = 256) :: obs_sequence_name = ''
-character(len = 256) :: obs_sequence_list = ''
-character(len = 256) :: output_file = ''
-
-logical :: stats_by_obs_type = .false.
-logical :: counts_only       = .true.
-logical :: print_metadata    = .true.
-logical :: print_time_info   = .true.
-
-character(len=32) :: calendar    = 'Gregorian'
-
-
-namelist /obs_assim_count_nml/ &
-         obs_sequence_name, obs_sequence_list, output_file, &
-         calendar, stats_by_obs_type, counts_only, print_metadata, &
-         print_time_info
