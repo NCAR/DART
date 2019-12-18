@@ -4,7 +4,7 @@
    calendar = 'Gregorian'
    stats_by_obs_type = .false.
    counts_only = .false.
-   output_file = .false.
+   output_file = ''
    print_metadata = .false.
    print_time_info = .true.
    /
