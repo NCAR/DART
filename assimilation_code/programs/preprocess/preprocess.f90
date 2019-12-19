@@ -275,7 +275,7 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
 
    call open_file_for_read(quantity_files(j), 'quantity_files', in_unit)
 
-   ! Read until the ! BEGIN QUANTITY LIST marker string is found
+   ! Read until the ! BEGIN QUANTITY DEFINITION marker string is found
    linenum2 = 0
    call read_until(in_unit, quantity_files(j), qty2_start_string, linenum2)
 
