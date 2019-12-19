@@ -2252,7 +2252,10 @@ endif
 ! defaults remain same.  but for readability, extensibility, etc - separate these out??
 
 domain_id = add_domain(cam_template_filename, nfields, var_names, kind_list, &
-                       limit_vals, limit_type, update_list)
+                       clamp_vals, update_list)
+
+!domain_id = add_domain(cam_template_filename, nfields, var_names, kind_list, &
+!                       limit_vals, limit_type, update_list)
 
 ! @todo FIXME limit_type = "clamp" (backwards compatible), "anamorphosis" (moha's new stuff)
 
