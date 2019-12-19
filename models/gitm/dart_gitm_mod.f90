@@ -24,9 +24,9 @@ private
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
-public :: get_gitm_nLons,    &
-          get_gitm_nLats,    &
-          get_gitm_nAlts,    &
+public :: get_nLatsPerBlock, &
+          get_nLonsPerBlock, &
+          get_nAltsPerBlock, &
           get_nSpecies,      &
           get_nSpeciesTotal, &
           get_nIons,         &
@@ -50,17 +50,17 @@ contains
 ! @todo FIXME - should this now get the sizes from the netcdf file
 ! and not include GITM code?  (i think yes.)
 
-integer function get_gitm_nLons()
-   get_gitm_nLons = nLons
-end function get_gitm_nLons
+integer function get_nLatsPerBlock()
+   get_nLatsPerBlock = nLats
+end function get_nLatsPerBlock
 
-integer function get_gitm_nLats()
-   get_gitm_nLats = nLats
-end function get_gitm_nLats
+integer function get_nLonsPerBlock()
+   get_nLonsPerBlock = nLons
+end function get_nLonsPerBlock
 
-integer function get_gitm_nAlts()
-   get_gitm_nAlts = nAlts
-end function get_gitm_nAlts
+integer function get_nAltsPerBlock()
+   get_nAltsPerBlock = nAlts
+end function get_nAltsPerBlock
 
 integer function get_nSpecies()
    get_nSpecies = nSpecies   ! From ModPlanet, hopefully
@@ -356,6 +356,13 @@ character(len=NF90_MAX_NAME),  intent(out) :: units
       gitm_dim     = 4
       gitm_index   = iNO_
       long_name    = 'the vertical velocity of the NO molecule' 
+      units        = 'm/s'
+
+   case ('iHe_VerticalVelocity')
+      gitm_varname = 'VerticalVelocity'
+      gitm_dim     = 4
+      gitm_index   = iHE_
+      long_name    = 'the vertical velocity of the He molecule' 
       units        = 'm/s'
 
    case ('f107') ! write(iRestartUnit_) f107_est !Alex !Does DART assume that anything that has gitm_dim = -1 is 3D? 

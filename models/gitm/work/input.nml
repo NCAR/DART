@@ -1,76 +1,77 @@
+
+&filter_nml
+   input_state_files            = ''
+   input_state_file_list        = 'gitm_input_files.txt'
+   single_file_in               = .false.
+   perturb_from_single_instance = .false.
+   init_time_days               = -1
+   init_time_seconds            = -1
+
+   stages_to_write              = 'preassim','output'
+
+   output_state_files           = ''
+   output_state_file_list       = 'gitm_output_files.txt'
+   output_mean                  = .true.
+   output_sd                    = .true.
+   output_members               = .true.
+   num_output_state_members     = 10
+   single_file_out              = .false.
+   write_all_stages_at_end      = .false.
+   output_interval              = 1
+
+   ens_size                     = 10
+   num_groups                   = 1
+   distributed_state            = .true.
+
+   inf_flavor                  = 0,                       0
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_initial                 = 1.0,                     1.0
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 100.0,                   100.0
+   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_sd_initial              = 0.6,                     0.6
+   inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_max_change           = 1.05,                    1.05
+   inf_damping                 = 0.9,                     0.9
+   inf_deterministic           = .true.,                  .true.
+
+   obs_sequence_in_name     = 'obs_seq.out'
+   obs_sequence_out_name    = 'obs_seq.final'
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   compute_posterior        = .true.
+   num_output_obs_members   = 10
+
+   adv_ens_command          = 'no_GITM_advance_script'
+   trace_execution          = .true.
+   output_timestamps        = .true.
+   output_forward_op_errors = .false.
+   silence                  = .false.
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
-   single_file_in             = .false.
-   input_state_files          = 'gitm_netcdf.nc'
+   input_state_files          = "gitm_netcdf.nc"
    init_time_days             = -1
    init_time_seconds          = -1
 
-   write_output_state_to_file = .false.
-   single_file_out            = .false.
-   output_state_files         = 'perfect_restart.nc'
-   output_interval            = 1
+   write_output_state_to_file = .true.
+   output_state_files         = "perfect_restart.nc"
 
-   async                      = 0
-   adv_ens_command            = 'no_advance_script'
-
-   obs_seq_in_file_name       = 'obs_seq.in'
-   obs_seq_out_file_name      = 'obs_seq.perfect'
+   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_out_file_name      = "obs_seq.out"
    first_obs_days             = -1
    first_obs_seconds          = -1
    last_obs_days              = -1
    last_obs_seconds           = -1
 
-   distributed_state          = .true.
-   print_every_nth_obs        = -1
-   output_forward_op_errors   = .false.
-   output_timestamps          = .true.
    trace_execution            = .true.
-   silence                    = .false.
-  /
-
-&filter_nml
-   async                    = 0
-   adv_ens_command          = 'no_advance_script'
-   ens_size                 =  3
-   obs_sequence_in_name     = 'obs_seq.out'
-   obs_sequence_out_name    = 'obs_seq.final'
-   input_state_file_list    = "restarts_in.txt"
-   output_state_file_list   = "restarts_out.txt"
-   init_time_days           = -1
-   init_time_seconds        = -1
-   first_obs_days           = -1
-   first_obs_seconds        = -1
-   last_obs_days            = -1
-   last_obs_seconds         = -1
-   num_output_state_members = 3,
-   num_output_obs_members   = 3
-   output_interval          = 1
-   num_groups               = 1
-   distributed_state        = .true.
-   compute_posterior        = .true.
-   output_forward_op_errors = .false.
-   output_timestamps        = .true.
-   trace_execution          = .true.
-   silence                  = .false.
-
-   stages_to_write          = 'preassim', 'output'
-   output_members           = .true.
-   output_mean              = .true.
-   output_sd                = .true.
-   write_all_stages_at_end  = .false.
-
-   inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
-   inf_initial                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
-   inf_upper_bound             = 1.3,                    10.0
-   inf_damping                 = 0.9,                     0.9
-   inf_sd_initial              = 0.6,                     0.6
-   inf_sd_lower_bound          = 0.6,                     0.6
-   inf_sd_max_change           = 1.05,                    1.05
-  /
-
+   output_timestamps          = .true.
+   print_every_nth_obs        = 0
+   output_forward_op_errors   = .false.
+   /
 
 
 &state_vector_io_nml
@@ -106,7 +107,7 @@
 
 
 &ensemble_manager_nml
-   tasks_per_node = 16
+   tasks_per_node = 36
    layout = 2
   /
 
@@ -139,7 +140,8 @@
 
 
 &obs_kind_nml
-   assimilate_these_obs_types = ''
+   assimilate_these_obs_types = 'SAT_TEMPERATURE',
+                                'GND_GPS_VTEC'
    /
 
 #   assimilate_these_obs_types = 'SAT_TEMPERATURE',
@@ -179,7 +181,7 @@
 #                                'SAT_VELOCITY_VERTICAL_NO',
 #                                'SAT_F107',
 #                                'SAT_RHO',
-# 				'GND_GPS_VTEC',
+# 				                     'GND_GPS_VTEC'
 
 
 # The list of variables to put into the state vector is here:
@@ -187,79 +189,137 @@
 # The order doesn't matter to DART. It may to you.
 
 &model_nml
-   single_file_in               = .true.
-   template_filename            = 'gitm_3d_netcdf.nc'
-   gitm_restart_dirname         = '.',
+   single_file_in               = .true.,
+   template_filename            = 'gitm_netcdf.nc',
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 1800,
    model_perturbation_amplitude = 0.2,
    calendar                     = 'Gregorian',
-   debug                        = 99,
-   gitm_state_variables         = 'Electron_Density', 'QTY_ELECTRON_DENSITY', 'NA', 'NA', 'UPDATE'
+   debug                        = 2,
+   gitm_state_variables =  'Temperature',            'QTY_TEMPERATURE',          'NA', 'NA', 'UPDATE'
+                           'eTemperature',           'QTY_TEMPERATURE_ELECTRON', 'NA', 'NA', 'UPDATE'
+                           'ITemperature',           'QTY_TEMPERATURE_ION',      'NA', 'NA', 'UPDATE'
+                           'iO_3P_NDensityS',        'QTY_DENSITY_NEUTRAL_O3P',  'NA', 'NA', 'UPDATE'
+                           'iO2_NDensityS',          'QTY_DENSITY_NEUTRAL_O2',   'NA', 'NA', 'UPDATE'
+                           'iN2_NDensityS',          'QTY_DENSITY_NEUTRAL_N2',   'NA', 'NA', 'UPDATE'
+                           'iN_4S_NDensityS',        'QTY_DENSITY_NEUTRAL_N4S',  'NA', 'NA', 'UPDATE'
+                           'iNO_NDensityS',          'QTY_DENSITY_NEUTRAL_NO',   'NA', 'NA', 'UPDATE'
+                           'iN_2D_NDensityS',        'QTY_DENSITY_NEUTRAL_N2D',  'NA', 'NA', 'UPDATE'
+                           'iN_2P_NDensityS',        'QTY_DENSITY_NEUTRAL_N2P',  'NA', 'NA', 'UPDATE'
+                           'iH_NDensityS',           'QTY_DENSITY_NEUTRAL_H',    'NA', 'NA', 'UPDATE' 
+                           'iHe_NDensityS',          'QTY_DENSITY_NEUTRAL_HE',   'NA', 'NA', 'UPDATE'
+                           'iCO2_NDensityS',         'QTY_DENSITY_NEUTRAL_CO2',  'NA', 'NA', 'UPDATE'
+                           'iO_1D_NDensityS',        'QTY_DENSITY_NEUTRAL_O1D',  'NA', 'NA', 'UPDATE'
+                           'iO_4SP_IDensityS',       'QTY_DENSITY_ION_O4SP',     'NA', 'NA', 'UPDATE'
+                           'iO2P_IDensityS',         'QTY_DENSITY_ION_O2P',      'NA', 'NA', 'UPDATE'
+                           'iN2P_IDensityS',         'QTY_DENSITY_ION_N2P',      'NA', 'NA', 'UPDATE'
+                           'iNP_IDensityS',          'QTY_DENSITY_ION_NP',       'NA', 'NA', 'UPDATE'
+                           'iNOP_IDensityS',         'QTY_DENSITY_ION_NOP',      'NA', 'NA', 'UPDATE'
+                           'iO_2DP_IDensityS',       'QTY_DENSITY_ION_O2DP',     'NA', 'NA', 'UPDATE'
+                           'iO_2PP_IDensityS',       'QTY_DENSITY_ION_O2PP',     'NA', 'NA', 'UPDATE'
+                           'iHP_IDensityS',          'QTY_DENSITY_ION_HP',       'NA', 'NA', 'UPDATE'
+                           'iHeP_IDensityS',         'QTY_DENSITY_ION_HEP',      'NA', 'NA', 'UPDATE'
+                           'ie_IDensityS',           'QTY_DENSITY_ION_E',        'NA', 'NA', 'UPDATE'
+                           'U_Velocity_component',   'QTY_VELOCITY_U',           'NA', 'NA', 'UPDATE'
+                           'V_Velocity_component',   'QTY_VELOCITY_V',           'NA', 'NA', 'UPDATE'
+                           'U_IVelocity_component',  'QTY_VELOCITY_U_ION',       'NA', 'NA', 'UPDATE'
+                           'V_IVelocity_component',  'QTY_VELOCITY_V_ION',       'NA', 'NA', 'UPDATE'
 /
 
-!!
-!   gitm_state_variables =
-!                           'Temperature',            'QTY_TEMPERATURE',
-!                           'eTemperature',           'QTY_TEMPERATURE_ELECTRON',
-!                           'ITemperature',           'QTY_TEMPERATURE_ION',
-!                           'iO_3P_NDensityS',        'QTY_DENSITY_NEUTRAL_O3P',
-!                           'iO2_NDensityS',          'QTY_DENSITY_NEUTRAL_O2',
-!                           'iN2_NDensityS',          'QTY_DENSITY_NEUTRAL_N2',
-!                           'iN_4S_NDensityS',        'QTY_DENSITY_NEUTRAL_N4S',
-!                           'iNO_NDensityS',          'QTY_DENSITY_NEUTRAL_NO',
-!                           'iN_2D_NDensityS',        'QTY_DENSITY_NEUTRAL_N2D',
-!                           'iN_2P_NDensityS',        'QTY_DENSITY_NEUTRAL_N2P',
-!                           'iH_NDensityS',           'QTY_DENSITY_NEUTRAL_H',
-!                           'iHe_NDensityS',          'QTY_DENSITY_NEUTRAL_HE',
-!                           'iCO2_NDensityS',         'QTY_DENSITY_NEUTRAL_CO2',
-!                           'iO_1D_NDensityS',        'QTY_DENSITY_NEUTRAL_O1D',
-!                           'iO_4SP_IDensityS',       'QTY_DENSITY_ION_O4SP',
-!                           'iO2P_IDensityS',         'QTY_DENSITY_ION_O2P',
-!                           'iN2P_IDensityS',         'QTY_DENSITY_ION_N2P',
-!                           'iNP_IDensityS',          'QTY_DENSITY_ION_NP',
-!                           'iNOP_IDensityS',         'QTY_DENSITY_ION_NOP',
-!                           'iO_2DP_IDensityS',       'QTY_DENSITY_ION_O2DP',
-!                           'iO_2PP_IDensityS',       'QTY_DENSITY_ION_O2PP',
-!                           'iHP_IDensityS',          'QTY_DENSITY_ION_HP',
-!                           'iHeP_IDensityS',         'QTY_DENSITY_ION_HEP',
-!                           'ie_IDensityS',           'QTY_DENSITY_ION_E',
-!                           'U_Velocity_component',   'QTY_VELOCITY_U',
-!                           'V_Velocity_component',   'QTY_VELOCITY_V',
-!                           'W_Velocity_component',   'QTY_VELOCITY_W',
-!                           'U_IVelocity_component',  'QTY_VELOCITY_U_ION',
-!                           'V_IVelocity_component',  'QTY_VELOCITY_V_ION',
-!                           'W_IVelocity_component',  'QTY_VELOCITY_W_ION',
-!                           'iO_3P_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_O3P',
-!                           'iO2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_O2',
-!                           'iN2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_N2',
-!                           'iN_4S_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_N4S',
-!                           'iNO_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_NO',
-!                           'f107',                   'QTY_1D_PARAMETER',
-!                           'Rho',                    'QTY_DENSITY',
-!
+#   gitm_state_variables =  'Temperature',            'QTY_TEMPERATURE',          'NA', 'NA', 'UPDATE'
+#                           'eTemperature',           'QTY_TEMPERATURE_ELECTRON', 'NA', 'NA', 'UPDATE'
+#                           'ITemperature',           'QTY_TEMPERATURE_ION',      'NA', 'NA', 'UPDATE'
+#                           'iO_3P_NDensityS',        'QTY_DENSITY_NEUTRAL_O3P',  'NA', 'NA', 'UPDATE'
+#                           'iO2_NDensityS',          'QTY_DENSITY_NEUTRAL_O2',   'NA', 'NA', 'UPDATE'
+#                           'iN2_NDensityS',          'QTY_DENSITY_NEUTRAL_N2',   'NA', 'NA', 'UPDATE'
+#                           'iN_4S_NDensityS',        'QTY_DENSITY_NEUTRAL_N4S',  'NA', 'NA', 'UPDATE'
+#                           'iNO_NDensityS',          'QTY_DENSITY_NEUTRAL_NO',   'NA', 'NA', 'UPDATE'
+#                           'iN_2D_NDensityS',        'QTY_DENSITY_NEUTRAL_N2D',  'NA', 'NA', 'UPDATE'
+#                           'iN_2P_NDensityS',        'QTY_DENSITY_NEUTRAL_N2P',  'NA', 'NA', 'UPDATE'
+#                           'iH_NDensityS',           'QTY_DENSITY_NEUTRAL_H',    'NA', 'NA', 'UPDATE' 
+#                           'iHe_NDensityS',          'QTY_DENSITY_NEUTRAL_HE',   'NA', 'NA', 'UPDATE'
+#                           'iCO2_NDensityS',         'QTY_DENSITY_NEUTRAL_CO2',  'NA', 'NA', 'UPDATE'
+#                           'iO_1D_NDensityS',        'QTY_DENSITY_NEUTRAL_O1D',  'NA', 'NA', 'UPDATE'
+#                           'iO_4SP_IDensityS',       'QTY_DENSITY_ION_O4SP',     'NA', 'NA', 'UPDATE'
+#                           'iO2P_IDensityS',         'QTY_DENSITY_ION_O2P',      'NA', 'NA', 'UPDATE'
+#                           'iN2P_IDensityS',         'QTY_DENSITY_ION_N2P',      'NA', 'NA', 'UPDATE'
+#                           'iNP_IDensityS',          'QTY_DENSITY_ION_NP',       'NA', 'NA', 'UPDATE'
+#                           'iNOP_IDensityS',         'QTY_DENSITY_ION_NOP',      'NA', 'NA', 'UPDATE'
+#                           'iO_2DP_IDensityS',       'QTY_DENSITY_ION_O2DP',     'NA', 'NA', 'UPDATE'
+#                           'iO_2PP_IDensityS',       'QTY_DENSITY_ION_O2PP',     'NA', 'NA', 'UPDATE'
+#                           'iHP_IDensityS',          'QTY_DENSITY_ION_HP',       'NA', 'NA', 'UPDATE'
+#                           'iHeP_IDensityS',         'QTY_DENSITY_ION_HEP',      'NA', 'NA', 'UPDATE'
+#                           'ie_IDensityS',           'QTY_DENSITY_ION_E',        'NA', 'NA', 'UPDATE'
+#                           'U_Velocity_component',   'QTY_VELOCITY_U',           'NA', 'NA', 'UPDATE'
+#                           'V_Velocity_component',   'QTY_VELOCITY_V',           'NA', 'NA', 'UPDATE'
+#                           'W_Velocity_component',   'QTY_VELOCITY_W',           'NA', 'NA', 'UPDATE'
+#                           'U_IVelocity_component',  'QTY_VELOCITY_U_ION',       'NA', 'NA', 'UPDATE'
+#                           'V_IVelocity_component',  'QTY_VELOCITY_V_ION',       'NA', 'NA', 'UPDATE'
+#                           'W_IVelocity_component',  'QTY_VELOCITY_W_ION',       'NA', 'NA', 'UPDATE'
+#                           'iO_3P_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_O3P','NA', 'NA', 'UPDATE'
+#                           'iO2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_O2', 'NA', 'NA', 'UPDATE'
+#                           'iN2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_N2', 'NA', 'NA', 'UPDATE'
+#                           'iN_4S_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_N4S','NA', 'NA', 'UPDATE'
+#                           'iNO_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_NO', 'NA', 'NA', 'UPDATE'
+#                           'Rho',                    'QTY_DENSITY',              'NA', 'NA', 'UPDATE'
+
+&gitm_blocks_nml
+   gitm_block_variables =  'Temperature',            
+                           'eTemperature',           
+                           'ITemperature',           
+                           'iO_3P_NDensityS',        
+                           'iO2_NDensityS',          
+                           'iN2_NDensityS',          
+                           'iN_4S_NDensityS',        
+                           'iNO_NDensityS',          
+                           'iN_2D_NDensityS',        
+                           'iN_2P_NDensityS',        
+                           'iH_NDensityS',           
+                           'iHe_NDensityS',          
+                           'iCO2_NDensityS',         
+                           'iO_1D_NDensityS',        
+                           'iO_4SP_IDensityS',       
+                           'iO2P_IDensityS',         
+                           'iN2P_IDensityS',         
+                           'iNP_IDensityS',          
+                           'iNOP_IDensityS',         
+                           'iO_2DP_IDensityS',       
+                           'iO_2PP_IDensityS',       
+                           'iHP_IDensityS',          
+                           'iHeP_IDensityS',         
+                           'ie_IDensityS',           
+                           'U_Velocity_component',   
+                           'V_Velocity_component',   
+                           'W_Velocity_component',   
+                           'U_IVelocity_component',  
+                           'V_IVelocity_component',  
+                           'W_IVelocity_component',  
+                           'iO_3P_VerticalVelocity', 
+                           'iO2_VerticalVelocity',   
+                           'iN2_VerticalVelocity',   
+                           'iN_4S_VerticalVelocity', 
+                           'iNO_VerticalVelocity'   
+                           'iHe_VerticalVelocity'   
+/
 
 &gitm_to_dart_nml
    gitm_to_dart_output_file = 'filter_input.nc'
    /
 
-
 &dart_to_gitm_nml
    dart_to_gitm_input_file  = 'filter_restart.nc',
    /
 
-&gitm_to_netcdf.nml
-   gitm_to_netcdf_2d_input_file   = '../testdata2/2DTEC_t110311_204500.bin'
-   gitm_to_netcdf_3d_input_file   = '../testdata2/3DUSR_t110311_204500.bin'
-   gitm_to_netcdf_2d_output_file  = 'gitm_2d_netcdf.nc'
-   gitm_to_netcdf_3d_output_file  = 'gitm_3d_netcdf.nc'
+&gitm_blocks_to_netcdf_nml
+   gitm_restart_input_dirname  = '../testdata1/'
+   gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
    /
 
-# probably should be more like:
-#   gitm_to_netcdf_input_file   = '../data/3DUSR_t110311_204500.bin'
-#   gitm_to_netcdf_grid_file    = '../data/2DTEC_t110311_204500.bin'
-#   gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
-
+&netcdf_to_gitm_blocks_nml
+   gitm_restart_input_dirname        = '../testdata1'
+   gitm_restart_output_dirname       = '../testdata1_out'
+   netcdf_to_gitm_blocks_input_file  = 'gitm_netcdf.nc'
+   /
 
 #press is in PA
 #height is in m (scaling for vertical - how many vertical meters correspond to one horizontal radian)
@@ -268,6 +328,12 @@
 &quad_interpolate_nml
    debug = 0
    /
+
+&quality_control_nml
+   input_qc_threshold          = 3
+   outlier_threshold           = -1
+   enable_special_outlier_code = .false.
+  /
 
 &location_nml
    horiz_dist_only             = .false.,
@@ -386,19 +452,21 @@
 
 
 &model_mod_check_nml
-   input_state_files     = 'gitm_3d_netcdf.nc'
+   num_ens               = 1
+   single_file           = .false.
+   input_state_files     = 'gitm_netcdf.nc'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0
-   run_tests             = 1,2,3,4
+   run_tests             = 1,2,3,4,5
    x_ind                 = 720
-   loc_of_interest       = 237.5, 29.699998435911585, 96671.3359375
-   quantity_of_interest  = 'QTY_ELECTRON_DENSITY'
-   interp_test_dlon      = 0.1
-   interp_test_dlat      = 0.1
-   interp_test_dvert     = 5.0
-   interp_test_lonrange  = 205.0,  226.0
-   interp_test_latrange  =  30.0,   47.0
-   interp_test_vertrange =  0.0,    10.0
+   loc_of_interest       = 237.5, 29.699998435911585, 101653.1
+   quantity_of_interest  = 'QTY_TEMPERATURE_ELECTRON'
+   interp_test_dlon      = 10.
+   interp_test_dlat      = 10.
+   interp_test_dvert     = 5000.0
+   interp_test_lonrange  = 60.0,  300.0
+   interp_test_latrange  =  -65.0,   65.0
+   interp_test_vertrange =  100000.0, 200000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
    verbose               = .false.
    /

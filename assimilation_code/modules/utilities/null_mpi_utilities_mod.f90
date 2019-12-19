@@ -4,6 +4,11 @@
 !
 ! $Id$
 
+!> See the mpi_utilities_mod.f90 documentation for more information on
+!> this file.  If you change either file you must make the corresponding
+!> changes in the other if it affects a public interface.  They must stay
+!> in sync.
+!>
 !> Substitute this code for mpi_utilities_mod.f90 if you do not want to
 !> have to link in an MPI library, and you only want to run single task.
 !> Many of the single task DART utility programs use this file instead of

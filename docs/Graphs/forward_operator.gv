@@ -1,0 +1,9 @@
+digraph forward_operator {
+   node [ shape=box ]
+   //filter [shape=ellipse];
+   filter -> get_obs_ens_distrib_state;
+   get_obs_ens_distrib_state -> create_state_window;
+   get_obs_ens_distrib_state -> get_expected_obs_distrib_state;
+   get_obs_ens_distrib_state -> QC_LOOP;
+   get_obs_ens_distrib_state -> free_state_window;
+}

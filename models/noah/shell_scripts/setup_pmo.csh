@@ -59,8 +59,6 @@ ${COPY} ${DARTDIR}/ensemble_source/RESTART.2009010200_DOMAIN1.0001.nc  .  || exi
 ln -sv RESTART.2009010200_DOMAIN1.0001.nc  restart.nc      || exit 5
 ln -sv RESTART.2009010200_DOMAIN1.0001.nc  restart.0001.nc || exit 5
 
-./noah_to_dart                    || exit 6
-${MOVE} dart_ics perfect_ics      || exit 7
 
 echo
 echo "CENTRALDIR is ${CENTRALDIR}"

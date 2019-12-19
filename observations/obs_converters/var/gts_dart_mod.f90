@@ -6,7 +6,7 @@
 
 module gts_dart_mod
 
-use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD, earth_radius
+use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD
 use     utilities_mod, only : open_file, close_file, initialize_utilities, &
                               register_module, logfileunit, E_MSG, &
                               error_handler, find_namelist_in_file, check_namelist_read

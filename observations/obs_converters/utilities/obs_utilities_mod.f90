@@ -61,9 +61,13 @@ public :: create_3d_obs,    &
 
 !>@todo FIXME there is no documentation for this module
 
-!>@todo FIXME should this default to 'missing_value'?  i think yes.
-! module global storage - set with 'set_missing_name()' routine.
-character(len=NF90_MAX_NAME) :: missing_name = ''
+! module global storage - change with 'set_missing_name()' routine.
+! if file is using a different name for this attribute. (nonstandard)
+! note that '_FillValue' is also used for data that was never written,
+! as opposed to data which is written but missing.  we don't care
+! to distinguish between these cases - so what do we look for here?
+
+character(len=NF90_MAX_NAME) :: missing_name = 'missing_value'
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = "$URL$"
@@ -395,11 +399,35 @@ end subroutine getvarshape
 
 !--------------------------------------------------------------------
 !> sets the name of the attribute that describes missing values.  
-!> in some cases it is _FillValue but in others it is 'missing_value'.
+!>
+!> the suggested rule is data that was never written to the netcdf
+!> variable will have a value equal to "_FillValue", and this should
+!> be added as an attribute on the variable when it is created.
+!> the "missing_data" attribute indicates data that was written
+!> but is not valid or present, e.g. land grid points in an ocean
+!> data field.
+!> 
+!> but in practice there are problems.  one is that users may not
+!> add any attributes and have a private convention for missing or
+!> invalid data (e.g. 99999 or some such pattern).
+!>
+!> the netcdf files can be created with an option to NOT prefill
+!> variables with the _FillValue.  this speeds execution when the
+!> code expects to fully write all variables. but if there are
+!> paths through the code where a variable isn't written by mistake,
+!> the contents are undefined.
+!>
+!> and finally, some users mix 'missing_value' and "_FillValue" usage,
+!> writing the value of "_FillValue" to indicate missing data. 
+!> 
+!> in this code all we care about is knowing what data value
+!> indicates data is missing for any reason.  if the code uses 
+!> a different attribute value, set it with this routine.
 !>
 !> name - string name of attribute that holds the missing value
 !>
 !> created 11 Mar 2010,  nancy collins,  ncar/image
+!> (this usage comment updated 26 sep 2019, nsc)
 
 subroutine set_missing_name(name)
 
