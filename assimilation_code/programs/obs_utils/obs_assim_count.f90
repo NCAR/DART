@@ -6,12 +6,32 @@
 
 !> Prints out a quick table of obs types and counts, overall start and
 !> stop times, and metadata strings and counts.
-!> You can get more info by running the obs_diag program.
-!> right now this program counts up the number of obs for each
-!> possible 'DART quality control' value (0-8). (it could also
-!> check for a 'posterior ensemble mean' copy and count how
-!> many are missing_r8 and how many are not.) It does the
-!> former right now.
+!>
+!> You can also get more/different info by running the obs_diag program.
+!>
+!> This program works on any obs_seq file (e.g. input to perfect_model_obs,
+!> input to filter, output from filter).  It can print out the first/last
+!> obs times in the file, and the count of each type of obs.
+!>
+!> If the DART QC data is available it can print out the total number
+!> of obs for each QC category, and it can print out the QC counts per
+!> obs type.  This program is intended to be a quick look at an unknown
+!> obs_seq file to see what types and how many obs it contains. if it
+!> has been through filter, it prints what happened to the obs (assimilated, 
+!> failed forward operator, all rejected by outlier threshold, etc).
+!>
+!> It has an option to open a separate output file and write single line 
+!> summaries of the QC values.  This output is intended to be ingested into
+!> matlab or other plotting programs. (pro tip: see the matlab 'cell'
+!> documentation for how to read in data that contains strings as well as
+!> numbers.)  
+!>
+!> A missing piece for this purpose is that obs_seq.final files do not 
+!> contain the analysis time of the model itself.  This may be what you 
+!> want to use for the X axis on a plot.  Tim suggested some use of the 
+!> schedule module might make it possible to generate periodic analysis 
+!> times although they'd have to be sync'd with the input filenames.  
+!> This is still TBD.
 
 program obs_assim_count
 
@@ -51,7 +71,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
+character(len=*), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
@@ -61,9 +81,10 @@ integer                 :: size_seq_in
 integer                 :: num_copies_in, num_qc_in
 integer                 :: iunit, io, ifile
 integer                 :: max_num_obs, file_id
-character(len = 129)    :: read_format, filename_in
+character(len = 32)     :: read_format
+character(len = 256)    :: filename_in
 logical                 :: pre_I_format, cal
-character(len = 256)    :: msgstring, msgstring1, msgstring2
+character(len = 512)    :: msgstring, msgstring1, msgstring2
 
 ! could go into namelist if you wanted more control
 integer, parameter      :: print_every = 5000
@@ -277,7 +298,7 @@ qc_count_by_type(:,:) = 0
 
 size_seq_in = get_num_obs(seq_in)
 if (size_seq_in == 0) then
-   msgstring = 'Obs_seq file '//trim(filename)//' is empty.'
+   msgstring = 'Obs_seq file '//trim(filename)//' is empty, skipping.'
    call error_handler(E_MSG,'obs_assim_count',msgstring)
    return
 endif
@@ -331,8 +352,6 @@ ObsLoop : do while ( .not. is_this_last)
    else
       type_count(this_obs_type) = type_count(this_obs_type) + 1
    endif
-!   print *, 'obs type index = ', this_obs_type
-!   if(this_obs_type > 0)print *, 'obs name = ', get_name_for_type_of_obs(this_obs_type)
    if (qcindex > 0) then
       call get_qc(obs, qcval, qcindex)
       qc_int = nint(qcval(1))
@@ -358,7 +377,12 @@ enddo ObsLoop
 ! whether input file has DART QCs or not.
 
 ! FIXME: this is very messy.  get it working and then refactor so there 
-! isn't such a deep set of nested if/else/thens.
+! isn't such a deep set of nested if/else/thens.  the cases are:
+!  - are you asking for counts only or a full summary?
+!  - are you asking for stats by obs type or only totals?
+!  - does this file contain DART QC info?
+! which makes 6 different code blocks below, each with slightly
+! different output strings and formats.
 
 if (counts_only) then
    if (qcindex > 0) then
@@ -695,7 +719,6 @@ if (.not. first) return
 
 call error_handler(E_MSG, '', ' ')
 call error_handler(E_MSG, '', string1)
-
 call error_handler(E_MSG, '', string2)
 call error_handler(E_MSG, '', ' ')
 
