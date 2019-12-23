@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../../build_templates/mkmf -p convert_streamflow -t ../../../../build_templates/mkmf.template   \
- -a "../../../.." path_names_convert_streamflow
+../../../../build_templates/mkmf -p CONAGUA_convert_streamflow -t ../../../../build_templates/mkmf.template   \
+ -a "../../../.." path_names_CONAGUA_convert_streamflow
 
 exit $status
 

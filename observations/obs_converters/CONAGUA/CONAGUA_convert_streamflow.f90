@@ -4,17 +4,18 @@
 !
 ! $Id$
 
-program convert_streamflow
+program CONAGUA_convert_streamflow
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! James McCreight jamesmcc at ucar dot edu
 ! 9/24/2018
+! Modified by TJH 12/2019 - use error_handler
 !
 ! Bring in the CONAGUA daily or hourly streamflow (gasto) observations
 ! 1. Read the meta data file specified in
-!       input.nml:convert_streamflow_nml:meta_data_files
+!       input.nml:CONAGUA_convert_streamflow_nml:meta_data_files
 ! 2. Process the files listed in
-!       intput.nml:convert_streamflow_nwml:data_file_list
+!       intput.nml:CONAGUA_convert_streamflow_nwml:data_file_list
 !    All files must either be daily dd*.csv or hourly hd*.csv
 !    If a given gage is not in the meta data file, fatal error.
 !
@@ -27,7 +28,7 @@ use      location_mod, only : VERTISSURFACE
 use     utilities_mod, only : initialize_utilities, finalize_utilities,      &
                               open_file, close_file, find_namelist_in_file,  &
                               check_namelist_read, nmlfileunit, do_nml_file, &
-                              do_nml_term
+                              do_nml_term, error_handler, E_ERR, E_MSG
 
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
                               operator(>=), increment_time, get_time,           &
@@ -47,54 +48,54 @@ use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
 
 implicit none
 
-character(len=64), parameter :: obs_out_file    = 'obs_seq.out'
+! version controlled file description for error handling, do not edit
+character(len=*), parameter :: source   = 'CONAGUA_convert_streamflow.f90'
+character(len=*), parameter :: revision = '$Revision$'
+character(len=*), parameter :: revdate  = '$Date$'
+
+!------------------------------------------------------------------------
+!  Declare namelist parameters
+!------------------------------------------------------------------------
+
+character(len=256) :: meta_data_file         = 'unset'
+character(len=256) :: data_file_list         = 'unset'
+character(len=256) :: obs_out_file           = 'obs_seq.out'
+real(r8)           :: obs_fraction_for_error = 0.01_r8
+real(r8)           :: obs_min_err_std        = 0.5_r8
+logical            :: debug                  = .false.  ! .true. print info
+
+namelist /CONAGUA_convert_streamflow_nml/  &
+     meta_data_file, data_file_list, obs_out_file, &
+     obs_fraction_for_error, obs_min_err_std, debug
+
+!------------------------------------------------------------------------
 
 integer :: oday, osec, rcio, iunit, io
-integer :: num_copies, num_qc, max_obs, ix, iy
+integer :: num_copies, num_qc, max_obs
            
-logical  :: file_exist, first_obs
+logical  :: first_obs
 
 real(r8) :: obs_err, qc
 real(r8) :: lat, lon, vert
-real(r8) :: dlon, dlat
-real(r8), allocatable :: coverage(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
-type(time_type)         :: comp_day0, time_obs, prev_time
-
-real(r8) :: missing_value = -20.0_r8
-logical  :: debug = .false.  ! set to .true. to print info
-
-
-! -------------------------------------------------------
-! Specific CONAGUA additions
-
-! Namelist
-character(len=256) :: meta_data_file, data_file_list
-real(r8)           :: obs_fraction_for_error = 0.01
-real(r8)           :: obs_min_err_std = 0.5
-
-namelist /convert_streamflow_nml/  &
-     meta_data_file, data_file_list, missing_value, debug, &
-     obs_fraction_for_error, obs_min_err_std
-
+type(time_type)         :: time_obs, prev_time
 integer :: meta_unit, list_unit, stn_unit
 integer :: key
 
-integer, parameter :: max_stations = 5000
-integer, parameter :: max_records = 10000
+integer, parameter :: MAX_STATIONS = 5000
+integer, parameter :: MAX_RECORDS = 10000
 integer :: i_rec, i_stn
 character(len=512) :: line_in, stn_name, station_station
-integer :: count_stations, count_meta_stations, ii, dd, stn_name_len, wh_meta_stn
+integer :: count_stations, count_meta_stations, ii, stn_name_len, wh_meta_stn
 
 logical :: hourly_resolution
 
 integer :: year, month, day
-real :: obs_val
-
-real(r8) :: missing_float = -88888.0_r8
-integer :: missing_int = -88888
+real(r8) :: obs_val
+real(r8), parameter :: MISSING_FLOAT = -88888.0_r8
+integer,  parameter :: MISSING_INT = -88888
 
 ! Meta data derived type/structure.
 !FID,LON,LAT,STATION,Name,HOST
@@ -107,12 +108,13 @@ type :: meta_data_record
    character(len=64) :: name
    character(len=64) :: host
 end type meta_data_record
-type(meta_data_record), dimension(max_stations) :: meta_data
-integer, parameter :: n_meta_fields = 6
-character(len=32) :: meta_header(n_meta_fields)
+
+type(meta_data_record), dimension(MAX_STATIONS) :: meta_data
+integer, parameter :: N_META_FIELDS = 6
+character(len=32) :: meta_header(N_META_FIELDS)
 
 ! data_file_list
-character(len=256) :: data_files(max_stations)
+character(len=256) :: data_files(MAX_STATIONS)
 character(len=256) :: stn_file_name, stn_resolution
 
 ! Daily data derived type/structure.
@@ -121,40 +123,27 @@ type :: station_daily_data_record
    integer :: month
    real :: day_of_month_streamflow(31)
 end type station_daily_data_record
+
 ! Will process one in and one out, so the dimension is only len 1.
 type(station_daily_data_record) :: stn_daily_record
 type(station_daily_data_record) :: stn_daily_record_null
-integer, parameter :: n_stn_daily_fields = 33
-character(len=32) :: stn_daily_header(n_stn_daily_fields)
+integer, parameter :: N_STN_DAILY_FIELDS = 33
+character(len=32) :: stn_daily_header(N_STN_DAILY_FIELDS)
 
-! Hourly data derived type/structure.
-type :: station_hourly_data_record
-   integer :: day
-   integer :: month
-   integer :: year
-   integer :: hour
-   real :: streamflow
-end type station_hourly_data_record
-! Will process one in and one out, so the dimension is only len 1.
-type(station_hourly_data_record) :: stn_hourly_record
-type(station_hourly_data_record) :: stn_hourly_record_null
-integer, parameter :: n_stn_hourly_fields = 3
-character(len=32) :: stn_hourly_header(n_stn_hourly_fields)
-! End declarations
-
+character(len=512) :: string1, string2, string3
 
 ! -------------------------------------------------------
 ! Start work
 ! Initialize DART modules.
-call initialize_utilities('convert_streamflow')
+call initialize_utilities('CONAGUA_convert_streamflow')
 
-call find_namelist_in_file('input.nml', 'convert_streamflow_nml', iunit)
-read(iunit, nml = convert_streamflow_nml, iostat = io)
-call check_namelist_read(iunit, io, 'convert_streamflow_nml')
+call find_namelist_in_file('input.nml', 'CONAGUA_convert_streamflow_nml', iunit)
+read(iunit, nml = CONAGUA_convert_streamflow_nml, iostat = io)
+call check_namelist_read(iunit, io, 'CONAGUA_convert_streamflow_nml')
 
 ! Record the namelist values used for the run
-if (do_nml_file()) write(nmlfileunit, nml=convert_streamflow_nml)
-if (do_nml_term()) write(     *     , nml=convert_streamflow_nml)
+if (do_nml_file()) write(nmlfileunit, nml=CONAGUA_convert_streamflow_nml)
+if (do_nml_term()) write(     *     , nml=CONAGUA_convert_streamflow_nml)
 
 ! time setup
 call set_calendar_type(GREGORIAN)
@@ -196,15 +185,22 @@ qc = 0.0_r8
 ! Read meta data file 
 meta_data_file = trim(meta_data_file)
 meta_unit = open_file(meta_data_file, 'formatted', 'read')
-if (debug) print *, 'opened meta data file ' // trim(meta_data_file)
+
+if (debug)  then
+   write(string1,*) 'opened meta data file "'//trim(meta_data_file)//'"'
+   call error_handler(E_MSG, source, string1)
+endif
 
 read(meta_unit, *) meta_header
 
 count_meta_stations = 0
-meta_loop: do i_rec = 1, max_stations
+meta_loop: do i_rec = 1, MAX_STATIONS
    read(meta_unit, *, iostat=rcio) meta_data(i_rec)
    if (rcio /= 0) then 
-      if (debug) print *, 'meta_loop: got bad read code getting line, rcio = ', rcio
+      if (debug) then
+         write(string1,*)'meta_loop: got bad read code getting line, rcio = ', rcio
+         call error_handler(E_MSG, source, string1)
+      endif
       exit meta_loop
    endif
    count_meta_stations = count_meta_stations + 1
@@ -216,7 +212,7 @@ print *, '----------------------------------'
 print *, 'reading meta data file: ', trim(meta_data_file)
 print *, ''
 print *, 'The following header fields were found: '
-do ii=1, n_meta_fields
+do ii=1, N_META_FIELDS
     write(*, fmt="(1x,a)", advance="no") trim(meta_header(ii)) // ', '
 end do
 print *,''
@@ -232,12 +228,22 @@ print *,''
 ! Pre-Process the data_file_list and check it's consistent with
 ! 1) meta_data
 ! 2) itself (all files at the same time resolution)
+
 list_unit = open_file(data_file_list, 'formatted', 'read')
+
+if (debug)  then
+   write(string1,*) 'opened data_file_list "'//trim(data_file_list)//'"'
+   call error_handler(E_MSG, source, string1)
+endif
+
 count_stations = 0
-list_loop: do i_rec = 1, max_stations
+list_loop: do i_rec = 1, MAX_STATIONS
    read(list_unit, '(a)', iostat=rcio) data_files(i_rec)
    if (rcio /= 0) then 
-      if (debug) print *, 'list_loop: got bad read code getting line, rcio = ', rcio
+      if (debug) then
+         write(string1,*)'list_loop: got bad read code getting line, rcio = ', rcio
+         call error_handler(E_MSG, source, string1)
+      endif
       exit list_loop
    endif
    count_stations = count_stations + 1
@@ -245,32 +251,37 @@ end do list_loop
 call close_file(list_unit)
 
 ! Validate that all the stations in the list are in the meta data.
+
 valid_loop: do ii = 1, count_stations
    stn_file_name = data_files(ii)
-   !print *, "stn_file_name: ", stn_file_name 
-   stn_name_len = len(trim(stn_file_name))
-   !print *, "stn_name_len: ", stn_name_len
-   ! As far as we can tell, CONAGUA stations are always 5 digits wide.
-   stn_name = stn_file_name((stn_name_len-8):(stn_name_len-4))
-   stn_resolution = stn_file_name((stn_name_len-10):(stn_name_len-9))
-   !print *,''
-   !print *,'stn_name: ', trim(stn_name), '  ;  resolution: ', trim(stn_resolution)
+   stn_name_len  = len_trim(stn_file_name)
 
-   if (.not. any(meta_data%name .eq. stn_name)) then
-      print *, 'Metadata not found for the requested station file: ', stn_file_name
-      stop 1
+   ! As far as we can tell, CONAGUA stations are always 5 digits wide.
+   stn_resolution = stn_file_name((stn_name_len-10):(stn_name_len-9))
+   stn_name       = stn_file_name((stn_name_len-8):(stn_name_len-4))
+
+   if (debug) then
+      write(string1,*)'stn_file_name substring is ', stn_file_name((stn_name_len-10):(stn_name_len-4))
+      write(string2,*)'station resolution is <',trim(stn_resolution),'>'
+      write(string3,*)'station name       is <',trim(stn_name),'>'
+      call error_handler(E_MSG, source, string1, text2=string2, text3=string3)
+   endif
+
+   if (.not. any(meta_data%name == stn_name)) then
+      write(string1,*)'Metadata not found for the requested station file: "'//trim(stn_file_name)//'"'
+      call error_handler(E_ERR, source, string1)
    end if
   
-   if (ii .eq. 1) then
-      hourly_resolution = (stn_resolution .eq. 'hd')
+   if (ii == 1) then
+      hourly_resolution = (stn_resolution == 'hd')
    else
       if (hourly_resolution .and. stn_resolution .ne. 'hd') then
-         print *, "Time resolution does not appear consistent across the data_file_list.txt"
-         stop 2
+         write(string1,*)"hourly resolution does not appear consistent across the data_file_list.txt"
+         call error_handler(E_ERR, source, string1)
       end if
       if (.not. hourly_resolution .and. stn_resolution .ne. 'dd') then
-         print *, "Time resolution does not appear consistent across the data_file_list.txt"
-         stop 3
+         write(string1,*) "daily resolution does not appear consistent across the data_file_list.txt"
+         call error_handler(E_ERR, source, string1)
       end if
    end if
 
@@ -280,16 +291,16 @@ end do valid_loop
 ! -------------------------------------------------------
 ! Daily observation processing.
 
-stn_daily_record_null%year = missing_int
-stn_daily_record_null%month = missing_int
-stn_daily_record_null%day_of_month_streamflow = missing_float
+stn_daily_record_null%year  = MISSING_INT
+stn_daily_record_null%month = MISSING_INT
+stn_daily_record_null%day_of_month_streamflow = MISSING_FLOAT
 
 station_loop: do i_stn = 1, count_stations
 
    stn_file_name = data_files(i_stn)
    stn_name_len = len(trim(stn_file_name))
    stn_name = stn_file_name((stn_name_len-8):(stn_name_len-4))
-   ! My pack and wheres are rusty
+
    wh_meta_stn = 0
    wh_loop: do ii = 1, count_meta_stations
       if (trim(meta_data(ii)%name) .eq. trim(stn_name)) then
@@ -302,23 +313,28 @@ station_loop: do i_stn = 1, count_stations
    lon = meta_data(wh_meta_stn)%lon
    if (lon < 0.0_r8) lon = lon + 360.0_r8
    lat = meta_data(wh_meta_stn)%lat
-   !print *, wh_meta_stn
    
-   print *, '' 
-   print *, '!-----------------------------------'
-   print *, 'Processing station ', i_stn, ': ', trim(station_station)
+   write(string1,*) '' 
+   write(string2,*) '!-----------------------------------'
+   write(string3,*) 'Processing station ', i_stn, ': "'//trim(station_station)//'"'
+   call error_handler(E_MSG,source,string1,text2=string2,text3=string3)
    
    stn_unit = open_file(trim(stn_file_name), 'formatted', 'read')   
-   print *, 'opened stn record file: ' // trim(stn_file_name)
+
+   write(string1,*) 'opened stn record file: "'//trim(stn_file_name)//'"'
+   call error_handler(E_MSG,source,string1)
+
    read(stn_unit, *, iostat=rcio) stn_daily_header
-   !print *, stn_daily_header
    
-   record_loop: do i_rec = 1, max_records
+   record_loop: do i_rec = 1, MAX_RECORDS
       stn_daily_record = stn_daily_record_null
       read(stn_unit, '(a)', iostat=rcio) line_in
       if (rcio /= 0) then 
-         if (debug) print *, 'recordloop: got bad read code getting line_in, rcio = ', rcio, &
-                             '; record number = ', i_rec
+         if (debug) then
+            write(string1,*) 'recordloop: unable to read record for "'//trim(stn_name)//'"'
+            write(string2,*) ' rcio = ', rcio, '; record number = ', i_rec
+            call error_handler(E_MSG,source,string1,text2=string2)
+         endif
          exit record_loop
       endif
 
@@ -328,26 +344,27 @@ station_loop: do i_stn = 1, count_stations
       
       read(line_in, *, iostat=rcio) stn_daily_record
       if (rcio /= 0) then
-         if (debug) print *, 'recordloop: got bad read code parsing line_in, rcio = ', rcio, &
-                             '; record number = ', i_rec
+         if (debug) then
+            write(string1,*) 'recordloop: unable to parse stn_daily_record for "'//trim(stn_name)//'"'
+            write(string2,*) 'rcio = ', rcio, '; record number = ', i_rec
+            call error_handler(E_MSG,source,string1,text2=string2)
+         endif
          exit record_loop
       endif
 
-      year = stn_daily_record%year
+      year  = stn_daily_record%year
       month = stn_daily_record%month
       
-      day_loop: do dd = 1, 31
+      day_loop: do day = 1, 31
 
-         day = dd
+         obs_val = stn_daily_record%day_of_month_streamflow(day)
 
-         obs_val = stn_daily_record%day_of_month_streamflow(dd)
-         ! Set the observation error variance here.
-         obs_err = max(obs_val*obs_fraction_for_error, obs_min_err_std)
-
-         if (obs_val .eq. missing_float .or. obs_val <= 0.000001) then
+         if (obs_val == MISSING_FLOAT .or. obs_val <= 0.000001_r8) then
             cycle day_loop ! skip this recrod.
          end if
          
+         ! Set the observation error variance here.
+         obs_err = max(obs_val*obs_fraction_for_error, obs_min_err_std)
          print *, year, month, day, obs_val
          
          time_obs = set_date(year, month, day, 0, 0, 0)
@@ -357,7 +374,7 @@ station_loop: do i_stn = 1, count_stations
          ! print *,'lat: ', lat
          ! print *,'lon: ', lon
          ! !print
-         ! print *,'dble(obs_val): ', dble(obs_val)
+         ! print *,'obs_val: ', obs_val
          ! print *,'obs_err: ', obs_err
          ! print *,'oday: ', oday
          ! print *,'osec: ', osec
@@ -373,18 +390,13 @@ station_loop: do i_stn = 1, count_stations
 
          call create_3d_obs(                 &
               lat, lon, vert, VERTISSURFACE, &
-              dble(obs_val),                 &
+              obs_val,                       &
               STREAM_FLOW,                   &
               obs_err, oday, osec, qc, obs,  &
-              key                            &
-         )
+              key                            )
 
          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs) 
 
-         ! TODO(JLM): This is just demonstrating that the write_obs_seq below fails 
-         ! for just one record remove when that is fixed
-         ! exit station_loop 
-         
       end do day_loop
       
    end do record_loop
@@ -393,19 +405,20 @@ station_loop: do i_stn = 1, count_stations
 
 end do station_loop
 
+write(string1,*)'writing "'//trim(obs_out_file)//'"'
+write(string2,*)'obs_count = ', get_num_obs(obs_seq)
+
 ! if we added any obs to the sequence, write it out to a file now.
 if ( get_num_obs(obs_seq) > 0 ) then
-   if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
+   call error_handler(E_MSG,source,string1,text2=string2)
    call write_obs_seq(obs_seq, obs_out_file)
+else
+   write(string3,*)'no observations in output. Something is probably wrong.'
+   call error_handler(E_ERR,source,string1,text2=string2,text3=string3)
 endif
 
 ! end of main program
 call finalize_utilities()
 
-end program convert_streamflow
+end program CONAGUA_convert_streamflow
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
