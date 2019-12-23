@@ -45,8 +45,7 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
+character(len=*), parameter :: source   = "USGS/convert_streamflow.f90"
 character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 character(len=*), parameter :: routine  = 'convert_streamflow:'
@@ -575,6 +574,11 @@ function estimate_total_obs_count(file_list,nfiles) result (num_obs)
 character(len=*), intent(in) :: file_list
 integer,          intent(in) :: nfiles
 integer                      :: num_obs
+
+! Rather than opening up each file and getting the actual number of possible
+! observations in each file, we are just going to extrapolate from a single
+! file and add a fudge factor. There does not seem to be much variability in
+! the number of possible observations from file-to-file.
 
 character(len=*), parameter :: routine = 'estimate_total_obs_count'
 integer :: iunit, io, ncid, nobs

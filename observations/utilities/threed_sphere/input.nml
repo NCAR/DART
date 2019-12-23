@@ -188,6 +188,17 @@
    debug = .false.
 /
 
+&obs_assim_count_nml
+   obs_sequence_name = 'obs_seq.out'
+   obs_sequence_list = '', 
+   calendar = 'Gregorian'
+   counts_only = .false.
+   stats_by_obs_type = .false.
+   print_metadata = .false.
+   print_time_info = .true.
+   output_file = ""
+/
+   
 &obs_info_nml
    filename_in             = 'obs_seq.out'
    filelist_in             = ''
@@ -195,5 +206,5 @@
    calendar                = 'Gregorian'
    filenames_from_terminal = .false.
    output_file             = 'ocount.txt'
-   /
+/
 
