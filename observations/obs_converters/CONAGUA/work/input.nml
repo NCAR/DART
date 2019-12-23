@@ -7,12 +7,13 @@
    input_files              = '../../../../observations/forward_operators/obs_def_streamflow_mod.f90',
    /
 
-&convert_streamflow_nml
+&CONAGUA_convert_streamflow_nml
    meta_data_file = 'example_data/LaSierra/Observations/LaSierra_strm_pts.csv'
    data_file_list = 'example_data/LaSierra/Observations/daily_files_list.txt'
-   debug = .true.
+   obs_out_file   = 'obs_seq.out'
    obs_fraction_for_error = 0.05
-   obs_min_err_std = 0.5
+   obs_min_err_std        = 0.5
+   debug                  = .true.
    /
 
 &formatted_text_to_obs_nml
