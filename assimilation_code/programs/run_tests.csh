@@ -202,9 +202,9 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
 #           echo "++++++++++++++++++"
 #           echo Starting $PROG
 #           if ( -f using_mpi_for_$PROG ) then
-#              ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.$PROG.out ) || set FAILURE = 1
+#              ( ${MPICMD} ./$PROG >> ${LOGDIR}/runlog.$PROG.out ) || set FAILURE = 1
 #           else
-#              (           ./$PROG  > ${LOGDIR}/runlog.$PROG.out ) || set FAILURE = 1
+#              (           ./$PROG >> ${LOGDIR}/runlog.$PROG.out ) || set FAILURE = 1
 #           endif
 #           echo Finished $PROG
 #           echo "++++++++++++++++++"
