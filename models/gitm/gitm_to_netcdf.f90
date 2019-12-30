@@ -32,10 +32,9 @@ use netcdf_utilities_mod    ! all for now
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'gitm_to_netcdf.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !-----------------------------------------------------------------------
 ! namelist parameters with default values.
@@ -265,8 +264,3 @@ end subroutine read_header
 
 end program gitm_to_netcdf
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/gitm/gitm_to_netcdf.f90 $
-! $Id: gitm_to_netcdf.f90 10977 2017-02-01 18:15:42Z thoar@ucar.edu $
-! $Revision: 10977 $
-! $Date: 2017-02-01 11:15:42 -0700 (Wed, 01 Feb 2017) $

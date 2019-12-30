@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id: mkmf_perturb_single_instance 12639 2018-06-06 22:11:25Z hendric@ucar.edu $
 
 if ( $#argv > 0 ) then
   if ("$argv[1]" == "-mpi") then
@@ -32,7 +30,8 @@ if ( $usingmpi ) then
   echo "Making Makefile with MPI"
   touch using_mpi_for_perturb_single_instance
   sed -e 's#/null_mpi_util#/mpi_util#' \
-      -e 's#/null_win_mod#/no_cray_win_mod#' path_names_perturb_single_instance.back >! path_names_perturb_single_instance
+      -e 's#/null_win_mod#/no_cray_win_mod#' \
+      path_names_perturb_single_instance.back >! path_names_perturb_single_instance
 
   setenv wrapper_arg -w
 
@@ -42,7 +41,8 @@ else
   rm -f using_mpi_for_perturb_single_instance
   sed -e 's#/mpi_util#/null_mpi_util#' \
       -e '\#no_cray_win_mod.f90#d' \
-      -e '\#cray_win_mod.f90#d' path_names_perturb_single_instance.back >! path_names_perturb_single_instance
+      -e '\#cray_win_mod.f90#d' \
+      path_names_perturb_single_instance.back >! path_names_perturb_single_instance
 
   set p=`grep null_win_mod.f90 path_names_perturb_single_instance | wc -w`
   if ( $p == 0) then
@@ -56,14 +56,9 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f path_names_perturb_single_instance.back
 
-../../../build_templates/mkmf -p perturb_single_instance -t ../../../build_templates/mkmf.template   \
-        -a "../../.." ${wrapper_arg} path_names_perturb_single_instance
-
+     ../../../build_templates/mkmf -p perturb_single_instance \
+  -t ../../../build_templates/mkmf.template \
+  -a "../../.." ${wrapper_arg} path_names_perturb_single_instance
 
 exit $status
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/pertirb_tool/models/wrf/work/mkmf_perturb_single_instance $
-# $Revision: 12639 $
-# $Date: 2018-06-06 16:11:25 -0600 (Wed, 06 Jun 2018) $
 
