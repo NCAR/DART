@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id: quickbuild.csh 11612 2017-05-08 22:18:42Z nancy@ucar.edu $
 
 #----------------------------------------------------------------------
 # compile all programs in the current directory that have a mkmf_xxx file.
@@ -178,9 +176,4 @@ endif
 echo "Success: All MPI parallel DART programs compiled."
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/models/cam-fv/work/quickbuild.csh $
-# $Revision: 11612 $
-# $Date: 2017-05-08 16:18:42 -0600 (Mon, 08 May 2017) $
 

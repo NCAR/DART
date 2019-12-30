@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: quickbuild.csh 11289 2017-03-10 21:56:06Z hendric@ucar.edu $
-#
 # This script compiles all executables in this directory.
 
 \rm -f *.o *.mod Makefile .cppdefs
@@ -38,9 +36,4 @@ end
 echo "Success: All DART programs compiled."
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/gen_sampling_err_table/work/quickbuild.csh $
-# $Revision: 11289 $
-# $Date: 2017-03-10 14:56:06 -0700 (Fri, 10 Mar 2017) $
 
