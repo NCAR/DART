@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id: perturb_single_instance.f90 12665 2018-06-12 22:32:05Z hendric@ucar.edu $
 
 !>@todo FIXME the html needs to be made consistent with the namelist once the namelist
 !> is fleshed out.
@@ -54,11 +52,9 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_c
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/pertirb_tool/assimilation_code/programs/perturb_single_instance/perturb_single_instance.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 12665 $"
-character(len=128), parameter :: revdate  = "$Date: 2018-06-12 16:32:05 -0600 (Tue, 12 Jun 2018) $"
-
+character(len=*), parameter :: source   = 'perturb_single_instance.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !----------------------------------------------------------------
 ! These variables are namelist-controllable.

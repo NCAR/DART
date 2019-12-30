@@ -3,16 +3,10 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id: mkmf_compare_states 11289 2017-03-10 21:56:06Z hendric@ucar.edu $
 
-../../../../build_templates/mkmf -p compare_states -t ../../../../build_templates/mkmf.template   \
+     ../../../../build_templates/mkmf -p compare_states \
+ -t  ../../../../build_templates/mkmf.template \
  -a "../../../.." path_names_compare_states
 
 exit $status
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/compare_states/work/mkmf_compare_states $
-# $Revision: 11289 $
-# $Date: 2017-03-10 14:56:06 -0700 (Fri, 10 Mar 2017) $
 
