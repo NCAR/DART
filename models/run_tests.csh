@@ -108,6 +108,7 @@ set DO_THESE_MODELS = ( \
   simple_advection \
   template \
   wrf \
+  wrf_hydro \
 )
 
 #----------------------------------------------------------------------
