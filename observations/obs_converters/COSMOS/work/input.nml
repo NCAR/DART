@@ -28,17 +28,17 @@
    obs_out_file       = 'SantaRita.obs_seq.out',
    sitename           = 'Santa_Rita_Creosote',
    maxgoodqc          =    1,
-   verbose            = .TRUE.
+   verbose            = .FALSE.
    /
 
 &COSMOS_development_nml
    site_metadata_file = '../data/COSMIC_parlist.nc',
-   text_input_file    = '../data/COSMOS_SantaRita_2011.dat',
+   text_input_file    = '../data/COSMOS_SantaRita_2010.txt',
    obs_out_file       = 'SantaRita.obs_seq.out',
    sitename           = 'Santa_Rita_Creosote',
-   year               = 2011,
+   year               = 2010,
    maxgoodqc          =    1,
-   verbose            = .TRUE.
+   verbose            = .FALSE.
    /
 
 &obs_sequence_tool_nml
