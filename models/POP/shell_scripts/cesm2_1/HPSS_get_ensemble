@@ -1,0 +1,56 @@
+#!/bin/csh -f
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+#*******************************************************************************
+#
+# ---------------------
+# Purpose
+# ---------------------
+#
+# This script gets 80 POP restart files from HPSS.
+#*******************************************************************************
+
+# Set Variables
+setenv save_dir     POP_ensemble_dir
+setenv save_path    /glade/scratch/${USER}/${save_dir}
+
+# setenv start_year 31
+setenv start_year 209
+# setenv   end_year 201
+setenv   end_year 270
+# setenv  year_span 10
+setenv  year_span 1
+setenv  case_name g210.G_JRA.v14.gx1v7.01
+setenv  hpss_path /home/whokim/csm/${case_name}/rest
+
+
+mkdir -p ${save_path}
+cd ${save_path}
+
+@ iyear = $start_year
+
+while ($iyear <= $end_year)
+    
+    # Zero pad the year string so that there are 4 digits
+    if ($iyear < 10) then
+        setenv zero_filled_year 000${iyear}
+    else if ($iyear < 100) then
+        setenv zero_filled_year 00${iyear}
+    else if ($iyear < 1000) then
+        setenv zero_filled_year 0${iyear}
+    endif
+
+    setenv  rst_filename ${case_name}.pop.r.${zero_filled_year}-01-01-00000.nc
+    setenv hpss_filepath ${hpss_path}/${zero_filled_year}-01-01-00000/${rst_filename}
+    
+    echo "Getting file: ${rst_filename}"
+    
+    hsi cget ${rst_filename} : ${hpss_filepath}
+    
+    @ iyear += ${year_span}
+end
