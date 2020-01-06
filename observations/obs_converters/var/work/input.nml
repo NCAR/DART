@@ -50,11 +50,6 @@
 ! min_lon =
 ! max_lon =
 
-&rad_3dvar_to_dart_nml
-   var_file              = 'qc_radr_3dvar_2002083100.dat'
-   obs_seq_out_file_name = 'obs_seq.out'
- /
-
 &gts_to_dart_nml
    gts_file              = 'gts_obsout.dat'
    obs_seq_out_file_name = 'obs_seq.out'
@@ -81,5 +76,10 @@
    dropsonde_only        = .FALSE.
    num_thin_satob        = 50
    num_thin_qscat        = 100
+ /
+
+&rad_3dvar_to_dart_nml
+   var_file              = 'qc_radr_3dvar_2002083100.dat'
+   obs_seq_out_file_name = 'obs_seq.out'
  /
 
