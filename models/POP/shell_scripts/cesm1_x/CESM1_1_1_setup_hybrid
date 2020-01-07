@@ -51,7 +51,7 @@
 #
 # -- Examine the whole script to identify things to change for your experiments.
 #
-# -- Edit this script in the $DART/models/POP/shell_scripts directory
+# -- Edit this script in the $DART/models/POP/shell_scripts/cesm1_x directory
 #    or copy it to somewhere where it will be preserved.
 #
 # -- Locate the initial multi-instance files that CESM will need.
@@ -318,7 +318,7 @@ ${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
 # ==============================================================================
 
 if ( ! -e CESM_DART_config ) then
-   ${COPY} ${dartroot}/models/POP/shell_scripts/CESM_DART_config .
+   ${COPY} ${dartroot}/models/POP/shell_scripts/cesm1_x/CESM_DART_config .
 endif
 
 if (   -e CESM_DART_config ) then
@@ -328,7 +328,7 @@ if (   -e CESM_DART_config ) then
 else
    echo "WARNING: the script to configure for data assimilation is not available."
    echo "         CESM_DART_config should be present locally or in"
-   echo "         ${dartroot}/models/POP/shell_scripts/"
+   echo "         ${dartroot}/models/POP/shell_scripts/cesm1_x/"
    echo "         You can stage this script later, but you must manually edit it"
    echo "         to reflect the location of the DART code tree."
 endif
@@ -664,7 +664,7 @@ echo "streams = 'drof.streams.txt.rof.diatren_iaf_rx1" 1 1948 2009"'" >> user_nl
 # -or-
 #
 # we copy a template stream txt file from the
-# $dartroot/models/POP/shell_scripts directory and modify one for each instance.
+# $dartroot/models/POP/shell_scripts/cesm1_x/ directory and modify one for each instance.
 #
 # ==============================================================================
 
@@ -705,11 +705,11 @@ foreach FNAME (user*streams*)
    set streamname = $name_parse[$filename_index]
    set   instance = `echo $name_parse[$instance_index] | bc`
 
-   if (-e $dartroot/models/POP/shell_scripts/user_$streamname*template) then
+   if (-e $dartroot/models/POP/shell_scripts/cesm1_x/user_$streamname*template) then
 
       echo "Copying DART template for ${FNAME} and changing instances."
 
-      ${COPY} $dartroot/models/POP/shell_scripts/user_$streamname*template ${FNAME}
+      ${COPY} $dartroot/models/POP/shell_scripts/cesm1_x/user_$streamname*template ${FNAME}
 
       sed s/NINST/$instance/g ${FNAME} >! out.$$
       ${MOVE} out.$$ ${FNAME}
@@ -747,9 +747,9 @@ cat << EndOfText >! stage_cesm_files
 set restart_time = $init_time
 
 # get the settings for this case from the CESM environment
-cd ${caseroot}
+cd \${caseroot}
 source ./Tools/ccsm_getenv || exit -2
-cd ${RUNDIR}
+cd \${RUNDIR}
 
 echo 'Copying the required CESM files to the run directory to rerun'
 echo 'a previous step.  CONTINUE_RUN from env_run.xml is' \${CONTINUE_RUN}
