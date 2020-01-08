@@ -1173,7 +1173,7 @@ real(r8)            :: error_var
 
 !HK
 real(r8), intent(out) :: expected_obs(:)
-integer, intent(in) :: win !> window for one sided communication
+integer, intent(in) :: win !! window for one sided communication
 type(ensemble_type) state_ens_handle
 
 ! Load up the assimilate and evaluate status for this observation kind

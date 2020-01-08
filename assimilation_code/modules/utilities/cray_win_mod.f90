@@ -7,6 +7,7 @@
 !> Contains the window information for the state.  Two windows:
 !> One for all copies, one for the mean.
 !> Not sure whether we should just have one window to avoid multiple synchronizations.
+
 module window_mod
 
 !> \defgroup window window_mod
@@ -35,24 +36,24 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 ! mpi window handles
-integer :: state_win   !< window for the forward operator
-integer :: mean_win    !< window for the mean
-integer :: current_win !< keep track of current window, start out assuming an invalid window
-!< @todo the number of copies in the window is sloppy. You need to make this better.
+integer :: state_win   !! window for the forward operator
+integer :: mean_win    !! window for the mean
+integer :: current_win !! keep track of current window, start out assuming an invalid window
+!>@todo the number of copies in the window is sloppy. You need to make this better.
 
 ! parameters for keeping track of which window is open
 integer, parameter :: NO_WINDOW    = -1
 integer, parameter :: MEAN_WINDOW  = 0 
 integer, parameter :: STATE_WINDOW = 2 
 
-integer :: data_count !> number of copies in the window
+integer :: data_count !! number of copies in the window
 integer(KIND=MPI_ADDRESS_KIND) window_size
 logical :: use_distributed_mean = .false. ! initialize to false
 
-real(r8) :: duplicate_state(*)  !< duplicate array for cray pointer fwd
+real(r8) :: duplicate_state(*)  ! duplicate array for cray pointer fwd
 pointer(a, duplicate_state)
 
-real(r8) :: duplicate_mean(*)  !< duplicate array for cray pointer vert convert
+real(r8) :: duplicate_mean(*)  ! duplicate array for cray pointer vert convert
 pointer(b, duplicate_mean)
 type(ensemble_type) :: mean_ens_handle
 

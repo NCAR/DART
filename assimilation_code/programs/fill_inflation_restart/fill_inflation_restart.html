@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>program fill_inflation_restart</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
-<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
+<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,14 +14,9 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
-    <td>
-       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
-          <small><small>version information for this file: <br />
-          <!-- version tag follows, do not edit -->
-          $Id$</small></small>
-       </P></td>
+    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
 </tr>
 </table>
 
@@ -37,14 +32,31 @@
 
 <P>
 Utility program to create inflation restart files with constant values.
-Useful for a multi-step assimilation, so the values
-<em class=code>inf_initial_from_restart</em> and
-<em class=code>inf_sd_initial_from_restart</em> items in the &amp;filter_nml
-namelist can be .TRUE. from the beginning.
 </P><P>
-This reads inflation values from the &amp;fill_inflation_restart_nml namelist for
-prior_inf_mean, prior_inf_sd and post_inf_mean, post_inf_sd.  It does not use
-the values in the &amp; filter namelist.
+These files can be used as input for the first step of a 
+multi-step assimilation when adaptive inflation is being used. 
+This allows the namelist items
+<em class=code>inf_initial_from_restart</em> and
+<em class=code>inf_sd_initial_from_restart</em> in the 
+<em class=code>&amp;filter_nml</em>
+namelist to be <em class=code>.TRUE.</em> for all steps of the 
+assimilation including the very first one.   
+(These items control whether inflation values
+are read from an input file or read from constants in the namelist.)
+</P><P>
+Adaptive inflation restart files are written
+at the end of a <em class=program>filter</em> run
+and are needed as input for the next timestep.  
+This program creates files that can be used
+for the initial run of filter when no inflation restart files have
+been created by filter but are required to be read as input.
+</P><P>
+This program reads the inflation values to use from the 
+<em class=code>&amp;fill_inflation_restart_nml</em>
+namelist for setting the prior inflation mean and standard deviation,
+and/or the posterior inflation mean and standard deviation.
+It does not use the inflation values in the 
+<em class=code>&amp;filter</em> namelist.
 </P>
 
 <P>
@@ -65,8 +77,10 @@ It creates files with names consistent with the input names expected by filter:
 <em class=file>input_postinf_sd.nc</em>
 </pre>                 
 
+
 <P>
-Alternatively you can use one of the standard NCO utilities like 
+An older (and deprecated) alternative to running <em class=program>fill_inflation_restart</em>
+is to create inflation netcdf files by using one of the NCO utilities like
 "<em class=program>ncap2</em>"
 on a copy of another restart file to set the initial inflation mean, and another
 for the initial inflation standard deviation.  Inflation mean and sd values
@@ -128,8 +142,8 @@ prematurely terminating the namelist.
 </div>
 
 <P>
-The namelist controls how the logging, namelist, messages, and general
-utility routines behave.
+The namelist controls which files are created and
+what values are written to the restart files.
 </P>
 
 <div>
@@ -185,9 +199,8 @@ utility routines behave.
 
 <TR><TD>input_state_files</TD>
     <TD>character(:)</TD>
-    <TD>For the single file case a list of input files, one per domain,
-      to add the inflation values into with the proper netcdf variable names.
-      Unused for the multiple file case. 
+    <TD>List one per domain, to be used as a template for the output 
+        inflation files.
 </TD></TR>
 
 <TR><TD>verbose</TD>
@@ -320,14 +333,6 @@ by UCAR, "as is", without charge, subject to all terms of use at
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
-
-<TABLE border=0 cellpadding=0 width=100% summary="">
-<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
-<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD valign=top>Source:        </TD><TD> $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html$</TD></TR>
-<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 

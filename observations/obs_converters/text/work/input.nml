@@ -1,3 +1,8 @@
+&text_to_obs_nml
+   text_input_file = '../data/text_input_file'
+   obs_out_file    = 'obs_seq.out'
+   debug           = .false.
+/
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
@@ -20,4 +25,16 @@
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  
  /
+
+&obs_sequence_tool_nml
+   filename_seq       = 'obs_seq.out'
+   filename_seq_list  = ''
+   filename_out       = 'obs_seq.copy'
+   print_only         = .false.
+   gregorian_cal      = .true.
+   first_obs_days     = -1
+   first_obs_seconds  = -1
+   last_obs_days      = -1
+   last_obs_seconds   = -1
+  /
 

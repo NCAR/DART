@@ -6,7 +6,8 @@ layout: default
 # DART_LAB Tutorial
 
 ## Overview
-
+DART_LAB is a MATLAB®-based tutorial to demonstrate the principles of 
+ensemble data assimilation.
 DART_LAB consists of PDF tutorial materials and MATLAB® exercises.
 See below for links to the PDF files and a list of the
 corresponding MATLAB scripts.
@@ -17,13 +18,15 @@ about 1.5 days to complete. -->
 
 -----
 
-|           |              |
-| --------- | ------------ |
-| Section&nbsp;1 | [The basics in 1D.](../DART_LAB/presentation/DART_LAB_Section01.pdf) |
-| Section&nbsp; 2 | [How should observations of a state variable impact an unobserved state variable? Multivariate assimilation.](../DART_LAB/presentation/DART_LAB_Section02.pdf) |
-| Section&nbsp; 3 | [Sampling error and localization.](../DART_LAB/presentation/DART_LAB_Section03.pdf) |
-| Section&nbsp; 4 | [The Ensemble Kalman Filter (Perturbed Observations).](../DART_LAB/presentation/DART_LAB_Section04.pdf) |
-| Section&nbsp; 5 | [Adaptive Inflation.](../DART_LAB/presentation/DART_LAB_Section05.pdf) |
+<table>
+<tbody>
+<tr><td>Section 1</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_01.pdf">The basics in 1D.</a></td></tr>
+<tr><td>Section 2</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_02.pdf">How should observations of a state variable impact an unobserved state variable? Multivariate assimilation.</a></td></tr>
+<tr><td>Section 3</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_03.pdf">Sampling error and localization.</a></td></tr>
+<tr><td>Section 4</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_04.pdf">The Ensemble Kalman Filter (Perturbed Observations).</a></td></tr>
+<tr><td>Section 5</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_05.pdf">Adaptive Inflation.</a></td></tr>
+</tbody>
+</table>
 
 <span id="Matlab"></span>
 

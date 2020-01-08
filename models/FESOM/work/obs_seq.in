@@ -1,0 +1,16 @@
+ obs_sequence
+obs_kind_definitions
+           1
+          65 FERRYBOX_TEMPERATURE           
+  num_copies:            0  num_qc:            0
+  num_obs:            1  max_num_obs:            1
+  first:            1  last:            1
+ OBS            1
+          -1          -1          -1
+obdef
+loc3d
+    0.4553982897473685        0.7007758746145032         10.00000000000000      3
+kind
+          65
+ 21600     149026
+   3.00000000000000     

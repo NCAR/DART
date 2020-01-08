@@ -12,9 +12,13 @@
 
 ### To cite DART:
 
-The DOI for DART is [doi:10.5065/D6WQ0202](http://doi.org/10.5065/D6WQ0202)  
+Cite DART using the following text:
 
-and the seminal reference is:   
+> The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2019). Boulder, Colorado: UCAR/NCAR/CISL/DAReS. [http://doi.org/10.5065/D6WQ0202](http://doi.org/10.5065/D6WQ0202)  
+
+Update the DART version and year as appropriate.
+
+The seminal reference is:   
 
 **Anderson, J. L., T. Hoar, K. Raeder, H. Liu, N. Collins, R. Torn
 and A. Arellano**, 2009  

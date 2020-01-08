@@ -42,7 +42,7 @@
 # qsub     submitting a job
 # 
 #PBS -N dart_test     
-#PBS -l walltime=02:00:00
+#PBS -l walltime=03:00:00
 #PBS -A P86850054 
 #PBS -j oe
 #PBS -m ae
@@ -109,6 +109,11 @@ if ( ! $?host) then
 endif
 echo "Running $0 on $host"
 echo "The top-level DART directory is $DARTHOME"
+
+# Report on which git branch is being tested and if there are modifications.
+# Hopefully, no need to know about untracked files.
+
+git status -uno
 
 
 #----------------------------------------------------------------------

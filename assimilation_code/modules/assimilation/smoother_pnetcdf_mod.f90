@@ -32,6 +32,7 @@ end function
 !> so, you need to split up the state array into variables less than 2GB. No this is not true,
 !> the last variable can be huge.  You do need to switch on large file support if you are 
 !> creating the file with netcdf.
+
 subroutine filter_state_space_diagnostics_parallel(state_ens_handle, start_copy, end_copy, diag_filename)
 
 use pnetcdf_utilities_mod, only : pnet_check
@@ -40,19 +41,19 @@ use mpi_utilities_mod,     only : my_task_id, task_count, datasize
 use mpi
 use pnetcdf
 
-type(ensemble_type), intent(inout) :: state_ens_handle !< why does this want to be inout?
-integer,             intent(in)    :: start_copy !< copy to start from. This is going to be annoying for the posterior output.
-integer,             intent(in)    :: end_copy !< copy to output up to
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: start_copy !! copy to start from. This is going to be annoying for the posterior output.
+integer,             intent(in)    :: end_copy !! copy to output up to
 character(len=*),    intent(in)    :: diag_filename
 
 ! pnetcdf variables
-integer                       :: ret !< pnetcdf return code
-integer                       :: ncfile !< pnetcdf file identifier
+integer                       :: ret !! pnetcdf return code
+integer                       :: ncfile !! pnetcdf file identifier
 integer                       :: ndims, dimIds(2), stateId
 integer(KIND=MPI_OFFSET_KIND) :: num_copies, num_vars, my_num_vars
 integer                       :: copies_dim, vars_dim
-integer(KIND=MPI_OFFSET_KIND) :: start(2), count(2), stride(2) !< for state copies
-integer(KIND=MPI_OFFSET_KIND) :: bufcount !< my_num_vars * output num_copies
+integer(KIND=MPI_OFFSET_KIND) :: start(2), count(2), stride(2) !! for state copies
+integer(KIND=MPI_OFFSET_KIND) :: bufcount !! my_num_vars * output num_copies
 ! timing variables
 double precision :: start_at_time
 
@@ -68,7 +69,10 @@ call pnet_check(ret, 'filter_state_space_diagnostics_parallel', 'going into defi
 
 ! define state(copies, vars)
 ndims = 2 ! two dimensional state
-num_copies = end_copy - start_copy + 1!> @todo only output what you need to?
+
+!>@todo only output what you need to?
+num_copies = end_copy - start_copy + 1 
+
 num_vars = state_ens_handle%num_vars
 my_num_vars = state_ens_handle%my_num_vars
 

@@ -64,6 +64,20 @@ copy the source files into DART/models/cam, copy the mkmf_*
 and path_names_* files into ../work, and run ./quickbuild.csh
 from the work directory.
 
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+Tue Aug 20 16:03:31 2019 -0600
+
+    The bisection code has moved into the utilities_mod.f90 file.
+    this was an initial version for testing. it can be deleted from the repo.
+    also the external high top and low top tables are also obsolete -
+    they're hardcoded in the cam model_mod itself now.
+
+ delete mode 100644 models/cam-fv/bisection_subr.f90
+ delete mode 100644 models/cam-fv/high_top_table.f90
+ delete mode 100644 models/cam-fv/low_top_table.f90
+
+
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$

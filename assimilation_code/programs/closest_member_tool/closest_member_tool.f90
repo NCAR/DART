@@ -4,16 +4,11 @@
 !
 ! $Id$
 
-!> @mainpage
-!> @{
-!> @brief  Select the member closest to the ensemble mean.
+!> Select the member closest to the ensemble mean.
 !>
-!>  This program has options to compute <em> distance </em> in several different ways
-!>  and returns the ensemble member which has the smallest total distance from
-!>  the ensemble mean.
-!> @}
-!>
-!>
+!> This program has options to compute <em> distance </em> in several different ways
+!> and returns the ensemble member which has the smallest total distance from
+!> the ensemble mean.
 
 program closest_member_tool
 
@@ -200,7 +195,7 @@ enddo
 
 ! Read the ensemble from files
 member_time = set_time_missing()
-call read_state(ens_handle, ens_file_info, read_time_from_file=.false., time=member_time)
+call read_state(ens_handle, ens_file_info, read_time_from_file=.false., model_time=member_time)
 
 ! Compute mean
 ENS_MEAN_COPY = ens_size + 1
@@ -427,8 +422,3 @@ end function compute_diff
 
 end program closest_member_tool
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

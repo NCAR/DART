@@ -7,6 +7,8 @@
 !> common routines which can write netcdf arrays no matter which
 !> location module is compiled in.
 
+!>@todo FIXME  there is no documentation for this module.
+
 !>@todo FIXME  define ALL the VERTISXXX here, add a call to has_vertical_choice
 !>to the xxx/location_mod, and if no, return without needing routines
 !>in each of the specific location routines.  if yes, call query and 
@@ -259,17 +261,17 @@ end subroutine nc_get_location_varids
 !> The LocationVarID and WhichVertVarID must be the values returned from
 !> the nc_get_location_varids call.
 
-subroutine nc_write_single_location(ncFileID, loc, locindex, do_vert, fname)
+subroutine nc_write_single_location(ncFileID, location, locindex, do_vert, fname)
  
 integer,                    intent(in) :: ncFileID
-type(location_type),        intent(in) :: loc
+type(location_type),        intent(in) :: location
 integer,                    intent(in) :: locindex
 logical, optional,          intent(in) :: do_vert
 character(len=*), optional, intent(in) :: fname       ! file name (for error printing purposes)
 
 integer :: LocationVarID
 integer :: WhichVertVarID
-real(r8), dimension(LocationDims) :: locations
+real(r8), dimension(LocationDims) :: location_array
 integer,  dimension(1) :: intval
 logical :: write_vert
 integer :: rc
@@ -285,13 +287,13 @@ endif
 rc = nf90_inq_varid(ncFileID, 'location', varid=LocationVarID)
 call nc_check(rc, context, 'location', fname)
 
-locations = get_location( loc ) 
+location_array = get_location( location ) 
 
 if (LocationDims > 1) then
-   rc = nf90_put_var(ncFileID, LocationVarId, locations, &
+   rc = nf90_put_var(ncFileID, LocationVarId, location_array, &
                      start=(/ 1, locindex /), count=(/ LocationDims, 1 /) )
 else
-   rc = nf90_put_var(ncFileID, LocationVarId, locations, &
+   rc = nf90_put_var(ncFileID, LocationVarId, location_array, &
                      start=(/ locindex /), count=(/ 1 /) )
 endif
 call nc_check(rc, context, 'put_var:location', fname)
@@ -300,7 +302,7 @@ if (write_vert) then
    rc = nf90_inq_varid(ncFileID, 'which_vert', varid=WhichVertVarID)
    call nc_check(rc, context, 'inq_varid:which_vert', fname)
 
-   intval = query_location(loc, 'WHICH_VERT')
+   intval = query_location(location, 'WHICH_VERT')
    rc = nf90_put_var(ncFileID, WhichVertVarID, intval, &
                      start=(/ locindex /), count=(/ 1 /) )
    call nc_check(rc, context, 'put_var:which_vert', fname)
@@ -313,10 +315,10 @@ end subroutine nc_write_single_location
 !> The LocationVarID and WhichVertVarID must be the values returned from
 !> the nc_get_location_varids call.
 
-subroutine nc_write_multiple_locations(ncFileID, loc, loccount, startlocindex, do_vert, fname)
+subroutine nc_write_multiple_locations(ncFileID, locations, loccount, startlocindex, do_vert, fname)
 
 integer,             intent(in) :: ncFileID
-type(location_type), intent(in) :: loc(:)
+type(location_type), intent(in) :: locations(:)
 integer,             intent(in) :: loccount
 integer, optional,   intent(in) :: startlocindex
 logical, optional,   intent(in) :: do_vert
@@ -324,7 +326,7 @@ character(len=*), optional, intent(in) :: fname       ! file name (for error pri
 
 integer :: LocationVarID
 integer :: WhichVertVarID
-real(r8), allocatable :: locations(:,:)
+real(r8), allocatable :: location_array(:,:)
 integer,  allocatable :: intvals(:)
 logical :: write_vert
 integer :: rc, i, starthere
@@ -343,19 +345,19 @@ if (present(startlocindex)) starthere = startlocindex
 rc = nf90_inq_varid(ncFileID, 'location', varid=LocationVarID)
 call nc_check(rc, context, 'location', fname)
 
-allocate(locations(LocationDims,loccount))
+allocate(location_array(LocationDims,loccount))
 if (write_vert) allocate(intvals(loccount))
 
 do i=1, loccount
-   locations(:,i) = get_location( loc(i) ) 
-   if (write_vert) intvals(i) = query_location(loc(i), 'WHICH_VERT')
+   location_array(:,i) = get_location( locations(i) ) 
+   if (write_vert) intvals(i) = query_location(locations(i), 'WHICH_VERT')
 enddo
 
 if (LocationDims > 1) then
-   rc = nf90_put_var(ncFileID, LocationVarId, locations, &
+   rc = nf90_put_var(ncFileID, LocationVarId, location_array, &
                      start=(/ 1, starthere /), count=(/ LocationDims, loccount /) )
 else
-   rc = nf90_put_var(ncFileID, LocationVarId, locations, &
+   rc = nf90_put_var(ncFileID, LocationVarId, location_array, &
                      start=(/ starthere /), count=(/ loccount /) )
 endif
 call nc_check(rc, context, 'put_var:location', fname)
@@ -369,7 +371,7 @@ if (write_vert) then
    call nc_check(rc, context, 'put_var:which_vert', fname)
 endif
 
-deallocate(locations)
+deallocate(location_array)
 if (write_vert) deallocate(intvals)
 
 end subroutine nc_write_multiple_locations

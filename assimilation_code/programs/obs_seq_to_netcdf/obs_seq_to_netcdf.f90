@@ -4,6 +4,11 @@
 !
 ! $Id$
 
+!> converts an observation sequence file to a netCDF file but only retains
+!> basic metadata. Metadata to specific observation types is not converted.
+!> For example, the location of the radar and direction are not converted,
+!> but the location of the observation IS converted.
+
 program obs_seq_to_netcdf
 
 !-----------------------------------------------------------------------
@@ -1226,8 +1231,3 @@ end function NC_Compatibility_Check
 
 end program obs_seq_to_netcdf
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

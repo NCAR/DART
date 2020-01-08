@@ -196,8 +196,3 @@ call finalize_utilities()
 
 end program create_fixed_network_seq
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

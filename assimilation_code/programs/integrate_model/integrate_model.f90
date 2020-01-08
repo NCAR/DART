@@ -4,18 +4,16 @@
 !
 ! $Id$
 
+!> Program to integrate assimilation model forward for asynchronous filter
+!> execution.
+
+program integrate_model
+
 !> @todo FIXME:  i think this program needs to have 2 restart lists,
 !> one for input, one for output, and possibly an array of ensemble
 !> numbers (not sure about that), which it then uses the read_state()
 !> and write_state() routines to get and put the data after the
 !> model advances.
-
-
-
-! Program to integrate assimilation model forward for asynchronous filter
-! execution.
-
-program integrate_model
 
 use time_manager_mod,    only : time_type, operator(<), print_time
 use utilities_mod,       only : register_module,  &
@@ -171,8 +169,3 @@ call finalize_mpi_utilities()
 
 end program integrate_model
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

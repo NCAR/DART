@@ -979,8 +979,9 @@ do varnum = 1, get_num_variables(dom_id)
       vars%v(vis:vie, vjs:vje,vars%klb:vars%kub) = reshape(x(sindx:eindx), (/ vie-vis+1, vje-vjs+1, vars%kub-vars%klb+1 /) )
    else if (state_variables(1, varnum) == 'ps') then
       vars%ps(tis:tie, tjs:tje) = reshape(x(sindx:eindx), (/ tie-tis+1, tje-tjs+1 /) )
-      vars%pssl = vars%ps   !> @TODO why is this here?  original comment was:
+   !>@todo why is this here?  original comment was:
    ! For non-eta models, pssl is same as ps??? Need to change?
+      vars%pssl = vars%ps
    else ! must be tracer
       vars%r(tis:tie,tjs:tje,vars%klb:vars%kub,ntracer) = reshape(x(sindx:eindx), (/ tie-tis+1, tje-tjs+1, vars%kub-vars%klb+1 /) )
       ntracer = ntracer + 1
@@ -1661,7 +1662,7 @@ end subroutine pert_model_copies
 !> for a cold start we need to be able to fill the dart state structure
 !> without having any information from an existing netcdf file.
 !>
-!> @TODO first we are going to require the namelist matches what the
+!>@todo first we are going to require the namelist matches what the
 !> coldstart code assumes.  then once that's working, we figure out
 !> how to set the assumptions for the cold start, or find where in the
 !> bgrid namelists it reads that in and intercept it.
@@ -1690,7 +1691,7 @@ maxrows = size(state_variables, 2)
 numrows = 0
 COUNTROWS: do i=1, maxrows
 
-   !> @TODO leave a comment here about what 2 is for, once we figure it out
+   !>@todo leave a comment here about what 2 is for, once we figure it out
    !> shouldn't it be either 1, or both 1 and 2?
    if (state_variables(2, i) == 'NULL') exit COUNTROWS
 
@@ -1785,7 +1786,7 @@ else
 endif
 
 
-!> @TODO we will have to fill in the lon, lat, and lev arrays
+!>@todo we will have to fill in the lon, lat, and lev arrays
 !> with actual grid values somewhere so they get written to
 !> the restart file
 !> 

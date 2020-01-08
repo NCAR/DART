@@ -64,7 +64,7 @@ use     obs_kind_mod, only : QTY_TEMPERATURE,           &
                              QTY_SEA_SURFACE_HEIGHT,    &
                              QTY_SEA_SURFACE_PRESSURE,  &
                              QTY_POTENTIAL_TEMPERATURE, &
-                             get_index_for_quantity,     &
+                             get_index_for_quantity,    &
                              get_name_for_quantity
 
 use     mpi_utilities_mod, only : my_task_id
@@ -76,14 +76,8 @@ use  ensemble_manager_mod, only : ensemble_type
 use distributed_state_mod, only : get_state
 
 use   state_structure_mod, only : add_domain, get_model_variable_indices, &
-                                  get_num_variables, get_index_start, &
-                                  get_num_dims, get_domain_size, get_varid_from_kind, &
-                                  get_dart_vector_index, state_structure_info, &
-                                  get_index_start, get_index_end, get_variable_name, &
-                                  get_kind_index, get_kind_string, get_dim_length, &
-                                  get_dim_name, get_missing_value, get_units, &
-                                  get_long_name, get_xtype, get_has_missing_value, &
-                                  get_dim_lengths
+                                  get_domain_size, get_varid_from_kind, &
+                                  state_structure_info, get_kind_index
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, nc_check, &
                                  nc_add_global_creation_time, nc_begin_define_mode, &
@@ -196,7 +190,9 @@ integer :: Ns_w
 real(r8), allocatable, target :: ULAT(:,:), ULON(:,:), UDEP(:,:,:), &
                                  TLAT(:,:), TLON(:,:), TDEP(:,:,:), &
                                  VLAT(:,:), VLON(:,:), VDEP(:,:,:), &
-                                 WDEP(:,:,:) !>@todo FIXME : JPH may not need this array
+                                 WDEP(:,:,:)
+
+!>@todo FIXME : JPH may not need the WDEP array
 
 type(time_type) :: model_timestep
 
@@ -204,7 +200,6 @@ integer :: model_size    ! the state vector length
 
 !> Reshapes a part of the DART vector back to the original variable shape.
 !>@todo FIXME Replaces the DART MISSING value with the original _FillValue value.
-
 
 contains
 

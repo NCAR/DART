@@ -37,8 +37,7 @@ public :: test_single_interpolation, &
           verify_consistent_istatus
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
+character(len=*), parameter :: source   = "$URL$"
 character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 
@@ -272,8 +271,3 @@ end subroutine verify_consistent_istatus
 
 end module model_check_utilities_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -30,9 +30,9 @@ use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
                                operator(>=), operator(<), operator(>), operator(<=), &
                                print_date, decrement_time
 use      utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
-                               check_namelist_read, nmlfileunit, do_nml_file,   &
+                               check_namelist_read, nmlfileunit, do_nml_file,  &
                                get_next_filename, error_handler, E_ERR, E_MSG, &
-                               find_textfile_dims, do_nml_term
+                               find_textfile_dims, do_nml_term, open_file, close_file
 use  netcdf_utilities_mod, only : nc_check
 use       location_mod, only : VERTISHEIGHT, set_location
 use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
@@ -51,10 +51,9 @@ use  obs_utilities_mod, only : add_obs_to_seq
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! routines used from the bufrlib.a library:
 !    openbf, datelen, readmg,  ireadmg, ireadsb
@@ -102,8 +101,8 @@ character(len=1)   cflg
 character(len=7)   obstype
 character(len=120) crecord
 
-integer, parameter:: unit_in=91
-integer, parameter:: unit_aux=92
+integer :: unit_in
+integer :: unit_aux
 integer, parameter:: n1ahdr=10
 integer, parameter:: maxlevs=500    ! max number of observation levels (no longer namelist parameter)
 integer, parameter:: maxinfo=16
@@ -180,7 +179,8 @@ namelist /convert_gpsro_bufr_nml/ ray_htop, ray_hbot, obs_window_hr, if_global, 
 !------------------------------------------------------------------------
 ! Open and read the auxiliary info (mainly for satellite id to be used)
 !------------------------------------------------------------------------
- open(unit_aux,file=gpsro_aux_file,action='read',form='formatted')
+
+ unit_aux = open_file(gpsro_aux_file, action='read', form='formatted')
 
  rewind(unit_aux)
  nsatid=0
@@ -203,6 +203,7 @@ namelist /convert_gpsro_bufr_nml/ ray_htop, ray_hbot, obs_window_hr, if_global, 
     call error_handler(E_ERR, 'convert_gpsro_bufr', msgstring, &
                        source, revision, revdate)
  endif
+ call close_file(unit_aux)
 
  num_satid=nsatid
  allocate(gps_satid(num_satid))
@@ -350,7 +351,7 @@ fileloop: do      ! until out of files
    !------------------------------------------------------------------------
    ! Open file for input
    !------------------------------------------------------------------------
-   open(unit_in,file=next_infile,action='read',form='unformatted')
+   unit_in = open_file(next_infile, action='read', form='unformatted')
 
    !------------------------------------------------------------------------
    ! Reading bufr data
@@ -823,8 +824,3 @@ end function gsi_refractivity_error
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end program
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

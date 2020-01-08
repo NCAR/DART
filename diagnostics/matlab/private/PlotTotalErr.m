@@ -28,6 +28,8 @@ function PlotTotalErr( pinfo )
 %
 % DART $Id$
 
+figdata = setfigure('landscape');
+
 switch lower(pinfo.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','ikeda', 'null'}
@@ -63,8 +65,9 @@ switch lower(pinfo.model)
       string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
 
       clf;
-      plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r');
-      legend(string1,string2,'Location','NorthEast')
+      plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r','LineWidth',figdata.linewidth);
+      set(gca,'FontSize',figdata.fontsize)
+      legend(string1,string2,'Location','NorthEast','FontSize',figdata.fontsize)
       legend boxoff
       s1 = sprintf('%s Total Error over all %d variables', pinfo.model, num_vars);
       title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
@@ -128,8 +131,9 @@ switch lower(pinfo.model)
       string2 = sprintf('time-mean Ensemble Spread = %f',spreadTotal);
 
       clf;
-      plot(pinfo.time,err, 'b', pinfo.time ,err_spread, 'r');
-      legend(string1,string2,'Location','NorthEast')
+      plot(pinfo.time,err, 'b', pinfo.time ,err_spread, 'r','LineWidth',figdata.linewidth);
+      set(gca,'FontSize',figdata.fontsize)
+      legend(string1,string2,'Location','NorthEast','FontSize',figdata.fontsize)
       legend boxoff
       s1 = sprintf('%s Total Error over all %d variables', pinfo.model, num_vars);
       title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
@@ -188,8 +192,9 @@ switch lower(pinfo.model)
 
       clf; subplot(2,1,1);
 
-      plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r');
-      legend(string1,string2,'Location','NorthEast')
+      plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r','LineWidth',figdata.linewidth);
+      set(gca,'FontSize',figdata.fontsize)
+      legend(string1,string2,'Location','NorthEast','FontSize',figdata.fontsize)
       legend boxoff
       s1 = sprintf('%s Total Error over statevars %d to %d', pinfo.model, ind1, indN);
       title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
@@ -218,8 +223,9 @@ switch lower(pinfo.model)
 
       subplot(2,1,2)
 
-      plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r');
-      legend(string1,string2,'Location','NorthEast')
+      plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r','LineWidth',figdata.linewidth);
+      set(gca,'FontSize',figdata.fontsize)
+      legend(string1,string2,'Location','NorthEast','FontSize',figdata.fontsize)
       legend boxoff
       s1 = sprintf('%s Total Error over statevars %d to %d', pinfo.model, ind1, indN);
       title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
@@ -267,8 +273,9 @@ switch lower(pinfo.model)
          string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
 
          figure(ivar); clf(ivar);
-         plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r');
-         legend(string1,string2,'Location','NorthEast')
+         plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r','LineWidth',figdata.linewidth);
+         set(gca,'FontSize',figdata.fontsize)
+         legend(string1,string2,'Location','NorthEast','FontSize',figdata.fontsize)
          legend boxoff
          string1 = sprintf('%s Total Error over all %d variables', pinfo.model, num_vars);
          string2 = sprintf('''%s'' %s', varlist{ivar}, pinfo.diagn_file);
@@ -511,7 +518,8 @@ for ivar=1:pinfo.num_state_vars,
             end
       end
 
-      h = legend(s); legend(h,'boxoff')
+      set(gca,'FontSize',figdata.fontsize)
+      h = legend(s); legend(h,'boxoff','FontSize',figdata.fontsize)
       grid on;
       xdates(pinfo.time)
       ylabel(sprintf('global-area-weighted rmse (%s)',varunits))
@@ -600,7 +608,8 @@ for ivar=1:pinfo.num_state_vars,
    s{1} = sprintf('time-mean Ensemble Mean Total Error  = %f', mean(rmse));
    s{2} = sprintf('time-mean Ensemble Spread = %f',      mean(sprd));
 
-   h = legend(s); legend(h,'boxoff')
+   set(gca,'FontSize',figdata.fontsize)
+   h = legend(s); legend(h,'boxoff','FontSize',figdata.fontsize)
    grid on;
    xdates(pinfo.time)
    ylabel(sprintf('global-area-weighted rmse (%s)',varunits))
@@ -709,7 +718,8 @@ for ivar=1:pinfo.num_state_vars,
    s = {sprintf('time-mean Ensemble Mean Total Error = %f', mean(rmsetot)), ...
         sprintf('time-mean Ensemble Spread = %f', mean(spreadtot))};
 
-   h = legend(s); legend(h,'boxoff')
+   set(gca,'FontSize',figdata.fontsize)
+   h = legend(s); legend(h,'boxoff','FontSize',figdata.fontsize)
    grid on;
    xdates(pinfo.time)
    ylabel(sprintf('global-area-weighted rmse (%s)',varunits))
@@ -842,8 +852,9 @@ for ivar=1:pinfo.num_state_vars,
             end
       end
 
+      set(gca,'FontSize',figdata.fontsize)
       %h = legend([h1 h2],s); legend(h,'boxoff')
-      h = legend(s); legend(h,'boxoff')
+      h = legend(s); legend(h,'boxoff','FontSize',figdata.fontsize)
       grid on;
       xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
       ylabel(sprintf('global-area-weighted distance (%s)',varunits))

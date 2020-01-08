@@ -84,11 +84,11 @@
    obsseq_filename_pattern     = 'obs_seq.YYYY-MM-DD-00000'
    obsseq_out_file             = 'obs_seq.out'
 
-   year             = 2005
+   start_year       = 2005
    start_month      = 3
    start_day        = 1
 
-   year             = 2005
+   start_year       = 2005
    end_month        = 12
    end_day          = 31
 

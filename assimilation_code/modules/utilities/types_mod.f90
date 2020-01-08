@@ -50,9 +50,11 @@ integer, parameter :: MAX_FILES        = 1000 ! maximum number of files
 ! exactly what precision we are using and are not relying on compiler flags
 ! to set the defaults for real and int.
 !
-! from the MPI documentation, they say:
+! (this block of text is originally from the MPI documentation but it seems to apply
+! to the compiler intrinsic functions SELECTED_REAL_KIND and SELECTED_INT_KIND)
 !
-! for reals, p and r values result in:
+! for reals, SELECTED_REAL_KIND(p, r) values result in:
+!
 !   if      (p > 33) or (r > 4931) then  external32 representation 
 !                                        is undefined   
 !   else if (p > 15) or (r >  307) then  external32_size = 16 
@@ -60,7 +62,8 @@ integer, parameter :: MAX_FILES        = 1000 ! maximum number of files
 !   else                                 external32_size =  4 
 !
 !
-! for integers, r results in:
+! for integers, SELECTED_INT_KIND(r) results in:
+!
 !   if      (r > 38) then  external32 representation is undefined 
 !   else if (r > 18) then  external32_size =  16  
 !   else if (r >  9) then  external32_size =  8  
@@ -79,7 +82,7 @@ integer, parameter :: i8 = SELECTED_INT_KIND(13)
 ! TO RUN WITH REDUCED PRECISION REALS (and use correspondingly less memory)
 ! comment OUT the r8 definition below and use the second one:
 integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
-integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! real r8
+integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! 8 byte reals
 !integer, parameter :: r8 = r4                      ! alias r8 to r4
 
 ! complex precision:

@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>program obs_seq_verify</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
-<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
+<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,14 +14,9 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
-    <td>
-       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
-          <small><small>version information for this file: <br />
-          <!-- version tag follows, do not edit -->
-          $Id$</small></small>
-       </P></td>
+    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
 </tr>
 </table>
 
@@ -36,7 +31,7 @@
 
 <H2>Overview</H2>
 <center>
-<img src="../../../documentation/images/obs_seq_verify_diagram.png" alt="verify schematic" width=50% />
+<img src="../../../docs/images/obs_seq_verify_diagram.png" alt="verify schematic" width=50% />
 </center>
 
 <P>
@@ -50,7 +45,7 @@ are put into a netCDF variable that looks like this:
 <br />
 <br />
 <!-- MyVariable(analysisT, stations, levels, copy, nmembers, forecast_lead) -->
-<img src="../../../documentation/images/verify_variable_shape.png" alt="verify variable" width=75% />
+<img src="../../../docs/images/verify_variable_shape.png" alt="verify variable" width=75% />
 <br />
 <br />
 <em class=program>obs_seq_verify</em> can read in a series of
@@ -313,7 +308,7 @@ observations into a predetermined configuration.
 
 <H3 class=indent1>Example: a single 48-hour forecast that is evaluated every 6 hours.</H3>
 <p>
-<img src="../../../documentation/images/verification_48hrX6hr.png" alt="Example 1" width=75% />
+<img src="../../../docs/images/verification_48hrX6hr.png" alt="Example 1" width=75% />
 <br />
 <br />
 In this example, the <em class=file>obsdef_mask.nc</em> file was created by running
@@ -678,14 +673,6 @@ by UCAR, "as is", without charge, subject to all terms of use at
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
-
-<TABLE border=0 cellpadding=0 width=100% summary="">
-<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
-<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 

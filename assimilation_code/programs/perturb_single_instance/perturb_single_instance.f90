@@ -195,7 +195,7 @@ enddo
 ! Read the ensemble from files
 !----------------------------------------------------------------------
 member_time = set_time_missing()
-call read_state(ens_handle, file_info_input, read_time_from_file=.true., time=member_time)
+call read_state(ens_handle, file_info_input, read_time_from_file=.true., model_time=member_time)
 
 !----------------------------------------------------------------------
 ! Copy from ensemble member 1 to the other copies
@@ -277,8 +277,3 @@ call finalize_mpi_utilities()
 
 end program perturb_single_instance
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/pertirb_tool/assimilation_code/programs/perturb_single_instance/perturb_single_instance.f90 $
-! $Id: perturb_single_instance.f90 12665 2018-06-12 22:32:05Z hendric@ucar.edu $
-! $Revision: 12665 $
-! $Date: 2018-06-12 16:32:05 -0600 (Tue, 12 Jun 2018) $

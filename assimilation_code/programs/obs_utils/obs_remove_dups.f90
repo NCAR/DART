@@ -160,8 +160,7 @@ end module special_sort
 
 !---------------------------------------------------------------------
 
-!> Program:
-!> simple program that opens an obs_seq file and loops over the obs
+!> program that opens an obs_seq file and loops over the obs
 !> and copies them to a new output file.   this is intended to be a
 !> template for programs that want to alter existing obs in some simple way.
 
@@ -821,9 +820,3 @@ end subroutine print_metadata
 
 end program obs_remove_dups
 
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
