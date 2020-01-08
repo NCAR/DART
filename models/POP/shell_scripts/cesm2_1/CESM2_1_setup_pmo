@@ -191,16 +191,12 @@ setenv stagedir /glade/scratch/${USER}/CESM_initial_ensemble/rest/${reftimestamp
 # stream_year_align
 #
 # short_term_archiver  Copies the files from each job step to a 'rest' directory.
-# long_term_archiver   Puts the files from all completed steps on tape storage.
 #
 # resubmit      How many job steps to run on continue runs (should be 0 initially)
 # stop_option   Units for determining the forecast length between assimilations
 # first_stop_n  Number of time units in the first forecast
 # stop_n        Number of time units in all subsequent forecasts
 #
-# If the long-term archiver is off, you get a chance to examine the files before
-# they get moved to long-term storage. You can always submit $CASE.l_archive
-# whenever you want to free up space in the short-term archive directory.
 # ==============================================================================
 
 setenv start_year    2010
@@ -213,7 +209,6 @@ setenv stream_year_last  2010
 setenv stream_year_align 2010
 
 setenv short_term_archiver off
-setenv long_term_archiver  off
 
 setenv resubmit            0
 setenv stop_option         ndays
