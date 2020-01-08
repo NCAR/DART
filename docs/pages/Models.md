@@ -10,13 +10,6 @@ DART. We're a small group, but we are willing to listen and will make
 every effort to incorporate improvements to the code. Email us at
 <dart@ucar.edu>.
 
-## DART documentation
-
-~~The DART distribution includes a full set of documentation. Once you
-download DART, you may view the documentation offline by opening the
-*index.html* file in the top-level DART directory.~~ If you want to
-explore the documentation page without downloading DART, you may 
-[view the documentation for the Manhattan release](https://ncar.github.io/DART/api/v0.0.6/index.html).
 
 ## Links to major sections of this document:
 - [Downloadable datasets for DART.](#datasets)
@@ -1183,11 +1176,10 @@ The first two require the ```perfect_output.nc```.
 
 ## Requirements: if you have your own model
 
-[If you want to run your own model](Models.md#adding_a_model),
+If you want to run your own model
 all you need is an executable and some scripts to interface with DART - we have
-templates and examples. If your model can be called as a subroutine, *life is good*,
-and the hardest part is usually a routine to pack the model
-state vector into one whopping array - and back. Again - we have
+templates and examples. If your model can be called as a subroutine, *life is good*. 
+Again - we have
 templates, examples, and a [../../models/README.md](models/README.md)
 describing the required interfaces.
  
