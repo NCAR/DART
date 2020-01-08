@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id: test_read_write_time.f90 13006 2019-03-06 23:28:13Z thoar@ucar.edu $
 
 !>@todo  FIXME - add more tests ... wrong calendars, etc.
 
@@ -22,10 +20,9 @@ use     time_manager_mod, only : time_type, set_calendar_type, get_calendar_type
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/developer_tests/io/test_read_write_time.f90 $"
-character(len=*), parameter :: revision = "$Revision: 13006 $"
-character(len=*), parameter :: revdate  = "$Date: 2019-03-06 16:28:13 -0700 (Wed, 06 Mar 2019) $"
+character(len=*), parameter :: source   = 'test_read_write_time.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 character(len=512) :: msgstring
 
@@ -113,8 +110,3 @@ end subroutine finalize_module
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/developer_tests/io/test_read_write_time.f90 $
-! $Id: test_read_write_time.f90 13006 2019-03-06 23:28:13Z thoar@ucar.edu $
-! $Revision: 13006 $
-! $Date: 2019-03-06 16:28:13 -0700 (Wed, 06 Mar 2019) $

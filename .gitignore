@@ -14,6 +14,7 @@ _site/
 
 # Makefile
 dart_log.*
+mkmf.template
 input.nml.*default
 filter_ics
 obs_def_mod.f90

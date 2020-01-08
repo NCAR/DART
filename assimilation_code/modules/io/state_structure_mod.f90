@@ -118,6 +118,9 @@ public :: add_domain,                 &
           get_missing_value,          &
           get_add_offset,             &
           get_scale_factor,           &
+          set_dart_kinds,             &
+          set_clamping,               &
+          set_update_list,            &
           add_dimension_to_variable,  &
           finished_adding_domain,     &
           state_structure_info

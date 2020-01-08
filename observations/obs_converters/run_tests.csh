@@ -159,9 +159,9 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
          # if we miss any programs which need input and we don't have a .in file, have it
          # read from /dev/null so it errors out and doesn't just sit there waiting for input
          if ( -f ../work/${PROG}.in ) then
-           ( ./$PROG < ../work/${PROG}.in > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
+           ( ./$PROG < ../work/${PROG}.in > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
          else
-           ( ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
+           ( ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
          endif
          if ( $FAILURE ) then
             echo "ERROR - unsuccessful run of $PROG at "`date`
