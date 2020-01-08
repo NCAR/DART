@@ -714,7 +714,7 @@ foreach FNAME (user*streams*)
       set instance = `echo $TRUTHinstance | bc`
    endif
 
-   if (-e $dartroot/models/POP/shell_scripts/cesm1_x/$streamname*template) then
+   if (-e $dartroot/models/POP/shell_scripts/cesm1_x/user_$streamname*template) then
 
       echo "Copying DART template for ${FNAME} and changing instance."
 
