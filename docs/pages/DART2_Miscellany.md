@@ -199,13 +199,14 @@ DART. We expect that you should not have to alter any code in your model
 to make it work with DART.  
   
 To add new observation types you should be able to add a new
-`DART/obs_def/obs_def_XXX_mod.f90` file. If there is not already a
-converter for this observation type you can add a converter in
-`DART/observations/XXX`.  
+`DART/observations/forward_operators/obs_def_XXX_mod.f90` file. 
+If there is not already a converter for this observation type 
+you can add a converter in `DART/observations/obs_converters/XXX`.  
   
 If you are doing data assimilation algorithm research you may be
 altering some of the core DART routines in the
-`DART/assim_tools/assim_tools_mod.f90` or `DART/filter/filter.f90`
+`DART/assimilation_code/modules/assimilation/assim_tools_mod.f90` or 
+`DART/assimilation_code/modules/assimilation/filter_mod.f90`
 files. Please feel free to email DART support (dart at ucar.edu) for
 help with how to do these modifications so they work with the parallel
 version of DART correctly.  
@@ -308,7 +309,8 @@ beforehand.
 
 If you're running the Lanai release or code from the trunk later than
 2013, the DART Makefiles should automatically call a script in the
-`DART/mpi_utilities` directory named `fixsystem`. This script tries to
+`DART/assimilation_code/modules/utilities` directory named `fixsystem`. 
+This script tries to
 alter the MPI source code in that directory to work with your compiler.
 If you still get a compiler error look at this script and see if you
 have to add a case for the name of your compiler.  
@@ -345,7 +347,7 @@ The problems we run into most frequently are:
     about the usual list of required libraries that you need to include.
 
 Bottom line: What you need to set for the library list in your
-`DART/mkmf/mkmf.template` file depends on how your netCDF was
+`DART/build_templates/mkmf.template` file depends on how your netCDF was
 built.
   
 > My model runs in single precision and I want to compile DART the same way.
@@ -353,7 +355,8 @@ built.
 We recommend that you run an assimilation with Fortran 64-bit 
 reals (e.g. all real values are real\*8 or 'double precision'). However if your
 model is compiled with 32-bit reals (real\*4 or 'single precision') there is
-an option to build DART the same way. Edit `DART/assimilation_code/modules/utilities/types_mod.f90`
+an option to build DART the same way. 
+Edit `DART/assimilation_code/modules/utilities/types_mod.f90`
 and change the definition of `R8` to equal `R4` (comment out the
 existing line and comment in the following line). Rebuild all DART
 executables and it will run with single precision reals. We declare
@@ -453,7 +456,7 @@ the same as the input state, and how to determine which one is responsible.
 Each module in DART has an html web page which describes the namelists
 in detail. Start with `DART/index.html` and follow the links to all the
 other modules and namelists in the system. If you want help with setting
-up an experiment the `DART/filter/filter.html` page has some
+up an experiment the `DART/assimilation_code/modules/assimilation/filter.html` page has some
 introductory advice for some of the more important namelist settings.
 
 > I'm not getting an error but I am getting MPI timeouts
