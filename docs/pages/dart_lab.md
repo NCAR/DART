@@ -20,11 +20,11 @@ about 1.5 days to complete. -->
 
 <table>
 <tbody>
-<tr><td>Section 1</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_01.pdf">The basics in 1D.</a></td></tr>
-<tr><td>Section 2</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_02.pdf">How should observations of a state variable impact an unobserved state variable? Multivariate assimilation.</a></td></tr>
-<tr><td>Section 3</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_03.pdf">Sampling error and localization.</a></td></tr>
-<tr><td>Section 4</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_04.pdf">The Ensemble Kalman Filter (Perturbed Observations).</a></td></tr>
-<tr><td>Section 5</td><td><a href="../DART_LAB/presentation/DART_LAB_Section_05.pdf">Adaptive Inflation.</a></td></tr>
+<tr><td>Section 1</td><td><a href="../DART_LAB/presentation/DART_LAB_Section01.pdf">The basics in 1D.</a></td></tr>
+<tr><td>Section 2</td><td><a href="../DART_LAB/presentation/DART_LAB_Section02.pdf">How should observations of a state variable impact an unobserved state variable? Multivariate assimilation.</a></td></tr>
+<tr><td>Section 3</td><td><a href="../DART_LAB/presentation/DART_LAB_Section03.pdf">Sampling error and localization.</a></td></tr>
+<tr><td>Section 4</td><td><a href="../DART_LAB/presentation/DART_LAB_Section04.pdf">The Ensemble Kalman Filter (Perturbed Observations).</a></td></tr>
+<tr><td>Section 5</td><td><a href="../DART_LAB/presentation/DART_LAB_Section05.pdf">Adaptive Inflation.</a></td></tr>
 </tbody>
 </table>
 
