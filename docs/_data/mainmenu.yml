@@ -3,23 +3,24 @@
 # excluding the repository name makes it easier to navigate when building locally
 menu:
   - title: Documentation
-    url: /pages/Getting_Started.html
     submenu:
-      - title: Getting Started
-        url: /pages/Getting_Started.html
       - title: Models
         url: /pages/Models.html
       - title: Observations 
         url: /pages/Observations.html
       - title: Diagnostics
         url: /pages/Diagnostics.html
-  - title: Research
-    url: /pages/Research.html
+  - title: Learning
     submenu:
+      - title: Getting Started
+        url: /pages/Getting_Started.html
       - title: "DART_LAB: explore ensemble DA concepts with MATLAB"
         url: /pages/dart_lab.html
       - title: "Tutorial: learn how to use DART"
         url: /pages/Tutorial.html
+  - title: Research
+    url: /pages/Research.html
+    submenu:
       - title: Publications
         url: /pages/Publications.html
       - title: Presentations
