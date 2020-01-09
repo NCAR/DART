@@ -316,8 +316,8 @@ ${REMOVE} ${rundir}
 # hasn't been tested.
 # ==============================================================================
 
-${cesmroot}/cime/scripts/create_newcase -case ${caseroot} -mach ${mach} \
-                -res ${resolution} -compset ${compset} --run-unsupported
+${cesmroot}/cime/scripts/create_newcase --case ${caseroot} --mach ${mach} \
+                --res ${resolution} --compset ${compset} --run-unsupported
 
 if ( $status != 0 ) then
    echo "ERROR: Case could not be created."
