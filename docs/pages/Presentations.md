@@ -21,7 +21,6 @@
 ![](http://www.image.ucar.edu/images/pin4.gif) **Moha El Gharamti** Jan 2020 :
     [AMS Centennial Meeting 2020](https://annual.ametsoc.org/2020/) in Boston, MA, USA <br />
     A new adaptive hybrid ensemble Kalman filter and optimal interpolation.
-    [\[pptx\]](http://www.image.ucar.edu/pub/DART/2020/2020_AMS_MEG_hybrid_oi.pptx)
     [\[pdf\]](http://www.image.ucar.edu/pub/DART/2020/2020_AMS_MEG_hybrid_oi.pdf)
 
 ![](http://www.image.ucar.edu/images/pin4.gif) **Tim Hoar** Jan 2020 :
