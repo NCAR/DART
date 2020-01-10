@@ -2,6 +2,35 @@
 # (Some) Presentations featuring DART: The Data Assimilation Research Testbed
 
 ----
+## 2020
+----
+
+![](http://www.image.ucar.edu/images/pin4.gif) **Jeff Anderson** Jan 2020 :
+    Presented at the
+    [AMS Centennial Meeting 2020](https://annual.ametsoc.org/2020/) in Boston, MA, USA <br />
+    Nonlinear, Non-Gaussian Extensions for Ensemble Filter Data Assimilation.
+    [\[pptx\]](http://www.image.ucar.edu/pub/DART/2020/2020_AMS_JLA_nonlinear_da.pptx)
+    [\[pdf\]]( http://www.image.ucar.edu/pub/DART/2020/2020_AMS_JLA_nonlinear_da.pdf) <br />
+    Results from an Ensemble Reanalysis with the Community Earth System Model 2.1.
+    [\[pptx\]](http://www.image.ucar.edu/pub/DART/2020/2020_AMS_JLA_CESM_rean_final.pptx)
+    [\[pdf\]]( http://www.image.ucar.edu/pub/DART/2020/2020_AMS_JLA_CESM_rean_final.pdf) <br />
+    The Data Assimilation Research Testbed: Nonlinear Algorithms and Novel Applications
+    for Community Ensemble Data Assimilation
+    [\[poster - pdf\]](http://www.image.ucar.edu/pub/DART/2020/2019_AGU_2020_AMS_DART.pdf)
+
+![](http://www.image.ucar.edu/images/pin4.gif) **Moha El Gharamti** Jan 2020 :
+    [AMS Centennial Meeting 2020](https://annual.ametsoc.org/2020/) in Boston, MA, USA <br />
+    A new adaptive hybrid ensemble Kalman filter and optimal interpolation.
+    [\[pdf\]](http://www.image.ucar.edu/pub/DART/2020/2020_AMS_MEG_hybrid_oi.pdf)
+
+![](http://www.image.ucar.edu/images/pin4.gif) **Tim Hoar** Jan 2020 :
+    Presented at the
+    [AMS Centennial Meeting 2020](https://annual.ametsoc.org/2020/) in Boston, MA, USA <br />
+    Hydro-DART: Ensemble Streamflow Assimilation with WRF-Hydro and the Data Assimilation Research Testbed.
+    [\[pptx\]](http://www.image.ucar.edu/pub/DART/2020/2020_AMS_TJH_wrfhydro.pptx)
+    [\[pdf\]](http://www.image.ucar.edu/pub/DART/2020/2020_AMS_TJH_wrfhydro.pdf)
+
+----
 ## 2019
 ----
 
