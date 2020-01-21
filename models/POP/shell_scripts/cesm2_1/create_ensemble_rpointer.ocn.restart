@@ -1,0 +1,72 @@
+#!/bin/csh -f
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+#*******************************************************************************
+#
+# ---------------------
+# Purpose
+# ---------------------
+#
+# This script, when given a storage directory, casename and ensemble size,
+# creates the requisite rpointer.ocn files and moves them, as well as the 
+# restart files themselves, to the run directory.
+# 
+# ---------------------
+# Usage
+# ---------------------
+# 
+# create_ensemble_pointer_ocn.restart <storage dir> <casename> <ensemble_size>
+#*******************************************************************************
+
+# Set variables
+setenv storage_path    /glade/scratch/${USER}/${1}/
+setenv run_dir         /glade/scratch/${USER}/${2}/run/
+setenv nensemble       ${3}
+
+echo "Storage path: $storage_path"
+echo "Run dir: $run_dir"
+echo "nensemble: $nensemble"
+
+cd ${storage_path}
+
+@ irestart = 0
+foreach FILE (*pop.r.*.nc)
+    @ irestart += 1
+    if ($irestart <= $nensemble) then
+        
+        # Zero pad the year string so that there are 4 digits
+        if ($irestart < 10) then
+            setenv zero_filled_year 000${irestart}
+        else if ($irestart < 100) then
+            setenv zero_filled_year 00${irestart}
+        else if ($irestart < 1000) then
+            setenv zero_filled_year 0${irestart}
+        endif
+        
+        # Create the pointer_filename
+        set pointer_filename = ${run_dir}rpointer.ocn_${zero_filled_year}
+
+        # Copy the restart file to the rundir
+        echo "cp $FILE $run_dir"
+        cp $FILE $run_dir
+        # Create a rpointer.ocn file and write the name of the r file to it.
+        echo $FILE > ${pointer_filename}
+    else
+        echo "More restart files available than ensemble members needed."
+    endif
+end
+
+# If the loop above ends without hitting nensemble, then we haven't 
+# staged enough restart files.
+if ($irestart < $nensemble) then
+    echo "========================="
+    echo "WARNING: Fewer restart files than ensemble members."
+    echo "Requested $nensemble files but only $irestart files are available."
+    echo "========================="
+endif
+
