@@ -98,11 +98,11 @@
 # num_instances The number of ensemble members.
 # ==============================================================================
 
-setenv case                 pop1_2_1_hybrid
-setenv compset              GIAF
-setenv resolution           T62_gx1v6
-setenv cesmtag              cesm1_2_1
-setenv num_instances        30
+setenv case                 pop2_1_hybrid
+setenv compset              G
+setenv resolution           f09_g17
+setenv cesmtag              cesm2_1
+setenv num_instances        80
 
 # ==============================================================================
 # machines and directories:
@@ -126,13 +126,14 @@ setenv num_instances        30
 # dartroot        Location of the root of _your_ DART installation
 # ==============================================================================
 
-setenv mach         yellowstone
+setenv mach         cheyenne
 setenv cesmroot     /glade/p/cesm/releases/$cesmtag
-setenv caseroot     /glade/p/work/${USER}/cases/${case}
+setenv caseroot     /glade/work/${USER}/cases/${case}
 setenv rundir       /glade/scratch/${USER}/${case}/run
 setenv exeroot      /glade/scratch/${USER}/${case}/bld
 setenv archdir      /glade/scratch/${USER}/archive/${case}
-setenv dartroot     /glade/p/work/${USER}/DART/rma_trunk
+setenv dartroot     /glade/work/${USER}/git/DART
+setenv storagedir   /glade/scratch/${USER}/POP_ensemble_dir
 
 # ==============================================================================
 # configure settings:
@@ -149,16 +150,16 @@ setenv dartroot     /glade/p/work/${USER}/DART/rma_trunk
 # ==============================================================================
 
 setenv refcase     cesm_hybrid
-setenv refyear     2004
+setenv refyear     2010
 setenv refmon      01
-setenv refday      10
+setenv refday      01
 setenv reftod      00000
 
 # useful combinations of time that we use below
 setenv refdate      $refyear-$refmon-$refday
 setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
-setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
+setenv stagedir /glade/scratch/${USER}/CESM_initial_ensemble/rest/${reftimestamp}
 
 # ==============================================================================
 # runtime settings:
@@ -173,21 +174,17 @@ setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
 # stream_year_align
 #
 # short_term_archiver  Copies the files from each job step to a 'rest' directory.
-# long_term_archiver   Puts the files from all completed steps on tape storage.
 #
 # resubmit      How many job steps to run on continue runs (should be 0 initially)
 # stop_option   Units for determining the forecast length between assimilations
 # first_stop_n  Number of time units in the first forecast
 # stop_n        Number of time units in all subsequent forecasts
 #
-# If the long-term archiver is off, you get a chance to examine the files before
-# they get moved to long-term storage. You can always submit $CASE.l_archive
-# whenever you want to free up space in the short-term archive directory.
 # ==============================================================================
 
-setenv start_year    2004
+setenv start_year    2010
 setenv start_month   01
-setenv start_day     10
+setenv start_day     01
 setenv start_tod     00000
 
 setenv stream_year_first 2004
@@ -195,7 +192,6 @@ setenv stream_year_last  2004
 setenv stream_year_align 2004
 
 setenv short_term_archiver on
-setenv long_term_archiver  off
 
 setenv resubmit            0
 setenv stop_option         ndays
@@ -205,14 +201,14 @@ setenv stop_n              1
 # ==============================================================================
 # job settings:
 #
-# queue      can be changed during a series by changing the ${case}.run
-# timewall   can be changed during a series by changing the ${case}.run
+# queue      can be changed during a series by changing the .case.run
+# timewall   can be changed during a series by changing the .case.run
 #
 # TJH: Advancing 30 instances for 72 hours with 900 pes (30*15*2) with
 #      an assimilation step took less than 7 minutes on yellowstone.
 # ==============================================================================
 
-setenv ACCOUNT      NIMGxxxx
+setenv ACCOUNT      P86850054
 setenv queue        economy
 setenv timewall     0:20
 
@@ -238,7 +234,7 @@ switch ("`hostname`")
 
    breaksw
    default:
-      # NERSC "hopper", NWSC "yellowstone"
+      # NERSC "hopper", NWSC "yellowstone", NWSC "cheyenne"
       set   MOVE = '/bin/mv -fv'
       set   COPY = '/bin/cp -fv --preserve=timestamps'
       set   LINK = '/bin/ln -fvs'
@@ -298,8 +294,13 @@ ${REMOVE} ${caseroot}
 ${REMOVE} ${exeroot}
 ${REMOVE} ${rundir}
 
-${cesmroot}/scripts/create_newcase -case ${caseroot} -mach ${mach} \
-                -res ${resolution} -compset ${compset}
+# ==============================================================================
+# The --run-unsupported option is necessary for CESM2 because this compset
+# hasn't been tested.
+# ==============================================================================
+
+${cesmroot}/cime/scripts/create_newcase --case ${caseroot} --mach ${mach} \
+                --res ${resolution} --compset ${compset} --run-unsupported
 
 if ( $status != 0 ) then
    echo "ERROR: Case could not be created."
@@ -339,7 +340,9 @@ endif
 
 cd ${caseroot}
 
-source ./Tools/ccsm_getenv || exit -2
+setenv COMP_ATM           `./xmlquery COMP_ATM           --value`
+setenv COMP_LND           `./xmlquery COMP_LND           --value`
+setenv MAX_TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE --value`
 
 # Make sure the land and atmosphere are 'data' components.
 
@@ -442,12 +445,11 @@ echo ""
 ./xmlchange RUN_REFCASE=$refcase
 ./xmlchange RUN_REFDATE=$refdate
 ./xmlchange RUN_REFTOD=$reftod
-./xmlchange BRNCH_RETAIN_CASENAME=FALSE
 ./xmlchange GET_REFCASE=FALSE
 ./xmlchange EXEROOT=${exeroot}
 ./xmlchange RUNDIR=${rundir}
 
-./xmlchange DATM_MODE=CPLHIST3HrWx
+./xmlchange DATM_MODE=CPLHIST
 ./xmlchange DATM_CPLHIST_CASE=$case
 ./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
 ./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
@@ -464,7 +466,7 @@ echo ""
 
 ./xmlchange PIO_TYPENAME=pnetcdf
 
-set TEST_MPI = `./xmlquery -valonly MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
+set TEST_MPI = `./xmlquery --value MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
 if (${TEST_MPI} == 'UNSET') then
    ./xmlchange MPI_RUN_COMMAND=mpirun.lsf
 endif
@@ -489,19 +491,12 @@ endif
 # but these settings should be made in either event.
 
 ./xmlchange DOUT_S_ROOT=${archdir}
-./xmlchange DOUT_S_SAVE_INT_REST_FILES=FALSE
-./xmlchange DOUT_L_MSROOT="csm/${case}"
-./xmlchange DOUT_L_HTAR=FALSE
+./xmlchange DOUT_S_SAVE_INTERIM_RESTART_FILES=FALSE
 
 if ($short_term_archiver == 'off') then
    ./xmlchange DOUT_S=FALSE
 else
    ./xmlchange DOUT_S=TRUE
-endif
-if ($long_term_archiver == 'off') then
-   ./xmlchange DOUT_L_MS=FALSE
-else
-   ./xmlchange DOUT_L_MS=TRUE
 endif
 
 # level of debug output, 0=minimum, 1=normal, 2=more, 3=too much, valid values: 0,1,2,3 (integer)
@@ -523,30 +518,11 @@ else
    echo "ERROR - No SourceMods for this case."
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
-   echo "Download the appropriate files for CESM 1_2_1 from:"
+   echo "Download the appropriate files for CESM2_1 from:"
    echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm1_2_1  directory with the appropriate SourceMods structure."
+   echo "~/cesm2_1  directory with the appropriate SourceMods structure."
    exit -4
-endif
-
-# The CESM multi-instance capability is relatively new and still has a few
-# implementation bugs. These are known problems and will be fixed soon.
-# this should be removed when the files are fixed:
-
-echo "REPLACING BROKEN CESM FILES HERE - SHOULD BE REMOVED WHEN FIXED"
-echo caseroot is ${caseroot}
-if ( -d ~/${cesmtag} ) then
-
-   # preserve the original version of the files
-   if ( ! -e  ${caseroot}/Buildconf/rtm.buildnml.csh.original ) then
-      ${COPY} ${caseroot}/Buildconf/rtm.buildnml.csh \
-              ${caseroot}/Buildconf/rtm.buildnml.csh.original
-   endif
-
-   # patch/replace the broken files (first used by cesm_setup)
-   ${COPY} ~/${cesmtag}/rtm.buildnml.csh  ${caseroot}/Buildconf/.
-
 endif
 
 # ==============================================================================
@@ -556,7 +532,7 @@ endif
 
 echo 'Setting up the case ...'
 
-./cesm_setup
+./case.setup
 
 if ( $status != 0 ) then
    echo "ERROR: Case could not be set up."
@@ -571,13 +547,9 @@ echo ''
 echo 'Updating the run script to set wallclock and queue.'
 echo ''
 
-if ( ! -e  ${case}.run.original ) then
-   ${COPY} ${case}.run ${case}.run.original
-endif
+setenv BATCH_SYSTEM           `./xmlquery BATCH_SYSTEM           --value`
 
-source Tools/ccsm_getenv
-set BATCH = `echo $BATCHSUBMIT | sed 's/ .*$//'`
-switch ( $BATCH )
+switch ( $BATCH_SYSTEM )
    case bsub*:
       # NCAR "bluefire", "yellowstone"
       set TIMEWALL=`grep BSUB ${case}.run | grep -e '-W' `
@@ -588,10 +560,29 @@ switch ( $BATCH )
           ${MOVE} temp.$$ ${case}.run
           chmod 755       ${case}.run
    breaksw
-
+   case pbs*:
+      # NCAR "cheyenne"
+      # In cesm2_1 .case.run is a hidden file that is run via case.submit
+      # so as a first attempt we'll omit changing anything in the file.
+      ./xmlchange --subgroup case.st_archive --id JOB_WALLCLOCK_TIME --val $timewall
    default:
    breaksw
 endsw
+
+# ==============================================================================
+# Check GET_REFCASE. If it is FALSE, run create_ensemble_rpointer.ocn.restart 
+# to copy the restart files to the run directory and create restart files which
+# point to the restart files.
+# ==============================================================================
+setenv GET_REFCASE           `./xmlquery GET_REFCASE           --value`
+
+if ($GET_REFCASE == FALSE) then
+    echo "Staging restart files and rpointers."
+    echo "${dartroot}/models/POP/shell_scripts/${cesmtag}/create_ensemble_rpointer.ocn.restart ${storagedir} ${case} ${num_instances}"
+    ${dartroot}/models/POP/shell_scripts/${cesmtag}/create_ensemble_rpointer.ocn.restart ${storagedir} ${case} ${num_instances}
+else
+    echo "Restart files and rpointers already staged."
+endif
 
 # ==============================================================================
 # Modify namelist templates for each instance.
@@ -712,11 +703,11 @@ foreach FNAME (user*streams*)
    set streamname = $name_parse[$filename_index]
    set   instance = `echo $name_parse[$instance_index] | bc`
 
-   if (-e $dartroot/models/POP/shell_scripts/cesm1_x/user_$streamname*template) then
+   if (-e $dartroot/models/POP/shell_scripts/$cesmtag/user_$streamname*template) then
 
       echo "Copying DART template for ${FNAME} and changing instances."
 
-      ${COPY} $dartroot/models/POP/shell_scripts/cesm1_x/user_$streamname*template ${FNAME}
+      ${COPY} $dartroot/models/POP/shell_scripts/$cesmtag/user_$streamname*template ${FNAME}
 
       sed s/NINST/$instance/g ${FNAME} >! out.$$
       ${MOVE} out.$$ ${FNAME}
@@ -755,7 +746,10 @@ set restart_time = $init_time
 
 # get the settings for this case from the CESM environment
 cd \${caseroot}
-source ./Tools/ccsm_getenv || exit -2
+
+setenv RUNDIR           `./xmlquery RUNDIR           --value`
+setenv CONTINUE_RUN     `./xmlquery CONTINUE_RUN     --value`
+
 cd \${RUNDIR}
 
 echo 'Copying the required CESM files to the run directory to rerun'
@@ -898,7 +892,7 @@ echo ''
 echo 'Building the case'
 echo ''
 
-./${case}.build
+./case.build
 
 if ( $status != 0 ) then
    echo "ERROR: Case could not be built."
@@ -917,9 +911,6 @@ echo "   and check the compatibility between the namelists/pointer"
 echo "   files and the files that were staged."
 echo ""
 echo "2) cd ${caseroot}"
-echo "   (on yellowstone) If the ${case}.run script still contains:"
-echo '   #BSUB -R "select[scratch_ok > 0]"'
-echo "   around line 9, delete it."
 echo ""
 echo "3) The case is initially configured to do NO ASSIMILATION."
 echo "   When you are ready to add data assimilation, configure and execute"
@@ -933,7 +924,7 @@ echo "   If coupling 4 times a day, the first advance MUST be at least 12 hours.
 echo "   After that, STOP_N can be as short as a single coupling frequency."
 echo ""
 echo "5) Verify the contents of env_run.xml and submit the CESM job:"
-echo "   ./${case}.submit"
+echo "   ./case.submit"
 echo ""
 echo "6) After the job has run, check to make sure it worked and that"
 echo "   a: POP is creating netCDF restart files,"
@@ -949,7 +940,7 @@ echo "   ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
 echo "   ./xmlchange STOP_N=$stop_n"
 echo ""
 echo "   and"
-echo "   ./${case}.submit"
+echo "   ./case.submit"
 echo ""
 echo "Check the streams listed in the streams text files.  If more or different"
 echo 'dates need to be added, then do this in the $CASEROOT/user_*files*'
