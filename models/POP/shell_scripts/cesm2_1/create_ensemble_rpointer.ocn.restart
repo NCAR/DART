@@ -24,8 +24,8 @@
 #*******************************************************************************
 
 # Set variables
-setenv storage_path    /glade/scratch/${USER}/${1}/
-setenv run_dir         /glade/scratch/${USER}/${2}/run/
+setenv storage_path    ${1}
+setenv run_dir         /glade/scratch/${USER}/${2}/run
 setenv nensemble       ${3}
 
 echo "Storage path: $storage_path"
@@ -49,11 +49,11 @@ foreach FILE (*pop.r.*.nc)
         endif
         
         # Create the pointer_filename
-        set pointer_filename = ${run_dir}rpointer.ocn_${zero_filled_year}
+        set pointer_filename = ${run_dir}/rpointer.ocn_${zero_filled_year}.restart
 
         # Copy the restart file to the rundir
-        echo "cp $FILE $run_dir"
-        cp $FILE $run_dir
+        echo "cp $storage_path/$FILE $run_dir/$FILE"
+        cp $storage_path/$FILE $run_dir/$FILE
         # Create a rpointer.ocn file and write the name of the r file to it.
         echo $FILE > ${pointer_filename}
     else
