@@ -18,7 +18,8 @@ use    utilities_mod, only : register_module, open_file, close_file, &
                              initialize_utilities, finalize_utilities
 use obs_sequence_mod, only : obs_sequence_type, interactive_obs, write_obs_seq, &
                              static_init_obs_sequence, obs_type, init_obs_sequence, &
-                             set_copy_meta_data, init_obs, destroy_obs
+                             set_copy_meta_data, init_obs, destroy_obs, insert_obs_in_seq, &
+                             get_obs_def
 use  assim_model_mod, only : static_init_assim_model
 use time_manager_mod, only : time_type, operator(>)
 use     location_mod, only : location_type, interactive_location
