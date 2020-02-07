@@ -4,14 +4,14 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# DART $Id: compress.csh 13191 2019-07-09 22:15:00Z raeder@ucar.edu $
 #
 #PBS  -N compress.csh
 #PBS  -A P86850054
 #PBS  -q premium
 # For restarts:
 # #PBS  -l select=9:ncpus=36:mpiprocs=36
-# For hist: 6 * 80         = 480
+# For hist: 5 * 80         = 400  / 36 = 12
 # For dart: 1 + 2*(2 + 80) = 165  
 #                            645 / 36 = 18
 # For rest: 4 * 80         = 320 / 36 =  9
@@ -245,11 +245,12 @@ $date
 if ($task > 0) then
    if ($?PBS_O_WORKDIR) then
       mpiexec_mpt -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+      set mpi_status = $status
    else if ($?SLURM_SUBMIT_DIR) then
       mpirun      -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+      set mpi_status = $status
    endif
 
-   set mpi_status = $status
    echo "mpi_status = $mpi_status"
 else
    echo "No compression to do"
@@ -280,7 +281,7 @@ endif
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/models/cam-fv/shell_scripts/cesm2_1/compress.csh $
+# $Revision: 13191 $
+# $Date: 2019-07-09 16:15:00 -0600 (Tue, 09 Jul 2019) $
 

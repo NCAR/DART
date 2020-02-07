@@ -47,7 +47,7 @@ function link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, reg
 % EXAMPLE 2:
 % fname         = 'obs_epoch_001.nc';
 % ObsTypeString = 'RADIOSONDE_TEMPERATURE';
-% ObsCopyString = 'NCEP BUFR observation';
+% ObsCopyString = 'observation';
 % CopyString    = 'prior ensemble mean';
 % QCString      = 'DART quality control';
 % region        = [220 300 20 60 -Inf Inf];

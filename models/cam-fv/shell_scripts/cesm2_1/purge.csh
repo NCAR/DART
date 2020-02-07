@@ -4,16 +4,18 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# DART $Id$
+# DART $Id: purge.csh 13192 2019-07-11 21:56:56Z raeder@ucar.edu $
 
 #==========================================================================
 # This script removes assimilation output from $DOUT_S_ROOT ($local_archive) after:
 # 1) it has been repackaged by repack_st_archive.csh,
 # 2) globus has finished moving files to campaign storage.,
-# 3) it has been left behind by all of those processes (i.e in rundir).
+# 3) other output has been left behind by all of those processes (i.e in rundir).
 # >>> Check all final archive locations for complete sets of files
 #     before running this.  <<<
-#     See "Look in" below.
+#     This can be done by using ./pre_purge.csh, 
+#     or see "Look in" below.
+# Submit from $CASEROOT.
 
 #-----------------------------------------
 
@@ -26,7 +28,7 @@ endif
 # Default values of which file sets to purge.
 set do_forcing     = 'true'
 set do_restarts    = 'true'
-set do_obs_space   = 'true'
+set do_obs_space   = 'false'
 set do_history     = 'true'
 set do_state_space = 'true'
 set do_rundir      = 'true'
@@ -93,15 +95,20 @@ if ($do_forcing == true) then
    # The original cpl hist (forcing) files,
    # which have been repackaged into $project.
    foreach type (ha2x3h ha2x1h ha2x1hi ha2x1d hr2x)
+      echo "Forcing $type" >>& ../../$lists
       ls ${CASE}.cpl_*.${type}.${yr_mo}-*.nc >>& ../../$lists
       rm ${CASE}.cpl_*.${type}.${yr_mo}-*.nc >>& ../../$lists
    end
 
    # These files were moved from $project storage to be input to ncrcat.
+   # (2020-1-18; that was before implementing Nancy's suggestion to leave
+   #  the yearly file on $pr.)
    # An updated version was put into $project, so the locals are not needed.
-   ls *${year}.nc >>& ../../$lists
-   rm *${year}.nc >>& ../../$lists
+#    echo "Forcing $year" >>& ../../$lists
+#    ls *${year}.nc >>& ../../$lists
+#    rm *${year}.nc >>& ../../$lists
 
+   echo "Forcing \*.eo" >>& ../../$lists
    ls *.eo >>& ../../$lists
    rm *.eo >>& ../../$lists
 
@@ -118,10 +125,12 @@ if ($do_restarts == true) then
    # The original ${yr_mo}-* were removed by repack_st_archive 
    # when the tar (into "all types per member") succeeded.
    # The following have been archived to Campaign Storage.
+   echo "Restarts ${yr_mo}\*" >>& ../$lists
    ls -d ${yr_mo}* >>& ../$lists
    rm -rf ${yr_mo}*
 
    # Remove other detritus
+   echo "Restarts tar\*.eo" >>& ../$lists
    ls tar*.eo  >>& ../$lists
    rm tar*.eo
 
@@ -130,7 +139,7 @@ endif
 
 #------------------------
 # Look in 
-#    ${project}/${CASE}/esp/hist/${CASE}.dart.cam_obs_seq_final.${yr_mo}.tgz
+#    ${project}/${CASE}/esp/hist/${yr_mo}/${CASE}.dart.cam_obs_seq_final.${yr_mo}.tgz
 #    ................................................Diags_NTrS_${yr_mo}.tgz
 
 if ($do_obs_space == true) then
@@ -139,6 +148,8 @@ if ($do_obs_space == true) then
 
    # repack: rm ${CASE}.dart.e.cam_obs_seq_final.${obs_times_pattern}*
    # happened only if the tar file had been moved to $project and had non-0 size.
+   # Also; don't do this because the first obs_seq of the next month is in esp/hist,
+   #       and we want to keep it.
    # repack; rm ${obs_space} (Diags_NTrS_${yr_mo}) 
    # happened only if the tar file was successfully created and moved to $project.
    #
@@ -196,6 +207,7 @@ if ($do_state_space == true) then
    # Archive DART log files (and others?)
 
    cd ../../logs
+   # This looks misdirected at first, but $lists has 'logs/' in it.
    pwd >>& ../$lists
    ls     $yr_mo >>& ../$lists
    rm -rf $yr_mo >>& ../$lists
@@ -251,6 +263,6 @@ wait
 exit
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/models/cam-fv/shell_scripts/cesm2_1/purge.csh $
+# $Revision: 13192 $
+# $Date: 2019-07-11 15:56:56 -0600 (Thu, 11 Jul 2019) $

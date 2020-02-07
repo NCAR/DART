@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# DART $Id: spinup_single 13073 2019-03-25 22:50:01Z raeder@ucar.edu $
 
 #--------------------------------------------
 # This script can be run interactively, but on some systems (e.g. cheyenne)
@@ -676,7 +676,7 @@ endif
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/models/cam-fv/shell_scripts/cesm2_1/spinup_single $
+# $Revision: 13073 $
+# $Date: 2019-03-25 16:50:01 -0600 (Mon, 25 Mar 2019) $
 

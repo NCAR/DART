@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# DART $Id: assimilate.csh.template 13191 2019-07-09 22:15:00Z raeder@ucar.edu $
 
 # ------------------------------------------------------------------------------
 # Purpose: assimilate with a CAM ensemble and perform advanced archiving
@@ -543,7 +543,7 @@ ${LINK} ${CASE}.cam_0001.i.${ATM_DATE_EXT}.nc ${CAMINPUT} || exit 90
 set MYSTRING = `grep cam_phis_filename input.nml`
 set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
 set CAM_PHIS = $MYSTRING[2]
-# Avoid doing LISTs in rundir; only search for an h0 file is cam_phis.nc doesn't exist.
+# Avoid doing LISTs in rundir; only search for an h0 file if cam_phis.nc doesn't exist.
 if (! -f ${CAM_PHIS}) then
    # -r puts the file with the latest date first in the list.
    # It won't be purged during this cycle by the cleanup (above).
@@ -840,7 +840,8 @@ end
 # But they still need to be different for each component, so include $scomp in the
 # ".dart_file" part of the file name.  Somewhat awkward and inconsistent, but effective.
 
-# Means and standard deviation files (except for inflation).
+# Means and standard deviation files (except for inflation; 
+# excluded by, e.g., mean right after stage).
 foreach FILE (`${LIST} ${stages_all}_{mean,sd}*.nc`)
 
    set parts = `echo $FILE | sed -e "s#\.# #g"`
@@ -943,11 +944,13 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       if ($save_all_inf =~ TRUE) then
          # Put the previous and current inflation restarts in the archive directory.
          # (to protect last from st_archive putting them in exp/hist)
-         ${MOVE}   ${CASE}*${stages_except_output}*inf*  ${archive}/esp/rest
+         # 2020-1-18; Changed dir esp/rest -> esp/hist (one that exists!)  
+         # while fixing wayward {mean,sd} files including inflation.
+         ${MOVE}   ${CASE}*${stages_except_output}*inf*  ${archive}/esp/hist
 
          # Don't need previous inf restarts now, but want them to be archived later.
          # COPY instead of LINK because they'll be moved or used later.
-         ${COPY}   ${CASE}*output*inf* ${archive}/esp/rest
+         ${COPY}   ${CASE}*output*inf* ${archive}/esp/hist
       else
          # output*inf must be copied back because it needs to be in ${RUNDIR}
          # when st_archive runs to save the results of the following assim
@@ -963,7 +966,11 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       # ${MOVE}           ${CASE}*.{r,rs,rs1,h0,i}.*${day_time}*    $hidedir
       # h0 should also not be hidden from the archiver (in case it has fields
       # besides CAM's PHIS).
-      ${MOVE}           ${CASE}*.{r,rs,rs1,i}.*${day_time}*    $hidedir
+      # Be more selective about file dates to move.
+      # This old one moved previous months of .i. {mean,sd} files,
+      # which prevented them from being archived to esp/hist
+      # ${MOVE}           ${CASE}*.{r,rs,rs1,i}.*${day_time}*    $hidedir
+      ${MOVE}           ${CASE}*.{r,rs,rs1,i}.*${hide_date}*    $hidedir
 
       # Move log files: *YYMMDD-HHMMSS.  [2] means the previous restart set is being moved.
       set rm_log = `echo $log_list[2] | sed -e "s/\./ /g;"`
@@ -971,6 +978,16 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       set rm_slot = $#rm_log
       if ($rm_log[$#rm_log] =~ gz) @ rm_slot--
       ${MOVE}  *$rm_log[$rm_slot]*  $hidedir
+
+      # Also COPY the most recent log files ([1]) so that they will be returned to rundir
+      # for the next job, and there will be the right number to trigger the archiving
+      # of inflation files to esp/hist for prevmo-lastdayprevjob-64800
+      # Implemented as part of fixing the wayward {mean,sd} files, incl. infl.
+      set rm_log = `echo $log_list[1] | sed -e "s/\./ /g;"`
+      # -- (decrement by one) skips the gz at the end of the names.
+      set rm_slot = $#rm_log
+      if ($rm_log[$#rm_log] =~ gz) @ rm_slot--
+      ${COPY}  *$rm_log[$rm_slot]*  $hidedir
    endif
 
    # Restore CESM's timing logic for the first cycle of the next job.
@@ -1071,7 +1088,7 @@ wait
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/models/cam-fv/shell_scripts/cesm2_1/assimilate.csh.template $
+# $Revision: 13191 $
+# $Date: 2019-07-09 16:15:00 -0600 (Tue, 09 Jul 2019) $
 

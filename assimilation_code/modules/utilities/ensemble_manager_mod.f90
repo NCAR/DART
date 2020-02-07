@@ -106,6 +106,8 @@ logical              :: module_initialized = .false.
 character(len = 255) :: msgstring
 
 ! Module storage for pe information for this process avoids recomputation
+! KDR I think this is a misleading name.  It actually stores the number of MPI tasks in the communicator,
+!     not the number of processor equivalents which may be available to the job (nodes * processors/node).
 integer              :: num_pes
 
 ! Control order of communication loops in the transpose routines
@@ -1715,8 +1717,18 @@ do while (i < num_pes)   ! until you run out of processors
       if(j == num_nodes) then  ! special case for the last node - it could have fewer tasks than the other nodes
          if(mycount(j) <= last_node_task_number) then
             ens_handle%task_to_pe_list(tasks_per_node*(j-1) + mycount(j)) = i
+! KDR This makes mycount(num_nodes) = last_node_task_number + 1
+!     which looks wrong, but it's not used, so it's OK.
             mycount(j) = mycount(j) + 1
             i = i + 1
+! KDR Error out if there are more pes than can be assigned to num_nodes * tasks_per_node
+!     Actually, num_pes is the total number of MPI tasks in the communicator, 
+!     not (necessarily) the number of processors given to the job.
+!     E.g. CAM can be set up with 12 mpis/node and 3 threads/mpi.
+!          Setting filter's tasks_per_node = 12 works, but I think 36 might not.
+         else
+            write(msgstring, *) ' node ',j,'; pe_num > num_nodes * tasks_per_node', i, num_nodes, tasks_per_node
+            call error_handler(E_ERR, 'round_robin', msgstring, source, revision, revdate)
          endif
       else
          if(mycount(j) <= tasks_per_node) then

@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# DART $Id: setup_advanced 13073 2019-03-25 22:50:01Z raeder@ucar.edu $
 #
 # This script can be run interactively, but on some systems (e.g. cheyenne)
 # it takes longer than is allowed for an interactive job.
@@ -234,6 +234,7 @@ setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS
 # ==============================================================================
 
 setenv refcase     CESM2_1_Rean_init_ens
+# Rean_2010.1-6_sst.25: single member for starting ensemble spin-ups: 
 # setenv refcase     Rean_2010.1-6_sst.25
 setenv refyear     2016
 setenv refmon      12
@@ -252,6 +253,7 @@ setenv reftimestamp $refyear-$refmon-$refday-$reftod
 setenv stagedir /glade/work/${USER}/Models/CAM_init/FV1deg_cesm2_1/${reftimestamp}
 # or on the HPSS:
 # /CCSM/dart/FV0.9x1.25x30_cesm1_1_1/{Mon}1         for 1-degree FV ensembles
+# Rean_2010.1-6_sst.25 files are stored in $w/Models/CAM_init/FV.9x1.25_cam6.0.002/*
 
 # ==============================================================================
 # runtime settings: This script will find usable files for years 19mumble-2010.
@@ -1331,6 +1333,6 @@ cat DART_instructions.txt
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/models/cam-fv/shell_scripts/cesm2_1/setup_advanced $
+# $Revision: 13073 $
+# $Date: 2019-03-25 16:50:01 -0600 (Mon, 25 Mar 2019) $

@@ -95,6 +95,8 @@
 #              however this controls both reading and writing so you can't
 #              use it as a conversion mechanism unless you write files out
 #              in ascii format.  applies to all unformatted fortran i/o.
+#              >>> This should not be needed for reading obs_seq files from 
+#                  big_endian machines.  Use the obs_sequence_nml namelist variable.
 #     -assume  byterecl ... more 'industry-standard' direct-access behavior
 #              controls what units the RECL (record length) specifier returns.
 #
@@ -134,21 +136,23 @@ LD = ifort
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O -assume buffered_io $(INCS)
-LDFLAGS = $(FFLAGS) $(LIBS)
+# FFLAGS  = -O -assume buffered_io $(INCS)
 
 # for development or debugging, use this instead:
-# FFLAGS = -g -C -check noarg_temp_created -fpe0 \
+# FFLAGS = -g -C -check noarg_temp_created,bounds,overflow -fpe0 \
 #          -fp-model precise  -ftrapuv -traceback \
 #          -warn declarations,uncalled,unused $(INCS)
-#
-# for speed on yellowstone (verify against a run with with -O and -fp-model precise
+
+# for speed on cheyenne (verify against a run with with -O and -fp-model precise
 #        that the numerical differences aren't too large to be acceptable):
-# FFLAGS = -O3 -axavx -ipo -vec-report0 $(INCS)
-#
+FFLAGS = -O2 -axavx -ipo -vec-report0 -assume buffered_io $(INCS)
+# FFLAGS = -O3 -axavx -ipo -vec-report0 -assume buffered_io $(INCS)
+
 # Some optimized (BLAS, LAPACK) libraries may be available with:
 # LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
 #
+LDFLAGS = $(FFLAGS) $(LIBS)
+
 # If you get this error: libimf.so: warning: warning: feupdateenv is not implemented
 # try adding: -limf -lm to your LIBS line.
 

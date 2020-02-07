@@ -254,8 +254,16 @@ if ( $status != 0 ) then
 endif
 
 # Preserve a copy of this script as it was run.
-set ThisFileName = $0:t
-${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
+if ($?LSB_JOBNAME) then
+   # This only works if the job name in the BSUB or PBS directives 
+   # is the name of this script.
+   setenv setup_file_name $LSB_JOBNAME
+else if ($?PBS_JOBNAME) then
+   setenv setup_file_name $PBS_JOBNAME
+else
+   setenv setup_file_name = $0:t
+endif
+${COPY} $setup_file_name ${caseroot}/${setup_file_name}.original
 
 
 # ==============================================================================

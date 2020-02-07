@@ -3410,10 +3410,16 @@ do ilev=1, Nlevels
            priorAVG%ens_mean( ilev, iregion, ivar) / &
            priorAVG%Nused(      ilev, iregion, ivar)
 
+! KDR This implies that the biases were summed over all obs at this level
+!     OVER ALL TIMES, which seems correct.
+! ? Do we expect a time series of biases that are spread around 0
+!   to yield an overall bias of ~0?
            priorAVG%bias(       ilev, iregion, ivar) = &
            priorAVG%bias(       ilev, iregion, ivar) / &
            priorAVG%Nused(      ilev, iregion, ivar)
 
+! KDR; seems like the sqrt is in the wrong place (should be around Nused?),
+!      or the result of this should be priorAVG%spread.
            priorAVG%rmse(       ilev, iregion, ivar) = &
       sqrt(priorAVG%rmse(       ilev, iregion, ivar) / &
            priorAVG%Nused(      ilev, iregion, ivar) )

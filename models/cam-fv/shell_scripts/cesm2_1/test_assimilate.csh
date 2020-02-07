@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# DART $Id: test_assimilate.csh 12952 2019-01-07 21:31:22Z thoar@ucar.edu $
 
 # ---------------------
 # Purpose
@@ -689,7 +689,7 @@ wait
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/models/cam-fv/shell_scripts/cesm2_1/test_assimilate.csh $
+# $Revision: 12952 $
+# $Date: 2019-01-07 14:31:22 -0700 (Mon, 07 Jan 2019) $
 
