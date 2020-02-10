@@ -1803,10 +1803,6 @@ call nc_check(ret, routine, 'get values for '//trim(varname), context, filename,
 end subroutine nc_get_real_4d
 
 !--------------------------------------------------------------------
-!--------------------------------------------------------------------
-! inquire variable info
-
-!--------------------------------------------------------------------
 !> Query and return information about a netCDF variable given the variable name.
 !> Optionally returns the type of variable, the number of dimensions, 
 !> the dimension names and lengths, the number of attributes (but not the attribute values (yet))
