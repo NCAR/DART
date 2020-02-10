@@ -99,15 +99,15 @@
 
 setenv case                 pop2_1_pmo
 setenv compset              G
-setenv resolution           f09_g17
-setenv cesmtag              cesm2_1
+setenv resolution           f19_g17
+setenv cesmtag              cesm2_1_1
 
 # ==============================================================================
 # machines and directories:
 #
 # mach            Computer name
 # cesmroot        Location of the CESM code base.  This version of the script
-#                 only supports version cesm1_2_1.
+#                 only supports version cesm2_1_1.
 # caseroot        Will create the CESM case directory here, where the CESM+DART
 #                 configuration files will be stored.  This should probably not
 #                 be in scratch (on yellowstone, your 'work' partition is suggested).
@@ -163,8 +163,8 @@ setenv restartdir   /glade/scratch/${USER}/restart
 # stagedir   The directory location of the reference case files.
 # ==============================================================================
 
-setenv refcase     cesm_hybrid
-setenv refyear     2010
+setenv refcase     g210.G_JRA.v14.gx1v7.01
+setenv refyear     0250
 setenv refmon      01
 setenv refday      01
 setenv reftod      00000
@@ -176,7 +176,7 @@ setenv TRUTHinstance 23
 setenv refdate      $refyear-$refmon-$refday
 setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
-setenv stagedir /glade/scratch/${USER}/CESM_initial_ensemble/rest/${reftimestamp}
+setenv stagedir /glade/scratch/${USER}/${refcase}/rest/${reftimestamp}
 
 # ==============================================================================
 # runtime settings:
@@ -199,14 +199,14 @@ setenv stagedir /glade/scratch/${USER}/CESM_initial_ensemble/rest/${reftimestamp
 #
 # ==============================================================================
 
-setenv start_year    2010
+setenv start_year    1998
 setenv start_month   01
 setenv start_day     01
 setenv start_tod     00000
 
-setenv stream_year_first 2010
+setenv stream_year_first 1998
 setenv stream_year_last  2010
-setenv stream_year_align 2010
+setenv stream_year_align 1998
 
 setenv short_term_archiver off
 
@@ -225,9 +225,9 @@ setenv stop_n              1
 #      a perfect_model_obs step took less than 2 minutes on yellowstone.
 # ==============================================================================
 
-setenv ACCOUNT      P86850054
-setenv queue        premium
-setenv timewall     0:10
+setenv ACCOUNT      P93300612
+setenv queue        regular
+setenv timewall     0:10:00
 
 # ==============================================================================
 # standard commands:
@@ -377,7 +377,7 @@ if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
 endif
 
 # MAX_TASKS_PER_NODE comes from $case/Tools/mkbatch.$machine
-@ ptile = $MAX_TASKS_PER_NODE / 2
+@ ptile = $MAX_TASKS_PER_NODE * 2
 @ nthreads = 1
 
 # Save a copy for debug purposes
@@ -391,7 +391,7 @@ end
    @ atm_tasks = $ptile
    @ lnd_tasks = $ptile
    @ ice_tasks = $ptile
-   @ ocn_tasks = $ptile * 4
+   @ ocn_tasks = $ptile * 2
    @ cpl_tasks = $ptile
    @ glc_tasks = $ptile
    @ rof_tasks = $ptile
@@ -410,6 +410,8 @@ echo "ROF gets $rof_tasks"
 echo "WAV gets $wav_tasks"
 echo ""
 
+@ total_pes = $ptile * 3
+./xmlchange COST_PES=$total_pes,TOTALPES=$total_pes
 ./xmlchange NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=1
 ./xmlchange NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=1
 ./xmlchange NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=1
@@ -421,7 +423,7 @@ echo ""
 ./xmlchange ROOTPE_ATM=0
 ./xmlchange ROOTPE_LND=0
 ./xmlchange ROOTPE_ICE=0
-./xmlchange ROOTPE_OCN=0
+./xmlchange ROOTPE_OCN=$ptile
 ./xmlchange ROOTPE_CPL=0
 ./xmlchange ROOTPE_GLC=0
 ./xmlchange ROOTPE_ROF=0
@@ -472,10 +474,10 @@ echo ""
 
 ./xmlchange PIO_TYPENAME=pnetcdf
 
-set TEST_MPI = `./xmlquery --value MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
-if (${TEST_MPI} == 'UNSET') then
-   ./xmlchange MPI_RUN_COMMAND=mpirun.lsf
-endif
+# set TEST_MPI = `./xmlquery --value MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
+# if (${TEST_MPI} == 'UNSET') then
+#    ./xmlchange MPI_RUN_COMMAND=mpirun.lsf
+# endif
 
 # COUPLING discussion.
 # http://bugs.cgd.ucar.edu/show_bug.cgi?id=1740
@@ -525,22 +527,8 @@ else
    echo "Download the appropriate files for CESM2_1 from:"
    echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm2_1  directory with the appropriate SourceMods structure."
+   echo "~/${cesmtag}  directory with the appropriate SourceMods structure."
    exit -4
-endif
-
-# ==============================================================================
-# Set up the case.
-# This creates the EXEROOT and RUNDIR directories.
-# ==============================================================================
-
-echo 'Setting up the case ...'
-
-./case.setup
-
-if ( $status != 0 ) then
-   echo "ERROR: Case could not be set up."
-   exit -2
 endif
 
 # ==============================================================================
@@ -569,10 +557,25 @@ switch ( $BATCH_SYSTEM )
       # In cesm2_1 .case.run is a hidden file that is run via case.submit
       # so as a first attempt we'll omit changing anything in the file.
       ./xmlchange --subgroup case.st_archive --id JOB_WALLCLOCK_TIME --val $timewall
+      ./xmlchange --subgroup case.run --id USER_REQUESTED_WALLTIME --val $timewall 
+      ./xmlchange --subgroup case.run --id JOB_WALLCLOCK_TIME --val $timewall
    default:
    breaksw
 endsw
 
+# ==============================================================================
+# Set up the case.
+# This creates the EXEROOT and RUNDIR directories.
+# ==============================================================================
+
+echo 'Setting up the case ...'
+
+./case.setup
+
+if ( $status != 0 ) then
+   echo "ERROR: Case could not be set up."
+   exit -2
+endif
 
 # ==============================================================================
 # Copy the restart file and pointer to the run directory
@@ -606,8 +609,10 @@ while ($inst <= 1)
    echo "fillmask = 'nomask','nomask'"      >> ${fname}
    echo "mapalgo  = 'bilinear','bilinear'"  >> ${fname}
    echo "mapmask  = 'nomask','nomask'"      >> ${fname}
-   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar${inst_string}             $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
-   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip${inst_string} $stream_year_align $stream_year_first $stream_year_last'"  >> ${fname}
+   echo "streams  = 'datm.streams.txt.CPLHISTForcing.nonSolarFlux${inst_string} $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+   echo "           'datm.streams.txt.CPLHISTForcing.Solar${inst_string}        $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
+   echo "           'datm.streams.txt.CPLHISTForcing.State1hr${inst_string}     $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
+   echo "           'datm.streams.txt.CPLHISTForcing.State3hr${inst_string}     $stream_year_align $stream_year_first $stream_year_last'"  >> ${fname}
    echo "taxmode  = 'cycle','cycle'"        >> ${fname}
    echo "tintalgo = 'linear','linear'"      >> ${fname}
    echo "restfils = 'unset'"                >> ${fname}
@@ -628,7 +633,7 @@ while ($inst <= 1)
    echo "ice_ic = '${stagedir}/${refcase}.cice${true_string}.r.${reftimestamp}.nc'" >> ${fname}
 
    # ===========================================================================
-   set fname = "user_nl_pop2${inst_string}"
+   set fname = "user_nl_pop${inst_string}"
    # ===========================================================================
    # POP Namelist
    # init_ts_suboption = 'data_assim'   for non bit-for-bit restarting (assimilation mode)
@@ -659,8 +664,6 @@ while ($inst <= 1)
    @ inst ++
 end
 
-echo "streams = 'drof.streams.txt.rof.diatren_iaf_rx1" 1 1948 2009"'" >> user_nl_drof
-
 # ==============================================================================
 # to create custom streamfiles ...
 # "To modify the contents of a stream txt file, first use preview_namelists to
@@ -690,7 +693,7 @@ foreach FILE (CaseDocs/*streams*)
          echo "Using default runoff stream.txt file ${FNAME}"
          breaksw
       case *\.Precip_*:
-         echo "Precipitation in nonSolarNonPrecip stream.txt file - not ${FNAME}"
+         echo "Precipitation in user_datm.streams.txt.CPLHISTForcing.nonSolarFlux - not ${FNAME}"
          breaksw
       default:
          ${COPY} $FILE user_${FNAME}
@@ -704,6 +707,8 @@ end
 # conditions for a default year and modify the instance number.
 # The stream files for POP have no leading zeros in the instance number.
 
+setenv cesmtagmajor `echo ${cesmtag} | cut -c1-7`
+
 foreach FNAME (user*streams*)
    set name_parse = `echo ${FNAME} | sed 's/\_/ /g'`
    @ filename_index = $#name_parse
@@ -714,11 +719,11 @@ foreach FNAME (user*streams*)
       set instance = `echo $TRUTHinstance | bc`
    endif
 
-   if (-e $dartroot/models/POP/shell_scripts/$cesmtag/user_$streamname*template) then
+   if (-e $dartroot/models/POP/shell_scripts/$cesmtagmajor/user_$streamname*template) then
 
       echo "Copying DART template for ${FNAME} and changing instance."
 
-      ${COPY} $dartroot/models/POP/shell_scripts/$cesmtag/user_$streamname*template ${FNAME}
+      ${COPY} $dartroot/models/POP/shell_scripts/$cesmtagmajor/user_$streamname*template ${FNAME}
 
       sed s/NINST/$instance/g ${FNAME} >! out.$$
       ${MOVE} out.$$ ${FNAME}
@@ -929,7 +934,7 @@ echo "   If coupling 4 times a day, the first advance MUST be at least 12 hours.
 echo "   After that, STOP_N can be as short as a single coupling frequency."
 echo ""
 echo "5) Verify the contents of env_run.xml and submit the CESM job:"
-echo "   ./case.submit"
+echo "   ./case.submit -M begin,end"
 echo ""
 echo "6) After the job has run, check to make sure it worked and that"
 echo "   a: POP is creating netCDF restart files,"
