@@ -44,13 +44,23 @@ while ($iyear <= $end_year)
     else if ($iyear < 1000) then
         setenv zero_filled_year 0${iyear}
     endif
-
-    setenv  rst_filename ${case_name}.pop.r.${zero_filled_year}-01-01-00000.nc
-    setenv hpss_filepath ${hpss_path}/${zero_filled_year}-01-01-00000/${rst_filename}
+   
+    setenv  pop_filename ${case_name}.pop.r.${zero_filled_year}-01-01-00000.nc
+    setenv  ovf_filename ${case_name}.pop.ro.${zero_filled_year}-01-01-00000
+    setenv  cice_filename ${case_name}.cice.r.${zero_filled_year}-01-01-00000.nc
     
-    echo "Getting file: ${rst_filename}"
+    setenv hpss_pop_filepath ${hpss_path}/${zero_filled_year}-01-01-00000/${pop_filename}
+    setenv hpss_ovf_filepath ${hpss_path}/${zero_filled_year}-01-01-00000/${ovf_filename}
+    setenv hpss_cice_filepath ${hpss_path}/${zero_filled_year}-01-01-00000/${cice_filename}
     
-    hsi cget ${rst_filename} : ${hpss_filepath}
+    echo "Getting file: ${pop_filename}"
+    hsi cget ${pop_filename} : ${hpss_pop_filepath}
+    
+    echo "Getting file: ${ovf_filename}"
+    hsi cget ${ovf_filename} : ${hpss_ovf_filepath}
+    
+    echo "Getting file: ${cice_filename}"
+    hsi cget ${cice_filename} : ${hpss_cice_filepath}
     
     @ iyear += ${year_span}
 end
