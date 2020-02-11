@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id: mv_to_campaign.csh 13198 2019-07-17 15:26:39Z raeder@ucar.edu $
 
 
 # Script to send output from a CAM+DART assimilation,
@@ -186,9 +184,4 @@ echo "Ending script to copy the contents of $SRC_DIR "
 echo "to campaign storage at `date`"
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/models/cam-fv/shell_scripts/cesm2_1/mv_to_campaign.csh $
-# $Revision: 13198 $
-# $Date: 2019-07-17 09:26:39 -0600 (Wed, 17 Jul 2019) $
 
