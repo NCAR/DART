@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: launch_cf.sh 13192 2019-07-11 21:56:56Z raeder@ucar.edu $
+# DART $Id$
 
 
 # for command file jobs.
@@ -32,6 +32,6 @@ eval "$INSTANCE"
 # echo "   Done with $INSTANCE at "; date --rfc-3339=ns
 
 # <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/models/cam-fv/shell_scripts/cesm2_1/launch_cf.sh $
-# $Revision: 13192 $
-# $Date: 2019-07-11 15:56:56 -0600 (Thu, 11 Jul 2019) $
+# $URL$
+# $Revision$
+# $Date$

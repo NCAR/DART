@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: no_assimilate.csh.template 12948 2019-01-04 18:20:16Z thoar@ucar.edu $
+# DART $Id$
 
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
@@ -69,7 +69,7 @@ echo "`date` -- END CAM_NO_ASSIMILATE"
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/models/cam-fv/shell_scripts/cesm2_1/no_assimilate.csh.template $
-# $Revision: 12948 $
-# $Date: 2019-01-04 11:20:16 -0700 (Fri, 04 Jan 2019) $
+# $URL$
+# $Revision$
+# $Date$
 
