@@ -23,7 +23,7 @@
 % <https://dart.ucar.edu/ *DART-GROUP*>
 
 %%
-% 
+ 
 % This script is called by "gen_rean_diags.m" and it's not intended to be run 
 % on its own. 
 
