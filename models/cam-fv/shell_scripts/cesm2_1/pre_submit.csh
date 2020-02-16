@@ -1,11 +1,12 @@
 #!/bin/tcsh -f
 
-# > > > Add code to check whether start_ end_ years are different
-#       and whether user_nl_docn_# have taxmode turned on or off?
-#       I want it turned on at the start, when the years are the same,
-#        and off at the end when they're different
-
-# Script to submit a variety of jobs:
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
+# Script to set up the submission of a variety of jobs:
 #    full cycle(s)
 #    assim only
 #    flexible numbers of cycles/job and resubmissions
@@ -15,7 +16,7 @@
 #    
 # Run in $CASEROOT
 
-if ($#argv == 0) then
+if ($#argv != 4) then
    echo "Usage: submit first_date last_date cycles_per_job queue"
    echo "       first_date, last_date = YYYY-MM-DD-SSSSS"
    echo "       first_date = last_date -> assimilation only."
@@ -28,6 +29,8 @@ endif
 set first_date     = $1
 set last_date      = $2
 set cycles_per_job = $3
+set queue          = $4
+
 
 set all_inst = `./xmlquery NINST --value`
 set parts = `echo $all_inst[1] | sed -e "s#'# #g;s#:# #"`
@@ -94,37 +97,15 @@ endif
 
 # Make sure that SST start and align years match this forecast
 # This doesn't work for a stream of SST files.
-# ./xmlchange SSTICE_YEAR_ALIGN=$start[1]
-# ./xmlchange SSTICE_YEAR_START=$start[1]
+./xmlchange SSTICE_YEAR_ALIGN=$start[1]
+./xmlchange SSTICE_YEAR_START=$start[1]
 # ./xmlchange SSTICE_YEAR_end=$end[1]
-# Instead, the user_nl_docn_#### files need to be modified.
-set line = `grep -m 1 'streams =' user_nl_docn_0001` 
-if ($status != 0) then
-   echo "user_nl_docn has no 'streams =' in it"
-   exit
-endif
 
-# If the year in the file is not the hindcast start year,
-# replace it with the start year.
-# ? ? ? DON'T do this, if the SSTICE_YEAR* refer to the data STREAM,
-#       instead of the data FILE.
-# grep -m 1 'streams =' user_nl_docn_0001 | grep $start[1] >& /dev/null
-# if ($line[4] != $start[1]) then
-#    set num_inst = `./xmlquery NINST --value`
-#    set i = 1
-#    while ($i <= $num_inst)
-#       set fname = `printf user_nl_docn_%04d $i`
-#       mv $fname temp_nml
-#       sed -e "s#$line[4]#$start[1]#" temp_nml > $fname
-#       @ i++
-#    end
-# endif
-# 
 # Make sure docn will exit if the hindcast span is not in the data file.
 set sst_use = `grep taxmode user_nl_docn_0001`
-echo "$sst_use"
 set sst_mode = `echo $sst_use[3] | sed -e 's#"##g'`
-echo "sst_mode is $sst_mode"
+# echo "$sst_use"
+# echo "sst_mode is $sst_mode"
 if ($sst_mode != limit) then
    echo 'In user_nl_docn* taxmode should be "limit"'
    exit
@@ -151,6 +132,7 @@ echo "$cycles cycles will be distributed among $resubmissions +1 jobs"
 # 10 minutes is what's needed for the first cycle,
 # even if cycles = 0 for an assimilation only job,
 # but later cycles need more.  It doubles in ~60 cycles.
+# >>> This may be fixed with Brian Dobbins > remove the nonlinear term.
 @ job_minutes = 10 + ( $cycles_per_job * ( 10 + (( $cycles_per_job * 10) / 70 )))
 @ wall_hours  = $job_minutes / 60
 @ wall_mins   = $job_minutes % 60
@@ -165,8 +147,6 @@ if ($job_minutes > 720) then
    echo "ERROR: too many cycles requested.  Limit wall closk is 12:00:00"
    exit
 endif
-
-set queue = $4
 
 ./xmlchange --subgroup case.run --id JOB_WALLCLOCK_TIME      --val ${wall_time}:00
 ./xmlchange --subgroup case.run --id USER_REQUESTED_WALLTIME --val ${wall_time}
@@ -200,8 +180,14 @@ echo "case_run.py is linked to"
 ls -l case_run.py
 cd -
 
-# Submit the case, without generating new ${comp}_in_#### files.
-./case.submit -M begin,end --skip-preview-namelist
+# Echo the submit command, without generating new ${comp}_in_#### files.
+echo "Now submit the job using"
+echo "./case.submit -M begin,end --skip-preview-namelist"
 
 exit
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$

@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# DART $Id: purge.csh 13192 2019-07-11 21:56:56Z raeder@ucar.edu $
+# $Id:$
 
 #==========================================================================
 # This script removes assimilation output from $DOUT_S_ROOT ($local_archive) after:
@@ -88,6 +88,7 @@ pwd > $lists
 
 #------------------------
 # Look in ${project}/${CASE}/cpl/hist/$INST
+# e.g. ${pr}/${casename}/cpl/hist/0080
 if ($do_forcing == true) then
    cd cpl/hist
    pwd >>& ../../$lists
@@ -117,6 +118,7 @@ endif
 
 #------------------------
 # Look in ${campaign}/${CASE}/rest/$yr_mo
+# E.g. ${csdir}/${casename}/rest/2012-01
 if ($do_restarts == true) then
    echo "Restarts starts at "`date`
    cd rest
@@ -162,7 +164,7 @@ endif
 # Look in 
 #    ${project}/${CASE}/{lnd,atm,ice,rof}/hist/${NINST}/${CASE}.{clm2,cam,cice,mosart}_*.h[0-9].${year}.nc
 # for properly archived files.
-# $ ls {lnd,atm,ice,rof}/hist/0080/*.{clm2,cam,cice,mosart}_*.h*2010.nc
+# $ ls -l {lnd,atm,ice,rof}/hist/0080/*.{clm2,cam,cice,mosart}_*.h*2012*[cz]
 # Or in the following for missed files;
 # $ ls {lnd,atm,ice,rof}/hist/*0001.h*00000.nc
 
@@ -263,6 +265,7 @@ wait
 exit
 
 # <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/models/cam-fv/shell_scripts/cesm2_1/purge.csh $
-# $Revision: 13192 $
-# $Date: 2019-07-11 15:56:56 -0600 (Thu, 11 Jul 2019) $
+# $URL$
+# $Id$
+# $Revision$
+# $Date$

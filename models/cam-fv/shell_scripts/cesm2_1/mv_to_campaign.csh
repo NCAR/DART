@@ -4,9 +4,10 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
+# $Id$
 
 # Script to send output from a CAM+DART assimilation,
-# especially the Reanalysis project (2019), to Campaign storage.
+# especially the Reanalysis project (2019), to Campaign Storage.
 # >>> Before running this script:
 #     1) (re)package the files into a directory containing only files to be archived.
 #        The final subdirectory is often a CESM style date string; YYYY-MM-DD-SSSSS
@@ -185,3 +186,9 @@ echo "to campaign storage at `date`"
 
 exit 0
 
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$

@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: compress.csh 13191 2019-07-09 22:15:00Z raeder@ucar.edu $
+# $Id$
 #
 #PBS  -N compress.csh
 #PBS  -A P86850054
@@ -281,7 +281,8 @@ endif
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/models/cam-fv/shell_scripts/cesm2_1/compress.csh $
-# $Revision: 13191 $
-# $Date: 2019-07-09 16:15:00 -0600 (Tue, 09 Jul 2019) $
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
 

@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# DART $Id: repack_st_arch.csh 13197 2019-07-17 15:12:56Z raeder@ucar.edu $
+# $Id:$
 
 #==========================================================================
 
@@ -920,8 +920,9 @@ endif
 
 exit 0
 #==========================================================================
+
 # <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/models/cam-fv/shell_scripts/cesm2_1/repack_st_arch.csh $
-# $Revision: 13197 $
-# $Date: 2019-07-17 09:12:56 -0600 (Wed, 17 Jul 2019) $
-                                                              
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
