@@ -200,12 +200,15 @@ endif
 # We need to know the names of the current cesm.log files - one log file is created
 # by each CESM model advance.
 
+# How long does this listing take?
+date --rfc-3339=ns
 set log_list = `${LIST} -t cesm.log.*`
 
 echo "most recent log is $log_list[1]"
 echo "oldest      log is $log_list[$#log_list]"
 echo "entire log list is $log_list"
 echo " "
+date --rfc-3339=ns
 
 # ==============================================================================
 # Block 2: Populate a run-time directory with the input needed to run DART.
@@ -330,8 +333,10 @@ if ($#log_list >= 3) then
    # may or may not have an 'instance' string in them, depending on whether
    # or not you are using the multi-driver or not, so we must check for both.
 
+   echo "Gathering re_list at " `date --rfc-3339=ns`
    set re_list = `${LIST} -t *cpl.r.*`
    if ($#re_list == 0) set re_list = `${LIST} -t *cpl_0001.r.*`
+   echo "finished gathering re_list at " `date --rfc-3339=ns`
 
    if ($#re_list < 3) then
       echo "ERROR: Too many cesm.log files ($#log_list) for the $#re_list restart sets."
@@ -619,8 +624,10 @@ if ($USING_PRIOR_INFLATION == true) then
    else
       # Look for the output from the previous assimilation (or fill_inflation_restart)
       # If inflation files exists, use them as input for this assimilation
+      echo "Gathering inflation names at " `date --rfc-3339=ns`
       (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
       (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
+      echo "finished gathering inflation names at " `date --rfc-3339=ns`
       set nfiles = `cat latestfile | wc -l`
 
       if ( $nfiles > 0 ) then
@@ -961,15 +968,6 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       endif
 
       # Hide the CAM 'restart' files from the previous cycle (day_time) from the archiver.
-      # ${MOVE}           ${CASE}*.{r,rs,rs1,rh0,h0,i}.*${day_time}*    $hidedir
-      # We don't need/want to mess with the .rh files.
-      # ${MOVE}           ${CASE}*.{r,rs,rs1,h0,i}.*${day_time}*    $hidedir
-      # h0 should also not be hidden from the archiver (in case it has fields
-      # besides CAM's PHIS).
-      # Be more selective about file dates to move.
-      # This old one moved previous months of .i. {mean,sd} files,
-      # which prevented them from being archived to esp/hist
-      # ${MOVE}           ${CASE}*.{r,rs,rs1,i}.*${day_time}*    $hidedir
       ${MOVE}           ${CASE}*.{r,rs,rs1,i}.*${hide_date}*    $hidedir
 
       # Move log files: *YYMMDD-HHMMSS.  [2] means the previous restart set is being moved.

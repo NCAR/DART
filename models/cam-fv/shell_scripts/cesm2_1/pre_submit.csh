@@ -144,7 +144,7 @@ if ($#argv == 3) then
    exit 
 endif
 if ($job_minutes > 720) then
-   echo "ERROR: too many cycles requested.  Limit wall closk is 12:00:00"
+   echo "ERROR: too many cycles requested.  Limit wall clock is 12:00:00"
    exit
 endif
 

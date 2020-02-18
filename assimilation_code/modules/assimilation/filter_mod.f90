@@ -724,8 +724,7 @@ AdvanceTime : do
       if (.not. has_cycling) then
          call error_handler(E_ERR,'filter:', &
              'advancing the model inside filter and multiple file output not currently supported', &
-             source, revision, revdate, text2='(or incorrect model time in filter).  '//&
-                                              'support will be added in subsequent releases', &
+             source, revision, revdate, text2='support will be added in subsequent releases', &
              text3='set "single_file_out=.true" for filter to advance the model, or advance the model outside filter')
       endif
 
