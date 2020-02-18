@@ -118,7 +118,7 @@ prematurely terminating the namelist.
 
 <TR><TD>layout</TD>
     <TD>integer</TD>
-    <TD>Determines the process (pe) layout on MPI tasks.
+    <TD>Determines the logical process (PE) layout across MPI tasks.
      1 is PE = MPI task. 2 is a round-robin layout around the nodes. Layout 2
      results in a more even usage of memory across nodes. This may allow you to run
      with a larger state vector without hitting the memory limit of the node.
@@ -128,7 +128,15 @@ prematurely terminating the namelist.
 
 <TR><TD>tasks_per_node</TD>
     <TD>integer</TD>
-    <TD>The number of tasks per node.  This is only used if layout = 2. 
+    <TD>The number of MPI tasks per hardware node is generally fixed when a batch job 
+       is submitted. This namelist item tells filter what the user selected at that time.
+       Once filter is running the code has no control to change how MPI tasks are
+       assigned to physical CPUs.  We use this number only if layout = 2, and
+       it helps us spread high-memory-use PEs to different hardware nodes by
+       assigning them in a round-robin order.  The job will still run if this
+       number does not match the real "tasks_per_node" at the hardware level,
+       but it may run out of memory if the mismatch causes multiple high-memory-use
+       tasks to be run on the same node.
 </TD></TR>
 
 <TR><TD>communication_configuration</TD>
