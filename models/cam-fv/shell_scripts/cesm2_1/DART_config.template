@@ -82,12 +82,12 @@ if ( ! -e ./xmlquery ) then
    exit 1
 endif
 
-setenv CASE          `./xmlquery --value CASE`
-setenv CASEROOT      `./xmlquery --value CASEROOT`
-setenv COMPSET       `./xmlquery --value COMPSET`
-setenv EXEROOT       `./xmlquery --value EXEROOT`
-setenv RUNDIR        `./xmlquery --value RUNDIR`
-setenv num_instances `./xmlquery --subgroup ATM --value NINST`
+setenv CASE     `./xmlquery --value CASE`
+setenv CASEROOT `./xmlquery --value CASEROOT`
+setenv COMPSET  `./xmlquery --value COMPSET`
+setenv EXEROOT  `./xmlquery --value EXEROOT`
+setenv RUNDIR   `./xmlquery --value RUNDIR`
+setenv NINST    `./xmlquery --subgroup ATM --value NINST`
 
 # ==============================================================================
 # Turn on the assimilation in CESM
@@ -179,7 +179,7 @@ end
 # Stage the required parts of DART in the CASEROOT directory.
 # ==============================================================================
 
-sed -e "s#BOGUSNUMINST#$num_instances#" \
+sed -e "s#BOGUSNUMINST#$NINST#" \
     ${DART_SCRIPTS_DIR}/no_assimilate.csh.template > no_assimilate.csh || exit 30
 
 sed -e "s#BOGUSBASEOBSDIR#$BASEOBSDIR#"  \
@@ -190,8 +190,17 @@ chmod 755 assimilate.csh
 chmod 755 no_assimilate.csh
 # chmod 755 perfect_model.csh
 
-foreach script (compress.csh mv_to_campaign.csh repack_st_arch.csh \
-                purge.csh launch_cf.sh diags_batch.csh)
+foreach script (compress.csh \
+                compress_hist.csh \
+                diags_rean.csh \
+                launch_cf.sh \
+                mv_to_campaign.csh \
+                matlab_norm.csh \
+                pre_purge_check.csh \
+                pre_submit.csh
+                purge.csh \
+                repack_project.csh \
+                repack_st_arch.csh )
    if (-f ${DART_SCRIPTS_DIR}/${script}) then
       $COPY -f ${VERBOSE} ${DART_SCRIPTS_DIR}/${script} . || exit 43
    else
@@ -275,9 +284,9 @@ cat << EndOfText >! update_dart_namelists
 # WARNING: the output files contain ALL ensemble members ==> BIG
 
 ex input.nml <<ex_end
-g;ens_size ;s;= .*;= ${num_instances};
-g;num_output_state_members ;s;= .*;= ${num_instances};
-# g;num_output_obs_members ;s;= .*;= ${num_instances};
+g;ens_size ;s;= .*;= ${NINST};
+g;num_output_state_members ;s;= .*;= ${NINST};
+# g;num_output_obs_members ;s;= .*;= ${NINST};
 wq
 ex_end
 
@@ -317,17 +326,17 @@ chmod 0755 update_dart_namelists
 # input.nml:&assim_tools_nml:sampling_error_correction = .true.,
 #=========================================================================
 
-if ( $num_instances > 1 ) then
+if ( $NINST > 1 ) then
 
    set SAMP_ERR_DIR = assimilation_code/programs/gen_sampling_err_table/work
    set SAMP_ERR_FILE = ${DARTROOT}/${SAMP_ERR_DIR}/sampling_error_correction_table.nc
 
    if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} -f ${VERBOSE} ${SAMP_ERR_FILE} ${RUNDIR}  || exit 75
-      if ( $num_instances < 3 || $num_instances > 200 ) then
+      if ( $NINST < 3 || $NINST > 200 ) then
          echo ""
          echo "ERROR: sampling_error_correction_table.nc handles ensemble sizes 3...200."
-         echo "ERROR: Yours is $num_instances"
+         echo "ERROR: Yours is $NINST"
          echo ""
          exit 75
       endif

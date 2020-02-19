@@ -33,39 +33,27 @@
 # Documentation of that script is in 
 #   https://www2.cisl.ucar.edu/sites/default/files/CISL_GlobusCLI_Nov2018.html
 
-if ($#argv == 1) then
+source ./data_scripts.csh
+
+if ($#argv == 3) then
+
+   set CASE     = ${data_CASE}
+   set TIME_STR = $1 
+   set SRC_DIR  = $2
+   set CS_DIR   = $3
+
+else 
 
    # Request for help; any argument will do.
    echo "Usage: call by user or script:"
-   echo "   mv_to_campaign.csh CASE TIME_STR SRC_DIR CS_DIR"
-   echo '      CASE     = CESM $CASE name.'
+   echo "   mv_to_campaign.csh TIME_STR SRC_DIR CS_DIR"
    echo "      TIME_STR = CESM format time string associated with the data; YYYY-MM-DD-SSSSS"
    echo "      SRC_DIR  = the directory to archive in Campaign Storage"
+   echo "         e.g.    ${data_proj_space}/esp/hist"
    echo "      CS_DIR   = Campaign Storage"
+   echo "         e.g.    ${data_campaign}/${CASE}/esp/hist"
    exit
 
-else if ($#argv == 0) then
-
-   set CASE     = Test_mv_to_globus
-   # set CASE     = f.e21.FHIST_BGC.f09_025.CAM6assim.003
-   set TIME_STR = 2019-04-23-91800
-   # set TIME_STR = 2017-01-02-00000
-   set SRC_DIR  = /glade/scratch/${USER}/${CASE}/${TIME_STR}
-   # set SRC_DIR  = /glade/scratch/${USER}/${CASE}/archive/rest/${TIME_STR}
-   # set SRC_DIR  = /glade/p/cisl/dares/Reanalyses/CAM6_2017/${CASE}/archive
-   set CS_DIR   = /gpfs/csfs1/cisl/dares/Reanalyses/CAM6_2017/${CASE}
-
-else if ($#argv == 4) then
-
-   set CASE     = $1 
-   set TIME_STR = $2 
-   set SRC_DIR  = $3
-   set CS_DIR   = $4
-
-else
-   
-   echo "ERROR: This script requires 0, 1, or 4 arguments"
-   exit
 endif
 
 # Done with input parameters.

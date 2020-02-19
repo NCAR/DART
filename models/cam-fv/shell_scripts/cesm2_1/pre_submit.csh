@@ -23,23 +23,19 @@ if ($#argv != 4) then
    echo "       cycles_per_job: The number of jobs will be calculated from the dates"
    echo "                       Set to 1 for assimilation only jobs."
    echo "       If 'queue' is omitted, the wall clock will be calculated, then exit"
+# This may no longer be a useful option, since the cycles appear to be consistent
    exit
 endif
+
+source ./data_scripts.csh
 
 set first_date     = $1
 set last_date      = $2
 set cycles_per_job = $3
 set queue          = $4
 
-
-set all_inst = `./xmlquery NINST --value`
-set parts = `echo $all_inst[1] | sed -e "s#'# #g;s#:# #"`
-set num_inst = $parts[3]
-setenv case_run_dir `./xmlquery RUNDIR --value`
-set case_py_dir = '/glade/work/raeder/Models/cesm2_1_relsd_m5.6/cime/scripts/lib/CIME/case'
-
 # Check whether there are too many cesm.log files in rundir.
-set num_logs = `ls -1 ${case_run_dir}/cesm.log* | wc -l`
+set num_logs = `ls -1 ${data_scratch}/run/cesm.log* | wc -l`
 
 if ($first_date == $last_date && $num_logs > 3 || \
     $first_date != $last_date && $num_logs > 2 ) then
@@ -48,10 +44,11 @@ if ($first_date == $last_date && $num_logs > 3 || \
 endif
 
 # Make sure that requested initial date is what CAM will use.
-if (-f ${case_run_dir}/rpointer.atm_0001) then
-   grep $first_date ${case_run_dir}/rpointer.atm_0001
+if (-f ${data_scratch}/run/rpointer.atm_0001) then
+   grep $first_date ${data_scratch}/run/rpointer.atm_0001
    if ($status != 0) then
 #     $first_date != $last_date && 
+# ?   This relies on stage_cesm_files.template, which is currently NOT made by setup_advanced.
       sed -e "s#NO-DATE-YET#$first_date#" stage_cesm_files.template >! stage_cesm_files
       if ($status != 0) then
          echo "ERROR: rpointer.atm_0001 has the wrong date, but creating stage_cesm_files failed"
@@ -95,12 +92,6 @@ if (($end[4] < $start[4] && $end[4] != '00000') || \
    exit
 endif
 
-# Make sure that SST start and align years match this forecast
-# This doesn't work for a stream of SST files.
-./xmlchange SSTICE_YEAR_ALIGN=$start[1]
-./xmlchange SSTICE_YEAR_START=$start[1]
-# ./xmlchange SSTICE_YEAR_end=$end[1]
-
 # Make sure docn will exit if the hindcast span is not in the data file.
 set sst_use = `grep taxmode user_nl_docn_0001`
 set sst_mode = `echo $sst_use[3] | sed -e 's#"##g'`
@@ -133,7 +124,8 @@ echo "$cycles cycles will be distributed among $resubmissions +1 jobs"
 # even if cycles = 0 for an assimilation only job,
 # but later cycles need more.  It doubles in ~60 cycles.
 # >>> This may be fixed with Brian Dobbins > remove the nonlinear term.
-@ job_minutes = 10 + ( $cycles_per_job * ( 10 + (( $cycles_per_job * 10) / 70 )))
+# @ job_minutes = 10 + ( $cycles_per_job * ( 10 + (( $cycles_per_job * 10) / 70 )))
+@ job_minutes = $cycles_per_job * 8 
 @ wall_hours  = $job_minutes / 60
 @ wall_mins   = $job_minutes % 60
 set wall_time = `printf %02d:%02d $wall_hours $wall_mins`
@@ -154,7 +146,7 @@ endif
 ./xmlchange --subgroup case.run --id USER_REQUESTED_QUEUE --val $queue
 
 # Choose a version of case_run.py to use; with(out) a CAM run.
-cd $case_py_dir
+cd ${data_CESM_python}/case
 if (-l case_run.py) then
    rm case_run.py
 else
@@ -167,8 +159,8 @@ if ("$first_date" == "$last_date" ) then
    # Assimilation only; link an assim-only copy to the expected name
    ln -s case_run_only_assim.py case_run.py
    set init_files = `wc -l $case_run_dir/cam_init_files`
-   echo "Checking numbers of files " $init_files[1] $num_inst
-   if ( $init_files[1] != $num_inst ) then
+   echo "Checking numbers of files " $init_files[1] ${data_NINST}
+   if ( $init_files[1] != ${data_NINST} ) then
       echo "ERROR: the forecast didn't finish; not enough files in cam_init_files"
       exit
    endif

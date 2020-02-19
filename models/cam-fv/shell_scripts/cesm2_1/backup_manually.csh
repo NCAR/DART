@@ -106,7 +106,7 @@ while ($m <= $#components)
       continue
    endif
 
-   ${CASEROOT}/mv_to_campaign.csh $CASE ${year} \
+   ${CASEROOT}/mv_to_campaign.csh ${year} \
       ${project}/${CASE}/$components[$m]/hist/ \
      ${campaign}/${CASE}/$components[$m]/hist
    cd ../..

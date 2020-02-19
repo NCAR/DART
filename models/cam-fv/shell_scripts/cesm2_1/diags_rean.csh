@@ -7,7 +7,7 @@
 # $Id$
 #
 #PBS  -N diags_rean
-#PBS  -A NCIS0006
+#PBS  -A YOUR_ACCOUNT
 #PBS  -q share
 # Resources I want:
 #    select=#nodes
@@ -17,7 +17,7 @@
 #PBS  -l walltime=04:00:00
 # Send email after a(bort) or e(nd)
 #PBS  -m ae
-#PBS  -M raeder@ucar.edu
+#PBS  -M YOUR_EMAIL
 # Send standard output and error to this file.
 # It's helpful to use the $casename here.
 #PBS  -o diags_rean.eo
@@ -46,23 +46,18 @@ else
 #    endif
 endif
 
-# DART source directory on this machine
-# These things should be gathered from env_*.xml files in CASEROOT.
-set DART = ~/DART/reanalysis
-set cam = 'cam-fv'
+source YOUR_CASEROOT/data_scripts.csh
 
 # Use big endian obs_diag for output from IBM
 # set endian = '_big_endian'
 set endian = ' '
-set year = 2013
-# set diag_dir = 	Diags_NTrS_${year}-${mm}
-set mo   = 4
 
-set mm = `printf %02d $mo`
-set yymm = ${year}-${mm}
-set proj_dir = /glade/p/nsc/ncis0006/Reanalyses/f.e21.FHIST_BGC.f09_025.CAM6assim.011/esp/hist/$yymm
+set mm = `printf %02d $data_month`
+set yymm = ${data_year}-${mm}
 
-set diag_dir = 	Diags_N.PaAmAt_${year}-${mm}
+? Give this as an argument
+set diag_dir = 	Diags_NTrS_${year}-${mm}
+set proj_dir = ${data_proj_space}/esp/hist/$yymm
 echo "diag_dir = $diag_dir"
 echo "proj_dir = $proj_dir"
 
@@ -79,7 +74,7 @@ endif
 pwd
 
 # ls -1 does not work; unusable formatting.
-ls ../*obs_seq_final*${year}-${mm}*[^rz] >! obs.list 
+ls ../*obs_seq_final*${yymm}*[^rz] >! obs.list 
 if ($status != 0) then
    echo "Making obs.list failed.  Exiting"
    exit
@@ -94,12 +89,12 @@ else
    exit 30
 endif
 
-if ($mo == 12) then
-   @ year_last = $year + 1
+if ($data_month == 12) then
+   @ year_last = $data_year + 1
    @ mo_last = 1
 else
-   @ year_last = $year
-   @ mo_last = $mo + 1
+   @ year_last = $data_year
+   @ mo_last = $data_month + 1
 endif
 
 ex input.nml<< ex_end
@@ -109,9 +104,9 @@ s;= '.*';= "";
 /obs_sequence_list/
 s;= '.*';= "./obs.list";
 /first_bin_center/
-s;=  $year, 1;=  $year,$mo;
+s;=  BOGUS_YEAR, 1;=  $data_year,$data_month;
 /last_bin_center/
-s;=  $year, 2;=  $year_last,$mo_last;
+s;=  BOGUS_YEAR, 2;=  $year_last,$mo_last;
 wq
 ex_end
 
@@ -121,8 +116,8 @@ else
    vi input.nml
 endif
 
-echo "Running ${DART}/models/${cam}/work/obs_diag${endian}"
-${DART}/models/${cam}/work/obs_diag${endian} >&! obs_diag.out 
+echo "Running ${data_DART_src}/models/cam-fv/work/obs_diag${endian}"
+${data_DART_src}/models/cam-fv/work/obs_diag${endian} >&! obs_diag.out 
 set ostat = $status
 if ($ostat != 0) then
    echo "ERROR: obs_diag failed.  Exiting"
@@ -159,7 +154,7 @@ if (-f $obs_seq_tar) then
    echo "obs_seq tar file was about to be removed.  Exiting"
    exit 60
 endif
-rm *obs_seq*${year}-${mm}*
+rm *obs_seq*${yymm}*
 
 exit
 

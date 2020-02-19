@@ -8,7 +8,7 @@
 
 #==========================================================================
 
-# Script to package yearly files found in $project 
+# Script to package yearly files found in $data_proj_space 
 # (e.g. /glade/p/nsc/ncis0006/Reanalyses/f.e21.FHIST_BGC.f09_025.CAM6assim.011)
 # after repack_st_arch.csh has created them,
 # and the matlab scripts have generated the obs space pictures. 
@@ -51,7 +51,7 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=raeder@ucar.edu
 # #SBATCH --account=P86850054
-#SBATCH --account=NCIS0006
+#SBATCH --account=YOUR_ACCOUNT
 #SBATCH --partition=dav
 #SBATCH --ignore-pbs
 # 
@@ -71,15 +71,6 @@ if (! -f CaseStatus) then
    echo "ERROR: this script must be run from the CESM CASEROOT directory"
    exit 1
 endif
-
-setenv CASEROOT $cwd
-# Orig
-set CASE           = $CASEROOT:t
-# CASE is just used in the globus tranfer comment, 
-# not in file name creation, so I can specify:
-# set CASE           = 2012_2011SST
-
-set ensemble_size  = `./xmlquery NINST_ATM   --value`
 
 # Non-esp history output which might need to be processed.
 # "components" = generic pieces of CESM (used in the archive directory names).
@@ -104,18 +95,7 @@ set do_obs_space   = 'true'
 set do_history     = 'true'
 
 #--------------------------------------------
-if ($#argv == 0) then
-   # User submitted, independent batch job (not run by another batch job).
-   # CASE could be replaced by setup_*, as is done for DART_config.
-   # "project" will be created as needed (assuming user has permission to write there).
-   # set project    = /glade/p/cisl/dares/Reanalyses/CAM6_2017
-   set project    = /glade/p/nsc/ncis0006/Reanalyses/${CASE}
-   set campaign   = /gpfs/csfs1/cisl/dares/Reanalyses/${CASE}
-   set year  = 2017
-
-   env | sort | grep SLURM
-
-else if ($#argv == 1) then
+if ($#argv != 0) then
    # Request for help; any argument will do.
    echo "Usage:  "
    echo "Before running this script"
@@ -125,26 +105,19 @@ else if ($#argv == 1) then
    echo "    submit this script from the CESM CASEROOT directory. "
    echo "Call by user or script:"
    echo "   repack_project.csh project_dir campaign_dir [do_this=false] ... "
-   echo "      project_dir    = directory where $CASE.dart.e.cam_obs_seq_final.$date.nc are"
-   echo "      campaign_dir   = directory where $CASE.dart.e.cam_obs_seq_final.$date.nc are"
+   echo "      project_dir    = directory where $data_CASE.dart.e.cam_obs_seq_final.$date.nc are"
+   echo "      campaign_dir   = directory where $data_CASE.dart.e.cam_obs_seq_final.$date.nc are"
    echo "      do_this=false  = Turn off one (or more) of the archiving sections."
    echo "                       'this' = {obs_space,hist}."
    echo "                       No quotes, no spaces."
    exit
-
-else
-   # Script run by another (batch) script or interactively.
-   set project  = $1
-   set campaign = $2
-   # These arguments to turn off parts of the archiving must have the form do_obs_space=false ;
-   # no quotes, no spaces.
-   if ($?3) set $3
-   if ($?4) set $4
-   if ($?5) set $5
 endif
 
-cd $project
-pwd
+# User submitted, independent batch job (not run by another batch job).
+# CASE could be replaced by setup_*, as is done for DART_config.
+# "data_proj_space" will be created as needed (assuming user has permission to write there).
+
+env | sort | grep SLURM
 
 #==========================================================================
 # Where to find files, and what to do with them
@@ -154,7 +127,7 @@ pwd
 
 echo "------------------------"
 if ($do_obs_space == true) then
-   cd esp/hist
+   cd ${data_proj_space}/esp/hist
    echo " "
    echo "Location for obs space is `pwd`"
 
@@ -164,9 +137,11 @@ if ($do_obs_space == true) then
    # so the whole esp/hist directory can be specified,
    # but only the files which are newer than the CS versions will be transferred.
 
-   ${CASEROOT}/mv_to_campaign.csh $CASE $year ${project}/esp/hist/  \
-                                             ${campaign}/esp/hist
-   cd ../..
+   ${data_CASEROOT}/mv_to_campaign.csh \
+      $data_year ${data_proj_space}/esp/hist/ \
+      ${data_campaign}/${data_case}/esp/hist
+
+   cd ${data_proj_space}
    
 endif
 
@@ -186,7 +161,7 @@ if ($do_history == true) then
          continue
       endif 
 
-      cd $components[$m]/hist
+      cd ${data_proj_space}/$components[$m]/hist
 
       if ($components[$m] == 'cpl') then
          set types = ( ha2x1d hr2x ha2x3h ha2x1h ha2x1hi )
@@ -230,20 +205,20 @@ if ($do_history == true) then
             echo "$models[$m] $types[$t]"
          endif
 
-         # Make a cmd file to compress this year's history file(s) in $project.
+         # Make a cmd file to compress this year's history file(s) in $data_proj_space.
          if (-f cmdfile) mv cmdfile cmdfile_prev
          touch cmdfile
 
          set tasks = 0
          set i = 1
-         while ($i <= $ensemble_size)
-            set NINST = `printf %04d $i`
+         while ($i <= $data_NINST)
+            set inst = `printf %04d $i`
 # Orig
-            set yearly_file = ${CASE}.$models[$m]_${NINST}.$types[$t].${year}.nc
-# Kluge for 2012_2011SST set yearly_file = $CASEROOT:t.$models[$m]_${NINST}.$types[$t].${year}.nc
+            set yearly_file = ${data_CASE}.$models[$m]_${inst}.$types[$t].${data_year}.nc
+# Kluge for 2012_2011SST set yearly_file = $data_CASEROOT:t.$models[$m]_${inst}.$types[$t].${data_year}.nc
 
-            if (-f ${NINST}/${yearly_file}) then
-               echo "gzip ${NINST}/${yearly_file} &> $types[$t]_${NINST}.eo " >> cmdfile
+            if (-f ${inst}/${yearly_file}) then
+               echo "gzip ${inst}/${yearly_file} &> $types[$t]_${inst}.eo " >> cmdfile
                @ tasks++
             endif
             @ i++
@@ -256,7 +231,7 @@ if ($do_history == true) then
          endif
 
          echo "   history mpirun launch_cf.sh starts at "`date`
-         mpirun -n $tasks ${CASEROOT}/launch_cf.sh ./cmdfile
+         mpirun -n $tasks ${data_CASEROOT}/launch_cf.sh ./cmdfile
          set mpi_status = $status
          echo "   history mpirun launch_cf.sh ends at "`date`
       
@@ -283,10 +258,11 @@ if ($do_history == true) then
          @ t++
       end
 
-      ${CASEROOT}/mv_to_campaign.csh $CASE $year ${project}/$components[$m]/hist/  \
-                                                ${campaign}/$components[$m]/hist
+      ${data_CASEROOT}/mv_to_campaign.csh \
+         $data_year ${data_proj_space}/$components[$m]/hist/  \
+         ${data_campaign}/${data_case}/$components[$m]/hist
  
-      cd ../..
+      cd ${data_proj_space}
 
       @ m++
    end

@@ -801,6 +801,10 @@ setenv save_every_Mth_day_restart Monday
 # Fill the DART_config script with information it needs and copy it to caseroot.
 # DART_config can be run at some later date if desired, but it must be run
 # from a caseroot directory.
+
+>>> Add data for $data_scratch: ${cime_output}/${case}
+       Or get it from $EXEROOT in DART_config
+>>> Add archiving locations; project and campaign
 if ( -e ${DART_CESM_scripts}/DART_config.template ) then
    sed -e "s#your_dart_path#${dartroot}#" \
        -e "s#your_setup_script_dir#$DART_CESM_scripts:t#" \
