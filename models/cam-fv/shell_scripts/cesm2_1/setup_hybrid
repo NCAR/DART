@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# DART $Id: setup_hybrid 13148 2019-05-01 20:24:15Z raeder@ucar.edu $
 #
 # This script can be run interactively, but on some systems (e.g. cheyenne)
 # it takes longer than is allowed for an interactive job.
@@ -886,7 +886,7 @@ while ($inst <= $num_instances)
       endif
    endif
 
-   if ($start_year > 2008) then
+#    if ($start_year > 2008) then
       # The default as of April 2015 is
       # /glade/p/cesmdata/cseg/inputdata/atm/cam/solar/SOLAR_SPECTRAL_Lean_1610-2008_annual_c090324.nc
       # For later dates there are files which repeat the solar cycles from 1960-2008
@@ -895,8 +895,8 @@ while ($inst <= $num_instances)
       # This does not look like an exact extension of the default,
       # but does look like the previous default.  So try it.
 
-      echo " solar_data_file = '${cesmdata}/atm/cam/solar/spectral_irradiance_Lean_1610-2140_ann_c100408.nc'" >> ${fname}
-   endif
+#       echo " solar_data_file = '${cesmdata}/atm/cam/solar/spectral_irradiance_Lean_1610-2140_ann_c100408.nc'" >> ${fname}
+#    endif
 
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
@@ -1224,6 +1224,6 @@ echo "    Change values in env_batch.xml to accommodate longer runs."
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/models/cam-fv/shell_scripts/cesm2_1/setup_hybrid $
+# $Revision: 13148 $
+# $Date: 2019-05-01 14:24:15 -0600 (Wed, 01 May 2019) $

@@ -3,12 +3,11 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
+# $Id$
 
 # Script to send output from a CAM+DART assimilation,
-# especially the Reanalysis project (2019), to Campaign storage.
+# especially the Reanalysis project (2019), to Campaign Storage.
 # >>> Before running this script:
 #     1) (re)package the files into a directory containing only files to be archived.
 #        The final subdirectory is often a CESM style date string; YYYY-MM-DD-SSSSS
@@ -18,8 +17,10 @@
 #        But may need to first
 #        > ssh data-access.ucar.edu 
 #          (alternative: ssh username@data-access.ucar.edu)
+#          or open a window on casper.
 #        It may be enough to 
 #        > module load gnu python
+#        > ncar_pylib 20190326
 #        OR log in through the globus file manager.
 #        In either case:
 #        > globus login
@@ -32,39 +33,27 @@
 # Documentation of that script is in 
 #   https://www2.cisl.ucar.edu/sites/default/files/CISL_GlobusCLI_Nov2018.html
 
-if ($#argv == 1) then
+source ./data_scripts.csh
+
+if ($#argv == 3) then
+
+   set CASE     = ${data_CASE}
+   set TIME_STR = $1 
+   set SRC_DIR  = $2
+   set CS_DIR   = $3
+
+else 
 
    # Request for help; any argument will do.
    echo "Usage: call by user or script:"
-   echo "   mv_to_campaign.csh CASE TIME_STR SRC_DIR CS_DIR"
-   echo '      CASE     = CESM $CASE name.'
+   echo "   mv_to_campaign.csh TIME_STR SRC_DIR CS_DIR"
    echo "      TIME_STR = CESM format time string associated with the data; YYYY-MM-DD-SSSSS"
    echo "      SRC_DIR  = the directory to archive in Campaign Storage"
+   echo "         e.g.    ${data_proj_space}/esp/hist"
    echo "      CS_DIR   = Campaign Storage"
+   echo "         e.g.    ${data_campaign}/${CASE}/esp/hist"
    exit
 
-else if ($#argv == 0) then
-
-   set CASE     = Test_mv_to_globus
-   # set CASE     = f.e21.FHIST_BGC.f09_025.CAM6assim.003
-   set TIME_STR = 2019-04-23-91800
-   # set TIME_STR = 2017-01-02-00000
-   set SRC_DIR  = /glade/scratch/${USER}/${CASE}/${TIME_STR}
-   # set SRC_DIR  = /glade/scratch/${USER}/${CASE}/archive/rest/${TIME_STR}
-   # set SRC_DIR  = /glade/p/cisl/dares/Reanalyses/CAM6_2017/${CASE}/archive
-   set CS_DIR   = /gpfs/csfs1/cisl/dares/Reanalyses/CAM6_2017/${CASE}
-
-else if ($#argv == 4) then
-
-   set CASE     = $1 
-   set TIME_STR = $2 
-   set SRC_DIR  = $3
-   set CS_DIR   = $4
-
-else
-   
-   echo "ERROR: This script requires 0, 1, or 4 arguments"
-   exit
 endif
 
 # Done with input parameters.
@@ -100,8 +89,8 @@ echo Copy $SRC_DIR to campaign storage $CS_DIR >>& $glog
 module load gnu python
 
 # Activate the NCAR Python Library (NPL) virtual environment 
-# for the version given as the argument (no arg = use default).
-# which doesn't work 2019-6-21)
+# for the version given as the argument (no arg = use default
+# which doesn't work 2019-6-21).
 # This command activates the 'globus' command, used below.
 ncar_pylib 20190326
 # ncar_pylib 
@@ -136,8 +125,11 @@ echo EP_CS = $EP_CS
 foreach ep ($EP_SRC $EP_CS)
    # Check if endpoint is activated
    # (we don't care about output, only return code)
-   globus endpoint is-activated $ep >& /dev/null
-   if ( $status != 0 ) then
+   # globus endpoint is-activated $ep >& /dev/null
+   set EXPIRE = `globus endpoint is-activated \
+                 --jq expire_time -F unix $ep`
+   # if ( $status != 0 ) then
+   if ( `echo $EXPIRE` == 'None' ) then
       globus endpoint activate $ep
       if ( $status != 0 ) then
          echo "Fatal: NCAR endpoint $ep isn't activated." > $glog
@@ -146,13 +138,10 @@ foreach ep ($EP_SRC $EP_CS)
          exit 1
       endif
    else
-      echo Endpoint $ep is activated
+      echo Endpoint $ep is activated until $EXPIRE
+      echo "NCAR endpoint $ep active until $EXPIRE" > $glog
    endif
 end
-
-set EXPIRE = `globus endpoint is-activated                \
-              --jq expire_time -F unix $EP_SRC`
-echo "NCAR endpoints active until $EXPIRE" > $glog
 
 set DEST_DIR = ${CS_DIR}/$AN_DATE
 
@@ -161,7 +150,12 @@ cd $SRC_DIR
 
 # Start copy of GLADE data holdings to Campaign Storage.
 # --recursive  to duplicate an entire directory and all its contents. 
-# --sync-level anything with a newer modification time gets copied,
+# --sync-level mtime anything with a newer modification time gets copied,
+#              If a transfer fails, CHECKSUM must be used to restart the transfer. 
+#              > > > All other levels can lead to data corruption. < < <
+# ?            Is restarting different than submitting another transfer request?
+# ?            If a transfer partially succeeds, does the partial file have a newer
+#              date than the old, so that mtime will prevent the new transfer?
 # --batch < ../globus-batch-files.txt   NOT needed when moving whole directories\
 globus transfer                         \
     --recursive --sync-level mtime      \
@@ -170,18 +164,19 @@ globus transfer                         \
 
 
 echo ""
-echo Transfer is asynchronous.  
-echo IF successfully started, you will receive email when it is complete.
-echo CHECK $SRC_DIR:h/$glog.
+echo "Transfer is asynchronous."
+echo "IF successfully started, you will receive email when it is complete."
+echo "CHECK $SRC_DIR:h/$glog."
 
 echo ""
-echo Ending script to copy the contents of $SRC_DIR 
-echo to campaign storage at `date`
+echo "Ending script to copy the contents of $SRC_DIR "
+echo "to campaign storage at `date`"
 
 exit 0
 
+
 # <next few lines under version control, do not edit>
 # $URL$
+# $Id$
 # $Revision$
 # $Date$
-

@@ -4,25 +4,19 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# $Id:$
 
 #==========================================================================
 
 # Script to package files found in $DOUT_S_ROOT
 # after $reanalysis_cesm/st_archive has sorted them,
-# and obs_diag has generated a basic obs space diagnostics NetCDF file.
+# and obs_diags.csh has generated basic obs space diagnostics.
 # The resulting files will be moved to 
 #   > a project space for further analysis and use
-#   > Campaign Storage for intermediate archiving, 
+#   > Campaign Storage for temporary archiving, 
 #     until we want to send them to HPSS (tape).
 # Both destinations take time.  They are actually copies.
 
-# >>> Run st_archive and obs_diag before running this script.      <<<
-# >>> Check that there's enough disk space.                        <<<
-#     It needs 1 Tb more than current usage.                       <<<
-#     That's assuming that processing the cpl hist files is first, <<<
-#     after which lots of space is freed up.  If it's not,         <<<
-#     the lnd history files needs almost 3 Tb additional space.    <<<
+# >>> Run st_archive and obs_diags.csh before running this script. <<<
 # >>> Log in to globus (see mv_to_campaign.csh for instructions).  <<<
 # >>> From a casper window (but not 'ssh'ed to data-access.ucar.edu)
 #     submit this script from the CESM CASEROOT directory.         <<<
@@ -42,31 +36,21 @@
 #==========================================================================
 #
 #SBATCH --job-name=repack_st_archive
-# Output standard output and error to a file named with 
-# the job-name and the jobid.
-#SBATCH -o %x_%j.eo 
-#SBATCH -e %x_%j.eo 
 # 80 members
-# restarts #SBATCH --ntasks=160 
-# forcing files: #SBATCH --ntasks=405 
-# partial history set (8 members x 2 types)
-#SBATCH --ntasks=16
+#SBATCH --ntasks=405 
 # 3 members; 
 # #SBATCH --ntasks=15 
 # #SBATCH --ntasks=1 
-#SBATCH --time=02:00:00
+#SBATCH --time=03:00:00
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=raeder@ucar.edu
-# #SBATCH --account=P86850054
-#SBATCH --account=YOUR_ACCOUNT
+#SBATCH --account=NCIS0006
 #SBATCH --partition=dav
 #SBATCH --ignore-pbs
 # 
 #-----------------------------------------
 
-# > > > WARNING; cheyenne compute nodes do not have access to Campaign Storage. < < < 
-#       Run this on casper using slurm
 cd $SLURM_SUBMIT_DIR
 # In order to rebase the time variable NCO needs these modules
 module load nco gnu udunits
@@ -81,9 +65,10 @@ if (! -f CaseStatus) then
    exit 1
 endif
 
-setenv CASEROOT      `./xmlquery CASEROOT    --value`
-set CASE           = `./xmlquery CASE        --value`
-set DOUT_S_ROOT    = `./xmlquery DOUT_S_ROOT --value`
+setenv CASEROOT $cwd
+# ? Get CASE from xmlquery because some places :t doesn't work
+set CASE           = $CASEROOT:t
+set DOUT_S_ROOT     = `./xmlquery DOUT_S_ROOT --value`
 set ensemble_size  = `./xmlquery NINST_ATM   --value`
 set line           = `grep '^[ ]*stages_to_write' input.nml`
 set stages_all     = (`echo $line[3-$#line] | sed -e "s#[',]# #g"`)
@@ -115,35 +100,25 @@ endif
 # do_state_space => 1  (Could be upgraded to use #rest_dates(4-5) * #stats(4))
 
 set do_forcing     = 'true'
-# > > > WARNING; if restarts fails when $mm-01 is a Monday, turn off the pre_clean flag,
-#                in order to preserve what's in rest/YYYY-MM.
 set do_restarts    = 'true'
-set do_obs_space   = 'false'
+set do_obs_space   = 'true'
 set do_history     = 'true'
 set do_state_space = 'true'
 
-# Check whether there is enough project disk space to run this.
-# The numbers added to pr_used were harvested from running repack_hwm.csh.
-set line = `gladequota | grep ncis0006 `
-set pr_used = `echo $line[2] | cut -d'.' -f1`
-# Round it up to be safe.
-@ pr_used++
-if (do_forcing == 'true') then
-   @ pr_need = $pr_used + 1
-   if ($pr_need > 20) then
-      echo "ERROR; not enough project space to run this"
-      exit 2
-   endif
-else if ($do_history == 'true') then
-   @ pr_need = $pr_used + 3
-   if ($pr_need > 20) then
-      echo "ERROR; not enough project space to run this"
-      exit 3
-   endif
-endif
-
 #--------------------------------------------
-if ($#argv != 0) then
+if ($#argv == 0) then
+   # User submitted, independent batch job (not run by another batch job).
+   # CASE could be replaced by setup_*, as is done for DART_config.
+   # "project" will be created as needed (assuming user has permission to write there).
+   # set project    = /glade/p/cisl/dares/Reanalyses/CAM6_2017
+   set project    = /glade/p/nsc/ncis0006/Reanalyses
+   set campaign   = /gpfs/csfs1/cisl/dares/Reanalyses
+   set year  = 2011
+   set month = 2
+
+   env | sort | grep SLURM
+
+else if ($#argv == 1) then
    # Request for help; any argument will do.
    echo "Usage:  "
    echo "Before running this script"
@@ -152,7 +127,7 @@ if ($#argv != 0) then
    echo "    From a casper window (but not 'ssh'ed to data-access.ucar.edu)"
    echo "    submit this script from the CESM CASEROOT directory. "
    echo "Call by user or script:"
-   echo "   repack_st_arch.csh project_dir campaign_dir yr_mo [do_this=false] ... "
+   echo "   repack_st_archive.csh project_dir campaign_dir yr mo [do_this=false] ... "
    echo "      project_dir    = directory where $CASE.dart.e.cam_obs_seq_final.$date.nc are"
    echo "      campaign_dir   = directory where $CASE.dart.e.cam_obs_seq_final.$date.nc are"
    echo "      yr_mo =        = Year and month to be archived, in form YYYY-MO."
@@ -160,27 +135,25 @@ if ($#argv != 0) then
    echo "                       'this' = {forcing,restarts,obs_space,state_space}."
    echo "                       No quotes, no spaces."
    exit
+
+else
+   # Script run by another (batch) script or interactively.
+   set project  = $1
+   set campaign = $2
+   set year     = $3
+   set month    = $4
+   # These arguments to turn off parts of the archiving must have the form do_obs_space=false ;
+   # no quotes, no spaces.
+   if ($?5) set $5
+   if ($?6) set $6
+   if ($?7) set $7
 endif
 
-# User submitted, independent batch job (not run by another batch job).
-# "data_proj_space" will be created as needed (assuming user has permission to write there).
-# > > > WARNING: if the first day of the month is a Monday,
-#       I need to add *_0001.log* files from $archive/logs to rest/YYYY-MM-01-00000
-#       and remove the rpointer and .h0. files.
-   set yr_mo = `printf %4d-%02d ${data_year} ${data_month}`
-   set obs_space  = Diags_NTrS_${yr_mo}
-
-   env | sort | grep SLURM
+set yr_mo = `printf %4d-%02d ${year} ${month}`
+set obs_space  = Diags_NTrS_${yr_mo}
 
 cd $DOUT_S_ROOT
 pwd
-
-# Check that this script has not already run completely for this date.
-if ($do_state_space == true && \
-    -f ${data_campaign}/${data_CASE}/logs/${yr_mo}/da.log.${yr_mo}.tar) then
-   echo "ERROR; ${data_campaign}/${data_CASE}/logs/${yr_mo}/da.log.${yr_mo}.tar already exists."
-   exit 15
-endif
 
 if ($do_obs_space != 'true') then
    echo "SKIPPING archiving of obs_space diagnostics"
@@ -227,22 +200,22 @@ if ($do_forcing == true) then
    cd ${DOUT_S_ROOT}/cpl/hist
 
    # Make a list of the dates (buried in file names).
-   set files_dates = `ls ${data_CASE}.cpl_0001.ha2x1d.${yr_mo}-*.nc*`
+   set files_dates = `ls ${CASE}.cpl_0001.ha2x1d.${yr_mo}-*.nc*`
    if ($#files_dates == 0) then
-      echo "ERROR: there are no ${data_CASE}.cpl_0001.ha2x1d files.  Set do_forcing = false?"
+      echo "ERROR: there are no ${CASE}.cpl_0001.ha2x1d files.  Set do_forcing = false?"
       exit 23
-   endif
-   # Separate decompress.csh for each date which needs it.
-   foreach d ($files_dates)
-      if ($d:e == 'gz') then
+   else if ($files_dates[1]:e == 'gz') then
+      # Separate decompression for each date.
+      # Compress.csh processes all files in parallel using cmdfile.
+      foreach d ($files_dates)
          set ymds = $d:r:r:e
-         ${data_CASEROOT}/compress.csh gunzip $ymds "hist" "not_used"
+         ${CASEROOT}/compress.csh gunzip $CASE $ymds $ensemble_size "hist" "not_used"
          if ($status != 0) then
-            echo "ERROR: Compression of coupler history files failed at `date`"
+            echo "ERROR: Compression of coupler history files and DART files failed at `date`"
             exit 25
          endif
-      endif
-   end
+      end
+   endif
 
    # Make a cmd file to append this month's time series to the yearly file in $project
    # Start with a template of all the instances of one file type.
@@ -251,25 +224,19 @@ if ($do_forcing == true) then
    set i = 1
    while ($i <= $ensemble_size)
       set NINST = `printf %04d $i`
-      set inst_dir = ${data_project}/cpl/hist/${NINST}
+      set inst_dir = ${project}/${CASE}/cpl/hist/${NINST}
       # "TYPE" will be replaced by `sed` commands below.
-      set yearly_file = ${data_CASE}.cpl_${NINST}.TYPE.${year}.nc
+      set yearly_file = ${CASE}.cpl_${NINST}.TYPE.${year}.nc
 
       if (-d $inst_dir) then
          cd ${inst_dir}
-
-         ls  ${data_CASE}.cpl_${NINST}.*.${year}.nc >& /dev/null
-         if ($status == 0) then
-            mv   ${data_CASE}.cpl_${NINST}.*.${year}.nc Previous || exit 28
-            # "$init" is a place holder, in the template command, for the existence
-            # of a yearly file
-            set init = ${inst_dir}/Previous/$yearly_file
-         else
-            set init = ''
-         endif
-
+         mkdir -p Previous
+         mv ${CASE}.cpl_${NINST}.*.${year}.nc Previous || exit 28
          cd ${DOUT_S_ROOT}/cpl/hist
      
+         # "$init" is a place holder, in the template command, for the existence
+         # of a yearly file
+         set init = ${inst_dir}/Previous/$yearly_file
       else
          mkdir -p $inst_dir
          set init = ''
@@ -277,7 +244,7 @@ if ($do_forcing == true) then
 
       # First try:
       # echo "ncrcat -A -o $yearly_file " \
-      #    "${data_CASE}.cpl_${NINST}.TYPE.${yr_mo}-*.nc &> TYPE_${NINST}.eo " \
+      #    "${CASE}.cpl_${NINST}.TYPE.${yr_mo}-*.nc &> TYPE_${NINST}.eo " \
       # Apparently casper's ncrcat is not described well by NCO 4.8.1 documentation.
       # 1) It treats -A as (over)writing variables into a file,
       #    rather than appending records to a file.  The latter is done by --rec_apn.
@@ -289,7 +256,7 @@ if ($do_forcing == true) then
       #    or the time monotonicity may be violated.
       #    This defeats the intent of the "append" mode, but testing confirmed it.
 
-      echo "ncrcat $init  ${DOUT_S_ROOT}/cpl/hist/${data_CASE}.cpl_${NINST}.TYPE.${yr_mo}*.nc " \
+      echo "ncrcat --rec_apn $init  ${DOUT_S_ROOT}/cpl/hist/${CASE}.cpl_${NINST}.TYPE.${yr_mo}*.nc " \
            " ${inst_dir}/$yearly_file &> TYPE_${NINST}.eo " \
            >> cmds_template
       @ i++
@@ -305,11 +272,11 @@ if ($do_forcing == true) then
    end
 
    echo "   forcing mpirun launch_cf.sh starts at "`date`
-   mpirun -n $task ${data_CASEROOT}/launch_cf.sh ./mycmdfile
+   mpirun -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
    set mpi_status = $status
    echo "   forcing mpirun launch_cf.sh ends at "`date`
 
-   ls *.eo >& /dev/null
+   ls *.eo > /dev/null
    if ($status == 0) then
       grep ncrcat *.eo >& /dev/null
       # grep failure = ncrcat success = "not 0"
@@ -355,12 +322,12 @@ if ($do_restarts == true) then
    # the directory needs to be cleaned out.
    set pre_clean = true
    # During debugging, it may be helpful to *not* clean out mv_to_campaign's directory.
-
+   # set pre_clean = false
 
    # Files_to_save keeps track of whether any restart sets have been packaged
    # for moving to campaign storage.
    set files_to_save = false
-
+   # set files_to_save = true
 
    foreach rd (`ls -d ${yr_mo}-*`)
       # Purge restart directories which don't fit in the frequency 
@@ -376,19 +343,19 @@ if ($do_restarts == true) then
       echo $rd | grep '[a-zA-Z]' 
       if ($status == 0) continue
 
-      # Ignore directories names that don't have '-'.
+      # Ignore directories named that don't have '-'.
       # This doesn't apply to the $yr_mo (mv_to_campaign.csh) directory
       # because it didn't exist when the set of $rd was defined for this loop.
       echo $rd | grep '\-'
       if ($status != 0) continue
-
+      
       echo ' '
       echo Processing $rd
 
       set rd_date_parts = `echo $rd | sed -e "s#-# #g"`
       set day_o_month = $rd_date_parts[3]
       set sec_o_day   = $rd_date_parts[4]
-      echo year = $data_year
+      echo year = $year
 
       if ($pre_clean == true) then
          set pre_clean = false
@@ -416,13 +383,11 @@ if ($do_restarts == true) then
       if ($status == 0) then
          set purge_date = ${yr_mo}-${day_o_month}
          set weekday = `date --date="$purge_date" +%A`
-         if ($weekday == $save_rest_freq && \
-             $sec_o_day == '00000') set purge = 'false'
+         if ($weekday == $save_rest_freq) set purge = 'false'
    
       # Numbers can be tested inside the 'if' statement.
       else if (`echo $save_rest_freq | grep '[0-9]'`) then
-         if ($day_o_month % $save_rest_freq == 0 && \
-             $sec_o_day == '00000') set purge = 'false'
+         if ($day_o_month % $save_rest_freq == 0 && $sec_o_day == '00000') set purge = 'false'
 
       else
          echo "ERROR: save_every_Mth_day_restart = $save_rest_freq from setup_??? is not supported.  "
@@ -431,27 +396,14 @@ if ($do_restarts == true) then
       endif
    
       if ($purge == 'true') then
-         echo "Ignoring restart directory $rd because it doesn't match "
+         echo "Removing restart directory $rd because it doesn't match "
          echo "         save_every_Mth_day_restart = $save_rest_freq and/or $sec_o_day != 00000"
-         echo "         It will be removed by purge.csh."
 
       # This prevents the most recent (uncompressed) restart set from being archived
       # But this may be prevented more reliably by the selection in foreach ( $yr_mo).
       else 
-         # YYYY-MM-01-00000 directories are archived by st_archive instead of by assimilate.csh,
-         # so they don't have CESM log files in them, which will cause the code below to crash.
-         ls ${rd}/*.log.*  >& /dev/null
-         if ($status != 0 ) then
-            echo "ERROR: $DOUT_S_ROOT/rest/${rd} has no CESM log files."
-            echo "       Import them from archive/logs, then remove the rpointer and .h0. files."
-            echo "       % ls1 to get the time stamp of the .i., grep for it in logs, "
-            echo "       % cp ../../logs/{*_0001,cesm}.log. ... "
-            echo "       Then rerun this with do_forcing turned off."
-            exit 59
-         endif
-      
          echo "Exporting restart file set ${rd} "
-         echo "   to ${data_campaign}/${data_CASE}/rest/${yr_mo} "
+         echo "   to ${campaign}/${CASE}/rest/${year} "
 
          set files_to_save = true
 
@@ -463,9 +415,9 @@ if ($do_restarts == true) then
          set i = 1
          while ($i <= $ensemble_size)
             set NINST = `printf %04d $i`
-            echo "tar -c -f ${yr_mo}/${data_CASE}.${NINST}.alltypes.${rd}.tar "                     \
-                           "${rd}/${data_CASE}.*_${NINST}.*.${rd}.* &>  tar_${NINST}_${rd}.eo "  \
-                     "&& rm ${rd}/${data_CASE}.*_${NINST}.*.${rd}.* &>> tar_${NINST}_${rd}.eo" >> mycmdfile
+            echo "tar -c -f ${yr_mo}/${CASE}.${NINST}.alltypes.${rd}.tar "                     \
+                           "${rd}/${CASE}.*_${NINST}.*.${rd}.* &>  tar_${NINST}_${rd}.eo "  \
+                     "&& rm ${rd}/${CASE}.*_${NINST}.*.${rd}.* &>> tar_${NINST}_${rd}.eo" >> mycmdfile
             @ i++
          end
          # Clean up the rest (non-instance files).
@@ -476,17 +428,17 @@ if ($do_restarts == true) then
          # to print a meaningful error message).
          # It's necessary to direct the error output from the rm to the eo file
          # so that it can be examined below and won't necessarily cause an error+exit below.
-         echo "tar -c -f ${yr_mo}/${data_CASE}.infl_log.alltypes.${rd}.tar "     \
+         echo "tar -c -f ${yr_mo}/${CASE}.infl_log.alltypes.${rd}.tar "     \
                         "${rd}/*{dart.r,log}* &>  tar_inf_log_${rd}.eo "  \
                   "&& rm ${rd}/*{dart.r,log}* &>> tar_inf_log_${rd}.eo " >> mycmdfile
       
          @ tasks = $ensemble_size + 1
          echo "Restart mpirun launch_cf.sh starts at "`date`
-         mpirun -n $tasks ${data_CASEROOT}/launch_cf.sh ./mycmdfile
+         mpirun -n $tasks ${CASEROOT}/launch_cf.sh ./mycmdfile
          set mpi_status = $status
          echo "Restart mpirun launch_cf.sh ends at "`date`" with status "$mpi_status
     
-         ls *.eo >& /dev/null
+         ls *.eo > /dev/null
          if ($status == 0) then
             grep tar *.eo | grep -v log >& /dev/null
             # grep failure = tar success = "not 0"
@@ -512,6 +464,7 @@ if ($do_restarts == true) then
       # It's OK to do this within the loop because mv_to_campaign.csh
       # uses the --sync-level argument to globus to move only the new(er) files
       # to campaign storage.
+      # 2019-4-26; Can't ever do from cheyenne batch nodes; no access to globus.
       if ($files_to_save == true) then
          # Remove the empty directory to prevent mv_to_campaign.csh from archiving it.
          rmdir $rd
@@ -523,10 +476,10 @@ if ($do_restarts == true) then
    
          # Echo the archive command to help with globus error recovery
          # and make it easier to do that on cheyenne as well as on casper.
-         echo "${data_CASEROOT}/mv_to_campaign.csh ${yr_mo} ${DOUT_S_ROOT}/rest/$yr_mo " \
-                                              " ${data_campaign}/${data_CASE}/rest"
-         ${data_CASEROOT}/mv_to_campaign.csh ${yr_mo} ${DOUT_S_ROOT}/rest/$yr_mo \
-                                        ${data_campaign}/${data_CASE}/rest
+         echo "${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${DOUT_S_ROOT}/rest/$yr_mo " \
+                                              " ${campaign}/${CASE}/rest"
+         ${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${DOUT_S_ROOT}/rest/$yr_mo \
+                                        ${campaign}/${CASE}/rest
 
          echo "WARNING: mv_to_campaign.csh ONLY SUBMITS THE REQUEST to globus"
          echo "         The directory must be manually removed after globus completes the copy."
@@ -546,16 +499,12 @@ if ($do_obs_space == true) then
    cd ${DOUT_S_ROOT}/esp/hist
    echo " "
    echo "Location for obs space is `pwd`"
-   
-   # This is single threaded and takes a long time,
-   #  so do_obs_space is usually 'false'
-   # and this tar is done in the script that also calls obs_diag: 
-   # cesm2_1/diags_rean.csh
-   tar -z -c -f ${data_CASE}.cam_obs_seq_final.${yr_mo}.tgz \
-         ${data_CASE}.dart.e.cam_obs_seq_final.${yr_mo}* &
+
+   tar -z -c -f ${CASE}.cam_obs_seq_final.${yr_mo}.tgz \
+         ${CASE}.dart.e.cam_obs_seq_final.${yr_mo}* &
 
    # Move the obs space diagnostics to $project.
-   set obs_proj_dir = ${data_project}/esp/hist/${yr_mo}
+   set obs_proj_dir = ${project}/${CASE}/esp/hist
    if (! -d $obs_proj_dir) mkdir -p $obs_proj_dir
 
    mv ${obs_space}.tgz $obs_proj_dir
@@ -568,16 +517,14 @@ if ($do_obs_space == true) then
    # Let the tar of obs_seq files finish.
    echo "Waiting for tar of obs_seq files at date - `date --rfc-3339=ns`"
    wait
-   if (  -f ${data_CASE}.cam_obs_seq_final.${yr_mo}.tgz && \
-       ! -z ${data_CASE}.cam_obs_seq_final.${yr_mo}.tgz) then
-      mv ${data_CASE}.cam_obs_seq_final.${yr_mo}.tgz     $obs_proj_dir
-      if ($status == 0) then
-         rm ${data_CASE}.dart.e.cam_obs_seq_final.${yr_mo}*
-         echo "Moved ${data_CASE}.cam_obs_seq_final.${yr_mo}.tgz "
-         echo "   to $obs_proj_dir"
-      endif
+   if (  -f ${CASE}.cam_obs_seq_final.${yr_mo}.tgz && \
+       ! -z ${CASE}.cam_obs_seq_final.${yr_mo}.tgz) then
+      mv ${CASE}.cam_obs_seq_final.${yr_mo}.tgz     $obs_proj_dir
+      rm ${CASE}.dart.e.cam_obs_seq_final.${yr_mo}*
+      echo "Moved ${CASE}.cam_obs_seq_final.${yr_mo}.tgz "
+      echo "   to $obs_proj_dir"
    else
-      echo "${data_CASE}.cam_obs_seq_final.${yr_mo}.tgz cannot be moved"
+      echo "${CASE}.cam_obs_seq_final.${yr_mo}.tgz cannot be moved"
       exit 90
    endif
 
@@ -608,40 +555,23 @@ if ($do_history == true) then
          @ m++
          continue
       endif
-      if ($models[$m] == 'cam' ) then
-         ls $components[$m]/hist/*h[^0]* >& /dev/null
-         if ($status != 0) then
-            echo "Skipping $components[$m]/hist"
-            @ m++
-            continue
-         endif
-      endif
 
       cd $components[$m]/hist
       echo " "
       echo "Location for history is `pwd`"
-
       set i = 1
-      @ comp_ens_size = ( $ensemble_size - $i ) + 1
       while ($i <= $ensemble_size)
          set NINST = `printf %04d $i`
-         set inst_dir = ${data_project}/$components[$m]/hist/${NINST}
+         set inst_dir = ${project}/${CASE}/$components[$m]/hist/${NINST}
 
          if (-d $inst_dir) then
             cd ${inst_dir}
 
-
-            # The file form is like yearly_file = ${data_CASE}.cpl_${NINST}.TYPE.${year}.nc
+            # The file form is like yearly_file = ${CASE}.cpl_${NINST}.TYPE.${year}.nc
             # in the forcing file section, but for all TYPEs and a different component.
-            ls ${data_CASE}.$models[$m]_${NINST}.*.${year}.nc >& /dev/null
-            if ($status == 0) then
-               mkdir -p Previous
-               mv ${data_CASE}.$models[$m]_${NINST}.*.${year}.nc Previous 
-            else if ($month != 1) then
-               # Exit because if $inst_dir exists there should be a yearly file in it.
-               echo "There are no ${data_CASE}.$models[$m]_${NINST}."'*'".${year}.nc files.  Exiting"
-               exit 95
-            endif
+            mkdir -p Previous
+            mv ${CASE}.$models[$m]_${NINST}.*.${year}.nc Previous || exit 95
+            # Exit because if $inst_dir exists there should be a yearly file in it.
 
             cd ${DOUT_S_ROOT}/$components[$m]/hist
          else 
@@ -655,29 +585,20 @@ if ($do_history == true) then
       # Start with a template of all the instances of one file type.
    
       # This is what's in cmds_template, which is re-used here.
-      #       set inst_dir = ${project}/${data_CASE}/cpl/hist/${NINST}
-      #       set yearly_file = ${data_CASE}.cpl_${NINST}.TYPE.${year}.nc
+      #       set inst_dir = ${project}/${CASE}/cpl/hist/${NINST}
+      #       set yearly_file = ${CASE}.cpl_${NINST}.TYPE.${year}.nc
       #       echo "ncrcat --rec_apn    $yearly_file " \
-      #            "${data_CASE}.cpl_${NINST}.TYPE.${yr_mo}-*.nc ${inst_dir}/$yearly_file &> " \
+      #            "${CASE}.cpl_${NINST}.TYPE.${yr_mo}-*.nc ${inst_dir}/$yearly_file &> " \
       #            "TYPE_${NINST}.eo " \
       set cmds_template = cmds_template_$models[$m]
-
-      ls ${DOUT_S_ROOT}/cpl/hist/cmds_template
-      if ($status != 0) then
-         echo "ERROR: ${DOUT_S_ROOT}/cpl/hist/cmds_template is missing; need it for archiving h# files."
+      if (-f ../../cpl/hist/cmds_template) then
+         sed -e "s#cpl_#$models[$m]_#g;s#cpl#$components[$m]#"  \
+             ../../cpl/hist/cmds_template >! $cmds_template
+      else
+         echo "ERROR: ../../cpl/hist/cmds_template is missing; need it for archiving h# files."
          echo "       It should have been created in section 1 of this script."
-         exit 105
-      endif
-   
-      set templ_size = `wc -l ${DOUT_S_ROOT}/cpl/hist/cmds_template`
-      if ($templ_size[1] != $comp_ens_size) then
-         echo "ERROR: Mismatch of sizes of ${DOUT_S_ROOT}/cpl/hist/cmds_template "
-         echo "       and this component's members = $comp_ens_size"
          exit 110
       endif
-
-      sed -e "s#cpl_#$models[$m]_#g;s#cpl#$components[$m]#g"  \
-          ${DOUT_S_ROOT}/cpl/hist/cmds_template >! $cmds_template
 
       # Append a copy of the template file, modified for each file type, into the command file.
       set mycmdfile = mycmdfile_$models[$m]
@@ -721,11 +642,11 @@ if ($do_history == true) then
          echo "Skipping $components[$m]/hist because $mycmdfile has size 0"
       else
          echo "   history mpirun launch_cf.sh starts at "`date`
-         mpirun -n $tasks ${data_CASEROOT}/launch_cf.sh ./${mycmdfile}
+         mpirun -n $tasks ${CASEROOT}/launch_cf.sh ./${mycmdfile}
          set mpi_status = $status
          echo "   history mpirun launch_cf.sh ends at "`date`
       
-         ls *.eo >& /dev/null
+         ls *.eo > /dev/null
          if ($status == 0) then
             grep ncrcat *.eo >& /dev/null
             # grep failure = ncrcat success = "not 0"
@@ -767,22 +688,22 @@ if ($do_state_space == true) then
    
    mkdir $yr_mo
    foreach stage ($stages_all)
-      set ext = e
-      if ($stage == output) set ext = i
-   
       # Ignoring posterior inflation for now.
       foreach stat  (mean sd priorinf_mean priorinf_sd)
+         set ext = e
+         if ($stage == output) set ext = i
+   
          echo $stat | grep inf 
          if ($status == 0) set ext = rh
          echo "stage, stat, ext = $stage $stat $ext"
    
-         if (! -f     ${yr_mo}/${data_CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar) then
-            tar -c -f ${yr_mo}/${data_CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar  \
-                               ${data_CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}-*
+         if (! -f     ${yr_mo}/${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar) then
+            tar -c -f ${yr_mo}/${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar  \
+                               ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}-*
             if ($status == 0) then
-               rm ${data_CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}-*
+               rm ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}-*
             else
-               echo "ERROR: tar -c -f ${data_CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar failed"
+               echo "ERROR: tar -c -f ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar failed"
                exit 140
             endif
          endif
@@ -791,22 +712,18 @@ if ($do_state_space == true) then
 
    # Echo the archive command to help with globus error recovery
    # and make it easier to do that on cheyenne as well as on casper.
-   echo "${data_CASEROOT}/mv_to_campaign.csh ${yr_mo} ${DOUT_S_ROOT}/esp/hist/${yr_mo} " \
-        " ${data_campaign}/${data_CASE}/esp/hist"
+   echo "${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${DOUT_S_ROOT}/esp/hist/${yr_mo} " \
+        " ${campaign}/${CASE}/esp/hist"
 
-   ${data_CASEROOT}/mv_to_campaign.csh ${yr_mo} ${DOUT_S_ROOT}/esp/hist/${yr_mo}  \
-                                  ${data_campaign}/${data_CASE}/esp/hist
+   ${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${DOUT_S_ROOT}/esp/hist/${yr_mo}  \
+                                  ${campaign}/${CASE}/esp/hist
  
-# The ensemble means are archived every 6 hours, because they're useful and small.
-# It also may be useful to have some complete ensembles of model states,
-# so those are saved less often (weekly, plus some others sneak in).
-# This section archives the ensemble.  
-# The members also have a different "file type" than the means
-# and are archived to atm/hist, instead of esp/hist
+ #    + atm/hist/*$inst.e.$stages_except_output
    cd ${DOUT_S_ROOT}/atm/hist
    
-   set files = `ls ${data_CASE}.cam_0001.e.$stages_all[1].${yr_mo}*`
-   echo "Files from which atm $stages_all[1] allinst dates will be gathered:"
+   # Archive the members, which are here and not in esp/hist (where the means are)
+   set files = `ls ${CASE}.cam_0001.e.$stages_all[1].${yr_mo}*`
+   echo "Files from which atm preassim allinst dates will be gathered:"
    echo "  $files"
    if ($#files == 0) then
       echo "There are no .e.$stages_all[1].${yr_mo} files in atm/hist.  Continuing."
@@ -829,12 +746,12 @@ if ($do_state_space == true) then
       foreach stage ($stages_all)
       if ($stage != output) then
    
-         tar -c -f ${yr_mo}/${data_CASE}.cam_allinst.e.${stage}.${date}.tar \
-                            ${data_CASE}.cam_[0-9]*.e.${stage}.${date}*
+         tar -c -f ${yr_mo}/${CASE}.cam_allinst.e.${stage}.${date}.tar \
+                            ${CASE}.cam_[0-9]*.e.${stage}.${date}*
          if ($status == 0) then
-            rm ${data_CASE}.cam_[0-9]*.e.${stage}.${date}*
+            rm ${CASE}.cam_[0-9]*.e.${stage}.${date}*
          else
-            echo "ERROR: tar -c -f ${data_CASE}.cam_allinst.e.$stage.${date}.tar failed" 
+            echo "ERROR: tar -c -f ${CASE}.cam_allinst.e.$stage.${date}.tar failed" 
             exit 150
          endif
       endif
@@ -843,11 +760,11 @@ if ($do_state_space == true) then
       
       # Echo the archive command to help with globus error recovery
       # and make it easier to do that on cheyenne as well as on casper.
-      echo "${data_CASEROOT}/mv_to_campaign.csh ${yr_mo} ${DOUT_S_ROOT}/atm/hist/$yr_mo " \
-           " ${data_campaign}/${data_CASE}/atm/hist"
+      echo "${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${DOUT_S_ROOT}/atm/hist/$yr_mo " \
+           " ${campaign}/${CASE}/atm/hist"
 
-      ${data_CASEROOT}/mv_to_campaign.csh ${yr_mo} ${DOUT_S_ROOT}/atm/hist/$yr_mo \
-                                     ${data_campaign}/${data_CASE}/atm/hist
+      ${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${DOUT_S_ROOT}/atm/hist/$yr_mo \
+                                     ${campaign}/${CASE}/atm/hist
    
    endif
 
@@ -863,11 +780,11 @@ if ($do_state_space == true) then
          gunzip $f 
          set f = $f:r
       endif
-      grep -l "valid time of model is $data_year $data_month" $f >& /dev/null
+      grep -l "valid time of model is $year $month" $f > /dev/null
       if ($status == 0) then
          set list = ($list $f)
       else
-         echo "   $f not added to list because 'valid time' $data_year $data_month  not found in it. "
+         echo "   $f not added to list because 'valid time' not found in it. "
       endif
    end
 
@@ -885,10 +802,10 @@ if ($do_state_space == true) then
       rm $list
       # Echo the archive command to help with globus error recovery
       # and make it easier to do that on cheyenne as well as on casper.
-      echo "${data_CASEROOT}/mv_to_campaign.csh ${yr_mo} ${DOUT_S_ROOT}/logs/${yr_mo} " \
-           "${data_campaign}/${data_CASE}/logs"
-      ${data_CASEROOT}/mv_to_campaign.csh ${yr_mo} ${DOUT_S_ROOT}/logs/${yr_mo} \
-         ${data_campaign}/${data_CASE}/logs
+      echo "${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${DOUT_S_ROOT}/logs/${yr_mo} " \
+           "${campaign}/${CASE}/logs"
+      ${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${DOUT_S_ROOT}/logs/${yr_mo} \
+         ${campaign}/${CASE}/logs
    else
       echo "Tar of da.logs of $yr_mo failed.  Not archiving them"
    endif
@@ -900,10 +817,4 @@ endif
 #--------------------------------------------
 
 exit 0
-#==========================================================================
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
+                                                              

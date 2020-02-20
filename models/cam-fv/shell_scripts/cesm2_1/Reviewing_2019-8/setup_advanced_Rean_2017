@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # This script can be run interactively, but on some systems (e.g. cheyenne)
 # it takes longer than is allowed for an interactive job.
 # In that case, it can be run as a batch job using the directives below,
@@ -11,20 +13,20 @@
 # The job name should be the name of this script(file), 
 # or this file may not be archived in $caseroot causing DART_config to fail.
 #--------------------------------------------
-#BSUB  -J setup_advanced_Rean
+#BSUB  -J setup_advanced_Rean_2017
 #BSUB  -n 1 
 #BSUB  -R "span[ptile=1]"
 #BSUB  -q shared_node_queue_for_this_setup_script
-#BSUB  -P NCIS0006
+#BSUB  -P your_account_there
 #BSUB  -W 2:00
-#BSUB  -u raeder@ucar.edu
+#BSUB  -u you@email.org
 #BSUB  -N  
 #BSUB  -a poe 
 #BSUB  -o Test0.bld1
 #BSUB  -e Test0.bld1
 #--------------------------------------------
-#PBS  -N setup_advanced
-#PBS  -A NCIS0006
+#PBS  -N setup_advanced_Rean_2017
+#PBS  -A P86850054
 #PBS  -q share
 #
 # Resources to specify:
@@ -37,9 +39,195 @@
 #PBS  -M raeder@ucar.edu
 # Send standard output and error to this file.
 # It's helpful to use the $casename here.
-#PBS  -o IMPI_not_MPT3.bld1
-# #PBS  -o f.e21.FHIST_BGC.f09_025.CAM6assim.011.bld1
+# #PBS  -o Test_merged1.bld1
+#PBS  -o f.e21.FHIST_BGC.f09_025.CAM6assim.004.bld1
 #PBS  -j oe 
+#--------------------------------------------
+
+#    
+# CESM2_1_80mem
+#    Continue from CAM6_80mem, 
+# x                      Make sure that inflation files are transferred.
+# x    Slightly higher obs, to level 5, 
+# x    No ramping, which appears to be redundant with choice of obs rejection height.
+#     
+# CESM2_1_Dec_spinup
+#    Merged Tim's setup_advanced as of 2019-1-14
+#    cesm2_1_relsd_m5.6: 
+#       the released CESM and the modified CIME branch which KDR developed for the reanalysis.
+# x     Confirm the CIME branch is right; cime_reanalysis_2019
+#       Confirm 
+# x        gw fix from Vitt, 
+# x        cam/cime_config/buildnml; the NTASKS -> npr_yz fix.
+# x        clm buildnml(?) addition of d.25x.25 grid option
+#              components/clm/bld/namelist_files/namelist_definition_clm4_5.xml
+# x  New SourceMods for that cesm 
+#       remove debugging versions from SourceMods 
+# x     src.drv from cesm2_1_maint-5.6 are in the cime, not needed in SourceMods.
+# x     src.lnd mods are needed; negative long wave fluxes and d.25x.25 grid.
+# x  Make sure compression is implemented.
+#    assimilate.csh; Lot's of small changes
+# x     What's up with prep for fill_inflation_restart?
+# x     Tim's renames files created by fill_inflation_restart, where my fill_ names "right".   
+# x     block numbers OK?
+# x     remove "just checking", other TJH
+#  ?    He took out module juggling around the ncgen; OK?
+#    2016-12-10-00000; 
+# x     CAM; default initial file
+# x     CLM; spun up ensemble from Tim. 
+# x     CICE; single member from a 1 day forecast.
+#    Get OK from Moha, Nancy, about input.nml
+# x     perts to make initial ensemble
+# x     distributed_state is .true.
+# x     infl_flavor = 5 and min = 0.
+# x     output_obs_members = 0
+# x     binary_obs_sequence = .true.
+# x     no ramping
+# x     use obs up to ~ level 5(?), or what Jeff recommended.
+#    Reset filter to optimized, no debugging output.  Nancy;
+# x     recam, intel compiler, -O2 optimization turned on, -assume buffered_io flag.
+# x  CLM interpolation.
+#    H6; 
+# x     binary obs_seq file, 
+# x     premium queue 
+#       Check all cpl hist files; time slots, field values, file names, ...?
+#       check compression;
+#          cpl hist files every cycle
+#          restart sets whenever they're saved.
+#       check saving of restarts; 
+#          every 3nd day during run, 
+#          purge some after job.
+#    H12;
+# >     Rebuild CAM without "seq_hist_writeaux stop_" messages.
+#       cycles?
+#       queue?
+#    st_archive
+#         check the .h[ar] files
+#         check what's left behind; add cleanup to assimilate.csh?
+#    Get NSC # proposal numbers.
+#      size of diagnostics to keep
+#         obs_seq.final; 2 Gb ascii, < 1 Gb binary
+#         *cpl_####.h[ar]*; y.y Gb * 80 = yyy Gb/set
+#         inflation restarts; 85 Mb each x 2 
+#         preassim (how many?; change in assimilate.csh); 85 Mb each x 82 (mean & sd)
+#                   None?  don't even do this stage during production?
+#         postassim?  or save those instead of all .i. files? 85 Mb each x 82 (mean & sd)
+#             All; 162 * 85 Mb = 14 Gb
+#         150 Gb/set total (max)  * #cycles
+#         Saving restarts daily and all DART diagnostics = 
+#            1.6 Tb/day = 
+#            11.2 Tb/week
+# ? > Some of the NCEP+ACARS+GPS are missing; whole months in 2017, and days in 201612_6H_CESM.
+# ? > Add in AIRS after a week of assim?
+#   >    Not created for 2016-17 yet (2018-12-8)
+#     
+#     2019-12-19-43200 
+#        I thought that the forecast died (cesm.log.3955623.chadmin1.190115-065642):
+#        4968:newchild: child "a:PIO:pio_write_darray" can't be a parent of itself
+#        but that seems to be the end of all(?) the cesm.log files.
+#        The job was still running, but I neglected to check that.
+#        I submitted an assim-only job, which started.
+#        It may have generated da.log.3957183.chadmin1.190115-072104
+#        and probably screwed up the original job. I:
+#        > removed all of the 2018-12-19-{43200,64800} results to run/../Mistaken_assim,
+#        > staged the (thankfully) existing 19-21600 files,
+#        > fixed the spurious cpl hist file print statements,
+#        > put a conditional around the run_shadow creation, which probably contributed to
+#          each cycle taking 30 seconds more than the previous throughout the job.
+#        > rebuilt CAM, and submitted the rest of the 2 week job.
+#     See timing analysis, discovery of CESM's timing script time sink in
+#        laptop:~/DAI/ATM_forcXX/CAM6_setup/resources 2019-1-31
+# 
+# State_all
+#    We need to figure out which of the # 3D variables in the CAM6 initial files is state.
+#    I put them all into the state vector in ../../work/input.nml.
+#    I used QTY_3D_PARAMETER as the QTY for each of them, since they are not observed
+#    in this experiment, but will be adjusted by the assimilation.
+#    Start from the spun-up CESM2_1_Dec_spinup.
+#    80 members; want to know which are actually correlated with the reanalysis obs.
+#    I integrated CESM2_1_Dec_spinup/assimilate.csh into ./assimilate.csh.template.
+
+# State_old
+#    Same as State_all, but remove new vars from state vector.
+
+# St_archive
+#    3 members, to test new run_shadow at end, archiving (and useful .r.->.rh. files).
+
+# St_archive2
+#    3 members, to test new archiving (with compression and saving initial files to rest).
+#    I made changes in $cesm, not SourceMods.
+#    Fix new run_shadow (.r. -> \.r.\)
+
+# State_fxd_wet-dry
+#    State_all, but with Eaton's fixes for the initial file, wet-dry bug.
+
+# Test_merged0
+#    Merged Tim's reviewed assimilate.csh, compress.csh, and DART_config.template with mine.
+#       This is a 3 member test of that, 
+#    plus
+# the final configuration we settled on for the 2017 assimilation.
+#    State = {PS,T,Q,CLDLIQ,CLDICE,US,VS}
+#    Inflation flavor 5
+#    Start from the 2017-01-01-00000 of CESM2_1_Dec_spinup
+#    Assim the usual obs (no AIRS or Q): NCEP_NCAR reanalysis + GPS.
+#    No obs above level 5, no ramping.
+# >  Sampling Error Correction  (turned off for this test)
+#    No members written to obs_seq files.
+#    No posteriors written to obs_seq files.
+#       Got changes from Nancy and built new filter.
+#       Put new variable, compute_posterior = .false., in input.nml.
+#    Initial file, wet-dry constituent fixes in Sourcemods.
+#    Compression of output
+#    CAM external (extra) forcings from CYCLICAL use of 2014 data
+#    Remove use of my mpiexec_mpt
+#       Check env_mach_specific.xml before running.
+#    Fix the sleeps in compression; use default launch?
+#    
+#    Had to turn off SEC because it can't handle 3 members; 5 is min.
+#    Had to fix assimilate.csh to look for inflation file names MY fill_inflation_restart creates.
+#    Had to fix compress.csh: ./launch_cf.sh > launch_cf.sh
+#    Resubmitted whole cycle 1. (by removing rpointer files, otherwise it fails)
+
+# Test_merged1
+#    Test_merged0 is too much of a mess to see whether the file motion is correct.
+#    Use corrected assimilate.csh in a new case.
+
+# f.e21.FHIST_BGC.f09_025.CAM6assim.001
+# >  80 members
+# >  Sampling Error Correction  
+# >  purge, archive CESM2_1_Dec_spinup to $project
+# >  Archiving to $project and/or campaign storage.
+
+# f.e21.FHIST_BGC.f09_025.CAM6assim.002.bld1
+#                                     ^
+#    f.e21.FHIST_BGC.f09_025.CAM6assim.001.bld1, but add in AIRS obs
+#    The June 2017 run of .001 used an MPT2.19 filter:
+#        -rwxr-xr-x 1 raeder p86850054 10991168 Mar 13 17:03 filter
+#        -rwxr-xr-x 1 raeder p86850054 10991168 Mar 13 17:03 
+#         /glade/scratch/raeder/f.e21.FHIST_BGC.f09_025.CAM6assim.001/bld/MPT_2.19/filter
+#    evaluate only of AIRS_TEMPERATURE, AIRS_SPECIFIC_HUMIDITY
+#    Case is built with the 'reanalysis' branch from the result of merging rma_recam with rma_trunk.
+#    >>>  A CAM forcing files has been removed:
+#    /glade/p/cesmdata/cseg/inputdata/atm/cam/chem/emis/elev/
+#     H2O_emission_CH4_oxidationx2_elev_1850-2100_CCMI_RCP8_5_c160219.nc
+#    Replace with RCP6_0?
+
+# f.e21.FHIST_BGC.f09_025.CAM6assim.003.bld1
+#                                     ^
+#    assimilate the x9x10 thinned AIRS_TEMPERATURE, AIRS_SPECIFIC_HUMIDITY
+#    These have different obs variances (low down; max(AIRS,NCEP))
+#    Same time span; first week of Jan 2017.
+# >  Use to test some changes for archiving:
+#     x Don't compress obs_seq.finals
+#     x Implement new restart saving timing mechanism in assimilate.csh.template; 
+#          'day-of-week' using `date` or 
+#          'Nth day of month' as currently.
+
+# f.e21.FHIST_BGC.f09_025.CAM6assim.004.bld1
+#                                     ^
+#    Only evaluate the AIRS_SPECIFICI_HUMIDITY.
+#    Assimilate the AIRS_T (and the standard obs).
+
 #
 # ---------------------
 # Purpose
@@ -150,13 +338,10 @@
 #
 # ==============================================================================
 
-# setenv case  f.e21.FHIST_BGC.f09_025.CAM6assim.011
-setenv case            IMPI_not_MPT3
+# The year of forcing
+setenv case            f.e21.FHIST_BGC.f09_025.CAM6assim.004
 setenv compset         HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV
-# 2019-8-6
-# Hijack this to temporarily specify impi (Intel MPI) instead of the default MPT.
 setenv user_grid       ''
-# setenv user_grid       '--mpilib impi '
 #      alias: f09_f09_mg17 (only for compsets that are not _POP and no CISM)
 setenv resolution      f09_d025
 setenv cesmtag         cesm2_1_relsd_m5.6
@@ -213,13 +398,14 @@ setenv cesmdata     /glade/p/cesm/cseg/inputdata
 setenv cesmroot     /glade/work/${USER}/Models/${cesmtag}
 setenv sourcemods   ~/${cesmtag}/SourceMods
 setenv caseroot     /glade/work/${USER}/Exp/${case}
-setenv dartroot     /glade/u/home/${USER}/DART/reanalysis_git
+setenv dartroot     /glade/u/home/${USER}/DART/reanalysis
 
 setenv cime_output  /glade/scratch/${USER}
 setenv archdir      ${cime_output}/${case}/archive
-setenv projdir      /glade/p/nsc/ncis0006/Reanalyses
-setenv campdir      /gpfs/csfs1/cisl/dares/Reanalyses
 
+# Nancy put AIRS thinned by 1/9 and 1/10 into
+# setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/thinner.YYYY...
+# I linked to something that will fit with the naming convention better:
 setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned_x9x10
 
 # ==============================================================================
@@ -238,11 +424,16 @@ setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned
 # stagedir   The directory location of the reference case files.
 # ==============================================================================
 
+setenv refcase     CESM2_1_Dec_spinup
+# setenv refcase     CESM2_1_Rean_init_ens
 # Rean_2010.1-6_sst.25: single member for starting ensemble spin-ups: 
 # setenv refcase     Rean_2010.1-6_sst.25
-setenv refcase     Rean_spinup_2010
-setenv refyear     2011
+setenv refyear     2017
+# setenv refyear     2016
 setenv refmon      01
+# setenv refmon      12
+# setenv refmon      07
+# setenv refday      10
 setenv refday      01
 setenv reftod      00000
 
@@ -250,17 +441,15 @@ setenv reftod      00000
 setenv refdate      $refyear-$refmon-$refday
 setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
-# setenv stagedir /glade/p/cisl/dares/CESM_initial_ensemble/rest/${reftimestamp}
+# setenv stagedir /gpfs/fs1/p/cisl/dares/Reanalyses/CESM2_1_Dec_spinup/archive/rest/${reftimestamp}
+setenv stagedir /glade/p/cisl/dares/Reanalyses/CESM2_1_Dec_spinup/run
 # Alternative reference case for different dates, cases, etc. may be kept in places like:
 # setenv stagedir /glade/scratch/${USER}/${refcase}/run
-setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
+# setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
 # setenv stagedir /glade/work/${USER}/Models/CAM_init/FV1deg_cesm2_1/${reftimestamp}
 # or on the HPSS:
 # /CCSM/dart/FV0.9x1.25x30_cesm1_1_1/{Mon}1         for 1-degree FV ensembles
-# Rean_2010.1-6_sst.25 files are stored in 
-# setenv stagedir /glade/work/raeder/Models/CAM_init/FV.9x1.25_cam6.0.002
-# Restart set for Rean_spinup_2010 is cobbled together in 
-# setenv stagedir /gpfs/fs1/p/nsc/ncis0006/Reanalyses/Rean_spinup_2010/archive/rest/${reftimestamp}
+# Rean_2010.1-6_sst.25 files are stored in $w/Models/CAM_init/FV.9x1.25_cam6.0.002/*
 
 # ==============================================================================
 # runtime settings: This script will find usable files for years 19mumble-2010.
@@ -276,7 +465,10 @@ setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
 # short_term_archiver  Copies the files from each job step to a 'rest' directory.
 # ==============================================================================
 
-setenv start_year    2011
+# setenv start_year    2016
+# setenv start_month   12
+# setenv start_day     10
+setenv start_year    2017
 setenv start_month   01
 setenv start_day     01
 setenv start_tod     00000
@@ -323,9 +515,9 @@ set nthreads = 1
 set user_grid = "${user_grid} --gridfile /glade/work/raeder/Models/CAM_init/SST"
 set user_grid = "${user_grid}/config_grids+fv1+2deg_oi0.25_gland20.xml"
 setenv sst_dataset \
-   "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20110101_cat_20111231_gregorian_c190703.nc"
-   # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc"
+   "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20170101_cat_20171231_gregorian_c181119.nc"
    # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20160101_cat_20161231_gregorian_c181119.nc"
+   # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc"
    # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20130101_cat_20130731_filled_c170223.nc"
 
 set list = `ncdump -h $sst_dataset | grep calendar`
@@ -348,10 +540,9 @@ setenv sst_year_end   $start_year
 # timewall   can be changed during a series by changing the case.run
 # ==============================================================================
 
-setenv PROJECT      NCIS0006
+setenv PROJECT      P86850054
 setenv queue        premium
 setenv timewall     1:00
-setenv email        raeder@ucar.edu
 
 # ==============================================================================
 # standard commands:
@@ -798,23 +989,15 @@ endif
 # Define how often sets of restart files will be archived,
 # in order to conserve disk space during a multi-cycle job.
 # It can be every Mth day of the month, or every Mth weekday (e.g. Monday (at 00Z))
-# Capitalize only the first letter of the day of the week.
 setenv save_every_Mth_day_restart Monday
 
 # Fill the DART_config script with information it needs and copy it to caseroot.
 # DART_config can be run at some later date if desired, but it must be run
 # from a caseroot directory.
-
->>> Add data for $data_scratch: ${cime_output}/${case}
-       Or get it from $EXEROOT in DART_config
->>> Add archiving locations; project and campaign
 if ( -e ${DART_CESM_scripts}/DART_config.template ) then
    sed -e "s#your_dart_path#${dartroot}#" \
        -e "s#your_setup_script_dir#$DART_CESM_scripts:t#" \
        -e "s#your_observation_path#${baseobsdir}#" \
-       -e "s#your_account#${PROJECT}#" \
-       -e "s#your_email#${email}#" \
-       -e "s#your_caseroot#${caseroot}#" \
        -e "s#days_between_archiving_restarts#${save_every_Mth_day_restart}#" \
        < ${DART_CESM_scripts}/DART_config.template \
        >! DART_config  || exit 20
@@ -826,56 +1009,6 @@ endif
 chmod 755 DART_config
 
 ./DART_config || exit 80
-
-# ==============================================================================
-# Create the parameters file which many scripts will execute to get 
-# common environment variables.
-# ==============================================================================
-cat << EndOfText >! data_scripts.csh
-
-#!/bin/csh -f
-
-# This script defines data/arguments/parameters
-# used by many non-CESM scripts in the workflow.
-
-setenv  data_NINST            $num_instances
-setenv  data_proj_space       $projdir
-setenv  data_DART_src         $dartroot
-setenv  data_CASEROOT         $caseroot
-setenv  data_CASE             $case
-setenv  data_scratch          ${cime_output}/${caseroot}
-setenv  data_campaign         $campdir
-setenv  data_CESM_python      $CIME_ROOT/scripts/lib/CIME 
-
-setenv CONTINUE_RUN `./xlmquery CONTINUE_RUN --value`
-if (\$CONTINUE_RUN == FALSE) then
-   set START_DATE = `./xlmquery RUN_START_DATE --value`
-   set parts = `echo \$START_DATE | sed -e "s#-# #"`
-   setenv data_year \$parts[1]
-   setenv data_month \$parts[2]
-
-else if (\$CONTINUE_RUN == TRUE) then
-   # Get date from an rpointer file
-   if (! -f \${data_scratch}/run/rpointer.atm_0001) then
-      echo "CONTINUE_RUN = TRUE but "
-      echo "\${data_scratch}/run/rpointer.atm_0001 is missing.  Exiting"
-      exit 19
-   endif
-   set FILE = `head -n 1 \${data_scratch}/run/rpointer.atm_0001`
-   set ATM_DATE_EXT = \$FILE:e
-   set ATM_DATE     = `echo \$ATM_DATE_EXT | sed -e "s#-# #g"`
-   setenv data_year   `echo \$ATM_DATE[1] | bc`
-   setenv data_month  `echo \$ATM_DATE[2] | bc`
-
-else
-   echo "env_run.xml: CONTINUE_RUN must be FALSE or TRUE (case sensitive)"
-   exit
-
-endif
-
-EndOfText
-chmod 0755 data_scripts.csh
-
 
 # ==============================================================================
 # Edit scripts to reflect queue and wallclock
@@ -1098,10 +1231,9 @@ while ($inst <= $num_instances)
    # For Lombardozzi
    echo "hist_fincl1 = 'TSA','CPHASE'"               >> ${fname}
    echo "hist_fincl2 = 'ER','EFLX_LH_TOT','GPP','GRAINC_TO_FOOD','GSSHALN','GSSUNLN','HR','NPP','NPP_NUPTAKE','PLANT_NDEMAND','QVEGT','TLAI' "                               >> ${fname}
-   echo "hist_nhtfrq = -$stop_n,-$stop_n"                   >> ${fname}
+   echo "hist_nhtfrq = -$stop_n,-$stop_n"            >> ${fname}
    echo "hist_mfilt  = 1,1"                          >> ${fname}
    echo "hist_avgflag_pertape = 'I','A'"             >> ${fname}
-   echo "hist_dov2xy = .true.,.false."               >> ${fname}
 
    # This was needed to allow the interpolation of the default CLM restart file.
    # It is needed in runs that start from a somewhat spun up ensemble.
@@ -1422,3 +1554,9 @@ cat CESM_instructions.txt
 cat DART_instructions.txt
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

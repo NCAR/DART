@@ -1,24 +1,10 @@
 #!/bin/tcsh
-#
+
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
-#
-#PBS  -N compress.csh
-#PBS  -A P86850054
-#PBS  -q premium
-# For restarts:
-# #PBS  -l select=9:ncpus=36:mpiprocs=36
-# For hist: 6 * 80         = 480
-# For dart: 1 + 2*(2 + 80) = 165  
-#                            645 / 36 = 18
-# For rest: 4 * 80         = 320 / 36 =  9
-#PBS  -l select=18:ncpus=36:mpiprocs=36
-#PBS  -l walltime=00:20:00
-#PBS  -o compress.out
-#PBS  -j oe 
+
+# $Id$
 
 # ------------------------------------------------------------------------------
 # Purpose:
@@ -54,41 +40,23 @@
 # 2) Before archiving a restart set to archive/rest; all large restart files.
 # ------------------------------------------------------------------------------
 
-if ($#argv == 6) then
-   # Called from assimilate.csh (or other script).
-   set comp_cmd      = $1
-   set case_name     = $2
-   set ymds          = $3
-   set ensemble_size = $4
-   set sets          = ($5)
-   set stages        = ($6)
-   set data_dir      = '.'
-
-else if ($#argv == 0) then
-   # Edit these and run as a batch job.
-   # 'sets' performs better when ordered by decreasing size (clm2 cpl cam cice hist dart)
-   set comp_cmd      = 'gunzip'
-   set CASEROOT      = /glade/work/raeder/Exp/Test4
-   set case_name     = ${CASEROOT}:t
-   set ymds          = 2010-07-17-64800
-   set ensemble_size = 80
-   set sets          = (hist dart)
-   # set sets          = (clm2 cpl cam cice)
-   set stages        = (preassim output)
-   # set data_dir      = /glade/scratch/${USER}/${case_name}/archive/rest/${ymds}
-   set data_dir      = /glade/scratch/${USER}/${case_name}/run
-
-else 
-   echo "Usage: call with exactly 6 arguments or submit as a batch job with 0 arguments:"
-   echo '   ${scr_dir}/compress.csh case_name YYYY-MM-DD-SSSS ensemble_size "sets" "stages"'
+if ($#argv != 6) then
+   echo "Usage: In the directory containing the files to be processed:"
+   echo "   call with exactly 4 arguments:"
+   echo '   ${scr_dir}/compress.csh command YYYY-MM-DD-SSSS "sets" "stages"'
    echo '   where '
    echo '   sets   = 1 or more of {clm2 cpl cam cice hist dart} to compress, separated by spaces'
    echo '   stages = 1 or more of stages {input, preassim, postassim, output} to compress.'
    echo ' -OR-'
    echo "   edit compress.csh ; qsub compress.csh"
    exit 17
-
 endif
+
+set comp_cmd      = $1
+set ymds          = $2
+set sets          = ($3)
+set stages        = ($4)
+
 
 set cmd = `echo $comp_cmd | cut -d' ' -f1`
 if ($cmd == 'gzip') then
@@ -102,14 +70,11 @@ endif
 
 echo "In compress.csh:"
 echo "   comp_cmd      = $comp_cmd"
-echo "   case_name     = $case_name"
+echo "   data_CASE     = $data_CASE"
 echo "   date          = $ymds"
-echo "   ensemble_size = $ensemble_size"
+echo "   Ensemble_size = $data_NINST"
 echo "   sets          = $sets"
 echo "   stages        = $stages"
-echo "   data dir      = $data_dir"
-
-cd $data_dir
 
 # ------------------------------------------------------------------------------
 # Fail if there are leftover error logs from previous compression.csh executions.
@@ -144,9 +109,9 @@ switch ($comp)
    # FIXME ... the coupler files may or may not have an instance number in them.
    case {clm2,cpl,cam,cice}:
       set i=1
-      while ( $i <= $ensemble_size)
+      while ( $i <= $data_NINST)
          # E.g. CAM6_80mem.cice_0001.r.2010-07-15-00000.nc
-         set file_name = `printf "%s.%s_%04d.r.%s.nc%s" $case_name $comp $i $ymds $ext`
+         set file_name = `printf "%s.%s_%04d.r.%s.nc%s" $data_CASE $comp $i $ymds $ext`
          # echo "   $file_name"
    
          # If the expected file exists, add the compression command 
@@ -173,9 +138,9 @@ switch ($comp)
       foreach type ( ha2x1d hr2x ha2x3h ha2x1h ha2x1hi )
          # Loop over instance number
          set i=1
-         while ( $i <= $ensemble_size)
+         while ( $i <= $data_NINST)
             # E.g. CAM6_80mem.cpl_0001.ha.2010-07-15-00000.nc
-            set file_name = `printf "%s.cpl_%04d.%s.%s.nc%s" $case_name $i $type $ymds $ext`
+            set file_name = `printf "%s.cpl_%04d.%s.%s.nc%s" $data_CASE $i $type $ymds $ext`
       
             if (-f $file_name) then
                @ task++
@@ -198,7 +163,7 @@ switch ($comp)
 
       # obs_seq.final (no inst)   70% of 1 Gb (ascii) in 35 sec
       # E.g. CAM6_80mem.dart.e.cam_obs_seq_final.2010-07-15-00000
-      set file_name = ${case_name}.dart.e.cam_obs_seq_final.${ymds}${ext}
+      set file_name = ${data_CASE}.dart.e.cam_obs_seq_final.${ymds}${ext}
       if (-f $file_name) then
          @ task++
          echo "$comp_cmd $file_name &> compress_${task}.eo" >> mycmdfile
@@ -208,7 +173,7 @@ switch ($comp)
          foreach stat ( 'mean' 'sd' )
             # E.g. CAM6_80mem.e.cam_output_mean.2010-07-15-00000.nc
             # E.g. CAM6_80mem.e.cam_output_sd.2010-07-15-00000.nc
-            set file_name = ${case_name}.dart.e.cam_${stage}_${stat}.${ymds}.nc${ext}
+            set file_name = ${data_CASE}.dart.e.cam_${stage}_${stat}.${ymds}.nc${ext}
             if (-f $file_name) then
                @ task++
                echo "$comp_cmd $file_name &> compress_${task}.eo" >> mycmdfile
@@ -217,9 +182,9 @@ switch ($comp)
 
          # Loop over instance number
          set i=1
-         while ( $i <= $ensemble_size)
+         while ( $i <= $data_NINST)
             # E.g. CAM6_80mem.cam_0001.e.preassim.2010-07-15-00000.nc
-            set file_name = `printf "%s.cam_%04d.e.%s.%s.nc%s" $case_name $i $stage $ymds $ext`
+            set file_name = `printf "%s.cam_%04d.e.%s.%s.nc%s" $data_CASE $i $stage $ymds $ext`
             if (-f $file_name) then
                @ task++
                echo "$comp_cmd $file_name &> compress_${task}.eo" >> mycmdfile
@@ -245,11 +210,12 @@ $date
 if ($task > 0) then
    if ($?PBS_O_WORKDIR) then
       mpiexec_mpt -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+      set mpi_status = $status
    else if ($?SLURM_SUBMIT_DIR) then
       mpirun      -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+      set mpi_status = $status
    endif
 
-   set mpi_status = $status
    echo "mpi_status = $mpi_status"
 else
    echo "No compression to do"
@@ -281,6 +247,7 @@ exit 0
 
 # <next few lines under version control, do not edit>
 # $URL$
+# $Id$
 # $Revision$
 # $Date$
 
