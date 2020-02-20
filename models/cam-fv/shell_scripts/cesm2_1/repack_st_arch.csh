@@ -143,20 +143,7 @@ else if ($do_history == 'true') then
 endif
 
 #--------------------------------------------
-if ($#argv == 0) then
-   # User submitted, independent batch job (not run by another batch job).
-   # CASE could be replaced by setup_*, as is done for DART_config.
-   # "project" will be created as needed (assuming user has permission to write there).
-   # set project    = /glade/p/cisl/dares/Reanalyses/CAM6_2017
-# > > > WARNING: if the first day of the month is a Monday,
-#       I need to add *_0001.log* files from $archive/logs to rest/YYYY-MM-01-00000
-#       and remove the rpointer and .h0. files.
-   set yr_mo = `printf %4d-%02d ${data_year} ${data_month}`
-   set obs_space  = Diags_NTrS_${yr_mo}
-
-   env | sort | grep SLURM
-
-else if ($#argv == 1) then
+if ($#argv != 0) then
    # Request for help; any argument will do.
    echo "Usage:  "
    echo "Before running this script"
@@ -173,19 +160,17 @@ else if ($#argv == 1) then
    echo "                       'this' = {forcing,restarts,obs_space,state_space}."
    echo "                       No quotes, no spaces."
    exit
-
-else
-   # Script run by another (batch) script or interactively.
-   set project  = $1
-   set campaign = $2
-   set yr_mo    = $3
-   set obs_space  = Diags_NTrS_${yr_mo}
-   # These arguments to turn off parts of the archiving must have the form do_obs_space=false ;
-   # no quotes, no spaces.
-   if ($?4) set $4
-   if ($?5) set $5
-   if ($?6) set $6
 endif
+
+# User submitted, independent batch job (not run by another batch job).
+# "data_proj_space" will be created as needed (assuming user has permission to write there).
+# > > > WARNING: if the first day of the month is a Monday,
+#       I need to add *_0001.log* files from $archive/logs to rest/YYYY-MM-01-00000
+#       and remove the rpointer and .h0. files.
+   set yr_mo = `printf %4d-%02d ${data_year} ${data_month}`
+   set obs_space  = Diags_NTrS_${yr_mo}
+
+   env | sort | grep SLURM
 
 cd $DOUT_S_ROOT
 pwd
@@ -251,7 +236,7 @@ if ($do_forcing == true) then
    foreach d ($files_dates)
       if ($d:e == 'gz') then
          set ymds = $d:r:r:e
-         ${data_CASEROOT}/compress.csh gunzip $CASE $ymds $ensemble_size "hist" "not_used"
+         ${data_CASEROOT}/compress.csh gunzip $ymds "hist" "not_used"
          if ($status != 0) then
             echo "ERROR: Compression of coupler history files failed at `date`"
             exit 25

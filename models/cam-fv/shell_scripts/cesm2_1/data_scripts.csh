@@ -1,6 +1,6 @@
 #! /bin/tcsh
 
-# This script should be created by DART_config,
+# This script should be created by setup_advanced,
 # probably as a 'here' document.
 # It will be run by each script that needs any of this data.
 # !  Be careful about where it is run; don't let it overwrite arguments

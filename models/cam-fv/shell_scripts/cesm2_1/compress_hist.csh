@@ -1,5 +1,5 @@
 #!/bin/tcsh
-#
+
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
@@ -10,62 +10,27 @@
 # one type (h0,...) at a time, which limits the PEs needed
 # to the size of the ensemble.
 
-#-----------------------------------------
-#SBATCH --job-name=compress_hist
-#SBATCH -o %x_%j.eo 
-#SBATCH -e %x_%j.eo 
-# 80 members
-# Each type is done as a separate cmdfile
-#SBATCH --ntasks=80 
-#SBATCH --time=01:00:00
-#SBATCH --mail-type=END
-#SBATCH --mail-type=FAIL
-#SBATCH --mail-user=raeder@ucar.edu
-# #SBATCH --account=NCIS0006
-# #SBATCH --account=P86850054
-#SBATCH --account=R9505652
-#SBATCH --partition=dav
-#SBATCH --ignore-pbs
-# 
-#-----------------------------------------
-#PBS  -N compress_hist.csh
-#PBS  -A P86850054
-#PBS  -q regular
-# #PBS  -q share
-#PBS  -l select=5:ncpus=36:mpiprocs=36
-# #PBS  -l select=1:ncpus=1:mpiprocs=1
-#PBS  -l walltime=00:10:00
-#PBS  -o compress_hist.out
-#PBS  -j oe 
-
 # ------------------------------------------------------------------------------
-   # Edit these and run as a batch job.
-   # 'sets' performs better when ordered by decreasing size (clm2 cpl cam cice hist dart)
-   # but this can handle only 1 entry in $sets.
-   # -k means keep the input files after creation of the output file.
-   # set comp_cmd      = 'gzip -k'
-   # No -k option on casper.
-   set comp_cmd      = 'gzip'
-   set case_name     = f.e21.FHIST_BGC.f09_025.CAM6assim.011
-   set CASEROOT      = /glade/work/raeder/Exp/$case_name
-   # set ymds          = 2010-07-17-64800
-   set ymds          = 2012
-   set ensemble_size = 80
 
-   # set data_dir      = ${pr}/${case_name}/cpl/hist
-   # set sets          = (cpl)
-   # set types         = ( ha2x1d hr2x ha2x3h ha2x1h ha2x1hi )
+if ($#argv != 5) then
+   echo "Usage: In the directory containing the files to be processed:"
+   echo "   call with exactly 5 arguments or submit as a batch job with 0 arguments:"
+   echo '   ${scr_dir}/compress_hist.csh command YYYY-MM-DD-SSSS "sets" "types" "stages"'
+   echo '   where '
+   echo '   sets   = 1 or more of {clm2 cpl cam cice hist dart} to compress, separated by spaces'
+   echo '   types  = 1 or more CESM+DART "file types" (h0, hr2x,...) to compress'
+   echo '   stages = 1 or more of stages {input, forecast, postassim, output} to compress.'
+   echo ' -OR-'
+   exit 17
+endif
 
-   # set data_dir      = ${pr}/${case_name}/lnd/hist
-   # set data_dir      = /gpfs/csfs1/cisl/dares/Reanalyses/2012_2011SST/lnd/hist
-   set data_dir      = /glade/p/nsc/ncis0006/Reanalyses/${case_name}/rof/hist
-   set sets          = (mosart)
-   set types         = ( h0 )
+# Environment variables ($data_*) from the calling scxirpt should be available here.
 
-   # set data_dir      = /glade/scratch/${USER}/${case_name}/run
-   # set sets          = (hist dart)
-   # set sets          = (clm2 cpl cam cice)
-   set stages        = (none)
+set comp_cmd      = $1
+set ymds          = $2
+set sets          = ($3)
+set types         = ($4)
+set stages        = ($5)
 
 set cmd = `echo $comp_cmd | cut -d' ' -f1`
 if ($cmd == 'gzip') then
@@ -79,14 +44,12 @@ endif
 
 echo "In compress.csh:"
 echo "   comp_cmd      = $comp_cmd"
-echo "   case_name     = $case_name"
+echo "   data_CASE     = $data_CASE"
 echo "   date          = $ymds"
-echo "   ensemble_size = $ensemble_size"
+echo "   data_NINST    = $data_NINST"
 echo "   sets          = $sets"
 echo "   stages        = $stages"
-echo "   data dir      = $data_dir"
-
-cd $data_dir
+# echo "   data dir      = $data_dir"
 
 # ------------------------------------------------------------------------------
 # Fail if there are leftover error logs from previous compression.csh executions.
@@ -122,10 +85,10 @@ foreach type ( $types )
    switch ($comp)
       case {clm2,cpl,cam,cice,mosart}:
          set i=1
-         while ( $i <= $ensemble_size)
+         while ( $i <= $data_NINST)
             # E.g. CAM6_80mem.cice_0001.r.2010-07-15-00000.nc
             set file_name = \
-                `printf "%04d/%s.%s_%04d.%s.%s.nc%s" $i $case_name $comp $i ${type} $ymds $ext`
+                `printf "%04d/%s.%s_%04d.%s.%s.nc%s" $i $data_CASE $comp $i ${type} $ymds $ext`
             # If the expected file exists, add the compression command 
             if (-f $file_name) then
                @ task++
@@ -158,10 +121,10 @@ foreach type ( $types )
    
    if ($task > 0) then
       if ($?PBS_O_WORKDIR) then
-         mpiexec_mpt -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+         mpiexec_mpt -n $task ${data_CASEROOT}/launch_cf.sh ./mycmdfile
          set mpi_status = $status
       else if ($?SLURM_SUBMIT_DIR) then
-         mpirun      -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+         mpirun      -n $task ${data_CASEROOT}/launch_cf.sh ./mycmdfile
          set mpi_status = $status
       endif
    

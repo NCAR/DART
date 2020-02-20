@@ -213,10 +213,12 @@ setenv cesmdata     /glade/p/cesm/cseg/inputdata
 setenv cesmroot     /glade/work/${USER}/Models/${cesmtag}
 setenv sourcemods   ~/${cesmtag}/SourceMods
 setenv caseroot     /glade/work/${USER}/Exp/${case}
-setenv dartroot     /glade/u/home/${USER}/DART/reanalysis
+setenv dartroot     /glade/u/home/${USER}/DART/reanalysis_git
 
 setenv cime_output  /glade/scratch/${USER}
 setenv archdir      ${cime_output}/${case}/archive
+setenv projdir      /glade/p/nsc/ncis0006/Reanalyses
+setenv campdir      /gpfs/csfs1/cisl/dares/Reanalyses
 
 setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned_x9x10
 
@@ -349,6 +351,7 @@ setenv sst_year_end   $start_year
 setenv PROJECT      NCIS0006
 setenv queue        premium
 setenv timewall     1:00
+setenv email        raeder@ucar.edu
 
 # ==============================================================================
 # standard commands:
@@ -809,6 +812,9 @@ if ( -e ${DART_CESM_scripts}/DART_config.template ) then
    sed -e "s#your_dart_path#${dartroot}#" \
        -e "s#your_setup_script_dir#$DART_CESM_scripts:t#" \
        -e "s#your_observation_path#${baseobsdir}#" \
+       -e "s#your_account#${PROJECT}#" \
+       -e "s#your_email#${email}#" \
+       -e "s#your_caseroot#${caseroot}#" \
        -e "s#days_between_archiving_restarts#${save_every_Mth_day_restart}#" \
        < ${DART_CESM_scripts}/DART_config.template \
        >! DART_config  || exit 20
@@ -820,6 +826,56 @@ endif
 chmod 755 DART_config
 
 ./DART_config || exit 80
+
+# ==============================================================================
+# Create the parameters file which many scripts will execute to get 
+# common environment variables.
+# ==============================================================================
+cat << EndOfText >! data_scripts.csh
+
+#!/bin/csh -f
+
+# This script defines data/arguments/parameters
+# used by many non-CESM scripts in the workflow.
+
+setenv  data_NINST            $num_instances
+setenv  data_proj_space       $projdir
+setenv  data_DART_src         $dartroot
+setenv  data_CASEROOT         $caseroot
+setenv  data_CASE             $case
+setenv  data_scratch          ${cime_output}/${caseroot}
+setenv  data_campaign         $campdir
+setenv  data_CESM_python      $CIME_ROOT/scripts/lib/CIME 
+
+setenv CONTINUE_RUN `./xlmquery CONTINUE_RUN --value`
+if (\$CONTINUE_RUN == FALSE) then
+   set START_DATE = `./xlmquery RUN_START_DATE --value`
+   set parts = `echo \$START_DATE | sed -e "s#-# #"`
+   setenv data_year \$parts[1]
+   setenv data_month \$parts[2]
+
+else if (\$CONTINUE_RUN == TRUE) then
+   # Get date from an rpointer file
+   if (! -f \${data_scratch}/run/rpointer.atm_0001) then
+      echo "CONTINUE_RUN = TRUE but "
+      echo "\${data_scratch}/run/rpointer.atm_0001 is missing.  Exiting"
+      exit 19
+   endif
+   set FILE = `head -n 1 \${data_scratch}/run/rpointer.atm_0001`
+   set ATM_DATE_EXT = \$FILE:e
+   set ATM_DATE     = `echo \$ATM_DATE_EXT | sed -e "s#-# #g"`
+   setenv data_year   `echo \$ATM_DATE[1] | bc`
+   setenv data_month  `echo \$ATM_DATE[2] | bc`
+
+else
+   echo "env_run.xml: CONTINUE_RUN must be FALSE or TRUE (case sensitive)"
+   exit
+
+endif
+
+EndOfText
+chmod 0755 data_scripts.csh
+
 
 # ==============================================================================
 # Edit scripts to reflect queue and wallclock

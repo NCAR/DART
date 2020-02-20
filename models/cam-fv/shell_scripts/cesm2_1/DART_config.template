@@ -190,19 +190,25 @@ chmod 755 assimilate.csh
 chmod 755 no_assimilate.csh
 # chmod 755 perfect_model.csh
 
-foreach script (compress.csh \
-                compress_hist.csh \
-                diags_rean.csh \
-                launch_cf.sh \
-                mv_to_campaign.csh \
-                matlab_norm.csh \
-                pre_purge_check.csh \
-                pre_submit.csh
-                purge.csh \
-                repack_project.csh \
-                repack_st_arch.csh )
+foreach script (compress.csh           \
+                compress_hist.csh      \
+                diags_rean.csh         \
+                launch_cf.sh           \
+                mv_to_campaign.csh     \
+                matlab_norm.csh        \
+                pre_purge_check.csh    \
+                pre_submit.csh         \
+                purge.csh              \
+                repack_project.csh     \
+                repack_st_arch.csh     \
+                submit_compress.csh    \
+                submit_compress_hist.csh)
    if (-f ${DART_SCRIPTS_DIR}/${script}) then
-      $COPY -f ${VERBOSE} ${DART_SCRIPTS_DIR}/${script} . || exit 43
+      # $COPY -f ${VERBOSE} ${DART_SCRIPTS_DIR}/${script} . || exit 43
+      sed -e  "s#YOUR_ACCOUNT#your_account#" \
+          -e  "s#YOUR_EMAIL#your_email#" \
+          -e  "s#YOUR_CASEROOT#your_caseroot#" \
+          ${DART_SCRIPTS_DIR}/${script}  > your_caseroot/${script}
    else
       echo "ERROR: no ${script} in  ${DART_SCRIPTS_DIR}"
       exit 45

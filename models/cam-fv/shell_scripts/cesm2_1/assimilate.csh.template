@@ -444,7 +444,7 @@ if ($#log_list >= 3) then
       # List the large files first (more efficient and reliable).
       # There is another call farther down to compress the DART files every cycle.
       echo "compress.csh started at `date`"
-      ${CASEROOT}/compress.csh gzip $CASE ${rm_date} $ensemble_size "clm2 cpl cam cice" "$stages_all"
+      ${CASEROOT}/compress.csh gzip ${rm_date} "clm2 cpl cam cice" "$stages_all"
       if ($status != 0) then
          echo "compress.csh failed at `date`"
          exit 55
@@ -1065,10 +1065,8 @@ endif
 # Compress the large coupler history files and DART files.
 # ==============================================================================
 
-# echo "STARTING: compressing coupler history files and DART files at `date`"
-# ${CASEROOT}/compress.csh gzip $CASE $ATM_DATE_EXT $ensemble_size "hist dart" "$stages_all"
 echo "STARTING: compressing coupler history files at `date`"
-${CASEROOT}/compress.csh gzip $CASE $ATM_DATE_EXT $ensemble_size "hist" "$stages_all"
+${CASEROOT}/compress.csh gzip $ATM_DATE_EXT "hist" "$stages_all"
 
 if ($status != 0) then
    echo "ERROR: Compression of coupler history files and DART files failed at `date`"
