@@ -1,0 +1,157 @@
+See 2018-11-15, below, for most recent way to make SST files.
+----------------------------
+
+The 1/4 degree Reynolds SSTs are available in
+/home/tomas/ds277.7/avhrr/avhrr-only-v2.20050101_cat_20051231_filled_c130829.nc
+This data set runs through 2013-7 so far, but the raw data are available from
+monthly updates.
+
+It looks like it's ready to be used by CAM, 
+except that the files I've used are monthly (CAM interpolates to daily)
+while these are daily.
+>  What do I need to change in CAM to use these?
+
+I may be able to make more recent dates using 
+/glade/u/home/tomas/frank/high_res_data/forcing_summer_13/make_sst_ice_forcing.ncl
+(see local copy) which was used to make
+avhrr-only-v2.20050101_cat_20051231_filled_c130829.nc
+And a script which fills in the land areas using a Poisson scheme.  
+This solves problems created when there are grid boxes where CAM 
+expects to find an SST value but there isn't one in the Reynold's SST (there is land).
+./fill_sst_forcing.ncl
+See 2018-11-15, below, for my attempt to do this.
+
+I need a domain.ocn file.  The make_sst_ice_forcing.ncl lists
+/glade/home/tomas/cesm/cesm1_1_beta15/mapping/gen_atm_ocn_maps/domain.ocn.0.25.120821.nc
+but I can't find that file in the more modern location:
+/glade/u/home/tomas/...anywhere
+Nor on the HPSS.
+Ha! I did find an archive of Bob Tomas' home directory:
+/home/tomas/home_bf_31jan13.tar
+which I could download.  The file seems to be in there!
+
+Is this in a form CAM can use?
+
+See also email from Robert Tomas 2015-7-17.
+
+---------------------------
+2015-7-31
+Starting to define a new compset (2016-2-29; actually a 'resolution').
+   x Get new CAM tag (and CESM host?) from Eaton
+   x Read Bob's /glade/u/home/tomas/cesm1_cases_doc/f.e11.b16.F2000C5.ne120_025_bob_011bf.txt
+     Instructions in http://www.cesm.ucar.edu/models/cesm1.3/cesm/doc/usersguide/x2417.html
+        SCRIP files:
+           See /glade/p/cesmdata/cseg/mapping/makemaps/0.25x0.25_fv0.47x0.63_100723
+        ?  /glade/p/cesmdata/cseg/mapping/grids/0.25x0.25_100723.nc
+        ?  ..................................../fv0.9x1.25_141008.nc
+        Tomas used in $p/Models/CAM_init/SST/gen_atm_ocn_maps/regridbatch.bluefire.sh
+        CESM1.2 web says build the check_map.sh utility
+> cd $p/Models/cesm1_4_beta06/cime/tools/mapping/check_maps
+Follow instructions in README
+Those files don't work in check_maps.
+Because they're grid files?  SCRIP files?  both?
+Ah, maybe I was supposed to just build it, not run it yet.
+
+Move on to Step 3 of instructions:
+> $CCSMROOT/tools/mapping/gen_mapping_files/gen_cesm_maps.sh
+  should generate mapping files.
+  But it needs the SCRIP files I was supposed to find in 1.
+  The example scripts:
+      regridbatch.yellowstone.sh   
+         griddir1="/glade/scratch/mlevy/grids"
+         fileocn="${griddir1}/tx0.1v2_090127.nc"
+         cmdargs="--fileocn $fileocn ...
+         env REGRID_PROC=$REGRID_PROC ./gen_cesm_maps.sh $cmdargs
+      
+      But /glade/scratch/mlevy/grids/tx0.1v2_090127.nc    doesn't exist anymore.
+      But but look in /glade/p/cesmdata/cseg/mapping/makemaps/0.25x0.25_fv0.47x0.63_100723
+         scrip_makemaps.csh refers to the outdated
+            /fis/cgd/cseg/csm/mapping/grids
+         The modern location is (?)
+            /glade/p/cesmdata/cseg/mapping/grids
+         In there I see  (the same files I tried in check_maps, above)
+            0.25x0.25_100723.nc
+            fv0.9x1.25_141008.nc
+         This uses ESMF offline weight generation utility, which I need to build(?).
+         No
+         $ module load esmf
+         $ module load esmf-6.3.0r-ncdfio-uni-O
+         $ which ESMF_RegridWeightGen
+           /glade/apps/opt/esmf/6.3.0r-ncdfio/intel/12.1.5/bin/binO/Linux.intel.64.mpiuni.default/ESMF_RegridWeightGen
+     
+      So, modify regridbatch.yellowstone.sh to use the grid files:
+        griddir1="/glade/p/cesmdata/cseg/mapping/grids"
+        fileocn="${griddir1}/0.25x0.25_100723.nc"
+        fileatm="${griddir1}/fv0.9x1.25_141008.nc"
+      I submitted regrid... in 
+         /glade/p/work/raeder/Models/cesm1_4_beta06/cime/tools/mapping/gen_mapping_files
+
+4. Generate atmosphere, land and ocean / ice domain files.
+   The instructions in 
+      /glade/p/work/raeder/Models/cesm1_4_beta06/cime/tools/mapping/gen_domain_files/INSTALL
+   needed to have -cimeroot $CIMEROOT appended to the configure command
+   After building gen_domain, I ran
+   $ gen_domain -m ../gen_mapping_files/map_0.25x0.25_TO_fv0.9x1.25_aave.150824.nc \
+                -o 0.25x0.25 \
+                -l fv0.9x1.25 \
+                -c "domain file for a 1/4-degree ocean + 1-degree FV atmosphere for ATM_forc_XXX assimilations"
+     write domain.lnd.fv0.9x1.25_0.25x0.25.150824.nc
+     successfully created domain file domain.lnd.fv0.9x1.25_0.25x0.25.150824.nc
+     write domain.ocn.fv0.9x1.25_0.25x0.25.150824.nc
+     successfully created domain file domain.ocn.fv0.9x1.25_0.25x0.25.150824.nc
+
+7.  Manually created 
+    /glade/p/work/raeder/Models/cesm1_4_beta06/cime/tools/mapping/gen_domain_files/ATM_forc_XXX.xml
+    I removed all the GLOB lines because each of these component grids already exists in CESM.
+
+8.  Need to append mapping file path names to the end of user_nl_cpl during the setup:
+       setenv MAPPING_FILE_LOC = /glade/p/work/raeder/Models/cesm1_4_beta06/cime/tools/mapping/gen_mapping_files
+       atm2ocnFmapname='$MAPPING_FILE_LOC/map_fv0.9x1.25_TO_0.25x0.25_aave.150824.nc'
+       atm2ocnSmapname='$MAPPING_FILE_LOC/map_fv0.9x1.25_TO_0.25x0.25_blin.150824.nc'
+       atm2ocnVmapname='$MAPPING_FILE_LOC/map_fv0.9x1.25_TO_0.25x0.25_patc.150824.nc'
+       ocn2atmFmapname='$MAPPING_FILE_LOC/map_0.25x0.25_TO_fv0.9x1.25_aave.150824.nc'
+       ocn2atmSmapname='$MAPPING_FILE_LOC/map_0.25x0.25_TO_fv0.9x1.25_aave.150824.nc'
+       lnd2rofFmapname='$MAPPING_FILE_LOC/not_created_for_data_ocean_runs'
+       rof2lndFmapname='$MAPPING_FILE_LOC/not_created_for_data_ocean_runs'
+    This is installed in $trunk_cam/shell_scripts/CESM1_4_b6_setup_advanced.
+
+===================================================
+2018-11-15
+
+It's hard to parse how files like 
+avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc
+were created from a series of files like
+/gpfs/fs1/collections/rda/data/ds277.7/avhrr/2010/avhrr-only-v2.20100101.nc.
+>>> See Make_yearly_from_daily/avhrr_sst_to_cesm.csh
+    to see how to do it. <<<
+
+Tracing backwards
+> ncdump -h avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc
+  ...
+  :creation_script = "/glade/u/home/tomas/frank/high_res_data/forcing_summer_13/make_sst_ice_forcing.ncl" ;
+  :author = "Bob Tomas" ;
+  :creation_date = "Thu Aug 29 10:54:29 MDT 2013" ;
+  :input_files = "/glade/scratch/tomas/ds277.7/avhrr/avhrr-only-v2.20100101_cat_20101231.nc    
+  [Note that this has no _filled or _forcing in the name.
+   Current versions of make_sst_ice_forcing.ncl put _forcing in the name
+                  /glade/scratch/tomas/ds277.7/avhrr/domain.ocn.0.25.120821.nc" ;
+  :history = "Wed Aug 15 13:58:14 2018: 
+             ncatted -a calendar,time,c,c,gregorian avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc" ;
+  [This just added the gregorian attribute to variable 'time',
+   which I'd like to do as part of the file creation instead.]
+
+
+>> make_sst_ice_forcing.ncl 
+   <    avhrr-only-v2.20100101_cat_20101231.nc 
+   >(?) avhrr-only-v2.20100101_cat_20101231_forcing.nc
+>> fill_sst_forcing.ncl  (according to the code.  Did not add its steps to the history)
+   <    avhrr-only-v2.20100101_cat_20101231_forcing.nc
+   >    avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc
+
+===================================================
+2020-01-27
+I replaced all of the avhrr-only-v2.201[1-7]_filled_c*.nc
+with files that don't have the days from the bracketing years.
+So now each file has just the days from the year in the file name.
+Temporarily, the files with the bracketing days are in 
+$fname:r_temp.nc
