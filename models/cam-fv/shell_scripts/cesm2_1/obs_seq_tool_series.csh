@@ -12,6 +12,8 @@
 # 3) edit this script as needed.
 #
 
+
+# should this script reference data_scripts.csh for these values?
 if ($#argv == 0) then
    set case_base = f.e21.FHIST_BGC.f09_025.CAM6assim
    set case = 004

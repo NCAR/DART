@@ -24,7 +24,9 @@ if ($#argv != 5) then
    exit 17
 endif
 
-# Environment variables ($data_*) from the calling scxirpt should be available here.
+# Environment variables ($data_*) from the calling script should be available here.
+# Just to be safe in the stand-alone case, source data_scripts again here.
+source ./data_scripts.csh
 
 set comp_cmd      = $1
 set ymds          = $2

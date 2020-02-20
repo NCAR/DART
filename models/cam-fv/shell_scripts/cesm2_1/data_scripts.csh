@@ -7,7 +7,7 @@
 #    which are passed in.
 
 
-The values here will be provided by setup_advanced and xmlquery.
+# The values here will be provided by setup_advanced and xmlquery.
 setenv data_CASEROOT     ${CASEROOT}
 setenv data_CASE         ${CASEROOT}:t
 setenv data_DART_src     ~/DART/reanalysis_git
@@ -18,12 +18,10 @@ setenv data_campaign     /gpfs/csfs1/cisl/dares/Reanalyses
 setenv data_NINST        ${NINST}
 
 
-Do we need or want all 4 date parts in here?
-   As a single string or 4 parts?
-   I think just the year and month, which are used in directory names
-     and a few other ways (obs_diag).
-   More specific dates will be provided as arguments to the scripts.
-! Carefully escape the special characters.
+#   Just need the year and month, which are used in directory names
+#     and a few other ways (obs_diag).
+#   More specific dates will be provided as arguments to the scripts.
+#! Carefully escape the special characters.
 
 set CONTINUE_RUN = `./xlmquery CONTINUE_RUN --value`
 if ($CONTINUE_RUN == FALSE) then

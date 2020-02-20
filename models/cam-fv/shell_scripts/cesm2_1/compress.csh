@@ -57,6 +57,7 @@ set ymds          = $2
 set sets          = ($3)
 set stages        = ($4)
 
+source ./data_scripts.csh
 
 set cmd = `echo $comp_cmd | cut -d' ' -f1`
 if ($cmd == 'gzip') then

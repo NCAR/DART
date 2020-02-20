@@ -46,7 +46,8 @@ else
 #    endif
 endif
 
-source YOUR_CASEROOT/data_scripts.csh
+# will this script be run in the correct location?
+source ./data_scripts.csh
 
 # Use big endian obs_diag for output from IBM
 # set endian = '_big_endian'
