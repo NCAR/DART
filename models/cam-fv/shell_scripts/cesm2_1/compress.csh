@@ -40,7 +40,7 @@
 # 2) Before archiving a restart set to archive/rest; all large restart files.
 # ------------------------------------------------------------------------------
 
-if ($#argv != 6) then
+if ($#argv != 4) then
    echo "Usage: In the directory containing the files to be processed:"
    echo "   call with exactly 4 arguments:"
    echo '   ${scr_dir}/compress.csh command YYYY-MM-DD-SSSS "sets" "stages"'
@@ -52,12 +52,12 @@ if ($#argv != 6) then
    exit 17
 endif
 
+# Environment variables ($data_*) from the calling script should be available here.
+
 set comp_cmd      = $1
 set ymds          = $2
 set sets          = ($3)
 set stages        = ($4)
-
-source ./data_scripts.csh
 
 set cmd = `echo $comp_cmd | cut -d' ' -f1`
 if ($cmd == 'gzip') then
@@ -70,12 +70,12 @@ else
 endif
 
 echo "In compress.csh:"
-echo "   comp_cmd      = $comp_cmd"
+echo "   (arg1) comp_cmd   = $comp_cmd"
+echo "   (arg2) date       = $ymds"
+echo "   (arg3) sets       = $sets"
+echo "   (arg4) stages     = $stages"
 echo "   data_CASE     = $data_CASE"
-echo "   date          = $ymds"
-echo "   Ensemble_size = $data_NINST"
-echo "   sets          = $sets"
-echo "   stages        = $stages"
+echo "   ensemble_size = $data_NINST"
 
 # ------------------------------------------------------------------------------
 # Fail if there are leftover error logs from previous compression.csh executions.
@@ -119,9 +119,9 @@ switch ($comp)
          if (-f $file_name) then
             @ task++
             echo "$comp_cmd $file_name &> compress_${task}.eo " >> mycmdfile
-         # Kluge to get around situations where an earlier job compressed the file,
-         # but failed for some other reason, so it's being re-run.
          else if (-f ${file_name}.gz) then
+            # Kluge to get around situations where an earlier job compressed the file,
+            # but failed for some other reason, so it's being re-run.
             echo "$file_name already compressed"
          else
             echo 'ERROR: Could not find "'$file_name'" to compress.'
