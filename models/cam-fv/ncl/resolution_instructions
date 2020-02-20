@@ -1,0 +1,325 @@
+This is a cleaned up, pared down method for generating a new 'resolution'
+using the 1/4 degree, Reynold's/AVHRR SSTs.
+
+I'll gather steps from generating the 1 degree CAM-FV resolution files,
+and test while generating a 2 degree CAM-FV + 1/4 degree SST resolution file.
+I tried to gather most of it into
+   /glade/p/work/raeder/Models/CAM_init/SST
+
+This may be done in a more recent version of CAM than cesm1_5_alpha02d,
+which I used for the 1 degree.
+
+2018:
+See FIXED? which notes things that didn't work the first time around
+but may be fixed in CESM2_0.
+Also see 2018 for things I may need to do or know 
+   in order to install d025 as a standard choice.
+
+-----------------------------------------------------
+PIECES:
+   Tomas: 
+      I found some notes too that document the steps I took to set up a case.  
+      I took a quick look and it appears that 3 things need to be done:
+      1) Change  $SANDBOX/scripts/ccsm_utils/Case.template to add a new resolution option
+      2) Change the coupler namelist to point to the new remapping files
+      3) Change the ice and ocean namelists to specify the filenames for the (0.25 deg) data stream.
+      The notes are here:
+         /glade/u/home/tomas/cesm1_cases_doc/f.e11.b16.F2000C5.ne120_025_bob_011bf.txt
+
+   /glade/p/work/raeder/Models/CAM_init/SST
+   * * README (Lots of the development notes are in here)
+       compset_instructions (Tomas')
+       avhrr-only-v2....nc  files
+       fill_sst_forcing.ncl
+    
+   gen_atm_ocn_maps  (Bob's files from ne30 <-> 1/4 degree SST resolution)
+*     README (not my comments, just useful CESM instructions for generating mapping files)
+      gen_atm_ocn_maps.sh
+   CAM_init_SST  (binary file)  (renamed CAM_init_SST.tar 2018-11-14?)
+
+2015-8-24
+I seem to have made new grid+mapping files.
+Hopefully this is available through the new resolution 0.9x1.25_0.25x0.25
+    (2018: name changed to 0.9x1.25_d025_gland20 later?)
+
+    x Add the -grid_file argument to create_newcase
+
+    X It looks like I'll need to run the remainder of 2005, then update the SST file name to 2006
+         and continue the run.
+         NO; feed a list of filenames to CESM and it will find the right time.
+             (despite the env_run.xml SST entry that says 'file', not 'file(s)')
+
+-----------------------------------------------------
+INSTRUCTIONS
+-----------------------------------------------------
+To generate grid mapping files for the 1/4 degree AVHRR files.
+
+http://www.cesm.ucar.edu/models/cesm1.3/cesm/doc/usersguide/x2417.html
+   (2018: cesm1.3 now contains the CESM2.0 documentation.
+    cesm1.2 is similar/the same)
+   EXPERTS: How do I add a new user-defined grid?
+   * * This was written for CESM1.2, so some parts are outdated. * *
+   I was able to start part way through these instructions because of the work
+     Bob Tomas did.
+
+Step #, from usersguide; my comments, updates for CESM1_5
+
+2) Build this so that it's available to Step 3) gen_cesm_maps.sh
+   I first did this in Models/cesm1_4_beta06/cime/tools/mapping/check_maps.
+   The 1/4 degree ocean to 1 degree atm checked out.
+     $ module load esmf
+     $ module load esmf-{recent_version}-ncdfio-uni-O
+     $ echo $ESMFMKFILE
+     $ cd src
+     $ gmake
+
+3) $CIMEROOT/tools/mapping/gen_mapping_files/gen_cesm_maps.sh
+  should generate mapping files.
+   (2018; this may have been replaced by gen_atm_ocn_maps/gen_atm_ocn_maps.sh)
+  It wants ESMF_RegridWeightGen from 2)
+  In regridbatch.yellowstone.sh
+     Provide an active account number, and optionally change the job name to include grid info.
+     Update the directories:
+        griddir1="/glade/p/cesmdata/cseg/mapping/grids"
+        griddir2="/glade/p/cesmdata/cseg/mapping/grids"
+        griddir3= {location of glc 'grids' SCRIP files}
+                ="/glade/p/cesm/cseg/inputdata/glc/cism/griddata"
+     Point to SCRIP grid files 
+        griddir1="/glade/p/cesmdata/cseg/mapping/grids"
+        fileocn="${griddir1}/0.25x0.25_100723.nc"
+        fileatm="${griddir1}/fv0.9x1.25_141008.nc"
+        filertm="${griddir2}/r05_coastal_080523.nc"
+        fileglc="${griddir3}/{glc grid file}"
+     Update 'name's
+        nameocn='0.25x0.25'
+        nameatm='fv0.9x1.25'
+        namertm='r0.5x0.5'
+     Submit regridbatch.yellowstone.sh in
+         /glade/p/work/raeder/Models/cesm1_4_beta06/cime/tools/mapping/gen_mapping_files
+
+FIXED?
+   There's a whole new directory for runoff_to_ocean files.
+      But it doesn't work.  The 'set's at the beginning need =.
+    * This needs to be fixed after every time that configure is run
+        set COMPILER intel
+        set DEBUG FALSE
+        set MPILIB mpi-serial
+     I built runoff_map, but it failed because 
+          /glade/p/cesm/cseg/mapping/grids/0.25x0.25_100723.nc doesn't have the grid_area variable in it,
+       which is a single dimension (1036800 = ni x nj).
+       But $p/Models/CAM_init/SST/domain.ocn.025.120821.nc  does have 'area' in the right units, but (nj,ni).
+       NCO to the rescue: Need to reshape 'area' from domain.ocn.025.120821.nc 
+          ncap2 may do it: var1 'assign_op' exp1
+             if exp1 is a variable and it doesn't conform to var1 then an attempt is made 
+             to make it conform to var1. 
+          Copy 0.25 to temp.nc.
+          Copy 'area' variable from domain.ocn to temp.nc 
+             ncks -v area -o temp.nc domain.ocn.025.120821.nc
+          Use ncap2 to create the required variable 'grid_area'
+             ncap2 -s 'grid_area=array(1.,1,$grid_size);grid_area=area;' -o temp_grid_area.nc temp.nc
+                      |          |     ||               |
+                      |          |     ||               ^ Fill the array we just created.
+                      |          |     ||                 ncap2 will try to make 2D area conform 
+                      |          |     ||                 to 1d grid_area
+                      |          |     ^^ This tells it to make grid_area a double precision
+                      |          ^ This creates an array, starting with value 1., incrementing by 1, 
+                      |            and size $grid_size
+                      ^crucial to use this instead of "
+             Use the permute() method to swap the dimensions of a variable.              
+                 Apparently not necessary.  It loaded 1 latitude's worth of points (nj of them) 
+                 at a time, which is the same as /glade/p/cesm/cseg/mapping/grids/gx3v7_120309.nc
+          Remove variables 'area,xc,xv,yc,yv' and their dimensions.
+              ncks -v grid_dims,grid_center_lat,grid_center_lon,grid_imask,grid_corner_lat,\
+                   grid_corner_lon,grid_area \
+                   -o 0.25x0.25_160301.nc temp_grid_area.nc
+       Use /glade/p/work/raeder/Models/CAM_init/SST/0.25x0.25_160301.nc   in
+          $CIMEROOT/tools/mapping/gen_mapping_files/runoff_to_ocn/runoff_map/runoff_map.nml
+       But it's too slow to run interactively, so package it in a script: ..../runoff_to_ocn.csh
+       Use the result in {path_where_config_grid.xml_lives}/config_grid_{details}.xml
+
+FIXED?
+   BUT I still don't have the mapping file from glc/cism/gland20 to the ocean,
+      which prompted this whole tangent.
+      NOTE; glad5UM for CISM1 (single threaded) is too large to fit 15 instances on a node.
+            There appears to be no way to spread them out, so I settled for gland20  (20 km).
+      See ./config_grids+fv1deg_oi0.25.xml, 
+          /glade/p/work/raeder/Models/cesm1_5_beta03_clm_r162_pop_20151215_mosart1_0_14/\
+              cime/tools/mapping/gen_mapping_files/regridbatch.yellowstone.sh
+          $cesm_datapath/cpl/gridmaps/gland20km:   glc mapping files (SCRIP files used to make these)
+          where are glc SCRIP files? 
+             Note that there is a gland20km/map_gland20km_to_gx3v7_nnsm_e1000r300_150514.nc
+             which looks like it was made by the same programs as the runoff_to_ocn program.
+                :domain_a = "/glade/p/cesm/cseg/inputdata/glc/cism/griddata/SCRIPgrid_gland_5km_c150511.nc" ;
+                :domain_b = "/glade/p/cesm/cseg/mapping/grids/gx3v7_120309.nc" ;
+             So /glade/p/cesm/cseg/inputdata/glc/cism/griddata is the place
+             _nnsm_ is owned by Bill Sacks; 
+                says to use runoff_to_ocn, with a namelist tailored for glc/cism.
+                I did this in a new directory; landice_to_ocn
+          Try /glade/p/cesm/cseg/inputdata/glc/cism/griddata/SCRIPgrid_gland_20km_c150511.nc
+      where are other SCRIP files?  /glade/p/cesmdata/cseg/mapping/grids
+         gx3v7_120309.readme  has a lot of potentially useful (and/or outdated) instructions.
+
+
+
+4) Generate atmosphere, land and ocean / ice domain files.
+   Follow instructions in INSTALL, except:
+     > set CIMEROOT = $cesm_tag/cime
+     > Add '-cimeroot $CIMEROOT' to the configure command
+   Follow instructions in README, providing  the 1/4 degree to 1 degree aave filename created in 3)
+      $ gen_domain -m ../gen_mapping_files/map_0.25x0.25_TO_fv0.9x1.25_aave.{YYMMDD}.nc \
+                   -o 0.25x0.25 \                                            
+                   -l fv0.9x1.25 \
+                   -c "domain file for a 1/4-degree ocean + 1-degree FV atmosphere for ATM_forc_XXX assimilations" \
+                   -p 2      |& tee gen_domain_0.25_TO_0.9.out
+      '-p 2' is the value requested by AMWG for (CLM) lon-lat grids.  See README for details.
+             If this is omitted, there will be an error in CAM:
+              ERROR: surfdata/fatmgrid lon/lat mismatch error  5.684341886080801E-014  0.235602094240804
+              ENDRUN:ERROR in surfrdMod.F90 at line 427                                ^^^^^^^^^^^^^^^^^
+
+FIXED?
+? ! But my current tag uses MOSART, not RTM.
+    I'll try generating it anyway.
+
+     
+5) and 6) Don't apply to this case
+
+7) The web page (cems1_2) says "The next step is to create a file - call it mygrid.xml"
+   but that is outdated.  I had to manually modify a copy of 
+      $CIMEROOT/cime_config/cesm/config_grids.xml
+   to contain the directory and file names of the new grid mapping files.  E.g.
+      ./config_grids+fv1deg_oi0.25.xml
+   (which was generated and worked for the ATM_forcXX study tag cesm1_5_alpha02d.
+    GWD_TMS_CLUBB has an example which includes an active CISM.)
+   As far as I can tell, the glc (CISM) grid is tied to the CLM (and/or ATM) grids.
+      So use those mapping files in config_grids.xml.
+
+   a) <domains>
+      If your new 'resolution' includes a new grid, 
+      add it in the <domains> section of config_grids+yours.xml.
+      <domain name="0.25x0.25">
+        <nx>1440</nx> <ny>720</ny>
+        <file lnd_mask="0.25x0.25">domain.lnd.fv0.9x1.25_0.25x0.25.150907.nc</file>
+        <file ocn_mask="0.25x0.25">domain.ocn.0.25x0.25.150824.nc</file>
+        <desc>0.25x0.25 is the AVHRR SST grid:</desc>
+      </domain>
+      Add lnd_mask lines as needed to accomodate other land grid interfaces.
+
+   b) <grids>
+      These <grid> entries make associations between a resolution long name,
+      a short name, and maybe an even shorter alias.
+      If the <grid> is expected to be widely used, then follow the loose convention of 
+      setting sname to a combination of <domain> names.  If the the atm and lnd are on
+      different grids, list them both.  Otherwise list that <domain> just once:
+        <grid>                 atm <domain>     lnd <domain>    ocn <domain>
+        --------------------   ------------     --------------  ----------------
+        0.9x1.25_gx1v6         0.9x1.25 and     0.9x1.25        gx1v6
+        ne30np4_1.9x2.5_gx1v6  ne30np4          1.9x2.5         gx1v6
+
+      If the resolution is very special purpose, you can make up an sname which is not made
+      of lots of grid <domain>s, but it just a descriptive name: e.g. Julio_FV1xSST.25
+
+      The m% piece of lname refers to the mask between the atm and ocn grids.
+      Set it to the ocn <domain>.
+
+      A given short name can apply to > 1 long name.  This ambiguity is resolved by
+      the 'compset' attribute, which comes from $COMPSET, and helps make the association with
+      the desired lname.  After defining sname, you can include the compset attribute 
+      to distinguish between variants (active, data, stub) of runoff, glacier and wave grids.  
+      (2018; this may be a step in integrating d025 as a standard option; 
+             interfaces with all of these data and stub component grids)
+      Each combination of these 3 components requires its own <grid> entry:
+      <grid compset="(DOCN|AQUAP).+MOSART.+CISM1.+SWAV">      glacier    stub wave model
+        <sname>1.9x2.5_1.9x2.5</sname>          runoff res    resol      |
+        <alias>f19_f19</alias>                  v             v          v
+        <lname>a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_m%gx1v6_g%gland5UM_w%null</lname>
+      </grid>
+      See config_grid.xml for more examples.
+
+   c) <gridmap>
+      Each pair of components which needs to communicate between different grids requires
+      these mapping files.  The names have the form 
+         map_<domain1>_TO_<domain2>_{maptype}.{date}.nc 
+         map_type = 
+             'aave' "conservative (area avg?)"         assigned to the FMAPNAME (Flux) attribute
+             'blin' "bilinear (non-conservative)"      assigned to the SMAPNAME (State) attribute
+             'patc' "patch mapping (non-conservative)" assigned to the VMAPNAME (Vector?) attribute
+             '[nnsm_]e###r###  "Take a scrip conservative map matrix, runoff->ocean (unmasked ocean)
+                               and produce a runoff->ocean map suitable for use in CCSM
+                                                       assigned to the RMAPNAME of river runoff
+                                                             sometimes FMAPNAME of river runoff.
+                               Similar for glacier->ocean
+         But file types assigned to VMAPNAME include _patch, _bilin_da, _patc, _aave_da, _aave, 
+         _native, ...,  so that seems to be a name part which the user can set.
+         VMAPNAME may refer to vector mapping (winds/currents?), which is supported by the
+         fact that it only appears in ATM2OCN and OCN2ATM entries.
+ 
+      (2018; Are there more mappings to worry about for d025 in CESM2_0?)
+      Some pairs have one-way communication, so <1>_TO_<2> is needed, but not <2>_TO_<1>
+      As of CESM1_5_beta03 the potential pairs and mappings are
+          ATM <--> LND (may be identical -> no mapping file needed)
+          ATM <--> OCN (CICE uses this mapping)
+          LND <--> GLC
+          LND <--> ROF
+          ROF  --> OCN
+          GLC  --> OCN
+         (WAV <--> OCN   The mapping files to/from the wave model are not created by
+         (ICE  --> WAV   the cesm1_5_beta03 mapping programs.
+
+      Add <gridmap> section(s) to interface the new grid with existing grids of other components.
+      This is 
+      (for clarity define grid_path==/glade/p/work/raeder/Exp/GWD_TMS_CLUBB/mapping/gridmaps)
+      <gridmap atm_grid="0.9x1.25" ocn_grid="0.25x0.25">
+        <ATM2OCN_FMAPNAME>$grid_path/map_fv0.9x1.25_TO_0.25x0.25_aave.160303.nc </ATM2OCN_FMAPNAME>
+        <ATM2OCN_SMAPNAME>$grid_path/map_fv0.9x1.25_TO_0.25x0.25_blin.160303.nc </ATM2OCN_SMAPNAME>
+        <ATM2OCN_VMAPNAME>$grid_path/map_fv0.9x1.25_TO_0.25x0.25_patc.160303.nc </ATM2OCN_VMAPNAME>
+        <OCN2ATM_FMAPNAME>$grid_path/map_0.25x0.25_TO_fv0.9x1.25_aave.160303.nc </OCN2ATM_FMAPNAME>
+        <OCN2ATM_SMAPNAME>$grid_path/map_0.25x0.25_TO_fv0.9x1.25_blin.160303.nc </OCN2ATM_SMAPNAME>
+      </gridmap>
+      <gridmap rof_grid="r05" ocn_grid="0.25x0.25" >
+        <ROF2OCN_FMAPNAME>$grid_path/map_r05_to_0.25_nnsm_e1000r300_160229.nc</ROF2OCN_FMAPNAME>
+      </gridmap>
+      <gridmap ocn_grid="0.25x0.25" glc_grid="gland20" >
+        <GLC2OCN_RMAPNAME>$grid_path/map_gland20km_to_0.25_nnsm_e1000r300_160307.nc</GLC2OCN_RMAPNAME>
+      </gridmap>
+
+   d) Check that pre-existing grids, which are used in your resolution, 
+      have the required <gridmap> entries.
+
+
+8) Pass the location of the config_grids.xml file to create_newcase via
+  -user_grid_file {path}/config_grids+fv1deg_oi0.25.xml
+
+9) Also provide the locations of the domain files (4)) to the env_run.xml
+  via xml_changes in the DART setup script.
+  Be careful about 'aave' vs. 'blin' vs. 'patc'; the land and ocean fractions
+     (and ...?) can be different, leading to inconsistencies.
+
+
+     
+
+-----------------------------------------------------
+Some input SST+CICE files are available in
+/home/tomas/ds277.7/avhrr/avhrr-only-v2.20050101_cat_20051231_filled_c130829.nc
+
+> > > These files MUST have the 'calendar' attribute added to variable 'time',
+      in order to run CAM using NOLEAP (and maybe GREGORIAN).
+      Script add_calendar_attr.csh will do this.
+
+> this requires a domain.ocn.0.25.120821.nc.
+  It could be generated during the process outlined above, in 'generate grid mapping files...'.
+  I found one in hpss: /home/tomas/home_bf_31jan13.tar:
+    /glade/home/tomas/cesm/cesm1_1_beta15/mapping/gen_atm_ocn_maps
+  There's a copy here (CAM_init/SST).
+
+To generate new input SST+CICE files for CSM from AVHRR use 
+   /glade/u/home/tomas/frank/high_res_data/forcing_summer_13/make_sst_ice_forcing.ncl
+   Copied this and supporting code to CAM_init/SST
+
+   Fill in the land areas using a Poisson scheme.
+      This solves problems created when there are grid boxes where CAM
+      expects to find an SST value but there isn't one in the Reynold's SST (there is land).
+      ./fill_sst_forcing.ncl
+
+-----------------------------------------------------
+
+
