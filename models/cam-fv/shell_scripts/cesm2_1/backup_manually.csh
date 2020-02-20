@@ -17,9 +17,9 @@ set CASE           = $CASEROOT:t
 set components     = (esp cpl lnd  rof)
 # set components     = (cpl)
 
+# FIXME: decide if these should be command-line arguments or source data_scripts.csh
 set project    = /glade/p/nsc/ncis0006/Reanalyses
 set campaign   = /gpfs/csfs1/cisl/dares/Reanalyses
-# this year is still hard-coded? Should it be loaded from data_scripts.csh?
 set year  = 2011
 
 cd ${project}/${CASE}
