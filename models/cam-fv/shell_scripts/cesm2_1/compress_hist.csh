@@ -24,7 +24,7 @@ if ($#argv != 5) then
    exit 17
 endif
 
-# Environment variables ($data_*) from the calling scxirpt should be available here.
+# Environment variables ($data_*) from the calling script should be available here.
 
 set comp_cmd      = $1
 set ymds          = $2
@@ -42,13 +42,15 @@ else
    exit 27
 endif
 
-echo "In compress.csh:"
-echo "   comp_cmd      = $comp_cmd"
+echo "In compress_hist.csh:"
+echo "   (arg1) comp_cmd      = $comp_cmd"
+echo "   (arg2) date          = $ymds"
+echo "   (arg3) sets          = $sets"
+echo "   (arg4) types         = $types"
+echo "   (arg5) stages        = $stages"
 echo "   data_CASE     = $data_CASE"
-echo "   date          = $ymds"
+echo "   data_CASEROOT = $data_CASEROOT"
 echo "   data_NINST    = $data_NINST"
-echo "   sets          = $sets"
-echo "   stages        = $stages"
 # echo "   data dir      = $data_dir"
 
 # ------------------------------------------------------------------------------

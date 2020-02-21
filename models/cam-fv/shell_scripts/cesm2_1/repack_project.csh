@@ -72,6 +72,8 @@ if (! -f CaseStatus) then
    exit 1
 endif
 
+source ./data_scripts.csh
+
 # Non-esp history output which might need to be processed.
 # "components" = generic pieces of CESM (used in the archive directory names).
 # "models" = component instance names (models, used in file names).
