@@ -46,7 +46,12 @@ else
 #    endif
 endif
 
+# Get CASE environment variables from the central variables file.
 source YOUR_CASEROOT/data_scripts.csh
+echo "data_month = $data_month"
+echo "data_year  = $data_year"
+echo "data_proj_space = ${data_proj_space}"
+echo "data_DART_src   = ${data_DART_src}"
 
 # Use big endian obs_diag for output from IBM
 # set endian = '_big_endian'

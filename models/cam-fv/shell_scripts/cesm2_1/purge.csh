@@ -52,7 +52,11 @@ if ($#argv != 0) then
    exit
 endif
 
+# Get CASE environment variables from the central variables file.
 source ./data_scripts.csh
+echo "data_CASE  = ${data_CASE}"
+echo "data_year  = ${data_year}"
+echo "data_month = ${data_month}"
 
 set yr_mo = `printf %4d-%02d ${data_year} ${data_month}`
 set local_arch     = `./xmlquery DOUT_S_ROOT --value`

@@ -16,7 +16,14 @@
 
 # On the data-access node.
 
+# Get CASE environment variables from the central variables file.
 source ./data_scripts.csh
+echo "data_CASE  = ${data_CASE}"
+echo "data_NINST = ${data_NINST}"
+echo "data_year  = $data_year"
+echo "data_month = $data_month"
+echo "data_proj_space = $data_proj_space"
+echo "data_campaign   = ${data_campaign}"
 
 set ym = `printf %s-%02d $data_year $data_month`
 

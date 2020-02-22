@@ -846,6 +846,7 @@ setenv  data_CASE             $case
 setenv  data_scratch          ${cime_output}/${caseroot}
 setenv  data_campaign         $campdir
 setenv  data_CESM_python      $CIME_ROOT/scripts/lib/CIME 
+setenv  data_DOUT_S_ROOT      $archdir
 
 setenv CONTINUE_RUN `./xlmquery CONTINUE_RUN --value`
 if (\$CONTINUE_RUN == FALSE) then
@@ -1131,6 +1132,11 @@ while ($inst <= $num_instances)
       # CAM5, 6, ...:
       echo "ice_ic = '${refcase}.cice${inst_string}.r.${reftimestamp}.nc'" >> ${fname}
    endif
+
+   # ===========================================================================
+   set fname = "user_nl_docn${inst_string}"
+   # ===========================================================================
+   echo '  taxmode = "limit"'                                      >> ${fname}
 
    @ inst ++
 

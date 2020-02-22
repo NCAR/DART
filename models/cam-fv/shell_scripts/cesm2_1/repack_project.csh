@@ -72,7 +72,14 @@ if (! -f CaseStatus) then
    exit 1
 endif
 
+# Get CASE environment variables from the central variables file.
 source ./data_scripts.csh
+echo "data_CASE     = $data_CASE"
+echo "data_NINST    = $data_NINST"
+echo "data_year     = $data_year"
+echo "data_CASEROOT   = $data_CASEROOT"
+echo "data_proj_space = $data_proj_space"
+echo "data_campaign   = ${data_campaign}"
 
 # Non-esp history output which might need to be processed.
 # "components" = generic pieces of CESM (used in the archive directory names).
@@ -141,7 +148,7 @@ if ($do_obs_space == true) then
 
    ${data_CASEROOT}/mv_to_campaign.csh \
       $data_year ${data_proj_space}/esp/hist/ \
-      ${data_campaign}/${data_case}/esp/hist
+      ${data_campaign}/${data_CASE}/esp/hist
 
    cd ${data_proj_space}
    
@@ -262,7 +269,7 @@ if ($do_history == true) then
 
       ${data_CASEROOT}/mv_to_campaign.csh \
          $data_year ${data_proj_space}/$components[$m]/hist/  \
-         ${data_campaign}/${data_case}/$components[$m]/hist
+         ${data_campaign}/${data_CASE}/$components[$m]/hist
  
       cd ${data_proj_space}
 

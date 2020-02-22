@@ -33,16 +33,13 @@
 # Documentation of that script is in 
 #   https://www2.cisl.ucar.edu/sites/default/files/CISL_GlobusCLI_Nov2018.html
 
+# Get CASE environment variables from the central variables file.
 source ./data_scripts.csh
+echo "data_CASE       = ${data_CASE}"
+echo "data_proj_space = ${data_proj_space}"
+echo "data_campaign   = ${data_campaign}"
 
-if ($#argv == 3) then
-
-   set CASE     = ${data_CASE}
-   set TIME_STR = $1 
-   set SRC_DIR  = $2
-   set CS_DIR   = $3
-
-else 
+if ($#argv != 3) then
 
    # Request for help; any argument will do.
    echo "Usage: call by user or script:"
@@ -51,10 +48,14 @@ else
    echo "      SRC_DIR  = the directory to archive in Campaign Storage"
    echo "         e.g.    ${data_proj_space}/esp/hist"
    echo "      CS_DIR   = Campaign Storage"
-   echo "         e.g.    ${data_campaign}/${CASE}/esp/hist"
+   echo "         e.g.    ${data_campaign}/${data_CASE}/esp/hist"
    exit
 
 endif
+
+set TIME_STR = $1 
+set SRC_DIR  = $2
+set CS_DIR   = $3
 
 # Done with input parameters.
 #=================================================================

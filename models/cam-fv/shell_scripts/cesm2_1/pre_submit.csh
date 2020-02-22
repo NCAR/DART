@@ -27,7 +27,11 @@ if ($#argv != 4) then
    exit
 endif
 
+# Get CASE environment variables from the central variables file.
 source ./data_scripts.csh
+echo "data_NINST = ${data_NINST}"
+echo "data_scratch     = ${data_scratch}"
+echo "data_CESM_python = ${data_CESM_python}"
 
 set first_date     = $1
 set last_date      = $2
