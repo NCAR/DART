@@ -14,14 +14,14 @@
 !   l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'
 
 &convert_airs_L2_nml
-   datadir            = '.',
-   l2_files           = 'AIRS.2014.11.01.001.L2.CC.v6.0.11.0.G14305131930.hdf',
-   l2_file_list       = '' ,
+   datadir            = '/glade/p/cisl/dares/Observations/AIRS/Daily_raw_files/201411/level2/',
+   l2_files           = '',
+   l2_file_list       = 'l2_files_to_process' ,
    outputdir          = '../output',
    min_MMR_threshold  = 1.0e-30
    top_pressure_level = 0.0001,
-   along_track_thin   = 9,
-   cross_track_thin   = 10,
+   along_track_thin   = 1,
+   cross_track_thin   = 1,
    lon1               =   0.0, 
    lon2               = 360.0, 
    lat1               = -60.0, 
@@ -29,13 +29,13 @@
  /
 
 &convert_airs_rad_L2_nml
-   datadir            = '.',
-   l2_files           = 'AIRS.2014.11.01.001.L2.CC.v6.0.11.0.G14305131930.hdf',
-   l2_file_list       = '' ,
+   datadir            = '/glade/p/cisl/dares/Observations/AIRS/Daily_raw_files/201411/level2/',
+   l2_files           = '',
+   l2_file_list       = 'l2_files_to_process' ,
    outputdir          = '../output',
-   channel_list       = 168,
-   along_track_thin   = 9,
-   cross_track_thin   = 10,
+   channel_list       = 168,900
+   along_track_thin   = 0,
+   cross_track_thin   = 0,
    lon1               =   0.0, 
    lon2               = 360.0, 
    lat1               = -90.0, 
@@ -49,7 +49,7 @@
    nlevels = 51,
    dosolar = 0,
    nchannels = 1,
-   channel_list = 168,
+   channel_list = 168,900
    nthreads = 1
 /
 
