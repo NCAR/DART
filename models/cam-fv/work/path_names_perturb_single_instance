@@ -31,7 +31,7 @@ assimilation_code/programs/perturb_single_instance/perturb_single_instance.f90
 models/cam-fv/model_mod.f90
 models/cam-fv/chem_tables_mod.f90
 models/utilities/default_model_mod.f90
-observations/forward_operators/rttov_interface_mod.f90
+observations/forward_operators/rttov_interface_mod.F90
 models/utilities/default_model_mod.f90
 models/utilities/quad_utils_mod.f90
 observations/forward_operators/obs_def_mod.f90

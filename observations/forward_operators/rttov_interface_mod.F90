@@ -901,7 +901,7 @@ end if
 ! --------------------------------------------------------------------------
 
 if (debug) then
-   write(string1,*),'The coefficient file is:',trim(sensor % coefficient_file)
+   write(string1,*)'The coefficient file is:',trim(sensor % coefficient_file)
    call error_handler(E_MSG, routine, string1, source, revision, revdate)
 end if
 
@@ -1095,7 +1095,7 @@ integer,                                intent(out) :: error_status(ens_size)
 type(visir_metadata_type),     pointer, intent(in)  :: visir_md
 type(mw_metadata_type),        pointer, intent(in)  :: mw_md
 
-integer :: imem 
+integer :: ilvl, imem 
 
 ! observation location variables
 real(r8) :: lon, lat, obsloc(3)
@@ -1203,9 +1203,13 @@ end if
 
 ! finally set the array to the correct order
 if (first_lvl_is_sfc) then
-   lvlidx = (/1:nlevels/)
+   do ilvl=1,nlevels
+      lvlidx(ilvl) = ilvl
+   end do
 else
-   lvlidx = (/nlevels:1:-1/)
+   do ilvl=nlevels,1,-1
+      lvlidx(ilvl) = nlevels - ilvl + 1
+   end do
 end if
 
 ! used for averaging levels to layers

@@ -520,9 +520,9 @@ namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               solar_sea_brdf_model,   &
                               ir_sea_emis_model,      &
                               use_sfc_snow_frac,      &
-                              add_aerosl,              &
+                              add_aerosl,             &
                               aerosl_type,            &
-                              add_clouds,              &
+                              add_clouds,             &
                               ice_scheme,             &
                               use_icede,              &
                               idg_scheme,             &
