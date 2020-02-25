@@ -116,7 +116,12 @@ sub print_formatted_list{
 #begin writing makefile
 open MAKEFILE, ">$opt_m" or die "\aERROR opening file $opt_m for writing: $!\n";
 printf MAKEFILE "# Makefile created by %s $version\n\n", basename($0);
+if ( $opt_t ) {
+    open TEMPLATE, "<$opt_t" or die "\aERROR: could not read mkmf.template file $opt_t: $!\n" 
+}
+
 print  MAKEFILE "include $opt_t\n\n" if $opt_t; #include template if supplied
+
 if ( $opt_c ) {
    if ( $Config{archname} eq "aix" ) {
       $opt_c .= ' -D__aix';
