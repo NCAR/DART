@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 # ------------------------------------------------------------------------------
 # Purpose: assimilate with a CAM ensemble and perform advanced archiving
@@ -200,12 +198,15 @@ endif
 # We need to know the names of the current cesm.log files - one log file is created
 # by each CESM model advance.
 
+# How long does this listing take?
+date --rfc-3339=ns
 set log_list = `${LIST} -t cesm.log.*`
 
 echo "most recent log is $log_list[1]"
 echo "oldest      log is $log_list[$#log_list]"
 echo "entire log list is $log_list"
 echo " "
+date --rfc-3339=ns
 
 # ==============================================================================
 # Block 2: Populate a run-time directory with the input needed to run DART.
@@ -330,8 +331,10 @@ if ($#log_list >= 3) then
    # may or may not have an 'instance' string in them, depending on whether
    # or not you are using the multi-driver or not, so we must check for both.
 
+   echo "Gathering re_list at " `date --rfc-3339=ns`
    set re_list = `${LIST} -t *cpl.r.*`
    if ($#re_list == 0) set re_list = `${LIST} -t *cpl_0001.r.*`
+   echo "finished gathering re_list at " `date --rfc-3339=ns`
 
    if ($#re_list < 3) then
       echo "ERROR: Too many cesm.log files ($#log_list) for the $#re_list restart sets."
@@ -439,7 +442,7 @@ if ($#log_list >= 3) then
       # List the large files first (more efficient and reliable).
       # There is another call farther down to compress the DART files every cycle.
       echo "compress.csh started at `date`"
-      ${CASEROOT}/compress.csh gzip $CASE ${rm_date} $ensemble_size "clm2 cpl cam cice" "$stages_all"
+      ${CASEROOT}/compress.csh gzip ${rm_date} "clm2 cpl cam cice" "$stages_all"
       if ($status != 0) then
          echo "compress.csh failed at `date`"
          exit 55
@@ -543,7 +546,7 @@ ${LINK} ${CASE}.cam_0001.i.${ATM_DATE_EXT}.nc ${CAMINPUT} || exit 90
 set MYSTRING = `grep cam_phis_filename input.nml`
 set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
 set CAM_PHIS = $MYSTRING[2]
-# Avoid doing LISTs in rundir; only search for an h0 file is cam_phis.nc doesn't exist.
+# Avoid doing LISTs in rundir; only search for an h0 file if cam_phis.nc doesn't exist.
 if (! -f ${CAM_PHIS}) then
    # -r puts the file with the latest date first in the list.
    # It won't be purged during this cycle by the cleanup (above).
@@ -619,8 +622,10 @@ if ($USING_PRIOR_INFLATION == true) then
    else
       # Look for the output from the previous assimilation (or fill_inflation_restart)
       # If inflation files exists, use them as input for this assimilation
+      echo "Gathering inflation names at " `date --rfc-3339=ns`
       (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
       (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
+      echo "finished gathering inflation names at " `date --rfc-3339=ns`
       set nfiles = `cat latestfile | wc -l`
 
       if ( $nfiles > 0 ) then
@@ -840,7 +845,8 @@ end
 # But they still need to be different for each component, so include $scomp in the
 # ".dart_file" part of the file name.  Somewhat awkward and inconsistent, but effective.
 
-# Means and standard deviation files (except for inflation).
+# Means and standard deviation files (except for inflation; 
+# excluded by, e.g., mean right after stage).
 foreach FILE (`${LIST} ${stages_all}_{mean,sd}*.nc`)
 
    set parts = `echo $FILE | sed -e "s#\.# #g"`
@@ -943,11 +949,13 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       if ($save_all_inf =~ TRUE) then
          # Put the previous and current inflation restarts in the archive directory.
          # (to protect last from st_archive putting them in exp/hist)
-         ${MOVE}   ${CASE}*${stages_except_output}*inf*  ${archive}/esp/rest
+         # 2020-1-18; Changed dir esp/rest -> esp/hist (one that exists!)  
+         # while fixing wayward {mean,sd} files including inflation.
+         ${MOVE}   ${CASE}*${stages_except_output}*inf*  ${archive}/esp/hist
 
          # Don't need previous inf restarts now, but want them to be archived later.
          # COPY instead of LINK because they'll be moved or used later.
-         ${COPY}   ${CASE}*output*inf* ${archive}/esp/rest
+         ${COPY}   ${CASE}*output*inf* ${archive}/esp/hist
       else
          # output*inf must be copied back because it needs to be in ${RUNDIR}
          # when st_archive runs to save the results of the following assim
@@ -958,12 +966,7 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       endif
 
       # Hide the CAM 'restart' files from the previous cycle (day_time) from the archiver.
-      # ${MOVE}           ${CASE}*.{r,rs,rs1,rh0,h0,i}.*${day_time}*    $hidedir
-      # We don't need/want to mess with the .rh files.
-      # ${MOVE}           ${CASE}*.{r,rs,rs1,h0,i}.*${day_time}*    $hidedir
-      # h0 should also not be hidden from the archiver (in case it has fields
-      # besides CAM's PHIS).
-      ${MOVE}           ${CASE}*.{r,rs,rs1,i}.*${day_time}*    $hidedir
+      ${MOVE}           ${CASE}*.{r,rs,rs1,i}.*${hide_date}*    $hidedir
 
       # Move log files: *YYMMDD-HHMMSS.  [2] means the previous restart set is being moved.
       set rm_log = `echo $log_list[2] | sed -e "s/\./ /g;"`
@@ -971,6 +974,16 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       set rm_slot = $#rm_log
       if ($rm_log[$#rm_log] =~ gz) @ rm_slot--
       ${MOVE}  *$rm_log[$rm_slot]*  $hidedir
+
+      # Also COPY the most recent log files ([1]) so that they will be returned to rundir
+      # for the next job, and there will be the right number to trigger the archiving
+      # of inflation files to esp/hist for prevmo-lastdayprevjob-64800
+      # Implemented as part of fixing the wayward {mean,sd} files, incl. infl.
+      set rm_log = `echo $log_list[1] | sed -e "s/\./ /g;"`
+      # -- (decrement by one) skips the gz at the end of the names.
+      set rm_slot = $#rm_log
+      if ($rm_log[$#rm_log] =~ gz) @ rm_slot--
+      ${COPY}  *$rm_log[$rm_slot]*  $hidedir
    endif
 
    # Restore CESM's timing logic for the first cycle of the next job.
@@ -1050,10 +1063,8 @@ endif
 # Compress the large coupler history files and DART files.
 # ==============================================================================
 
-# echo "STARTING: compressing coupler history files and DART files at `date`"
-# ${CASEROOT}/compress.csh gzip $CASE $ATM_DATE_EXT $ensemble_size "hist dart" "$stages_all"
 echo "STARTING: compressing coupler history files at `date`"
-${CASEROOT}/compress.csh gzip $CASE $ATM_DATE_EXT $ensemble_size "hist" "$stages_all"
+${CASEROOT}/compress.csh gzip $ATM_DATE_EXT "hist" "$stages_all"
 
 if ($status != 0) then
    echo "ERROR: Compression of coupler history files and DART files failed at `date`"
@@ -1069,9 +1080,4 @@ echo "`date` -- END CAM_ASSIMILATE"
 wait
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 
