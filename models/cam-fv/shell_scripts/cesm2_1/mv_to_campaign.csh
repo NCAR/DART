@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# $Id$
-
 # Script to send output from a CAM+DART assimilation,
 # especially the Reanalysis project (2019), to Campaign Storage.
 # >>> Before running this script:
@@ -89,12 +87,9 @@ echo Copy $SRC_DIR to campaign storage $CS_DIR >>& $glog
 # will show obscura such as --myproxy (below).
 module load gnu python
 
-# Activate the NCAR Python Library (NPL) virtual environment 
-# for the version given as the argument (no arg = use default
-# which doesn't work 2019-6-21).
-# This command activates the 'globus' command, used below.
+# Enable the NCAR Python Library (NPL) virtual environment 
+# This command activates the 'globus' command
 ncar_pylib 20190326
-# ncar_pylib 
 
 # Retrieve endpoint IDs and store them as variables using globus.
 # --filter-owner-id not documented.
@@ -174,10 +169,3 @@ echo "Ending script to copy the contents of $SRC_DIR "
 echo "to campaign storage at `date`"
 
 exit 0
-
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
