@@ -3,19 +3,15 @@
 
 ## Welcome to DART, the Data Assimilation Research Testbed.
 
-[quick-start instructions for the impatient](#QuickStart)
-
 Extensive on-line documentation is available at the GitHub project web pages:
 [https://dart.ucar.edu/](https://dart.ucar.edu/)
-or in the repository at [docs/index.md](docs/index.md). It's probably a good idea
-to be familiar with the [GitHub flow](https://guides.github.com/introduction/flow/).
+or in the GitHub [repository](docs/). Quick-start instructions for the impatient can be found [below](#QuickStart), while more detailed setup instructions and other topics such as a brief introduction to data assimilation, the history of DART, etc. are covered in the 
+[DART Getting Started Guide](https://github.com/NCAR/DART/blob/master/docs/pages/Getting_Started.md). 
 
 <table><tr>
 <td><img height=250, src="./docs/images/DARTspaghettiSquare.gif"></td> 
 <td><img height=250, src="./docs/images/science_nuggets/AssimAnim.gif"></td>
 </tr></table>
-
-[Extensive local documentation is included with DART.](docs/index.md)
 
 A Matlab-based introduction is in the `docs/DART_LAB` directory.  
 There are a set of PDF presentations along with hands-on Matlab exercises.  
