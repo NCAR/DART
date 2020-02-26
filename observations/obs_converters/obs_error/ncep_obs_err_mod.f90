@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module obs_err_mod
 
@@ -418,12 +416,6 @@ data obs_err/2.1_r8, 2.1_r8, 2.1_r8, 2.1_r8, 2.1_r8, 2.1_r8, &
              2.6_r8, 2.3_r8, 2.1_r8, 2.0_r8, 1.9_r8, 1.8_r8, &
              1.6_r8, 1.6_r8, 1.6_r8, 1.5_r8, 1.5_r8, 1.5_r8, &
              1.4_r8, 1.4_r8, 1.4_r8/
-!data obs_prs/   0.0_r8,    1.0_r8,    2.0_r8,   3.0_r8,    4.0_r8,   5.0_r8,
-!               10.0_r8,   20.0_r8,   30.0_r8,  40.0_r8,   50.0_r8,  75.0_r8,
-!              100.0_r8,  150.0_r8,  200.0_r8, 250.0_r8,  300.0_r8, 350.0_r8, 
-!              400.0_r8,  450.0_r8,  500.0_r8, 550.0_r8,  600.0_r8, 650.0_r8,  
-!              700.0_r8,  750.0_r8,  800.0_r8, 850.0_r8,  900.0_r8, 950.0_r8, &
-!             1000.0_r8, 1050.0_r8, 1100.0_r8/
 
 call find_pressure_level_weight(pres, k0, wght)
 rawin_wind_error = wght * obs_err(k0) + (1.0_r8 - wght) * obs_err(k0+1)
@@ -463,14 +455,6 @@ real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
 real(r8) :: obs_err(nobs_level), wght, drop_temp_error
-
-! data obs_prs/   0.0_r8,    1.0_r8,    2.0_r8,   3.0_r8,   4.0_r8, &
-!                 5.0_r8,   10.0_r8,   20.0_r8,  30.0_r8,  40.0_r8, &
-!                50.0_r8,   75.0_r8,  100.0_r8, 150.0_r8, 200.0_r8, &
-!               250.0_r8,  300.0_r8,  350.0_r8, 400.0_r8, 450.0_r8, &
-!               500.0_r8,  550.0_r8,  600.0_r8, 650.0_r8, 700.0_r8, &
-!               750.0_r8,  800.0_r8,  850.0_r8, 900.0_r8, 950.0_r8, &
-!              1000.0_r8, 1050.0_r8, 1100.0_r8/
 
 data obs_err/1.5_r8, 1.5_r8, 1.5_r8, 1.5_r8, 1.5_r8, 1.5_r8, &
              1.5_r8, 1.25_r8, 1.0_r8, 0.95_r8, 0.9_r8, 0.8_r8, &
@@ -563,8 +547,3 @@ end subroutine find_pressure_level_weight
 
 end module obs_err_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

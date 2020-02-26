@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# $Id:$
-
 #==========================================================================
 
 # Script to package files found in $DOUT_S_ROOT
@@ -17,6 +15,8 @@
 #     until we want to send them to HPSS (tape).
 # Both destinations take time.  They are actually copies.
 
+# FIXME KEVIN ... usage notes, inherits from data_scripts.csh, etc. ...
+# >>> USAGE NOTES:                                                 <<<
 # >>> Run st_archive and obs_diag before running this script.      <<<
 # >>> Check that there's enough disk space.                        <<<
 #     It needs 1 Tb more than current usage.                       <<<
@@ -907,10 +907,3 @@ endif
 #--------------------------------------------
 
 exit 0
-#==========================================================================
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$

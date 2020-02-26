@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# $Id:$
-
 #==========================================================================
 # This script removes assimilation output from $DOUT_S_ROOT ($local_archive) after:
 # 1) it has been repackaged by repack_st_archive.csh,
@@ -61,12 +59,6 @@ echo "data_month = ${data_month}"
 set yr_mo = `printf %4d-%02d ${data_year} ${data_month}`
 set local_arch     = `./xmlquery DOUT_S_ROOT --value`
 
-# These arguments to turn off parts of the archiving must have the form do_obs_space=false ;
-# no quotes, no spaces.
-#    if ($?5) set $5
-#    if ($?6) set $6
-#    if ($?7) set $7
-
 #--------------------------------------------
 
 set lists = logs/rm_${yr_mo}.lists
@@ -87,14 +79,6 @@ if ($do_forcing == true) then
       ls ${data_CASE}.cpl_*.${type}.${yr_mo}-*.nc >>& ${local_arch}/$lists
       rm ${data_CASE}.cpl_*.${type}.${yr_mo}-*.nc >>& ${local_arch}/$lists
    end
-
-   # These files were moved from $data_proj_space storage to be input to ncrcat.
-   # (2020-1-18; that was before implementing Nancy's suggestion to leave
-   #  the yearly file on $pr.)
-   # An updated version was put into $data_proj_space, so the locals are not needed.
-#    echo "Forcing $year" >>& ${local_arch}/$lists
-#    ls *${year}.nc >>& ${local_arch}/$lists
-#    rm *${year}.nc >>& ${local_arch}/$lists
 
    echo "Forcing \*.eo" >>& ${local_arch}/$lists
    ls *.eo >>& ${local_arch}/$lists
@@ -228,10 +212,4 @@ gzip $lists
 # Wait for all the backrounded 'rm's to finish.
 wait
 
-exit
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
+exit 0
