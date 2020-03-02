@@ -68,7 +68,9 @@ use    utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG, E_WA
 #include "rttov_alloc_scatt_prof.interface"
 #include "rttov_user_options_checkinput.interface"
 #include "rttov_print_opts.interface"
+#include "rttov_print_opts_scatt.interface"
 #include "rttov_print_profile.interface"
+#include "rttov_print_cld_profile.interface"
 #include "rttov_skipcommentline.interface"
 
 !--------------------------
@@ -76,7 +78,7 @@ use    utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG, E_WA
 integer(kind=jpim), parameter :: ioout = 0    ! stdout for now
 
 ! Whether to output (copious amounts of) debug information
-logical :: debug
+logical :: debug = .false.
 
 ! Expose publically the DART/RTTOV types and method calls
 public :: visir_metadata_type,               &
@@ -281,14 +283,14 @@ contains
 ! given information. Note that this will create the platform, satellite,
 ! and/or sensors as necessary.
 ! 
-subroutine add_sensor(platform_id, satellite_id, sensor_id, obs_type, &
-   sensor_type_name, coef_file, channels)
+subroutine add_sensor(platform_id, satellite_id, sensor_id, sensor_type_name, obs_type, &
+   coef_file, channels)
 
    integer,          intent(in) :: platform_id        ! the RTTOV platform id
    integer,          intent(in) :: satellite_id       ! the RTTOV satellite id
    integer,          intent(in) :: sensor_id          ! the RTTOV sensor id
-   character(len=*), intent(in) :: obs_type           ! the DART observation type
    character(len=*), intent(in) :: sensor_type_name   ! the type of sensor (vis, ir, mw)
+   character(len=*), intent(in) :: obs_type           ! the DART observation type
    character(len=*), intent(in) :: coef_file          ! the RTTOV coefficient file
    integer,          intent(in) :: channels(:)        ! the channels to simulate (or 0-length for all)
 
@@ -296,7 +298,6 @@ subroutine add_sensor(platform_id, satellite_id, sensor_id, obs_type, &
 
    type(rttov_platform_type),  pointer :: tmp_platforms(:)   ! temporary platform array, for dynamic growing
    type(rttov_satellite_type), pointer :: tmp_satellites(:)  ! temporary satellite array, for dynamic growing
-   type(rttov_sensor_type),    pointer :: tmp_sensors(:)     ! temporary sensor array, for dynamic growing
 
    type(rttov_platform_type),  pointer :: platform          
    type(rttov_satellite_type), pointer :: satellite         
@@ -423,12 +424,17 @@ subroutine add_sensor(platform_id, satellite_id, sensor_id, obs_type, &
    new_sensor % sensor_id    = sensor_id
    new_sensor % obs_type     = obs_type
    new_sensor % sensor_type_name = sensor_type_name
-   if (sensor_type_name == 'vis') then
+
+   if (trim(sensor_type_name) == 'vis') then
       new_sensor % sensor_type_num = 1
-   elseif (sensor_type_name == 'ir') then
+   elseif (trim(sensor_type_name) == 'ir') then
       new_sensor % sensor_type_num = 2
-   elseif (sensor_type_name == 'mw') then
+   elseif (trim(sensor_type_name) == 'mw') then
       new_sensor % sensor_type_num = 3
+   elseif (trim(sensor_type_name) == 'po') then
+      new_sensor % sensor_type_num = 4
+   elseif (trim(sensor_type_name) == 'hi') then
+      new_sensor % sensor_type_num = 5
    else
       write(string1,*) 'Error: unknown sensor_type_name: ', trim(sensor_type_name),':',&
          platform_id,satellite_id,sensor_id
@@ -536,12 +542,9 @@ character(len=512)  :: token
 ! assume the file is delimited by commas
 character(len=*), parameter :: delimiter = ','
 
-type(rttov_sensor_type), pointer :: sensor
-
 character(len=*), parameter :: routine = 'read_sensor_db_file'
 
 character(len=512) :: string1
-character(len=512) :: string2
 
 if (debug) then
    write(string1,*)'Now reading sensor_db_file: ',adjustl(trim(sensor_db_file))
@@ -687,11 +690,13 @@ end subroutine read_sensor_db_file
 ! sensor id. If no sensor is found or if invalid id combinations are 
 ! passed in, an error will be generated.
 ! 
-function get_rttov_sensor(platform_id, satellite_id, sensor_id) result(sensor)
+function get_rttov_sensor(instrument_id) result(sensor)
 
-integer,          intent(in) :: platform_id
-integer,          intent(in) :: satellite_id
-integer,          intent(in) :: sensor_id
+integer, intent(in) :: instrument_id(3)
+
+integer :: platform_id
+integer :: satellite_id
+integer :: sensor_id
 
 type(rttov_platform_type),  pointer :: platform
 type(rttov_satellite_type), pointer :: satellite
@@ -700,7 +705,10 @@ type(rttov_sensor_type),    pointer :: sensor
 character(len=*), parameter :: routine = 'get_rttov_sensor'
 
 character(len=512) :: string1
-character(len=512) :: string2
+
+platform_id  = instrument_id(1)
+satellite_id = instrument_id(2)
+sensor_id    = instrument_id(3)
 
 if (platform_id <= 0 .or. platform_id > size(platforms) .or. &
     satellite_id < 0 .or. sensor_id < 0) then
@@ -758,7 +766,7 @@ type(rttov_satellite_type), pointer :: satellite
 type(rttov_sensor_type),    pointer :: sensor
 type(rttov_sensor_type),    pointer :: next_sensor
 
-integer :: i, j, k, error_status
+integer :: i, j, error_status
 
 do i=1,size(platforms)
    platform => platforms(i)
@@ -794,7 +802,7 @@ end do
 
 deallocate(platforms)
 nullify(platforms)
-end subroutine
+end subroutine clean_up_sensors
 
 !----------------------------------------------------------------------
 ! A helper function to convert a character(len=*) into an integer
@@ -820,7 +828,7 @@ write(strfmt,'(A,I1,A)') '(I', strlength,')'
 
 read(str,strfmt) intv
 
-end function
+end function str2int
 
 !----------------------------------------------------------------------
 ! Setup the sensor runtime structures for use with RTTOV in DART. Note
@@ -837,14 +845,13 @@ type(rttov_options),                 pointer        :: opts
 type(rttov_options_scatt), optional, pointer        :: opts_scatt
 logical,                   optional, intent(in)     :: use_totalice ! only relevant if opts_scatt is present
 
-character(len=*), parameter :: routine = 'sensor_setup'
+character(len=*), parameter :: routine = 'sensor_runtime_setup'
 
 character(len=512) :: string1
 character(len=512) :: string2 ! used to hold the sensor % obs_type, don't overwrite
 
 type(rttov_sensor_runtime_type), pointer :: runtime
 
-integer :: nchanprof
 integer :: nchannels
 
 ! Return error status of RTTOV subroutine calls
@@ -924,7 +931,7 @@ if (present(opts_scatt)) then
    endif
 end if
 
-if (allocated(sensor % channels)) then
+if (size(sensor % channels) /= 0) then
    nchannels = size(sensor % channels)
 else
    nchannels = runtime % coefs % coef % fmv_chn
@@ -1018,17 +1025,20 @@ if (present(opts_scatt)) then
    ! only the channels to simulate will be set
    allocate(runtime % frequencies_all(runtime % coefs % coef % fmv_chn))
 
-   if (allocated(sensor % channels)) then
-      ! only selected channels
+   if (size(sensor % channels) /= 0) then
       nch = size(sensor % channels)
    else
       nch = runtime % coefs % coef % fmv_chn
    end if
 
+   do i=1,ens_size
+      runtime % chanprof(i) % prof = i
+   end do
+
    do i=1,nch
       use_chan(:,:) = .FALSE._jplm
 
-      if (allocated(sensor % channels)) then
+      if (size(sensor % channels) /= 0) then
          ich = sensor % channels(i)
       else
          ich = i
@@ -1037,12 +1047,14 @@ if (present(opts_scatt)) then
       ! Set use_chan to .TRUE. only for the ith required channel
       use_chan(:,ich) = .TRUE._jplm
 
+      runtime % chanprof(:) % chan = ich
+
       ! Populate chanprof and frequencies arrays for this one channel
-      call rttov_scatt_setupindex (                  &
-            nprofiles=ens_size,                      &
-            n_chan=runtime % coefs % coef % fmv_chn, &
+      call rttov_scatt_setupindex (                    &
+            nprofiles=ens_size,                        &
+            n_chan=runtime % coefs % coef % fmv_chn,   &
             coef_rttov=runtime % coefs,                &
-            nchannels=1,                             &
+            nchannels=ens_size,                        &
             chanprof=runtime % chanprof,               &
             frequencies=runtime % frequencies,         &
             lchannel_subset=use_chan )
@@ -1058,6 +1070,272 @@ if (present(opts_scatt)) then
 end if
 
 end subroutine sensor_runtime_setup
+
+subroutine atmos_profile_setup(atmos, ens_size, numlevels, use_q2m, &
+      use_uv10m, use_wfetch, use_water_type, use_salinity,          &
+      supply_foam_fraction,  use_sfc_snow_frac)
+
+type(atmos_profile_type), intent(inout) :: atmos
+integer,                  intent(in)    :: ens_size
+integer,                  intent(in)    :: numlevels
+logical,                  intent(in)    :: use_q2m
+logical,                  intent(in)    :: use_uv10m
+logical,                  intent(in)    :: use_wfetch
+logical,                  intent(in)    :: use_water_type
+logical,                  intent(in)    :: use_salinity
+logical,                  intent(in)    :: supply_foam_fraction
+logical,                  intent(in)    :: use_sfc_snow_frac
+
+allocate(atmos%temperature(ens_size, numlevels), &
+         atmos%   moisture(ens_size, numlevels), &
+         atmos%   pressure(ens_size, numlevels), &
+         atmos%      sfc_p(ens_size),          &
+         atmos%      s2m_t(ens_size),          &
+         atmos%  skin_temp(ens_size),          &
+         atmos%   sfc_elev(ens_size),          &
+         atmos%   surftype(ens_size))
+
+! zero the arrays as well
+atmos%temperature = 0.d0
+atmos%   moisture = 0.d0
+atmos%   pressure = 0.d0
+atmos%      sfc_p = 0.d0
+atmos%      s2m_t = 0.d0
+atmos%  skin_temp = 0.d0
+atmos%   sfc_elev = 0.d0
+atmos%   surftype = 0.d0
+
+if (use_q2m) then
+   allocate(atmos%s2m_q(ens_size))
+   atmos%s2m_q = 0.d0
+end if
+
+if (use_uv10m) then
+   allocate(atmos%s10m_u(ens_size))
+   allocate(atmos%s10m_v(ens_size))
+
+   atmos%s10m_u = 0.d0
+   atmos%s10m_v = 0.d0
+end if
+
+if (use_wfetch) then
+   allocate(atmos%wfetch(ens_size))
+
+   atmos%wfetch = 0.d0
+end if
+
+if (use_water_type) then
+   allocate(atmos%water_type(ens_size))
+
+   atmos%water_type = -1
+end if
+
+if (use_salinity) then
+   allocate(atmos%sfc_salinity(ens_size))
+
+   atmos%sfc_salinity = 0.d0
+end if
+
+if (supply_foam_fraction) then
+   allocate(atmos%sfc_foam_frac(ens_size))
+   atmos%sfc_foam_frac = 0.d0
+end if
+
+if (use_sfc_snow_frac) then
+   allocate(atmos%sfc_snow_frac(ens_size))
+   atmos%sfc_snow_frac = 0.d0
+end if
+
+end subroutine atmos_profile_setup
+
+subroutine trace_gas_profile_setup(trace_gas, ens_size, numlevels,  &
+      ozone_data, co2_data, n2o_data, ch4_data, co_data)
+
+type(trace_gas_profile_type), intent(inout) :: trace_gas
+integer,                      intent(in)    :: ens_size
+integer,                      intent(in)    :: numlevels
+logical,                      intent(in)    :: ozone_data
+logical,                      intent(in)    :: co2_data
+logical,                      intent(in)    :: n2o_data
+logical,                      intent(in)    :: ch4_data
+logical,                      intent(in)    :: co_data
+
+if (ozone_data) then
+   allocate(trace_gas%ozone(ens_size, numlevels))
+   trace_gas%ozone = 0.d0
+end if
+
+if (co2_data) then
+   allocate(trace_gas%co2(ens_size, numlevels))
+   trace_gas%co2 = 0.d0
+end if
+
+if (n2o_data) then
+   allocate(trace_gas%n2o(ens_size, numlevels))
+   trace_gas%n2o = 0.d0
+end if
+
+if (ch4_data) then
+   allocate(trace_gas%ch4(ens_size, numlevels))
+   trace_gas%ch4 = 0.d0
+end if
+
+if (co_data) then
+   allocate(trace_gas%co(ens_size, numlevels))
+   trace_gas%co = 0.d0
+end if
+
+end subroutine trace_gas_profile_setup
+
+
+subroutine aerosol_profile_setup(aerosols, ens_size, numlevels,  &
+      aerosl_type)
+
+type(aerosol_profile_type), intent(inout) :: aerosols
+integer,                    intent(in)    :: ens_size
+integer,                    intent(in)    :: numlevels
+integer,                    intent(in)    :: aerosl_type
+
+character(len=512) :: string1
+character(len=*), parameter :: routine = 'aerosol_profile_setup'
+
+if (aerosl_type == 1) then
+   ! OPAC
+   allocate(aerosols%insoluble(ens_size,numlevels)) 
+   allocate(aerosols%water_soluble(ens_size,numlevels)) 
+   allocate(aerosols%soot(ens_size,numlevels)) 
+   allocate(aerosols%sea_salt_accum(ens_size,numlevels)) 
+   allocate(aerosols%sea_salt_coarse(ens_size,numlevels)) 
+   allocate(aerosols%mineral_nucleus(ens_size,numlevels)) 
+   allocate(aerosols%mineral_accum(ens_size,numlevels)) 
+   allocate(aerosols%mineral_coarse(ens_size,numlevels)) 
+   allocate(aerosols%mineral_transport(ens_size,numlevels)) 
+   allocate(aerosols%sulphated_droplets(ens_size,numlevels)) 
+   allocate(aerosols%volcanic_ash(ens_size,numlevels)) 
+   allocate(aerosols%new_volcanic_ash(ens_size,numlevels)) 
+   allocate(aerosols%asian_dust(ens_size,numlevels)) 
+
+   aerosols%insoluble = 0.d0
+   aerosols%water_soluble = 0.d0
+   aerosols%soot = 0.d0
+   aerosols%sea_salt_accum = 0.d0
+   aerosols%sea_salt_coarse = 0.d0
+   aerosols%mineral_nucleus = 0.d0
+   aerosols%mineral_accum = 0.d0
+   aerosols%mineral_coarse = 0.d0
+   aerosols%mineral_transport = 0.d0
+   aerosols%sulphated_droplets = 0.d0
+   aerosols%volcanic_ash = 0.d0
+   aerosols%new_volcanic_ash = 0.d0
+   aerosols%asian_dust = 0.d0
+elseif (aerosl_type == 2) then
+   ! CAMS
+   allocate(aerosols%black_carbon(ens_size,numlevels)) 
+   allocate(aerosols%dust_bin1(ens_size,numlevels)) 
+   allocate(aerosols%dust_bin2(ens_size,numlevels)) 
+   allocate(aerosols%dust_bin3(ens_size,numlevels)) 
+   allocate(aerosols%ammonium_sulphate(ens_size,numlevels)) 
+   allocate(aerosols%sea_salt_bin1(ens_size,numlevels)) 
+   allocate(aerosols%sea_salt_bin2(ens_size,numlevels)) 
+   allocate(aerosols%sea_salt_bin3(ens_size,numlevels)) 
+   allocate(aerosols%hydrophilic_organic_matter(ens_size,numlevels)) 
+
+   aerosols%black_carbon = 0.d0
+   aerosols%dust_bin1 = 0.d0
+   aerosols%dust_bin2 = 0.d0
+   aerosols%dust_bin3 = 0.d0
+   aerosols%ammonium_sulphate = 0.d0
+   aerosols%sea_salt_bin1 = 0.d0
+   aerosols%sea_salt_bin2 = 0.d0
+   aerosols%sea_salt_bin3 = 0.d0
+   aerosols%hydrophilic_organic_matter = 0.d0
+else
+   ! error
+   write(string1,*)"Unknown aerosl_type:",aerosl_type
+   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+end if
+
+end subroutine aerosol_profile_setup
+
+subroutine cloud_profile_setup(clouds, ens_size, numlevels,  &
+      cfrac_data, clw_data, clw_scheme, rain_data, ciw_data, &
+      ice_scheme, use_icede, snow_data, graupel_data,        &
+      hail_data, w_data, htfrtc_simple_cloud)
+
+type(cloud_profile_type), intent(inout) :: clouds
+integer,                  intent(in)    :: ens_size
+integer,                  intent(in)    :: numlevels
+logical,                  intent(in)    :: cfrac_data
+logical,                  intent(in)    :: clw_data
+integer,                  intent(in)    :: clw_scheme
+logical,                  intent(in)    :: rain_data
+logical,                  intent(in)    :: ciw_data
+integer,                  intent(in)    :: ice_scheme
+logical,                  intent(in)    :: use_icede
+logical,                  intent(in)    :: snow_data
+logical,                  intent(in)    :: graupel_data
+logical,                  intent(in)    :: hail_data
+logical,                  intent(in)    :: w_data
+logical,                  intent(in)    :: htfrtc_simple_cloud
+
+! RTTOV wants layers, but models probably prefer levels
+if (cfrac_data) then
+   allocate(clouds%cfrac(ens_size, numlevels))
+   clouds%cfrac = 0.d0
+end if
+
+if (clw_data) then
+   allocate(clouds%clw(ens_size, numlevels))
+   clouds%clw = 0.d0
+
+   if (clw_scheme == 2) then
+      allocate(clouds%clwde(ens_size, numlevels)) 
+      clouds%clwde = 0.d0
+   end if
+end if
+
+if (rain_data) then
+   allocate(clouds%rain(ens_size, numlevels))
+   clouds%rain = 0.d0
+end if
+
+if (ciw_data) then
+   allocate(clouds%ciw(ens_size, numlevels))
+   clouds%ciw = 0.d0
+   if (ice_scheme == 1 .and. use_icede) then
+      allocate(clouds%icede(ens_size, numlevels))
+      clouds%icede = 0.d0
+   end if
+end if
+
+if (snow_data) then
+   allocate(clouds%snow(ens_size, numlevels))
+   clouds%snow = 0.d0
+end if
+
+if (graupel_data) then
+   allocate(clouds%graupel(ens_size, numlevels))
+   clouds%graupel = 0.d0
+end if
+
+if (hail_data) then
+   allocate(clouds%hail(ens_size, numlevels))
+   clouds%hail = 0.d0
+end if
+
+if (w_data) then
+   allocate(clouds%w(ens_size, numlevels))
+   clouds%w = 0.d0
+end if
+
+if (htfrtc_simple_cloud) then
+   allocate(clouds%simple_cfrac(ens_size))
+   allocate(clouds%ctp(ens_size))
+   clouds%simple_cfrac = 0.d0
+   clouds%ctp = 0.d0
+end if
+
+end subroutine cloud_profile_setup
 
 !----------------------------------------------------------------------
 ! Run the forward model for the given sensor, preallocating arrays and
@@ -1099,8 +1377,6 @@ integer :: ilvl, imem
 
 ! observation location variables
 real(r8) :: lon, lat, obsloc(3)
-
-integer  :: key = 1
 
 integer(kind=jpim) :: j, nch
 
@@ -1204,11 +1480,11 @@ end if
 ! finally set the array to the correct order
 if (first_lvl_is_sfc) then
    do ilvl=1,nlevels
-      lvlidx(ilvl) = ilvl
+      lvlidx(ilvl) = nlevels - ilvl + 1
    end do
 else
    do ilvl=nlevels,1,-1
-      lvlidx(ilvl) = nlevels - ilvl + 1
+      lvlidx(ilvl) = ilvl
    end do
 end if
 
@@ -1224,7 +1500,7 @@ DO imem = 1, ens_size
 
    runtime % profiles(imem) % nlevels = nlevels
    runtime % profiles(imem) % nlayers = nlevels - 1
-   runtime % profiles(imem) % gas_units = 1 ! 1 = kg/kg
+   runtime % profiles(imem) % gas_units = 1 ! 1 = kg/kg, 2 = ppmv
    runtime % profiles(imem) % mmr_cldaer = .true. ! kg/kg
    runtime % profiles(imem) % clw_scheme = clw_scheme
    runtime % profiles(imem) % ice_scheme = ice_scheme
@@ -1263,7 +1539,7 @@ DO imem = 1, ens_size
       end if
 
       ! "clear-sky" cloud-liquid water data for microwave (not RTTOV-SCATT)
-      if (runtime % opts % rt_mw % clw_data) then
+      if (is_mw .and. runtime % opts % rt_mw % clw_data) then
          runtime % profiles(imem) % clw(:) = clouds % clw(imem,lvlidx)
       end if
 
@@ -1355,7 +1631,7 @@ DO imem = 1, ens_size
          if (allocated(clouds % hail)) then
             totalice(:) = totalice(:) + clouds % hail(imem,lvlidx)
          end if 
-   
+
          ! Classify liquid water cloud type. If the maximum absolute w is > 0.5 m/s, classify as a cumulus cloud.
          ! FIXME: consider adding 0.5d0 as a namelist parameter
          if (allocated(clouds % w)) then
@@ -1421,14 +1697,21 @@ DO imem = 1, ens_size
       end if ! add IR clouds
    else if (is_mw) then
       ! RTTOV-SCATT, add MW clouds
+      if (allocated(clouds % cfrac)) then
+         runtime % cld_profiles(imem) % cc(:) = clouds % cfrac(imem, lvlidx)
+      else
+         runtime % cld_profiles(imem) % cc(:) = 0.d0
+      end if
+
+
       if (allocated(clouds % clw)) then
-         runtime % cld_profiles(imem) % clw(:) = clouds % clw(imem,:)
+         runtime % cld_profiles(imem) % clw(:) = clouds % clw(imem,lvlidx)
       else
          runtime % cld_profiles(imem) % clw = 0.d0
       end if
 
       if (allocated(clouds % rain)) then
-         runtime % cld_profiles(imem) % rain(:) = clouds % rain(imem,:)
+         runtime % cld_profiles(imem) % rain(:) = clouds % rain(imem,lvlidx)
       else
          runtime % cld_profiles(imem) % rain = 0.d0
       end if
@@ -1478,16 +1761,16 @@ DO imem = 1, ens_size
 
       ! also add "half-level pressures" as requested by RTTOV-Scatt
       runtime % cld_profiles(imem) % ph(2:nlevels) = 0.5d0*(atmos % pressure(imem,ly1idx)+atmos % pressure(imem,ly2idx))/100.d0
-      runtime % cld_profiles(imem) % ph(1) = atmos % sfc_p(imem)/100.d0
-      runtime % cld_profiles(imem) % ph(nlevels+1) = 0.d0
+      runtime % cld_profiles(imem) % ph(nlevels+1) = atmos % sfc_p(imem)/100.d0
+      runtime % cld_profiles(imem) % ph(1) = 0.d0
    else
       write(string1,*)'Neither opts or opts_scatter were available for platform/sat/sensor id combination:',&
          instrument
       call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
    end if ! has runtime % opts or runtime % opts_scatt
- 
+
    ! 2m above surface pressure (hPa)
-   runtime % profiles(imem) % s2m % p  = atmos % sfc_p(imem)/100 ! convert from Pa to hPa
+   runtime % profiles(imem) % s2m % p  = atmos % sfc_p(imem)/100.d0 ! convert from Pa to hPa
    ! 2m above surface temperature (K)
    runtime % profiles(imem) % s2m % t  = atmos % s2m_t(imem)
 
@@ -1604,10 +1887,15 @@ runtime % calcrefl(:) = (runtime % reflectance(:) % refl_in <= 0._jprb)
 ! Use default cloud top BRDF for simple cloud in VIS/NIR channels
 runtime % reflectance(:) % refl_cloud_top = 0._jprb
 
+if (debug) then
+   call rttov_print_opts(runtime % opts, lu=ioout)
+   call rttov_print_profile(runtime % profiles(1), lu=ioout)
+end if
+
 if (is_visir .or. mw_clear_sky_only) then
    ! Call RTTOV forward model
-   call rttov_direct (                       &
-           errorstatus,                      & ! out   error flag
+   call rttov_direct (                         &
+           errorstatus,                        & ! out   error flag
            runtime % chanprof,                 & ! in    channel and profile index structure
            runtime % opts,                     & ! in    options structure
            runtime % profiles,                 & ! in    profile array
@@ -1617,7 +1905,7 @@ if (is_visir .or. mw_clear_sky_only) then
            calcemis    = runtime % calcemis,   & ! in    flag for internal emissivity calcs
            emissivity  = runtime % emissivity, & ! inout input/output emissivities per channel
            calcrefl    = runtime % calcrefl,   & ! in    flag for internal BRDF calcs
-           reflectance = runtime % reflectance )  ! inout input/output BRDFs per channel
+           reflectance = runtime % reflectance ) ! inout input/output BRDFs per channel
 
    if (errorstatus /= errorstatus_success) then
       write(string1,*)'RTTOV direct error for platform/satellite/sensor id:',&
@@ -1628,7 +1916,12 @@ else
    ! set the frequencies based on which channel is being called
    runtime % frequencies(:) = runtime % frequencies_all(channel)
 
-  call rttov_scatt (          &
+   if (debug) then
+      call rttov_print_opts_scatt(runtime % opts_scatt, lu=ioout)
+      call rttov_print_cld_profile(runtime % cld_profiles(1), lu=ioout)
+   end if
+
+   call rttov_scatt (          &
       errorstatus,            & ! out   error flag
       runtime % opts_scatt,   & ! in    RTTOV-SCATT options structure
       nlevels,                & ! in    number of profile levels
@@ -1641,7 +1934,7 @@ else
       runtime % calcemis,     & ! in    flag for internal emissivity calcs
       runtime % emissivity,   & ! inout input/output emissivities per channel
       runtime % radiance )      ! inout computed radiances
-
+   
    if (errorstatus /= errorstatus_success) then
       write(string1,*)'RTTOV scatt error for platform/satellite/sensor id:',&
          instrument
@@ -1649,12 +1942,20 @@ else
    end if
 end if
 
-do imem = 1, ens_size
-   radiances(imem) = runtime % radiance % total(imem)
-end do
-
-if (debug) then
-   print*, 'RADIANCE % TOTAL = ', runtime % radiance % total(:)
+if (is_visir) then
+   do imem = 1, ens_size
+      radiances(imem) = runtime % radiance % total(imem)
+   end do
+   if (debug) then
+      print*, 'RADIANCE % TOTAL = ', runtime % radiance % total(:)
+   end if
+else
+   do imem = 1, ens_size
+      radiances(imem) = runtime % radiance % bt(imem)
+   end do
+   if (debug) then
+      print*, 'RADIANCE % BT = ', runtime % radiance % bt(:)
+   end if
 end if
 
 IF (errorstatus /= errorstatus_success) THEN
@@ -1662,119 +1963,7 @@ IF (errorstatus /= errorstatus_success) THEN
   !CALL rttov_exit(errorstatus)
 ENDIF
 
-if (debug) then
-   call dump_results(runtime,nlevels,ens_size)
-end if
-
-
 end subroutine do_forward_model
-
-!--------------------------------------------------------------------------
-
-subroutine dump_results(runtime,nlevels,nprof)
-
-type(rttov_sensor_runtime_type), pointer    :: runtime
-integer,                  intent(in) :: nlevels
-integer,                  intent(in) :: nprof
-
-integer(KIND=jpim) :: iprof
-INTEGER(KIND=jpim) :: joff
-INTEGER(KIND=jpim) :: j, jch
-INTEGER(KIND=jpim) :: np, nch
-INTEGER(KIND=jpim) :: ilev, nprint
-INTEGER            :: ios
-
-REAL(KIND=jprb)    :: trans_out(10)
-
-! DART always simulates a single channel at a time
-integer, parameter :: nchannels = 1
-
-!=====================================================
-!============== Output results == start ==============
-
-! Open output file where results are written
-
-WRITE(ioout,*)' -----------------'
-WRITE(ioout,*)' Instrument ', inst_name(runtime % coefs % coef % id_inst)
-WRITE(ioout,*)' -----------------'
-WRITE(ioout,*)' '
-CALL rttov_print_opts(runtime % opts, lu=ioout)
-
-DO iprof = 1, nprof
-
-  joff = (iprof-1_jpim) * nchannels
-
-  nprint = 1 + INT((nchannels-1)/10)
-  WRITE(ioout,*)' '
-  WRITE(ioout,*)' Profile ', iprof
-
-  CALL rttov_print_profile(runtime % profiles(iprof), lu=ioout)
-
-  WRITE(ioout,777)'CHANNELS PROCESSED FOR SAT ', platform_name(runtime % coefs % coef % id_platform), &
-      runtime % coefs % coef % id_sat
-  WRITE(ioout,111) (runtime % chanprof(j) % chan, j = 1+joff, nchannels+joff)
-  WRITE(ioout,*)' '
-  WRITE(ioout,*)'CALCULATED BRIGHTNESS TEMPERATURES (K):'
-  WRITE(ioout,222) (runtime % radiance % bt(j), j = 1+joff, nchannels+joff)
-  IF (runtime % opts % rt_ir % addsolar) THEN
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED SATELLITE REFLECTANCES (BRF):'
-    WRITE(ioout,444) (runtime % radiance % refl(j), j = 1+joff, nchannels+joff)
-  ENDIF
-  WRITE(ioout,*)' '
-  WRITE(ioout,*)'CALCULATED RADIANCES (mW/m2/sr/cm-1):'
-  WRITE(ioout,222) (runtime % radiance % total(j), j = 1+joff, nchannels+joff)
-  WRITE(ioout,*)' '
-  WRITE(ioout,*)'CALCULATED OVERCAST RADIANCES:'
-  WRITE(ioout,222) (runtime % radiance % cloudy(j), j = 1+joff, nchannels+joff)
-  WRITE(ioout,*)' '
-  WRITE(ioout,*)'CALCULATED SURFACE TO SPACE TRANSMITTANCE:'
-  WRITE(ioout,4444) (runtime % transmission % tau_total(j), j = 1+joff, nchannels+joff)
-  WRITE(ioout,*)' '
-  WRITE(ioout,*)'CALCULATED SURFACE EMISSIVITIES:'
-  WRITE(ioout,444) (runtime % emissivity(j) % emis_out, j = 1+joff, nchannels+joff)
-  IF (runtime % opts % rt_ir % addsolar) THEN
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED SURFACE BRDF:'
-    WRITE(ioout,444) (runtime % reflectance(j) % refl_out, j = 1+joff, nchannels+joff)
-  ENDIF
-
-  IF (nchannels <= 20) THEN
-    DO np = 1, nprint
-        WRITE(ioout,*)' '
-        WRITE(ioout,*)'Level to space transmittances for channels'
-        WRITE(ioout,1115) (runtime % chanprof(j+joff) % chan, &
-                  j = 1+(np-1)*10, MIN(np*10, nchannels))
-        DO ilev = 1, nlevels
-          DO j = 1 + (np-1)*10, MIN(np*10, nchannels)
-            ! Select transmittance based on channel type (VIS/NIR or IR)
-            IF (runtime % coefs % coef % ss_val_chn(runtime % chanprof(j+joff) % chan) == 2) THEN
-              trans_out(j - (np-1)*10) = runtime % transmission % tausun_levels_path1(ilev,j+joff)
-            ELSE
-              trans_out(j - (np-1)*10) = runtime % transmission % tau_levels(ilev,j+joff)
-            ENDIF
-          ENDDO
-          WRITE(ioout,4445) ilev, trans_out(1:j-1-(np-1)*10)
-        ENDDO
-        WRITE(ioout,1115) (runtime % chanprof(j+joff) % chan, &
-                  j = 1+(np-1)*10, MIN(np*10, nchannels))
-    ENDDO
-  ENDIF
-ENDDO
-
-!============== Output results == end ==============
-!=====================================================
-
-! Format definitions for output
-111  FORMAT(1X,10I8)
-1115 FORMAT(3X,10I8)
-222  FORMAT(1X,10F8.2)
-444  FORMAT(1X,10F8.3)
-4444 FORMAT(1X,10F8.4)
-4445 FORMAT(1X,I2,10F8.4)
-777  FORMAT(/,A,A9,I3)
-
-end subroutine dump_results
 
 !--------------------------------------------------------------------------
 
@@ -1785,7 +1974,6 @@ integer, intent(out) :: error_status
 
 integer :: nchanprof
 integer :: nlevels
-integer :: alloc_status
 
 ! Return error status of RTTOV subroutine calls
 integer(kind=jpim)               :: errorstatus 

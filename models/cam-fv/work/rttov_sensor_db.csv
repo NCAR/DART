@@ -1,3 +1,4 @@
+<DART Obs Type>,<Platform ID>,<Satellite ID>,<Sensor ID>,<Sensor type>,<Coef file name>,<Channels to use list (optional)>
 NOAA_1_VTPR1_RADIANCE,1,1,7,ir,rtcoef_noaa_1_vtpr1.dat
 NOAA_2_VTPR1_RADIANCE,1,2,7,ir,rtcoef_noaa_2_vtpr1.dat
 NOAA_3_VTPR1_RADIANCE,1,3,7,ir,rtcoef_noaa_3_vtpr1.dat
@@ -117,7 +118,7 @@ ERS_2_MWR_TB,8,2,49,mw,rtcoef_ers_2_mwr.dat
 EOS_1_MODIS_RADIANCE,9,1,13,ir,rtcoef_eos_1_modis-shifted.dat
 EOS_1_ASTER_RADIANCE,9,1,74,ir,rtcoef_eos_1_aster.dat
 EOS_2_AMSUA_TB,9,2,3,mw,rtcoef_eos_2_amsua.dat
-EOS_2_AIRS_RADIANCE,9,2,11,mw,rtcoef_eos_2_airs.H5,168,900
+EOS_2_AIRS_RADIANCE,9,2,11,ir,rtcoef_eos_2_airs.H5,168,900
 EOS_2_HSB_TB,9,2,12,mw,rtcoef_eos_2_hsb.dat
 EOS_2_MODIS_RADIANCE,9,2,13,ir,rtcoef_eos_2_modis-shifted.dat
 EOS_2_AMSRE_TB,9,2,17,mw,rtcoef_eos_2_amsre.dat

@@ -780,12 +780,12 @@ logical :: is_ir
 logical :: is_visir
 
 if (.not. module_initialized) then
-   write(string1,*)"The module must be initialized before initializing a rttov sensor runtime"
+   write(string1,*) "The module must be initialized before initializing a rttov sensor runtime"
    call error_handler(E_ERR, 'initialize_rttov', string1, source, revision, revdate)
 end if
 
 if (.not. associated(sensor)) then
-   write(string1,*)"The sensor must be initialized before initializing a rttov sensor runtime"
+   write(string1,*) "The sensor must be initialized before initializing a rttov sensor runtime"
    call error_handler(E_ERR, 'initialize_rttov', string1, source, revision, revdate)
 end if
 
@@ -816,14 +816,16 @@ opts % rt_all % use_q2m                = use_q2m
 opts % rt_all % addrefrac              = addrefrac
 opts % rt_all % plane_parallel         = plane_parallel
 
-! mw options could be used with direct or scatt, so set them here
-opts % rt_mw % apply_band_correction = apply_band_correction
-opts % rt_mw % clw_data              = clw_data
-opts % rt_mw % clw_calc_on_coef_lev  = .false.                 ! calculate CLW optical depths on input levels
-opts % rt_mw % clw_scheme            = clw_scheme
-opts % rt_mw % clw_cloud_top         = clw_cloud_top
-opts % rt_mw % fastem_version        = fastem_version
-opts % rt_mw % supply_foam_fraction  = supply_foam_fraction
+if (is_mw) then
+   ! mw options could be used with direct or scatt, so set them here
+   opts % rt_mw % apply_band_correction = apply_band_correction
+   opts % rt_mw % clw_data              = clw_data
+   opts % rt_mw % clw_calc_on_coef_lev  = .false.                 ! calculate CLW optical depths on input levels
+   opts % rt_mw % clw_scheme            = clw_scheme
+   opts % rt_mw % clw_cloud_top         = clw_cloud_top
+   opts % rt_mw % fastem_version        = fastem_version
+   opts % rt_mw % supply_foam_fraction  = supply_foam_fraction
+end if
 
 if (is_mw .and. .not. mw_clear_sky_only) then
    ! use RTTOV-SCATT 
@@ -1492,142 +1494,22 @@ if ( .not. arrays_prealloced) then
    endif
 
    ! allocate the necessary fields
-   allocate(atmos%temperature(ens_size, numlevels), &
-            atmos%   moisture(ens_size, numlevels), &
-            atmos%   pressure(ens_size, numlevels), &
-            atmos%      sfc_p(ens_size),            &
-            atmos%      s2m_t(ens_size),            &
-            atmos%  skin_temp(ens_size),            &
-            atmos%   sfc_elev(ens_size),            &
-            atmos%   surftype(ens_size))
+   call atmos_profile_setup(atmos, ens_size, numlevels, use_q2m, & 
+      use_uv10m, use_wfetch, use_water_type, use_salinity,       &
+      supply_foam_fraction, use_sfc_snow_frac)
 
-   if (use_q2m) then
-      allocate(atmos%s2m_q(ens_size))
-   end if
-  
-   if (use_uv10m) then
-      allocate(atmos%s10m_u(ens_size))
-      allocate(atmos%s10m_v(ens_size))
-   end if
-
-   if (use_wfetch) then
-      allocate(atmos%wfetch(ens_size))
-   end if
-
-   if (use_water_type) then
-      allocate(atmos%water_type(ens_size))
-   end if
-
-   if (use_salinity) then
-      allocate(atmos%sfc_salinity(ens_size))
-   end if
-
-   if (supply_foam_fraction) then
-      allocate(atmos%sfc_foam_frac(ens_size))
-   end if
-
-   if (use_sfc_snow_frac) then
-      allocate(atmos%sfc_snow_frac(ens_size))
-   end if
-
-   if (ozone_data) then
-      allocate(trace_gas%ozone(ens_size, numlevels))
-   end if
-
-   if (co2_data) then
-      allocate(trace_gas%co2(ens_size, numlevels))
-   end if
-
-   if (n2o_data) then
-      allocate(trace_gas%n2o(ens_size, numlevels))
-   end if
-
-   if (ch4_data) then
-      allocate(trace_gas%ch4(ens_size, numlevels))
-   end if
-
-   if (co_data) then
-      allocate(trace_gas%co(ens_size, numlevels))
-   end if
+   call trace_gas_profile_setup(trace_gas, ens_size, numlevels,  &
+      ozone_data, co2_data, n2o_data, ch4_data, co_data)
 
    if (add_aerosl) then
-      if (aerosl_type == 1) then
-         ! OPAC
-         allocate(aerosols%insoluble(ens_size,numlevels)) 
-         allocate(aerosols%water_soluble(ens_size,numlevels)) 
-         allocate(aerosols%soot(ens_size,numlevels)) 
-         allocate(aerosols%sea_salt_accum(ens_size,numlevels)) 
-         allocate(aerosols%sea_salt_coarse(ens_size,numlevels)) 
-         allocate(aerosols%mineral_nucleus(ens_size,numlevels)) 
-         allocate(aerosols%mineral_accum(ens_size,numlevels)) 
-         allocate(aerosols%mineral_coarse(ens_size,numlevels)) 
-         allocate(aerosols%mineral_transport(ens_size,numlevels)) 
-         allocate(aerosols%sulphated_droplets(ens_size,numlevels)) 
-         allocate(aerosols%volcanic_ash(ens_size,numlevels)) 
-         allocate(aerosols%new_volcanic_ash(ens_size,numlevels)) 
-         allocate(aerosols%asian_dust(ens_size,numlevels)) 
-      elseif (aerosl_type == 2) then
-         ! CAMS
-         allocate(aerosols%black_carbon(ens_size,numlevels)) 
-         allocate(aerosols%dust_bin1(ens_size,numlevels)) 
-         allocate(aerosols%dust_bin2(ens_size,numlevels)) 
-         allocate(aerosols%dust_bin3(ens_size,numlevels)) 
-         allocate(aerosols%ammonium_sulphate(ens_size,numlevels)) 
-         allocate(aerosols%sea_salt_bin1(ens_size,numlevels)) 
-         allocate(aerosols%sea_salt_bin2(ens_size,numlevels)) 
-         allocate(aerosols%sea_salt_bin3(ens_size,numlevels)) 
-         allocate(aerosols%hydrophilic_organic_matter(ens_size,numlevels)) 
-      else
-         ! error
-         write(string1,*)"Unknown aerosl_type:",aerosl_type
-         call error_handler(E_ERR, routine, string1, source, revision, revdate)
-      end if
+      call aerosol_profile_setup(aerosols, ens_size, numlevels,  &
+         aerosl_type)
    end if
 
-   ! RTTOV wants layers, but models probably prefer levels
-   if (cfrac_data) then
-      allocate(clouds%cfrac(ens_size, numlevels))
-   end if
-
-   if (clw_data) then
-      allocate(clouds%clw(ens_size, numlevels))
-
-      if (clw_scheme == 2) then
-         allocate(clouds%clwde(ens_size, numlevels)) 
-      end if
-   end if
-
-   if (rain_data) then
-      allocate(clouds%rain(ens_size, numlevels))
-   end if
-
-   if (ciw_data) then
-      allocate(clouds%ciw(ens_size, numlevels))
-      if (ice_scheme == 1 .and. use_icede) then
-         allocate(clouds%icede(ens_size, numlevels))
-      end if
-   end if
-
-   if (snow_data) then
-      allocate(clouds%snow(ens_size, numlevels))
-   end if
-
-   if (graupel_data) then
-      allocate(clouds%graupel(ens_size, numlevels))
-   end if
-
-   if (hail_data) then
-      allocate(clouds%hail(ens_size, numlevels))
-   end if
-
-   if (w_data) then
-      allocate(clouds%w(ens_size, numlevels))
-   end if
-
-   if (htfrtc_simple_cloud) then
-      allocate(clouds%simple_cfrac(ens_size))
-      allocate(clouds%ctp(ens_size))
-   end if
+   call cloud_profile_setup(clouds, ens_size, numlevels,     &
+      cfrac_data, clw_data, clw_scheme, rain_data, ciw_data, &
+      ice_scheme, use_icede, snow_data, graupel_data,        &
+      hail_data, w_data, htfrtc_simple_cloud)
 else
    ! load the number of levels from the temperature array, assumed to have been initialized
    numlevels = size(atmos%temperature,2)
