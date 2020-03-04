@@ -115,7 +115,7 @@ def setup_usgs_daily(
     # Symlink the config file into the output_dir so the default yaml file name
     # can be used by create_usgs_daily_obs_seq.
     if config_file is None:
-        config_file = sorted(exp_dir.glob('experiment_config_files.original.*.yaml'))[0]
+        config_file = sorted(exp_dir.glob('original.*.yaml'))[0]
     (output_dir / 'config_file.yaml').symlink_to(config_file)
 
     # Stage the file that does the batch processing.

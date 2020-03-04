@@ -54,7 +54,7 @@ allobsdir={3}
     # path in the internal config file representation. Maybe also stash the path to the original file?
     file_dir = os.path.dirname(config_file)
     file_base = os.path.basename(config_file)
-    config_file_copy_name = file_dir + '.original.' + file_base
+    config_file_copy_name = 'original.' + file_base
     shutil.copy(
         config_file,
         config['experiment']['experiment_dir'] / os.path.basename(config_file_copy_name)
