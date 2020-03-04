@@ -181,7 +181,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config_file = sorted(experiment_dir.glob("*.original.*.yaml"))[0]
+    config_file = sorted(experiment_dir.glob("original.*.yaml"))[0]
     # TODO this should use establish_config
     with open(config_file) as ff:
         config = yaml.safe_load(ff)
