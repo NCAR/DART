@@ -349,6 +349,21 @@ def manage_filter_output(
             prior_mean_file.rename('input_priorinf_mean{0}.nc'.format(domain_tag))
             prior_sd_file.rename('input_priorinf_sd{0}.nc'.format(domain_tag))
 
+	# MEG: Posterior inflation section 
+        post_mean_file = run_dir.joinpath('output_postinf_mean{0}.nc'.format(domain_tag))
+        post_sd_file = run_dir.joinpath('output_postinf_sd{0}.nc'.format(domain_tag))
+        if post_mean_file.exists():
+            shutil.copy2(
+                str(post_mean_file),
+                str(output_dir_date / ('output_postinf_mean{0}.{1}.nc'.format(domain_tag, datestr)))
+            )
+            shutil.copy2(
+                str(post_sd_file),
+                str(output_dir_date / ('output_postinf_sd{0}.{1}.nc'.format(domain_tag, datestr)))
+            )
+            post_mean_file.rename('input_postinf_mean{0}.nc'.format(domain_tag))
+            post_sd_file.rename('input_postinf_sd{0}.nc'.format(domain_tag))
+
     # Other output files.
     potential_output_file_globs = [
         'forecast*mean*nc',   'forecast*sd*nc',  'forecast_member_*.nc',
