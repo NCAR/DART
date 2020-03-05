@@ -16,7 +16,7 @@
 #  and was tested on the NCAR IBM Supercomputer (cheyenne) using a "qsub" command.
 #
 #  Note:
-#  1. For the general configuration including all the file names, edit setup_parameters.csh.
+#  1. For the general configuration including all the file names, edit setup.csh.
 #  2. For the model configuration, our general policy is that we only edit the parameters that
 #     affect the I/O stream here and leave all the rest unchanged (ex. physics options). 
 #     This means that it is the user's responsibility to edit all other namelist parameters 
@@ -48,6 +48,7 @@
 #  C. RUN_DIR/member#/${mpas_filename}    - the input file listed in input_state_file_list for each member
 #  D. OBS_DIR/${obs_seq_in}.${YYYYMMDDHH} - obs sequence files for each analysis cycle (YYYYMMDDHH) 
 #     for the entire period.
+#  E. Ensemble LBC files fore regional MPAS cycling
 # 
 #  Written by Soyoung Ha (MMM/NCAR)
 #  Updated and tested on yellowstone (Feb-20-2013)
@@ -211,14 +212,6 @@ if ( $is_it_regional == true ) then
 
 else
     echo This script is running a global mpas model.
-    cat >! make_lbc.sed << EOF
-/set make_lbc /c\
-set make_lbc = true 
-EOF
-    mv advance_model.csh advance.csh
-    sed -f make_lbc.sed advance.csh >! advance_model.csh
-    ${LINK} $fcmd a.out
-    ${LINK} $rgrd initr.nc
 endif
 chmod +x ./advance_model.csh
 
@@ -532,7 +525,7 @@ EOF
   if( -e $bdylist) ${REMOVE} $bdylist
   if( -e  bdynext) ${REMOVE}  bdynext
 
-  echo Creating $bdylist for update_bc now.
+  echo Updating $bdylist for update_bc now.
   touch $bdylist bdynext
   set lbc0 = ${fbdy}`echo ${time_anl} 0 -w | advance_time | cut -d ":" -f1`.nc
   set lbcN = ${fbdy}`echo ${time_nxt} 0 -w | advance_time | cut -d ":" -f1`.nc
