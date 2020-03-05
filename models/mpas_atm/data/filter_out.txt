@@ -1,0 +1,2 @@
+member1/analysis.nc
+member2/analysis.nc
