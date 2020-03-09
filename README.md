@@ -6,7 +6,7 @@
 Extensive on-line documentation is available at the GitHub project web pages:
 [https://dart.ucar.edu/](https://dart.ucar.edu/)
 or in the GitHub [repository](docs/). Quick-start instructions for the impatient can be found [below](#QuickStart), while more detailed setup instructions and other topics such as a brief introduction to data assimilation, the history of DART, etc. are covered in the 
-[DART Getting Started Guide](https://github.com/NCAR/DART/blob/master/docs/pages/Getting_Started.md). 
+[DART Getting Started Guide](https://dart.ucar.edu/pages/Getting_Started.html). 
 
 <table><tr>
 <td><img height=250, src="./docs/images/DARTspaghettiSquare.gif"></td> 
