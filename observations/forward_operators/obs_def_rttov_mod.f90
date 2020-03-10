@@ -171,6 +171,7 @@
 ! EOS_1_MODIS_RADIANCE,         QTY_RADIANCE
 ! EOS_1_ASTER_RADIANCE,         QTY_RADIANCE
 ! EOS_2_AMSUA_TB,               QTY_BRIGHTNESS_TEMPERATURE
+! EOS_2_AIRS_RADIANCE,          QTY_RADIANCE
 ! EOS_2_HSB_TB,                 QTY_BRIGHTNESS_TEMPERATURE
 ! EOS_2_MODIS_RADIANCE,         QTY_RADIANCE
 ! EOS_2_AMSRE_TB,               QTY_BRIGHTNESS_TEMPERATURE
@@ -323,6 +324,10 @@ use rttov_interface_mod,   only : visir_metadata_type,             &
                                   read_sensor_db_file,             &
                                   sensor_runtime_setup,            &
                                   do_forward_model,                &
+                                  atmos_profile_setup,             &
+                                  trace_gas_profile_setup,         &
+                                  aerosol_profile_setup,           &
+                                  cloud_profile_setup,             &
                                   sensor_runtime_takedown            ! unused at present?
 
 use parkind1,              only : jpim, jprb, jplm
@@ -375,16 +380,14 @@ type(visir_metadata_type)              :: missing_visir_metadata
 type(mw_metadata_type),    pointer     :: mw_obs_metadata(:)
 type(mw_metadata_type)                 :: missing_mw_metadata
 
-character(len=5), parameter :: VISIR_STRING = 'visir_rttov'
-character(len=5), parameter :: MW_STRING    = 'mw_rttov'
+character(len=5), parameter :: VISIR_STRING = 'visir'
+character(len=5), parameter :: MW_STRING    = 'mw   '
 
 logical :: debug = .false.
-integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
+integer :: MAXrttovkey = 1000    !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
 integer ::    visirnum = 0
 integer ::       mwnum = 0
-
-integer(kind=jpim), parameter :: maxchannels = 10000
 
 character(len=512)   :: rttov_sensor_db_file = 'unspecified'
 
@@ -417,7 +420,6 @@ logical              :: use_water_type       = .false.  ! use water type (0 = fr
 logical              :: addrefrac            = .false.  ! enable atmospheric refraction (all) 
 logical              :: plane_parallel       = .false.  ! treat atmosphere as strictly plane-parallel? (all)
 logical              :: use_salinity         = .false.  ! use ocean salinity (in practical salinity units) (MW, FASTEM 4-6 and TESSEM2)
-logical              :: use_fastem_params    = .false.  ! use 5 FASTEM parameters describing the land/sea ice surface, see Table 21 (MW, used in FASTEM)
 logical              :: use_specularity      = .false.  ! use specularity (VIS/IR, only if do_lambertian is true)
 logical              :: apply_band_correction= .true.   ! apply band correction from coef file? (MW)
 logical              :: cfrac_data           = .false.  ! specify cloud fraction? (VIS/IR/MW)
@@ -441,8 +443,8 @@ logical              :: n2o_data             = .false.  ! specify N2O profiles? 
 logical              :: co_data              = .false.  ! specify CO profiles? (VIS/IR)
 logical              :: ch4_data             = .false.  ! specify CH4 profiles? (VIS/IR)
 logical              :: so2_data             = .false.  ! specify SO2 profiles? (VIS/IR)
-logical              :: add_solar            = .false.  ! include solar calculations (VIS/IR)
-logical              :: rayleigh_single_scatt = .true.  ! if false, disable Rayleigh (VIS, add_solar only)
+logical              :: addsolar             = .false.  ! include solar calculations (VIS/IR)
+logical              :: rayleigh_single_scatt = .true.  ! if false, disable Rayleigh (VIS, addsolar only)
 logical              :: do_nlte_correction   = .false.  ! if true include non-LTE bias correction for hires sounders (VIS/IR)
 integer              :: solar_sea_brdf_model = 2        ! JONSWAP (1) or Elfouhaily (2) (VIS)
 integer              :: ir_sea_emis_model    = 2        ! ISEM (1) or IREMIS (2) (IR)
@@ -460,7 +462,7 @@ real(r8)             :: cldstr_threshold     = -1.d0    ! threshold for cloud st
 logical              :: cldstr_simple        = .false.  ! If true, one clear column, one cloudy column (VIS/IR, add_clouds only)
 real(r8)             :: cldstr_low_cloud_top = 750.d0   ! cloud fraction maximum in layers from ToA down to specified hPa (VIS/IR, cldstr_simple only)
 integer              :: ir_scatt_model       = 2        ! DOM (1) or Chou-scaling (2) (IR, add_clouds or add_aerosl only)
-integer              :: vis_scatt_model      = 1        ! DOM (1), single scat (2), or MFASIS (3) (VIS, add_solar and add_clouds or add_aerosl only)
+integer              :: vis_scatt_model      = 1        ! DOM (1), single scat (2), or MFASIS (3) (VIS, addsolar and add_clouds or add_aerosl only)
 integer              :: dom_nstreams         = 8        ! number of streams to use with DOM (VIS/IR, add_clouds or add_aerosl and DOM model only, must be >= 2 and even)
 real(r8)             :: dom_accuracy         = 0.d0     ! convergence criteria for DOM (VIS/IR, add_clouds or addaerosol and DOM model only)
 real(r8)             :: dom_opdep_threshold  = 0.d0     ! DOM ignores layers below this optical depth (VIS/IR, add_clouds or addaerosol and DOM model only)
@@ -474,6 +476,7 @@ logical              :: htfrtc_simple_cloud  = .false.  ! use simple-cloud scatt
 logical              :: htfrtc_overcast      = .false.  ! calculate overcast radiances (HTFRTC only)
 
 namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
+                              first_lvl_is_sfc,       &
                               mw_clear_sky_only,      &
                               interp_mode,            &
                               do_checkinput,          &
@@ -490,7 +493,6 @@ namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               addrefrac,              &
                               plane_parallel,         &
                               use_salinity,           &
-                              use_fastem_params,      &
                               use_specularity,        &
                               apply_band_correction,  &
                               cfrac_data,             &
@@ -514,7 +516,7 @@ namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               co_data,                &
                               ch4_data,               &
                               so2_data,               &
-                              add_solar,              &
+                              addsolar,              &
                               rayleigh_single_scatt,  &
                               do_nlte_correction,     &
                               solar_sea_brdf_model,   &
@@ -558,11 +560,7 @@ integer               :: day
 contains
 
 !----------------------------------------------------------------------------
-
 subroutine initialize_module
-
-integer :: istatus
-integer :: ios
 
 character(len=*), parameter :: routine = 'initialize_module'
 
@@ -588,11 +586,11 @@ missing_mw_metadata%sensor_id    = MISSING_I
 missing_mw_metadata%channel      = MISSING_I
 missing_mw_metadata%mag_field    = MISSING_R8
 missing_mw_metadata%cosbk        = MISSING_R8
-missing_mw_metadata%fastem_land1 = MISSING_R8
-missing_mw_metadata%fastem_land2 = MISSING_R8
-missing_mw_metadata%fastem_land3 = MISSING_R8
-missing_mw_metadata%fastem_land4 = MISSING_R8
-missing_mw_metadata%fastem_land5 = MISSING_R8
+missing_mw_metadata%fastem_p1 = MISSING_R8
+missing_mw_metadata%fastem_p2 = MISSING_R8
+missing_mw_metadata%fastem_p3 = MISSING_R8
+missing_mw_metadata%fastem_p4 = MISSING_R8
+missing_mw_metadata%fastem_p5 = MISSING_R8
 
 allocate(obstype_metadata(2*MAXrttovkey))
 allocate(obstype_subkey(2*MAXrttovkey))
@@ -617,147 +615,147 @@ if (debug) then
    
    write(string1,*)'rttov_sensor_db_file   - ',trim(rttov_sensor_db_file)
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'mw_clear_sky_only      -',mw_clear_sky_only
+   write(string1,*)'first_lvl_is_sfc       - ',first_lvl_is_sfc
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'interp_mode            -',interp_mode
+   write(string1,*)'mw_clear_sky_only      - ',mw_clear_sky_only
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'do_checkinput          -',do_checkinput
+   write(string1,*)'interp_mode            - ',interp_mode
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'apply_reg_limits       -',apply_reg_limits
+   write(string1,*)'do_checkinput          - ',do_checkinput
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'verbose                -',verbose
+   write(string1,*)'apply_reg_limits       - ',apply_reg_limits
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'fix_hgpl               -',fix_hgpl
+   write(string1,*)'verbose                - ',verbose
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'do_lambertian          -',do_lambertian
+   write(string1,*)'fix_hgpl               - ',fix_hgpl
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'lambertian_fixed_angle -',lambertian_fixed_angle
+   write(string1,*)'do_lambertian          - ',do_lambertian
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'rad_down_lin_tau       -',rad_down_lin_tau
+   write(string1,*)'lambertian_fixed_angle - ',lambertian_fixed_angle
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_q2m                -',use_q2m
+   write(string1,*)'rad_down_lin_tau       - ',rad_down_lin_tau
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_uv10m              -',use_uv10m
+   write(string1,*)'use_q2m                - ',use_q2m
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_wfetch             -',use_wfetch
+   write(string1,*)'use_uv10m              - ',use_uv10m
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_water_type         -',use_water_type
+   write(string1,*)'use_wfetch             - ',use_wfetch
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'addrefrac              -',addrefrac
+   write(string1,*)'use_water_type         - ',use_water_type
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'plane_parallel         -',plane_parallel
+   write(string1,*)'addrefrac              - ',addrefrac
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_salinity           -',use_salinity
+   write(string1,*)'plane_parallel         - ',plane_parallel
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_fastem_params      -',use_fastem_params
+   write(string1,*)'use_salinity           - ',use_salinity
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_specularity        -',use_specularity
+   write(string1,*)'use_specularity        - ',use_specularity
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'apply_band_correction  -',apply_band_correction
+   write(string1,*)'apply_band_correction  - ',apply_band_correction
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'cfrac_data             -',cfrac_data
+   write(string1,*)'cfrac_data             - ',cfrac_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'clw_data               -',clw_data
+   write(string1,*)'clw_data               - ',clw_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'rain_data              -',rain_data
+   write(string1,*)'rain_data              - ',rain_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'ciw_data               -',ciw_data
+   write(string1,*)'ciw_data               - ',ciw_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'snow_data              -',snow_data
+   write(string1,*)'snow_data              - ',snow_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'graupel_data           -',graupel_data
+   write(string1,*)'graupel_data           - ',graupel_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'hail_data              -',hail_data
+   write(string1,*)'hail_data              - ',hail_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'w_data                 -',w_data
+   write(string1,*)'w_data                 - ',w_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'clw_scheme             -',clw_scheme
+   write(string1,*)'clw_scheme             - ',clw_scheme
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'clw_cloud_top          -',clw_cloud_top
+   write(string1,*)'clw_cloud_top          - ',clw_cloud_top
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'fastem_version         -',fastem_version
+   write(string1,*)'fastem_version         - ',fastem_version
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'supply_foam_fraction   -',supply_foam_fraction
+   write(string1,*)'supply_foam_fraction   - ',supply_foam_fraction
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_totalice           -',use_totalice
+   write(string1,*)'use_totalice           - ',use_totalice
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_zeeman             -',use_zeeman
+   write(string1,*)'use_zeeman             - ',use_zeeman
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'cc_threshold           -',cc_threshold
+   write(string1,*)'cc_threshold           - ',cc_threshold
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'ozone_data             -',ozone_data
+   write(string1,*)'ozone_data             - ',ozone_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'co2_data               -',co2_data
+   write(string1,*)'co2_data               - ',co2_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'n2o_data               -',n2o_data
+   write(string1,*)'n2o_data               - ',n2o_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'co_data                -',co_data
+   write(string1,*)'co_data                - ',co_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'ch4_data               -',ch4_data
+   write(string1,*)'ch4_data               - ',ch4_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'so2_data               -',so2_data
+   write(string1,*)'so2_data               - ',so2_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'add_solar              -',add_solar
+   write(string1,*)'addsolar               - ',addsolar
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'rayleigh_single_scatt  -',rayleigh_single_scatt
+   write(string1,*)'rayleigh_single_scatt  - ',rayleigh_single_scatt
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'do_nlte_correction     -',do_nlte_correction
+   write(string1,*)'do_nlte_correction     - ',do_nlte_correction
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'solar_sea_brdf_model   -',solar_sea_brdf_model
+   write(string1,*)'solar_sea_brdf_model   - ',solar_sea_brdf_model
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'ir_sea_emis_model      -',ir_sea_emis_model
+   write(string1,*)'ir_sea_emis_model      - ',ir_sea_emis_model
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_sfc_snow_frac      -',use_sfc_snow_frac
+   write(string1,*)'use_sfc_snow_frac      - ',use_sfc_snow_frac
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'add_aerosl             -',add_aerosl
+   write(string1,*)'add_aerosl             - ',add_aerosl
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'aerosl_type            -',aerosl_type
+   write(string1,*)'aerosl_type            - ',aerosl_type
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'add_clouds             -',add_clouds
+   write(string1,*)'add_clouds             - ',add_clouds
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'ice_scheme             -',ice_scheme
+   write(string1,*)'ice_scheme             - ',ice_scheme
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_icede              -',use_icede
+   write(string1,*)'use_icede              - ',use_icede
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'idg_scheme             -',idg_scheme
+   write(string1,*)'idg_scheme             - ',idg_scheme
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'user_aer_opt_param     -',user_aer_opt_param
+   write(string1,*)'user_aer_opt_param     - ',user_aer_opt_param
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'user_cld_opt_param     -',user_cld_opt_param
+   write(string1,*)'user_cld_opt_param     - ',user_cld_opt_param
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'grid_box_avg_cloud     -',grid_box_avg_cloud
+   write(string1,*)'grid_box_avg_cloud     - ',grid_box_avg_cloud
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'cldstr_threshold       -',cldstr_threshold
+   write(string1,*)'cldstr_threshold       - ',cldstr_threshold
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'cldstr_simple          -',cldstr_simple
+   write(string1,*)'cldstr_simple          - ',cldstr_simple
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'cldstr_low_cloud_top   -',cldstr_low_cloud_top
+   write(string1,*)'cldstr_low_cloud_top   - ',cldstr_low_cloud_top
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'ir_scatt_model         -',ir_scatt_model
+   write(string1,*)'ir_scatt_model         - ',ir_scatt_model
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'vis_scatt_model        -',vis_scatt_model
+   write(string1,*)'vis_scatt_model        - ',vis_scatt_model
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'dom_nstreams           -',dom_nstreams
+   write(string1,*)'dom_nstreams           - ',dom_nstreams
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'dom_accuracy           -',dom_accuracy
+   write(string1,*)'dom_accuracy           - ',dom_accuracy
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'dom_opdep_threshold    -',dom_opdep_threshold
+   write(string1,*)'dom_opdep_threshold    - ',dom_opdep_threshold
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'addpc                  -',addpc
+   write(string1,*)'addpc                  - ',addpc
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'npcscores              -',npcscores
+   write(string1,*)'npcscores              - ',npcscores
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'addradrec              -',addradrec
+   write(string1,*)'addradrec              - ',addradrec
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'ipcreg                 -',ipcreg
+   write(string1,*)'ipcreg                 - ',ipcreg
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_htfrtc             -',use_htfrtc
+   write(string1,*)'use_htfrtc             - ',use_htfrtc
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'htfrtc_n_pc            -',htfrtc_n_pc
+   write(string1,*)'htfrtc_n_pc            - ',htfrtc_n_pc
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'htfrtc_simple_cloud           -',htfrtc_simple_cloud
+   write(string1,*)'htfrtc_simple_cloud    - ',htfrtc_simple_cloud
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'htfrtc_overcast               -',htfrtc_overcast
+   write(string1,*)'htfrtc_overcast        - ',htfrtc_overcast
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
 end if
 
@@ -771,7 +769,6 @@ type(rttov_sensor_type), pointer    :: sensor
 integer,                 intent(in) :: ens_size
 integer,                 intent(in) :: nlevels
 
-integer :: istatus
 type(rttov_options),       pointer  :: opts
 type(rttov_options_scatt), pointer  :: opts_scatt
 logical :: is_mw
@@ -852,7 +849,8 @@ if (is_mw .and. .not. mw_clear_sky_only) then
                              ens_size=ens_size,     &
                              nlevs=nlevels,         &
                              opts=opts,             &
-                             opts_scatt=opts_scatt)
+                             opts_scatt=opts_scatt, &
+                             use_totalice=use_totalice)
 else
    opts % rt_ir % ozone_data            = ozone_data
    opts % rt_ir % co2_data              = co2_data
@@ -860,7 +858,7 @@ else
    opts % rt_ir % co_data               = co_data
    opts % rt_ir % ch4_data              = ch4_data
    opts % rt_ir % so2_data              = so2_data
-   opts % rt_ir % addsolar              = add_solar
+   opts % rt_ir % addsolar              = addsolar
    opts % rt_ir % rayleigh_single_scatt = rayleigh_single_scatt
    opts % rt_ir % do_nlte_correction    = do_nlte_correction
    opts % rt_ir % solar_sea_brdf_model  = solar_sea_brdf_model
@@ -904,13 +902,12 @@ end subroutine initialize_rttov_sensor_runtime
 !----------------------------------------------------------------------
 ! Fill the module storage metadata for a particular visible/infrared 
 ! observation.
-
 subroutine set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
    platform_id, sat_id, sensor_id, channel, specularity)
 
 integer,  intent(out) :: key
 real(r8), intent(in)  :: sat_az, sat_ze
-real(r8), intent(in)  :: sun_az, sun_ze ! only relevant if add_solar
+real(r8), intent(in)  :: sun_az, sun_ze ! only relevant if addsolar
 integer,  intent(in)  :: platform_id, sat_id, sensor_id, channel
 real(r8), intent(in)  :: specularity    ! only relevant if do_lambertian
 
@@ -925,6 +922,8 @@ obstype_metadata(rttovkey) = .true. ! .true. for visir
 call grow_metadata(rttovkey,'set_visir_metadata', .true.)
 
 key = rttovkey ! now that we know its legal
+
+print *,'set ir rttovkey:',rttovkey,visirnum,platform_id,sat_id,sensor_id,channel
 
 visir_obs_metadata(visirnum) % sat_az      = sat_az
 visir_obs_metadata(visirnum) % sat_ze      = sat_ze
@@ -941,17 +940,16 @@ end subroutine set_visir_metadata
 !----------------------------------------------------------------------
 ! Fill the module storage metadata for a particular microwave 
 ! observation.
-
 subroutine set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
-   channel, mag_field, cosbk, fastem_land1, fastem_land2, fastem_land3,         &
-   fastem_land4, fastem_land5)
+   channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,         &
+   fastem_p4, fastem_p5)
 
 integer,  intent(out) :: key
 real(r8), intent(in)  :: sat_az, sat_ze
 integer,  intent(in)  :: platform_id, sat_id, sensor_id, channel
 real(r8), intent(in)  :: mag_field, cosbk                            ! only relevant with use_zeeman
-real(r8), intent(in)  :: fastem_land1, fastem_land2, fastem_land3, & ! 
-                         fastem_land4, fastem_land5                  ! only relevant with use_fastem_params
+real(r8), intent(in)  :: fastem_p1, fastem_p2, fastem_p3, & ! 
+                         fastem_p4, fastem_p5 !5 FASTEM parameters describing the land/sea ice surface, see Table 21 (MW, used in FASTEM and for land/sea ice for TESSM2)
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -965,6 +963,8 @@ call grow_metadata(rttovkey,'set_mw_metadata', .false.)
 
 key = rttovkey ! now that we know its legal
 
+print *,'set mw rttovkey:',rttovkey,mwnum,platform_id,sat_id,sensor_id,channel
+
 mw_obs_metadata(mwnum) % sat_az       = sat_az
 mw_obs_metadata(mwnum) % sat_ze       = sat_ze
 mw_obs_metadata(mwnum) % platform_id  = platform_id
@@ -973,11 +973,11 @@ mw_obs_metadata(mwnum) % sensor_id    = sensor_id
 mw_obs_metadata(mwnum) % channel      = channel
 mw_obs_metadata(mwnum) % mag_field    = mag_field
 mw_obs_metadata(mwnum) % cosbk        = cosbk
-mw_obs_metadata(mwnum) % fastem_land1 = fastem_land1
-mw_obs_metadata(mwnum) % fastem_land2 = fastem_land2
-mw_obs_metadata(mwnum) % fastem_land3 = fastem_land3
-mw_obs_metadata(mwnum) % fastem_land4 = fastem_land4
-mw_obs_metadata(mwnum) % fastem_land5 = fastem_land5
+mw_obs_metadata(mwnum) % fastem_p1    = fastem_p1
+mw_obs_metadata(mwnum) % fastem_p2    = fastem_p2
+mw_obs_metadata(mwnum) % fastem_p3    = fastem_p3
+mw_obs_metadata(mwnum) % fastem_p4    = fastem_p4
+mw_obs_metadata(mwnum) % fastem_p5    = fastem_p5
 
 end subroutine set_mw_metadata
 
@@ -993,61 +993,100 @@ real(r8), intent(out) :: sat_az, sat_ze, sun_az, sun_ze
 integer,  intent(out) :: platform_id, sat_id, sensor_id, channel
 real(r8), intent(out) :: specularity
 
+integer :: visirnum
+
+character(len=*), parameter :: routine = 'get_visir_metadata'
+
 if ( .not. module_initialized ) call initialize_module
 
 ! Make sure the desired key is within the length of the metadata arrays.
-call key_within_range(key,'get_visir_metadata')
+call key_within_range(key,routine)
 
-sat_az      = visir_obs_metadata(key) % sat_az
-sat_ze      = visir_obs_metadata(key) % sat_ze
-sun_az      = visir_obs_metadata(key) % sun_az
-sun_ze      = visir_obs_metadata(key) % sun_ze
-platform_id = visir_obs_metadata(key) % platform_id
-sat_id      = visir_obs_metadata(key) % sat_id
-sensor_id   = visir_obs_metadata(key) % sensor_id
-channel     = visir_obs_metadata(key) % channel
-specularity = visir_obs_metadata(key) % specularity
+if (.not. obstype_metadata(key)) then
+   write(string1,*)'The obstype metadata for key ',key,'is not visir as expected'
+   call error_handler(E_ERR, routine, string1, source, &
+      revision, revdate)
+end if
+
+visirnum = obstype_subkey(key)
+
+if (visirnum < 0 .or. visirnum > size(visir_obs_metadata)) then
+   write(string1,*)'The visir-specific key ',visirnum,'is invalid.'
+   write(string2,*)'Size of visir_obs_metadata:',&
+      size(visir_obs_metadata)
+   call error_handler(E_ERR, routine, string1, source, &
+      revision, revdate, text2=string2)
+end if
+
+sat_az      = visir_obs_metadata(visirnum) % sat_az
+sat_ze      = visir_obs_metadata(visirnum) % sat_ze
+sun_az      = visir_obs_metadata(visirnum) % sun_az
+sun_ze      = visir_obs_metadata(visirnum) % sun_ze
+platform_id = visir_obs_metadata(visirnum) % platform_id
+sat_id      = visir_obs_metadata(visirnum) % sat_id
+sensor_id   = visir_obs_metadata(visirnum) % sensor_id
+channel     = visir_obs_metadata(visirnum) % channel
+specularity = visir_obs_metadata(visirnum) % specularity
 
 end subroutine get_visir_metadata
 
 
 subroutine get_mw_metadata(key, sat_az, sat_ze,        &
    platform_id, sat_id, sensor_id, channel, mag_field, &
-   cosbk, fastem_land1, fastem_land2, fastem_land3,    &
-   fastem_land4, fastem_land5)
+   cosbk, fastem_p1, fastem_p2, fastem_p3,    &
+   fastem_p4, fastem_p5)
 
 integer,  intent(in)  :: key
 real(r8), intent(out) :: sat_az, sat_ze
 integer,  intent(out) :: platform_id, sat_id, sensor_id, channel
 real(r8), intent(out) :: mag_field, cosbk
-real(r8), intent(out) :: fastem_land1, fastem_land2, fastem_land3, &
-                         fastem_land4, fastem_land5
+real(r8), intent(out) :: fastem_p1, fastem_p2, fastem_p3, &
+                         fastem_p4, fastem_p5
+
+character(len=*), parameter :: routine = 'get_mw_metadata'
+
+integer :: mwnum
 
 if ( .not. module_initialized ) call initialize_module
 
 ! Make sure the desired key is within the length of the metadata arrays.
-call key_within_range(key,'get_mw_metadata')
+call key_within_range(key,routine)
 
-sat_az       = mw_obs_metadata(key) % sat_az
-sat_ze       = mw_obs_metadata(key) % sat_ze
-platform_id  = mw_obs_metadata(key) % platform_id
-sat_id       = mw_obs_metadata(key) % sat_id
-sensor_id    = mw_obs_metadata(key) % sensor_id
-channel      = mw_obs_metadata(key) % channel
-mag_field    = mw_obs_metadata(key) % mag_field
-cosbk        = mw_obs_metadata(key) % cosbk
-fastem_land1 = mw_obs_metadata(key) % fastem_land1
-fastem_land2 = mw_obs_metadata(key) % fastem_land2
-fastem_land3 = mw_obs_metadata(key) % fastem_land3
-fastem_land4 = mw_obs_metadata(key) % fastem_land4
-fastem_land5 = mw_obs_metadata(key) % fastem_land5
+if (obstype_metadata(key)) then
+   write(string1,*)'The obstype metadata for key ',key,'is not MW as expected'
+   call error_handler(E_ERR, routine, string1, source, &
+      revision, revdate)
+end if
+
+mwnum = obstype_subkey(key)
+
+if (mwnum < 0 .or. mwnum > size(mw_obs_metadata)) then
+   write(string1,*)'The mw-specific key ',mwnum,'is invalid.'
+   write(string2,*)'Size of visir_obs_metadata:',&
+      size(mw_obs_metadata)
+   call error_handler(E_ERR, routine, string1, source, &
+      revision, revdate, text2=string2)
+end if
+
+sat_az       = mw_obs_metadata(mwnum) % sat_az
+sat_ze       = mw_obs_metadata(mwnum) % sat_ze
+platform_id  = mw_obs_metadata(mwnum) % platform_id
+sat_id       = mw_obs_metadata(mwnum) % sat_id
+sensor_id    = mw_obs_metadata(mwnum) % sensor_id
+channel      = mw_obs_metadata(mwnum) % channel
+mag_field    = mw_obs_metadata(mwnum) % mag_field
+cosbk        = mw_obs_metadata(mwnum) % cosbk
+fastem_p1    = mw_obs_metadata(mwnum) % fastem_p1
+fastem_p2    = mw_obs_metadata(mwnum) % fastem_p2
+fastem_p3    = mw_obs_metadata(mwnum) % fastem_p3
+fastem_p4    = mw_obs_metadata(mwnum) % fastem_p4
+fastem_p5    = mw_obs_metadata(mwnum) % fastem_p5
 
 end subroutine get_mw_metadata
 
 
 !----------------------------------------------------------------------
 ! This routine reads the metadata for the visir/mw radiance/tb obs
-
 subroutine read_rttov_metadata(key, obsID, ifile, fform)
 integer,          intent(out)          :: key    ! index into local metadata
 integer,          intent(in)           :: obsID
@@ -1063,8 +1102,8 @@ real(r8)          :: sat_az, sat_ze, sun_az, sun_ze
 integer           :: platform_id, sat_id, sensor_id, channel
 real(r8)          :: specularity
 real(r8)          :: mag_field, cosbk
-real(r8)          :: fastem_land1, fastem_land2, fastem_land3, &
-                     fastem_land4, fastem_land5
+real(r8)          :: fastem_p1, fastem_p2, fastem_p3, &
+                     fastem_p4, fastem_p5
 
 logical :: is_visir
 
@@ -1077,7 +1116,7 @@ write(string2,*)'observation #',obsID
 if ( is_asciifile ) then
    read(ifile, *, iostat=ierr) header
    call check_iostat(ierr,'read_rttov_metadata','header',string2)
-   if (trim(header) == trim(visir_STRING)) then
+   if (trim(header) == trim(VISIR_STRING)) then
       ! Load the visible/IR data from the file
       read(ifile, *, iostat=ierr) sat_az, sat_ze, sun_az, sun_ze
       call check_iostat(ierr,'read_rttov_metadata','sat,sun az/ze',string2)
@@ -1088,7 +1127,7 @@ if ( is_asciifile ) then
       read(ifile, *, iostat=ierr) oldkey
       call check_iostat(ierr,'read_rttov_metadata','oldkey',string2)
       is_visir = .true.
-   elseif (trim(header) == trim(mw_STRING)) then
+   elseif (trim(header) == trim(MW_STRING)) then
       ! Load the visible/IR data from the file
       read(ifile, *, iostat=ierr) sat_az, sat_ze
       call check_iostat(ierr,'read_rttov_metadata','sat az/ze',string2)
@@ -1096,9 +1135,9 @@ if ( is_asciifile ) then
       call check_iostat(ierr,'read_rttov_metadata','platform/sat_id/sensor/channel',string2)
       read(ifile, *, iostat=ierr) mag_field, cosbk
       call check_iostat(ierr,'read_rttov_metadata','mag_field/cosbk',string2)
-      read(ifile, *, iostat=ierr) fastem_land1, fastem_land2, fastem_land3, &
-                                  fastem_land4, fastem_land5
-      call check_iostat(ierr,'read_rttov_metadata','fastem_land1-5',string2)
+      read(ifile, *, iostat=ierr) fastem_p1, fastem_p2, fastem_p3, &
+                                  fastem_p4, fastem_p5
+      call check_iostat(ierr,'read_rttov_metadata','fastem_p1-5',string2)
       read(ifile, *, iostat=ierr) oldkey
       call check_iostat(ierr,'read_rttov_metadata','oldkey',string2)
       is_visir = .false.
@@ -1110,8 +1149,9 @@ if ( is_asciifile ) then
 else
    read(ifile, iostat=ierr) header
    call  check_iostat(ierr,'read_rttov_metadata','header',string2)
+   print *,'found header:',header
 
-   if (trim(header) == trim(visir_STRING)) then
+   if (trim(header) == trim(VISIR_STRING)) then
       ! Load the visible/IR data from the file
       read(ifile, iostat=ierr) sat_az, sat_ze, sun_az, sun_ze
       call check_iostat(ierr,'read_rttov_metadata','sat,sun az/ze',string2)
@@ -1122,7 +1162,9 @@ else
       read(ifile, iostat=ierr) oldkey
       call check_iostat(ierr,'read_rttov_metadata','oldkey',string2)
       is_visir = .true.
-   elseif (trim(header) == trim(mw_STRING)) then
+      print *,'it is a VISIR record',platform_id,sat_id,sensor_id,channel
+   elseif (trim(header) == trim(MW_STRING)) then
+      print *,'it is a MW record'
       ! Load the visible/IR data from the file
       read(ifile, iostat=ierr) sat_az, sat_ze
       call check_iostat(ierr,'read_rttov_metadata','sat az/ze',string2)
@@ -1130,9 +1172,9 @@ else
       call check_iostat(ierr,'read_rttov_metadata','platform/sat_id/sensor/channel',string2)
       read(ifile, iostat=ierr) mag_field, cosbk
       call check_iostat(ierr,'read_rttov_metadata','mag_field/cosbk',string2)
-      read(ifile, iostat=ierr) fastem_land1, fastem_land2, fastem_land3, &
-                                  fastem_land4, fastem_land5
-      call check_iostat(ierr,'read_rttov_metadata','fastem_land1-5',string2)
+      read(ifile, iostat=ierr) fastem_p1, fastem_p2, fastem_p3, &
+                                  fastem_p4, fastem_p5
+      call check_iostat(ierr,'read_rttov_metadata','fastem_p1-5',string2)
       read(ifile, iostat=ierr) oldkey
       call check_iostat(ierr,'read_rttov_metadata','oldkey',string2)
       is_visir = .false.
@@ -1152,8 +1194,8 @@ if (is_visir) then
       platform_id, sat_id, sensor_id, channel, specularity)
 else
    call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
-      channel, mag_field, cosbk, fastem_land1, fastem_land2, fastem_land3,   &
-      fastem_land4, fastem_land5)
+      channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,   &
+      fastem_p4, fastem_p5)
 end if
 
 end subroutine read_rttov_metadata
@@ -1173,8 +1215,10 @@ real(r8) :: sat_az, sat_ze, sun_az, sun_ze
 integer  :: platform_id, sat_id, sensor_id, channel
 real(r8) :: specularity
 real(r8) :: mag_field, cosbk
-real(r8) :: fastem_land1, fastem_land2, fastem_land3, &
-            fastem_land4, fastem_land5
+real(r8) :: fastem_p1, fastem_p2, fastem_p3, &
+            fastem_p4, fastem_p5
+
+character(len=5)  :: header
 
 logical  :: is_visir
 
@@ -1191,14 +1235,18 @@ if (is_visir) then
    call get_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
       platform_id, sat_id, sensor_id, channel, specularity)
 
+   print *,'now writing visir:',key, platform_id, sat_id, sensor_id
+
+   header = VISIR_STRING
+
    if (is_asciifile) then
-      write(ifile, *) trim(visir_STRING)
+      write(ifile, *) header
       write(ifile, *) sat_az, sat_ze, sun_az, sun_ze
       write(ifile, *) platform_id, sat_id, sensor_id, channel
       write(ifile, *) specularity
       write(ifile, *) key
    else
-      write(ifile   ) trim(visir_STRING)
+      write(ifile   ) header
       write(ifile   ) sat_az, sat_ze, sun_az, sun_ze
       write(ifile   ) platform_id, sat_id, sensor_id, channel
       write(ifile   ) specularity
@@ -1207,24 +1255,28 @@ if (is_visir) then
 else
    call get_mw_metadata(key, sat_az, sat_ze,                  &
       platform_id, sat_id, sensor_id, channel, mag_field, cosbk, &
-      fastem_land1, fastem_land2, fastem_land3, fastem_land4,    &
-      fastem_land5)
+      fastem_p1, fastem_p2, fastem_p3, fastem_p4,    &
+      fastem_p5)
+
+   print *,'now writing mw:',key, platform_id, sat_id, sensor_id
+
+   header = MW_STRING
 
    if (is_asciifile) then
-      write(ifile, *) trim(mw_STRING)
+      write(ifile, *) header
       write(ifile, *) sat_az, sat_ze
       write(ifile, *) platform_id, sat_id, sensor_id, channel
       write(ifile, *) mag_field, cosbk
-      write(ifile, *) fastem_land1, fastem_land2, fastem_land3, &
-                      fastem_land4, fastem_land5 
+      write(ifile, *) fastem_p1, fastem_p2, fastem_p3, &
+                      fastem_p4, fastem_p5 
       write(ifile, *) key
    else
-      write(ifile   ) trim(mw_STRING)
+      write(ifile   ) header
       write(ifile   ) sat_az, sat_ze
       write(ifile   ) platform_id, sat_id, sensor_id, channel
       write(ifile   ) mag_field, cosbk
-      write(ifile   ) fastem_land1, fastem_land2, fastem_land3, &
-                      fastem_land4, fastem_land5 
+      write(ifile   ) fastem_p1, fastem_p2, fastem_p3, &
+                      fastem_p4, fastem_p5 
       write(ifile   ) key
    end if
 end if
@@ -1241,8 +1293,8 @@ real(r8)          :: sat_az, sat_ze, sun_az, sun_ze
 integer           :: platform_id, sat_id, sensor_id, channel
 real(r8)          :: specularity
 real(r8)          :: mag_field, cosbk
-real(r8)          :: fastem_land1, fastem_land2, fastem_land3, &
-                     fastem_land4, fastem_land5
+real(r8)          :: fastem_p1, fastem_p2, fastem_p3, &
+                     fastem_p4, fastem_p5
 
 integer :: visir_int
 logical :: is_visir
@@ -1260,7 +1312,7 @@ end if
 
 sat_az   = interactive_r('sat_az        satellite azimuth [degrees]', minvalue = 0.0_r8, maxvalue = 360.0_r8)
 sat_ze   = interactive_r('sat_ze        satellite zenith [degrees]',  minvalue = 0.0_r8, maxvalue = 90.0_r8)
-if (is_visir .and. add_solar) then
+if (is_visir .and. addsolar) then
    sun_az   = interactive_r('sun_az        solar azimuth [degrees]',     minvalue = 0.0_r8, maxvalue = 360.0_r8)
    sun_ze   = interactive_r('sun_ze        solar zenith [degrees]',      minvalue = 0.0_r8, maxvalue = 90.0_r8)
 else
@@ -1287,27 +1339,32 @@ else
    cosbk       = MISSING_R8
 end if
 
-if (.not. is_visir .and. use_fastem_params) then
-   fastem_land1 = interactive_r('fastem land1  1st fastem land/sea ice parameter', minvalue = 0.0_r8)
-   fastem_land2 = interactive_r('fastem land2  2nd fastem land/sea ice parameter', minvalue = 0.0_r8)
-   fastem_land3 = interactive_r('fastem land3  3rd fastem land/sea ice parameter', minvalue = 0.0_r8)
-   fastem_land4 = interactive_r('fastem land4  4th fastem land/sea ice parameter', minvalue = 0.0_r8)
-   fastem_land5 = interactive_r('fastem land5  5th fastem land/sea ice parameter', minvalue = 0.0_r8)
+if (.not. is_visir) then
+   fastem_p1 = interactive_r('fastem land1  1st fastem land/sea ice parameter', minvalue = 0.0_r8)
+   fastem_p2 = interactive_r('fastem land2  2nd fastem land/sea ice parameter', minvalue = 0.0_r8)
+   fastem_p3 = interactive_r('fastem land3  3rd fastem land/sea ice parameter', minvalue = 0.0_r8)
+   fastem_p4 = interactive_r('fastem land4  4th fastem land/sea ice parameter', minvalue = 0.0_r8)
+   fastem_p5 = interactive_r('fastem land5  5th fastem land/sea ice parameter', minvalue = 0.0_r8)
 else
-   fastem_land1 = MISSING_R8
-   fastem_land2 = MISSING_R8
-   fastem_land3 = MISSING_R8
-   fastem_land4 = MISSING_R8
-   fastem_land5 = MISSING_R8
+   fastem_p1 = MISSING_R8
+   fastem_p2 = MISSING_R8
+   fastem_p3 = MISSING_R8
+   fastem_p4 = MISSING_R8
+   fastem_p5 = MISSING_R8
 end if
 
 if (is_visir) then
+   print *,'IR key val:',key, sat_az, sat_ze, sun_az, sun_ze, &
+      platform_id, sat_id, sensor_id, channel, specularity
    call set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
       platform_id, sat_id, sensor_id, channel, specularity)
 else
+   print *,'MW key val:',key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
+      channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,   &
+      fastem_p4, fastem_p5
    call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
-      channel, mag_field, cosbk, fastem_land1, fastem_land2, fastem_land3,   &
-      fastem_land4, fastem_land5)
+      channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,   &
+      fastem_p4, fastem_p5)
 end if
 
 end subroutine interactive_rttov_metadata
@@ -1373,7 +1430,7 @@ integer,  optional, intent(in) :: maxvalue
 if (present(minvalue) .and. present(maxvalue)) then
 
    interactive_i = minvalue - 1
-   MINMAXLOOP : do while ((interactive_i < minvalue) .and. (interactive_i > maxvalue))
+   MINMAXLOOP : do while ((interactive_i < minvalue) .or. (interactive_i > maxvalue))
       write(*, *) 'Enter '//str1
       read( *, *) interactive_i
    end do MINMAXLOOP
@@ -1403,7 +1460,6 @@ end function interactive_i
 
 
 !----------------------------------------------------------------------
-
 subroutine get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, key, val, istatus)
 
 integer,             intent(in)  :: obs_kind_ind
@@ -1414,8 +1470,8 @@ integer,             intent(in)  :: key               ! key into module metadata
 real(r8),            intent(out) :: val(ens_size)     ! value of obs
 integer,             intent(out) :: istatus(ens_size) ! status of the calculation
 
-real(r8) :: sat_az, sat_ze, sun_az, sun_ze
 integer  :: platform_id, sat_id, sensor_id, channel
+integer  :: instrument(3)
 
 integer :: this_istatus(ens_size)
 
@@ -1424,9 +1480,7 @@ real(r8) :: loc_array(3)
 real(r8) :: loc_lon, loc_lat
 real(r8) :: loc_value(ens_size), radiance(ens_size)
 type(location_type) :: loc
-integer :: imem, maxlevels, numlevels
-integer :: error_status
-logical :: return_now
+integer :: maxlevels, numlevels
 
 type(rttov_sensor_type), pointer :: sensor
 
@@ -1448,13 +1502,27 @@ call key_within_range(key, routine)
 
 is_visir = obstype_metadata(key)
 
+print *,'for this key:',key,is_visir,obstype_subkey(key)
+
 if (is_visir) then
-   visir_md =  visir_obs_metadata(obstype_subkey(key))
+   visir_md => visir_obs_metadata(obstype_subkey(key))
    mw_md    => null()
+
+   platform_id = visir_md % platform_id
+   sat_id      = visir_md % sat_id
+   sensor_id   = visir_md % sensor_id
+   channel     = visir_md % channel
 else
    visir_md => null()
-   mw_md    =  mw_obs_metadata(obstype_subkey(key))
+   mw_md    => mw_obs_metadata(obstype_subkey(key))
+
+   platform_id = mw_md % platform_id
+   sat_id      = mw_md % sat_id
+   sensor_id   = mw_md % sensor_id
+   channel     = mw_md % channel
 end if
+
+print *,'for this key instrument:',key,platform_id,sat_id,sensor_id,channel
 
 !=================================================================================
 ! Determine the number of model levels 
@@ -1477,10 +1545,6 @@ if ( .not. arrays_prealloced) then
       numlevels = numlevels + 1
    enddo COUNTLEVELS
 
-   if (debug) then
-      print *,'istatus is:',this_istatus
-   end if
-
    if ((numlevels == maxlevels) .or. (numlevels == 0)) then
       write(string1,'(A,I0)') 'FAILED to determine number of levels in model:', &
          numlevels
@@ -1499,7 +1563,7 @@ if ( .not. arrays_prealloced) then
       supply_foam_fraction, use_sfc_snow_frac)
 
    call trace_gas_profile_setup(trace_gas, ens_size, numlevels,  &
-      ozone_data, co2_data, n2o_data, ch4_data, co_data)
+      ozone_data, co2_data, n2o_data, ch4_data, co_data, so2_data)
 
    if (add_aerosl) then
       call aerosol_profile_setup(aerosols, ens_size, numlevels,  &
@@ -1510,13 +1574,19 @@ if ( .not. arrays_prealloced) then
       cfrac_data, clw_data, clw_scheme, rain_data, ciw_data, &
       ice_scheme, use_icede, snow_data, graupel_data,        &
       hail_data, w_data, htfrtc_simple_cloud)
+
+   arrays_prealloced = .true.
 else
    ! load the number of levels from the temperature array, assumed to have been initialized
    numlevels = size(atmos%temperature,2)
 end if 
 
+instrument(1) = platform_id
+instrument(2) = sat_id
+instrument(3) = sensor_id
+
 ! also check if the sensor runtime needs to be initialized
-sensor => get_rttov_sensor(platform_id, sat_id, sensor_id)
+sensor => get_rttov_sensor(instrument)
 
 if (.not. associated(sensor)) then
    write(string1,*)'Could not find the platform/sat/sensor id combination:',&
@@ -1566,6 +1636,11 @@ GETLEVELDATA : do i = 1,numlevels
    if (co_data) then
       call interpolate(state_handle, ens_size, loc, QTY_CO, trace_gas%co(:, i), this_istatus)
       call check_status('QTY_CO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   end if
+
+   if (so2_data) then
+      call interpolate(state_handle, ens_size, loc, QTY_SO2, trace_gas%so2(:, i), this_istatus)
+      call check_status('QTY_SO2', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
    end if
 
    if (add_aerosl) then
@@ -1776,29 +1851,28 @@ if (debug) then
    print*, 'interpolate moisture    = ', atmos%moisture(1,1),    '...', atmos%moisture(1,numlevels)
 end if
 
-call do_forward_model(ens_size=ens_size,                    &
-                      nlevels=numlevels,                    &
-                      location=location,                    &
-                      atmos=atmos,                          &
-                      trace_gas=trace_gas,                  &
-                      clouds=clouds,                        &
-                      aerosols=aerosols,                    &
-                      sensor=sensor,                        &
-                      channel=channel,                      &
-                      first_lvl_is_sfc=first_lvl_is_sfc,    &
-                      mw_clear_sky_only=mw_clear_sky_only,  &
-                      clw_scheme=clw_scheme,                &
-                      ice_scheme=ice_scheme,                &
-                      idg_scheme=idg_scheme,                &
-                      aerosl_type=aerosl_type,              &
-                      do_lambertian=do_lambertian,          &
-                      use_totalice=use_totalice,            &
-                      use_zeeman=use_zeeman,                &
-                      use_fastem_params=use_fastem_params,  &
-                      radiances=radiance,                   &
-                      error_status=this_istatus,            &
-                      visir_md=visir_md,                    &
-                      mw_md=mw_md) 
+!call do_forward_model(ens_size=ens_size,                    &
+!                      nlevels=numlevels,                    &
+!                      location=location,                    &
+!                      atmos=atmos,                          &
+!                      trace_gas=trace_gas,                  &
+!                      clouds=clouds,                        &
+!                      aerosols=aerosols,                    &
+!                      sensor=sensor,                        &
+!                      channel=channel,                      &
+!                      first_lvl_is_sfc=first_lvl_is_sfc,    &
+!                      mw_clear_sky_only=mw_clear_sky_only,  &
+!                      clw_scheme=clw_scheme,                &
+!                      ice_scheme=ice_scheme,                &
+!                      idg_scheme=idg_scheme,                &
+!                      aerosl_type=aerosl_type,              &
+!                      do_lambertian=do_lambertian,          &
+!                      use_totalice=use_totalice,            &
+!                      use_zeeman=use_zeeman,                &
+!                      radiances=radiance,                   &
+!                      error_status=this_istatus,            &
+!                      visir_md=visir_md,                    &
+!                      mw_md=mw_md) 
 
 if (debug) then
    print*, 'istatus  = ', istatus 

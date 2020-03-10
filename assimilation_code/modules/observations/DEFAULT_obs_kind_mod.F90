@@ -169,22 +169,24 @@ integer, parameter, public :: &
     QTY_OCCULTATION_REFRACTIVITY    = 57, &
     QTY_OCCULTATION_EXCESSPHASE     = 58
 
-! kind for the other way of measuring elevation
+! quantity for the other way of measuring elevation
 ! contrast this with geopotential height
 integer, parameter, public :: &
     QTY_GEOMETRIC_HEIGHT            = 59
 
-! kinds for satellite radiances (jason o.)
+! quantities for limited satellite radiances (jason o.)
+! more generic radiances/brightness temperature info
+! can be found at quantity 290
 integer, parameter, public :: &
     QTY_INFRARED_RADIANCE           = 60, &
     QTY_INFRARED_BRIGHT_TEMP        = 61, &
     QTY_LANDMASK                    = 62
 
-! kind for unstructured grids
+! quantity for unstructured grids
 integer, parameter, public :: &
     QTY_EDGE_NORMAL_SPEED           = 63
 
-! kind for cloud liquid water path
+! quantity for cloud liquid water path
 ! see also kinds 363, 364
 integer, parameter, public :: &
     QTY_CLW_PATH                    = 64
@@ -235,7 +237,8 @@ integer, parameter, public :: &
     QTY_TURBULENT_KINETIC_ENERGY    = 86, &
     QTY_TOTAL_PRECIPITABLE_WATER    = 87, & ! accumulated value - total water in a column
     QTY_VERTLEVEL                   = 88, &
-    QTY_MICROWAVE_BRIGHT_TEMP       = 89
+    QTY_MICROWAVE_BRIGHT_TEMP       = 89    ! this was used for a limited implementation, 
+                                            ! more general quantities are found at 290
 
 ! kinds for NAAPS (Walter R. Sessions)
 integer, parameter, public :: &
@@ -309,7 +312,8 @@ integer, parameter, public :: &
     QTY_O3                          = 151, &
     QTY_CO                          = 153, &
     QTY_NO                          = 155, &
-    QTY_NO2                         = 156
+    QTY_NO2                         = 156, &  ! Nitrogen dioxide
+    QTY_N2O                         = 157     ! JLS Nitrous oxide, for RTTOV
 
 ! more chemistry kinds (Jerome Barre)  (through 249)
 integer, parameter, public :: &
@@ -390,10 +394,13 @@ integer, parameter, public :: &
   QTY_VELOCITY_VERTICAL_NO          = 284, &
   QTY_GND_GPS_VTEC                  = 285, &
   QTY_DENSITY_ION_OP                = 286
- 
-! more land kinds
+
+! directly-observed (L1) satellite quantities
 integer, parameter, public :: &
-  QTY_BRIGHTNESS_TEMPERATURE        = 300, &
+  QTY_RADIANCE                      = 290, &
+  QTY_BRIGHTNESS_TEMPERATURE        = 300
+ 
+integer, parameter, public :: &
   QTY_VEGETATION_TEMPERATURE        = 301, &
   QTY_CANOPY_HEIGHT                 = 302, &
   QTY_FPAR_DIRECT                   = 303, &
@@ -473,10 +480,46 @@ integer, parameter, public :: &
   QTY_ION_O_MIXING_RATIO            = 365, &
   QTY_ATOMIC_H_MIXING_RATIO         = 366
 
+! Jeff S's temporary RTTOV quantities not found above
+integer, parameter, public :: &
+  QTY_SURFACE_TYPE                  = 401, &  ! land = 0, sea = 1, seaice = 2
+  QTY_WIND_FETCH                    = 402, &  ! Wind fetch, m
+  QTY_WATER_TYPE                    = 403, &  ! fresh = 0, ocean = 1
+  QTY_FOAM_FRAC                     = 404, &  ! Fraction of foam on ocean surface (0-1)
+  QTY_INSOLUBLE_AER                 = 405, &  ! Insoluble aerosol OPAC aerosol (INSO)
+  QTY_H2O_SOLUBLE_AER               = 406, &  ! Soluble aerosol OPAC aerosol (WASO)
+  QTY_SOOT                          = 407, &  ! Soot aerosol OPAC aerosol (SOOT)
+  QTY_SEASALT_ACCUM                 = 408, &  ! Sea salt (accumulation mode) OPAC aerosol (SSAM)
+  QTY_SEASALT_COARSE                = 409, &  ! Sea salt (coarse) OPAC aerosol (SSCM)
+  QTY_MINERAL_NUCLEUS               = 410, &  ! Mineral (nucleus) OPAC aerosol (MINM)
+  QTY_MINERAL_ACCUM                 = 411, &  ! Mineral (accumulation mode) OPAC aerosol (MIAM)
+  QTY_MINERAL_COARSE                = 412, &  ! Mineral (coarse mode) OPAC aerosol (MICM)
+  QTY_MINERAL_TRANSPORTED           = 413, &  ! Mineral (transported mode) OPAC aerosol (MITR)
+  QTY_SULPHATED_DROPS               = 414, &  ! Sulphated droplets OPAC aerosol (SUSO)
+  QTY_VOLCANIC_ASH                  = 415, &  ! Volcanic ash OPAC aerosol (VOLA)
+  QTY_NEW_VOLCANIC_ASH              = 416, &  ! New volcanic ash OPAC aerosol (VAPO)
+  QTY_ASIAN_DUST                    = 417, &  ! Asian dust OPAC aerosol (ASDU)
+  QTY_BLACK_CARBON                  = 418, &  ! Black carbon CAMS aerosol (BCAR)
+  QTY_DUST_BIN1                     = 419, &  ! Dust bin 1 CAMS aerosol (DUS1)
+  QTY_DUST_BIN2                     = 420, &  ! Dust bin 2 CAMS aerosol (DUS2)
+  QTY_DUST_BIN3                     = 421, &  ! Dust bin 3 CAMS aerosol (DUS3)
+  QTY_AMMONIUM_SULPHATE             = 422, &  ! Ammonium sulphate CAMS aerosol (SULP)
+  QTY_SEA_SALT_BIN1                 = 423, &  ! Sea salt bin 1 CAMS aerosol (SSA1)
+  QTY_SEA_SALT_BIN2                 = 424, &  ! Sea salt bin 2 CAMS aerosol (SSA2)
+  QTY_SEA_SALT_BIN3                 = 425, &  ! Sea salt bin 3 CAMS aerosol (SSA3)
+  QTY_HYDROPHILIC_ORGANIC_MATTER    = 426, &  ! Hydrophilic organic matter CAMS aerosol (OMAT)
+  QTY_CLOUDWATER_DE                 = 427, &  ! Cloud liquid water effective diameter (microns)
+  QTY_CLOUD_ICE_DE                  = 428, &  ! Cloud ice effective diameter (microns)
+  QTY_COLUMN_CLOUD_FRAC             = 429, &  ! Simple cloud fraction (0-1)
+  QTY_CLOUD_TOP_PRESSURE            = 430
+
+  
+   
+
 ! max_defined_quantities is private to this module.  see comment below near the max_obs_specific
 ! declaration for more info about publics and private values.
 
-integer, parameter :: max_defined_quantities = 366
+integer, parameter :: max_defined_quantities = 430
 
 !----------------------------------------------------------------------------
 ! This list is autogenerated by the 'preprocess' program.  To add new
@@ -819,7 +862,9 @@ obs_kind_names(284) = obs_kind_type(QTY_VELOCITY_VERTICAL_NO  ,'QTY_VELOCITY_VER
 obs_kind_names(285) = obs_kind_type(QTY_GND_GPS_VTEC          ,'QTY_GND_GPS_VTEC')
 obs_kind_names(286) = obs_kind_type(QTY_DENSITY_ION_OP        ,'QTY_DENSITY_ION_OP')
 
+obs_kind_names(290) = obs_kind_type(QTY_RADIANCE              ,'QTY_RADIANCE')
 obs_kind_names(300) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE,'QTY_BRIGHTNESS_TEMPERATURE')
+
 obs_kind_names(301) = obs_kind_type(QTY_VEGETATION_TEMPERATURE,'QTY_VEGETATION_TEMPERATURE')
 obs_kind_names(302) = obs_kind_type(QTY_CANOPY_HEIGHT         ,'QTY_CANOPY_HEIGHT')
 obs_kind_names(303) = obs_kind_type(QTY_FPAR_DIRECT           ,'QTY_FPAR_DIRECT')
@@ -887,6 +932,37 @@ obs_kind_names(363) = obs_kind_type(QTY_CWP_PATH,              'QTY_CWP_PATH')
 obs_kind_names(364) = obs_kind_type(QTY_CWP_PATH_ZERO,         'QTY_CWP_PATH_ZERO')
 obs_kind_names(365) = obs_kind_type(QTY_ION_O_MIXING_RATIO,    'QTY_ION_O_MIXING_RATIO')
 obs_kind_names(366) = obs_kind_type(QTY_ATOMIC_H_MIXING_RATIO, 'QTY_ATOMIC_H_MIXING_RATIO')
+
+obs_kind_names(401) = obs_kind_type(QTY_SURFACE_TYPE,          'QTY_SURFACE_TYPE')
+obs_kind_names(402) = obs_kind_type(QTY_WIND_FETCH,            'QTY_WIND_FETCH')
+obs_kind_names(403) = obs_kind_type(QTY_WATER_TYPE,            'QTY_WATER_TYPE')
+obs_kind_names(404) = obs_kind_type(QTY_FOAM_FRAC,             'QTY_FOAM_FRAC')
+obs_kind_names(405) = obs_kind_type(QTY_INSOLUBLE_AER,         'QTY_INSOLUBLE_AER')
+obs_kind_names(406) = obs_kind_type(QTY_H2O_SOLUBLE_AER,       'QTY_H2O_SOLUBLE_AER')
+obs_kind_names(407) = obs_kind_type(QTY_SOOT,                  'QTY_SOOT')
+obs_kind_names(408) = obs_kind_type(QTY_SEASALT_ACCUM,         'QTY_SEASALT_ACCUM')
+obs_kind_names(409) = obs_kind_type(QTY_SEASALT_COARSE,        'QTY_SEASALT_COARSE')
+obs_kind_names(410) = obs_kind_type(QTY_MINERAL_NUCLEUS,       'QTY_MINERAL_NUCLEUS')
+obs_kind_names(411) = obs_kind_type(QTY_MINERAL_ACCUM,         'QTY_MINERAL_ACCUM')
+obs_kind_names(412) = obs_kind_type(QTY_MINERAL_COARSE,        'QTY_MINERAL_COARSE')
+obs_kind_names(413) = obs_kind_type(QTY_MINERAL_TRANSPORTED,   'QTY_MINERAL_TRANSPORTED')
+obs_kind_names(414) = obs_kind_type(QTY_SULPHATED_DROPS,       'QTY_SULPHATED_DROPS')
+obs_kind_names(415) = obs_kind_type(QTY_VOLCANIC_ASH,          'QTY_VOLCANIC_ASH')
+obs_kind_names(416) = obs_kind_type(QTY_NEW_VOLCANIC_ASH,      'QTY_NEW_VOLCANIC_ASH')
+obs_kind_names(417) = obs_kind_type(QTY_ASIAN_DUST,            'QTY_ASIAN_DUST')
+obs_kind_names(418) = obs_kind_type(QTY_BLACK_CARBON,          'QTY_BLACK_CARBON')
+obs_kind_names(419) = obs_kind_type(QTY_DUST_BIN1,             'QTY_DUST_BIN1')
+obs_kind_names(420) = obs_kind_type(QTY_DUST_BIN2,             'QTY_DUST_BIN2')
+obs_kind_names(421) = obs_kind_type(QTY_DUST_BIN3,             'QTY_DUST_BIN3')
+obs_kind_names(422) = obs_kind_type(QTY_AMMONIUM_SULPHATE,     'QTY_AMMONIUM_SULPHATE')
+obs_kind_names(423) = obs_kind_type(QTY_SEA_SALT_BIN1,         'QTY_SEA_SALT_BIN1')
+obs_kind_names(424) = obs_kind_type(QTY_SEA_SALT_BIN2,         'QTY_SEA_SALT_BIN2')
+obs_kind_names(425) = obs_kind_type(QTY_SEA_SALT_BIN3,         'QTY_SEA_SALT_BIN3')
+obs_kind_names(426) = obs_kind_type(QTY_HYDROPHILIC_ORGANIC_MATTER,'QTY_HYDROPHILIC_ORGANIC_MATTER')
+obs_kind_names(427) = obs_kind_type(QTY_CLOUDWATER_DE,         'QTY_CLOUDWATER_DE')
+obs_kind_names(428) = obs_kind_type(QTY_CLOUD_ICE_DE,          'QTY_CLOUD_ICE_DE')
+obs_kind_names(429) = obs_kind_type(QTY_COLUMN_CLOUD_FRAC,     'QTY_COLUMN_CLOUD_FRAC')
+obs_kind_names(430) = obs_kind_type(QTY_CLOUD_TOP_PRESSURE,    'QTY_CLOUD_TOP_PRESSURE')
 
 ! count here, then output below
 

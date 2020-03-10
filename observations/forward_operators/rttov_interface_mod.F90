@@ -119,11 +119,11 @@ type mw_metadata_type
    integer  :: channel     !  each channel is a different obs
    real(r8) :: mag_field   ! strength of mag_field (Gauss, )
    real(r8) :: cosbk       ! cosine of angle between mag field and viewing angle
-   real(r8) :: fastem_land1 ! FASTEM land/sea ice parameter 1
-   real(r8) :: fastem_land2 ! FASTEM land/sea ice parameter 2
-   real(r8) :: fastem_land3 ! FASTEM land/sea ice parameter 3
-   real(r8) :: fastem_land4 ! FASTEM land/sea ice parameter 4
-   real(r8) :: fastem_land5 ! FASTEM land/sea ice parameter 5
+   real(r8) :: fastem_p1 ! FASTEM land/sea ice parameter 1
+   real(r8) :: fastem_p2 ! FASTEM land/sea ice parameter 2
+   real(r8) :: fastem_p3 ! FASTEM land/sea ice parameter 3
+   real(r8) :: fastem_p4 ! FASTEM land/sea ice parameter 4
+   real(r8) :: fastem_p5 ! FASTEM land/sea ice parameter 5
 end type mw_metadata_type
 
 ! DART container type to hold the essential atmosphere and surface fields.
@@ -1086,6 +1086,8 @@ logical,                  intent(in)    :: use_salinity
 logical,                  intent(in)    :: supply_foam_fraction
 logical,                  intent(in)    :: use_sfc_snow_frac
 
+print *,'allocating atmos'
+
 allocate(atmos%temperature(ens_size, numlevels), &
          atmos%   moisture(ens_size, numlevels), &
          atmos%   pressure(ens_size, numlevels), &
@@ -1149,7 +1151,7 @@ end if
 end subroutine atmos_profile_setup
 
 subroutine trace_gas_profile_setup(trace_gas, ens_size, numlevels,  &
-      ozone_data, co2_data, n2o_data, ch4_data, co_data)
+      ozone_data, co2_data, n2o_data, ch4_data, co_data, so2_data)
 
 type(trace_gas_profile_type), intent(inout) :: trace_gas
 integer,                      intent(in)    :: ens_size
@@ -1159,6 +1161,7 @@ logical,                      intent(in)    :: co2_data
 logical,                      intent(in)    :: n2o_data
 logical,                      intent(in)    :: ch4_data
 logical,                      intent(in)    :: co_data
+logical,                      intent(in)    :: so2_data
 
 if (ozone_data) then
    allocate(trace_gas%ozone(ens_size, numlevels))
@@ -1182,6 +1185,11 @@ end if
 
 if (co_data) then
    allocate(trace_gas%co(ens_size, numlevels))
+   trace_gas%co = 0.d0
+end if
+
+if (so2_data) then
+   allocate(trace_gas%so2(ens_size, numlevels))
    trace_gas%co = 0.d0
 end if
 
@@ -1346,8 +1354,8 @@ subroutine do_forward_model(ens_size, nlevels, location,   &
    atmos, trace_gas, clouds, aerosols, sensor, channel,    &
    first_lvl_is_sfc, mw_clear_sky_only, clw_scheme,        &
    ice_scheme, idg_scheme, aerosl_type, do_lambertian,     &
-   use_totalice, use_zeeman, use_fastem_params, radiances, &
-   error_status, visir_md, mw_md)
+   use_totalice, use_zeeman, radiances, error_status,      &
+   visir_md, mw_md)
 
 integer,                                intent(in)  :: ens_size
 integer,                                intent(in)  :: nlevels
@@ -1367,7 +1375,6 @@ integer,                                intent(in)  :: aerosl_type
 logical,                                intent(in)  :: do_lambertian
 logical,                                intent(in)  :: use_totalice
 logical,                                intent(in)  :: use_zeeman
-logical,                                intent(in)  :: use_fastem_params
 real(r8),                               intent(out) :: radiances(ens_size)
 integer,                                intent(out) :: error_status(ens_size)
 type(visir_metadata_type),     pointer, intent(in)  :: visir_md
@@ -1817,13 +1824,13 @@ DO imem = 1, ens_size
       runtime % profiles(imem) % skin % snow_fraction = atmos % sfc_snow_frac(imem)
    end if
 
-   if (is_mw .and. use_fastem_params) then
+   if (is_mw) then
       ! FASTEM parameters, see RTTOV user guide e.g. Table 21
-      runtime % profiles(imem) % skin % fastem(1)   = mw_md%fastem_land1
-      runtime % profiles(imem) % skin % fastem(2)   = mw_md%fastem_land2
-      runtime % profiles(imem) % skin % fastem(3)   = mw_md%fastem_land3
-      runtime % profiles(imem) % skin % fastem(4)   = mw_md%fastem_land4
-      runtime % profiles(imem) % skin % fastem(5)   = mw_md%fastem_land5
+      runtime % profiles(imem) % skin % fastem(1)   = mw_md%fastem_p1
+      runtime % profiles(imem) % skin % fastem(2)   = mw_md%fastem_p2
+      runtime % profiles(imem) % skin % fastem(3)   = mw_md%fastem_p3
+      runtime % profiles(imem) % skin % fastem(4)   = mw_md%fastem_p4
+      runtime % profiles(imem) % skin % fastem(5)   = mw_md%fastem_p5
    end if
 
    if (is_visir .and. do_lambertian) then
@@ -1888,8 +1895,12 @@ runtime % calcrefl(:) = (runtime % reflectance(:) % refl_in <= 0._jprb)
 runtime % reflectance(:) % refl_cloud_top = 0._jprb
 
 if (debug) then
+   print *,'is_visir:',is_visir
    call rttov_print_opts(runtime % opts, lu=ioout)
    call rttov_print_profile(runtime % profiles(1), lu=ioout)
+   if (associated(runtime % opts_scatt)) then
+      call rttov_print_opts_scatt(runtime % opts_scatt, lu=ioout)
+   end if
 end if
 
 if (is_visir .or. mw_clear_sky_only) then

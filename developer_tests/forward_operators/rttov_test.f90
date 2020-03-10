@@ -43,11 +43,12 @@ program rttov_test
    logical :: supply_foam_fraction = .true.
    logical :: use_sfc_snow_frac    = .true.
 
-   logical :: ozone_data  = .true.
-   logical :: co2_data    = .true.
-   logical :: n2o_data    = .true.
-   logical :: ch4_data    = .true.
-   logical :: co_data     = .true.
+   logical :: ozone_data  = .false.
+   logical :: co2_data    = .false.
+   logical :: n2o_data    = .false.
+   logical :: ch4_data    = .false.
+   logical :: co_data     = .false.
+   logical :: so2_data    = .false.
 
    logical :: add_aerosl  = .false.
    integer :: aerosl_type = 1  ! OPAC
@@ -71,7 +72,6 @@ program rttov_test
    logical :: do_lambertian     = .false.
    logical :: use_totalice      = .false.
    logical :: use_zeeman        = .false.
-   logical :: use_fastem_params = .false.
 
    real(r8) :: radiances(ens_size)
    integer  :: error_status(ens_size)
@@ -511,7 +511,7 @@ program rttov_test
       supply_foam_fraction, use_sfc_snow_frac)
 
    call trace_gas_profile_setup(trace_gas, ens_size, numlevels,  &
-      ozone_data, co2_data, n2o_data, ch4_data, co_data)
+      ozone_data, co2_data, n2o_data, ch4_data, co_data, so2_data)
 
    if (add_aerosl) then
       call aerosol_profile_setup(aerosols, ens_size, numlevels,  &
@@ -600,8 +600,8 @@ program rttov_test
       atmos, trace_gas, clouds, aerosols, sensor_ir, channel, &
       first_lvl_is_sfc, mw_clear_sky_only, clw_scheme,        &
       ice_scheme, idg_scheme, aerosl_type, do_lambertian,     &
-      use_totalice, use_zeeman, use_fastem_params, radiances, &
-      error_status, visir_md=visir_md, mw_md=mw_md)
+      use_totalice, use_zeeman, radiances, error_status,      &
+      visir_md=visir_md, mw_md=mw_md)
 
    print *,'radiances:',radiances
 
@@ -610,15 +610,15 @@ program rttov_test
    ! test 4.1: fill in the profiles for the MW values
    do i=1,ens_size
       ind1d = 0
-      mw_mds(i)%fastem_land1 = fastem_data(ind1d+i)
+      mw_mds(i)%fastem_p1 = fastem_data(ind1d+i)
       ind1d = 3
-      mw_mds(i)%fastem_land2 = fastem_data(ind1d+i)
+      mw_mds(i)%fastem_p2 = fastem_data(ind1d+i)
       ind1d = 6
-      mw_mds(i)%fastem_land3 = fastem_data(ind1d+i)
+      mw_mds(i)%fastem_p3 = fastem_data(ind1d+i)
       ind1d = 9
-      mw_mds(i)%fastem_land4 = fastem_data(ind1d+i)
+      mw_mds(i)%fastem_p4 = fastem_data(ind1d+i)
       ind1d = 12
-      mw_mds(i)%fastem_land5 = fastem_data(ind1d+i)
+      mw_mds(i)%fastem_p5 = fastem_data(ind1d+i)
 
       mw_mds(i)%sat_az      = azangle_data(i)
       mw_mds(i)%sat_ze      = zenangle_data(i)
@@ -674,8 +674,8 @@ program rttov_test
       atmos, trace_gas, clouds, aerosols, sensor_mw, channel, &
       first_lvl_is_sfc, mw_clear_sky_only, clw_scheme,        &
       ice_scheme, idg_scheme, aerosl_type, do_lambertian,     &
-      use_totalice, use_zeeman, use_fastem_params, radiances, &
-      error_status, visir_md=visir_md, mw_md=mw_md)
+      use_totalice, use_zeeman, radiances, error_status,      &
+      visir_md=visir_md, mw_md=mw_md)
 
    print *,'TB:',radiances
 
