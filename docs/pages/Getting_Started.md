@@ -2218,9 +2218,10 @@ In this section we introduce how to add your observations to DART.
 
 1. [Background on DART observations](#obsBackground)
 2. [Simple observation definitions](#simpleObs)
-3. [Obs definitions for observations needing special handling](#complexObs)
-4. [Example observation definition](#exampleObsDef)
-5. [Observation sequence file](#obsSeqFile)
+3. [Obs is a new quantity](#newQuantity)
+4. [Obs definitions for observations needing special handling](#complexObs)
+5. [Example observation definition](#exampleObsDef)
+6. [Observation sequence file](#obsSeqFile)
 
 <span id="obsBackground" class="anchor"></span> [](#obsBackground)
 ### Background on DART observations
@@ -2306,10 +2307,19 @@ as shown in the last line this need not be the case. The third column must be
 the keyword COMMON_CODE which tells the preprocess program to automatically
 generate all necessary interface code for this type. COMMON_CODE also implicitly 
 means the "model_interpolate()" routine is used as the forward operator.
- 
-:dart: *NOTE*: to add a new quantity, the
+
+<span id="newQuantity" class="anchor"></span> [](#newQuantity)
+### Obs is a new quantity
+To add a new quantity that is not yet defined in DART, the
 `DARTHOME/assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90` file
-must be edited to include a unique integer identifier for the quantity.
+must be edited to include a unique integer identifier for the quantity. An identifier definition looks like the following.
+
+~~~
+integer, parameter, public :: &
+  QTY_U_WIND_COMPONENT            = 1
+~~~
+
+The newly created quantity can then be referenced in the obs_def modules where forward operators are defined for this new quantity.
 
 <span id="complexObs" class="anchor"></span> [](#complexObs)
 ### Obs definitions for observations needing special handling
