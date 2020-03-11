@@ -2,7 +2,7 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: mpas_dart_obs_preprocess.f90 11626 2017-05-11 17:27:50Z nancy@ucar.edu $
+! $Id$
 
 program mpas_dart_obs_preprocess
 
@@ -833,10 +833,10 @@ real(r8), intent(in) :: plevel
 integer, parameter :: nman = 16
 integer :: kk
 logical :: isManLevel
-real (r8) raw_man_levels(nman) &
-     / 100000.0_r8, 92500.0_r8, 85000.0_r8, 70000.0_r8, 50000.0_r8, 40000.0_r8, &
+real (r8) :: raw_man_levels(nman) = &
+     (/ 100000.0_r8, 92500.0_r8, 85000.0_r8, 70000.0_r8, 50000.0_r8, 40000.0_r8, &
         30000.0_r8, 25000.0_r8, 20000.0_r8, 15000.0_r8, 10000.0_r8,  7000.0_r8, &
-         5000.0_r8,  3000.0_r8,  2000.0_r8,  1000.0_r8 /
+         5000.0_r8,  3000.0_r8,  2000.0_r8,  1000.0_r8 /)
 
 isManLevel = .false.
 do kk = 1, nman
