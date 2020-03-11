@@ -1,5 +1,5 @@
-function plotdat = plot_rmse_xxx_norm_profile(fname, copy, varargin)
-%% plot_rmse_xxx_profile plots the vertical profile of the observation-space RMSE and any other quantity for all possible levels, all possible variables.
+function plotdat = plot_rmse_xxx_profile_web(fname, copy, varargin)
+%% plot_rmse_xxx_profile_web plots the vertical profile of the observation-space RMSE and any other quantity for all possible levels, all possible variables.
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.
@@ -19,7 +19,7 @@ function plotdat = plot_rmse_xxx_norm_profile(fname, copy, varargin)
 %       For TRUSTED observations, this is different than the number used to calculate
 %       bias, rmse, spread, etc.
 %
-% USAGE: plotdat = plot_rmse_xxx_profile(fname, copy [,varargin]);
+% USAGE: plotdat = plot_rmse_xxx_profile_web(fname, copy [,varargin]);
 %
 % fname    :  netcdf file produced by 'obs_diag'
 %
@@ -52,14 +52,14 @@ function plotdat = plot_rmse_xxx_norm_profile(fname, copy, varargin)
 %
 % fname   = 'obs_diag_output.nc';
 % copy    = 'totalspread';
-% plotdat = plot_rmse_xxx_profile(fname, copy);
+% plotdat = plot_rmse_xxx_profile_web(fname, copy);
 %
 % EXAMPLE 2: Just a single observation type.
 %
 % fname   = 'obs_diag_output.nc';
 % copy    = 'totalspread';
 % obsname = 'RADIOSONDE_U_WIND_COMPONENT';
-% plotdat = plot_rmse_xxx_profile(fname, copy, 'obsname', obsname);
+% plotdat = plot_rmse_xxx_profile_web(fname, copy, 'obsname', obsname);
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -120,9 +120,7 @@ end
 %---------------------------------------------------------------------
 
 plotdat = read_obsdiag_staticdata(fname,copy);
-% KDR
-xlabel_basic =  sprintf('rmse and %s',copy);
-% plotdat.xlabel  = sprintf('rmse and %s',copy);
+plotdat.xlabel  = sprintf('rmse and %s',copy);
 
 % Either use all the variables or just the one optionally specified.
 if (nvars == 0)
@@ -139,12 +137,6 @@ global figuredata verbose
 figuredata            = set_obsdiag_figure('tall');
 figuredata.MarkerSize = p.Results.MarkerSize;
 verbose               = p.Results.verbose;
-
-% KDR Put the 3 figures in spread out positions, with optimal size.
-x1 = [1,475,950];
-dx = [474,474,474];
-y1 = [100,100,100];
-dy = [650,650,650];
 
 %%---------------------------------------------------------------------
 % Loop around (copy-level-region) observation types
@@ -189,7 +181,6 @@ for ivar = 1:plotdat.nvars
     % Matlab likes strictly ASCENDING order for the axes and ticks,
     % then you can impose the direction.
     
-% KDR set a flag to signal logorithmic scale here?
     if (plotdat.levels(1) > plotdat.levels(plotdat.nlevels))
         plotdat.YDir = 'reverse';
     else
@@ -232,25 +223,8 @@ for ivar = 1:plotdat.nvars
     plotdat.ges_Neval = priorQCs.num_evaluated;
     plotdat.ges_Nposs = priorQCs.nposs;
     plotdat.ges_Nused = priorQCs.nused;
-% KDR
-    plotdat.ges_mean  = guess(:,:,plotdat.meanindex)
-
-% The varnames are up to 32 characters, but the blanks have been stripped.
-% Add them back, in order to do a nonhardwired test.
-    var = pad(plotdat.myvarname,32);
-    if (all(char(var) == 'GPSRO_REFRACTIVITY              ')      || ...
-        all(char(var) == 'AIRS_SPECIFIC_HUMIDITY          ')  || ...
-        all(char(var) == 'RADIOSONDE_SPECIFIC_HUMIDITY    ') )
-       plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex) ./ guess(:,:,plotdat.meanindex);
-       plotdat.ges_copy  = guess(:,:,plotdat.copyindex) ./ guess(:,:,plotdat.meanindex);
-       plotdat.xlabel  = sprintf('%s, normalized by mean',xlabel_basic);
-    else
-       plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex);
-       plotdat.ges_copy  = guess(:,:,plotdat.copyindex);
-       plotdat.xlabel  = xlabel_basic;
-    end
-
-% end KDR
+    plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex);
+    plotdat.ges_copy  = guess(:,:,plotdat.copyindex);
     
     if ( sum(plotdat.ges_Nposs(:)) < 1 )
         fprintf('no obs for %s...  skipping\n', plotdat.varnames{ivar})
@@ -277,42 +251,31 @@ for ivar = 1:plotdat.nvars
     % plot by region - each in its own figure.
     
     for iregion = 1:plotdat.nregions
-% KDR
-% Tim's technique (lower left corner x,y,  x-dim, y-dim)
-            fig_h = figure(iregion);
-	    fig_h.Position = [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]; 
-% Orig        figure(iregion);
-        clf(iregion);
+%         figure(iregion);
+%         clf(iregion);
+%         orient(figuredata.orientation);
+        figure('pos', [100, 100, 830, 760]) %figure(iregion);
+        %clf(iregion);
         orient(figuredata.orientation);
+        
         plotdat.region   = iregion;
         plotdat.myregion = deblank(plotdat.region_names(iregion,:));
         
         myplot(plotdat);
         
         BottomAnnotation(fname)
-% KDR added normalization option        
-        var = pad(plotdat.myvarname,32);
-        if (all(char(var) == 'GPSRO_REFRACTIVITY              ')      || ...
-            all(char(var) == 'AIRS_SPECIFIC_HUMIDITY          ')  || ...
-            all(char(var) == 'RADIOSONDE_SPECIFIC_HUMIDITY    ') )
-           psfname = sprintf('%s_rmse_%s_norm_profile_region%d', ...
-               plotdat.varnames{ivar}, plotdat.copystring, iregion);
-        else
-           psfname = sprintf('%s_rmse_%s_profile_region%d', ...
-               plotdat.varnames{ivar}, plotdat.copystring, iregion);
-        end
         
-        if verLessThan('matlab','R2016a')
-            print(gcf, '-dpdf', psfname);
-        else
-            print(gcf, '-dpdf', '-bestfit', psfname);
-        end
+        psfname = sprintf('%s_rmse_%s_profile_region%d', ...
+            plotdat.varnames{ivar}, plotdat.copystring, iregion);
         
-        % KDR attempt to slow down the stream of pictures when there's something to see,
-        % without needing to hit a key to continue.
-        if any(plotdat.ges_Nused(plotdat.region,:))
-           pause(5);
-        end
+% But we don't need these ps (and pdf) files because I'll generate better ones
+% (for my purposes).
+%        if verLessThan('matlab','R2016a')
+%            print(gcf, '-dpdf', psfname);
+%        else
+%            print(gcf, '-dpdf', '-bestfit', psfname);
+%        end
+        
         % block to go slow and look at each one ...
         if (p.Results.pause)
             disp('Pausing, hit any key to continue ...')
@@ -341,9 +304,8 @@ ges_Nused = plotdat.ges_Nused(plotdat.region,:);
 anl_Nused = plotdat.anl_Nused(plotdat.region,:);
 anl_Ngood = sum(anl_Nused);
 
-% original
-mean_pr_rmse = mean(ges_rmse(isfinite(ges_rmse)));
-fprintf('Layers mean of prior rmse = %.5g .\n',mean_pr_rmse)
+%mean_pr_rmse = mean(ges_rmse(isfinite(ges_rmse)));
+%fprintf('Layers mean of prior rmse = %.5g .\n',mean_pr_rmse)
 
 % KDR added to implement mean weighted by the number of obs at each level.
 % ! ! For Q and GPS these weighted means of profiles are using
@@ -353,14 +315,14 @@ ges_Ngood = sum(ges_Nused);
 
 sq_err = ges_rmse(isfinite(ges_rmse)).^2 .* ges_Nused(isfinite(ges_rmse)) ;
 mean_pr_rmse = sqrt(sum(sq_err) ./ ges_Ngood );
-fprintf('Correct rmse of all obs = %.5g .\n',mean_pr_rmse)
+%fprintf('Correct rmse of all obs = %.5g .\n',mean_pr_rmse)
 
 % original
-mean_pr_copy = mean(ges_copy(isfinite(ges_copy)));
-fprintf('Layers mean of prior %s = %.5g .\n',plotdat.copystring,mean_pr_copy)
+%mean_pr_copy = mean(ges_copy(isfinite(ges_copy)));
+%fprintf('Layers mean of prior %s = %.5g .\n',plotdat.copystring,mean_pr_copy)
 % Correct
 mean_pr_copy = sum(ges_copy(isfinite(ges_copy)) .* ges_Nused(isfinite(ges_rmse))) ./ ges_Ngood;
-fprintf('Correct %s of all obs = %.5g .\n',plotdat.copystring,mean_pr_copy)
+%fprintf('Correct %s of all obs = %.5g .\n',plotdat.copystring,mean_pr_copy)
 
 % KDR
 str_pr_rmse  = sprintf('obs avg %s pr = %.5g','rmse',            mean_pr_rmse);
@@ -391,7 +353,6 @@ var = pad(plotdat.myvarname,32);
 if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
    set(ax1,'YScale','log')
 end
-ax1
 
 % add type of vertical coordinate info for adjusting axes to accommodate legend
 
@@ -409,12 +370,9 @@ set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
 if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
    set(ax1,'YScale','log')
 end
-ax1
 
 % draw the result of the experiment
 
-%ges_rmse
-plotdat.levels
 h1 = line(ges_rmse,plotdat.levels);
 h2 = line(ges_copy,plotdat.levels);
 
@@ -752,10 +710,6 @@ axis(axlims)
 % set up list of x,y values defining corner of every other stripe.
 
 xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
-
-% KDR 2019-10-29; missing the gray stripe at the bottom.
-%     2019-12-23; maybe fixed by setting lowest layer edge from 0 to 100
-%        which should work better in the vertical log scale.
 
 hold on;
 for i = 1:2:(length(edges)-1)
