@@ -194,10 +194,9 @@ public :: set_lbc_variables, &
 ! force_u_into_state sets a logical add_u_to_state_list that forces u to be in state
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/model_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 12937 $"
-character(len=128), parameter :: revdate  = "$Date: 2018-11-26 16:01:09 -0700 (Mon, 26 Nov 2018) $"
+character(len=*), parameter :: source   = "Manhattan/models/mpas_atm/model_mod.f90"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! module global storage; maintains values between calls, accessible by
 ! any subroutine
@@ -7237,9 +7236,3 @@ end subroutine set_wrf_date
 ! End of model_mod
 !===================================================================
 end module model_mod
-
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/model_mod.f90 $
-! $Id: model_mod.f90 12937 2018-11-26 23:01:09Z nancy@ucar.edu $
-! $Revision: 12937 $
-! $Date: 2018-11-26 16:01:09 -0700 (Mon, 26 Nov 2018) $

@@ -140,7 +140,7 @@ real(r8)           :: windowing_int_hour       = 1.5_r8   ! time window [hr] cen
 integer            :: print_every_nth_obs      = -1       ! if positive, print a reassuring message as you loop
                                                           ! over the list of obs
 
-namelist /mpas_obs_preproc_nml/ file_name_input, file_name_output, max_num_obs,     &
+namelist /mpas_dart_obs_preprocess_nml/ file_name_input, file_name_output, max_num_obs,     &
          include_sig_data, superob_aircraft, superob_sat_winds, superob_qc_threshold,   &
          sfc_elevation_check, overwrite_ncep_sfc_qc, overwrite_ncep_satwnd_qc, &
          aircraft_pres_int, sat_wind_pres_int, sfc_elevation_tol,   & 
@@ -187,9 +187,9 @@ read*, gday,gsec
 call set_calendar_type(GREGORIAN)
 anal_time = set_time(gsec, gday)
 
-call find_namelist_in_file("input.nml", "mpas_obs_preproc_nml", iunit)
-read(iunit, nml = mpas_obs_preproc_nml, iostat = io)
-call check_namelist_read(iunit, io, "mpas_obs_preproc_nml")
+call find_namelist_in_file("input.nml", "mpas_dart_obs_preprocess_nml", iunit)
+read(iunit, nml = mpas_dart_obs_preprocess_nml, iostat = io)
+call check_namelist_read(iunit, io, "mpas_dart_obs_preprocess_nml")
 
 call static_init_obs_sequence()
 call static_init_model()
@@ -1357,9 +1357,9 @@ type(airobs_type), allocatable :: airobs(:)
 
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/mpas_dart_obs_preprocess.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 11626 $"
-character(len=128), parameter :: revdate  = "$Date: 2017-05-11 11:27:50 -0600 (Thu, 11 May 2017) $"
+character(len=*), parameter :: source   = "Manhattan/models/mpas_atm/mpas_dart_obs_preprocess.f90"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 !-----------------------------------------------------------------------
 write(6,*)
 
@@ -1780,9 +1780,9 @@ type(satobs_type), allocatable :: satobs(:)
 
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/mpas_dart_obs_preprocess.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 11626 $"
-character(len=128), parameter :: revdate  = "$Date: 2017-05-11 11:27:50 -0600 (Thu, 11 May 2017) $"
+character(len=256), parameter :: source   = "Manhattan/models/mpas_atm/mpas_dart_obs_preprocess.f90"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 !-----------------------------------------------------------------------
 
 write(6,*)
@@ -2350,9 +2350,3 @@ end subroutine find_min_dist
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end program
-
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/mpas_dart_obs_preprocess.f90 $
-! $Id: mpas_dart_obs_preprocess.f90 11626 2017-05-11 17:27:50Z nancy@ucar.edu $
-! $Revision: 11626 $
-! $Date: 2017-05-11 11:27:50 -0600 (Thu, 11 May 2017) $

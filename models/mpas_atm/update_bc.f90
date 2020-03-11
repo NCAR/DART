@@ -40,10 +40,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/update_bc.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 12937 $"
-character(len=128), parameter :: revdate  = "$Date: 2018-11-26 16:01:09 -0700 (Mon, 26 Nov 2018) $"
+character(len=*), parameter :: source   = "Manhattan/models/mpas_atm/update_bc.f90"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 !------------------------------------------------------------------
 ! The namelist variables
@@ -174,9 +173,3 @@ end do fileloop
 call finalize_utilities()
 
 end program update_bc
-
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/update_bc.f90 $
-! $Id: update_bc.f90 12937 2018-11-26 23:01:09Z nancy@ucar.edu $
-! $Revision: 12937 $
-! $Date: 2018-11-26 16:01:09 -0700 (Mon, 26 Nov 2018) $
