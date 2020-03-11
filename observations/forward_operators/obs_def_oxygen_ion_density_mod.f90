@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id: obs_def_ion_density_mod.f90 11692 2017-06-02 21:00:44Z nancy@ucar.edu $
 
 !-----------------------------------------------------------------------------
 !   DART Code:  Johnny Hendricks , hendric at ucar.edu
@@ -101,10 +99,9 @@ private
 public :: get_expected_oxygen_ion_val, oxygen_ion_density
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/observations/forward_operators/obs_def_ion_density_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 11692 $"
-character(len=128), parameter :: revdate  = "$Date: 2017-06-02 15:00:44 -0600 (Fri, 02 Jun 2017) $"
+character(len=*), parameter :: source   = 'obs_def_ion_density_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 logical :: module_initialized = .false.
 
@@ -116,9 +113,6 @@ real(r8), PARAMETER :: universal_gas_constant = 8314.0_r8 ! [J/K/kmol]
 !--------------------------------------------------------------         
 ! WACCM-X; flag to check for the definition of QTYs needed by oxygen_ion_density
 logical                 :: first_oxygen_ion_call = .true.
-
-!--------------------------------------------------------------
-character(len=256) :: msgstring
 
 !--------------------------------------------------------------
 ! Namelist with default values
@@ -283,8 +277,3 @@ end module obs_def_ion_density_mod
 ! END DART PREPROCESS MODULE CODE
 !-----------------------------------------------------------------------------
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/observations/forward_operators/obs_def_ion_density_mod.f90 $
-! $Id: obs_def_ion_density_mod.f90 11692 2017-06-02 21:00:44Z nancy@ucar.edu $
-! $Revision: 11692 $
-! $Date: 2017-06-02 15:00:44 -0600 (Fri, 02 Jun 2017) $

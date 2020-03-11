@@ -31,7 +31,7 @@ use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
 
 use   state_vector_io_mod, only : state_vector_io_init, read_state, write_state
 
-use   state_structure_mod, only : get_num_domains
+use   state_structure_mod, only : get_num_domains, set_update_list, get_num_variables
 
 use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
                                   stage_metadata_type, get_stage_metadata, &
@@ -91,7 +91,7 @@ integer               :: ncopies = 2    ! {prior,posterior}_inf_{mean,sd}
 logical               :: read_time_from_file = .true.
 
 ! counter variables
-integer :: idom, imem, ndomains
+integer :: idom, imem, ndomains, ivars
 
 ! message strings
 character(len=512) :: my_base, my_desc, my_stage
@@ -185,6 +185,27 @@ do idom = 1, ndomains
 enddo
 
 call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
+
+! if users have variables in the dart state which are set to 'no update'
+! for assimilation purposes, they still have to have corresponding fields 
+! in the inflation files. (science question is what those values should be.)
+!
+! the normal write routine skips 'no update' fields, so the output of
+! this program would be missing those fields and cause an error when
+! filter tries to read the inflation files.  the following code 
+! overwrites the update flag values so all variables are always written.
+!
+! also tell users to script their workflows to copy the input inflation
+! file to the output name before running filter, so there is an existing
+! output inflation file for filter to update. it will already include the
+! 'no update' fields, whose inflation values will remain unchanged. 
+! this prevents confusing errors at the next execution of filter.
+! [ed note: tim is brilliant.]
+
+do idom = 1, ndomains
+   ivars = get_num_variables(idom)   
+   call set_update_list(idom, ivars, (/ ( .TRUE., imem=1,ivars ) /) )
+enddo
 
 ! Initialize file output to default inflation file names
 call io_filenames_init(file_info_output,           &

@@ -4,6 +4,14 @@
 !
 ! $Id$
 
+! utility routines intended to make it easier to create the most
+! common types of observations:  threed_sphere locations, which
+! is what 99% of earth observations use.  
+
+! added an alternative for obs locations specified in X,Y,Z cartesian
+! coordinates.  used for subsurface water models, and some idealized
+! atmosphere models.
+
 module obs_utilities_mod
 
 
@@ -53,15 +61,25 @@ public :: create_3d_obs,    &
 
 !>@todo FIXME there is no documentation for this module
 
-!>@todo FIXME should this default to 'missing_value'?  i think yes.
-! module global storage - set with 'set_missing_name()' routine.
-character(len=NF90_MAX_NAME) :: missing_name = ''
+! module global storage - change with 'set_missing_name()' routine.
+! if file is using a different name for this attribute. (nonstandard)
+! note that '_FillValue' is also used for data that was never written,
+! as opposed to data which is written but missing.  we don't care
+! to distinguish between these cases - so what do we look for here?
+
+character(len=NF90_MAX_NAME) :: missing_name = 'missing_value'
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
+character(len=256), parameter :: source   = "$URL$"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
+
+! create an interface for both 3d sphere obs (most earth obs are this)
+! and 3d cartesian obs (subsurface obs, idealized experiments)
+interface create_3d_obs
+   module procedure create_3d_sphere_obs
+   module procedure create_3d_cartesian_obs
+end interface
 
 contains
 
@@ -74,7 +92,7 @@ contains
 !>        has additional metadata associated with it, the calling code
 !>        should get a unique 'key' from a set metadata routine, and
 !>        pass that in as the last argument to this routine.  if present
-!>         it will be set in the obs_def derived type.
+!>        it will be set in the obs_def derived type.
 !>
 !>  lat   - latitude of observation
 !>  lon   - longitude of observation
@@ -92,8 +110,9 @@ contains
 !>  created Oct. 2007 Ryan Torn, NCAR/MMM
 !>  adapted for more generic use 11 Mar 2010, nancy collins, ncar/image
 !>  added optional metadata key   8 Nov 2013, nancy collins, ncar/image
+!>  overloaded to allow 3d cartesian locations, 23 sept 2019, nsc
 
-subroutine create_3d_obs(lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, &
+subroutine create_3d_sphere_obs(lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, &
                          obs, key)
 
 integer,           intent(in)    :: okind, vkind, day, sec
@@ -101,10 +120,96 @@ real(r8),          intent(in)    :: lat, lon, vval, obsv, oerr, qc
 type(obs_type),    intent(inout) :: obs
 integer, optional, intent(in)    :: key
 
+real(r8) :: loc_info(4)
+type(location_type) :: loc
+
+! setting location info with an array will allow this code
+! to compile with any location type.  this interface is only
+! intended to work with threed_sphere locations.
+loc_info(1) = lon
+loc_info(2) = lat
+loc_info(3) = vval
+loc_info(4) = real(vkind)
+
+loc = set_location(loc_info)
+call create_obs(loc, obsv, okind, oerr, day, sec, qc, obs, key)
+
+end subroutine create_3d_sphere_obs
+
+!--------------------------------------------------------------------
+!>  subroutine to create an observation type from observation data.  
+!>
+!>  NOTE: assumes the code is using the 3d cartesian locations module, 
+!>        that the observation has a single data value and a single
+!>        qc value. there is a last optional argument now; if the obs
+!>        has additional metadata associated with it, the calling code
+!>        should get a unique 'key' from a set metadata routine, and
+!>        pass that in as the last argument to this routine.  if present
+!>        it will be set in the obs_def derived type.
+!>
+!>  X, Y, Z - location of obs
+!>  obsv  - observation value
+!>  okind - observation kind
+!>  oerr  - standard deviation of observation error
+!>  day   - gregorian day
+!>  sec   - gregorian second
+!>  qc    - quality control value
+!>  obs   - observation type
+!>  key   - optional type-specific integer key from a set_metadata() routine
+!>
+!>  overloaded to allow 3d cartesian locations, 23 sept 2019, nsc
+
+subroutine create_3d_cartesian_obs(X,Y,Z, obsv, okind, oerr, day, sec, qc, &
+                         obs, key)
+
+integer,           intent(in)    :: okind, day, sec
+real(r8),          intent(in)    :: X,Y,Z, obsv, oerr, qc
+type(obs_type),    intent(inout) :: obs
+integer, optional, intent(in)    :: key
+
+real(r8) :: loc_info(3)
+type(location_type) :: loc
+
+! setting location info with an array will allow this code
+! to compile with any location type.  this interface is only
+! intended to work with threed_cartesian locations.
+loc_info(1) = X
+loc_info(2) = Y
+loc_info(3) = Z
+
+loc = set_location(loc_info)
+call create_obs(loc, obsv, okind, oerr, day, sec, qc, obs, key)
+
+end subroutine create_3d_cartesian_obs
+
+!--------------------------------------------------------------------
+!>  private subroutine to create an observation type from observation data.  
+!>
+!>  loc   - observation location 
+!>  obsv  - observation value
+!>  okind - observation kind
+!>  oerr  - standard deviation of observation error
+!>  day   - gregorian day
+!>  sec   - gregorian second
+!>  qc    - quality control value
+!>  obs   - observation type
+!>  key   - optional type-specific integer key from a set_metadata() routine
+!>
+
+subroutine create_obs(loc, obsv, okind, oerr, day, sec, qc, obs, key)
+
+type(location_type), intent(in)  :: loc
+integer,           intent(in)    :: okind, day, sec
+real(r8),          intent(in)    :: obsv, oerr, qc
+type(obs_type),    intent(inout) :: obs
+integer, optional, intent(in)    :: key
+
 real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
 
-call set_obs_def_location(obs_def, set_location(lon, lat, vval, vkind))
+! doing it with an array will work for any location mod.
+call set_obs_def_location(obs_def, loc)
+
 call set_obs_def_type_of_obs(obs_def, okind)
 call set_obs_def_time(obs_def, set_time(sec, day))
 call set_obs_def_error_variance(obs_def, oerr * oerr)
@@ -118,8 +223,7 @@ call set_obs_values(obs, obs_val)
 qc_val(1)  = qc
 call set_qc(obs, qc_val)
 
-end subroutine create_3d_obs
-
+end subroutine create_obs
 
 !--------------------------------------------------------------------
 !> takes a DART observation type and extracts the constituent pieces
@@ -295,11 +399,35 @@ end subroutine getvarshape
 
 !--------------------------------------------------------------------
 !> sets the name of the attribute that describes missing values.  
-!> in some cases it is _FillValue but in others it is 'missing_value'.
+!>
+!> the suggested rule is data that was never written to the netcdf
+!> variable will have a value equal to "_FillValue", and this should
+!> be added as an attribute on the variable when it is created.
+!> the "missing_data" attribute indicates data that was written
+!> but is not valid or present, e.g. land grid points in an ocean
+!> data field.
+!> 
+!> but in practice there are problems.  one is that users may not
+!> add any attributes and have a private convention for missing or
+!> invalid data (e.g. 99999 or some such pattern).
+!>
+!> the netcdf files can be created with an option to NOT prefill
+!> variables with the _FillValue.  this speeds execution when the
+!> code expects to fully write all variables. but if there are
+!> paths through the code where a variable isn't written by mistake,
+!> the contents are undefined.
+!>
+!> and finally, some users mix 'missing_value' and "_FillValue" usage,
+!> writing the value of "_FillValue" to indicate missing data. 
+!> 
+!> in this code all we care about is knowing what data value
+!> indicates data is missing for any reason.  if the code uses 
+!> a different attribute value, set it with this routine.
 !>
 !> name - string name of attribute that holds the missing value
 !>
 !> created 11 Mar 2010,  nancy collins,  ncar/image
+!> (this usage comment updated 26 sep 2019, nsc)
 
 subroutine set_missing_name(name)
 
@@ -968,17 +1096,17 @@ end subroutine getvar_int_2d
 !>
 !>      ncid - open netcdf file handle
 !>      varname - string name of netcdf variable
-!>      start - starting index in the 1d array
+!>      varstart - starting index in the 1d array
 !>      dout - output value.  real(r8)
 !>      dmiss - value that signals a missing value   real(r8), optional
 !>
 !>     created 11 Mar 2010,  nancy collins,  ncar/image
 
-subroutine getvar_real_1d_1val(ncid, varname, start, dout, dmiss)
+subroutine getvar_real_1d_1val(ncid, varname, varstart, dout, dmiss)
 
 integer,            intent(in)   :: ncid
 character(len = *), intent(in)   :: varname
-integer,            intent(in)   :: start
+integer,            intent(in)   :: varstart
 real(r8),           intent(out)  :: dout
 real(r8), optional, intent(out)  :: dmiss
 
@@ -987,7 +1115,7 @@ integer :: varid, ret
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
                'getvar_real_1d_val', 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
+call nc_check( nf90_get_var(ncid, varid, dout, start = (/ varstart /) ), &
                'getvar_real_1d_val', 'getting var '// trim(varname))
 
 if (present(dmiss)) then 
@@ -1005,17 +1133,17 @@ end subroutine getvar_real_1d_1val
 !>
 !>      ncid - open netcdf file handle
 !>      varname - string name of netcdf variable
-!>      start - starting index in the 1d array
+!>      varstart - starting index in the 1d array
 !>      dout - output value.  int
 !>      dmiss - value that signals a missing value   int, optional
 !>
 !>     created 11 Mar 2010,  nancy collins,  ncar/image
 
-subroutine getvar_int_1d_1val(ncid, varname, start, dout, dmiss)
+subroutine getvar_int_1d_1val(ncid, varname, varstart, dout, dmiss)
 
 integer,            intent(in)   :: ncid
 character(len = *), intent(in)   :: varname
-integer,            intent(in)   :: start
+integer,            intent(in)   :: varstart
 integer,            intent(out)  :: dout
 integer,  optional, intent(out)  :: dmiss
 
@@ -1024,7 +1152,7 @@ integer :: varid, ret
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
                'getvar_int_1d_1val', 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
+call nc_check( nf90_get_var(ncid, varid, dout, start = (/ varstart /) ), &
                'getvar_int_1d_1val', 'getting var '// trim(varname))
 
 if (present(dmiss)) then
@@ -1042,7 +1170,7 @@ end subroutine getvar_int_1d_1val
 !>
 !>      ncid - open netcdf file handle
 !>      varname - string name of 2d netcdf variable
-!>      start - starting index in the 2d array.  integer
+!>      varstart - starting index in the 2d array.  integer
 !>      count - nitems to get. integer
 !>      darray - 1d output array.  real(r8)
 !>      dmiss - value that signals a missing value   real(r8), optional
@@ -1051,12 +1179,12 @@ end subroutine getvar_int_1d_1val
 !>     updated 14 Jul 2011,  nancy collins,  ncar/image
 !>         routine renamed and moved to the utilities module
 
-subroutine getvar_real_2d_slice(ncid, varname, start, count, darray, dmiss)
+subroutine getvar_real_2d_slice(ncid, varname, varstart, varcount, darray, dmiss)
 
 integer,            intent(in)   :: ncid
 character(len = *), intent(in)   :: varname
-integer,            intent(in)   :: start
-integer,            intent(in)   :: count
+integer,            intent(in)   :: varstart
+integer,            intent(in)   :: varcount
 real(r8),           intent(out)  :: darray(:)
 real(r8), optional, intent(out)  :: dmiss
 
@@ -1066,7 +1194,7 @@ integer :: varid, ret
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
                'getvar_real_2d_slice', 'inquire var '// trim(varname))
 call nc_check( nf90_get_var(ncid, varid, darray, &
-                start=(/ 1, start /), count=(/ count, 1 /) ), &
+                start=(/ 1, varstart /), count=(/ varcount, 1 /) ), &
                'getvar_real_2d_slice', 'getting var '// trim(varname))
 
 if (present(dmiss)) then
@@ -1087,18 +1215,18 @@ end subroutine getvar_real_2d_slice
 !>
 !>      ncid - open netcdf file handle
 !>      varname - string name of 2d netcdf variable
-!>      start - starting index in the 2d array.  integer
+!>      varstart - starting index in the 2d array.  integer
 !>      count - nitems to get. integer
 !>      darray - output array.  integer
 !>
 !>     created Mar 8, 2010    nancy collins, ncar/image
 
-subroutine get_or_fill_QC_2d_slice(ncid, varname, start, count, darray)
+subroutine get_or_fill_QC_2d_slice(ncid, varname, varstart, varcount, darray)
 
 integer,            intent(in)    :: ncid
 character(len = *), intent(in)    :: varname
-integer,            intent(in)    :: start
-integer,            intent(in)    :: count
+integer,            intent(in)    :: varstart
+integer,            intent(in)    :: varcount
 integer,            intent(inout) :: darray(:)
 
 integer :: varid, nfrc
@@ -1109,11 +1237,11 @@ integer :: varid, nfrc
 nfrc = nf90_inq_varid(ncid, varname, varid)
 if (nfrc == NF90_NOERR) then
    call nc_check( nf90_get_var(ncid, varid, darray, &
-                  start=(/ 1, start /), count=(/ count, 1 /) ), &
+                  start=(/ 1, varstart /), count=(/ varcount, 1 /) ), &
                   'get_or_fill_int_2d_slice', 'reading '//trim(varname) )
 else
    darray = 0
-   if (start == 1) & 
+   if (varstart == 1) & 
      print *, 'QC field named ' // trim(varname) // ' was not found in input, 0 used instead'
 endif
 

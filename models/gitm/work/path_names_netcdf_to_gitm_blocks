@@ -23,6 +23,7 @@ models/gitm/netcdf_to_gitm_blocks.f90
 models/gitm/GITM2/src/ModConstants.f90
 models/gitm/GITM2/src/ModEarth.f90
 models/gitm/GITM2/src/ModKind.f90
+models/gitm/GITM2/src/ModOrbital.f90
 models/gitm/GITM2/src/ModSize.f90
 models/gitm/GITM2/src/ModTime.f90
 models/gitm/GITM2/src/time_routines.f90

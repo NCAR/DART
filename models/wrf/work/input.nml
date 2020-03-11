@@ -60,8 +60,8 @@ obs_seq.one.out
    write_all_stages_at_end  = .false.
 
    inf_flavor                  = 2,                      0,
-   inf_initial_from_restart    = .false.,                .false.,
-   inf_sd_initial_from_restart = .false.,                .false.,
+   inf_initial_from_restart    = .true.,                 .false.,
+   inf_sd_initial_from_restart = .true.,                 .false.,
    inf_initial                 = 1.0,                     1.00,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
@@ -72,10 +72,24 @@ obs_seq.one.out
    /
 
 &quality_control_nml
-  input_qc_threshold          = 3.0,
-  outlier_threshold           = 3.0,
-  enable_special_outlier_code = .false.
-  /
+   input_qc_threshold          = 3.0,
+   outlier_threshold           = 3.0,
+   enable_special_outlier_code = .false.
+   /
+
+&fill_inflation_restart_nml
+   write_prior_inf = .true.
+   prior_inf_mean  = 1.00
+   prior_inf_sd    = 0.6
+
+   write_post_inf  = .false.
+   post_inf_mean   = 1.00
+   post_inf_sd     = 0.6
+
+   input_state_files = 'wrfinput_d01', 'wrfinput_d02'
+   single_file       = .false.
+   verbose           = .false.
+   /
 
 &smoother_nml
    num_lags              = 0
@@ -149,30 +163,6 @@ obs_seq.one.out
    allow_obs_below_vol         = .false.
    /
 
-
-# polar and periodic_x are used in global wrf.  if polar is true, the 
-# grid interpolation routines will wrap over the north & south poles.  
-# if periodic_x is true, when the east and west edges of the grid are
-# reached the interpolation will wrap.  note this is a separate issue
-# from regional models which cross the GMT line; those grids are marked
-# as having a negative offset and do not need to wrap; this flag controls
-# what happens when the edges of the grid are reached.
-
-# the scm flag is used for the 'single column model' version of WRF.
-# it needs the periodic_x and periodic_y flags set to true, in which
-# case the X and Y directions are periodic; no collapsing of the grid
-# into a single location like the 3d-spherical polar flag implies.
-
-&dart_to_wrf_nml
-   model_advance_file = .false.
- /
-
-&wrf_to_dart_nml
-   dart_restart_name   = 'mean_rma',
-   print_data_ranges   = .false.,
-   debug               = .false.
-   /
-
 &utilities_nml
    TERMLEVEL                   = 1,
    logfilename                 = 'dart_log.out',
@@ -213,52 +203,8 @@ obs_seq.one.out
 
 #   assimilate_these_obs_types = 'LAND_SFC_PRESSURE'
 
-&obs_kind_nml
-  assimilate_these_obs_types = 'AQUA_AIRS_AMSU_RADIANCE',
-  /
-
-  assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
-                                'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_V_WIND_COMPONENT',
-                                'RADIOSONDE_SURFACE_ALTIMETER',
-                                'RADIOSONDE_SPECIFIC_HUMIDITY',
-                                'LAND_SFC_U_WIND_COMPONENT',
-                                'LAND_SFC_V_WIND_COMPONENT',
-                                'LAND_SFC_TEMPERATURE',
-                                'LAND_SFC_SPECIFIC_HUMIDITY',
-                                'MARINE_SFC_U_WIND_COMPONENT',
-                                'MARINE_SFC_V_WIND_COMPONENT',
-                                'MARINE_SFC_TEMPERATURE',
-                                'MARINE_SFC_SPECIFIC_HUMIDITY',
-                                'AIRCRAFT_U_WIND_COMPONENT',
-                                'AIRCRAFT_V_WIND_COMPONENT',
-                                'AIRCRAFT_TEMPERATURE',
-                                'ACARS_U_WIND_COMPONENT',
-                                'ACARS_V_WIND_COMPONENT',
-                                'ACARS_TEMPERATURE',
-                                'SAT_U_WIND_COMPONENT',
-                                'SAT_V_WIND_COMPONENT',
-
-   coef_filename = 'rtcoef_eos_2_amsua.dat'
-   nlevels = 28
-
-# Notes for obs_def_radar_mod_nml:
-# (1) Reflectivity limit can be applied both to observations or state (forward operator).
-# (2) Default lowest_reflectivity values DART will use (if apply_reflectivity_limit = .true.)
-#     is missing_r8. If you want to use the default, delete the line of respective
-#     lowest_reflectivity.
-# (3) As it is not clear how to assimilate Z (for now), "convert_to_dbz" is reset to .true.
-#     even if you set it to .false. here in the namelist.
-
-&obs_def_radar_mod_nml
-   convert_to_dbz             =  .true. ,
-   dbz_threshold              =   0.001 ,
-   apply_ref_limit_to_obs     = .false. ,
-   reflectivity_limit_obs     =     0.0 ,
-   lowest_reflectivity_obs    =     0.0 ,
-   apply_ref_limit_to_state   = .false. ,
-   reflectivity_limit_state   =     0.0 ,
-   lowest_reflectivity_state  =     0.0 /
+&obs_def_tpw_nml
+   /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -327,12 +273,20 @@ obs_seq.one.out
    /                           
                                
 &state_vector_io_nml
-/
+   single_precision_output    = .true.,
+   /
 
-&quality_control_nml
-   input_qc_threshold       = 4.0,
-   outlier_threshold        = 8.0,
-/
+&compare_states_nml
+   /
+
+&closest_member_tool_nml 
+   input_restart_file_list   = 'input_file_list_d01.txt',
+   output_file_name          = 'closest_results.txt'
+   ens_size                  = 3,
+   single_restart_file_in    = .false.,
+   difference_method         = 4,
+   use_only_qtys             = 'QTY_U_WIND_COMPONENT'
+   /
 
 &state_space_diag_nml
   single_file           = .true.
@@ -355,7 +309,7 @@ obs_seq.one.out
    interp_test_vertrange = 2000.0, 4000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
    verbose               = .false.
-  /
+   /
 
    coef_filename = 'rtcoef_noaa_16_avhrr.dat'
 

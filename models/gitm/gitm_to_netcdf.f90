@@ -18,29 +18,31 @@ program gitm_to_netcdf
 ! USAGE:  TBD
 !----------------------------------------------------------------------
 
-use        types_mod, only : r8
+use        types_mod, only : r8, digits12
 
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              open_file, close_file
+
+use time_manager_mod, only : time_type, set_date, get_date, set_time, get_time, &
+                             operator(-), set_calendar_type
 
 use netcdf_utilities_mod    ! all for now
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'gitm_to_netcdf.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !-----------------------------------------------------------------------
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
 
-character(len=256) :: gitm_to_netcdf_2d_input_file   = '../data/2DTEC_t110311_204500.bin'
-character(len=256) :: gitm_to_netcdf_3d_input_file   = '../data/3DUSR_t110311_204500.bin'
+character(len=256) :: gitm_to_netcdf_2d_input_file   = '../testdata2/2DTEC_t110311_204500.bin'
+character(len=256) :: gitm_to_netcdf_3d_input_file   = '../testdata2/3DUSR_t110311_204500.bin'
 character(len=256) :: gitm_to_netcdf_2d_output_file  = 'gitm_2d_netcdf.nc'
 character(len=256) :: gitm_to_netcdf_3d_output_file  = 'gitm_3d_netcdf.nc'
 
@@ -93,11 +95,17 @@ end type var_3D
 type(var_3D) :: gitm_3Dvars(100)
 
 real(r8) :: gitm_version
+real(digits12) :: real_time
 integer :: t_year, t_month, t_day, t_hour, t_min, t_sec, t_msec
+
+integer :: ndays, nsecs
+type(time_type) :: gitm_time, epoch_time, delta_time
 
 !======================================================================
 
 call initialize_utilities(progname='gitm_to_netcdf')
+
+call set_calendar_type('GREGORIAN')
 
 iunit =  open_file(gitm_to_netcdf_2d_input_file, action='read', form='unformatted')
 call read_header(iunit, twod=.true.)
@@ -124,6 +132,8 @@ print *, 'going to define: ', i, trim(gitm_2Dvars(i)%varname)
    call nc_define_real_variable(ncid, trim(gitm_2Dvars(i)%varname), (/ "lon", "lat" /) )
 enddo
 
+! add attributes
+
 ! change into data mode
 call nc_end_define_mode(ncid)
 
@@ -135,7 +145,6 @@ print *, 'going to add data for: ', i, trim(gitm_2Dvars(i)%varname)
    call nc_put_variable(ncid, trim(gitm_2Dvars(i)%varname), gitm_2Dvars(i)%state)
 enddo
 
-! add attributes
 
 ! close netcdf file
 call nc_close_file(ncid)
@@ -167,6 +176,12 @@ print *, 'going to define: ', i, trim(gitm_3Dvars(i)%varname)
    call nc_define_real_variable(ncid, trim(gitm_3Dvars(i)%varname), (/ "lon", "lat", "alt" /) )
 enddo
 
+call nc_define_real_scalar(ncid, 'time')
+call nc_add_attribute_to_variable(ncid, 'time', 'calendar', 'GREGORIAN')
+call nc_add_attribute_to_variable(ncid, 'time', 'units',    &
+                                 'days since 1601-01-01 00:00:00')
+
+! add attributes to other vars
 
 ! change into data mode
 call nc_end_define_mode(ncid)
@@ -179,7 +194,15 @@ print *, 'going to add data for: ', i, trim(gitm_3Dvars(i)%varname)
    call nc_put_variable(ncid, trim(gitm_3Dvars(i)%varname), gitm_3Dvars(i)%state)
 enddo
 
-! add attributes
+! add time var and attributes
+epoch_time = set_date(1601, 1, 1, 0, 0, 0)
+gitm_time = set_date(t_year, t_month, t_day, t_hour, t_min, t_sec)
+delta_time = gitm_time - epoch_time
+
+call get_time(delta_time, nsecs, ndays)
+real_time = ndays + (real(nsecs, r8) / 86400.0_r8)
+
+call nc_put_variable(ncid, 'time', 1, real_time)
 
 ! close netcdf file
 call nc_close_file(ncid)
@@ -241,8 +264,3 @@ end subroutine read_header
 
 end program gitm_to_netcdf
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/gitm/gitm_to_netcdf.f90 $
-! $Id: gitm_to_netcdf.f90 10977 2017-02-01 18:15:42Z thoar@ucar.edu $
-! $Revision: 10977 $
-! $Date: 2017-02-01 11:15:42 -0700 (Wed, 01 Feb 2017) $

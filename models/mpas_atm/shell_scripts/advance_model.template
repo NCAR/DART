@@ -4,7 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: advance_model.template.lsf 10982 2017-02-01 23:43:10Z thoar@ucar.edu $
 #==================================================================
 #PBS -N JOB_NAME
 #PBS -A PROJ_NUMBER
@@ -28,9 +27,4 @@ echo $start_time >&! logs/start_memberENS_MEM
 set end_time = `date  +%s`
 @ length_time = $end_time - $start_time
 echo "duration_sec = $length_time"
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/shell_scripts/advance_model.template.lsf $
-# $Revision: 10982 $
-# $Date: 2017-02-01 16:43:10 -0700 (Wed, 01 Feb 2017) $
 

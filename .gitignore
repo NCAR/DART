@@ -8,11 +8,14 @@
 .DS_Store
 Gemfile.lock
 _site/
+.cppdefs
 
 # Nuisance files
 
-Makefile
+# Makefile
+build_templates/mkmf.template
 dart_log.*
+mkmf.template
 input.nml.*default
 filter_ics
 obs_def_mod.f90
@@ -20,6 +23,7 @@ obs_kind_mod.f90
 using_mpi_for_*
 check_me.nc
 check_me_interptest.*
+*.orig
 
 # RTTOV coefficient files
 
@@ -57,8 +61,6 @@ perturb_single_instance
 preprocess
 restart_file_tool
 system_simulation
-wakeup_filter
-FeoM_time
 rttov_test
 
 # Directories to NOT IGNORE ... same as executable names
@@ -94,3 +96,4 @@ rttov_test
 !restart_file_tool/
 !system_simulation/
 !wakeup_filter/
+

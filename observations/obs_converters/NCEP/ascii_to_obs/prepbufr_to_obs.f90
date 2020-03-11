@@ -219,8 +219,8 @@ do while (window_start <= end_time)
    endif
    write(output_name, output_filename_pattern) trim(output_filename_base), fyear, fmonth, fday, fhour
    
-   write(*,*) ' input filename: '//trim( input_name)
-   write(*,*) 'output filename: '//trim(output_name)
+   write(*,*) ' input filename: "'//trim( input_name)//'"'
+   write(*,*) 'output filename: "'//trim(output_name)//'"'
 
    ! Initialize an obs_sequence 
       
@@ -231,8 +231,8 @@ do while (window_start <= end_time)
    call set_copy_meta_data(seq, 1, 'NCEP BUFR observation')
    call set_qc_meta_data(seq, 1, 'NCEP QC index')
 
-   write(*,*) ' opening main input file: '//trim(input_name)
-   obs_unit = open_file (input_name, 'formatted', action='read')
+   write(*,*) ' opening main input file: "'//trim(input_name)//'"'
+   obs_unit = open_file(input_name, form='formatted', action='read')
    
    call construct_obs_sequence(seq, obs_unit, gdays, window_start, window_end, inc_midnight)
    call close_file(obs_unit)
@@ -249,8 +249,8 @@ do while (window_start <= end_time)
       write( input_name,  input_filename_pattern) trim(input_filename_base), fyear, fmonth, fday, fhour
    endif
 
-   write(*,*) ' opening aux  input file: '//trim(input_name)
-   obs_unit = open_file (input_name, 'formatted', action='read')
+   write(*,*) ' opening aux  input file: "'//trim(input_name)//'"'
+   obs_unit = open_file(input_name, form='formatted', action='read')
    
    ! read the next available ascii intermediate file to collect any obs which are
    ! exactly equal to the ending timestamp.  this works for windows which are an even

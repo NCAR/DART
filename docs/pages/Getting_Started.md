@@ -527,13 +527,13 @@ seven `mkmf_xxxxxx` files for the following programs:
 
 | Program | Purpose |
 | :------ | :------ |
-| [preprocess](https://ncar.github.io/DART/api/v0.0.6/program/preprocess.html) | creates custom source code for just the observations of interest |
-| [create_obs_sequence](https://ncar.github.io/DART/api/v0.0.6/program/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
-| [create_fixed_network_seq](https://ncar.github.io/DART/api/v0.0.6/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
-| [perfect_model_obs](https://ncar.github.io/DART/api/v0.0.6/program/perfect_model_obs.html) | spinup and generate "true state" for synthetic observation experiments |
-| [filter](https://ncar.github.io/DART/api/v0.0.6/program/filter.html) | perform data assimilation analysis |
-| [obs_diag](https://ncar.github.io/DART/api/v0.0.6/program/obs_diag.html) | creates observation-space diagnostic files in netCDF format to support visualization and quantification. |
-| [obs_sequence_tool](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html) | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
+| [preprocess](../../assimilation_code/programs/preprocess/preprocess.html) | creates custom source code for just the observations of interest |
+| [create_obs_sequence](../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
+| [create_fixed_network_seq](../../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
+| [perfect_model_obs](../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html) | spinup and generate "true state" for synthetic observation experiments |
+| [filter](../../assimilation_code/programs/filter/filter.html) | perform data assimilation analysis |
+| [obs_diag](../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html) | creates observation-space diagnostic files in netCDF format to support visualization and quantification. |
+| [obs_sequence_tool](../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html) | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
 
 As mentioned above, `quickbuild.csh` is a script that will build every
 executable in the directory. There is an optional argument that will
@@ -621,7 +621,7 @@ have access to several DART directories. At the MATLAB prompt, type the followin
 (using the real path to your DART installation):
 
 > \>\> addpath('path_to_dart/diagnostics/matlab','-BEGIN')  
-> \>\> addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')  
+> \>\> addpath('path_to_dart/docs/DART_LAB/matlab','-BEGIN')  
 
 It is very convenient to put these lines in your *\~/matlab/startup.m* file so
 they are executed every time MATLAB starts up. DART provides an example
@@ -665,25 +665,27 @@ calculate the error in the assimilation:
 <table>
 <tr>
 <td width="50%">
+   
 <pre>
 <code>
+
 [unix prompt] cd DARTHOME/models/lorenz_63/work
 [unix prompt] matlab -nodesktop
 (lots of startup messages I'm skipping)
 
-    >> addpath ../../../diagnostics/matlab
-    >> plot_total_err
+    [matlab_prompt] addpath ../../../diagnostics/matlab
+    [matlab_prompt] plot_total_err
     Input name of true model trajectory file;
-    <cr> for perfect_output.nc
+    (cr) for perfect_output.nc
     perfect_output.nc
     Input name of ensemble trajectory file;
-    <cr> for preassim.nc
+    (cr) for preassim.nc
     preassim.nc
     Comparing true_state.nc and
               preassim.nc
-    >> plot_ens_time_series
+    [matlab_prompt] plot_ens_time_series
     Input name of ensemble trajectory file;
-    <cr> for preassim.nc
+    (cr) for preassim.nc
 
     Comparing true_state.nc and
               preassim.nc
@@ -711,7 +713,7 @@ calculate the error in the assimilation:
                       time: [200x1 double]
         time_series_length: 200
                        var: 'state'
-                  var_inds: [1 2 3]
+                  var_inds: [1 2 3]       
 </code>
 </pre>
 </td>
@@ -1642,7 +1644,7 @@ following sequence:
 | Jamaica          | 12 Apr 2007 | Vertical localization, extensive MPI testing, <a href="https://www.image.ucar.edu/DAReS/DART/Lanai/doc/html/history/Jamaica_diffs_from_I.html">more</a> |
 | Kodiak           | 30 Jun 2011 | New obs types, new diagnostics, new utilities, much <a href="https://www.image.ucar.edu/DAReS/DART/Lanai/doc/html/history/Kodiak_release.html#CurrentUsers">more</a> |
 | Lanai            | 13 Dec 2013 | Support for many new models, chemistry/aerosol types, new diagnostics, new utilities, much <a href="https://www.image.ucar.edu/DAReS/DART/Lanai/doc/html/Lanai_release.html#CurrentUsers">more</a> |
-| Manhattan        | 15 May 2017 | Native netCDF support, better scaling/performance, much <a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/documentation/index.html#Updates">more</a> |
+| Manhattan        | 15 May 2017 | Native netCDF support, better scaling/performance, much <a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/docs/index.html#Updates">more</a> |
 
 In September 2009, DART was featured on the cover of the Bulletin of the
 American Meteorological Society:
@@ -1748,7 +1750,7 @@ model output at a time. External programs will advance the model states,
 generate the observations, and call DART again. The following diagram in shows
 the high-level DART flow in this case:
 
-<img src="../images/DART_flow_native_netCDF.png" width="500" alt="DART flow with netCDF files" /><br />
+<img src="../images/DART_workflow.png" width="500" alt="DART flow with netCDF files" /><br />
 
 Within a single time step, DART will use the *filter* program to run the
 "Assimilate" portion of the above diagram and/or the "diagnostics" as follows:

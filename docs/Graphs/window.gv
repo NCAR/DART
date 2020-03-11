@@ -1,0 +1,8 @@
+digraph {
+   node [shape=box];
+   distributed_state_mod -> ensemble_manager_mod;
+   distributed_state_mod -> window_mod -> ensemble_manager_mod;
+   filter_mod -> distributed_state_mod;
+   assim_tools_mod -> distributed_state_mod;
+   model_mod -> distributed_state_mod;
+}
