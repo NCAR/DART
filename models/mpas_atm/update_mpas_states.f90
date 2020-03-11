@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id: update_mpas_states.f90 12937 2018-11-26 23:01:09Z nancy@ucar.edu $
 
 program update_mpas_states
 
@@ -32,7 +30,7 @@ use direct_netcdf_mod,only : read_transpose, read_variables
 use        model_mod, only : static_init_model, statevector_to_analysis_file, &
                              get_model_size, get_init_template_filename,      &
                              get_num_vars, get_analysis_time,                 &
-                             print_variable_ranges, force_u_into_state
+                             print_variable_ranges
 
 use netcdf
 
@@ -79,9 +77,6 @@ call check_namelist_read(iunit, io, "update_mpas_states_nml")
 ! Call model_mod:static_init_model() which reads the model namelists
 ! to set grid sizes, etc.
 !----------------------------------------------------------------------
-
-! must be called before static-init_model
-!call force_u_into_state()
 
 call static_init_model()
 call get_init_template_filename(model_analysis_filename)
@@ -130,7 +125,6 @@ fileloop: do        ! until out of files
   !----------------------------------------------------------------------
   ! Read analysis state vector (assuming to be available at the model time)
   !----------------------------------------------------------------------
-  !call read_transpose(state_ens_handle, name_handle, domain, dart_index, limit_mem)
   call read_variables(ncAnlID, statevector, 1, nvars, dom_id)
 
   !----------------------------------------------------------------------
@@ -149,8 +143,7 @@ fileloop: do        ! until out of files
   !----------------------------------------------------------------------
   ! update the current model state vector
   !----------------------------------------------------------------------
-  write(*,*) 'Overwritting states in ',trim(next_outfile)
-  !call statevector_to_analysis_file(statevector, ncBckID, next_outfile, model_time)
+  write(*,*) 'Overwriting states in ',trim(next_outfile)
   call statevector_to_analysis_file(statevector, ncBckID, next_outfile)
 
   !----------------------------------------------------------------------
