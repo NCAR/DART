@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id: update_bc.f90 12937 2018-11-26 23:01:09Z nancy@ucar.edu $
 
 program update_bc
 
@@ -85,6 +83,7 @@ call check_namelist_read(iunit, io, "update_bc_nml")
 ! get the first member file to use as a template
 bdy_template_filename = get_next_filename(update_boundary_file_list, 1)
 
+! Note that force_u_into_state should be called before static_init_model, which is unusual.
 call force_u_into_state()
 call set_lbc_variables(bdy_template_filename)
 
@@ -141,7 +140,6 @@ fileloop: do        ! until out of files
   !----------------------------------------------------------------------
   ! Read analysis state vector (assuming to be available at the model time)
   !----------------------------------------------------------------------
-  !call read_transpose(state_ens_handle, name_handle, domain, dart_index, limit_mem)
   d1size = get_domain_size(1)
   d2size = get_domain_size(2)
   call read_variables(ncAnlID, statevector(1:d1size), 1, nanlvars, domain=1)

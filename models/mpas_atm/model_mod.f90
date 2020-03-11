@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id: model_mod.f90 12937 2018-11-26 23:01:09Z nancy@ucar.edu $
 
 module model_mod
 
