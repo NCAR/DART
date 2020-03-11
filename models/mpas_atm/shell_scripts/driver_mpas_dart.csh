@@ -48,7 +48,7 @@
 #  C. RUN_DIR/member#/${mpas_filename}    - the input file listed in input_state_file_list for each member
 #  D. OBS_DIR/${obs_seq_in}.${YYYYMMDDHH} - obs sequence files for each analysis cycle (YYYYMMDDHH) 
 #     for the entire period.
-#  E. Ensemble LBC files fore regional MPAS cycling
+#  E. Ensemble LBC files for regional MPAS cycling
 # 
 #  Written by Soyoung Ha (MMM/NCAR)
 #  Updated and tested on yellowstone (Feb-20-2013)

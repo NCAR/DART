@@ -526,7 +526,7 @@ contains
 !------------------------------------------------------------------
 
 subroutine static_init_model()
-!> @todo FIXME - can we add an optional arg here for update_bc use?
+!>@todo FIXME - can we add an optional arg here for update_bc use?
 
 ! Called to do one time initialization of the model.
 !
@@ -811,7 +811,7 @@ lbc_nfields = 0
 
 ! if we have a lateral boundary file, add it to the domain
 ! so we have access to the corresponding lbc_xxx fields.
-!> @todo FIXME: if we want to do increments, we could also add a
+!>@todo FIXME: if we want to do increments, we could also add a
 ! third domain which is the original forecast fields before
 ! the assimilation (so we can compute increments)
 if (.not. global_grid .and. lbc_variables(1) /= '') then
@@ -1665,8 +1665,6 @@ if (allocated(zEdge))          deallocate(zEdge)
 if (allocated(latEdge))        deallocate(latEdge)
 if (allocated(lonEdge))        deallocate(lonEdge)
 
-!call finalize_closest_center() !> @todo cheating for now
-
 end subroutine end_model
 
 !------------------------------------------------------------------
@@ -2047,7 +2045,7 @@ end subroutine force_u_into_state
 
 !-------------------------------------------------------------------
 
-!> @todo FIXME: 
+!>@todo FIXME: 
 !>  i believe no one is calling this routine anymore.  we should remove
 !>  it from the public list and see what breaks.  if nothing, remove it.
 !>
@@ -2505,12 +2503,8 @@ VARLOOP2: do b_ivar = 1, nvars
       cycle VARLOOP2
    endif
 
-   ! now we've potentially replaced the reconstructed cell center winds
-   ! with the increments, so don't write them back if so. ????
-!> @todo FIXME: normally we do NOT want to update these in the lbc file.
-!> for verification, go ahead and update them.
-!   if ((bvarname == 'lbc_ur' .or. bvarname == 'lbc_vr') .and.  &
-!       use_increments_for_u_update) cycle VARLOOP2
+   ! now we replace the reconstructed cell center winds
+   ! with the ones blended between prior and posterior values.
 
    call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
 
@@ -3098,10 +3092,6 @@ endif
 call nc_get_variable(ncid, 'xVertex', xVertex, routine)
 call nc_get_variable(ncid, 'yVertex', yVertex, routine)
 call nc_get_variable(ncid, 'zVertex', zVertex, routine)
-
-! Get the boundary information if available.
-! Assuming the existence of this variable is sufficient to determine if
-! the grid is defined everywhere or not.
 
 if (nc_variable_exists(ncid, 'maxLevelCell')) then
    allocate(maxLevelCell(nCells))
@@ -5854,7 +5844,7 @@ do i = 1, nedges
       edgenormals(j, i) = edgeNormalVectors(j, edgelist(i))
    enddo
 
-   !> @todo lower (upper) could be different levels in pressure
+   !>@todo lower (upper) could be different levels in pressure
    !lowval = x(index1 + (edgelist(i)-1) * nvert + lower(i)-1)
    lowindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(lower(i,1)-1,i8)
    lowval =  get_state(lowindx, state_handle)
@@ -6011,7 +6001,7 @@ end select
 if (on_boundary_edgelist(edge_list)) then
    nedges = -1
    edge_list(:) = -1
-   call error_handler(E_MSG, 'find_surrounding_edges', 'edges in the boundary', &
+   if(debug > 0) call error_handler(E_MSG, 'find_surrounding_edges', 'edges in the boundary', &
                       source, revision, revdate)
    return
 endif
@@ -6638,15 +6628,14 @@ subroutine move_pressure_to_edges(ncells, celllist, lower, upper, fract, nedges,
 ! fract values.  the lower, upper and fract lists match the cells on the
 ! way in, they match the edges on the way out.
 
-!> @todo HK Same across the ensemble? I don't know
-
 integer,  intent(in)    :: ncells, celllist(:)
 integer,  intent(inout) :: lower(:, :), upper(:, :) ! ens_size
 real(r8), intent(inout) :: fract(:, :) ! ens_size
 integer,  intent(in)    :: nedges, edgelist(:)
 integer,  intent(out)   :: ier(:)
 
-integer, parameter :: listsize = 30 !> @todo this is set in different places to different values
+!>@todo this is set in different places to different values
+integer, parameter :: listsize = 30 
 !real(r8) :: o_lower(listsize), o_fract(listsize)
 real(r8), allocatable :: o_lower(:,:), o_fract(:,:)
 real(r8) :: x1, x2, x
