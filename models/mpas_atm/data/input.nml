@@ -421,8 +421,7 @@
    debug             = .false.
   /
 
-&mpas_obs_preproc_nml
-   static_mpas_filename     = 'mpas_init.nc'
+&mpas_dart_obs_preprocess_nml
    file_name_input          = 'obs_seq.old'
    file_name_output         = 'obs_seq.new'
    include_sig_data         = .true.
