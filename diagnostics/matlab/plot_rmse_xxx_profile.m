@@ -138,6 +138,12 @@ figuredata            = set_obsdiag_figure('tall');
 figuredata.MarkerSize = p.Results.MarkerSize;
 verbose               = p.Results.verbose;
 
+% KDR Put the 3 figures in spread out positions, with optimal size.
+x1 = [1,475,950];
+dx = [474,474,474];
+y1 = [100,100,100];
+dy = [650,650,650];
+
 %%---------------------------------------------------------------------
 % Loop around (copy-level-region) observation types
 %----------------------------------------------------------------------
@@ -251,7 +257,11 @@ for ivar = 1:plotdat.nvars
     % plot by region - each in its own figure.
     
     for iregion = 1:plotdat.nregions
-        figure(iregion);
+% KDR
+% Tim's technique (lower left corner x,y,  x-dim, y-dim)
+            fig_h = figure(iregion);
+	    fig_h.Position = [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]; 
+% Orig        figure(iregion);
         clf(iregion);
         orient(figuredata.orientation);
         plotdat.region   = iregion;
@@ -270,6 +280,11 @@ for ivar = 1:plotdat.nvars
             print(gcf, '-dpdf', '-bestfit', psfname);
         end
         
+        % KDR attempt to slow down the stream of pictures when there's something to see,
+        % without needing to hit a key to continue.
+        if any(plotdat.ges_Nused(plotdat.region,:))
+           pause(5);
+        end
         % block to go slow and look at each one ...
         if (p.Results.pause)
             disp('Pausing, hit any key to continue ...')
@@ -299,17 +314,38 @@ anl_Nused = plotdat.anl_Nused(plotdat.region,:);
 anl_Ngood = sum(anl_Nused);
 
 mean_pr_rmse = mean(ges_rmse(isfinite(ges_rmse)));
+fprintf('Layers mean of prior rmse = %.5g .\n',mean_pr_rmse)
+
+% KDR added to implement mean weighted by the number of obs at each level.
+% ! ! For Q and GPS these weighted means of profiles are using
+%     rmse and copy that have been normalized by the field average,
+%     making the values at high levels larger.  Is that the right thing to do?
+ges_Ngood = sum(ges_Nused);
+
+sq_err = ges_rmse(isfinite(ges_rmse)).^2 .* ges_Nused(isfinite(ges_rmse)) ;
+mean_pr_rmse = sqrt(sum(sq_err) ./ ges_Ngood );
+fprintf('Correct rmse of all obs = %.5g .\n',mean_pr_rmse)
+
+% original
 mean_pr_copy = mean(ges_copy(isfinite(ges_copy)));
-str_pr_rmse  = sprintf('%s pr=%.5g','rmse',mean_pr_rmse);
-str_pr_copy  = sprintf('%s pr=%.5g',plotdat.copystring,mean_pr_copy);
+fprintf('Layers mean of prior %s = %.5g .\n',plotdat.copystring,mean_pr_copy)
+% Correct
+mean_pr_copy = sum(ges_copy(isfinite(ges_copy)) .* ges_Nused(isfinite(ges_rmse))) ./ ges_Ngood;
+fprintf('Correct %s of all obs = %.5g .\n',plotdat.copystring,mean_pr_copy)
+
+% KDR
+str_pr_rmse  = sprintf('obs avg %s pr = %.5g','rmse',            mean_pr_rmse);
+str_pr_copy  = sprintf('obs avg %s pr = %.5g',plotdat.copystring,mean_pr_copy);
+% end KDR
 
 % If the posterior is available, plot them too.
 
 if anl_Ngood > 0
+% KDR This needs the same changes as the ges vars, above.
     mean_po_rmse = mean(anl_rmse(isfinite(anl_rmse)));
     mean_po_copy = mean(anl_copy(isfinite(anl_copy)));
-    str_po_rmse  = sprintf('%s po=%.5g','rmse',mean_po_rmse);
-    str_po_copy  = sprintf('%s po=%.5g',plotdat.copystring,mean_po_copy);
+    str_po_rmse  = sprintf('%s po = %.5g','rmse',mean_po_rmse);
+    str_po_copy  = sprintf('%s po = %.5g',plotdat.copystring,mean_po_copy);
 end
 
 % Plot the rmse and 'xxx' on the same (bottom) axis.
@@ -321,11 +357,30 @@ end
 ax1 = subplot('position',figuredata.position);
 orient(figuredata.orientation)
 
-% add type of vertical coordinate info for adjusting axes to accomodate legend
+% KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
+var = pad(plotdat.myvarname,32);
+if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
+   set(ax1,'YScale','log')
+end
+ax1
+
+% add type of vertical coordinate info for adjusting axes to accommodate legend
 
 Stripes(plotdat.Xrange, plotdat.level_edges, plotdat.level_units);
 set(ax1, 'YDir', plotdat.YDir, 'YTick', plotdat.YTick, 'Layer', 'top')
 set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
+
+% KDR (log scale was set here, but moved to fix stripes)
+% This changes the scale, but the stripes are not taking account of the
+% extra space at the top for the legend, so they don't line up with the data levels.
+% Also, there are weird vertical axis grid lines; increasing spacing with height,
+% instead of decreasing.
+% KDR end
+% KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
+if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
+   set(ax1,'YScale','log')
+end
+ax1
 
 % draw the result of the experiment
 
@@ -412,6 +467,9 @@ ax2 = axes('position',get(ax1,'Position'), ...
     'YLim',get(ax1,'YLim'), ...
     'YDir',get(ax1,'YDir'), ...
     'FontSize',get(ax1,'FontSize'));
+if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
+   set(ax2,'YScale','log')
+end
 
 ax2h1 = line(ges_Nposs, plotdat.levels, 'Parent', ax2);
 ax2h2 = line(ges_Nused, plotdat.levels, 'Parent', ax2);
@@ -644,15 +702,16 @@ function h = Stripes(x,edges,units)
 
 h = plot([min(x) max(x)],[min(edges) max(edges)]);
 axlims          = axis;
-legend_fraction = 0.22;
 
 % partial fix to legend space; add in option for vert coord = height.
 
 switch lower(units)
     case 'hpa'
+        legend_fraction = 0.22;
         axlims(4) = max(edges);
         axlims(3) = min(edges) - legend_fraction*(axlims(4)-min(edges));
     case 'm'
+        legend_fraction = 0.42;
         axlims(3) = min(edges);
         axlims(4) = max(edges) + legend_fraction*(max(edges)-axlims(3));
     otherwise
@@ -662,6 +721,10 @@ axis(axlims)
 % set up list of x,y values defining corner of every other stripe.
 
 xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
+
+% KDR 2019-10-29; missing the gray stripe at the bottom.
+%     2019-12-23; maybe fixed by setting lowest layer edge from 0 to 100
+%        which should work better in the vertical log scale.
 
 hold on;
 for i = 1:2:(length(edges)-1)
@@ -679,8 +742,7 @@ set(h,'Visible','off') % make the dots invisible
 
 function value = local_ncread(fname,varname)
 %% If the variable exists in the file, return the contents of the variable.
-% if the variable does not exist, return empty value instead of error-ing
-% out.
+% if the variable does not exist, return empty value instead of error-ing out.
 
 [variable_present, ~] = nc_var_exists(fname,varname);
 if (variable_present)

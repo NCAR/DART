@@ -156,6 +156,12 @@ figuredata.MarkerSize = p.Results.MarkerSize;
 figuredata.DateForm   = p.Results.DateForm;
 verbose               = p.Results.verbose;
 
+% KDR Put the 3 figures in spread out positions, with optimal size.
+x1 = [1,485,960];
+dx = [484,474,474];
+y1 = [100,100,100];
+dy = [650,650,650];
+
 %%---------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
 %----------------------------------------------------------------------
@@ -286,16 +292,23 @@ for ivar = 1:plotdat.nvars
         % plot each region, each level to a separate figure
         
         for iregion = 1:plotdat.nregions
-            figure(iregion); clf(iregion); orient(figuredata.orientation);
+% KDR
+% Tim's technique (lower left corner x,y,  x-dim, y-dim)
+            fig_h = figure(iregion);
+	    fig_h.Position = [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]; 
+            clf(iregion); orient(figuredata.orientation);
+% Orig
+%            figure(iregion); clf(iregion); orient(figuredata.orientation);
             
             plotdat.region   = iregion;
             plotdat.myregion = deblank(plotdat.region_names(iregion,:));
             if ( isempty(plotdat.level_units) )
                 plotdat.title = plotdat.myvarname;
             else
+% KDR added 'round' to prevent scientific notation from being used.
                 plotdat.title = sprintf('%s @ %d %s',    ...
                     plotdat.myvarname,     ...
-                    plotdat.level(ilevel), ...
+                    round(plotdat.level(ilevel)), ...
                     plotdat.level_units);
             end
             
@@ -306,6 +319,21 @@ for ivar = 1:plotdat.nvars
                 print(gcf, '-dpsc', '-append', psfname{iregion});
             else
                 print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
+            end
+            
+            % KDR attempt to slow down the stream of pictures when there's something to see,
+            % without needing to hit a key to continue.
+            % any(plotdat.ges_copy(:,plotdat.copyindex,ilevel,plotdat.region))
+            %    any(plotdat.ges_rmse(:,plotdat.rmseindex,ilevel,plotdat.region));
+%            if any(plotdat.ges_Nused(:,plotdat.region))
+%               pause(1);
+%            end
+
+            % KDR attempt to slow down the stream of pictures when there's something to see.
+            % any(plotdat.ges_copy(:,plotdat.copyindex,ilevel,plotdat.region))
+            %    any(plotdat.ges_rmse(:,plotdat.rmseindex,ilevel,plotdat.region));
+            if any(plotdat.ges_Nused(:,plotdat.region))
+               pause(2);
             end
             
             % block to go slow and look at each one ...
@@ -337,8 +365,11 @@ anl_Nused = squeeze(plotdat.anl_Nused(plotdat.region,:,:,:));
 ges_Neval = squeeze(plotdat.ges_Neval(plotdat.region,:,:,:));
 anl_Ngood = sum(anl_Nused);
 
-[hrmse,  legstr_rmse ] = plot_quantity(            'rmse', plotdat);
-[hother, legstr_other] = plot_quantity(plotdat.copystring, plotdat);
+% KDR Pass in ges_Nused to calculate the mean over all obs,
+%     instead of over time slots.
+[hrmse,  legstr_rmse ] = plot_quantity(            'rmse', plotdat, ges_Nused);
+[hother, legstr_other] = plot_quantity(plotdat.copystring, plotdat, ges_Nused);
+% KDR end
 
 h  = legend([hrmse,hother], legstr_rmse, legstr_other);
 set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize)
@@ -593,51 +624,109 @@ end
 
 %=====================================================================
 
-function [h, legstr] = plot_quantity(quantity, plotdat)
+function [h, legstr] = plot_quantity(quantity, plotdat, ges_Nused)
 
 global figuredata
 
 anl_Nused = squeeze(plotdat.anl_Nused(plotdat.region,:,:,:));
+% KDR seems like a misleading name.  How about anl_Nsum?
 anl_Nposs = sum(anl_Nused);
 
 switch lower(quantity)
     case 'rmse'
         
-        prior          = squeeze(plotdat.ges_rmse(plotdat.region,:,:,:));
-        posterior      = squeeze(plotdat.anl_rmse(plotdat.region,:,:,:));
-        mean_prior     = mean(    prior(isfinite(    prior)));
-        mean_posterior = mean(posterior(isfinite(posterior)));
+        prior     = squeeze(plotdat.ges_rmse(plotdat.region,:,:,:));
+        post      = squeeze(plotdat.anl_rmse(plotdat.region,:,:,:));
         
         color     = figuredata.rmse_color;
         marker    = figuredata.marker1;
-        linestyle = figuredata.solid;
-        linewidth = figuredata.linewidth;
         
-    otherwise
+        % KDR Modified to write the true RMSE (of all the obs in this time span) to the legend,
+        % instead of the time average of the time series of RMSEs.
+        % Replace calls to 'mean' with calls to 'sum' and weight by the number of obs.
+        % For comparison with the original calculation, the average of the time series:
+        mean_prior = mean(prior(isfinite(prior)));
+        %mean_post  = mean( post(isfinite(post)));
+        fprintf('Time mean of prior rmse = %.5g .\n',mean_prior)
+
+        % ?   Safe to use the same numbers for ges and anl?
+        tot_Nused = sum(ges_Nused);
+
+        % Use the rmse and the number of obs at each time to calculate 
+        % the squared error (already summed over obs at each time),
+        sq_err = prior(isfinite(prior)).^2 .* ges_Nused(isfinite(prior));
+        % sum them to yield the total squared error for this time *span*,
+        % then divide by tot_Nused to yield the total mean squared error.
+        % The square root finishes the process.
+        mean_prior = sqrt(sum(sq_err) ./ tot_Nused) ;
+        fprintf('Correct rmse of all obs = %.5g .\n',mean_prior)
+
+        if  anl_Nposs > 0
+           sq_err = prior(isfinite(post)).^2 .* ges_Nused(isfinite(post));
+           mean_post = sqrt(sum(sq_err) ./ tot_Nused) ;
+        end
+
+        % KDR pass this back to the function that makes the whole legend
+        %     which displays the average rmse and (bias or totalspread).
+        legstr = 'obs avg';
         
-        prior          = squeeze(plotdat.ges_copy(plotdat.region, :,:,:));
-        posterior      = squeeze(plotdat.anl_copy(plotdat.region, :,:,:));
-        mean_prior     = mean(    prior(isfinite(    prior)));
-        mean_posterior = mean(posterior(isfinite(posterior)));
+    case {'bias','totalspread'}
+        prior     = squeeze(plotdat.ges_copy(plotdat.region, :,:,:));
+        post      = squeeze(plotdat.anl_copy(plotdat.region, :,:,:));
         
         color     = figuredata.copy_color;
         marker    = figuredata.marker2;
-        linestyle = figuredata.solid;
-        linewidth = figuredata.linewidth;
+        
+        % The old, time average of the time series of biases.
+        % Only used for comparison with the correct, below.
+        mean_prior = mean(prior(isfinite(prior)));
+        fprintf('Time mean of prior %s = %.5g .\n',quantity,mean_prior)
+
+        % KDR Modified to write the true bias (of all the obs in this time span) to the legend,
+        % instead of the time average of the time series of average biases.
+        % ?   Safe to use the same numbers for ges and anl?
+        tot_Nused = sum(ges_Nused);
+        mean_prior = sum(prior(isfinite(prior)) .* ges_Nused(isfinite(prior))) ./ tot_Nused ;
+        fprintf('Correct %s of all obs = %.5g .\n',quantity,mean_prior)
+
+        if  anl_Nposs > 0
+           mean_post = sum(post(isfinite(post)) .* ges_Nused(isfinite(post))) ./ tot_Nused ;
+        end
+       
+        legstr = 'obs avg';
+        
+    otherwise
+        
+        prior     = squeeze(plotdat.ges_copy(plotdat.region, :,:,:));
+        post      = squeeze(plotdat.anl_copy(plotdat.region, :,:,:));
+        
+        color     = figuredata.copy_color;
+        marker    = figuredata.marker2;
+        
+        mean_prior = mean(prior(isfinite(prior)));
+
+        if  anl_Nposs > 0
+           mean_post = mean(post(isfinite(post)));
+        end
+
+        legstr = sprintf('time avg');
         
 end
+
+linestyle = figuredata.solid;
+linewidth = figuredata.linewidth;
 
 % If the posterior is available, interlace to make a sawtooth plot
 % and create meaningful legend strings
 
 if  anl_Nposs > 0
-    data = reshape([prior              posterior         ]',2*plotdat.Nbins,1);
+    data = reshape([prior              post              ]',2*plotdat.Nbins,1);
     t    = reshape([plotdat.bincenters plotdat.bincenters]',2*plotdat.Nbins,1);
-    legstr = sprintf('%s pr=%.5g, po=%.5g',quantity, mean_prior, mean_posterior);
+    legstr = sprintf('%s %s pr = %.5g, po = %.5g ',legstr, quantity, mean_prior, mean_post);
 else
     data = prior;
     t    = plotdat.bincenters;
-    legstr = sprintf('%s pr=%.5g',quantity, mean_prior);
+    legstr = sprintf('%s %s pr = %.5g ',legstr, quantity, mean_prior);
 end
 
 h = line(t,data);

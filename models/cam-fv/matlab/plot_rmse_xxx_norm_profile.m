@@ -65,7 +65,7 @@ function plotdat = plot_rmse_xxx_norm_profile(fname, copy, varargin)
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% DART $Id: plot_rmse_xxx_profile.m 13107 2019-04-12 20:53:51Z thoar@ucar.edu $
+% DART $Id$
 
 %%--------------------------------------------------------------------
 % Decode,Parse,Check the input
@@ -237,9 +237,6 @@ for ivar = 1:plotdat.nvars
 
 % The varnames are up to 32 characters, but the blanks have been stripped.
 % Add them back, in order to do a nonhardwired test.
-%    if (all(char(plotdat.myvarname(1:18)) == 'GPSRO_REFRACTIVITY')      || ...
-%        all(char(plotdat.myvarname(1:22)) == 'AIRS_SPECIFIC_HUMIDITY')  || ...
-%        all(char(plotdat.myvarname(1:28)) == 'RADIOSONDE_SPECIFIC_HUMIDITY') )
     var = pad(plotdat.myvarname,32);
     if (all(char(var) == 'GPSRO_REFRACTIVITY              ')      || ...
         all(char(var) == 'AIRS_SPECIFIC_HUMIDITY          ')  || ...
@@ -294,9 +291,6 @@ for ivar = 1:plotdat.nvars
         
         BottomAnnotation(fname)
 % KDR added normalization option        
-%        if (all(char(plotdat.varnames{ivar}(1:18)) == 'GPSRO_REFRACTIVITY')      || ...
-%            all(char(plotdat.varnames{ivar}(1:22)) == 'AIRS_SPECIFIC_HUMIDITY')  || ...
-%            all(char(plotdat.varnames{ivar}(1:28)) == 'RADIOSONDE_SPECIFIC_HUMIDITY') )
         var = pad(plotdat.myvarname,32);
         if (all(char(var) == 'GPSRO_REFRACTIVITY              ')      || ...
             all(char(var) == 'AIRS_SPECIFIC_HUMIDITY          ')  || ...
@@ -369,15 +363,8 @@ mean_pr_copy = sum(ges_copy(isfinite(ges_copy)) .* ges_Nused(isfinite(ges_rmse))
 fprintf('Correct %s of all obs = %.5g .\n',plotdat.copystring,mean_pr_copy)
 
 % KDR
-%if (all(char(plotdat.myvarname(1:18)) == 'GPSRO_REFRACTIVITY')     || ...
-%    all(char(plotdat.myvarname(1:22)) == 'AIRS_SPECIFIC_HUMIDITY') || ...
-%    all(char(plotdat.myvarname(1:28)) == 'RADIOSONDE_SPECIFIC_HUMIDITY') )
 str_pr_rmse  = sprintf('obs avg %s pr = %.5g','rmse',            mean_pr_rmse);
 str_pr_copy  = sprintf('obs avg %s pr = %.5g',plotdat.copystring,mean_pr_copy);
-%else
-%   str_pr_rmse  = sprintf('%s pr = %.5g','rmse',mean_pr_rmse);
-%   str_pr_copy  = sprintf('%s pr = %.5g',plotdat.copystring,mean_pr_copy);
-%end
 % end KDR
 
 % If the posterior is available, plot them too.
@@ -400,7 +387,6 @@ ax1 = subplot('position',figuredata.position);
 orient(figuredata.orientation)
 
 % KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
-%if (all(char(plotdat.myvarname(1:18)) == 'GPSRO_REFRACTIVITY'))
 var = pad(plotdat.myvarname,32);
 if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
    set(ax1,'YScale','log')
@@ -420,7 +406,6 @@ set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
 % instead of decreasing.
 % KDR end
 % KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
-%if (all(char(plotdat.myvarname(1:18)) == 'GPSRO_REFRACTIVITY'))
 if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
    set(ax1,'YScale','log')
 end
@@ -514,7 +499,6 @@ ax2 = axes('position',get(ax1,'Position'), ...
     'YLim',get(ax1,'YLim'), ...
     'YDir',get(ax1,'YDir'), ...
     'FontSize',get(ax1,'FontSize'));
-%if (all(char(plotdat.myvarname(1:18)) == 'GPSRO_REFRACTIVITY'))
 if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
    set(ax2,'YScale','log')
 end
@@ -739,8 +723,8 @@ function h = Stripes(x,edges,units)
 % This really should be modified to add a percentage of the data
 % range to provide space for the legend. Right now it is hardwired
 % to assume that we are plotting hPa, on a 'reverse' axis.
-% KDR axlims(3) should be conditional on the observation vertical coordinate:
-%     values for pressure coordinates are inappropriate for height coord.  DONE
+% kdr axlims(3) should be conditional on the observation vertical coordinate:
+%     values for pressure coordinates are inappropriate for height coord.
 %     It also assumes 4 plots/page, but 2 works better for plotting all levels of CAM5.
 %     That requires a smaller % of vertical range for the legend.
 
@@ -772,7 +756,7 @@ xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
 
 % KDR 2019-10-29; missing the gray stripe at the bottom.
 %     2019-12-23; maybe fixed by setting lowest layer edge from 0 to 100
-%        which shuld work better in the vertical log scale.
+%        which should work better in the vertical log scale.
 
 hold on;
 for i = 1:2:(length(edges)-1)
@@ -801,6 +785,6 @@ end
 
 
 % <next few lines under version control, do not edit>
-% $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/diagnostics/matlab/plot_rmse_xxx_profile.m $
-% $Revision: 13107 $
-% $Date: 2019-04-12 14:53:51 -0600 (Fri, 12 Apr 2019) $
+% $URL$
+% $Revision$
+% $Date$
