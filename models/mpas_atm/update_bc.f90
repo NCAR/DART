@@ -33,6 +33,11 @@ use        model_mod, only : static_init_model, statevector_to_analysis_file, &
                              print_variable_ranges, &  ! , get_num_vars
                              set_lbc_variables, force_u_into_state
 use state_structure_mod, only : get_num_variables, get_domain_size
+
+use netcdf_utilities_mod, only : nc_open_file_readonly, &
+                                 nc_open_file_readwrite, &
+                                 nc_close_file
+
 use netcdf
 
 implicit none
@@ -115,18 +120,15 @@ fileloop: do        ! until out of files
   !----------------------------------------------------------------------
   ! Reads input lbc (prior) and filter (analysis) files 
   !----------------------------------------------------------------------
-  call nc_check(nf90_open(trim(next_infile), NF90_NOWRITE, ncAnlID), &
-             'update_bc','open '//trim(next_infile))
 
-  ! Overwrite this mpas file for state vector later
-  call nc_check(nf90_open(trim(next_outfile), NF90_WRITE, ncBdyID), &
-             'update_bc','open '//trim(next_outfile))
+  ncAnlID = nc_open_file_readonly(next_infile, 'update_bc - open readonly')
+  ncBdyID = nc_open_file_readwrite(next_outfile, 'update_bc - open readwrite')
 
   !----------------------------------------------------------------------
   ! Read the model time
   !----------------------------------------------------------------------
-  model_time = get_analysis_time(ncBdyID, trim(next_outfile))
-  state_time = get_analysis_time(ncAnlID, trim(next_infile))
+  model_time = get_analysis_time(ncBdyID, next_outfile)
+  state_time = get_analysis_time(ncAnlID, next_infile)
   call print_time(state_time,'DART current time')
   call print_time(model_time,'mpas current time')
 
@@ -160,10 +162,12 @@ fileloop: do        ! until out of files
   call print_date( model_time,'update_bc:model date',logfileunit)
   call print_time( model_time,'update_bc:model time',logfileunit)
 
-  call nc_check(nf90_close(ncAnlID), &
-             'update_mpas_states','close '//trim(next_infile))
-  call nc_check(nf90_close(ncBdyID), &
-             'update_mpas_states','close '//trim(next_outfile))
+  ! Because the files were open with the nc_open_file...() routines,
+  ! it is not necessary to supply the filenames for error msg purposes.
+
+  call nc_close_file(ncAnlID,'update_bc')
+  call nc_close_file(ncBdyID,'update_bc')
+
   filenum = filenum + 1
 
 end do fileloop

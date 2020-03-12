@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program mpas_dart_obs_preprocess
 
@@ -80,6 +78,11 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, end_ensem
 use           netcdf
 
 implicit none
+
+! version controlled file description for error handling, do not edit
+character(len=*), parameter :: source   = "mpas_atm/mpas_dart_obs_preprocess.f90"
+character(len=*), parameter :: revision = ""
+character(len=*), parameter :: revdate  = ""
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -1355,12 +1358,10 @@ end type airobs_type
 
 type(airobs_type), allocatable :: airobs(:)
 
+character(len=*), parameter :: routine  = "superob_aircraft_data"
+
 !-----------------------------------------------------------------------
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "Manhattan/models/mpas_atm/mpas_dart_obs_preprocess.f90"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
-!-----------------------------------------------------------------------
+
 write(6,*)
 
 if_aircraft = .false.
@@ -1547,7 +1548,7 @@ do k = 1, nloc  !  loop over all observation locations
    icell = find_closest_cell_center(airobs(k)%lat, airobs(k)%lon)
    if(icell < 1) then
       write(string,*) 'Cannot find any cell for this obs at ', airobs(k)%lat, airobs(k)%lon
-      call error_handler(E_MSG,'superob_aircraft_data', source, revision, revdate) 
+      call error_handler(E_MSG, routine, source, revision, revdate, text2=string) 
    endif
    if(airobs(k)%pressure > ps) then
       ik = 1
@@ -1778,11 +1779,8 @@ end type satobs_type
 
 type(satobs_type), allocatable :: satobs(:)
 
-!-----------------------------------------------------------------------
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "Manhattan/models/mpas_atm/mpas_dart_obs_preprocess.f90"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: routine = "superob_sat_wind_data"
+
 !-----------------------------------------------------------------------
 
 write(6,*)
@@ -1922,7 +1920,7 @@ do k = 1, nloc  ! loop over all locations
         if(icell < 1) then
            write(string,*) 'Cannot find any cell for this obs at ',&
                             satobs(k)%lat,satobs(k)%lon  
-           call error_handler(E_MSG,'superob_sat_wind_data', source, revision, revdate) 
+           call error_handler(E_MSG, routine, source, revision, revdate, text2=string) 
         endif
         if(satobs(k)%pressure > ps) then
            ik = 1
