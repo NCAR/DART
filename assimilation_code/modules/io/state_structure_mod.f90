@@ -80,6 +80,7 @@ public :: add_domain,                 &
           get_num_domains,            &
           get_variable_size,          &
           get_variable_name,          &
+          get_varid_from_varname,     &
           get_kind_string,            &
           get_kind_index,             &
           get_varid_from_kind,        & 
