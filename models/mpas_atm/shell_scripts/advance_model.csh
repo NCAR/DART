@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: advance_model.csh 11799 2017-07-07 21:08:09Z nancy@ucar.edu $
-#
 # A shell script to run the MPAS-A(tmostphere) model from DART input.
 #
 # This script is called by advance_model.template in driver_mpas_dart.csh
@@ -292,9 +290,3 @@ EOF
 end
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/shell_scripts/advance_model.csh $
-# $Revision: 11799 $
-# $Date: 2017-07-07 15:08:09 -0600 (Fri, 07 Jul 2017) $
-

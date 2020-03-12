@@ -3,7 +3,7 @@
 # Sample files for this step are provided in ../data/, but you need to prepare
 # your grid file for your own global mesh (e.g. grid.nc) to start with.
 #
-# Soyoung Ha (MMM/NCAR) Feb-2020
+# Soyoung Ha  MMM/NCAR Feb-2020
 
 1. Create a regional grid and a graph file (from a global MPAS grid.nc)
    git clone https://github.com/MiCurry/MPAS-Limited-Area
@@ -51,6 +51,5 @@
    => lbc.$Y-$M-$D_$h.nc 
      (Note this file name has been changed from lbc.$Y-$M-$D_$h.$m.$s.nc)
 
-For more details, refer to
-https://docs.google.com/document/d/1Vpy9fKSDAXGVGbDiXec6q9IvrsS9x2FVCGurXwHw2ww/edit?ts=5e2f662d
+For more details or any questions, please contact Soyoung Ha (syha@ucar.edu) or dart@ucar.edu.
 

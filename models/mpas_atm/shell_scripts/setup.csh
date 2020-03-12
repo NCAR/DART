@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: setup.csh 11799 2017-07-07 21:08:09Z nancy@ucar.edu $
-#
 #set echo
 ########################################################################################
 # Set up parameters that are used for other scripts throughout the cycling period.
@@ -86,16 +84,7 @@ set STREAM_INIT  = streams.init_atmosphere	 # I/O list for init_atmosphere_model
 set STREAM_ATM   = streams.atmosphere		 # I/O list for atmosphere_model
 
 # Commands (do not need modification unless moving to new system)
-set HSICMD = 'hsi put -P'
 set REMOVE = '/bin/rm -rf'
 set   COPY = 'cp -pf'
 set   MOVE = 'mv -f'
 set   LINK = 'ln -sf'
-unalias cd
-unalias ls
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/shell_scripts/setup_params.csh $
-# $Revision: 11799 $
-# $Date: 2017-07-07 15:08:09 -0600 (Fri, 07 Jul 2017) $
-

@@ -290,7 +290,8 @@ integer, parameter, public :: &
     QTY_SNOW_TEMPERATURE            = 131, &
     QTY_SURFACE_RUNOFF              = 132, &
     QTY_UNDER_RUNOFF                = 133, &
-    QTY_AQUIFER_WATER               = 134
+    QTY_AQUIFER_WATER               = 134, &
+    QTY_2M_VAPOR_MIXING_RATIO       = 135
 
 ! kinds for NOAH  (Tim Hoar)
 integer, parameter, public :: &
@@ -757,6 +758,7 @@ obs_kind_names(131) = obs_kind_type(QTY_SNOW_TEMPERATURE      ,'QTY_SNOW_TEMPERA
 obs_kind_names(132) = obs_kind_type(QTY_SURFACE_RUNOFF        ,'QTY_SURFACE_RUNOFF')
 obs_kind_names(133) = obs_kind_type(QTY_UNDER_RUNOFF          ,'QTY_UNDER_RUNOFF')
 obs_kind_names(134) = obs_kind_type(QTY_AQUIFER_WATER         ,'QTY_AQUIFER_WATER')
+obs_kind_names(135) = obs_kind_type(QTY_2M_VAPOR_MIXING_RATIO ,'QTY_2M_VAPOR_MIXING_RATIO')
 
 obs_kind_names(140) = obs_kind_type(QTY_NEUTRON_INTENSITY     ,'QTY_NEUTRON_INTENSITY')
 obs_kind_names(141) = obs_kind_type(QTY_CANOPY_WATER          ,'QTY_CANOPY_WATER')

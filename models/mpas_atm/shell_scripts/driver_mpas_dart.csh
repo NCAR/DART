@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: driver_mpas_dart.csh 11799 2017-07-07 21:08:09Z nancy@ucar.edu $
-#
 ##############################################################################################
 #  driver_mpas_dart.csh
 #
@@ -669,9 +667,3 @@ echo Cycling is done for $n_cycles cycles in ${EXPERIMENT_NAME}.
 echo Script exiting normally.
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/shell_scripts/driver_mpas_dart.csh $
-# $Revision: 11799 $
-# $Date: 2017-07-07 15:08:09 -0600 (Fri, 07 Jul 2017) $
-
