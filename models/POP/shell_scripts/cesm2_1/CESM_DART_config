@@ -36,30 +36,43 @@
 #       sampling error correction
 # -- Run this script.
 # -- Edit the DART input.nml that appears in the ${CASEROOT} directory.
-# -- Submit the job using ${CASEROOT}/${CASE}.submit
+# -- Submit the job using ${CASEROOT}/case.submit
 #
 # ==============================================================================
 # Get the environment of the case - defines number of instances/ensemble size ...
 # Each model component has their own number of instances.
 # ==============================================================================
 
-if ( ! -e ./Tools/ccsm_getenv ) then
+setenv cesmtag              cesm2_1_1
+# Trim the minor version off cesmtag to get the major release
+setenv cesmtagmajor `echo ${cesmtag} | cut -c1-7`
+
+if ( ! -e ./xmlquery ) then
    echo "ERROR: $0 must be run from a CASEROOT directory".
    exit -1
 endif
 
-source ./Tools/ccsm_getenv
-
-set num_instances = $NINST_OCN
-
-# DARTROOT is set by the DART CESM_configure scripts. Under certain
-# situations, you may need to set this manually. It should reference the
-# base portion of the DART code tree.
-
-setenv DARTROOT  BOGUS_DART_ROOT_STRING
+setenv CASEROOT      `./xmlquery --value CASEROOT`
+setenv EXEROOT       `./xmlquery --value EXEROOT`
+setenv RUNDIR        `./xmlquery --value RUNDIR`
+setenv NINST_OCN     `./xmlquery --value NINST_OCN`
 
 # ==============================================================================
-# Some
+# Turn on data assimilation in CESM
+# 
+# Data assimilation is enabled within an earth system component by changing 
+# DATA_ASSIMILATION_[CPL, ATM, LND, ICE, OCN, ROF, GLC, WAV]=TRUE
+# 
+# ==============================================================================
+
+./xmlchange DATA_ASSIMILATION_OCN=TRUE
+./xmlchange DATA_ASSIMILATION_CYCLES=1
+
+# ==============================================================================
+# standard commands:
+#
+# If you are running on a machine where the standard commands are not in the
+# expected location, add a case for them below.
 # ==============================================================================
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
@@ -77,7 +90,7 @@ switch ("`hostname`")
 
    breaksw
    default:
-      # NERSC "hopper", NWSC "yellowstone"
+      # NERSC "hopper", NWSC "yellowstone", NWSC "cheyenne"
       set   MOVE = '/bin/mv -fv'
       set   COPY = '/bin/cp -fv --preserve=timestamps'
       set   LINK = '/bin/ln -fvs'
@@ -98,7 +111,7 @@ foreach VAR ( CASEROOT DARTROOT )
    if ( ! -d $DIR ) then
       echo "ERROR: directory '$DIR' not found"
       echo "       In the setup script check the setting of: $VAR"
-      exit -1
+      exit 10
    endif
 end
 
@@ -109,7 +122,7 @@ end
 # ==============================================================================
 
 foreach MODEL ( POP )
-   set targetdir = $DARTROOT/models/$MODEL/work
+   set targetdir = ${DARTROOT}/models/${MODEL}/work
    if ( ! -x $targetdir/filter ) then
       echo ""
       echo "WARNING: executable file 'filter' not found."
@@ -121,7 +134,7 @@ foreach MODEL ( POP )
          echo "       Unsuccessfully tried to rebuild: $targetdir/filter "
          echo "       Required DART assimilation executables are not found."
          echo "       Stopping prematurely."
-         exit -1
+         exit 20
       endif
    endif
 end
@@ -130,23 +143,8 @@ end
 # Stage the required parts of DART in the CASEROOT directory.
 # ==============================================================================
 
-# The standard CESM short-term archiving script may need to be altered
-# to archive additional or subsets of things, or to reduce the amount of
-# data that is sent to the long-term archive.  Put a version of st_archive.sh
-# in  ${DARTROOT}/models/CESM/shell_scripts when/if necessary
-
-if (            ! -e           Tools/st_archive.sh.original ) then
-   ${COPY} Tools/st_archive.sh Tools/st_archive.sh.original
-else
-   echo "Tools/st_archive.sh backup copy already exists."
-   echo ""
-endif
-
-${COPY} ${DARTROOT}/models/POP/shell_scripts/cesm1_x/st_archive.sh           Tools/
-${COPY} ${DARTROOT}/models/POP/shell_scripts/cesm1_x/assimilate.csh          .
-${COPY} ${DARTROOT}/models/POP/shell_scripts/cesm1_x/perfect_model.csh       .
-${COPY} ${DARTROOT}/shell_scripts/shell_exit.sh                      .
-${COPY} ${DARTROOT}/system_simulation/work/sampling_error_correction_table.nc ${RUNDIR}
+${COPY} ${DARTROOT}/models/POP/shell_scripts/${cesmtagmajor}/assimilate.csh          .
+${COPY} ${DARTROOT}/models/POP/shell_scripts/${cesmtagmajor}/perfect_model.csh       .
 
 # ==============================================================================
 # Stage the DART executables in the CESM execution root directory: EXEROOT
@@ -184,9 +182,9 @@ else
    exit -99
 fi
 
-${COPY} ${DARTROOT}/models/POP/work/filter            ${EXEROOT}
-${COPY} ${DARTROOT}/models/POP/work/perfect_model_obs ${EXEROOT}
-${COPY} ${DARTROOT}/system_simulation/work/sampling_error_correction_table.nc ${EXEROOT}
+${COPY} ${DARTROOT}/models/POP/work/filter                  ${EXEROOT}
+${COPY} ${DARTROOT}/models/POP/work/perfect_model_obs       ${EXEROOT}
+${COPY} ${DARTROOT}/models/POP/work/fill_inflation_restart  ${EXEROOT}
 
 exit 0
 
@@ -223,131 +221,49 @@ exit 0
 EndOfText
 chmod 0755 update_dart_namelists
 
-./update_dart_namelists || exit -9
+./update_dart_namelists || exit 70
 
-# ==============================================================================
-# INFLATION : Initial setup for the default inflation scenario.
-# ==============================================================================
-# POP may use adaptive state-space prior inflation. The initial settings
-# are in the filter_nml and ... during an assimilation experiment, the output
-# from one assimilation is the input for the next. To facilitate this operationally,
-# it is useful to specify an initial file of inflation values for the first
-# assimilation step. However, I can think of no general way to do this. The
-# utility that creates the initial inflation values (fill_inflation_restart)
-# needs the model size from model_mod. To get that, DART/POP needs
-# files which we generally don't have at this stage of the game (it exists after
-# a model advance). So ... until I think of something better ... I am making a
-# cookie file that indicates this is the very first assimilation. If this
-# cookie file exists, the assimilate.csh script will make the inflation restart
-# file before it performs the assimilation. After the first assimilation takes
-# place, the cookie file must be 'eaten' so that subsequent assimilations do not
-# overwrite whatever _should_ be there.
+#=========================================================================
+# Stage the files needed for SAMPLING ERROR CORRECTION - even if not
+# initially requested. The file is static, small, and may be needed later.
 #
-# IMPORTANT: If you stage your own inflation file, you must REMOVE the cookie
-# file from the RUNDIR directory.
+# If it is requested and is not present ... it is an error.
+#
+# The sampling error correction is a lookup table.  A selection of common
+# ensemble sizes should be found in the file named below.
+# It is only needed if
+# input.nml:&assim_tools_nml:sampling_error_correction = .true.,
+#=========================================================================
 
-if ( $num_instances > 1 ) then
-   date >! ${RUNDIR}/pop_inflation_cookie
-endif
-
-# ==============================================================================
-# Creating the code to add to the *.run script to call DART.
-# If there is one instance ... we MUST be running a perfect_model experiment.
-# If there are many instances ... we MUST be assimilating.
-# The number of instances dictates what DART script will be used.
-# ==============================================================================
-
-cat << "EndOfText" >! temp.$$
-
-# -------------------------------------------------------------------------
-# START OF DART: if CESM finishes correctly (pirated from ccsm_postrun.csh);
-# perform an assimilation with DART.
-
-set CplLogFile = `ls -1t cpl.log* | head -n 1`
-if ($CplLogFile == "") then
-   echo 'ERROR: Model did not complete - no cpl.log file present - exiting.'
-   echo 'ERROR: DART will not be attempted.'
-   setenv LSB_PJL_TASK_GEOMETRY "{(0)}"
-   setenv EXITCODE -1
-   ${MPI_RUN_COMMAND} ${CASEROOT}/shell_exit.sh
-   exit -1
-endif
-
-grep 'SUCCESSFUL TERMINATION' $CplLogFile
-if ( $status == 0 ) then
-
-#  If you want to use DART, uncomment the line with 'DARTSCRIPTNAME',
-#  otherwise, CESM is running as usual.
-#  ${CASEROOT}/DARTSCRIPTNAME
-
-   if ( $status == 0 ) then
-      echo "`date` -- DART HAS FINISHED"
-   else
-      echo "`date` -- DART ERROR - ABANDON HOPE"
-      setenv LSB_PJL_TASK_GEOMETRY "{(0)}"
-      setenv EXITCODE -3
-      ${MPI_RUN_COMMAND} ${CASEROOT}/shell_exit.sh
-      exit -3
-   endif
+if ( $NINST_OCN == 1 ) then
+    ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/perfect_model.csh
 else
-   echo 'ERROR: Model did not complete successfully - exiting.'
-   echo 'ERROR: DART will not be attempted.'
-   setenv LSB_PJL_TASK_GEOMETRY "{(0)}"
-   setenv EXITCODE -2
-   ${MPI_RUN_COMMAND} ${CASEROOT}/shell_exit.sh
-   exit -2
+    ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/assimilate.csh
+    
+    set SAMP_ERR_DIR = assimilation_code/programs/gen_sampling_err_table/work
+    set SAMP_ERR_FILE = ${DARTROOT}/${SAMP_ERR_DIR}/sampling_error_correction_table.nc
+ 
+    if (  -e   ${SAMP_ERR_FILE} ) then
+        ${COPY} -f ${SAMP_ERR_FILE} ${RUNDIR}  || exit 75
+        if ( $NINST_OCN < 3 || $NINST_OCN > 200 ) then
+            echo ""
+            echo "ERROR: sampling_error_correction_table.nc handles ensemble sizes 3...200."
+            echo "ERROR: Yours is ${NINST_OCN}"
+            echo ""
+            exit 75
+        endif
+    else
+        set list = `grep sampling_error_correction input.nml | sed -e "s/[=\.,]//g`
+        if ($list[2] == "true") then
+            echo ""
+            echo "ERROR: No sampling_error_correction_table.nc file found ..."
+            echo "ERROR: the input.nml:assim_tool_nml:sampling_error_correction"
+            echo "ERROR: is 'true' so this file must exist."
+            echo ""
+            exit 80
+        endif
+    endif
 endif
-
-# END OF DART BLOCK
-# -------------------------------------------------------------------------
-"EndOfText"
-
-# modify the "here" document to call the logical DART script.
-
-if ( $num_instances == 1 ) then
-   set DARTscript = perfect_model.csh
-else
-   set DARTscript = assimilate.csh
-endif
-
-sed -e "s#DARTSCRIPTNAME#${DARTscript}#" < temp.$$ >! add_to_run.txt
-
-# Now that the "here" document is created,
-# determine WHERE to insert it -- ONLY IF it is not already there.
-
-grep "ABANDON HOPE" ${CASE}.run > /dev/null
-set STATUSCHECK = $status
-
-if ( ${STATUSCHECK} == 0 ) then
-   echo "DART block already present in ${CASE}.run"
-   echo ""
-   ${REMOVE} temp.$$ add_to_run.txt
-
-else if ( ${STATUSCHECK} == 1 ) then
-   echo "Adding DART block to ${CASE}.run"
-   echo ""
-
-   set MYSTRING = `grep --line-number "CSM EXECUTION HAS FINISHED" ${CASE}.run`
-   set MYSTRING = `echo $MYSTRING | sed -e "s#:# #g"`
-
-   @ origlen = `cat ${CASE}.run | wc -l`
-   @ keep = $MYSTRING[1]
-   @ lastlines = $origlen - $keep
-
-   head -n $keep      ${CASE}.run    >! temp.$$
-   cat                add_to_run.txt >> temp.$$
-   tail -n $lastlines ${CASE}.run    >> temp.$$
-
-   ${MOVE} temp.$$ ${CASE}.run
-   ${REMOVE} add_to_run.txt
-
-else
-   echo "ERROR in grep of ${CASE}.run: aborting"
-   echo "status was ${STATUSCHECK}"
-   exit -6
-endif
-
-chmod 0744 ${CASE}.run
 
 # ==============================================================================
 # What to do next
@@ -363,24 +279,31 @@ Check the DART configuration:
 1) The default behavior is to _not_ invoke DART and simply run CESM.
    We recommend that you make sure this works before proceeding.
 
-2) When you want to run DART, make sure the ${CASE}.run script
-   references "$DARTscript".
+2) To turn DART on or off, while in ${CASEROOT}  execute:
+   ./xmlchange --value DATA_ASSIMILATION_OCN=[TRUE,FALSE] 
 
 3) Modify what you need to in the DART namelist file, i.e. ${CASEROOT}/input.nml
 
 4) If you have recompiled any part of the DART system, 'stage_dart_files'
    will copy them into the correct places.
 
-5) If you stage your own inflation files, make sure you read the INFLATION section
-   in ${CASEROOT}/CESM_DART_config
+5) If you stage your own inflation files, make sure you read the "INFLATION" section
+   in ${CASEROOT}/assimilate.csh. At the very least, copy your inflation files
+   in ${RUNDIR} into the appropriate names:
+      input_priorinf_mean.nc
+      input_priorinf_sd.nc
+      input_postinf_mean.nc 
+      input_postinf_sd.nc   
+   If assimilate.csh does not find inflation files, it will call fill_inflation_restart
+   to create some from the inflation values in input.nml.
 
-6) Make sure the observation directory names in $DARTscript match
-   those on your system.
+6) Make sure the observation directory names in assimilate.csh or perfect_model.csh
+   matches the one on your system.
 
 7) Submit the CESM job in the normal way.
 
-8) You can use ${CASEROOT}/stage_cesm_files
-    to stage files to restart a run.
+8) You can use ${CASEROOT}/stage_cesm_files to stage an ensemble of files
+   to restart a run at a date for which you have a restart set.
 
 -------------------------------------------------------------------------
 

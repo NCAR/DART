@@ -80,8 +80,8 @@
 # and you may be able to salvage something with
 # ./cesm_setup -clean
 # ./cesm_setup
-# ./${case}.clean_build
-# ./${case}.build
+# ./${CASE}.clean_build
+# ./${CASE}.build
 #
 #*******************************************************************************
 
@@ -97,10 +97,10 @@
 # cesmtag       The version of the CESM source code to use when building the code.
 # ==============================================================================
 
-setenv case                 pop2_1_pmo
 setenv compset              G
 setenv resolution           f19_g17
 setenv cesmtag              cesm2_1_1
+setenv CASE ${compset}.${resolution}
 
 # ==============================================================================
 # machines and directories:
@@ -108,14 +108,14 @@ setenv cesmtag              cesm2_1_1
 # mach            Computer name
 # cesmroot        Location of the CESM code base.  This version of the script
 #                 only supports version cesm2_1_1.
-# caseroot        Will create the CESM case directory here, where the CESM+DART
+# CASEROOT        Will create the CESM case directory here, where the CESM+DART
 #                 configuration files will be stored.  This should probably not
 #                 be in scratch (on yellowstone, your 'work' partition is suggested).
-#                 This script will delete any existing caseroot, so this script,
+#                 This script will delete any existing CASEROOT, so this script,
 #                 and other useful things should be kept elsewhere.
-# rundir          Will create the CESM run directory here.  Will need large
+# RUNDIR          Will create the CESM run directory here.  Will need large
 #                 amounts of disk space, generally on a scratch partition.
-# exeroot         Will create the CESM executable directory here, where the
+# EXEROOT         Will create the CESM executable directory here, where the
 #                 CESM executables will be built.  Medium amount of space
 #                 needed, generally on a scratch partition.
 # archdir         Will create the CESM short-term archive directories here.
@@ -128,10 +128,10 @@ setenv cesmtag              cesm2_1_1
 
 setenv mach         cheyenne
 setenv cesmroot     /glade/p/cesm/releases/$cesmtag
-setenv caseroot     /glade/work/${USER}/cases/${case}
-setenv rundir       /glade/scratch/${USER}/${case}/run
-setenv exeroot      /glade/scratch/${USER}/${case}/bld
-setenv archdir      /glade/scratch/${USER}/archive/${case}
+setenv CASEROOT     /glade/work/${USER}/cases/${CASE}
+setenv RUNDIR       /glade/scratch/${USER}/${CASE}/run
+setenv EXEROOT      /glade/scratch/${USER}/${CASE}/bld
+setenv archdir      /glade/scratch/${USER}/archive/${CASE}
 setenv dartroot     /glade/work/${USER}/git/DART/
 setenv restartdir   /glade/scratch/${USER}/restart
 
@@ -194,8 +194,8 @@ setenv stagedir /glade/scratch/${USER}/${refcase}/rest/${reftimestamp}
 #
 # resubmit      How many job steps to run on continue runs (should be 0 initially)
 # stop_option   Units for determining the forecast length between assimilations
-# first_stop_n  Number of time units in the first forecast
-# stop_n        Number of time units in all subsequent forecasts
+# first_STOP_N  Number of time units in the first forecast
+# STOP_N        Number of time units in all subsequent forecasts
 #
 # ==============================================================================
 
@@ -212,14 +212,14 @@ setenv short_term_archiver off
 
 setenv resubmit            0
 setenv stop_option         ndays
-setenv first_stop_n        3
-setenv stop_n              1
+setenv first_STOP_N        3
+setenv STOP_N              1
 
 # ==============================================================================
 # job settings:
 #
-# queue      can be changed during a series by changing the ${case}.run
-# timewall   can be changed during a series by changing the ${case}.run
+# queue      can be changed during a series by changing the ${CASE}.run
+# timewall   can be changed during a series by changing the ${CASE}.run
 #
 # TJH: Advancing 1 instance for 72 hours with 60 pes (1*15*4) with
 #      a perfect_model_obs step took less than 2 minutes on yellowstone.
@@ -293,30 +293,30 @@ end
 # incorporate any needed changes into this script.
 # ==============================================================================
 
-# fatal idea to make caseroot the same dir as where this setup script is
-# since the build process removes all files in the caseroot dir before
+# fatal idea to make CASEROOT the same dir as where this setup script is
+# since the build process removes all files in the CASEROOT dir before
 # populating it.  try to prevent shooting yourself in the foot.
 
-if ( $caseroot == `dirname $0` ) then
-   echo "ERROR: the setup script should not be located in the caseroot"
-   echo "directory, because all files in the caseroot dir will be removed"
+if ( $CASEROOT == `dirname $0` ) then
+   echo "ERROR: the setup script should not be located in the CASEROOT"
+   echo "directory, because all files in the CASEROOT dir will be removed"
    echo "before creating the new case.  move the script to a safer place."
    exit -1
 endif
 
-echo "removing old files from ${caseroot}"
-echo "removing old files from ${exeroot}"
-echo "removing old files from ${rundir}"
-${REMOVE} ${caseroot}
-${REMOVE} ${exeroot}
-${REMOVE} ${rundir}
+echo "removing old files from ${CASEROOT}"
+echo "removing old files from ${EXEROOT}"
+echo "removing old files from ${RUNDIR}"
+${REMOVE} ${CASEROOT}
+${REMOVE} ${EXEROOT}
+${REMOVE} ${RUNDIR}
 
 # ==============================================================================
 # The --run-unsupported option is necessary for CESM2 because this compset
 # hasn't been tested.
 # ==============================================================================
 
-${cesmroot}/cime/scripts/create_newcase --case ${caseroot} --mach ${mach} \
+${cesmroot}/cime/scripts/create_newcase --case ${CASEROOT} --mach ${mach} \
                 --res ${resolution} --compset ${compset} --run-unsupported
 
 if ( $status != 0 ) then
@@ -326,8 +326,8 @@ endif
 
 # preserve a copy of this script as it was run
 set ThisFileName = $0:t
-${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
-
+${COPY} $ThisFileName ${CASEROOT}/${ThisFileName}.original
+${COPY} DART_params.csh ${CASEROOT}
 
 # ==============================================================================
 # Record the DARTROOT directory and copy the DART setup script to CASEROOT.
@@ -342,8 +342,8 @@ endif
 
 if (   -e CESM_DART_config ) then
    sed -e "s#BOGUS_DART_ROOT_STRING#$dartroot#" < CESM_DART_config >! temp.$$
-   ${MOVE} temp.$$ ${caseroot}/CESM_DART_config
-   chmod 755       ${caseroot}/CESM_DART_config
+   ${MOVE} temp.$$ ${CASEROOT}/CESM_DART_config
+   chmod 755       ${CASEROOT}/CESM_DART_config
 else
    echo "WARNING: the script to configure for data assimilation is not available."
    echo "         CESM_DART_config should be present locally or in"
@@ -356,7 +356,7 @@ endif
 # Configure the case.
 # ==============================================================================
 
-cd ${caseroot}
+cd ${CASEROOT}
 
 # Since ccsm_getenv no longer exists, we set environmental variables here using
 # xmlquery
@@ -364,7 +364,6 @@ cd ${caseroot}
 setenv COMP_ATM           `./xmlquery COMP_ATM           --value`
 setenv COMP_LND           `./xmlquery COMP_LND           --value`
 setenv MAX_TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE --value`
-
 
 # Make sure the land and atmosphere are 'data' components.
 
@@ -376,7 +375,7 @@ if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
    exit -3
 endif
 
-# MAX_TASKS_PER_NODE comes from $case/Tools/mkbatch.$machine
+# MAX_TASKS_PER_NODE comes from ${CASE}/Tools/mkbatch.$machine
 @ ptile = $MAX_TASKS_PER_NODE * 2
 @ nthreads = 1
 
@@ -454,11 +453,11 @@ echo ""
 ./xmlchange RUN_REFDATE=$refdate
 ./xmlchange RUN_REFTOD=$reftod
 ./xmlchange GET_REFCASE=FALSE
-./xmlchange EXEROOT=${exeroot}
-./xmlchange RUNDIR=${rundir}
+./xmlchange EXEROOT=${EXEROOT}
+./xmlchange RUNDIR=${RUNDIR}
 
 ./xmlchange DATM_MODE=CPLHIST
-./xmlchange DATM_CPLHIST_CASE=$case
+./xmlchange DATM_CPLHIST_CASE=${CASE}
 ./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
 ./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
 ./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
@@ -468,7 +467,7 @@ echo ""
 ./xmlchange CALENDAR=GREGORIAN
 
 ./xmlchange STOP_OPTION=$stop_option
-./xmlchange STOP_N=$first_stop_n
+./xmlchange STOP_N=$first_STOP_N
 ./xmlchange CONTINUE_RUN=FALSE
 ./xmlchange RESUBMIT=$resubmit
 
@@ -516,11 +515,11 @@ endif
 #    Ideally, using DART would not require any modifications to the model source.
 #    Until then, this script accesses sourcemods from a hardwired location.
 #    If you have additional sourcemods, they will need to be merged into any DART
-#    mods and put in the SourceMods subdirectory found in the 'caseroot' directory.
+#    mods and put in the SourceMods subdirectory found in the 'CASEROOT' directory.
 # ==============================================================================
 
 if (    -d     ~/${cesmtag}/SourceMods ) then
-   ${COPY} -r  ~/${cesmtag}/SourceMods/* ${caseroot}/SourceMods/
+   ${COPY} -r  ~/${cesmtag}/SourceMods/* ${CASEROOT}/SourceMods/
 else
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
@@ -544,13 +543,13 @@ setenv BATCH_SYSTEM           `./xmlquery BATCH_SYSTEM           --value`
 switch ( $BATCH_SYSTEM )
    case bsub*:
       # NCAR "bluefire", "yellowstone"
-      set TIMEWALL=`grep BSUB ${case}.run | grep -e '-W' `
-      set    QUEUE=`grep BSUB ${case}.run | grep -e '-q' `
+      set TIMEWALL=`grep BSUB ${CASE}.run | grep -e '-W' `
+      set    QUEUE=`grep BSUB ${CASE}.run | grep -e '-q' `
       sed -e "/BSUB/s#$TIMEWALL[3]#$timewall#" \
           -e "/BSUB/s#ptile=[0-9][0-9]*#ptile=$ptile#" \
-          -e "/BSUB/s#$QUEUE[3]#$queue#" < ${case}.run >! temp.$$
-          ${MOVE} temp.$$ ${case}.run
-          chmod 755       ${case}.run
+          -e "/BSUB/s#$QUEUE[3]#$queue#" < ${CASE}.run >! temp.$$
+          ${MOVE} temp.$$ ${CASE}.run
+          chmod 755       ${CASE}.run
    breaksw
    case pbs*:
       # NCAR "cheyenne"
@@ -582,7 +581,7 @@ endif
 # ==============================================================================
 
 if (   -e ${restartdir}  ) then
-   ${COPY} ${restartdir}/* ${rundir}
+   ${COPY} ${restartdir}/* ${RUNDIR}
 else
    echo "ERROR: No restart directory present."
    echo "This script will copy the restart file and rpointer.ocn.restart"
@@ -660,7 +659,6 @@ while ($inst <= 1)
    # The  third entry indicates  we get a daily timeslice
 
    echo "init_ts_suboption  = 'data_assim'" >> ${fname}
-
    @ inst ++
 end
 
@@ -716,7 +714,7 @@ foreach FNAME (user*streams*)
    if ( $SingleInstanceRefcase ) then
       set instance = ''
    else
-      set instance = `echo $TRUTHinstance | bc`
+      set instance = `printf _%04d $TRUTHinstance`
    endif
 
    if (-e $dartroot/models/POP/shell_scripts/$cesmtagmajor/user_$streamname*template) then
@@ -762,7 +760,7 @@ set restart_time = $init_time
 
 # get the settings for this case from the CESM environment
 
-cd \${caseroot}
+cd \${CASEROOT}
 
 setenv RUNDIR           `./xmlquery RUNDIR           --value`
 setenv CONTINUE_RUN     `./xmlquery CONTINUE_RUN     --value`
@@ -828,28 +826,28 @@ if ( \${CONTINUE_RUN} == TRUE ) then
 
          set inst_string = ''
 
-         echo "${case}.datm\${inst_string}.r.\${restart_time}.nc"    >! rpointer.atm\${inst_string}
-         echo "${case}.datm\${inst_string}.rs1.\${restart_time}.bin" >> rpointer.atm\${inst_string}
-         echo "${case}.drof\${inst_string}.r.\${restart_time}.nc"    >! rpointer.rof\${inst_string}
-         echo "${case}.drof\${inst_string}.rs1.\${restart_time}.bin" >> rpointer.rof\${inst_string}
-         echo "${case}.cice\${inst_string}.r.\${restart_time}.nc"    >! rpointer.ice\${inst_string}
+         echo "${CASE}.datm\${inst_string}.r.\${restart_time}.nc"    >! rpointer.atm\${inst_string}
+         echo "${CASE}.datm\${inst_string}.rs1.\${restart_time}.bin" >> rpointer.atm\${inst_string}
+         echo "${CASE}.drof\${inst_string}.r.\${restart_time}.nc"    >! rpointer.rof\${inst_string}
+         echo "${CASE}.drof\${inst_string}.rs1.\${restart_time}.bin" >> rpointer.rof\${inst_string}
+         echo "${CASE}.cice\${inst_string}.r.\${restart_time}.nc"    >! rpointer.ice\${inst_string}
 
-         echo "${case}.pop\${inst_string}.ro.\${restart_time}"    >! rpointer.ocn\${inst_string}.ovf
-         echo "${case}.pop\${inst_string}.r.\${restart_time}.nc"  >! rpointer.ocn\${inst_string}.restart
+         echo "${CASE}.pop\${inst_string}.ro.\${restart_time}"    >! rpointer.ocn\${inst_string}.ovf
+         echo "${CASE}.pop\${inst_string}.r.\${restart_time}.nc"  >! rpointer.ocn\${inst_string}.restart
          echo "RESTART_FMT=nc"                                    >> rpointer.ocn\${inst_string}.restart
 
          if ( -e rpointer.ocn\${inst_string}.tavg ) then
-            echo "${case}.pop\${inst_string}.rh.\${restart_time}.nc" >! rpointer.ocn\${inst_string}.tavg
+            echo "${CASE}.pop\${inst_string}.rh.\${restart_time}.nc" >! rpointer.ocn\${inst_string}.tavg
          endif
          if ( -e rpointer.ocn\${inst_string}.tavg.2 ) then
-            echo "${case}.pop\${inst_string}.rh.nday1.\${restart_time}.nc" >! rpointer.ocn\${inst_string}.tavg.2
+            echo "${CASE}.pop\${inst_string}.rh.nday1.\${restart_time}.nc" >! rpointer.ocn\${inst_string}.tavg.2
          endif
 
          @ inst ++
       end
 
       # The coupler file has no instance string.
-      echo "${case}.cpl.r.\${restart_time}.nc" >! rpointer.drv
+      echo "${CASE}.cpl.r.\${restart_time}.nc" >! rpointer.drv
 
    endif
 
@@ -902,7 +900,7 @@ echo ''
 echo 'Building the case'
 echo ''
 
-./case.build
+qcmd -A ${ACCOUNT} -- ./case.build
 
 if ( $status != 0 ) then
    echo "ERROR: Case could not be built."
@@ -916,15 +914,15 @@ endif
 echo ""
 echo "Time to check the case."
 echo ""
-echo "1) cd ${rundir}"
+echo "1) cd ${RUNDIR}"
 echo "   and check the compatibility between the namelists/pointer"
 echo "   files and the files that were staged."
 echo ""
-echo "2) cd ${caseroot}"
+echo "2) cd ${CASEROOT}"
 echo ""
 echo "3) The case is initially configured to NOT INVOKE ANY DART CODE."
 echo "   When you are ready to generate synthetic observations, configure and execute"
-echo "   the ${caseroot}/CESM_DART_config script."
+echo "   the ${CASEROOT}/CESM_DART_config script."
 echo ""
 echo "4) The very first CESM advance (i.e. CONTINUE_RUN=FALSE)"
 echo "   STOP_N must be longer than *AT LEAST 2 TIMES* the coupling"
@@ -942,12 +940,12 @@ echo "   b: the right restart files exist in the run directory,"
 echo "   c: (if you're running DART) the archive dart/hist directory has the DART output,"
 echo "   d: everything is working correctly ..."
 echo ""
-echo "7) To extend the run in $stop_n '"$stop_option"' steps,"
+echo "7) To extend the run in $STOP_N '"$stop_option"' steps,"
 echo "   change the env_run.xml variables:"
 echo ""
 echo "   ./xmlchange CONTINUE_RUN=TRUE"
 echo "   ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
-echo "   ./xmlchange STOP_N=$stop_n"
+echo "   ./xmlchange STOP_N=$STOP_N"
 echo ""
 echo "   and"
 echo "   ./case.submit"
@@ -955,7 +953,7 @@ echo ""
 echo "Check the streams listed in the streams text files.  If more or different"
 echo 'dates need to be added, then do this in the $CASEROOT/user_*files*'
 echo "then invoke 'preview_namelists' so you can check the information in the"
-echo "CaseDocs or ${rundir} directories."
+echo "CaseDocs or ${RUNDIR} directories."
 echo ""
 
 exit 0

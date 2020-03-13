@@ -13,7 +13,7 @@
         /glade/p/cisl/dares/thoar/CAM_DATM/4xdaily
     </filePath>
     <fileNames>
-        CAM_DATM.cpl_0001.ha2x1dx6h.1998.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.1998.nc
         </fileNames>
 </domainInfo>
 <fieldInfo>
@@ -28,19 +28,19 @@
         linear
     </tInterpAlgo>
     <fileNames>
-        CAM_DATM.cpl_0001.ha2x1dx6h.1998.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.1999.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2000.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2001.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2002.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2003.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2004.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2005.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2006.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2007.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2008.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2009.nc
-        CAM_DATM.cpl_0001.ha2x1dx6h.2010.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.1998.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.1999.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2000.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2001.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2002.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2003.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2004.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2005.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2006.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2007.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2008.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2009.nc
+        CAM_DATM.cplNINST.ha2x1dx6h.2010.nc
     </fileNames>
     <offset>
         -10800

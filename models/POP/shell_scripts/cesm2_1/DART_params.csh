@@ -6,7 +6,7 @@
 #
 # DART $Id$
 #
-# Resource file for use when running CESM (CLM specifically) and DART.
+# Resource file for use when running CESM (POP specifically) and DART.
 # This file has all the configuration items needed and will be copied
 # into the CASEROOT directory to be used during an experiment.
 
@@ -20,29 +20,22 @@
 #               Must be a standard CESM compset; see the CESM documentation.
 # resolution    Defines the horizontal resolution and dynamics; see CESM docs.
 # cesmtag       The version of the CESM source code to use when building the code.
-# num_instances The number of ensemble members.
 #
 # For list of the pre-defined component sets: ./query_config --compsets
 # To create a variant compset, see the CESM documentation and carefully
 # incorporate any needed changes into this script.
 # ==============================================================================
 
-setenv cesmtag        clm5.0
-setenv resolution     f09_f09_mg17
-setenv compset        2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
-setenv num_instances  3
+setenv cesmtag        cesm2_1_1
+setenv resolution     f19_g17
+setenv compset        G
 
 # Since this example was tested while assimilating solar induced fluorescence,
 # we are using 'SIF' in the CASE. FYI only.
 
-if (${num_instances} == 1) then
-   setenv CASE clm5_f09_SIF_pmo
-else
-   setenv CASE clm5_f09_SIF_e${num_instances}
-endif
-
 # ==============================================================================
-# There are SourceMods to enable CLM to compute SIF
+# There are SourceMods that enable POP to recompute the barotropic velocity
+# to prevent the barotropic solver from crashing.
 # SourceMods may be handled in one of two ways. If you have your own GIT clone of
 # the repository, you may simply commit your changes to your GIT repo and 
 # set use_SourceMods = FALSE . If you prefer to keep your changes separate 
@@ -50,22 +43,11 @@ endif
 # the following structure (which is intended to be similar to the structure 
 # in the CLM distribution):
 #
-# ${SourceModDir}/src.clm
-#                |-- clm4_0
-#                |   |-- biogeochem
-#                |   |   `-- CNBalanceCheckMod.F90
-#                |   `-- biogeophys
-#                |       |-- BalanceCheckMod.F90
-#                |       |-- SnowHydrologyMod.F90
-#                |       `-- UrbanMod.F90
-#                `-- clm5_0
-#                    |-- biogeochem
-#                    |   `-- CNBalanceCheckMod.F90
-#                    !-- biogeophys
-#                    !   !-- CanopyFluxesMod.F90
-#                    !   `-- PhotosynthesisMod.F90
-#                    `-- cpl
-#                        `-- lnd_import_export.F90
+# ${SourceModDir}/src.pop
+#                |-- forcing.F90
+#                |-- initial.F90
+#                |-- overflows.F90
+#                `-- restart.F90
 
 setenv use_SourceMods TRUE
 setenv SourceModDir   ~/${cesmtag}/SourceMods
@@ -90,27 +72,20 @@ setenv SourceModDir   ~/${cesmtag}/SourceMods
 #              not be on a scratch partition unless the long-term archiver is 
 #              invoked to move these files to permanent storage.
 
-setenv cesmdata     /glade/p/cesmdata/cseg/inputdata
-setenv cesmroot     /glade/work/${USER}/CESM/$cesmtag
-setenv caseroot     /glade/work/${USER}/cases/$cesmtag/${CASE}
-setenv cime_output_root /glade/scratch/${USER}/$cesmtag/${CASE}
-setenv rundir       ${cime_output_root}/run
-setenv exeroot      ${cime_output_root}/bld
-setenv archdir      ${cime_output_root}/archive
+setenv cesmdata         /glade/p/cesmdata/cseg/inputdata
+setenv cesmroot         /glade/p/cesm/releases/$cesmtag
 
 # ==============================================================================
 # Set the variables needed for the DART configuration.
 # dartroot     Location of the root of _your_ DART installation
-# baseobsdir   Part of the directory name containing the observation sequence 
+# BASEOBSDIR   Part of the directory name containing the observation sequence 
 #              files to be used in the assimilation. The observations are presumed
 #              to be stored in sub-directories with names built from the year and
-#              month. 'baseobsdir' will be inserted into the appropriate scripts.
+#              month. 'BASEOBSDIR' will be inserted into the appropriate scripts.
 # ==============================================================================
 
-setenv dartroot     /glade/work/${USER}/git/DART_CLM
-setenv baseobsdir   /glade/p/cisl/dares/Observations/land/pmo
-setenv pmo_input_baseobsdir   /glade/p/cisl/dares/Observations/land/pmo/input
-setenv pmo_output_baseobsdir  /glade/p/cisl/dares/Observations/land/pmo/output
+setenv dartroot               /glade/work/${USER}/git/DART
+setenv BASEOBSDIR             /glade/p/cisl/dares/Observations/WOD09
 
 # ==============================================================================
 # configure settings:
@@ -126,34 +101,34 @@ setenv pmo_output_baseobsdir  /glade/p/cisl/dares/Observations/land/pmo/output
 # startdate  The date used as the starting date for the hybrid run.
 # ==============================================================================
 
-setenv refcase      clm5.0.06_f09_80
-setenv refyear      2010
-setenv refmon       07
+setenv refcase      g210.G_JRA.v14.gx1v7.01
+setenv refyear      250
+setenv refmon       01
 setenv refday       01
 setenv reftod       00000
 setenv refdate      ${refyear}-${refmon}-${refday}
 setenv reftimestamp ${refyear}-${refmon}-${refday}-${reftod}
 
-setenv stagedir /glade/p/cisl/dares/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop/ctsm_${reftimestamp}
+setenv stagedir /glade/scratch/${USER}/${refcase}/rest/${reftimestamp}
 
 # In a hybrid configuration, you can set the startdate to whatever you want.
 # It does not have to match the reference (although changing the month/day seems bad).
 # runtime settings:
 
-setenv start_year    2005
-setenv start_month   07
+setenv start_year    1998
+setenv start_month   01
 setenv start_day     01
 setenv start_tod     00000
 setenv startdate     ${start_year}-${start_month}-${start_day}
 
 # ==============================================================================
 # OSSE/Perfect Model experiments only.
-# If there is an ensemble of CLM states to choose from, which one do you want as
+# If there is an ensemble of POP states to choose from, which one do you want as
 # the truth? There is an argument for picking an instance that will not be part
 # of the ensemble used for the assimilation experiment. 
 
 setenv SingleInstanceRefcase FALSE
-setenv TRUTHinstance 80
+setenv TRUTHinstance 23
 
 # ==============================================================================
 # The forward operators for the flux tower obs REQUIRE that we predict the name of
@@ -165,17 +140,11 @@ setenv TRUTHinstance 80
 # stop_n        Number of time units in each forecast
 # resubmit      How many job steps to run on continue runs (should be 0 initially)
 
-setenv stop_option  nhours
-setenv stop_n       24
 setenv resubmit     0
-
-# clm_dtime     CLM dynamical timestep (in seconds) ... 1800 is the default
-# h1nsteps      is the number of time steps to put in a single CLM .h1. file
-#               DART needs to know this and the only time it is known is during
-#               this configuration step. Changing the value later has no effect.
-
-@ clm_dtime = 1800
-@ h1nsteps = $stop_n * 3600 / $clm_dtime
+setenv stop_option  ndays
+setenv first_stop_n 3
+setenv stop_n       1
+setenv resubmit     0
 
 # ==============================================================================
 # Settings for the data atmosphere
@@ -187,7 +156,7 @@ setenv stream_year_last  2010
 # ==============================================================================
 # machine-specific commands:
 
-setenv project      P86850054
+setenv project      P93300612
 setenv machine      cheyenne
 
 # The CESM compile step takes enough resource that Cheyenne requires a wrapper
@@ -207,12 +176,12 @@ setenv LAUNCHCMD 'mpiexec_mpt dplace -s 1'
 # The VERBOSE options are useful for debugging though
 # some systems don't like the -v option to any of the following
 # ==============================================================================
-set nonomatch       # suppress "rm" warnings if wildcard does not match anything
+set  nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
-set   MOVE = 'mv -v'
-set   COPY = 'cp -v --preserve=timestamps'
-set   LINK = 'ln -vs'
-set REMOVE = 'rm -rf' 
+set  MOVE = 'mv -v'
+set  COPY = 'cp -v --preserve=timestamps'
+set  LINK = 'ln -vs'
+set  REMOVE = 'rm -rf' 
 
 exit 0
 

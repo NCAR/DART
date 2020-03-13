@@ -5,64 +5,49 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+#
+# This script performs an assimilation by directly reading and writing to
+# the POP restart file. There is no post-processing step 'dart_to_pop'.
 
+#=========================================================================
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
+#=========================================================================
 
 echo "`date` -- BEGIN POP_ASSIMILATE"
 
-set nonomatch       # suppress "rm" warnings if wildcard does not match anything
+# As of CESM2.0, the assimilate.csh is called by CESM - and has
+# two arguments: the CASEROOT and the DATA_ASSIMILATION_CYCLE
 
-# The FORCE options are not optional.
-# The VERBOSE options are useful for debugging though
-# some systems don't like the -v option to any of the following
-switch ("`hostname`")
-   case be*:
-      # NCAR "bluefire"
-      set   MOVE = '/usr/local/bin/mv -fv'
-      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
-      set   LINK = '/usr/local/bin/ln -fvs'
-      set REMOVE = '/usr/local/bin/rm -fr'
+setenv CASEROOT $1
+setenv ASSIMILATION_CYCLE $2
 
-      set BASEOBSDIR = /glade/proj3/image/Observations/WOD09
-      set  LAUNCHCMD = mpirun.lsf
-   breaksw
+source ${CASEROOT}/DART_params.csh || exit 1
 
-   case ys*:
-      # NCAR "yellowstone"
-      set   MOVE = 'mv -fv'
-      set   COPY = 'cp -fv --preserve=timestamps'
-      set   LINK = 'ln -fvs'
-      set REMOVE = 'rm -fr'
-      set TASKS_PER_NODE = `echo $LSB_SUB_RES_REQ | sed -ne '/ptile/s#.*\[ptile=\([0-9][0-9]*\)]#\1#p'`
-      setenv MP_DEBUG_NOTIMEOUT yes
+# Python uses C indexing on loops; cycle = [0,....,$DATA_ASSIMILATION_CYCLES - 1]
+# "Fix" that here, so the rest of the script isn't confusing.
+@ cycle = $ASSIMILATION_CYCLE + 1
 
-      set BASEOBSDIR = /glade/p/image/Observations/WOD09
-      set  LAUNCHCMD = mpirun.lsf
-   breaksw
+#=========================================================================
+# Get the environmental variables needed for the script
+#=========================================================================
+cd ${CASEROOT}
+setenv CASE               `./xmlquery CASE             --value`
+setenv ENSEMBLE_SIZE      `./xmlquery NINST_OCN        --value`
+setenv EXEROOT            `./xmlquery EXEROOT          --value`
+setenv RUNDIR             `./xmlquery RUNDIR           --value`
+setenv ARCHIVE            `./xmlquery DOUT_S_ROOT      --value`
+setenv TOTALPES           `./xmlquery TOTALPES         --value`
+setenv STOP_N             `./xmlquery STOP_N           --value`
 
-   default:
-      # NERSC "hopper"
-      set   MOVE = 'mv -fv'
-      set   COPY = 'cp -fv --preserve=timestamps'
-      set   LINK = 'ln -fvs'
-      set REMOVE = 'rm -fr'
-
-      set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set  LAUNCHCMD = "aprun -n $NTASKS"
-   breaksw
-endsw
-
-set ensemble_size = ${NINST_OCN}
-
-#-------------------------------------------------------------------------
-# Determine time of model state ... from file name of first member
+#=========================================================================
+# Block 1: Determine time of model state ... from file name of first member
 # of the form "./${CASE}.pop_${ensemble_member}.r.2000-01-06-00000.nc"
 #
 # Piping stuff through 'bc' strips off any preceeding zeros.
-#-------------------------------------------------------------------------
-
+#=========================================================================
+cd ${RUNDIR}
 set FILE = `head -n 1 rpointer.ocn_0001.restart`
 set FILE = $FILE:r
 set OCN_DATE_EXT = `echo $FILE:e`
@@ -76,10 +61,10 @@ set OCN_HOUR     = `echo $OCN_DATE[4] / 3600 | bc`
 echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_SECONDS (seconds)"
 echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_HOUR (hours)"
 
-#-----------------------------------------------------------------------------
-# Get observation sequence file ... or die right away.
+#=========================================================================
+# Block 2: Get observation sequence file ... or die right away.
 # The observation file names have a time that matches the stopping time of POP.
-#-----------------------------------------------------------------------------
+#=========================================================================
 
 set YYYYMMDD = `printf %04d%02d%02d ${OCN_YEAR} ${OCN_MONTH} ${OCN_DAY}`
 set YYYYMM   = `printf %04d%02d     ${OCN_YEAR} ${OCN_MONTH}`
@@ -91,11 +76,11 @@ if (  -e   ${OBS_FILE} ) then
 else
    echo "ERROR ... no observation file $OBS_FILE"
    echo "ERROR ... no observation file $OBS_FILE"
-   exit -1
+   exit -2
 endif
 
 #=========================================================================
-# Block 1: Populate a run-time directory with the input needed to run DART.
+# Block 3: Populate a run-time directory with the input needed to run DART.
 #=========================================================================
 
 echo "`date` -- BEGIN COPY BLOCK"
@@ -105,24 +90,13 @@ if (  -e   ${CASEROOT}/input.nml ) then
 else
    echo "ERROR ... DART required file ${CASEROOT}/input.nml not found ... ERROR"
    echo "ERROR ... DART required file ${CASEROOT}/input.nml not found ... ERROR"
-   exit -2
+   exit -3
 endif
 
 echo "`date` -- END COPY BLOCK"
 
-# If possible, use the round-robin approach to deal out the tasks.
-
-if ($?TASKS_PER_NODE) then
-   if ($#TASKS_PER_NODE > 0) then
-      ${COPY} input.nml input.nml.$$
-      sed -e "s#layout.*#layout = 2#" \
-          -e "s#tasks_per_node.*#tasks_per_node = $TASKS_PER_NODE#" input.nml.$$ >! input.nml
-      ${REMOVE} input.nml.$$
-   endif
-endif
-
 #=========================================================================
-# Block 2: DART INFLATION
+# Block 4: DART INFLATION
 # This stages the files that contain the inflation values.
 # The inflation values change through time and should be archived.
 #
@@ -292,11 +266,28 @@ else
    echo "Posterior Inflation       not requested for this assimilation."
 endif
 
-# Eat the cookie regardless
-${REMOVE} pop_inflation_cookie latestfile
+#=========================================================================
+# Block 5: REQUIRED DART namelist settings
+#=========================================================================
+${REMOVE} restarts_in.txt restarts_out.txt
+
+foreach FILE ( rpointer.ocn_????.restart )
+   head -n 1 ${FILE} >> restarts_in.txt
+end
+
+# WARNING: this is the part where the files just get overwritten
+${COPY} restarts_in.txt restarts_out.txt
+
+# POP always needs a pop_in and a pop.r.nc to start.
+# Lots of ways to get the filename
+
+set OCN_RESTART_FILENAME = `head -n 1 rpointer.ocn_0001.restart`
+
+${LINK} $OCN_RESTART_FILENAME pop.r.nc
+${LINK} pop_in_0001          pop_in
 
 #=========================================================================
-# Block 3: Actually run the assimilation. 
+# Block 6: Actually run the assimilation. 
 # WARNING: this version just overwrites the input - no ability to recover
 #
 # DART namelist settings required:
@@ -323,42 +314,16 @@ ${REMOVE} pop_inflation_cookie latestfile
 #
 #=========================================================================
 
-${REMOVE} restarts_in.txt restarts_out.txt
-
-foreach FILE ( rpointer.ocn_????.restart )
-   head -n 1 ${FILE} >> restarts_in.txt
-end
-
-# WARNING: this is the part where the files just get overwritten
-${COPY} restarts_in.txt restarts_out.txt
-
-# POP always needs a pop_in and a pop.r.nc to start.
-# Lots of ways to get the filename
-
-set OCN_RESTART_FILENAME = `head -n 1 rpointer.ocn_0001.restart`
-
-${LINK} $OCN_RESTART_FILENAME pop.r.nc
-${LINK} pop2_in_0001          pop_in
-
-# On yellowstone, you can explore task layouts with the following:
-if ( $?LSB_PJL_TASK_GEOMETRY ) then
-   setenv ORIGINAL_LAYOUT "${LSB_PJL_TASK_GEOMETRY}"
-
-   # setenv GEOMETRY_32_1NODE \
-   #    "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31)}";
-   # setenv LSB_PJL_TASK_GEOMETRY "${GEOMETRY_32_1NODE}"
-endif
-
 echo "`date` -- BEGIN FILTER"
-${LAUNCHCMD} ${EXEROOT}/filter || exit -7
+${LAUNCHCMD} ${EXEROOT}/filter || exit -6
 echo "`date` -- END FILTER"
 
 if ( $?LSB_PJL_TASK_GEOMETRY ) then
    setenv LSB_PJL_TASK_GEOMETRY "${ORIGINAL_LAYOUT}"
 endif
 
-#========================================================================
-# Block 4: Tag the output with the valid time of the model state
+#=========================================================================
+# Block 7: Tag the output with the valid time of the model state
 #=========================================================================
 
 foreach FILE ( preassim_mean.nc           preassim_sd.nc \
@@ -382,6 +347,10 @@ end
 
 ${MOVE} obs_seq.final   ${CASE}.pop.obs_seq.final.${OCN_DATE_EXT}
 ${MOVE} dart_log.out    ${CASE}.pop.dart_log.${OCN_DATE_EXT}.out
+
+#=========================================================================
+# Cleanup
+#=========================================================================
 
 echo "`date` -- END POP_ASSIMILATE"
 
