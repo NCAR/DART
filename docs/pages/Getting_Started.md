@@ -61,6 +61,8 @@ sections, each of which can be read independently:
     * [How to test your `model_mod` routines](#howToTestModelMod)
 * [How do I add my observations to DART?](#RunWithMyObs)
     * [Background on DART observations](#obsBackground)
+    * [Adding new observation *quantities*](#newQUANTITIES)
+    * [Adding new observation *types*](#newTYPES)
     * [Simple observation definitions](#simpleObs)
     * [Obs definitions for observations needing special handling](#complexObs)
     * [Example observation definition](#exampleObsDef)
@@ -2233,7 +2235,7 @@ If the model cannot provide any of the required information, the forward operato
 the DART QC for that observation is set to the appropriate value, and the program continues.
 
 1. [Background on DART observations](#obsBackground)
-1. [Adding new observations *quantities*](#newQUANTITIES)
+1. [Adding new observation *quantities*](#newQUANTITIES)
 1. [Adding new observation *types*](#newTYPES)
 1. ['Simple' observation support](#simpleObs)
 1. [More complex observations](#complexObs)
