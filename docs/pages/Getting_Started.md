@@ -90,10 +90,10 @@ with the documentation served through GitHub Pages at
 [https://dart.ucar.edu](https://dart.ucar.edu).
 
 Go to https://github.com/NCAR/DART and clone the repository or get the ZIP file
-according to your preference. Take note of the directory you installed into, 
+according to your preference. Take note of the directory you installed into,
 which is referred to as *DARTHOME* below.
 
-:exclamation: *IMPORTANT*: If you are interested in contributing to DART, 
+:exclamation: *IMPORTANT*: If you are interested in contributing to DART,
 see [How can I contribute to DART?](#ContributeToDart) for more information.
 
 Your `DARTHOME` directory will now contain the latest release of DART.
@@ -356,14 +356,14 @@ with the documentation served through GitHub Pages at
 [http://dart.ucar.edu](http://dart.ucar.edu).
 
 Go to https://github.com/NCAR/DART and clone the repository or get the ZIP file
-according to your preference. See the 
-[github help page on cloning](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository) 
-for more information on how to clone a repository. Take note of the directory 
+according to your preference. See the
+[github help page on cloning](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository)
+for more information on how to clone a repository. Take note of the directory
 you installed into,  which is referred to as *DARTHOME* below.
 
-:exclamation: *IMPORTANT*: If you are interested in contributing to DART, 
+:exclamation: *IMPORTANT*: If you are interested in contributing to DART,
 see [How can I contribute to DART?](#ContributeToDart) for more information.
-In short, you will need to be familiar with the 
+In short, you will need to be familiar with the
 [GitHub workflow](https://guides.github.com/introduction/flow/).
 
 Unzip or clone the distribution in your desired directory, which we refer to as
@@ -389,7 +389,7 @@ requires a user-defined input file (a `Makefile`) that records dependencies
 between different source files. *make* then performs actions to the source
 hierarchy, in order of dependence, when one or more of the source files is
 modified. *mkmf* is a *perl* script that generates a *make* input file (named
-*Makefile*) and an example namelist `input.nml.<program>_default` with 
+*Makefile*) and an example namelist `input.nml.<program>_default` with
 default values.
 
 *mkmf* (think *"make makefile"*) requires two separate input files. The
@@ -504,9 +504,9 @@ a special program that needs to be built and run to automatically generate
 Fortran code that is used by DART to support a subset of observations - which
 are (potentially) different for every model. Once *preprocess* has been run and
 the required Fortran code has been generated, any of the other DART programs may
-be built in the same way as *obs_diag* in this example. Thus, the following 
-runs *mkmf* to make a `Makefile` for *preprocess*, 
-makes the *preprocess* program, runs *preprocess* to generate the Fortran 
+be built in the same way as *obs_diag* in this example. Thus, the following
+runs *mkmf* to make a `Makefile` for *preprocess*,
+makes the *preprocess* program, runs *preprocess* to generate the Fortran
 observation code, runs *mkmf* to make a `Makefile` for *obs_diag*, then makes the
 *obs_diag* program:
 
@@ -574,7 +574,7 @@ more about what this "physically" means for this low-order model, and
 more in-depth view of this process.
 
 The Manhattan release uses netCDF files for the input/output file formats.
-*ncgen* is a helpful tool to create netCDF files from an ASCII representation 
+*ncgen* is a helpful tool to create netCDF files from an ASCII representation
 and is part of any netCDF installation. The *lorenz_63*
 `quickbuild.csh` script already runs this command, but it is repeated here for
 clarity. Once the necessary netCDF input files are created from the ASCII
@@ -665,7 +665,7 @@ calculate the error in the assimilation:
 <table>
 <tr>
 <td width="50%">
-   
+
 <pre>
 <code>
 
@@ -829,10 +829,10 @@ themselves will have some uncertainty for example arising from instrument
 noise. The instrument noise error variances are typically published
 by the instrument manufacturer, and these observation errors are usually assumed
 to be independent as true instrument "noise" should not be correlated in time
-or space. Furthermore, since models have a finite resolution (i.e. they are "fuzzy"), 
+or space. Furthermore, since models have a finite resolution (i.e. they are "fuzzy"),
 there is almost always an error that arises when comparing the model to the observations.
-This is called the **representativeness error**. Put together, the potential "likelihood" 
-of the possible values of the observation forms the **observational error distribution** 
+This is called the **representativeness error**. Put together, the potential "likelihood"
+of the possible values of the observation forms the **observational error distribution**
 in the above graphic.
 
 Finally, note that in real-world applications there are typically many fewer
@@ -1092,7 +1092,7 @@ time-step will lead to a smoother model trajectory.
 DART repository of assimilating observations every six time steps, meaning we
 now need observations every 36 minutes.
 
-Therefore, in order to conduct our new experiment, we will need to regenerate 
+Therefore, in order to conduct our new experiment, we will need to regenerate
 the DART observation sequence files.
 
 To change the time-step, change the `input.nml` file in `DARTHOME/models/lorenz_63/work` to the following:
@@ -1119,16 +1119,16 @@ recompilation.
 Let's now regenerate the DART observation files with the updated timestep and
 observation ratio. In a typical large-scale application, the user will provide
 observations to DART in a standardized format called the *Observation Sequence*
-file. Since there are no real observations of the Lorenz 63 system, we must create 
-our own synthetic observations - which may be done using *create_obs_sequence*, 
-*create_fixed_network_seq*, and *perfect_model_obs* programs; each of which we 
+file. Since there are no real observations of the Lorenz 63 system, we must create
+our own synthetic observations - which may be done using *create_obs_sequence*,
+*create_fixed_network_seq*, and *perfect_model_obs* programs; each of which we
 will explain below. These helpful interactive programs are included with DART
-to generate these observation sequence files for typical research or 
-education-oriented experiments. In such setups, observations (with noise added) 
-will be generated at regular intervals from a model "truth". This "truth" will only 
-be available to the experiment through the noisy observations but can later be used 
-for comparison purposes. The number of steps necessary for the ensemble members to 
-reach the true model state's "attractor" can be investigated and, for example, 
+to generate these observation sequence files for typical research or
+education-oriented experiments. In such setups, observations (with noise added)
+will be generated at regular intervals from a model "truth". This "truth" will only
+be available to the experiment through the noisy observations but can later be used
+for comparison purposes. The number of steps necessary for the ensemble members to
+reach the true model state's "attractor" can be investigated and, for example,
 compared between different DA methods. This is an example of an "OSSE" &mdash; see
 [High-level DA workflows in DART](#dartWorkflow) for more information.
 
@@ -1403,7 +1403,7 @@ use the ensemble to estimate the prior distribution, compare to the "expected"
 observation of each member, and update the model state according to Bayes'
 rule.
 
-> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory 
+> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory
 > ./filter  
 
 ~~~
@@ -1470,16 +1470,16 @@ write_obs_seq  closed observation sequence file "obs_seq.final"
 Based on the default Lorenz 63 `input.nml` namelist for *filter* included in
 the DART repository, the assimilation will have three stages:
 
-1. The *preassim* stage, where the ensemble  is updated by advancing the 
-model. The file`preassim.nc`, which contains the pre-assimilation model 
+1. The *preassim* stage, where the ensemble  is updated by advancing the
+model. The file`preassim.nc`, which contains the pre-assimilation model
 trajectories for all the ensemble members, will be written.
 2. The *analysis* stage, where the data assimilation is conducted. The
 post-assimilation model trajectories for all the ensemble members will be
 written to `analysis.nc`
 3. The *output* stage, which writes the file `obs_seq.final` containing the
 actual observations as assimilated plus the ensemble forward-operator expected
-values and any quality-control values. This stage also writes the 
-`filter_output.nc` file containing the ensemble state from the final cycle, 
+values and any quality-control values. This stage also writes the
+`filter_output.nc` file containing the ensemble state from the final cycle,
 which could be used to restart the experiment.
 
 DART has now successfully assimilated our updated observations with a 6 minute
@@ -1703,14 +1703,14 @@ complex case, DART only considers one step at a time in order to combine the
 observations and the prior ensemble to find the posterior analysis, which
 will then be used to restart the model and continue the forecast.
 
-For efficiency reasons, data from models with large states may be written in 
-separate files for every ensemble member at every stage of the assimilation 
+For efficiency reasons, data from models with large states may be written in
+separate files for every ensemble member at every stage of the assimilation
 process. Data from models with small states may be conveniently be written as
 variables inside a single netCDF file.
 
 #### Simple model workflow with an OSSE
 
-The first example DA workflow is for a model that can be advanced by DART 
+The first example DA workflow is for a model that can be advanced by DART
 with all ensemble members stored in a single file running an OSSE:
 
 <img src="../images/simple_model_workflow.jpg" width="500" alt="OSSE workflow with all members in one file" /><br />
@@ -1785,9 +1785,9 @@ finally if posterior inflation is applied, the final analysis can be written in
 `analysis.nc` . The model forecast will start from the analysis to advance the
 model in order to start the cycle over again.
 
-:dart: *NOTE*: the "forecast" will be the same as the "preassim" 
-if prior inflation is not used, and the "postassim" will be the same 
-as the "analysis" if posterior inflation is not used. 
+:dart: *NOTE*: the "forecast" will be the same as the "preassim"
+if prior inflation is not used, and the "postassim" will be the same
+as the "analysis" if posterior inflation is not used.
 The *stages_to_write* variable in the "&filter_nml"
 section of the `input.nml` namelist controls which stages are output to file.
 For a multi-file case, the potential *stages_to_write* are "input, forecast,
@@ -2002,9 +2002,9 @@ their type number (set by *inf_flavor* in `input.nml` under the "filter_nml" sec
 
 DART also offers the ability to correct for sampling errors. DART's
 localization and sampling error correction algorithm is described in
-> > **Anderson, J.L.**, 2012. Localization and Sampling Error Correction in 
-Ensemble Kalman Filter Data Assimilation. *Monthly Weather Review*, 140, 
-2359–2371. https://doi.org/10.1175/MWR-D-11-00013.1 
+> > **Anderson, J.L.**, 2012. Localization and Sampling Error Correction in
+Ensemble Kalman Filter Data Assimilation. *Monthly Weather Review*, 140,
+2359–2371. https://doi.org/10.1175/MWR-D-11-00013.1
 
 This behavior can be turned on or off via the *sampling_error_correction* in `input.nml` under the "assim_tools_nml" section. The following covariance localization options are available (set by *select_localization* in
 `input.nml` under the "cov_cutoff_nml" section):
@@ -2027,7 +2027,7 @@ has a doi number, as: The Data Assimilation Research Testbed (Version X.Y.Z) [So
 
 :exclamation: *IMPORTANT*: Update the DART version and year as appropriate.
 
-The seminal reference for DART is: 
+The seminal reference for DART is:
 
 > > **Anderson, J. L., T. Hoar, K. Raeder, H. Liu, N. Collins, R. Torn and A. Arellano**, 2009. The Data Assimilation Research Testbed: A Community Facility. *Bulletin of the American Meteorological Society*, 90, 1283-1296, https://doi.org/10.1175/2009BAMS2618.1
 
@@ -2214,25 +2214,43 @@ the tests available.
 
 \[[top](#top)\]
 
-In this section we introduce how to add your observations to DART.
+First, you should understand that DART already supports a tremendous variety of
+observations. To fully support an observation means that the observation can be
+converted from its native format to the DART observation sequence format and that
+the observation forward operator is already implemented. Keep in mind that
+forward operators are not specific to any one model.
+
+The observation converters are in the *observations/obs_converter* directory
+and you should look there for the documentation describing which converters
+are available.
+
+The forward operators are functionally or logically grouped into Fortran
+modules in the *observations/forward_operator* directory. DART employs a 'contractual'
+style of programming in that the forward operator requests information from the
+model, and if the model cannot provide it, the forward operator may request different
+information in an attempt to collect the information needed to apply the operator.
+If the model cannot provide any of the required information, the forward operator fails,
+the DART QC for that observation is set to the appropriate value, and the program continues.
 
 1. [Background on DART observations](#obsBackground)
-2. [Simple observation definitions](#simpleObs)
-3. [Obs definitions for observations needing special handling](#complexObs)
-4. [Example observation definition](#exampleObsDef)
-5. [Observation sequence file](#obsSeqFile)
+1. [Adding new observations *quantities*](#newQUANTITIES)
+1. [Adding new observation *types*](#newTYPES)
+1. ['Simple' observation support](#simpleObs)
+1. [More complex observations](#complexObs)
+1. [Example observation definition](#exampleObsDef)
+1. [Observation sequence file](#obsSeqFile)
 
 <span id="obsBackground" class="anchor"></span> [](#obsBackground)
 ### Background on DART observations
 
 The Iceland release of DART added a powerful and flexible mechanism to generate
-the core observation operator code on the fly using the *preprocess* program.
+the core observation operator code using the *preprocess* program.
 The use of the *preprocess* program was covered above in
 [Building the Lorenz_63 DART project](#building) and
 [High-level DA workflows in DART](#dartWorkflow), so it is assumed you are
 familiar with the basic workings of the *preprocess* program before continuing.
 
-To add your own observations, you will need to create an *observation
+To add your own observation support, you will need to create an *observation
 definition*. The DART Fortran90 derived type *obs_def* provides an abstraction
 of the definition of an observation. At a higher level, an *observation
 sequence* (*obs_seq*) is composed of observation definitions associated with
@@ -2243,13 +2261,14 @@ and a capability to do a standard input driven interactive definition of the
 observation definition.
 
 DART makes a further distinction between specific *observation types* and
-generic *quantities*. The role of the various obs_def input files
+generic *quantities*. Essentially, an *observation type* can be considered to be instrument-specific and the *quantity* is something you learned about in physics.
+As an example, 'RADIOSONDE_TEMPERATURE' is an *observation type* of the fundamental *quantity* 'TEMPERATURE'. The role of the various obs_def input files
 is to define the mapping between the types and quantities, and optionally to
-provide type-specific processing routines.
+provide type-specific processing routines. Specifying many observation types allows DART to be able to evaluate some observations and assimilate others - even if both instrument measure the same *quantity*.
 
 A single obs_def output module is created by the program *preprocess* from two
 kinds of input files. First, a DEFAULT obs_def module (normally called
-DEFAULT_obs_def_mod.F90 and documented in the
+`DEFAULT_obs_def_mod.F90` and documented in the
 `DARTHOME/observations/forward_operators` directory) is used as a template into
 which the preprocessor incorporates information from zero or more special
 obs_def modules (for example, `obs_def_1d_state_mod.f90` or
@@ -2258,8 +2277,26 @@ obs_def modules (for example, `obs_def_1d_state_mod.f90` or
 files are included in the preprocessor namelist, a minimal `obs_def_mod.f90` is
 created which can only support identity forward observation operators.
 
-To add a new observation type which does not fit into any of the
-already-defined obs_def files, a new file should be created in the
+<span id="newQUANTITIES" class="anchor"></span> [](#newQUANTITIES)
+#### To add a new *quantity*,
+
+the `DARTHOME/assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90` file
+must be edited to include a unique integer identifier for the quantity.
+There are two, sometimes three places in the file that require modification.
+The first is in the table of existing NAME-value pairs and the second is perhaps
+halfway down the file in the section after:
+
+~~~
+! DART PREPROCESS OBS_QTY_INFO INSERTED HERE
+~~~
+
+If you add an observation quantity with an integer value greater than **max_defined_quantities**,
+make sure you increase *max_defined_quantities*.  
+
+<span id="newTYPES" class="anchor"></span> [](#newTYPES)
+#### To add a new observation *type* which does not fit into any of the already-defined obs_def files
+
+a new file should be created in the
 `DARTHOME/observations/forward_operators` directory.
 These files are usually named according the the pattern `obs_def_X_mod.f90`,
 where the *X* is either an instrument name, a data source, or a class of
@@ -2269,9 +2306,13 @@ in the *&preprocess_nml* section in the *input_files* namelist variable. This
 variable is a string list type which can contain multiple obs_def filenames.
 Running the preprocess program will then use the contents of the new obs_def
 file to generate the needed output files for use in linking to the rest of the DART system.
+*If the new observation type also requires a new observation quantity, there is
+more work to be done.* Please see the list of available observation quantities in
+`assimilation_code/modules/observations/DEFAULT_obs_kind_mod.f90` to determine
+if an existing observation quantity is appropriate.
 
 <span id="simpleObs" class="anchor"></span> [](#simpleObs)
-### Simple observation definitions
+### 'Simple' observation support
 
 If the new observation type can be directly interpolated by the *model_mod*
 **model_interpolate()** interpolation routine (see [Required `model_mod` routines](#requiredRoutines) for more information) and has no additional
@@ -2304,12 +2345,9 @@ second column is the generic quantity and must match the list of known
 quantities in `obs_kind_mod.f90`. The first and second column often match, but
 as shown in the last line this need not be the case. The third column must be
 the keyword COMMON_CODE which tells the preprocess program to automatically
-generate all necessary interface code for this type. COMMON_CODE also implicitly 
+generate all necessary interface code for this type. COMMON_CODE also implicitly
 means the "model_interpolate()" routine is used as the forward operator.
- 
-:dart: *NOTE*: to add a new quantity, the
-`DARTHOME/assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90` file
-must be edited to include a unique integer identifier for the quantity.
+
 
 <span id="complexObs" class="anchor"></span> [](#complexObs)
 ### Obs definitions for observations needing special handling
@@ -2338,13 +2376,13 @@ example, here is a real list without "COMMON_CODE" in the third column:
 :dart: *NOTE*: the difference between the simple obs_def case is the lack of
 COMMON_CODE in the third column.
 
-:dart: *NOTE*: if interested, you can reference the `obs_def_wind_speed_mod.f90` 
-"get_expected_wind_speed()" function for an example of a non-COMMON_CODE 
-observation type. The operator is in the `DARTHOME/observations/forward_operators` 
+:dart: *NOTE*: if interested, you can reference the `obs_def_wind_speed_mod.f90`
+"get_expected_wind_speed()" function for an example of a non-COMMON_CODE
+observation type. The operator is in the `DARTHOME/observations/forward_operators`
 directory.
 
-In the non-COMMON_CODE case, DART needs additional information for how to process 
-the observation type. This will include code sections delimited by precisely formatted 
+In the non-COMMON_CODE case, DART needs additional information for how to process
+the observation type. This will include code sections delimited by precisely formatted
 comments, and possibly module code sections. This code will be combined by *preprocess* to
 make a single observation definition file with only the desired observations.
 There are six such locations within `obs_def_XXX.f90` where a new forward
@@ -2617,7 +2655,7 @@ end module obs_def_1d_state_mod
 ~~~
 
 See the `obs_def_1d_state_mod.f90` documentation for more details and examples
-of each section. Also see `obs_def_wind_speed_mod.f90` "get_expected_wind_speed()" 
+of each section. Also see `obs_def_wind_speed_mod.f90` "get_expected_wind_speed()"
 for an example of a 3D geophysical forward operator. Both operators are in the
 `DARTHOME/observations/forward_operators` directory.
 
@@ -2628,17 +2666,17 @@ for an example of a 3D geophysical forward operator. Both operators are in the
 DART uses an *observation sequence* file that contains the observations to be
 assimilated. An *observation converter* will convert observations from the
 native observation format into this DART-specific format. Ultimately, it is the
-user's responsibility to convert the observations, but there are many helper 
+user's responsibility to convert the observations, but there are many helper
 tools and utilities to make this process easier.
 
 :dart: *NOTE*: the observation sequence file can be written in either human-
 readable ASCII or machine-readable binary. The binary representation will use
-approximately two times less disk space, but the ASCII representation makes 
-manually inspecting the file contents much easier. For either representation, 
-the underlying data is the same. There is a setting in the DART `input.nml` 
-file under *obs_sequence_nml* called "write_binary_obs_sequence" that can be 
-used to write the format as either binary (".true.") or ASCII (".false"). 
-When the observation sequence file is read, the format is detected 
+approximately two times less disk space, but the ASCII representation makes
+manually inspecting the file contents much easier. For either representation,
+the underlying data is the same. There is a setting in the DART `input.nml`
+file under *obs_sequence_nml* called "write_binary_obs_sequence" that can be
+used to write the format as either binary (".true.") or ASCII (".false").
+When the observation sequence file is read, the format is detected
 automatically.
 
 For new obs converters, once you find what format the data is distributed in
@@ -2734,7 +2772,7 @@ addressed appropriately by the DART development team.
 
 ### What if I want my work to remain private until I publish?
 
-Some DART users want to work on a private branch until their work is ready 
+Some DART users want to work on a private branch until their work is ready
 for public viewing. To accommodate users with these concerns, we describe here an
 additional step to temporarily "hide" sensitive code that is intended to be
 eventually contributed to DART after publication.
