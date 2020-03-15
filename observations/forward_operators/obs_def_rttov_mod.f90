@@ -304,7 +304,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MS
                              file_exist, ascii_file_format, nmlfileunit, do_nml_file, &
                              do_nml_term, check_namelist_read, find_namelist_in_file
 use     location_mod, only : location_type, set_location, get_location, VERTISUNDEF, &
-                             VERTISHEIGHT, VERTISLEVEL, set_location_missing
+                             VERTISHEIGHT, VERTISLEVEL, VERTISSURFACE, set_location_missing
 use     obs_kind_mod
 
 use  assim_model_mod, only : interpolate
@@ -360,7 +360,8 @@ public ::            set_visir_metadata, &
                     read_rttov_metadata, &
                    write_rttov_metadata, &
              interactive_rttov_metadata, &
-                  get_expected_radiance
+                  get_expected_radiance, &
+                get_rttov_option_logical
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -384,7 +385,7 @@ character(len=5), parameter :: VISIR_STRING = 'visir'
 character(len=5), parameter :: MW_STRING    = 'mw   '
 
 logical :: debug = .false.
-integer :: MAXrttovkey = 1000    !FIXME - some initial number of obs
+integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
 integer ::    visirnum = 0
 integer ::       mwnum = 0
@@ -923,8 +924,6 @@ call grow_metadata(rttovkey,'set_visir_metadata', .true.)
 
 key = rttovkey ! now that we know its legal
 
-print *,'set ir rttovkey:',rttovkey,visirnum,platform_id,sat_id,sensor_id,channel
-
 visir_obs_metadata(visirnum) % sat_az      = sat_az
 visir_obs_metadata(visirnum) % sat_ze      = sat_ze
 visir_obs_metadata(visirnum) % sun_az      = sun_az
@@ -962,8 +961,6 @@ obstype_metadata(rttovkey) = .false. ! .false. for MW
 call grow_metadata(rttovkey,'set_mw_metadata', .false.)
 
 key = rttovkey ! now that we know its legal
-
-print *,'set mw rttovkey:',rttovkey,mwnum,platform_id,sat_id,sensor_id,channel
 
 mw_obs_metadata(mwnum) % sat_az       = sat_az
 mw_obs_metadata(mwnum) % sat_ze       = sat_ze
@@ -1149,7 +1146,6 @@ if ( is_asciifile ) then
 else
    read(ifile, iostat=ierr) header
    call  check_iostat(ierr,'read_rttov_metadata','header',string2)
-   print *,'found header:',header
 
    if (trim(header) == trim(VISIR_STRING)) then
       ! Load the visible/IR data from the file
@@ -1162,9 +1158,7 @@ else
       read(ifile, iostat=ierr) oldkey
       call check_iostat(ierr,'read_rttov_metadata','oldkey',string2)
       is_visir = .true.
-      print *,'it is a VISIR record',platform_id,sat_id,sensor_id,channel
    elseif (trim(header) == trim(MW_STRING)) then
-      print *,'it is a MW record'
       ! Load the visible/IR data from the file
       read(ifile, iostat=ierr) sat_az, sat_ze
       call check_iostat(ierr,'read_rttov_metadata','sat az/ze',string2)
@@ -1235,8 +1229,6 @@ if (is_visir) then
    call get_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
       platform_id, sat_id, sensor_id, channel, specularity)
 
-   print *,'now writing visir:',key, platform_id, sat_id, sensor_id
-
    header = VISIR_STRING
 
    if (is_asciifile) then
@@ -1257,8 +1249,6 @@ else
       platform_id, sat_id, sensor_id, channel, mag_field, cosbk, &
       fastem_p1, fastem_p2, fastem_p3, fastem_p4,    &
       fastem_p5)
-
-   print *,'now writing mw:',key, platform_id, sat_id, sensor_id
 
    header = MW_STRING
 
@@ -1354,14 +1344,9 @@ else
 end if
 
 if (is_visir) then
-   print *,'IR key val:',key, sat_az, sat_ze, sun_az, sun_ze, &
-      platform_id, sat_id, sensor_id, channel, specularity
    call set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
       platform_id, sat_id, sensor_id, channel, specularity)
 else
-   print *,'MW key val:',key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
-      channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,   &
-      fastem_p4, fastem_p5
    call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
       channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,   &
       fastem_p4, fastem_p5)
@@ -1482,6 +1467,8 @@ real(r8) :: loc_value(ens_size), radiance(ens_size)
 type(location_type) :: loc
 integer :: maxlevels, numlevels
 
+type(location_type) :: loc_sfc          ! surface location
+
 type(rttov_sensor_type), pointer :: sensor
 
 character(len=*), parameter :: routine = 'get_expected_radiance'
@@ -1502,8 +1489,6 @@ call key_within_range(key, routine)
 
 is_visir = obstype_metadata(key)
 
-print *,'for this key:',key,is_visir,obstype_subkey(key)
-
 if (is_visir) then
    visir_md => visir_obs_metadata(obstype_subkey(key))
    mw_md    => null()
@@ -1521,8 +1506,6 @@ else
    sensor_id   = mw_md % sensor_id
    channel     = mw_md % channel
 end if
-
-print *,'for this key instrument:',key,platform_id,sat_id,sensor_id,channel
 
 !=================================================================================
 ! Determine the number of model levels 
@@ -1610,8 +1593,8 @@ GETLEVELDATA : do i = 1,numlevels
    call interpolate(state_handle, ens_size, loc, QTY_TEMPERATURE, atmos%temperature(:, i), this_istatus)
    call check_status('QTY_TEMPERATURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
 
-   call interpolate(state_handle, ens_size, loc, QTY_SPECIFIC_HUMIDITY, atmos%moisture(:, i), this_istatus)
-   call check_status('QTY_SPECIFIC_HUMIDITY', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
+   call interpolate(state_handle, ens_size, loc, QTY_VAPOR_MIXING_RATIO, atmos%moisture(:, i), this_istatus)
+   call check_status('QTY_VAPOR_MIXING_RATIO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
 
    if (ozone_data) then
       call interpolate(state_handle, ens_size, loc, QTY_O3, trace_gas%ozone(:, i), this_istatus)
@@ -1777,24 +1760,25 @@ GETLEVELDATA : do i = 1,numlevels
 
 end do GETLEVELDATA
 
-loc = set_location(loc_lon, loc_lat, 1.0d0, VERTISLEVEL )
+loc = set_location(loc_lon, loc_lat, 1.0d0, VERTISUNDEF )
+loc_sfc = set_location(loc_lon, loc_lat, 1.0d0, VERTISSURFACE )
 
 ! set the surface fields
-call interpolate(state_handle, ens_size, loc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
+call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
 call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
 
-call interpolate(state_handle, ens_size, loc, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
+call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
 call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
 
 call interpolate(state_handle, ens_size, loc, QTY_2M_TEMPERATURE, atmos%s2m_t(:), this_istatus)
 call check_status('QTY_2M_TEMPERATURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
 
-call interpolate(state_handle, ens_size, loc, QTY_SKIN_TEMPERATURE, atmos%skin_temp(:), this_istatus)
+call interpolate(state_handle, ens_size, loc_sfc, QTY_SKIN_TEMPERATURE, atmos%skin_temp(:), this_istatus)
 call check_status('QTY_SKIN_TEMPERATURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
 
 ! set to 2m if an error
 
-call interpolate(state_handle, ens_size, loc, QTY_SURFACE_TYPE, atmos%surftype(:), this_istatus)
+call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_TYPE, atmos%surftype(:), this_istatus)
 call check_status('QTY_SURFACE_TYPE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
 
 ! if not available, lookup by lat/lon?
@@ -1817,22 +1801,22 @@ if (use_wfetch) then
 end if
 
 if (use_water_type) then
-   call interpolate(state_handle, ens_size, loc, QTY_WATER_TYPE, atmos%water_type(:), this_istatus)
+   call interpolate(state_handle, ens_size, loc_sfc, QTY_WATER_TYPE, atmos%water_type(:), this_istatus)
    call check_status('QTY_WATER_TYPE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
 end if
 
 if (use_salinity) then
-   call interpolate(state_handle, ens_size, loc, QTY_SALINITY, atmos%sfc_salinity(:), this_istatus)
+   call interpolate(state_handle, ens_size, loc_sfc, QTY_SALINITY, atmos%sfc_salinity(:), this_istatus)
    call check_status('QTY_SALINITY', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
 end if
 
 if (supply_foam_fraction) then
-   call interpolate(state_handle, ens_size, loc, QTY_FOAM_FRAC, atmos%sfc_foam_frac(:), this_istatus)
+   call interpolate(state_handle, ens_size, loc_sfc, QTY_FOAM_FRAC, atmos%sfc_foam_frac(:), this_istatus)
    call check_status('QTY_FOAM_FRAC', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
 end if
 
 if (use_sfc_snow_frac) then
-   call interpolate(state_handle, ens_size, loc, QTY_SNOWCOVER_FRAC, atmos%sfc_snow_frac(:), this_istatus)
+   call interpolate(state_handle, ens_size, loc_sfc, QTY_SNOWCOVER_FRAC, atmos%sfc_snow_frac(:), this_istatus)
    call check_status('QTY_SNOWCOVER_FRAC', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
 end if
 
@@ -1851,28 +1835,28 @@ if (debug) then
    print*, 'interpolate moisture    = ', atmos%moisture(1,1),    '...', atmos%moisture(1,numlevels)
 end if
 
-!call do_forward_model(ens_size=ens_size,                    &
-!                      nlevels=numlevels,                    &
-!                      location=location,                    &
-!                      atmos=atmos,                          &
-!                      trace_gas=trace_gas,                  &
-!                      clouds=clouds,                        &
-!                      aerosols=aerosols,                    &
-!                      sensor=sensor,                        &
-!                      channel=channel,                      &
-!                      first_lvl_is_sfc=first_lvl_is_sfc,    &
-!                      mw_clear_sky_only=mw_clear_sky_only,  &
-!                      clw_scheme=clw_scheme,                &
-!                      ice_scheme=ice_scheme,                &
-!                      idg_scheme=idg_scheme,                &
-!                      aerosl_type=aerosl_type,              &
-!                      do_lambertian=do_lambertian,          &
-!                      use_totalice=use_totalice,            &
-!                      use_zeeman=use_zeeman,                &
-!                      radiances=radiance,                   &
-!                      error_status=this_istatus,            &
-!                      visir_md=visir_md,                    &
-!                      mw_md=mw_md) 
+call do_forward_model(ens_size=ens_size,                    &
+                      nlevels=numlevels,                    &
+                      location=location,                    &
+                      atmos=atmos,                          &
+                      trace_gas=trace_gas,                  &
+                      clouds=clouds,                        &
+                      aerosols=aerosols,                    &
+                      sensor=sensor,                        &
+                      channel=channel,                      &
+                      first_lvl_is_sfc=first_lvl_is_sfc,    &
+                      mw_clear_sky_only=mw_clear_sky_only,  &
+                      clw_scheme=clw_scheme,                &
+                      ice_scheme=ice_scheme,                &
+                      idg_scheme=idg_scheme,                &
+                      aerosl_type=aerosl_type,              &
+                      do_lambertian=do_lambertian,          &
+                      use_totalice=use_totalice,            &
+                      use_zeeman=use_zeeman,                &
+                      radiances=radiance,                   &
+                      error_status=this_istatus,            &
+                      visir_md=visir_md,                    &
+                      mw_md=mw_md) 
 
 if (debug) then
    print*, 'istatus  = ', istatus 
@@ -2065,13 +2049,147 @@ subroutine check_status(field_name, ens_size, this_istatus, val, istatus, routin
 
    if (error) then
       if (required) then
-         call error_handler(E_ERR,routine,'Could not find required field ' // trim(field_name),source,revision,revdate)
+         write(string1,*) 'Could not find required field ' // trim(field_name), ' istatus:',istatus
       else
-         call error_handler(E_ERR,routine,'Could not find requested field ' // trim(field_name),source,revision,revdate)
+         write(string1,*) 'Could not find requested field ' // trim(field_name), ' istatus:',istatus
       end if
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
    end if
 
 end subroutine check_status
+
+function get_rttov_option_logical(field_name) result(p)
+   character(len=*), intent(in)  :: field_name
+   logical :: p
+
+   integer,          parameter   :: duc = ichar('A') - ichar('a')
+   character(len=:), allocatable :: fname
+   
+   character :: ch
+   integer   :: slen, i
+
+   ! copy the string over to an appropriate size
+   slen = len(trim(adjustl(field_name)))
+   allocate(character(len=slen) :: fname)
+   fname = trim(adjustl(field_name))
+
+   ! change the string to lower-case
+
+   do i = 1,slen
+      ch = fname(i:i)
+      if (ch >= 'A'.AND.ch <= 'Z') ch = char(ichar(ch)-duc)
+      fname(i:i) = ch
+   end do
+
+   select case (fname)
+      case('first_lvl_is_sfc')
+         p = first_lvl_is_sfc
+      case('mw_clear_sky_only')
+         p = mw_clear_sky_only
+      case('do_checkinput')
+         p = do_checkinput
+      case('apply_reg_limits')
+         p = apply_reg_limits
+      case('verbose')
+         p = verbose
+      case('fix_hgpl')
+         p = fix_hgpl
+      case('do_lambertian')
+         p = do_lambertian
+      case('lambertian_fixed_angle')
+         p = lambertian_fixed_angle
+      case('rad_down_lin_tau')
+         p = rad_down_lin_tau
+      case('use_q2m')
+         p = use_q2m
+      case('use_uv10m')
+         p = use_uv10m
+      case('use_wfetch')
+         p = use_wfetch
+      case('use_water_type')
+         p = use_water_type
+      case('addrefrac')
+         p = addrefrac
+      case('plane_parallel')
+         p = plane_parallel
+      case('use_salinity')
+         p = use_salinity
+      case('use_specularity')
+         p = use_specularity
+      case('apply_band_correction')
+         p = apply_band_correction
+      case('cfrac_data')
+         p = cfrac_data
+      case('clw_data')
+         p = clw_data
+      case('rain_data')
+         p = rain_data
+      case('ciw_data')
+         p = ciw_data
+      case('snow_data')
+         p = snow_data
+      case('graupel_data')
+         p = graupel_data
+      case('hail_data')
+         p = hail_data
+      case('w_data')
+         p = w_data
+      case('supply_foam_fraction')
+         p = supply_foam_fraction
+      case('use_totalice')
+         p = use_totalice
+      case('use_zeeman')
+         p = use_zeeman
+      case('ozone_data')
+         p = ozone_data
+      case('co2_data')
+         p = co2_data
+      case('n2o_data')
+         p = n2o_data
+      case('co_data')
+         p = co_data
+      case('ch4_data')
+         p = ch4_data
+      case('so2_data')
+         p = so2_data
+      case('addsolar')
+         p = addsolar
+      case('rayleigh_single_scatt')
+         p = rayleigh_single_scatt
+      case('do_nlte_correction')
+         p = do_nlte_correction
+      case('use_sfc_snow_frac')
+         p = use_sfc_snow_frac
+      case('add_aerosl')
+         p = add_aerosl
+      case('add_clouds')
+         p = add_clouds
+      case('use_icede')
+         p = use_icede
+      case('user_aer_opt_param')
+         p = user_aer_opt_param
+      case('user_cld_opt_param')
+         p = user_cld_opt_param
+      case('grid_box_avg_cloud')
+         p = grid_box_avg_cloud
+      case('cldstr_simple')
+         p = cldstr_simple
+      case('addpc')
+         p = addpc
+      case('addradrec')
+         p = addradrec
+      case('use_htfrtc')
+         p = use_htfrtc
+      case('htfrtc_simple_cloud')
+         p = htfrtc_simple_cloud
+      case('htfrtc_overcast')
+         p = htfrtc_overcast
+      case default
+         write(string1,*) "Unknown logical field ",fname
+         call error_handler(E_ERR, 'get_rttov_option_logical', string1, source, revision, revdate)
+   end select
+
+end function get_rttov_option_logical
 
 end module obs_def_rttov_mod
 

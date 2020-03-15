@@ -28,9 +28,8 @@ use     location_mod, only : location_type, set_location, VERTISPRESSURE, &
                              get_location
 
 use     obs_kind_mod, only : get_index_for_type_of_obs, &
-                             QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY
-
-use obs_kind_mod,     only : AIRS_TEMPERATURE, AIRS_SPECIFIC_HUMIDITY
+                             QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY, &
+                             AIRS_TEMPERATURE, AIRS_SPECIFIC_HUMIDITY
 
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type,      &
@@ -42,16 +41,16 @@ use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 
 use obs_seq_utilities_mod, only : print_obs_seq
 
-use airs_JPL_mod, only : AIRS_RET_H2OPRESSURELAY, airs_granule_type, &
-                         AIRS_RET_GEOTRACK, AIRS_RET_GEOXTRACK, &
-                         AIRS_RET_STDPRESSURELAY, AIRS_RET_H2OPRESSURELEV
 
 use      obs_err_mod, only : rawin_temp_error
+
+use airs_JPL_mod   ! need ', only' list here
 
 implicit none
 private
 
 public :: make_obs_sequence, initialize_obs_sequence, compute_thin_factor
+
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -82,8 +81,6 @@ contains
 
 !-------------------------------------------------
 
-!-------------------------------------------------
-
 subroutine initialize_module
 
 call register_module(source, revision, revdate)
@@ -99,22 +96,6 @@ end subroutine initialize_module
 !  and convert to DART observation format.  allow caller to specify
 !  a bounding box and only extract data within that region.
 
-<<<<<<< HEAD
-function make_obs_sequence ( granule, lon1, lon2, lat1, lat2, &
-                             min_MMR_threshold, top_pressure_level, &
-                             row_thin, col_thin)
-type(airs_granule_type), intent(in) :: granule
-real(r8), intent(in) :: lon1, lon2, lat1, lat2
-real(r8), intent(in) :: min_MMR_threshold, top_pressure_level
-integer,  intent(in) :: row_thin, col_thin
-type(obs_sequence_type) :: make_obs_sequence
-
-! max possible obs from this one granule.
-integer :: max_num =  &
-   AIRS_RET_STDPRESSURELAY * AIRS_RET_GEOXTRACK * AIRS_RET_GEOTRACK + &
-   AIRS_RET_H2OPRESSURELAY * AIRS_RET_GEOXTRACK * AIRS_RET_GEOTRACK 
-
-=======
 subroutine make_obs_sequence ( seq, granule, lon1, lon2, lat1, lat2, &
                              min_MMR_threshold, top_pressure_level, &
                              row_thin, col_thin, use_NCEP_errs, version)
@@ -127,7 +108,6 @@ integer,  intent(in) :: row_thin, col_thin
 logical,  intent(in) :: use_NCEP_errs
 integer,  intent(in) :: version
 
->>>>>>> master
 type(obs_def_type)      :: obs_def
 type(obs_type)          :: obs, prev_obs
 type(location_type)     :: obs_loc
@@ -138,33 +118,16 @@ integer :: obs_num, temperature_top_index, humidity_top_index
 integer :: which_vert, tobstype, qobstype
 
 real(r8) :: olon, olat, vloc
-real(r8) :: obs_value, obs_err
+real(r8) :: obs_value, obs_var
 real(r8) :: tqc, qqc, latlon(3)
 real(r8) :: midpres, log_lower, log_upper
 
 logical :: is_first_obs
+
 type(time_type) :: obs_time, base_time, pre_time, time
 
 if ( .not. module_initialized ) call initialize_module
 
-<<<<<<< HEAD
-num_copies  = 1
-num_qc      = 1
-
-! Initialize an obs_sequence 
-call init_obs_sequence(make_obs_sequence, num_copies, num_qc, max_num)
-
-! set meta data of obs_seq
-do i = 1, num_copies
-   call set_copy_meta_data(make_obs_sequence, i, 'observation')
-end do
-
-do i = 1, num_qc
-   call set_qc_meta_data(make_obs_sequence, i, 'AIRS QC')
-end do
-
-=======
->>>>>>> master
 ! Initialize the obs variables
 call init_obs(     obs, 1, 1)
 call init_obs(prev_obs, 1, 1)
@@ -280,19 +243,6 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
          obs_value = granule%TAirStd(ivert, icol, irow)
          if (obs_value == -9999.0_r8) cycle vert_T_loop
 
-<<<<<<< HEAD
-         obs_err = granule%TAirStdErr(ivert, icol, irow) 
-
-print *, 'obs value, err, var = ', obs_value, obs_err, obs_err*obs_err
-
-         ! temperature values are located directly at the pressure levels
-         vloc = granule%pressStd(ivert) * mb_to_Pa
-
-         call create_3d_obs(olat, olon, vloc, which_vert, obs_value, AIRS_TEMPERATURE, obs_err, &
-                            days, seconds, tqc, obs)
-      
-         call add_obs_to_seq(make_obs_sequence, obs, time, prev_obs, pre_time, is_first_obs)
-=======
          ! temperature values are located directly at the pressure levels
          vloc = granule%pressStd(ivert) * mb_to_Pa
 
@@ -304,21 +254,12 @@ print *, 'obs value, err, var = ', obs_value, obs_err, obs_err*obs_err
          endif
          obs_var = obs_var * obs_var
 
-         call make_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
-                       obs_var, tqc, AIRS_TEMPERATURE, which_vert, seconds, days)
+	 if (DEBUG) print *, 'obs value, var = ', obs_value, obs_var
+
+         call create_3d_obs(olat, olon, vloc, which_vert, obs_value, AIRS_TEMPERATURE, obs_var, &
+                            days, seconds, tqc, obs)
       
-         if(obs_num == 1) then ! for the first observation 
-            call insert_obs_in_seq(seq, obs)
-         else  !  not the first observation 
-            if(time >= pre_time) then  ! same time or later than previous obs
-               call insert_obs_in_seq(seq, obs, prev_obs)
-            else  ! earlier
-               call insert_obs_in_seq(seq, obs)
-            endif
-         endif
-         prev_obs = obs
-         pre_time = time
->>>>>>> master
+         call add_obs_to_seq(seq, obs, time, prev_obs, pre_time, is_first_obs)
    
          if ( DEBUG ) then
             write(*,*)irow, icol, ivert, olat, olon
@@ -346,10 +287,6 @@ print *, 'obs value, err, var = ', obs_value, obs_err, obs_err*obs_err
          if (granule%H2OMMRStd(ivert, icol, irow) == -9999.0_r8) cycle vert_Q_loop
 
          obs_value = Q(ivert, icol, irow)
-<<<<<<< HEAD
-         obs_err = Q_err(ivert, icol, irow)
-=======
->>>>>>> master
 
          ! moisture obs are the mean of the layer with the bottom at
          ! the given pressure.  compute the midpoint (in log space)
@@ -361,12 +298,6 @@ print *, 'obs value, err, var = ', obs_value, obs_err, obs_err*obs_err
          midpres = exp((log_lower + log_upper) / 2.0_r8)
          vloc = midpres * mb_to_Pa
 
-<<<<<<< HEAD
-         call create_3d_obs(olat, olon, vloc, which_vert, obs_value, AIRS_SPECIFIC_HUMIDITY, obs_err, &
-                            days, seconds, qqc, obs)
-      
-         call add_obs_to_seq(make_obs_sequence, obs, time, prev_obs, pre_time, is_first_obs)
-=======
          if (use_NCEP_errs) then
             obs_var = max(Q_err(ivert, icol, irow), 0.2_r8)  ! ncep routine needs temp & rh but always returns 0.2
          else
@@ -374,21 +305,11 @@ print *, 'obs value, err, var = ', obs_value, obs_err, obs_err*obs_err
          endif
          obs_var = obs_var * obs_var
 
-         call make_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
-                       obs_var, qqc, AIRS_SPECIFIC_HUMIDITY, which_vert, seconds, days)
+
+         call create_3d_obs(olat, olon, vloc, which_vert, obs_value, AIRS_SPECIFIC_HUMIDITY, obs_var, &
+                            days, seconds, qqc, obs)
       
-         if(obs_num == 1) then ! for the first observation 
-            call insert_obs_in_seq(seq, obs)
-         else  !  not the first observation 
-            if(time >= pre_time) then  ! same time or later than previous obs
-               call insert_obs_in_seq(seq, obs, prev_obs)
-            else  ! earlier
-               call insert_obs_in_seq(seq, obs)
-            endif
-         endif
-         prev_obs = obs
-         pre_time = time
->>>>>>> master
+         call add_obs_to_seq(seq, obs, time, prev_obs, pre_time, is_first_obs)
    
          if ( DEBUG ) then
             write(*,*)irow, icol, ivert, olat, olon
@@ -407,98 +328,13 @@ enddo rowloop
 write(msgstring,*) 'obs used = ', obs_num
 call error_handler(E_MSG, ' ', msgstring)
 
-<<<<<<< HEAD
-call print_obs_seq(make_obs_sequence, '')
-
-end function make_obs_sequence
-
-!------------------------------------------------------------------------------
-=======
-if ( get_first_obs(seq, obs) ) then
-   call get_obs_def(obs, obs_def)
-   pre_time = get_obs_def_time(obs_def)
-   call print_time(pre_time,' time of first obs in sequence is ')
-   call print_date(pre_time,' which is gregorian date   ')
-   obs_loc = get_obs_def_location(obs_def)
-   latlon = get_location(obs_loc)
-   write(msgstring,*)'lat,lon,pres =', latlon(1), latlon(2), latlon(3)
-   call error_handler(E_MSG, 'location: ', msgstring)
-endif
-if( get_last_obs(seq, obs)) then
-   call get_obs_def(obs, obs_def)
-   time = get_obs_def_time(obs_def)
-   call print_time(time,' time of last  obs in sequence is ')
-   call print_date(time,' which is gregorian date   ')
-   obs_loc = get_obs_def_location(obs_def)
-   latlon = get_location(obs_loc)
-   write(msgstring,*)'lat,lon,pres =', latlon(1), latlon(2), latlon(3)
-   call error_handler(E_MSG, 'location: ', msgstring)
-endif
-call error_handler(E_MSG, ' ', ' ')
+call print_obs_seq(seq, '')
 
 end subroutine make_obs_sequence
 
 
-
-subroutine make_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
-                      var2, aqc, obs_kind, which_vert, seconds, days)
 !------------------------------------------------------------------------------
-integer,        intent(in)    :: num_copies, num_qc
-type(obs_type), intent(inout) :: obs
-real(r8),       intent(in)    :: lon, lat, vloc, obs_value, var2, aqc
-integer,        intent(in)    :: obs_kind, which_vert, seconds, days
-
-integer            :: i
-real(r8)           :: aqc01(1), obs_value01(1)
-type(obs_def_type) :: obsdef0
-
-if ( .not. module_initialized ) call initialize_module
-
-! Does real initialization of an observation type
-
-call make_obs_def(obsdef0, lon, lat, vloc, &
-                    var2, obs_kind, which_vert, seconds, days)
-call set_obs_def(obs, obsdef0)
-
-do i = 1, num_copies
-   obs_value01(1) = obs_value
-   call set_obs_values(obs, obs_value01(1:1) )
-end do
-
-do i = 1, num_qc
-   aqc01(1) = aqc
-   call set_qc(obs, aqc01(1:1))
-end do
-
-end subroutine make_obs
-
-
-
-subroutine make_obs_def(obs_def, lon, lat, vloc, &
-                        var2, obs_kind, which_vert, seconds, days)
-!----------------------------------------------------------------------
-type(obs_def_type), intent(inout) :: obs_def
-real(r8),intent(in) :: lon, lat, vloc, var2
-integer, intent(in) :: obs_kind, which_vert, seconds, days
-
-type(location_type) :: loc0
-
-if ( .not. module_initialized ) call initialize_module
-
-! set obs location
-loc0 = set_location(lon, lat, vloc, which_vert )
-call set_obs_def_location(obs_def, loc0)
-
-! set obs kind
-call set_obs_def_type_of_obs(obs_def, obs_kind)
-
-call set_obs_def_time(obs_def, set_time(seconds, days) )
-call set_obs_def_error_variance(obs_def, var2)
-
-end subroutine make_obs_def
-
 function compute_thin_factor(along, across)
-!----------------------------------------------------------------------
 integer, intent(in) :: along
 integer, intent(in) :: across
 integer :: compute_thin_factor
@@ -510,7 +346,6 @@ else
 endif
 
 end function compute_thin_factor
->>>>>>> master
 
 subroutine check_size(size1, size2, varlabel, subrlabel)
 integer,          intent(in) :: size1, size2
@@ -524,25 +359,14 @@ endif
 
 end subroutine check_size
 
-<<<<<<< HEAD
-!-------------------------------------------------
-! The L2 filenames have a very long extension that
-! records when the data was published - not very interesting
-! for our purposes. replace with something DART-y.
 
-subroutine create_output_filename(l2name, ofname)
-character(len=*), intent(IN)  :: l2name
-character(len=*), intent(OUT) :: ofname
-=======
-
-function initialize_obs_sequence(ofname, filecount, sample_factor)
 !-------------------------------------------------
 ! create an obs sequence
+function initialize_obs_sequence(ofname, filecount, sample_factor)
 character(len=*), intent(in) :: ofname
 integer,          intent(in) :: filecount
 integer,          intent(in) :: sample_factor
 type(obs_sequence_type) :: initialize_obs_sequence
->>>>>>> master
 
 type(obs_sequence_type) :: seq
 

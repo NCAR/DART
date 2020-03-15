@@ -19,10 +19,12 @@ assimilation_code/modules/utilities/sort_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
-assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.f90
 models/template/model_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
-observations/obs_converters/utilities/obs_utilities_mod.f90
 observations/forward_operators/rttov_interface_mod.F90
+observations/obs_converters/GMI/gmi_L1_mod.f90
+observations/obs_converters/GMI/convert_gmi_L1.f90
+observations/obs_converters/utilities/obs_seq_utilities_mod.f90
+observations/obs_converters/utilities/obs_utilities_mod.f90

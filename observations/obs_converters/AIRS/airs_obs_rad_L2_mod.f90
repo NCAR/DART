@@ -6,7 +6,8 @@
 
 module airs_obs_rad_mod
 
-use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg
+use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg, &
+                             MISSING_R8
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def,     &
                              write_obs_def, destroy_obs_def,                   &
@@ -15,7 +16,8 @@ use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def,     &
                              set_obs_def_error_variance, set_obs_def_location, &
                              get_obs_def_location
 
-use obs_def_rttov_mod, only : set_rttov_metadata
+use obs_def_rttov_mod, only : set_visir_metadata, &
+                              get_rttov_option_logical
 
 use time_manager_mod, only : time_type, get_date, set_date,            &
                              get_time, set_time, set_calendar_type,    &
@@ -29,7 +31,8 @@ use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
 use     location_mod, only : location_type, set_location, VERTISPRESSURE, &
                              get_location, VERTISUNDEF
 
-use     obs_kind_mod, only : get_index_for_type_of_obs, AQUA_AIRS_AMSU_RADIANCE
+use     obs_kind_mod, only : get_index_for_type_of_obs, &
+                             EOS_2_AIRS_RADIANCE
 
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type,      &
@@ -46,7 +49,8 @@ use airs_rad_L2_mod   ! need ', only' list here
 implicit none
 private
 
-public :: make_obs_sequence, create_output_filename
+public :: make_obs_sequence, compute_thin_factor
+
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -84,13 +88,13 @@ end subroutine initialize_module
 !  and convert to DART observation format.  allow caller to specify
 !  a bounding box and only extract data within that region.
 
-function make_obs_sequence ( granule, lon1, lon2, lat1, lat2, &
+subroutine make_obs_sequence (seq, granule, lon1, lon2, lat1, lat2, &
                              nchans, chanlist, row_thin, col_thin)
+type(obs_sequence_type), intent(inout) :: seq
 type(airs_granule_type), intent(in) :: granule
 real(r8), intent(in) :: lon1, lon2, lat1, lat2
 integer,  intent(in) :: nchans, chanlist(:)
 integer,  intent(in) :: row_thin, col_thin
-type(obs_sequence_type) :: make_obs_sequence
 
 ! max possible obs from this one granule. in practice if the
 ! real number of processed channels is very much smaller, make
@@ -113,10 +117,11 @@ real(r8) :: obs_value, obs_err
 real(r8) :: rqc
 
 real(r8) :: sat_az, sat_ze, sun_az, sun_ze
-integer  :: platform, sat_id, sensor
+integer  :: platform_id, sat_id, sensor_id
+real(r8) :: specularity
 
 logical :: is_first_obs
-type(time_type) :: obs_time, base_time, pre_time, time
+type(time_type) :: obs_time, base_time, pre_time
 character(len=*), parameter :: routine = 'make_obs_sequence'
 
 if ( .not. module_initialized ) call initialize_module
@@ -128,20 +133,20 @@ num_copies  = 1
 num_qc      = 1
 
 ! Initialize an obs_sequence 
-call init_obs_sequence(make_obs_sequence, num_copies, num_qc, max_num)
+call init_obs_sequence(seq, num_copies, num_qc, max_num)
 
 ! set meta data of obs_seq
-call set_copy_meta_data(make_obs_sequence, 1, 'observation')
-call set_qc_meta_data(make_obs_sequence, 1, 'AIRS QC')
+call set_copy_meta_data(seq, 1, 'observation')
+call set_qc_meta_data(seq, 1, 'AIRS QC')
 
 ! Initialize the obs variables
-call init_obs(     obs, num_copies, num_qc)
-call init_obs(prev_obs, num_copies, num_qc)
+call init_obs(     obs, 1, 1)
+call init_obs(prev_obs, 1, 1)
 
 ! assign each observation the correct observation type
-robstype = get_index_for_type_of_obs('AQUA_AIRS_AMSU_RADIANCE')
+robstype = get_index_for_type_of_obs('EOS_2_AIRS_RADIANCE')
 if (robstype < 1) then
-   msgstring = 'unknown observation type AQUA_AIRS_AMSU_RADIANCE'
+   msgstring = 'unknown observation type EOS_2_AIRS_RADIANCE'
    call error_handler(E_ERR,routine,msgstring,source,revision,revdate)
 endif
 
@@ -149,10 +154,9 @@ endif
 
 base_time = set_date(1993, 1, 1, 0, 0, 0)   ! Data reference date: jan 1st, 1993
 
-platform = 9   ! EOS, before renamed to AQUA
-sat_id   = 2   ! verify this
-!sensor   = 11  ! AIRS   (amsu-a is 3)
-sensor   = 3  ! AIRS   (amsu-a is 3)
+platform_id = 9   ! EOS, before renamed to AQUA
+sat_id      = 2   ! EOS 2
+sensor_id   = 11  ! AIRS   (amsu-a is 3)
 
 
 !------------------------------------------------------------------------------
@@ -228,13 +232,22 @@ print *, 'obs value, err, var = ', obs_value, obs_err, obs_err*obs_err
          ! column integrated value, so no vertical location
          vloc = 0.0_r8
 
+         ! We don't yet have specularity data to add to the observations.
+         if (get_rttov_option_logical('do_lambertian')) then
+            write(msgstring,*) 'AIRS observations do not yet support specularity'
+            call error_handler(E_ERR,routine,msgstring,source,revision,revdate)
+         else
+            specularity = MISSING_R8
+         end if
+
          ! add additional metadata for this obs type.  returns key to use in create call
-         call set_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, this_chan)
+         call set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
+            platform_id, sat_id, sensor_id, this_chan, specularity)
 
          call create_3d_obs(olat, olon, vloc, which_vert, obs_value, robstype, &
                             obs_err, days, seconds, rqc, obs, key)
       
-         call add_obs_to_seq(make_obs_sequence, obs, time, prev_obs, pre_time, is_first_obs)
+         call add_obs_to_seq(seq, obs, obs_time, prev_obs, pre_time, is_first_obs)
    
          obs_num = obs_num + 1
  
@@ -243,45 +256,39 @@ print *, 'obs value, err, var = ', obs_value, obs_err, obs_err*obs_err
 enddo rowloop
 
 ! Print a little summary
-write(msgstring,*) 'obs used = ', obs_num, ' obs skipped = ', max_num - obs_num
+write(msgstring,*) 'obs used = ', obs_num
 call error_handler(E_MSG, ' ', msgstring)
 
-call print_obs_seq(make_obs_sequence, '')
+call print_obs_seq(seq, '')
 
-end function make_obs_sequence
+end subroutine make_obs_sequence
 
 !------------------------------------------------------------------------------
-! The L2 filenames have a very long extension that
-! records when the data was published - not very interesting
-! for our purposes. replace with something DART-y.
+function compute_thin_factor(along, across)
+integer, intent(in) :: along
+integer, intent(in) :: across
+integer :: compute_thin_factor
 
-subroutine create_output_filename(l2name, ofname)
-character(len=*), intent(IN)  :: l2name
-character(len=*), intent(OUT) :: ofname
+if (along > 0 .and. across > 0) then
+   compute_thin_factor = along * across
+else
+   compute_thin_factor = 1
+endif
 
-integer :: i, basestart, extstart, strlen
+end function compute_thin_factor
 
-! hardcoded and brittle, but for now...  the first 19 chars
-! of the input filename have the date & granule number, which
-! seems like the bulk of the useful info.  find the last / and
-! copy from there to +19 chars.
+subroutine check_size(size1, size2, varlabel, subrlabel)
+integer,          intent(in) :: size1, size2
+character(len=*), intent(in) :: varlabel, subrlabel
 
-strlen = len_trim(l2name)
+if (size1 /= size2) then
+   write(msgstring, '(A,I6,A,I6)') 'unexpected size '//trim(varlabel)//': ', &
+         size1, ' /= ', size2
+   call error_handler(E_ERR, trim(subrlabel), msgstring,source,revision,revdate)
+endif
 
-basestart = 1
-slashloop : do i = strlen-1,1,-1
-   if (l2name(i:i) == '/' ) then
-      basestart = i+1
-      exit slashloop
-   endif
-enddo slashloop
+end subroutine check_size
 
-extstart = basestart+19-1
-
-ofname = l2name(basestart:extstart)//'.out'
-if (DEBUG) print *, 'output filename = ', ofname
-
-end subroutine create_output_filename
 
 !-------------------------------------------------
 

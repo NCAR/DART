@@ -1,0 +1,118 @@
+#!/bin/sh -v
+
+# 
+# nsc 11 mar 2013
+# updated 16 jul 2018
+# 
+
+# change this to true to try the ftp
+# to download a new version.  this may have
+# moved locations - i haven't verified it recently.
+
+if ( `false` ); then
+  # get the files.  i got this by:
+   
+  ftp edhs1.gsfc.nasa.gov
+  # (log in as 'anonymous' and your email as the password)
+  cd /edhs/hdfeos/latest_release
+  mget * # select a for all
+  quit
+   
+  # mar 2013, the dir contents:
+  # 
+  # HDF-EOS2.20v1.00.tar.Z
+  # HDF-EOS2.20v1.00_TestDriver.tar.Z
+  # HDF-EOS_REF.pdf
+  # HDF-EOS_UG.pdf
+  # hdf-4.2.13.tar.gz
+  # jpegsrc.v9b.tar.gz
+  # zlib-1.2.11.tar.gz
+  # 
+  # (i skipped a 'windows' dir).
+  # 
+  
+  for i in *.tar.gz
+  do
+    tar -zxvf $i
+  done
+fi
+
+# 
+# start with smaller libs, work up to HDF-EOS.
+# 
+
+# this is probably appropriate for a mac osx system.
+# set it to your home or work directory on cheyenne.
+
+set BASEDIR = /Users/$USER
+#set BASEDIR = /glade/u/home/$USER
+
+# make the target install dirs
+mkdir -p ${BASEDIR}/eos/{lib,bin,man,man/man1} 
+
+echo zlib:
+
+cd zlib-1.2.11
+./configure --prefix=${BASEDIR}/eos
+make clean
+make
+make test 
+make install
+cd ..
+
+echo jpeg:
+
+cd jpeg-9b
+./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos
+make clean
+make
+make test 
+make install 
+make install-lib
+cd ..
+
+echo hdf4:
+
+cd hdf-4.2.13
+./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos --with-jpeg=${BASEDIR}/eos
+make clean
+make
+# (there is apparently no 'make test')
+make install
+cd ..
+
+echo hdf5:
+
+cd hdf5-1.10.1
+./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos --with-jpeg=${BASEDIR}/eos
+make clean
+make
+# (there is apparently no 'make test')
+make install
+cd ..
+
+echo hdf-eos:
+
+cd hdfeos
+./configure CC='gfortran -Df2cFortran' --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos --with-jpeg=${BASEDIR}/eos
+# (the CC= is crucial)
+make clean
+make
+# (i didn't build the test drivers so i didn't do make test)
+make install
+cd ..
+
+echo exiting early
+exit 0
+
+echo GMI converter:
+
+cd $DART/observations/obs_converters/GMI/work
+
+echo edit mkmf.template to have all the base paths
+echo for the EOS library. Start with mkmf.template.rttov.gfortran
+echo and uncomment the lines from there
+
+./quickbuild.csh
+
+exit 0

@@ -958,8 +958,8 @@ obs_kind_names(364) = obs_kind_type(QTY_CWP_PATH_ZERO,         'QTY_CWP_PATH_ZER
 obs_kind_names(365) = obs_kind_type(QTY_ION_O_MIXING_RATIO,    'QTY_ION_O_MIXING_RATIO')
 obs_kind_names(366) = obs_kind_type(QTY_ATOMIC_H_MIXING_RATIO, 'QTY_ATOMIC_H_MIXING_RATIO')
 
-obs_kind_names(401) = obs_kind_type(QTY_SURFACE_TYPE,          'QTY_RADIANCE')
-obs_kind_names(402) = obs_kind_type(QTY_SURFACE_TYPE,          'QTY_BRIGHTNESS_TEMPERATURE')
+obs_kind_names(401) = obs_kind_type(QTY_RADIANCE,              'QTY_RADIANCE')
+obs_kind_names(402) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE,'QTY_BRIGHTNESS_TEMPERATURE')
 obs_kind_names(403) = obs_kind_type(QTY_SURFACE_TYPE,          'QTY_SURFACE_TYPE')
 obs_kind_names(404) = obs_kind_type(QTY_WIND_FETCH,            'QTY_WIND_FETCH')
 obs_kind_names(405) = obs_kind_type(QTY_WATER_TYPE,            'QTY_WATER_TYPE')

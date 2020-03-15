@@ -137,7 +137,7 @@ type atmos_profile_type
    real(r8), allocatable :: s2m_t(:)            ! mandatory, 2 meter temp (K)
    real(r8), allocatable :: skin_temp(:)        ! mandatory, surface skin temp (K)
    real(r8), allocatable :: sfc_elev(:)         ! mandatory, surface elevation (km)
-   real(r8), allocatable :: surftype(:)         ! mandatory, surface type (land=0, sea=1, seaice = 2) 
+   real(r8), allocatable :: surftype(:)         ! mandatory, surface type (land=0, water=1, seaice = 2) 
    real(r8), allocatable :: s2m_q(:)            ! optional, 2 meter wator vapor (kg/kg) (used if add_q2m)
    real(r8), allocatable :: s10m_u(:)           ! optional, 10 meter u wind (m/s) (used if add_uv10m)
    real(r8), allocatable :: s10m_v(:)           ! optional, 10 meter v wind (m/s) (used if add_uv10m)
@@ -1085,8 +1085,6 @@ logical,                  intent(in)    :: use_water_type
 logical,                  intent(in)    :: use_salinity
 logical,                  intent(in)    :: supply_foam_fraction
 logical,                  intent(in)    :: use_sfc_snow_frac
-
-print *,'allocating atmos'
 
 allocate(atmos%temperature(ens_size, numlevels), &
          atmos%   moisture(ens_size, numlevels), &
