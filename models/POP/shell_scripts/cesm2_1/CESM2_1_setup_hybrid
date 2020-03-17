@@ -101,7 +101,7 @@
 setenv compset              G
 setenv resolution           f19_g17
 setenv cesmtag              cesm2_1_1
-setenv num_instances        3
+setenv num_instances        80
 setenv CASE ${compset}.${resolution}_e${num_instances}
 
 # ==============================================================================
@@ -203,13 +203,13 @@ setenv STOP_N              1
 # queue      can be changed during a series by changing the .case.run
 # timewall   can be changed during a series by changing the .case.run
 #
-# TJH: Advancing 30 instances for 72 hours with 900 pes (30*15*2) with
-#      an assimilation step took less than 7 minutes on yellowstone.
+# BKJ: Advancing 80 instances for 72 hours with 8640 pes with
+#      an assimilation step took less than 5 minutes on cheyenne.
 # ==============================================================================
 
 setenv ACCOUNT      P93300612
 setenv queue        regular
-setenv timewall     1:00:00
+setenv timewall     0:15:00
 
 # ==============================================================================
 # standard commands:
@@ -297,9 +297,18 @@ ${REMOVE} ${RUNDIR}
 # The --run-unsupported option is necessary for CESM2 because this compset
 # hasn't been tested.
 # ==============================================================================
+set use_tasks_per_node = 36
+set nthreads = 1
 
-${cesmroot}/cime/scripts/create_newcase --case ${CASEROOT} --mach ${mach} \
-                --res ${resolution} --compset ${compset} --run-unsupported
+${cesmroot}/cime/scripts/create_newcase \
+    --case ${CASEROOT} \
+    --mach ${mach} \
+    --res ${resolution} \
+    --compset ${compset} \
+    --run-unsupported \
+    --ninst ${num_instances} \
+    --pecount ${use_tasks_per_node}x${nthreads} \
+    --multi-driver
 
 if ( $status != 0 ) then
    echo "ERROR: Case could not be created."
@@ -358,76 +367,26 @@ if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
 endif
 
 # MAX_TASKS_PER_NODE comes from ${CASE}/Tools/mkbatch.$machine
-@ ptile = $MAX_TASKS_PER_NODE * 2
-@ nthreads = 1
+@ nodes_per_instance = 3
+@ ntasks_active = -1 * $nodes_per_instance
+@ ntasks_data   = -1
 
-# Save a copy for debug purposes
+./xmlchange ROOTPE_ATM=0,NTHRDS_ATM=$nthreads,NTASKS_ATM=$ntasks_active
+./xmlchange ROOTPE_LND=0,NTHRDS_LND=$nthreads,NTASKS_LND=$ntasks_active
+./xmlchange ROOTPE_ICE=0,NTHRDS_ICE=$nthreads,NTASKS_ICE=$ntasks_active
+./xmlchange ROOTPE_ROF=0,NTHRDS_ROF=$nthreads,NTASKS_ROF=$ntasks_active
+./xmlchange ROOTPE_OCN=0,NTHRDS_OCN=$nthreads,NTASKS_OCN=$ntasks_active
+./xmlchange ROOTPE_GLC=0,NTHRDS_GLC=$nthreads,NTASKS_GLC=$ntasks_active
+./xmlchange ROOTPE_WAV=0,NTHRDS_WAV=$nthreads,NTASKS_WAV=$ntasks_active
+./xmlchange ROOTPE_CPL=0,NTHRDS_CPL=$nthreads,NTASKS_CPL=$ntasks_active
+./xmlchange ROOTPE_ESP=0,NTHRDS_ESP=$nthreads,NTASKS_ESP=$ntasks_data
+
 foreach FILE ( *xml )
    if ( ! -e        ${FILE}.original ) then
       ${COPY} $FILE ${FILE}.original
    endif
 end
 
-if ($num_instances <= 4) then
-
-   # This is only for the purpose of debugging the code.
-   @ atm_tasks = $ptile * $num_instances
-   @ lnd_tasks = $ptile * $num_instances
-   @ ice_tasks = $ptile * $num_instances
-   @ ocn_tasks = $ptile * $num_instances * 4
-   @ cpl_tasks = $ptile * $num_instances
-   @ glc_tasks = $ptile * $num_instances
-   @ rof_tasks = $ptile * $num_instances
-   @ wav_tasks = $ptile * $num_instances
-
-else
-
-   # This works, but a more efficient layout should be used
-   @ atm_tasks = $ptile * $num_instances
-   @ lnd_tasks = $ptile * $num_instances
-   @ ice_tasks = $ptile * $num_instances
-   @ ocn_tasks = $ptile * $num_instances * 2
-   @ cpl_tasks = $ptile * $num_instances
-   @ glc_tasks = $ptile * $num_instances
-   @ rof_tasks = $ptile * $num_instances
-   @ wav_tasks = $ptile * $num_instances
-
-endif
-
-# echo "task partitioning ... perhaps ... atm // ocn // lnd+ice+glc+rof"
-# presently, all components run 'serially' - one after another.
-echo ""
-echo "ATM gets $atm_tasks"
-echo "LND gets $lnd_tasks"
-echo "ICE gets $ice_tasks"
-echo "OCN gets $ocn_tasks"
-echo "CPL gets $cpl_tasks"
-echo "GLC gets $glc_tasks"
-echo "ROF gets $rof_tasks"
-echo "WAV gets $wav_tasks"
-echo ""
-
-@ total_pes = $ptile * 3
-./xmlchange COST_PES=$total_pes,TOTALPES=$total_pes
-./xmlchange NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
-./xmlchange NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=1
-./xmlchange NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
-./xmlchange NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$num_instances
-./xmlchange NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
-./xmlchange NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
-./xmlchange NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
-# Should this match num_instances since ww3 is prognostic in CESM2?
-./xmlchange NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=$num_instances
-./xmlchange ROOTPE_ATM=0
-./xmlchange ROOTPE_LND=0
-./xmlchange ROOTPE_ICE=0
-./xmlchange ROOTPE_OCN=$ptile
-./xmlchange ROOTPE_CPL=0
-./xmlchange ROOTPE_GLC=0
-./xmlchange ROOTPE_ROF=0
-./xmlchange ROOTPE_WAV=0
-
-# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/c1096.html#run_start_stop
 # "A hybrid run indicates that CESM is initialized more like a startup, but uses
 # initialization datasets from a previous case. This is somewhat analogous to a
 # branch run with relaxed restart constraints. A hybrid run allows users to bring
