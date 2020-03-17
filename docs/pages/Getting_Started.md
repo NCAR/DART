@@ -2263,10 +2263,14 @@ and a capability to do a standard input driven interactive definition of the
 observation definition.
 
 DART makes a further distinction between specific *observation types* and
-generic *quantities*. Essentially, an *observation type* can be considered to be instrument-specific and the *quantity* is something you learned about in physics.
-As an example, 'RADIOSONDE_TEMPERATURE' is an *observation type* of the fundamental *quantity* 'TEMPERATURE'. The role of the various obs_def input files
+generic *quantities*. Essentially, an *observation type* can be considered to be
+instrument-specific and the *quantity* is something you learned about in physics.
+As an example, 'RADIOSONDE_TEMPERATURE' is an *observation type* of the 
+fundamental *quantity* 'TEMPERATURE'. The role of the various obs_def input files
 is to define the mapping between the types and quantities, and optionally to
-provide type-specific processing routines. Specifying many observation types allows DART to be able to evaluate some observations and assimilate others - even if both instrument measure the same *quantity*.
+provide type-specific processing routines. Specifying many observation types allows DART 
+to be able to evaluate some observations and assimilate others - even if the instruments
+measure the same *quantity*.
 
 A single obs_def output module is created by the program *preprocess* from two
 kinds of input files. First, a DEFAULT obs_def module (normally called
@@ -2280,9 +2284,9 @@ files are included in the preprocessor namelist, a minimal `obs_def_mod.f90` is
 created which can only support identity forward observation operators.
 
 <span id="newQUANTITIES" class="anchor"></span> [](#newQUANTITIES)
-#### To add a new *quantity*,
+#### Adding a new observation *quantity*
 
-the `DARTHOME/assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90` file
+The `DARTHOME/assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90` file
 must be edited to include a unique integer identifier for the quantity.
 There are two, sometimes three places in the file that require modification.
 The first is in the table of existing NAME-value pairs and the second is perhaps
@@ -2296,9 +2300,15 @@ If you add an observation quantity with an integer value greater than **max_defi
 make sure you increase *max_defined_quantities*.  
 
 <span id="newTYPES" class="anchor"></span> [](#newTYPES)
-#### To add a new observation *type* which does not fit into any of the already-defined obs_def files
+#### Adding a new observation *type*
 
-a new file should be created in the
+The observation support modules are in the `DARTHOME/observations/forward_operators` directory.
+If the observation type logically belongs in an existing observation module, it should be 
+fairly obvious how to add support for a new observation type. Feel free to use ideas from other
+modules - look around!
+
+To add a new observation *type* which does not fit into any of the already-defined 
+obs_def files, a new file should be created in the
 `DARTHOME/observations/forward_operators` directory.
 These files are usually named according the the pattern `obs_def_X_mod.f90`,
 where the *X* is either an instrument name, a data source, or a class of
