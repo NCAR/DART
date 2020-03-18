@@ -53,6 +53,7 @@ public :: nc_check,                       &
           nc_variable_exists,             &
           nc_put_variable,                &
           nc_get_variable,                &
+          nc_get_variable_info,           &
           nc_add_global_creation_time,    &
           nc_get_variable_num_dimensions, &
           nc_get_variable_dimension_names, &
@@ -1800,6 +1801,62 @@ ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_real_4d
+
+!--------------------------------------------------------------------
+!> Query and return information about a netCDF variable given the variable name.
+!> Optionally returns the type of variable, the number of dimensions, 
+!> the dimension names and lengths, the number of attributes (but not the attribute values (yet))
+
+subroutine nc_get_variable_info(ncid, varname, xtype, ndims, dimlens, dimnames, natts, &
+                                context, filename)
+
+integer,          intent(in)            :: ncid
+character(len=*), intent(in)            :: varname
+integer,          intent(out), optional :: xtype
+integer,          intent(out), optional :: ndims
+integer,          intent(out), optional :: dimlens(:)
+character(len=*), intent(out), optional :: dimnames(:)
+integer,          intent(out), optional :: natts
+character(len=*), intent(in) , optional :: context
+character(len=*), intent(in) , optional :: filename
+
+character(len=*), parameter :: routine = 'nc_get_variable_info'
+integer :: ret, varid, dimid, ii
+
+integer :: myndims
+integer :: mydimids(NF90_MAX_VAR_DIMS)
+integer :: mydimlens(NF90_MAX_VAR_DIMS)
+character(len=NF90_MAX_NAME) :: mydimnames(NF90_MAX_VAR_DIMS)
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inq_varid for '//trim(varname), context, filename)
+
+ret = nf90_inquire_variable(ncid, varid, xtype=xtype, ndims=myndims, &
+                            dimids=mydimids, natts=natts) 
+call nc_check(ret, routine, 'inquire_variable for '//trim(varname), context, filename)
+
+if (present(dimlens) .or. present(dimnames)) then  ! more work to do 
+
+   !>@todo do we want to make sure dimlens, dimnames are long enough
+   if (present(dimlens))  dimlens  = 0
+   if (present(dimnames)) dimnames = 'null'
+
+   do ii = 1,myndims
+
+      dimid = mydimids(ii)
+      ret = nf90_inquire_dimension(ncid, dimid, name=mydimnames(ii), len=mydimlens(ii))
+
+      write(msgstring1,*)'inquire_dimension ',ii,' for "'//trim(varname)//'"'
+      call nc_check(ret, routine, msgstring1, context, filename)
+
+   enddo
+endif
+
+if (present(   ndims)) ndims             = myndims
+if (present( dimlens)) dimlens(1:ndims)  = mydimlens(1:ndims)
+if (present(dimnames)) dimnames(1:ndims) = mydimnames(1:ndims)
+
+end subroutine nc_get_variable_info
 
 !--------------------------------------------------------------------
 
