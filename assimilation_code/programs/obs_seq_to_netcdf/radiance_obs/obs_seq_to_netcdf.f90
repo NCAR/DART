@@ -18,19 +18,22 @@ program obs_seq_to_netcdf
 ! All 'possible' obs_kinds are treated separately.
 !-----------------------------------------------------------------------
 
-use        types_mod, only : r8, digits12, MISSING_R8
+use        types_mod, only : r8, digits12, MISSING_R8, MISSING_I
 
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_from_key, get_obs_def, get_copy_meta_data, &
                              get_obs_time_range, get_time_range_keys, &
-                             get_obs_values, init_obs, assignment(=), static_init_obs_sequence, &
+                             get_obs_values, init_obs, static_init_obs_sequence, &
                              get_qc, destroy_obs_sequence, read_obs_seq_header, & 
-                             get_last_obs, destroy_obs, get_qc_meta_data
+                             get_last_obs, destroy_obs, get_qc_meta_data, &
+                             assignment(=)
 
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location,  get_obs_def_type_of_obs
+                             get_obs_def_location, get_obs_def_type_of_obs, &
+                             get_obs_def_key
 
-use obs_def_rttov_mod, only : get_visir_metadata, get_mw_metadata
+use obs_def_rttov_mod, only : observation_is_radiance, &
+                              get_visir_metadata, get_mw_metadata, get_channel
 
 use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
 
@@ -79,6 +82,7 @@ type(obs_type)          :: observation, next_obs
 type(obs_type)          :: obs1, obsN
 type(obs_def_type)      :: obs_def
 type(location_type)     :: obs_loc, minl, maxl
+integer                 :: obs_key
 
 character(len=256) :: obs_seq_in_file_name
 character(len=256), allocatable, dimension(:) :: obs_seq_filenames
@@ -86,6 +90,7 @@ character(len=256), allocatable, dimension(:) :: obs_seq_filenames
 real(r8)            :: obs_err_var
 
 integer :: flavor ! THIS IS THE (global) 'KIND' in the obs_def_mod list. 
+integer :: my_channel
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
 
 integer :: num_obs_kinds
@@ -133,7 +138,7 @@ real(r8), allocatable, dimension(:) :: obscopies
 integer,        dimension(2) :: key_bounds
 integer,        allocatable, dimension(:)   ::       keys
 real(digits12), allocatable, dimension(:)   ::  obs_times
-integer,        allocatable, dimension(:)   ::  obs_types, obs_keys
+integer,        allocatable, dimension(:)   ::  obs_types, obs_keys, obs_channels
 real(r8),       allocatable, dimension(:,:) :: obs_copies
 integer,        allocatable, dimension(:,:) ::  qc_copies
 type(location_type), allocatable, dimension(:) ::  locations
@@ -448,6 +453,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
                 obs_times(            num_obs_in_epoch), &
                 obs_types(            num_obs_in_epoch), &
                  obs_keys(            num_obs_in_epoch), &
+             obs_channels(            num_obs_in_epoch), &
                which_vert(            num_obs_in_epoch), &
                obs_copies(allNcopies, num_obs_in_epoch), &
                 qc_copies(    num_qc, num_obs_in_epoch), &
@@ -490,6 +496,13 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          flavor      = get_obs_def_type_of_obs(obs_def)
          obs_time    = get_obs_def_time(obs_def)
          obs_loc     = get_obs_def_location(obs_def)
+         obs_key     = get_obs_def_key(obs_def)
+
+         if (observation_is_radiance(flavor)) then
+            my_channel = get_channel(obs_key)
+         else
+            my_channel = MISSING_I
+         endif
 
          ! replace missing values with NetCDF missing value
          where (obscopies == MISSING_R8 ) obscopies = NF90_FILL_DOUBLE
@@ -522,6 +535,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             write(6, *)'observation # ',obsindex
             write(6, *)'key           ',keys(obsindex)
             write(6, *)'obs_flavor    ',flavor
+            write(6, *)'channel       ',my_channel
             call write_location(6, obs_loc, 'ascii')
             write(6, *)'copyvals      ',copyvals
             write(6, *)'qc            ',qc
@@ -533,6 +547,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
           obs_times(  ngood) = mytime
           obs_types(  ngood) = flavor
            obs_keys(  ngood) = keys(obsindex)
+       obs_channels(  ngood) = my_channel
          which_vert(  ngood) = nint(query_location(obs_loc))
 
       !-----------------------------------------------------------------
@@ -542,12 +557,13 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
       total_obs_in_epoch(iepoch) = total_obs_in_epoch(iepoch) + ngood
 
       if ( ngood > 0 ) call WriteNetCDF(ncunit, ncname, ngood, obs_copies, &
-                       qc_copies, locations, obs_times, obs_types, obs_keys) 
+                       qc_copies, locations, obs_times, obs_types, obs_keys, &
+                       obs_channels) 
 
       call CloseNetCDF(ncunit, ncname)
 
       deallocate(keys, obs_times, obs_types, obs_keys, which_vert, &
-                 obs_copies, qc_copies, locations)
+                 obs_copies, qc_copies, locations, obs_channels)
 
    enddo EpochLoop
 
@@ -825,6 +841,18 @@ call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'DART observation type'), &
 call nc_check(nf90_put_att(ncid, VarID, 'explanation', 'see ObsTypesMetaData'), &
           'InitNetCDF', 'obs_type:explanation')
 
+! Define the observation channel
+
+call nc_check(nf90_def_var(ncid=ncid, name='channel', xtype=nf90_int, &
+          dimids=(/ ObsNumDimID /), varid=VarID), &
+            'InitNetCDF', 'channel:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'radiance channel'), &
+          'InitNetCDF', 'channel:long_name')
+call nc_check(nf90_put_att(ncid, VarID, '_FillValue', MISSING_I), &
+          'InitNetCDF', 'channel:_FillValue')
+call nc_check(nf90_put_att(ncid, VarID, 'missing_value', MISSING_I), &
+          'InitNetCDF', 'channel:missing_value')
+
 ! Define the observation key  (index into linked list in original file)
 
 call nc_check(nf90_def_var(ncid=ncid, name='obs_keys', xtype=nf90_int, &
@@ -922,7 +950,7 @@ end Function InitNetCDF
 
 
 Subroutine WriteNetCDF(ncid, fname, ngood, obs_copies, qc_copies, &
-                       locations, obs_times, obs_types, obs_keys ) 
+                       locations, obs_times, obs_types, obs_keys, channels ) 
 !============================================================================
 integer,                             intent(in) :: ncid
 character(len=*),                    intent(in) :: fname
@@ -933,6 +961,7 @@ type(location_type), dimension(:),   intent(in) :: locations
 real(digits12),      dimension(:),   intent(in) :: obs_times
 integer,             dimension(:),   intent(in) :: obs_types
 integer,             dimension(:),   intent(in) :: obs_keys
+integer,             dimension(:),   intent(in) :: channels
 
 integer :: DimID, dimlen, obsindex, iobs
 integer, dimension(1) :: istart, icount, intval
@@ -940,7 +969,7 @@ integer, dimension(1) :: istart, icount, intval
 integer :: obsldimlen, qcldimlen
 
 integer :: ObsIndexVarID, TimeVarID, ObsTypeVarID, &
-           ObsVarID, QCVarID, ObsKeyVarID
+           ObsVarID, QCVarID, ObsKeyVarID, ChannelVarID
 
 !----------------------------------------------------------------------------
 ! Find the current length of the unlimited dimension so we can add correctly.
@@ -981,6 +1010,9 @@ call nc_check(nf90_inq_varid(ncid, 'observations', varid=ObsVarID), &
 call nc_check(nf90_inq_varid(ncid, 'qc', varid=QCVarID), &
           'WriteNetCDF', 'inq_varid:qc '//trim(fname))
 
+call nc_check(nf90_inq_varid(ncid, 'channel', varid=ChannelVarID), &
+          'WriteNetCDF', 'inq_varid:obs_type '//trim(fname))
+
 WriteObs : do iobs = 1,ngood
 
    obsindex  = dimlen + iobs
@@ -989,14 +1021,11 @@ WriteObs : do iobs = 1,ngood
    
    ! Fill the unlimited dimension coordinate variable 
 
-   intval = obsindex 
+   intval = obsindex ! convert to an array ... expected by put_var
    call nc_check(nf90_put_var(ncid, ObsIndexVarId, intval, &
                 start=istart, count=icount), 'WriteNetCDF', 'put_var:ObsIndex')
    
-   call nc_check(nf90_put_var(ncid, TimeVarId, (/ obs_times(iobs) /), &
-                 start=istart, count=icount), 'WriteNetCDF', 'put_var:time')
-   
-   intval = obs_types(iobs) 
+   intval = obs_types(iobs)
    call nc_check(nf90_put_var(ncid, ObsTypeVarId, intval, &
                  start=istart, count=icount), 'WriteNetCDF', 'put_var:obs_type')
    
@@ -1004,6 +1033,13 @@ WriteObs : do iobs = 1,ngood
    call nc_check(nf90_put_var(ncid, ObsKeyVarId, intval, &
                  start=istart, count=icount), 'WriteNetCDF', 'put_var:obs_keys')
 
+   intval = channels(iobs) 
+   call nc_check(nf90_put_var(ncid, ChannelVarID, intval, &
+                 start=istart, count=icount), 'WriteNetCDF', 'put_var:channel')
+
+   call nc_check(nf90_put_var(ncid, TimeVarId, (/ obs_times(iobs) /), &
+                 start=istart, count=icount), 'WriteNetCDF', 'put_var:time')
+   
    call nc_write_location(ncid, locations(iobs), obsindex, do_vert=.true.)
 
    call nc_check(nf90_put_var(ncid, ObsVarId, obs_copies(:,iobs), &
