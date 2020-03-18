@@ -225,6 +225,7 @@ call interpolate(state_handle, ens_size, location, QTY_SNOW_WATER, &
 call track_status(ens_size, istatus2, obs_h2osno, istatus, return_now)
 if (return_now) return
 
+!-------------------------------------------------------------------------------
 ! Get the amount of water in the aquifer ...
 !>@todo some models may not have aquifer ... should this be an error ...
 
@@ -233,9 +234,11 @@ call interpolate(state_handle, ens_size, location, QTY_AQUIFER_WATER, &
 call track_status(ens_size, istatus3, obs_wa, istatus, return_now)
 if (return_now) return
 
-where (istatus == 0 ) expected_obs = obs_h2osno + obs_h2osoi + obs_wa
-
+!-------------------------------------------------------------------------------
 ! Add up the water amounts from the different sources
+! warn if things dont make sense
+
+where (istatus == 0 ) expected_obs = obs_h2osno + obs_h2osoi + obs_wa
 
 do num = 1, ens_size
    if (expected_obs(num) < 0.0_r8 .and. istatus(num) == 0) then

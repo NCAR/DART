@@ -3,23 +3,24 @@
 # excluding the repository name makes it easier to navigate when building locally
 menu:
   - title: Documentation
-    url: /pages/Getting_Started.html
     submenu:
-      - title: Getting Started
-        url: /pages/Getting_Started.html
       - title: Models
         url: /pages/Models.html
       - title: Observations 
         url: /pages/Observations.html
       - title: Diagnostics
         url: /pages/Diagnostics.html
-  - title: Research
-    url: /pages/Research.html
+  - title: Learning
     submenu:
+      - title: Getting Started
+        url: /pages/Getting_Started.html
       - title: "DART_LAB: explore ensemble DA concepts with MATLAB"
         url: /pages/dart_lab.html
       - title: "Tutorial: learn how to use DART"
         url: /pages/Tutorial.html
+  - title: Research
+    url: /pages/Research.html
+    submenu:
       - title: Publications
         url: /pages/Publications.html
       - title: Presentations
@@ -40,22 +41,21 @@ menu:
   - title: Releases
     url: /pages/release.html
     submenu:
-      - title: Manhattan
-        url: https://github.com/NCAR/DART/releases/tag/v9.8.0
-      - title: Lanai
-        url: https://github.com/NCAR/DART/releases/tag/v8.4.1
-      - title: Kodiak
-        url: https://github.com/NCAR/DART/releases/tag/v7.2.2
-      - title: Jamaica
-        url: https://github.com/NCAR/DART/releases/tag/v6.0.1
-      - title: Iceland
-        url: https://github.com/NCAR/DART/releases/tag/v5.1.0
-      - title: Hawaii
-        url: https://github.com/NCAR/DART/releases/tag/v4.1.0
-      - title: Guam
-        url: https://github.com/NCAR/DART/releases/tag/v3.0.0
+      - title: Easter (oldest)
+        url: https://github.com/NCAR/DART/releases/tag/v1.0.0 
       - title: Fiji
         url: https://github.com/NCAR/DART/releases/tag/v2.0.0
-      - title: Easter
-        url: https://github.com/NCAR/DART/releases/tag/v1.0.0 
-
+      - title: Guam
+        url: https://github.com/NCAR/DART/releases/tag/v3.0.0
+      - title: Hawaii
+        url: https://github.com/NCAR/DART/releases/tag/v4.1.0
+      - title: Iceland
+        url: https://github.com/NCAR/DART/releases/tag/v5.1.0
+      - title: Jamaica
+        url: https://github.com/NCAR/DART/releases/tag/v6.0.1
+      - title: Kodiak
+        url: https://github.com/NCAR/DART/releases/tag/v7.2.2
+      - title: Lanai
+        url: https://github.com/NCAR/DART/releases/tag/v8.4.1
+      - title: Manhattan (newest)
+        url: https://github.com/NCAR/DART/releases/tag/v9.8.0

@@ -365,20 +365,10 @@ station_loop: do i_stn = 1, count_stations
          
          ! Set the observation error variance here.
          obs_err = max(obs_val*obs_fraction_for_error, obs_min_err_std)
-         print *, year, month, day, obs_val
          
          time_obs = set_date(year, month, day, 0, 0, 0)
          ! extract time of observation into gregorian day, sec.
          call get_time(time_obs, osec, oday)
-
-         ! print *,'lat: ', lat
-         ! print *,'lon: ', lon
-         ! !print
-         ! print *,'obs_val: ', obs_val
-         ! print *,'obs_err: ', obs_err
-         ! print *,'oday: ', oday
-         ! print *,'osec: ', osec
-         ! print *,'qc: ', qc
 
          ! This routine can help tie gages to model spatial elements which can then
          ! be used for more advanced localization.
@@ -386,6 +376,7 @@ station_loop: do i_stn = 1, count_stations
          ! could easily facilitate this. The bigger issue with gridded is lack of
          ! connectivity approach currently (only calculated inside the model).
          ! Just supplying dummy values now... 
+
          call set_streamflow_metadata(key, missing_gage_ID, missing_link_ID)
 
          call create_3d_obs(                 &
