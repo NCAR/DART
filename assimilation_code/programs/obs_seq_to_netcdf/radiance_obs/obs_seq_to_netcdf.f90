@@ -32,7 +32,7 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_d
                              get_obs_def_location, get_obs_def_type_of_obs, &
                              get_obs_def_key
 
-use obs_def_rttov_mod, only : observation_has_channel, get_channel
+use obs_def_rttov_mod, only : get_channel
 
 use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
 
@@ -497,12 +497,9 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          obs_loc     = get_obs_def_location(obs_def)
          obs_key     = get_obs_def_key(obs_def)
 
-         if (observation_has_channel(flavor)) then
-            my_channel = get_channel(obs_key)
-         else
-            my_channel = MISSING_I
-         endif
-         write(*,*)'DEBUG: Processing obs ',obsindex,' of ',num_obs_in_epoch,my_channel
+         if ( debug ) write(*,*) 'debug: obsindex,key,flavor ',obsindex,obs_key,flavor
+
+         my_channel  = get_channel(flavor,obs_key)
 
          ! replace missing values with NetCDF missing value
          where (obscopies == MISSING_R8 ) obscopies = NF90_FILL_DOUBLE

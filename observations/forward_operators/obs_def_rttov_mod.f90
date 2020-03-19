@@ -362,7 +362,6 @@ public ::            set_visir_metadata, &
              interactive_rttov_metadata, &
                   get_expected_radiance, &
                get_rttov_option_logical, &
-                observation_has_channel, &
                 get_channel
 
 ! version controlled file description for error handling, do not edit
@@ -2194,27 +2193,15 @@ function get_rttov_option_logical(field_name) result(p)
 
 end function get_rttov_option_logical
 
-!-----------------------------------------------------------------------
 
-function observation_has_channel(flavor) result(p)
+!-----------------------------------------------------------------------
+! FIXME: The module_key is the index into the arrays in this module storage.
+!        TJH: I don't understand why the subkey = obstype_subkey () was wrong.
+!             What is the subkey?
+
+function get_channel(flavor, module_key) result(channel)
 
    integer, intent(in) :: flavor
-   logical :: p
-
-   if (flavor >= NOAA_1_VTPR1_RADIANCE .and. flavor <= CLOUDSAT_1_CPR_TB) then
-      p = .true.
-   else
-      p = .false.
-   endif
-
-end function observation_has_channel
-
-
-!-----------------------------------------------------------------------
-
-
-function get_channel(module_key) result(channel)
-
    integer, intent(in) :: module_key
    integer :: channel
 
@@ -2224,25 +2211,34 @@ function get_channel(module_key) result(channel)
    real(r8) :: fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5
    integer  :: subkey
 
+   channel = MISSING_R8
+
+   ! If the observation is not supported by this module, there is no channel
+   ! This is delicate in that all types supported by this module are consecutively
+   ! numbered. If new types are added, this will need to change.
+   if (flavor < NOAA_1_VTPR1_RADIANCE .or. flavor > CLOUDSAT_1_CPR_TB) return
+
    ! Retrieve channel from different metadata types
    ! All the other arguments are mandatory, but not needed here.
 
    if ( obstype_metadata(module_key) ) then
-      subkey = obstype_subkey(module_key)
-      call get_visir_metadata(subkey, &
+      ! FIXME ... should be local index ... subkey = obstype_subkey(module_key)
+      if (.false.) write(*,*)'get_channel_visir: module_key,subkey',module_key,subkey
+      call get_visir_metadata(module_key, &
                            sat_az, sat_ze, sun_az, sun_ze, &
                            platform_id, sat_id, sensor_id, channel, &
                            specularity)
    else
-      subkey = obstype_subkey(module_key)
-      call get_mw_metadata(subkey, &
+      ! FIXME ... should be local index ... subkey = obstype_subkey(module_key)
+      if (.false.) write(*,*)'get_channel_mw: module_key,subkey',module_key,subkey
+      call get_mw_metadata(module_key, &
                         sat_az, sat_ze, &
                         platform_id, sat_id, sensor_id, channel, &
                         mag_field, cosbk, &
                         fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5)
    endif
 
-   if (debug) write(*,*)'DEBUG: module_key,subkey,channel ',module_key,subkey,channel
+   if (debug) write(*,*)'get_channel: module_key,channel ',module_key,channel
 
 end function get_channel
 
