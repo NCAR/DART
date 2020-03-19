@@ -362,7 +362,7 @@ public ::            set_visir_metadata, &
              interactive_rttov_metadata, &
                   get_expected_radiance, &
                get_rttov_option_logical, &
-                observation_is_radiance, &
+                observation_has_channel, &
                 get_channel
 
 ! version controlled file description for error handling, do not edit
@@ -2196,7 +2196,7 @@ end function get_rttov_option_logical
 
 !-----------------------------------------------------------------------
 
-function observation_is_radiance(flavor) result(p)
+function observation_has_channel(flavor) result(p)
 
    integer, intent(in) :: flavor
    logical :: p
@@ -2207,7 +2207,7 @@ function observation_is_radiance(flavor) result(p)
       p = .false.
    endif
 
-end function observation_is_radiance
+end function observation_has_channel
 
 
 !-----------------------------------------------------------------------
