@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !----------------------------------------------------------------------
 ! This module provides support for computing forward operators for
@@ -298,14 +296,14 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_rttov_mod
 
-use        types_mod, only : r8, PI, metadatalength, MISSING_R8, MISSING_I
+use        types_mod, only : r8, MISSING_R8, MISSING_I
+
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
-                             logfileunit, get_unit, open_file, close_file, nc_check, &
-                             file_exist, ascii_file_format, nmlfileunit, do_nml_file, &
+                             ascii_file_format, nmlfileunit, do_nml_file, &
                              do_nml_term, check_namelist_read, find_namelist_in_file
-use     location_mod, only : location_type, set_location, get_location, VERTISUNDEF, &
-                             VERTISHEIGHT, VERTISLEVEL, VERTISSURFACE, set_location_missing
-use     obs_kind_mod
+
+use     location_mod, only : location_type, set_location, get_location, &
+                             VERTISUNDEF, VERTISHEIGHT, VERTISLEVEL, VERTISSURFACE
 
 use  assim_model_mod, only : interpolate
 
@@ -330,11 +328,13 @@ use rttov_interface_mod,   only : visir_metadata_type,             &
                                   cloud_profile_setup,             &
                                   sensor_runtime_takedown            ! unused at present?
 
-use parkind1,              only : jpim, jprb, jplm
+use parkind1,    only : jpim, jprb, jplm
 
-use rttov_types, only :    &
-      rttov_options,       &
-      rttov_options_scatt
+use rttov_types, only : rttov_options,       &
+                        rttov_options_scatt
+
+! There are so many radiance observation types that it is impractical to list them all.
+use     obs_kind_mod
 
 implicit none
 private
@@ -354,20 +354,20 @@ private
 ! uses both...  or something.
 
 public ::            set_visir_metadata, &
-                     set_mw_metadata,    &
+                        set_mw_metadata, &
                      get_visir_metadata, &
-                     get_mw_metadata,    &
+                        get_mw_metadata, &
                     read_rttov_metadata, &
                    write_rttov_metadata, &
              interactive_rttov_metadata, &
                   get_expected_radiance, &
-                get_rttov_option_logical
+               get_rttov_option_logical, &
+                get_channel
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'obs_def_rttov_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 character(len=512) :: string1, string2
 logical            :: module_initialized = .false.
@@ -432,12 +432,12 @@ logical              :: graupel_data         = .false.  ! specify precip cloud s
 logical              :: hail_data            = .false.  ! specify precip cloud hard-hail? (VIS/IR/MW)
 logical              :: w_data               = .false.  ! specify vertical velocity (used for classifying clouds as cumulus versus stratus)? (VIS/IR)
 integer              :: clw_scheme           = 2        ! Liebe (1) or Rosenkranz (2) or TKC (3) (MW, clear-sky only)
-real(8)              :: clw_cloud_top        = 322.d0   ! lower hPa limit for clw calculations; clw at lower pressures is ignored (MW, clear-sky only)
+real(8)              :: clw_cloud_top        = 322.0_r8   ! lower hPa limit for clw calculations; clw at lower pressures is ignored (MW, clear-sky only)
 integer              :: fastem_version       = 6        ! MW sea-surface emissivity model to use (0-6). 1-6: FASTEM version 1-6, 0: TESSEM2 (MW)
 logical              :: supply_foam_fraction = .false.  ! include foam fraction in skin%foam_fraction? FASTEM only. (MW)
 logical              :: use_totalice         = .false.  ! Specify totalice instead of precip/non-precip ice (MW, RTTOV-SCATT only)
 logical              :: use_zeeman           = .false.  ! Simulate Zeeman effect (MW)
-real(r8)             :: cc_threshold         = 0.05d0   ! if effective cloud fraction below this value, treat simulation as clear-sky (MW, 0-1, RTTOV-SCATT only)
+real(r8)             :: cc_threshold         = 0.050_r8   ! if effective cloud fraction below this value, treat simulation as clear-sky (MW, 0-1, RTTOV-SCATT only)
 logical              :: ozone_data           = .false.  ! specify ozone profiles? (VIS/IR)
 logical              :: co2_data             = .false.  ! specify CO2 profiles? (VIS/IR)
 logical              :: n2o_data             = .false.  ! specify N2O profiles? (VIS/IR)
@@ -459,14 +459,14 @@ integer              :: idg_scheme           = 2        ! Ou and Liou (1), Wyser
 logical              :: user_aer_opt_param   = .false.  ! specify aerosol scattering properties (VIS/IR, add_clouds only)
 logical              :: user_cld_opt_param   = .false.  ! specify cloud scattering properties (VIS/IR, add_clouds only)
 logical              :: grid_box_avg_cloud   = .true.   ! cloud concentrations are grid box averages. False = concentrations for cloudy layer only. (VIS/IR, add_clouds and not user_cld_opt_param only)
-real(r8)             :: cldstr_threshold     = -1.d0    ! threshold for cloud stream weights for scattering (VIS/IR, add_clouds only)
+real(r8)             :: cldstr_threshold     = -1.0_r8    ! threshold for cloud stream weights for scattering (VIS/IR, add_clouds only)
 logical              :: cldstr_simple        = .false.  ! If true, one clear column, one cloudy column (VIS/IR, add_clouds only)
-real(r8)             :: cldstr_low_cloud_top = 750.d0   ! cloud fraction maximum in layers from ToA down to specified hPa (VIS/IR, cldstr_simple only)
+real(r8)             :: cldstr_low_cloud_top = 750.0_r8   ! cloud fraction maximum in layers from ToA down to specified hPa (VIS/IR, cldstr_simple only)
 integer              :: ir_scatt_model       = 2        ! DOM (1) or Chou-scaling (2) (IR, add_clouds or add_aerosl only)
 integer              :: vis_scatt_model      = 1        ! DOM (1), single scat (2), or MFASIS (3) (VIS, addsolar and add_clouds or add_aerosl only)
 integer              :: dom_nstreams         = 8        ! number of streams to use with DOM (VIS/IR, add_clouds or add_aerosl and DOM model only, must be >= 2 and even)
-real(r8)             :: dom_accuracy         = 0.d0     ! convergence criteria for DOM (VIS/IR, add_clouds or addaerosol and DOM model only)
-real(r8)             :: dom_opdep_threshold  = 0.d0     ! DOM ignores layers below this optical depth (VIS/IR, add_clouds or addaerosol and DOM model only)
+real(r8)             :: dom_accuracy         = 0.0_r8     ! convergence criteria for DOM (VIS/IR, add_clouds or addaerosol and DOM model only)
+real(r8)             :: dom_opdep_threshold  = 0.0_r8     ! DOM ignores layers below this optical depth (VIS/IR, add_clouds or addaerosol and DOM model only)
 logical              :: addpc                = .false.  ! do principal component calculations? (VIS/IR)
 integer              :: npcscores            = -1       ! number of PC scores to use (VIS/IR, addpc only)
 logical              :: addradrec            = .false.  ! reconstruct the radiances (VIS/IR, addpc only)
@@ -1460,7 +1460,7 @@ integer  :: instrument(3)
 
 integer :: this_istatus(ens_size)
 
-integer  :: i, zi
+integer  :: i
 real(r8) :: loc_array(3)
 real(r8) :: loc_lon, loc_lat
 real(r8) :: loc_value(ens_size), radiance(ens_size)
@@ -1760,8 +1760,8 @@ GETLEVELDATA : do i = 1,numlevels
 
 end do GETLEVELDATA
 
-loc = set_location(loc_lon, loc_lat, 1.0d0, VERTISUNDEF )
-loc_sfc = set_location(loc_lon, loc_lat, 1.0d0, VERTISSURFACE )
+loc     = set_location(loc_lon, loc_lat, 1.0_r8, VERTISUNDEF )
+loc_sfc = set_location(loc_lon, loc_lat, 1.0_r8, VERTISSURFACE )
 
 ! set the surface fields
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
@@ -2068,12 +2068,14 @@ function get_rttov_option_logical(field_name) result(p)
    character :: ch
    integer   :: slen, i
 
+   ! FIXME len_trim() is an intrinsic ...
    ! copy the string over to an appropriate size
    slen = len(trim(adjustl(field_name)))
    allocate(character(len=slen) :: fname)
    fname = trim(adjustl(field_name))
 
    ! change the string to lower-case
+   ! FIXME we have a utilities_mod.f90:to_upper() function
 
    do i = 1,slen
       ch = fname(i:i)
@@ -2190,6 +2192,59 @@ function get_rttov_option_logical(field_name) result(p)
    end select
 
 end function get_rttov_option_logical
+
+
+!-----------------------------------------------------------------------
+! FIXME: The module_key is the index into the arrays in this module storage.
+!        TJH: I don't understand why the subkey = obstype_subkey () was wrong.
+!             What is the subkey?
+
+function get_channel(flavor, module_key) result(channel)
+
+   integer, intent(in) :: flavor
+   integer, intent(in) :: module_key
+   integer :: channel
+
+   real(r8) :: sat_az, sat_ze, sun_az, sun_ze
+   integer  :: platform_id, sat_id, sensor_id
+   real(r8) :: mag_field, cosbk, specularity
+   real(r8) :: fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5
+   integer  :: subkey
+
+   channel = MISSING_R8
+
+   ! If the observation is not supported by this module, there is no channel
+   ! This is delicate in that all types supported by this module are consecutively
+   ! numbered. If new types are added, this will need to change.
+   if (flavor < NOAA_1_VTPR1_RADIANCE .or. flavor > CLOUDSAT_1_CPR_TB) return
+
+   ! Retrieve channel from different metadata types
+   ! All the other arguments are mandatory, but not needed here.
+
+   if ( obstype_metadata(module_key) ) then
+      ! FIXME ... should be local index ... subkey = obstype_subkey(module_key)
+      if (.false.) write(*,*)'get_channel_visir: module_key,subkey',module_key,subkey
+      call get_visir_metadata(module_key, &
+                           sat_az, sat_ze, sun_az, sun_ze, &
+                           platform_id, sat_id, sensor_id, channel, &
+                           specularity)
+   else
+      ! FIXME ... should be local index ... subkey = obstype_subkey(module_key)
+      if (.false.) write(*,*)'get_channel_mw: module_key,subkey',module_key,subkey
+      call get_mw_metadata(module_key, &
+                        sat_az, sat_ze, &
+                        platform_id, sat_id, sensor_id, channel, &
+                        mag_field, cosbk, &
+                        fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5)
+   endif
+
+   if (debug) write(*,*)'get_channel: module_key,channel ',module_key,channel
+
+end function get_channel
+
+
+!-----------------------------------------------------------------------
+
 
 end module obs_def_rttov_mod
 

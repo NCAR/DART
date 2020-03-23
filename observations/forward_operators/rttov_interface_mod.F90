@@ -1,14 +1,10 @@
 module rttov_interface_mod
 
-use     location_mod,  only : location_type, set_location, get_location, VERTISUNDEF, &
-                              VERTISHEIGHT, VERTISLEVEL, set_location_missing, &
-                              is_vertical, &
-                              VERTISHEIGHT
+use     location_mod,  only : location_type, set_location, get_location, &
+                              VERTISUNDEF, VERTISHEIGHT, VERTISLEVEL
 
 use    utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG, E_WARN, &
-                              nmlfileunit, check_namelist_read,      &
-                              find_namelist_in_file, do_nml_file, do_nml_term, &
-                              ascii_file_format
+                              open_file, file_exist
 
 ! This code contains the DART to RTTOV interface. It uses a data structure of
 ! platforms/satellites/sensors to store runtime information for each sensor.
@@ -527,10 +523,8 @@ integer :: nlines, io, size_read, line_len, maxline_len
 integer :: i
 character(len=100) :: imsg
 
-! a random fortran io unit
-integer, parameter :: dbUnit = 193
-
 character(len=256) :: obs_type
+integer :: dbUnit
 integer :: platform_id
 integer :: satellite_id
 integer :: sensor_id
@@ -544,14 +538,15 @@ character(len=*), parameter :: delimiter = ','
 
 character(len=*), parameter :: routine = 'read_sensor_db_file'
 
-character(len=512) :: string1
+character(len=512) :: string1, string2
 
-if (debug) then
-   write(string1,*)'Now reading sensor_db_file: ',adjustl(trim(sensor_db_file))
-   call error_handler(E_MSG, routine, string1, source, revision, revdate)
+if ( file_exist(sensor_db_file) ) then
+   dbUnit = open_file(sensor_db_file, action='read')
+else
+   write(string1,*)'sensor_db_file: "'//adjustl(trim(sensor_db_file))//'"'
+   write(string2,*)'does not exist.'
+   call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
 end if
-
-open(unit=dbUnit, file=sensor_db_file)
 
 ! throw away the header row
 read(dbUnit,'(A)') buffer
@@ -605,9 +600,8 @@ if (maxline_len > len(next_line)) then
    call error_handler(E_ERR, routine, string1, source, revision, revdate)
 end if
 
-close(dbUnit)
+rewind(dbUnit)
 
-open(unit=dbUnit, file=sensor_db_file)
 ! throw away the header again
 read(dbUnit,'(A)') buffer
 
