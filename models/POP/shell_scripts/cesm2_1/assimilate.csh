@@ -1,10 +1,10 @@
 #!/bin/csh
 #
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
+# Copyright 2020 University Corporation for Atmospheric Research
 #
-# DART $Id$
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License.
+# Please view the License at http://www.apache.org/licenses/LICENSE-2.0
 #
 # This script performs an assimilation by directly reading and writing to
 # the POP restart file. There is no post-processing step 'dart_to_pop'.
@@ -355,9 +355,4 @@ ${MOVE} dart_log.out    ${CASE}.pop.dart_log.${OCN_DATE_EXT}.out
 echo "`date` -- END POP_ASSIMILATE"
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

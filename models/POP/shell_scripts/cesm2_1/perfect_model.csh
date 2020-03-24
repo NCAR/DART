@@ -1,11 +1,11 @@
 #!/bin/csh
 #
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
+# Copyright 2020 University Corporation for Atmospheric Research
 #
-# DART $Id$
-
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License.
+# Please view the License at http://www.apache.org/licenses/LICENSE-2.0
+#
 #=========================================================================
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
@@ -144,9 +144,4 @@ ${REMOVE} dart_log.nml
 echo "`date` -- END   GENERATE POP TRUE STATE"
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

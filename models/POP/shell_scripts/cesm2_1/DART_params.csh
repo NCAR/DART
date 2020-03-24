@@ -1,10 +1,12 @@
 #!/bin/csh
 #
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
+# Copyright 2020 University Corporation for Atmospheric Research
 #
-# DART $Id$
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License.
+# Please view the License at http://www.apache.org/licenses/LICENSE-2.0
+#
+# ==============================================================================
 #
 # Resource file for use when running CESM (POP specifically) and DART.
 # This file has all the configuration items needed and will be copied
@@ -20,8 +22,9 @@
 #               Must be a standard CESM compset; see the CESM documentation.
 # resolution    Defines the horizontal resolution and dynamics; see CESM docs.
 # cesmtag       The version of the CESM source code to use when building the code.
-#
-# For list of the pre-defined component sets: ./query_config --compsets
+# cesmtagmajor  The major release version of CESM, used to identify the
+#               appropriate CESM directory.
+# 
 # To create a variant compset, see the CESM documentation and carefully
 # incorporate any needed changes into this script.
 # ==============================================================================
@@ -29,17 +32,15 @@
 setenv cesmtag        cesm2_1_1
 setenv resolution     f19_g17
 setenv compset        G
-
-# Since this example was tested while assimilating solar induced fluorescence,
-# we are using 'SIF' in the CASE. FYI only.
+setenv cesmtagmajor   `echo ${cesmtag} | cut -c1-7`
 
 # ==============================================================================
 # There are SourceMods that enable POP to recompute the barotropic velocity
 # to prevent the barotropic solver from crashing.
-# SourceMods may be handled in one of two ways. If you have your own GIT clone of
-# the repository, you may simply commit your changes to your GIT repo and 
+# SourceMods may be handled in one of two ways. If you have your own git clone of
+# the repository, you may simply commit your changes to your git repo and 
 # set use_SourceMods = FALSE . If you prefer to keep your changes separate 
-# (as was required under SVN), please put your SourceMods in a directory with 
+# (as was required under svn), please put your SourceMods in a directory with 
 # the following structure (which is intended to be similar to the structure 
 # in the CLM distribution):
 #
@@ -102,7 +103,7 @@ setenv BASEOBSDIR             /glade/p/cisl/dares/Observations/WOD09
 # ==============================================================================
 
 setenv refcase      g210.G_JRA.v14.gx1v7.01
-setenv refyear      250
+setenv refyear      2010
 setenv refmon       01
 setenv refday       01
 setenv reftod       00000
@@ -122,19 +123,29 @@ setenv start_tod     00000
 setenv startdate     ${start_year}-${start_month}-${start_day}
 
 # ==============================================================================
+# Make sure the CESM directories exist.
+# VAR is the shell variable name, DIR is the value
+# ==============================================================================
+ 
+foreach VAR ( cesmroot dartroot stagedir )
+   set DIR = `eval echo \${$VAR}`
+   if ( ! -d $DIR ) then
+      echo "ERROR: directory '$DIR' not found"
+      echo " In the setup script check the setting of: $VAR "
+      exit -1
+   endif
+end
+
+# ==============================================================================
 # OSSE/Perfect Model experiments only.
 # If there is an ensemble of POP states to choose from, which one do you want as
 # the truth? There is an argument for picking an instance that will not be part
 # of the ensemble used for the assimilation experiment. 
 
-setenv SingleInstanceRefcase FALSE
+setenv SingleInstanceRefcase 0
 setenv TRUTHinstance 23
 
 # ==============================================================================
-# The forward operators for the flux tower obs REQUIRE that we predict the name of
-# of the history file. The history file names of interest are time-tagged with the
-# START of the forecast - not the restart time. The obs_def_tower_mod.f90 requires
-# the stop_option to be 'nhours', and the stop_n to be accurate.
 #
 # stop_option   Units for determining the forecast length between assimilations
 # stop_n        Number of time units in each forecast
@@ -142,8 +153,8 @@ setenv TRUTHinstance 23
 
 setenv resubmit     0
 setenv stop_option  ndays
-setenv first_stop_n 3
-setenv stop_n       1
+setenv first_STOP_N 3
+setenv STOP_N       1
 setenv resubmit     0
 
 # ==============================================================================
@@ -153,16 +164,34 @@ setenv stream_year_align 1998
 setenv stream_year_first 1998
 setenv stream_year_last  2010
 
+setenv short_term_archiver off
+
 # ==============================================================================
-# machine-specific commands:
+# job settings and machine-specific commands:
+#
+# mach            Computer name
+# ACCOUNT         Project that hours will be charged to
+# queue           can be changed during a series by changing the ${CASE}.run
+# timewall        can be changed during a series by changing the ${CASE}.run
+# ==============================================================================
 
-setenv project      P93300612
-setenv machine      cheyenne
+setenv mach         cheyenne
+setenv ACCOUNT      P93300612
+setenv queue        regular
+setenv timewall     00:15:00
 
-# The CESM compile step takes enough resource that Cheyenne requires a wrapper
+# ==============================================================================
+# by setting the values above you should be able to execute this script and
+# have it run.  however, for running a real experiment there are still many
+# settings below this point - e.g. component namelists, history file options,
+# the processor layout, xml file options, etc - that you will almost certainly
+# want to change before doing a real science run.
+# ==============================================================================
+
+# The CESM compile step takes enough resource that cheyenne requires a wrapper
 # If your platform does not have this restriction, set BUILD_WRAPPER to '' 
 # setenv BUILD_WRAPPER ''
-setenv BUILD_WRAPPER "qcmd -q share -l select=1 -A $project --"
+setenv BUILD_WRAPPER "qcmd -q share -l select=1 -A ${ACCOUNT} --"
 setenv nodes_per_instance 2
 setenv number_of_threads 1
 
