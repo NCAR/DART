@@ -51,6 +51,7 @@ type gmi_swath_type
    integer :: nscans
    integer :: npixels
    integer :: offset     ! offset for total number of channels. S1 = 0, S2 = 9
+   character(3) :: dset_prefix
 
    real(4),    allocatable :: noiseLevel(:)
    real(4),    allocatable :: incidenceAngle(:,:,:)
@@ -137,13 +138,17 @@ call h5open_f(hdferr); call h5check(hdferr,'h5open')
 ! open the file with the given access group
 call h5fopen_f(l1c_file, H5F_ACC_RDONLY_F, file_id, hdferr); call h5check(hdferr,'h5fopen')
 
+! set the H5 data set prefixes of the swaths
+granule%s1%dset_prefix = '/S1'
+granule%s2%dset_prefix = '/S2'
+
 write(string1,*) 'Now loading S1 swath'
 call error_handler(E_MSG, routine, string1, source, revision, revdate)
-call gmi_load_swath(file_id,granule%s1,'/S1',little_endian)
+call gmi_load_swath(file_id,granule%s1,little_endian)
 
 write(string1,*) 'Now loading S2 swath'
 call error_handler(E_MSG, routine, string1, source, revision, revdate)
-call gmi_load_swath(file_id,granule%s2,'/S2',little_endian)
+call gmi_load_swath(file_id,granule%s2,little_endian)
 
 call h5fclose_f(file_id, hdferr); call h5check(hdferr, 'h5fclose_f')
 
@@ -176,11 +181,10 @@ end subroutine gmi_load_l1c_granule
 
 ! ----------------------------------------------------------------------------
 
-subroutine gmi_load_swath(file_id,swath,dset_prefix,little_endian)
+subroutine gmi_load_swath(file_id,swath,little_endian)
 
 integer(HID_T),       intent(in)    :: file_id       ! File identifier
 type(gmi_swath_type), intent(inout) :: swath
-character(len=*),     intent(in)    :: dset_prefix
 logical,              intent(in)    :: little_endian
 
 integer(HSIZE_T), allocatable :: dims(:)
@@ -189,9 +193,13 @@ integer(HSIZE_T) :: dims_cs(2)
 integer(HSIZE_T) :: dims_ps(2)
 integer(HSIZE_T) :: dims_s(1)
 
+character(len=3) :: dset_prefix
+
 character(len=*), parameter :: routine = 'gmi_load_swath'
 
 character(len=512) :: string1
+
+dset_prefix = swath%dset_prefix
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -405,7 +413,6 @@ scanloop:  do iscan=1,swath%nscans
       rqc = swath%Quality(ipix, iscan)
       ! reject bad scans here - cycle pixloop
       if (rqc /= 0) then
-         print *, 'rqc = ', rqc
          cycle
       end if
 
@@ -501,9 +508,9 @@ scanloop:  do iscan=1,swath%nscans
          fastem_p5 = 0.3
 
          ! add additional metadata for this obs type.  returns key to use in create call
-         call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id,   &
-            ichan, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3, fastem_p4, &
-            fastem_p5)
+         call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, & 
+            ichan+swath%offset, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3, &
+            fastem_p4, fastem_p5)
 
          call create_3d_obs(olat, olon, vloc, which_vert, obs_value, robstype, &
                             obs_err, days, seconds, rqc, obs, key)
@@ -517,10 +524,11 @@ scanloop:  do iscan=1,swath%nscans
 enddo scanloop
 
 ! Print a little summary
-write(msgstring,*) 'obs used = ', obs_num
-call error_handler(E_MSG, ' ', msgstring)
-
 call print_obs_seq(seq, '')
+
+write(msgstring,*) 'Finished loading ',obs_num-1,' of ',key,'total GMI observations for swath ' // &
+   swath%dset_prefix
+call error_handler(E_MSG, routine, msgstring, source, revision, revdate)
 
 end subroutine add_swath_observations
 

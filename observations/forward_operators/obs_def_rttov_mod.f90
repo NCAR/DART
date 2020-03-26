@@ -308,7 +308,8 @@ use     location_mod, only : location_type, set_location, get_location, &
 use  assim_model_mod, only : interpolate
 
 use obs_def_utilities_mod, only : track_status
-use ensemble_manager_mod,  only : ensemble_type
+use  ensemble_manager_mod, only : ensemble_type
+use         utilities_mod, only : to_upper
 
 use rttov_interface_mod,   only : visir_metadata_type,             &
                                   mw_metadata_type,                &
@@ -362,7 +363,7 @@ public ::            set_visir_metadata, &
              interactive_rttov_metadata, &
                   get_expected_radiance, &
                get_rttov_option_logical, &
-                get_channel
+                            get_channel
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'obs_def_rttov_mod.f90'
@@ -421,7 +422,6 @@ logical              :: use_water_type       = .false.  ! use water type (0 = fr
 logical              :: addrefrac            = .false.  ! enable atmospheric refraction (all) 
 logical              :: plane_parallel       = .false.  ! treat atmosphere as strictly plane-parallel? (all)
 logical              :: use_salinity         = .false.  ! use ocean salinity (in practical salinity units) (MW, FASTEM 4-6 and TESSEM2)
-logical              :: use_specularity      = .false.  ! use specularity (VIS/IR, only if do_lambertian is true)
 logical              :: apply_band_correction= .true.   ! apply band correction from coef file? (MW)
 logical              :: cfrac_data           = .false.  ! specify cloud fraction? (VIS/IR/MW)
 logical              :: clw_data             = .false.  ! specify non-precip cloud liquid water? (VIS/IR/MW)
@@ -432,7 +432,7 @@ logical              :: graupel_data         = .false.  ! specify precip cloud s
 logical              :: hail_data            = .false.  ! specify precip cloud hard-hail? (VIS/IR/MW)
 logical              :: w_data               = .false.  ! specify vertical velocity (used for classifying clouds as cumulus versus stratus)? (VIS/IR)
 integer              :: clw_scheme           = 2        ! Liebe (1) or Rosenkranz (2) or TKC (3) (MW, clear-sky only)
-real(8)              :: clw_cloud_top        = 322.0_r8   ! lower hPa limit for clw calculations; clw at lower pressures is ignored (MW, clear-sky only)
+real(r8)             :: clw_cloud_top        = 322.0_r8   ! lower hPa limit for clw calculations; clw at lower pressures is ignored (MW, clear-sky only)
 integer              :: fastem_version       = 6        ! MW sea-surface emissivity model to use (0-6). 1-6: FASTEM version 1-6, 0: TESSEM2 (MW)
 logical              :: supply_foam_fraction = .false.  ! include foam fraction in skin%foam_fraction? FASTEM only. (MW)
 logical              :: use_totalice         = .false.  ! Specify totalice instead of precip/non-precip ice (MW, RTTOV-SCATT only)
@@ -494,7 +494,6 @@ namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               addrefrac,              &
                               plane_parallel,         &
                               use_salinity,           &
-                              use_specularity,        &
                               apply_band_correction,  &
                               cfrac_data,             &
                               clw_data,               &
@@ -650,8 +649,6 @@ if (debug) then
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
    write(string1,*)'use_salinity           - ',use_salinity
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'use_specularity        - ',use_specularity
-   call error_handler(E_MSG,routine,string1,source,revision,revdate)
    write(string1,*)'apply_band_correction  - ',apply_band_correction
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
    write(string1,*)'cfrac_data             - ',cfrac_data
@@ -763,6 +760,11 @@ end if
 call read_sensor_db_file(rttov_sensor_db_file)
 
 end subroutine initialize_module
+
+!----------------------------------------------------------------------
+! Initialize a RTTOV sensor runtime. A rttov_sensor_type instance contains 
+! information such as options and coefficients that are initialized in a "lazy"
+! fashion only when it will be used for the first time.
 
 subroutine initialize_rttov_sensor_runtime(sensor,ens_size,nlevels)
 
@@ -903,6 +905,18 @@ end subroutine initialize_rttov_sensor_runtime
 !----------------------------------------------------------------------
 ! Fill the module storage metadata for a particular visible/infrared 
 ! observation.
+!
+! Visible / infrared observations have several auxillary metadata variables.
+! Other than the key, which is standard DART fare, the RTTOV satellite azimuth 
+! and satellite zenith angle must be specified. See the RTTOV user guide for 
+! more information (in particular, see figure 4). If the *addsolar*
+! namelist value is set to true, then the solar azimuth and solar zenith angles must
+! be specified - again see the RTTOV user guide. In addition to the platform/satellite/
+! sensor ID numbers, which are the RTTOV unique identifiers, the channel specifies
+! the chanenl number in the RTTOV coefficient file. Finally, if *do_lambertian* is 
+! true, specularity must be specified here. Again, see the RTTOV user guide for more 
+! information.
+
 subroutine set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
    platform_id, sat_id, sensor_id, channel, specularity)
 
@@ -939,6 +953,19 @@ end subroutine set_visir_metadata
 !----------------------------------------------------------------------
 ! Fill the module storage metadata for a particular microwave 
 ! observation.
+! Microwave observations have several auxillary metadata variables.
+! Other than the key, which is standard DART fare, the RTTOV satellite azimuth 
+! and satellite zenith angle must be specified. See the RTTOV user guide for 
+! more information (in particular, see figure 4). In addition to the platform/satellite/
+! sensor ID numbers, which are the RTTOV unique identifiers, the channel specifies
+! the chanenl number in the RTTOV coefficient file. In addition, if 
+! use_zeeman is true, the magnetic field and cosine of the angle
+! between the magnetic field and angle of propagation must be specified. 
+! See the RTTOV user guide for more information. Finally, the fastem parameters for
+! land must be specified here. This may be difficult for observations to set, so 
+! default values (see table 21 in the RTTOV user guide) can be used until a better 
+! solution is devised. 
+
 subroutine set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
    channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,         &
    fastem_p4, fastem_p5)
@@ -981,6 +1008,7 @@ end subroutine set_mw_metadata
 
 !----------------------------------------------------------------------
 ! Query the metadata in module storage for a particular observation.
+! See set_visir_metadata for more information on these fields.
 
 subroutine get_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
    platform_id, sat_id, sensor_id, channel, specularity)
@@ -1027,6 +1055,9 @@ specularity = visir_obs_metadata(visirnum) % specularity
 
 end subroutine get_visir_metadata
 
+!----------------------------------------------------------------------
+! Query the metadata in module storage for a particular observation.
+! See set_mw_metadata for more information on these fields.
 
 subroutine get_mw_metadata(key, sat_az, sat_ze,        &
    platform_id, sat_id, sensor_id, channel, mag_field, &
@@ -1477,6 +1508,7 @@ type(visir_metadata_type), pointer :: visir_md
 type(mw_metadata_type),    pointer :: mw_md
 
 logical :: is_visir
+logical :: return_now
 
 !=================================================================================
 
@@ -1588,174 +1620,215 @@ GETLEVELDATA : do i = 1,numlevels
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
 
    call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, atmos%pressure(:,i), this_istatus)
-   call check_status('QTY_PRESSURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
+   call check_status('QTY_PRESSURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+   if (return_now) return
 
    call interpolate(state_handle, ens_size, loc, QTY_TEMPERATURE, atmos%temperature(:, i), this_istatus)
-   call check_status('QTY_TEMPERATURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
+   call check_status('QTY_TEMPERATURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+   if (return_now) return
 
    call interpolate(state_handle, ens_size, loc, QTY_VAPOR_MIXING_RATIO, atmos%moisture(:, i), this_istatus)
-   call check_status('QTY_VAPOR_MIXING_RATIO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
+   call check_status('QTY_VAPOR_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+   if (return_now) return
 
    if (ozone_data) then
       call interpolate(state_handle, ens_size, loc, QTY_O3, trace_gas%ozone(:, i), this_istatus)
-      call check_status('QTY_O3', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_O3', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (co2_data) then
       call interpolate(state_handle, ens_size, loc, QTY_CO2, trace_gas%co2(:, i), this_istatus)
-      call check_status('QTY_CO2', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_CO2', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (n2o_data) then
       call interpolate(state_handle, ens_size, loc, QTY_N2O, trace_gas%n2o(:, i), this_istatus)
-      call check_status('QTY_N2O', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_N2O', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (ch4_data) then
       call interpolate(state_handle, ens_size, loc, QTY_CH4, trace_gas%ch4(:, i), this_istatus)
-      call check_status('QTY_CH4', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_CH4', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (co_data) then
       call interpolate(state_handle, ens_size, loc, QTY_CO, trace_gas%co(:, i), this_istatus)
-      call check_status('QTY_CO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_CO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (so2_data) then
       call interpolate(state_handle, ens_size, loc, QTY_SO2, trace_gas%so2(:, i), this_istatus)
-      call check_status('QTY_SO2', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_SO2', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (add_aerosl) then
       if (aerosl_type == 1) then
          ! OPAC
          call interpolate(state_handle, ens_size, loc, QTY_INSOLUBLE_AER, aerosols%insoluble(:, i), this_istatus)
-         call check_status('QTY_INSOLUBLE_AER', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_INSOLUBLE_AER', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_H2O_SOLUBLE_AER, aerosols%water_soluble(:, i), this_istatus)
-         call check_status('QTY_H2O_SOLUBLE_AER', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_H2O_SOLUBLE_AER', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_SOOT, aerosols%soot(:, i), this_istatus)
-         call check_status('QTY_SOOT', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_SOOT', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_SEASALT_ACCUM, aerosols%sea_salt_accum(:, i), this_istatus)
-         call check_status('QTY_SEASALT_ACCUM', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_SEASALT_ACCUM', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_SEASALT_COARSE, aerosols%sea_salt_coarse(:, i), this_istatus)
-         call check_status('QTY_SEASALT_COARSE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_SEASALT_COARSE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_MINERAL_NUCLEUS, aerosols%mineral_nucleus(:, i), this_istatus)
-         call check_status('QTY_MINERAL_NUCLEUS', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_MINERAL_NUCLEUS', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_MINERAL_ACCUM, aerosols%mineral_accum(:, i), this_istatus)
-         call check_status('QTY_MINERAL_ACCUM', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_MINERAL_ACCUM', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_MINERAL_COARSE, aerosols%mineral_coarse(:, i), this_istatus)
-         call check_status('QTY_MINERAL_COARSE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_MINERAL_COARSE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_MINERAL_TRANSPORTED, aerosols%mineral_transport(:, i), this_istatus)
-         call check_status('QTY_MINERAL_TRANSPORT', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_MINERAL_TRANSPORT', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_SULPHATED_DROPS, aerosols%sulphated_droplets(:, i), this_istatus)
-         call check_status('QTY_SULPHATED_DROPS', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_SULPHATED_DROPS', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_VOLCANIC_ASH, aerosols%volcanic_ash(:, i), this_istatus)
-         call check_status('QTY_VOLCANIC_ASH', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_VOLCANIC_ASH', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_NEW_VOLCANIC_ASH, aerosols%new_volcanic_ash(:, i), this_istatus)
-         call check_status('QTY_NEW_VOLCANIC_ASH', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_NEW_VOLCANIC_ASH', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_ASIAN_DUST, aerosols%asian_dust(:, i), this_istatus)
-         call check_status('QTY_ASIAN_DUST', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_ASIAN_DUST', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
       elseif (aerosl_type == 2) then
          ! CAMS
          call interpolate(state_handle, ens_size, loc, QTY_BLACK_CARBON, aerosols%black_carbon(:, i), this_istatus)
-         call check_status('QTY_BLACK_CARBON', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_BLACK_CARBON', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_DUST_BIN1, aerosols%dust_bin1(:, i), this_istatus)
-         call check_status('QTY_DUST_BIN1', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_DUST_BIN1', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_DUST_BIN2, aerosols%dust_bin2(:, i), this_istatus)
-         call check_status('QTY_DUST_BIN2', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_DUST_BIN2', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_DUST_BIN3, aerosols%dust_bin3(:, i), this_istatus)
-         call check_status('QTY_DUST_BIN3', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_DUST_BIN3', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_AMMONIUM_SULPHATE, aerosols%ammonium_sulphate(:, i), this_istatus)
-         call check_status('QTY_AMMONIUM_SULPHATE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_AMMONIUM_SULPHATE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_SEA_SALT_BIN1, aerosols%sea_salt_bin1(:, i), this_istatus)
-         call check_status('QTY_SEA_SALT_BIN1', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_SEA_SALT_BIN1', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_SEA_SALT_BIN2, aerosols%sea_salt_bin2(:, i), this_istatus)
-         call check_status('QTY_SEA_SALT_BIN2', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_SEA_SALT_BIN2', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_SEA_SALT_BIN3, aerosols%sea_salt_bin3(:, i), this_istatus)
-         call check_status('QTY_SEA_SALT_BIN3', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_SEA_SALT_BIN3', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
 
          call interpolate(state_handle, ens_size, loc, QTY_HYDROPHILIC_ORGANIC_MATTER, aerosols%hydrophilic_organic_matter(:, i), this_istatus)
-         call check_status('QTY_HYDROPHILIC_ORGANIC_MATTER', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_HYDROPHILIC_ORGANIC_MATTER', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
       end if
    end if
 
    if (cfrac_data) then
       ! specify cloud fraction
       call interpolate(state_handle, ens_size, loc, QTY_CLOUD_FRACTION, clouds%cfrac(:, i), this_istatus)
-      call check_status('QTY_CLOUD_FRACTION', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_CLOUD_FRACTION', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (clw_data) then
       ! specify non-precip cloud liquid water
       call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_MIXING_RATIO, clouds%clw(:, i), this_istatus)
-      call check_status('QTY_CLOUDWATER_MIXING_RATIO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_CLOUDWATER_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
 
       if (clw_scheme == 2) then
          ! The effective diameter must also be specified with clw_scheme 2
          call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
-         call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
       end if
    end if
 
    if (rain_data) then
       ! specify precip cloud liquid water (i.e. rain)
       call interpolate(state_handle, ens_size, loc, QTY_RAINWATER_MIXING_RATIO, clouds%rain(:, i), this_istatus)
-      call check_status('QTY_RAINWATER_MIXING_RATIO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_RAINWATER_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (ciw_data) then
       ! specify non-precip cloud ice
       call interpolate(state_handle, ens_size, loc, QTY_ICE_MIXING_RATIO, clouds%ciw(:, i), this_istatus)
-      call check_status('QTY_ICE_MIXING_RATIO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_ICE_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
 
       if (ice_scheme == 1 .and. use_icede) then
          ! if use_icede with ice_scheme 1, must also specify ice effective diameter
          call interpolate(state_handle, ens_size, loc, QTY_CLOUD_ICE_DE, clouds%icede(:, i), this_istatus)
-         call check_status('QTY_CLOUD_ICE_DE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+         call check_status('QTY_CLOUD_ICE_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+         if (return_now) return
       end if
    end if
 
    if (snow_data) then
       ! specify precip fluffy ice (i.e. snow)
       call interpolate(state_handle, ens_size, loc, QTY_SNOW_MIXING_RATIO, clouds%snow(:, i), this_istatus)
-      call check_status('QTY_SNOW_MIXING_RATIO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_SNOW_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (graupel_data) then
       ! specify precip soft-hail (i.e. graupel)
       call interpolate(state_handle, ens_size, loc, QTY_GRAUPEL_MIXING_RATIO, clouds%graupel(:, i), this_istatus)
-      call check_status('QTY_GRAUPEL_MIXING_RATIO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_GRAUPEL_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (hail_data) then
       ! specify precip hard-hail (i.e. hail)
       call interpolate(state_handle, ens_size, loc, QTY_HAIL_MIXING_RATIO, clouds%hail(:, i), this_istatus)
-      call check_status('QTY_HAIL_MIXING_RATIO', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_HAIL_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
    if (w_data) then
       ! specify vertical velocity
       call interpolate(state_handle, ens_size, loc, QTY_VERTICAL_VELOCITY, clouds%w(:, i), this_istatus)
-      call check_status('QTY_VERTICAL_VELOCITY', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+      call check_status('QTY_VERTICAL_VELOCITY', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
    end if
 
 end do GETLEVELDATA
@@ -1765,68 +1838,83 @@ loc_sfc = set_location(loc_lon, loc_lat, 1.0_r8, VERTISSURFACE )
 
 ! set the surface fields
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
-call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
+call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+if (return_now) return
 
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
-call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
+call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+if (return_now) return
 
 call interpolate(state_handle, ens_size, loc, QTY_2M_TEMPERATURE, atmos%s2m_t(:), this_istatus)
-call check_status('QTY_2M_TEMPERATURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
+call check_status('QTY_2M_TEMPERATURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+if (return_now) return
 
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SKIN_TEMPERATURE, atmos%skin_temp(:), this_istatus)
-call check_status('QTY_SKIN_TEMPERATURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
+call check_status('QTY_SKIN_TEMPERATURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+if (return_now) return
 
 ! set to 2m if an error
 
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_TYPE, atmos%surftype(:), this_istatus)
-call check_status('QTY_SURFACE_TYPE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .true.)
+call check_status('QTY_SURFACE_TYPE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+if (return_now) return
 
 ! if not available, lookup by lat/lon?
 
 if (use_q2m) then
    call interpolate(state_handle, ens_size, loc, QTY_2M_SPECIFIC_HUMIDITY, atmos%s2m_q(:), this_istatus)
-   call check_status('QTY_2M_SPECIFIC_HUMIDITY', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_2M_SPECIFIC_HUMIDITY', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
 end if
 
 if (use_uv10m) then
    call interpolate(state_handle, ens_size, loc, QTY_10M_U_WIND_COMPONENT, atmos%s10m_u(:), this_istatus)
-   call check_status('QTY_10M_U_WIND_COMPONENT', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_10M_U_WIND_COMPONENT', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
    call interpolate(state_handle, ens_size, loc, QTY_10M_V_WIND_COMPONENT, atmos%s10m_v(:), this_istatus)
-   call check_status('QTY_10M_V_WIND_COMPONENT', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_10M_V_WIND_COMPONENT', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
 end if
 
 if (use_wfetch) then
    call interpolate(state_handle, ens_size, loc, QTY_WIND_FETCH, atmos%wfetch(:), this_istatus)
-   call check_status('QTY_WIND_FETCH', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_WIND_FETCH', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
 end if
 
 if (use_water_type) then
    call interpolate(state_handle, ens_size, loc_sfc, QTY_WATER_TYPE, atmos%water_type(:), this_istatus)
-   call check_status('QTY_WATER_TYPE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_WATER_TYPE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
 end if
 
 if (use_salinity) then
    call interpolate(state_handle, ens_size, loc_sfc, QTY_SALINITY, atmos%sfc_salinity(:), this_istatus)
-   call check_status('QTY_SALINITY', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_SALINITY', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
 end if
 
 if (supply_foam_fraction) then
    call interpolate(state_handle, ens_size, loc_sfc, QTY_FOAM_FRAC, atmos%sfc_foam_frac(:), this_istatus)
-   call check_status('QTY_FOAM_FRAC', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_FOAM_FRAC', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
 end if
 
 if (use_sfc_snow_frac) then
    call interpolate(state_handle, ens_size, loc_sfc, QTY_SNOWCOVER_FRAC, atmos%sfc_snow_frac(:), this_istatus)
-   call check_status('QTY_SNOWCOVER_FRAC', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_SNOWCOVER_FRAC', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
 end if
 
 if (add_clouds .and. htfrtc_simple_cloud) then
    ! specify simple cloud information - per column
    call interpolate(state_handle, ens_size, loc, QTY_COLUMN_CLOUD_FRAC, clouds%simple_cfrac(:), this_istatus)
-   call check_status('QTY_COLUMN_CLOUD_FRAC', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_COLUMN_CLOUD_FRAC', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
 
    call interpolate(state_handle, ens_size, loc, QTY_CLOUD_TOP_PRESSURE, clouds%ctp(:), this_istatus)
-   call check_status('QTY_CLOUD_TOP_PRESSURE', ens_size, this_istatus, val, istatus, routine, source, revision, revdate, .false.)
+   call check_status('QTY_CLOUD_TOP_PRESSURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   if (return_now) return
 end if
 
 if (debug) then
@@ -2027,39 +2115,49 @@ end subroutine grow_metadata
 
 !----------------------------------------------------------------------
 
-subroutine check_status(field_name, ens_size, this_istatus, val, istatus, routine, source, revision, revdate, required)
+subroutine check_status(field_name, ens_size, this_istatus, val, loc, istatus, &
+   routine, source, revision, revdate, required, return_now)
 
-   character(len=*), intent(in)  :: field_name
-   integer,          intent(in)  :: ens_size
-   integer,          intent(in)  :: this_istatus(ens_size)
-   real(r8),         intent(out) :: val(ens_size)
-   integer,          intent(out) :: istatus(ens_size) ! status of the calculation
-   character(len=*), intent(in)  :: routine
-   character(len=*), intent(in)  :: source
-   character(len=*), intent(in)  :: revision
-   character(len=*), intent(in)  :: revdate
-   logical,          intent(in)  :: required
+character(len=*),    intent(in)  :: field_name
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: this_istatus(ens_size)
+real(r8),            intent(out) :: val(ens_size)
+type(location_type), intent(in)  :: loc
+integer,             intent(out) :: istatus(ens_size) ! status of the calculation
+character(len=*),    intent(in)  :: routine
+character(len=*),    intent(in)  :: source
+character(len=*),    intent(in)  :: revision
+character(len=*),    intent(in)  :: revdate
+logical,             intent(in)  :: required
+logical,             intent(out) :: return_now
 
-   logical :: error
+real(r8) :: locv(3)
 
-   ! override track_status behavior to always error and print an error message if the field
-   ! cannot be found
+! override track_status behavior to always error and print an error message if the field
+! cannot be found
 
-   call track_status(ens_size, this_istatus, val, istatus, error)
+call track_status(ens_size, this_istatus, val, istatus, return_now)
 
-   if (error) then
-      if (required) then
-         write(string1,*) 'Could not find required field ' // trim(field_name), ' istatus:',istatus
-      else
-         write(string1,*) 'Could not find requested field ' // trim(field_name), ' istatus:',istatus
-      end if
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+if (return_now .and. debug) then
+   locv = get_location(loc)
+   if (required) then
+      write(string1,*) 'Could not find required field ' // trim(field_name), ' istatus:',istatus,&
+         'location:',locv(1),'/',locv(2),'/',locv(3)
+   else
+      write(string1,*) 'Could not find requested field ' // trim(field_name), ' istatus:',istatus,&
+         'location:',locv(1),'/',locv(2),'/',locv(3)
    end if
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+end if
 
 end subroutine check_status
 
+!----------------------------------------------------------------------
+! Return the logical value of the RTTOV parameter associated with the field_name.
+
 function get_rttov_option_logical(field_name) result(p)
-   character(len=*), intent(in)  :: field_name
+   character(*), intent(in) :: field_name
+
    logical :: p
 
    integer,          parameter   :: duc = ichar('A') - ichar('a')
@@ -2068,124 +2166,116 @@ function get_rttov_option_logical(field_name) result(p)
    character :: ch
    integer   :: slen, i
 
-   ! FIXME len_trim() is an intrinsic ...
+
    ! copy the string over to an appropriate size
-   slen = len(trim(adjustl(field_name)))
+   slen = len_trim(field_name)
    allocate(character(len=slen) :: fname)
    fname = trim(adjustl(field_name))
-
-   ! change the string to lower-case
-   ! FIXME we have a utilities_mod.f90:to_upper() function
-
-   do i = 1,slen
-      ch = fname(i:i)
-      if (ch >= 'A'.AND.ch <= 'Z') ch = char(ichar(ch)-duc)
-      fname(i:i) = ch
-   end do
+   call to_upper(fname)
 
    select case (fname)
-      case('first_lvl_is_sfc')
-         p = first_lvl_is_sfc
-      case('mw_clear_sky_only')
-         p = mw_clear_sky_only
-      case('do_checkinput')
-         p = do_checkinput
-      case('apply_reg_limits')
-         p = apply_reg_limits
-      case('verbose')
-         p = verbose
-      case('fix_hgpl')
-         p = fix_hgpl
-      case('do_lambertian')
-         p = do_lambertian
-      case('lambertian_fixed_angle')
-         p = lambertian_fixed_angle
-      case('rad_down_lin_tau')
-         p = rad_down_lin_tau
-      case('use_q2m')
-         p = use_q2m
-      case('use_uv10m')
-         p = use_uv10m
-      case('use_wfetch')
-         p = use_wfetch
-      case('use_water_type')
-         p = use_water_type
-      case('addrefrac')
-         p = addrefrac
-      case('plane_parallel')
-         p = plane_parallel
-      case('use_salinity')
-         p = use_salinity
-      case('use_specularity')
-         p = use_specularity
-      case('apply_band_correction')
-         p = apply_band_correction
-      case('cfrac_data')
-         p = cfrac_data
-      case('clw_data')
-         p = clw_data
-      case('rain_data')
-         p = rain_data
-      case('ciw_data')
-         p = ciw_data
-      case('snow_data')
-         p = snow_data
-      case('graupel_data')
-         p = graupel_data
-      case('hail_data')
-         p = hail_data
-      case('w_data')
-         p = w_data
-      case('supply_foam_fraction')
-         p = supply_foam_fraction
-      case('use_totalice')
-         p = use_totalice
-      case('use_zeeman')
-         p = use_zeeman
-      case('ozone_data')
-         p = ozone_data
-      case('co2_data')
-         p = co2_data
-      case('n2o_data')
-         p = n2o_data
-      case('co_data')
-         p = co_data
-      case('ch4_data')
-         p = ch4_data
-      case('so2_data')
-         p = so2_data
-      case('addsolar')
-         p = addsolar
-      case('rayleigh_single_scatt')
-         p = rayleigh_single_scatt
-      case('do_nlte_correction')
-         p = do_nlte_correction
-      case('use_sfc_snow_frac')
-         p = use_sfc_snow_frac
-      case('add_aerosl')
-         p = add_aerosl
-      case('add_clouds')
-         p = add_clouds
-      case('use_icede')
-         p = use_icede
-      case('user_aer_opt_param')
-         p = user_aer_opt_param
-      case('user_cld_opt_param')
-         p = user_cld_opt_param
-      case('grid_box_avg_cloud')
-         p = grid_box_avg_cloud
-      case('cldstr_simple')
-         p = cldstr_simple
-      case('addpc')
-         p = addpc
-      case('addradrec')
-         p = addradrec
-      case('use_htfrtc')
-         p = use_htfrtc
-      case('htfrtc_simple_cloud')
-         p = htfrtc_simple_cloud
-      case('htfrtc_overcast')
-         p = htfrtc_overcast
+      case('FIRST_LVL_IS_SFC')
+         p = FIRST_LVL_IS_SFC
+      case('MW_CLEAR_SKY_ONLY')
+         p = MW_CLEAR_SKY_ONLY
+      case('DO_CHECKINPUT')
+         p = DO_CHECKINPUT
+      case('APPLY_REG_LIMITS')
+         p = APPLY_REG_LIMITS
+      case('VERBOSE')
+         p = VERBOSE
+      case('FIX_HGPL')
+         p = FIX_HGPL
+      case('DO_LAMBERTIAN')
+         p = DO_LAMBERTIAN
+      case('LAMBERTIAN_FIXED_ANGLE')
+         p = LAMBERTIAN_FIXED_ANGLE
+      case('RAD_DOWN_LIN_TAU')
+         p = RAD_DOWN_LIN_TAU
+      case('USE_Q2M')
+         p = USE_Q2M
+      case('USE_UV10M')
+         p = USE_UV10M
+      case('USE_WFETCH')
+         p = USE_WFETCH
+      case('USE_WATER_TYPE')
+         p = USE_WATER_TYPE
+      case('ADDREFRAC')
+         p = ADDREFRAC
+      case('PLANE_PARALLEL')
+         p = PLANE_PARALLEL
+      case('USE_SALINITY')
+         p = USE_SALINITY
+      case('USE_SPECULARITY')
+         p = USE_SPECULARITY
+      case('APPLY_BAND_CORRECTION')
+         p = APPLY_BAND_CORRECTION
+      case('CFRAC_DATA')
+         p = CFRAC_DATA
+      case('CLW_DATA')
+         p = CLW_DATA
+      case('RAIN_DATA')
+         p = RAIN_DATA
+      case('CIW_DATA')
+         p = CIW_DATA
+      case('SNOW_DATA')
+         p = SNOW_DATA
+      case('GRAUPEL_DATA')
+         p = GRAUPEL_DATA
+      case('HAIL_DATA')
+         p = HAIL_DATA
+      case('W_DATA')
+         p = W_DATA
+      case('SUPPLY_FOAM_FRACTION')
+         p = SUPPLY_FOAM_FRACTION
+      case('USE_TOTALICE')
+         p = USE_TOTALICE
+      case('USE_ZEEMAN')
+         p = USE_ZEEMAN
+      case('OZONE_DATA')
+         p = OZONE_DATA
+      case('CO2_DATA')
+         p = CO2_DATA
+      case('N2O_DATA')
+         p = N2O_DATA
+      case('CO_DATA')
+         p = CO_DATA
+      case('CH4_DATA')
+         p = CH4_DATA
+      case('SO2_DATA')
+         p = SO2_DATA
+      case('ADDSOLAR')
+         p = ADDSOLAR
+      case('RAYLEIGH_SINGLE_SCATT')
+         p = RAYLEIGH_SINGLE_SCATT
+      case('DO_NLTE_CORRECTION')
+         p = DO_NLTE_CORRECTION
+      case('USE_SFC_SNOW_FRAC')
+         p = USE_SFC_SNOW_FRAC
+      case('ADD_AEROSL')
+         p = ADD_AEROSL
+      case('ADD_CLOUDS')
+         p = ADD_CLOUDS
+      case('USE_ICEDE')
+         p = USE_ICEDE
+      case('USER_AER_OPT_PARAM')
+         p = USER_AER_OPT_PARAM
+      case('USER_CLD_OPT_PARAM')
+         p = USER_CLD_OPT_PARAM
+      case('GRID_BOX_AVG_CLOUD')
+         p = GRID_BOX_AVG_CLOUD
+      case('CLDSTR_SIMPLE')
+         p = CLDSTR_SIMPLE
+      case('ADDPC')
+         p = ADDPC
+      case('ADDRADREC')
+         p = ADDRADREC
+      case('USE_HTFRTC')
+         p = USE_HTFRTC
+      case('HTFRTC_SIMPLE_CLOUD')
+         p = HTFRTC_SIMPLE_CLOUD
+      case('HTFRTC_OVERCAST')
+         p = HTFRTC_OVERCAST
       case default
          write(string1,*) "Unknown logical field ",fname
          call error_handler(E_ERR, 'get_rttov_option_logical', string1, source, revision, revdate)
@@ -2195,15 +2285,18 @@ end function get_rttov_option_logical
 
 
 !-----------------------------------------------------------------------
-! FIXME: The module_key is the index into the arrays in this module storage.
-!        TJH: I don't understand why the subkey = obstype_subkey () was wrong.
-!             What is the subkey?
+! A function to return the key associated with a VISIR/MW metadata.
+! Note that this function (and the module storage of VISIR/MW metadata)
+! should be rethought to allow for the notion of a "channel" to
+! live more harmoniously with other types of observations.
+!
+! FIXME: reintegrate radiance_obs_seq_to_netcdf and obs_seq_to_netcdf
 
-function get_channel(flavor, module_key) result(channel)
+function get_channel(flavor, key) result(channel)
 
-   integer, intent(in) :: flavor
-   integer, intent(in) :: module_key
-   integer :: channel
+   integer, intent(in) :: obs_type
+   integer, intent(in) :: key
+   integer             :: channel
 
    real(r8) :: sat_az, sat_ze, sun_az, sun_ze
    integer  :: platform_id, sat_id, sensor_id

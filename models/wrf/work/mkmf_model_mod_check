@@ -33,41 +33,6 @@ endif
 # or the subroutines which really call mpi.
 cp -f path_names_model_mod_check path_names_model_mod_check.back
 
-set XTRALIBS_BASE = /Users/hendric
-
-set JPGDIR = ${XTRALIBS_BASE}/eos
-set HDFDIR = ${XTRALIBS_BASE}/eos
-set EOSDIR = ${XTRALIBS_BASE}/eos
-set RTTOV = ${XTRALIBS_BASE}/rttov122
-
-
-set JPGINC = ${JPGDIR}/include
-set JPGLIB = ${JPGDIR}/lib
-
-set HDFINC = ${HDFDIR}/include
-set HDFLIB = ${HDFDIR}/lib
-
-set EOSINC = ${EOSDIR}/include
-set EOSLIB = ${EOSDIR}/lib
-
-set RTINC = "${RTTOV}/include"
-set RTMOD = "${RTTOV}/mod"
-set RTLIB = "${RTTOV}/lib"
-set RTSRC = "${RTTOV}/src"
-set RTLIBS = "-lrttov_main -lrttov_brdf_atlas -lrttov_coef_io -lrttov_emis_atlas -lrttov_mw_scatt -lrttov_mw_scatt_coef -lrttov_other"
-
-# leaving this out for now: rttov_parallel
-
-set MYLIBS = "${RTLIBS} -lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
-
-set MYINCDIRS = "-I${RTINC} -I${RTMOD} -I${EOSINC} -I${HDFINC} -I${JPGINC} -I${RTSRC}"
-set MYLIBDIRS = "-L${RTLIB} -L${EOSLIB} -L${HDFLIB} -L${JPGLIB}"
-
-# is -cpp compiler specific?  on a mac with a case-insensitive filesystem
-# we have to tell it to call cpp to build files with #if and #include lines.
-
-set MYFLAGS = "-cpp ${MYINCDIRS}"
-
 if ( $usingmpi ) then
 
   echo "Making Makefile with MPI"
@@ -97,8 +62,7 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f path_names_model_mod_check.back
 
-../../../build_templates/mkmf -p model_mod_check -t ../../../build_templates/mkmf.template \
- -o "${MYFLAGS}" -l "${MYFLAGS} ${MYINCDIRS} ${MYLIBDIRS} ${MYLIBS}" \
+../../../build_templates/mkmf -p model_mod_check -t ../../../build_templates/mkmf.template   \
         -a "../../.." ${wrapper_arg} path_names_model_mod_check
 
 exit $status
