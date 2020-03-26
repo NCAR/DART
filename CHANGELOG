@@ -907,6 +907,8 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 
 - improved test_dart.csh functionality.
 
+- added support for the RTTOV observation operator
+
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of changes in next Manhattan update       Tag: vX.Y.Z
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
