@@ -96,11 +96,6 @@ if ( $has_cdl > 0 ) then
 endif
 
 
-# The input model states for both test_cf_conventions and test_read_write
-# from netCDF files and must be built from the source .cdl files.
-
-if ( ! -e cf_test.nc ) ncgen -o cf_test.nc cf_test.cdl
-
 #----------------------------------------------------------------------
 # Build all the single-threaded targets
 #----------------------------------------------------------------------

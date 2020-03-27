@@ -269,8 +269,8 @@ if (ios /= NF90_NOERR) then
    ! make the time variable be dimensioned time(time) which is the
    ! netCDF convention for coordinate variables (variables with the
    ! same name as a dimension).
-   ios = nf90_def_var(ncid, name="time", xtype=nf90_double, dimids=dimIds(1), varid=VarID)
-   call nc_check(ios, "write_model_time", "time def_var")
+   ios = nf90_def_var(ncid, name="time", xtype=nf90_double, dimids=dimIDs(1), varid=VarID)
+   call nc_check(ios, routine, "time def_var")
 
    ! define time attributes consistent with CF convention
    ios = nf90_put_att(ncid, VarID, "long_name", "valid time of the model state")

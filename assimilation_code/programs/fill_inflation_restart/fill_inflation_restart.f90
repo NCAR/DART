@@ -59,14 +59,14 @@ integer, parameter :: ss_inflate_sd_index = 2
 ! The namelist variables
 !------------------------------------------------------------------
 
-logical            :: single_file    = .FALSE.
-character(len=256) :: input_state_files(MAX_FILES)  = ''
 logical            :: write_prior_inf = .FALSE. 
 real(r8)           :: prior_inf_mean = MISSING_R8
 real(r8)           :: prior_inf_sd   = MISSING_R8
 logical            :: write_post_inf = .FALSE.
 real(r8)           :: post_inf_mean  = MISSING_R8
 real(r8)           :: post_inf_sd    = MISSING_R8
+logical            :: single_file    = .FALSE.
+character(len=256) :: input_state_files(MAX_FILES)  = ''
 logical            :: verbose        = .FALSE.
 
 namelist /fill_inflation_restart_nml/              &
