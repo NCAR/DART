@@ -10,20 +10,44 @@
 module obs_seq_utilities_mod
 
 
-use        types_mod, only : r8, MISSING_R8, MISSING_I, metadatalength
+use        types_mod, only : r8, MISSING_R8, MISSING_I
 use    utilities_mod, only : nc_check, E_MSG, E_ERR, error_handler
-use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs
-use obs_sequence_mod, only : obs_sequence_type, obs_type, get_obs_def
-use time_manager_mod, only : time_type, operator(>), get_time, set_time, &
-                             print_date, print_time
+use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
+                             set_obs_def_error_variance, set_obs_def_location, &
+                             get_obs_def_time, get_obs_def_location,           &
+                             get_obs_kind, get_obs_def_error_variance,         &
+                             set_obs_def_key
+use obs_sequence_mod, only : obs_sequence_type, obs_type, insert_obs_in_seq, &
+                             set_obs_values, set_qc, set_obs_def, get_qc,    &
+                             get_obs_values, get_obs_def
+use time_manager_mod, only : time_type, operator(>=), set_time, get_time
 use     location_mod, only : set_location, location_type, get_location, query_location
-use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
-use obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs,    &
-                             read_obs_seq, get_num_obs,                &
-                             get_first_obs, get_next_obs, get_obs_def, &
-                             get_num_copies, get_num_qc,               &
-                             get_copy_meta_data, get_qc_meta_data,     &
-                             destroy_obs, get_num_key_range, get_obs_key
+
+use        types_mod, only : r8, metadatalength
+use    utilities_mod, only : register_module, initialize_utilities,            &
+                             find_namelist_in_file, check_namelist_read,       &
+                             error_handler, E_ERR, E_MSG, nmlfileunit,         &
+                             do_nml_file, do_nml_term, finalize_utilities
+use         sort_mod, only : index_sort
+use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind
+use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name
+use time_manager_mod, only : time_type, operator(>), print_time, set_time,     &
+                             print_date, set_calendar_type, operator(==),      &
+                             operator(/=), get_calendar_type, NO_CALENDAR,     &
+                             operator(-)
+use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
+                             init_obs, assignment(=),                          &
+                             init_obs_sequence, static_init_obs_sequence,      &
+                             read_obs_seq_header, read_obs_seq, get_num_obs,   &
+                             get_first_obs, get_next_obs, get_obs_def,         &
+                             insert_obs_in_seq, get_num_copies, get_num_qc,    &
+                             get_copy_meta_data, get_qc_meta_data,             &
+                             set_copy_meta_data, set_qc_meta_data,             &
+                             destroy_obs, destroy_obs_sequence,                &
+                             get_num_key_range, get_obs_key
+
+
+use netcdf
 
 implicit none
 private
@@ -35,6 +59,7 @@ public :: print_obs_seq,           &
 !>@todo FIXME there is no documentation for this module
 
 ! module global storage
+character(len=NF90_MAX_NAME) :: missing_name = ''
 character(512) :: msgstring, msgstring1, msgstring2
 
 ! version controlled file description for error handling, do not edit
@@ -64,12 +89,14 @@ type(obs_def_type)      :: this_obs_def
 logical                 :: is_there_one, is_this_last
 integer                 :: size_seq
 integer                 :: i
-integer                 :: this_obs_type
-integer                 :: type_count(max_defined_types_of_obs), identity_count
+integer                 :: this_obs_kind
+! max_obs_kinds is a public from obs_kind_mod.f90 and really is
+! counting the max number of types, not kinds
+integer                 :: type_count(max_obs_kinds), identity_count
 
 
 ! Initialize input obs_types
-do i = 1, max_defined_types_of_obs
+do i = 1, max_obs_kinds
    type_count(i) = 0
 enddo
 identity_count = 0
@@ -117,15 +144,15 @@ call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
 ObsLoop : do while ( .not. is_this_last)
 
    call get_obs_def(obs, this_obs_def)
-   this_obs_type = get_obs_def_type_of_obs(this_obs_def)
-   if (this_obs_type < 0) then
+   this_obs_kind = get_obs_kind(this_obs_def)
+   if (this_obs_kind < 0) then
       identity_count = identity_count + 1
    else
-      type_count(this_obs_type) = type_count(this_obs_type) + 1
+      type_count(this_obs_kind) = type_count(this_obs_kind) + 1
    endif
 
-!   print *, 'obs type index = ', this_obs_type
-!   if(this_obs_type > 0)print *, 'obs name = ', get_name_for_type_of_obs(this_obs_type)
+!   print *, 'obs kind index = ', this_obs_kind
+!   if(this_obs_kind > 0)print *, 'obs name = ', get_obs_kind_name(this_obs_kind)
 
    call get_next_obs(seq, obs, next_obs, is_this_last)
    if (.not. is_this_last) then 
@@ -142,9 +169,9 @@ write(msgstring, *) 'Number of obs processed  :          ', size_seq
 call error_handler(E_MSG, '', msgstring)
 write(msgstring, *) '---------------------------------------------------------'
 call error_handler(E_MSG, '', msgstring)
-do i = 1, max_defined_types_of_obs
+do i = 1, max_obs_kinds
    if (type_count(i) > 0) then 
-      write(msgstring, '(a32,i8,a)') trim(get_name_for_type_of_obs(i)), &
+      write(msgstring, '(a32,i8,a)') trim(get_obs_kind_name(i)), &
                                      type_count(i), ' obs'
       call error_handler(E_MSG, '', msgstring)
    endif
