@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
 !MPD_ABSOLUTE_HUMIDITY,    QTY_ABSOLUTE_HUMIDITY
@@ -52,10 +50,9 @@ private
 public :: get_expected_absolute_humidity
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'obs_def_abs_humidity_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 logical, save       :: module_initialized   = .false.
 logical, save       :: first_time_warn_low  = .true.
@@ -111,7 +108,7 @@ where (tmpk <= 0.0_r8)
    istatus = 99
 endwhere
 
-if(all(istatus /= 0)) return  ! not using return_now because where clause modifies istatus.
+if(all(istatus /= 0)) return
 
 !  interpolate the pressure, if observation location is not pressure
 if ( is_vertical(location, "PRESSURE") ) then
@@ -126,8 +123,7 @@ else
       ah = missing_r8
       istatus = 99
    end where
-   if(all(istatus /= 0)) return  ! not using return_now because where clause modifies istatus.
-
+   if(all(istatus /= 0)) return
 endif
 
 !  Compute the ah
@@ -138,33 +134,23 @@ where (istatus == 0)
 end where
 
 ! Warnings - first time only
-
-! nsc - my dilemma: each task does these obs independently.  if you use E_ALLMSG you'll
-! get a message from every processor which runs into this case.  if you use E_MSG you'll
-! only see those on task 0.  for now i've removed the test and you'll get the message (once)
-! even if there aren't any values outside the valid range.  i can't see a good way to
-! enforce that you get only one message when this could happen on any task and probably
-! will happen on many tasks.
-
 if (first_time_warn_low) then
-   !if (any(ah < MIN_VALUE .and. istatus == 0)) then
-   !   write(msgstring, '(A,F12.6)') 'values lower than low limit detected, e.g.', minval(ah, istatus==0)
+   if (any(ah < MIN_VALUE .and. istatus == 0)) then
       write(msgstring, *) 'checking absolute humidity value computed by the forward operator'
       call error_handler(E_MSG,'get_expected_absolute_humidity', msgstring,      &
                          text2='all values lower than 0 will be set to 0', &
                          text3='this message will only print once')
       first_time_warn_low = .false.
-   !endif
+   endif
 endif
 if (first_time_warn_high) then
-   !if (any(ah > MAX_VALUE .and. istatus == 0)) then
-   !   write(msgstring, '(A,F12.6)') 'values higher than high limit detected, e.g.', maxval(ah, istatus==0)
+   if (any(ah > MAX_VALUE .and. istatus == 0)) then
       write(msgstring, *) 'checking absolute humidity value computed by the forward operator'
       call error_handler(E_MSG,'get_expected_absolute_humidity', msgstring,      &
                          text2='all values larger than 0.1 will be set to 0.1', &
                          text3='this message will only print once')
       first_time_warn_high = .false.
-   !endif
+   endif
 endif
 
 ! Actually force the absolute humidity to be between MIN_VALUE and MAX_VALUE
@@ -178,9 +164,3 @@ end subroutine get_expected_absolute_humidity
 
 end module obs_def_abs_humidity_mod
 ! END DART PREPROCESS MODULE CODE
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

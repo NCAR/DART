@@ -489,7 +489,6 @@ integer, parameter, public :: &
   QTY_ION_O_MIXING_RATIO            = 365, &
   QTY_ATOMIC_H_MIXING_RATIO         = 366
 
-!!MYY: absolute humidity
 integer, parameter, public :: &
   QTY_ABSOLUTE_HUMIDITY             = 367
 

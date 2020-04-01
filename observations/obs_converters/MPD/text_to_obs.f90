@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 program text_to_obs
 
@@ -39,12 +37,12 @@ use      obs_kind_mod, only : MPD_ABSOLUTE_HUMIDITY
 
 implicit none
 
-character(len=64), parameter :: text_input_file = 'text.txt'
-character(len=64), parameter :: obs_out_file    = 'obs_seq.out'
+character(len=*), parameter :: text_input_file = 'text.txt'
+character(len=*), parameter :: obs_out_file    = 'obs_seq.out'
 
 logical, parameter :: debug = .false.  ! set to .true. to print info
 
-character (len=129) :: input_line
+character (len=*) :: input_line
 
 integer :: oday, osec, rcio, iunit, otype
 integer :: year, month, day, hour, minute, second
@@ -136,8 +134,7 @@ obsloop: do    ! no end limit - have the loop break when input ends
 
    ! for this example, assume there is an obs type, where otype=1 is
    ! abs humidity, the input text file has these as their own hardcoded convention.
-
-   if (otype == 1) then !abs_humidity
+   if (otype == 1) then
       read(input_line, *, iostat=rcio) otype, lat, lon, vert, &
                                  year, month, day, hour, minute, second, &
                                  abs_humid, terr
@@ -145,12 +142,9 @@ obsloop: do    ! no end limit - have the loop break when input ends
          if (debug) print *, 'got bad read code getting rest of abs_humidity obs, rcio = ', rcio
          exit obsloop
       endif
-
-   else !WHAT?
-
-      ! no method defined to convert this type
-      write(*,*) "NOOOOO, DON'T DO THIS: no method defined to convert this type = ", otype
-
+   else
+      ! warning: no method defined to convert this type
+      write(*,*) "warning: no method defined to convert this type = ", otype
    endif
 
    if (debug) print *, 'next observation located at lat, lon = ', lat, lon
@@ -169,7 +163,7 @@ obsloop: do    ! no end limit - have the loop break when input ends
 
    ! this example assumes there is an obs type, where otype=1 is
    ! abs_humidity measured in height
-   if (otype == 1) then !abs_humidity
+   if (otype == 1) then
 
       ! height is in meters
       ! make an obs derived type, and then add it to the sequence
@@ -178,10 +172,9 @@ obsloop: do    ! no end limit - have the loop break when input ends
       call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
       if (debug) print *, 'added abs humidity obs to output seq'
 
-   else !WHAT???
-
+   else
       ! no method defined to convert this type
-      write(*,*) 'no method defined to convert this type = ', otype
+      write(*,*) 'warning: no method defined to convert this type = ', otype
 
    endif
 
@@ -198,9 +191,3 @@ endif
 call finalize_utilities()
 
 end program text_to_obs
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
