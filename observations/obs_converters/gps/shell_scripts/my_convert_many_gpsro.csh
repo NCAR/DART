@@ -1,7 +1,7 @@
 #!/bin/csh
 #
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # this script loops over days, calling the GPS convert script
@@ -62,6 +62,10 @@ set end_year=2017
 set end_month=8
 set end_day=3
 
+#set end_year=2017
+#set end_month=9
+#set end_day=30
+
 
 # for each day: 
 #  download the data from the web site or not, 
@@ -69,7 +73,7 @@ set end_day=3
 #  delete the data files after conversion or not.
 
 set do_download = 'yes'
-set do_convert  = 'yes'
+set do_convert  = 'no'
 set do_delete   = 'no'
 
 
@@ -136,7 +140,9 @@ endif
 # this shell_scripts directory.  the script below will add YYYYMM
 # to the end of this string.
 
-set datadir = ../gpsro
+#set datadir = ../gpsro
+#set datadir = /glade/p/cisl/dares/Observations/GPS/staged
+set datadir = /glade/scratch/nancy/staged
 
 # end of things you should have to set in this script
 
@@ -186,7 +192,7 @@ while ( $d <= $totaldays )
   set greg=$g[1]
 
   # status/debug - comment in or out as desired.
-  echo starting processing for $year $month $day
+  echo starting processing for ${year} ${month} ${day}
   #echo which is gregorian day: $greg
 
   # use $year, $month, $day, and $greg as needed.
@@ -194,7 +200,7 @@ while ( $d <= $totaldays )
 
   # THE WORK HAPPENS HERE:  call the convert script for each day.
 
-  ./gpsro_to_obsseq.csh ${year}${month}${day} $datadir/${year}${month} \
+  ./my_gpsro_to_obsseq.csh ${year}${month}${day} $datadir/${year}${month} \
                          $do_download $do_convert $do_delete ./satlist
 
 
