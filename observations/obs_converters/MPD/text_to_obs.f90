@@ -42,7 +42,7 @@ character(len=*), parameter :: obs_out_file    = 'obs_seq.out'
 
 logical, parameter :: debug = .false.  ! set to .true. to print info
 
-character (len=*) :: input_line
+character (len=129) :: input_line
 
 integer :: oday, osec, rcio, iunit, otype
 integer :: year, month, day, hour, minute, second
