@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Driver script for the parallel version.  Submit this script
 # to your batch system and it will invoke the 'gpsro_to_obsseq.csh'
 # script once for each conversion day.
@@ -21,7 +19,7 @@
 #--------------------------------------------------------------
 
 #==========================================================================
-# SLRUM directives             sbatch script.csh
+# SLURM directives             sbatch script.csh
 #
 # sinfo     information about the whole slurm system
 # squeue    information about running jobs
@@ -35,7 +33,7 @@
 #SBATCH --time=00:10:00
 #SBATCH -A project
 #SBATCH -p dav
-#SBATCH -C caldera
+#SBATCH -C casper
 #SBATCH -e gpsobs1.%j.err
 #SBATCH -o gpsobs1.%j.out
 #
@@ -280,8 +278,4 @@ echo job ended at `date`
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 
