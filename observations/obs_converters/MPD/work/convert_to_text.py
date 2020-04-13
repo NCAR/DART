@@ -3,13 +3,13 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
+
 import numpy as np
 from netCDF4 import Dataset
 
 ccyy = 2019  ##date of data file
 mm = 6
 dd = 14
-otype = 1 ##defined in obs_kind_mod, index for MPD_ABSOLUTE_HUMIDITY
 n_sites = 5  ##number of MPD sites
 obs_err = 0.001 ###set observation error 1g/m3
 
@@ -37,6 +37,6 @@ for site in range(1, n_sites+1):
       if(dat_mask[t,z]==0 and dat[t,z]>=0):  ##QC mask and remove negative data
         textfile = "work/{:04d}{:02d}{:02d}{:02d}{:02d}".format(ccyy, mm, dd, hh, ii)
         f1 = open(textfile, "a")
-        string = "{:2d} {:9.5f} {:9.5f} {:8.1f} {:4d} {:02d} {:02d} {:02d} {:02d} {:02d} {:e} {:e}\n".format(otype, lat, lon, elev+zz[z], ccyy, mm, dd, hh, ii, 0, dat[t, z], obs_err)
+        string = "{:9.5f} {:9.5f} {:8.1f} {:4d} {:02d} {:02d} {:02d} {:02d} {:02d} {:e} {:e}\n".format(lat, lon, elev+zz[z], ccyy, mm, dd, hh, ii, 0, dat[t, z], obs_err)
         f1.write(string)
         f1.close()

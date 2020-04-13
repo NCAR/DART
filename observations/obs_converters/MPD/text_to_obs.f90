@@ -6,22 +6,22 @@ program text_to_obs
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   text_to_obs - a program that only needs minor customization to read
+!   MPD/text_to_obs - a program that only needs minor customization to read
 !      in a text-based dataset - either white-space separated values or
 !      fixed-width column data.
 !
-!     created 29 Mar 2010   nancy collins NCAR/IMAGe
-!     modified 20 Mar 2020  Michael Ying
+!     created 20 Mar 2020  Michael Ying
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 use         types_mod, only : r8, PI, DEG2RAD
 
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
-                              open_file, close_file
+                              open_file, close_file, error_handler, &
+                              E_ERR, E_WARN, E_MSG
 
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
-                              operator(>=), increment_time, get_time, &
+                              operator(>=), get_time, &
                               operator(-), GREGORIAN, operator(+), print_date
 
 use      location_mod, only : VERTISHEIGHT
@@ -33,18 +33,20 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
 
 use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
 
-use      obs_kind_mod, only : MPD_ABSOLUTE_HUMIDITY
+use      obs_kind_mod, only : get_num_quantities, MPD_ABSOLUTE_HUMIDITY
 
 implicit none
 
+character(len=*), parameter :: source = 'MPD/text_to_obs.f90'
 character(len=*), parameter :: text_input_file = 'text.txt'
 character(len=*), parameter :: obs_out_file    = 'obs_seq.out'
 
 logical, parameter :: debug = .false.  ! set to .true. to print info
 
-character (len=129) :: input_line
+character(len=129) :: input_line
+character(len=512) :: string1
 
-integer :: oday, osec, rcio, iunit, otype
+integer :: oday, osec, rcio, iunit, ilinecount
 integer :: year, month, day, hour, minute, second
 integer :: num_copies, num_qc, max_obs
 
@@ -59,9 +61,8 @@ type(time_type)         :: time_obs, prev_time
 
 ! start of executable code
 
-call initialize_utilities('text_to_obs')
+call initialize_utilities(source)
 
-! time setup
 call set_calendar_type(GREGORIAN)
 
 ! each observation in this series will have a single observation value
@@ -90,6 +91,14 @@ call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
 call set_copy_meta_data(obs_seq, 1, 'observation')
 call set_qc_meta_data(obs_seq, 1, 'Data QC')
 
+! This is sort of a do-nothing call to initialize the obs_kind_mod module.
+! The only real purpose of this call is to make obs_kind_mod print its
+! initialization report at the beginning of the output from text_to_obs.
+! Without this call, the initialization report actually comes AFTER all
+! the observations have been processed and right before the output file
+! is closed.  We do not actually need to know what is in string1.
+write(string1,*)' num_observations understood is ',get_num_quantities()
+
 ! if you want to append to existing files (e.g. you have a lot of
 ! small text files you want to combine), you can do it this way,
 ! or you can use the obs_sequence_tool to merge a list of files
@@ -105,6 +114,8 @@ call set_qc_meta_data(obs_seq, 1, 'Data QC')
 iunit = open_file(text_input_file, 'formatted', 'read')
 if (debug) print *, 'opened input file ' // trim(text_input_file)
 
+ilinecount = 1
+
 obsloop: do    ! no end limit - have the loop break when input ends
 
    ! read in a line from the text file.   What you need to create an obs:
@@ -114,42 +125,37 @@ obsloop: do    ! no end limit - have the loop break when input ends
    !  error: very important - the instrument error plus representativeness error
    !        (see html file for more info)
 
-   ! assume here a line is a type, location, time, value, obs error
-
    ! read in entire text line into a buffer
    read(iunit, "(A)", iostat=rcio) input_line
-   if (rcio /= 0) then
-      if (debug) print *, 'got bad read code from input file, rcio = ', rcio
+   if (rcio == 0) then
+      continue ! line read normally
+   elseif (rcio < 0) then ! Normal end-of-file
       exit obsloop
-   endif
-
-   ! pull off the first value as an integer, to decode the type
-   read(input_line, *, iostat=rcio) otype
-   if (rcio /= 0) then
-      if (debug) print *, 'got bad read code trying to get obs type, rcio = ', rcio
-      exit obsloop
-   endif
-
-   if (debug) print *, 'next observation type = ', otype
-
-   ! for this example, assume there is an obs type, where otype=1 is
-   ! abs humidity, the input text file has these as their own hardcoded convention.
-   if (otype == 1) then
-      read(input_line, *, iostat=rcio) otype, lat, lon, vert, &
-                                 year, month, day, hour, minute, second, &
-                                 abs_humid, terr
-      if (rcio /= 0) then
-         if (debug) print *, 'got bad read code getting rest of abs_humidity obs, rcio = ', rcio
-         exit obsloop
-      endif
    else
-      ! warning: no method defined to convert this type
-      write(*,*) "warning: no method defined to convert this type = ", otype
+      write(string1,*)'got bad read code from input file, rcio = ', rcio, &
+                      ', line number =',ilinecount
+      call error_handler(E_ERR,source,string1,text2='Hard Stop. No output.')
    endif
 
-   if (debug) print *, 'next observation located at lat, lon = ', lat, lon
+   ! the input text file has its own hardcoded convention for abs humidity
+   ! 'lat'  is degrees Latitude [-90,90]
+   ! 'lon'  is degrees East Longitude [0,360]
+   ! 'vert' is height in meters
+   ! 'terr' is the observation error STANDARD DEVIATION, this is converted into
+   !        units of variance inside DART. This should include both the instrument
+   !        error and an estimate of the representativeness error.  
 
-   ! check the lat/lon values to see if they are ok
+   read(input_line, *, iostat=rcio) lat, lon, vert, &
+                              year, month, day, hour, minute, second, &
+                              abs_humid, terr
+   if (rcio /= 0) then
+      write(string1,*)'Unable to parse line ',ilinecount,', rcio = ', rcio
+      call error_handler(E_ERR,source,string1)
+   endif
+
+   if (debug) print *, 'observation ',ilinecount,' located at lat, lon = ', lat, lon
+
+   ! skip any observations outside these bounds
    if ( lat >  90.0_r8 .or. lat <  -90.0_r8 ) cycle obsloop
    if ( lon <   0.0_r8 .or. lon >  360.0_r8 ) cycle obsloop
 
@@ -161,29 +167,23 @@ obsloop: do    ! no end limit - have the loop break when input ends
    ! extract time of observation into gregorian day, sec.
    call get_time(time_obs, osec, oday)
 
-   ! this example assumes there is an obs type, where otype=1 is
-   ! abs_humidity measured in height
-   if (otype == 1) then
+   ! make an obs derived type, and then add it to the sequence
+   call create_3d_obs(lat, lon, vert, VERTISHEIGHT, abs_humid, &
+                      MPD_ABSOLUTE_HUMIDITY, terr, oday, osec, qc, obs)
+   call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
-      ! height is in meters
-      ! make an obs derived type, and then add it to the sequence
-      call create_3d_obs(lat, lon, vert, VERTISHEIGHT, abs_humid, &
-                         MPD_ABSOLUTE_HUMIDITY, terr, oday, osec, qc, obs)
-      call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
-      if (debug) print *, 'added abs humidity obs to output seq'
+   if (debug) print *, 'added abs humidity obs to output seq'
 
-   else
-      ! no method defined to convert this type
-      write(*,*) 'warning: no method defined to convert this type = ', otype
-
-   endif
+   ilinecount = ilinecount + 1
 
 enddo obsloop
 
+call close_file(iunit)
+
 ! if we added any obs to the sequence, write it out to a file now.
 if ( get_num_obs(obs_seq) > 0 ) then
-   if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
-   print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
+   write(string1,*)'writing "'//trim(obs_out_file)//'", obs_count = ', get_num_obs(obs_seq)
+   call error_handler(E_MSG,source,string1)
    call write_obs_seq(obs_seq, obs_out_file)
 endif
 

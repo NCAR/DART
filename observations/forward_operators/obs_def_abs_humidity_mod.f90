@@ -3,7 +3,7 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 ! BEGIN DART PREPROCESS KIND LIST
-!MPD_ABSOLUTE_HUMIDITY,    QTY_ABSOLUTE_HUMIDITY
+!   MPD_ABSOLUTE_HUMIDITY,    QTY_ABSOLUTE_HUMIDITY
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -31,7 +31,10 @@
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
 ! BEGIN DART PREPROCESS MODULE CODE
+
 module obs_def_abs_humidity_mod
+
+! Module contributed by Michael Ying. Thank You Michael! 
 
 use        types_mod, only : r8, missing_r8, gas_constant, gas_constant_v
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, E_ALLMSG
@@ -42,7 +45,6 @@ use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_PRESSURE, QTY_VAPOR_MIXING_RAT
 
 use ensemble_manager_mod,  only : ensemble_type
 use obs_def_utilities_mod, only : track_status
-
 
 implicit none
 private
@@ -57,7 +59,7 @@ character(len=*), parameter :: revdate  = ''
 logical, save       :: module_initialized   = .false.
 logical, save       :: first_time_warn_low  = .true.
 logical, save       :: first_time_warn_high = .true.
-character(len=512)  :: msgstring
+character(len=512)  :: string1, string2
 real(r8), parameter :: MIN_VALUE = 0.0
 real(r8), parameter :: MAX_VALUE = 0.1
 
@@ -136,19 +138,19 @@ end where
 ! Warnings - first time only
 if (first_time_warn_low) then
    if (any(ah < MIN_VALUE .and. istatus == 0)) then
-      write(msgstring, *) 'checking absolute humidity value computed by the forward operator'
-      call error_handler(E_MSG,'get_expected_absolute_humidity', msgstring,      &
-                         text2='all values lower than 0 will be set to 0', &
-                         text3='this message will only print once')
+      write(string1, *) 'checking absolute humidity value computed by the forward operator'
+      write(string2,*)'all values lower than ',MIN_VALUE,' will be set to ',MIN_VALUE
+      call error_handler(E_MSG,'get_expected_absolute_humidity', string1, &
+                         text2=string2, text3='this message will only print once')
       first_time_warn_low = .false.
    endif
 endif
 if (first_time_warn_high) then
    if (any(ah > MAX_VALUE .and. istatus == 0)) then
-      write(msgstring, *) 'checking absolute humidity value computed by the forward operator'
-      call error_handler(E_MSG,'get_expected_absolute_humidity', msgstring,      &
-                         text2='all values larger than 0.1 will be set to 0.1', &
-                         text3='this message will only print once')
+      write(string1, *) 'checking absolute humidity value computed by the forward operator'
+      write(string2,*)'all values larger than ',MAX_VALUE,' will be set to ',MAX_VALUE
+      call error_handler(E_MSG,'get_expected_absolute_humidity', string1, &
+                         text2=string2, text3='this message will only print once')
       first_time_warn_high = .false.
    endif
 endif
