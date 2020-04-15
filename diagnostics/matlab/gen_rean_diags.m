@@ -20,7 +20,7 @@ view_format             = 'html';
 dont_show_code          = false ;
 fig_format              = 'png' ;
 
-path.scripts_dir        = '/Users/raeder/DAI/reanalysis_git/models/cam-fv/matlab';
+path.scripts_dir        = '/Users/raeder/DAI/reanalysis_git/diagnostics/matlab';
 path.diags_dir          = pwd;
 
 

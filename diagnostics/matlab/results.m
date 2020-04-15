@@ -11,7 +11,7 @@
 %
 % * Pressure layers (hPa): |999, 925, 831, 687, 525, 400, 312, 250, 200, 150,
 % 100, 55, 25, 8| 
-% * Height layers (m): |315, 750, 1405, 2775, 4675, 6560, 8285, 9830, 11410,
+% * Height layers (m): |200, 750, 1405, 2775, 4675, 6560, 8285, 9830, 11410,
 % 13470, 16435, 20890, 26525, 36245| 
 %
 % For each observation kind, the root-mean-squared-error (RMSE) is plotted
@@ -56,7 +56,8 @@ diag.types = {  'ACARS_TEMPERATURE'           , ...
 
 % styles:
 diag.style = {  'profile'                     , ...
-                'evolution'                     };
+                'evolution'                   , ...
+                'norm_profile'                  };
             
 % metrics: 
 diag.metric = { 'bias'                        , ...
@@ -180,24 +181,28 @@ invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
 var = diag.types{10};
 met = diag.metric{1};
 invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
+invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
 invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
 
 %% 10.b. *AIRS_SPECIFIC_HUMIDITY:* _totalspread_
 var = diag.types{10};
 met = diag.metric{2};
 invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
+invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
 invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
 
 %% 11.a. *GPSRO_REFRACTIVITY:* _bias_
 var = diag.types{11};
 met = diag.metric{1};
 invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
+invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
 invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
 
 %% 11.b. *GPSRO_REFRACTIVITY:* _totalspread_
 var = diag.types{11};
 met = diag.metric{2};
 invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
+invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
 invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
 
 %% 12.a. *LAND_SFC_ALTIMETER:* _bias_
@@ -270,12 +275,14 @@ invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
 var = diag.types{18};
 met = diag.metric{1};
 invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
+invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
 invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
 
 %% 18.b. *RADIOSONDE_SPECIFIC_HUMIDITY:* _totalspread_
 var = diag.types{18};
 met = diag.metric{2};
 invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
+invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
 invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
 
 %% 19.a. *SAT_U_WIND_COMPONENT:* _bias_

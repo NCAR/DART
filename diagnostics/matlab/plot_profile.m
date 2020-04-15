@@ -67,8 +67,6 @@ function plotdat = plot_profile(fname, copy, varargin)
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id$
 
 %%--------------------------------------------------------------------
 % Decode,Parse,Check the input
@@ -687,13 +685,31 @@ switch lower(phase)
         error('phase (%s) not supported',phase)
 end
 
-% Determine legend text
-nobs = sum(Nused);
-if ( nobs > 1 )
-    data_mean = mean(data(isfinite(data)));
-    legstr = sprintf('%s mean= %.5g', string1, data_mean);
+% determine legend text
+% reconstruct the 'grand' quantity from the timeseries as if
+% everything were pooled together from the beginning.
+
+finite_inds = isfinite(data);
+totalN      = sum(Nused);
+switch lower(plotdat.copystring)
+   case{'rmse','spread','totalspread'}
+        if totalN > 2 
+           % apply Bessel's correction to account for the fact we are estimating mean
+           squared = (data(finite_inds).^2) .* (Nused(finite_inds)-1);
+           grand   = sqrt(sum(squared)/(totalN-1)); 
+        end
+    otherwise
+        if ( totalN > 1 )
+           % simple weighted value
+           partial_sum = data(finite_inds) .* Nused(finite_inds);
+           grand       = sum(partial_sum)/totalN;
+        end
+end
+
+if totalN > 1
+    legstr = sprintf('%s grand %s = %.5g', string1, plotdat.copystring, grand);
 else
-    legstr = ' ';
+    legstr = 'no data';
 end
 
 h = line(data, plotdat.levels);
@@ -704,7 +720,3 @@ set(h, 'LineStyle',    linestyle, ...
     'MarkerFaceColor', color, ...
     'MarkerSize', figuredata.MarkerSize);
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$

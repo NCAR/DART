@@ -308,44 +308,20 @@ anl_copy = plotdat.anl_copy(plotdat.region,:);
 ges_rmse = plotdat.ges_rmse(plotdat.region,:);
 anl_rmse = plotdat.anl_rmse(plotdat.region,:);
 
+ges_Neval = plotdat.ges_Neval(plotdat.region,:);
 ges_Nposs = plotdat.ges_Nposs(plotdat.region,:);
 ges_Nused = plotdat.ges_Nused(plotdat.region,:);
 anl_Nused = plotdat.anl_Nused(plotdat.region,:);
 anl_Ngood = sum(anl_Nused);
 
-mean_pr_rmse = mean(ges_rmse(isfinite(ges_rmse)));
-fprintf('Layers mean of prior rmse = %.5g .\n',mean_pr_rmse)
+% Compute summary statistic 
 
-% KDR added to implement mean weighted by the number of obs at each level.
-% ! ! For Q and GPS these weighted means of profiles are using
-%     rmse and copy that have been normalized by the field average,
-%     making the values at high levels larger.  Is that the right thing to do?
-ges_Ngood = sum(ges_Nused);
-
-sq_err = ges_rmse(isfinite(ges_rmse)).^2 .* ges_Nused(isfinite(ges_rmse)) ;
-mean_pr_rmse = sqrt(sum(sq_err) ./ ges_Ngood );
-fprintf('Correct rmse of all obs = %.5g .\n',mean_pr_rmse)
-
-% original
-mean_pr_copy = mean(ges_copy(isfinite(ges_copy)));
-fprintf('Layers mean of prior %s = %.5g .\n',plotdat.copystring,mean_pr_copy)
-% Correct
-mean_pr_copy = sum(ges_copy(isfinite(ges_copy)) .* ges_Nused(isfinite(ges_rmse))) ./ ges_Ngood;
-fprintf('Correct %s of all obs = %.5g .\n',plotdat.copystring,mean_pr_copy)
-
-% KDR
-str_pr_rmse  = sprintf('obs avg %s pr = %.5g','rmse',            mean_pr_rmse);
-str_pr_copy  = sprintf('obs avg %s pr = %.5g',plotdat.copystring,mean_pr_copy);
-% end KDR
-
-% If the posterior is available, plot them too.
+str_pr_rmse = compute_grand(ges_rmse,ges_Nused,'rmse','pr');
+str_pr_copy = compute_grand(ges_copy,ges_Nused,plotdat.copystring,'pr');
 
 if anl_Ngood > 0
-% KDR This needs the same changes as the ges vars, above.
-    mean_po_rmse = mean(anl_rmse(isfinite(anl_rmse)));
-    mean_po_copy = mean(anl_copy(isfinite(anl_copy)));
-    str_po_rmse  = sprintf('%s po = %.5g','rmse',mean_po_rmse);
-    str_po_copy  = sprintf('%s po = %.5g',plotdat.copystring,mean_po_copy);
+    str_po_rmse = compute_grand(anl_rmse,anl_Nused,'rmse','po');
+    str_po_copy = compute_grand(anl_copy,anl_Nused,plotdat.copystring,'po');
 end
 
 % Plot the rmse and 'xxx' on the same (bottom) axis.
@@ -373,9 +349,6 @@ set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
 % KDR (log scale was set here, but moved to fix stripes)
 % This changes the scale, but the stripes are not taking account of the
 % extra space at the top for the legend, so they don't line up with the data levels.
-% Also, there are weird vertical axis grid lines; increasing spacing with height,
-% instead of decreasing.
-% KDR end
 % KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
 if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
    set(ax1,'YScale','log')
@@ -400,6 +373,8 @@ set(h2,'Color',       figuredata.copy_color, ...
     'LineWidth',      figuredata.linewidth, ...
     'MarkerSize',     figuredata.MarkerSize, ...
     'MarkerFaceColor',figuredata.copy_color)
+
+% add the posterior if it is available
 
 if anl_Ngood > 0
     h3 = line(anl_rmse,plotdat.levels);
@@ -426,7 +401,7 @@ else
     h = legend([h1,h2], str_pr_rmse, str_pr_copy);
 end
 
-set(h,'Interpreter','none','Box','off','Location','NorthWest')
+set(h,'Interpreter','none','Box','off','Location','NorthWest','TextColor','blue')
 
 if verLessThan('matlab','R2017a')
     % Convince Matlab to not autoupdate the legend with each new line.
@@ -505,7 +480,7 @@ set(get(ax1,'Xlabel'),'String',{plotdat.xlabel, plotdat.timespan}, ...
 
 % determine if the observation was flagged as 'evaluate' or 'assimilate'
 
-if sum(plotdat.ges_Neval(plotdat.region,:)) > 0
+if sum(ges_Neval) > 0
     string1 = sprintf('# of obs (o=possible; %s %s) x %d', ...
         '\ast=evaluated', plotdat.post_string, uint32(xscale));
 else
@@ -722,10 +697,6 @@ axis(axlims)
 
 xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
 
-% KDR 2019-10-29; missing the gray stripe at the bottom.
-%     2019-12-23; maybe fixed by setting lowest layer edge from 0 to 100
-%        which should work better in the vertical log scale.
-
 hold on;
 for i = 1:2:(length(edges)-1)
     yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
@@ -752,7 +723,32 @@ else
 end
 
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$
+%=====================================================================
+
+
+function [legstr, grand] = compute_grand(data,Nused,copystring,phase)
+
+finite_inds = isfinite(data);
+totalN      = sum(Nused);
+
+switch lower(copystring)
+    case {'rmse','spread','totalspread'}
+        if totalN > 2
+            % apply Bessel's correction to account for the fact we are estimating mean
+            squared = (data(finite_inds).^2) .* (Nused(finite_inds)-1);
+            grand   = sqrt(sum(squared)/(totalN-1));
+        end
+    otherwise
+        if ( totalN > 1 )
+            % simple weighted value
+            partial_sum = data(finite_inds) .* Nused(finite_inds);
+            grand       = sum(partial_sum)/totalN;
+        end
+end
+
+if totalN > 1
+    legstr = sprintf('%s grand %s = %.5g',phase,copystring,grand);
+else
+    legstr = 'no data';
+end
+

@@ -1,5 +1,5 @@
-function plotdat = plot_bias_xxx_profile(fname, copy, varargin)
-%% plot_bias_xxx_profile plots the vertical profile of the observation-space quantities for all possible levels, all possible variables.
+function plotdat = plot_rmse_xxx_norm_profile(fname, copy, varargin)
+%% plot_rmse_xxx_profile plots the vertical profile of the observation-space RMSE and any other quantity for all possible levels, all possible variables.
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.
@@ -19,7 +19,7 @@ function plotdat = plot_bias_xxx_profile(fname, copy, varargin)
 %       For TRUSTED observations, this is different than the number used to calculate
 %       bias, rmse, spread, etc.
 %
-% USAGE: plotdat = plot_bias_xxx_profile(fname, copy [,varargin]);
+% USAGE: plotdat = plot_rmse_xxx_norm_profile_web(fname, copy [,varargin]);
 %
 % fname    :  netcdf file produced by 'obs_diag'
 %
@@ -52,14 +52,14 @@ function plotdat = plot_bias_xxx_profile(fname, copy, varargin)
 %
 % fname   = 'obs_diag_output.nc';
 % copy    = 'totalspread';
-% plotdat = plot_bias_xxx_profile(fname, copy);
+% plotdat = plot_rmse_xxx_norm_profile_web(fname, copy);
 %
 % EXAMPLE 2: Just a single observation type.
 %
 % fname   = 'obs_diag_output.nc';
 % copy    = 'totalspread';
 % obsname = 'RADIOSONDE_U_WIND_COMPONENT';
-% plotdat = plot_bias_xxx_profile(fname, copy, 'obsname', obsname);
+% plotdat = plot_rmse_xxx_norm_profile_web(fname, copy, 'obsname', obsname);
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -120,7 +120,9 @@ end
 %---------------------------------------------------------------------
 
 plotdat = read_obsdiag_staticdata(fname,copy);
-plotdat.xlabel  = sprintf('bias (%s) and %s',plotdat.biasconv,copy);
+% KDR
+xlabel_basic =  sprintf('rmse and %s',copy);
+% plotdat.xlabel  = sprintf('rmse and %s',copy);
 
 % Either use all the variables or just the one optionally specified.
 if (nvars == 0)
@@ -181,6 +183,7 @@ for ivar = 1:plotdat.nvars
     % Matlab likes strictly ASCENDING order for the axes and ticks,
     % then you can impose the direction.
     
+% KDR set a flag to signal logorithmic scale here?
     if (plotdat.levels(1) > plotdat.levels(plotdat.nlevels))
         plotdat.YDir = 'reverse';
     else
@@ -223,8 +226,22 @@ for ivar = 1:plotdat.nvars
     plotdat.ges_Neval = priorQCs.num_evaluated;
     plotdat.ges_Nposs = priorQCs.nposs;
     plotdat.ges_Nused = priorQCs.nused;
-    plotdat.ges_bias  = guess(:,:,plotdat.biasindex);
-    plotdat.ges_copy  = guess(:,:,plotdat.copyindex);
+    plotdat.ges_mean  = guess(:,:,plotdat.meanindex);
+
+% The varnames are up to 32 characters, but the blanks have been stripped.
+% Add them back, in order to do a nonhardwired test.
+    var = pad(plotdat.myvarname,32);
+    if (all(char(var) == 'GPSRO_REFRACTIVITY              ') || ...
+        all(char(var) == 'AIRS_SPECIFIC_HUMIDITY          ') || ...
+        all(char(var) == 'RADIOSONDE_SPECIFIC_HUMIDITY    ') )
+       plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex) ./ guess(:,:,plotdat.meanindex);
+       plotdat.ges_copy  = guess(:,:,plotdat.copyindex) ./ guess(:,:,plotdat.meanindex);
+       plotdat.xlabel  = sprintf('%s, normalized by layer mean',xlabel_basic);
+    else
+       plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex);
+       plotdat.ges_copy  = guess(:,:,plotdat.copyindex);
+       plotdat.xlabel  = xlabel_basic;
+    end
     
     if ( sum(plotdat.ges_Nposs(:)) < 1 )
         fprintf('no obs for %s...  skipping\n', plotdat.varnames{ivar})
@@ -236,11 +253,11 @@ for ivar = 1:plotdat.nvars
             'fatal', false, ...
             'verbose', verbose);
         plotdat.anl_Nused = posteQCs.nused;
-        plotdat.anl_bias  = analy(:,:,plotdat.biasindex);
+        plotdat.anl_rmse  = analy(:,:,plotdat.rmseindex);
         plotdat.anl_copy  = analy(:,:,plotdat.copyindex);
     else
         plotdat.anl_Nused = zeros(size(plotdat.ges_Nused));
-        plotdat.anl_bias  = plotdat.ges_bias;  % needed for determining limits
+        plotdat.anl_rmse  = plotdat.ges_rmse;  % needed for determining limits
         plotdat.anl_copy  = plotdat.ges_copy;  % needed for determining limits
     end
     
@@ -251,8 +268,11 @@ for ivar = 1:plotdat.nvars
     % plot by region - each in its own figure.
     
     for iregion = 1:plotdat.nregions
-        figure(iregion);
-        clf(iregion);
+% KDR
+%         figure(iregion);
+%         clf(iregion);
+%         orient(figuredata.orientation);
+        figure('pos', [100, 100, 830, 760]) %figure(iregion);
         orient(figuredata.orientation);
         plotdat.region   = iregion;
         plotdat.myregion = deblank(plotdat.region_names(iregion,:));
@@ -260,15 +280,25 @@ for ivar = 1:plotdat.nvars
         myplot(plotdat);
         
         BottomAnnotation(fname)
-        
-        psfname = sprintf('%s_bias_%s_profile_region%d', ...
-            plotdat.varnames{ivar}, plotdat.copystring, iregion);
-        
-        if verLessThan('matlab','R2016a')
-            print(gcf, '-dpdf', psfname);
+% KDR added normalization option        
+        var = pad(plotdat.myvarname,32);
+        if (all(char(var) == 'GPSRO_REFRACTIVITY              ') || ...
+            all(char(var) == 'AIRS_SPECIFIC_HUMIDITY          ') || ...
+            all(char(var) == 'RADIOSONDE_SPECIFIC_HUMIDITY    ') )
+           psfname = sprintf('%s_rmse_%s_norm_profile_region%d', ...
+               plotdat.varnames{ivar}, plotdat.copystring, iregion);
         else
-            print(gcf, '-dpdf', '-bestfit', psfname);
+           psfname = sprintf('%s_rmse_%s_profile_region%d', ...
+               plotdat.varnames{ivar}, plotdat.copystring, iregion);
         end
+        
+% But we don't need these ps (and pdf) files because I'll generate better ones
+% (for my purposes).
+%        if verLessThan('matlab','R2016a')
+%            print(gcf, '-dpdf', psfname);
+%        else
+%            print(gcf, '-dpdf', '-bestfit', psfname);
+%        end
         
         % block to go slow and look at each one ...
         if (p.Results.pause)
@@ -290,8 +320,8 @@ global figuredata
 
 ges_copy = plotdat.ges_copy(plotdat.region,:);
 anl_copy = plotdat.anl_copy(plotdat.region,:);
-ges_bias = plotdat.ges_bias(plotdat.region,:);
-anl_bias = plotdat.anl_bias(plotdat.region,:);
+ges_rmse = plotdat.ges_rmse(plotdat.region,:);
+anl_rmse = plotdat.anl_rmse(plotdat.region,:);
 
 ges_Neval = plotdat.ges_Neval(plotdat.region,:);
 ges_Nposs = plotdat.ges_Nposs(plotdat.region,:);
@@ -299,17 +329,17 @@ ges_Nused = plotdat.ges_Nused(plotdat.region,:);
 anl_Nused = plotdat.anl_Nused(plotdat.region,:);
 anl_Ngood = sum(anl_Nused);
 
-str_pr_bias = compute_grand(ges_bias,ges_Nused,'bias','pr');
+% Compute summary statistic 
+
+str_pr_rmse = compute_grand(ges_rmse,ges_Nused,'rmse','pr');
 str_pr_copy = compute_grand(ges_copy,ges_Nused,plotdat.copystring,'pr');
 
-% If the posterior is available, plot them too.
-
 if anl_Ngood > 0
-   str_po_bias = compute_grand(anl_bias,anl_Nused,'bias','po');
-   str_po_copy = compute_grand(anl_copy,anl_Nused,plotdat.copystring,'po');
+    str_po_rmse = compute_grand(anl_rmse,anl_Nused,'rmse','po');
+    str_po_copy = compute_grand(anl_copy,anl_Nused,plotdat.copystring,'po');
 end
 
-% Plot the bias and 'xxx' on the same (bottom) axis.
+% Plot the rmse and 'xxx' on the same (bottom) axis.
 % The observation count will use the axis on the top.
 % Ultimately, we want to suppress the 'auto' feature of the
 % axis labelling, so we manually set some values that normally
@@ -318,15 +348,31 @@ end
 ax1 = subplot('position',figuredata.position);
 orient(figuredata.orientation)
 
-% add type of vertical coordinate info for adjusting axes to accomodate legend
+% KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
+var = pad(plotdat.myvarname,32);
+if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
+   set(ax1,'YScale','log')
+end
+ax1;
+
+% add type of vertical coordinate info for adjusting axes to accommodate legend
 
 Stripes(plotdat.Xrange, plotdat.level_edges, plotdat.level_units);
 set(ax1, 'YDir', plotdat.YDir, 'YTick', plotdat.YTick, 'Layer', 'top')
 set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
 
+% KDR (log scale was set here, but moved to fix stripes)
+% This changes the scale, but the stripes are not taking account of the
+% extra space at the top for the legend, so they don't line up with the data levels.
+% KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
+if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
+   set(ax1,'YScale','log')
+end
+ax1;
+
 % draw the result of the experiment
 
-h1 = line(ges_bias,plotdat.levels);
+h1 = line(ges_rmse,plotdat.levels);
 h2 = line(ges_copy,plotdat.levels);
 
 set(h1,'Color',       figuredata.rmse_color, ...
@@ -346,7 +392,7 @@ set(h2,'Color',       figuredata.copy_color, ...
 % add the posterior if it is available
 
 if anl_Ngood > 0
-    h3 = line(anl_bias,plotdat.levels);
+    h3 = line(anl_rmse,plotdat.levels);
     h4 = line(anl_copy,plotdat.levels);
     
     set(h3,'Color',       figuredata.rmse_color, ...
@@ -363,14 +409,14 @@ if anl_Ngood > 0
         'MarkerSize',     figuredata.MarkerSize, ...
         'MarkerFaceColor',figuredata.copy_color)
     
-    h = legend([h1,h3,h2,h4], str_pr_bias, str_po_bias, ...
+    h = legend([h1,h3,h2,h4], str_pr_rmse, str_po_rmse, ...
         str_pr_copy, str_po_copy);
 else
     
-    h = legend([h1,h2], str_pr_bias, str_pr_copy);
+    h = legend([h1,h2], str_pr_rmse, str_pr_copy);
 end
 
-set(h,'Interpreter','none','Box','off','Location','NorthWest')
+set(h,'Interpreter','none','Box','off','Location','NorthWest','TextColor','blue')
 
 if verLessThan('matlab','R2017a')
     % Convince Matlab to not autoupdate the legend with each new line.
@@ -411,6 +457,9 @@ ax2 = axes('position',get(ax1,'Position'), ...
     'YLim',get(ax1,'YLim'), ...
     'YDir',get(ax1,'YDir'), ...
     'FontSize',get(ax1,'FontSize'));
+if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
+   set(ax2,'YScale','log')
+end
 
 ax2h1 = line(ges_Nposs, plotdat.levels, 'Parent', ax2);
 ax2h2 = line(ges_Nused, plotdat.levels, 'Parent', ax2);
@@ -591,7 +640,7 @@ function x = FindRange(y)
 %
 % If the numbers are very small ...
 
-bob  = [y.ges_copy(:) ; y.ges_bias(:); y.anl_copy(:) ; y.anl_bias(:)];
+bob  = [y.ges_copy(:) ; y.ges_rmse(:); y.anl_copy(:) ; y.anl_rmse(:)];
 inds = find(isfinite(bob));
 
 if ( isempty(inds) )
@@ -616,13 +665,6 @@ else
     end
     
     Yrange = [ymin ymax];
-    
-    % Make sure a zero bias is visible on plot
-    if  ymax < 0
-        Yrange = [ ymin 0.0 ];
-    elseif  ymin > 0
-        Yrange = [ 0.0 ymax ];
-    end
     
     x = sort([min([Yrange(1) 0.0]) Yrange(2)] ,'ascend');
 end
@@ -650,15 +692,16 @@ function h = Stripes(x,edges,units)
 
 h = plot([min(x) max(x)],[min(edges) max(edges)]);
 axlims          = axis;
-legend_fraction = 0.22;
 
 % partial fix to legend space; add in option for vert coord = height.
 
 switch lower(units)
     case 'hpa'
+        legend_fraction = 0.22;
         axlims(4) = max(edges);
         axlims(3) = min(edges) - legend_fraction*(axlims(4)-min(edges));
     case 'm'
+        legend_fraction = 0.42;
         axlims(3) = min(edges);
         axlims(4) = max(edges) + legend_fraction*(max(edges)-axlims(3));
     otherwise
@@ -685,8 +728,7 @@ set(h,'Visible','off') % make the dots invisible
 
 function value = local_ncread(fname,varname)
 %% If the variable exists in the file, return the contents of the variable.
-% if the variable does not exist, return empty value instead of error-ing
-% out.
+% if the variable does not exist, return empty value instead of error-ing out.
 
 [variable_present, ~] = nc_var_exists(fname,varname);
 if (variable_present)
@@ -705,22 +747,23 @@ finite_inds = isfinite(data);
 totalN      = sum(Nused);
 
 switch lower(copystring)
-   case {'rmse','spread','totalspread'}
-      if totalN > 2
-           % apply Bessel's correction to account for the fact we are estimating mean
-           squared = (data(finite_inds).^2) .* (Nused(finite_inds)-1);
-           grand   = sqrt(sum(squared)/(totalN-1));
-   otherwise
+    case {'rmse','spread','totalspread'}
+        if totalN > 2
+            % apply Bessel's correction to account for the fact we are estimating mean
+            squared = (data(finite_inds).^2) .* (Nused(finite_inds)-1);
+            grand   = sqrt(sum(squared)/(totalN-1));
+        end
+    otherwise
         if ( totalN > 1 )
-           % simple weighted value
-           partial_sum = data(finite_inds) .* Nused(finite_inds);
-           grand       = sum(partial_sum)/totalN;
+            % simple weighted value
+            partial_sum = data(finite_inds) .* Nused(finite_inds);
+            grand       = sum(partial_sum)/totalN;
         end
 end
 
 if totalN > 1
-   legstr = sprintf('%s grand %s = %.5g',phase,copystring,grand);
+    legstr = sprintf('%s grand %s = %.5g',phase,copystring,grand);
 else
-   legstr = 'no data';
+    legstr = 'no data';
 end
 

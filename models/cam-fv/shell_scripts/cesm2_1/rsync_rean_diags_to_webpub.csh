@@ -11,6 +11,9 @@
 
 set MACHINE=webpub.ucar.edu
 set MACHINEDIR=/test/image/pub/DART/Reanalysis
+# The web page where goes first is
+# https://test.www.image.ucar.edu/pub/DART/Reanalysis
+# but I must be connected via VPN.
 
 # The last directory in LOCALDIR must be the one created by "gen_rean_diags.m" 
 # Make sure there is no trailing '/' on LOCALDIR or MACHINEDIR

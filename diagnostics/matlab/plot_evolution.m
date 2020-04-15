@@ -82,8 +82,6 @@ function plotdat = plot_evolution(fname, copy, varargin)
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id$
 
 default_obsname    = 'none';
 default_verbosity  = true;
@@ -358,6 +356,12 @@ else
     h.AutoUpdate = 'off';
 end
 
+% reorder the legend so it is 'on top', which seems to give
+% it a bit more space too ... more legible.
+ax = get(gcf,'children');
+ind = find(isgraphics(ax,'Legend'));
+set(gcf,'children',ax([ind:end,1:ind-1]))
+
 if verbose
     fprintf('region %d %s level %d nobs_poss %d prior %d poste %d\n', ...
         plotdat.region, plotdat.myvarname, plotdat.mylevel, ...
@@ -621,12 +625,32 @@ switch lower(phase)
         error('phase (%s) not supported',phase)
 end
 
-% Determine legend text
-if sum(Nused(:)) > 1
-    data_mean = mean(data(isfinite(data)));
-    legstr = sprintf('%s mean = %.5g', string1, data_mean);
+% determine legend text
+% reconstruct the 'grand' quantity from the timeseries as if
+% everything were pooled together from the beginning.
+
+finite_inds = isfinite(data);
+totalN      = sum(Nused);
+grand       = [];
+switch lower(plotdat.copystring)
+    case {'rmse','spread','totalspread'}
+        if totalN > 2
+           % apply Bessel's correction to account for the fact we are estimating mean
+           squared = (data(finite_inds).^2) .* (Nused(finite_inds)-1);
+           grand   = sqrt(sum(squared)/(totalN-1));
+        end
+    otherwise
+        if totalN > 1
+           % simple weighted value
+           partial_sum = data(finite_inds) .* Nused(finite_inds);
+           grand       = sum(partial_sum)/totalN;
+        end
+end
+
+if totalN > 1
+    legstr = sprintf('%s grand %s = %.5g', string1, plotdat.copystring, grand);
 else
-    legstr = ' ';
+    legstr = 'no data';
 end
 
 h = line(plotdat.bincenters,data);
@@ -637,7 +661,3 @@ set(h, 'LineStyle',    linestyle, ...
     'MarkerFaceColor', color, ...
     'MarkerSize', figuredata.MarkerSize);
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$
