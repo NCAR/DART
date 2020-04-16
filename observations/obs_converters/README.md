@@ -4,7 +4,7 @@ DART Observations
 =================
 
 ---
-![DART project logo](https://github.com/NCAR/DART/tree/Manhattan/docs/images/Dartboard7.png){height="70"}
+![DART project logo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
 ---
 
 [OVERVIEW](#Overview) / [DATA SOURCES](#datasourcesandformats) /
@@ -262,8 +262,6 @@ locations. For observations of a real-world system, the 3D Sphere is
 generally the best choice. For low-order, 1D models, the 1D locations
 are the most commonly used. The observation locations need to match the
 type of locations used in the model.
-
-[]{#Programs}
 
 <div class="top">
 
