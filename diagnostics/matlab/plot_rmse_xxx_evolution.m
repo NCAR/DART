@@ -81,8 +81,6 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id$
 
 default_obsname    = 'none';
 default_verbosity  = true;
@@ -156,6 +154,12 @@ figuredata.MarkerSize = p.Results.MarkerSize;
 figuredata.DateForm   = p.Results.DateForm;
 verbose               = p.Results.verbose;
 
+% KDR Put the 3 figures in spread out positions, with optimal size.
+x1 = [1,485,960];
+dx = [484,474,474];
+y1 = [100,100,100];
+dy = [650,650,650];
+
 %%---------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
 %----------------------------------------------------------------------
@@ -212,24 +216,29 @@ for ivar = 1:plotdat.nvars
     [dimnames, ~] = nc_var_dims(fname, plotdat.guessvar);
     
     if ( plotdat.dimensionality == 1 ) % observations on a unit circle, no level
-        plotdat.level = 1;
+        plotdat.varlevels   = 1;
+        plotdat.level       = 1;
         plotdat.level_units = [];
     elseif ( strfind(dimnames{2},'surface') > 0 )
+        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'surface';
     elseif ( strfind(dimnames{2},'undef') > 0 )
+        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'undefined';
     else
-        plotdat.level       = ncread(fname, dimnames{2});
+        plotdat.varlevels   = ncread(fname, dimnames{2});
         plotdat.level_units = nc_read_att(fname, dimnames{2}, 'units');
-        nlevels             = length(plotdat.level);
+        nlevels             = length(plotdat.varlevels);
         if (p.Results.level < 0 )
             % use all the levels
+            plotdat.level   = 1:nlevels;
         elseif (p.Results.level > 0 && p.Results.level < nlevels)
-            plotdat.level   = p.Results.level;
+            plotdat.level   = round(p.Results.level);
         else
-            error('%d is not a valid level for %s',p.Results.level,plotdat.guessvar)
+            str1 = sprintf('valid level values are 1 <= %d',nlevels);
+            error('%s\n%f is not a valid level for %s\n',str1,p.Results.level,plotdat.guessvar)
         end
     end
     
@@ -249,26 +258,25 @@ for ivar = 1:plotdat.nvars
     end
     
     for ilevel = 1:length(plotdat.level)
-        
         priorQCs = get_qc_values(fname, plotdat.guessvar, ...
-            'levelindex', ilevel, ...
+            'levelindex', plotdat.level(ilevel), ...
             'fatal', false, ...
             'verbose', verbose);
-        plotdat.mylevel   = ilevel;
+        plotdat.mylevel   = plotdat.level(ilevel);
         plotdat.ges_Neval = priorQCs.num_evaluated;
         plotdat.ges_Nposs = priorQCs.nposs;
         plotdat.ges_Nused = priorQCs.nused;
-        plotdat.ges_copy  = guess(:,ilevel,plotdat.copyindex,:);
-        plotdat.ges_rmse  = guess(:,ilevel,plotdat.rmseindex,:);
+        plotdat.ges_copy  = guess(:,plotdat.mylevel,plotdat.copyindex,:);
+        plotdat.ges_rmse  = guess(:,plotdat.mylevel,plotdat.rmseindex,:);
         
         if (has_posterior)
             posteQCs = get_qc_values(fname, plotdat.analyvar, ...
-                'levelindex', ilevel, ...
+                'levelindex', plotdat.mylevel, ...
                 'fatal', false, ...
                 'verbose', verbose);
             plotdat.anl_Nused = posteQCs.nused;
-            plotdat.anl_copy  = analy(:,ilevel,plotdat.copyindex,:);
-            plotdat.anl_rmse  = analy(:,ilevel,plotdat.rmseindex,:);
+            plotdat.anl_copy  = analy(:,plotdat.mylevel,plotdat.copyindex,:);
+            plotdat.anl_rmse  = analy(:,plotdat.mylevel,plotdat.rmseindex,:);
         else
             plotdat.anl_Nused = zeros(size(plotdat.ges_Nused));
             plotdat.anl_copy  = plotdat.ges_copy;  % needed for determining limits
@@ -286,7 +294,13 @@ for ivar = 1:plotdat.nvars
         % plot each region, each level to a separate figure
         
         for iregion = 1:plotdat.nregions
-            figure(iregion); clf(iregion); orient(figuredata.orientation);
+% KDR
+% Tim's technique (lower left corner x,y,  x-dim, y-dim)
+            fig_h = figure(iregion);
+	    fig_h.Position = [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]; 
+            clf(iregion); orient(figuredata.orientation);
+% Orig
+%            figure(iregion); clf(iregion); orient(figuredata.orientation);
             
             plotdat.region   = iregion;
             plotdat.myregion = deblank(plotdat.region_names(iregion,:));
@@ -294,8 +308,8 @@ for ivar = 1:plotdat.nvars
                 plotdat.title = plotdat.myvarname;
             else
                 plotdat.title = sprintf('%s @ %d %s',    ...
-                    plotdat.myvarname,     ...
-                    plotdat.level(ilevel), ...
+                    plotdat.myvarname,     ... 
+                    round(plotdat.varlevels(plotdat.mylevel)), ...
                     plotdat.level_units);
             end
             
@@ -308,6 +322,11 @@ for ivar = 1:plotdat.nvars
                 print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
             end
             
+            % KDR attempt to slow down the stream of pictures when there's something to see,
+            % without needing to hit a key to continue.
+            if any(plotdat.ges_Nused(:,plotdat.region))
+              pause(3);
+            end
             % block to go slow and look at each one ...
             if (p.Results.pause)
                 disp('Pausing, hit any key to continue ...')
@@ -341,7 +360,8 @@ anl_Ngood = sum(anl_Nused);
 [hother, legstr_other] = plot_quantity(plotdat.copystring, plotdat);
 
 h  = legend([hrmse,hother], legstr_rmse, legstr_other);
-set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize)
+set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize, ...
+    'TextColor','blue','Color','k')
 
 if verLessThan('matlab','R2017a')
     % Convince Matlab to not autoupdate the legend with each new line.
@@ -357,6 +377,12 @@ if verbose
         sum(ges_Nposs), sum(ges_Nused), anl_Ngood)
     fprintf('%s; %s\n\n', legstr_rmse, legstr_other)
 end
+
+% reorder the legend so it is 'on top', which seems to give
+% it a bit more space too ... more legible.
+ax = get(gcf,'children');
+ind = find(isgraphics(ax,'Legend'));
+set(gcf,'children',ax([ind:end,1:ind-1]))
 
 % Attempt to make plotting robust in the face of 'empty' bins.
 % The bincenters variable has all the temporal bins specified,
@@ -444,7 +470,6 @@ else
     string1 = ['# of obs: o=possible; \ast=assimilated' plotdat.post_string];
 end
 set(get(ax2,'Ylabel'), 'String', string1, 'FontSize', figuredata.fontsize)
-
 
 %=====================================================================
 
@@ -597,35 +622,86 @@ function [h, legstr] = plot_quantity(quantity, plotdat)
 
 global figuredata
 
+ges_Nused = squeeze(plotdat.ges_Nused(plotdat.region,:,:,:));
+ges_Nposs = sum(ges_Nused);
 anl_Nused = squeeze(plotdat.anl_Nused(plotdat.region,:,:,:));
 anl_Nposs = sum(anl_Nused);
 
+grand_prior     = NaN;
+grand_posterior = NaN;
+
+% A long way to go to plot a summary statistic
+% reconstruct the 'grand' quantity from the timeseries as if
+% everything were pooled together from the beginning.
+
 switch lower(quantity)
     case 'rmse'
-        
-        prior          = squeeze(plotdat.ges_rmse(plotdat.region,:,:,:));
-        posterior      = squeeze(plotdat.anl_rmse(plotdat.region,:,:,:));
-        mean_prior     = mean(    prior(isfinite(    prior)));
-        mean_posterior = mean(posterior(isfinite(posterior)));
-        
+       
         color     = figuredata.rmse_color;
         marker    = figuredata.marker1;
-        linestyle = figuredata.solid;
-        linewidth = figuredata.linewidth;
+
+        prior     = squeeze(plotdat.ges_rmse(plotdat.region,:,:,:));
+        posterior = squeeze(plotdat.anl_rmse(plotdat.region,:,:,:));
+        finite_inds_prior     = isfinite(prior);
+        finite_inds_posterior = isfinite(posterior);
+
+        % apply Bessel's correction to account for the fact we are estimating mean
+        if  ges_Nposs > 1 
+           squared_error_prior = (prior(finite_inds_prior).^2) .* (ges_Nused(finite_inds_prior)-1);
+           grand_prior = sqrt(sum(squared_error_prior)/(ges_Nposs-1));
+        end
         
+        if  anl_Nposs > 1 
+           squared_error_posterior = (posterior(finite_inds_posterior).^2) .* (anl_Nused(finite_inds_posterior)-1);
+           grand_posterior = sqrt(sum(squared_error_posterior)/(anl_Nposs-1));
+        end
+
+    case {'spread','totalspread'}
+       
+        color     = figuredata.copy_color;
+        marker    = figuredata.marker2;
+
+        prior     = squeeze(plotdat.ges_copy(plotdat.region,:,:,:));
+        posterior = squeeze(plotdat.anl_copy(plotdat.region,:,:,:));
+        finite_inds_prior     = isfinite(prior);
+        finite_inds_posterior = isfinite(posterior);
+
+        % apply Bessel's correction to account for the fact we are estimating mean
+        if  ges_Nposs > 1 
+           squared_error_prior = (prior(finite_inds_prior).^2) .* (ges_Nused(finite_inds_prior)-1);
+           grand_prior = sqrt(sum(squared_error_prior)/(ges_Nposs-1));
+        end
+        
+        if  anl_Nposs > 1 
+           squared_error_posterior = (posterior(finite_inds_posterior).^2) .* (anl_Nused(finite_inds_posterior)-1);
+           grand_posterior = sqrt(sum(squared_error_posterior)/(anl_Nposs-1));
+        end
+
     otherwise
-        
-        prior          = squeeze(plotdat.ges_copy(plotdat.region, :,:,:));
-        posterior      = squeeze(plotdat.anl_copy(plotdat.region, :,:,:));
-        mean_prior     = mean(    prior(isfinite(    prior)));
-        mean_posterior = mean(posterior(isfinite(posterior)));
+
+        % simple weighted value
         
         color     = figuredata.copy_color;
         marker    = figuredata.marker2;
-        linestyle = figuredata.solid;
-        linewidth = figuredata.linewidth;
+
+        prior     = squeeze(plotdat.ges_copy(plotdat.region,:,:,:));
+        posterior = squeeze(plotdat.anl_copy(plotdat.region,:,:,:));
+        finite_inds_prior     = isfinite(prior);
+        finite_inds_posterior = isfinite(posterior);
+
+        if  ges_Nposs > 0 
+           prior_total = prior(finite_inds_prior) .* ges_Nused(finite_inds_prior);
+           grand_prior = sum(prior_total)/ges_Nposs;
+        end
         
+        if  anl_Nposs > 0 
+           posterior_total = posterior(finite_inds_posterior) .* anl_Nused(finite_inds_posterior);
+           grand_posterior = sum(posterior_total)/anl_Nposs;
+        end
 end
+
+linestyle = figuredata.solid;
+linewidth = figuredata.linewidth;
 
 % If the posterior is available, interlace to make a sawtooth plot
 % and create meaningful legend strings
@@ -633,11 +709,11 @@ end
 if  anl_Nposs > 0
     data = reshape([prior              posterior         ]',2*plotdat.Nbins,1);
     t    = reshape([plotdat.bincenters plotdat.bincenters]',2*plotdat.Nbins,1);
-    legstr = sprintf('%s pr=%.5g, po=%.5g',quantity, mean_prior, mean_posterior);
+    legstr = sprintf('%s grand pr = %.5g, po = %.5g',quantity, grand_prior, grand_posterior);
 else
     data = prior;
     t    = plotdat.bincenters;
-    legstr = sprintf('%s pr=%.5g',quantity, mean_prior);
+    legstr = sprintf('%s grand pr = %.5g',quantity, grand_prior);
 end
 
 h = line(t,data);
@@ -648,7 +724,3 @@ set(h, 'LineStyle',    linestyle, ...
     'MarkerFaceColor', color, ...
     'MarkerSize', figuredata.MarkerSize);
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$

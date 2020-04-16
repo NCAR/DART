@@ -32,6 +32,9 @@ plotdat.biasconv      = nc_read_att(fname, '/', 'bias_convention');
 plotdat.copyindex     = get_copy_index(fname,copy);
 plotdat.rmseindex     = get_copy_index(fname,'rmse');
 plotdat.biasindex     = get_copy_index(fname,'bias');
+% KDR
+plotdat.meanindex     = get_copy_index(fname,'ens_mean');
+
 
 % Coordinate between time types and dates
 
