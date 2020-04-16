@@ -2,11 +2,11 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-program text_to_obs
+program MPD_text_to_obs
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   MPD/text_to_obs - a program that only needs minor customization to read
+!   MPD/MPD_text_to_obs - a program that only needs minor customization to read
 !      in a text-based dataset - either white-space separated values or
 !      fixed-width column data.
 !
@@ -37,7 +37,7 @@ use      obs_kind_mod, only : get_num_quantities, MPD_ABSOLUTE_HUMIDITY
 
 implicit none
 
-character(len=*), parameter :: source = 'MPD/text_to_obs.f90'
+character(len=*), parameter :: source = 'MPD_text_to_obs.f90'
 character(len=*), parameter :: text_input_file = 'text.txt'
 character(len=*), parameter :: obs_out_file    = 'obs_seq.out'
 
@@ -93,7 +93,7 @@ call set_qc_meta_data(obs_seq, 1, 'Data QC')
 
 ! This is sort of a do-nothing call to initialize the obs_kind_mod module.
 ! The only real purpose of this call is to make obs_kind_mod print its
-! initialization report at the beginning of the output from text_to_obs.
+! initialization report at the beginning of the output from MPD_text_to_obs.
 ! Without this call, the initialization report actually comes AFTER all
 ! the observations have been processed and right before the output file
 ! is closed.  We do not actually need to know what is in string1.
@@ -190,4 +190,4 @@ endif
 ! end of main program
 call finalize_utilities()
 
-end program text_to_obs
+end program MPD_text_to_obs

@@ -4,9 +4,9 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-     ../../../../build_templates/mkmf -p text_to_obs \
+     ../../../../build_templates/mkmf -p MPD_text_to_obs \
  -t  ../../../../build_templates/mkmf.template \
- -a "../../../.." path_names_text_to_obs
+ -a "../../../.." path_names_MPD_text_to_obs
 
 exit $status
 

@@ -850,7 +850,7 @@ There are lots of ways to define an observation sequence that DART can
 use as input for a perfect model experiment. If you have observations in
 DART format already, you can simply use them. If you have observations
 in one of the formats already supported by the DART converters
-(check [DART/observations/obs_converters/observations.html](obs_converters_observations.html)),
+(check [DART/observations/obs_converters/README.md](obs_converters/README.md)),
 convert it to a DART observation sequence. You may need to use the
 [obs_sequence_tool](../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html)
 to combine multiple observation sequence files into observation sequence
