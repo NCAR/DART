@@ -306,6 +306,24 @@ logical :: no_normalization_of_scale_heights = .true.
 ! for regional MPAS
 real(r8) :: dxmax  ! max distance between two adjacent cell centers in the mesh (in meters)
 
+! when updating boundary files for regional mpas, note whether the boundary
+! file has the reconstructed winds (lbc_ur, lbc_vr) or not. (this is set by
+! looking at the bdy template file and seeing if those variables are there.)  
+! if not, the other two options are ignored.  
+! if they are in the lbc file, then the other logicals control whether to use 
+! them instead of updating the U edge winds directly, and whether to use the 
+! reconstructed increments or not. 
+! the latter two options could be added to the namelist if someone wanted to
+! explore the options for how the edge winds are updated in the boundary file.
+! for now they're not - they're hardcoded true.
+! note that these are for the boundary file update only - there are separate
+! options for how to update the U winds in the main assimilation state.
+
+logical :: lbc_file_has_reconstructed_winds     = .false.  
+logical :: lbc_update_from_reconstructed_winds = .true.
+logical :: lbc_update_winds_from_increments    = .true.
+
+
 namelist /model_nml/             &
    init_template_filename,       &
    vert_localization_coord,      &
@@ -596,6 +614,11 @@ call error_handler(E_MSG,routine,string1,source,revision,revdate)
 
 ncid = nc_open_file_readonly(init_template_filename, routine)
 
+! move this up - some of the routines below depend on having
+! the variable table parsed already, and U added if needed.
+call verify_state_variables( mpas_state_variables, ncid, init_template_filename, &
+                             nfields, variable_table)
+
 ! get sizes
 call read_grid_dims(ncid)
 
@@ -615,7 +638,7 @@ allocate(xVertex(nVertices), yVertex(nVertices), zVertex(nVertices))
 
 ! see if U is in the state vector list.  if not, don't read in or
 ! use any of the Edge arrays to save space.
-data_on_edges = is_edgedata_in_state_vector(mpas_state_variables)
+data_on_edges = is_edgedata_in_state_vector(variable_table, lbc_variables)
 
 if(data_on_edges) then
    allocate(zGridEdge(nVertLevels, nEdges))
@@ -666,9 +689,6 @@ endif
 ! THIS CODE SHOULD BE REMOVED - it is done by the add_domain code.
 !
 
-
-call verify_state_variables( mpas_state_variables, ncid, init_template_filename, &
-                             nfields, variable_table)
 
 TimeDimID = FindTimeDimension( ncid )
 
@@ -816,7 +836,6 @@ lbc_nfields = 0
 ! the assimilation (so we can compute increments)
 if (.not. global_grid .and. lbc_variables(1) /= '') then
    ! regional: count number of lbc fields to read in
-   !call set_lbc_variables()
    COUNTUP: do i=1, max_state_variables
       if (lbc_variables(i) /= '') then
          lbc_nfields = lbc_nfields + 1
@@ -1133,7 +1152,6 @@ if (debug > 10) &
 ! AND the other 2 triangle points surrounding this location are completely inside 
 ! the grid and none of the vertices are in the boundary region.
 cellid = cell_ok_to_interpolate(location)
-if (debug > 10) print *, ' model_interpolate: lon/lat, cellid ', llv(1), llv(2), cellid  ! SYHA
 if (cellid < 1) then
    !print *, 'model_interpolate: lon/lat is outside the domain: ', llv(1), llv(2)
    istatus = 11
@@ -1229,6 +1247,8 @@ endif
 ! at the top of the model.  negative values mean ignore this test.
 
 if (highest_obs_pressure_mb > 0.0) then
+   if (.not.(is_vertical(location, "SURFACE")) .and. (.not.(is_vertical(location, "UNDEFINED")))) then
+
    call compute_pressure_at_loc(state_handle, ens_size, location, lpres, istatus)
    where (lpres < highest_obs_pressure_mb * 100.0_r8)
       ! Exclude from assimilation the obs above a user specified level
@@ -1242,6 +1262,7 @@ if (highest_obs_pressure_mb > 0.0) then
    endif
    if (all(istatus /= 0)) goto 100   ! if everyone has failed, we can quit
 
+   endif
 endif
 
 if (debug > 10) then
@@ -2014,19 +2035,28 @@ subroutine set_lbc_variables(template_filename)
 
 character(len=*), intent(in) :: template_filename
 
+integer :: ncid
+
 bdy_template_filename = template_filename
 
-! now that we have a template filename, we could not hardwire
-! these variables and read them from the file.  but it would
-! take a bunch of netcdf calls, so this is fine for now.
+! this initial list always exists.  hardcode them for now,
+! and query to see if the reconstructed winds are there or not.
 
-lbc_variables(1) = 'lbc_u'
-lbc_variables(2) = 'lbc_theta'
-lbc_variables(3) = 'lbc_rho'
-lbc_variables(4) = 'lbc_qv'
-lbc_variables(5) = 'lbc_qc'
-lbc_variables(6) = 'lbc_qr'
+lbc_variables(1) = 'lbc_qc'
+lbc_variables(2) = 'lbc_qr'
+lbc_variables(3) = 'lbc_qv'
+lbc_variables(4) = 'lbc_rho'
+lbc_variables(5) = 'lbc_theta'
+lbc_variables(6) = 'lbc_u'
 lbc_variables(7) = 'lbc_w'
+
+ncid = nc_open_file_readonly(template_filename, 'set_lbc_variables')
+if (nc_variable_exists(ncid, 'lbc_ur')) then
+   lbc_variables(8) = 'lbc_ur'  
+   lbc_variables(9) = 'lbc_vr' 
+   lbc_file_has_reconstructed_winds = .true.
+endif
+call nc_close_file(ncid)
 
 end subroutine set_lbc_variables
 
@@ -2260,7 +2290,7 @@ PROGVARLOOP : do ivar=1, nfields
       done_winds = .true.
       cycle PROGVARLOOP
    endif
-   if ( varname == 'u' .and. update_u_from_reconstruct ) then
+   if ( trim(varname) == 'u' .and. update_u_from_reconstruct ) then
       write(string1, *) 'skipping update of edge normal winds (u) because'
       write(string2, *) 'update_u_from_reconstruct is True'
       call error_handler(E_MSG,'statevector_to_analysis_file',string1,&
@@ -2374,32 +2404,54 @@ end subroutine statevector_to_analysis_file
 !> update the boundary fields based on the analysis file values
 !> in the boundary region, which were updated by blending the analysis
 !> and the original boundary values.
-!> Here, update edge winds (lbc_u) directly, between analysis and prior,
-!> unlike the analysis updates from reconstructed winds at cell centers.
+!> There are options to update edge winds directly or use reconstructed
+!> winds at cell centers and update either directly, or just add increments.
 
-subroutine statevector_to_boundary_file(state_vector, ncid_a, ncid_b)
+subroutine statevector_to_boundary_file(state_vector, ncid_b)
 
 real(r8),         intent(inout) :: state_vector(:)
-integer,          intent(in)    :: ncid_a, ncid_b
+integer,          intent(in)    :: ncid_b
 
 integer :: i, a_ivar, b_ivar, ivar, ivar_u
 integer(i8) :: a_index, b_index, l, sb_index, eb_index
 integer :: cellid, vert_level, ndims, nvars, dims(3), col
 integer :: edgeid
-real(r8) :: weight, xtmp
+real(r8) :: weight
+real(r8), allocatable :: lbc_u(:,:), lbc_ucell(:,:), lbc_vcell(:,:)
+real(r8), allocatable :: delta_u(:,:), old_lbc_ucell(:,:), old_lbc_vcell(:,:)
+real(r8), allocatable :: inc_lbc_ucell(:,:), inc_lbc_vcell(:,:)
 
 character(len=NF90_MAX_NAME) :: avarname, bvarname
 character(len=*), parameter :: routine = 'statevector_to_boundary_file'
 
-!print *, 'model size = ', model_size      
-
 nvars = get_num_variables(lbc_domid)
+
+! save a copy of the reconstructed cell winds in separate arrays
+! if we are doing an incremental update of the edge normal winds.
+if (lbc_update_winds_from_increments) then
+   if (.not. lbc_file_has_reconstructed_winds) then
+      write(string1, *) 'cannot update boundary file winds from increments'
+      write(string2, *) 'because the boundary file does not contain the reconstructed winds'
+      call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
+                         source,revision,revdate, text2=string2)
+   endif
+
+   allocate(old_lbc_ucell(nVertLevels, nCells))
+   allocate(old_lbc_vcell(nVertLevels, nCells))
+   allocate(      delta_u(nVertLevels, nEdges))
+
+   ivar = get_varid_from_varname(lbc_domid, 'lbc_ur')
+   call bdy_vector_to_prog_var(state_vector, ivar, old_lbc_ucell)
+
+   ivar = get_varid_from_varname(lbc_domid, 'lbc_vr')
+   call bdy_vector_to_prog_var(state_vector, ivar, old_lbc_vcell)
+endif
 
 ! for each cell in the grid, find the ones which are in the
 ! boundary region and blend their values.
 CELLS: do cellid = 1, nCells
 
-   if (.not. on_boundary_cell(cellid)) cycle CELLS
+   !if (.not. on_boundary_cell(cellid)) cycle CELLS
 
    ! 1.0 is interior, 0.0 is exterior boundary
    weight = get_analysis_weight(cellid)
@@ -2410,27 +2462,28 @@ CELLS: do cellid = 1, nCells
 
       bvarname = get_variable_name(lbc_domid, b_ivar)
       if (bvarname(1:4) /= 'lbc_') then
-      write(string1, *) 'skipping update of boundary variable ', trim(bvarname)
+         write(string1, *) 'skipping update of boundary variable ', trim(bvarname)
          write(string2, *) 'because the name does not start with "lbc"'
          call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
                             source,revision,revdate, text2=string2)
          cycle VARLOOP
       endif
 
-      ! is this right?  skip 'u' for now?
-      if (bvarname == 'lbc_u') cycle VARLOOP
+      ! skip edge normal 'U' winds here - they will
+      ! be handled in a separate code section below.
+      if (bvarname(1:5) == 'lbc_u' .and. bvarname(1:6) /= 'lbc_ur') cycle VARLOOP
 
       ! get corresponding field in analysis domain
       avarname = trim(bvarname(5:))
 
       ! take care of a couple cases where the names don't follow the pattern
-      !if (bvarname == 'lbc_ur') avarname = 'uReconstructZonal'
-      !if (bvarname == 'lbc_vr') avarname = 'uReconstructMeridional'
+      if (bvarname(1:6) == 'lbc_ur') avarname = 'uReconstructZonal'
+      if (bvarname(1:6) == 'lbc_vr') avarname = 'uReconstructMeridional'
    
       a_ivar = get_varid_from_varname(anl_domid, avarname)
   
       !if(do_output()) print*, 'statevector_to_boundary_file: ', &
-      !                 trim(bvarname), b_ivar, trim(avarname), a_ivar
+      !                trim(bvarname), b_ivar, trim(avarname), a_ivar
 
       call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
 
@@ -2438,14 +2491,11 @@ CELLS: do cellid = 1, nCells
       THISCOL: do col=1, dims(1)
          a_index = get_dart_vector_index(col, cellid, 1, anl_domid, a_ivar)
          b_index = get_dart_vector_index(col, cellid, 1, lbc_domid, b_ivar)
-         !xtmp = state_vector(b_index)
    
          ! compute (1-w)*x_lbc + w*x_anl
          state_vector(b_index) = (1.0_r8 - weight) * state_vector(b_index) + &
                                            weight  * state_vector(a_index)
 
-         !if(do_output().and.col.eq.1) print '(A,2I12,3f10.2)', 'statevector_to_boundary_file: ',&
-         !                a_index,b_index,xtmp,state_vector(a_index),state_vector(b_index)
       enddo THISCOL
 
    enddo VARLOOP
@@ -2453,42 +2503,94 @@ CELLS: do cellid = 1, nCells
 enddo CELLS
 
 !> here is where we fix up the U edge normal winds
+!> two options - do them directly, or compute increments from the
+!> reconstructed winds and update from them.
 
-!As for the 'u' update, we directly blend edge winds between prior and posterior.
-! DOING FULL VALUES NOT INCREMENTS !FOR A FIRST PASS
-! i.e. use_increments_for_u_update is NOT applied to update_bc.
+if (.not. lbc_update_from_reconstructed_winds) then
 
-! this is the prior u, not updated yet
-!allocate(lbc_u(nVertLevels, nEdges))
-!allocate(anl_u(nVertLevels, nEdges))
-a_ivar = get_varid_from_varname(anl_domid, 'u')       ! analysis edge winds
-b_ivar = get_varid_from_varname(lbc_domid, 'lbc_u')   ! prior edge winds in lbc.nc
+   ! this is the prior u, not updated yet
+   a_ivar = get_varid_from_varname(anl_domid, 'u')       ! analysis edge winds
+   b_ivar = get_varid_from_varname(lbc_domid, 'lbc_u')   ! prior edge winds in lbc.nc
 
-call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
+   call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
 
-! for each edge in the grid, find the ones which are in the
-! boundary region and blend their values.
-EDGES: do edgeid = 1, nEdges
-
-   if (.not. on_boundary_edge(edgeid)) cycle EDGES
-
-   ! 1.0 is interior, 0.0 is exterior boundary
-   weight = get_analysis_weight(edgeid)
-
-   ! loop over vert_levels.
-   THATCOL: do col=1, dims(1)
-         a_index = get_dart_vector_index(col, edgeid, 1, anl_domid, a_ivar)
-         b_index = get_dart_vector_index(col, edgeid, 1, lbc_domid, b_ivar)
-         !xtmp = state_vector(b_index)
+   ! for each edge in the grid, find the ones which are in the
+   ! boundary region and blend their values.
+   EDGES: do edgeid = 1, nEdges
    
-         ! compute (1-w)*x_lbc + w*x_anl
-         state_vector(b_index) = (1.0_r8 - weight) * state_vector(b_index) + &
-                                           weight  * state_vector(a_index)
-         !if(do_output().and.col.eq.1) print '(A,2I12,3f10.2)', 'statevector_to_boundary_file: ',&
-         !                a_index,b_index,xtmp,state_vector(a_index),state_vector(b_index)
-   enddo THATCOL
+      if (.not. on_boundary_edge(edgeid)) cycle EDGES
+   
+      ! 1.0 is interior, 0.0 is exterior boundary
+      weight = get_analysis_weight(edgeid)
+   
+      ! loop over vert_levels.
+      THATCOL: do col=1, dims(1)
+            a_index = get_dart_vector_index(col, edgeid, 1, anl_domid, a_ivar)
+            b_index = get_dart_vector_index(col, edgeid, 1, lbc_domid, b_ivar)
+      
+            ! compute (1-w)*x_lbc + w*x_anl
+            state_vector(b_index) = (1.0_r8 - weight) * state_vector(b_index) + &
+                                              weight  * state_vector(a_index)
+      enddo THATCOL
+   
+   enddo EDGES
 
-enddo EDGES
+else  ! do the increment process
+
+   ! First, we only blend cell-center fields (e.g. looping over all the variables in nCells, but not over 'u' in nEdges). 
+   ! Then we compute diffs (or increments) between the blended ur (vr) and lbc_ur (vr).
+   
+   allocate(        lbc_u(nVertLevels, nEdges))
+   allocate(    lbc_ucell(nVertLevels, nCells))
+   allocate(    lbc_vcell(nVertLevels, nCells))
+   
+   ! these have been updated already
+   ivar = get_varid_from_varname(lbc_domid, 'lbc_ur')
+   call bdy_vector_to_prog_var(state_vector, ivar, lbc_ucell)
+   
+   ivar = get_varid_from_varname(lbc_domid, 'lbc_vr')
+   call bdy_vector_to_prog_var(state_vector, ivar, lbc_vcell)
+   
+   ! this is the prior u, not updated yet
+   ivar_u = get_varid_from_varname(lbc_domid, 'lbc_u')
+   call bdy_vector_to_prog_var(state_vector, ivar_u, lbc_u)
+   
+   if (lbc_update_winds_from_increments) then
+   
+      ! use diffs at cell centers to add onto edge normals
+   
+      allocate(inc_lbc_ucell(nVertLevels, nCells))
+      allocate(inc_lbc_vcell(nVertLevels, nCells))
+   
+      inc_lbc_ucell = lbc_ucell - old_lbc_ucell 
+      inc_lbc_vcell = lbc_vcell - old_lbc_vcell 
+   
+      call uv_cell_to_edges(inc_lbc_ucell, inc_lbc_vcell, delta_u)
+   
+      ! Add the updated u increments back to lbc_u.
+      lbc_u = lbc_u + delta_u
+      if (debug > 0) print *, 'MIN/MAX delta_u:',MINVAL(delta_u),MAXVAL(delta_u)
+   
+      deallocate(old_lbc_ucell, old_lbc_vcell, delta_u)
+   else
+   
+      ! just replace, no increments
+      ! project the diffs (or increments) onto the edges by calling uv_cell_to_edges.
+      call uv_cell_to_edges(lbc_ucell, lbc_vcell, lbc_u, .true.)
+      
+   endif
+   
+   ! lbc_u is nvertlevels by nedges - is this reshape right?
+      
+   ! put lbc_u array data back into the state_vector
+   
+   sb_index = get_index_start(lbc_domid, ivar_u)
+   eb_index = get_index_end  (lbc_domid, ivar_u)
+   state_vector(sb_index:eb_index) = reshape(lbc_u, (/eb_index-sb_index+1/) )
+      
+   deallocate(lbc_u, lbc_ucell, lbc_vcell)
+
+endif   ! U updates
    
 
 ! for each boundary variable, write it to the output file.
@@ -2511,8 +2613,9 @@ VARLOOP2: do b_ivar = 1, nvars
    sb_index = get_index_start(lbc_domid, b_ivar)
    eb_index = get_index_end  (lbc_domid, b_ivar)
 
-print *, 'updating ', trim(bvarname), ' in boundary file ',maxval(state_vector(sb_index:eb_index))
-!print *, 'putting ', trim(bvarname), ' with length ', eb_index - sb_index + 1
+if (debug > 0) print *, 'updating ', trim(bvarname), ' in boundary file ' ! ,maxval(state_vector(sb_index:eb_index))
+!if (debug > 0) print *, 'putting ', trim(bvarname), ' with length ', eb_index - sb_index + 1
+
    call nc_put_variable(ncid_b, bvarname, reshape(state_vector(sb_index:eb_index), dims), routine)
 
 enddo VARLOOP2
@@ -3223,8 +3326,11 @@ if (use_increments_for_u_update) then
    allocate(data_2d_array(nVertLevels, nCells))
 
    call vector_to_prog_var(state_vector, zonal, data_2d_array)
+   call put_u(ncid, filename, data_2d_array, 'uReconstructZonal')
    ucell = data_2d_array - ucell
+
    call vector_to_prog_var(state_vector, meridional, data_2d_array)
+   call put_u(ncid, filename, data_2d_array, 'uReconstructMeridional')
    vcell = data_2d_array - vcell
 
    deallocate(data_2d_array)
@@ -3257,6 +3363,8 @@ else
       write(*,*)'update_winds: v values    range ',minval(vcell), maxval(vcell)
    endif
 
+   call put_u(ncid, filename, ucell, 'uReconstructZonal')
+   call put_u(ncid, filename, vcell, 'uReconstructMeridional')
 endif
 
 if ((debug > 8) .and. do_output()) then
@@ -3266,7 +3374,7 @@ endif
 
 ! Write back to the mpas analysis file.
 
-call put_u(ncid, filename, u)
+call put_u(ncid, filename, u, 'u')
 
 deallocate(ucell, vcell, u)
 
@@ -3322,7 +3430,8 @@ end subroutine read_2d_from_nc_file
 
 !------------------------------------------------------------------
 
-subroutine put_u(ncid, filename, u)
+subroutine put_u(ncid, filename, u, vchar)
+ character(len=*) :: vchar
  integer,  intent(in) :: ncid
  character(len=*), intent(in) :: filename
  real(r8), intent(in) :: u(:,:)       ! u(nVertLevels, nEdges)
@@ -3335,6 +3444,7 @@ integer :: ntimes, i
 
 if ( .not. module_initialized ) call static_init_model
 
+string2 = trim(filename)//' '//trim(vchar)
 
 call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimID), &
               'put_u', 'inquire '//trim(filename))
@@ -3342,15 +3452,16 @@ call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimI
 call nc_check(nf90_inquire_dimension(ncid, unlimitedDimID, len=ntimes), &
               'put_u', 'inquire time dimension length '//trim(filename))
 
-call nc_check(nf90_inq_varid(ncid, 'u', VarID), &
-              'put_u', 'inq_varid u '//trim(filename))
+call nc_check(nf90_inq_varid(ncid, trim(vchar), VarID), &
+              'put_u', 'inq_varid '//trim(string2))
 
 call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=numdims), &
-              'put_u', 'inquire u '//trim(filename))
+              'put_u', 'inquire '//trim(string2))
 
 do i=1, numdims
+   write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
    call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=numu(i)), &
-                 'put_u', 'inquire U dimension length '//trim(filename))
+                 'put_u', string1)
 enddo
 
 ! for all but the time dimension, read all the values.
@@ -3361,7 +3472,7 @@ mycount = numu
 mycount(numdims) = 1
 
 call nc_check(nf90_put_var(ncid, VarID, u, start=mystart, count=mycount), &
-              'put_u', 'put_var u '//trim(filename))
+              'put_u', 'put_var '//trim(string2))
 
 
 ! A little sanity check
@@ -3369,7 +3480,7 @@ call nc_check(nf90_put_var(ncid, VarID, u, start=mystart, count=mycount), &
 if ((debug > 9) .and. do_output()) then
 
    write(*,*)
-   write(*,*)'u       range ',minval(u),     maxval(u)
+   write(*,*) trim(vchar),'       range ',minval(u),     maxval(u)
 
 endif
 
@@ -3649,49 +3760,47 @@ end subroutine verify_state_variables
 
 !------------------------------------------------------------------
 
-!> @todo FIXME this should query the domain if it has already
-!> been initialized by the time this routine is called.
+!> @todo FIXME if you can call this *after* add_domain() has been
+!> called, then we could use state structure calls for this.
 !>
-!> as written, this routine can only be called after the namelist
-!> is read.  it's called BY static_init_model() so it can't call
+!> but right now, it's called first.  so pass in the namelist 
+!> and boundary lists and base the decision on those.
+!>
+!> this routine can only be called after the namelist is read.  
+!> also, it's called BY static_init_model() so it can't call
 !> back into it.
 !>
-!> should this also look for LBC variables?  because we'll
-!> need the edge info in that case as well if so.
 
-function is_edgedata_in_state_vector(state_variables)
-  character(len=*), dimension(:),   intent(in)  :: state_variables
+function is_edgedata_in_state_vector(state_list, bdy_list)
+  character(len=*), intent(in) :: state_list(max_state_variables, num_state_table_columns)
+  character(len=*), intent(in) :: bdy_list(max_state_variables)
   logical :: is_edgedata_in_state_vector
 
-! before we actually read and parse the input table,
-! do a quick check to see if 'u' is one of the state variable names.
-! add any other fields here if their data values are based on edges
-! and not cell centers.
+integer :: i
 
-integer :: nrows, ncols, i
-character(len=NF90_MAX_NAME) :: mpasname
+StateLoop : do i = 1, max_state_variables
 
-nrows = max_state_variables
-ncols = num_state_table_columns
+   if (state_list(i, 1) == ' ') exit StateLoop ! Found end of list.
 
-MyLoop : do i = 1, nrows
-
-   mpasname = trim(state_variables(ncols*i - 1))
-
-   if (mpasname == ' ') exit MyLoop ! Found end of list.
-
-   if (mpasname == 'u') then
+   if (state_list(i, 1) == 'u') then
       is_edgedata_in_state_vector = .true.
       return
    endif
 
-enddo MyLoop
+enddo StateLoop
 
-! test for LBC variables as well:
-if (lbc_variables(1) /= '') then
-   is_edgedata_in_state_vector = .true.
-   return
-endif
+! if U is not in the state, does it matter if U is
+! in the boundary file?  yes, return true if so.
+BdyLoop : do i = 1, max_state_variables
+
+   if (bdy_list(i) == ' ') exit BdyLoop ! Found end of list.
+
+   if (bdy_list(i) == 'lbc_u') then
+      is_edgedata_in_state_vector = .true.
+      return
+   endif
+
+enddo BdyLoop
 
 is_edgedata_in_state_vector = .false.
 
@@ -6071,7 +6180,7 @@ if (rc /= 0 .or. closest_cell < 0) then
    return
 endif
 
-if (debug > 10) print *, 'lat/lon closest to cellid, with lat/lon: ', &
+if (debug > 10) print *, 'find_closest_cell_center: lat/lon closest to cellid, with lat/lonCell: ', &
                           lat, lon, closest_cell, latCell(closest_cell), lonCell(closest_cell)
 
 ! do allow boundary cells to be returned.
@@ -6300,29 +6409,20 @@ end function on_boundary_edgelist
 function get_analysis_weight(cellid)
 integer, intent(in) :: cellid
 real(r8)            :: get_analysis_weight
+! Adopted from MPAS/core_init_atmosphere/mpas_init_atm_cases.F
+integer, parameter  :: nBdyLayers = 7   ! The number of relaxation layers plus the number of specified layers
+integer, parameter  :: nSpecLayers = 2  ! The number of specified layers
 
 if (global_grid .or. .not. allocated(bdyMaskCell)) then
-   get_analysis_weight = 1.0_r8
-   return
+    get_analysis_weight = 1.0_r8
+    return
 endif
 
-select case (bdyMaskCell(cellid))
-  case (7,6)
+if (bdyMaskCell(cellid) > (nBdyLayers - nSpecLayers)) then  ! Specified Zone (6,7)
     get_analysis_weight = 0.0_r8
-  case (5)
-    get_analysis_weight = 0.2_r8
-  case (4)
-    get_analysis_weight = 0.4_r8
-  case (3)
-    get_analysis_weight = 0.6_r8
-  case (2)
-    get_analysis_weight = 0.8_r8
-  case (1,0)
-    get_analysis_weight = 1.0_r8
-  case default
-    call error_handler(E_ERR, 'get_analysis_weight', 'unexpected value in bdyMaskCell array', &
-                       source, revision, revdate)
-end select
+else        ! Relexation Zone (1-5)
+    get_analysis_weight = 1.0_r8 - real(bdyMaskCell(cellid),kind=r8)/real(nBdyLayers - nSpecLayers,kind=r8)
+end if
 
 end function get_analysis_weight
 
