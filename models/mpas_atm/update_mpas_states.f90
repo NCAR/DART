@@ -29,7 +29,7 @@ use direct_netcdf_mod,only : read_transpose, read_variables
 use        model_mod, only : static_init_model, statevector_to_analysis_file, &
                              get_model_size, &
                              get_num_vars, get_analysis_time, &
-                             print_variable_ranges, force_u_into_state
+                             print_variable_ranges
 
 use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_open_file_readwrite, &
@@ -84,6 +84,10 @@ call static_init_model()
 nvars  = get_num_vars()
 x_size = get_model_size()
 allocate(statevector(x_size))
+
+write(*,*)
+write(*,*) 'update_mpas_states: Updating ',nvars,' variables'
+write(*,*)
 
 !----------------------------------------------------------------------
 ! Reads lists of input mpas (prior) and filter (analysis) files 

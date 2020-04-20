@@ -151,7 +151,7 @@ fileloop: do        ! until out of files
   ! update the current model state vector
   !----------------------------------------------------------------------
   write(*,*) 'Updating boundary variables in ',trim(next_outfile)
-  call statevector_to_boundary_file(statevector, ncAnlID, ncBdyID)
+  call statevector_to_boundary_file(statevector, ncBdyID)
 
   !----------------------------------------------------------------------
   ! Log what we think we're doing, and exit.
