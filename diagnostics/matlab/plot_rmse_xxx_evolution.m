@@ -166,7 +166,7 @@ switch lower(p.Results.method)
         x1 = [100,100,100];
         dx = [830,830,830];
         y1 = [100,100,100];
-        dy = [760,760,760];
+        dy = [470,470,470];
     otherwise
         % 3 figures stacked on top of each other
         x1 = [  20,  20,  20];
@@ -309,10 +309,8 @@ for ivar = 1:plotdat.nvars
         % plot each region, each level to a separate figure
         
         for iregion = 1:plotdat.nregions
-            fig_h = figure(iregion);
-            clf(iregion);
+            figure('pos',[x1(iregion) y1(iregion) dx(iregion), dy(iregion)]);
             orient(figuredata.orientation);
-            fig_h.Position   = [x1(iregion) y1(iregion) dx(iregion), dy(iregion)];
             plotdat.region   = iregion;
             plotdat.myregion = toplabel(plotdat);
 
