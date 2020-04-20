@@ -211,24 +211,29 @@ for ivar = 1:plotdat.nvars
     [dimnames, ~] = nc_var_dims(fname, plotdat.guessvar);
     
     if ( plotdat.dimensionality == 1 ) % observations on a unit circle, no level
-        plotdat.level = 1;
+        plotdat.varlevels   = 1;
+        plotdat.level       = 1;
         plotdat.level_units = [];
     elseif ( strfind(dimnames{2},'surface') > 0 )
+        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'surface';
     elseif ( strfind(dimnames{2},'undef') > 0 )
+        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'undefined';
     else
-        plotdat.level       = ncread(fname, dimnames{2});
+        plotdat.varlevels   = ncread(fname, dimnames{2});
         plotdat.level_units = nc_read_att(fname, dimnames{2}, 'units');
-        nlevels             = length(plotdat.level);
+        nlevels             = length(plotdat.varlevels);
         if (p.Results.level < 0 )
             % use all the levels
+            plotdat.level   = 1:nlevels;
         elseif (p.Results.level > 0 && p.Results.level < nlevels)
-            plotdat.level   = p.Results.level;
+            plotdat.level   = round(p.Results.level);
         else
-            error('%d is not a valid level for %s',p.Results.level,plotdat.guessvar)
+            str1 = sprintf('valid level values are 1 <= %d',nlevels);
+            error('%s\n%f is not a valid level for %s\n',str1,p.Results.level,plotdat.guessvar)
         end
     end
     
@@ -248,25 +253,23 @@ for ivar = 1:plotdat.nvars
     end
     
     for ilevel = 1:length(plotdat.level)
-        
         priorQCs = get_qc_values(fname, plotdat.guessvar, ...
-            'levelindex', ilevel, ...
+            'levelindex', plotdat.level(ilevel), ...
             'fatal', false, ...
             'verbose', verbose);
-        plotdat.mylevel   = ilevel;
+        plotdat.mylevel   = plotdat.level(ilevel);
         plotdat.ges_Neval = priorQCs.num_evaluated;
         plotdat.ges_Nposs = priorQCs.nposs;
         plotdat.ges_Nused = priorQCs.nused;
-        plotdat.ges_copy  = guess(:,ilevel,plotdat.copyindex,:);
-        plotdat.anl_copy  = analy(:,ilevel,plotdat.copyindex,:);
+        plotdat.ges_copy  = guess(:,plotdat.mylevel,plotdat.copyindex,:);
         
         if (has_posterior)
             posteQCs = get_qc_values(fname, plotdat.analyvar, ...
-                'levelindex', ilevel, ...
+                'levelindex', plotdat.mylevel, ...
                 'fatal', false, ...
                 'verbose', verbose);
             plotdat.anl_Nused = posteQCs.nused;
-            plotdat.anl_copy  = analy(:,ilevel,plotdat.copyindex,:);
+            plotdat.anl_copy  = analy(:,plotdat.mylevel,plotdat.copyindex,:);
         else
             plotdat.anl_Nused = zeros(size(plotdat.ges_Nused));
             plotdat.anl_copy  = plotdat.ges_copy;  % needed for determining limits
@@ -286,13 +289,14 @@ for ivar = 1:plotdat.nvars
             figure(iregion); clf(iregion); orient(figuredata.orientation);
             
             plotdat.region   = iregion;
-            plotdat.myregion = deblank(plotdat.region_names(iregion,:));
+            plotdat.myregion = toplabel(plotdat);
+
             if ( isempty(plotdat.level_units) )
                 plotdat.title = plotdat.myvarname;
             else
-                plotdat.title = sprintf('%s @ %d %s',    ...
+                plotdat.title = sprintf('%s @ %f %s',    ...
                     plotdat.myvarname,     ...
-                    plotdat.level(ilevel), ...
+                    plotdat.varlevels(plotdat.mylevel), ...
                     plotdat.level_units);
             end
             
@@ -634,13 +638,13 @@ totalN      = sum(Nused);
 grand       = [];
 switch lower(plotdat.copystring)
     case {'rmse','spread','totalspread'}
-        if totalN > 2
+        if totalN > 1
            % apply Bessel's correction to account for the fact we are estimating mean
            squared = (data(finite_inds).^2) .* (Nused(finite_inds)-1);
            grand   = sqrt(sum(squared)/(totalN-1));
         end
     otherwise
-        if totalN > 1
+        if totalN > 0
            % simple weighted value
            partial_sum = data(finite_inds) .* Nused(finite_inds);
            grand       = sum(partial_sum)/totalN;
@@ -660,4 +664,19 @@ set(h, 'LineStyle',    linestyle, ...
     'Marker',          marker, ...
     'MarkerFaceColor', color, ...
     'MarkerSize', figuredata.MarkerSize);
+
+
+%=====================================================================
+
+function topstring = toplabel(plotdat)
+
+% add information about the retiog, number of observations possible, the percentate etc. 
+% and use as the top line in the title.
+
+iregion = plotdat.region;
+region  = deblank(plotdat.region_names(iregion,:));
+Nposs   = sum(plotdat.ges_Nposs(   iregion,:,:,:));
+Nused   = sum(plotdat.ges_Nused(iregion,:,:,:));
+pcnt    = 100.0 * Nused/Nposs;
+topstring = sprintf('%s %d / %d = %0.3f%%',region, Nused, Nposs, pcnt);
 

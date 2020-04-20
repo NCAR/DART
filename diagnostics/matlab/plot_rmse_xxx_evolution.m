@@ -49,6 +49,10 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 % pause  : true/false to conrol pausing after each figure is created.
 %          true will require hitting any key to continue to next plot
 %
+% method : 'web', 'norm', 'normweb', 'traditional'
+%          true will require hitting any key to continue to next plot
+%          Default is 't
+%
 % OUTPUT: 'plotdat' is a structure containing what was last plotted.
 %         A postscript file containing a page for each level - each region.
 %         The other file is a simple text file containing summary information
@@ -89,6 +93,7 @@ default_pause      = false;
 default_range      = [NaN NaN];
 default_level      = -1;
 default_dateform   = 'default';
+default_method     = 'traditional';
 p = inputParser;
 
 addRequired(p,'fname',@ischar);
@@ -101,6 +106,7 @@ if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'range',      default_range,      @isnumeric);
     addParameter(p,'level',      default_level,      @isnumeric);
     addParameter(p,'DateForm',   default_dateform,   @ischar);
+    addParameter(p,'method',     default_method,     @ischar);
 else
     addParamValue(p,'obsname',   default_obsname,    @ischar);    %#ok<NVREPL>
     addParamValue(p,'verbose',   default_verbosity,  @islogical); %#ok<NVREPL>
@@ -109,6 +115,7 @@ else
     addParamValue(p,'range',     default_range,      @isnumeric); %#ok<NVREPL>
     addParamValue(p,'level',     default_level,      @isnumeric); %#ok<NVREPL>
     addParamValue(p,'DateForm',  default_dateform,   @ischar);    %#ok<NVREPL>
+    addParamValue(p,'method',    default_method,     @ischar);    %#ok<NVREPL>
 end
 p.parse(fname, copy, varargin{:});
 
@@ -154,11 +161,19 @@ figuredata.MarkerSize = p.Results.MarkerSize;
 figuredata.DateForm   = p.Results.DateForm;
 verbose               = p.Results.verbose;
 
-% KDR Put the 3 figures in spread out positions, with optimal size.
-x1 = [1,485,960];
-dx = [484,474,474];
-y1 = [100,100,100];
-dy = [650,650,650];
+switch lower(p.Results.method)
+    case {'web','normweb'}
+        x1 = [100,100,100];
+        dx = [830,830,830];
+        y1 = [100,100,100];
+        dy = [760,760,760];
+    otherwise
+        % 3 figures stacked on top of each other
+        x1 = [  20,  20,  20];
+        dx = [1000,1000,1000];
+        y1 = [  45, 450, 855];
+        dy = [ 320, 320, 320];
+end
 
 %%---------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
@@ -184,7 +199,7 @@ for ivar = 1:plotdat.nvars
         psfname{iregion} = sprintf('%s_rmse_%s_evolution_region%d.ps', ...
             plotdat.varnames{ivar}, plotdat.copystring, iregion);
         if (exist(psfname{iregion},'file') == 2)
-            fprintf('Removing %s from the current directory.\n',psfname{iregion})
+            if (verbose), fprintf('Removing %s from the current directory.\n',psfname{iregion}); end
             system(sprintf('rm %s',psfname{iregion}));
         end
     end
@@ -193,7 +208,7 @@ for ivar = 1:plotdat.nvars
     
     lgfname = sprintf('%s_rmse_%s_obscount.txt',plotdat.varnames{ivar},plotdat.copystring);
     if (exist(lgfname,'file') == 2)
-        fprintf('Removing %s from the current directory.\n',lgfname)
+        if (verbose), fprintf('Removing %s from the current directory.\n',lgfname); end
         system(sprintf('rm %s',lgfname));
     end
     logfid = fopen(lgfname,'wt');
@@ -294,19 +309,17 @@ for ivar = 1:plotdat.nvars
         % plot each region, each level to a separate figure
         
         for iregion = 1:plotdat.nregions
-% KDR
-% Tim's technique (lower left corner x,y,  x-dim, y-dim)
             fig_h = figure(iregion);
-	    fig_h.Position = [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]; 
-            clf(iregion); orient(figuredata.orientation);
-% Orig
-%            figure(iregion); clf(iregion); orient(figuredata.orientation);
-            
+            clf(iregion);
+            orient(figuredata.orientation);
+            fig_h.Position   = [x1(iregion) y1(iregion) dx(iregion), dy(iregion)];
             plotdat.region   = iregion;
-            plotdat.myregion = deblank(plotdat.region_names(iregion,:));
+            plotdat.myregion = toplabel(plotdat);
+
             if ( isempty(plotdat.level_units) )
                 plotdat.title = plotdat.myvarname;
             else
+                % print level as a whole number
                 plotdat.title = sprintf('%s @ %d %s',    ...
                     plotdat.myvarname,     ... 
                     round(plotdat.varlevels(plotdat.mylevel)), ...
@@ -315,19 +328,25 @@ for ivar = 1:plotdat.nvars
             
             myplot(plotdat);
             
-            % create/append to the postscript file
-            if verLessThan('matlab','R2016a')
-                print(gcf, '-dpsc', '-append', psfname{iregion});
-            else
-                print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
+            switch lower(p.Results.method)
+                case {'web', 'normweb'}
+                    pause(0.01)
+                otherwise
+                    
+                    if verLessThan('matlab','R2016a')
+                        print(gcf, '-dpsc', '-append', psfname{iregion});
+                    else
+                        print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
+                    end
+                    
+                    % slow down the stream of pictures when there's something to see,
+                    % without needing to hit a key to continue.
+                    if any(plotdat.ges_Nused(plotdat.region,:))
+                        pause(5);
+                    end
             end
             
-            % KDR attempt to slow down the stream of pictures when there's something to see,
-            % without needing to hit a key to continue.
-            if any(plotdat.ges_Nused(:,plotdat.region))
-              pause(3);
-            end
-            % block to go slow and look at each one ...
+            % look at each one ... based on user input
             if (p.Results.pause)
                 disp('Pausing, hit any key to continue ...')
                 pause
@@ -366,7 +385,7 @@ set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize, ...
 if verLessThan('matlab','R2017a')
     % Convince Matlab to not autoupdate the legend with each new line.
     % Before 2017a, this was the default behavior, so do nothing.
-    % We do not want to add the bias line to the legend, for example.
+    % We do not want to add the bias=0 line to the legend, for example.
 else
     h.AutoUpdate = 'off';
 end
@@ -724,3 +743,17 @@ set(h, 'LineStyle',    linestyle, ...
     'MarkerFaceColor', color, ...
     'MarkerSize', figuredata.MarkerSize);
 
+
+%=====================================================================
+
+function topstring = toplabel(plotdat)
+
+% add information about the retiog, number of observations possible, the percentate etc. 
+% and use as the top line in the title.
+
+iregion = plotdat.region;
+region  = deblank(plotdat.region_names(iregion,:));
+Nposs   = sum(plotdat.ges_Nposs(   iregion,:,:,:));
+Nused   = sum(plotdat.ges_Nused(iregion,:,:,:));
+pcnt    = 100.0 * Nused/Nposs;
+topstring = sprintf('%s %d / %d = %0.3f%%',region, Nused, Nposs, pcnt);

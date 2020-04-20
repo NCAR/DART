@@ -33,16 +33,22 @@ function plotdat = plot_rmse_xxx_profile(fname, copy, varargin)
 %            Each observation type will be plotted in a separate graphic.
 %            Default is to plot all available observation types.
 %
-%
-% range    : 'range' of the value being plotted. Default is to
-%                automatically determine range based on the data values.
+% range    : 'range' of the value being plotted.
+%            Default is to determine range based on the data values.
 %
 % verbose  : true/false to control amount of run-time output
+%            Default is to be verbose.
 %
-% MarkerSize  : integer controlling the size of the symbols
+% MarkerSize : integer controlling the size of the symbols
+%              Default is 12.
 %
 % pause  : true/false to conrol pausing after each figure is created.
 %          true will require hitting any key to continue to next plot
+%          Default is false - do not pause.
+%
+% method : 'web', 'norm', 'normweb', 'traditional'
+%          true will require hitting any key to continue to next plot
+%          Default is 'traditional'
 %
 % OUTPUT: 'plotdat' is a structure containing what was plotted.
 %         A .pdf of each graphic is created. Each .pdf has a name that
@@ -64,8 +70,6 @@ function plotdat = plot_rmse_xxx_profile(fname, copy, varargin)
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id$
 
 %%--------------------------------------------------------------------
 % Decode,Parse,Check the input
@@ -76,6 +80,7 @@ default_verbosity  = true;
 default_markersize = 12;
 default_pause      = false;
 default_range      = [NaN NaN];
+default_method     = 'traditional';
 p = inputParser;
 
 addRequired(p,'fname',@ischar);
@@ -86,12 +91,14 @@ if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'MarkerSize', default_markersize, @isnumeric);
     addParameter(p,'pause',      default_pause,      @islogical);
     addParameter(p,'range',      default_range,      @isnumeric);
+    addParameter(p,'method',     default_method,     @ischar);
 else
     addParamValue(p,'obsname',   default_obsname,    @ischar);    %#ok<NVREPL>
     addParamValue(p,'verbose',   default_verbosity,  @islogical); %#ok<NVREPL>
     addParamValue(p,'MarkerSize',default_markersize, @isnumeric); %#ok<NVREPL>
     addParamValue(p,'pause',     default_pause,      @islogical); %#ok<NVREPL>
     addParamValue(p,'range',     default_range,      @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'method',    default_method,     @ischar);    %#ok<NVREPL>
 end
 p.parse(fname, copy, varargin{:});
 
@@ -120,7 +127,7 @@ end
 %---------------------------------------------------------------------
 
 plotdat = read_obsdiag_staticdata(fname,copy);
-plotdat.xlabel  = sprintf('rmse and %s',copy);
+xlabel_basic = sprintf('rmse and %s',copy);
 
 % Either use all the variables or just the one optionally specified.
 if (nvars == 0)
@@ -138,11 +145,19 @@ figuredata            = set_obsdiag_figure('tall');
 figuredata.MarkerSize = p.Results.MarkerSize;
 verbose               = p.Results.verbose;
 
-% KDR Put the 3 figures in spread out positions, with optimal size.
-x1 = [1,475,950];
-dx = [474,474,474];
-y1 = [100,100,100];
-dy = [650,650,650];
+switch lower(p.Results.method)
+    case {'web','normweb'}
+        x1 = [100,100,100];
+        dx = [830,830,830];
+        y1 = [100,100,100];
+        dy = [760,760,760];
+    otherwise
+        % 3 figures in spread out positions, with optimal size.
+        x1 = [  1,475,950];
+        dx = [474,474,474];
+        y1 = [100,100,100];
+        dy = [650,650,650];
+end
 
 %%---------------------------------------------------------------------
 % Loop around (copy-level-region) observation types
@@ -229,8 +244,36 @@ for ivar = 1:plotdat.nvars
     plotdat.ges_Neval = priorQCs.num_evaluated;
     plotdat.ges_Nposs = priorQCs.nposs;
     plotdat.ges_Nused = priorQCs.nused;
+    
+    % Compute the values for the most common case,
+    % these will be recomputed only if normalization is wanted,
+    % and only for specific variables.
+    
     plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex);
     plotdat.ges_copy  = guess(:,:,plotdat.copyindex);
+    plotdat.ges_mean  = guess(:,:,plotdat.meanindex);
+    plotdat.xlabel    = xlabel_basic;
+    psbase = sprintf('%s_rmse_%s', plotdat.varnames{ivar}, plotdat.copystring);
+
+    switch lower(p.Results.method)
+        case{'norm','normweb'}
+            
+            switch plotdat.myvarname
+                case {'GPSRO_REFRACTIVITY', ...
+                        'AIRS_SPECIFIC_HUMIDITY', ...
+                        'RADIOSONDE_SPECIFIC_HUMIDITY'}
+                    plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex) ./ ...
+                        guess(:,:,plotdat.meanindex);
+                    plotdat.ges_copy  = guess(:,:,plotdat.copyindex) ./ ...
+                        guess(:,:,plotdat.meanindex);
+                    plotdat.xlabel    = sprintf('%s, normalized by layer mean',xlabel_basic);
+                    psfile            = sprintf('%s_norm_profile',psbase);
+                otherwise
+            end
+            
+        otherwise
+            psfile = sprintf('%s_profile', psbase, plotdat.copystring);
+    end
     
     if ( sum(plotdat.ges_Nposs(:)) < 1 )
         fprintf('no obs for %s...  skipping\n', plotdat.varnames{ivar})
@@ -257,35 +300,41 @@ for ivar = 1:plotdat.nvars
     % plot by region - each in its own figure.
     
     for iregion = 1:plotdat.nregions
-% KDR
-% Tim's technique (lower left corner x,y,  x-dim, y-dim)
-            fig_h = figure(iregion);
-	    fig_h.Position = [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]; 
-% Orig        figure(iregion);
-        clf(iregion);
-        orient(figuredata.orientation);
         plotdat.region   = iregion;
         plotdat.myregion = deblank(plotdat.region_names(iregion,:));
+       
+        % KEVIN ... 200 figures or just cycle through Nregion figures? 
+        figure('pos', [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]);
+        orient(figuredata.orientation);
+        clf(iregion);
         
         myplot(plotdat);
         
         BottomAnnotation(fname)
         
-        psfname = sprintf('%s_rmse_%s_profile_region%d', ...
-            plotdat.varnames{ivar}, plotdat.copystring, iregion);
+        psfname = sprintf('%s_region%d', psfile, iregion);
         
-        if verLessThan('matlab','R2016a')
-            print(gcf, '-dpdf', psfname);
-        else
-            print(gcf, '-dpdf', '-bestfit', psfname);
+        switch lower(p.Results.method)
+            case {'web', 'normweb'}
+                pause(0.01)
+            otherwise
+                
+                if verLessThan('matlab','R2016a')
+                    print(gcf, '-dpdf', psfname);
+                else
+                    print(gcf, '-dpdf', '-bestfit', psfname);
+                end
+
+        % KEVIN ... instead of pause being true/false ... if pause was 0 - no pause, negative is keystroke, positive is number of seconds ...
+                
+                % slow down the stream of pictures when there's something to see,
+                % without needing to hit a key to continue.
+                if any(plotdat.ges_Nused(plotdat.region,:))
+                    pause(5);
+                end
         end
         
-        % KDR attempt to slow down the stream of pictures when there's something to see,
-        % without needing to hit a key to continue.
-        if any(plotdat.ges_Nused(plotdat.region,:))
-           pause(5);
-        end
-        % block to go slow and look at each one ...
+        % look at each one ... based on user input
         if (p.Results.pause)
             disp('Pausing, hit any key to continue ...')
             pause
@@ -314,7 +363,7 @@ ges_Nused = plotdat.ges_Nused(plotdat.region,:);
 anl_Nused = plotdat.anl_Nused(plotdat.region,:);
 anl_Ngood = sum(anl_Nused);
 
-% Compute summary statistic 
+% Compute summary statistic
 
 str_pr_rmse = compute_grand(ges_rmse,ges_Nused,'rmse','pr');
 str_pr_copy = compute_grand(ges_copy,ges_Nused,plotdat.copystring,'pr');
@@ -335,10 +384,9 @@ orient(figuredata.orientation)
 
 % KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
 var = pad(plotdat.myvarname,32);
-if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
-   set(ax1,'YScale','log')
+if (all(char(var) == 'GPSRO_REFRACTIVITY              '))
+    set(ax1,'YScale','log')
 end
-ax1
 
 % add type of vertical coordinate info for adjusting axes to accommodate legend
 
@@ -350,10 +398,9 @@ set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
 % This changes the scale, but the stripes are not taking account of the
 % extra space at the top for the legend, so they don't line up with the data levels.
 % KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
-if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
-   set(ax1,'YScale','log')
+if (all(char(var) == 'GPSRO_REFRACTIVITY              '))
+    set(ax1,'YScale','log')
 end
-ax1
 
 % draw the result of the experiment
 
@@ -442,8 +489,8 @@ ax2 = axes('position',get(ax1,'Position'), ...
     'YLim',get(ax1,'YLim'), ...
     'YDir',get(ax1,'YDir'), ...
     'FontSize',get(ax1,'FontSize'));
-if (all(char(var) == 'GPSRO_REFRACTIVITY              ')) 
-   set(ax2,'YScale','log')
+if (all(char(var) == 'GPSRO_REFRACTIVITY              '))
+    set(ax2,'YScale','log')
 end
 
 ax2h1 = line(ges_Nposs, plotdat.levels, 'Parent', ax2);
