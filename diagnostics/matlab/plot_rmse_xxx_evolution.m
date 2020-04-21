@@ -50,8 +50,7 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 %          true will require hitting any key to continue to next plot
 %
 % method : 'web', 'norm', 'normweb', 'traditional'
-%          true will require hitting any key to continue to next plot
-%          Default is 't
+%          Default is 'traditional'
 %
 % OUTPUT: 'plotdat' is a structure containing what was last plotted.
 %         A postscript file containing a page for each level - each region.
@@ -167,12 +166,14 @@ switch lower(p.Results.method)
         dx = [830,830,830];
         y1 = [100,100,100];
         dy = [470,470,470];
+        webmethod = true;
     otherwise
         % 3 figures stacked on top of each other
         x1 = [  20,  20,  20];
         dx = [1000,1000,1000];
         y1 = [  45, 450, 855];
         dy = [ 320, 320, 320];
+        webmethod = false;
 end
 
 %%---------------------------------------------------------------------
@@ -192,19 +193,21 @@ for ivar = 1:plotdat.nvars
     plotdat.trusted   = nc_read_att(fname, plotdat.guessvar, 'TRUSTED');
     if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
     
-    % remove any existing postscript file - will simply append each
-    % level as another 'page' in the .ps file.
+    % remove existing postscript files if we are creating them.
+    % each figure will be appended, so we want a new file initially.
     
-    for iregion = 1:plotdat.nregions
-        psfname{iregion} = sprintf('%s_rmse_%s_evolution_region%d.ps', ...
-            plotdat.varnames{ivar}, plotdat.copystring, iregion);
-        if (exist(psfname{iregion},'file') == 2)
-            if (verbose), fprintf('Removing %s from the current directory.\n',psfname{iregion}); end
-            system(sprintf('rm %s',psfname{iregion}));
+    if ~ webmethod
+        for iregion = 1:plotdat.nregions
+            psfname{iregion} = sprintf('%s_rmse_%s_evolution_region%d.ps', ...
+                plotdat.varnames{ivar}, plotdat.copystring, iregion);
+            if (exist(psfname{iregion},'file') == 2)
+                if (verbose), fprintf('Removing %s from the current directory.\n',psfname{iregion}); end
+                system(sprintf('rm %s',psfname{iregion}));
+            end
         end
     end
     
-    % remove any existing log file -
+    % remove any existing log file - no matter what.
     
     lgfname = sprintf('%s_rmse_%s_obscount.txt',plotdat.varnames{ivar},plotdat.copystring);
     if (exist(lgfname,'file') == 2)
@@ -337,7 +340,7 @@ for ivar = 1:plotdat.nvars
                         print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
                     end
                     
-                    % slow down the stream of pictures when there's something to see,
+                    % slow down the stream of pictures when there is something to see,
                     % without needing to hit a key to continue.
                     if any(plotdat.ges_Nused(plotdat.region,:))
                         pause(5);
@@ -746,7 +749,7 @@ set(h, 'LineStyle',    linestyle, ...
 
 function topstring = toplabel(plotdat)
 
-% add information about the retiog, number of observations possible, the percentate etc. 
+% add information about the region, number of observations possible, the percentage etc. 
 % and use as the top line in the title.
 
 iregion = plotdat.region;
