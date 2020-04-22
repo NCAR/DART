@@ -35,7 +35,7 @@ date/time. The `obs_converter/MPD/work/MPD_text_to_obs` program
 translates the text files to DART `obs_seq.out` format.
 
 Test data for a single site and an example output can be downloaded from
-https://www.image.ucar.edu/pub/DART/TestData/MPD.tar
+https://www.image.ucar.edu/pub/DART/MPD.tar.gz
 
 **THAT**
 
