@@ -294,9 +294,9 @@ for ivar = 1:plotdat.nvars
             if ( isempty(plotdat.level_units) )
                 plotdat.title = plotdat.myvarname;
             else
-                plotdat.title = sprintf('%s @ %f %s',    ...
+                plotdat.title = sprintf('%s @ %d %s',    ...
                     plotdat.myvarname,     ...
-                    plotdat.varlevels(plotdat.mylevel), ...
+                    round(plotdat.varlevels(plotdat.mylevel)), ...
                     plotdat.level_units);
             end
             
@@ -670,7 +670,7 @@ set(h, 'LineStyle',    linestyle, ...
 
 function topstring = toplabel(plotdat)
 
-% add information about the retiog, number of observations possible, the percentate etc. 
+% add information about the region, number of observations possible, the percentage etc. 
 % and use as the top line in the title.
 
 iregion = plotdat.region;

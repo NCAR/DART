@@ -42,12 +42,11 @@ function plotdat = plot_rmse_xxx_profile(fname, copy, varargin)
 % MarkerSize : integer controlling the size of the symbols
 %              Default is 12.
 %
-% pause  : true/false to conrol pausing after each figure is created.
+% pause  : true/false to control pausing after each figure is created.
 %          true will require hitting any key to continue to next plot
 %          Default is false - do not pause.
 %
 % method : 'web', 'norm', 'normweb', 'traditional'
-%          true will require hitting any key to continue to next plot
 %          Default is 'traditional'
 %
 % OUTPUT: 'plotdat' is a structure containing what was plotted.
@@ -151,12 +150,14 @@ switch lower(p.Results.method)
         dx = [830,830,830];
         y1 = [100,100,100];
         dy = [760,760,760];
+        webmethod = true;
     otherwise
         % 3 figures in spread out positions, with optimal size.
         x1 = [  1,475,950];
         dx = [474,474,474];
         y1 = [100,100,100];
         dy = [650,650,650];
+        webmethod = false;
 end
 
 %%---------------------------------------------------------------------
@@ -272,7 +273,7 @@ for ivar = 1:plotdat.nvars
             end
             
         otherwise
-            psfile = sprintf('%s_profile', psbase, plotdat.copystring);
+            psfile = sprintf('%s_profile', psbase);
     end
     
     if ( sum(plotdat.ges_Nposs(:)) < 1 )
@@ -303,7 +304,6 @@ for ivar = 1:plotdat.nvars
         plotdat.region   = iregion;
         plotdat.myregion = deblank(plotdat.region_names(iregion,:));
        
-        % KEVIN ... 200 figures or just cycle through Nregion figures? 
         figure('pos', [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]);
         orient(figuredata.orientation);
         clf(iregion);
@@ -314,24 +314,24 @@ for ivar = 1:plotdat.nvars
         
         psfname = sprintf('%s_region%d', psfile, iregion);
         
-        switch lower(p.Results.method)
-            case {'web', 'normweb'}
-                pause(0.01)
-            otherwise
-                
-                if verLessThan('matlab','R2016a')
-                    print(gcf, '-dpdf', psfname);
-                else
-                    print(gcf, '-dpdf', '-bestfit', psfname);
-                end
-
-        % KEVIN ... instead of pause being true/false ... if pause was 0 - no pause, negative is keystroke, positive is number of seconds ...
-                
-                % slow down the stream of pictures when there's something to see,
-                % without needing to hit a key to continue.
-                if any(plotdat.ges_Nused(plotdat.region,:))
-                    pause(5);
-                end
+        if webmethod
+            % Without a tiny pause, Matlab will not display anything to
+            % the screen. I just like to see the plot.
+            pause(0.01)
+        else
+            if verLessThan('matlab','R2016a')
+                print(gcf, '-dpdf', psfname);
+            else
+                print(gcf, '-dpdf', '-bestfit', psfname);
+            end
+            
+            % KEVIN ... instead of pause being true/false ... if pause was 0 - no pause, negative is keystroke, positive is number of seconds ...
+            
+            % slow down the stream of pictures when there's something to see,
+            % without needing to hit a key to continue.
+            if any(plotdat.ges_Nused(plotdat.region,:))
+                pause(5);
+            end
         end
         
         % look at each one ... based on user input
@@ -382,24 +382,27 @@ end
 ax1 = subplot('position',figuredata.position);
 orient(figuredata.orientation)
 
-% KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
-var = pad(plotdat.myvarname,32);
-if (all(char(var) == 'GPSRO_REFRACTIVITY              '))
-    set(ax1,'YScale','log')
+switch upper(plotdat.myvarname)
+    case 'GPSRO_REFRACTIVITY'
+        set(ax1,'YScale','log')
 end
 
 % add type of vertical coordinate info for adjusting axes to accommodate legend
 
 Stripes(plotdat.Xrange, plotdat.level_edges, plotdat.level_units);
-set(ax1, 'YDir', plotdat.YDir, 'YTick', plotdat.YTick, 'Layer', 'top')
-set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
+set(ax1,'YDir', plotdat.YDir, ...
+    'YTick', plotdat.YTick, ...
+    'Layer', 'top', ...
+    'YAxisLocation','left', ...
+    'FontSize',figuredata.fontsize)
 
 % KDR (log scale was set here, but moved to fix stripes)
 % This changes the scale, but the stripes are not taking account of the
 % extra space at the top for the legend, so they don't line up with the data levels.
 % KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
-if (all(char(var) == 'GPSRO_REFRACTIVITY              '))
-    set(ax1,'YScale','log')
+switch upper(plotdat.myvarname)
+    case 'GPSRO_REFRACTIVITY'
+        set(ax1,'YScale','log')
 end
 
 % draw the result of the experiment
@@ -488,10 +491,8 @@ ax2 = axes('position',get(ax1,'Position'), ...
     'YColor',get(ax1,'YColor'), ...
     'YLim',get(ax1,'YLim'), ...
     'YDir',get(ax1,'YDir'), ...
+    'YScale',get(ax1,'YScale'), ...
     'FontSize',get(ax1,'FontSize'));
-if (all(char(var) == 'GPSRO_REFRACTIVITY              '))
-    set(ax2,'YScale','log')
-end
 
 ax2h1 = line(ges_Nposs, plotdat.levels, 'Parent', ax2);
 ax2h2 = line(ges_Nused, plotdat.levels, 'Parent', ax2);
