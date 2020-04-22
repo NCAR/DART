@@ -1,5 +1,9 @@
 
-![DARTlogo](docs/images/Dartboard7.png)
+<span id="TOP" class="anchor"></span>
+
+![DARTlogo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
+
+## This document is really quite out-of-date. TJH 22 Apr 2020
 
 ## Hints for porting a new model to DART:
 

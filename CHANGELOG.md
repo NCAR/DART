@@ -1,5 +1,5 @@
 
-![DARTlogo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
+![DARTlogo](docs/images/Dartboard7.png)
 
 ----
 
@@ -14,7 +14,12 @@ It is not intended to document every change, but instead is intended
 to inform people what features are now available or have been removed.
 Detailed changes are always available through the version control framework.
 
-The Revision numbers can be related to git hashes by 'git log
+The Revision numbers can be related to git hashes by searching the output of
+`git log`
+```
+0[1011] machine:dartGIT % git log > full_git_log.txt
+```
+
 ## SEE THE BOTTOM OF THIS FILE FOR THE MOST RECENT CHANGES!
 
 ----

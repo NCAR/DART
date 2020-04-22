@@ -1,5 +1,7 @@
 
-![DARTlogo](docs/images/Dartboard7.png)
+<span id="TOP" class="anchor"></span>
+
+![DARTlogo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
 
 ### Further description of the scripts
 
