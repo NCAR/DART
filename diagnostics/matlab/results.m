@@ -55,268 +55,266 @@ diag.types = {  'ACARS_TEMPERATURE'           , ...
                                                 };
 
 % styles:
-diag.style = {  'profile'                     , ...
-                'evolution'                   , ...
-                'norm_profile'                  };
+diag.style = {  'profile'   , ...
+                'evolution' };
             
 % metrics: 
-diag.metric = { 'bias'                        , ...
-                'totalspread'                   };
-
+diag.metric = { 'bias'        , ...
+                'totalspread' };
 
 % for now, i have to list all of them manually (and not in a loop) because
 % i need a different title for each section. MATLAB only supports static
 % titles for sections (cells). One could explore using MATLAB REPORT
 % GENERATOR to do this more efficiently. 
-            
+
 %% 1.a. *ACARS_TEMPERATURE:* _bias_
 var = diag.types{1};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 1.b. *ACARS_TEMPERATURE:* _totalspread_
 var = diag.types{1};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 2.a. *ACARS_U_WIND_COMPONENT:* _bias_
 var = diag.types{2};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 2.b. *ACARS_U_WIND_COMPONENT:* _totalspread_
 var = diag.types{2};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 3.a. *ACARS_V_WIND_COMPONENT:* _bias_
 var = diag.types{3};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 3.b. *ACARS_V_WIND_COMPONENT:* _totalspread_
 var = diag.types{3};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 4.a. *ACARS_HORIZONTAL_WIND:* _bias_
 var = diag.types{4};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 4.b. *ACARS_HORIZONTAL_WIND:* _totalspread_
 var = diag.types{4};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 5.a. *AIRCRAFT_TEMPERATURE:* _bias_
 var = diag.types{5};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 5.b. *AIRCRAFT_TEMPERATURE:* _totalspread_
 var = diag.types{5};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 6.a. *AIRCRAFT_U_WIND_COMPONENT:* _bias_
 var = diag.types{6};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 6.b. *AIRCRAFT_U_WIND_COMPONENT:* _totalspread_
 var = diag.types{6};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 7.a. *AIRCRAFT_V_WIND_COMPONENT:* _bias_
 var = diag.types{7};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 7.b. *AIRCRAFT_V_WIND_COMPONENT:* _totalspread_
 var = diag.types{7};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 8.a. *AIRCRAFT_HORIZONTAL_WIND:* _bias_
 var = diag.types{8};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 8.b. *AIRCRAFT_HORIZONTAL_WIND:* _totalspread_
 var = diag.types{8};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 9.a. *AIRS_TEMPERATURE:* _bias_
 var = diag.types{9};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 9.b. *AIRS_TEMPERATURE:* _totalspread_
 var = diag.types{9};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 10.a. *AIRS_SPECIFIC_HUMIDITY:* _bias_
 var = diag.types{10};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'normweb')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 10.b. *AIRS_SPECIFIC_HUMIDITY:* _totalspread_
 var = diag.types{10};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'normweb')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 11.a. *GPSRO_REFRACTIVITY:* _bias_
 var = diag.types{11};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'normweb')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 11.b. *GPSRO_REFRACTIVITY:* _totalspread_
 var = diag.types{11};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'normweb')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 12.a. *LAND_SFC_ALTIMETER:* _bias_
 var = diag.types{12};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 12.b. *LAND_SFC_ALTIMETER:* _totalspread_
 var = diag.types{12};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 13.a. *MARINE_SFC_ALTIMETER:* _bias_
 var = diag.types{13};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 13.b. *MARINE_SFC_ALTIMETER:* _totalspread_
 var = diag.types{13};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 14.a. *RADIOSONDE_TEMPERATURE:* _bias_
 var = diag.types{14};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 14.b. *RADIOSONDE_TEMPERATURE:* _totalspread_
 var = diag.types{14};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 15.a. *RADIOSONDE_U_WIND_COMPONENT:* _bias_
 var = diag.types{15};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 15.b. *RADIOSONDE_U_WIND_COMPONENT:* _totalspread_
 var = diag.types{15};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 16.a. *RADIOSONDE_V_WIND_COMPONENT:* _bias_
 var = diag.types{16};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 16.b. *RADIOSONDE_V_WIND_COMPONENT:* _totalspread_
 var = diag.types{16};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 17.a. *RADIOSONDE_SURFACE_ALTIMETER:* _bias_
 var = diag.types{17};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 17.b. *RADIOSONDE_SURFACE_ALTIMETER:* _totalspread_
 var = diag.types{17};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 18.a. *RADIOSONDE_SPECIFIC_HUMIDITY:* _bias_
 var = diag.types{18};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'normweb')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 18.b. *RADIOSONDE_SPECIFIC_HUMIDITY:* _totalspread_
 var = diag.types{18};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{3}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'normweb')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 19.a. *SAT_U_WIND_COMPONENT:* _bias_
 var = diag.types{19};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 19.b. *SAT_U_WIND_COMPONENT:* _totalspread_
 var = diag.types{19};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 20.a. *SAT_V_WIND_COMPONENT:* _bias_
 var = diag.types{20};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 20.b. *SAT_V_WIND_COMPONENT:* _totalspread_
 var = diag.types{20};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 21.a. *SAT_HORIZONTAL_WIND:* _bias_
 var = diag.types{21};
 met = diag.metric{1};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
 
 %% 21.b. *SAT_HORIZONTAL_WIND:* _totalspread_
 var = diag.types{21};
 met = diag.metric{2};
-invoke_diag(path.obs_space_diags, diag.style{1}, met, var)
-invoke_diag(path.obs_space_diags, diag.style{2}, met, var, -1)
+invoke_diag(path.obs_space_diags, diag.style{1}, met, var, 'web')
+invoke_diag(path.obs_space_diags, diag.style{2}, met, var, 'web', -1)
