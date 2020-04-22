@@ -1,3 +1,7 @@
+---
+title: DART Publications
+layout: default
+---
 
 # Publications using DART
 

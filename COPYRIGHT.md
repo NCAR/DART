@@ -1,3 +1,7 @@
+---
+title: Apache License
+layout: default
+---
 
 ![DARTlogo](docs/images/Dartboard7.png "DART Logo")
 

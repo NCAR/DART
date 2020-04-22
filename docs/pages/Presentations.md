@@ -1,3 +1,7 @@
+---
+title: DART Presentations
+layout: default
+---
 
 # (Some) Presentations featuring DART: The Data Assimilation Research Testbed
 

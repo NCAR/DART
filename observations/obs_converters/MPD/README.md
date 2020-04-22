@@ -1,3 +1,7 @@
+---
+title: MPD converter
+layout: default
+---
 
 ![DARTlogo](docs/images/Dartboard7.png)
 

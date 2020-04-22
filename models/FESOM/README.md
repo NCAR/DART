@@ -1,3 +1,8 @@
+---
+title: Finite Element Sea-ice Ocean Model
+layout: default
+---
+
 ## **Finite Element Sea-ice Ocean Model (FESOM)**
 
 FESOM is an unstructured mesh global ocean model using finite element methods to solve the

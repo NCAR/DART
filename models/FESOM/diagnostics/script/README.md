@@ -1,3 +1,8 @@
+---
+title: FESOM scripting
+layout: default
+---
+
 ### Further description of the scripts
 
 Scripts call a fortran tool to post-process the FESOM and DART outputs. They include a **tool** variable

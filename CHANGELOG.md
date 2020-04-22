@@ -1,3 +1,9 @@
+---
+title: Changelog
+layout: default
+---
+
+
 ![DARTlogo](docs/images/Dartboard7.png)
 
 DART software - Copyright UCAR. This open source software is provided     

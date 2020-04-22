@@ -1,3 +1,8 @@
+---
+title: DART Observations
+layout: default
+---
+
 <span id="TOP" class="anchor"></span>
 
 DART Observations
