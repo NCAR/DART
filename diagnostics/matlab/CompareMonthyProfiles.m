@@ -13,10 +13,6 @@
 
 % The first place they live is
 
-figure; set(gcf,'Position',[  20, 500,625,900])
-figure; set(gcf,'Position',[ 660, 500,625,900])
-figure; set(gcf,'Position',[1300, 500,625,900])
-
 DOUT_S_ROOT = '/glade/scratch/raeder/f.e21.FHIST_BGC.f09_025.CAM6assim.011/archive/esp/hist';
 
 fnames = {'Diags_NTrS_2011-08/obs_diag_output.nc', ...
@@ -62,6 +58,10 @@ obsnames = {  ...
 
 copy = 'rmse';
 prpo = 'prior';
+
+figure; set(gcf,'Position',[  20, 500,625,900])
+figure; set(gcf,'Position',[ 660, 500,625,900])
+figure; set(gcf,'Position',[1300, 500,625,900])
 
 compare_monthly_profiles(files,titles,obsnames,copy,prpo,'MarkerSize',5,'LineWidth',1.5);
 
