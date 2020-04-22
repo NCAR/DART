@@ -52,7 +52,7 @@ function compare_monthly_profiles(files, titles, obsnames, copy, prpo, varargin)
 % range    : 'range' of the value being plotted. Default is to
 %            automatically determine range based on the data values.
 %
-% OUTPUT: A .pdf of each graphic is created. Each .pdf has a name that
+% OUTPUT: A .png of each graphic is created. Each .png has a name that
 %         reflects the variable, quantity, and region being plotted.
 %
 % EXAMPLE
@@ -226,9 +226,9 @@ for ivar = 1:nvars
             obsnames{ivar}, plotobj{1}.copystring, iregion, NumExp);
         
         if verLessThan('matlab','R2016a')
-            print(iregion, '-dpdf', '-fillpage', psfname)
+            print(iregion, '-dpng', psfname)
         else
-            print(iregion, '-dpdf', '-bestfit', psfname)
+            print(iregion, '-dpng', psfname)
         end
         
     end % of loop around regions
