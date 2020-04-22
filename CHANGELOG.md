@@ -1,3 +1,5 @@
+![DARTlogo](docs/images/Dartboard7.png)
+
 DART software - Copyright UCAR. This open source software is provided     
 by UCAR, "as is", without charge, subject to all terms of use at     
 http://www.image.ucar.edu/DAReS/DART/DART_download     
@@ -9,6 +11,7 @@ It is not intended to document every change, but instead is intended
 to inform people what features are now available or have been removed.
 Detailed changes are always available through the version control framework.
 
+The Revision numbers can be related to git hashes by 'git log
 ## SEE THE BOTTOM OF THIS FILE FOR THE MOST RECENT CHANGES!
 
 ----
