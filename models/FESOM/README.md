@@ -1,7 +1,5 @@
----
-title: Finite Element Sea-ice Ocean Model
-layout: default
----
+
+![DARTlogo](docs/images/Dartboard7.png)
 
 ## **Finite Element Sea-ice Ocean Model (FESOM)**
 

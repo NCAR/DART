@@ -1,10 +1,7 @@
----
-title: Changelog
-layout: default
----
 
+![DARTlogo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
 
-![DARTlogo](docs/images/Dartboard7.png)
+----
 
 DART software - Copyright UCAR. This open source software is provided     
 by UCAR, "as is", without charge, subject to all terms of use at     

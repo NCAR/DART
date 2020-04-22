@@ -1,7 +1,3 @@
----
-title: Welcome to DART
-layout: default
----
 
 ![DARTlogo](docs/images/Dartboard7.png)
 

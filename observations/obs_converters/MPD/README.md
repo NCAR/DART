@@ -1,9 +1,5 @@
----
-title: MPD converter
-layout: default
----
 
-![DARTlogo](docs/images/Dartboard7.png)
+![DARTlogo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
 
 The **M**icro**P**ulse **D**ifferential Absorption Lidar (**MPD**) data
 were collected during field campaigns and testing periods by the

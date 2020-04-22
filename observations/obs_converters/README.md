@@ -1,7 +1,3 @@
----
-title: DART Observations
-layout: default
----
 
 <span id="TOP" class="anchor"></span>
 
@@ -9,7 +5,7 @@ DART Observations
 =================
 
 ---
-![DART project logo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
+![DARTlogo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
 ---
 
 [OVERVIEW](#Overview) / [DATA SOURCES](#datasourcesandformats) /

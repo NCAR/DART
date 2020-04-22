@@ -1,7 +1,5 @@
----
-title: FESOM scripting
-layout: default
----
+
+![DARTlogo](docs/images/Dartboard7.png)
 
 ### Further description of the scripts
 
