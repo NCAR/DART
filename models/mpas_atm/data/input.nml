@@ -111,7 +111,7 @@
   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .true.
+   write_binary_obs_sequence = .false.
   /
    !read_binary_file_format = "big_endian"
 
@@ -142,7 +142,7 @@
                               'LAND_SFC_RELATIVE_HUMIDITY' /
 
 &obs_def_gps_nml
-   max_gpsro_obs = 100000000
+   max_gpsro_obs = 1000000
   /
 
 
@@ -174,17 +174,9 @@
                           'uReconstructMeridional','QTY_V_WIND_COMPONENT',
                           'w',                     'QTY_VERTICAL_VELOCITY',
                           'qv',                    'QTY_VAPOR_MIXING_RATIO',
-                          'qc',                    'QTY_CLOUDWATER_MIXING_RATIO',
-                          'qr',                    'QTY_RAINWATER_MIXING_RATIO',
-                          'u10',                   'QTY_U_WIND_COMPONENT',
-                          'v10',                   'QTY_V_WIND_COMPONENT',
-                          't2m',                   'QTY_TEMPERATURE',
-                          'q2',                    'QTY_SPECIFIC_HUMIDITY',
                           'surface_pressure',      'QTY_SURFACE_PRESSURE',
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
-                          'qc','0.0','NULL','CLAMP',
-                          'qr','0.0','NULL','CLAMP',
-                          'q2','0.0','NULL','CLAMP',
+                          'rho','0.0','NULL','CLAMP',
   /
 
 &update_mpas_states_nml
@@ -433,7 +425,7 @@
    aircraft_pres_int        = 2500.0
    sat_wind_pres_int        = 2500.0
    sfc_elevation_tol        = 300.0
-   obs_pressure_top         = 0.0
+   obs_pressure_top         = 1.0
    obs_height_top           = 2.0e10
    max_num_obs              = 1000000
    sonde_extra              = 'obs_seq.rawin'
@@ -448,12 +440,3 @@
    tc_sonde_radii           = -1.0
    overwrite_obs_time       = .false.
 /
-
-&obs_keep_a_few_nml
-   filename_in  = 'obs_seq.out'
-   filename_out = 'obs_seq.subset'
-   max_count_per_type = 10
-   max_total_count    = -1
-   print_only   = .false.
-   calendar     = 'Gregorian'
-   /
