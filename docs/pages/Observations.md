@@ -415,8 +415,8 @@ the model consistent with those observations - the true state:
 
 Real observations come in a mind-boggling diversity of formats. We have
 converters for many formats in the `DART/observations/obs_converters`
-directory. The documentation for that directory is listed in
-[observations.html](Manhattan/observations/obs_converters/observations.html).  
+directory. The documentation for that directory is listed in the 
+[README.md](../../observations/obs_converters/README.md).  
 
 The converters are designed to work on one input file format and create
 (or add to) an output observation sequence. It may be desirable to
