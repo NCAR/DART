@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# $Id:$
-
 #==========================================================================
 
 # Script to package yearly files found in $data_proj_space 
@@ -17,6 +15,7 @@
 #     until we want to send them to the RDA.
 # This takes time; it actually copies.
 
+# FIXME KEVIN - describe how this is supposed to be run/used.
 # >>> Run repack_st_arch.csh before running this script. <<<
 # >>> Log in to globus (see mv_to_campaign.csh for instructions).
 # >>> From a casper window (but not 'ssh'ed to data-access.ucar.edu)
@@ -50,7 +49,6 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=raeder@ucar.edu
-# #SBATCH --account=P86850054
 #SBATCH --account=YOUR_ACCOUNT
 #SBATCH --partition=dav
 #SBATCH --ignore-pbs
@@ -277,11 +275,4 @@ if ($do_history == true) then
    end
 endif
 
-exit
-#==========================================================================
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
+exit 0
