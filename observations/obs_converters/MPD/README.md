@@ -12,32 +12,15 @@ signals between the online and offline wavelengths is proportional to
 the amount of water vapor in the atmosphere, which allows the retrieval 
 of absolute humidity profiles above the lidar site. 
 
-**THIS**
-
 This observation converter takes absolute humidity (g/m3) profiles 
-retrieved from the MPD data and convert to format used by DART.
-A sample netCDF data for the retrieved MPD absolute humidity is provided 
-in `data/wv_mpd01.190614.dafinal.Python.nc`. 
-
+retrieved from the MPD data and converts them to the format used by DART.
 The `obs_converter/MPD/work/convert_to_text.py` script reads the netCDF 
-files from each MPD site and combine them into text files, one for each 
-date/time. An example text file is provided in at `data/text.txt`.
-The `obs_converter/MPD/work/mpd_text_to_obs` program translates the text
-files to DART `obs_seq.out` format.
-
-**OR**
-
-This observation converter takes absolute humidity (g/m3) profiles 
-retrieved from the MPD data and convert to format used by DART.
-The `obs_converter/MPD/work/convert_to_text.py` script reads the netCDF 
-files from each MPD site and combine them into text files, one for each 
-date/time. The `obs_converter/MPD/work/MPD_text_to_obs` program 
-translates the text files to DART `obs_seq.out` format.
+files from each MPD site and combines them into text files, one for each 
+date and time. The `obs_converter/MPD/work/MPD_text_to_obs` program 
+translates the text files to the DART `obs_seq.out` format.
 
 Test data for a single site and an example output can be downloaded from
-https://www.image.ucar.edu/pub/DART/MPD.tar.gz
-
-**THAT**
+https://www.image.ucar.edu/pub/DART/MPD/MPD.tar.gz
 
 For more details of the retrieval and quality control process, 
 and inquire about data availability for your research project,
