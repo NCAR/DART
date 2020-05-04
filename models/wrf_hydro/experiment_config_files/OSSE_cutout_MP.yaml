@@ -7,7 +7,7 @@
 # Build Phase: dart and wrf_hydro.
 # Experiment setup phase: experiment.
 # Ensemble construction phase: ensemble.
-# Run Phase: run.
+# Run Phase: run. ++
 
 modules: ## !!!  NOT currently in use: make sure your modules match
          ##      your mkmf_template and your compiler choices below.
