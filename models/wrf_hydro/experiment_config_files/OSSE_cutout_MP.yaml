@@ -2,7 +2,7 @@
 #
 # Purpose: collect ALL relevant information to a HydroDart experiment.
 #
-# There are top-level keys for differen phases of the experiment setup
+# There are top-level keys for different phases of the experiment setup
 # and run.
 # Build Phase: dart and wrf_hydro.
 # Experiment setup phase: experiment.
