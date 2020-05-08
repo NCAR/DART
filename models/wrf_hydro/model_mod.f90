@@ -973,7 +973,7 @@ if (debug > 3) then
    enddo
 endif
 
-!! get_close only find the close streamflow variables even if the hydro
+!! get_close only finds the close streamflow variables even if the hydro
 !! domain had more variables (e.g., bucket). The following code adds the 
 !! remaining variables to the close set. Otherwise, other variables won't
 !! be updated because they are simply not close. 
