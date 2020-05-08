@@ -153,7 +153,7 @@ else
     plotdat.nvars       = nvars;
 end
 
-global figuredata verbose
+global figuredata verbose webmethod
 
 figuredata            = set_obsdiag_figure('landscape');
 figuredata.MarkerSize = p.Results.MarkerSize;
@@ -167,12 +167,23 @@ switch lower(p.Results.method)
         y1 = [100,100,100];
         dy = [470,470,470];
         webmethod = true;
+        % This doesn't work; something forces the figure to stay on screen.
+        % x1 = [1425,1425,1425];
+        % dx = [830,830,830];
+        % y1 = [100,100,100];
+        % dy = [470,470,470];
+        % I'd still like to have the pictures appear (momentarily) mostly off screen
     otherwise
+        % 3 figures in spread out positions, with optimal size for my Mac.
+        x1 = [  1,475,950];
+        dx = [474,474,474];
+        y1 = [100,100,100];
+        dy = [650,650,650];
         % 3 figures stacked on top of each other
-        x1 = [  20,  20,  20];
-        dx = [1000,1000,1000];
-        y1 = [  45, 450, 855];
-        dy = [ 320, 320, 320];
+        %x1 = [  20,  20,  20];
+        %dx = [1000,1000,1000];
+        %y1 = [  45, 450, 855];
+        %dy = [ 320, 320, 320];
         webmethod = false;
 end
 
@@ -196,14 +207,12 @@ for ivar = 1:plotdat.nvars
     % remove existing postscript files if we are creating them.
     % each figure will be appended, so we want a new file initially.
     
-    if ~ webmethod
-        for iregion = 1:plotdat.nregions
-            psfname{iregion} = sprintf('%s_rmse_%s_evolution_region%d.ps', ...
-                plotdat.varnames{ivar}, plotdat.copystring, iregion);
-            if (exist(psfname{iregion},'file') == 2)
-                if (verbose), fprintf('Removing %s from the current directory.\n',psfname{iregion}); end
-                system(sprintf('rm %s',psfname{iregion}));
-            end
+    for iregion = 1:plotdat.nregions
+        psfname{iregion} = sprintf('%s_rmse_%s_evolution_region%d.ps', ...
+            plotdat.varnames{ivar}, plotdat.copystring, iregion);
+        if (exist(psfname{iregion},'file') == 2)
+            if (verbose), fprintf('Removing %s from the current directory.\n',psfname{iregion}); end
+            system(sprintf('rm %s >& /dev/null',psfname{iregion}));
         end
     end
     
@@ -212,7 +221,7 @@ for ivar = 1:plotdat.nvars
     lgfname = sprintf('%s_rmse_%s_obscount.txt',plotdat.varnames{ivar},plotdat.copystring);
     if (exist(lgfname,'file') == 2)
         if (verbose), fprintf('Removing %s from the current directory.\n',lgfname); end
-        system(sprintf('rm %s',lgfname));
+        system(sprintf('rm %s >& /dev/null',lgfname));
     end
     logfid = fopen(lgfname,'wt');
     fprintf(logfid,'%s\n',lgfname);
@@ -329,21 +338,24 @@ for ivar = 1:plotdat.nvars
             
             myplot(plotdat);
             
-            switch lower(p.Results.method)
-                case {'web', 'normweb'}
-                    pause(0.01)
-                otherwise
+            if ~ webmethod
+               drawnow
+            end
+
+            if verLessThan('matlab','R2016a')
+                print(gcf, '-dpsc', '-append', psfname{iregion});
+            else
+                print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
+            end
                     
-                    if verLessThan('matlab','R2016a')
-                        print(gcf, '-dpsc', '-append', psfname{iregion});
-                    else
-                        print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
-                    end
+            switch lower(p.Results.method)
+
+                case {'traditional', 'norm'}
                     
                     % slow down the stream of pictures when there is something to see,
                     % without needing to hit a key to continue.
                     if any(plotdat.ges_Nused(plotdat.region,:))
-                        pause(5);
+                        pause(2);
                     end
             end
             
@@ -355,6 +367,17 @@ for ivar = 1:plotdat.nvars
             
         end
     end
+
+    % KDR Update the figures and check the system for any changes,
+    % so that ps files will not be cropped or otherwise distorted.
+    if webmethod
+       snapnow
+    end
+
+    % KDR Need to close all figures before proceeding to the next obs type 
+    %     to prevent duplicate png files.
+    close all
+
 end
 
 %=====================================================================
@@ -364,11 +387,16 @@ end
 
 function myplot(plotdat)
 
-global figuredata verbose
+global figuredata verbose webmethod
 
 ax1 = subplot('position',figuredata.position);
 set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
 orient(figuredata.orientation)
+
+% KDR Hide the windows.  Prevent cropping the printed versions by snapnow, below.
+if webmethod
+   set(gcf,'WindowState','minimized')
+end
 
 ges_Nposs = squeeze(plotdat.ges_Nposs(plotdat.region,:,:,:));
 ges_Nused = squeeze(plotdat.ges_Nused(plotdat.region,:,:,:));
@@ -376,12 +404,14 @@ anl_Nused = squeeze(plotdat.anl_Nused(plotdat.region,:,:,:));
 ges_Neval = squeeze(plotdat.ges_Neval(plotdat.region,:,:,:));
 anl_Ngood = sum(anl_Nused);
 
+% KDR If the legend comes after the other stuff, would it be in front of them?
+%     Not all of them.  It's associated with a particular axes(?).
 [hrmse,  legstr_rmse ] = plot_quantity(            'rmse', plotdat);
 [hother, legstr_other] = plot_quantity(plotdat.copystring, plotdat);
 
 h  = legend([hrmse,hother], legstr_rmse, legstr_other);
-set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize, ...
-    'TextColor','blue','Color','k')
+set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize,'TextColor','[0 .3 1]')
+% This text color is a lighter shade than 'blue'; it shows up against black, 'copy' green, and white.
 
 if verLessThan('matlab','R2017a')
     % Convince Matlab to not autoupdate the legend with each new line.

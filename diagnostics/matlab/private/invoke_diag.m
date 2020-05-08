@@ -12,6 +12,8 @@ function invoke_diag(dart_output_file, style, metric, var, method, lev)
             'obsname', var, 'level', lev, 'verbose', false, 'MarkerSize', 6, 'method', method);
     
     end
-    snapnow
-    close all
+% These are redundant with the ones in plot_rmse_xxx*.
+% Those are necessary to prevent cropping of .ps and .pdf files
+%    snapnow
+%    close all
 end

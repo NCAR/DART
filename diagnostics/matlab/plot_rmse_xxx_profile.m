@@ -138,7 +138,7 @@ else
     plotdat.nvars       = nvars;
 end
 
-global figuredata verbose
+global figuredata verbose webmethod
 
 figuredata            = set_obsdiag_figure('tall');
 figuredata.MarkerSize = p.Results.MarkerSize;
@@ -149,8 +149,18 @@ switch lower(p.Results.method)
         x1 = [100,100,100];
         dx = [830,830,830];
         y1 = [100,100,100];
-        dy = [760,760,760];
+        % KDR stretch to make more room for BottomAnnotation?
+        % I changed private/set_obsdiag_figure.m slightly (2020-4-25).
+        dy = [800,800,800];
+        % dy = [760,760,760];
         webmethod = true;
+
+        % Try to put these "off screen" instead.   Doesn't work.
+        % x1 = [1425,1425,1425];
+        % dx = [830,830,830];
+        % y1 = [100,100,100];
+        % dy = [470,470,470];
+        % I'd still like to do this, but haven't figured out how.
     otherwise
         % 3 figures in spread out positions, with optimal size.
         x1 = [  1,475,950];
@@ -312,27 +322,8 @@ for ivar = 1:plotdat.nvars
         
         BottomAnnotation(fname)
         
-        psfname = sprintf('%s_region%d', psfile, iregion);
-        
-        if webmethod
-            % Without a tiny pause, Matlab will not display anything to
-            % the screen. I just like to see the plot.
-            pause(0.01)
-        else
-            if verLessThan('matlab','R2016a')
-                print(gcf, '-dpdf', psfname);
-            else
-                print(gcf, '-dpdf', '-bestfit', psfname);
-            end
+
             
-            % KEVIN ... instead of pause being true/false ... if pause was 0 - no pause, negative is keystroke, positive is number of seconds ...
-            
-            % slow down the stream of pictures when there's something to see,
-            % without needing to hit a key to continue.
-            if any(plotdat.ges_Nused(plotdat.region,:))
-                pause(5);
-            end
-        end
         
         % look at each one ... based on user input
         if (p.Results.pause)
@@ -341,6 +332,39 @@ for ivar = 1:plotdat.nvars
         end
         
     end
+
+    % KDR Update the figure window to prevent (random) cropping the printed versions.
+    %     This replaces the snapnow in private/invoke.m
+    if webmethod
+       snapnow
+    else
+       drawnow
+    end
+
+    for iregion = 1:plotdat.nregions
+        psfname = sprintf('%s_region%d', psfile, iregion);
+        %figure(iregion);
+        if verLessThan('matlab','R2016a')
+            print(iregion, '-dpdf', psfname);
+        else
+            print(iregion, '-dpdf', '-bestfit', psfname);
+        end
+	
+	% KEVIN ... instead of pause being true/false ... 
+	%   if pause was 0 - no pause, 
+	%   negative is keystroke, 
+	%   positive is number of seconds ...
+        if ~ webmethod
+            if any(plotdat.ges_Nused(plotdat.region,:))
+                pause(5);
+            end
+        end
+    end
+
+    % KDR Need to close all figures before proceeding to the next obs type 
+    %     to prevent duplicate png files.
+    close all
+
 end
 
 %=====================================================================
@@ -350,7 +374,7 @@ end
 
 function myplot(plotdat)
 
-global figuredata
+global figuredata webmethod
 
 ges_copy = plotdat.ges_copy(plotdat.region,:);
 anl_copy = plotdat.anl_copy(plotdat.region,:);
@@ -387,6 +411,12 @@ switch upper(plotdat.myvarname)
         set(ax1,'YScale','log')
 end
 
+% KDR Hide the figure windows.  
+% Deal with cropping of the printed versions using snapnow before the pdf print statements.
+if webmethod
+   set(gcf,'WindowState','minimized')
+end 
+
 % add type of vertical coordinate info for adjusting axes to accommodate legend
 
 Stripes(plotdat.Xrange, plotdat.level_edges, plotdat.level_units);
@@ -396,10 +426,8 @@ set(ax1,'YDir', plotdat.YDir, ...
     'YAxisLocation','left', ...
     'FontSize',figuredata.fontsize)
 
-% KDR (log scale was set here, but moved to fix stripes)
-% This changes the scale, but the stripes are not taking account of the
-% extra space at the top for the legend, so they don't line up with the data levels.
-% KDR Make vertical axis logorithmic for obs which use height (e.g. GPS).
+% KDR (log scale was set here, but moved up to fix stripes)
+% It needs to be (re)set here too.
 switch upper(plotdat.myvarname)
     case 'GPSRO_REFRACTIVITY'
         set(ax1,'YScale','log')
@@ -523,6 +551,11 @@ xscale = matchingXticks(ax1,ax2);
 
 set(get(ax1,'Ylabel'),'String',plotdat.level_units, ...
     'Interpreter','none','FontSize',figuredata.fontsize)
+% KDR timespan is the "DD-Mmm-YYY through "... at the bottom.
+%     xlabel is the 'rmse and "...
+% Did the timespan overlap the BottomAnn because it wrapped
+%    around the end of the line?
+% I added more space at the bottom for the 'tall' mode.
 set(get(ax1,'Xlabel'),'String',{plotdat.xlabel, plotdat.timespan}, ...
     'Interpreter','none','FontSize',figuredata.fontsize)
 

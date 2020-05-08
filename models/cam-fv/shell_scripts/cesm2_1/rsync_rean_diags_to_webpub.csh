@@ -1,11 +1,18 @@
 #!/bin/csh
 
 # -a, --archive               archive mode; 
-# -v, --verbose               increase verbosity
+# -v, --verbose               increase verbosity (default is -q quiet)
 # -z, --compress              compress file data during the transfer
 # -C, --cvs-exclude           auto-ignore files in the same way CVS does
 # -e, --rsh=COMMAND           specify the remote shell to use
 #     --exclude=PATTERN       exclude files matching PATTERN
+
+set my_pth = `pwd`
+set diags_dir = $my_pth:t
+
+# Archive the ps, pdf, and obs_diag_output.nc files 
+# while the png files are sent to the web site.
+tar -z -c -f ../${diags_dir}.tgz [^w]*  &
 
 # The trailing slashes are important in this syntax
 
@@ -24,7 +31,7 @@ if ($status != 0) then
    echo "ERROR: no web_ directory"
    exit
 endif
-set LOCALDIR = `pwd`/${web_dir}
+set LOCALDIR = ${my_pth}/${web_dir}
 
 # ? Exclude git files instead of .svn?
 echo "rsync -avz --rsh ssh --exclude '"'.svn*'"'\\" 
@@ -32,3 +39,4 @@ echo "${LOCALDIR} ${MACHINE}:${MACHINEDIR}"
 
 rsync -avz --rsh ssh --exclude '.svn*' ${LOCALDIR} ${MACHINE}:${MACHINEDIR}
 
+wait

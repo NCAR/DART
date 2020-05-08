@@ -184,11 +184,14 @@ else
     pstruct.Ztype  = obsstruct.Ztyp(1);
 
     % choose a symbol size based on the number of obs to plot.
-    if (length(obsstruct.obs) < 1000)
-        pstruct.scalearray = scaleme(obsstruct.obs, 30);
-    else
+% KDR This interfere's with my seeing as many obs as possible.
+%     These don't need to be changed in NCAR/DART_Development.
+%
+%    if (length(obsstruct.obs) < 1000)
+%        pstruct.scalearray = scaleme(obsstruct.obs, 30);
+%    else
         pstruct.scalearray = 30.0 * ones(size(obsstruct.obs));
-    end
+%    end
     pstruct.clim   = [min(obsstruct.obs)-0.5 max(obsstruct.obs)+0.5];
     pstruct.str2   = sprintf('%s (%d locations)',obsstruct.CopyString,length(obsstruct.obs));
 
@@ -260,11 +263,12 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
         (length(flaggedobs.obs) + length(obsstruct.obs));
 
     % choose a symbol size based on the number of obs to plot.
-    if (length(flaggedobs.obs) < 1000)
-        pstruct.scalearray = scaleme(flaggedobs.obs, 30);
-    else
+% KDR This interfere's with my seeing as many obs as possible.
+%    if (length(flaggedobs.obs) < 1000)
+%        pstruct.scalearray = scaleme(flaggedobs.obs, 30);
+%    else
         pstruct.scalearray = 30.0 * ones(size(flaggedobs.obs));
-    end
+%    end
 
     pstruct.colorbarstring = QCString;
     pstruct.clim = [min(flaggedobs.qc)-1.0 max(flaggedobs.qc)+1.0];
