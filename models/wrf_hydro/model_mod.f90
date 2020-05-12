@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id: $
 
 module model_mod
 
@@ -105,10 +103,9 @@ public :: nc_write_model_vars,    &
 public :: get_number_of_links
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL: wrf_hydro/model_mod.f90 $"
-character(len=*), parameter :: revision = "$Revision: git $"
-character(len=*), parameter :: revdate  = "$Date: recent $"
+character(len=*), parameter :: source   = "wrf_hydro/model_mod.f90"
+character(len=*), parameter :: revision = ""
+character(len=*), parameter :: revdate  = ""
 
 logical, save :: module_initialized = .false.
 
@@ -884,8 +881,8 @@ character(len=*),parameter :: routine = 'get_close_state'
 ! vars for determining stream ... Must be 3*n_link
 ! if the subsurface or surface parameters are part of the state.
 integer     :: stream_nclose
-integer(i8) :: stream_indices(3*n_link)
-real(r8)    :: stream_dists(3*n_link)
+integer(i8), allocatable :: stream_indices(:)
+real(r8), allocatable    :: stream_dists(:)
 
 ! vars for determining who is on my task
 integer     :: state_nclose
@@ -903,9 +900,13 @@ type(location_type) :: location ! required argument to get_state_meta_data()
 
 integer :: iunit
 
+character(len=NF90_MAX_NAME) :: var_name
+
 iunit = my_task_id() + 100
 
 if (present(dist)) dist = huge(1.0_r8)  !something far away
+
+allocate (stream_indices(model_size), stream_dists(model_size))
 
 ! Get the traditional list of ALL state locations that are close.
 !>@todo state_indices is not being used ... when we have a more complicated state
@@ -944,6 +945,7 @@ if (base_type > 0) then
    num_close = state_nclose
    close_ind(1:num_close) = state_indices(1:num_close)
    if (present(dist)) dist(1:num_close) = state_dists(1:num_close)
+   deallocate (stream_indices, stream_dists)
    RETURN
 endif
 
@@ -956,6 +958,7 @@ if (base_qty /= QTY_STREAM_FLOW) then
    num_close = state_nclose
    close_ind(1:num_close) = state_indices(1:num_close)
    if (present(dist)) dist(1:num_close) = state_dists(1:num_close)
+   deallocate (stream_indices, stream_dists)
    RETURN
 endif
 
@@ -989,6 +992,7 @@ if (num_vars_hydro_dom > 1) then
    ! hence, the start from 2
    do ivars = 2, num_vars_hydro_dom
       start_indx = get_index_start(idom_hydro, ivars)
+      var_name   = get_variable_name(idom_hydro, ivars) 
 
       VARloop: do iclose = 1, num_close_tmp
          close_index = stream_indices(iclose)
@@ -997,8 +1001,7 @@ if (num_vars_hydro_dom > 1) then
          ! Making them "far" from the observation is a solution to the 
          ! fact that the bucket is not present on the entire channel network.
          ! This way filter will not touch them and thus they won't be updated. 
-         if (get_variable_name(idom_hydro, ivars) == 'z_gwsubbas' .and. &
-             BucketMask(close_index) == 0) cycle VARloop 
+         if (trim(var_name) == 'z_gwsubbas' .and. BucketMask(close_index) == 0) cycle VARloop 
 
          stream_nclose                 = stream_nclose + 1
          stream_indices(stream_nclose) = start_indx - 1 + close_index
@@ -1086,6 +1089,8 @@ if (debug > 99) then
    write(iunit,*) trim(string1),' get_close_state:close_ind ',close_ind(1:num_close)
    write(iunit,*) trim(string1),' get_close_state:dist      ',dist(1:num_close)
 endif
+
+deallocate (stream_indices, stream_dists)
 
 end subroutine get_close_state
 
@@ -1423,8 +1428,3 @@ end function get_number_of_links
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL: $
-! $Id: $
-! $Revision: $
-! $Date: $
