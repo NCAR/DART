@@ -11,6 +11,8 @@
 #
 # Suggested (perhaps required) flags:
 # -ffree-line-length-none   handles "long" lines - i.e. longer than 72 chars
+# -O2                       default level of code optimization
+#                           (remove for debugging)
 #
 # Suggested debugging flags:
 #  -g                  add debugging information to executable
@@ -21,8 +23,8 @@
 #  -ffpe-trap=invalid,zero,overflow
 #                      stop on floating point errors
 #
-#  earlier versions of this mkmf file listed 'precision' as one of the options on
-#  the fpe-trap line.  this is not recommended anymore as some of the gfortran internal
+#  Earlier versions of this mkmf file listed 'precision' as one of the options on
+#  the fpe-trap line.  This is not recommended anymore as some of the gfortran internal
 #  routines will trap, as well as some perfectly valid DART computations.
 #
 # Generally not needed but possibly useful for non-DART code:
@@ -33,28 +35,76 @@
 # -fdefault-real-8     force all real variables to be real*8.  not needed for DART code
 #                      since all real variables in DART are declared with a size.
 #
-#    NOTE: Some previous versions of the gfortran compiler (including 4.1.2)
-#    changed the record marker size to 8 bytes, which made binary files written
-#    with the 'unformatted' option unreadable by programs compiled with other
-#    compilers.  Later versions of the compiler changed the default back to 4 bytes.
-#    If you have a version that defaults to 8 byte record markers, use this 
-#    compile time flag:
+# Binary (unformatted) file issues:
+# 
+#  Files which use NetCDF format (e.g. input/output ensemble member model state)
+#  automatically convert between big-endian and little-endian number formats
+#  if needed, and handle differences between single and double precision reals.
+#
+#  Ascii files (e.g. obs_seq files using ascii format, control files, scripts) 
+#  are portable between different systems. 
+# 
+#  However, binary observation sequence (obs_seq) files and other model-specific 
+#  binary files can have some or all of the following issues:
+#
+#  - Record Marker size
+#
+#     Some older versions of the gfortran compiler (including 4.1.2) changed
+#     the record marker size to 8 bytes, which made binary files written with
+#     the 'unformatted' option unreadable by programs built with other compilers.  
+#     Later versions of the compiler changed the default back to 4 bytes.
+#     If you have a version that defaults to 8 byte record markers, use this 
+#     compile time flag to write files with 4 byte markers:
 #       -frecord-marker=4
-#    If you have files written by older versions of the gfortran compiler that
-#    cannot be read now, try this compile time flag:
+#     If you have files written by older versions of the gfortran compiler that
+#     cannot be read now, try this compile time flag:
 #       -frecord-marker=8 
 #
-# Convert big-endian or little-endian binary files at runtime:
+#  - Real variable precision/size:
 #
-# setenv GFORTRAN_CONVERT_UNIT 'big_endian'
-#    Treats ALL units as big_endian
+#     If binary files are written with code that declares the variables to
+#     be real*8 (8 byte reals), which is the default in DART, the executable 
+#     that reads this file must be compiled the same way. Some DART users 
+#     redefine all DART reals to be real*4 (4 byte reals) so all code computes
+#     with and reads/writes single precision values.  In that case, all 
+#     executables must be compiled this same way to read binary (unformatted) 
+#     files successfully.  See the "types_mod.f90" file for this setting.
 #
-# setenv GFORTRAN_CONVERT_UNIT 'big_endian;native:10-20'
-#    Treats units 10-20 as big_endian but the rest are 'native' 
+#  - Endian issues
 #
-# for more information on unit conversions:
-# http://gcc.gnu.org/onlinedocs/gfortran/GFORTRAN_005fCONVERT_005fUNIT.html#GFORTRAN_005fCONVERT_005fUNIT
+#     Intel CPU chips use "little-endian" number format.  IBM Power chips
+#     use "big-endian" number format.  When binary files are written they
+#     default to writing numbers with the byte order native to the machine.  
 #
+#     To read DART observation sequence (obs_seq) binary files on a 
+#     computing platform with a different "endian-ness":
+#
+#       There is a runtime namelist item in the &obs_sequence_nml namelist 
+#       to set a different endian for the observation sequence files only.
+#       This is the recommended way to read binary obs_seq files if written
+#       by a different platform.  Options:  big_endian, little_endian, native.
+# 
+#     To read other model-specific binary files on a different platform:
+#
+#       You can convert big-endian or little-endian binary files at runtime
+#       on a unit-number by unit-number basis.  Note that if you set all
+#       open file units to a different endian-ness, any new files you write
+#       will also have that same endian-ness. You may need to add some print 
+#       statements in the code after opening the file to determine which 
+#       unit numbers are being used.  You can then set them in the environment
+#       to override the default:
+#
+#       setenv GFORTRAN_CONVERT_UNIT 'big_endian'
+#         Treats ALL open file units as big_endian.  (Not recommended if new files
+#         will be written.)  Options:  big_endian, little_endian, native.
+#
+#       setenv GFORTRAN_CONVERT_UNIT 'big_endian;native:10-20'
+#         Treats file units 10-20 as native; the rest are 'big_endian' 
+#
+#       For more information on unit conversions:
+#        http://gcc.gnu.org/onlinedocs/gfortran/GFORTRAN_005fCONVERT_005fUNIT.html
+#
+
 
 MPIFC = mpif90
 MPILD = mpif90
