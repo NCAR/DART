@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 module model_mod
 
@@ -49,7 +47,7 @@ use     default_model_mod, only : adv_1step, nc_write_model_vars
 
 use        noah_hydro_mod, only : configure_lsm, configure_hydro, &
                                   n_link, linkLong, linkLat, linkAlt, get_link_tree, &
-                                  full_to_connection, get_downstream_links, &
+                                  BucketMask, full_to_connection, get_downstream_links, &
                                   read_hydro_global_atts, write_hydro_global_atts, &
                                   read_noah_global_atts, write_noah_global_atts, &
                                   get_hydro_domain_filename
@@ -105,10 +103,9 @@ public :: nc_write_model_vars,    &
 public :: get_number_of_links
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "wrf_hydro/model_mod.f90"
+character(len=*), parameter :: revision = ""
+character(len=*), parameter :: revdate  = ""
 
 logical, save :: module_initialized = .false.
 
@@ -884,8 +881,8 @@ character(len=*),parameter :: routine = 'get_close_state'
 ! vars for determining stream ... Must be 3*n_link
 ! if the subsurface or surface parameters are part of the state.
 integer     :: stream_nclose
-integer(i8) :: stream_indices(3*n_link)
-real(r8)    :: stream_dists(3*n_link)
+integer(i8), allocatable :: stream_indices(:)
+real(r8), allocatable    :: stream_dists(:)
 
 ! vars for determining who is on my task
 integer     :: state_nclose
@@ -893,7 +890,8 @@ integer     :: state_indices(size(close_ind))
 real(r8)    :: state_dists(size(close_ind))
 real(r8)    :: stream_ens_mean(1)
 
-integer :: iclose, iparam, start_indx, num_close_tmp
+integer :: iclose, iparam, start_indx, num_close_tmp, close_index
+integer :: ivars, num_vars_hydro_dom
 
 !integer     :: istream
 integer     :: iloc, base_qty
@@ -902,9 +900,13 @@ type(location_type) :: location ! required argument to get_state_meta_data()
 
 integer :: iunit
 
+character(len=NF90_MAX_NAME) :: var_name
+
 iunit = my_task_id() + 100
 
 if (present(dist)) dist = huge(1.0_r8)  !something far away
+
+allocate (stream_indices(model_size), stream_dists(model_size))
 
 ! Get the traditional list of ALL state locations that are close.
 !>@todo state_indices is not being used ... when we have a more complicated state
@@ -943,20 +945,20 @@ if (base_type > 0) then
    num_close = state_nclose
    close_ind(1:num_close) = state_indices(1:num_close)
    if (present(dist)) dist(1:num_close) = state_dists(1:num_close)
+   deallocate (stream_indices, stream_dists)
    RETURN
 endif
 
 ! Everything below here only pertains to identity observations.
-
 full_index = abs(base_type)
 call get_state_meta_data(full_index, location, base_qty)
-
 ! identity observations that are not streamflows need no further consideration
 
 if (base_qty /= QTY_STREAM_FLOW) then
    num_close = state_nclose
    close_ind(1:num_close) = state_indices(1:num_close)
    if (present(dist)) dist(1:num_close) = state_dists(1:num_close)
+   deallocate (stream_indices, stream_dists)
    RETURN
 endif
 
@@ -964,10 +966,8 @@ endif
 
 ! 'stream_indices' contains the GLOBAL indices into the DART state vector.
 ! These may or may not be on my task.
-
 call get_close_streamflows(base_qty, base_type, &
                            stream_nclose, stream_indices, stream_dists)
-
 if (debug > 3) then
    write(string1,'("PE ",I3)') my_task_id()
    do iloc = 1,stream_nclose
@@ -976,12 +976,49 @@ if (debug > 3) then
    enddo
 endif
 
+!! get_close only finds the close streamflow variables even if the hydro
+!! domain had more variables (e.g., bucket). The following code adds the 
+!! remaining variables to the close set. Otherwise, other variables won't
+!! be updated because they are simply not close. 
+
+num_vars_hydro_dom = get_num_variables(idom_hydro)
+
+if (num_vars_hydro_dom > 1) then
+   ! more than 1 variable (streamflow) in the hydro domain
+
+   num_close_tmp = stream_nclose
+
+   ! Already did streamflow (var #1), now add the other variables 
+   ! hence, the start from 2
+   do ivars = 2, num_vars_hydro_dom
+      start_indx = get_index_start(idom_hydro, ivars)
+      var_name   = get_variable_name(idom_hydro, ivars) 
+
+      VARloop: do iclose = 1, num_close_tmp
+         close_index = stream_indices(iclose)
+
+         ! Remove the masked bucket variables from the close set.
+         ! Making them "far" from the observation is a solution to the 
+         ! fact that the bucket is not present on the entire channel network.
+         ! This way filter will not touch them and thus they won't be updated. 
+         if (trim(var_name) == 'z_gwsubbas' .and. BucketMask(close_index) == 0) cycle VARloop 
+
+         stream_nclose                 = stream_nclose + 1
+         stream_indices(stream_nclose) = start_indx - 1 + close_index
+         stream_dists(  stream_nclose) = stream_dists(iclose)
+      enddo VARloop
+
+   enddo
+endif
+
+
 ! Localize the parameters:
 ! If the ensemble mean streamflow is "near" zero then the next block is ignored.
 ! This is not great, but at this stage we do not have access to the individual
 ! state values.
 
 stream_ens_mean = get_state(full_index, ens_handle)
+!stream_ens_mean = 1.0_r8
 
 ! Since the parameter domain has exactly the same geometry/connectivity as the
 ! streamflow, we can add the domain offset (start_indx) to the close streamflow
@@ -1053,6 +1090,8 @@ if (debug > 99) then
    write(iunit,*) trim(string1),' get_close_state:dist      ',dist(1:num_close)
 endif
 
+deallocate (stream_indices, stream_dists)
+
 end subroutine get_close_state
 
 
@@ -1114,15 +1153,14 @@ distances     = huge(1.0_r8)  !something far away
 full_index = abs(identity_index)
 
 connection_index = full_to_connection(full_index)
+
 if (connection_index < 0) then
    call error_handler(E_ERR,routine,'unable to relate',source,revision,revdate)
 endif
 
 ! determine the upstream close bits
-
 call get_link_tree(connection_index, max_link_distance, depth, &
                    reach_length, stream_nclose, stream_indices, stream_distances)
-
 ! augment the list with the downstream close bits
 
 call get_downstream_links(connection_index, max_link_distance, depth, &
@@ -1390,8 +1428,3 @@ end function get_number_of_links
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
