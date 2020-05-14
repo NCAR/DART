@@ -232,7 +232,7 @@ endif
 ! this does not return 
 call error_handler(E_ERR, subr_name, msgstring1, source, revision, revdate, &
                    text2=context2, text3=saved_filename)
-  
+
 
 end subroutine nc_check
 
@@ -418,7 +418,6 @@ call nc_check(ret, routine, 'getting the global attribute: '//trim(attname), con
 
 end subroutine nc_get_global_real_array_att
 
-!------------------------------------------------------------------
 !--------------------------------------------------------------------
 ! attributes on specific variables section
 
@@ -1022,7 +1021,6 @@ call nc_check(ret, routine, 'define double variable '//trim(varname), context, f
 end subroutine nc_define_var_double_Nd
 
 !--------------------------------------------------------------------
-!--------------------------------------------------------------------
 ! check if vars, dims, or global atts exist (without error if not)
 ! these are functions, unlike the rest of these routines.
 
@@ -1094,9 +1092,6 @@ nc_variable_exists = (ret == NF90_NOERR)
 end function nc_variable_exists
 
 !--------------------------------------------------------------------
-!--------------------------------------------------------------------
-! put values into variables
-
 
 subroutine nc_put_char_1d(ncid, varname, varvals, context, filename, &
    nc_start, nc_count, nc_stride, nc_map)
@@ -1806,9 +1801,7 @@ call nc_check(ret, routine, 'get values for '//trim(varname), context, filename,
 
 end subroutine nc_get_real_4d
 
-!------------------------------------------------------------------
 !--------------------------------------------------------------------
-! inquire variable info
 
 subroutine nc_get_variable_size_1d(ncid, varname, varsize, context, filename)      
 
@@ -2095,10 +2088,7 @@ call nc_check(ret, routine, 'synchronize file contents', context, filename, ncid
 
 end subroutine nc_synchronize_file
 
-!------------------------------------------------------------------
-!------------------------------------------------------------------
-
-!------------------------------------------------------------------
+!--------------------------------------------------------------------
 !> check for the existence of either (or both) scale/offset attributes
 
 function has_scale_off(ncid, varid)
@@ -2196,7 +2186,6 @@ filename = ''
 
 end subroutine find_name_from_fh
 
-!------------------------------------------------------------------
 !------------------------------------------------------------------
 
 end module netcdf_utilities_mod

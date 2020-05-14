@@ -1,0 +1,47 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+
+on NCAR computer 'cheyenne', see /glade/p/image/Observation/ionosphere
+for an example of these obs.
+
+
+These are COSMIC 'ionPrf' ionospheric profile observations.
+
+They are downloaded from the CDAAC website as daily tar files
+and unpacked into the 'raw' directory.  They distribute these
+observations with one profile per netcdf file.  Each profile has 
+data at ~500-1000 different levels.
+
+Our converter has a fixed number of levels in the namelist
+and we interpolate between the two closest levels to get the
+data for that level.  If you give the converter a list of
+input netcdf files it will convert all of them into a 
+single output file.
+
+The 'daily' directory is a collection of all the profiles for
+that day.
+
+The 'convert' directory has the executables and scripting
+for breaking up the daily files into 10 minute files which
+are put in the '10min' directory.  Change the 'split_obs_seq.csh'
+script to change the width of this window, or the names of
+the output files.
+
+The 'verify.csh' script prints out any missing files, which
+happens if there are no profiles in the given window.
+
+Our convention is to make a 0 length file for missing intervals
+and we expect the filter run script to look at the file size
+and loop if there is a file but with no contents.  This will
+allow us to distinguish between a time where we haven't converted
+the observations and a time where there are no observations.
+In that case the script should add time to the next model
+advance request and loop to the next interval.
+
+
+
+
+
+

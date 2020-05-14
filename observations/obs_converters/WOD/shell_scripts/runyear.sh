@@ -3,12 +3,13 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
+
 #
-# DART $Id$
+# take a set of year-long WOD files and convert 
+# the contents into a single year-long obs_seq file.
 #
-# take a year-long obs_seq file and split it into daily files
-# which start at 12Z the previous day and end at 12Z on the
-# current day.
+# another script will split it into daily files.
+#
 
 # set the first and last years.
 let start_year=1998
