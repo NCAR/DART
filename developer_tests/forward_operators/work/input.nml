@@ -12,9 +12,9 @@
 /
 
 &error_handler_test_nml
-  test1 = 1  ,
-  test2 = .false. ,
-  test3 = 2.0 ,
+  test1 = 1  
+  test2 = .false. 
+  test3 = 2.0 
 /
 
 # pick a random set of inputs

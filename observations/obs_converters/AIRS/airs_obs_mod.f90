@@ -54,7 +54,7 @@ public :: make_obs_sequence, initialize_obs_sequence, compute_thin_factor
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL$"
+   "airs_obs_mod.f90"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 

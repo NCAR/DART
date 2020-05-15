@@ -300,7 +300,8 @@ use        types_mod, only : r8, MISSING_R8, MISSING_I
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              ascii_file_format, nmlfileunit, do_nml_file, &
-                             do_nml_term, check_namelist_read, find_namelist_in_file
+                             do_nml_term, check_namelist_read, find_namelist_in_file, &
+                             interactive_r, interactive_i
 
 use     location_mod, only : location_type, set_location, get_location, &
                              VERTISUNDEF, VERTISHEIGHT, VERTISLEVEL, VERTISSURFACE
@@ -780,8 +781,7 @@ logical :: is_ir
 logical :: is_visir
 
 if (.not. module_initialized) then
-   write(string1,*) "The module must be initialized before initializing a rttov sensor runtime"
-   call error_handler(E_ERR, 'initialize_rttov', string1, source, revision, revdate)
+   call initialize_module()
 end if
 
 if (.not. associated(sensor)) then
@@ -1384,95 +1384,6 @@ else
 end if
 
 end subroutine interactive_rttov_metadata
-
-
-!----------------------------------------------------------------------
-! prompt for a real value, optionally setting min and/or max limits
-! loops until valid value input.
-
-function interactive_r(str1,minvalue,maxvalue)
-real(r8)                       :: interactive_r
-character(len=*),   intent(in) :: str1
-real(r8), optional, intent(in) :: minvalue
-real(r8), optional, intent(in) :: maxvalue
-
-
-! Prompt and ensure value is in range if limits are specified
-
-if (present(minvalue) .and. present(maxvalue)) then
-
-   interactive_r = minvalue - 1.0_r8
-   MINMAXLOOP : do while ((interactive_r < minvalue) .or. (interactive_r > maxvalue))
-      write(*, *) 'Enter '//str1
-      read( *, *) interactive_r
-   end do MINMAXLOOP
-
-elseif (present(minvalue)) then
-
-   interactive_r = minvalue - 1.0_r8
-   MINLOOP : do while (interactive_r < minvalue)
-      write(*, *) 'Enter '//str1
-      read( *, *) interactive_r
-   end do MINLOOP
-
-elseif (present(maxvalue)) then
-
-   interactive_r = maxvalue + 1.0_r8
-   MAXLOOP : do while (interactive_r > maxvalue) 
-      write(*, *) 'Enter '//str1
-      read( *, *) interactive_r
-   end do MAXLOOP
-
-else ! anything goes ... cannot check
-      write(*, *) 'Enter '//str1
-      read( *, *) interactive_r
-endif
-
-end function interactive_r
-
-
-!----------------------------------------------------------------------
-! prompt for an integer value, optionally setting min and/or max limits
-! loops until valid value input.
-
-function interactive_i(str1,minvalue,maxvalue)
-integer                        :: interactive_i
-character(len=*),   intent(in) :: str1
-integer,  optional, intent(in) :: minvalue
-integer,  optional, intent(in) :: maxvalue
-
-! Prompt with a minimum amount of error checking
-
-if (present(minvalue) .and. present(maxvalue)) then
-
-   interactive_i = minvalue - 1
-   MINMAXLOOP : do while ((interactive_i < minvalue) .or. (interactive_i > maxvalue))
-      write(*, *) 'Enter '//str1
-      read( *, *) interactive_i
-   end do MINMAXLOOP
-
-elseif (present(minvalue)) then
-
-   interactive_i = minvalue - 1
-   MINLOOP : do while (interactive_i < minvalue)
-      write(*, *) 'Enter '//str1
-      read( *, *) interactive_i
-   end do MINLOOP
-
-elseif (present(maxvalue)) then
-
-   interactive_i = maxvalue + 1
-   MAXLOOP : do while (interactive_i > maxvalue)
-      write(*, *) 'Enter '//str1
-      read( *, *) interactive_i
-   end do MAXLOOP
-
-else ! anything goes ... cannot check
-      write(*, *) 'Enter '//str1
-      read( *, *) interactive_i
-endif
-
-end function interactive_i
 
 
 !----------------------------------------------------------------------
@@ -2114,6 +2025,8 @@ end if
 end subroutine grow_metadata
 
 !----------------------------------------------------------------------
+!> override track_status behavior to always error and print an error message if the field
+!> cannot be found
 
 subroutine check_status(field_name, ens_size, this_istatus, val, loc, istatus, &
    routine, source, revision, revdate, required, return_now)
@@ -2133,21 +2046,19 @@ logical,             intent(out) :: return_now
 
 real(r8) :: locv(3)
 
-! override track_status behavior to always error and print an error message if the field
-! cannot be found
-
 call track_status(ens_size, this_istatus, val, istatus, return_now)
 
-if (return_now .and. debug) then
+if (return_now) then
    locv = get_location(loc)
    if (required) then
       write(string1,*) 'Could not find required field ' // trim(field_name), ' istatus:',istatus,&
          'location:',locv(1),'/',locv(2),'/',locv(3)
-   else
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   else if (debug) then
       write(string1,*) 'Could not find requested field ' // trim(field_name), ' istatus:',istatus,&
          'location:',locv(1),'/',locv(2),'/',locv(3)
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
    end if
-   call error_handler(E_MSG,routine,string1,source,revision,revdate)
 end if
 
 end subroutine check_status
@@ -2206,8 +2117,6 @@ function get_rttov_option_logical(field_name) result(p)
          p = PLANE_PARALLEL
       case('USE_SALINITY')
          p = USE_SALINITY
-      case('USE_SPECULARITY')
-         p = USE_SPECULARITY
       case('APPLY_BAND_CORRECTION')
          p = APPLY_BAND_CORRECTION
       case('CFRAC_DATA')
@@ -2294,7 +2203,7 @@ end function get_rttov_option_logical
 
 function get_channel(flavor, key) result(channel)
 
-   integer, intent(in) :: obs_type
+   integer, intent(in) :: flavor
    integer, intent(in) :: key
    integer             :: channel
 
@@ -2314,24 +2223,24 @@ function get_channel(flavor, key) result(channel)
    ! Retrieve channel from different metadata types
    ! All the other arguments are mandatory, but not needed here.
 
-   if ( obstype_metadata(module_key) ) then
-      ! FIXME ... should be local index ... subkey = obstype_subkey(module_key)
-      if (.false.) write(*,*)'get_channel_visir: module_key,subkey',module_key,subkey
-      call get_visir_metadata(module_key, &
+   if ( obstype_metadata(key) ) then
+      ! FIXME ... should be local index ... subkey = obstype_subkey(key)
+      if (.false.) write(*,*)'get_channel_visir: key,subkey',key,subkey
+      call get_visir_metadata(key, &
                            sat_az, sat_ze, sun_az, sun_ze, &
                            platform_id, sat_id, sensor_id, channel, &
                            specularity)
    else
-      ! FIXME ... should be local index ... subkey = obstype_subkey(module_key)
-      if (.false.) write(*,*)'get_channel_mw: module_key,subkey',module_key,subkey
-      call get_mw_metadata(module_key, &
+      ! FIXME ... should be local index ... subkey = obstype_subkey(key)
+      if (.false.) write(*,*)'get_channel_mw: key,subkey',key,subkey
+      call get_mw_metadata(key, &
                         sat_az, sat_ze, &
                         platform_id, sat_id, sensor_id, channel, &
                         mag_field, cosbk, &
                         fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5)
    endif
 
-   if (debug) write(*,*)'get_channel: module_key,channel ',module_key,channel
+   if (debug) write(*,*)'get_channel: key,channel ',key,channel
 
 end function get_channel
 

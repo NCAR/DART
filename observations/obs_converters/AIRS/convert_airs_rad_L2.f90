@@ -4,7 +4,7 @@
 !
 ! $Id$
 
-program convert_airs_L2
+program convert_airs_rad_L2
 
 ! Initial version of a program to read the AIRS radiances
 
@@ -36,11 +36,9 @@ integer :: io, iunit, index, nchans
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL$"
+   "convert_airs_rad_L2"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
-
-character(len=*), parameter :: progname = 'convert_airs_rad_L2'
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -130,14 +128,8 @@ do index=1, filecount
 
 enddo
 
-call error_handler(E_MSG, progname, 'Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG, source, 'Finished successfully.',source,revision,revdate)
 call finalize_utilities()
 
 
-end program convert_airs_L2
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+end program convert_airs_rad_L2

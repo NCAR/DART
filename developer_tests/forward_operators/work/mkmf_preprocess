@@ -6,8 +6,9 @@
 #
 # $Id$
 
-../../../build_templates/mkmf -p preprocess -t ../../../build_templates/mkmf.template   \
- -a "../../.." path_names_preprocess
+     ../../../build_templates/mkmf -p preprocess \
+  -t ../../../build_templates/mkmf.template \
+ -a "../../.."  path_names_preprocess
 
 # <next few lines under version control, do not edit>
 # $URL$

@@ -1,5 +1,4 @@
 ! This code is not protected by the DART copyright agreement.
-! DART $Id: airs_rad_L2_mod.f90 12747 2018-07-13 16:18:44Z nancy@ucar.edu $
 
 ! adapted from original JPL, now GSFC/NASA code, example AIRS readers
 
@@ -948,8 +947,3 @@ end subroutine
 
 end module
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/radiance/observations/obs_converters/AIRS/airs_rad_L2_mod.f90 $
-! $Id: airs_rad_L2_mod.f90 12747 2018-07-13 16:18:44Z nancy@ucar.edu $
-! $Revision: 12747 $
-! $Date: 2018-07-13 10:18:44 -0600 (Fri, 13 Jul 2018) $

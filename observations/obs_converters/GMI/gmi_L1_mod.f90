@@ -1,18 +1,8 @@
-! This code is not protected by the DART copyright agreement.
-! DART $Id: gmi_L1_mod.f90 12747 2018-07-13 16:18:44Z nancy@ucar.edu $
-
-! adapted from original JPL, now GSFC/NASA code, example AIRS readers
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 module gmi_L1_mod
-
-! the contents of this file are an amalgam of:
-!  airs_cc_rad_typ.inc
-!  airs_cc_rad_struct.inc
-!  airs_cc_rad_rdr.f
-! from the gsfc example reader program.
-! although in several cases they were modified to use
-! fortran 90 derived types and free format continuation
-! lines, and to not use the unknown syntax 'double precision'.
 
 use types_mod,     only : r8, deg2rad, rad2deg, PI, &
                           MISSING_R8
@@ -85,13 +75,13 @@ end type
 
 integer, parameter :: MAXCHANS = 13
 
-character(len=128) :: msgstring
+character(len=512) :: msgstring
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = &
+   "gmi_L1_mod"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -188,7 +178,7 @@ type(gmi_swath_type), intent(inout) :: swath
 logical,              intent(in)    :: little_endian
 
 integer(HSIZE_T), allocatable :: dims(:)
-integer(HSIZE_T)     :: dims_ia(3)
+integer(HSIZE_T) :: dims_ia(3)
 integer(HSIZE_T) :: dims_cs(2)
 integer(HSIZE_T) :: dims_ps(2)
 integer(HSIZE_T) :: dims_s(1)
@@ -360,14 +350,14 @@ real(r8) :: rqc
 
 real(r8) :: lam1, lam2, phi1, phi2, x, y
 
-real(r8) :: sat_az, sat_ze
-integer  :: platform_id, sat_id, sensor_id
-real(r8) :: mag_field, cosbk
-real(r8) :: fastem_p1
-real(r8) :: fastem_p2
-real(r8) :: fastem_p3
-real(r8) :: fastem_p4
-real(r8) :: fastem_p5
+real(8) :: sat_az, sat_ze
+integer :: platform_id, sat_id, sensor_id
+real(8) :: mag_field, cosbk
+real(8) :: fastem_p1
+real(8) :: fastem_p2
+real(8) :: fastem_p3
+real(8) :: fastem_p4
+real(8) :: fastem_p5
 
 type(time_type) :: obs_time
 character(len=*), parameter :: routine = 'add_swath_observations'
@@ -412,9 +402,7 @@ scanloop:  do iscan=1,swath%nscans
       ! check channel quality control
       rqc = swath%Quality(ipix, iscan)
       ! reject bad scans here - cycle pixloop
-      if (rqc /= 0) then
-         cycle
-      end if
+      if (rqc /= 0) cycle pixloop
 
       ! observation lat, lon:
       olat  = swath%Latitude (ipix,iscan) ! valid range [ -90.00,  90.00]
@@ -432,7 +420,7 @@ scanloop:  do iscan=1,swath%nscans
          (.not. is_longitude_between(olon, lon1, lon2))) cycle pixloop
 
       ! make sure lon is between 0 and 360
-      if (olon < 0) olon = olon + 360.0_r8
+      if (olon < 0.0_r8) olon = olon + 360.0_r8
 
       ! set the zenith angle (aka earth incidence angle)
       sat_ze = swath%incidenceAngle(1,ipix,iscan)
@@ -455,9 +443,7 @@ scanloop:  do iscan=1,swath%nscans
 
       channel_loop: do ichan=1, swath%nchannels
 
-         if (.not. use_channels(ichan+swath%offset)) then
-            cycle
-         end if
+         if (.not. use_channels(ichan+swath%offset)) cycle channel_loop
 
          ! create the radiance obs for this observation, add to sequence
 
@@ -501,11 +487,11 @@ scanloop:  do iscan=1,swath%nscans
          !        Fast ice: 1.5, 77.8, 703.0, 0.1, 0.35
          !        Lake ice + snow: 1.8, 67.1, 534.0, 0.1, 0.15
          !        Multi-year ice: 1.5, 85000.0, 4700000.0, 0.0, 0.0
-         fastem_p1 = 3.0
-         fastem_p2 = 5.0
-         fastem_p3 = 15.0
-         fastem_p4 = 0.1
-         fastem_p5 = 0.3
+         fastem_p1 = 3.0d0
+         fastem_p2 = 5.0d0
+         fastem_p3 = 15.0d0
+         fastem_p4 = 0.1d0
+         fastem_p5 = 0.3d0
 
          ! add additional metadata for this obs type.  returns key to use in create call
          call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, & 
@@ -1247,9 +1233,3 @@ end subroutine h5check
 
 
 end module
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

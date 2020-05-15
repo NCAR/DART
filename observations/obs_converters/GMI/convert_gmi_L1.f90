@@ -6,7 +6,7 @@
 
 program convert_gmi_L1
 
-! Initial version of a program to read the GMI radiances
+! Program to read GPM/GMI radiances
 
 use types_mod,        only : r8, deg2rad, PI
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
@@ -33,12 +33,10 @@ type(obs_sequence_type) :: seq
 integer :: io, iunit, index, nchans
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
-character(len=*), parameter :: progname = 'convert_gmi_L1'
+character(len=*), parameter :: source   = &
+   "convert_gmi_L1"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -132,7 +130,7 @@ do index=1, filecount
    call destroy_obs_sequence(seq)
 enddo
 
-call error_handler(E_MSG, progname, 'Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG, source, 'Finished successfully.',source,revision,revdate)
 call finalize_utilities()
 
 end program convert_gmi_L1

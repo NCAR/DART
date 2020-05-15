@@ -1,3 +1,9 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
 module rttov_interface_mod
 
 use     location_mod,  only : location_type, set_location, get_location, &
@@ -95,108 +101,108 @@ public :: visir_metadata_type,               &
 ! Metadata for rttov observations.
 
 type visir_metadata_type
-   real(r8) :: sat_az      ! azimuth of satellite position (degrees)
-   real(r8) :: sat_ze      ! zenith of satellite position (degrees)
-   real(r8) :: sun_az      ! azimuth of solar position (degrees, only used with add_solar)
-   real(r8) :: sun_ze      ! zenith of solar position  (degrees, only used with add_solar)
+   real(8) :: sat_az      ! azimuth of satellite position (degrees)
+   real(8) :: sat_ze      ! zenith of satellite position (degrees)
+   real(8) :: sun_az      ! azimuth of solar position (degrees, only used with add_solar)
+   real(8) :: sun_ze      ! zenith of solar position  (degrees, only used with add_solar)
    integer  :: platform_id ! see rttov user guide, table 2
    integer  :: sat_id      ! see rttov user guide, table 2
    integer  :: sensor_id   ! see rttov user guide, table 3
    integer  :: channel     ! each channel is a different obs
-   real(r8) :: specularity ! specularity (0-1, only used with do_lambertian)
+   real(8) :: specularity ! specularity (0-1, only used with do_lambertian)
 end type visir_metadata_type
 
 type mw_metadata_type
-   real(r8) :: sat_az      ! azimuth of satellite position (degrees)
-   real(r8) :: sat_ze      ! zenith of satellite position (degrees)
+   real(8) :: sat_az      ! azimuth of satellite position (degrees)
+   real(8) :: sat_ze      ! zenith of satellite position (degrees)
    integer  :: platform_id ! see rttov user guide, table 2
    integer  :: sat_id      ! see rttov user guide, table 2
    integer  :: sensor_id   ! see rttov user guide, table 3
    integer  :: channel     !  each channel is a different obs
-   real(r8) :: mag_field   ! strength of mag_field (Gauss, )
-   real(r8) :: cosbk       ! cosine of angle between mag field and viewing angle
-   real(r8) :: fastem_p1 ! FASTEM land/sea ice parameter 1
-   real(r8) :: fastem_p2 ! FASTEM land/sea ice parameter 2
-   real(r8) :: fastem_p3 ! FASTEM land/sea ice parameter 3
-   real(r8) :: fastem_p4 ! FASTEM land/sea ice parameter 4
-   real(r8) :: fastem_p5 ! FASTEM land/sea ice parameter 5
+   real(8) :: mag_field   ! strength of mag_field (Gauss, )
+   real(8) :: cosbk       ! cosine of angle between mag field and viewing angle
+   real(8) :: fastem_p1 ! FASTEM land/sea ice parameter 1
+   real(8) :: fastem_p2 ! FASTEM land/sea ice parameter 2
+   real(8) :: fastem_p3 ! FASTEM land/sea ice parameter 3
+   real(8) :: fastem_p4 ! FASTEM land/sea ice parameter 4
+   real(8) :: fastem_p5 ! FASTEM land/sea ice parameter 5
 end type mw_metadata_type
 
 ! DART container type to hold the essential atmosphere and surface fields.
 ! For 2D fields, the order is (ens_size, numlevels), while 1D fields are 
 ! (ens_size).
 type atmos_profile_type
-   real(r8), allocatable :: temperature(:,:)    ! mandatory, level temperature (K)
-   real(r8), allocatable :: pressure(:,:)       ! mandatory, level pressure (hPa)
-   real(r8), allocatable :: moisture(:,:)       ! mandatory, level water vapor (kg/kg)
-   real(r8), allocatable :: sfc_p(:)            ! mandatory, surface pressure (hPa)
-   real(r8), allocatable :: s2m_t(:)            ! mandatory, 2 meter temp (K)
-   real(r8), allocatable :: skin_temp(:)        ! mandatory, surface skin temp (K)
-   real(r8), allocatable :: sfc_elev(:)         ! mandatory, surface elevation (km)
-   real(r8), allocatable :: surftype(:)         ! mandatory, surface type (land=0, water=1, seaice = 2) 
-   real(r8), allocatable :: s2m_q(:)            ! optional, 2 meter wator vapor (kg/kg) (used if add_q2m)
-   real(r8), allocatable :: s10m_u(:)           ! optional, 10 meter u wind (m/s) (used if add_uv10m)
-   real(r8), allocatable :: s10m_v(:)           ! optional, 10 meter v wind (m/s) (used if add_uv10m)
-   real(r8), allocatable :: wfetch(:)           ! optional, wind fetch (m) (used if use_wfetch)
-   real(r8), allocatable :: water_type(:)       ! optional, water type (fresh=0, ocean=1) (used if use_water_type)
-   real(r8), allocatable :: sfc_salinity(:)     ! optional, ocean salinity (practial salinity unit) (used if use_salinity)
-   real(r8), allocatable :: sfc_foam_frac(:)    ! optional, foam fraction (0-1) (used if supply_foam_fraction)
-   real(r8), allocatable :: sfc_snow_frac(:)    ! optional, snow cover (0-1) (used if use_sfc_snow_frac)
+   real(8), allocatable :: temperature(:,:)    ! mandatory, level temperature (K)
+   real(8), allocatable :: pressure(:,:)       ! mandatory, level pressure (hPa)
+   real(8), allocatable :: moisture(:,:)       ! mandatory, level water vapor (kg/kg)
+   real(8), allocatable :: sfc_p(:)            ! mandatory, surface pressure (hPa)
+   real(8), allocatable :: s2m_t(:)            ! mandatory, 2 meter temp (K)
+   real(8), allocatable :: skin_temp(:)        ! mandatory, surface skin temp (K)
+   real(8), allocatable :: sfc_elev(:)         ! mandatory, surface elevation (km)
+   real(8), allocatable :: surftype(:)         ! mandatory, surface type (land=0, water=1, seaice = 2) 
+   real(8), allocatable :: s2m_q(:)            ! optional, 2 meter wator vapor (kg/kg) (used if add_q2m)
+   real(8), allocatable :: s10m_u(:)           ! optional, 10 meter u wind (m/s) (used if add_uv10m)
+   real(8), allocatable :: s10m_v(:)           ! optional, 10 meter v wind (m/s) (used if add_uv10m)
+   real(8), allocatable :: wfetch(:)           ! optional, wind fetch (m) (used if use_wfetch)
+   real(8), allocatable :: water_type(:)       ! optional, water type (fresh=0, ocean=1) (used if use_water_type)
+   real(8), allocatable :: sfc_salinity(:)     ! optional, ocean salinity (practial salinity unit) (used if use_salinity)
+   real(8), allocatable :: sfc_foam_frac(:)    ! optional, foam fraction (0-1) (used if supply_foam_fraction)
+   real(8), allocatable :: sfc_snow_frac(:)    ! optional, snow cover (0-1) (used if use_sfc_snow_frac)
 end type atmos_profile_type
 
 ! container type for trace gasses. Note these values are on levels, so the 
 ! size of the arrays are (ens_size, numlevels)
 type trace_gas_profile_type
-   real(r8), allocatable :: ozone(:,:)         ! ozone concentration (kg/kg) (used if add_ozone)
-   real(r8), allocatable :: co2(:,:)           ! CO2 concentration   (kg/kg) (used if add_co2)
-   real(r8), allocatable :: n2o(:,:)           ! N2O concentration   (kg/kg) (used if add_n2o)
-   real(r8), allocatable :: ch4(:,:)           ! CH4 concentration   (kg/kg) (used if add_ch4)
-   real(r8), allocatable :: co(:,:)            ! CO concentration    (kg/kg) (used if add_co)
-   real(r8), allocatable :: so2(:,:)           ! SO2 concentration   (kg/kg) (used if add_so2)
+   real(8), allocatable :: ozone(:,:)         ! ozone concentration (kg/kg) (used if add_ozone)
+   real(8), allocatable :: co2(:,:)           ! CO2 concentration   (kg/kg) (used if add_co2)
+   real(8), allocatable :: n2o(:,:)           ! N2O concentration   (kg/kg) (used if add_n2o)
+   real(8), allocatable :: ch4(:,:)           ! CH4 concentration   (kg/kg) (used if add_ch4)
+   real(8), allocatable :: co(:,:)            ! CO concentration    (kg/kg) (used if add_co)
+   real(8), allocatable :: so2(:,:)           ! SO2 concentration   (kg/kg) (used if add_so2)
 end type trace_gas_profile_type
 
 ! Container type for aerosols. Note these values are on layers, so the 
 ! size of the arrays are (ens_size, numlevels-1)
 type aerosol_profile_type
-   real(r8), allocatable :: insoluble(:,:)                  ! INSO (kg/kg), OPAC only
-   real(r8), allocatable :: water_soluble(:,:)             ! WASO, OPAC
-   real(r8), allocatable :: soot(:,:)                       ! SOOT, OPAC
-   real(r8), allocatable :: sea_salt_accum(:,:)             ! SSAM, OPAC
-   real(r8), allocatable :: sea_salt_coarse(:,:)            ! SSCM, OPAC
-   real(r8), allocatable :: mineral_nucleus(:,:)            ! MINM, OPAC
-   real(r8), allocatable :: mineral_accum(:,:)              ! MIAM, OPAC
-   real(r8), allocatable :: mineral_coarse(:,:)             ! MICM, OPAC
-   real(r8), allocatable :: mineral_transport(:,:)          ! MITR, OPAC
-   real(r8), allocatable :: sulphated_droplets(:,:)         ! SUSO, OPAC
-   real(r8), allocatable :: volcanic_ash(:,:)               ! VOLA, OPAC
-   real(r8), allocatable :: new_volcanic_ash(:,:)           ! VAPO, OPAC
-   real(r8), allocatable :: asian_dust(:,:)                 ! ASDU, OPAC
-   real(r8), allocatable :: black_carbon(:,:)               ! BCAR, CAMS
-   real(r8), allocatable :: dust_bin1(:,:)                  ! DUS1, CAMS
-   real(r8), allocatable :: dust_bin2(:,:)                  ! DUS2, CAMS
-   real(r8), allocatable :: dust_bin3(:,:)                  ! DUS3, CAMS
-   real(r8), allocatable :: ammonium_sulphate(:,:)          ! SULP, CAMS
-   real(r8), allocatable :: sea_salt_bin1(:,:)              ! SSA1, CAMS
-   real(r8), allocatable :: sea_salt_bin2(:,:)              ! SSA2, CAMS
-   real(r8), allocatable :: sea_salt_bin3(:,:)              ! SSA3, CAMS
-   real(r8), allocatable :: hydrophilic_organic_matter(:,:) ! OMAT, CAMS
+   real(8), allocatable :: insoluble(:,:)                  ! INSO (kg/kg), OPAC only
+   real(8), allocatable :: water_soluble(:,:)             ! WASO, OPAC
+   real(8), allocatable :: soot(:,:)                       ! SOOT, OPAC
+   real(8), allocatable :: sea_salt_accum(:,:)             ! SSAM, OPAC
+   real(8), allocatable :: sea_salt_coarse(:,:)            ! SSCM, OPAC
+   real(8), allocatable :: mineral_nucleus(:,:)            ! MINM, OPAC
+   real(8), allocatable :: mineral_accum(:,:)              ! MIAM, OPAC
+   real(8), allocatable :: mineral_coarse(:,:)             ! MICM, OPAC
+   real(8), allocatable :: mineral_transport(:,:)          ! MITR, OPAC
+   real(8), allocatable :: sulphated_droplets(:,:)         ! SUSO, OPAC
+   real(8), allocatable :: volcanic_ash(:,:)               ! VOLA, OPAC
+   real(8), allocatable :: new_volcanic_ash(:,:)           ! VAPO, OPAC
+   real(8), allocatable :: asian_dust(:,:)                 ! ASDU, OPAC
+   real(8), allocatable :: black_carbon(:,:)               ! BCAR, CAMS
+   real(8), allocatable :: dust_bin1(:,:)                  ! DUS1, CAMS
+   real(8), allocatable :: dust_bin2(:,:)                  ! DUS2, CAMS
+   real(8), allocatable :: dust_bin3(:,:)                  ! DUS3, CAMS
+   real(8), allocatable :: ammonium_sulphate(:,:)          ! SULP, CAMS
+   real(8), allocatable :: sea_salt_bin1(:,:)              ! SSA1, CAMS
+   real(8), allocatable :: sea_salt_bin2(:,:)              ! SSA2, CAMS
+   real(8), allocatable :: sea_salt_bin3(:,:)              ! SSA3, CAMS
+   real(8), allocatable :: hydrophilic_organic_matter(:,:) ! OMAT, CAMS
 end type aerosol_profile_type
 
 ! container type for clouds - note RTTOV uses different cloud fields depending on scheme, frequency, type, etc. Note these values are on layers, not levels, so the 
 ! size of the arrays are (ens_size, numlevels-1)
 type cloud_profile_type
-   real(r8), allocatable :: cfrac(:,:)         ! (VIS/IR/MW) cloud fractional cover (0-1) 
-   real(r8), allocatable :: simple_cfrac(:)    ! (VIS/IR)    cloud fraction for simple cloud (0-1) 
-   real(r8), allocatable :: ctp(:)             ! (VIS/IR)    cloud top pressure for simple cloud (hPa) 
-   real(r8), allocatable :: w(:,:)             ! (VIS/IR)    vertical velocity (used for classification of cumulus vs. stratus)
-   real(r8), allocatable :: clw(:,:)           ! (VIS/IR/MW) cloud non-precipitating water
-   real(r8), allocatable :: rain(:,:)          ! (VIS/IR/MW) cloud precipitating water
-   real(r8), allocatable :: ciw(:,:)           ! (VIS/IR/MW) cloud non-precipitating ice concentration
-   real(r8), allocatable :: snow(:,:)          ! (VIS/IR/MW) cloud precipitating ice (fluffy)
-   real(r8), allocatable :: graupel(:,:)       ! (VIS/IR/MW) cloud precipitating ice (soft hail / snow pellets)
-   real(r8), allocatable :: hail(:,:)          ! (VIS/IR/MW) cloud precipitating ice (hard hail)
-   real(r8), allocatable :: clwde(:,:)         ! (VIS/IR)    cloud liquid effective diameter if clw_scheme = 2
-   real(r8), allocatable :: icede(:,:)         ! (VIS/IR)    cloud liquid effective diameter if ice_scheme = 1
+   real(8), allocatable :: cfrac(:,:)         ! (VIS/IR/MW) cloud fractional cover (0-1) 
+   real(8), allocatable :: simple_cfrac(:)    ! (VIS/IR)    cloud fraction for simple cloud (0-1) 
+   real(8), allocatable :: ctp(:)             ! (VIS/IR)    cloud top pressure for simple cloud (hPa) 
+   real(8), allocatable :: w(:,:)             ! (VIS/IR)    vertical velocity (used for classification of cumulus vs. stratus)
+   real(8), allocatable :: clw(:,:)           ! (VIS/IR/MW) cloud non-precipitating water
+   real(8), allocatable :: rain(:,:)          ! (VIS/IR/MW) cloud precipitating water
+   real(8), allocatable :: ciw(:,:)           ! (VIS/IR/MW) cloud non-precipitating ice concentration
+   real(8), allocatable :: snow(:,:)          ! (VIS/IR/MW) cloud precipitating ice (fluffy)
+   real(8), allocatable :: graupel(:,:)       ! (VIS/IR/MW) cloud precipitating ice (soft hail / snow pellets)
+   real(8), allocatable :: hail(:,:)          ! (VIS/IR/MW) cloud precipitating ice (hard hail)
+   real(8), allocatable :: clwde(:,:)         ! (VIS/IR)    cloud liquid effective diameter if clw_scheme = 2
+   real(8), allocatable :: icede(:,:)         ! (VIS/IR)    cloud liquid effective diameter if ice_scheme = 1
 end type cloud_profile_type
 
 ! Container for the DART/rttov run-time structures to be used (per sensor)
@@ -263,8 +269,8 @@ integer, parameter :: NUM_SATELLITES_INITIAL = 25 ! first guess of # of satellit
 integer,  allocatable :: lvlidx(:)
 integer,  allocatable :: ly1idx(:)
 integer,  allocatable :: ly2idx(:)
-real(r8), allocatable :: totalwater(:)
-real(r8), allocatable :: totalice(:)
+real(8), allocatable :: totalwater(:)
+real(8), allocatable :: totalice(:)
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -808,19 +814,13 @@ character(len=*), intent(in) :: str
 integer :: strlength
 integer :: intv
 
-! the format for reading in the integer
-character(len=4) :: strfmt
-
-strlength = len(adjustl(trim(str)))
+strlength = len_trim(adjustl(str))
 if (strlength > 9) then
    print *,'Error: integer string length is greater than 9 digits long.'
    stop
 end if 
 
-! write the string format, e.g. I6 for a 6 digit string
-write(strfmt,'(A,I1,A)') '(I', strlength,')'
-
-read(str,strfmt) intv
+read(str,*) intv
 
 end function str2int
 
@@ -1090,32 +1090,32 @@ allocate(atmos%temperature(ens_size, numlevels), &
          atmos%   surftype(ens_size))
 
 ! zero the arrays as well
-atmos%temperature = 0.d0
-atmos%   moisture = 0.d0
-atmos%   pressure = 0.d0
-atmos%      sfc_p = 0.d0
-atmos%      s2m_t = 0.d0
-atmos%  skin_temp = 0.d0
-atmos%   sfc_elev = 0.d0
-atmos%   surftype = 0.d0
+atmos%temperature = 0.0d0
+atmos%   moisture = 0.0d0
+atmos%   pressure = 0.0d0
+atmos%      sfc_p = 0.0d0
+atmos%      s2m_t = 0.0d0
+atmos%  skin_temp = 0.0d0
+atmos%   sfc_elev = 0.0d0
+atmos%   surftype = 0.0d0
 
 if (use_q2m) then
    allocate(atmos%s2m_q(ens_size))
-   atmos%s2m_q = 0.d0
+   atmos%s2m_q = 0.0d0
 end if
 
 if (use_uv10m) then
    allocate(atmos%s10m_u(ens_size))
    allocate(atmos%s10m_v(ens_size))
 
-   atmos%s10m_u = 0.d0
-   atmos%s10m_v = 0.d0
+   atmos%s10m_u = 0.0d0
+   atmos%s10m_v = 0.0d0
 end if
 
 if (use_wfetch) then
    allocate(atmos%wfetch(ens_size))
 
-   atmos%wfetch = 0.d0
+   atmos%wfetch = 0.0d0
 end if
 
 if (use_water_type) then
@@ -1127,17 +1127,17 @@ end if
 if (use_salinity) then
    allocate(atmos%sfc_salinity(ens_size))
 
-   atmos%sfc_salinity = 0.d0
+   atmos%sfc_salinity = 0.0d0
 end if
 
 if (supply_foam_fraction) then
    allocate(atmos%sfc_foam_frac(ens_size))
-   atmos%sfc_foam_frac = 0.d0
+   atmos%sfc_foam_frac = 0.0d0
 end if
 
 if (use_sfc_snow_frac) then
    allocate(atmos%sfc_snow_frac(ens_size))
-   atmos%sfc_snow_frac = 0.d0
+   atmos%sfc_snow_frac = 0.0d0
 end if
 
 end subroutine atmos_profile_setup
@@ -1157,32 +1157,32 @@ logical,                      intent(in)    :: so2_data
 
 if (ozone_data) then
    allocate(trace_gas%ozone(ens_size, numlevels))
-   trace_gas%ozone = 0.d0
+   trace_gas%ozone = 0.0d0
 end if
 
 if (co2_data) then
    allocate(trace_gas%co2(ens_size, numlevels))
-   trace_gas%co2 = 0.d0
+   trace_gas%co2 = 0.0d0
 end if
 
 if (n2o_data) then
    allocate(trace_gas%n2o(ens_size, numlevels))
-   trace_gas%n2o = 0.d0
+   trace_gas%n2o = 0.0d0
 end if
 
 if (ch4_data) then
    allocate(trace_gas%ch4(ens_size, numlevels))
-   trace_gas%ch4 = 0.d0
+   trace_gas%ch4 = 0.0d0
 end if
 
 if (co_data) then
    allocate(trace_gas%co(ens_size, numlevels))
-   trace_gas%co = 0.d0
+   trace_gas%co = 0.0d0
 end if
 
 if (so2_data) then
    allocate(trace_gas%so2(ens_size, numlevels))
-   trace_gas%co = 0.d0
+   trace_gas%co = 0.0d0
 end if
 
 end subroutine trace_gas_profile_setup
@@ -1215,19 +1215,19 @@ if (aerosl_type == 1) then
    allocate(aerosols%new_volcanic_ash(ens_size,numlevels)) 
    allocate(aerosols%asian_dust(ens_size,numlevels)) 
 
-   aerosols%insoluble = 0.d0
-   aerosols%water_soluble = 0.d0
-   aerosols%soot = 0.d0
-   aerosols%sea_salt_accum = 0.d0
-   aerosols%sea_salt_coarse = 0.d0
-   aerosols%mineral_nucleus = 0.d0
-   aerosols%mineral_accum = 0.d0
-   aerosols%mineral_coarse = 0.d0
-   aerosols%mineral_transport = 0.d0
-   aerosols%sulphated_droplets = 0.d0
-   aerosols%volcanic_ash = 0.d0
-   aerosols%new_volcanic_ash = 0.d0
-   aerosols%asian_dust = 0.d0
+   aerosols%insoluble = 0.0d0
+   aerosols%water_soluble = 0.0d0
+   aerosols%soot = 0.0d0
+   aerosols%sea_salt_accum = 0.0d0
+   aerosols%sea_salt_coarse = 0.0d0
+   aerosols%mineral_nucleus = 0.0d0
+   aerosols%mineral_accum = 0.0d0
+   aerosols%mineral_coarse = 0.0d0
+   aerosols%mineral_transport = 0.0d0
+   aerosols%sulphated_droplets = 0.0d0
+   aerosols%volcanic_ash = 0.0d0
+   aerosols%new_volcanic_ash = 0.0d0
+   aerosols%asian_dust = 0.0d0
 elseif (aerosl_type == 2) then
    ! CAMS
    allocate(aerosols%black_carbon(ens_size,numlevels)) 
@@ -1240,15 +1240,15 @@ elseif (aerosl_type == 2) then
    allocate(aerosols%sea_salt_bin3(ens_size,numlevels)) 
    allocate(aerosols%hydrophilic_organic_matter(ens_size,numlevels)) 
 
-   aerosols%black_carbon = 0.d0
-   aerosols%dust_bin1 = 0.d0
-   aerosols%dust_bin2 = 0.d0
-   aerosols%dust_bin3 = 0.d0
-   aerosols%ammonium_sulphate = 0.d0
-   aerosols%sea_salt_bin1 = 0.d0
-   aerosols%sea_salt_bin2 = 0.d0
-   aerosols%sea_salt_bin3 = 0.d0
-   aerosols%hydrophilic_organic_matter = 0.d0
+   aerosols%black_carbon = 0.0d0
+   aerosols%dust_bin1 = 0.0d0
+   aerosols%dust_bin2 = 0.0d0
+   aerosols%dust_bin3 = 0.0d0
+   aerosols%ammonium_sulphate = 0.0d0
+   aerosols%sea_salt_bin1 = 0.0d0
+   aerosols%sea_salt_bin2 = 0.0d0
+   aerosols%sea_salt_bin3 = 0.0d0
+   aerosols%hydrophilic_organic_matter = 0.0d0
 else
    ! error
    write(string1,*)"Unknown aerosl_type:",aerosl_type
@@ -1281,58 +1281,58 @@ logical,                  intent(in)    :: htfrtc_simple_cloud
 ! RTTOV wants layers, but models probably prefer levels
 if (cfrac_data) then
    allocate(clouds%cfrac(ens_size, numlevels))
-   clouds%cfrac = 0.d0
+   clouds%cfrac = 0.0d0
 end if
 
 if (clw_data) then
    allocate(clouds%clw(ens_size, numlevels))
-   clouds%clw = 0.d0
+   clouds%clw = 0.0d0
 
    if (clw_scheme == 2) then
       allocate(clouds%clwde(ens_size, numlevels)) 
-      clouds%clwde = 0.d0
+      clouds%clwde = 0.0d0
    end if
 end if
 
 if (rain_data) then
    allocate(clouds%rain(ens_size, numlevels))
-   clouds%rain = 0.d0
+   clouds%rain = 0.0d0
 end if
 
 if (ciw_data) then
    allocate(clouds%ciw(ens_size, numlevels))
-   clouds%ciw = 0.d0
+   clouds%ciw = 0.0d0
    if (ice_scheme == 1 .and. use_icede) then
       allocate(clouds%icede(ens_size, numlevels))
-      clouds%icede = 0.d0
+      clouds%icede = 0.0d0
    end if
 end if
 
 if (snow_data) then
    allocate(clouds%snow(ens_size, numlevels))
-   clouds%snow = 0.d0
+   clouds%snow = 0.0d0
 end if
 
 if (graupel_data) then
    allocate(clouds%graupel(ens_size, numlevels))
-   clouds%graupel = 0.d0
+   clouds%graupel = 0.0d0
 end if
 
 if (hail_data) then
    allocate(clouds%hail(ens_size, numlevels))
-   clouds%hail = 0.d0
+   clouds%hail = 0.0d0
 end if
 
 if (w_data) then
    allocate(clouds%w(ens_size, numlevels))
-   clouds%w = 0.d0
+   clouds%w = 0.0d0
 end if
 
 if (htfrtc_simple_cloud) then
    allocate(clouds%simple_cfrac(ens_size))
    allocate(clouds%ctp(ens_size))
-   clouds%simple_cfrac = 0.d0
-   clouds%ctp = 0.d0
+   clouds%simple_cfrac = 0.0d0
+   clouds%ctp = 0.0d0
 end if
 
 end subroutine cloud_profile_setup
@@ -1389,7 +1389,7 @@ character(len=512) :: string2
 
 character(len=*), parameter :: routine = 'do_forward_model'
 
-real(r8) :: maxw
+real(8) :: maxw
 
 logical :: is_visir
 logical :: is_mw
@@ -1506,7 +1506,7 @@ DO imem = 1, ens_size
    runtime % profiles(imem) % idg        = idg_scheme
 
    ! set the required profile variables 
-   runtime % profiles(imem) % p(:) = atmos % pressure(imem,lvlidx)/100.d0  ! Pa -> hPa
+   runtime % profiles(imem) % p(:) = atmos % pressure(imem,lvlidx)/100.0d0  ! Pa -> hPa
    runtime % profiles(imem) % t(:) = atmos % temperature(imem,lvlidx) 
    runtime % profiles(imem) % q(:) = max(atmos % moisture(imem,lvlidx),1d-8) 
 
@@ -1603,7 +1603,7 @@ DO imem = 1, ens_size
       if (runtime % opts % rt_ir % addclouds) then
          ! first find the total water and ice components
 
-         totalwater(:) = 0.d0
+         totalwater(:) = 0.0d0
 
          if (allocated(clouds % clw)) then
             totalwater(:) = totalwater(:) + clouds % clw(imem,lvlidx)
@@ -1613,7 +1613,7 @@ DO imem = 1, ens_size
             totalwater(:) = totalwater(:) + clouds % clw(imem,lvlidx)
          end if
 
-         totalice(:) = 0.d0
+         totalice(:) = 0.0d0
 
          if (allocated(clouds % ciw)) then
             totalice(:) = totalice(:) + clouds % ciw(imem,lvlidx)
@@ -1699,24 +1699,24 @@ DO imem = 1, ens_size
       if (allocated(clouds % cfrac)) then
          runtime % cld_profiles(imem) % cc(:) = clouds % cfrac(imem, lvlidx)
       else
-         runtime % cld_profiles(imem) % cc(:) = 0.d0
+         runtime % cld_profiles(imem) % cc(:) = 0.0d0
       end if
 
 
       if (allocated(clouds % clw)) then
          runtime % cld_profiles(imem) % clw(:) = clouds % clw(imem,lvlidx)
       else
-         runtime % cld_profiles(imem) % clw = 0.d0
+         runtime % cld_profiles(imem) % clw = 0.0d0
       end if
 
       if (allocated(clouds % rain)) then
          runtime % cld_profiles(imem) % rain(:) = clouds % rain(imem,lvlidx)
       else
-         runtime % cld_profiles(imem) % rain = 0.d0
+         runtime % cld_profiles(imem) % rain = 0.0d0
       end if
 
       if (use_totalice) then
-         totalice(:) = 0.d0
+         totalice(:) = 0.0d0
 
          if (allocated(clouds % ciw)) then
             totalice(:) = totalice(:) + clouds % ciw(imem,lvlidx)
@@ -1741,7 +1741,7 @@ DO imem = 1, ens_size
          end if 
 
          ! "totalice" here is being used only for solid precipitation (no ciw)
-         totalice(:) = 0.d0
+         totalice(:) = 0.0d0
 
          if (allocated(clouds % snow)) then
             totalice(:) = totalice(:) + clouds % snow(imem,lvlidx)
@@ -1759,9 +1759,9 @@ DO imem = 1, ens_size
       end if
 
       ! also add "half-level pressures" as requested by RTTOV-Scatt
-      runtime % cld_profiles(imem) % ph(2:nlevels) = 0.5d0*(atmos % pressure(imem,ly1idx)+atmos % pressure(imem,ly2idx))/100.d0
-      runtime % cld_profiles(imem) % ph(nlevels+1) = atmos % sfc_p(imem)/100.d0
-      runtime % cld_profiles(imem) % ph(1) = 0.d0
+      runtime % cld_profiles(imem) % ph(2:nlevels) = 0.5d0*(atmos % pressure(imem,ly1idx)+atmos % pressure(imem,ly2idx))/100.0d0
+      runtime % cld_profiles(imem) % ph(nlevels+1) = atmos % sfc_p(imem)/100.0d0
+      runtime % cld_profiles(imem) % ph(1) = 0.0d0
    else
       write(string1,*)'Neither opts or opts_scatter were available for platform/sat/sensor id combination:',&
          instrument
@@ -1769,7 +1769,7 @@ DO imem = 1, ens_size
    end if ! has runtime % opts or runtime % opts_scatt
 
    ! 2m above surface pressure (hPa)
-   runtime % profiles(imem) % s2m % p  = atmos % sfc_p(imem)/100.d0 ! convert from Pa to hPa
+   runtime % profiles(imem) % s2m % p  = atmos % sfc_p(imem)/100.0d0 ! convert from Pa to hPa
    ! 2m above surface temperature (K)
    runtime % profiles(imem) % s2m % t  = atmos % s2m_t(imem)
 
@@ -1857,7 +1857,7 @@ DO imem = 1, ens_size
    ! Elevation (km), latitude and longitude (degrees)
    runtime % profiles(imem) % latitude  = lat
    runtime % profiles(imem) % longitude = lon
-   runtime % profiles(imem) % elevation = atmos % sfc_elev(imem)/1000.d0 ! m -> km
+   runtime % profiles(imem) % elevation = atmos % sfc_elev(imem)/1000.0d0 ! m -> km
 
    if (use_zeeman .and. is_mw) then
       runtime % profiles(imem) % Be    = mw_md % mag_field ! mag field strength, Gauss

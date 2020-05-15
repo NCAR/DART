@@ -1,8 +1,19 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
+!> Main DART Ensemble Filtering Program
+
 program rttov_test
 
    use rttov_interface_mod
 
    use utilities_mod, only : initialize_utilities, finalize_utilities
+use    utilities_mod, only : register_module, &
+                             file_exist, error_handler, E_ERR, E_MSG, &
+                             initialize_utilities, finalize_utilities, nmlfileunit
 
    use rttov_types,   only :    &
          rttov_options,         &
@@ -446,7 +457,16 @@ program rttov_test
    type(rttov_options),       pointer :: opts        => null() ! Options for RTTOV-DIRECT 
    type(rttov_options_scatt), pointer :: opts_scatt  => null() ! Options for RTTOV-SCATT
 
-   call initialize_utilities()
+   ! version controlled file description for error handling, do not edit
+   character(len=256), parameter :: source   = &
+      "rttov_test.f90"
+   character(len=32 ), parameter :: revision = "$Revision$"
+   character(len=128), parameter :: revdate  = "$Date$"
+
+   character(len=512) :: string1, string2, string3
+
+   call initialize_utilities('rttov_test')
+   call register_module(source,revision,revdate) 
 
    allocate(visir_mds(3))
    allocate(mw_mds(3))
@@ -478,13 +498,18 @@ program rttov_test
    sensor_instrument(3) = sensor_ir % sensor_id
 
    if (any(sensor_instrument /= test_ir_instrument)) then
-      print *,'ERROR: returned sensor_instrument (IR) ',sensor_instrument,&
+      write(string1,*) 'ERROR: returned sensor_instrument (IR) ',sensor_instrument,&
          ' differed from expected:',test_ir_instrument
+      call error_handler(E_ERR,'rttov_test',string1,&
+         source, revision, revdate)
    end if
 
    if (size(sensor_ir % channels) /= 2) then
-      print *,'ERROR: returned sensor_instrument (IR) ',sensor_instrument,&
+      write(string1,*) 'ERROR: returned sensor_instrument (IR) ',sensor_instrument,&
          ' channel size ',size(sensor_ir % channels),'differed from expected:',2
+      
+      call error_handler(E_ERR,'rttov_test',string1,&
+         source, revision, revdate)
    end if
 
    ! test 2.2: check that the MW instrument id matches what is expected
@@ -499,8 +524,11 @@ program rttov_test
    sensor_instrument(3) = sensor_mw % sensor_id
 
    if (any(sensor_instrument /= test_mw_instrument)) then
-      print *,'ERROR: returned sensor_instrument (MW) ',sensor_instrument,&
+      write(string1,*) 'ERROR: returned sensor_instrument (MW) ',sensor_instrument,&
          ' differed from expected:',test_mw_instrument
+
+      call error_handler(E_ERR,'rttov_test',string1,&
+         source, revision, revdate)
    end if
 
    ! test 3: exercise the IR forward (direct) operator
@@ -603,7 +631,10 @@ program rttov_test
       use_totalice, use_zeeman, radiances, error_status,      &
       visir_md=visir_md, mw_md=mw_md)
 
-   print *,'radiances:',radiances
+   write(string1,*) 'radiances:',radiances
+
+   call error_handler(E_MSG,'rttov_test',string1,&
+      source, revision, revdate)
 
    ! test 4: exercise the MW scatt forward operator
 
@@ -677,6 +708,9 @@ program rttov_test
       use_totalice, use_zeeman, radiances, error_status,      &
       visir_md=visir_md, mw_md=mw_md)
 
-   print *,'TB:',radiances
+   write(string1,*) 'TB:',radiances
+
+   call error_handler(E_MSG,'rttov_test',string1,&
+      source, revision, revdate)
 
 end program

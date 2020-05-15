@@ -4,7 +4,7 @@
 !
 ! $Id$
 
-module airs_obs_rad_mod
+module airs_obs_rad_L2_mod
 
 use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg, &
                              MISSING_R8
@@ -44,7 +44,7 @@ use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 
 use obs_seq_utilities_mod, only : print_obs_seq
 
-use airs_rad_L2_mod   ! need ', only' list here
+use airs_rad_L2_mod   ! need "only" list here
 
 implicit none
 private
@@ -53,13 +53,13 @@ public :: make_obs_sequence, compute_thin_factor
 
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = &
+   "airs_obs_rad_L2_mod"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
-character(len=129) :: msgstring
+character(len=512) :: msgstring
 
 logical :: DEBUG = .false.
 
@@ -98,7 +98,7 @@ integer,  intent(in) :: row_thin, col_thin
 
 ! max possible obs from this one granule. in practice if the
 ! real number of processed channels is very much smaller, make
-! another parameter so we don't allocate all these unused obs
+! another parameter so we do not allocate all these unused obs
 ! (takes time & space) and then delete them at the end.
 integer :: max_num =  &
    AIRS_CC_RAD_CHANNEL * AIRS_CC_RAD_GEOXTRACK * AIRS_CC_RAD_GEOTRACK
@@ -169,7 +169,7 @@ which_vert = VERTISUNDEF
 ! rows are along-track, stepping in the direction the satellite is moving
 rowloop:  do irow=1,AIRS_CC_RAD_GEOTRACK
 
-   ! if we're going to subset rows, we will cycle here
+   ! if we are going to subset rows, we will cycle here
    if (row_thin > 0) then
       if (modulo(irow, row_thin) /= 1) cycle rowloop
    endif
@@ -177,7 +177,7 @@ rowloop:  do irow=1,AIRS_CC_RAD_GEOTRACK
    ! columns are across-track, varying faster than rows.
    colloop:  do icol=1,AIRS_CC_RAD_GEOXTRACK
 
-      ! if we're going to subset columns, ditto
+      ! if we are going to subset columns, ditto
       if (col_thin > 0) then
          if (modulo(icol, col_thin) /= 1) cycle colloop
       endif
@@ -222,17 +222,14 @@ rowloop:  do irow=1,AIRS_CC_RAD_GEOTRACK
 
          ! apparently -9999 is missing data, outside of qc mechanism
          obs_value = granule%radiances(this_chan, icol, irow)
-print *, 'obs_value = ', obs_value
          !if (obs_value == -9999.0_r8) cycle channel_loop
 
          obs_err = granule%radiance_err(this_chan, icol, irow) 
 
-print *, 'obs value, err, var = ', obs_value, obs_err, obs_err*obs_err
-
          ! column integrated value, so no vertical location
          vloc = 0.0_r8
 
-         ! We don't yet have specularity data to add to the observations.
+         ! We do not yet have specularity data to add to the observations.
          if (get_rttov_option_logical('do_lambertian')) then
             write(msgstring,*) 'AIRS observations do not yet support specularity'
             call error_handler(E_ERR,routine,msgstring,source,revision,revdate)
@@ -292,10 +289,4 @@ end subroutine check_size
 
 !-------------------------------------------------
 
-end module airs_obs_rad_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+end module airs_obs_rad_L2_mod
