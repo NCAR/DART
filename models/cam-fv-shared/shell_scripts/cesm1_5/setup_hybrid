@@ -1,0 +1,1412 @@
+#!/bin/csh -f
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+#
+#BSUB  -n 1 
+#BSUB  -R "span[ptile=1]"
+#BSUB  -q caldera 
+#BSUB  -P P86850054
+#BSUB  -W 1:00
+#BSUB  -u raeder@ucar.edu
+#BSUB  -N  
+#BSUB  -a poe 
+# The job name MUST be the name of this script(file), or this file will not be
+# archived in $CASEROOT.
+#BSUB  -J setup_hybrid
+#BSUB  -o Test_rma3.bld1
+#BSUB  -e Test_rma3.bld1
+# #BSUB  -o Tune_c.2_v1.5_dflt_dflt.bld1
+# #BSUB  -e Tune_c.2_v1.5_dflt_dflt.bld1
+
+#*******************************************************************************
+#
+# ---------------------
+# Purpose
+# ---------------------
+#
+# This script is designed to set up, stage, and build a multi-instance run
+# of CESM using an F compset where CAM, CLM and CICE are active. The initial state
+# can come from a single multi-instance reference case so a CESM hybrid setup
+# is used. Instructions on what to change to use the SE core or WACCM are
+# outlined in the models/cam-fv/model_mod.html documentation.
+#
+# This script ($rma/models/cam-fv/scripts_cesm1_5/setup_hybrid) has many 
+# changes from $non-rma/models/cam-fv/shell_scripts/CESM1_2_1_setup_hybrid
+# due to CESM's implementation of cime and move to perl scripts and xml files 
+# for all of the setup and running.  CESM1_5 enables running multiple cycles in a single
+# job without running st_archive.  This can make use of a large run directory, 
+# but requires knowledge of how many cycles may be completed before the archiving must happen.
+#
+# DOCN: We are using a single data ocean.
+#
+# Because the atmosphere assimilations typically occur every 6 hours,
+# the methodology here reflects that. All of CESM stops every 6 hours
+# so that a CAM output file would be available for assimilation.
+#
+# CESM/DART requires some modifications to the CESM source code EVEN IF YOU
+# ARE NOT USING DART. 
+#
+# This script results in a viable setup for a CESM multi-instance experiment.
+# You are STRONGLY encouraged to run the multi-instance CESM a few times and
+# experiment with different settings BEFORE you try to assimilate observations.
+# The data volume is quite large and you should become comfortable using
+# CESM's restart capability to re-stage files in your RUN directory.
+#
+# ${CASEROOT}/DART_config is automatically run by this script and will
+# augment the CESM case with the required setup and configuration to use DART
+# to perform an assimilation. 
+#
+# Previous versions of this script relied heavily on the information in:
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/book1.html
+#
+# ---------------------
+# How to use this script.
+# ---------------------
+#
+# -- You will have to read and understand the script in its entirety.
+#    You will have to modify things outside this script.
+#    This script sets up a plain CESM multi-instance run without DART,
+#    intentionally.  Once it is running, calls to DART can be added.
+#
+# -- Examine the whole script to identify things to change for your experiments.
+#
+# -- Edit this script in the $DART/models/cam-fv/shell_scripts directory
+#    or copy it to somewhere where it will be preserved.
+#
+# -- Locate the initial multi-instance files that CESM will need.
+#
+# -- Run this script. When it is executed, it will create:
+#    1) a CESM 'CASE' directory, where the model will be built,
+#    2) a run directory, where each forecast (and assimilation) will take place,
+#    3) a bld directory for the executables.
+#    4) The short term archiver will use a fourth directory for
+#    storage of model output until it can be moved to long term storage (HPSS)
+#
+#    This script also executes ${CASEROOT}/DART_config to 
+#    make the SourceMods for CAM
+#    effective. DART_config will also augment the case with all
+#    the pieces necessary to run DART when the time comes.
+#
+# -- (if running DART) Edit the DART input.nml that appears in the ${CASEROOT}
+#    directory.
+#
+# -- Submit the job using ${CASEROOT}/case.submit
+#
+# ---------------------
+# Important features
+# ---------------------
+#
+# If you want to change something in your case other than the runtime
+# settings, it is safest to delete everything and start the run from scratch.
+# For the brave, read
+#
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/x1080.html
+#
+# and you may be able to salvage something with
+# ./case.setup -clean
+# ./case.setup
+# ./case.clean_build
+# ./case.build
+#
+#*******************************************************************************
+
+# ==============================================================================
+# case options:
+#
+# case          The value of "case" will be used many ways; directory and file
+#               names both locally and on HPSS, and script names; so consider
+#               its length and information content.
+# compset       Defines the vertical resolution and physics packages to be used.
+#               Must be a standard CESM compset; see the CESM documentation.
+# resolution    Defines the horizontal resolution and dynamics; see CESM docs.
+#               f09_f09  ... FV core at ~ 1 degree
+#               BUG 1384 applies here, so ocean and atm/land must be at same resolution.
+#                  T85           ... eulerian at ~ 1 degree
+#                  ne30np4_gx1v6 ... SE core at ~ 1 degree
+# cesmtag       The version of the CESM source code to use when building the code.
+#               A directory with this name must exist in your home directory,
+#               and have SourceMods in it. See the SourceMods section.
+#               http://www.image.ucar.edu/pub/DART/CESM/README
+# num_instances The number of ensemble members.
+#
+# Guidelines on what to change for an SE or WACCM run are described in the
+# models/cam-fv/model_mod.html documentation.
+# ==============================================================================
+# AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
+
+setenv case                 Test_rma3
+# setenv case            Tune_c.2_v1.5_dflt_dflt
+setenv compset              F
+setenv resolution           f19_f19
+setenv cesmtag              cesm1_5_beta03
+setenv num_instances        3
+
+# ==============================================================================
+# machines and directories:
+#
+# mach            Computer name
+# cesmdata        Location of some supporting CESM data files.
+# cesmroot        Location of the CESM code base.  This version of the script
+#                 only supports version cesm1_5
+# caseroot        Will create the CESM case directory here, where the CESM+DART
+#                 configuration files will be stored.  This should probably not
+#                 be in scratch (on yellowstone, your 'work' partition is suggested).
+#                 This script will delete any existing caseroot, so this script,
+#                 and other useful things should be kept elsewhere.
+# rundir          Will create the CESM run directory here.  Will need large
+#                 amounts of disk space, generally on a scratch partition.
+# exeroot         Will create the CESM executable directory here, where the
+#                 CESM executables will be built.  Medium amount of space
+#                 needed, generally on a scratch partition.
+# archdir         Will create the CESM short-term archive directories here.
+#                 Large, generally on a scratch partition.  Files will remain
+#                 here until the long-term archiver moves it to permanent storage.
+# dartroot        Location of the root of _your_ DART installation
+# baseobsdir      Part of the directory name containing the obs_seq.out files to be used in the 
+#                 assimilation.  The year, month, and filename will be provided in assimilate.csh.
+#                 Will be inherited by CESM#_#_DART_config and inserted into assimilate.csh
+# ==============================================================================
+
+setenv mach         yellowstone
+setenv cesmdata     /glade/p/cesm/cseg/inputdata
+# setenv cesmroot     /glade/p/cesm/cseg/collections/${cesmtag}
+setenv cesmroot     /glade/p/cesmdata/cseg/.dev/${cesmtag}
+setenv caseroot     /glade/p/work/${USER}/Exp/${case}
+setenv rundir       /glade/scratch/${USER}/${case}/run
+setenv exeroot      /glade/scratch/${USER}/${case}/bld
+setenv archdir      /glade/scratch/${USER}/${case}/archive
+setenv dartroot     /glade/u/home/${USER}/DART/rma_fixed_filenames
+# setenv dartroot     /glade/u/home/${USER}/DART/rma_trunk
+
+# Note that assimilate.csh looks for $base_obs_dir/YYYYMM_6H_CESM.
+setenv baseobsdir   /glade/p/image/Observations/NCEP+ACARS+GPS
+
+# ==============================================================================
+# configure settings:
+#
+# refcase    The name of the existing reference case that this run will
+#            start from.
+#
+# refyear    The specific date/time-of-day in the reference case that this
+# refmon     run will start from.  (Also see 'runtime settings' below for
+# refday     start_year, start_mon, start_day and start_tod.)
+# reftod
+# NOTE:      all the ref* variables must be treated like strings and have
+#            the appropriate number of preceeding zeros
+#
+# stagedir   The directory location of the reference case files.
+# ==============================================================================
+
+# GWD:
+# setenv refcase     cesm_hybrid
+# setenv refyear     2004
+# setenv refmon      01
+# setenv refday      10
+
+setenv refcase     Tune_2deg_3
+setenv refyear     2010
+setenv refmon      08
+
+setenv refday      16
+setenv reftod      00000
+
+# useful combinations of time that we use below
+setenv refdate      $refyear-$refmon-$refday
+setenv reftimestamp $refyear-$refmon-$refday-$reftod
+
+# setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
+# alternative reference case for different times may be available here:
+setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
+# or on the HPSS:
+# /CCSM/dart/FV0.9x1.25x30_cesm1_1_1/{Mon}1         for 1-degree FV ensembles
+
+# ==============================================================================
+# runtime settings: This script will find usable files for years 19mumble-2010.
+#    Years after that (or before) may require searching $cesmdata for more 
+#    up-to-date files and adding them to the user_nl_cam_#### in the code below.
+#
+# start_year    generally this is the same as the reference case date, but it can
+# start_month   be different if you want to start this run as if it was a different time.
+# start_day
+# start_tod
+#
+# short_term_archiver  Copies the files from each job step to a 'rest' directory.
+# long_term_archiver   Puts the files from all completed steps on tape storage.
+#
+# stop_option   Units for determining the forecast length between assimilations
+# stop_n        Number of time units in each forecast
+#
+# If the long-term archiver is off, you get a chance to examine the files before
+# they get moved to long-term storage. You can always submit $CASE.l_archive
+# whenever you want to free up space in the short-term archive directory.
+# ==============================================================================
+
+# setenv start_year    2005
+# setenv start_month   12
+# setenv start_day     15
+setenv start_year    2010
+setenv stop_year     2010
+setenv start_month   08
+setenv start_day     16
+setenv start_tod     00000
+
+setenv short_term_archiver off
+setenv long_term_archiver  off
+
+setenv stop_option         nhours
+setenv stop_n              6
+
+# ==============================================================================
+# job settings:
+#
+# queue      can be changed during a series by changing the case.run
+# timewall   can be changed during a series by changing the case.run
+#
+# TJH: Advancing 30 instances for 6 hours and assimilating took
+#      less than 10 minutes on yellowstone using 1800 pes (120 nodes)
+# ==============================================================================
+
+setenv ACCOUNT      P86850054
+setenv queue        premium
+setenv timewall     0:20
+
+# ==============================================================================
+# standard commands:
+#
+# If you are running on a machine where the standard commands are not in the
+# expected location, add a case for them below.
+# ==============================================================================
+
+set nonomatch       # suppress "rm" warnings if wildcard does not match anything
+
+# The FORCE options are not optional.
+# The VERBOSE options are useful for debugging though
+# some systems don't like the -v option to any of the following
+switch ("`hostname`")
+   case be*:
+      # NCAR "bluefire"
+      set   MOVE = '/usr/local/bin/mv -fv'
+      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
+      set   LINK = '/usr/local/bin/ln -fvs'
+      set REMOVE = '/usr/local/bin/rm -fr'
+
+   breaksw
+   default:
+      # NERSC "hopper", NWSC "yellowstone"
+      set   MOVE = '/bin/mv -fv'
+      set   COPY = '/bin/cp -fv --preserve=timestamps'
+      set   LINK = '/bin/ln -fvs'
+      set REMOVE = '/bin/rm -fr'
+
+   breaksw
+endsw
+
+# ==============================================================================
+# ==============================================================================
+# by setting the values above you should be able to execute this script and
+# have it run.  however, for running a real experiment there are still many
+# settings below this point - e.g. component namelists, history file options,
+# the processor layout, xml file options, etc - that you will almost certainly
+# want to change before doing a real science run.
+# ==============================================================================
+# ==============================================================================
+
+if ($?LS_SUBCWD) then
+   cd $LS_SUBCWD
+endif
+
+# ==============================================================================
+# Make sure the CESM directories exist.
+# VAR is the shell variable name, DIR is the value
+# ==============================================================================
+
+foreach VAR ( cesmroot dartroot stagedir )
+   set DIR = `eval echo \${$VAR}`
+   if ( ! -d $DIR ) then
+      echo "ERROR: directory '$DIR' not found"
+      echo " In the setup script check the setting of: $VAR "
+      exit 10
+   endif
+end
+
+# ==============================================================================
+# Create the case - this creates the CASEROOT directory.
+#
+# For list of the pre-defined component sets: ./create_newcase -list
+# To create a variant compset, see the CESM documentation and carefully
+# incorporate any needed changes into this script.
+# ==============================================================================
+
+if ($?LSB_JOBNAME) then
+   # This only works if the job name in the BSUB directives is the name of this script.
+   setenv SetupFileName $LSB_JOBNAME
+else
+   # Use setenv so that DART_config can access it, 
+   # in particular for help with removing unneeded restart sets.
+   setenv SetupFileName $0:t
+endif
+   
+# fatal idea to make caseroot the same dir as where this setup script is
+# since the build process removes all files in the caseroot dir before
+# populating it.  try to prevent shooting yourself in the foot.
+
+if ( $caseroot == `pwd` ) then
+   echo "ERROR: the setup script should not be located in the caseroot"
+   echo "directory, because all files in the caseroot dir will be removed"
+   echo "before creating the new case.  move the script to a safer place."
+   exit 11
+endif
+
+set old_files = ()
+if (-d $archdir/dart/hist) set old_files = `ls $archdir/dart/hist`
+if ($#old_files == 0) then
+   echo "removing old files from ${caseroot}"
+   echo "removing old files from ${exeroot}"
+   echo "removing old files from ${rundir}"
+   ${REMOVE} ${caseroot}
+   ${REMOVE} ${exeroot}
+   ${REMOVE} ${rundir}
+else
+   echo "There are DART output files in $archdir/dart/hist."
+   echo "Do you REALLY want to rebuild this case?"
+   exit 12
+endif
+
+${cesmroot}/cime/scripts/create_newcase -case ${caseroot} -mach ${mach} \
+    -res ${resolution} -compset ${compset} 
+    
+
+if ( $status != 0 ) then
+   echo "ERROR: Case could not be created."
+   exit 15
+endif
+
+# ==============================================================================
+# Record the DARTROOT directory and copy the DART setup script to CASEROOT.
+# DART_config can be run at some later date if desired, but it presumes
+# to be run from a CASEROOT directory. If DART_config does not exist locally,
+# then it better exist in the expected part of the DARTROOT tree.
+# ==============================================================================
+
+# Preserve a copy of this script as it was run.
+${COPY} $SetupFileName ${caseroot}/${SetupFileName}.original
+
+if (   -e DART_config ) then
+   sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" < DART_config \
+       >! ${caseroot}/DART_config  || exit 20
+else if ( -e ../DART_config ) then
+   sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" < ../DART_config \
+       >! ${caseroot}/DART_config  || exit 21
+else
+   echo "ERROR: the script to configure for data assimilation is not available."
+   echo "       DART_config MUST be present locally or in"
+   echo "       ${dartroot}/models/cam-fv/scripts_cesm1_5/"
+   exit 22
+endif
+chmod 755       ${caseroot}/DART_config
+
+
+# FIXME; DReaD suggested merging our env_archive needs into their file,
+# rather than replacing theirs.  Do this with a 'ex' call instead of the copy above.
+# Replace ".h\w*" with ".*\.h.*" 
+#  \w = [a-zA-z0-9_], which doesn't include '.', which is part of the names. 
+#  '.*' matches any character except newline 0 or more times.  
+#  Change * to + if you want '1 or more times'. 
+#  Also, '.' at the start says "add more file name pieces before this suffix
+#     and '.' will be part of the suffix.  
+#  '.\.h' doesn't work because it's looking for [anychar].h,
+#     but there's usually no anychar before the '.' except 
+#     what's in the pieces being added, which don't count.
+# Also replace ".r\..*" with ".*\.r\..*"
+# Look for the address of "cpl", then continue through address of ".h\w*" .
+if (! -f ${caseroot}/env_archive.xml.original) then
+   ${COPY} ${caseroot}/env_archive.xml  ${caseroot}/env_archive.xml.original
+endif
+ex ${caseroot}/env_archive.xml <<ex_end  
+/"dart"
+/<files>
+append
+      <file_extension suffix="da\.log\..+">
+        <subdir>logs</subdir>
+        <keep_last_in_rundir>false</keep_last_in_rundir>
+      </file_extension> 
+.
+/"cpl"
+/\.r
+s/\.r\\\./.*.r./
+/\.h\\w*/
+s/\.h\\w*/.*.h.*/
+wq
+ex_end
+
+# Need \\ because '\' actually appears in the file and we need to escape it and '.'
+grep  'da\\\.log' ${caseroot}/env_archive.xml  || exit 30
+
+
+# ==============================================================================
+# Configure the case.
+# ==============================================================================
+
+cd ${caseroot}
+
+# Get a bunch of environment variables.
+# ./Tools/ccsm_getenv no longer exists.
+# If any of these are changed by xmlchange calls in this program,
+# then they must be explicty changed with setenv calls too.  
+setenv TEST_MPI           `./xmlquery MPI_RUN_COMMAND    -value`
+setenv CLM_CONFIG_OPTS    `./xmlquery CLM_CONFIG_OPTS    -value`
+# old? setenv CCSM_COMPSET       `./xmlquery CCSM_COMPSET       -value`
+setenv COMPSET            `./xmlquery COMPSET            -value`
+setenv CAM_DYCORE         `./xmlquery CAM_DYCORE         -value`
+setenv BATCHSUBMIT        `./xmlquery BATCHSUBMIT        -value`
+setenv MAX_TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE -value`
+setenv COMP_OCN           `./xmlquery COMP_OCN           -value`
+setenv CIMEROOT           `./xmlquery CIMEROOT           -value`
+setenv CASEROOT           `./xmlquery CASEROOT           -value`
+
+# Make sure the case is configured with a data ocean.
+
+if ( ${COMP_OCN} != docn ) then
+   echo " "
+   echo "ERROR: This setup script is not appropriate for active ocean compsets."
+   echo "ERROR: Please use the models/CESM/shell_scripts examples for that case."
+   echo " "
+   exit 40
+endif
+
+# Extract pieces of the COMPSET for choosing correct setup parameters.
+# "AMIP_CAM5_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_CISM1%NOEVOLVE_SWAV"
+set list = `echo $COMPSET   | sed -e "s/_/ /g"`
+
+# Land ice, aka glacier, aka glc.
+set glc  = `echo "$list[7]" | sed -e "s/%/ /g"`
+set glacier = "$glc[1]"
+if ($glacier !~ 'CISM*' && $glacier != 'DGLC'  && $glacier != 'SGLC') then
+   echo "glacier is $glacier, which is not supported"
+   exit 45
+endif
+
+# River runoff status (2016-2-23 CESM1_5_beta03)
+# There are 2 choices: the older River Transport Model and the new Model for Scale Adaptive River Transport.
+# They are separate CESM components, and are/need to be specified in the compset.
+# It may be that RTM can be turned off via namelists, but I don't know about MOSART.
+# Specify the river runoff model: 'RTM', 'MOSART', or anything else.
+set roff = `echo "$list[6]" | sed -e "s/%/ /g"`
+set river_runoff = "$roff[1]"
+if ($river_runoff != 'RTM'  && $river_runoff != 'MOSART' && \
+    $river_runoff != 'DROF' && $river_runoff != 'SROF') then
+   echo "river_runoff is $river_runoff, which is not supported"
+   exit 45
+endif
+
+# MAX_TASKS_PER_NODE comes from $case/Tools/mkbatch.$machine
+@ ptile = $MAX_TASKS_PER_NODE / 2
+@ nthreads = 1
+
+# Save a copy for debug purposes
+foreach FILE ( *xml )
+   if ( ! -e        ${FILE}.original ) then
+      ${COPY} $FILE ${FILE}.original
+   endif
+end
+
+# NOTE: If you require bit-for-bit agreement between different runs,
+#  in particular, between pmo (single instance) and assimilations (NINST > 1),
+#  or if you need to change the number of nodes/member due to changing memory needs,
+#  then env_run.xml:BFBFLAG must be set to TRUE, so that the coupler will
+#  generate bit-for-bit identical results, regardless of the number of tasks
+#  given to it.  The time penalty appears to be ~ 0.5% in the forecast.
+#  Alternatively, you can set cpl_tasks = same_number in both experiments
+
+# Task layout:
+# Set the nodes_per_instance below to match your case.  If you get 'out of memory'
+# errors OR failures without any messages, try increasing the nodes_per_instance.
+# CAM-FV 1 degree can run on 2 nodes/instance on yellowstone.
+# CAM-SE ne30 (~ 1 degree) needed 5 nodes/instance.
+# By computing task counts like we do below, we guarantee each instance uses
+# a whole number of nodes which is the recommended configuration.
+
+# Yellowstone: no large memory nodes, and 15 tasks/node is recommended.
+#       Edwards says there's no speed up by running non-active components concurrently,
+#       after ATM has run, so just run all components sequentially.
+#       BUT, do arrange it so that each member(instance) spans complete nodes:
+#       modulo(total pe count / number of instances, 15) == 0.
+
+@ nodes_per_instance = 2
+
+@ atm_tasks = $ptile * $num_instances * $nodes_per_instance
+@ lnd_tasks = $ptile * $num_instances * $nodes_per_instance
+@ ice_tasks = $ptile * $num_instances * $nodes_per_instance
+@ ocn_tasks = $ptile * $num_instances
+@ cpl_tasks = $ptile * $num_instances
+# CESM1_5_beta03: CISM1 (the default) can only handle 1 task per member.
+if ($glacier == 'CISM1' || $glacier == 'CISM2S') then
+   @ glc_tasks = $num_instances 
+else if ($glacier == 'CISM2P') then
+   @ glc_tasks = $ptile * $num_instances * $nodes_per_instance 
+else
+   # @ glc_tasks = 1   Exercised in ATM_spinup5, which failed to run in some MCT mapping routine.
+   @ glc_tasks = $ptile * $num_instances
+endif
+
+if ($river_runoff == 'RTM' || $river_runoff == 'MOSART') then
+   @ rof_tasks = $ptile * $num_instances * $nodes_per_instance
+else
+   @ rof_tasks = $ptile * $nodes_per_instance
+endif
+@ wav_tasks = $ptile * $num_instances
+
+
+echo ""
+echo "ATM gets $atm_tasks"
+echo "LND gets $lnd_tasks"
+echo "ICE gets $ice_tasks"
+echo "OCN gets $ocn_tasks"
+echo "CPL gets $cpl_tasks"
+echo "GLC gets $glc_tasks"
+echo "ROF gets $rof_tasks"
+echo "WAV gets $wav_tasks"
+echo ""
+
+./xmlchange NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
+./xmlchange NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=$num_instances
+./xmlchange NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
+./xmlchange NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=1
+./xmlchange NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
+if ($glacier =~ 'CISM*') then
+   ./xmlchange NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=$num_instances
+else
+   ./xmlchange NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
+endif
+if ($river_runoff == 'RTM' || $river_runoff == 'MOSART') then
+   ./xmlchange NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=$num_instances
+else
+   ./xmlchange NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
+endif
+./xmlchange NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
+./xmlchange ROOTPE_ATM=0
+./xmlchange ROOTPE_LND=0
+./xmlchange ROOTPE_ICE=0
+./xmlchange ROOTPE_OCN=0
+./xmlchange ROOTPE_CPL=0
+./xmlchange ROOTPE_GLC=0
+./xmlchange ROOTPE_ROF=0
+./xmlchange ROOTPE_WAV=0
+
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/c1096.html#run_start_stop
+# "A hybrid run indicates that CESM is initialized more like a startup, but uses
+# initialization datasets from a previous case. This is somewhat analogous to a
+# branch run with relaxed restart constraints. A hybrid run allows users to bring
+# together combinations of initial/restart files from a previous case (specified
+# by $RUN_REFCASE) at a given model output date (specified by $RUN_REFDATE).
+# Unlike a branch run, the starting date of a hybrid run (specified by $RUN_STARTDATE)
+# can be modified relative to the reference case. In a hybrid run, the model does not
+# continue in a bit-for-bit fashion with respect to the reference case. The resulting
+# climate, however, should be continuous provided that no model source code or
+# namelists are changed in the hybrid run. In a hybrid initialization, the ocean
+# model does not start until the second ocean coupling (normally the second day),
+# and the coupler does a "cold start" without a restart file."
+#
+# TJH:
+# DART's CAM implementation causes a bit more complexity. DART only uses CAM _initial_
+# files, not RESTART files, so there are sourcemods to force a hybrid start for CAM to
+# read initial files - even when CONTINUE_RUN = TRUE.
+
+./xmlchange RUN_TYPE=hybrid
+./xmlchange RUN_STARTDATE=${start_year}-${start_month}-${start_day}
+./xmlchange START_TOD=$start_tod
+./xmlchange RUN_REFCASE=$refcase
+./xmlchange RUN_REFDATE=$refdate
+./xmlchange RUN_REFTOD=$reftod
+./xmlchange BRNCH_RETAIN_CASENAME=FALSE
+./xmlchange GET_REFCASE=FALSE
+./xmlchange EXEROOT=${exeroot}
+./xmlchange RUNDIR=${rundir}
+
+# Do not change the CALENDAR or the value of CONTINUE_RUN in this script.
+# Even if it's a branch from another run, where all restarts, etc. are available,
+# it still needs to change case/file names for this new case.
+
+./xmlchange CALENDAR=GREGORIAN
+./xmlchange CONTINUE_RUN=FALSE
+
+./xmlchange STOP_OPTION=$stop_option
+./xmlchange STOP_N=$stop_n
+
+# Before CESM1_5 we ran in DART mode without assimilating by editing case.run to choose
+# no_assimilate.csh  or assimilate.csh.  Now the script to be run is determined by 
+# CESM's env_run.xml DATA_ASSIMILATION* variables.
+# If DATA_ASSIMILATION = false (default), then neither {no_}assimilate.csh will be run,
+# and the wrong initial/restart files will be used after the first cycle.
+# So always set DATA_ASSIMILATION = true.
+# DATA_ASSIMILATION_CYCLES says how many cycles to run in each job.  Set to 1 for the first cycle.
+# When the job (not each cycle) is finished the short_term archiver will run and, 
+# if RESUBMIT > 0, (re)submit a new case.run job.
+./xmlchange DATA_ASSIMILATION=TRUE
+./xmlchange DATA_ASSIMILATION_CYCLES=1
+# ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/assimilate.csh
+./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/no_assimilate.csh
+
+# How many jobs (not cycles per job) to run after the first, 
+# each of which will do DATA_ASSIMILATION_CYCLES cycles.
+# Set to 0 for the setup of the case, and the first cycle because 
+# env_run.xml and input.nml will/may need to be changed between cycle 1 and 2.
+./xmlchange RESUBMIT=0
+
+./xmlchange PIO_TYPENAME=pnetcdf
+
+# TEST_MPI was set to CESM's MPI_RUN_COMMAND, above.
+# Fix it, if necessary.
+if (${TEST_MPI} == 'UNSET') then
+   ./xmlchange MPI_RUN_COMMAND=mpirun.lsf
+endif
+
+# The river transport model ON is useful only when using an active ocean or
+# land surface diagnostics. Setting ROF_GRID, RTM_MODE to 'null' turns off the RTM.
+# If you turn it ON, you will have to stage initial files etc.
+
+if ($river_runoff == 'RTM') then
+   ./xmlchange ROF_GRID='r05'
+   ./xmlchange RTM_MODE='ACTIVE'
+else if ($river_runoff == 'MOSART') then
+   ./xmlchange ROF_GRID='r05'
+# There seems to be no MOSART_MODE, but there are some MOSART_ xml variables.
+# Use defaults for now
+else
+   ./xmlchange ROF_GRID='null'
+   ./xmlchange RTM_MODE='NULL'
+endif
+
+
+# COUPLING discussion. F compsets are 'tight' coupling.
+# Only change the ATM_NCPL ... everything is based on this one value,
+# including CAM physics and dynamics timesteps.
+# Default values for coupling are preserved in env_run.xml.original
+
+./xmlchange NCPL_BASE_PERIOD=day
+./xmlchange ATM_NCPL=48
+# This is required to make CISM write out restart files 4x/day.
+./xmlchange GLC_NCPL=4
+
+# CAM physics (etc.) selection.  (Eaton said?) It's safer to always specify the physics,
+# instead of letting the compset choose it.
+./xmlchange CAM_CONFIG_OPTS="-phys cam4 "
+
+# These are archiving options that may be used.
+# You can turn the short/long term archivers on or off ({short,long}_term_archiver),
+# but these settings should be made in either event.
+
+./xmlchange DOUT_S_ROOT=${archdir}
+# Reduce the amount of stuff that's st_archived.
+#  > Fewer restart sets saved to         $archive/rest and/or to HPSS,
+#       CESM's DOUT_S_SAVE_INTERIM_RESTART_FILES only saves restart sets within a single
+#          model advance.  Ours are too short to ever need interim restarts.
+#          Default is FALSE.
+#       assimilate.csh uses save_every_Mth_day_restarts to remove extraneous restart
+#          sets in the DART context.  
+#          This will be inherited by DART_config and inserted into assimilate.csh.
+setenv save_every_Mth_day_restarts 4
+#
+
+
+./xmlchange -file env_batch.xml -subgroup st_archive -id JOB_QUEUE          -val geyser
+./xmlchange -file env_batch.xml -subgroup st_archive -id JOB_WALLCLOCK_TIME -val 1:00
+
+./xmlchange DOUT_L_MSROOT="${case}"
+./xmlchange DOUT_L_HPSS_ACCNT="${ACCOUNT}"
+./xmlchange -file env_batch.xml -subgroup lt_archive -id JOB_QUEUE          -val caldera
+./xmlchange -file env_batch.xml -subgroup lt_archive -id JOB_WALLCLOCK_TIME -val 1:00
+
+if ($short_term_archiver == 'off') then
+   ./xmlchange DOUT_S=FALSE
+else
+   ./xmlchange DOUT_S=TRUE
+endif
+if ($long_term_archiver == 'off') then
+   ./xmlchange DOUT_L_MS=FALSE
+else
+   ./xmlchange DOUT_L_MS=TRUE
+endif
+
+# DEBUG = TRUE implies turning on run and compile time debugging.
+# INFO_DBUG level of debug output, 0=minimum, 1=normal, 2=more, 3=too much.
+./xmlchange DEBUG=FALSE
+./xmlchange INFO_DBUG=0
+# Reduce the MPI activity messages.  2 = default (too much).
+
+# ==============================================================================
+# Update source files.
+#    Ideally, using DART would not require any modifications to the model source.
+#    Until then, this script accesses sourcemods from a hardwired location.
+#    If you have additional sourcemods, they will need to be merged into any DART
+#    mods and put in the SourceMods subdirectory found in the 'caseroot' directory.
+# ==============================================================================
+
+if ( ! -d ~/${cesmtag}/SourceMods ) then
+   echo "ERROR - No SourceMods for this case."
+   echo "ERROR - No SourceMods for this case."
+   echo "DART requires modifications to several src files."
+   echo "Download the appropriate files for "$cesmtag" from:"
+   echo "http://www.image.ucar.edu/pub/DART/CESM"
+   echo "untar these into your HOME directory - they will create a"
+   echo "~/cesm1_5  directory with the appropriate SourceMods structure."
+   exit 60
+endif
+
+# Copy all of the 'generic' SourceMods
+${COPY} -r  ~/${cesmtag}/SourceMods/* ${caseroot}/SourceMods/   || exit 62
+
+# Each CLM version has some SourceMods. Link to the right version.
+# must parse from a variable of the form:
+# CLM_CONFIG_OPTS: -phys clm4_0 -bgc cn
+
+set clm_opts = `echo $CLM_CONFIG_OPTS | sed -e "s/-//"`
+
+@ iarg = 1
+while ($iarg <= $#clm_opts)
+
+   @ iargp1 = $iarg + 1
+   set option = $clm_opts[$iarg]
+   set  value = $clm_opts[$iargp1]
+
+   switch ( ${option} )
+      case "phys":
+         if ( -e    SourceMods/src.clm/src/${value} ) then
+            cd      SourceMods/src.clm
+            ${LINK} src/${value}/*/*F90 .
+            set clm_version = ${value}
+            echo "SourceMods for ${value} are"
+            ls -l
+            cd      ../..
+         else
+            echo "No SourceMods for CLM <${value}>."
+            echo "Got the version from CLM_CONFIG_OPTS ...  <${CLM_CONFIG_OPTS}>"
+            set clm_version = ${value}
+         endif
+      breaksw
+   #  case "bgc":  no special action needed here at this time
+   #  breaksw
+
+      default:
+      breaksw
+   endsw
+
+   @ iarg = $iarg + 2
+end
+
+# Need to know if we are using WACCM (aka WCCM) for several reasons.
+# Mostly file managment issues.
+# WARNING:   Check your $COMPSET to see whether the grep pattern below will detect your WACCM ! !
+set waccm = `echo $COMPSET | grep CCM`
+if ($status == 0) then
+   set waccm = true
+else
+   set waccm = false
+   # WACCM benefits from a modified cd_core.F90, but none of the
+   # other configurations do.
+endif
+
+# Each CAM dynamical core has its own SourceMods
+echo "importing dycore mods from $cesmtag $CAM_DYCORE"
+ls -l SourceMods/src.cam/src/dynamics/${CAM_DYCORE}/*F90
+if ( $status == 0 ) then
+   cd      SourceMods/src.cam
+   ${LINK} src/dynamics/${CAM_DYCORE}/*F90 .
+   cd      ../..
+else
+   echo "   No SourceMods for CAM dycore <${CAM_DYCORE}> were found."
+   echo "   There may be generic CAM Sourcemods in SourceMods/src.cam, which WILL be used."
+endif
+
+# The CESM multi-instance capability is relatively new and still has a few
+# implementation bugs. These are known problems and will be fixed soon.
+# this should be removed when the files are fixed:
+
+# rtm.buildnml.csh have been replaced with rtm.buildnml perl scripts,
+# which have the multi-instance fixes in them.
+# BUT, they look in the wrong places for the rtm restart file in this hybrid setup:
+# Tools/rtm.buildnml: ...
+# $refdir = "$RUNDIR";
+# if ($GET_REFCASE eq 'TRUE') {  (DART has this as FALSE)
+#    $refdir = "$DIN_LOC_ROOT/ccsm4_init/$RUN_REFCASE/$RUN_REFDATE";
+
+# MOSART: this appears in a different place in CESM1_5_beta03:
+# components/mosart/cime_config/buildnml:line 108:
+#    $RUNDIR/${RUN_REFCASE}.{clm2,mosart}${inst_string}.r.${RUN_REFDATE}-${RUN_REFTOD}.nc
+#    don't exist.  That's because case.setup creates $RUNDIR and then calls the buildnml routines.
+#    stage_cesm_files needs $RUNDIR to exist before it can make files there.  Those files are 
+#    the ones buildnml checks.  It's not fatal, just annoying warnings "WARNING:: mosart.buildnml . . .".  
+# Maybe can fix by setting RUN_REFDIR to $stagedir
+./xmlchange RUN_REFDIR=$stagedir
+
+#
+# If these variables are needed:
+# setenv RUNDIR       `./xmlquery RUNDIR       -value`
+# setenv GET_REFCASE  `./xmlquery GET_REFCASE  -value`
+# setenv RUN_REFDATE  `./xmlquery GET_REFDATE  -value`
+# setenv DIN_LOC_ROOT `./xmlquery DIN_LOC_ROOT -value`
+#
+
+# ==============================================================================
+# Set up the case.
+# This creates the EXEROOT and RUNDIR directories.
+# ==============================================================================
+
+echo 'Setting up the case ...'
+echo 'Ignore "WARNING:: mosart.buildnml . . .".  Those files will be provided later'
+
+./case.setup
+
+if ( $status != 0 ) then
+   echo "ERROR: Case could not be set up."
+   exit 70
+endif
+
+# ==============================================================================
+# Edit the run script to reflect queue and wallclock
+# ==============================================================================
+
+echo ''
+echo 'Setting wallclock and queue in "run" subgroup.'
+echo ''
+
+set BATCH = `echo $BATCHSUBMIT | sed 's/ .*$//'`
+switch ( $BATCH )
+   case bsub*:
+      # NCAR "bluefire", "yellowstone"
+      # -file env_batch.xml -subgroup is needed because these variables are in env_batch.xml,
+      # which defines these variables for several different jobs; run, st_archive, ...
+      # The old form of arguments is needed because xmlchange can't find env_batch.xml
+      # without -file, and that forces all args to be old form.
+      ./xmlchange -file env_batch.xml -subgroup run   -id JOB_QUEUE -val ${queue}
+      ./xmlchange -file env_batch.xml -subgroup run   -id JOB_WALLCLOCK_TIME -val ${timewall}
+   breaksw
+
+   default:
+   breaksw
+endsw
+
+# This is the part that copies several required DART files to the caseroot directory.
+
+./DART_config || exit 80
+
+
+# ==============================================================================
+# Modify namelist templates for each instance.
+#
+# In a hybrid run with CONTINUE_RUN = FALSE (i.e. just starting up):
+#
+# CAM has been forced to read initial files - specified by namelist var:ncdata
+# CICE reads from namelist variable 'ice_ic'
+# CLM builds its own 'finidat' value from the REFCASE variables 
+#
+# When CONTINUE_RUN = TRUE, CICE and CLM read from pointer files.
+#
+# All of these must later on be staged with these same filenames.
+# OR - all these namelists can be changed to match whatever has been staged.
+# MAKE SURE THE STAGING SECTION OF THIS SCRIPT MATCHES THESE VALUES.
+# ==============================================================================
+
+@ inst = 1
+while ($inst <= $num_instances)
+
+   # following the CESM strategy for 'inst_string'
+   set inst_string = `printf _%04d $inst`
+
+   # ===========================================================================
+   set fname = "user_nl_cam${inst_string}"
+   # ===========================================================================
+   # ATM Namelist
+   # DART/CAM requires a PHIS field in a history file at the same frequency as
+   # the CAM assimilation. This script sets it to be written to the .h0. every
+   # assimilation time. If you want to write it to a different .h?. file, you MUST
+   # modify the assimilate.csh script in TWO places. You will need to set
+   # 'empty_htapes = .false.' and change 'nhtfrq' and 'mfilt' to get a CAM
+   # default-looking .h0. file.
+   #
+   # inithist == 'ENDOFRUN' ensures that CAM writes the required initial file
+   # every time it stops.
+
+   echo " inithist      = 'ENDOFRUN'"                     >> ${fname}
+   echo " ncdata        = 'cam_initial${inst_string}.nc'" >> ${fname}
+   echo " empty_htapes  = .true. "                        >> ${fname}
+   echo " fincl1        = 'PHIS:I' "                      >> ${fname}
+   echo " nhtfrq        = -$stop_n "                      >> ${fname}
+   echo " mfilt         = 1 "                             >> ${fname}
+
+
+   # Settings that differ between regular CAM and the WACCM version:
+
+   if ($waccm == true ) then
+
+    # WACCM requires a reduced time step for stability.
+    echo "dtime = 900"                                    >> ${fname}
+
+   else
+
+      # CAM forcing files.
+      # Some of the files specified here are because the default files only
+      # contain data through 2005 and we are interested in timeframes after that.
+
+      set chem_datapath = "${cesmdata}/atm/cam/chem/trop_mozart_aero"
+
+      # CAM5 does prognostic aerosols by default (which is expensive).
+      # Specifying the following causes CAM to use prescribed aerosols, which is cheaper.
+      # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
+      # WACCM5 should not have these set.
+
+
+      if ($start_year <= 2015) then
+
+         # This might be better (30 levels): ozone_1.9x2.5_L30_2005-2099_c130313.nc
+         # No, it doesn't have PS on it.
+         echo "prescribed_ozone_type = 'INTERP_MISSING_MONTHS'"                                          >> ${fname}
+         echo "prescribed_ozone_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/ozone'"             >> ${fname}
+         echo "prescribed_ozone_file = 'ozone_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                   >> ${fname}
+         echo "prescribed_ozone_name = 'O3'"                                                             >> ${fname}
+
+         # Don't specify tracer_cnst_cycle_yr if _type is SERIAL or INTERP_MISSING_MONTH
+         # echo "tracer_cnst_cycle_yr = 2010 "                                                             >> ${fname}
+         echo "tracer_cnst_type      =  'INTERP_MISSING_MONTHS'"                                              >> ${fname}
+         echo "tracer_cnst_datapath  = '/glade/p/cesmdata/cseg/inputdata/atm/cam/chem/trop_mozart_aero/oxid'" >> ${fname}
+         echo "tracer_cnst_file      =  'oxid_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                        >> ${fname}
+         echo "tracer_cnst_filelist  = 'oxid_1.9x2.5_L26_clim_list.c090805.txt'"                              >> ${fname}
+         echo "tracer_cnst_specifier = 'O3','OH','NO3','HO2'"                                                 >> ${fname}
+
+      else 
+         echo 'WARNING; using default ozone and tracer_cnst forcing files'
+      endif
+# 
+# 
+      if ($start_year <= 2010) then
+# 
+#          # As of April 2015, the default files only run through 2005.
+#          # Specify non-default files for assimilation for years 2006-2010.
+#          # Update as needed and newer files become available.
+#          # ? Use CYCLICAL for years later than 2010?
+# 
+# These are from the transient  compset FPIPDC5L45BGC,  case FV1deg_PItoPD
+# except, there's no 1850-2010 file for num_a4.  # There is an 1850-2005 (which actually ends with 2006, 
+# and 2006 appears to be identical to 2000, so maybe I can kluge a 2010 date in there.  
+# Old;  echo " 'num_a4 -> ${chem_datapath}/emis/ar5_mam4_num_a4_surf_2000_c120716.nc',"             >> ${fname}
+# This worked, so I'll use it for now (2015-9-18).
+
+# > > > WARNING! this will only work on yellowstone, where 'raeder' files are, as of 2015-12.
+#                Check whether CESM's file collection has been updated to provide better forcing file sets.
+
+         echo " ext_frc_type = 'INTERP_MISSING_MONTHS' "                                              >> ${fname}
+         # echo " ext_frc_cycle_yr      = 2010 "                                                        >> ${fname}
+         echo " ext_frc_specifier     = "                                                             >> ${fname}
+         echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_elev_1850-2010_c20100902_v12.nc',"      >> ${fname}
+         echo " 'bc_a4  -> ${chem_datapath}/emis/ar5_mam3_bc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
+         echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'num_a4 -> /glade/p/work/raeder/Exp/ATM_forcXX/ar5_mam4_num_a4_elev_1850-2010_c150205.nc'," >> ${fname}
+         echo " 'pom_a4 -> ${chem_datapath}/emis/ar5_mam3_pom_elev_1850-2010_c20140421_v12.nc',"      >> ${fname}
+         echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_elev_1850-2010_c20100902_v12.nc'"    >> ${fname}
+
+         echo " srf_emis_type = 'INTERP_MISSING_MONTHS' "                                             >> ${fname}
+         # echo " srf_emis_cycle_yr     = 2010 "                                                        >> ${fname}
+         echo " srf_emis_specifier    = "                                                             >> ${fname}
+         echo " 'DMS    -> ${chem_datapath}/emis/aerocom_mam3_dms_surf_1849-2010_c20100902.nc',"      >> ${fname}
+         echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_surf_1850-2010_c20100902_v12.nc',"      >> ${fname}
+         echo " 'SOAG   -> ${chem_datapath}/emis/ar5_mam3_soag_1.5_surf_1850-2010_c20100902_v12.nc'," >> ${fname}
+         echo " 'bc_a4  -> ${chem_datapath}/emis/ar5_mam3_bc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
+         echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'num_a4 -> /glade/p/work/raeder/Exp/ATM_forcXX/ar5_mam4_num_a4_surf_1850-2010_c150205.nc'," >> ${fname}
+         echo " 'pom_a4 -> ${chem_datapath}/emis/ar5_mam3_pom_surf_1850-2010_c20140421_v12.nc',"      >> ${fname}
+         echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_surf_1850-2010_c20100902_v12.nc'"    >> ${fname}
+      else 
+         echo 'WARNING; using default srf_emis_* and ext_frc_*'
+      endif
+
+      if ($start_year <= 2012) then
+         # WACCM loads a file given by namelist(?) variable flbc_file,
+         # which means that bndtvghg should not be specified outside of this CAM block.
+         echo " bndtvghg        = '${cesmdata}/atm/cam/ggas/ghg_hist_1765-2012_c130501.nc'"           >> ${fname}
+      else 
+         echo "WARNING; using default bndtvghg"
+      endif
+
+      if ($start_year <= 2013) then
+         echo " prescribed_volcaero_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/volc'"       >> ${fname}
+         echo " prescribed_volcaero_file      = 'CCSM4_volcanic_1850-2013_prototype1_c130430.nc'"     >> ${fname}
+      else 
+         echo "WARNING; using default volcaero"
+      endif
+   # End of 'not waccm' test
+   endif
+
+   if ($start_year > 2008) then
+      # The default as of April 2015 is
+      # /glade/p/cesmdata/cseg/inputdata/atm/cam/solar/SOLAR_SPECTRAL_Lean_1610-2008_annual_c090324.nc
+      # For later dates there are files which repeat the solar cycles from 1960-2008
+      # in order to create a time series out to 2140:
+      # .../spectral_irradiance_Lean_1610-2140_ann_c100408.nc
+      # This does not look like an exact extension of the default,
+      # but does look like the previous default.  So try it.
+
+      echo " solar_data_file = '${cesmdata}/atm/cam/solar/spectral_irradiance_Lean_1610-2140_ann_c100408.nc'" >> ${fname}
+   endif
+
+   # ===========================================================================
+   set fname = "user_nl_clm${inst_string}"
+   # ===========================================================================
+   # LAND Namelist
+   # With a RUN_TYPE=hybrid the finidat is automatically specified
+   # using the REFCASE/REFDATE/REFTOD information. i.e.
+   # finidat = ${stagedir}/${refcase}.clm2${inst_string}.r.${reftimestamp}.nc
+   #
+   # TJH ... should make monthly average file or something ...
+   # 1.3 MB is 100x bigger than CAM history file. See page 65 of
+   # http://www.cesm.ucar.edu/models/cesm1.2/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf
+   #
+   # Making a (compact) .h0. file is a good idea, since the clm restart files
+   # do not have all the metadata required to reconstruct a gridded field.
+   # 'TSA' is 2m surface air temperature.  This also prevents
+   # having truly empty history files, resulting in ntapes = 0,
+   # which prevents the hybrid-mode model from restarting.
+   #
+   # Every stop_n hours
+   # echo "hist_mfilt  = 1"              >> ${fname}
+   # echo "hist_nhtfrq = -$stop_n"       >> ${fname}
+   # Every month
+   # echo "hist_mfilt  = 1"              >> ${fname}
+   # echo "hist_nhtfrq = 0"              >> ${fname}
+
+   echo "hist_empty_htapes = .true."   >> ${fname}
+   echo "hist_fincl1 = 'TSA'"          >> ${fname}
+   echo "hist_nhtfrq = -$stop_n"       >> ${fname}
+   echo "hist_mfilt  = 1"              >> ${fname}
+   echo "hist_avgflag_pertape = 'I'"   >> ${fname}
+
+   # ===========================================================================
+   set fname = "user_nl_cice${inst_string}"
+   # ===========================================================================
+   # CICE Namelist
+
+   # CAM5: 
+   # echo "ice_ic = '${refcase}.cice${inst_string}.r.${reftimestamp}.nc'" >> ${fname}
+   # CAM4: 
+   echo "ice_ic = 'default'" >> ${fname}
+
+   if ($glacier =~ 'CISM*') then
+      # ===========================================================================
+      set fname = "user_nl_cism${inst_string}"
+      # ===========================================================================
+      # CISM Namelist
+   
+      echo " cisminputfile = '${refcase}.cism${inst_string}.r.${reftimestamp}.nc'" >> ${fname}
+   endif
+
+   @ inst ++
+end
+
+./preview_namelists || exit -3
+
+# ==============================================================================
+# Stage the restarts now that the run directory exists
+# ==============================================================================
+
+set init_time = ${reftimestamp}
+
+cat << EndOfText >! stage_cesm_files
+#!/bin/csh -f
+# This script can be used to help restart an experiment from any previous step.
+# The appropriate files are copied to the RUN directory.
+#
+# Before running this script:
+#  1) be sure CONTINUE_RUN is set correctly in the env_run.xml file in
+#     your CASEROOT directory.
+#     CONTINUE_RUN=FALSE => you are starting over at the initial time.
+#     CONTINUE_RUN=TRUE  => you are starting from a previous step but not
+#                           the very first one.
+#  2) be sure 'restart_time' is set to the day and time that you want to
+#     restart from if not the initial time.
+
+set restart_time = $init_time
+
+# ---------------------------------------------------------
+# Get the settings for this case from the CESM environment
+# ---------------------------------------------------------
+cd ${caseroot}
+# source ./Tools/ccsm_getenv || exit -2
+# In 1_5_a2d ccsm_getenv doesn't define lots of variables that were defined in 1_2.
+setenv RUNDIR       \`./xmlquery RUNDIR       -value\`
+setenv CONTINUE_RUN \`./xmlquery CONTINUE_RUN -value\`
+
+ls \$RUNDIR/*.i.\${restart_time}.nc
+if (\$status == 0) then
+   # The restart set exists in the RUNDIR, regardless of the short term archiver.
+   setenv DOUT_S FALSE
+else
+   set hide_loc = \`ls \$RUNDIR:h/Hide*/*_0001.i.\${restart_time}.nc\`
+   if (\$status == 0) then
+      # The restart set exists in a Hide directory, regardless of the short term archiver.
+      setenv DOUT_S FALSE
+      mv \$hide_loc:h/* \${RUNDIR}
+   else
+      setenv DOUT_S       \`./xmlquery DOUT_S       -value\`
+      setenv DOUT_S_ROOT  \`./xmlquery DOUT_S_ROOT  -value\`
+   endif
+endif
+
+setenv CISM_OBSERVED_IC \`./xmlquery CISM_OBSERVED_IC -value\`
+if (\$status == 0 || \$CISM_OBSERVED_IC == 'FALSE') then
+   set CISM_RESTART = TRUE
+else
+   set CISM_RESTART = FALSE
+endif
+# ---------------------------------------------------------
+
+cd \${RUNDIR}
+
+echo 'Copying the required CESM files to the run directory to rerun a previous step. '
+echo 'CONTINUE_RUN from env_run.xml is' \${CONTINUE_RUN}
+if ( \${CONTINUE_RUN} == TRUE ) then
+  echo 'so files for some later step than the initial one will be restaged.'
+  echo "Date to reset files to is: \${restart_time}"
+else
+  echo 'so files for the initial step of this experiment will be restaged.'
+  echo "Date to reset files to is: ${init_time}"
+endif
+echo ''
+
+if ( \${CONTINUE_RUN} == TRUE ) then
+
+   #----------------------------------------------------------------------
+   # This block copies over a set of restart files from any previous step of
+   # the experiment that is NOT the initial step.
+   # After running this script resubmit the job to rerun.
+   #----------------------------------------------------------------------
+
+   echo "Staging restart files for run date/time: " \${restart_time}
+
+   #  The short term archiver is on, so the files we want should be in one
+   #  of the short term archive 'rest' restart directories.  This assumes
+   #  the long term archiver has NOT copied these files to the HPSS yet.
+
+   if (  \${DOUT_S} == TRUE ) then
+
+      # The restarts should be in the short term archive directory.  See
+      # www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/x1565.html#running_ccsm_restarts
+      # for more help and information.
+
+      set RESTARTDIR = \${DOUT_S_ROOT}/rest/\${restart_time}
+
+      if ( ! -d \${RESTARTDIR} ) then
+
+         echo "restart file directory not found: "
+         echo " \${RESTARTDIR}"
+         echo "If the long-term archiver is on, you may have to restore this directory first."
+         echo "You can also check for either a .sta or a .sta2 hidden subdirectory in"
+         echo "\${DOUT_S_ROOT}"
+         echo "which may contain the 'rest' directory you need,"
+         echo "and then modify RESTARTDIR in this script."
+         exit 100
+
+      endif
+
+      ${COPY} \${RESTARTDIR}/* . || exit 101
+
+   else
+
+      # The short term archiver is off, which leaves all the restart files
+      # in the run directory.  The rpointer files must still be updated to
+      # point to the files with the right day/time.
+
+      @ inst=1
+      while (\$inst <= $num_instances)
+
+         set inst_string = \`printf _%04d \$inst\`
+
+         echo "${case}.clm2\${inst_string}.r.\${restart_time}.nc" >! rpointer.lnd\${inst_string}
+         echo "${case}.cice\${inst_string}.r.\${restart_time}.nc" >! rpointer.ice\${inst_string}
+         echo "${case}.cam\${inst_string}.r.\${restart_time}.nc"  >! rpointer.atm\${inst_string}
+         if ($river_runoff == 'RTM') then
+            echo "${case}.rtm\${inst_string}.r.\${restart_time}.nc"  >! rpointer.rof\${inst_string}
+         else if ($river_runoff == 'MOSART') then
+            echo "${case}.mosart\${inst_string}.r.\${restart_time}.nc"  >! rpointer.rof\${inst_string}
+         endif
+         if (\$CISM_RESTART == TRUE) then
+            echo "${case}.cism\${inst_string}.r.\${restart_time}.nc"  >! rpointer.glc\${inst_string}
+         endif
+
+         @ inst ++
+      end
+
+      # There are no instance numbers in these filenames.
+      echo "${case}.cpl.r.\${restart_time}.nc"     >! rpointer.drv
+      echo "${case}.docn.r.\${restart_time}.nc"    >! rpointer.ocn
+      echo "${case}.docn.rs1.\${restart_time}.bin" >> rpointer.ocn
+
+   endif
+
+   # Relink the CAM initial files back to the hardwired names set in the namelist
+
+   @ inst=1
+   while (\$inst <= $num_instances)
+      set inst_string = \`printf _%04d \$inst\`
+      ${LINK} ${case}.cam\${inst_string}.i.\${restart_time}.nc cam_initial\${inst_string}.nc
+      @ inst ++
+   end
+
+   echo "All files reset to rerun experiment step for time " \$restart_time
+
+else     # CONTINUE_RUN == FALSE
+
+   #----------------------------------------------------------------------
+   # This block links the right files to rerun the initial (very first)
+   # step of an experiment.  The names and locations are set during the
+   # building of the case; to change them rebuild the case.
+   # After running this script resubmit the job to rerun.
+   #----------------------------------------------------------------------
+
+   @ inst=1
+   while (\$inst <= $num_instances)
+
+      set inst_string = \`printf _%04d \$inst\`
+
+      echo "Staging initial files for instance \$inst of $num_instances"
+
+      ${LINK} ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc  .
+      ${LINK} ${stagedir}/${refcase}.cice\${inst_string}.r.${init_time}.nc  .
+      ${LINK} ${stagedir}/${refcase}.cam\${inst_string}.i.${init_time}.nc   cam_initial\${inst_string}.nc
+      if ($river_runoff == 'RTM') then
+         ${LINK} ${stagedir}/${refcase}.rtm\${inst_string}.r.${init_time}.nc .
+      else if ($river_runoff == 'MOSART') then
+         ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
+      endif
+      if (\$CISM_RESTART == TRUE) then
+         ${LINK} ${stagedir}/${refcase}.cism\${inst_string}.r.${init_time}.nc  .
+      endif
+
+      @ inst ++
+   end
+
+   # ==============================================================================
+   # INFLATION : Initial setup for the default inflation scenario.
+   # ==============================================================================
+   # CAM usually uses adaptive state-space prior inflation. 
+   # The initial settings are in the filter_nml and ... 
+   # during an assimilation experiment, the output from one assimilation 
+   # is the input for the next.  If there is no inflation restart file available 
+   # for the first cycle we would like to create one.  
+   # However, there is currenly no automatic way to do this. 
+   # The utility that creates the initial inflation values (fill_inflation_restart)
+   # needs the model size from model_mod. To get that, model_mod needs a 'caminput.nc'
+   # file which we generally don't have at this stage of the game (it exists after
+   # a model advance).  So we'll make a cookie file that indicates this is 
+   # the very first assimilation. If this cookie file exists, the assimilate.csh 
+   # script will make the inflation restart file before it performs the assimilation. 
+   # After the first assimilation takes place, the cookie file must be 'eaten' 
+   # so that subsequent assimilations do not overwrite whatever _should_ be there.
+   #
+   # IMPORTANT: If you stage your own inflation file, you must REMOVE the cookie
+   # file from the RUNDIR directory.
+   # Replace the inflation cookie, in case it was removed by a failed first cycle.
+   if ( $num_instances > 1 ) then
+      ls ${stagedir}/*infl*
+      if ($status == 0) then
+         cp ${stagedir}/*infl* .
+      else
+         date >! \${rundir}/cam_inflation_cookie
+      endif
+   endif
+
+   echo "All files set to run the FIRST experiment step at time" $init_time
+
+endif
+exit 110
+
+EndOfText
+chmod 0755 stage_cesm_files
+
+./stage_cesm_files
+
+# ==============================================================================
+# build
+# ==============================================================================
+
+echo ''
+echo 'Building the case'
+echo ''
+
+./case.build
+
+if ( $status != 0 ) then
+   echo "ERROR: Case could not be built."
+   exit 120
+endif
+
+# ==============================================================================
+# Check some env_run.xml contents which should have been set by this script.
+# ==============================================================================
+echo ' '
+echo "ENV_RUN: variables from env_run.xml, which may be of interest:"
+set vars = ( 'CONTINUE_RUN' 'RESUBMIT' 'RUN_REF{CASE,DATE,TOD}' 'RUN_STARTDATE' 'STOP_OPTION'   \
+             'STOP_N' 'SSTICE_*' 'DOUT_S_*' 'DOUT_L_*' 'RUNDIR' 'BATCHSUBMIT' 'MPI_RUN_COMMAND' \
+             'AVGHIST')
+foreach v (`echo "$vars"`)
+    grep "$v" env_run.xml | grep "entry" | sed -e "s/<entry id=//" -e "s/>//"
+end
+echo ' '
+
+# ==============================================================================
+# What to do next
+# ==============================================================================
+
+echo ""
+echo "Time to check the case."
+echo ""
+echo "0)  Peruse the output from this setup script for non-fatal errors and warnings:"
+echo "       ERROR, WARNING, 'No such file' (except for MOSART)" 
+echo "       'File status unknown' can be ignored."
+echo "       'ERROR: cice.buildlib failed' can be ignored, unless you've changed the CICE code"
+echo "1)  cd ${rundir}"
+echo "    and check the files that were staged and the compatibility between them "
+echo "    and the namelists/pointer files."
+echo ""
+echo "2)  cd ${caseroot}"
+echo ""
+echo "3)  Verify the contents of env_run.xml, as printed from this build process (see ENV_RUN)"
+echo "    and any other variables of interest in env_run.xml:"
+echo ""
+echo "4)  The default initial configuration is to do NO ASSIMILATION."
+echo "    When you are ready to add data assimilation, edit env_run.xml to change"
+echo "    the DATA_ASSIMILATION* variables to the values you want."
+echo ""
+echo "6)  Check that env_archive.xml (and env_run.xml) has the archiving characteristics you want."
+echo ""
+echo "7)  Check that env_batch.xml has the job, st_archive, and lt_archive characteristics you want."
+echo ""
+echo "8)  Run ./case.submit"
+echo ""
+echo "9)  After the job has run, check to make sure it worked."
+echo ""
+echo "10) To extend the run in $stop_n '"$stop_option"' steps,"
+echo "    change the env_run.xml variables:"
+echo "      DATA_ASSIMILATION* variables = the values you want."
+echo "      CONTINUE_RUN   = TRUE "
+echo "      RESUBMIT       = the number of jobs to run (each of which has DATA_ASSIMILATION_CYCLES cycles in it"
+echo "    If the first cycle generated an ensemble from a single state, change input.nml as described in the "
+echo "       instructions in it, to make cycle 2,...,N use the new ensemble"
+echo "    change values in env_batch.xml to accommodate longer runs."
+echo ""
+echo ""
+
+cat ${caseroot}/DART_instructions.txt
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

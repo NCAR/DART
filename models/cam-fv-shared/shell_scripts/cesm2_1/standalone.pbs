@@ -1,0 +1,100 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+#
+#PBS -N bob
+#PBS -A P86850054
+#PBS -j oe
+#PBS -q premium
+#PBS -m ae
+#PBS -l walltime=00:20:00
+#PBS -l select=3:mpiprocs=36:ncpus=36
+#### -l select=240:mpiprocs=36:ncpus=36:mem=109GB
+#### -l select=240:mpiprocs=36:ncpus=36:mem=45GB
+
+module list
+
+setenv OMP_STACKSIZE      256M
+setenv OMP_NUM_THREADS    1
+setenv TMPDIR             /glade/scratch/${USER}
+setenv MPI_TYPE_DEPTH     16
+setenv MPI_IB_CONGESTED   1
+setenv MPIEXEC_MPT_DEBUG  0
+setenv MP_DEBUG_NOTIMEOUT yes
+
+set CASEDIR = /glade/work/${USER}/cases/cesm2.1.0/start_6Z
+set RUNDIR = /glade/scratch/${USER}/cesm2.1.0/start_6Z/standalone
+
+cd $RUNDIR
+
+#----------------------------------------------------------------------------
+# Harvest some information from the environment to construct output file name
+
+set jobname = $PBS_JOBNAME
+set numcpus = $NCPUS
+set numtasks = `cat  $PBS_NODEFILE | wc -l`
+set numnodes = `uniq $PBS_NODEFILE | wc -l`
+
+echo "jobname  is $jobname"
+echo "numcpus  is $numcpus"
+echo "numtasks is $numtasks"
+echo "numnodes is $numnodes"
+
+#----------------------------------------------------------------------------
+# Running filter inheriting all mpi options from environment
+
+set my_output_file = ${jobname}_${numnodes}_simple.out
+
+echo "Running test 1 at `date`, saving output to ${my_output_file}"
+
+cat input.nml                           >!  ${my_output_file}
+env | sort                              >>  ${my_output_file}
+echo " "                                >>  ${my_output_file}
+echo "Starting filter at "`date`
+mpiexec_mpt ./filter                    >>& ${my_output_file}
+echo "Finished filter at "`date`
+
+echo "TJH skipping all other tests ..."
+exit
+
+#----------------------------------------------------------------------------
+# Running filter with some options used by CESM
+
+set my_output_file = ${jobname}_${numnodes}_omplace.out
+
+echo "Running test 2 at `date`, saving output to ${my_output_file}"
+
+cat input.nml                           >!  ${my_output_file}
+env | sort                              >>  ${my_output_file}
+echo " "                                >>  ${my_output_file}
+echo "Starting filter_omplace at "`date`
+mpiexec_mpt omplace -tm open64 ./filter >>& ${my_output_file}
+echo "Finished filter_omplace at "`date`
+
+#----------------------------------------------------------------------------
+# Running the whole assimilate.csh script in a manner consistent with CESM
+
+cd $CASEDIR
+
+set my_output_file = ${jobname}_${numnodes}_standalone_assim.out
+
+echo "Running test 3 at `date`, saving output to ${my_output_file}"
+
+cat input.nml                           >!  ${my_output_file}
+env | sort                              >>  ${my_output_file}
+echo " "                                >>  ${my_output_file}
+echo "Starting assimilate.csh at "`date`
+./test_assimilate.csh $CASEDIR 0        >>& ${my_output_file}
+echo "Finished assimilate.csh at "`date`
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+
