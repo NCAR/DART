@@ -28,7 +28,8 @@
 #          (which is supposed to be run before running this script).
 #       4. For the required data to run this script, check the section of 'dependencies'.
 #       5. Anything specific to the experiment is supposed to be provided in ${CENTRALDIR}/.
-#       6. For regional MPAS runs, LBC files are assumed to be provided.
+#       6. Regional MPAS is not supported in DART yet. 
+#          For more info, please contact Soyoung Ha (syha@ucar.edu).
 #
 # Arguments for this script (created by 'filter' or 'perfect_model_obs') are:
 # 1) ensemble member number
@@ -42,11 +43,7 @@ set ensemble_max    = $2
 
 # Do you want to save horizontal winds in the analysis file?
 #-------------------------------------------------------------------
-set save_wind = true 
-
-# Do you want to save prior states before being overwritten at the next cycle?
-#-------------------------------------------------------------------
-set save_prior = false
+set save_wind = false
 
 # mpi command
 #-------------------------------------------------------------------
@@ -157,7 +154,6 @@ while( $ensemble_member <= $ensemble_max )
        ${LINK} ${CENTRALDIR}/${fsfc} .
        ls -lL $fsfc						 || exit 1
    endif
-   #if($ensemble_member == 1) ${LINK} ${CENTRALDIR}/streams.atmosphere.tend streams.atmosphere || exit
 
    # Input analysis file
    set input_file = `head -n $ensemble_member ${CENTRALDIR}/${inlist}  | tail -1`
@@ -208,29 +204,10 @@ EOF
    if ( -e namelist.atmosphere )  ${REMOVE} namelist.atmosphere
    sed -f script.sed ${CENTRALDIR}/namelist.atmosphere >! namelist.atmosphere
 
-   # Prefix of a lateral boundary condition file if mpas is run in a limited-area mode
-   # MPAS always has an lbc_in input stream in streams.atmosphere.
-   # From MPASV7.0, mpas files always have bdyMaskCell (e.g. even for a global mesh 
-   # which is filled up with zeros everywhere). So we cannot figure out if it is a regional mesh
-   # base on the variable. Now it is determined based on config_apply_lbcs in namelist.atmosphere.
-   set fgrd = `grep init_template_filename input.nml | awk '{print $3}' | cut -d ',' -f1 | sed -e "s/'//g" | sed -e 's/"//g'`
-
    set is_it_regional = `grep config_apply_lbcs namelist.atmosphere | awk '{print $3}'`
    if ( $is_it_regional == true ) then
-        echo This is a regional MPAS run.
-        set is_lbc_there = `grep config_apply_lbcs namelist.atmosphere | wc -l`
-        if($is_lbc_there != 1) then
-           echo We need config_apply_lbcs in namelist.atmosphere. Use MPASV7.0 and above.
-           exit
-        endif
-
-        set blist  = `grep update_boundary_file_list ${CENTRALDIR}/input.nml | awk '{print $3}' | cut -d ',' -f1 | sed -e "s/'//g" | sed -e 's/"//g'`
-        set flbc = `head -n $ensemble_member ${CENTRALDIR}/${blist}  | tail -1`
-        set flbc = `basename $flbc`
-        set tnow = `echo $anal_utc | sed -e "s/:/\./g"`
-        set tnxt = `echo $targ_utc | sed -e "s/:/\./g"`
-        set flbcN = `echo $flbc | sed -e "s/$tnow/$tnxt/g"`
-        ls -lL ${flbc} ${flbcN} 		|| exit
+        echo Regional MPAS is not supported yet. Exit.
+        exit
    endif
 
    # clean out any old log files
@@ -252,14 +229,6 @@ EOF
       echo $ensemble_member >>! ${CENTRALDIR}/blown.${tanal}_${tfcst}.out
       echo "Model failure! Check file " ${CENTRALDIR}/blown.${tanal}_${tfcst}.out
       exit 1
-   endif
-
-   # Back up some fields and clean up.
-   #-------------------------------------------------------------------
-   if($save_prior == true) then
-      set t_pr = `echo $date_utc | cut -d : -f1` 
-      ncks -O -v xtime,theta,rho,u,w,qv,qc,qr ${output_file} prior.${t_pr}.nc
-      ls -l prior.${t_pr}.nc
    endif
 
    if($save_wind == true) then
