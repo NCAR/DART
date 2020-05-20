@@ -480,8 +480,3 @@ end subroutine debug_print_size_check
 
 end module airs_obs_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

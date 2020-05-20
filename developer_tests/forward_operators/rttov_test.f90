@@ -10,8 +10,7 @@ program rttov_test
 
    use rttov_interface_mod
 
-   use utilities_mod, only : initialize_utilities, finalize_utilities
-use    utilities_mod, only : register_module, &
+   use utilities_mod, only : register_module, &
                              file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, finalize_utilities, nmlfileunit
 

@@ -32,11 +32,11 @@ model_mod interpolate:
 **QTY_SKIN_TEMPERATURE**   - the surface (skin) temperature in K
 **QTY_SURFACE_TYPE**       - 0 = land, 1 = water, 2 = sea ice
 
-If a model does not have these quantities available, the RTTOV forward operator cannot be
-used. It may be possible to look up surface elevation or surface type through an look-up
-table or "atlas," although DART does not yet provide such functionality. 2M temperature
-in theory could be interpolated based on skin temperature and the lowest-level model
-temperature.
+If a DART model_mod cannot provide these required quantities, the RTTOV forward operator 
+will fail and cannot be used. It may be possible to look up surface elevation or surface 
+type through an look-up table or "atlas," although DART does not yet provide such 
+functionality. 2M temperature in theory could be interpolated based on skin temperature and 
+the lowest-level model temperature.
 
 Beyond these fields, there are many other optional fields (such as clouds, trace gases, and
 aerosols) that can be specified. See the obs_def_rttov_mod.html page in the

@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: mkmf_rttov_test 11289 2017-03-10 21:56:06Z jsteward@ucar.edu $
-
      ../../../build_templates/mkmf -p rttov_test \
   -t ../../../build_templates/mkmf.template \
  -a "../../.."  path_names_rttov_test

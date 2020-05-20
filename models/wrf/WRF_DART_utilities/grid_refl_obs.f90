@@ -33,7 +33,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                              get_obs_def_location,  get_obs_def_type_of_obs
-use     obs_kind_mod, only : QTY_RADAR_REFLECTIVITY
+use     obs_kind_mod, only : RADAR_REFLECTIVITY
 use        map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                              PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
                              ij_to_latlon, gridwind_to_truewind
@@ -325,7 +325,7 @@ do o = 1, num_obs_in_time_period
   ob_loc = get_obs_def_location(obs_def)
   obs_kind_ind = get_obs_def_type_of_obs(obs_def)
 
-  if ( (obs_kind_ind == QTY_RADAR_REFLECTIVITY) .and. (is_vertical(ob_loc, "HEIGHT")) ) then
+  if ( (obs_kind_ind == RADAR_REFLECTIVITY) .and. (is_vertical(ob_loc, "HEIGHT")) ) then
   
     num_refl_obs = num_refl_obs + 1
 

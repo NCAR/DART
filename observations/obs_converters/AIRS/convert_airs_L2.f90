@@ -132,8 +132,3 @@ call finalize_utilities()
 
 end program convert_airs_L2
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
