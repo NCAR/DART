@@ -54,9 +54,12 @@ character(len=*), parameter :: revdate  = "$Date$"
 character(len=256)  :: update_analysis_file_list = 'filter_in.txt'
 character(len=256)  :: update_boundary_file_list = 'boundary_inout.txt'
 integer             :: debug = 0
+logical             :: lbc_update_from_reconstructed_winds = .true.
+logical             :: lbc_update_winds_from_increments    = .true.
 
 
-namelist /update_bc_nml/ update_analysis_file_list, update_boundary_file_list, debug
+namelist /update_bc_nml/ update_analysis_file_list, update_boundary_file_list, debug, &
+                         lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments
 
 !----------------------------------------------------------------------
 character (len=256)   :: next_infile, next_outfile
@@ -121,7 +124,7 @@ fileloop: do        ! until out of files
   ! Reads input lbc (prior) and filter (analysis) files 
   !----------------------------------------------------------------------
 
-  ncAnlID = nc_open_file_readonly(next_infile, 'update_bc - open readonly')
+  ncAnlID = nc_open_file_readonly(next_infile,  'update_bc - open readonly')
   ncBdyID = nc_open_file_readwrite(next_outfile, 'update_bc - open readwrite')
 
   !----------------------------------------------------------------------
@@ -151,7 +154,8 @@ fileloop: do        ! until out of files
   ! update the current model state vector
   !----------------------------------------------------------------------
   write(*,*) 'Updating boundary variables in ',trim(next_outfile)
-  call statevector_to_boundary_file(statevector, ncBdyID)
+  call statevector_to_boundary_file(statevector, ncBdyID, ncAnlID, &
+       lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments, debug)
 
   !----------------------------------------------------------------------
   ! Log what we think we're doing, and exit.
