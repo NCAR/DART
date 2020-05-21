@@ -188,6 +188,8 @@
 &update_bc_nml
   update_analysis_file_list = 'filter_in.txt'
   update_boundary_file_list = 'boundary_inout.txt'
+  lbc_update_from_reconstructed_winds = .true.
+  lbc_update_winds_from_increments    = .true.
   debug = 0
 /
 
