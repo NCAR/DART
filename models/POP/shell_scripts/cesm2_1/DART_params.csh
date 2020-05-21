@@ -176,7 +176,7 @@ setenv short_term_archiver off
 # ==============================================================================
 
 setenv mach         cheyenne
-setenv ACCOUNT      P93300612
+setenv ACCOUNT      P########
 setenv queue        regular
 setenv timewall     00:15:00
 
