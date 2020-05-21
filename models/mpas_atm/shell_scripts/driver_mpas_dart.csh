@@ -46,13 +46,12 @@
 #  C. RUN_DIR/member#/${mpas_filename}    - the input file listed in input_state_file_list for each member
 #  D. OBS_DIR/${obs_seq_in}.${YYYYMMDDHH} - obs sequence files for each analysis cycle (YYYYMMDDHH) 
 #     for the entire period.
-#  E. Ensemble LBC files for regional MPAS cycling
 # 
 #  Written by Soyoung Ha (MMM/NCAR)
 #  Updated and tested on yellowstone (Feb-20-2013)
 #  Updated for MPAS V5 and DART/Manhattan; tested on cheyenne (Jun-27-2017)
 #  Updated for a better streamline and consistency: Ryan Torn (Jul-6-2017)
-#  Updated for regional MPAS-A: Soyoung Ha (Mar-4-2020)
+#  Updated for MPASV7: Soyoung Ha (Mar-4-2020)
 #
 #  For any questions or comments, contact: syha@ucar.edu (+1-303-497-2601)
 ##############################################################################################
@@ -202,14 +201,8 @@ endif
 
 set is_it_regional = `grep config_apply_lbcs ${NML_MPAS} | awk '{print $3}'`
 if ( $is_it_regional == true ) then
-    echo This script is running a regional mpas model.
-    # filename_template="lbc.$Y-$M-$D_$h.$m.$s.nc" => set fbdy = lbc.
-    set fbdy = `sed -n '/<immutable_stream name=\"lbc_in\"/,/\/>/{/Scree/{p;n};/##/{q};p}' ${STREAM_ATM} | \
-                grep filename_template | awk -F= '{print $2}' | awk -F$ '{print $1}' | sed -e 's/"//g'`
-    ${LINK} ${DART_DIR}/update_bc .		|| exit
-
-else
-    echo This script is running a global mpas model.
+    echo This script does not support a regional mpas model yet.
+    exit
 endif
 chmod +x ./advance_model.csh
 
@@ -510,60 +503,7 @@ EOF
   endif
 
   #------------------------------------------------------
-  # 7. Run update_bc for all ensemble members (for regional MPAS)
-  #------------------------------------------------------
-  if ( $is_it_regional == true ) then
-
-  set anllist = `grep update_analysis_file_list input.nml | awk '{print $3}' | cut -d ',' -f1 | sed -e "s/'//g" | sed -e 's/"//g'`
-  if($anllist != $fanal) then
-     echo $anllist should be the same as $fanal for update_bc. Exit.
-     exit
-  endif
-  set bdylist = `grep update_boundary_file_list input.nml | awk '{print $3}' | cut -d ',' -f1 | sed -e "s/'//g" | sed -e 's/"//g'`
-  if( -e $bdylist) ${REMOVE} $bdylist
-  if( -e  bdynext) ${REMOVE}  bdynext
-
-  echo Updating $bdylist for update_bc now.
-  touch $bdylist bdynext
-  set lbc0 = ${fbdy}`echo ${time_anl} 0 -w | advance_time | cut -d ":" -f1`.nc
-  set lbcN = ${fbdy}`echo ${time_nxt} 0 -w | advance_time | cut -d ":" -f1`.nc
-  #set lbc0 = ${fbdy}`echo ${time_anl} 0 -w | advance_time | sed -e "s/:/\./g"`.nc
-  #set lbcN = ${fbdy}`echo ${time_nxt} 0 -w | advance_time | sed -e "s/:/\./g"`.nc
-
-  set n = 1
-  while ( $n <= $ENS_SIZE )
-    if( ! -e member$n/${lbc0} ) then
-        ${COPY} ${LBC_DIR}/member$n/${lbc0} member$n/
-    endif
-
-    echo member$n/${lbc0} >> $bdylist
-    ${COPY} member$n/${lbc0} member$n/prior.${lbc0}
-    
-    if( ! -e member$n/${lbcN} ) then
-      ${COPY} ${LBC_DIR}/member$n/${lbcN} member$n/
-    endif
-    echo member$n/${lbcN} >> bdynext 
-
-    @ n++
-  end
-      
-  set  nbdy = `cat $bdylist | wc -l`
-  set nbdyN = `cat bdynext | wc -l`
-  if($nbdy != $ENS_SIZE || $nbdyN != $ENS_SIZE) then
-     echo Not enough LBC files for the regional MPAS run: $nbdy. Stop.
-     exit
-  endif
-
-  ${DART_DIR}/update_bc >! logs/update_bc.${icyc}.log
-  set i_err = `grep ERROR  logs/update_bc.${icyc}.log | wc -l`
-  if( ${i_err} > 0 ) then
-     echo Error in logs/update_bc.${icyc}.log.
-     exit
-  endif
-
-  endif # ( $is_it_regional == true ) then
-  #------------------------------------------------------
-  # 8. Advance model for each member
+  # 7. Advance model for each member
   #------------------------------------------------------
   # Run forecast for ensemble members until the next analysis time
   echo Advance models for ${ENS_SIZE} members now...
@@ -590,7 +530,6 @@ EOF
 
       sed -f advance.sed advance_model.template >! advance_model.pbs
       qsub advance_model.pbs
-      ${REMOVE} advance.sed
       sleep 1
 
     else
