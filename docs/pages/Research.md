@@ -59,7 +59,7 @@ Kevin Raeder, raeder@ucar.edu</td>
 </tbody>
 </table>
 
-<span id="mpasatm" class="anchor"></span> 
+<span id="mpasatm" class="anchor"></span>
 -----
 
 ### Model for Prediction Across Scales (MPAS)
@@ -78,14 +78,14 @@ Kevin Raeder, raeder@ucar.edu</td>
 Data assimilation for MPAS is available as an ensemble Kalman filter (EnKF)
 implemented through (Data Assimilation Research Testbed)[http://dart.ucar.edu]
 
-This work is done in a collaborative effort between the 
+This work is done in a collaborative effort between the
 [Mesoscale and Microscale Meteorology (MMM)](http://www.mmm.ucar.edu)
-Division and the DART development team. DART support for both MPAS-Atmosphere 
+Division and the DART development team. DART support for both MPAS-Atmosphere
 and MPAS-Ocean are available as part of the standard DART package.
 
-In collaboration with NOAA's <a href="http://www.esrl.noaa.gov">Earth System Research Laboratory</a>, 
-related efforts are also underway to explore ensemble data assimilation for MPAS-Atmosphere with the 
-Gridpoint Statistical Interpolation (GSI) scheme that is operational at 
+In collaboration with NOAA's <a href="http://www.esrl.noaa.gov">Earth System Research Laboratory</a>,
+related efforts are also underway to explore ensemble data assimilation for MPAS-Atmosphere with the
+Gridpoint Statistical Interpolation (GSI) scheme that is operational at
 <a href="http://www.ncep.noaa.gov">the National Centers for Environmental Prediction</a>.
 </td>
 
@@ -104,47 +104,46 @@ Gridpoint Statistical Interpolation (GSI) scheme that is operational at
 Grid structure used in the MPAS/DART interface
 </td>
 <td style="vertical-align: top">The MPAS/DART interface is
-built on MPAS's unstructured centroidal Voronoi mesh, 
-and does not regrid to latitude-longitude grids. In MPAS, the finite-volume 
-approach based on a C-grid staggering retains prognostic equations for mass 
+built on MPAS's unstructured centroidal Voronoi mesh,
+and does not regrid to latitude-longitude grids. In MPAS, the finite-volume
+approach based on a C-grid staggering retains prognostic equations for mass
 at the center of finite-volume cells and for the normal component of velocity
-(<i>u</i>) at the faces (or edges in 2D) of the cells. 
-The normal component of velocity (<i>u</i>) at cell edges is then used to 
-reconstruct zonal and meridional winds at cell centers 
-(<img src="../images/MPAS_V_vector.png" style="width: 20px; height: 22px;" alt="" />)
+(<strong><i>u</i></strong>) at the faces (or edges in 2D) of the cells.
+The normal component of velocity (<strong><i>u</i></strong>) at cell edges is then used to
+reconstruct zonal and meridional winds at cell centers (<strong><i>V</i></strong>)
  using radial basis functions (RBFs).
 To avoid the singularity issue on the poles, the cartesian coordinate is employed.
 
 The forward operators on the unstructured grid mesh are constructed as follows.
-The dual of the Voronoi mesh, or the triangular mesh (shown as dashed lines in the 
-figure), is used to search the closest cell center to an arbitrary (or observation) 
+The dual of the Voronoi mesh, or the triangular mesh (shown as dashed lines in the
+figure), is used to search the closest cell center to an arbitrary (or observation)
 point, then find three cell centers of the triangle enclosing the desired point.
-Mass fields are then horizontally interpolated from the cell centers to the observation 
+Mass fields are then horizontally interpolated from the cell centers to the observation
 location using a barycentric (e.g., area-weighted) interpolation.
 </td>
 </tr>
 </table>
 
-While the observed wind quantities are zonal and meridional winds, the normal 
-component of velocity (<i>u</i>) is the only prognostic wind variable in MPAS, 
+While the observed wind quantities are zonal and meridional winds, the normal
+component of velocity (<i>u</i>) is the only prognostic wind variable in MPAS,
 we thus implement a couple of different ways of assimilating wind observations.
-The options determine which wind variables are used in the forward operator to 
-compute expected observation values; how the horizontal interpolation is computed 
-in that forward operator; and how the assimilation increments are applied to update 
+The options determine which wind variables are used in the forward operator to
+compute expected observation values; how the horizontal interpolation is computed
+in that forward operator; and how the assimilation increments are applied to update
 the wind quantities in the state vector of the analysis.
 
-Preliminary results based on real data assimilation experiments indicate that 
-performance is better when the zonal and meridional winds are used as input to the 
-forward operator that uses Barycentric interpolation and the prognostic <i>u</i> 
-wind is incrementally updated. However, there remain scientific questions about 
-how best to handle the wind fields under different situations.  For the details 
-on the wind data strategy, refer to the 
+Preliminary results based on real data assimilation experiments indicate that
+performance is better when the zonal and meridional winds are used as input to the
+forward operator that uses Barycentric interpolation and the prognostic <i>u</i>
+wind is incrementally updated. However, there remain scientific questions about
+how best to handle the wind fields under different situations.  For the details
+on the wind data strategy, refer to the
 <a href="https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/model_mod.html" target="_blank">documentation</a> in DART.
 
-For any questions or future collaboration, please contact either 
+For any questions or future collaboration, please contact either
 Soyoung Ha (syha@ucar.edu) or the DART team (dart@ucar.edu)
 
-<span id="waccm" class="anchor"></span> 
+<span id="waccm" class="anchor"></span>
 
 -----
 
@@ -277,7 +276,7 @@ Alexis Zubrow, azubrow@unc.edu</td>
 </tbody>
 </table>
 
-<span id="mars" class="anchor"></span> 
+<span id="mars" class="anchor"></span>
 
 -----
 
@@ -319,7 +318,7 @@ Alexis Zubrow, azubrow@unc.edu</td>
 </tbody>
 </table>
 
-<span id="pbl1d" class="anchor"></span> 
+<span id="pbl1d" class="anchor"></span>
 
 -----
 
