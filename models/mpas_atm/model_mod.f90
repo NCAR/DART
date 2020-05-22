@@ -192,13 +192,14 @@ public :: set_lbc_variables, &
 ! force_u_into_state sets a logical add_u_to_state_list that forces u to be in state
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "Manhattan/models/mpas_atm/model_mod.f90"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'mpas_atm/model_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! module global storage; maintains values between calls, accessible by
 ! any subroutine
-character(len=256) :: string1, string2, string3, locstring
+character(len=512) :: string1, string2, string3
+character(len=256) :: locstring
 logical, save :: module_initialized = .false.
 
 ! length of an mpas (also wrf) time string:  YYYY-MM-DD_hh:mm:ss
@@ -216,11 +217,11 @@ real(r8), parameter :: rvord = rv/rgas
 
 ! earth radius; needed to convert lat/lon to x,y,z cartesian coords.
 ! for the highest accuracy this should match what the model uses.
-real(r8), parameter :: radius = 6371229.0 ! meters
+real(r8), parameter :: radius = 6371229.0_r8 ! meters
 
-! roundoff error for single precision and double
-! set in init code to 1e-5 or 1e-12 depending.
-real(r8) :: roundoff = 1.0e-5_r8
+! roundoff error tolerance 
+! set in static_init_model() to 1e-5 or 1e-12 depending on compiled precision
+real(r8) :: roundoff
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq

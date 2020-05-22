@@ -43,9 +43,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "Manhattan/models/mpas_atm/update_bc.f90"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'models/mpas_atm/update_bc.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !------------------------------------------------------------------
 ! The namelist variables
@@ -65,7 +65,7 @@ namelist /update_bc_nml/ update_analysis_file_list, update_boundary_file_list, d
 character (len=256)   :: next_infile, next_outfile
 character (len=256)   :: bdy_template_filename
 character (len=256)   :: static_filename
-character (len=256)   :: string1
+character (len=512)   :: string1
 integer               :: iunit, io, x_size, nanlvars, nbdyvars
 integer               :: d1size, d2size
 integer               :: ncAnlID, ncBdyID, istatus

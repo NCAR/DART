@@ -80,9 +80,9 @@ use           netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "mpas_atm/mpas_dart_obs_preprocess.f90"
-character(len=*), parameter :: revision = ""
-character(len=*), parameter :: revdate  = ""
+character(len=*), parameter :: source   = 'mpas_atm/mpas_dart_obs_preprocess.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -1325,7 +1325,7 @@ integer,                 intent(in)    :: iqc_thres   ! Superob obs w/ qc < iqc_
 real(r8),                intent(in)    :: vdist, ptop
 character(len=4),        intent(in)    :: obskind
 
-character(len=256)  :: string
+character(len=512)  :: string
 integer             :: icell
 integer             :: num_copies, num_qc, nloc, k, locdex, obs_kind, n, &
                        num_obs, poleward_obs
@@ -1751,7 +1751,7 @@ type(time_type),         intent(in)    :: atime
 integer,  intent(in)                   :: ncell, iqc_thres
 real(r8), intent(in)                   :: vdist, ptop
 
-character(len=256)  :: string
+character(len=512)  :: string
 integer             :: icell
 integer             :: num_copies, num_qc, nloc, k, locdex, obs_kind, n, &
                        num_obs, poleward_obs

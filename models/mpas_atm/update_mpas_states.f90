@@ -40,9 +40,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "mpas_atm/update_mpas_states.f90"
-character(len=*), parameter :: revision = ""
-character(len=*), parameter :: revdate  = ""
+character(len=*), parameter :: source   = 'mpas_atm/update_mpas_states.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !------------------------------------------------------------------
 ! The namelist variables
@@ -57,7 +57,7 @@ namelist /update_mpas_states_nml/ update_input_file_list, update_output_file_lis
                                   print_data_ranges
 !----------------------------------------------------------------------
 character (len=256)   :: next_infile, next_outfile
-character (len=256)   :: string1
+character (len=512)   :: string1
 integer               :: iunit, io, x_size, nvars
 integer               :: ncAnlID, ncBckID, istatus
 integer               :: filenum
