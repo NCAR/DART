@@ -17,7 +17,8 @@ use          location_mod,  only : location_type, get_close_type, vertical_local
 use    state_structure_mod, only : get_varid_from_kind
 
 use   ensemble_manager_mod, only : ensemble_type
-use   netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_get_variable, nc_get_variable_size
+use   netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_get_variable, nc_get_variable_size, &
+                                   nc_variable_exists
 
 implicit none
 private
@@ -161,6 +162,8 @@ call fill_cam_1d_array(ncid, 'hybi', grid%hybi)
 call fill_cam_1d_array(ncid, 'hyam', grid%hyam)
 call fill_cam_1d_array(ncid, 'hybm', grid%hybm)
 
+!SENOte WARNING: This is the issue with P0 not being in the SE restart files. For now, if it is not in the file
+! set to 100000, the value from standard FV files. NEED TO CLARIFY THIS WITH PETER.
 ! P0 is a scalar with no dimensionality
 call fill_cam_0d_array(ncid, 'P0',   grid%P0)
 
@@ -184,13 +187,27 @@ character(len=*), parameter :: routine = 'fill_cam_1d_array'
 
 !>@todo do we need to check that this exists?  if all cam input
 !> files will have all the arrays we are asking for, then no.
+! SENote: For the SE core, three of these don't exist (gw, slon, slat) so need to check
+! If they don't exist, just don't fill the array for now
 
-call nc_get_variable_size(ncid, varname, grid_array%nsize)
-allocate(grid_array%vals(grid_array%nsize))
+!SENote: for now we need all of these dimensions for the netcdf IO, eventually need to remove
 
-call nc_get_variable(ncid, varname, grid_array%vals, routine)
+if(nc_variable_exists(ncid, varname)) then
 
-if (cdebug_level > 80) call array_dump(grid_array%vals, label=varname)
+   call nc_get_variable_size(ncid, varname, grid_array%nsize)
+   allocate(grid_array%vals(grid_array%nsize))
+
+   call nc_get_variable(ncid, varname, grid_array%vals, routine)
+   
+   if (cdebug_level > 80) call array_dump(grid_array%vals, label=varname)
+
+!SENote: this is the else statement to create something for the slon, slat, and gw fields that aren't used in SE CORE
+else
+   allocate(grid_array%vals(1))
+   grid_array%nsize = 1
+   grid_array%vals(1) = MISSING_R8
+
+endif
 
 end subroutine fill_cam_1d_array
 
@@ -207,9 +224,13 @@ call free_cam_1d_array(grid%lon)
 call free_cam_1d_array(grid%lat)
 call free_cam_1d_array(grid%lev)
 call free_cam_1d_array(grid%ilev)
+
+!SENote: Eventually these will not be in SE state so won;t need removed
 call free_cam_1d_array(grid%slon)
 call free_cam_1d_array(grid%slat)
 call free_cam_1d_array(grid%gw)
+!SENote end
+
 call free_cam_1d_array(grid%hyai)
 call free_cam_1d_array(grid%hybi)
 call free_cam_1d_array(grid%hyam)
@@ -246,6 +267,16 @@ character(len=*), parameter :: routine = 'fill_cam_0d_array'
 
 grid_array%nsize = 1
 allocate(grid_array%vals(grid_array%nsize))
+
+! SENote: Need to check to see if this variable exists
+! If it does not exist, and it is PO, then set it to 10000 for now
+if(varname == 'P0') then
+   ! See if PO exists in the netcdf file
+   if(.not. nc_variable_exists(ncid, 'PO')) then
+      grid_array%vals(1) = 100000
+      return   
+   endif
+endif 
 
 call nc_get_variable(ncid, varname, grid_array%vals, routine)
 

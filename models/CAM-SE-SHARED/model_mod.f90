@@ -7,6 +7,9 @@
 !>
 !> this is the interface between the cam-fv atmosphere model and dart.
 !> the required public interfaces and arguments cannot be changed.
+
+
+! This is a prototype version of CAM-SE with Manhattan using common code
 !>
 !----------------------------------------------------------------
 
@@ -62,7 +65,8 @@ use distributed_state_mod,  only : get_state
 use   state_structure_mod,  only : add_domain, get_dart_vector_index, get_domain_size, &
                                    get_dim_name, get_kind_index, get_num_dims, &
                                    get_num_variables, get_varid_from_kind, &
-                                   get_model_variable_indices, state_structure_info
+                                   get_model_variable_indices, state_structure_info, get_short_name, &
+                                   get_long_name
 use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, &
                                    nc_add_attribute_to_variable, &
                                    nc_define_integer_variable, &
@@ -206,6 +210,7 @@ logical, save      :: module_initialized = .false.
 ! info and is required for getting state variables.
 integer :: domain_id
 
+! SENote: the stagger info in the next block will not be required
 integer, parameter :: STAGGER_NONE = -1
 integer, parameter :: STAGGER_U    =  1
 integer, parameter :: STAGGER_V    =  2
@@ -217,8 +222,12 @@ type cam_stagger
 end type
 
 type(cam_stagger) :: grid_stagger
+! SENote; end of stagger block that will be deleted
 
 ! Surface potential; used for calculation of geometric heights.
+! SENote: phis will only have one dimension meaningful dimension. Could it be put in state structure?
+! SENote: right now every process has their own complete copy of this
+! SENote: Initially appears that SE does not use phis
 real(r8), allocatable :: phis(:, :)
 
 !> build a pressure/height conversion column based on a
@@ -226,6 +235,7 @@ real(r8), allocatable :: phis(:, :)
 !> don't have a real ensemble to use, or we don't care
 !> about absolute accuracy.
 
+!SENote This type is not needed for SE
 ! Horizontal interpolation code.  Need a handle for nonstaggered, U and V.
 type(quad_interp_handle) :: interp_nonstaggered, &
                             interp_u_staggered, &
@@ -255,6 +265,12 @@ subroutine static_init_model()
 
 integer :: iunit, io
 integer :: nfields
+
+!SENote
+type(location_type) :: test_loc
+integer(i8) :: test_index_in
+integer :: test_var_type, i
+real(r8) :: test_loc_vals(3)
 
 character(len=*), parameter :: routine = 'static_init_model'
 
@@ -324,6 +340,22 @@ endif
 ! set a flag based on the vertical localization coordinate selected
 call init_sign_of_vert_units()
 
+!SENote; Looking at metadata
+!write(*, *) 'end of static init model'
+!write(*, *) 'model size ', get_model_size()
+!do i = 1, 9500000, 48602
+   !test_index_in = i
+   !call get_state_meta_data(test_index_in, test_loc, test_var_type)
+   !test_loc_vals = get_location(test_loc)
+   !write(*, *) 'variable ', i, ' location is ', test_loc_vals(1:3), test_var_type
+   !! The test_var_type is a quantity?
+!
+!
+!
+   !write(*, *) 'DART quantity ', trim(get_name_for_quantity(test_var_type))
+  !! write(*, *) 'long name ', trim(get_long_name(domain_id, test_var_type))
+!enddo
+
 end subroutine static_init_model
 
 
@@ -384,6 +416,7 @@ end subroutine get_state_meta_data
 !> given the (i,j,k) indices into a field in the state vector,
 !> and the quantity, and the dimensionality of the field (2d, 3d),
 !> compute the location of that item.  
+! SENote: this is totally different for SE.
 
 function get_location_from_index(i, j, k, q, nd)
 integer, intent(in) :: i
@@ -397,6 +430,48 @@ character(len=*), parameter :: routine = 'get_location_from_index'
 real(r8) :: slon_val
 real(r8) :: use_vert_val
 integer  :: use_vert_type
+
+!SENote variable declarations follow
+real(r8) :: my_lon, my_lat, my_vert
+
+!SENote: Following implemented for SE
+
+! full 2d fields are returned with lon/lat/level.
+! 1d fields are either surface fields, or if they
+! are column integrated values then they are 'undefined'
+! in the vertical.
+
+! All fields share the same first coordinate into the column list
+my_lon = grid_data%lon%vals(i)
+my_lat = grid_data%lat%vals(i)
+! For SE 3d spatial fields have a 2d storage
+if(nd == 2) then
+   my_vert = j
+   get_location_from_index = set_location(my_lon, my_lat, my_vert, VERTISLEVEL)
+elseif(nd == 1) then
+   ! setting the vertical value to missing matches what the previous
+   ! version of this code did.  other models choose to set the vertical
+   ! value to the model surface elevation at this location:
+   !   use_vert_val  = phis(lon_index, lat_index) / gravity not available in SE
+   my_vert = MISSING_R8
+   ! Add any 2d surface fields to this function
+   if(is_surface_field(q)) then
+      get_location_from_index = set_location(my_lon, my_lat, my_vert, VERTISSURFACE)
+   else
+      get_location_from_index = set_location(my_lon, my_lat, my_vert, VERTISUNDEF)
+   endif
+else
+   write(string1, *) 'state vector field not 1D or 2D and no code to handle other dimensionity'
+   write(string2, *) 'dimensionality = ', nd, ' quantity type = ', trim(get_name_for_quantity(q))
+   call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+endif
+     
+return
+
+
+
+
+
 
 ! full 3d fields are returned with lon/lat/level.
 ! 2d fields are either surface fields, or if they
@@ -832,6 +907,9 @@ type(quad_interp_handle) :: interp_handle
 
 interp_vals(:) = MISSING_R8
 istatus(:)     = 99
+
+!SENote
+write(*, *) 'in interpolate_values'
 
 interp_handle = get_interp_handle(obs_qty)
 lon_lat_vert  = get_location(location)
@@ -1480,7 +1558,8 @@ subroutine end_model()
 
 call free_cam_grid(grid_data)
 
-deallocate(phis)
+! SENote: No phis available in SE for now
+!SENote not available, deallocate(phis)
 
 call free_std_atm_tables()
 
@@ -1999,10 +2078,12 @@ type(cam_grid),   intent(out) :: grid
 call get_cam_grid(grid_file, grid)
 
 ! This non-state variable is used to compute surface elevation.
-call read_cam_phis_array(cam_phis_filename)
+! SENote: For now, it appears that the SE does not use any phis information: Need to revisit
+!SENote call read_cam_phis_array(cam_phis_filename)
 
+!SENote; We will need to do initialization of interpolation for SE, but not with this
 ! Set up the interpolation structures for later 
-call setup_interpolation(grid)
+!SENotecall setup_interpolation(grid)
 
 end subroutine read_grid_info
 
@@ -2493,6 +2574,8 @@ endif
 call ok_to_interpolate(qty, varid, domain_id, my_status)
 if (my_status /= 0) return
 
+!SENote
+write(*, *) 'in obs_vertical_to_pressure'
 call interpolate_values(ens_handle, ens_size, location, &
                         qty, varid, pressure_array(:), status(:))
 
@@ -2525,6 +2608,8 @@ ens_size = 1
 call ok_to_interpolate(QTY_GEOMETRIC_HEIGHT, varid, domain_id, my_status)
 if (my_status /= 0) return
 
+!SENote 
+write(*, *) 'in obs_vertical_to_height'
 call interpolate_values(ens_handle, ens_size, location, &
                         QTY_GEOMETRIC_HEIGHT, varid, height_array(:), status(:))
 if (status(1) /= 0) then
@@ -2550,6 +2635,8 @@ real(r8) :: level_array(1)
 
 ens_size = 1
 varid = -1
+!SENote
+write(*, *) 'In obs_vertical_to_level'
 
 call interpolate_values(ens_handle, ens_size, location, &
                         QTY_VERTLEVEL, varid, level_array(:), status(:))
@@ -2578,6 +2665,8 @@ real(r8) :: scaleheight_val
 character(len=*), parameter :: routine = 'obs_vertical_to_scaleheight'
 
 ens_size = 1
+!SENote
+write(*, *) 'in obs_vertical_to_scaleheight'
 
 ! there are 4 cases here.
 
