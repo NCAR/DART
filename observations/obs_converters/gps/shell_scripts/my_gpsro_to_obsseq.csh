@@ -4,7 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-#
 ########################################################################
 #
 #   gpsro_to_obsseq.csh - script that downloads GPS radio occultation
@@ -107,7 +106,7 @@
 # examples because it's not worked for me.
 
 # top level directory (root where observations/gps dir is found)
-setenv DART_DIR    /home/user/DART
+setenv DART_DIR   /glade/scratch/$USER
 set cdaac_user    = username
 set cdaac_pw      = password
 
@@ -117,7 +116,7 @@ set gps_repository_path = 'http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservic
 # example daily tar file name:
 #http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservice/data/tsx/atmPrf/2017.213
 
-setenv DART_WORK_DIR  $DART_DIR/observations/obs_converters/gps/work
+setenv DART_WORK_DIR  $DART_DIR/gps_conversion/work
 setenv CONV_PROG      convert_cosmic_gps_cdf
 setenv DATE_PROG      advance_time
 setenv DOWNLOAD_DIR   rawdata
@@ -160,19 +159,20 @@ if ( ! -d $DART_WORK_DIR ) then
 endif
 
 # copy satlist to workdir
-if ( ! -e $DART_WORK_DIR/$satlist ) then
+# (override any existing satlist files at destination)
+#if ( ! -e $DART_WORK_DIR/$satlist ) then
   cp -f $satlist $DART_WORK_DIR
-else
-  diff -q $satlist $DART_WORK_DIR/$satlist
-  if ( $status == 1 ) then
-     echo "the satellite list file $satlist in the work directory is different"
-     echo "than the one in the $origindir directory.  "
-     echo "update them to be consistent, or remove the one in the"
-     echo "work directory and a new one will be copied"
-     echo "over from the $origindir directory."
-     exit -1
-  endif
-endif
+#else
+#  diff -q $satlist $DART_WORK_DIR/$satlist
+#  if ( $status == 1 ) then
+#     echo "the satellite list file $satlist in the work directory is different"
+#     echo "than the one in the $origindir directory.  "
+#     echo "update them to be consistent, or remove the one in the"
+#     echo "work directory and a new one will be copied"
+#     echo "over from the $origindir directory."
+#     exit -1
+#  endif
+#endif
 
 echo 'current dir is ' `pwd`
 if ( `pwd` != $DART_WORK_DIR ) then
@@ -203,22 +203,23 @@ else
 endif
 
 # copy satlist to datadir
-if ( ! -e $datadir/$satlist ) then
-  echo 'data processing directory does not contain a satellite list file'
+# (override any existing satlist file)
+#if ( ! -e $datadir/$satlist ) then
+#  echo 'data processing directory does not contain a satellite list file'
   echo 'copying from work dir to data proc dir'
   echo `pwd`/$satlist'->' $datadir/$satlist
   cp -f $satlist $datadir/
-else
-  diff -q $satlist $datadir/$satlist
-  if ( $status == 1 ) then
-     echo "the satellite list file $satlist in the work directory is different"
-     echo "than the one in the $datadir directory.  "
-     echo "update them to be consistent, or remove the one in the"
-     echo "$datadir directory and a new one will be copied"
-     echo "over from the $DART_WORK_DIR directory."
-     exit -1
-  endif
-endif
+#else
+#  diff -q $satlist $datadir/$satlist
+#  if ( $status == 1 ) then
+#     echo "the satellite list file $satlist in the work directory is different"
+#     echo "than the one in the $datadir directory.  "
+#     echo "update them to be consistent, or remove the one in the"
+#     echo "$datadir directory and a new one will be copied"
+#     echo "over from the $DART_WORK_DIR directory."
+#     exit -1
+#  endif
+#endif
 
 # copy over the date program and the converter from
 # the work dir to the data processing directory.

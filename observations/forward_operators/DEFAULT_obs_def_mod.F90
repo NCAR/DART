@@ -113,13 +113,33 @@ interface operator(/=)
    module procedure ne_obs_def
 end interface
 
-public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_def_type_of_obs, &
-   get_obs_def_time, get_obs_def_error_variance, set_obs_def_location, &
-   set_obs_def_type_of_obs, set_obs_def_time, set_obs_def_error_variance, &
-   set_obs_def_key, interactive_obs_def, write_obs_def, read_obs_def, &
-   obs_def_type, get_expected_obs_from_def_distrib_state, destroy_obs_def, copy_obs_def, &
-   assignment(=), set_obs_def_external_FO, set_obs_def_write_external_FO, &
-   eq_obs_def, ne_obs_def, operator(==), operator(/=), print_obs_def
+public :: init_obs_def,                             &
+          get_obs_def_location,                     &
+          get_obs_def_type_of_obs,                  &
+          get_obs_def_time,                         &
+          get_obs_def_error_variance,               &
+          get_obs_def_key,                          &
+          set_obs_def_location,                     &
+          set_obs_def_type_of_obs,                  &
+          set_obs_def_time,                         &
+          set_obs_def_error_variance,               &
+          set_obs_def_key,                          &
+          read_obs_def,                             &
+          write_obs_def,                            &
+          interactive_obs_def,                      &
+          obs_def_type,                             &
+          get_expected_obs_from_def_distrib_state,  &
+          set_obs_def_external_FO,                  &
+          set_obs_def_write_external_FO,            &
+          destroy_obs_def,                          &
+          copy_obs_def,                             &
+          assignment(=),                            &
+          eq_obs_def,                               &
+          operator(==),                             &
+          ne_obs_def,                               &
+          operator(/=),                             &
+          print_obs_def                               
+
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'DEFAULT_obs_def_mod.F90'
