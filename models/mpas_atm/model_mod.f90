@@ -218,10 +218,6 @@ real(r8), parameter :: rvord = rv/rgas
 ! for the highest accuracy this should match what the model uses.
 real(r8), parameter :: radius = 6371229.0 ! meters
 
-! roundoff error for single precision and double
-! set in init code to 1e-5 or 1e-12 depending.
-real(r8) :: roundoff = 1.0e-5_r8
-
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 
@@ -230,7 +226,6 @@ type(random_seq_type) :: random_seq
 type(xyz_get_close_type)             :: cc_gc
 type(xyz_location_type), allocatable :: cell_locs(:)
 logical :: search_initialized = .false.
-
 
 ! compile-time control over whether grid information is written to the
 ! diagnostic files or not.  if it is, the files are self-contained (e.g. for
@@ -938,6 +933,7 @@ call set_vertical_localization_coord(vert_localization_coord)
 
 ! set an appropriate value for roundoff tests based
 ! on this code being compiled single or double precision.
+! set to 1e-5 (for single) or 1e-12 (for double precision).
 if (r8 == digits12) then
    roundoff = 1.0e-12_r8
 else
