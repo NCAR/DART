@@ -16,7 +16,7 @@
 module model_mod
 
 use             types_mod,  only : MISSING_R8, MISSING_I, i8, r8, vtablenamelength, &
-                                   gravity, DEG2RAD
+                                   gravity, DEG2RAD, PI, earth_radius
 use      time_manager_mod,  only : set_time, time_type, set_date, &
                                    set_calendar_type, get_date
 use          location_mod,  only : location_type, set_vertical, set_location, &
@@ -26,14 +26,28 @@ use          location_mod,  only : location_type, set_vertical, set_location, &
                                    VERTISSCALEHEIGHT, query_location, &
                                    set_vertical_localization_coord, get_dist, &
                                    loc_get_close_obs => get_close_obs, &
+                                   get_close, &
                                    loc_get_close_state => get_close_state, &
                                    vertical_localization_on, get_close_type, get_maxdist
+
+!SENote using 3d space location for now
+! NEED to understand how this relates to the standard threed_cartesian which is in the same directory
+! IN Addiion, the xyz_location_mod in the threed_cartesian directory in Manhattan is NOT consistent with
+! the one from CLASSIC. For now, I've added in the classic module in that directory but eventually this will
+! need reconciled. 
+use xyz_location_mod,       only : xyz_location_type, xyz_get_close_maxdist_init,          &
+                                   xyz_get_close_type, xyz_set_location, xyz_get_location, &
+                                   xyz_get_close_obs_init, xyz_get_close_obs_destroy,      &
+                                   xyz_find_nearest
+
+
+
 use         utilities_mod,  only : find_namelist_in_file, check_namelist_read, &
                                    string_to_logical, string_to_real,& 
                                    nmlfileunit, do_nml_file, do_nml_term, &
                                    register_module, error_handler, &
-                                   file_exist, to_upper, E_ERR, E_MSG, array_dump, &
-                                   find_enclosing_indices
+                                   file_exist, to_upper, E_ERR, E_MSG, E_WARN, array_dump, &
+                                   find_enclosing_indices, nc_check
 use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_PRESSURE, &
                                    QTY_GEOMETRIC_HEIGHT, QTY_VERTLEVEL, &
                                    QTY_SURFACE_PRESSURE, &
@@ -41,6 +55,9 @@ use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_PRESSURE, &
                                    QTY_MOLEC_OXYGEN_MIXING_RATIO, &
                                    QTY_ION_O_MIXING_RATIO, QTY_ATOMIC_H_MIXING_RATIO, &
                                    QTY_ATOMIC_OXYGEN_MIXING_RATIO, QTY_NITROGEN, &
+                                   ! SENote: Added in for tests
+                                   QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_CLOUD_LIQUID_WATER, QTY_CLOUD_ICE, &
+         
                                    get_index_for_quantity, get_num_quantities, &
                                    get_name_for_quantity, get_quantity_for_type_of_obs
 
@@ -66,7 +83,7 @@ use   state_structure_mod,  only : add_domain, get_dart_vector_index, get_domain
                                    get_dim_name, get_kind_index, get_num_dims, &
                                    get_num_variables, get_varid_from_kind, &
                                    get_model_variable_indices, state_structure_info, get_short_name, &
-                                   get_long_name
+                                   get_long_name, get_dim_lengths, get_variable_name
 use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, &
                                    nc_add_attribute_to_variable, &
                                    nc_define_integer_variable, &
@@ -105,6 +122,12 @@ use    cam_common_code_mod, only : scale_height, HIGH_TOP_TABLE, LOW_TOP_TABLE, 
                                    generic_cam_pressure_to_cam_level, compute_surface_gravity, gph2gmh, &
                                    build_heights, set_vert_localization, ok_to_interpolate, obs_too_high, &
                                    cdebug_level, get_cam_grid, free_cam_1d_array, free_cam_grid
+
+!SENote the routines to read in the grid geometry use the old netcdf calls
+! Tim's new calls are much better and should switch ASAP
+! Note also the failure to have use, only here which is annoying
+use netcdf
+use typeSizes
 
 implicit none
 private
@@ -146,6 +169,12 @@ integer, parameter :: MAX_PERT = 100
 ! model_nml namelist variables and default values
 character(len=256) :: cam_template_filename           = 'caminput.nc'
 character(len=256) :: cam_phis_filename               = 'cam_phis.nc'
+
+!SENote added in namelist strings to identify the CS grid mapping files
+! NOTE THAT THES lenghts may need to be 256 when we move to new netcdf code
+character(len=256) :: homme_map_file                  = 'SEMapping.nc'            ! Corners of each cubed sphere cell.
+character(len=256) :: cs_grid_file                    = 'SEMapping_cs_grid.nc'    ! Relationships among corners/nodes.
+
 character(len=32)  :: vertical_localization_coord     = 'PRESSURE'
 logical            :: use_log_vertical_scale          = .false.
 integer            :: assimilation_period_days        = 0
@@ -186,6 +215,8 @@ character(len=vtablenamelength) :: state_variables(MAX_STATE_VARIABLES * &
 namelist /model_nml/  &
    cam_template_filename,               &
    cam_phis_filename,                   &
+   homme_map_file,                      &
+   cs_grid_file,                        &
    vertical_localization_coord,         &
    state_variables,                     &
    assimilation_period_days,            &
@@ -240,6 +271,77 @@ real(r8), allocatable :: phis(:, :)
 type(quad_interp_handle) :: interp_nonstaggered, &
                             interp_u_staggered, &
                             interp_v_staggered
+
+
+! SENote: A veriety of module storage data structures for geometry of grid
+! Verify that all of these are still being used
+! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! CS Variables holding relationships among cubed sphere nodes.
+! Read in and/or set in static_init_model (and routines it calls) at the beginning of an assimilation.
+! Used by model_interpolate.
+logical :: l_rectang = .true.        ! Flag to tell whether grid is logically rectangular
+                                     ! (Eul, FV) or not (cubed-sphere, ...?)
+                                     ! Will be set .false. if cam_template_filename has dimension 'ncol'.
+logical :: l_refined = .false.       ! Flag to tell whether grid is a refined mesh or not.
+
+! ne = global metadata from cam_template_filename, giving the number of 'elements' per face edge of the 'cube'.
+! np = # of nodes/edge of each element.  Edges are shared with adjacent elements.
+! FIXME? put these in a derived type to prevent accidentally using them as local variables.
+integer :: ne, np
+
+! Number of columns, or nodes, in the cubed-sphere grid.
+integer :: ncol
+
+! The nominal resolution is (30 degrees/ne), assuming np = 4 (3x3 cells per element).
+real(r8) :: coarse_grid
+
+! Dimensions of array 'corners', from homme_map_file.
+integer :: ncorners, ncenters
+
+! Maximum number of neighbors a node can have (6 in refined, 4 otherwise)
+! Get from namelist, to reduce file & array sizes?
+! Or derive from l_refined, after ne is read from caminput.nc?
+integer, parameter :: max_neighbors = 6
+
+! Array from homme_map_file.
+integer,  allocatable :: corners(:,:)    ! The 4 corners (nodes) of each cell, from HommeMapping.nc
+
+! 5 arrays from cs_grid_file
+integer,  allocatable :: num_nghbrs(:)   ! Number of neighbors of each node/column in the cubed sphere grid.
+integer,  allocatable :: centers(:,:)    ! The names of the cells that use each node as a corner.
+real(r8), allocatable :: a(:,:,:)        ! Coefficients of mapping from planar to unit square space for 'x'
+real(r8), allocatable :: b(:,:,:)        ! Coefficients of mapping from planar to unit square space for 'y'
+real(r8), allocatable :: x_ax_bearings(:,:)  ! The directions from each node to its neighbors,
+                                         ! measured from the vector pointing north.  (-PI <= bearing <= PI)
+
+! Locations of cubed sphere nodes, in DART's location_type format.
+type(location_type), allocatable :: cs_locs(:)
+
+! Location of cubed sphere nodes, in cartesian coordinates
+type(xyz_location_type), allocatable :: cs_locs_xyz(:)
+type(xyz_get_close_type)             :: cs_gc_xyz
+
+! Structure containing grid point locations, etc.,
+! defined in static_init_mod after reading in CS lons, lats, and levels,
+! needed in model_interpolate:interp_cubed_sphere.
+type(get_close_type) :: cs_gc
+
+! Array of KINDs of cubed sphere grid points.
+! As of 2014-3-28 this is only used by location_mod, which doesn't actually use it.
+integer, allocatable :: cs_kinds(:)
+
+
+! Other useful 1D grid arrays (for cubed sphere)
+real(r8), allocatable :: lon_rad(:), lat_rad(:)   ! longitude and latitude in radians, used by bearings()
+
+! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+!SENote: This variable gives extra output for the locations. More global way to do this?:w
+! set to .true. to get more details about the state vector and the
+! CAM fields and sizes in the init code.
+logical :: print_details = .true.
+
+
 
 
 contains
@@ -340,6 +442,28 @@ endif
 ! set a flag based on the vertical localization coordinate selected
 call init_sign_of_vert_units()
 
+
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! SENote: This section reads and/or builds the tables needed for model_interpolate for SE
+! Read in or create a file containing the relationships among cubed sphere nodes,
+! such as neighbors, centers, and bearings, which will be used to identify the cell
+! which contains an observation.
+! Fields will be stored in global storage.
+! Write the cubed sphere grid arrays to a new NetCDF file.
+
+if (file_exist(cs_grid_file)) then
+   call nc_read_cs_grid_file()
+elseif (file_exist(homme_map_file)) then
+   call create_cs_grid_arrays()
+   if (my_task_id() == 0) call nc_write_cs_grid_file( cs_grid_file, homme_map_file )
+else
+   write(string1, *)'No cs_grid_file "',trim(cs_grid_file), &
+                 '" nor homme_map_file "',trim(homme_map_file),'"'
+   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate)
+endif
+
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 !SENote; Looking at metadata
 !write(*, *) 'end of static init model'
 !write(*, *) 'model size ', get_model_size()
@@ -358,6 +482,607 @@ call init_sign_of_vert_units()
 
 end subroutine static_init_model
 
+!-----------------------------------------------------------------------
+
+subroutine nc_read_cs_grid_file()
+
+! Read the number of neighbors, corners, centers, a and b coefficients, and x_ax_bearings
+! from a netCDF file once for this grid at the beginning of the assimilation.
+
+integer :: nc_file_ID, nc_var_ID, nc_size, n_dims, max_nghbrs, shp(2)
+character(len=NF90_MAX_NAME) :: nc_name
+
+! Open the cubed sphere grid relationships file
+call nc_check(nf90_open(path=trim(cs_grid_file), mode=nf90_nowrite, ncid=nc_file_ID), &
+      'nc_read_cs_grid_file', 'opening '//trim(cs_grid_file))
+
+! learn how many dimensions are defined in this file.
+call nc_check(nf90_inquire(nc_file_ID, n_dims), 'nc_read_cs_grid_file', 'inquire n_dims')
+
+! Dimensions written out:
+!              name="ncenters",      len = ncenters,      dimid = ncenters_ID), &
+!              name="ncorners",      len = ncorners,      dimid = ncorners_ID), &
+!              name="max_neighbors", len = max_neighbors, dimid = max_neighbors_ID), &
+!              name="ncol",          len = ncol,          dimid = ncol_ID), &
+!              name="ncoef_a",       len = 3,             dimid = a_ID), &
+!              name="ncoef_b",       len = 2,             dimid = b_ID), &
+call nc_check(nf90_inquire_dimension(nc_file_ID, 1, nc_name, ncenters), &
+              'nc_read_cs_grid_file', 'inquire for '//trim(nc_name))
+
+call nc_check(nf90_inquire_dimension(nc_file_ID, 2, nc_name, ncorners), &
+              'nc_read_cs_grid_file', 'inquire for '//trim(nc_name))
+
+call nc_check(nf90_inquire_dimension(nc_file_ID, 3, nc_name, max_nghbrs), &
+              'nc_read_cs_grid_file', 'inquire for '//trim(nc_name))
+if (trim(nc_name) /= 'max_neighbors') then
+   write(string1, *) trim(cs_grid_file),' max_nghbrs does not match ', trim(cam_template_filename)
+   call error_handler(E_ERR,'nc_read_cs_grid_file',string1,source,revision,revdate)
+endif
+! Check value against the namelist/parameter value.
+if (max_nghbrs /= max_neighbors) then
+   write(string1, *) trim(cs_grid_file),' max_nghbrs does not match max_neighbors', &
+         max_nghbrs,max_neighbors
+   call error_handler(E_ERR,'nc_read_cs_grid_file',string1,source,revision,revdate)
+endif
+
+call nc_check(nf90_inquire_dimension(nc_file_ID, 4, nc_name, nc_size), &
+              'nc_read_cs_grid_file', 'inquire for '//trim(nc_name))
+
+if (nc_size == ncol .and. trim(nc_name) == 'ncol') then
+   allocate (corners(ncenters,ncorners),  &
+             num_nghbrs           (ncol), &
+             centers(max_neighbors,ncol), &
+             x_ax_bearings  (ncorners,ncenters), &
+             a            (3,ncorners,ncenters), &
+             b            (2,ncorners,ncenters)  )
+   ! Initialize the grid variables
+   num_nghbrs    = MISSING_I
+   centers       = MISSING_I
+   a             = MISSING_R8
+   b             = MISSING_R8
+   x_ax_bearings = MISSING_R8
+
+!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
+   if (allocated(centers) .and. my_task_id() == 0 .and. print_details) then
+      shp = shape(centers)
+      write(string1,*) 'Shape of centers = ',shp
+      call error_handler(E_MSG,'nc_read_cs_grid_file',string1,source,revision,revdate)
+   endif
+
+!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
+   if (allocated(corners) .and. my_task_id() == 0 .and. print_details) then
+      shp = shape(corners)
+      write(string1,*) 'Shape of corners = ',shp
+      call error_handler(E_MSG,'nc_read_cs_grid_file',string1,source,revision,revdate)
+   endif
+else
+   write(string1,*) trim(cs_grid_file),' ncol does not match ', trim(cam_template_filename)
+   call error_handler(E_ERR,'nc_read_cs_grid_file',string1,source,revision,revdate)
+endif
+
+call nc_check(nf90_inq_varid(nc_file_ID, 'num_nghbrs', nc_var_ID), &
+                'nc_read_cs_grid_file', 'inq_varid num_nghbrs')
+call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, num_nghbrs ), &
+                'nc_read_cs_grid_file', 'get_var num_nghbrs')
+
+call nc_check(nf90_inq_varid(nc_file_ID, 'centers', nc_var_ID), &
+                'nc_read_cs_grid_file', 'inq_varid centers')
+call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, centers ), &
+                'nc_read_cs_grid_file', 'get_var centers')
+
+call nc_check(nf90_inq_varid(nc_file_ID, 'corners', nc_var_ID), &
+                'nc_read_cs_grid_file', 'inq_varid corners')
+call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, corners, &
+                           start=(/ 1, 1 /),count=(/ ncenters, ncorners /) ), &
+                'nc_read_cs_grid_file', 'get_var corners')
+
+call nc_check(nf90_inq_varid(nc_file_ID, 'a', nc_var_ID), &
+                'nc_read_cs_grid_file', 'inq_varid a')
+call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, a ), &
+                'nc_read_cs_grid_file', 'get_var a')
+
+call nc_check(nf90_inq_varid(nc_file_ID, 'b', nc_var_ID), &
+                'nc_read_cs_grid_file', 'inq_varid b')
+call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, b ), &
+                'nc_read_cs_grid_file', 'get_var b')
+
+call nc_check(nf90_inq_varid(nc_file_ID, 'x_ax_bearings', nc_var_ID), &
+                'nc_read_cs_grid_file', 'inq_varid x_ax_bearings')
+call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, x_ax_bearings ), &
+                'nc_read_cs_grid_file', 'get_var x_ax_bearings')
+
+call nc_check(nf90_close(nc_file_ID), 'nc_read_cs_grid_file', 'closing '//trim(cs_grid_file))
+
+end subroutine nc_read_cs_grid_file
+
+
+
+!-----------------------------------------------------------------------
+
+subroutine nc_write_cs_grid_file(cs_grid_file, homme_map_file)
+
+! Write out the number of neighbors, the neighbors, corners, centers, and bearings
+! to a netCDF file once for this grid at the beginning of the assimilation.
+! Called by static_init_model.
+
+character(len=*), intent(in) :: cs_grid_file
+character(len=*), intent(in) :: homme_map_file
+
+integer :: nc_file_ID
+integer ::                               &
+        ncenters_ID,       centers_var_ID,  &
+        ncorners_ID,       corners_var_ID,  &
+               a_ID,             a_var_ID,  &
+               b_ID,             b_var_ID,  &
+            ncol_ID, x_ax_bearings_var_ID,  &
+   max_neighbors_ID,    num_nghbrs_var_ID
+
+
+! Create the file
+call nc_check(nf90_create(path=trim(cs_grid_file), cmode=NF90_SHARE, ncid=nc_file_ID), &
+              'nc_write_cs_grid_file', 'create '//trim(cs_grid_file))
+
+write(string1,*) trim(cs_grid_file),' is nc_file_ID ',nc_file_ID
+call error_handler(E_MSG,'nc_write_cs_grid_file',string1,source,revision,revdate)
+
+! Define the dimensions
+call nc_check(nf90_def_dim(ncid=nc_file_ID,                                          &
+              name="ncenters",      len = ncenters,      dimid = ncenters_ID), &
+              'nc_write_cs_grid_file', 'def_dim ncenters '//trim(cs_grid_file))
+call nc_check(nf90_def_dim(ncid=nc_file_ID,                                          &
+              name="ncorners",      len = ncorners,      dimid = ncorners_ID), &
+              'nc_write_cs_grid_file', 'def_dim ncorners '//trim(cs_grid_file))
+call nc_check(nf90_def_dim(ncid=nc_file_ID,                                  &
+              name="max_neighbors", len = max_neighbors, dimid = max_neighbors_ID), &
+              'nc_write_cs_grid_file', 'def_dim max_neighbors'//trim(cs_grid_file))
+call nc_check(nf90_def_dim(ncid=nc_file_ID,                                  &
+              name="ncol",          len = ncol,          dimid = ncol_ID), &
+              'nc_write_cs_grid_file', 'def_dim ncol '//trim(cs_grid_file))
+call nc_check(nf90_def_dim(ncid=nc_file_ID,                                  &
+              name="ncoef_a",          len = 3,          dimid = a_ID), &
+              'nc_write_cs_grid_file', 'def_dim a '//trim(cs_grid_file))
+call nc_check(nf90_def_dim(ncid=nc_file_ID,                                  &
+              name="ncoef_b",          len = 2,          dimid = b_ID), &
+              'nc_write_cs_grid_file', 'def_dim b '//trim(cs_grid_file))
+
+! Write Global Attributes
+call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "title", trim(cs_grid_file)), &
+              'nc_write_cs_grid_file',   'put_att title '//trim(cs_grid_file))
+call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "model_mod_source", source ), &
+              'nc_write_cs_grid_file',   'put_att model_mod_source '//trim(cs_grid_file))
+call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "model_mod_revision", revision ), &
+              'nc_write_cs_grid_file',   'put_att model_mod_revision '//trim(cs_grid_file))
+call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "model_mod_revdate", revdate ), &
+              'nc_write_cs_grid_file',   'put_att model_mod_revdate '//trim(cs_grid_file))
+
+call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "elements_per_cube_edge", ne ), &
+              'nc_write_cs_grid_file',   'put_att elements_per_cube_edge '//trim(cs_grid_file))
+call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "nodes_per_element_edge", np ), &
+              'nc_write_cs_grid_file',   'put_att nodes_per_elements_edge '//trim(cs_grid_file))
+call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "HommeMapping_file", homme_map_file ), &
+              'nc_write_cs_grid_file',   'put_att HommeMapping_file '//trim(cs_grid_file))
+
+! Create variables and attributes.
+call nc_check(nf90_def_var(ncid=nc_file_ID, name="num_nghbrs", xtype=nf90_int, &
+              dimids=(/ ncol_ID /), varid=num_nghbrs_var_ID),  &
+              'nc_write_cs_grid_file', 'def_var num_nghbrs')
+call nc_check(nf90_put_att(nc_file_ID, num_nghbrs_var_ID, "long_name", &
+              "number of neighbors of each node/column"), &
+              'nc_write_cs_grid_file', 'long_name')
+call nc_check(nf90_put_att(nc_file_ID, num_nghbrs_var_ID, "units",     "nondimensional"), &
+              'nc_write_cs_grid_file', 'units')
+call nc_check(nf90_put_att(nc_file_ID, num_nghbrs_var_ID, "valid_range", &
+              (/ 1, max_neighbors /)), 'nc_write_cs_grid_file', 'put_att valid_range')
+
+call nc_check(nf90_def_var(ncid=nc_file_ID, name="centers", xtype=nf90_int, &
+              dimids=(/ max_neighbors_ID, ncol_ID /), varid=centers_var_ID),  &
+              'nc_write_cs_grid_file', 'def_var centers')
+call nc_check(nf90_put_att(nc_file_ID, centers_var_ID, "long_name", &
+              "cells which use node/column as a corner"), &
+              'nc_write_cs_grid_file', 'long_name')
+call nc_check(nf90_put_att(nc_file_ID, centers_var_ID, "units",     "nondimensional"), &
+              'nc_write_cs_grid_file', 'units')
+call nc_check(nf90_put_att(nc_file_ID, centers_var_ID, "valid_range", &
+              (/ 1, ncenters /)), 'nc_write_cs_grid_file', 'put_att valid_range')
+call nc_check(nf90_put_att(nc_file_ID, centers_var_ID, "missing_value", &
+              (/ MISSING_I /)), 'nc_write_cs_grid_file', 'put_att missing_value')
+
+call nc_check(nf90_def_var(ncid=nc_file_ID, name="corners", xtype=nf90_int, &
+              dimids=(/ ncenters_ID, ncorners_ID /), varid=corners_var_ID),  &
+              'nc_write_cs_grid_file', 'def_var corners')
+call nc_check(nf90_put_att(nc_file_ID, corners_var_ID, "long_name", &
+              "corners/nodes of each cell "), &
+              'nc_write_cs_grid_file', 'long_name')
+call nc_check(nf90_put_att(nc_file_ID, corners_var_ID, "units",     "nondimensional"), &
+              'nc_write_cs_grid_file', 'units')
+call nc_check(nf90_put_att(nc_file_ID, corners_var_ID, "valid_range", &
+              (/ 1, ncol /)), 'nc_write_cs_grid_file', 'put_att valid_range')
+call nc_check(nf90_put_att(nc_file_ID, corners_var_ID, "missing_value", &
+              (/ MISSING_I /)), 'nc_write_cs_grid_file', 'put_att missing_value')
+
+call nc_check(nf90_def_var(ncid=nc_file_ID, name="a", xtype=nf90_double, &
+              dimids=(/ a_ID, ncorners_ID, ncenters_ID /), varid=a_var_ID),  &
+              'nc_write_cs_grid_file', 'def_var a')
+call nc_check(nf90_put_att(nc_file_ID, a_var_ID, "long_name",  &
+              "Coefficients of mapping from planar x coord to unit square"), &
+              'nc_write_cs_grid_file', 'long_name')
+call nc_check(nf90_put_att(nc_file_ID, a_var_ID, "units",     "nondimensional"), &
+              'nc_write_cs_grid_file', 'units')
+!call nc_check(nf90_put_att(nc_file_ID, a_var_ID, "valid_range", &
+!              (/ 1, ncol /)), 'nc_write_cs_grid_file', 'put_att valid_range')
+call nc_check(nf90_put_att(nc_file_ID, a_var_ID, "missing_value", &
+              (/ MISSING_R8 /)), 'nc_write_cs_grid_file', 'put_att missing_value')
+
+
+call nc_check(nf90_def_var(ncid=nc_file_ID, name="b", xtype=nf90_double, &
+              dimids=(/ b_ID, ncorners_ID, ncenters_ID /), varid=b_var_ID),  &
+              'nc_write_cs_grid_file', 'def_var b')
+call nc_check(nf90_put_att(nc_file_ID, b_var_ID, "long_name", &
+              "Coefficients of mapping from planar y coord to unit square"), &
+              'nc_write_cs_grid_file', 'long_name')
+call nc_check(nf90_put_att(nc_file_ID, b_var_ID, "units",     "nondimensional"), &
+              'nc_write_cs_grid_file', 'units')
+!call nc_check(nf90_put_att(nc_file_ID, b_var_ID, "valid_range", &
+!              (/ 1, ncol /)), 'nc_write_cs_grid_file', 'put_att valid_range')
+call nc_check(nf90_put_att(nc_file_ID, b_var_ID, "missing_value", &
+              (/ MISSING_R8 /)), 'nc_write_cs_grid_file', 'put_att missing_value')
+
+call nc_check(nf90_def_var(ncid=nc_file_ID, name="x_ax_bearings", xtype=nf90_double, &
+              dimids=(/ ncorners_ID, ncenters_ID /), varid=x_ax_bearings_var_ID),  &
+              'nc_write_cs_grid_file', 'def_var x_ax_bearings')
+call nc_check(nf90_put_att(nc_file_ID, x_ax_bearings_var_ID, "long_name", &
+              "bearing (clockwise from North) from origin node(corner 4) of each mapping to corner 3"), &
+              'nc_write_cs_grid_file', 'long_name')
+call nc_check(nf90_put_att(nc_file_ID, x_ax_bearings_var_ID, "units",     "radians"), &
+              'nc_write_cs_grid_file', 'units')
+call nc_check(nf90_put_att(nc_file_ID, x_ax_bearings_var_ID, "valid_range", &
+              (/ -PI, PI /)), 'nc_write_cs_grid_file', 'put_att valid_range')
+call nc_check(nf90_put_att(nc_file_ID, x_ax_bearings_var_ID, "missing_value", &
+              (/ MISSING_R8 /)), 'nc_write_cs_grid_file', 'put_att missing_value')
+
+! Leave define mode so we can fill
+call nc_check(nf90_enddef(nc_file_ID), 'nc_write_cs_grid_file', 'enddef '//trim(cs_grid_file))
+
+! sync to disk, but leave open
+call nc_check(nf90_sync(nc_file_ID), 'nc_write_cs_grid_file', 'sync '//trim(cs_grid_file))
+
+! Fill the variables
+call nc_check(nf90_put_var(nc_file_ID, num_nghbrs_var_ID, num_nghbrs),  &
+              'nc_write_cs_grid_file ','put_var num_nghbrs ')
+call nc_check(nf90_put_var(nc_file_ID, centers_var_ID, centers),        &
+              'nc_write_cs_grid_file ','put_var centers ')
+call nc_check(nf90_put_var(nc_file_ID, corners_var_ID, corners),        &
+              'nc_write_cs_grid_file ','put_var centers ')
+call nc_check(nf90_put_var(nc_file_ID, a_var_ID, a),    &
+              'nc_write_cs_grid_file ','put_var a ')
+call nc_check(nf90_put_var(nc_file_ID, b_var_ID, b),    &
+              'nc_write_cs_grid_file ','put_var b ')
+call nc_check(nf90_put_var(nc_file_ID, x_ax_bearings_var_ID, x_ax_bearings),      &
+              'nc_write_cs_grid_file ','put_var x_ax_bearings ')
+
+call nc_check(nf90_close(nc_file_ID), 'nc_write_cs_grid_file', 'closing '//trim(cs_grid_file))
+
+end subroutine nc_write_cs_grid_file
+
+
+!-----------------------------------------------------------------------
+
+subroutine read_cam_2Dint(file_name, cfield, field, num_dim1, num_dim2)
+
+! Read 2d integer field from, e.g., HommeMapping.nc
+
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+character(len=*),     intent(in)  :: file_name
+character(len=*),     intent(in)  :: cfield
+integer, allocatable, intent(out) :: field(:,:)
+integer,              intent(out) :: num_dim1     !The dimension(s) of cfield
+integer,              intent(out) :: num_dim2
+
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+integer :: nc_file_ID, nc_var_ID                     !NetCDF variables
+integer :: field_dim_IDs(2)                          !Array of dimension IDs for cfield
+character(len=NF90_MAX_NAME) :: name_dim1,name_dim2  !Names of dimensions of cfield
+
+field_dim_IDs = MISSING_I                  !Array of dimension IDs for cfield
+
+if (file_exist(file_name)) then
+   call nc_check(nf90_open(path=trim(file_name), mode=nf90_nowrite, ncid=nc_file_ID), &
+              'read_cam_2Dint', 'opening '//trim(file_name))
+!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
+   if (print_details .and. my_task_id() == 0) then
+      write(string1,*) 'file_name for ',cfield,' is ', trim(file_name)
+      call error_handler(E_MSG, 'read_cam_2Dint', string1,source,revision,revdate)
+   endif
+
+   ! get field id
+   call nc_check(nf90_inq_varid(nc_file_ID, trim(cfield), nc_var_ID), &
+              'read_cam_2Dint', 'inq_varid: '//cfield)
+
+   ! get dimension 'id's
+   call nc_check(nf90_inquire_variable(nc_file_ID, nc_var_ID, dimids=field_dim_IDs), &
+              'read_cam_2Dint', 'inquire_variable: '//cfield)
+
+   ! get dimension sizes
+   ! The first spatial dimension is always present.
+   call nc_check(nf90_inquire_dimension(nc_file_ID, field_dim_IDs(1), name_dim1, num_dim1 ), &
+                 'read_cam_2Dint', 'inquire_dimension: '//name_dim1)
+   if (field_dim_IDs(2) /= MISSING_I)  then
+      call nc_check(nf90_inquire_dimension(nc_file_ID, field_dim_IDs(2), name_dim2, num_dim2 ), &
+                    'read_cam_2Dint', 'inquire_dimension: '//name_dim2)
+   else
+      num_dim2 = 1
+      name_dim2 = 'no2ndDim'
+   endif
+
+!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
+   if (print_details .and. my_task_id() == 0) then
+      write(string1,*) cfield,' dimensions num_dim1, num_dim2 = ',num_dim1, num_dim2
+      call error_handler(E_MSG, 'read_cam_2Dint', string1,source,revision,revdate)
+   endif
+else
+   write(string1,'(3A)') 'Required file "',trim(file_name),'" is missing.'
+   call error_handler(E_ERR, 'read_cam_2Dint', string1, source, revision, revdate)
+endif
+
+! Allocate array, based on size of this variable on the file.
+allocate(field(num_dim1,num_dim2))
+
+if (field_dim_IDs(2) /= MISSING_I)  then
+   call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, field, start=(/ 1, 1 /), &
+                 count=(/ num_dim1, num_dim2 /)), 'read_cam_2Dint', trim(cfield))
+else
+   call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, field),  &
+                  'read_cam_2Dint', trim(cfield))
+endif
+
+call nc_check(nf90_close(nc_file_ID), 'read_cam_2Dint', 'closing '//trim(file_name))
+
+end subroutine read_cam_2Dint
+
+!-----------------------------------------------------------------------
+
+subroutine create_cs_grid_arrays()
+
+! Subroutine to create arrays of relationships between cubed sphere nodes (corners)
+! and cell centers, including bearings between nodes.
+! These will be used to identify the cell containing an observation.
+! The relationships read from HommeMapping.nc will be augmented.
+! All will be stored in global storage, and written to a new file for
+! subsequent use.
+
+! Local variables
+integer  :: sh_corn(4), n(4)     ! Shifted corners to put closest at the origin.
+integer  :: col, nbr, c, cent            ! Indices for loops.
+integer  :: num_n, min_ind(1)
+real(r8) :: dist, angle
+real(r8) :: bearings(3), x_planar(3), y_planar(3)
+
+! ncol = number of nodes/corners/grid points.  Global storage.
+! corners = the names of the corners associated with each cell center
+! neighbors = the nodes around each node which partner to make the sides of the cells
+!             which may contain an observation.
+
+! Get array of corner nodes/columns which define the cells (identified by 'center').
+if (file_exist(homme_map_file)) then
+   call read_cam_2Dint(homme_map_file, 'element_corners', corners,ncenters,ncorners)
+
+   if (ncenters /= (ncol -2) ) then
+      write(string1, *) trim(homme_map_file),' ncenters inconsistent with ncol-2 ', ncenters, ncol
+      call error_handler(E_ERR,'create_cs_grid_arrays',string1,source,revision,revdate)
+   endif
+
+      allocate(num_nghbrs           (ncol), &
+               centers(max_neighbors,ncol), &
+               a          (3,ncorners,ncenters),   &
+               b          (2,ncorners,ncenters),   &
+               x_ax_bearings(ncorners,ncenters))
+
+   num_nghbrs    = 0
+   centers       = MISSING_I
+   a             = MISSING_R8
+   b             = MISSING_R8
+   x_planar      = MISSING_R8
+   y_planar      = MISSING_R8
+   x_ax_bearings = MISSING_R8
+else
+   write(string1, *) 'CAM-SE grid file "',trim(homme_map_file),'" can not be found '
+   call error_handler(E_ERR,'create_cs_grid_arrays',string1,source,revision,revdate)
+endif
+
+! Invert the element_corners array to compile all of the neighbors of each node (corner).
+! Loop over HommeMapping cell centers.
+Quads: do cent = 1,ncenters
+   Corns: do c = 1,4
+      ! Get the node numbers that define this cell
+      ! and shift (rotate) them to create a separate mapping for each corner/node.
+      ! Shift the section of corners 1 place to the 'left'/lower for the first corner,
+      ! 2 for the 2nd, etc.  This will put the node closest to the ob in position 4
+      ! (of the shifted corners). Then the (x,y) origin will the the closest node,
+      ! and the indexing of the a,b,x_ax_bearing arrays will be easy.
+      ! Shifting preserves the order of the corners as we go around the cell (clockwise).
+      sh_corn = cshift(corners(cent,:), c)
+
+      ! Check a few cells for corner consistency.
+      if (print_details .and. sh_corn(4) < 10) then
+         write(string1,'(A,5I7,/31X,4I7)') 'c, 4 corners, shifted = ', &
+              c,(corners(cent,nbr),nbr=1,4),(sh_corn(nbr),nbr=1,4)
+         call error_handler(E_MSG,'create_cs_grid_arrays',string1,source,revision,revdate)
+      endif
+
+      ! Increment the number of neighbors (and centers ) this corner(node) has.
+      ! sh_corn(4) is used for all cases because the corner we're working on always
+      ! ends up in that position, when c is incremented, then the corners are shifted.
+      n(c) = num_nghbrs(sh_corn(4)) + 1
+
+      ! Update the number of neighbors of each corner of the cell,
+      num_nghbrs(sh_corn(4)) = n(c)
+
+      ! Store the info that this center is associated with 4 node->neighbor pairs.
+      centers(n(c),sh_corn(4)) = cent
+
+      ! Define the planar coordinates for this center/cell and this corner/node.
+      ! The 4th corner is the origin, and the cell side from the 4th to the 3rd is
+      ! the x-axis of this cell's coordinate system for this corner.
+      ! This is established in the definition of bearings().
+      ! This choice makes mapping coefficients a(0) and b(0) = 0 (see below).
+      ! It also helps make the indexing of bearings easy to use and store.
+
+      ! Check a few cells for corner consistency
+      if (print_details .and. sh_corn(4) < 10) then
+         write(string1,'(A,3F10.6)') 'lon1, lat1 = ', lon_rad(sh_corn(4)), lat_rad(sh_corn(4))
+         call error_handler(E_MSG, 'create_cs_grid_arrays', string1, source, revision, revdate)
+      endif
+
+      ! Descend through neighbors so that bearings(3) is already defined when needed at loop end.
+      do nbr = 3,1,-1
+         ! Bearings from the current origin node of the cell to the other 3.
+         bearings(nbr) = bearing(lon_rad(sh_corn(4)),   lat_rad(sh_corn(4)),  &
+                                 lon_rad(sh_corn(nbr)), lat_rad(sh_corn(nbr)) )
+
+         dist = get_dist(cs_locs(sh_corn(4)), cs_locs(sh_corn(nbr)), 0, 0, .true.)
+
+         if (sh_corn(4) < 10) then
+            write(string1,'(A,3F10.6)') 'create_cs_grid:    lon2, lat2, bearing = ', &
+                 lon_rad(sh_corn(nbr)), lat_rad(sh_corn(nbr)), bearings(nbr)
+            call error_handler(E_MSG, 'create_cs_grid_arrays', string1, source, revision, revdate)
+         endif
+
+         ! This difference order looks wrong, but we need to change the sign of angles from the
+         ! clockwise direction used by bearings to the counterclockwise direction used by
+         ! trig functions.
+         angle = bearings(3) - bearings(nbr)
+
+         ! Normalize to -PI < angle <= PI.
+         angle = mod(angle,PI) - PI*int(angle/PI)
+
+         ! Set the planar location of this corner/node.
+         x_planar(nbr) = dist * cos(angle)
+         y_planar(nbr) = dist * sin(angle)
+
+      enddo
+
+      ! Store the baseline for use when interpolating to an ob location.
+      x_ax_bearings(c,cent) = bearings(3)
+
+      ! Define another bearings array to allow coord_ind_cs to find the right
+      ! cell around the closest node by using a search through bearings,
+      ! rather than a call to unit_square_location.
+      !   Propagate sort_bearings to writing and reading of HommeMapping_cs_grid.nc file.
+      !   real(r8), allocatable, :: sort_bearings(max_neighbors,ncol)
+      !   sort_bearings(n(c),sh_corn(4)) = bearings(3)
+      ! But see ordering of bearings, commented out below.
+
+      ! Define quantities used to map the planar coordinate system of each cell
+      ! to the unit square coordinate system.
+
+      ! I'll use the mapping from planar space (x,y) to unit square space (l,m):
+      ! x = a0 + a1*l*m + a2*m + a3*l
+      ! y = b0 + b1*l*m + b2*m + b3*l
+      ! The 4 corners (x,y) can be mapped to the four corners (l,m) to yield 4 equations.
+      ! This can be written as vec_x = mat_A * vec_a^T.
+      ! Then AI is the inverse of the mapping from physical space to the unit square space,
+      ! and the coefficients of the mapping, aN and bN, can be calculated from:
+      !    a = matmul(AI,x_planar(0:3))
+      !    b = matmul(AI,y_planar(0:3))
+      ! But the mapping from (lon,lat) to (x,y) space put corner "4" of the cell at (x4,y4) = (0,0)
+      ! and corner "3" at (x3,y3) = (d3,0)
+      ! This ends up making a0 = b0 = b3 = 0, and the equations simplify to the point
+      ! that it doesn't make sense to encode this tranformation in a matrix.
+      ! Replace matrix and matmul with simpler direct equations:
+      a(3,c,cent) = x_planar(3)
+      a(2,c,cent) = x_planar(1)
+      a(1,c,cent) = x_planar(2) - x_planar(1) - x_planar(3)
+      b(2,c,cent) = y_planar(1)
+      b(1,c,cent) = y_planar(2) - y_planar(1)
+
+      if (cent < 10) then
+         write(string1,'(A,1p4E12.4)') 'create_cs_grid_arrays: a = ',(a(nbr,c,cent),nbr=1,3)
+         write(string2,'(A,1p4E12.4)') 'create_cs_grid_arrays: b = ',(b(nbr,c,cent),nbr=1,2)
+         call error_handler(E_MSG, 'create_cs_grid_arrays', string1, source, revision, revdate,text2=string2)
+      endif
+
+      if (a(3,c,cent)* a(2,c,cent) *a(1,c,cent) == 0.0_r8) then
+         write(string1,'(A,2I8,A,1p3E12.4)') 'a(:,',c,cent,') = ',(a(nbr,c,cent),nbr=1,3)
+         write(string2,'(A,(6X,2F10.6))') 'create_cs_grid:    lon, lat for nghr=1-3  = ', &
+              (lon_rad(sh_corn(nbr)), lat_rad(sh_corn(nbr)), nbr=1,3)
+         write(string3,'(A,5I7,/31X,4I7)') 'c, 4 corners, shifted = ', &
+               c,(corners(cent,nbr),nbr=1,4),(sh_corn(nbr),nbr=1,4)
+         call error_handler(E_MSG, 'create_cs_grid_arrays', string1, source, revision, revdate,text2=string2,text3=string3)
+      endif
+
+      if (b(2,c,cent) *b(1,c,cent) == 0.0_r8) then
+         write(string1,'(A,2I8,A,1p3E12.4)') 'b(:,',c,cent,') = ',(b(nbr,c,cent),nbr=1,2)
+         write(string2,'(A,(6X,2F10.6))') 'create_cs_grid:    lon, lat for nghr=1-3  = ', &
+              (lon_rad(sh_corn(nbr)), lat_rad(sh_corn(nbr)), nbr=1,3)
+         write(string3,'(A,5I7,/31X,4I7)') 'c, 4 corners, shifted = ', &
+               c,(corners(cent,nbr),nbr=1,4),(sh_corn(nbr),nbr=1,4)
+         call error_handler(E_MSG, 'create_cs_grid_arrays', string1, source, revision, revdate,text2=string2,text3=string3)
+      endif
+
+   enddo Corns
+enddo Quads
+
+
+! Check that all nodes have at least 3 neighbors and no more than 6.
+do col = 1,ncol
+   if (num_nghbrs(col) < 3 .or. num_nghbrs(col) > max_neighbors) then
+      write(string1,'(A,I6,A,6I8)') 'num_nghbrs(',col,') <3 or >6: ', num_nghbrs(col)
+      call error_handler(E_ERR,'create_cs_grid_arrays',string1,source,revision,revdate)
+   endif
+enddo
+
+! There's code in earlier versions of model_mod to
+! reorder the neighbors so that they are sequential around each node
+! to make the search for the cell containing an ob faster.
+
+return
+
+end subroutine create_cs_grid_arrays
+
+
+!-----------------------------------------------------------------------
+
+real function bearing(lon1,lat1,lon2,lat2)
+
+! Calculate the direction along the great circle from point 1 on a sphere
+! to point 2, relative to north.
+! All inputs should have units of radians.
+! Output is radians.
+! From http://www.movable-type.co.uk/scripts/latlong.html
+
+real(r8), intent(in)    :: lon1,lat1, lon2,lat2
+
+real(r8) :: lon1c,lon2c, cos_lat2, del_lon
+
+real(r8), parameter :: half_PI = PI*0.5_r8
+
+! Make sure the poles are handled consistently:
+! If the pole point is the origin point, and the longitude of the pole point is
+! defined as 0.0, then the bearing to a nearby point will = the longitude of the point.
+! This is consistent/continuous with the bearing from points extremely near
+! the pole.
+if (half_PI - abs(lat1) < epsilon(lat1)) then
+   lon1c = 0.0_r8
+else
+   lon1c = lon1
+endif
+if (half_PI - abs(lat2) < epsilon(lat2)) then
+   lon2c = 0.0_r8
+else
+   lon2c = lon2
+endif
+
+cos_lat2 = cos(lat2)
+del_lon  = lon2c - lon1c
+
+! Normalize del_lon to -pi<=angle<=pi.
+del_lon = mod(del_lon,PI) - PI*int(del_lon/PI)
+bearing = atan2(cos_lat2*sin(del_lon),  &
+                cos(lat1)*sin(lat2) - sin(lat1)*cos_lat2*cos(del_lon) )
+
+end function bearing
 
 !-----------------------------------------------------------------------
 !> Returns the size of the DART state vector (i.e. model) as an integer.
@@ -810,7 +1535,12 @@ real(r8) :: lon_fract, lat_fract
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
 type(quad_interp_handle) :: interp_handle   ! should this be a pointer?? 
-                                            ! is it replicating the internal arrays on assignment?
+!SENote: need additional local variables
+integer :: closest, cell_corners(4)
+!SENote: these legacy variable names for fractions in the interp need to be more informative
+real(r8) :: l, m
+type(location_type) :: location_copy
+
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -831,21 +1561,9 @@ if (status1 /= 0) then
    return
 endif
 
-! get the grid handle for the right staggered grid
-interp_handle = get_interp_handle(obs_qty)
-
 ! unpack the location type into lon, lat, vert, vert_type
 lon_lat_vert = get_location(location)
 which_vert   = nint(query_location(location)) 
-
-! get the indices for the 4 corners of the quad in the horizontal, plus
-! the fraction across the quad for the obs location
-call quad_lon_lat_locate(interp_handle, lon_lat_vert(1), lon_lat_vert(2), &
-                         four_lons, four_lats, lon_fract, lat_fract, status1)
-if (status1 /= 0) then
-   istatus(:) = 3  ! cannot locate enclosing horizontal quad
-   return
-endif
 
 ! if we are avoiding assimilating obs above a given pressure, test here and return.
 if (discarding_high_obs) then
@@ -856,24 +1574,28 @@ if (discarding_high_obs) then
    endif
 endif
 
-call get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four_lats, &
-                   lon_lat_vert, which_vert, quad_vals, status_array)
+! SENote: still not clean enough to get through, but can test the corner search at this point
+write(*, *) 'Ready to call coord_ind_cs from model_interpolate'
+write(*, *) 'lon_lat_vert ' , lon_lat_vert, ' and obs_qty ', obs_qty
 
-!>@todo FIXME : Here we are failing if any ensemble member fails. Instead
-!>              we should be using track status...
-if (any(status_array /= 0)) then
-   istatus(:) = maxval(status_array)   ! cannot get the state values at the corners
-   return
-endif
 
-! do the horizontal interpolation for each ensemble member
-call quad_lon_lat_evaluate(interp_handle, lon_fract, lat_fract, ens_size, &
-                           quad_vals, interp_vals, status_array)
+!SENote
+! Do the interpolation here
+! First step, find the columns of the four 'corners' containing the location
+! CONFIRM that a qty has replaced a kind 
+! SENote2: In the CLASSIC, there is a possibility that the cell_corner was already found and this cvall cann
+! be skipped. Understand that and implement as needed.
+! Also note that cannot pass location directly because it is intent(inout) in coord_ind_cs.
+! Not clear that this will eventually be relevant, so look at changing it ther
+location_copy = location
+call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l, m)
 
-if (any(status_array /= 0)) then
-   istatus(:) = 8   ! cannot evaluate in the quad
-   return
-endif
+! For initial testing, stop here and just return -1234 for all observations
+interp_vals = -1234.0_r8
+
+! SENote: still not clean enough to get through, but can test the corner search at this point
+write(*, *) 'Stopping at end of model_interpolate'
+stop
 
 if (using_chemistry) &
    interp_vals = interp_vals * get_volume_mixing_ratio(obs_qty)
@@ -882,6 +1604,574 @@ if (using_chemistry) &
 istatus(:) = 0
 
 end subroutine model_interpolate
+
+!-----------------------------------------------------------------------
+
+subroutine coord_ind_cs(obs_loc, obs_kind, closest_only, closest , cell_corners, l, m)
+
+! Find the node closest to a location, and the possibly the corners of the cell which contains 
+! the location.
+
+! Variables needed by loc_get_close_obs:
+!SENote: Had to change this to intent(inout) because Manhattan loc_get_close_obs requires it
+type(location_type),  intent(inout)  :: obs_loc
+integer,              intent(in)  :: obs_kind
+logical,              intent(in)  :: closest_only
+integer,              intent(out) :: closest
+integer,              intent(out) :: cell_corners(4)
+real(r8),             intent(out) :: l
+real(r8),             intent(out) :: m
+
+! Output from loc_get_close_obs
+integer  :: num_close
+
+! It would be nice if these could be smaller, but I don't know what number would work.
+! It has to be large enough to accommodate all of the grid points that might lie
+! within 2xcutoff; resolution and location dependent.
+! The size must be specified here; (:) yields an error, and 'allocatable' doesn't help.
+integer, allocatable  :: close_ind(:)
+real(r8), allocatable :: dist(:)
+
+! Local Variables
+! dist_# in radians (Can't be initialized here or they will get the 'save' property,
+! and will not be reset during subsequent entries to this subroutine.)
+real(r8) :: dist_1, dist_2
+real(r8) :: lon_lat_lev(3)
+integer  :: k, k1, k2, closest2, origin
+logical  :: found_cell
+
+lon_lat_lev = get_location(obs_loc)
+
+! See whether this obs_ is a state variable.
+! This could be done by 2 calls to minloc(dist), with the 2nd call using a mask
+! to prevent finding the closest, which was found in the first call.
+! But would those 2 intrinsic searches through dist be faster than my 1 explicit search?
+
+if (closest_only) then
+   ! Use xyz/cartesian coordinates to quickly find the closest node.
+   ! If convert_vert only needs the closest node, don't find the l,m weights.
+   closest = find_closest_node(lon_lat_lev(2), lon_lat_lev(1))
+
+   ! Can return without deallocating close_ind and dist
+   ! because they haven't been allocated yet.
+   return
+endif
+
+! Allocate space for the potentially close nodes.
+allocate(close_ind(ncol), dist(ncol))
+
+! Look for the 2 closest nodes, using slower way of getting all of the close obs
+! and searching for the 2 closest.
+! --------------
+! FIXME: Nancy has a location_xyz:find_closest_???? which will return the N closest points,
+! which may be significantly faster than threed_sphere/location_mod.f90:get_close_obs.
+! --------------
+! FIXME; can the closest node not be a corner of the containing cell in grids generated by SQuadGen?
+! --------------
+! For a refined grid (from 1 degree to 1/8 degree) loc_get_close_obs is going to return lists
+! that are 64x larger in the refined region than in the coarse region
+
+!   obs_'kind' is passed to location.f90:get_close_obs.
+!   There it is passed to only get_dist, which only uses it if special_vert_norm is used,
+!   and gc%special_maxdist.
+!   Model_mod is not using either of those.
+!SENote Make sure that loc_get_close_obs here does the same thing as in CLASSIC
+! Note that loc here refers to the location module, not the local module
+!SENote2, this was a call to loc_get_close_obs, but it does not have the required loc_types(:) argument
+! to that subroutine (would appear after cs_kinds). get_close_obs appears to just ignore the loc_types argument
+! and uses the rest of its arguments to call get_close
+call get_close(cs_gc, obs_loc, obs_kind, cs_locs, cs_kinds, &
+                       num_close, close_ind, dist)
+
+dist_1 = 10.0_r8
+dist_2 = 10.0_r8
+closest = MISSING_I
+k1 = MISSING_I
+
+! Keep track of k1, k2, and distances in this search.
+! Assign closest and closest2 afterwards.
+if (num_close <= 0) then
+   write(string1,*) 'Unusable num_close, obs_kind : ',num_close, obs_kind
+   call write_location(0, obs_loc, charstring=string2)
+   write(string3,*) 'dist(1) = ',dist(1)
+   call error_handler(E_ERR, 'coord_ind_cs', string1,source,revision,revdate,text2=string2, text3=string3)
+endif
+
+do k = 1,num_close
+   if (dist(k) < dist_2) then
+      ! Replace 2nd with new one.
+      k2 = k
+      dist_2 = dist(k)
+      if (dist_2 <= dist_1) then
+         ! Switch 1st and new 2nd.   '<=' To make sure k1 is filled, even for the first k.
+         k2 = k1
+         k1 = k
+         dist_2 = dist_1
+         dist_1 = dist(k)
+      endif
+   endif
+enddo
+closest  = close_ind(k1)
+
+if (k2 == MISSING_I) then
+   write(string1,'(A)') 'Did not find a second closest node to ob:'
+   write(string2,'(A,3F10.2,3I6,1p2E12.4)')                    &
+        'lon_lat_lev, obs_kind, num_close, closest, dist_1, dist_2 = ', &
+         lon_lat_lev, obs_kind, num_close, closest, dist_1, dist_2
+   call write_location(0, cs_locs(closest), charstring=string3)
+   string3 = 'closest node location = '//string3
+   call error_handler(E_ERR, 'coord_ind_cs', string1,source,revision,revdate,text2=string2,text3=string3)
+else
+   closest2 = close_ind(k2)
+endif
+
+! Find the cell which contains the ob.
+! First search the cells which have 'closest' as 1 corner.
+! If that fails, search the cells around closest2.
+! The search consists of passing the ob location to unit_square_location
+! and letting it determine whether the ob location maps into the unit square.
+
+! Initial value of success flag.
+found_cell = .false.
+
+! FIXME; debug in verify_namelist
+! write(string1,*) 'STARTING Cloop num_nghbrs = ',num_nghbrs(closest)
+! call error_handler(E_MSG,'coord_ind_cs',string1,source,revision,revdate)
+
+Cloop: do k=1,num_nghbrs(closest)
+   ! centers(k,closest) refers to the cell center name associated with neighboring node k
+   ! of the closest node.  It is used to retrieve mapping coefficients for the cell being tested.
+
+   call unit_square_location(centers(k,closest), closest, obs_loc,          &
+                             lon_lat_lev(1),lon_lat_lev(2), found_cell, origin, l,m)
+   if (found_cell) exit Cloop
+enddo Cloop
+
+! Try the 2nd closest point, if the first failed.
+if ((.not.found_cell) .and. closest2 /= MISSING_I) then
+
+   Second_closest: do k=1,num_nghbrs(closest2)
+      call unit_square_location(centers(k,closest2), closest2, obs_loc,         &
+                                lon_lat_lev(1),lon_lat_lev(2), found_cell, origin, l,m)
+      if (found_cell) then
+         ! Put '2nd closest' information into 'closest'.
+         dist_1 = dist_2
+         closest = closest2
+
+         write(string1,'(A,2F10.7,2I8,1p2E12.4)') &
+              'Using 2nd closest node to the ob: l, m, closest2, origin2 = ', &
+              l, m, closest, origin
+         call error_handler(E_MSG, 'coord_ind_cs', string1,source,revision,revdate)
+
+         exit Second_closest
+      endif
+   enddo Second_closest
+endif
+
+if (found_cell) then
+   ! Need to shift corners according to which was chosen as the origin corner
+   ! in num_nghbrs loop, above.  The weighted interp calculation assumes, as in
+   ! the create_cs_grid_arrays mapping scheme, that the origin node is corner 4.
+   cell_corners(1:4) = cshift(corners(centers(k,closest),1:4), origin)
+
+else
+   ! Both closest nodes failed; abort
+   write(string1, '(A,2I8,A,2F10.4)') &
+         'Neither of the 2 closest nodes ',  closest,closest2, &
+         ' is a corner of the cell containing ob at ', lon_lat_lev(1),lon_lat_lev(2)
+   call error_handler(E_ERR, 'coord_ind_cs', string1,source,revision,revdate)
+endif
+
+deallocate(close_ind, dist)
+
+end subroutine coord_ind_cs
+
+
+!-----------------------------------------------------------------------
+
+subroutine unit_square_location(cell, closest, location, lon_o,lat_o, found_cell, origin, l,m)
+
+! Subroutine based on http://www.particleincell.com/2012/quad-interpolation/.
+! The idea is to derive a mapping from any convex quadrilateral(x,y) onto a unit square (l,m).
+! Also map the location of the ob onto that square.
+! This is a bilinear interpolation;
+! x = a0 + a1*l*m + a2*m + a3*l
+! y = b0 + b1*l*m + b2*m + b3*l
+! so does not take into account the curvature of the quadrilateral on the sphere.
+!
+! That has been handled by the intermediate mapping from (lon,lat) to a flat planar
+! coordinate system (x,y). The locations of the corners/nodes are converted to
+! the distances and directions from one node to the other three.  See create_cs_grid_arrays.
+! Distances and directions relative to the origin node are preserved, but distances and
+! directions between 2 non-origin points are slightly distorted.
+! Even these small errors are avoided by defining a planar coordinates system for each corner
+! of each cell.
+! Then the ob is never near the 'far edges', where distortion could be a problem.
+!
+! A higher order method exists (Nagata 2005: Simple Local Interpolation of Surfaces
+! Using Normal Vectors) to map curved quadrilaterals onto the unit square,
+! but the inverse map cannot be done analytically(?), so is not developed here.
+
+integer,             intent(in)    :: cell
+integer,             intent(in)    :: closest
+type(location_type), intent(in)    :: location
+real(r8),            intent(in)    :: lon_o
+real(r8),            intent(in)    :: lat_o
+logical,             intent(inout) :: found_cell
+integer,             intent(out)   :: origin
+real(r8),            intent(out)   :: l
+real(r8),            intent(out)   :: m
+
+! Observation location in the planar space.
+real(r8) :: x_o, y_o
+
+real(r8) :: angle, d, bearing_o  ! Locations in polar coordinate space (bearing,distance).
+real(r8) :: aa, bb, cc           ! Coefficients of quadratic equation for m.
+real(r8) :: det, m1, m2          ! Determinant and roots.
+logical  :: neg_root             ! helpful logical variable to store usefulness of the -root.
+real(r8) :: m_neg, l_neg         ! Potential alternate solutions to the m quadratic equation
+integer  :: oc(1)
+
+m1    = MISSING_R8  ! first  root returned by solve_quadratic
+m2    = MISSING_R8  ! second root returned by solve_quadratic
+l     = MISSING_R8  ! unit square abscissa ('x' coord)
+m     = MISSING_R8  ! unit square ordinate ('y' coord)
+l_neg = MISSING_R8  ! same but for the negative root of the m quadratic equation.
+m_neg = MISSING_R8  ! same
+neg_root = .false.
+
+! Map the location of the ob into the planar space
+
+! Figure out which corner (1,2,3 or 4) of cell is the closest to the ob,
+! by comparing the names of the corners to the name of the node/corner closest
+! to the ob, which was passed in.
+! Used to get the correct x_ax_bearing and a and b coeffs (from the cs_grid_file).
+
+oc = minloc(corners(cell,:), mask = (corners(cell,:) == closest))
+origin = oc(1)
+
+! The bearing of the observation relative to the origin/closest corner.
+bearing_o = bearing(lon_rad(closest),lat_rad(closest),lon_o*DEG2RAD,lat_o*DEG2RAD )
+
+! Calculate the difference of the ob bearing from x_axis of this cell.
+! The order is opposite of what might be expected because bearings are measured clockwise,
+! while angles are measured counterclockwise.
+angle = x_ax_bearings(origin,cell) - bearing_o
+
+! Normalize angle to -pi<angle<pi.
+angle = mod(angle,PI) - PI*int(angle/PI)
+
+! Calculate the distance from this cell's origin
+! and then the (x,y) coordinates of the observation.
+d = get_dist(cs_locs(closest), location, no_vert=.true.)
+x_o = d * cos(angle)
+y_o = d * sin(angle)
+
+! Coefficients of the quadratic equation for m for this cell.
+aa =   a(1,origin,cell)*b(2,origin,cell) &
+     - a(2,origin,cell)*b(1,origin,cell)
+
+bb =   a(3,origin,cell)*b(2,origin,cell) &
+     - a(1,origin,cell)*y_o              &
+     + b(1,origin,cell)*x_o
+
+cc = - a(3,origin,cell)*y_o
+
+! Calculate m from the binomial equation, given the quadratic equation coefficients.
+call solve_quadratic(aa,bb,cc,m1,m2)
+! newFIXME: Simplify this subroutine?
+! There can only be one mapping from the (x,y) space to the unit square.
+! One of the (potentially) 2 'm's generated here should be eliminated by the l calculation.
+
+if (m1 == MISSING_R8 .and. m2 == MISSING_R8) then
+   ! determinant was < 0.
+   write(string1,'(A,I6,1X,1p4E12.4)') 'm b^2-4ac <0: cell, angle, d, x_o, y_o',cell, angle, d, x_o, y_o
+   call error_handler(E_MSG, 'unit_square_location', string1,source,revision,revdate)
+   write(string1,'(A,1X,1p4E12.4)') '   a: a(1)*b(2) - a(2)*b(1) : ',  &
+                            a(1,origin,cell),b(2,origin,cell), &
+                            a(2,origin,cell),b(1,origin,cell)
+   write(string2,'(A,1X,1p4E12.4)') '   b: ', bb
+   write(string3,'(A,1X,1p4E12.4)') '   c: a(3)*y_o : ', a(3,origin,cell), y_o
+   call error_handler(E_MSG, 'unit_square_location', string1,source,revision,revdate, &
+                      text2=string2, text3=string3)
+else
+   if (aa > 0.0_r8) then
+      ! Only m values (roots) between 0 and 1 mean that the ob is in this cell.
+      if (m1 >=0 .and. m1 <= 1) then
+         m = m1
+      elseif (m2 >=0 .and. m2 <= 1) then
+         m = m2
+      else
+         ! Neither root is a map.  Leave m as MISSING_R8
+      endif
+   elseif (m1 /= MISSING_R8 .and. m2 == MISSING_R8 ) then
+      ! Cell is square; solved the linear equation    m*bb + cc = 0
+      m = m1
+   else
+      ! aa < 0; Either both or neither roots yield m>0.
+      ! Start with the +root.
+!       m = (-bb + sqrt_det)/(2.0_r8*aa)
+      m = m1
+
+      if (bb > 0.0_r8) then
+         ! Both roots yield m > 0.
+         if (m > 1.0_r8) then
+            ! The +root didn't yield a usable m.  Try the -root.
+            ! m = (-bb - sqrt_det)/(2.0_r8*aa)
+            m = m2
+         else
+            ! It could be that both roots yield a usable m.  Keep track of both
+            ! (for testing/debugging only).
+            m_neg = m2
+         endif
+
+      elseif (bb < 0.0_r8) then
+         ! aa < 0 and bb < 0 yields no roots with m>0.
+         write(string1,'(A,I6,A)') 'aa < 0 and bb < 0: It appears that cell ',cell,           &
+              ' is a highly distorted quadrilateral'
+         write(string2,'(A)')                                                                 &
+              'and no mapping is possible.  bb = a(3)*b(2) - a(1)*y_o + b(1)*x_o: '
+         write(string3,'(1p,(3X,2E12.4))')                                                     &
+              a(3,origin,cell),b(2,origin,cell),                                              &
+              a(1,origin,cell),y_o,                                                           &
+              b(1,origin,cell),x_o
+         call error_handler(E_ERR, 'unit_square_location', string1,source,revision,revdate,  &
+                            text2=string2, text3=string3)
+
+      elseif (bb == 0.0_r8) then
+         ! aa < 0 and bb = 0  should be excluded by the non-negativeness test on det, above.
+         write(string1,'(A,1p,2(1x,E12.4))') &
+              'aa < 0 and bb = 0 should have been excluded ',aa,bb
+         call error_handler(E_ERR, 'unit_square_location', string1,source,revision,revdate)
+
+      endif
+
+   endif
+
+endif
+
+! If m (and maybe m_neg) is out of the possible range, return to calling program
+! with found_cell still false.
+if (m < 0.0_r8 .or. m > 1.0_r8) then
+   if (.not.found_cell) then
+      if (m_neg < 0.0_r8 .or. m_neg > 1.0_r8) then
+         ! This includes m_neg == MISSING_R8, due to only m being assigned above.
+         return
+      endif
+   ! ? Can these 2 sections ever be entered?
+   else
+      ! Exit with error if m is outside valid range.
+      write(string1, *) 'location of ob in unit square is out of bounds m = [0,1] ',m, &
+                        'but status is "found"'
+      call error_handler(E_ERR, 'unit_square_location', string1, source, revision, revdate)
+   endif
+endif
+
+! Use m to calculate the other unit square coordinate value, 'l'.
+det = a(3,origin,cell) + a(1,origin,cell) * m
+if (det /= 0.0_r8) then
+   l = (x_o - a(2,origin,cell)*m) / det
+else
+   write(string1,'(A,I6,1X,1p4E12.4)') 'l denominator = 0: cell, angle, d, x_o, y_o',cell, angle, d, x_o, y_o
+   write(string2,'(A,1X,1p4E12.4)') '  a(3) + a(1)*m = 0 : ', a(3,origin,cell), a(1,origin,cell),m
+   call error_handler(E_ERR, 'unit_square_location', string1,source,revision,revdate, text2=string2)
+endif
+
+! Repeat for the -root, if it is a possibility.
+if (m_neg /= MISSING_R8) then
+   det = (a(3,origin,cell) + a(1,origin,cell)*m_neg)
+   if (det /= 0.0_r8) then
+      l_neg = (x_o -a(2,origin,cell)*m_neg) / det
+   else
+      write(string1,'(A,I6,1X,1p4E12.4)') 'l_neg denominator = 0: cell, angle, d, x_o, y_o', &
+           cell, angle, d, x_o, y_o
+      write(string2,'(A,1X,1p4E12.4)') '  a(3) + a(1)*m = 0 : ', a(3,origin,cell), a(1,origin,cell),m
+      call error_handler(E_ERR, 'unit_square_location', string1,source,revision,revdate, text2=string2)
+   endif
+
+   ! Informational output, if the observation is exactly on the m-axis
+!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
+   if (l_neg == 0.0_r8 .and. my_task_id() == 0) then
+      write(string1,'(A,I6,1X,1p4E12.4)') 'l_neg cell, x_o - a(2)*m = ',cell, x_o ,a(2,origin,cell),m
+      call error_handler(E_MSG, 'unit_square_location', string1,source,revision,revdate)
+   endif
+
+endif
+
+! Informational output, if the observation is exactly on the m-axis
+!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
+if (l == 0.0_r8 .and. my_task_id() == 0) then
+   write(string1,'(A,I6,1X,1p4E12.4)') 'Ob is on x-axis: l-cell, x_o - a(2)*m = ',cell, x_o ,a(2,origin,cell),m
+   call error_handler(E_MSG, 'unit_square_location', string1,source,revision,revdate)
+endif
+
+! If l (and maybe l_neg) is out of the possible range, return to calling program
+! with found_cell still false.
+if (l < 0.0_r8 .or. l > 1.0_r8) then
+   if (.not.found_cell) then
+      if (l_neg < 0.0_r8 .or. l_neg > 1.0_r8) then
+         ! This includes m_neg == MISSING_R8, due to only m being assigned above
+         ! Return with found_cell still = failure (0) to test the next cell.
+         return
+      endif
+   ! ? Can these 2 sections ever be entered?
+      ! Exit with error if l is outside valid range.
+   else
+      ! Exit with error if l is outside valid range.
+      write(string1, *) 'location of ob in unit square is out of bounds l = [0,1] ',l, &
+                        'but status is "found"'
+      call error_handler(E_ERR, 'unit_square_location', string1, source, revision, revdate)
+   endif
+endif
+
+! If we get this far, then this cell contains the ob.
+
+! But which root(s) of the m quadratic equation led to the mapping?
+! Put the right values in l and m.
+neg_root = m_neg >= 0.0_r8 .and. m_neg <= 1.0_r8 .and. &
+           l_neg >= 0.0_r8 .and. l_neg <= 1.0_r8
+if (m >= 0.0_r8 .and. m <= 1.0_r8 .and. &
+    l >= 0.0_r8 .and. l <= 1.0_r8 ) then
+   ! Both roots yield a good mapping.
+   if (neg_root) then
+      write(string1, *) 'BOTH roots of the m quadratic yield usable mappings.  The +root is being used.'
+      call error_handler(E_MSG, 'unit_square_location', string1, source, revision, revdate)
+   endif
+
+elseif (neg_root) then
+   ! The -root yields a good mapping.  Pass along the -root m and l.
+   m = m_neg
+   l = l_neg
+   write(string1, *) 'The negative root of the m quadratic yielded the only usable mapping.'
+   call error_handler(E_MSG, 'unit_square_location', string1, source, revision, revdate)
+endif
+
+! Return with found_cell = true; success.
+found_cell = .true.
+
+end subroutine unit_square_location
+
+!-----------------------------------------------------------------------
+
+
+!SENote: THIS IS NOT A NUMERICALLY STABLE QUADRATIC SOLVER: REPLACE
+subroutine solve_quadratic(a, b, c, r1, r2)
+
+real(r8), intent(in)  :: a
+real(r8), intent(in)  :: b
+real(r8), intent(in)  :: c
+real(r8), intent(out) :: r1
+real(r8), intent(out) :: r2
+
+real(r8) :: scaling, as, bs, cs, disc
+
+r1 = MISSING_R8
+r2 = MISSING_R8
+
+! Scale the coefficients to get better round-off tolerance
+scaling = max(abs(a), abs(b), abs(c))
+as = a / scaling
+bs = b / scaling
+cs = c / scaling
+
+if (abs(as) < epsilon(as)) then
+   ! Solve the linear equation bs*r + cs = 0
+   r1 = -cs / bs
+else
+   ! Get discriminant of scaled equation
+   disc = bs * bs - 4.0_r8 * as * cs
+   if (disc >= 0.0_r8) then
+
+      ! Calculate the largest root (+ or - determined by sign of bs)
+      ! Handling of bs = 0 different from pre-review code
+      !    if(bs > 0.0_r8) then
+      if(bs >= 0.0_r8) then
+         r1 = (-bs - sqrt(disc)) / (2.0_r8 * as)
+      else
+         r1 = (-bs + sqrt(disc)) / (2.0_r8 * as)
+      endif
+
+      ! Compute the second root given the larger (not most positive) one
+      if (r1 == 0.0_r8) then
+         ! The b AND c must have been 0: solved the equation a*r1^2 = 0 above
+         ! and there's no 2nd root.
+         r2 = 0.0_r8
+      else
+         ! 'as' and 'r1' have been tested for 0.
+         r2 = cs / (as * r1)
+      endif
+   endif
+endif
+
+end subroutine solve_quadratic
+
+!------------------------------------------------------------
+! Subroutines from mpas_atm/model_mod.f90, for using cartesian coordinates to
+! find closest node to an ob.
+
+subroutine init_closest_node()
+
+! use ncol, lats and lons of nodes (corners) to initialize a get_close structure
+! to be used later in find_closest_node().
+
+integer :: i
+
+allocate(cs_locs_xyz(ncol))
+
+do i=1, ncol
+   ! SENote: the lon and lat 1D arrays are now an element in the cam_grid type, declared grid_data
+   cs_locs_xyz(i) = xyz_set_location(grid_data%lon%vals(i), grid_data%lat%vals(i), 0.0_r8, earth_radius)
+enddo
+
+! the width (2nd arg of ...init) really isn't used anymore, but it's part of the
+! interface so we have to pass some number in.
+call xyz_get_close_maxdist_init(cs_gc_xyz, 1.0_r8)
+call xyz_get_close_obs_init    (cs_gc_xyz, ncol, cs_locs_xyz)
+
+end subroutine init_closest_node
+
+!------------------------------------------------------------
+
+function find_closest_node(lat, lon)
+
+! Determine the index for the closest node to the given point
+! 2D calculation only.
+
+real(r8), intent(in)  :: lat
+real(r8), intent(in)  :: lon
+integer               :: find_closest_node
+
+type(xyz_location_type) :: pointloc
+integer                 :: closest_node, rc
+! This 'save' is redundant with initializing the variable here in the declaration statement.
+logical, save           :: search_initialized = .false.
+
+! do this exactly once.
+if (.not. search_initialized) then
+   call init_closest_node()
+   search_initialized = .true.
+endif
+
+pointloc = xyz_set_location(lon, lat, 0.0_r8, earth_radius)
+
+call xyz_find_nearest(cs_gc_xyz, pointloc, cs_locs_xyz, closest_node, rc)
+
+! decide what to do if we don't find anything.
+if (rc /= 0 .or. closest_node < 0) then
+   !SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
+   if (my_task_id() == 0) then
+      write(string1,*) 'cannot find a nearest node to lon, lat: ', lon, lat
+      call error_handler(E_WARN, 'find_closest_node', string1,source,revision,revdate)
+      ! newFIXME; should this be E_ERR instead?
+   endif
+   find_closest_node = -1
+   return
+endif
+
+! this is the cell index for the closest center
+find_closest_node = closest_node
+
+end function find_closest_node
 
 !-----------------------------------------------------------------------
 !> internal only version of model interpolate. 
@@ -1963,6 +3253,9 @@ logical  :: update_list(MAX_STATE_VARIABLES)   = .FALSE.
 integer  ::   kind_list(MAX_STATE_VARIABLES)   = MISSING_I
 real(r8) ::  clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
+!SENote: Added temp variable to get ncol
+integer :: ncol_temp(1)
+
 
 nfields = 0
 ParseVariables : do i = 1, MAX_STATE_VARIABLES
@@ -2015,6 +3308,12 @@ endif
 
 domain_id = add_domain(cam_template_filename, nfields, var_names, kind_list, &
                        clamp_vals, update_list)
+
+! SENote: This seems like a good place to load up the module storage variable ncol
+! Try to get it from state structure in a nice way
+! The size of the only surface pressure dimension is the number of columns
+ncol_temp = get_dim_lengths(domain_id,  get_varid_from_kind(domain_id, QTY_SURFACE_PRESSURE))
+ncol = ncol_temp(1)
 
 call fill_cam_stagger_info(grid_stagger)
 
