@@ -28,7 +28,8 @@ use          location_mod,  only : location_type, set_vertical, set_location, &
                                    loc_get_close_obs => get_close_obs, &
                                    get_close, &
                                    loc_get_close_state => get_close_state, &
-                                   vertical_localization_on, get_close_type, get_maxdist
+                                   vertical_localization_on, get_close_type, get_maxdist, &
+                                   get_close_init
 
 !SENote using 3d space location for now
 ! NEED to understand how this relates to the standard threed_cartesian which is in the same directory
@@ -94,7 +95,7 @@ use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, &
                                    nc_define_dimension, nc_put_variable, &
                                    nc_synchronize_file, nc_end_define_mode, &
                                    nc_begin_define_mode, nc_open_file_readonly, &
-                                   nc_close_file, nc_variable_exists
+                                   nc_close_file, nc_variable_exists, nc_get_global_attribute
 use        chem_tables_mod, only : init_chem_tables, finalize_chem_tables, &
                                    get_molar_mass, get_volume_mixing_ratio
 use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
@@ -371,7 +372,7 @@ integer :: nfields
 !SENote
 type(location_type) :: test_loc
 integer(i8) :: test_index_in
-integer :: test_var_type, i
+integer :: test_var_type, i, nc_file_ID
 real(r8) :: test_loc_vals(3)
 
 character(len=*), parameter :: routine = 'static_init_model'
@@ -462,6 +463,52 @@ else
    call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate)
 endif
 
+
+!SENote: Following indented block is also used for search for close corners
+! Need to make sure that all of it is really needed
+   ! Read some attributes from the cubed sphere model_config_file.
+   ! ne is the number of elements/cube edge.  Usually 0 for refined grids.
+   ! np is the number of nodes/element edge (shared with adjacent element.
+   nc_file_ID = nc_open_file_readonly(cam_template_filename, 'Reading ne and np from cam template file')
+   call nc_get_global_attribute(nc_file_ID, 'ne', ne, 'Reading ne from cam template file', cam_template_filename)
+   call nc_get_global_attribute(nc_file_ID, 'np', np, 'Reading np from cam template file', cam_template_filename)
+   call nc_close_file(nc_file_ID, 'Reading ne and np from cam template file', cam_template_filename)
+
+   ! Calculate the nominal resolution of the (coarse) grid,
+   ! for use by model_interpolate's call to get_close_obs.
+   if (ne == 0) then
+      ! Refined mesh; assume the coarsest grid is the default '1-degree'.
+      ! Need factor of 1.5 to make sure that there are at least 2 nodes 'close' to any location.
+      ! There seems to be a tricky interplay between the lon-lat boxes used in the quick search
+      ! for potentially close nodes, and the cubed sphere grid, so that a coarse_grid of only
+      ! slightly more than 1.0 degrees can yield 0 close nodes.
+      coarse_grid = 1.2_r8 * DEG2RAD
+      l_refined = .true.
+   else
+      ! Standard cubed sphere; there are 3x num_elements/face_edge x 4 nodes
+      ! around the equator.  ne = 30 -> 3x4x30 = 360 nodes -> '1-degree'
+      ! Yielded a location with only 1 close ob, but need 2.
+      ! coarse_grid = (30.01_r8/ne) * DEG2RAD
+      coarse_grid = 1.2_r8*(30.0_r8/ne) * DEG2RAD
+   endif
+   if (print_details) then
+      write(string1, *) 'Cubed sphere coarse_grid resolution (rad) used in cs_gc definition = ',&
+                      coarse_grid,' because ne = ',ne
+      call error_handler(E_MSG, 'static_init_model', string1,source,revision,revdate)
+   endif
+
+   ! Fill cs_gc for use by model_mod.  Inputs and outputs are in global storage.
+   ! ncol is already defined before this call.
+   call fill_gc()
+
+   ! Fill arrays that are useful for bearings and distances.
+   allocate(lon_rad(ncol), lat_rad(ncol))
+   do i=1,ncol
+      lon_rad(i) = grid_data%lon%vals(i)*DEG2RAD
+      lat_rad(i) = grid_data%lat%vals(i)*DEG2RAD
+   enddo
+
+
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 !SENote; Looking at metadata
@@ -481,6 +528,43 @@ endif
 !enddo
 
 end subroutine static_init_model
+
+!-----------------------------------------------------------------------
+
+subroutine fill_gc()
+
+! Subroutine to generate location_types of the cubed sphere grid
+! and put them into get_close_type cs_gc, with other derived components.
+
+integer :: c
+
+!SENote: Really don't like all this use of global module storage for communicating among routines
+! May want to eliminate some of this.
+allocate(cs_locs(ncol), cs_kinds(ncol))
+
+!SENote
+write(*, *) 'in fill_gc'
+write(*, *) 'ncol ', ncol
+write(*, *) 'coarse_grid ', coarse_grid
+
+
+! CS inputs in degrees.
+do c=1,ncol
+   cs_locs(c)  = set_location(grid_data%lon%vals(c), grid_data%lat%vals(c), MISSING_R8, VERTISUNDEF)
+   cs_kinds(c) = 0
+enddo
+
+!SENote: These interfaces to get_close have been changed in Manhattan. Now a single call.
+! Initialize cs_gc%maxdist using the maximum grid spacing.
+! There will always be at least 2 nodes within 1 coarse_grid in all directions.
+!SENotecall get_close_maxdist_init(cs_gc, coarse_grid)
+! Use cs_gc%maxdist and node locations to define the rest of cs_gc.
+!SENotecall get_close_obs_init(cs_gc, ncol, cs_locs)
+
+call get_close_init(cs_gc, ncol, coarse_grid, cs_locs)
+!SENote Test: call get_close_init(cs_gc, ncol, 1000 * coarse_grid, cs_locs)
+
+end subroutine fill_gc
 
 !-----------------------------------------------------------------------
 
@@ -1574,16 +1658,12 @@ if (discarding_high_obs) then
    endif
 endif
 
-! SENote: still not clean enough to get through, but can test the corner search at this point
-write(*, *) 'Ready to call coord_ind_cs from model_interpolate'
-write(*, *) 'lon_lat_vert ' , lon_lat_vert, ' and obs_qty ', obs_qty
-
 
 !SENote
 ! Do the interpolation here
 ! First step, find the columns of the four 'corners' containing the location
 ! CONFIRM that a qty has replaced a kind 
-! SENote2: In the CLASSIC, there is a possibility that the cell_corner was already found and this cvall cann
+! SENote2: In the CLASSIC, there is a possibility that the cell_corner was already found and this call can
 ! be skipped. Understand that and implement as needed.
 ! Also note that cannot pass location directly because it is intent(inout) in coord_ind_cs.
 ! Not clear that this will eventually be relevant, so look at changing it ther
@@ -1594,8 +1674,7 @@ call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l, m)
 interp_vals = -1234.0_r8
 
 ! SENote: still not clean enough to get through, but can test the corner search at this point
-write(*, *) 'Stopping at end of model_interpolate'
-stop
+write(*, *) 'cell_corners ', cell_corners
 
 if (using_chemistry) &
    interp_vals = interp_vals * get_volume_mixing_ratio(obs_qty)
@@ -1675,13 +1754,11 @@ allocate(close_ind(ncol), dist(ncol))
 !   There it is passed to only get_dist, which only uses it if special_vert_norm is used,
 !   and gc%special_maxdist.
 !   Model_mod is not using either of those.
-!SENote Make sure that loc_get_close_obs here does the same thing as in CLASSIC
-! Note that loc here refers to the location module, not the local module
-!SENote2, this was a call to loc_get_close_obs, but it does not have the required loc_types(:) argument
-! to that subroutine (would appear after cs_kinds). get_close_obs appears to just ignore the loc_types argument
-! and uses the rest of its arguments to call get_close
+!SENote IMPORTANT: This only works with approximate_distance = .false. Somehow this must be overridden from
+! Namelist or documented.
 call get_close(cs_gc, obs_loc, obs_kind, cs_locs, cs_kinds, &
                        num_close, close_ind, dist)
+
 
 dist_1 = 10.0_r8
 dist_2 = 10.0_r8
@@ -2199,7 +2276,8 @@ interp_vals(:) = MISSING_R8
 istatus(:)     = 99
 
 !SENote
-write(*, *) 'in interpolate_values'
+write(*, *) 'stopping in interpolate values: Why are we here?'
+stop
 
 interp_handle = get_interp_handle(obs_qty)
 lon_lat_vert  = get_location(location)
