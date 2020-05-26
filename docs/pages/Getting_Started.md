@@ -81,7 +81,7 @@ sections, each of which can be read independently:
 This section details how to get started with DART as quickly as possible. This
 section may be for you if you want to see that DART works before spending a lot
 of time learning about the details. However, if this level of detail is too
-sparse for you or if you run into any problems, please refer to
+sparse for you, or if you run into any problems, please refer to
 [More detailed DART setup instructions](#DetailedSetup).
 
 The DART source code is distributed on the GitHub repository
