@@ -1463,6 +1463,79 @@ end subroutine get_values_from_single_level
 !> and setting all members with those same levels in a single pass.
 !> 
 
+!SENote modified for se form fv base
+subroutine get_se_values_from_varid(ens_handle, ens_size, corner_index, lev_index, varid, &
+                                 vals, my_status)
+type(ensemble_type), intent(in)  :: ens_handle
+integer,  intent(in)  :: ens_size
+integer,  intent(in)  :: corner_index
+integer,  intent(in)  :: lev_index(ens_size)
+integer,  intent(in)  :: varid
+real(r8), intent(out) :: vals(ens_size)
+integer,  intent(out) :: my_status(ens_size)
+
+integer(i8) :: state_indx
+integer  :: i, j, jloc
+real(r8) :: temp_vals(ens_size) 
+logical  :: member_done(ens_size)
+
+character(len=*), parameter :: routine = 'get_se_values_from_varid:'
+
+! as we get the values for each ensemble member, we set the 'done' flag
+! and a good return code. 
+my_status(:) = 12
+member_done(:) = .false.
+
+! start with lev_index(1).  get the vals into a temp var.  
+! run through 2-N. any other member that has the same level 
+! set the outgoing values.  keep a separate flag for which 
+! member(s) have been done.  skip to the next undone member 
+! and get the state for that level.  repeat until all levels done.
+
+do i=1, ens_size
+
+   if (member_done(i)) cycle
+   !SENote only have one horizontal index that is relevant here, can pass anything for the second???
+   jloc = -1
+   state_indx = get_dart_vector_index(corner_index, jloc, lev_index(i), domain_id, varid)
+
+   if (state_indx < 0) then
+      write(string1,*) 'Should not happen: could not find dart state index from '
+      write(string2,*) 'corner and lev index :', corner_index, lev_index
+      call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+      return
+   endif
+
+   temp_vals(:) = get_state(state_indx, ens_handle)    ! all the ensemble members for level (i)
+
+   ! start at i, because my ensemble member is clearly at this level.
+   ! then continue on to see if any other members are also at this level.
+   do j=i, ens_size
+      if (member_done(j)) cycle
+
+      if (lev_index(j) == lev_index(i)) then
+         vals(j) = temp_vals(j)
+         member_done(j) = .true.
+         my_status(j) = 0
+      endif
+         
+   enddo
+enddo
+
+end subroutine get_se_values_from_varid
+
+
+!-----------------------------------------------------------------------
+!> this routine takes care of getting the actual state values.  get_state()
+!> communicates with other MPI tasks and can be expensive.
+!>
+!> all ensemble members have the same horizontal location, but different 
+!> ensemble members could have different vertical locations and
+!> so be between different vertical layers.  this code tries to do the fewest
+!> calls to get_state by only calling it for levels that are actually needed
+!> and setting all members with those same levels in a single pass.
+!> 
+
 subroutine get_values_from_varid(ens_handle, ens_size, lon_index, lat_index, lev_index, varid, &
                                  vals, my_status)
 type(ensemble_type), intent(in)  :: ens_handle
@@ -1620,7 +1693,7 @@ real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
 type(quad_interp_handle) :: interp_handle   ! should this be a pointer?? 
 !SENote: need additional local variables
-integer :: closest, cell_corners(4)
+integer :: closest, cell_corners(4), i
 !SENote: these legacy variable names for fractions in the interp need to be more informative
 real(r8) :: l, m
 type(location_type) :: location_copy
@@ -1669,6 +1742,16 @@ endif
 ! Not clear that this will eventually be relevant, so look at changing it ther
 location_copy = location
 call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l, m)
+
+
+!SENote: Now work on the vertical conversions and getting the vertical index for each ensemble member
+! Can model this on get_quad_vals which does something similar for the FV
+! Just need to send the indices of the corners instead of pair of lon and lat indices
+call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
+                   lon_lat_vert, which_vert, quad_vals, istatus)
+
+
+
 
 ! For initial testing, stop here and just return -1234 for all observations
 interp_vals = -1234.0_r8
@@ -2306,6 +2389,110 @@ end subroutine interpolate_values
 !-----------------------------------------------------------------------
 !>
 
+subroutine get_se_quad_vals(state_handle, ens_size, varid, obs_qty, corners, &
+                         lon_lat_vert, which_vert, quad_vals, my_status)
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
+integer,             intent(in) :: varid
+integer,             intent(in) :: obs_qty
+integer,             intent(in) :: corners(4)
+real(r8),            intent(in) :: lon_lat_vert(3)
+integer,             intent(in) :: which_vert
+real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
+integer,            intent(out) :: my_status(ens_size)
+
+integer  :: icorner, numdims
+integer  :: level_one_array(ens_size)
+integer  :: four_levs1(4, ens_size), four_levs2(4, ens_size)
+real(r8) :: four_vert_fracts(4, ens_size)
+
+!SENote: These are former arguments. Need them around during development only
+integer :: four_lons(4), four_lats(4)
+
+character(len=*), parameter :: routine = 'get_se_quad_vals:'
+
+quad_vals(:,:) = MISSING_R8
+my_status(:) = 99
+
+! need to consider the case for 2d vs 3d variables
+numdims = get_dims_from_qty(obs_qty, varid)
+
+!SENote: The dimensions are one less than for the FV. Look for ways to share code
+! now here potentially we have different results for different
+! ensemble members.  the things that can vary are dimensioned by ens_size.
+
+if (numdims == 2) then
+
+   ! build 4 columns to find vertical level numbers
+   do icorner=1, 4
+      call find_se_vertical_levels(state_handle, ens_size, &
+                                corners(icorner), lon_lat_vert(3), &
+                                which_vert, obs_qty, varid, &
+                                four_levs1(icorner, :), four_levs2(icorner, :), & 
+                                four_vert_fracts(icorner, :), my_status)
+      if (any(my_status /= 0)) return
+  
+   enddo
+   
+   ! we have all the indices and fractions we could ever want.
+   ! now get the data values at the bottom levels, the top levels, 
+   ! and do vertical interpolation to get the 4 values in the columns.
+   ! the final horizontal interpolation will happen later.
+      
+   if (varid > 0) then
+
+      call get_four_state_values(state_handle, ens_size, four_lons, four_lats, &
+                                four_levs1, four_levs2, four_vert_fracts, &   
+                                varid, quad_vals, my_status)
+
+   else ! get 2d special variables in another ways ( like QTY_PRESSURE )
+      call get_four_nonstate_values(state_handle, ens_size, four_lons, four_lats, &
+                                   four_levs1, four_levs2, four_vert_fracts, & 
+                                   obs_qty, quad_vals, my_status)
+
+   endif
+
+   if (any(my_status /= 0)) return
+
+else if (numdims == 1) then
+
+   if (varid > 0) then
+      level_one_array(:) = 1
+      do icorner=1, 4
+         !SENote: just passing in corner indices
+         call get_se_values_from_varid(state_handle,  ens_size, corners(icorner), & 
+                                    level_one_array, varid, quad_vals(icorner,:),my_status)
+
+         if (any(my_status /= 0)) return
+
+      enddo
+
+   else ! special 2d case
+!SENote: NEEDS TO BE IMPLEMENTED
+      do icorner=1, 4
+         call get_quad_values(ens_size, four_lons(icorner), four_lats(icorner), &
+                               obs_qty, obs_qty, quad_vals(icorner,:))
+      enddo
+      ! apparently this can't fail
+      my_status(:) = 0
+      
+   endif
+
+else
+   write(string1, *) trim(get_name_for_quantity(obs_qty)), ' has dimension ', numdims
+   call error_handler(E_ERR, routine, 'only supports 1D or 2D fields', &
+                      source, revision, revdate, text2=string1)
+endif
+
+! when you get here, my_status() was set either by passing it to a
+! subroutine, or setting it explicitly here.  if this routine returns
+! the default value of 99 something went wrong in this logic.
+
+end subroutine get_se_quad_vals
+
+!-----------------------------------------------------------------------
+!>
+
 subroutine get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four_lats, &
                          lon_lat_vert, which_vert, quad_vals, my_status)
 type(ensemble_type), intent(in) :: state_handle
@@ -2513,9 +2700,11 @@ if (var_id > 0) then
 else
    select case (obs_quantity)
       case (QTY_SURFACE_ELEVATION)
-         get_dims_from_qty = 2
+         !SENote: in SE this is a 1 dimensional field
+         get_dims_from_qty = 1
       case (QTY_PRESSURE, QTY_GEOMETRIC_HEIGHT)
-         get_dims_from_qty = 3
+         !SENote: in SE these are 2d fields
+         get_dims_from_qty = 2
       case default 
          write(string1, *) 'we can not interpolate qty "', get_name_for_quantity(obs_quantity), &
                            '" if the dimension is not known'
@@ -2524,6 +2713,71 @@ else
 endif
 
 end function get_dims_from_qty
+
+!-----------------------------------------------------------------------
+!>
+!>  This is for 2d special observations quantities not in the state
+
+!SENote: THIS HAS NOT YET BEEN IMPLEMENTED
+subroutine get_se_quad_values(ens_size, corner_index, obs_quantity, stagger_qty, vals)
+integer,  intent(in) :: ens_size
+integer,  intent(in) :: corner_index
+integer,  intent(in) :: obs_quantity
+integer,  intent(in) :: stagger_qty
+real(r8), intent(out) :: vals(ens_size) 
+
+character(len=*), parameter :: routine = 'get_se_quad_values'
+
+integer :: stagger, prev_lon, next_lat
+real(r8) :: vals1(ens_size), vals2(ens_size)
+
+!SENote: Temporary replacement for old arguments
+integer :: lon_index, lat_index
+
+!SENote
+write(*, *) 'Entering get_se_quad_values: NOT YET IMPLEMENTED.'
+stop
+
+stagger = grid_stagger%qty_stagger(stagger_qty)
+
+select case (obs_quantity)
+   case (QTY_SURFACE_ELEVATION)
+
+     select case (stagger)
+       case (STAGGER_U)
+          call quad_index_neighbors(lon_index, lat_index, prev_lon, next_lat)
+          vals1(:) = phis(lon_index, lat_index) 
+          vals2(:) = phis(lon_index, next_lat) 
+     
+        vals = (vals1 + vals2) * 0.5_r8 
+     
+       case (STAGGER_V)
+          call quad_index_neighbors(lon_index, lat_index, prev_lon, next_lat)
+          vals1(:) = phis(lon_index, lat_index) 
+          vals2(:) = phis(prev_lon,  lat_index) 
+     
+        vals = (vals1 + vals2) * 0.5_r8
+     
+       ! no stagger - cell centers, or W stagger
+       case default
+  
+        vals = phis(lon_index, lat_index)
+  
+     end select
+    
+     !>@todo FIXME:
+     ! should this be using gravity at the given latitude? 
+     vals = vals / gravity
+
+   case default 
+      write(string1, *) 'we can not interpolate qty', obs_quantity
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+
+end select
+
+end subroutine get_se_quad_values
+
+
 
 !-----------------------------------------------------------------------
 !>
@@ -2621,6 +2875,150 @@ prev_lon = lon_index-1
 if (prev_lon < 1) prev_lon = grid_data%lon%nsize
 
 end subroutine quad_index_neighbors
+
+
+!-----------------------------------------------------------------------
+!SENote: Changed from original FV
+!> given a corner index number, a quantity and a vertical value and type,
+!> return which two levels these are between and the fraction across.
+!> 
+
+subroutine find_se_vertical_levels(ens_handle, ens_size, corner_index, vert_val, &
+                                which_vert, obs_qty, var_id, levs1, levs2, vert_fracts, my_status)
+type(ensemble_type), intent(in)  :: ens_handle
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: corner_index 
+real(r8),            intent(in)  :: vert_val
+integer,             intent(in)  :: which_vert
+integer,             intent(in)  :: obs_qty
+integer,             intent(in)  :: var_id
+integer,             intent(out) :: levs1(ens_size)
+integer,             intent(out) :: levs2(ens_size)
+real(r8),            intent(out) :: vert_fracts(ens_size)
+integer,             intent(out) :: my_status(ens_size)
+
+character(len=*), parameter :: routine = 'find_se_vertical_levels:'
+
+integer  :: l1, l2, imember, level_one, status1, k
+real(r8) :: fract1
+real(r8) :: surf_pressure (  ens_size )
+real(r8) :: pressure_array( ref_nlevels, ens_size )
+real(r8) :: height_array  ( ref_nlevels, ens_size )
+
+!SENote: Temps to replace old arguments
+integer :: lon_index, lat_index
+
+! assume the worst
+levs1(:)    = MISSING_I
+levs2(:)    = MISSING_I
+vert_fracts(:) = MISSING_R8
+my_status(:)   = 98
+
+! ref_nlevels is the number of vertical levels (midlayer points)
+
+level_one = 1
+
+select case (which_vert)
+
+   case(VERTISPRESSURE)
+      ! construct a pressure column here and find the model levels
+      ! that enclose this value
+      call get_staggered_values_from_qty(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
+                                         lon_index, lat_index, level_one, obs_qty, &
+                                         surf_pressure, status1)
+      if (status1 /= 0) then
+         my_status(:) = status1
+         return
+      endif
+
+      call build_cam_pressure_columns(ens_size, surf_pressure, ref_nlevels, pressure_array)
+
+      do imember=1, ens_size
+         call pressure_to_level(ref_nlevels, pressure_array(:, imember), vert_val, & 
+                                levs1(imember), levs2(imember), &
+                                vert_fracts(imember), my_status(imember))
+
+      enddo
+
+      if (debug_level > 100) then
+         do k = 1,ens_size
+            print*, 'ISPRESSURE levs1(k), levs2(k), vert_fracts(k), vert_val', &
+                     levs1(k), levs2(k), vert_fracts(k), vert_val
+          enddo
+      endif
+
+   case(VERTISHEIGHT)
+      ! construct a height column here and find the model levels
+      ! that enclose this value
+      call cam_height_levels(ens_handle, ens_size, lon_index, lat_index, ref_nlevels, obs_qty, &
+                             height_array, my_status)
+
+      !>@todo FIXME let successful members continue?
+      if (any(my_status /= 0)) return
+
+      if (debug_level > 400) then
+         do k = 1,ref_nlevels
+            print*, 'ISHEIGHT: ', k, height_array(k,1)
+         enddo
+      endif
+
+      do imember=1, ens_size
+         call height_to_level(ref_nlevels, height_array(:, imember), vert_val, & 
+                             levs1(imember), levs2(imember), vert_fracts(imember), &
+                             my_status(imember))
+      enddo
+
+      !>@todo FIXME let successful members continue?
+      if (any(my_status /= 0)) return
+
+      if (debug_level > 100) then
+         do k = 1,ens_size
+            print*, 'ISHEIGHT ens#, levs1(#), levs2(#), vert_fracts(#), top/bot height(#)', &
+                     k, levs1(k), levs2(k), vert_fracts(k), height_array(levs2(k),k), height_array(levs1(k), k)
+         enddo
+      endif
+      
+   case(VERTISLEVEL)
+      ! this routine returns false if the level number is out of range.
+      if (.not. check_good_levels(vert_val, ref_nlevels, l1, l2, fract1)) then
+         my_status(:) = 8
+         return
+      endif
+
+      ! because we're given a model level as input, all the ensemble
+      ! members have the same outgoing values.
+      levs1(:) = l1
+      levs2(:) = l2
+      vert_fracts(:) = fract1
+      my_status(:) = 0
+
+      if (debug_level > 100) then
+         do k = 1,ens_size
+            print*, 'ISLEVEL levs1(k), levs2(k), vert_fracts(k), vert_val', &
+                     levs1(k), levs2(k), vert_fracts(k), vert_val
+         enddo
+      endif
+
+   ! 2d fields
+   case(VERTISUNDEF, VERTISSURFACE)
+      if (get_dims_from_qty(obs_qty, var_id) == 2) then
+         levs1(:) = ref_nlevels - 1
+         levs2(:) = ref_nlevels
+         vert_fracts(:) = 1.0_r8
+         my_status(:) = 0
+      else
+         my_status(:) = 4 ! can not get vertical levels
+      endif
+
+   case default
+      write(string1, *) 'unsupported vertical type: ', which_vert
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+      
+end select
+
+! by this time someone has already set my_status(), good or bad.
+
+end subroutine find_se_vertical_levels
 
 
 !-----------------------------------------------------------------------
