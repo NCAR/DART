@@ -84,6 +84,8 @@ close(FULL_LIST);
 close(VAR_LIST);
 close(STRIP_LIST);
 
+#exit 0
+
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$

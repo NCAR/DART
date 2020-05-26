@@ -1,5 +1,6 @@
-! This code may (or may not) be part of the COAMPS distribution,
-! So it is not protected by the DART copyright agreement.
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 ! DART $Id$
 
@@ -9,6 +10,7 @@ module coamps_util_mod
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Module with various COAMPS utility routines to handle things
 ! like error checking
@@ -22,6 +24,17 @@ module coamps_util_mod
                             get_unit,      &
                             timestamp,     &
                             register_module
+
+  use netcdf_utilities_mod, only : nc_check, &
+                                   nc_get_variable_num_dimensions, &
+                                   nc_get_variable_size, &
+                                   nc_get_variable, &
+                                   nc_put_variable
+
+  use coamps_hdf5_mod, only : hdf5_file_write, write_hdf5_data, hdf5_r4
+
+  use typesizes
+  use netcdf
 
   implicit none
 
@@ -40,9 +53,6 @@ module coamps_util_mod
   public :: print_label_name
   public :: print_2d_real8_array
 
-  ! Icky platform-specific details
-  public :: fix_for_platform
-
   ! Working with flat files
   public :: generate_flat_file_name
   public :: read_flat_file
@@ -51,6 +61,11 @@ module coamps_util_mod
   public :: write_datahd_file
 
   public :: dump_data_file
+
+  ! Working with HDF5 files
+  public :: HDF5_FILE_NAME
+  public :: read_hdf5_variable
+  public :: copy_netCDF_to_hdf
 
   ! Variable type
   public :: C_REAL
@@ -68,16 +83,6 @@ module coamps_util_mod
 
   !------------------------------
   ! END PUBLIC INTERFACE
-  !------------------------------
-
-  !------------------------------
-  ! BEGIN EXTERNAL INTERFACES
-  !------------------------------
-  interface fix_for_platform
-    module procedure fix_for_platform4, fix_for_platform8
-  end interface fix_for_platform
-  !------------------------------
-  ! END EXTERNAL INTERFACES
   !------------------------------
 
   !------------------------------
@@ -108,6 +113,12 @@ module coamps_util_mod
   integer, parameter :: DATAHD_LEN       = 2000
   integer, parameter :: DATAHD_NUM_NESTS = 11
 
+  ! this is a generic name for the file - there is no dtg
+  ! or ensemble member number needed - just line the specific file
+  ! to this static name
+  character(len=*), parameter :: HDF5_FILE_NAME = 'coamps.hdf5'
+  integer, parameter :: HDF_VARNAME_LEN = 64
+
   !------------------------------
   ! END TYPES AND CONSTANTS 
   !------------------------------
@@ -116,16 +127,17 @@ module coamps_util_mod
   ! BEGIN MODULE VARIABLES
   !------------------------------
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   logical :: module_initialized = .false.
   integer :: debug_level = 0
 
   character(len=28), dimension(NUM_ERROR_TYPES) :: error_msgs
+  character(len=512) :: string1, string2, string3
 
   !------------------------------
   ! END MODULE VARIABLES
@@ -343,7 +355,6 @@ contains
     real(kind=r8), dimension(:,:) :: array
 
     integer :: cur_row
-    integer :: cur_col
     integer :: num_rows
     integer :: num_cols
 
@@ -360,43 +371,6 @@ contains
     end do
   end subroutine print_2d_real8_array
 
-  ! fix_for_platform4
-  ! ----------------
-  ! Performs any platform-specific fixes necessary on an array of r4's
-  ! Currently these are:
-  !  - Little-endian platform:  COAMPS writes big-endian files, so
-  !                             need to byteswap 
-  !  PARAMETERS
-  ! INOUT array             array containing values byteswap
-  !   IN  array_size        length of the array
-  !   IN  element_size      length (in bytes) of each array entry 
-  subroutine fix_for_platform4(array, array_size)
-    real(kind=r4),      dimension(:), intent(inout) :: array
-    integer,                          intent(in)    :: array_size
-
-    if (LITTLE_ENDIAN_PLATFORM) then
-      call c_byteswap_array(array, array_size, r4)
-    end if
-  end subroutine fix_for_platform4
-
-  ! fix_for_platform8
-  ! ----------------
-  ! Performs any platform-specific fixes necessary on an array of r8's
-  ! Currently these are:
-  !  - Little-endian platform:  COAMPS writes big-endian files, so
-  !                             need to byteswap 
-  !  PARAMETERS
-  ! INOUT array             array containing values byteswap
-  !   IN  array_size        length of the array
-  !   IN  element_size      length (in bytes) of each array entry 
-  subroutine fix_for_platform8(array, array_size)
-    real(kind=r8),      dimension(:), intent(inout) :: array
-    integer,                          intent(in)    :: array_size
-
-    if (LITTLE_ENDIAN_PLATFORM) then
-      call c_byteswap_array(array, array_size, r8)
-    end if
-  end subroutine fix_for_platform8
 
   ! generate_flat_file_name
   ! -----------------------
@@ -437,7 +411,7 @@ contains
     integer,           intent(in)  :: tau_mm
     integer,           intent(in)  :: tau_ss
     character(len=7),  intent(in)  :: field_type
-    character(len=64), intent(out) :: file_name
+    character(len=HDF_VARNAME_LEN), intent(out) :: file_name
 
     write(file_name, 100) lowercase(var_name), level_type, level1, level2, &
          & gridnum, aoflag, xpts, ypts, dtg, tau_hh, tau_mm,    &
@@ -465,7 +439,6 @@ contains
     integer                                       :: alloc_status
     integer                                       :: dealloc_status
     integer                                       :: field_size
-    integer                                       :: i
 
     field_size=size(flat_array)
     allocate(flat_array_tmp(field_size), stat=alloc_status)
@@ -474,7 +447,6 @@ contains
 
     ! COAMPS flat files are real(kind=r4)
     flat_array_tmp(:)=real(flat_array(:) , kind=r4)
-    call fix_for_platform(flat_array_tmp, field_size)
 
     write(unit=flat_unit, rec=1, iostat=io_status) flat_array_tmp
     call check_io_status(io_status, routine, source, revision, &
@@ -510,13 +482,151 @@ contains
     read(unit=flat_unit, rec=1, iostat=io_status) flat_array_tmp
     call check_io_status(io_status, routine, source, revision, &
                          revdate, 'Reading flat file')
-    call fix_for_platform(flat_array_tmp, field_size)
     flat_array(:)=real(flat_array_tmp(:) , kind=r8)
 
     deallocate(flat_array_tmp, stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source, revision, &
                               revdate, 'flat_array_tmp')
   end subroutine read_flat_file
+
+
+  !----------------
+  !> Given the unit number of an *open* COAMPS HDF5 file
+  ! and variable, read the variable into an array. 
+  !  PARAMETERS
+  !   IN  hdf5_unit      unit number of an open flat file
+  !   IN  variable_name  string defining the variable to read
+  !   OUT flat_array     coamps_grid structure to be filled
+
+  subroutine read_hdf5_variable(hdf5_unit, variable_name, flat_array)
+
+    integer,          intent(in)    :: hdf5_unit
+    character(len=*), intent(in)    :: variable_name
+    real(kind=r8),    intent(inout) :: flat_array(:)
+
+    character(len=*), parameter :: routine = 'read_hdf5_variable'
+
+    integer :: xtype
+    integer :: ndims
+    integer :: nAtts
+    integer :: dimlens(NF90_MAX_VAR_DIMS)
+    character(len=NF90_MAX_NAME) :: dimnames(NF90_MAX_VAR_DIMS)
+
+    real(r8), allocatable :: chunk2D(:,:)
+    real(r8), allocatable :: chunk3D(:,:,:)
+
+    call nc_get_variable_num_dimensions(hdf5_unit, variable_name, ndims, context=routine)
+    call nc_get_variable_size(hdf5_unit, variable_name, dimlens(1:ndims), context=routine)
+
+    if ( ndims == 1) then
+
+       call nc_get_variable(hdf5_unit, variable_name, flat_array, context='read_hdf_variable:1D') 
+
+    elseif (ndims == 2) then
+
+       allocate( chunk2D( dimlens(1), dimlens(2) ) )
+       call nc_get_variable(hdf5_unit, variable_name, chunk2D, context='read_hdf_variable:2D') 
+       flat_array = reshape(chunk2D, (/ dimlens(1)*dimlens(2) /))
+       deallocate(chunk2D)
+
+    elseif (ndims == 3) then
+
+       allocate( chunk3D( dimlens(1), dimlens(2), dimlens(3) ) )
+       call nc_get_variable(hdf5_unit, variable_name, chunk3D, context='read_hdf_variable:3D') 
+       flat_array = reshape(chunk3D, (/ dimlens(1)*dimlens(2)*dimlens(3) /))
+       deallocate(chunk3D)
+
+    else
+       write(string1,*)'can only read 1D, 2D, or 3D variables for now'
+       write(string2,*)'variable "',trim(variable_name),'" has shape ', dimlens(1:ndims)
+       call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
+    endif
+
+  end subroutine read_hdf5_variable
+
+
+!-----------------------------------------------------------------------------
+!> Given the netCDF ID, a netCDF variable name, and a unit number of an *open* 
+!> COAMPS HDF5 file, construct the 'analfld' counterpart to the netCDF variable
+!> name and read the variable from the netCDF file and stuff it into the HDF5
+!> variable slot.
+!>
+!>  PARAMETERS
+!>   IN  hdf5unit      unit number of an open flat file
+!>   IN  variable_name  string defining the variable to read
+!>   OUT flat_array     coamps_grid structure to be filled
+
+subroutine copy_netCDF_to_hdf(ncFileID, forecast_name, analysis_name, hdf5unit)
+
+integer,          intent(in) :: ncFileID
+character(len=*), intent(in) :: forecast_name
+character(len=*), intent(in) :: analysis_name
+integer,          intent(in) :: hdf5unit
+
+character(len=*), parameter :: routine = 'copy_netCDF_to_hdf'
+
+integer :: ndims, istart, ierr
+integer :: dimlens(NF90_MAX_VAR_DIMS)
+
+real(r8), allocatable :: chunk1D(:)
+real(r8), allocatable :: chunk2D(:,:)
+real(r8), allocatable :: chunk3D(:,:,:)
+
+call nc_get_variable_num_dimensions(ncFileID, forecast_name, ndims, context=routine)
+call nc_get_variable_size(ncFileID, forecast_name, dimlens(1:ndims), context=routine)
+
+!>@todo ... must clamp if needed ... coamps_statevar_mod:is_nonnegative works
+!> on type(state_variable) ... which we don't have here.
+
+if ( ndims == 1) then
+
+   allocate( chunk1D(dimlens(1)) )
+   call nc_get_variable(ncFileID, forecast_name, chunk1D, context=routine) 
+
+   call write_hdf5_data(real(chunk1D, kind=4), analysis_name, hdf5_file_write, ierr)
+   if (ierr /= 0) then
+      write(string1,*)'1D write_hdf5_data error code ',ierr
+      write(string2,*)'variable "'//trim(analysis_name)//'"'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+   endif
+   deallocate(chunk1D)
+
+elseif (ndims == 2) then
+
+   allocate( chunk2D( dimlens(1), dimlens(2) ) )
+   call nc_get_variable(ncFileID, forecast_name, chunk2D, context=routine) 
+
+   call write_hdf5_data(real(chunk2D, kind=4), analysis_name, hdf5_file_write, ierr)
+   if (ierr /= 0) then
+      write(string1,*)'2D write_hdf5_data error code ',ierr
+      write(string2,*)'variable "'//trim(analysis_name)//'"'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+   endif
+   deallocate(chunk2D)
+
+elseif (ndims == 3) then
+
+   allocate( chunk3D( dimlens(1), dimlens(2), dimlens(3) ) )
+   call nc_get_variable(ncFileID, forecast_name, chunk3D, context=routine) 
+!  call nc_put_variable(hdf5unit, analysis_name, chunk3D, context=routine) 
+
+   call write_hdf5_data(real(chunk3D, kind=hdf5_r4), analysis_name, hdf5_file_write, ierr)
+   if (ierr /= 0) then
+      write(string1,*)'3D write_hdf5_data error code ',ierr
+      write(string2,*)'variable "'//trim(analysis_name)//'"'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+   endif
+   deallocate(chunk3D)
+
+else
+   write(string1,*)'can only read 1D, 2D, or 3D variables for now'
+   write(string2,*)'variable "',trim(forecast_name),'" has shape ', dimlens(1:ndims)
+   call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
+endif
+
+end subroutine copy_netCDF_to_hdf
+
+
 
   ! read_datahd_file
   ! ----------------
@@ -525,34 +635,67 @@ contains
   !  PARAMETERS
   !   IN  dtg               COAMPS date-time-group for filename generation
   !   OUT datahd            array to be filled
-  subroutine read_datahd_file(dtg, datahd)
-    character(len=10),            intent(in) :: dtg
+  subroutine read_datahd_file(filename, dtg, datahd)
+    character(len=*),            intent(in)  :: filename
+    character(len=*),            intent(in)  :: dtg
     real(kind=r8), dimension(:), intent(out) :: datahd
 
-    character(len=64)                    :: datahd_filename
-    integer                              :: datahd_unit
+    character(len=HDF_VARNAME_LEN) :: datahd_varname
+    integer :: datahd_unit
+    integer :: VarID
+    integer :: ndims, dimids(NF90_MAX_DIMS), dimlens(NF90_MAX_DIMS)
+    real(r8), allocatable :: datmat(:,:)
 
     ! Error checking
-    logical :: is_opened
     character(len=*), parameter :: routine = 'read_datahd_file'
-    integer :: io_status, alloc_status
+    integer :: io
 
-    integer :: ii
+    ! Generate the appropriate variable name in the HDF5 file
+    ! using existing routine for the old file name.
+    call generate_datahd_filename(dtg, datahd_varname)
 
-    call generate_datahd_filename(dtg, datahd_filename)
-    datahd_unit = get_unit()
-    open(unit=datahd_unit, file=datahd_filename, status='old', &
-         access='sequential', action='read', form='formatted', &
-         iostat=io_status)
-    call check_io_status(io_status, routine, source, revision, &
-                         revdate, 'Opening datahd file')
+    io = nf90_open(trim(filename), NF90_NOWRITE, datahd_unit)
+    call nc_check(io, routine, 'open "'//trim(filename)//'"')
 
-    read(unit=datahd_unit, fmt='(5e13.6)', iostat=io_status)   &
-        (datahd(ii), ii=1,size(datahd))
-    call check_io_status(io_status, routine, source, revision, &
-                         revdate, 'Reading datahd file')
+    io = nf90_inq_varid(datahd_unit, datahd_varname, VarID)
+    call nc_check(io, routine, 'inquire "'//trim(datahd_varname)//'"')
 
-    close(datahd_unit)
+    io = nf90_inquire_variable(datahd_unit, VarID, ndims=ndims, dimids=dimids)
+    call nc_check(io, routine, 'inquire variable "'//trim(datahd_varname)//'"')
+
+    if (ndims /= 2) then
+       write(string1,*)'Unsupported number of dimensions for '//trim(datahd_varname)
+       write(string2,*)'Expected  2 dimensions, got ',ndims
+       write(string3,*)'dimension IDs are ',dimids(1:ndims)
+       call error_handler(E_ERR, routine, string1, &
+                  source, revision, revdate, text2=string2, text3=string3)
+    endif
+
+    io = nf90_inquire_dimension( datahd_unit, dimids(1), len=dimlens(1))
+    call nc_check(io, routine, 'inquire dimlen 1 from "'//trim(filename)//'"')
+     
+    io = nf90_inquire_dimension( datahd_unit, dimids(2), len=dimlens(2))
+    call nc_check(io, routine, 'inquire dimlen 2 from "'//trim(filename)//'"')
+
+    if ( DATAHD_LEN /= dimlens(1)*dimlens(2) ) then
+       write(string1,*)'Unsupported size of '//trim(datahd_varname)
+       write(string2,*)'Expected ',DATAHD_LEN, ' got ', dimlens(1)*dimlens(2)
+       call error_handler(E_ERR, routine, string1, &
+                  source, revision, revdate, text2=string2)
+    endif
+
+    allocate( datmat(dimlens(1),dimlens(2)) )
+
+    io = nf90_get_var(datahd_unit, VarID, datmat)
+    call nc_check(io, routine, 'get_var datahd from "'//trim(filename)//'"')
+
+    datahd = reshape(datmat,(/ DATAHD_LEN /))
+
+    deallocate(datmat)
+
+    io = nf90_close(datahd_unit)
+    call nc_check(io, routine, 'closing "'//trim(filename)//'"')
+
   end subroutine read_datahd_file
 
   ! write_datahd_file
@@ -566,13 +709,12 @@ contains
     character(len=10),            intent(in) :: dtg
     real(kind=r8), dimension(:),  intent(in) :: datahd
 
-    character(len=64)                    :: datahd_filename
+    character(len=HDF_VARNAME_LEN)       :: datahd_filename
     integer                              :: datahd_unit
 
     ! Error checking
-    logical :: is_opened
-    character(len=*), parameter :: routine = 'read_datahd_file'
-    integer :: io_status, alloc_status
+    character(len=*), parameter :: routine = 'write_datahd_file'
+    integer :: io_status
 
     integer :: ii
 
@@ -587,7 +729,7 @@ contains
     write(unit=datahd_unit, fmt='(5e13.6)', iostat=io_status)   &
         (datahd(ii), ii=1,size(datahd))
     call check_io_status(io_status, routine, source, revision, &
-                         revdate, 'Reading datahd file')
+                         revdate, 'Writing datahd file')
 
     close(datahd_unit)
   end subroutine write_datahd_file
@@ -711,6 +853,7 @@ contains
     end do
   end subroutine change_case
 
+  !>@todo this generates the datahd variable name (which is also the flat file name)
   ! generate_datahd_filename
   ! ------------------------
   ! Generates the COAMPS domain information file name for the first
@@ -721,7 +864,7 @@ contains
   !   OUT datahd_filename   name of domain information file
   subroutine generate_datahd_filename(dtg, datahd_filename)
     character(len=10), intent(in)  :: dtg
-    character(len=64), intent(out) :: datahd_filename
+    character(len=HDF_VARNAME_LEN), intent(out) :: datahd_filename
 
     ! The format of the datahd filename is fixed except for the date
     ! -time group: mimics a 2000x1 flat file with no level
@@ -741,6 +884,78 @@ contains
                                   field_type = 'infofld',     &
                                   file_name  = datahd_filename )
   end subroutine generate_datahd_filename
+
+! hdf_update() loosely based on 
+! https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/editcf.c
+
+subroutine hdf_update()
+
+use hdf5
+
+character(len=*), parameter :: FILE     = "cfld.h5"
+character(len=*), parameter ::FIELDNAME = "ArrayofStructures"
+integer, parameter :: LENGTH =   5 
+integer, parameter :: ALEN   =   10
+integer, parameter :: RANK   =   1
+integer, parameter :: NMAX   =   100
+
+integer(HID_T) :: fid, array_dt
+integer(HID_T) :: dataset
+integer(HID_T) :: type
+integer(HSIZE_T) :: dima(1) = ALEN
+integer :: istat
+
+
+call error_handler(E_ERR,'hdf_update','routine only stubbed out', &
+    source, revision, revdate)
+
+    call H5Fopen_f(FILE, H5F_ACC_RDWR_F, H5P_DEFAULT_F, fid, istat)
+    write(*,*)"status, File ID returned by H5Fopen() : ", istat, fid
+
+    call H5Dopen_f(fid, FIELDNAME, dataset, istat)
+    write(*,*)"The Dataset ID returned by H5Dopen() : ", dataset
+    
+!   call H5Tcreate_f(H5T_COMPOUND_F, sizeof(fld_t), type)
+!   write(*,*)"H5Tcreate returns: ", type
+
+!   call H5Tarray_create_f(H5F_FLOAT, 1, dima, array_dt, istat)
+!   write(*,*)"H5Tarray_create() returns : ", array_dt, istat
+
+!   call H5Tinsert_f(type, "Two", HOFFSET_F(fld_t, b), array_dt, istat)
+!   write(*,*)"Status returned by H5Tinsert() : ", istat
+
+!   for (i=0; i< LENGTH; i++)
+!   for (j = 0; j < ALEN; j++)
+!   {
+!     fld[i].b[j] = 1.313
+!   }
+!   call H5Dwrite_f(dataset, type, H5S_ALL_F, H5S_ALL_F, H5P_DEFAULT_F, fld, istat)
+!   write(*,*) "Status returned by H5Dwrite() : ", istat
+
+!   call H5Dread_f(dataset, type, H5S_ALL_F, H5S_ALL_F, H5P_DEFAULT_F, fldr, istat)
+!   write(*,*) "H5Dread returns: %i\n", istat
+   
+!   for (i=0; i< LENGTH; i++)
+!   {
+!     for (j = 0; j < ALEN; j++)
+!       write(*,*) fldr[i].b[j]
+!   }
+    
+    call H5Dclose_f(dataset, istat)
+    write(*,*)"Status returned by H5Dclose() : ", istat
+
+    call H5Tclose_f(type, istat)
+    write(*,*)"Status returned by H5Tclose() : ", istat
+  
+    call H5Tclose_f(array_dt, istat)
+    write(*,*)"Status returned by H5Tclose() : ", istat
+
+    call H5Fclose_f(fid, istat)
+    write(*,*)"Status returned by H5Fclose() : ", istat
+
+    return
+
+end subroutine hdf_update
 
   !------------------------------
   ! END PRIVATE ROUTINES

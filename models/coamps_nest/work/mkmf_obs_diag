@@ -6,8 +6,17 @@
 #
 # DART $Id$
 
-../../../build_templates/mkmf -p obs_diag -t ../../../build_templates/mkmf.template   \
- -a "../../.." path_names_obs_diag
+if (! $?HDF_DIR) then
+   set HDF_DIR = /auto/soft/hdf5/CentOS_6_pgi
+endif
+
+set HDFINCDIR = "-I${HDF_DIR}/include"
+set HDFLIBDIR = "-L${HDF_DIR}/lib"
+set   HDFLIBS = "-lhdf5hl_fortran -lhdf5_fortran"
+
+../../../build_templates/mkmf -p obs_diag -t ../../../build_templates/mkmf.template \
+ -l "${HDFINCDIR} ${HDFLIBDIR} ${HDFLIBS}" \
+ -c "-DHDF5" -a "../../.." path_names_obs_diag
 
 exit $status
 

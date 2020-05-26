@@ -10,6 +10,7 @@
 
 #----------------------------------------------------------------------
 # Extra checks for missing files.
+
 if ( ! -e ../get_name_info.f90 || ! -e ../coamps_intrinsic_mod.f90 ) then
  echo ''
  echo 'ERROR:'
@@ -31,6 +32,7 @@ if ( ! -e input.nml ) then
  echo ''
  exit 1
 endif
+
 #----------------------------------------------------------------------
 
 #----------------------------------------------------------------------
@@ -110,28 +112,28 @@ endif
 # Build the MPI-enabled target(s)
 #----------------------------------------------------------------------
 
-\rm -f filter wakeup_filter create_mean_std create_increment
+\rm -f filter create_mean_std create_increment
 
 @ n = $n + 1
 echo
 echo "---------------------------------------------------"
 echo "build number $n is mkmf_create_mean_std"
-csh   mkmf_create_mean_std -mpi
-make
+csh   mkmf_create_mean_std -mpi || exit $n
+make || exit $n
 
 @ n = $n + 1
 echo
 echo "---------------------------------------------------"
 echo "build number $n is mkmf_create_increment"
-csh   mkmf_create_increment -mpi
-make
+csh   mkmf_create_increment -mpi || exit $n
+make || exit $n
 
 @ n = $n + 1
 echo
 echo "---------------------------------------------------"
 echo "build number $n is mkmf_filter"
-csh   mkmf_filter -mpi
-make
+csh   mkmf_filter -mpi || exit $n
+make || exit $n
 
 if ($status != 0) then
    echo
@@ -140,13 +142,6 @@ if ($status != 0) then
    echo
    exit $n
 endif
-
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_wakeup_filter"
-csh  mkmf_wakeup_filter -mpi
-make || exit $n
 
 \rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
