@@ -9,8 +9,7 @@ program update_datahd_file
                                    read_datahd_file,             &
                                    write_datahd_file,            &
                                    DATAHD_LEN,                   &
-                                   DATAHD_NUM_NESTS,             &
-                                   HDF5_FILE_NAME
+                                   DATAHD_NUM_NESTS
 
   use utilities_mod,        only : E_ERR,                        &
                                    error_handler,                &
@@ -26,11 +25,11 @@ program update_datahd_file
 
   implicit none
 
-  ! version controlled file description for error handling, do not edit
-  character(len=*), parameter :: source   = &
-     "$URL$"
-  character(len=*), parameter :: revision = "$Revision$"
-  character(len=*), parameter :: revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'update_datahd_file'
 
@@ -78,9 +77,8 @@ program update_datahd_file
 
   print *,dtg_new
   print *,dtg_old
-  print *,HDF5_FILE_NAME
 
-  call read_datahd_file(HDF5_FILE_NAME, dtg_old, datahd)
+  call read_datahd_file(dtg_old, datahd)
 
   print *,'nnest: ',datahd(11)
   do nn=1,DATAHD_NUM_NESTS
