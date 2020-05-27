@@ -51,7 +51,6 @@
 ! max_lon =
 
 &obs_sequence_tool_nml
-   num_input_files   = 1
    filename_seq      = '../obs_seq2007010106'
    filename_out      = 'unused'
    print_only        = .true.
