@@ -466,7 +466,7 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
     <!--  type  --><TD valign=top>character(len=32)::<br />
                               dimension(2,40)   </TD>
     <!--descript--><TD>The list of variable names in the NOAH restart file to use to
-                       create the DART state vector and their corresponding DART kind.
+                       create the DART state vector and their corresponding DART quantity.
                        <em class=units>[default: see example below]</em>
                        </TD></TR>
 
@@ -484,28 +484,28 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
    model_perturbation_amplitude = 0.0,
    output_state_vector          = .false.,
    debug                        = 0,
-   noah_state_variables         = 'SOIL_T',   'KIND_SOIL_TEMPERATURE',
-                                  'SOIL_M',   'KIND_SOIL_MOISTURE',
-                                  'SOIL_W',   'KIND_SOIL_LIQUID_WATER',
-                                  'SKINTEMP', 'KIND_SKIN_TEMPERATURE',
-                                  'SNODEP',   'KIND_SNOW_THICKNESS',
-                                  'WEASD',    'KIND_SNOW_WATER',
-                                  'CANWAT',   'KIND_CANOPY_WATER',
-                                  'QFX',      'KIND_LATENT_HEAT_FLUX',
-                                  'HFX',      'KIND_SENSIBLE_HEAT_FLUX',
-                                  'GRDFLX',   'KIND_GROUND_HEAT_FLUX'
+   noah_state_variables         = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',
+                                  'SOIL_M',   'QTY_SOIL_MOISTURE',
+                                  'SOIL_W',   'QTY_SOIL_LIQUID_WATER',
+                                  'SKINTEMP', 'QTY_SKIN_TEMPERATURE',
+                                  'SNODEP',   'QTY_SNOW_THICKNESS',
+                                  'WEASD',    'QTY_SNOW_WATER',
+                                  'CANWAT',   'QTY_CANOPY_WATER',
+                                  'QFX',      'QTY_LATENT_HEAT_FLUX',
+                                  'HFX',      'QTY_SENSIBLE_HEAT_FLUX',
+                                  'GRDFLX',   'QTY_GROUND_HEAT_FLUX'
    /
 </pre>
 
 <P>The second column of <em class=code>noah_state_variables</em> needs some explanation.
-The DART 'KIND's match what the <em class=program>model_mod</em> knows
-how to interpolate, so you can't just add a new kind and expect it to work.
+The DART 'QTY's (quantities) match what the <em class=program>model_mod</em> knows
+how to interpolate, so you can't just add a new quantity and expect it to work.
 There is a complex interplay between 
 <a href="../../obs_def/obs_def_mod.html">obs_def_mod</a>,
 <a href="../../preprocess/preprocess.html">preprocess</a>, and
-<a href="model_mod.html">model_mod</a> that defines what KINDs are supported.
-There is only a single KIND that works with each variable and the example shows
-the current KINDs. Support for these KINDs was provided by running 
+<a href="model_mod.html">model_mod</a> that defines what quantitys are supported.
+There is only a single quantity that works with each variable and the example shows
+the current QTY. Support for these QTYs was provided by running 
 <em class=program>preprocess</em> with the following namelist settings:</P>
 
 <pre>
@@ -514,7 +514,7 @@ the current KINDs. Support for these KINDs was provided by running
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_tower_mod.f90'
+   input_files              = '../../../obs_def/obs_def_land_mod.f90'
   /
 </pre>
 
@@ -854,12 +854,12 @@ to model_mod if required.
         to radians internally.</TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>var_type</em></TD>
-    <TD>Returns the KIND of the indexed state variable as an optional argument.
-        The kind is one of the list of supported observation kinds, found in
+    <TD>Returns the QTY of the indexed state variable as an optional argument.
+        The quantity is one of the list of supported quantities, found in
         the block of code starting
-        <em class=code>! Integer definitions for DART TYPES</em>
+        <em class=code>! Definition and public access to the observation types/kinds</em>
         in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>. To clarify between DART
-        'KIND's and 'TYPE's ... a KIND is a more generic reference (i.e. KIND_TEMPERATURE)
+        'QTY's (i.e. quantity) and 'TYPE's ... a QTY is a more generic reference (i.e. QTY_TEMPERATURE)
         as opposed to the more specific TYPE (i.e. RADIOSONDE_TEMPERATURE).
         </TD></TR>
 
@@ -897,7 +897,7 @@ integer,                intent(out) :: <em class=code>istatus</em>
 
 <P>
 Given the DART vector, <em class=code>model_interpolate</em> returns the value of
-the desired KIND (i.e. KIND_TEMPERATURE) at the desired location. 
+the desired quantity (i.e. QTY_TEMPERATURE) at the desired location. 
 Put another way, <em class=code>model_interpolate</em> applies the observation
 operator <strong>H</strong> to the model state to create an 'expected' observation 
 at the desired location. Some observation operators are more complicated and are
@@ -916,7 +916,7 @@ Negative values are reserved for the system, any positive value indicates an err
     <TD>Location to which to interpolate.</TD></TR>
 
 <TR><TD valign=top><em class=code>itype</em></TD>
-    <TD>Integer indexing which DART KIND is desired.</TD></TR>
+    <TD>Integer indexing which DART QTY is desired.</TD></TR>
 
 <TR><TD valign=top><em class=code>obs_val</em></TD>
     <TD> The interpolated value from the model.</TD></TR>
