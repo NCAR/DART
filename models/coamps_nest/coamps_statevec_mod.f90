@@ -8,7 +8,6 @@
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
-!               Manhattan (updated jun 2017)
 !
 ! Module containing the data structure and routines for dealing with
 ! a COAMPS state vector (a collection of COAMPS state variables)
@@ -16,17 +15,14 @@
 
 module coamps_statevec_mod
 
-    use coamps_statevar_mod, only : state_variable, new_state_variable, &
-                                    read_state_variable, set_position,  &
-                                    set_2d_flag, dump_state_variable,   &
-                                    set_var_stagger,                    &
-                                    get_mean_flag, define_mean_var,     &
-                                    get_sigma_record, set_sigma_record, &
-                                    get_mass_level_flag,                &
-                                    operator(==),                       &
-                                    get_var_name, get_var_kind,         &
-                                    gets_update, is_nonnegative,        &
-                                    get_hdf_name, get_nest_number
+    use coamps_statevar_mod, only : state_variable, new_state_variable,    &
+                                    read_state_variable, set_position,     &
+                                    set_2d_flag, dump_state_variable,      &
+                                    set_var_stagger,                       &
+                                    get_mean_flag, define_mean_var,        &
+                                    get_sigma_record, set_sigma_record,    &
+                                    get_mass_level_flag,                   &
+                                    operator(==)
 
     use coamps_domain_mod,   only : coamps_domain, get_domain_num_levels, &
                                     get_nest_count
@@ -36,12 +32,11 @@ module coamps_statevec_mod
     use coamps_util_mod,     only : check_alloc_status,  &
                                     check_io_status
 
-    use types_mod,           only :  r8, MISSING_R8
+    use types_mod,           only :  r8
 
     use obs_kind_mod
 
     use utilities_mod,       only : do_output,     &
-                                    E_MSG,         &
                                     E_WARN,        &
                                     E_ERR,         &
                                     error_handler, &
@@ -65,7 +60,6 @@ module coamps_statevec_mod
     public :: get_iterator
     public :: has_next
     public :: get_next
-    public :: construct_domain_info
 
     ! Diagnostics
     public :: dump_state_vector
@@ -133,15 +127,13 @@ module coamps_statevec_mod
     !------------------------------
     ! BEGIN MODULE VARIABLES
     !------------------------------
-
-    ! version controlled file description for error handling, do not edit
-    character(len=*), parameter :: source   = &
-       "$URL$"
-    character(len=*), parameter :: revision = "$Revision$"
-    character(len=*), parameter :: revdate  = "$Date$"
- 
-    character(len=512) :: string1
-
+  
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
+  
     !------------------------------
     ! END MODULE VARIABLES
     !------------------------------
@@ -272,8 +264,6 @@ contains
         write (message,'(3A,A1,A,I3,L1)') "Could not find  ",    &
                           trim(get_name_for_quantity(var_kind)), &
                           " on ", level_type,"-level.", sigma_index, is_mean
-        call error_handler(E_MSG, routine, message, source, revision, revdate)
-
     end function find_state_variable
 
     ! get_num_fields
@@ -367,63 +357,6 @@ contains
         get_var_by_index => state%vars(index_in)
     end function get_var_by_index
 
-!-------------------------------------------------------------------------------
-!> generates the component arrays needed for the DART add_domain() routine
-subroutine construct_domain_info(state, nestnumber, varnames, kindlist, clampvals, updatelist, nvars)
-
-type(state_vector), intent(in)  :: state
-integer,            intent(in)  :: nestnumber
-character(len=*),   intent(out) :: varnames(:)
-integer,            intent(out) :: kindlist(:)
-real(r8),           intent(out) :: clampvals(:,:)
-logical,            intent(out) :: updatelist(:)
-integer,            intent(out) :: nvars
-
-character(len=*), parameter :: routine = 'construct_domain_info'
-
-type(state_iterator) :: iterator
-type(state_variable) :: var
-integer :: varindex, ivar
-
-clampvals(:,:) = MISSING_R8
-
-varindex = 1
-iterator = get_iterator(state)    
-VARLOOP: do while (has_next(iterator))
-
-    var = get_next(iterator)
-
-    if (get_nest_number(var) /= nestnumber) cycle VARLOOP
-
-    if (get_hdf_name(var) == 'nohdfname') then
-       write(varnames(varindex),400)   &
-             trim(get_var_name(var)), get_nest_number(var)
-    else
-       varnames(varindex) = get_hdf_name(var)
-    endif
-
-    kindlist(  varindex) = get_var_kind(var)
-    updatelist(varindex) = gets_update( var)
-    if (is_nonnegative(var)) clampvals(varindex,1) = 0.0_r8
-
-    varindex = varindex + 1
-
-enddo VARLOOP
-
-400 format(A,'_g',I2.2)  ! must be same as coamps_netcdf_mod.f90: 400 format
-
-nvars = varindex - 1
-
-if (.false. .and. do_output()) then
-do ivar = 1,nvars
-   write(*,*)trim(routine)//' var',ivar, ' is "'//trim(varnames(ivar))//'"', &
-              kindlist(ivar), clampvals(ivar,:), updatelist(ivar), &
-          trim(get_name_for_quantity(kindlist(ivar)))
-enddo
-endif
-
-end subroutine construct_domain_info
-
     !------------------------------
     ! END PUBLIC ROUTINES
     !------------------------------
@@ -441,6 +374,7 @@ end subroutine construct_domain_info
     subroutine add_to_list(var, list)
       type(state_variable),  intent(in)    :: var
       type(state_vector),    intent(inout) :: list
+      integer                              :: cur_index
 
       list%cur_fld_cnt = list%cur_fld_cnt + 1
       list%vars(list%cur_fld_cnt) = var
@@ -462,6 +396,7 @@ end subroutine construct_domain_info
 
         integer :: state_definition_unit
 
+        type(state_iterator) :: vars_iterator
         type(state_variable) :: cur_var
 
         character(len=*), parameter     :: routine = 'read_state_vector'
@@ -469,6 +404,7 @@ end subroutine construct_domain_info
         integer                         :: alloc_status
 
         integer                         :: num_lvls
+        integer                         :: num_flds
         integer                         :: num_nests
         integer                         :: num_recs
 
@@ -480,8 +416,8 @@ end subroutine construct_domain_info
         logical                         :: list_only_local
 
         ! variables to deal with special case mean fields
-        integer, parameter              :: NUM_DEFAULT_VARS = 3
-        integer, parameter              :: VAR_NAME_LEN     = 4
+        integer, parameter                                       :: NUM_DEFAULT_VARS = 3
+        integer, parameter                                       :: VAR_NAME_LEN     = 4
         character(len=VAR_NAME_LEN), dimension(NUM_DEFAULT_VARS), parameter :: &
                   default_vars = (/'THBM','EXBM','EXBW'/)
 

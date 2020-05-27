@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../build_templates/mkmf -p preprocess -t ../../../build_templates/mkmf.template   \
- -a "../../.." path_names_preprocess
+../../../build_templates/mkmf -p trans_coamps_to_statevec -t ../../../build_templates/mkmf.template -c" -C -Duse_netCDF" \
+ -a "../../.." path_names_coamps_to_state
 
 exit $status
 

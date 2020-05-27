@@ -136,8 +136,6 @@ print "-"x50 . "\n";
 close(DAT_FILE);
 close(VAR_FILE)
 
-#exit 0
-
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$

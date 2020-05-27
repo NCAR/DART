@@ -1,6 +1,5 @@
-! DART software - Copyright UCAR. This open source software is provided
-! by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download
+! This code may (or may not) be part of the GITM distribution,
+! So it is not protected by the DART copyright agreement.
 !
 ! DART $Id$
 
@@ -9,7 +8,6 @@
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
-!               Manhattan (updated jun 2017)
 !
 ! Module for perturbing 
 !------------------------------ 
@@ -41,8 +39,6 @@ module coamps_pert_mod
     use random_seq_mod, only: random_seq_type, &
                               init_random_seq, &
                               random_gaussian
-
-    use utilities_mod, only : E_ERR, error_handler
 
     use types_mod, only : r8
 
@@ -80,11 +76,11 @@ module coamps_pert_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-    ! version controlled file description for error handling, do not edit
-    character(len=*), parameter :: source   = &
-       "$URL$"
-    character(len=*), parameter :: revision = "$Revision$"
-    character(len=*), parameter :: revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
     logical, save :: module_initialized = .false.
 
@@ -156,10 +152,6 @@ contains
 
         real(kind=r8), dimension(:), pointer :: state_subsect
         real(kind=r8), dimension(:), pointer :: pert_state_subsect
-        character(len=*), parameter :: routine = 'perturb_var'
-
-        call error_handler(E_ERR, routine, 'needs to be updated', &
-                  source, revision, revdate)
 
         state_subsect      => get_var_substate(var, state)
         pert_state_subsect => get_var_substate(var, perturb_state)
