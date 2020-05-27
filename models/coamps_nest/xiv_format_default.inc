@@ -8,7 +8,6 @@
 ! SCCS IDENTIFICATION:  %W% %G% 
 !                       %U% %P% 
 !
-!
 !     innovation file headers:
 !
 !        header 1: grid parameters in lines 1-13 

@@ -18,13 +18,12 @@ assimilation_code/modules/utilities/null_win_mod.f90
 assimilation_code/modules/utilities/options_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
 assimilation_code/modules/utilities/schedule_mod.f90
-assimilation_code/modules/utilities/sort_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.f90
+models/coamps/byteswap.c models/coamps_nest/byteswap.c models/MITgcm_annulus/shell_scripts/byteswap.c
 models/coamps_nest/coamps_domain_mod.f90
-models/coamps_nest/coamps_hdf5_mod.F90
 models/coamps_nest/coamps_interp_mod.f90
 models/coamps_nest/coamps_intrinsic_mod.f90
 models/coamps_nest/coamps_map_mod.f90
@@ -33,7 +32,6 @@ models/coamps_nest/coamps_netcdf_mod.f90
 models/coamps_nest/coamps_pert_mod.f90
 models/coamps_nest/coamps_statevar_mod.f90
 models/coamps_nest/coamps_statevec_mod.f90
-models/coamps_nest/coamps_translate_mod.f90
 models/coamps_nest/coamps_util_mod.f90
 models/coamps_nest/coamps_vertical_mod.f90
 models/coamps_nest/get_name_info.f90

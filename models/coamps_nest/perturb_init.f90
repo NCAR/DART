@@ -29,8 +29,7 @@ program perturb_init
                                    read_flat_file,               &
                                    write_flat_file,              &
                                    read_datahd_file,             &
-                                   DATAHD_LEN,                   &
-                                   HDF5_FILE_NAME
+                                   DATAHD_LEN
 
   use utilities_mod,        only : E_ERR,                        &
                                    error_handler,                &
@@ -46,11 +45,11 @@ program perturb_init
 
   implicit none
 
-  ! version controlled file description for error handling, do not edit
-  character(len=*), parameter :: source   = &
-     "$URL$"
-  character(len=*), parameter :: revision = "$Revision$"
-  character(len=*), parameter :: revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'perturb_init'
   character(len=64)           :: coamps_file_name
@@ -153,12 +152,11 @@ program perturb_init
 !------------------------------------------------------------------------------
 ! Read data header file and set sizes
 !------------------------------------------------------------------------------
-
-  call read_datahd_file(HDF5_FILE_NAME, cdtg, coamps_datahd)
+  call read_datahd_file(cdtg, coamps_datahd)
   call initialize_vertical(coamps_datahd, static_vgrid)
 
   call set_nest_id(static_nest, NEST_ID)
-  call initialize_nest(HDF5_FILE_NAME, static_nest, cdtg, coamps_datahd)
+  call initialize_nest(static_nest, cdtg, coamps_datahd)
 
   gridnum = 1
   !nt = ktauf(1, NEST_ID)/kgetbc + 1
