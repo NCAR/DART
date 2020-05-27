@@ -32,7 +32,7 @@
    adv_ens_command          = './advance_model.csh'
    ens_size                 = 3
    output_members           = .true.
-   obs_sequence_in_name     = 'obs_seq.1800obs'
+   obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
    input_state_file_list    = 'restarts_in.txt'
    output_state_file_list   = 'restarts_out.txt'
@@ -170,7 +170,7 @@
 
 
 &model_nml
-   init_template_filename       = 'init.nc'
+   init_template_filename       = 'mpas_init.nc'
    assimilation_period_days     = 0
    assimilation_period_seconds  = 21600
    model_perturbation_amplitude = 0.0001
