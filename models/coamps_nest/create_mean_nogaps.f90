@@ -3,8 +3,6 @@
 !
 ! DART $Id$
 
-!>@todo is this the right program name ... does not match file name
-
 program create_mean_std
 
 ! This program pulls pieces out of the large COAMPS restart file,
@@ -32,11 +30,11 @@ program create_mean_std
 
   implicit none
 
-  ! version controlled file description for error handling, do not edit
-  character(len=*), parameter :: source   = &
-     "$URL$"
-  character(len=*), parameter :: revision = "$Revision$"
-  character(len=*), parameter :: revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'create_mean_nogaps'
   character(len=64)           :: nogaps_file_name

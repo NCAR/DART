@@ -1,0 +1,4 @@
+Name: conus
+Type: circle
+Point: 40.0, -100.0
+Radius: 2500000.0

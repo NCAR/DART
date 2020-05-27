@@ -20,8 +20,8 @@ module coamps_domain_mod
     use coamps_nest_mod,     only : coamps_nest,                 &
                                     nest_point,                  &
                                     initialize_nest,             &
+                                    initialize_nest_latlon,      &
                                     dump_nest_info,              &
-                                    dump_nest_point_info,        &
                                     decompose_nest,              &
                                     get_num_subnests,            &
                                     get_nest_id,                 &
@@ -30,8 +30,7 @@ module coamps_domain_mod
                                     coarse_point_to_nest_point,  &
                                     get_parent_nest_id,          &
                                     register_child_nest,         &
-                                    register_parent_nest,        &
-                                    initialize_nest_latlon       
+                                    register_parent_nest
 
     use coamps_vertical_mod, only : coamps_vertical,             &
                                     get_msigma,                  &
@@ -54,8 +53,8 @@ module coamps_domain_mod
                                     generate_flat_file_name,     &
                                     read_datahd_file,            &
                                     DATAHD_LEN,                  &   
-                                    trace_message,               &
-                                    DATAHD_NUM_NESTS
+                                    trace_message,                    &
+                                    DATAHD_NUM_NESTS 
 
     use location_mod,        only : get_location,                &
                                     location_type
@@ -162,11 +161,11 @@ module coamps_domain_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-    ! version controlled file description for error handling, do not edit
-    character(len=*), parameter :: source   = &
-       "$URL$"
-    character(len=*), parameter :: revision = "$Revision$"
-    character(len=*), parameter :: revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
     logical, save :: module_initialized = .false.
 
@@ -183,16 +182,10 @@ contains
     ! -----------------
     ! Constructor for a COAMPS domain possibly consisting of several nests
     !  PARAMETERS
-    !   IN  filename          HDF5-format file that has a datahd_sfc_yaddayadda variable
     !   IN  dtg               COAMPS date-time-group (for filenames)
     !   OUT domain            Domain to initialize
-    !
-    ! this routine used to read the datahd information from an exclusive file.
-    ! This information is now a single variable
-
-    subroutine initialize_domain(filename, dtg, domain)
-        character(len=*),    intent(in)    :: filename
-        character(len=*),    intent(in)    :: dtg
+    subroutine initialize_domain(dtg, domain)
+        character(len=10),      intent(in) :: dtg
         type(coamps_domain), intent(inout) :: domain
 
         real(kind=r8), dimension(DATAHD_LEN) :: coamps_datahd
@@ -204,16 +197,13 @@ contains
 
         if (domain%is_initialized) return
 
-        ! read from datahd_sfc  variable instead of flat file
-        call read_datahd_file(filename, dtg, coamps_datahd)
+        call read_datahd_file(dtg, coamps_datahd)
 
         call initialize_grid(coamps_datahd, domain%static_grid)
 
-        call initialize_nests(filename, dtg, coamps_datahd, domain)
+        call initialize_nests(dtg, coamps_datahd, domain)
 
         call initialize_vertical(coamps_datahd, domain%vertical)
-
-    !   call dump_domain_info(domain, .true.)
 
         domain%is_initialized = .true.
     end subroutine initialize_domain
@@ -347,7 +337,6 @@ contains
         call coarse_point_to_nest_point(coarse_pt, nest_pt, in_domain)
 
         if (present(within_domain)) within_domain = in_domain
-
     end subroutine latlon_to_nest_point
 
     ! nest_point_to_latlon
@@ -387,10 +376,10 @@ contains
     !   OUT vert_loc          point's vertical location
     !   OUT is_within_domain  (Optional) True if the converted point is
     !                         within the domain boundaries
-    subroutine location_to_nest_point(domain, location, nest_pt, vert_loc, &
+    subroutine location_to_nest_point(domain, loc, nest_pt, vert_loc, &
                                       is_within_domain)
         type(coamps_domain), intent(in)  :: domain
-        type(location_type), intent(in)  :: location
+        type(location_type), intent(in)  :: loc
         type(nest_point),    intent(out) :: nest_pt
         real(kind=r8),       intent(out) :: vert_loc
         logical, optional,   intent(out) :: is_within_domain
@@ -404,7 +393,7 @@ contains
 
         logical :: in_domain
 
-        loc_array = get_location(location)
+        loc_array = get_location(loc)
 
         ! All nests share the same vertical coordinates
         vert_loc = loc_array(DART_LOC_VERT)
@@ -414,7 +403,6 @@ contains
                                   in_domain) 
 
         if (present(is_within_domain)) is_within_domain = in_domain
-
     end subroutine location_to_nest_point
 
     ! decompose_domain
@@ -608,6 +596,7 @@ contains
 
       real(kind=r8)               :: u_tmp(SINGLE_POINT, SINGLE_POINT)
       real(kind=r8)               :: v_tmp(SINGLE_POINT, SINGLE_POINT)
+      character(len=90)           :: uvstr
 
       u_tmp(SINGLE_POINT, SINGLE_POINT) = u_wind
       v_tmp(SINGLE_POINT, SINGLE_POINT) = v_wind
@@ -766,9 +755,8 @@ contains
   !   IN  dtg               date-time-group of forecast
   !   IN  datahd            datahd record to source
   ! INOUT domain            COAMPS domain to populate
-  subroutine initialize_nests(filename, dtg, datahd, domain)
-    character(len=*),            intent(in)    :: filename
-    character(len=*),            intent(in)    :: dtg
+  subroutine initialize_nests(dtg, datahd, domain)
+    character(len=10),           intent(in)    :: dtg
     real(kind=r8), dimension(:), intent(in)    :: datahd
     type(coamps_domain),         intent(inout) :: domain 
 
@@ -785,7 +773,7 @@ contains
     do cur_nest_id = 1, domain%nest_count
         call set_nest_id(domain%nests(cur_nest_id), cur_nest_id)
 
-        call initialize_nest(filename, domain%nests(cur_nest_id), dtg, datahd)    
+        call initialize_nest(domain%nests(cur_nest_id), dtg, datahd)    
 
         ! Interface this nest with the other nests
         parent_nest_id = get_parent_nest_id(domain%nests(cur_nest_id))
@@ -796,7 +784,7 @@ contains
     end do
 
     do cur_nest_id = 1, domain%nest_count
-       call initialize_nest_latlon(domain%nests(cur_nest_id), domain%static_grid)
+        call initialize_nest_latlon(domain%nests(cur_nest_id), domain%static_grid)
     end do
 
   end subroutine initialize_nests
