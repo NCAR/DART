@@ -192,7 +192,7 @@ public :: set_lbc_variables, &
 ! force_u_into_state sets a logical add_u_to_state_list that forces u to be in state
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'mpas_atm/model_mod.f90'
+character(len=*), parameter :: source   = 'models/mpas_atm/model_mod.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
