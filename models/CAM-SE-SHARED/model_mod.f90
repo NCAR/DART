@@ -508,6 +508,14 @@ endif
       lat_rad(i) = grid_data%lat%vals(i)*DEG2RAD
    enddo
 
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! height
+! Get dimensions and surface geopotential from a new netcdf file and test for consistency.
+! Open file and read PHIS from it.
+! Allocate global variables which will be used in vertical interpolations
+! Check for pressures on vertically staggered grid, as well as standard grid.
+
+!SENote call read_cam_2Dreal(cam_phis, 'PHIS')
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -1441,6 +1449,9 @@ if (varid < 0) then
 endif
 
 state_indx = get_dart_vector_index(lon_index, lat_index, lev_index, domain_id, varid)
+!SENote
+write(*, *) 'in get_values_from_single_level ', lon_index, lat_index, lev_index, varid, state_indx
+
 if (state_indx < 1 .or. state_indx > get_domain_size(domain_id)) then
    write(string1, *) 'state_index out of range: ', state_indx, ' not between ', 1, get_domain_size(domain_id)
    call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2,text3='should not happen')
@@ -1750,14 +1761,58 @@ call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l, m)
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
 
+write(*, *) 'back from get_se_quad_vals', quad_vals, istatus
 
 
 
-! For initial testing, stop here and just return -1234 for all observations
-interp_vals = -1234.0_r8
 
-! SENote: still not clean enough to get through, but can test the corner search at this point
-write(*, *) 'cell_corners ', cell_corners
+! Then interpolate horizontally to the (lon,lat) of the ob.
+! The following uses Jeff's recommended 'generalized quadrilateral interpolation', as in
+! http://www.particleincell.com/2012/quad-interpolation/.
+! Most of the work is done in create_cs_grid_arrays() and coord_ind_cs().
+
+! Interpolate from the cell's corners to the ob location on the unit square.
+! This is done by weighting the field at each corner by the rectangular area
+! ((l,m) space) diagonally across the ob location from the corner.
+! AKA 'linear area weighting'.
+
+! SENote: The status block needs to be worked on to be consistent with CLASSIC
+!SENote: It is commented out for now but should be put back in.
+! The vals indices are consistent with how mapping of corners was done,
+! and how cell_corners was assigned.
+!SENoteif (vstatus == 1) then
+   !SENoteif (print_details) then
+      !SENotewrite(string1,'(A,2F10.6,1pE20.12)') 'istatus = 1, no interpolation'
+      !SENotecall error_handler(E_MSG, 'interp_cubed_sphere', string1)
+   !SENoteendif
+   !SENotereturn
+!SENoteelse
+   !SENoteif (abs(lon_lat_lev(2)) > max_obs_lat_degree) then
+      !SENote! Define istatus to be a combination of vstatus (= 0 or 2 (for higher than highest_obs...))
+      !SENote! and whether the ob is poleward of the limits set in the namelist (+ 4).
+      !SENoteistatus = 10*vstatus + 4
+   !SENoteelse
+      !SENoteistatus = vstatus
+   !SENoteendif
+!SENoteendif
+
+! SENote: could this be done in vector notation?
+do i = 1, ens_size
+interp_vals(i) = quad_vals(2, i) *           l *          m &
+           + quad_vals(1, i) * (1.0_r8 - l)*          m &
+           + quad_vals(4, i) * (1.0_r8 - l)*(1.0_r8 - m) &
+           + quad_vals(3, i) *           l *(1.0_r8 - m)
+end do
+
+if (print_details ) then
+   !SENote: Originally for scalar, rather than ensemble size output. Should modify
+   write(string1,'(A,2F10.6,1pE20.12)') ' l,m, interpolated vals = ', &
+         l,m,interp_vals
+   call error_handler(E_MSG, 'interp_cubed_sphere', string1)
+endif
+
+
+
 
 if (using_chemistry) &
    interp_vals = interp_vals * get_volume_mixing_ratio(obs_qty)
@@ -2405,12 +2460,16 @@ integer  :: icorner, numdims
 integer  :: level_one_array(ens_size)
 integer  :: four_levs1(4, ens_size), four_levs2(4, ens_size)
 real(r8) :: four_vert_fracts(4, ens_size)
+!SENote: Need unused integer(4) storage for call to get the four state values
+integer :: lats_unused_array(4)
 
-!SENote: These are former arguments. Need them around during development only
+!SENote: four_lons and four_lats just around for legacy during development
 integer :: four_lons(4), four_lats(4)
 
 character(len=*), parameter :: routine = 'get_se_quad_vals:'
 
+!SENote Initialize the latitude arrays to 1 since they are not used
+lats_unused_array = 1
 quad_vals(:,:) = MISSING_R8
 my_status(:) = 99
 
@@ -2425,11 +2484,14 @@ if (numdims == 2) then
 
    ! build 4 columns to find vertical level numbers
    do icorner=1, 4
+!SENote
+write(*, *) 'Before call to find_se_vertical_levels ', icorner, corners(icorner)
       call find_se_vertical_levels(state_handle, ens_size, &
                                 corners(icorner), lon_lat_vert(3), &
                                 which_vert, obs_qty, varid, &
                                 four_levs1(icorner, :), four_levs2(icorner, :), & 
                                 four_vert_fracts(icorner, :), my_status)
+
       if (any(my_status /= 0)) return
   
    enddo
@@ -2441,12 +2503,12 @@ if (numdims == 2) then
       
    if (varid > 0) then
 
-      call get_four_state_values(state_handle, ens_size, four_lons, four_lats, &
+      call get_four_state_values(state_handle, ens_size, corners, lats_unused_array, &
                                 four_levs1, four_levs2, four_vert_fracts, &   
                                 varid, quad_vals, my_status)
 
    else ! get 2d special variables in another ways ( like QTY_PRESSURE )
-      call get_four_nonstate_values(state_handle, ens_size, four_lons, four_lats, &
+      call get_four_nonstate_values(state_handle, ens_size, corners, lats_unused_array, &
                                    four_levs1, four_levs2, four_vert_fracts, & 
                                    obs_qty, quad_vals, my_status)
 
@@ -2700,7 +2762,7 @@ if (var_id > 0) then
 else
    select case (obs_quantity)
       case (QTY_SURFACE_ELEVATION)
-         !SENote: in SE this is a 1 dimensional field
+         !SENote: in SE this is a 1 dimensional field, but this is okay
          get_dims_from_qty = 1
       case (QTY_PRESSURE, QTY_GEOMETRIC_HEIGHT)
          !SENote: in SE these are 2d fields
@@ -2731,40 +2793,13 @@ character(len=*), parameter :: routine = 'get_se_quad_values'
 integer :: stagger, prev_lon, next_lat
 real(r8) :: vals1(ens_size), vals2(ens_size)
 
-!SENote: Temporary replacement for old arguments
-integer :: lon_index, lat_index
-
-!SENote
-write(*, *) 'Entering get_se_quad_values: NOT YET IMPLEMENTED.'
-stop
-
 stagger = grid_stagger%qty_stagger(stagger_qty)
 
 select case (obs_quantity)
    case (QTY_SURFACE_ELEVATION)
+      !SENote: Just return phis for this corner_index
+      vals = phis(corner_index, 1)
 
-     select case (stagger)
-       case (STAGGER_U)
-          call quad_index_neighbors(lon_index, lat_index, prev_lon, next_lat)
-          vals1(:) = phis(lon_index, lat_index) 
-          vals2(:) = phis(lon_index, next_lat) 
-     
-        vals = (vals1 + vals2) * 0.5_r8 
-     
-       case (STAGGER_V)
-          call quad_index_neighbors(lon_index, lat_index, prev_lon, next_lat)
-          vals1(:) = phis(lon_index, lat_index) 
-          vals2(:) = phis(prev_lon,  lat_index) 
-     
-        vals = (vals1 + vals2) * 0.5_r8
-     
-       ! no stagger - cell centers, or W stagger
-       case default
-  
-        vals = phis(lon_index, lat_index)
-  
-     end select
-    
      !>@todo FIXME:
      ! should this be using gravity at the given latitude? 
      vals = vals / gravity
@@ -2908,11 +2943,15 @@ real(r8) :: height_array  ( ref_nlevels, ens_size )
 !SENote: Temps to replace old arguments
 integer :: lon_index, lat_index
 
+!SENote; Debug temps
+integer :: i, j
+
 ! assume the worst
 levs1(:)    = MISSING_I
 levs2(:)    = MISSING_I
 vert_fracts(:) = MISSING_R8
 my_status(:)   = 98
+
 
 ! ref_nlevels is the number of vertical levels (midlayer points)
 
@@ -2920,38 +2959,49 @@ level_one = 1
 
 select case (which_vert)
 
+   !SENote: Classic has an option for scale_height. Not found here. No observations are reported in scale_height?
+   ! Need to see how this works with localization.
    case(VERTISPRESSURE)
       ! construct a pressure column here and find the model levels
       ! that enclose this value
-      call get_staggered_values_from_qty(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
-                                         lon_index, lat_index, level_one, obs_qty, &
-                                         surf_pressure, status1)
+      !SENote: No staggering, so just get the surface pressure at this column
+      call get_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, corner_index, -99, level_one, &
+         surf_pressure, status1)
+
+      !SENote: Need to make a careful study of the error value propagation throughout this call tree
       if (status1 /= 0) then
          my_status(:) = status1
          return
       endif
 
       call build_cam_pressure_columns(ens_size, surf_pressure, ref_nlevels, pressure_array)
+      !SENote: Need to make sure that there are no residual vertical stagger issues here
 
-      do imember=1, ens_size
+      do imember = 1, ens_size
          call pressure_to_level(ref_nlevels, pressure_array(:, imember), vert_val, & 
                                 levs1(imember), levs2(imember), &
                                 vert_fracts(imember), my_status(imember))
-
       enddo
 
       if (debug_level > 100) then
          do k = 1,ens_size
             print*, 'ISPRESSURE levs1(k), levs2(k), vert_fracts(k), vert_val', &
-                     levs1(k), levs2(k), vert_fracts(k), vert_val
+                     levs1(k), levs2(k), vert_fracts(k), vert_val, pressure_array(levs1(k) , k), pressure_array(levs2(k), k) 
           enddo
       endif
 
    case(VERTISHEIGHT)
       ! construct a height column here and find the model levels
       ! that enclose this value
-      call cam_height_levels(ens_handle, ens_size, lon_index, lat_index, ref_nlevels, obs_qty, &
+!SENote
+write(*, *) 'calling cam_se_height_levels from find_se_vertical_levels ', corner_index
+      call cam_se_height_levels(ens_handle, ens_size, corner_index, ref_nlevels, obs_qty, &
                              height_array, my_status)
+
+!SENote 
+write(*, *) 'stopping in find_se_vertical_levels'
+stop
+
 
       !>@todo FIXME let successful members continue?
       if (any(my_status /= 0)) return
@@ -3252,6 +3302,110 @@ endif
 my_status(:) = 0
 
 end subroutine cam_height_levels
+
+!-----------------------------------------------------------------------
+!> Compute the heights at pressure midpoints
+!>
+!> this version does all ensemble members at once.
+
+subroutine cam_se_height_levels(ens_handle, ens_size, column_index, nlevels, qty, height_array, my_status) 
+type(ensemble_type), intent(in)  :: ens_handle
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: column_index
+integer,             intent(in)  :: nlevels
+integer,             intent(in)  :: qty
+real(r8),            intent(out) :: height_array(nlevels, ens_size)
+integer,             intent(out) :: my_status(ens_size)
+
+integer  :: k, level_one, imember, status1
+real(r8) :: surface_elevation(1)
+real(r8) :: surface_pressure(ens_size), mbar(nlevels, ens_size)
+real(r8) :: tv(nlevels, ens_size)  ! Virtual temperature, top to bottom
+
+!SENote Temporary declarations for debug
+integer :: lon_index, lat_index
+
+! this is for surface obs
+level_one = 1
+
+!SENote
+write(*, *) 'in cam_se_height_levels', column_index
+
+!SENote: No staggering, so just get the surface pressure at this column
+call get_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, column_index, -99, level_one, &
+   surface_pressure, status1)
+
+! get the surface elevation from the phis, including stagger if needed
+call get_se_quad_values(1, column_index, QTY_SURFACE_ELEVATION, qty, surface_elevation)
+
+!SENote
+write(*, *) 'Calling compute virtual temp'
+
+call compute_se_virtual_temperature(ens_handle, ens_size, column_index, nlevels, qty, tv, status1)
+
+!SENote
+write(*, *) 'stopping in cam_se_height_levels', surface_pressure, status1
+stop
+
+if (status1 /= 0) then
+   my_status = status1
+   return
+endif
+
+if (use_variable_mean_mass) then
+   call compute_mean_mass(ens_handle, ens_size, lon_index, lat_index, nlevels, qty, mbar, status1)
+
+   if (status1 /= 0) then
+      my_status = status1
+      return
+   endif
+
+   ! compute the height columns for each ensemble member - passing mbar() array in.
+   do imember = 1, ens_size
+      call build_heights(nlevels, surface_pressure(imember), surface_elevation(1), &
+                         tv(:, imember), height_array(:, imember), mbar=mbar(:, imember))
+   enddo
+
+else
+   ! compute the height columns for each ensemble member - no mbar() argument here.
+   ! (you cannot just pass 1.0 in for the mbar() array; it uses a different gas constant
+   ! in the variable mean mass case.)
+   do imember = 1, ens_size
+      call build_heights(nlevels, surface_pressure(imember), surface_elevation(1), &
+                         tv(:, imember), height_array(:, imember))
+   enddo
+endif
+
+
+if (debug_level > 100) then
+ do imember = 1, ens_size
+  print *, ''
+  print *, 'geopotential, member: ', imember
+  do k = 1, nlevels
+    print*, 'tv(level)    ', k, tv(k, imember)
+  enddo
+  do k = 1, nlevels
+    print*, 'height(level)', k, height_array(k, imember)
+  enddo
+ enddo
+endif
+
+! convert entire array to geometric height (from potential height)
+call gph2gmh(height_array, grid_data%lat%vals(lat_index))
+
+if (debug_level > 100) then
+ do imember = 1, ens_size
+  print *, ''
+  print *, 'geometric, member: ', imember
+  do k = 1, nlevels
+    print*, 'height(level)', k, height_array(k, imember)
+  enddo
+ enddo
+endif
+
+my_status(:) = 0
+
+end subroutine cam_se_height_levels
 
 !-----------------------------------------------------------------------
 !> based on the stagger that corresponds to the given quantity,
@@ -3853,8 +4007,7 @@ type(cam_grid),   intent(out) :: grid
 call get_cam_grid(grid_file, grid)
 
 ! This non-state variable is used to compute surface elevation.
-! SENote: For now, it appears that the SE does not use any phis information: Need to revisit
-!SENote call read_cam_phis_array(cam_phis_filename)
+call read_cam_phis_array(cam_phis_filename)
 
 !SENote; We will need to do initialization of interpolation for SE, but not with this
 ! Set up the interpolation structures for later 
@@ -3914,13 +4067,80 @@ integer :: ncid, nsize(3)   ! lon, lat, time
 ncid = nc_open_file_readonly(phis_filename, routine)
 
 call nc_get_variable_size(ncid, 'PHIS', nsize(:), routine)
-allocate( phis(nsize(1), nsize(2)) )
+
+!SENote: phis array is really only 1D in the file, but keep a second dimension of 1 for shared code
+allocate( phis(nsize(1), 1) )
 
 call nc_get_variable(ncid, 'PHIS', phis, routine)
 
 call nc_close_file(ncid, routine)
 
 end subroutine read_cam_phis_array
+
+
+!-----------------------------------------------------------------------
+!> Compute the virtual temperature at the midpoints
+!>
+!> this version does all ensemble members at once.
+!>
+
+subroutine compute_se_virtual_temperature(ens_handle, ens_size, column_index, nlevels, qty, tv, istatus)
+
+type(ensemble_type), intent(in)   :: ens_handle
+integer,             intent(in)   :: ens_size
+integer,             intent(in)   :: column_index
+integer,             intent(in)   :: nlevels
+integer,             intent(in)   :: qty
+real(r8),            intent(out)  :: tv(nlevels, ens_size)
+integer,             intent(out)  :: istatus
+
+integer :: k
+real(r8) :: temperature(ens_size), specific_humidity(ens_size)
+
+!>@todo this should come from a model specific constant module.
+!> the forward operators and model_mod should use it.
+real(r8), parameter :: rd = 287.05_r8 ! dry air gas constant
+real(r8), parameter :: rv = 461.51_r8 ! wet air gas constant
+real(r8), parameter :: rr_factor = (rv/rd) - 1.0_r8
+
+!SENote Temporary for debug
+integer :: lon_index, lat_index
+
+
+! construct a virtual temperature column, one for each ensemble member
+do k = 1, nlevels
+   !SENote 
+   write(*, *) 'in compute_se_virtual_t about to call get_values_from_single_level ', k, column_index
+   ! temperature
+   call get_values_from_single_level(ens_handle, ens_size, QTY_TEMPERATURE, column_index, 1, k, &
+      temperature, istatus)
+   !SENOTEcall get_staggered_values_from_qty(ens_handle, ens_size, QTY_TEMPERATURE, &
+                                     !SENOTElon_index, lat_index, k, qty, temperature, istatus)
+
+   if (istatus < 0) return
+
+   ! specific humidity
+   call get_values_from_single_level(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, column_index, 1, k, &
+      specific_humidity, istatus)
+   !SENOTEcall get_staggered_values_from_qty(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, &
+                                     !SENOTElon_index, lat_index, k, qty, specific_humidity, istatus)
+   
+   if (istatus < 0) return
+
+   !>tv == virtual temperature.
+   tv(k,:) = temperature(:)*(1.0_r8 + rr_factor*specific_humidity(:))
+   !print*, 'tv(levels)', k,tv(k,1), temperature(1), specific_humidity(1)
+enddo
+
+!SENote
+do k = 1, nlevels
+   write(*, *) 'tv ', k, tv(k, 1)
+end do
+write(*, *) 'stopping in compute_se_virtual_temperature'
+stop
+
+
+end subroutine compute_se_virtual_temperature
 
 
 !-----------------------------------------------------------------------
@@ -3970,7 +4190,6 @@ enddo
 
 
 end subroutine compute_virtual_temperature
-
 
 !-----------------------------------------------------------------------
 !> loop through all levels to get the mean mass.
