@@ -1846,10 +1846,6 @@ call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l, m)
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
 
-write(*, *) 'back from get_se_quad_vals', quad_vals, istatus
-
-
-
 
 ! Then interpolate horizontally to the (lon,lat) of the ob.
 ! The following uses Jeff's recommended 'generalized quadrilateral interpolation', as in
