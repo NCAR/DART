@@ -1667,6 +1667,10 @@ real(r8) :: vals_array(ref_nlevels,ens_size)
 
 character(len=*), parameter :: routine = 'get_se_values_from_nonstate_fields:'
 
+!SENote
+write(*, *) 'in get_se_values_from_nonstate_fields obs_quantity', obs_quantity
+write(*, *) 'QTY_PRESSURE, QTY_VERTLEVEL ', QTY_PRESSURE, QTY_VERTLEVEL
+
 vals(:) = MISSING_R8
 my_status(:) = 99
 
@@ -2473,6 +2477,112 @@ end function find_closest_node
 !> internal only version of model interpolate. 
 !> does not check for locations too high - return all actual values.
 
+subroutine interpolate_se_values(state_handle, ens_size, location, obs_qty, varid, &
+                              interp_vals, istatus)
+
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
+type(location_type), intent(in) :: location
+integer,             intent(in) :: obs_qty
+integer,             intent(in) :: varid
+real(r8),           intent(out) :: interp_vals(ens_size) 
+integer,            intent(out) :: istatus(ens_size)
+
+character(len=*), parameter :: routine = 'interpolate_se_values:'
+
+integer  :: which_vert, four_lons(4), four_lats(4)
+!SENote
+integer :: cell_corners(4), closest, i
+type(location_type) :: location_copy
+!SENote : These are terrible names
+real(r8) :: l, m
+real(r8) :: lon_fract, lat_fract
+real(r8) :: lon_lat_vert(3), quad_vals(4, ens_size)
+type(quad_interp_handle) :: interp_handle
+
+interp_vals(:) = MISSING_R8
+istatus(:)     = 99
+
+!SENote: More general note, not entirely clear why we need a completely separate routine here.
+lon_lat_vert  = get_location(location)
+which_vert    = nint(query_location(location)) 
+
+! Not clear that this will eventually be relevant, so look at changing it ther
+location_copy = location
+call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l, m)
+
+
+!SENote: Now work on the vertical conversions and getting the vertical index for each ensemble member
+! Can model this on get_quad_vals which does something similar for the FV
+! Just need to send the indices of the corners instead of pair of lon and lat indices
+call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
+                   lon_lat_vert, which_vert, quad_vals, istatus)
+
+!SENote
+write(*, *) 'back from get_se_quad_vals in interpolate_se_values ', varid, obs_qty
+write(*, *) 'cell_corners ', cell_corners, quad_vals
+
+!SENOte: Again,need to sort out the error returns on all of these
+!SENoteif (istatus(1) /= 0) then
+   !SENoteistatus(:) = 3  ! cannot locate enclosing horizontal quad
+   !SENotereturn
+!SENoteendif
+
+if (any(istatus /= 0)) return
+
+
+
+! Then interpolate horizontally to the (lon,lat) of the ob.
+! The following uses Jeff's recommended 'generalized quadrilateral interpolation', as in
+! http://www.particleincell.com/2012/quad-interpolation/.
+! Most of the work is done in create_cs_grid_arrays() and coord_ind_cs().
+
+! Interpolate from the cell's corners to the ob location on the unit square.
+! This is done by weighting the field at each corner by the rectangular area
+! ((l,m) space) diagonally across the ob location from the corner.
+! AKA 'linear area weighting'.
+
+! SENote: The status block needs to be worked on to be consistent with CLASSIC
+!SENote: It is commented out for now but should be put back in.
+! The vals indices are consistent with how mapping of corners was done,
+! and how cell_corners was assigned.
+!SENoteif (vstatus == 1) then
+   !SENoteif (print_details) then
+      !SENotewrite(string1,'(A,2F10.6,1pE20.12)') 'istatus = 1, no interpolation'
+      !SENotecall error_handler(E_MSG, 'interp_cubed_sphere', string1)
+   !SENoteendif
+   !SENotereturn
+!SENoteelse
+   !SENoteif (abs(lon_lat_lev(2)) > max_obs_lat_degree) then
+      !SENote! Define istatus to be a combination of vstatus (= 0 or 2 (for higher than highest_obs...))
+      !SENote! and whether the ob is poleward of the limits set in the namelist (+ 4).
+      !SENoteistatus = 10*vstatus + 4
+   !SENoteelse
+      !SENoteistatus = vstatus
+   !SENoteendif
+!SENoteendif
+
+! SENote: could this be done in vector notation?
+do i = 1, ens_size
+interp_vals(i) = quad_vals(2, i) *           l *          m &
+           + quad_vals(1, i) * (1.0_r8 - l)*          m &
+           + quad_vals(4, i) * (1.0_r8 - l)*(1.0_r8 - m) &
+           + quad_vals(3, i) *           l *(1.0_r8 - m)
+end do
+
+!SENote Probably  not right
+if (any(istatus /= 0)) then
+   istatus(:) = 8   ! cannot evaluate in the quad
+   return
+endif
+
+end subroutine interpolate_se_values
+
+
+!-----------------------------------------------------------------------
+!> internal only version of model interpolate. 
+!> does not check for locations too high - return all actual values.
+
 subroutine interpolate_values(state_handle, ens_size, location, obs_qty, varid, &
                               interp_vals, istatus)
 
@@ -2494,11 +2604,7 @@ type(quad_interp_handle) :: interp_handle
 interp_vals(:) = MISSING_R8
 istatus(:)     = 99
 
-!SENote
-write(*, *) 'stopping in INTERPOLATE_VALUES, not model_interpolate: Why are we here?'
-stop
-
-interp_handle = get_interp_handle(obs_qty)
+!SENote: More general note, not entirely clear why we need a completely separate routine here.
 lon_lat_vert  = get_location(location)
 which_vert    = nint(query_location(location)) 
 
@@ -2519,6 +2625,9 @@ if (any(istatus /= 0)) then
    istatus(:) = 8   ! cannot evaluate in the quad
    return
 endif
+
+write(*, *) 'stopping at end of INTERPOLATE_VALUES, not model_interpolate: Why are we here?'
+stop
 
 end subroutine interpolate_values
 
@@ -2562,6 +2671,9 @@ numdims = get_dims_from_qty(obs_qty, varid)
 ! ensemble members.  the things that can vary are dimensioned by ens_size.
 !SENote: It's the first 2 indices (or 1) that are actually in use when fetching data?
 
+!SENote
+write(*, *) 'in get_se_quad_vals varid, obs_qty, numdims', varid, obs_qty, numdims
+
 if (numdims == 2) then
 
    ! build 4 columns to find vertical level numbers
@@ -2573,6 +2685,8 @@ if (numdims == 2) then
                                 four_vert_fracts(icorner, :), my_status)
 
       if (any(my_status /= 0)) return
+      write(*, *) 'finding vertical levels in get_se_quad_vals ', &
+         icorner, four_levs1(icorner, :), four_levs2(icorner, :), four_vert_fracts(icorner, :)
   
    enddo
    
@@ -4750,7 +4864,7 @@ if (my_status /= 0) return
 
 !SENote
 write(*, *) 'in obs_vertical_to_pressure'
-call interpolate_values(ens_handle, ens_size, location, &
+call interpolate_se_values(ens_handle, ens_size, location, &
                         qty, varid, pressure_array(:), status(:))
 
 
@@ -4777,6 +4891,9 @@ real(r8) :: height_array(1)
 
 character(len=*), parameter :: routine = 'obs_vertical_to_height'
 
+!SENote NOT YET IMPLEMENTED. Does this work for the FV? 
+! Doesn't actually appear to work right for the FV which just blasts through a failed search 
+! for the height field. This could be fixed. Confirm with Kevin.
 ens_size = 1
 
 call ok_to_interpolate(QTY_GEOMETRIC_HEIGHT, varid, domain_id, my_status)
@@ -4784,7 +4901,7 @@ if (my_status /= 0) return
 
 !SENote 
 write(*, *) 'in obs_vertical_to_height'
-call interpolate_values(ens_handle, ens_size, location, &
+call interpolate_se_values(ens_handle, ens_size, location, &
                         QTY_GEOMETRIC_HEIGHT, varid, height_array(:), status(:))
 if (status(1) /= 0) then
    my_status = status(1)
@@ -4839,8 +4956,6 @@ real(r8) :: scaleheight_val
 character(len=*), parameter :: routine = 'obs_vertical_to_scaleheight'
 
 ens_size = 1
-!SENote
-write(*, *) 'in obs_vertical_to_scaleheight'
 
 ! there are 4 cases here.
 
@@ -4866,7 +4981,7 @@ if (no_normalization_of_scale_heights) then
       pressure_array(:) = query_location(location, "VLOC")
       my_status = 0
    else
-      call interpolate_values(ens_handle, ens_size, location, ptype, varid1, &
+      call interpolate_se_values(ens_handle, ens_size, location, ptype, varid1, &
                               pressure_array(:), status(:))
       if (status(1) /= 0) then
          my_status = status(1)
@@ -4897,7 +5012,7 @@ else
          pressure_array(:) = query_location(location, "VLOC")
          my_status = 0
       else
-         call interpolate_values(ens_handle, ens_size, location, QTY_PRESSURE, varid1, &
+         call interpolate_se_values(ens_handle, ens_size, location, QTY_PRESSURE, varid1, &
                                     pressure_array(:), status(:))
          if (status(1) /= 0) then
             my_status = status(1)
@@ -4908,7 +5023,7 @@ else
       call ok_to_interpolate(QTY_SURFACE_PRESSURE, varid2, domain_id, my_status)
       if (my_status /= 0) return
       
-      call interpolate_values(ens_handle, ens_size, location, QTY_SURFACE_PRESSURE, varid2, &
+      call interpolate_se_values(ens_handle, ens_size, location, QTY_SURFACE_PRESSURE, varid2, &
                                     surface_pressure_array(:), status(:))
       if (status(1) /= 0) then
          my_status = status(1)
@@ -4938,6 +5053,10 @@ integer,             intent(out)   :: status1
 
 type(location_type) :: bl(1)
 integer :: bq(1), bt(1), status(1)
+
+!SENote
+write(*, *) 'stopping in convert_one_obs'
+stop
 
 ! these need to be arrays.  kinda a pain.
 bl(1) = loc
@@ -4994,6 +5113,7 @@ endif
 
 ! does the base obs need conversion first?
 vert_type = query_location(base_loc)
+
 
 if (vert_type /= vertical_localization_type) then
    call convert_vert_one_obs(ens_handle, base_loc, base_type, &
@@ -5135,7 +5255,6 @@ do i=1, num_close
       dist(i) = dist(i) + extra_damping_dist
    endif
 enddo
-
 
 end subroutine get_close_state
 
