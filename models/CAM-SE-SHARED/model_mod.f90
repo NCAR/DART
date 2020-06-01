@@ -1491,8 +1491,6 @@ if (varid < 0) then
 endif
 
 state_indx = get_dart_vector_index(lon_index, lat_index, lev_index, domain_id, varid)
-!SENote
-write(*, *) 'in get_values_from_single_level ', lon_index, lat_index, lev_index, varid, state_indx
 
 if (state_indx < 1 .or. state_indx > get_domain_size(domain_id)) then
    write(string1, *) 'state_index out of range: ', state_indx, ' not between ', 1, get_domain_size(domain_id)
@@ -4569,28 +4567,31 @@ type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
 integer,             intent(in)    :: qty
 
-integer  :: iloc, jloc, vloc, myqty, level_one, status1
+integer  :: column, level, no_third_dimension, myqty, level_one, status1
 integer  :: my_status(ens_size)
 real(r8) :: pressure_array(ref_nlevels), surface_pressure(ens_size)
 
 
-call get_model_variable_indices(location_indx, iloc, jloc, vloc, kind_index=myqty)
+!SENote
+!Need to clean up the index naming here. See obs_vertical_to_pressure
+!THIS may be working now. Need to do the other state_vertical conversion routines correctly
+call get_model_variable_indices(location_indx, column, level, no_third_dimension, kind_index=myqty)
 
 if (is_surface_field(myqty)) then
    
    level_one = 1
-   call get_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
-                                     iloc, jloc, level_one, surface_pressure, status1)
+   call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
+                                     column, level_one, surface_pressure, status1)
 
    if (status1 /= 0) then
       return
    endif
    call set_vertical(location, surface_pressure(1), VERTISPRESSURE)
 else
-   call cam_pressure_levels(ens_handle, ens_size, iloc, jloc, ref_nlevels, &
+   call cam_se_pressure_levels(ens_handle, ens_size, column, ref_nlevels, &
                             qty, pressure_array, my_status)
 
-   call set_vertical(location, pressure_array(vloc), VERTISPRESSURE)
+   call set_vertical(location, pressure_array(level), VERTISPRESSURE)
 endif
 
 end subroutine state_vertical_to_pressure
