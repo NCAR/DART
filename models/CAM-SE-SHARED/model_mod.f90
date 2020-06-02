@@ -4574,7 +4574,7 @@ real(r8) :: pressure_array(ref_nlevels), surface_pressure(ens_size)
 
 !SENote
 !Need to clean up the index naming here. See obs_vertical_to_pressure
-!THIS may be working now. Need to do the other state_vertical conversion routines correctly
+!Need to do the other state_vertical conversion routines correctly
 call get_model_variable_indices(location_indx, column, level, no_third_dimension, kind_index=myqty)
 
 if (is_surface_field(myqty)) then
@@ -4628,7 +4628,7 @@ type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
 integer,             intent(in)    :: qty
 
-integer  :: iloc, jloc, vloc, level_one, status1, my_status(ens_size)
+integer  :: column, level, no_third_dimension, level_one, status1, my_status(ens_size)
 real(r8) :: pressure_array(ref_nlevels)
 real(r8) :: surface_pressure(1), scaleheight_val
 
@@ -4645,10 +4645,10 @@ if (no_normalization_of_scale_heights) then
    if (query_location(location) == VERTISSURFACE) then
 
       ! get the surface pressure from the ens_handle
-      call get_model_variable_indices(location_indx, iloc, jloc, vloc)
+      call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
-      call get_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
-                                        iloc, jloc, level_one, surface_pressure, status1)
+      call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
+                                        column, level, surface_pressure, status1)
       if (status1 /= 0) goto 200
 
       scaleheight_val = log(surface_pressure(1))
@@ -4656,13 +4656,13 @@ if (no_normalization_of_scale_heights) then
    else
 
       ! build a pressure column and and find the levels
-      call get_model_variable_indices(location_indx, iloc, jloc, vloc)
+      call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
-      call cam_pressure_levels(ens_handle, ens_size, iloc, jloc, ref_nlevels, &
+      call cam_se_pressure_levels(ens_handle, ens_size, column,  ref_nlevels, &
                                qty, pressure_array, my_status)
       if (any(my_status /= 0)) goto 200
    
-      scaleheight_val = log(pressure_array(vloc))
+      scaleheight_val = log(pressure_array(level))
 
    endif
 
@@ -4676,18 +4676,18 @@ else
    else
 
       ! build a pressure column and and find the levels
-      call get_model_variable_indices(location_indx, iloc, jloc, vloc)
+      call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
-      call cam_pressure_levels(ens_handle, ens_size, iloc, jloc, ref_nlevels, &
+      call cam_se_pressure_levels(ens_handle, ens_size, column, ref_nlevels, &
                                qty, pressure_array, my_status)
       if (any(my_status /= 0)) goto 200
 
       ! get the surface pressure from the ens_handle
-      call get_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
-                                        iloc, jloc, level_one, surface_pressure, status1)
+      call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
+                                        column, level, surface_pressure, status1)
       if (status1 /= 0) goto 200
    
-      scaleheight_val = scale_height(pressure_array(vloc), surface_pressure(1), no_normalization_of_scale_heights)
+      scaleheight_val = scale_height(pressure_array(level), surface_pressure(1), no_normalization_of_scale_heights)
 
    endif
 
@@ -4892,7 +4892,7 @@ real(r8) :: height_array(1)
 
 character(len=*), parameter :: routine = 'obs_vertical_to_height'
 
-!SENote NOT YET IMPLEMENTED. Does this work for the FV? 
+!SENote Does this work for the FV? 
 ! Doesn't actually appear to work right for the FV which just blasts through a failed search 
 ! for the height field. This could be fixed. Confirm with Kevin.
 ens_size = 1
@@ -5054,10 +5054,6 @@ integer,             intent(out)   :: status1
 
 type(location_type) :: bl(1)
 integer :: bq(1), bt(1), status(1)
-
-!SENote
-write(*, *) 'stopping in convert_one_obs'
-stop
 
 ! these need to be arrays.  kinda a pain.
 bl(1) = loc
