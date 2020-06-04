@@ -335,6 +335,9 @@ integer, allocatable :: cs_kinds(:)
 ! Other useful 1D grid arrays (for cubed sphere)
 real(r8), allocatable :: lon_rad(:), lat_rad(:)   ! longitude and latitude in radians, used by bearings()
 
+! This integer is a reminder that some shared calls take 3 dimensions, but SE has only 2: Value is irrelevant
+integer :: no_third_dimension = -99
+
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 !SENote: This variable gives extra output for the locations. More global way to do this?:w
@@ -1283,147 +1286,15 @@ else
    call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
 endif
      
-return
-
-
-
-
-
-
-! full 3d fields are returned with lon/lat/level.
-! 2d fields are either surface fields, or if they
-! are column integrated values then they are 'undefined'
-! in the vertical.
-
-if (nd == 3) then
-   use_vert_type = VERTISLEVEL
-   use_vert_val  = real(k,r8)
-else if (nd == 2) then
-   ! add any 2d surface fields to this function
-   if (is_surface_field(q)) then
-      use_vert_type = VERTISSURFACE
-      use_vert_val  = MISSING_R8  
-      ! setting the vertical value to missing matches what the previous
-      ! version of this code did.  other models choose to set the vertical
-      ! value to the model surface elevation at this location:
-      !   use_vert_val  = phis(lon_index, lat_index) / gravity
-   else
-      ! any 2d field not listed as a surface field (in is_surface_field() function) 
-      ! is assumed to be an integrated quantity with a vert type of VERTISUNDEF.
-      use_vert_type = VERTISUNDEF
-      use_vert_val  = MISSING_R8
-   endif
-else
-   write(string1, *) 'state vector field not 2D or 3D and no code to handle other dimensionity'
-   write(string2, *) 'dimensionality = ', nd, ' quantity type = ', trim(get_name_for_quantity(q))
-   call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
-endif
-
-! the horizontal location depends on whether this quantity is on the
-! mass point grid or staggered in either lat or lon.  
-
-select case (grid_stagger%qty_stagger(q))
-  case (STAGGER_U)
-   get_location_from_index = set_location(grid_data%lon%vals(i), &
-                                          grid_data%slat%vals(j), &
-                                          use_vert_val, use_vert_type)
-
-  case (STAGGER_V)
-   ! the first staggered longitude is negative.  dart requires lons
-   ! be between 0 and 360.
-   slon_val = grid_data%slon%vals(i)
-   if (slon_val < 0) slon_val = slon_val + 360.0_r8
-   get_location_from_index = set_location(slon_val, &
-                                          grid_data%lat%vals(j), &
-                                          use_vert_val, use_vert_type)
-   
-  !>@todo not sure what to do yet. ? +-1/2 ?
-  case (STAGGER_W)
-   get_location_from_index = set_location(grid_data%lon%vals(i), &
-                                          grid_data%lat%vals(j), &
-                                          use_vert_val - 0.5_r8, use_vert_type)
-  ! no stagger - cell centers
-  case default
-   get_location_from_index = set_location(grid_data%lon%vals(i), &
-                                          grid_data%lat%vals(j), &
-                                          use_vert_val, use_vert_type)
-
-end select
-
 end function get_location_from_index
 
-!-----------------------------------------------------------------------
-!> this routine should be called to compute a value that comes from an
-!> unstaggered grid but needs to correspond to a staggered grid.
-!> e.g. you need the surface pressure under a V wind point.
-
-subroutine get_staggered_values_from_qty(ens_handle, ens_size, qty, lon_index, lat_index, &
-                                         lev_index, stagger_qty, vals, my_status)
-type(ensemble_type), intent(in) :: ens_handle
-integer,             intent(in) :: ens_size
-integer,             intent(in) :: qty
-integer,             intent(in) :: lon_index
-integer,             intent(in) :: lat_index
-integer,             intent(in) :: lev_index
-integer,             intent(in) :: stagger_qty
-real(r8),            intent(out) :: vals(ens_size)
-integer,             intent(out) :: my_status
-
-integer :: next_lat, prev_lon, stagger
-real(r8) :: vals1(ens_size), vals2(ens_size)
-
-vals(:) = MISSING_R8
-stagger = grid_stagger%qty_stagger(stagger_qty)
-
-!> latitudes:  staggered value N is between N and (N + 1) on the unstaggered grid
-!> longitudes: staggered value N is between N and (N - 1) on the unstaggered grid
-
-select case (stagger)
-  case (STAGGER_U)
-   call quad_index_neighbors(lon_index, lat_index, prev_lon, next_lat)
-
-   call get_values_from_single_level(ens_handle, ens_size, qty, lon_index, lat_index, lev_index, &
-                                     vals1, my_status)
-   if (my_status /= 0) return
-   call get_values_from_single_level(ens_handle, ens_size, qty, lon_index, next_lat,  lev_index, &
-                                     vals2, my_status)
-   if (my_status /= 0) return
-
-   vals = (vals1 + vals2) * 0.5_r8
-
-  case (STAGGER_V)
-   call quad_index_neighbors(lon_index, lat_index, prev_lon, next_lat)
-
-   call get_values_from_single_level(ens_handle, ens_size, qty, lon_index, lat_index, lev_index, &
-                                     vals1, my_status)
-   if (my_status /= 0) return
-   call get_values_from_single_level(ens_handle, ens_size, qty, prev_lon,  lat_index, lev_index, &
-                                     vals2, my_status)
-   if (my_status /= 0) return
-
-   vals = (vals1 + vals2) * 0.5_r8
-
-  ! no stagger - cell centers, or W stagger
-  case default
-   call get_values_from_single_level(ens_handle, ens_size, qty, lon_index, lat_index, lev_index, &
-                                     vals, my_status)
-   if (my_status /= 0) return
-
-end select
-
-! when you reach here, my_status has been to 0 by the last call
-! to get_values_from_single_level().  if it was anything else
-! it would have already returned.
-
-end subroutine get_staggered_values_from_qty
-
 
 !-----------------------------------------------------------------------
-!> this routine converts the 3 index values and a quantity into a state vector
+!> this routine converts the column and level index values and a quantity into a state vector
 !> offset and gets the ensemble of state values for that offset.  this only
 !> gets a single vertical location - if you need to get values which might 
 !> have different vertical locations in different ensemble members
-!> see get_values_from_varid() below.
+!> see get_se_values_from_varid() below.
 
 subroutine get_se_values_from_single_level(ens_handle, ens_size, qty, column_index, lev_index, &
                                         vals, my_status)
@@ -1447,8 +1318,9 @@ if (varid < 0) then
    return
 endif
 
-state_indx = get_dart_vector_index(column_index, lev_index, -99, domain_id, varid)
+state_indx = get_dart_vector_index(column_index, lev_index, no_third_dimension, domain_id, varid)
 
+!SENote: Not clear we need error checks like this for things that should never happen.
 if (state_indx < 1 .or. state_indx > get_domain_size(domain_id)) then
    write(string1, *) 'state_index out of range: ', state_indx, ' not between ', 1, get_domain_size(domain_id)
    call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2,text3='should not happen')
@@ -1458,50 +1330,6 @@ vals(:) = get_state(state_indx, ens_handle)
 my_status = 0
 
 end subroutine get_se_values_from_single_level
-
-
-!-----------------------------------------------------------------------
-!> this routine converts the 3 index values and a quantity into a state vector
-!> offset and gets the ensemble of state values for that offset.  this only
-!> gets a single vertical location - if you need to get values which might 
-!> have different vertical locations in different ensemble members
-!> see get_values_from_varid() below.
-
-subroutine get_values_from_single_level(ens_handle, ens_size, qty, lon_index, lat_index, lev_index, &
-                                        vals, my_status)
-type(ensemble_type), intent(in) :: ens_handle
-integer,             intent(in) :: ens_size
-integer,             intent(in) :: qty
-integer,             intent(in) :: lon_index
-integer,             intent(in) :: lat_index
-integer,             intent(in) :: lev_index
-real(r8),            intent(out) :: vals(ens_size)
-integer,             intent(out) :: my_status
-
-character(len=*), parameter :: routine = 'get_values_from_single_level:'
-
-integer :: varid
-integer(i8) :: state_indx
-
-varid = get_varid_from_kind(domain_id, qty)
-if (varid < 0) then
-   vals(:) = MISSING_R8
-   my_status = 12
-   return
-endif
-
-state_indx = get_dart_vector_index(lon_index, lat_index, lev_index, domain_id, varid)
-
-if (state_indx < 1 .or. state_indx > get_domain_size(domain_id)) then
-   write(string1, *) 'state_index out of range: ', state_indx, ' not between ', 1, get_domain_size(domain_id)
-   call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2,text3='should not happen')
-endif
-vals(:) = get_state(state_indx, ens_handle)
-
-my_status = 0
-
-end subroutine get_values_from_single_level
-
 
 !-----------------------------------------------------------------------
 !> this routine takes care of getting the actual state values.  get_state()
@@ -1526,7 +1354,7 @@ real(r8), intent(out) :: vals(ens_size)
 integer,  intent(out) :: my_status(ens_size)
 
 integer(i8) :: state_indx
-integer  :: i, j, kloc
+integer  :: i, j
 real(r8) :: temp_vals(ens_size) 
 logical  :: member_done(ens_size)
 
@@ -1546,10 +1374,9 @@ member_done(:) = .false.
 do i=1, ens_size
 
    if (member_done(i)) cycle
-   !SENote only have one horizontal index that is relevant here, can pass anything for the second???
-   kloc = -1
-   state_indx = get_dart_vector_index(corner_index, lev_index(i), kloc, domain_id, varid)
+   state_indx = get_dart_vector_index(corner_index, lev_index(i), no_third_dimension, domain_id, varid)
 
+   !SENote: Do we need error checks like this?
    if (state_indx < 0) then
       write(string1,*) 'Should not happen: could not find dart state index from '
       write(string2,*) 'corner and lev index :', corner_index, lev_index
@@ -1577,77 +1404,6 @@ end subroutine get_se_values_from_varid
 
 
 !-----------------------------------------------------------------------
-!> this routine takes care of getting the actual state values.  get_state()
-!> communicates with other MPI tasks and can be expensive.
-!>
-!> all ensemble members have the same horizontal location, but different 
-!> ensemble members could have different vertical locations and
-!> so be between different vertical layers.  this code tries to do the fewest
-!> calls to get_state by only calling it for levels that are actually needed
-!> and setting all members with those same levels in a single pass.
-!> 
-
-subroutine get_values_from_varid(ens_handle, ens_size, lon_index, lat_index, lev_index, varid, &
-                                 vals, my_status)
-type(ensemble_type), intent(in)  :: ens_handle
-integer,  intent(in)  :: ens_size
-integer,  intent(in)  :: lon_index
-integer,  intent(in)  :: lat_index
-integer,  intent(in)  :: lev_index(ens_size)
-integer,  intent(in)  :: varid
-real(r8), intent(out) :: vals(ens_size)
-integer,  intent(out) :: my_status(ens_size)
-
-integer(i8) :: state_indx
-integer  :: i, j
-real(r8) :: temp_vals(ens_size) 
-logical  :: member_done(ens_size)
-
-character(len=*), parameter :: routine = 'get_values_from_varid:'
-
-! as we get the values for each ensemble member, we set the 'done' flag
-! and a good return code. 
-my_status(:) = 12
-member_done(:) = .false.
-
-! start with lev_index(1).  get the vals into a temp var.  
-! run through 2-N. any other member that has the same level 
-! set the outgoing values.  keep a separate flag for which 
-! member(s) have been done.  skip to the next undone member 
-! and get the state for that level.  repeat until all levels done.
-
-do i=1, ens_size
-
-   if (member_done(i)) cycle
-
-   state_indx = get_dart_vector_index(lon_index, lat_index, lev_index(i), domain_id, varid)
-
-   if (state_indx < 0) then
-      write(string1,*) 'Should not happen: could not find dart state index from '
-      write(string2,*) 'lon, lat, and lev index :', lon_index, lat_index, lev_index
-      call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
-      return
-   endif
-
-   temp_vals(:) = get_state(state_indx, ens_handle)    ! all the ensemble members for level (i)
-
-   ! start at i, because my ensemble member is clearly at this level.
-   ! then continue on to see if any other members are also at this level.
-   do j=i, ens_size
-      if (member_done(j)) cycle
-
-      if (lev_index(j) == lev_index(i)) then
-         vals(j) = temp_vals(j)
-         member_done(j) = .true.
-         my_status(j) = 0
-      endif
-         
-   enddo
-enddo
-
-end subroutine get_values_from_varid
-
-!-----------------------------------------------------------------------
 !> this is just for 3d fields
 
 subroutine get_se_values_from_nonstate_fields(ens_handle, ens_size, column_index, &
@@ -1665,17 +1421,13 @@ real(r8) :: vals_array(ref_nlevels,ens_size)
 
 character(len=*), parameter :: routine = 'get_se_values_from_nonstate_fields:'
 
-!SENote
-write(*, *) 'in get_se_values_from_nonstate_fields obs_quantity', obs_quantity
-write(*, *) 'QTY_PRESSURE, QTY_VERTLEVEL ', QTY_PRESSURE, QTY_VERTLEVEL
-
 vals(:) = MISSING_R8
 my_status(:) = 99
 
 select case (obs_quantity) 
    case (QTY_PRESSURE)
       call cam_se_pressure_levels(ens_handle, ens_size, column_index, ref_nlevels, &
-                               obs_quantity, vals_array, my_status)
+                               vals_array, my_status)
       if (any(my_status /= 0)) return
 
       do imember=1,ens_size
@@ -1686,58 +1438,17 @@ select case (obs_quantity)
       vals(:)      = lev_index(:)
       my_status(:) = 0
 
+!SENote: Turns out there was no height localization for non-height vertical obs in Manhattan of Classic
+!SENote: At present there is no QTY_GEOMETRIC_HEIGHT here as needed to convert to Height
+!SENote, what did this look like in get_values_from_nonstate_fields?
+
    case default
       write(string1,*)'contact dart support. unexpected error for quantity ', obs_quantity
-      call error_handler(E_MSG,routine,string1,source,revision,revdate)
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
 
 end select
 
 end subroutine get_se_values_from_nonstate_fields
-
-!-----------------------------------------------------------------------
-!> this is just for 3d fields
-
-subroutine get_values_from_nonstate_fields(ens_handle, ens_size, lon_index, lat_index, &
-                                           lev_index, obs_quantity, vals, my_status)
-type(ensemble_type),  intent(in)  :: ens_handle
-integer,              intent(in)  :: ens_size
-integer,              intent(in)  :: lon_index
-integer,              intent(in)  :: lat_index
-integer,              intent(in)  :: lev_index(ens_size)
-integer,              intent(in)  :: obs_quantity
-real(r8),             intent(out) :: vals(ens_size)
-integer,              intent(out) :: my_status(ens_size)
-
-integer  :: imember
-real(r8) :: vals_array(ref_nlevels,ens_size)
-
-character(len=*), parameter :: routine = 'get_values_from_nonstate_fields:'
-
-vals(:) = MISSING_R8
-my_status(:) = 99
-
-select case (obs_quantity) 
-   case (QTY_PRESSURE)
-      call cam_pressure_levels(ens_handle, ens_size, &
-                               lon_index, lat_index, ref_nlevels, &
-                               obs_quantity, vals_array, my_status)
-      if (any(my_status /= 0)) return
-
-      do imember=1,ens_size
-         vals(imember) = vals_array(lev_index(imember), imember)
-      enddo
-
-   case (QTY_VERTLEVEL)
-      vals(:)      = lev_index(:)
-      my_status(:) = 0
-
-   case default
-      write(string1,*)'contact dart support. unexpected error for quantity ', obs_quantity
-      call error_handler(E_MSG,routine,string1,source,revision,revdate)
-
-end select
-
-end subroutine get_values_from_nonstate_fields
 
 !-----------------------------------------------------------------------
 !>
@@ -2488,49 +2199,38 @@ integer,            intent(out) :: istatus(ens_size)
 
 character(len=*), parameter :: routine = 'interpolate_se_values:'
 
-integer  :: which_vert, four_lons(4), four_lats(4)
-!SENote
+integer  :: which_vert
 integer :: cell_corners(4), closest, i
 type(location_type) :: location_copy
 !SENote : These are terrible names
 real(r8) :: l, m
-real(r8) :: lon_fract, lat_fract
 real(r8) :: lon_lat_vert(3), quad_vals(4, ens_size)
 type(quad_interp_handle) :: interp_handle
 
 interp_vals(:) = MISSING_R8
 istatus(:)     = 99
 
-!SENote: More general note, not entirely clear why we need a completely separate routine here.
 lon_lat_vert  = get_location(location)
 which_vert    = nint(query_location(location)) 
 
-! Not clear that this will eventually be relevant, so look at changing it ther
 location_copy = location
 call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l, m)
 
 
 !SENote: Now work on the vertical conversions and getting the vertical index for each ensemble member
-! Can model this on get_quad_vals which does something similar for the FV
-! Just need to send the indices of the corners instead of pair of lon and lat indices
+!SENOte: switching the order on the varid and obs_qty arguments from the call isn't a great idea
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
 
-!SENote
-write(*, *) 'back from get_se_quad_vals in interpolate_se_values ', varid, obs_qty
-write(*, *) 'cell_corners ', cell_corners, quad_vals
-
 !SENOte: Again,need to sort out the error returns on all of these
-!SENoteif (istatus(1) /= 0) then
-   !SENoteistatus(:) = 3  ! cannot locate enclosing horizontal quad
-   !SENotereturn
-!SENoteendif
+if(istatus(1) /= 0) then
+   istatus(:) = 3  ! cannot locate enclosing horizontal quad
+   return
+endif
 
 if (any(istatus /= 0)) return
 
 
-
-! Then interpolate horizontally to the (lon,lat) of the ob.
 ! The following uses Jeff's recommended 'generalized quadrilateral interpolation', as in
 ! http://www.particleincell.com/2012/quad-interpolation/.
 ! Most of the work is done in create_cs_grid_arrays() and coord_ind_cs().
@@ -2575,59 +2275,6 @@ if (any(istatus /= 0)) then
 endif
 
 end subroutine interpolate_se_values
-
-
-!-----------------------------------------------------------------------
-!> internal only version of model interpolate. 
-!> does not check for locations too high - return all actual values.
-
-subroutine interpolate_values(state_handle, ens_size, location, obs_qty, varid, &
-                              interp_vals, istatus)
-
-type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: ens_size
-type(location_type), intent(in) :: location
-integer,             intent(in) :: obs_qty
-integer,             intent(in) :: varid
-real(r8),           intent(out) :: interp_vals(ens_size) 
-integer,            intent(out) :: istatus(ens_size)
-
-character(len=*), parameter :: routine = 'interpolate_values:'
-
-integer  :: which_vert, four_lons(4), four_lats(4)
-real(r8) :: lon_fract, lat_fract
-real(r8) :: lon_lat_vert(3), quad_vals(4, ens_size)
-type(quad_interp_handle) :: interp_handle
-
-interp_vals(:) = MISSING_R8
-istatus(:)     = 99
-
-!SENote: More general note, not entirely clear why we need a completely separate routine here.
-lon_lat_vert  = get_location(location)
-which_vert    = nint(query_location(location)) 
-
-call quad_lon_lat_locate(interp_handle, lon_lat_vert(1), lon_lat_vert(2), &
-                         four_lons, four_lats, lon_fract, lat_fract, istatus(1))
-if (istatus(1) /= 0) then
-   istatus(:) = 3  ! cannot locate enclosing horizontal quad
-   return
-endif
-
-call get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four_lats, &
-                   lon_lat_vert, which_vert, quad_vals, istatus)
-if (any(istatus /= 0)) return
-
-call quad_lon_lat_evaluate(interp_handle, lon_fract, lat_fract, ens_size, &
-                           quad_vals, interp_vals, istatus)
-if (any(istatus /= 0)) then
-   istatus(:) = 8   ! cannot evaluate in the quad
-   return
-endif
-
-write(*, *) 'stopping at end of INTERPOLATE_VALUES, not model_interpolate: Why are we here?'
-stop
-
-end subroutine interpolate_values
 
 !-----------------------------------------------------------------------
 !>
@@ -2723,7 +2370,7 @@ else if (numdims == 1) then
 
    else ! special 2d case
       do icorner=1, 4
-         call get_se_quad_values(ens_size, four_lons(icorner), obs_qty, obs_qty, quad_vals(icorner,:))
+         call get_se_quad_values(ens_size, four_lons(icorner), obs_qty, quad_vals(icorner,:))
       enddo
       ! apparently this can't fail
       my_status(:) = 0
@@ -2741,153 +2388,6 @@ endif
 ! the default value of 99 something went wrong in this logic.
 
 end subroutine get_se_quad_vals
-
-!-----------------------------------------------------------------------
-!>
-
-subroutine get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four_lats, &
-                         lon_lat_vert, which_vert, quad_vals, my_status)
-type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: ens_size
-integer,             intent(in) :: varid
-integer,             intent(in) :: obs_qty
-integer,             intent(in) :: four_lons(4)
-integer,             intent(in) :: four_lats(4)
-real(r8),            intent(in) :: lon_lat_vert(3)
-integer,             intent(in) :: which_vert
-real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
-integer,            intent(out) :: my_status(ens_size)
-
-integer  :: icorner, numdims
-integer  :: level_one_array(ens_size)
-integer  :: four_levs1(4, ens_size), four_levs2(4, ens_size)
-real(r8) :: four_vert_fracts(4, ens_size)
-
-character(len=*), parameter :: routine = 'get_quad_vals:'
-
-quad_vals(:,:) = MISSING_R8
-my_status(:) = 99
-
-! need to consider the case for 2d vs 3d variables
-numdims = get_dims_from_qty(obs_qty, varid)
-
-! now here potentially we have different results for different
-! ensemble members.  the things that can vary are dimensioned by ens_size.
-
-if (numdims == 3) then
-
-   ! build 4 columns to find vertical level numbers
-   do icorner=1, 4
-      call find_vertical_levels(state_handle, ens_size, &
-                                four_lons(icorner), four_lats(icorner), lon_lat_vert(3), &
-                                which_vert, obs_qty, varid, &
-                                four_levs1(icorner, :), four_levs2(icorner, :), & 
-                                four_vert_fracts(icorner, :), my_status)
-      if (any(my_status /= 0)) return
-  
-   enddo
-   
-   ! we have all the indices and fractions we could ever want.
-   ! now get the data values at the bottom levels, the top levels, 
-   ! and do vertical interpolation to get the 4 values in the columns.
-   ! the final horizontal interpolation will happen later.
-      
-   if (varid > 0) then
-
-      call get_four_state_values(state_handle, ens_size, four_lons, four_lats, &
-                                four_levs1, four_levs2, four_vert_fracts, &   
-                                varid, quad_vals, my_status)
-
-   else ! get 3d special variables in another ways ( like QTY_PRESSURE )
-      call get_four_nonstate_values(state_handle, ens_size, four_lons, four_lats, &
-                                   four_levs1, four_levs2, four_vert_fracts, & 
-                                   obs_qty, quad_vals, my_status)
-
-   endif
-
-   if (any(my_status /= 0)) return
-
-else if (numdims == 2) then
-
-   if (varid > 0) then
-      level_one_array(:) = 1
-      do icorner=1, 4
-         call get_values_from_varid(state_handle,  ens_size, & 
-                                    four_lons(icorner), four_lats(icorner), &
-                                    level_one_array, varid, quad_vals(icorner,:),my_status)
-         if (any(my_status /= 0)) return
-
-      enddo
-
-   else ! special 2d case
-      do icorner=1, 4
-         call get_quad_values(ens_size, four_lons(icorner), four_lats(icorner), &
-                               obs_qty, obs_qty, quad_vals(icorner,:))
-      enddo
-      ! apparently this can't fail
-      my_status(:) = 0
-      
-   endif
-
-else
-   write(string1, *) trim(get_name_for_quantity(obs_qty)), ' has dimension ', numdims
-   call error_handler(E_ERR, routine, 'only supports 2D or 3D fields', &
-                      source, revision, revdate, text2=string1)
-endif
-
-! when you get here, my_status() was set either by passing it to a
-! subroutine, or setting it explicitly here.  if this routine returns
-! the default value of 99 something went wrong in this logic.
-
-end subroutine get_quad_vals
-
-!-----------------------------------------------------------------------
-!>
-
-subroutine get_four_state_values(state_handle, ens_size, four_lons, four_lats, &
-                                 four_levs1, four_levs2, four_vert_fracts, &
-                                 varid, quad_vals, my_status)
-
-type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: ens_size
-integer,             intent(in) :: four_lons(4), four_lats(4)
-integer,             intent(in) :: four_levs1(4, ens_size), four_levs2(4, ens_size)
-real(r8),            intent(in) :: four_vert_fracts(4, ens_size)
-integer,             intent(in) :: varid
-real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
-integer,            intent(out) :: my_status(ens_size)
-
-integer  :: icorner
-real(r8) :: vals1(ens_size), vals2(ens_size)
-
-character(len=*), parameter :: routine = 'get_four_state_values:'
-
-do icorner=1, 4
-   call get_values_from_varid(state_handle,  ens_size, &
-                              four_lons(icorner), four_lats(icorner), &
-                              four_levs1(icorner, :), varid, vals1, &
-                              my_status)
-
-   if (any(my_status /= 0)) then
-      my_status(:) = 16   ! cannot retrieve vals1 values
-      return
-   endif
-
-   call get_values_from_varid(state_handle,  ens_size, &
-                              four_lons(icorner), four_lats(icorner), &
-                              four_levs2(icorner, :), varid, vals2, my_status)
-   if (any(my_status /= 0)) then
-      my_status(:) = 17   ! cannot retrieve top values
-      return
-   endif
-
-   call vert_interp(ens_size, vals1, vals2, four_vert_fracts(icorner, :), & 
-                    quad_vals(icorner, :))
-
-enddo
-
-
-end subroutine get_four_state_values
 
 !-----------------------------------------------------------------------
 !>
@@ -2979,51 +2479,6 @@ end subroutine get_se_four_nonstate_values
 
 
 !-----------------------------------------------------------------------
-!>
-
-subroutine get_four_nonstate_values(state_handle, ens_size, four_lons, four_lats, &
-                                 four_levs1, four_levs2, four_vert_fracts, &
-                                 obs_qty, quad_vals, my_status)
-
-type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: ens_size
-integer,             intent(in) :: four_lons(4), four_lats(4)
-integer,             intent(in) :: four_levs1(4, ens_size), four_levs2(4, ens_size)
-real(r8),            intent(in) :: four_vert_fracts(4, ens_size)
-integer,             intent(in) :: obs_qty
-real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
-integer,            intent(out) :: my_status(ens_size)
-
-integer  :: icorner
-real(r8) :: vals1(ens_size), vals2(ens_size)
-
-character(len=*), parameter :: routine = 'get_four_nonstate_values:'
-
-do icorner=1, 4
-   call get_values_from_nonstate_fields(state_handle,  ens_size, &
-                              four_lons(icorner), four_lats(icorner), &
-                              four_levs1(icorner, :), obs_qty, vals1, my_status)
-   if (any(my_status /= 0)) then
-      my_status(:) = 16   ! cannot retrieve vals1 values
-      return
-   endif
-
-   call get_values_from_nonstate_fields(state_handle,  ens_size, &
-                              four_lons(icorner), four_lats(icorner), &
-                              four_levs2(icorner, :), obs_qty, vals2, my_status)
-   if (any(my_status /= 0)) then
-      my_status(:) = 17   ! cannot retrieve top values
-      return
-   endif
-
-   call vert_interp(ens_size, vals1, vals2, four_vert_fracts(icorner, :), &
-                    quad_vals(icorner, :))
-
-enddo
-
-end subroutine get_four_nonstate_values
-
-!-----------------------------------------------------------------------
 !> figure out whether this is a 2d or 3d field based on the quantity.
 !> if this field is in the state vector, use the state routines.
 !> if it's not, there are cases for known other quantities we can
@@ -3060,19 +2515,17 @@ end function get_dims_from_qty
 !>  This is for 2d special observations quantities not in the state
 
 !SENote: THIS HAS NOT YET BEEN IMPLEMENTED
-subroutine get_se_quad_values(ens_size, corner_index, obs_quantity, stagger_qty, vals)
+subroutine get_se_quad_values(ens_size, corner_index, obs_quantity, vals)
 integer,  intent(in) :: ens_size
 integer,  intent(in) :: corner_index
 integer,  intent(in) :: obs_quantity
-integer,  intent(in) :: stagger_qty
 real(r8), intent(out) :: vals(ens_size) 
 
 character(len=*), parameter :: routine = 'get_se_quad_values'
 
-integer :: stagger, prev_lon, next_lat
+integer :: prev_lon, next_lat
 real(r8) :: vals1(ens_size), vals2(ens_size)
 
-stagger = grid_stagger%qty_stagger(stagger_qty)
 
 select case (obs_quantity)
    case (QTY_SURFACE_ELEVATION)
@@ -3090,65 +2543,6 @@ select case (obs_quantity)
 end select
 
 end subroutine get_se_quad_values
-
-
-
-!-----------------------------------------------------------------------
-!>
-!>  This is for 2d special observations quantities not in the state
-
-subroutine get_quad_values(ens_size, lon_index, lat_index, obs_quantity, stagger_qty, vals)
-integer,  intent(in) :: ens_size
-integer,  intent(in) :: lon_index
-integer,  intent(in) :: lat_index
-integer,  intent(in) :: obs_quantity
-integer,  intent(in) :: stagger_qty
-real(r8), intent(out) :: vals(ens_size) 
-
-character(len=*), parameter :: routine = 'get_quad_values'
-
-integer :: stagger, prev_lon, next_lat
-real(r8) :: vals1(ens_size), vals2(ens_size)
-
-stagger = grid_stagger%qty_stagger(stagger_qty)
-
-select case (obs_quantity)
-   case (QTY_SURFACE_ELEVATION)
-
-     select case (stagger)
-       case (STAGGER_U)
-          call quad_index_neighbors(lon_index, lat_index, prev_lon, next_lat)
-          vals1(:) = phis(lon_index, lat_index) 
-          vals2(:) = phis(lon_index, next_lat) 
-     
-        vals = (vals1 + vals2) * 0.5_r8 
-     
-       case (STAGGER_V)
-          call quad_index_neighbors(lon_index, lat_index, prev_lon, next_lat)
-          vals1(:) = phis(lon_index, lat_index) 
-          vals2(:) = phis(prev_lon,  lat_index) 
-     
-        vals = (vals1 + vals2) * 0.5_r8
-     
-       ! no stagger - cell centers, or W stagger
-       case default
-  
-        vals = phis(lon_index, lat_index)
-  
-     end select
-    
-     !>@todo FIXME:
-     ! should this be using gravity at the given latitude? 
-     vals = vals / gravity
-
-   case default 
-      write(string1, *) 'we can not interpolate qty', obs_quantity
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
-
-end select
-
-end subroutine get_quad_values
-
 
 !-----------------------------------------------------------------------
 !> interpolate in the vertical between 2 arrays of items.
@@ -3272,7 +2666,7 @@ select case (which_vert)
    case(VERTISHEIGHT)
       ! construct a height column here and find the model levels
       ! that enclose this value
-      call cam_se_height_levels(ens_handle, ens_size, corner_index, ref_nlevels, obs_qty, &
+      call cam_se_height_levels(ens_handle, ens_size, corner_index, ref_nlevels, &
                              height_array, my_status)
 
       !>@todo FIXME let successful members continue?
@@ -3345,248 +2739,15 @@ end subroutine find_se_vertical_levels
 
 
 !-----------------------------------------------------------------------
-!> given a lon/lat index number, a quantity and a vertical value and type,
-!> return which two levels these are between and the fraction across.
-!> 
-
-subroutine find_vertical_levels(ens_handle, ens_size, lon_index, lat_index, vert_val, &
-                                which_vert, obs_qty, var_id, levs1, levs2, vert_fracts, my_status)
-type(ensemble_type), intent(in)  :: ens_handle
-integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: lon_index 
-integer,             intent(in)  :: lat_index
-real(r8),            intent(in)  :: vert_val
-integer,             intent(in)  :: which_vert
-integer,             intent(in)  :: obs_qty
-integer,             intent(in)  :: var_id
-integer,             intent(out) :: levs1(ens_size)
-integer,             intent(out) :: levs2(ens_size)
-real(r8),            intent(out) :: vert_fracts(ens_size)
-integer,             intent(out) :: my_status(ens_size)
-
-character(len=*), parameter :: routine = 'find_vertical_levels:'
-
-integer  :: l1, l2, imember, level_one, status1, k
-real(r8) :: fract1
-real(r8) :: surf_pressure (  ens_size )
-real(r8) :: pressure_array( ref_nlevels, ens_size )
-real(r8) :: height_array  ( ref_nlevels, ens_size )
-
-! assume the worst
-levs1(:)    = MISSING_I
-levs2(:)    = MISSING_I
-vert_fracts(:) = MISSING_R8
-my_status(:)   = 98
-
-! ref_nlevels is the number of vertical levels (midlayer points)
-
-level_one = 1
-
-select case (which_vert)
-
-   case(VERTISPRESSURE)
-      ! construct a pressure column here and find the model levels
-      ! that enclose this value
-      call get_staggered_values_from_qty(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
-                                         lon_index, lat_index, level_one, obs_qty, &
-                                         surf_pressure, status1)
-      if (status1 /= 0) then
-         my_status(:) = status1
-         return
-      endif
-
-      call build_cam_pressure_columns(ens_size, surf_pressure, ref_nlevels, pressure_array)
-
-      do imember=1, ens_size
-         call pressure_to_level(ref_nlevels, pressure_array(:, imember), vert_val, & 
-                                levs1(imember), levs2(imember), &
-                                vert_fracts(imember), my_status(imember))
-
-      enddo
-
-      if (debug_level > 100) then
-         do k = 1,ens_size
-            print*, 'ISPRESSURE levs1(k), levs2(k), vert_fracts(k), vert_val', &
-                     levs1(k), levs2(k), vert_fracts(k), vert_val
-          enddo
-      endif
-
-   case(VERTISHEIGHT)
-      ! construct a height column here and find the model levels
-      ! that enclose this value
-      call cam_height_levels(ens_handle, ens_size, lon_index, lat_index, ref_nlevels, obs_qty, &
-                             height_array, my_status)
-
-      !>@todo FIXME let successful members continue?
-      if (any(my_status /= 0)) return
-
-      if (debug_level > 400) then
-         do k = 1,ref_nlevels
-            print*, 'ISHEIGHT: ', k, height_array(k,1)
-         enddo
-      endif
-
-      do imember=1, ens_size
-         call height_to_level(ref_nlevels, height_array(:, imember), vert_val, & 
-                             levs1(imember), levs2(imember), vert_fracts(imember), &
-                             my_status(imember))
-      enddo
-
-      !>@todo FIXME let successful members continue?
-      if (any(my_status /= 0)) return
-
-      if (debug_level > 100) then
-         do k = 1,ens_size
-            print*, 'ISHEIGHT ens#, levs1(#), levs2(#), vert_fracts(#), top/bot height(#)', &
-                     k, levs1(k), levs2(k), vert_fracts(k), height_array(levs2(k),k), height_array(levs1(k), k)
-         enddo
-      endif
-      
-   case(VERTISLEVEL)
-      ! this routine returns false if the level number is out of range.
-      if (.not. check_good_levels(vert_val, ref_nlevels, l1, l2, fract1)) then
-         my_status(:) = 8
-         return
-      endif
-
-      ! because we're given a model level as input, all the ensemble
-      ! members have the same outgoing values.
-      levs1(:) = l1
-      levs2(:) = l2
-      vert_fracts(:) = fract1
-      my_status(:) = 0
-
-      if (debug_level > 100) then
-         do k = 1,ens_size
-            print*, 'ISLEVEL levs1(k), levs2(k), vert_fracts(k), vert_val', &
-                     levs1(k), levs2(k), vert_fracts(k), vert_val
-         enddo
-      endif
-
-   ! 2d fields
-   case(VERTISUNDEF, VERTISSURFACE)
-      if (get_dims_from_qty(obs_qty, var_id) == 2) then
-         levs1(:) = ref_nlevels - 1
-         levs2(:) = ref_nlevels
-         vert_fracts(:) = 1.0_r8
-         my_status(:) = 0
-      else
-         my_status(:) = 4 ! can not get vertical levels
-      endif
-
-   case default
-      write(string1, *) 'unsupported vertical type: ', which_vert
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
-      
-end select
-
-! by this time someone has already set my_status(), good or bad.
-
-end subroutine find_vertical_levels
-
-!-----------------------------------------------------------------------
 !> Compute the heights at pressure midpoints
 !>
 !> this version does all ensemble members at once.
 
-subroutine cam_height_levels(ens_handle, ens_size, lon_index, lat_index, nlevels, qty, height_array, my_status) 
-type(ensemble_type), intent(in)  :: ens_handle
-integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: lon_index
-integer,             intent(in)  :: lat_index
-integer,             intent(in)  :: nlevels
-integer,             intent(in)  :: qty
-real(r8),            intent(out) :: height_array(nlevels, ens_size)
-integer,             intent(out) :: my_status(ens_size)
-
-integer  :: k, level_one, imember, status1
-real(r8) :: surface_elevation(1)
-real(r8) :: surface_pressure(ens_size), mbar(nlevels, ens_size)
-real(r8) :: tv(nlevels, ens_size)  ! Virtual temperature, top to bottom
-
-! this is for surface obs
-level_one = 1
-
-! get the surface pressure from the ens_handle
-call get_staggered_values_from_qty(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
-                                   lon_index, lat_index, level_one, qty, surface_pressure, status1)
-
-! get the surface elevation from the phis, including stagger if needed
-call get_quad_values(1, lon_index, lat_index, QTY_SURFACE_ELEVATION, qty, surface_elevation)
-
-call compute_virtual_temperature(ens_handle, ens_size, lon_index, lat_index, nlevels, qty, tv, status1)
-
-if (status1 /= 0) then
-   my_status = status1
-   return
-endif
-
-if (use_variable_mean_mass) then
-   call compute_mean_mass(ens_handle, ens_size, lon_index, lat_index, nlevels, qty, mbar, status1)
-
-   if (status1 /= 0) then
-      my_status = status1
-      return
-   endif
-
-   ! compute the height columns for each ensemble member - passing mbar() array in.
-   do imember = 1, ens_size
-      call build_heights(nlevels, surface_pressure(imember), surface_elevation(1), &
-                         tv(:, imember), height_array(:, imember), mbar=mbar(:, imember))
-   enddo
-
-else
-   ! compute the height columns for each ensemble member - no mbar() argument here.
-   ! (you cannot just pass 1.0 in for the mbar() array; it uses a different gas constant
-   ! in the variable mean mass case.)
-   do imember = 1, ens_size
-      call build_heights(nlevels, surface_pressure(imember), surface_elevation(1), &
-                         tv(:, imember), height_array(:, imember))
-   enddo
-endif
-
-
-if (debug_level > 100) then
- do imember = 1, ens_size
-  print *, ''
-  print *, 'geopotential, member: ', imember
-  do k = 1, nlevels
-    print*, 'tv(level)    ', k, tv(k, imember)
-  enddo
-  do k = 1, nlevels
-    print*, 'height(level)', k, height_array(k, imember)
-  enddo
- enddo
-endif
-
-! convert entire array to geometric height (from potential height)
-call gph2gmh(height_array, grid_data%lat%vals(lat_index))
-
-if (debug_level > 100) then
- do imember = 1, ens_size
-  print *, ''
-  print *, 'geometric, member: ', imember
-  do k = 1, nlevels
-    print*, 'height(level)', k, height_array(k, imember)
-  enddo
- enddo
-endif
-
-my_status(:) = 0
-
-end subroutine cam_height_levels
-
-!-----------------------------------------------------------------------
-!> Compute the heights at pressure midpoints
-!>
-!> this version does all ensemble members at once.
-
-subroutine cam_se_height_levels(ens_handle, ens_size, column_index, nlevels, qty, height_array, my_status) 
+subroutine cam_se_height_levels(ens_handle, ens_size, column_index, nlevels, height_array, my_status) 
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: column_index
 integer,             intent(in)  :: nlevels
-integer,             intent(in)  :: qty
 real(r8),            intent(out) :: height_array(nlevels, ens_size)
 integer,             intent(out) :: my_status(ens_size)
 
@@ -3595,32 +2756,26 @@ real(r8) :: surface_elevation(1)
 real(r8) :: surface_pressure(ens_size), mbar(nlevels, ens_size)
 real(r8) :: tv(nlevels, ens_size)  ! Virtual temperature, top to bottom
 
-!SENote Temporary declarations for debug
-integer :: lon_index, lat_index
-
 ! this is for surface obs
 level_one = 1
 
-!SENote
-write(*, *) 'in cam_se_height_levels', column_index
-
-!SENote: No staggering, so just get the surface pressure at this column
+! Get the surface pressure at this column
 call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, column_index, level_one, &
    surface_pressure, status1)
 
 ! get the surface elevation from the phis, including stagger if needed
-call get_se_quad_values(1, column_index, QTY_SURFACE_ELEVATION, qty, surface_elevation)
+call get_se_quad_values(1, column_index, QTY_SURFACE_ELEVATION, surface_elevation)
 
-call compute_se_virtual_temperature(ens_handle, ens_size, column_index, nlevels, qty, tv, status1)
+call compute_se_virtual_temperature(ens_handle, ens_size, column_index, nlevels, tv, status1)
 
 if (status1 /= 0) then
    my_status = status1
    return
 endif
 
-!SENote: THIS BLOCK HAS NOT BEEN TESTED OR IMPLEMENTED
+!SENote: need to change this call CHECK THIS CAREFULLY
 if (use_variable_mean_mass) then
-   call compute_mean_mass(ens_handle, ens_size, lon_index, lat_index, nlevels, qty, mbar, status1)
+   call compute_se_mean_mass(ens_handle, ens_size, column_index, nlevels, mbar, status1)
    if (status1 /= 0) then
       my_status = status1
       return
@@ -4350,13 +3505,12 @@ end subroutine read_cam_phis_array
 !> this version does all ensemble members at once.
 !>
 
-subroutine compute_se_virtual_temperature(ens_handle, ens_size, column_index, nlevels, qty, tv, istatus)
+subroutine compute_se_virtual_temperature(ens_handle, ens_size, column_index, nlevels, tv, istatus)
 
 type(ensemble_type), intent(in)   :: ens_handle
 integer,             intent(in)   :: ens_size
 integer,             intent(in)   :: column_index
 integer,             intent(in)   :: nlevels
-integer,             intent(in)   :: qty
 real(r8),            intent(out)  :: tv(nlevels, ens_size)
 integer,             intent(out)  :: istatus
 
@@ -4374,16 +3528,12 @@ do k = 1, nlevels
    ! temperature
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_TEMPERATURE, column_index, k, &
       temperature, istatus)
-   !SENOTEcall get_staggered_values_from_qty(ens_handle, ens_size, QTY_TEMPERATURE, &
-                                     !SENOTElon_index, lat_index, k, qty, temperature, istatus)
 
    if (istatus < 0) return
 
    ! specific humidity
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, column_index, k, &
       specific_humidity, istatus)
-   !SENOTEcall get_staggered_values_from_qty(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, &
-                                     !SENOTElon_index, lat_index, k, qty, specific_humidity, istatus)
    
    if (istatus < 0) return
 
@@ -4396,64 +3546,16 @@ end subroutine compute_se_virtual_temperature
 
 
 !-----------------------------------------------------------------------
-!> Compute the virtual temperature at the midpoints
-!>
-!> this version does all ensemble members at once.
-!>
-
-subroutine compute_virtual_temperature(ens_handle, ens_size, lon_index, lat_index, nlevels, qty, tv, istatus)
-
-type(ensemble_type), intent(in)   :: ens_handle
-integer,             intent(in)   :: ens_size
-integer,             intent(in)   :: lon_index
-integer,             intent(in)   :: lat_index
-integer,             intent(in)   :: nlevels
-integer,             intent(in)   :: qty
-real(r8),            intent(out)  :: tv(nlevels, ens_size)
-integer,             intent(out)  :: istatus
-
-integer :: k
-real(r8) :: temperature(ens_size), specific_humidity(ens_size)
-
-!>@todo this should come from a model specific constant module.
-!> the forward operators and model_mod should use it.
-real(r8), parameter :: rd = 287.05_r8 ! dry air gas constant
-real(r8), parameter :: rv = 461.51_r8 ! wet air gas constant
-real(r8), parameter :: rr_factor = (rv/rd) - 1.0_r8
-
-
-! construct a virtual temperature column, one for each ensemble member
-do k = 1, nlevels
-   ! temperature
-   call get_staggered_values_from_qty(ens_handle, ens_size, QTY_TEMPERATURE, &
-                                     lon_index, lat_index, k, qty, temperature, istatus)
-
-   if (istatus < 0) return
-
-   ! specific humidity
-   call get_staggered_values_from_qty(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, &
-                                     lon_index, lat_index, k, qty, specific_humidity, istatus)
-   if (istatus < 0) return
-
-   !>tv == virtual temperature.
-   tv(k,:) = temperature(:)*(1.0_r8 + rr_factor*specific_humidity(:))
-   !print*, 'tv(levels)', k,tv(k,1), temperature(1), specific_humidity(1)
-enddo
-
-
-end subroutine compute_virtual_temperature
-
-!-----------------------------------------------------------------------
 !> loop through all levels to get the mean mass.
 !>
 
-subroutine compute_mean_mass(ens_handle, ens_size, lon_index, lat_index, nlevels, qty, mbar, istatus)
+
+!SENote: No test available? Need to work with Nick at some point to test WACCM-X configurations.
+subroutine compute_se_mean_mass(ens_handle, ens_size, col_index, nlevels, mbar, istatus)
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: lon_index
-integer,             intent(in)  :: lat_index
+integer,             intent(in)  :: col_index
 integer,             intent(in)  :: nlevels
-integer,             intent(in)  :: qty
 real(r8),            intent(out) :: mbar(nlevels, ens_size)
 integer,             intent(out) :: istatus
 
@@ -4464,8 +3566,15 @@ real(r8) :: mmr_o1(ens_size, nlevels), &
             mmr_n2(ens_size, nlevels)
 real(r8) :: O_molar_mass, O2_molar_mass, H_molar_mass, N2_molar_mass 
 
+character(len=*), parameter :: routine = 'compute_se_mean_mass'
+
+!SENote: This subroutine has not been tested yet for SE. Need to work with WACCM folks to test.
+call error_handler(E_ERR, routine, 'Subroutine has not been tested', source, revision, revdate)
+
+
 ! do this outside the subroutine?  it never changes throughout the
 ! run of the program
+!SENote: could do an initialization with save storage
 O_molar_mass  = get_molar_mass(QTY_ATOMIC_OXYGEN_MIXING_RATIO)
 O2_molar_mass = get_molar_mass(QTY_MOLEC_OXYGEN_MIXING_RATIO)
 H_molar_mass  = get_molar_mass(QTY_ATOMIC_H_MIXING_RATIO)
@@ -4478,21 +3587,18 @@ N2_molar_mass = get_molar_mass(QTY_NITROGEN)
 ! initial file, which may not be available from low topped models.
 do k = 1, nlevels
 
-   this_qty = QTY_ATOMIC_OXYGEN_MIXING_RATIO
-   call get_staggered_values_from_qty(ens_handle, ens_size, this_qty, &
-                                      lon_index, lat_index, k, qty, mmr_o1(:, k), istatus)
+   call get_se_values_from_single_level(ens_handle, ens_size, QTY_ATOMIC_OXYGEN_MIXING_RATIO, &
+      col_index, k, mmr_o1(:, k), istatus)
    if (istatus /= 0) return
    !print *, 'mmr: ', trim(get_name_for_quantity(this_qty)), mmr_o1(1, k)
    
-   this_qty = QTY_MOLEC_OXYGEN_MIXING_RATIO
-   call get_staggered_values_from_qty(ens_handle, ens_size, this_qty, & 
-                                      lon_index, lat_index, k, qty, mmr_o2(:, k), istatus)
+   call get_se_values_from_single_level(ens_handle, ens_size, QTY_MOLEC_OXYGEN_MIXING_RATIO, &
+      col_index, k, mmr_o2(:, k), istatus)
    if (istatus /= 0) return
    !print *, 'mmr: ', trim(get_name_for_quantity(this_qty)), mmr_o2(1, k)
    
-   this_qty = QTY_ATOMIC_H_MIXING_RATIO
-   call get_staggered_values_from_qty(ens_handle, ens_size, this_qty, &
-                                      lon_index, lat_index, k, qty, mmr_h1(:, k), istatus)
+   call get_se_values_from_single_level(ens_handle, ens_size, QTY_ATOMIC_H_MIXING_RATIO, &
+      col_index, k, mmr_h1(:, k), istatus)
    if (istatus /= 0) return
    !print *, 'mmr: ', trim(get_name_for_quantity(this_qty)), mmr_h1(1, k)
    
@@ -4503,7 +3609,7 @@ do k = 1, nlevels
                       + mmr_n2(:,k)/N2_molar_mass)
 enddo
 
-end subroutine compute_mean_mass
+end subroutine compute_se_mean_mass
 
 !-----------------------------------------------------------------------
 !> This subroutine computes converts vertical state
@@ -4522,6 +3628,7 @@ subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
 type(ensemble_type), intent(in)    :: ens_handle
 integer,             intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
+!SENote: This argument is not used here, but is required to support external calls. Should reexamine
 integer,             intent(in)    :: loc_qtys(:)
 integer(i8),         intent(in)    :: loc_indx(:)
 integer,             intent(in)    :: which_vert
@@ -4541,13 +3648,13 @@ do i=1,num
 
    select case (which_vert)
       case (VERTISPRESSURE)
-         call state_vertical_to_pressure(    ens_handle, ens_size, locs(i), loc_indx(i), loc_qtys(i) )
+         call state_vertical_to_pressure(    ens_handle, ens_size, locs(i), loc_indx(i))
       case (VERTISHEIGHT)
-         call state_vertical_to_height(      ens_handle, ens_size, locs(i), loc_indx(i), loc_qtys(i) )
+         call state_vertical_to_height(      ens_handle, ens_size, locs(i), loc_indx(i))
       case (VERTISLEVEL)
-         call state_vertical_to_level(                   ens_size, locs(i), loc_indx(i), loc_qtys(i) )
+         call state_vertical_to_level(                   ens_size, locs(i), loc_indx(i))
       case (VERTISSCALEHEIGHT)
-         call state_vertical_to_scaleheight( ens_handle, ens_size, locs(i), loc_indx(i), loc_qtys(i) )
+         call state_vertical_to_scaleheight( ens_handle, ens_size, locs(i), loc_indx(i))
       case default
          write(string1,*)'unable to convert vertical state "', which_vert, '"'
          call error_handler(E_MSG,routine,string1,source,revision,revdate)
@@ -4560,12 +3667,11 @@ end subroutine convert_vertical_state
 
 !--------------------------------------------------------------------
 
-subroutine state_vertical_to_pressure(ens_handle, ens_size, location, location_indx, qty)
+subroutine state_vertical_to_pressure(ens_handle, ens_size, location, location_indx)
 type(ensemble_type), intent(in)    :: ens_handle
 integer,             intent(in)    :: ens_size
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
-integer,             intent(in)    :: qty
 
 integer  :: column, level, no_third_dimension, myqty, level_one, status1
 integer  :: my_status(ens_size)
@@ -4589,7 +3695,7 @@ if (is_surface_field(myqty)) then
    call set_vertical(location, surface_pressure(1), VERTISPRESSURE)
 else
    call cam_se_pressure_levels(ens_handle, ens_size, column, ref_nlevels, &
-                            qty, pressure_array, my_status)
+                            pressure_array, my_status)
 
    call set_vertical(location, pressure_array(level), VERTISPRESSURE)
 endif
@@ -4598,35 +3704,34 @@ end subroutine state_vertical_to_pressure
 
 !--------------------------------------------------------------------
 
-subroutine state_vertical_to_height(ens_handle, ens_size, location, location_indx, qty)
+subroutine state_vertical_to_height(ens_handle, ens_size, location, location_indx)
 type(ensemble_type), intent(in)    :: ens_handle
 integer,             intent(in)    :: ens_size
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
-integer,             intent(in)    :: qty
 
-integer  :: iloc, jloc, vloc, my_status(ens_size)
+integer  :: column, level, no_third_dimension, my_status(ens_size)
 real(r8) :: height_array(ref_nlevels, ens_size)
 
 ! build a height column and a pressure column and find the levels
-call get_model_variable_indices(location_indx, iloc, jloc, vloc)
+call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
-call cam_height_levels(ens_handle, ens_size, iloc, jloc, ref_nlevels, &
-                       qty, height_array, my_status) 
+call cam_se_height_levels(ens_handle, ens_size, column, ref_nlevels, &
+                       height_array, my_status) 
 
 !>@todo FIXME this can only be used if ensemble size is 1
-call set_vertical(location, height_array(vloc,1), VERTISHEIGHT)
+!SENote: Confirm this
+call set_vertical(location, height_array(level, 1), VERTISHEIGHT)
 
 end subroutine state_vertical_to_height
 
 !--------------------------------------------------------------------
 
-subroutine state_vertical_to_scaleheight(ens_handle, ens_size, location, location_indx, qty)
+subroutine state_vertical_to_scaleheight(ens_handle, ens_size, location, location_indx)
 type(ensemble_type), intent(in)    :: ens_handle
 integer,             intent(in)    :: ens_size
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
-integer,             intent(in)    :: qty
 
 integer  :: column, level, no_third_dimension, level_one, status1, my_status(ens_size)
 real(r8) :: pressure_array(ref_nlevels)
@@ -4659,7 +3764,7 @@ if (no_normalization_of_scale_heights) then
       call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
       call cam_se_pressure_levels(ens_handle, ens_size, column,  ref_nlevels, &
-                               qty, pressure_array, my_status)
+                               pressure_array, my_status)
       if (any(my_status /= 0)) goto 200
    
       scaleheight_val = log(pressure_array(level))
@@ -4679,7 +3784,7 @@ else
       call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
       call cam_se_pressure_levels(ens_handle, ens_size, column, ref_nlevels, &
-                               qty, pressure_array, my_status)
+                               pressure_array, my_status)
       if (any(my_status /= 0)) goto 200
 
       ! get the surface pressure from the ens_handle
@@ -4701,11 +3806,10 @@ end subroutine state_vertical_to_scaleheight
 
 !--------------------------------------------------------------------
 
-subroutine state_vertical_to_level(ens_size, location, location_indx, qty)
+subroutine state_vertical_to_level(ens_size, location, location_indx)
 integer,             intent(in)    :: ens_size
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
-integer,             intent(in)    :: qty
 
 integer  :: iloc, jloc, vloc
 
@@ -4726,13 +3830,12 @@ end subroutine state_vertical_to_level
 !>
 !> this version does all ensemble members at once.
 
-subroutine cam_se_pressure_levels(ens_handle, ens_size, col_index, nlevels, qty, &
+subroutine cam_se_pressure_levels(ens_handle, ens_size, col_index, nlevels, &
                                pressure_array, my_status) 
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: col_index
 integer,             intent(in)  :: nlevels
-integer,             intent(in)  :: qty
 real(r8),            intent(out) :: pressure_array(nlevels, ens_size)
 integer,             intent(out) :: my_status(ens_size)
 
@@ -4745,58 +3848,18 @@ level_one = 1
 ! get the surface pressure from the ens_handle
       call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, col_index, level_one, &
          surface_pressure, status1)
-!SENotecall get_staggered_values_from_qty(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
-        !SENotelon_index, lat_index, level_one, qty, surface_pressure, status1)
 
 if (status1 /= 0) then
    my_status(:) = status1
    return
 endif
 
-call build_cam_pressure_columns(ens_size, surface_pressure, ref_nlevels, &
-                               pressure_array)
+call build_cam_pressure_columns(ens_size, surface_pressure, ref_nlevels, pressure_array)
+
+! No error returns available if we get here, so all good
 my_status(:) = 0
 
 end subroutine cam_se_pressure_levels
-
-!--------------------------------------------------------------------
-
-!-----------------------------------------------------------------------
-!> Compute the pressure values at midpoint levels
-!>
-!> this version does all ensemble members at once.
-
-subroutine cam_pressure_levels(ens_handle, ens_size, lon_index, lat_index, nlevels, qty, &
-                               pressure_array, my_status) 
-type(ensemble_type), intent(in)  :: ens_handle
-integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: lon_index
-integer,             intent(in)  :: lat_index
-integer,             intent(in)  :: nlevels
-integer,             intent(in)  :: qty
-real(r8),            intent(out) :: pressure_array(nlevels, ens_size)
-integer,             intent(out) :: my_status(ens_size)
-
-integer     :: level_one, status1
-real(r8)    :: surface_pressure(ens_size)
-
-! this is for surface obs
-level_one = 1
-
-! get the surface pressure from the ens_handle
-call get_staggered_values_from_qty(ens_handle, ens_size, QTY_SURFACE_PRESSURE, &
-        lon_index, lat_index, level_one, qty, surface_pressure, status1)
-
-if (status1 /= 0) then
-   my_status(:) = status1
-   return
-endif
-
-call build_cam_pressure_columns(ens_size, surface_pressure, ref_nlevels, &
-                               pressure_array)
-my_status(:) = 0
-
-end subroutine cam_pressure_levels
 
 !--------------------------------------------------------------------
 subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
@@ -4900,8 +3963,6 @@ ens_size = 1
 call ok_to_interpolate(QTY_GEOMETRIC_HEIGHT, varid, domain_id, my_status)
 if (my_status /= 0) return
 
-!SENote 
-write(*, *) 'in obs_vertical_to_height'
 call interpolate_se_values(ens_handle, ens_size, location, &
                         QTY_GEOMETRIC_HEIGHT, varid, height_array(:), status(:))
 if (status(1) /= 0) then
@@ -4930,7 +3991,8 @@ varid = -1
 !SENote
 write(*, *) 'In obs_vertical_to_level'
 
-call interpolate_values(ens_handle, ens_size, location, &
+!SENote: This has not been checked, just swapped the call to interpolate_values
+call interpolate_se_values(ens_handle, ens_size, location, &
                         QTY_VERTLEVEL, varid, level_array(:), status(:))
 if (status(1) /= 0) then
    my_status = status(1)
@@ -5207,9 +4269,15 @@ endif
 ! does the base obs need conversion first?
 vert_type = query_location(base_loc)
 
+!SENote
+write(*, *) 'in get_close_state before convert_vert_one_obs'
+call write_location(0, base_loc)
 if (vert_type /= vertical_localization_type) then
    call convert_vert_one_obs(ens_handle, base_loc, base_type, &
                              vertical_localization_type, status)
+!SENote
+write(*, *) 'back form convert_vert_one_obs status ', status
+stop
    if (status /= 0) then
       num_close = 0
       return
