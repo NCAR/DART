@@ -98,11 +98,6 @@ use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, &
                                    nc_close_file, nc_variable_exists, nc_get_global_attribute
 use        chem_tables_mod, only : init_chem_tables, finalize_chem_tables, &
                                    get_molar_mass, get_volume_mixing_ratio
-use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
-                                   set_quad_coords, finalize_quad_interp, &
-                                   quad_lon_lat_locate, quad_lon_lat_evaluate, &
-                                   GRID_QUAD_IRREG_SPACED_REGULAR,  &
-                                   QUAD_LOCATED_CELL_CENTERS
 use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
                                    init_time => fail_init_time,    &
                                    init_conditions => fail_init_conditions
@@ -266,13 +261,6 @@ real(r8), allocatable :: phis(:, :)
 !> standard atmosphere.  this can only be used when we
 !> don't have a real ensemble to use, or we don't care
 !> about absolute accuracy.
-
-!SENote This type is not needed for SE
-! Horizontal interpolation code.  Need a handle for nonstaggered, U and V.
-type(quad_interp_handle) :: interp_nonstaggered, &
-                            interp_u_staggered, &
-                            interp_v_staggered
-
 
 ! SENote: A veriety of module storage data structures for geometry of grid
 ! Verify that all of these are still being used
@@ -1500,16 +1488,12 @@ integer  :: status_array(ens_size)
 real(r8) :: lon_fract, lat_fract
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
-type(quad_interp_handle) :: interp_handle   ! should this be a pointer?? 
-!SENote: need additional local variables
 integer :: closest, cell_corners(4), i
-!SENote: these legacy variable names for fractions in the interp need to be more informative
-real(r8) :: l, m
+real(r8) :: l_weight, m_weight
 type(location_type) :: location_copy
 
 
 if ( .not. module_initialized ) call static_init_model
-
 
 ! Successful istatus is 0
 interp_vals(:) = MISSING_R8
@@ -1541,23 +1525,21 @@ if (discarding_high_obs) then
 endif
 
 
-!SENote
 ! Do the interpolation here
 ! First step, find the columns of the four 'corners' containing the location
-! CONFIRM that a qty has replaced a kind 
 ! SENote2: In the CLASSIC, there is a possibility that the cell_corner was already found and this call can
 ! be skipped. Understand that and implement as needed.
 ! Also note that cannot pass location directly because it is intent(inout) in coord_ind_cs.
 ! Not clear that this will eventually be relevant, so look at changing it ther
 location_copy = location
-call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l, m)
+call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l_weight, m_weight)
 
-
-!SENote: Now work on the vertical conversions and getting the vertical index for each ensemble member
-! Can model this on get_quad_vals which does something similar for the FV
-! Just need to send the indices of the corners instead of pair of lon and lat indices
+! Now do vertical conversions and get the vertical index for each ensemble member
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
+
+!SENote: Need to relate this istatus return to what is being expected here.
+! This can be compared back to get_quad_values for FV
 
 
 ! Then interpolate horizontally to the (lon,lat) of the ob.
@@ -1570,43 +1552,20 @@ call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
 ! ((l,m) space) diagonally across the ob location from the corner.
 ! AKA 'linear area weighting'.
 
-! SENote: The status block needs to be worked on to be consistent with CLASSIC
-!SENote: It is commented out for now but should be put back in.
-! The vals indices are consistent with how mapping of corners was done,
-! and how cell_corners was assigned.
-!SENoteif (vstatus == 1) then
-   !SENoteif (print_details) then
-      !SENotewrite(string1,'(A,2F10.6,1pE20.12)') 'istatus = 1, no interpolation'
-      !SENotecall error_handler(E_MSG, 'interp_cubed_sphere', string1)
-   !SENoteendif
-   !SENotereturn
-!SENoteelse
-   !SENoteif (abs(lon_lat_lev(2)) > max_obs_lat_degree) then
-      !SENote! Define istatus to be a combination of vstatus (= 0 or 2 (for higher than highest_obs...))
-      !SENote! and whether the ob is poleward of the limits set in the namelist (+ 4).
-      !SENoteistatus = 10*vstatus + 4
-   !SENoteelse
-      !SENoteistatus = vstatus
-   !SENoteendif
-!SENoteendif
-
 ! SENote: could this be done in vector notation?
 do i = 1, ens_size
-interp_vals(i) = quad_vals(2, i) *           l *          m &
-           + quad_vals(1, i) * (1.0_r8 - l)*          m &
-           + quad_vals(4, i) * (1.0_r8 - l)*(1.0_r8 - m) &
-           + quad_vals(3, i) *           l *(1.0_r8 - m)
+interp_vals(i) = quad_vals(2, i) *       l_weight *          m_weight &
+           + quad_vals(1, i) * (1.0_r8 - l_weight)*          m_weight &
+           + quad_vals(4, i) * (1.0_r8 - l_weight)*(1.0_r8 - m_weight) &
+           + quad_vals(3, i) *           l_weight *(1.0_r8 - m_weight)
 end do
 
 if (print_details ) then
    !SENote: Originally for scalar, rather than ensemble size output. Should modify
-   write(string1,'(A,2F10.6,1pE20.12)') ' l,m, interpolated vals = ', &
-         l,m,interp_vals(1)
+   write(string1,'(A,2F10.6,1pE20.12)') ' l_weight, m_weight, interpolated vals = ', &
+         l_weight, m_weight, interp_vals(1)
    call error_handler(E_MSG, 'interp_cubed_sphere', string1)
 endif
-
-
-
 
 if (using_chemistry) &
    interp_vals = interp_vals * get_volume_mixing_ratio(obs_qty)
@@ -1618,7 +1577,7 @@ end subroutine model_interpolate
 
 !-----------------------------------------------------------------------
 
-subroutine coord_ind_cs(obs_loc, obs_kind, closest_only, closest , cell_corners, l, m)
+subroutine coord_ind_cs(obs_loc, obs_kind, closest_only, closest , cell_corners, l_weight, m_weight)
 
 ! Find the node closest to a location, and the possibly the corners of the cell which contains 
 ! the location.
@@ -1630,12 +1589,13 @@ integer,              intent(in)  :: obs_kind
 logical,              intent(in)  :: closest_only
 integer,              intent(out) :: closest
 integer,              intent(out) :: cell_corners(4)
-real(r8),             intent(out) :: l
-real(r8),             intent(out) :: m
+real(r8),             intent(out) :: l_weight
+real(r8),             intent(out) :: m_weight
 
 ! Output from loc_get_close_obs
 integer  :: num_close
 
+! SENote: Take a look at trying to reduce these sizes
 ! It would be nice if these could be smaller, but I don't know what number would work.
 ! It has to be large enough to accommodate all of the grid points that might lie
 ! within 2xcutoff; resolution and location dependent.
@@ -1752,7 +1712,7 @@ Cloop: do k=1,num_nghbrs(closest)
    ! of the closest node.  It is used to retrieve mapping coefficients for the cell being tested.
 
    call unit_square_location(centers(k,closest), closest, obs_loc,          &
-                             lon_lat_lev(1),lon_lat_lev(2), found_cell, origin, l,m)
+                             lon_lat_lev(1), lon_lat_lev(2), found_cell, origin, l_weight, m_weight)
    if (found_cell) exit Cloop
 enddo Cloop
 
@@ -1761,7 +1721,7 @@ if ((.not.found_cell) .and. closest2 /= MISSING_I) then
 
    Second_closest: do k=1,num_nghbrs(closest2)
       call unit_square_location(centers(k,closest2), closest2, obs_loc,         &
-                                lon_lat_lev(1),lon_lat_lev(2), found_cell, origin, l,m)
+                                lon_lat_lev(1), lon_lat_lev(2), found_cell, origin, l_weight,m_weight)
       if (found_cell) then
          ! Put '2nd closest' information into 'closest'.
          dist_1 = dist_2
@@ -1769,7 +1729,7 @@ if ((.not.found_cell) .and. closest2 /= MISSING_I) then
 
          write(string1,'(A,2F10.7,2I8,1p2E12.4)') &
               'Using 2nd closest node to the ob: l, m, closest2, origin2 = ', &
-              l, m, closest, origin
+              l_weight, m_weight, closest, origin
          call error_handler(E_MSG, 'coord_ind_cs', string1,source,revision,revdate)
 
          exit Second_closest
@@ -2185,6 +2145,7 @@ end function find_closest_node
 !-----------------------------------------------------------------------
 !> internal only version of model interpolate. 
 !> does not check for locations too high - return all actual values.
+!SENote: Could this be merged with model_interpolate?
 
 subroutine interpolate_se_values(state_handle, ens_size, location, obs_qty, varid, &
                               interp_vals, istatus)
@@ -2202,10 +2163,9 @@ character(len=*), parameter :: routine = 'interpolate_se_values:'
 integer  :: which_vert
 integer :: cell_corners(4), closest, i
 type(location_type) :: location_copy
-!SENote : These are terrible names
-real(r8) :: l, m
+!SENote : These are unclear names, 
+real(r8) :: l_weight, m_weight
 real(r8) :: lon_lat_vert(3), quad_vals(4, ens_size)
-type(quad_interp_handle) :: interp_handle
 
 interp_vals(:) = MISSING_R8
 istatus(:)     = 99
@@ -2214,7 +2174,7 @@ lon_lat_vert  = get_location(location)
 which_vert    = nint(query_location(location)) 
 
 location_copy = location
-call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l, m)
+call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l_weight, m_weight)
 
 
 !SENote: Now work on the vertical conversions and getting the vertical index for each ensemble member
@@ -2262,10 +2222,10 @@ if (any(istatus /= 0)) return
 
 ! SENote: could this be done in vector notation?
 do i = 1, ens_size
-interp_vals(i) = quad_vals(2, i) *           l *          m &
-           + quad_vals(1, i) * (1.0_r8 - l)*          m &
-           + quad_vals(4, i) * (1.0_r8 - l)*(1.0_r8 - m) &
-           + quad_vals(3, i) *           l *(1.0_r8 - m)
+interp_vals(i) = quad_vals(2, i) *       l_weight *          m_weight &
+           + quad_vals(1, i) * (1.0_r8 - l_weight)*          m_weight &
+           + quad_vals(4, i) * (1.0_r8 - l_weight)*(1.0_r8 - m_weight) &
+           + quad_vals(3, i) *           l_weight *(1.0_r8 - m_weight)
 end do
 
 !SENote Probably  not right
@@ -2323,10 +2283,8 @@ if (numdims == 2) then
 
    ! build 4 columns to find vertical level numbers
    do icorner=1, 4
-      call find_se_vertical_levels(state_handle, ens_size, &
-                                corners(icorner), lon_lat_vert(3), &
-                                which_vert, obs_qty, varid, &
-                                four_levs1(icorner, :), four_levs2(icorner, :), & 
+      call find_se_vertical_levels(state_handle, ens_size, corners(icorner), lon_lat_vert(3), &
+                                which_vert, four_levs1(icorner, :), four_levs2(icorner, :), & 
                                 four_vert_fracts(icorner, :), my_status)
 
       if (any(my_status /= 0)) return
@@ -2456,7 +2414,7 @@ real(r8) :: vals1(ens_size), vals2(ens_size)
 character(len=*), parameter :: routine = 'get_se_four_nonstate_values:'
 
 do icorner=1, 4
-   call get_se_values_from_nonstate_fields(state_handle,  ens_size, four_corners(icorner), &
+   call get_se_values_from_nonstate_fields(state_handle, ens_size, four_corners(icorner), &
                               four_levs1(icorner, :), obs_qty, vals1, my_status)
    if (any(my_status /= 0)) then
       my_status(:) = 16   ! cannot retrieve vals1 values
@@ -2514,10 +2472,11 @@ end function get_dims_from_qty
 !>
 !>  This is for 2d special observations quantities not in the state
 
-!SENote: THIS HAS NOT YET BEEN IMPLEMENTED
-subroutine get_se_quad_values(ens_size, corner_index, obs_quantity, vals)
+!SENote: For now this can onlu get surface elevation (phis)
+
+subroutine get_se_quad_values(ens_size, column, obs_quantity, vals)
 integer,  intent(in) :: ens_size
-integer,  intent(in) :: corner_index
+integer,  intent(in) :: column
 integer,  intent(in) :: obs_quantity
 real(r8), intent(out) :: vals(ens_size) 
 
@@ -2529,8 +2488,8 @@ real(r8) :: vals1(ens_size), vals2(ens_size)
 
 select case (obs_quantity)
    case (QTY_SURFACE_ELEVATION)
-      !SENote: Just return phis for this corner_index
-      vals = phis(corner_index, 1)
+      !SENote: Just return phis for this column
+      vals = phis(column, 1)
 
      !>@todo FIXME:
      ! should this be using gravity at the given latitude? 
@@ -2587,19 +2546,17 @@ end subroutine quad_index_neighbors
 
 !-----------------------------------------------------------------------
 !SENote: Changed from original FV
-!> given a corner index number, a quantity and a vertical value and type,
+!> given a column index number, a quantity and a vertical value and type,
 !> return which two levels these are between and the fraction across.
 !> 
 
-subroutine find_se_vertical_levels(ens_handle, ens_size, corner_index, vert_val, &
-                                which_vert, obs_qty, var_id, levs1, levs2, vert_fracts, my_status)
+subroutine find_se_vertical_levels(ens_handle, ens_size, column, vert_val, &
+                                which_vert, levs1, levs2, vert_fracts, my_status)
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: corner_index 
+integer,             intent(in)  :: column
 real(r8),            intent(in)  :: vert_val
 integer,             intent(in)  :: which_vert
-integer,             intent(in)  :: obs_qty
-integer,             intent(in)  :: var_id
 integer,             intent(out) :: levs1(ens_size)
 integer,             intent(out) :: levs2(ens_size)
 real(r8),            intent(out) :: vert_fracts(ens_size)
@@ -2612,12 +2569,6 @@ real(r8) :: fract1
 real(r8) :: surf_pressure (  ens_size )
 real(r8) :: pressure_array( ref_nlevels, ens_size )
 real(r8) :: height_array  ( ref_nlevels, ens_size )
-
-!SENote: Temps to replace old arguments
-integer :: lon_index, lat_index
-
-!SENote; Debug temps
-integer :: i, j
 
 ! assume the worst
 levs1(:)    = MISSING_I
@@ -2632,13 +2583,10 @@ level_one = 1
 
 select case (which_vert)
 
-   !SENote: Classic has an option for scale_height. Not found here. No observations are reported in scale_height?
-   ! Need to see how this works with localization.
+   !SENote: Classic has an option for scale_height. Not found here but no known obs are reported in scale height.
    case(VERTISPRESSURE)
-      ! construct a pressure column here and find the model levels
-      ! that enclose this value
-      !SENote: No staggering, so just get the surface pressure at this column
-      call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, corner_index, level_one, &
+      ! construct a pressure column here and find the model levels that enclose this value
+      call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, column, level_one, &
          surf_pressure, status1)
 
       !SENote: Need to make a careful study of the error value propagation throughout this call tree
@@ -2648,14 +2596,13 @@ select case (which_vert)
       endif
 
       call build_cam_pressure_columns(ens_size, surf_pressure, ref_nlevels, pressure_array)
-      !SENote: Need to make sure that there are no residual vertical stagger issues here
 
       do imember = 1, ens_size
          call pressure_to_level(ref_nlevels, pressure_array(:, imember), vert_val, & 
-                                levs1(imember), levs2(imember), &
-                                vert_fracts(imember), my_status(imember))
+                                levs1(imember), levs2(imember), vert_fracts(imember), my_status(imember))
       enddo
 
+      !SENote: Can we somehow get all of these disruptive debug statements out of the code? Preprocess?
       if (debug_level > 100) then
          do k = 1,ens_size
             print*, 'ISPRESSURE levs1(k), levs2(k), vert_fracts(k), vert_val', &
@@ -2664,9 +2611,8 @@ select case (which_vert)
       endif
 
    case(VERTISHEIGHT)
-      ! construct a height column here and find the model levels
-      ! that enclose this value
-      call cam_se_height_levels(ens_handle, ens_size, corner_index, ref_nlevels, &
+      ! construct a height column here and find the model levels that enclose this value
+      call cam_se_height_levels(ens_handle, ens_size, column, ref_nlevels, &
                              height_array, my_status)
 
       !>@todo FIXME let successful members continue?
@@ -2715,17 +2661,18 @@ select case (which_vert)
          enddo
       endif
 
-   ! 2d fields
-!SENote, not implemented? It is not clear that anything ever comes through this code block. Need to understand.
-   case(VERTISUNDEF, VERTISSURFACE)
-      if (get_dims_from_qty(obs_qty, var_id) == 2) then
-         levs1(:) = ref_nlevels - 1
-         levs2(:) = ref_nlevels
-         vert_fracts(:) = 1.0_r8
-         my_status(:) = 0
-      else
-         my_status(:) = 4 ! can not get vertical levels
-      endif
+!SENote: This subroutine is only called from one place and only for 2d fields so this next block can't be reached
+!SENote: This allows removal of the obs_qty and varid arguments from the call
+   ! 1d fields for SE
+   !SENotecase(VERTISUNDEF, VERTISSURFACE)
+      !SENoteif (get_dims_from_qty(obs_qty, var_id) == 2) then
+         !SENotelevs1(:) = ref_nlevels - 1
+         !SENotelevs2(:) = ref_nlevels
+         !SENotevert_fracts(:) = 1.0_r8
+         !SENotemy_status(:) = 0
+      !SENoteelse
+         !SENotemy_status(:) = 4 ! can not get vertical levels
+      !SENoteendif
 
    case default
       write(string1, *) 'unsupported vertical type: ', which_vert
@@ -2829,37 +2776,6 @@ my_status(:) = 0
 end subroutine cam_se_height_levels
 
 !-----------------------------------------------------------------------
-!> based on the stagger that corresponds to the given quantity,
-!> return the handle to the interpolation grid
-
-
-function get_interp_handle(obs_quantity)
-integer, intent(in)      :: obs_quantity
-type(quad_interp_handle) :: get_interp_handle
-
-character(len=*), parameter :: routine = 'get_interp_handle:'
-
-select case (grid_stagger%qty_stagger(obs_quantity))
-   case ( STAGGER_U ) 
-      get_interp_handle = interp_u_staggered
-   case ( STAGGER_V ) 
-      get_interp_handle = interp_v_staggered
-   case ( STAGGER_NONE )
-      get_interp_handle = interp_nonstaggered
-   case ( STAGGER_W ) 
-      write(string1,*) 'w stagger -- not supported yet'
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
-   case ( STAGGER_UV ) 
-      write(string1,*) 'uv stagger -- not supported yet'
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
-   case default
-      write(string1,*) 'unknown stagger -- this should never happen'
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
-end select
-                      
-end function get_interp_handle
-
-!-----------------------------------------------------------------------
 !>
 !> Set the desired minimum model advance time. This is generally NOT the
 !> dynamical timestep of the model, but rather the shortest forecast length
@@ -2903,10 +2819,6 @@ call free_cam_grid(grid_data)
 !SENote not available, deallocate(phis)
 
 call free_std_atm_tables()
-
-call finalize_quad_interp(interp_nonstaggered)
-call finalize_quad_interp(interp_u_staggered)
-call finalize_quad_interp(interp_v_staggered)
 
 if (using_chemistry) call finalize_chem_tables()
 
@@ -3430,49 +3342,7 @@ call get_cam_grid(grid_file, grid)
 ! This non-state variable is used to compute surface elevation.
 call read_cam_phis_array(cam_phis_filename)
 
-!SENote; We will need to do initialization of interpolation for SE, but not with this
-! Set up the interpolation structures for later 
-!SENotecall setup_interpolation(grid)
-
 end subroutine read_grid_info
-
-!-----------------------------------------------------------------------
-!>
-!> 
-!>   
-
-subroutine setup_interpolation(grid)
-type(cam_grid), intent(in) :: grid
-
-!>@todo FIXME the cam fv grid is really evenly spaced in lat and lon,
-!>even though they provide full lon() and lat() arrays.  providing the deltas
-!>between each pair would be slightly faster inside the interp code.
-
-!print *, 'setting up interpolation: lon/lat sizes = ', grid%lon%nsize, grid%lat%nsize,  &
-!                                                       grid%slon%nsize, grid%slat%nsize
-
-! mass points at cell centers
-call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, grid%lon%nsize, grid%lat%nsize, &
-                      QUAD_LOCATED_CELL_CENTERS, &
-                      global=.true., spans_lon_zero=.true., pole_wrap=.true., &
-                      interp_handle=interp_nonstaggered)
-call set_quad_coords(interp_nonstaggered, grid%lon%vals, grid%lat%vals)
-
-! U stagger
-call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, grid%lon%nsize, grid%slat%nsize, &
-                      QUAD_LOCATED_CELL_CENTERS, &
-                      global=.true., spans_lon_zero=.true., pole_wrap=.true., &
-                      interp_handle=interp_u_staggered)
-call set_quad_coords(interp_u_staggered, grid%lon%vals, grid%slat%vals)
-
-! V stagger
-call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, grid%slon%nsize, grid%lat%nsize, &
-                      QUAD_LOCATED_CELL_CENTERS, &
-                      global=.true., spans_lon_zero=.true., pole_wrap=.true., &
-                      interp_handle=interp_v_staggered)
-call set_quad_coords(interp_v_staggered, grid%slon%vals, grid%lat%vals)
-
-end subroutine setup_interpolation
 
 !-----------------------------------------------------------------------
 !>
