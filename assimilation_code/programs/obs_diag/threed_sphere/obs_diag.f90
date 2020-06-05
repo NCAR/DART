@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> The programs defines a series of epochs (periods of time) and geographic
 !> regions and accumulates statistics for these epochs and regions.
@@ -21,6 +19,7 @@ program obs_diag
 
 use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4, MISSING_I, &
                              metadatalength
+
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_from_key, get_obs_def, get_copy_meta_data, &
                              get_obs_time_range, get_time_range_keys, &
@@ -28,17 +27,21 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              assignment(=), get_num_copies, static_init_obs_sequence, &
                              get_qc, destroy_obs_sequence, read_obs_seq_header, &
                              get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
+
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                              get_obs_def_location,  get_obs_def_type_of_obs
+
 use     obs_kind_mod, only : max_defined_types_of_obs, get_quantity_for_type_of_obs, &
                              get_name_for_type_of_obs, &
                              QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT
+
 use     location_mod, only : location_type, get_location, set_location_missing,   &
                              write_location, operator(/=), is_location_in_region, &
                              set_location, query_location, LocationDims,          &
                              is_vertical, VERTISUNDEF, VERTISSURFACE,  &
                              VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT,   &
                              VERTISSCALEHEIGHT
+
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, print_date, GREGORIAN, &
                              operator(*),  operator(+),  operator(-), &
@@ -50,9 +53,13 @@ use    utilities_mod, only : open_file, close_file, register_module, &
                              find_namelist_in_file, check_namelist_read,       &
                              do_nml_file, do_nml_term, finalize_utilities,     &
                              set_filename_list
+
 use netcdf_utilities_mod, only : nc_check
+
 use         sort_mod, only : sort
-use   random_seq_mod, only : random_seq_type, init_random_seq, several_random_gaussians
+
+use   random_seq_mod, only : random_seq_type, init_random_seq, &
+                             several_random_gaussians
 
 use typeSizes
 use netcdf
@@ -60,10 +67,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'threed_sphere/obs_diag.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !---------------------------------------------------------------------
 
@@ -152,9 +158,9 @@ logical :: has_posteriors = .true.
 ! Some DART QC == 4 have meaningful posterior mean/spread (i.e. not MISSING)
 ! Anything with a DART QC == 5 has MISSING values for all DART copies
 ! Anything with a DART QC == 6 has MISSING values for all DART copies
-! Anything with a DART QC == 7 has 'good' values for all DART copies, EXCEPT
+! Anything with a DART QC == 7 has 'good'  values for all DART copies, EXCEPT
 ! ambiguous case:
-! prior rejected (7) ... posterior fails (should be 7 & 4)
+! prior rejected (7) ... posterior fails (should be 7 & 2)
 !
 ! FIXME can there be a case where the prior is evaluated and the posterior QC is wrong
 ! FIXME ... there are cases where the prior fails but the posterior works ...
@@ -162,6 +168,9 @@ logical :: has_posteriors = .true.
 integer             :: org_qc_index, dart_qc_index, qc_value
 integer, parameter  :: QC_MAX_PRIOR     = 3
 integer, parameter  :: QC_MAX_POSTERIOR = 1
+integer, parameter  :: QC_OUTLIER       = 7
+integer, parameter  :: QC_PO_FOP_FAIL   = 2
+
 real(r8), allocatable, dimension(:) :: qc
 real(r8), allocatable, dimension(:) :: copyvals
 
@@ -647,7 +656,7 @@ ObsFileLoop : do ifile=1, num_input_files
          if ( dart_qc_index > 0 ) then
             qc_value = qc(dart_qc_index)
          else
-            ! If there is no dart_qc, this must be a case where we 
+            ! If there is no dart_qc, this must be a case where we
             ! are interested only in getting the location information.
             qc_value = 0
          endif
@@ -688,8 +697,8 @@ ObsFileLoop : do ifile=1, num_input_files
          endif
          endif
 
-         ! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
-         ! and the posterior forward operator fails (DART QC ==4). In this case,
+         ! There is an ambiguous case wherein the prior is rejected (DART QC == 7)
+         ! and the posterior forward operator fails (DART QC == 2). In this case,
          ! the DART_QC only reflects the fact the prior was rejected - HOWEVER -
          ! the posterior mean,spread are set to MISSING.
          !
@@ -700,13 +709,13 @@ ObsFileLoop : do ifile=1, num_input_files
          !
          ! This is the only block of code you should need to change.
 
-         if ((qc_value == 7) .and. (abs(posterior_mean(1) - MISSING_R8) < 1.0_r8)) then
+         if (qc_value == QC_OUTLIER .and. posterior_mean(1) == MISSING_R8) then
             write(string1,*)'WARNING ambiguous case for obs index ',obsindex
             string2 = 'obs failed outlier threshhold AND posterior operator failed.'
-            string3 = 'Counting as a Prior QC == 7, Posterior QC == 4.'
+            string3 = 'Counting as a Prior QC == 7, Posterior QC == 2.'
             if (trusted) then
-! COMMENT      string3 = 'WARNING changing DART QC from 7 to 4'
-! COMMENT      qc_value = 4
+! COMMENT      string3 = 'WARNING changing DART QC from 7 to 2'
+! COMMENT      qc_value = 2
             endif
             call error_handler(E_MSG,'obs_diag',string1,text2=string2,text3=string3)
             num_ambiguous = num_ambiguous + 1
@@ -1042,7 +1051,7 @@ write(*,*) '# bad Level          : ',sum(prior%NbadLV(:,1,:,:))
 write(*,*) '# big (original) QC  : ',sum(prior%NbigQC)
 write(*,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
 if (has_posteriors) write(*,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
-write(*,*) '# priorQC 7 postQC 4 : ',num_ambiguous
+write(*,*) '# priorQC 7 postQC 2 : ',num_ambiguous
 write(*,*)
 write(*,*) '# trusted prior   : ',sum(prior%Ntrusted)
 write(*,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
@@ -1080,7 +1089,7 @@ write(logfileunit,*) '# bad Level          : ',sum(prior%NbadLV(:,1,:,:))
 write(logfileunit,*) '# big (original) QC  : ',sum(prior%NbigQC)
 write(logfileunit,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
 if (has_posteriors) write(logfileunit,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
-write(logfileunit,*) '# priorQC 7 postQC 4 : ',num_ambiguous
+write(logfileunit,*) '# priorQC 7 postQC 2 : ',num_ambiguous
 write(logfileunit,*)
 write(logfileunit,*) '# trusted prior   : ',sum(prior%Ntrusted)
 write(logfileunit,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
@@ -1145,7 +1154,6 @@ call error_handler(E_MSG,'obs_diag','Finished successfully.')
 call finalize_utilities()
 
 
-!======================================================================
 CONTAINS
 !======================================================================
 
@@ -2833,13 +2841,13 @@ elseif (    myqc == 6 ) then
    if (has_posteriors) &
       call IPE(poste%NDartQC_6(iepoch,ilevel,iregion,itype), 1)
 
-elseif (    myqc == 7 ) then
+elseif (    myqc == QC_OUTLIER ) then
    call IPE(prior%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
 
    if (present(posterior_mean) .and. has_posteriors) then
-      if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
-         ! ACTUALLY A FAILED FORWARD OPERATOR - ambiguous case
-         call IPE(poste%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
+      if (posterior_mean == MISSING_R8) then
+         ! ACTUALLY A FAILED POSTERIOR FORWARD OPERATOR - ambiguous case
+         call IPE(poste%NDartQC_2(iepoch,ilevel,iregion,itype), 1)
       else
          call IPE(poste%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
       endif
@@ -2912,13 +2920,13 @@ elseif (    myqc == 6 ) then
    if (has_posteriors) &
       call IPE(poste%NDartQC_6(ilevel,iregion,itype), 1)
 
-elseif (    myqc == 7 ) then
+elseif (    myqc == QC_OUTLIER ) then
    call IPE(prior%NDartQC_7(ilevel,iregion,itype), 1)
 
    if (present(posterior_mean) .and. has_posteriors) then
-      if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
-         ! ACTUALLY A FAILED FORWARD OPERATOR - ambiguous case
-         call IPE(poste%NDartQC_4(ilevel,iregion,itype), 1)
+      if (posterior_mean == MISSING_R8) then
+         ! ACTUALLY A FAILED POSTERIOR FORWARD OPERATOR - ambiguous case
+         call IPE(poste%NDartQC_2(ilevel,iregion,itype), 1)
       else
          call IPE(poste%NDartQC_7(ilevel,iregion,itype), 1)
       endif
@@ -2979,12 +2987,12 @@ logical, dimension(7) :: optionals
 prior_qc     = iqc
 posterior_qc = iqc
 
-! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
-! and the posterior forward operator fails (DART QC ==4). In this case,
+! There is an ambiguous case wherein the prior is rejected (DART QC == 7)
+! and the posterior forward operator fails (DART QC == 2). In this case,
 ! the DART_QC reflects the fact the prior was rejected - HOWEVER -
 ! the posterior mean,spread are set to MISSING.
 
-if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
+if (prior_qc == QC_OUTLIER .and. pomean == MISSING_R8) posterior_qc = QC_PO_FOP_FAIL
 
 ! Check to see if we are creating wind speeds from U,V components
 
@@ -2997,10 +3005,10 @@ if ( all(optionals) ) then
    prior_qc     = maxval( (/ iqc, uqc /) )
 
    ! If either the U or V is ambiguous, the wind is ambiguous
-   if     ((uqc == 7) .and. (abs(upomean - MISSING_R8) > 1.0_r8)) then
-      posterior_qc = 4
-   elseif ((iqc == 7) .and. (abs( pomean - MISSING_R8) > 1.0_r8)) then
-      posterior_qc = 4
+   if     (uqc == QC_OUTLIER .and. upomean == MISSING_R8) then
+      posterior_qc = QC_PO_FOP_FAIL
+   elseif (iqc == QC_OUTLIER .and.  pomean == MISSING_R8) then
+      posterior_qc = QC_PO_FOP_FAIL
    else
       posterior_qc = maxval( (/ iqc, uqc /) )
    endif
@@ -3152,12 +3160,12 @@ logical, dimension(7) :: optionals
 prior_qc     = iqc
 posterior_qc = iqc
 
-! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
-! and the posterior forward operator fails (DART QC ==4). In this case,
+! There is an ambiguous case wherein the prior is rejected (DART QC == 7)
+! and the posterior forward operator fails (DART QC == 2). In this case,
 ! the DART_QC reflects the fact the prior was rejected - HOWEVER -
 ! the posterior mean,spread are set to MISSING.
 
-if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
+if (prior_qc == QC_OUTLIER .and. pomean == MISSING_R8) posterior_qc = QC_PO_FOP_FAIL
 
 optionals = (/ present(uobs), present(uobserrvar), present(uprmean), &
                present(uprsprd), present(upomean), present(uposprd), present(uqc) /)
@@ -3168,10 +3176,10 @@ if ( all(optionals) ) then
    prior_qc     = maxval( (/ iqc, uqc /) )
 
    ! If either the U or V is ambiguous, the wind is ambiguous
-   if     ((uqc == 7) .and. (abs(upomean - MISSING_R8) > 1.0_r8)) then
-      posterior_qc = 4
-   elseif ((iqc == 7) .and. (abs( pomean - MISSING_R8) > 1.0_r8)) then
-      posterior_qc = 4
+   if     (uqc == QC_OUTLIER .and. upomean == MISSING_R8) then
+      posterior_qc = QC_PO_FOP_FAIL
+   elseif (iqc == QC_OUTLIER .and. pomean  == MISSING_R8) then
+      posterior_qc = QC_PO_FOP_FAIL
    else
       posterior_qc = maxval( (/ iqc, uqc /) )
    endif
