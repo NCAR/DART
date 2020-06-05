@@ -17,66 +17,66 @@
 ! EVAL_U_WIND_COMPONENT,            QTY_U_WIND_COMPONENT,       COMMON_CODE
 ! EVAL_V_WIND_COMPONENT,            QTY_V_WIND_COMPONENT,       COMMON_CODE
 ! EVAL_AIR_TEMPERATURE,             QTY_TEMPERATURE
-! Z_TC_SYNTH,                       QTY_GEOPOTENTIAL_HEIGHT,    COMMON_CODE
-! U_TC_SYNTH,                       QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_TC_SYNTH,                       QTY_V_WIND_COMPONENT,       COMMON_CODE
-! T_TC_SYNTH,                       QTY_TEMPERATURE
-! Z_RAOB,                           QTY_GEOPOTENTIAL_HEIGHT,    COMMON_CODE
-! U_RAOB,                           QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_RAOB,                           QTY_V_WIND_COMPONENT,       COMMON_CODE
-! T_RAOB,                           QTY_TEMPERATURE
-! U_DROPSONDE,                      QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_DROPSONDE,                      QTY_V_WIND_COMPONENT,       COMMON_CODE
-! T_DROPSONDE,                      QTY_TEMPERATURE
-! Z_PIBAL,                          QTY_GEOPOTENTIAL_HEIGHT,    COMMON_CODE
-! U_PIBAL,                          QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_PIBAL,                          QTY_V_WIND_COMPONENT,       COMMON_CODE
-! T_PIBAL,                          QTY_TEMPERATURE
-! U_AIREP,                          QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_AIREP,                          QTY_V_WIND_COMPONENT,       COMMON_CODE
-! T_AIREP,                          QTY_TEMPERATURE
-! U_AMDAR,                          QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_AMDAR,                          QTY_V_WIND_COMPONENT,       COMMON_CODE
-! T_AMDAR,                          QTY_TEMPERATURE
-! U_ACARS,                          QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_ACARS,                          QTY_V_WIND_COMPONENT,       COMMON_CODE
-! T_ACARS,                          QTY_TEMPERATURE
-! U_MDCRS,                          QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_MDCRS,                          QTY_V_WIND_COMPONENT,       COMMON_CODE
-! T_MDCRS,                          QTY_TEMPERATURE
-! U_CLD_WNDS1,                      QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_CLD_WNDS1,                      QTY_V_WIND_COMPONENT,       COMMON_CODE
-! U_CLD_WNDS2,                      QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_CLD_WNDS2,                      QTY_V_WIND_COMPONENT,       COMMON_CODE
-! U_METEO,                          QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_METEO,                          QTY_V_WIND_COMPONENT,       COMMON_CODE
-! U_GOES,                           QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_GOES,                           QTY_V_WIND_COMPONENT,       COMMON_CODE
-! T_TOVS_T,                         QTY_TEMPERATURE
-! P_SFC_LAND,                       QTY_SURFACE_PRESSURE      
-! U_SFC_LAND,                       QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_SFC_LAND,                       QTY_V_WIND_COMPONENT,       COMMON_CODE
-! P_SFC_SHIP,                       QTY_SURFACE_PRESSURE      
-! U_SFC_SHIP,                       QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_SFC_SHIP,                       QTY_V_WIND_COMPONENT,       COMMON_CODE
-! VORTEX_LON,                       QTY_VORTEX_LON,             COMMON_CODE
-! VORTEX_LAT,                       QTY_VORTEX_LAT,             COMMON_CODE
-! U_WSAT_WIND,                      QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_WSAT_WIND,                      QTY_V_WIND_COMPONENT,       COMMON_CODE
-! U_SCAT_WINDS,                     QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_SCAT_WINDS,                     QTY_V_WIND_COMPONENT,       COMMON_CODE
-! U_QSCAT_WIND,                     QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_QSCAT_WIND,                     QTY_V_WIND_COMPONENT,       COMMON_CODE
-! U_ASCAT_WIND,                     QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_ASCAT_WIND,                     QTY_V_WIND_COMPONENT,       COMMON_CODE
-! U_TERRA_WIND,                     QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_TERRA_WIND,                     QTY_V_WIND_COMPONENT,       COMMON_CODE
-! U_AQUA_WIND,                      QTY_U_WIND_COMPONENT,       COMMON_CODE
-! V_AQUA_WIND,                      QTY_V_WIND_COMPONENT,       COMMON_CODE
-! WS_SSMI_FF1,                      QTY_VELOCITY
-! WS_SSMI_FF2,                      QTY_VELOCITY
-! TPPW_SSMI,                        QTY_TOTAL_PRECIPITABLE_WATER, COMMON_CODE
-! TPPW_WSAT,                        QTY_TOTAL_PRECIPITABLE_WATER, COMMON_CODE
+! Z_TC_SYNTH,  QTY_GEOPOTENTIAL_HEIGHT,    COMMON_CODE
+! U_TC_SYNTH,  QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_TC_SYNTH,  QTY_V_WIND_COMPONENT,       COMMON_CODE
+! T_TC_SYNTH,  QTY_TEMPERATURE
+! Z_RAOB,      QTY_GEOPOTENTIAL_HEIGHT,    COMMON_CODE
+! U_RAOB,      QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_RAOB,      QTY_V_WIND_COMPONENT,       COMMON_CODE
+! T_RAOB,      QTY_TEMPERATURE
+! U_DROPSONDE, QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_DROPSONDE, QTY_V_WIND_COMPONENT,       COMMON_CODE
+! T_DROPSONDE, QTY_TEMPERATURE
+! Z_PIBAL,     QTY_GEOPOTENTIAL_HEIGHT,    COMMON_CODE
+! U_PIBAL,     QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_PIBAL,     QTY_V_WIND_COMPONENT,       COMMON_CODE
+! T_PIBAL,     QTY_TEMPERATURE
+! U_AIREP,     QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_AIREP,     QTY_V_WIND_COMPONENT,       COMMON_CODE
+! T_AIREP,     QTY_TEMPERATURE
+! U_AMDAR,     QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_AMDAR,     QTY_V_WIND_COMPONENT,       COMMON_CODE
+! T_AMDAR,     QTY_TEMPERATURE
+! U_ACARS,     QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_ACARS,     QTY_V_WIND_COMPONENT,       COMMON_CODE
+! T_ACARS,     QTY_TEMPERATURE
+! U_MDCRS,     QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_MDCRS,     QTY_V_WIND_COMPONENT,       COMMON_CODE
+! T_MDCRS,     QTY_TEMPERATURE
+! U_CLD_WNDS1, QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_CLD_WNDS1, QTY_V_WIND_COMPONENT,       COMMON_CODE
+! U_CLD_WNDS2, QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_CLD_WNDS2, QTY_V_WIND_COMPONENT,       COMMON_CODE
+! U_METEO,     QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_METEO,     QTY_V_WIND_COMPONENT,       COMMON_CODE
+! U_GOES,      QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_GOES,      QTY_V_WIND_COMPONENT,       COMMON_CODE
+! T_TOVS_T,    QTY_TEMPERATURE
+! P_SFC_LAND,  QTY_SURFACE_PRESSURE      
+! U_SFC_LAND,  QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_SFC_LAND,  QTY_V_WIND_COMPONENT,       COMMON_CODE
+! P_SFC_SHIP,  QTY_SURFACE_PRESSURE      
+! U_SFC_SHIP,  QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_SFC_SHIP,  QTY_V_WIND_COMPONENT,       COMMON_CODE
+! VORTEX_LON,  QTY_VORTEX_LON,             COMMON_CODE
+! VORTEX_LAT,  QTY_VORTEX_LAT,             COMMON_CODE
+! U_WSAT_WIND, QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_WSAT_WIND, QTY_V_WIND_COMPONENT,       COMMON_CODE
+! U_SCAT_WINDS,QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_SCAT_WINDS,QTY_V_WIND_COMPONENT,       COMMON_CODE
+! U_QSCAT_WIND,QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_QSCAT_WIND,QTY_V_WIND_COMPONENT,       COMMON_CODE
+! U_ASCAT_WIND,QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_ASCAT_WIND,QTY_V_WIND_COMPONENT,       COMMON_CODE
+! U_TERRA_WIND,QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_TERRA_WIND,QTY_V_WIND_COMPONENT,       COMMON_CODE
+! U_AQUA_WIND, QTY_U_WIND_COMPONENT,       COMMON_CODE
+! V_AQUA_WIND, QTY_V_WIND_COMPONENT,       COMMON_CODE
+! WS_SSMI_FF1, QTY_VELOCITY
+! WS_SSMI_FF2, QTY_VELOCITY
+! TPPW_SSMI,   QTY_TOTAL_PRECIPITABLE_WATER, COMMON_CODE
+! TPPW_WSAT,   QTY_TOTAL_PRECIPITABLE_WATER, COMMON_CODE
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -90,11 +90,11 @@
 !   case(RADIOSONDE_AIR_TEMPERATURE,EVAL_AIR_TEMPERATURE, &
 !        T_RAOB,T_PIBAL,T_AIREP,T_AMDAR,T_ACARS,T_MDCRS, &
 !        T_TOVS_T, T_TC_SYNTH, T_DROPSONDE)
-!        call get_expected_air_temperature(state_handle, ens_size, location, expected_obs, istatus) 
+!        call get_expected_air_temperature(state, location, obs_val, istatus) 
 !   case(P_SFC_LAND, P_SFC_SHIP)
-!        call get_expected_altimeter(state_handle, ens_size, location, expected_obs, istatus) 
+!        call get_expected_altimeter(state, location, obs_val, istatus) 
 !   case(WS_SSMI_FF1, WS_SSMI_FF2)
-!        call get_expected_windspeed(state_handle, ens_size, location, expected_obs, istatus) 
+!        call get_expected_windspeed(state, location, obs_val, istatus) 
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -133,24 +133,14 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_navdas_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
   use        types_mod, only : r8, missing_r8, t_kelvin, gas_constant,ps0
 
-  use    utilities_mod, only : register_module, do_output
+  use    utilities_mod, only : register_module
 
-  use     location_mod, only : location_type, is_vertical,&
+  use     location_mod, only : location_type, vert_is_pressure,&
                                query_location 
 
   use  assim_model_mod, only : interpolate
-
-  use ensemble_manager_mod, only : ensemble_type
-
-  use obs_def_utilities_mod, only : track_status
 
   use     obs_kind_mod, only : QTY_POTENTIAL_TEMPERATURE, &
                                QTY_SURFACE_PRESSURE,      &
@@ -167,11 +157,11 @@ module obs_def_navdas_mod
   public :: get_expected_air_temperature
   public :: get_expected_altimeter
 
-  ! version controlled file description for error handling, do not edit
-  character(len=*), parameter :: source   = &
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
    "$URL$"
-  character(len=*), parameter :: revision = "$Revision$"
-  character(len=*), parameter :: revdate  = "$Date$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   logical, save :: module_initialized = .false.
 
@@ -191,35 +181,31 @@ contains
   ! get_expected_windspeed
   ! ----------------------------
   ! Forward operator for windspeed
-  subroutine get_expected_windspeed(state_handle, ens_size, location, wspd, istatus)  
-    type(ensemble_type), intent(in)  :: state_handle
-    integer,             intent(in)  :: ens_size
+  subroutine get_expected_windspeed(state_vector, location, wspd, istatus)  
+    real(r8),            intent(in)  :: state_vector(:)
     type(location_type), intent(in)  :: location
-    real(r8),            intent(out) :: wspd(ens_size)
-    integer,             intent(out) :: istatus(ens_size)
+    real(r8),            intent(out) :: wspd
+    integer,             intent(out) :: istatus
 
-    real(r8) :: uwind(ens_size)   ! zonal wind component
-    real(r8) :: vwind(ens_size)   ! meridional wind component
-    integer  :: this_istatus(ens_size)
-    logical  :: return_now
+    real(r8) :: uwind   ! zonal wind component
+    real(r8) :: vwind   ! meridional wind component
 
     if ( .not. module_initialized ) call initialize_module
 
-    ! start out with all set to success.  as each call to interpolate() is made
-    ! accumulate those who fail.  
-    istatus(:) = 0
-
     ! Zonal wind at this location
-    call interpolate(state_handle, ens_size, location, QTY_U_WIND_COMPONENT, uwind, this_istatus)
-    call track_status(ens_size, this_istatus, wspd, istatus, return_now)
-    if (return_now) return
+    call interpolate(state_vector, location, QTY_U_WIND_COMPONENT, uwind, istatus)
+    if (istatus /= 0) then
+       wspd = missing_r8
+       return
+    endif
 
     ! Meridional wind at this location
-    call interpolate(state_handle, ens_size, location, QTY_V_WIND_COMPONENT, vwind, this_istatus)
-    call track_status(ens_size, this_istatus, wspd, istatus, return_now)
-    if (return_now) return
+    call interpolate(state_vector, location, QTY_V_WIND_COMPONENT, vwind, istatus)
+    if (istatus /= 0) then
+       wspd = missing_r8
+       return
+    endif
 
-    ! this is an array operation now - interpolate returns an ensemble-sized array
     wspd = sqrt(uwind**2 + vwind**2)
     
   end subroutine get_expected_windspeed
@@ -228,37 +214,30 @@ contains
   ! ----------------------------
   ! Forward operator for T (in Kelvin) - note that this currently
   ! assumes that the location is 3D in pressure coordinates
-  subroutine get_expected_air_temperature(state_handle, ens_size, location, t, istatus)  
-    type(ensemble_type), intent(in)  :: state_handle
-    integer,             intent(in)  :: ens_size
+  subroutine get_expected_air_temperature(state_vector, location, t, istatus)  
+    real(r8),            intent(in)  :: state_vector(:)
     type(location_type), intent(in)  :: location
-    real(r8),            intent(out) :: t(ens_size)
-    integer,             intent(out) :: istatus(ens_size)
+    real(r8),            intent(out) :: t
+    integer,             intent(out) :: istatus
 
-    real(r8) :: pot_t(ens_size)   ! Potential temperature
-    real(r8) :: pres(ens_size)    ! Working pressure
-    real(r8) :: rocp(ens_size)    ! R over Cp
-    integer  :: this_istatus(ens_size)
-    logical  :: return_now
+    real(r8) :: pot_t   ! Potential temperature
+    real(r8) :: pres    ! Working pressure
+    real(r8) :: rocp    ! R over Cp
 
     if ( .not. module_initialized ) call initialize_module
 
-    ! start out with all set to success.  as each call to interpolate() is made
-    ! accumulate those who fail.  
-    istatus(:) = 0
-
     ! Potential temperature at this location
-    call interpolate(state_handle, ens_size, location, QTY_POTENTIAL_TEMPERATURE, &
-                      pot_t, this_istatus)
-    call track_status(ens_size, this_istatus, t, istatus, return_now)
-    if (return_now) return
+    call interpolate(state_vector, location, QTY_POTENTIAL_TEMPERATURE,pot_t, istatus)
+    if (istatus /= 0) then
+       t = missing_r8
+       return
+    endif
     
     ! Pressure - for now, assume that we are working in pressure
     ! coordinates only.  Once we add other capabilities, change this
     ! to call model_interpolate for QTY_PRESSURE
-    if (.not. is_vertical(location, 'PRESSURE')) then
-       t(:) = missing_r8
-       istatus(:) = 11
+    if (.not. vert_is_pressure(location)) then
+       t = missing_r8
        return
     end if
     pres = query_location(location,'VLOC')
@@ -271,59 +250,39 @@ contains
 
   ! get_expected_altimeter
   ! ----------------------------
-  ! Forward operator for altimeter settings - has units of Pa.
-  ! 
-  ! The obs_def_altimeter_mod.f90 routine returns units of hPa.
-  ! Both require pressure in Pa. So I suppose which one to use
-  ! depends on the units of the incoming observation.
-
-  subroutine get_expected_altimeter(state_handle, ens_size, location, altimeter, istatus)
-
-    type(ensemble_type), intent(in)  :: state_handle
-    integer,             intent(in)  :: ens_size
+  ! Forward operator for altimeter
+  subroutine get_expected_altimeter(state_vector, location, altimeter, istatus)
+    real(r8),            intent(in)  :: state_vector(:)
     type(location_type), intent(in)  :: location
-    real(r8),            intent(out) :: altimeter(ens_size)  ! altimeter (Pa)
-    integer,             intent(out) :: istatus(ens_size)
+    real(r8),            intent(out) :: altimeter
+    integer,             intent(out) :: istatus
 
-    real(r8) :: sfc_pres(ens_size)         ! surface pressure  (Pa)
-    real(r8) :: sfc_elev(ens_size)         ! surface elevation (m above SL) 
-    integer  :: this_istatus(ens_size)
-    logical  :: return_now
-    integer  :: imem
-
-    real(r8), parameter :: MIN_REALISTIC_ALTIMETER = 88000.0_r8
-    real(r8), parameter :: MAX_REALISTIC_ALTIMETER = 110000.0_r8
-
-    ! start out with all set to success.  as each call to interpolate() is made
-    ! accumulate those who fail.  
-    istatus(:) = 0
+    real(r8)                         :: sfc_pres
+    real(r8)                         :: sfc_elev
 
     if ( .not. module_initialized ) call initialize_module
 
-    call interpolate(state_handle, ens_size, location, QTY_SURFACE_PRESSURE, sfc_pres, this_istatus)
-    call track_status(ens_size, this_istatus, altimeter, istatus, return_now)
-    if (return_now) return
-
-    call interpolate(state_handle, ens_size, location, QTY_SURFACE_ELEVATION, sfc_elev, this_istatus)
-    call track_status(ens_size, this_istatus, altimeter, istatus, return_now)
-    if (return_now) return
-
-    do imem = 1, ens_size
-       altimeter(imem) = compute_altimeter(sfc_pres(imem), sfc_elev(imem))
-     ! if (altimeter(imem) <  MIN_REALISTIC_ALTIMETER .or.  &
-     !     altimeter(imem) >= MAX_REALISTIC_ALTIMETER) then
-     !    ! TJH the surface pressures here were outrageous ... 3.128330297201787E+134
-     !    if (do_output()) write(*,*)'TJH ens_mem,sfc_pres,sfc_elev,altimeter ',&
-     !                           imem,sfc_pres(imem),sfc_elev(imem),altimeter(imem)
-     ! endif
-    enddo
-
-    where (altimeter <  MIN_REALISTIC_ALTIMETER .or. &
-           altimeter >= MAX_REALISTIC_ALTIMETER)
+    call interpolate(state_vector, location, QTY_SURFACE_PRESSURE, sfc_pres, istatus)
+    if (istatus /= 0) then
        altimeter = missing_r8
-       istatus = 915
-    endwhere
+       return
+    endif
 
+    call interpolate(state_vector, location, QTY_SURFACE_ELEVATION, sfc_elev, istatus)
+    if (istatus /= 0) then
+       altimeter = missing_r8
+       return
+    endif
+
+    altimeter = compute_altimeter(sfc_pres, sfc_elev)
+
+    if (altimeter < 88000.0_r8 .or. altimeter >= 110000.0_r8) then
+       istatus = 1
+       altimeter = missing_r8
+       return
+    endif
+
+    return
   end subroutine get_expected_altimeter
 
 end module obs_def_navdas_mod

@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p integrate_model -t ../../../mkmf/mkmf.template   \
- -a "../../.." path_names_integrate_model
+../../../build_templates/mkmf -p trans_statevec_to_coamps -t ../../../build_templates/mkmf.template -c" -C -Duse_netCDF" \
+ -a "../../.." path_names_state_to_coamps
 
 exit $status
 

@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p model_mod_check -t ../../../mkmf/mkmf.template   \
- -a "../../.." path_names_model_mod_check
+../../../build_templates/mkmf -p trans_coamps_to_statevec -t ../../../build_templates/mkmf.template -c" -C -Duse_netCDF" \
+ -a "../../.." path_names_coamps_to_state
 
 exit $status
 
