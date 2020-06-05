@@ -199,10 +199,10 @@
 !                          'qs',                    'QTY_SNOW_MIXING_RATIO',
 !                          'qg',                    'QTY_GRAUPEL_MIXING_RATIO',
 !                          'rho',                   'QTY_DENSITY',
-!                          'u10',                   'QTY_U_WIND_COMPONENT',
-!                          'v10',                   'QTY_V_WIND_COMPONENT',
-!                          't2m',                   'QTY_TEMPERATURE',
-!                          'q2',                    'QTY_SPECIFIC_HUMIDITY',
+!                          'u10',                   'QTY_10M_U_WIND_COMPONENT',
+!                          'v10',                   'QTY_10M_V_WIND_COMPONENT',
+!                          't2m',                   'QTY_2M_TEMPERATURE',
+!                          'q2',                    'QTY_2M_SPECIFIC_HUMIDITY',
 
 &mpas_vars_nml
    mpas_state_variables = 'theta',                 'QTY_POTENTIAL_TEMPERATURE',
