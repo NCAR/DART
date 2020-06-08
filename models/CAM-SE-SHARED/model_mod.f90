@@ -1969,6 +1969,7 @@ endif
 
 ! Informational output, if the observation is exactly on the m-axis
 !SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
+!SENote: Why does this message get printed a billion times in CLASSIC?
 if (l == 0.0_r8 .and. my_task_id() == 0) then
    write(string1,'(A,I6,1X,1p4E12.4)') 'Ob is on x-axis: l-cell, x_o - a(2)*m = ',cell, x_o ,a(2,origin,cell),m
    call error_handler(E_MSG, 'unit_square_location', string1,source,revision,revdate)
@@ -4099,6 +4100,11 @@ enddo
 end subroutine get_close_obs
 
 !----------------------------------------------------------------------------
+
+!SENote
+! This now reproduces results from the Classic version with pressure vertical localization
+
+!SENote: Need to test the convert all upfront options from Namelist
 
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, ens_handle)
