@@ -1392,7 +1392,7 @@ end subroutine get_se_values_from_varid
 
 
 !-----------------------------------------------------------------------
-!> this is just for 3d fields
+!> this is just for 2d fields
 
 subroutine get_se_values_from_nonstate_fields(ens_handle, ens_size, column_index, &
                                            lev_index, obs_quantity, vals, my_status)
@@ -1410,6 +1410,8 @@ real(r8) :: vals_array(ref_nlevels,ens_size)
 character(len=*), parameter :: routine = 'get_se_values_from_nonstate_fields:'
 
 vals(:) = MISSING_R8
+!SENote: It appears that this 99 status value can never be returned. Left for backwards consistency
+!SENote with FV get_values_from_nonstate_fields but should be verified and removed
 my_status(:) = 99
 
 select case (obs_quantity) 
@@ -1451,20 +1453,21 @@ end subroutine get_se_values_from_nonstate_fields
 !>          of interest (the interpolated value).
 !> @param istatus interpolation status ... 0 == success, /=0 is a failure
 !>
+!SENote: Many of these error status returns cannot actually happen. Need to verify and update.
 !> istatus = 2    asked to interpolate an unknown/unsupported quantity
-!> istatus = 3    cannot locate horizontal quad
-!> istatus = 4    cannot locate enclosing vertical levels
-!> istatus = 5    cannot retrieve state vector values
-!> istatus = 6    cannot get values at quad corners
+!> istatus = 3    NOT USED: cannot locate horizontal quad
+!> istatus = 4    NOT USED: cannot locate enclosing vertical levels
+!> istatus = 5    NOT USED: cannot retrieve state vector values
+!> istatus = 6    NOT USED: cannot get values at quad corners
 !> istatus = 7    unused (error code available)
 !> istatus = 8    cannot interpolate in the quad to get the values
 !> istatus = 9    unused (error code available)
 !> istatus = 10   cannot get vertical levels for an obs on pressure levels
 !> istatus = 11   cannot get vertical levels for an obs on height levels
 !> istatus = 12   cannot get values from obs quantity
-!> istatus = 13   can not interpolate values of this quantity
+!> istatus = 13   NOT USED: can not interpolate values of this quantity
 !> istatus = 14   obs above user-defined assimilation top pressure
-!> istatus = 15   can not get indices from given state vector index
+!> istatus = 15   NOT USED: can not get indices from given state vector index
 !> istatus = 16   cannot do vertical interpolation for bottom layer
 !> istatus = 17   cannot do vertical interpolation for top layer
 !> istatus = 98   unknown error - shouldn't happen
@@ -1538,10 +1541,6 @@ call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l_wei
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
 
-!SENote: Need to relate this istatus return to what is being expected here.
-! This can be compared back to get_quad_values for FV
-
-
 ! Then interpolate horizontally to the (lon,lat) of the ob.
 ! The following uses Jeff's recommended 'generalized quadrilateral interpolation', as in
 ! http://www.particleincell.com/2012/quad-interpolation/.
@@ -1552,20 +1551,10 @@ call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
 ! ((l,m) space) diagonally across the ob location from the corner.
 ! AKA 'linear area weighting'.
 
-! SENote: could this be done in vector notation?
-do i = 1, ens_size
-interp_vals(i) = quad_vals(2, i) *       l_weight *          m_weight &
-           + quad_vals(1, i) * (1.0_r8 - l_weight)*          m_weight &
-           + quad_vals(4, i) * (1.0_r8 - l_weight)*(1.0_r8 - m_weight) &
-           + quad_vals(3, i) *           l_weight *(1.0_r8 - m_weight)
-end do
-
-if (print_details ) then
-   !SENote: Originally for scalar, rather than ensemble size output. Should modify
-   write(string1,'(A,2F10.6,1pE20.12)') ' l_weight, m_weight, interpolated vals = ', &
-         l_weight, m_weight, interp_vals(1)
-   call error_handler(E_MSG, 'interp_cubed_sphere', string1)
-endif
+interp_vals(:) = quad_vals(2, :) *       l_weight *          m_weight &
+           + quad_vals(1, :) * (1.0_r8 - l_weight)*          m_weight &
+           + quad_vals(4, :) * (1.0_r8 - l_weight)*(1.0_r8 - m_weight) &
+           + quad_vals(3, :) *           l_weight *(1.0_r8 - m_weight)
 
 if (using_chemistry) &
    interp_vals = interp_vals * get_volume_mixing_ratio(obs_qty)
@@ -2164,7 +2153,6 @@ character(len=*), parameter :: routine = 'interpolate_se_values:'
 integer  :: which_vert
 integer :: cell_corners(4), closest, i
 type(location_type) :: location_copy
-!SENote : These are unclear names, 
 real(r8) :: l_weight, m_weight
 real(r8) :: lon_lat_vert(3), quad_vals(4, ens_size)
 
@@ -2174,16 +2162,16 @@ istatus(:)     = 99
 lon_lat_vert  = get_location(location)
 which_vert    = nint(query_location(location)) 
 
+!SENote: Do not want to propagate changes to the location back up the calling tree
 location_copy = location
 call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l_weight, m_weight)
 
 
-!SENote: Now work on the vertical conversions and getting the vertical index for each ensemble member
+!Now work on the vertical conversions and getting the vertical index for each ensemble member
 !SENOte: switching the order on the varid and obs_qty arguments from the call isn't a great idea
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
 
-!SENOte: Again,need to sort out the error returns on all of these
 if(istatus(1) /= 0) then
    istatus(:) = 3  ! cannot locate enclosing horizontal quad
    return
@@ -2201,39 +2189,10 @@ if (any(istatus /= 0)) return
 ! ((l,m) space) diagonally across the ob location from the corner.
 ! AKA 'linear area weighting'.
 
-! SENote: The status block needs to be worked on to be consistent with CLASSIC
-!SENote: It is commented out for now but should be put back in.
-! The vals indices are consistent with how mapping of corners was done,
-! and how cell_corners was assigned.
-!SENoteif (vstatus == 1) then
-   !SENoteif (print_details) then
-      !SENotewrite(string1,'(A,2F10.6,1pE20.12)') 'istatus = 1, no interpolation'
-      !SENotecall error_handler(E_MSG, 'interp_cubed_sphere', string1)
-   !SENoteendif
-   !SENotereturn
-!SENoteelse
-   !SENoteif (abs(lon_lat_lev(2)) > max_obs_lat_degree) then
-      !SENote! Define istatus to be a combination of vstatus (= 0 or 2 (for higher than highest_obs...))
-      !SENote! and whether the ob is poleward of the limits set in the namelist (+ 4).
-      !SENoteistatus = 10*vstatus + 4
-   !SENoteelse
-      !SENoteistatus = vstatus
-   !SENoteendif
-!SENoteendif
-
-! SENote: could this be done in vector notation?
-do i = 1, ens_size
-interp_vals(i) = quad_vals(2, i) *       l_weight *          m_weight &
-           + quad_vals(1, i) * (1.0_r8 - l_weight)*          m_weight &
-           + quad_vals(4, i) * (1.0_r8 - l_weight)*(1.0_r8 - m_weight) &
-           + quad_vals(3, i) *           l_weight *(1.0_r8 - m_weight)
-end do
-
-!SENote Probably  not right
-if (any(istatus /= 0)) then
-   istatus(:) = 8   ! cannot evaluate in the quad
-   return
-endif
+interp_vals(:) = quad_vals(2, :) *       l_weight *          m_weight &
+           + quad_vals(1, :) * (1.0_r8 - l_weight)*          m_weight &
+           + quad_vals(4, :) * (1.0_r8 - l_weight)*(1.0_r8 - m_weight) &
+           + quad_vals(3, :) *           l_weight *(1.0_r8 - m_weight)
 
 end subroutine interpolate_se_values
 
@@ -2256,29 +2215,18 @@ integer  :: icorner, numdims
 integer  :: level_one_array(ens_size)
 integer  :: four_levs1(4, ens_size), four_levs2(4, ens_size)
 real(r8) :: four_vert_fracts(4, ens_size)
-!SENote: Need unused integer(4) storage for call to get the four state values
-integer :: lats_unused_array(4)
-
-!SENote: four_lons and four_lats just around for legacy during development
-integer :: four_lons(4), four_lats(4)
 
 character(len=*), parameter :: routine = 'get_se_quad_vals:'
 
-!SENote Initialize the latitude arrays to 1 since they are not used
-lats_unused_array = 1
 quad_vals(:,:) = MISSING_R8
 my_status(:) = 99
 
-! need to consider the case for 2d vs 3d variables
+! need to consider the case for 2d vs 2d variables
 numdims = get_dims_from_qty(obs_qty, varid)
 
 !SENote: The dimensions are one less than for the FV. Look for ways to share code
 ! now here potentially we have different results for different
 ! ensemble members.  the things that can vary are dimensioned by ens_size.
-!SENote: It's the first 2 indices (or 1) that are actually in use when fetching data?
-
-!SENote
-write(*, *) 'in get_se_quad_vals varid, obs_qty, numdims', varid, obs_qty, numdims
 
 if (numdims == 2) then
 
@@ -2289,9 +2237,6 @@ if (numdims == 2) then
                                 four_vert_fracts(icorner, :), my_status)
 
       if (any(my_status /= 0)) return
-      write(*, *) 'finding vertical levels in get_se_quad_vals ', &
-         icorner, four_levs1(icorner, :), four_levs2(icorner, :), four_vert_fracts(icorner, :)
-  
    enddo
    
    ! we have all the indices and fractions we could ever want.
@@ -2305,13 +2250,14 @@ if (numdims == 2) then
                                 four_levs1, four_levs2, four_vert_fracts, &   
                                 varid, quad_vals, my_status)
 
-   else ! get 2d special variables in another ways ( like QTY_PRESSURE )
+   else ! get 1d special variables in another ways ( like QTY_PRESSURE )
       call get_se_four_nonstate_values(state_handle, ens_size, corners, &
                                    four_levs1, four_levs2, four_vert_fracts, & 
                                    obs_qty, quad_vals, my_status)
 
    endif
 
+   !SENote Technically nothing happens after this point anyway? So is this statement needed.
    if (any(my_status /= 0)) return
 
 else if (numdims == 1) then
@@ -2327,9 +2273,10 @@ else if (numdims == 1) then
 
       enddo
 
-   else ! special 2d case
+   else ! special 1d case
+      !SENote: Is this ever used at present?
       do icorner=1, 4
-         call get_se_quad_values(ens_size, four_lons(icorner), obs_qty, quad_vals(icorner,:))
+         call get_se_quad_values(ens_size, corners(icorner), obs_qty, quad_vals(icorner,:))
       enddo
       ! apparently this can't fail
       my_status(:) = 0
@@ -2350,6 +2297,8 @@ end subroutine get_se_quad_vals
 
 !-----------------------------------------------------------------------
 !>
+!SENote: Returns my_status 0 for success, 16 if unable to find values at lower level
+! and 17 if unable to find values at upper level.
 
 subroutine get_se_four_state_values(state_handle, ens_size, four_corners, &
                                  four_levs1, four_levs2, four_vert_fracts, &
@@ -2395,6 +2344,9 @@ end subroutine get_se_four_state_values
 
 !-----------------------------------------------------------------------
 !>
+
+!SENote: Returns my_status 0 for success, 16 if unable to find values at lower level
+! and 17 if unable to find values at upper level.
 
 subroutine get_se_four_nonstate_values(state_handle, ens_size, four_corners, &
                                  four_levs1, four_levs2, four_vert_fracts, &
@@ -2546,10 +2498,12 @@ end subroutine quad_index_neighbors
 
 
 !-----------------------------------------------------------------------
-!SENote: Changed from original FV
 !> given a column index number, a quantity and a vertical value and type,
 !> return which two levels these are between and the fraction across.
 !> 
+!SENote: my_status is 0 for success, 12 if values cannot be found, 10 for failed vertical
+! search for case VERTISPRESSURE, 11 for failed vertical search for VERTISHEIGHT,
+! and 8 for out of range level for VERTISLEVEL
 
 subroutine find_se_vertical_levels(ens_handle, ens_size, column, vert_val, &
                                 which_vert, levs1, levs2, vert_fracts, my_status)
