@@ -80,7 +80,7 @@ use           netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'mpas_atm/mpas_dart_obs_preprocess.f90'
+character(len=*), parameter :: source   = 'models/mpas_atm/mpas_dart_obs_preprocess.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 

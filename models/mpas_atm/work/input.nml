@@ -34,8 +34,8 @@
    output_members           = .true.
    obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
-   input_state_file_list    = 'restarts_in.txt'
-   output_state_file_list   = 'restarts_out.txt'
+   input_state_file_list    = 'filter_in.txt'
+   output_state_file_list   = 'filter_out.txt'
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
@@ -95,7 +95,7 @@
 
 &ensemble_manager_nml
    layout = 1
-   tasks_per_node = 16
+   tasks_per_node = 36
   /
 
 &assim_tools_nml
@@ -170,7 +170,7 @@
 
 
 &model_nml
-   init_template_filename       = 'mpas_init.nc'
+   init_template_filename       = 'init.nc'
    assimilation_period_days     = 0
    assimilation_period_seconds  = 21600
    model_perturbation_amplitude = 0.0001
@@ -199,8 +199,10 @@
 !                          'qs',                    'QTY_SNOW_MIXING_RATIO',
 !                          'qg',                    'QTY_GRAUPEL_MIXING_RATIO',
 !                          'rho',                   'QTY_DENSITY',
-!                          'salinity',              'QTY_SALINITY',
-!                          'temperature',           'QTY_TEMPERATURE'
+!                          'u10',                   'QTY_10M_U_WIND_COMPONENT',
+!                          'v10',                   'QTY_10M_V_WIND_COMPONENT',
+!                          't2m',                   'QTY_2M_TEMPERATURE',
+!                          'q2',                    'QTY_2M_SPECIFIC_HUMIDITY',
 
 &mpas_vars_nml
    mpas_state_variables = 'theta',                 'QTY_POTENTIAL_TEMPERATURE',
@@ -211,7 +213,7 @@
                           'qv',                    'QTY_VAPOR_MIXING_RATIO',
                           'surface_pressure',      'QTY_SURFACE_PRESSURE',
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
-                          'rho','0.0','NULL','CLAMP',
+                          'rho','0.01','NULL','CLAMP',
   /
 
 &update_mpas_states_nml
@@ -223,8 +225,8 @@
 &update_bc_nml
   update_analysis_file_list = 'filter_in.txt'
   update_boundary_file_list = 'boundary_inout.txt'
-  lbc_update_from_reconstructed_winds = .true.
-  lbc_update_winds_from_increments    = .true.
+  lbc_update_from_reconstructed_winds = .false.
+  lbc_update_winds_from_increments    = .false.
   debug = 0
 /
 
@@ -475,5 +477,7 @@
    gpsro_extra              = 'obs_seq.gpsro'
    tc_sonde_radii           = -1.0
    overwrite_obs_time       = .false.
+   windowing_obs_time       = .true.
+   windowing_int_hour       = 0.5
 /
 
