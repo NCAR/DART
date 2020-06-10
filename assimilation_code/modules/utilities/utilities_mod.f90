@@ -1662,10 +1662,18 @@ endif
 
 ! this version of the code knows how many files should be in the listname
 if (from_file) then
-   num_lists = size(listname)
-   if (num_lists < nlists) then
-      write(msgstring1, *) 'expecting ', nlists, ' filenames in "'//trim(origin_list)//'", got ', num_lists
-      call error_handler(E_ERR, caller_name, msgstring1, source,revision,revdate)
+
+   num_lists = 0
+   COUNT_FILES : do fileindex = 1,size(listname)
+      if (listname(fileindex) == '') exit COUNT_FILES
+         num_lists = num_lists + 1
+   enddo COUNT_FILES
+
+   if (num_lists /= nlists) then
+      write(msgstring1, *) '..  read     ', num_lists, ' filename(s) in "'//trim(origin_list)//'"'
+      write(msgstring2, *) 'expected ',nlists,' based on number of domains.'
+      call error_handler(E_ERR, caller_name, msgstring1, &
+                 source, revision, revdate, text2=msgstring2)
    endif
 endif
    
@@ -1690,7 +1698,7 @@ do nl = 1, nlists
          name_array(fileindex) = get_next_filename(listname(nl), ne)
    
       if (name_array(fileindex) == '') then
-         write(msgstring1, *) 'Missing filename'
+         write(msgstring1, *) 'Missing filename for domain number ',nl,' file number ',ne
 
          if (from_file) then
             write(msgstring2,*)'reading entry # ', nl, ' from "'//trim(origin_list)//'"'

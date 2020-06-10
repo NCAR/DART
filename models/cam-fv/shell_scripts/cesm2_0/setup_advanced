@@ -213,7 +213,7 @@ setenv exeroot      /glade/scratch/${USER}/${case}/bld
 setenv archdir      /glade/scratch/${USER}/${case}/archive
 setenv dartroot     /glade/u/home/${USER}/DART/rma_recam
 
-setenv baseobsdir   /glade/p/image/Observations/NCEP+ACARS
+setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS
 
 # ==============================================================================
 # configure settings:
@@ -275,7 +275,7 @@ setenv reftod      00000
 setenv refdate      $refyear-$refmon-$refday
 setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
-# setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
+# setenv stagedir /glade/p/cisl/dares/CESM_initial_ensemble/rest/${reftimestamp}
 # Alternative reference case for different dates, cases, etc. may be kept in places like:
 setenv stagedir /glade/scratch/${USER}/${refcase}/run
 # setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
@@ -548,7 +548,8 @@ end
 ./xmlchange NTHRDS_LND=$nthreads,NTASKS_LND=$ntasks_active,NINST_LND=$num_instances
 ./xmlchange NTHRDS_ICE=$nthreads,NTASKS_ICE=$ntasks_active,NINST_ICE=$num_instances
 ./xmlchange NTHRDS_ROF=$nthreads,NTASKS_ROF=$ntasks_active,NINST_ROF=$num_instances
-echo "ATM, LND, ICE, ROF get $ntasks_active tasks"
+./xmlchange NTHRDS_CPL=$nthreads,NTASKS_CPL=$ntasks_active
+echo "ATM, LND, ICE, ROF, CPL get $ntasks_active tasks"
 if ($num_drivers == 1) then
    ./xmlchange NTHRDS_OCN=$nthreads,NTASKS_OCN=$ntasks_data,NINST_OCN=1
    ./xmlchange NTHRDS_GLC=$nthreads,NTASKS_GLC=$ntasks_data,NINST_GLC=1
@@ -562,8 +563,7 @@ else
    echo "OCN, GLC, WAV get $ntasks_active tasks"
 endif
 ./xmlchange NTHRDS_ESP=$nthreads,NTASKS_ESP=$ntasks_data,NINST_ESP=1
-./xmlchange NTHRDS_CPL=$nthreads,NTASKS_CPL=$ntasks_data
-echo "CPL, ESP get $ntasks_data tasks"
+echo "ESP gets $ntasks_data tasks"
 
 ./xmlchange ROOTPE_ATM=0
 ./xmlchange ROOTPE_LND=0
@@ -666,7 +666,8 @@ setenv CAM_CONFIG_OPTS ""
 # if ($status != 0) then
 #    setenv CLM_BLDNML_OPTS    `./xmlquery CLM_BLDNML_OPTS    --value`
 #    set clm_opts = `echo $CLM_BLDNML_OPTS | sed -e "s#-irrig=.true.##"`
-#    ./xmlchange CLM_BLDNML_OPTS="$clm_opts"
+#    ./xmlchange --append CLM_BLDNML_OPTS="$clm_opts"
+# Check (how?) that --append is appropriate for this change.
 #    # DEBUG/confirm
 #    setenv CLM_BLDNML_OPTS    `./xmlquery CLM_BLDNML_OPTS    --value`
 #    echo "CLM_BLDNML_OPTS has been changed to $CLM_BLDNML_OPTS"

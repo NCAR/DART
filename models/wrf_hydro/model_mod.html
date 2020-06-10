@@ -1,8 +1,8 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+          "http://www.w3.org/TR/html4/loose.dtd">
 <HTML>
 <HEAD>
-<TITLE>module model_mod (NOAH)</TITLE>
+<TITLE>module model_mod (WRF-Hydro)</TITLE>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 <link rel="stylesheet" type="text/css" href="../../docs/html/doc.css" />
 <link href="../../docs/images/dart.ico" rel="shortcut icon" />
@@ -10,7 +10,7 @@
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>MODULE model_mod (NOAH)</H1>
+<H1>MODULE model_mod (WRF-Hydro)</H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
@@ -31,6 +31,13 @@
 <A HREF="#Legalese">TERMS OF USE</A>
 
 <H2>Overview</H2>
+
+The gridded version of the model has bits/bobs in:
+/gpfs/fs1/work/jamesmcc/domains/public/croton_NY/Gridded/DOMAIN
+/gpfs/fs1/work/jamesmcc/domains/public/croton_NY/Gridded/RESTART
+Only the gridcells with flow are retained in the qlink[1,2],hlink variables - 
+so they must be unpacked in EXACTLY the same way as wrfHydo packs them from the grid to their 'sparse' representation.
+
 
 <P>The <strong><a href="http://www.ral.ucar.edu/research/land/technology/lsm.php">NOAH</a>
    Land Surface Model</strong> and <strong>Data Assimilation Research Testbed (DART)</strong> 
@@ -217,15 +224,15 @@
       and both have their own documentation :
    </P>
    <table width="100%" cellpadding="10">
-   <tr><td valign="top"><a href="models/noah/noah_to_dart.html">noah_to_dart.f90</a></td>
+   <tr><td valign="top"><a href="noah_to_dart.html">noah_to_dart.f90</a></td>
        <td>converts a NOAH restart file into a DART-compatible file normally 
        called <em class=file>dart_ics</em>&nbsp;.
        We usually wind up linking the NOAH restart files to a
        static name (<em class=file>restart.nc</em>).
-       <a href="models/noah/noah_to_dart.html">[models/noah/noah_to_dart.html]</a>
+       <a href="noah_to_dart.html">[noah_to_dart.html]</a>
        </td>
    </tr>
-   <tr><td valign="top"><a href="models/noah/dart_to_noah.html">dart_to_noah.f90</a></td>
+   <tr><td valign="top"><a href="dart_to_noah.html">dart_to_noah.f90</a></td>
        <td><strong>updates</strong> some or all of a NOAH restart file with the 
        posterior DART state vector.  There is the ability to selectively avoid
        updating the NOAH variables. This allows one to include NOAH variables in
@@ -241,7 +248,7 @@
        <em class=program>dart_to_noah</em> creates a file
        <em class=file>noah_advance_information.txt</em> which contains information
        to control the length of the NOAH integration.-->
-       <a href="models/noah/dart_to_noah.html">[models/noah/dart_to_noah.html]</a>
+       <a href="dart_to_noah.html">[dart_to_noah.html]</a>
        </td>
    </tr>
    </table>
@@ -273,7 +280,7 @@
    <table width="100%" cellpadding="10">
    <TR><TD valign=top>1)<a href="shell_scripts/setup_pmo.csh">&nbsp;setup_pmo.csh</a></TD>
        <TD>This script stages the run of
-       <a href="../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>.
+       <a href="../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>.
        The directory where you run the script is called <strong>CENTRALDIR</strong>
        and will be the working directory for the experiment. The required input
        observation sequence file must be created in the normal DART way 
@@ -331,12 +338,12 @@
       Some novel observations come from the Cosmic-ray Soil Moisture Observing System:
       <a href="http://cosmos.hwr.arizona.edu/">COSMOS</a>
       and are processed by DART routines in the
-   <a href="../../observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html">DART/observations/COSMOS</a> directory.
+   <a href="../../observations/COSMOS/COSMOS_to_obs.html">DART/observations/COSMOS</a> directory.
    <br />
    <br />
    DART has a very object-oriented approach to observation support. 
    All observations that are intended to be supported must be
-   <a href="../../assimilation_code/programs/preprocess/preprocess.html">preprocessed</a> into a single
+   <a href="../../preprocess/preprocess.html">preprocessed</a> into a single
    <em class=file>obs_def_mod.f90</em> and
    <em class=file>obs_kind_mod.f90</em> in the standard DART way.
    </P>
@@ -346,7 +353,7 @@
    <P>
       There are Matlab&#174; scripts for exploring the performance of the
       assimilation in observation-space (after running
-      <a href="../../assimilation_code/programs/obs_diag/oned/obs_diag.html assimilation_code/programs/obs_diag/threed_cartesian/obs_diag.html assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a>
+      <a href="../../diagnostics/threed_sphere/obs_diag.html">obs_diag</a>
       to explore the <em class=file>obs_seq.final</em> file) - use the
       scripts starting with 'plot_', i.e.
       <em class=file>DART/diagnostics/matlab/plot_*.m</em>.
@@ -354,14 +361,14 @@
       <em class=file>DART/models/NOAH/matlab</em>.
       <br />
       <br />
-      The <em class=file>preassim.nc</em> and <em class=file>analysis.nc</em>
-      (and possibly <em class=file>true_state.nc</em> ) netCDF files have the model
+      The <em class=file>Prior_Diag.nc</em> and <em class=file>Posterior_Diag.nc</em>
+      (and possibly <em class=file>True_State.nc</em> ) netCDF files have the model
       prognostic variables before and after the assimilation.
       The <em class=file>DART/matlab</em> scripts for NOAH are under development.
       <br />
       <br />
       It is also worthwhile to convert your obs_seq.final file to a netCDF format
-      obs_sequence file with <a href="../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+      obs_sequence file with <a href="../../obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
       and use any of the standard plots. Be aware that the COSMOS site-specific
       metadata will not get conveyed to the netCDF file.
 </P>
@@ -477,16 +484,16 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
    model_perturbation_amplitude = 0.0,
    output_state_vector          = .false.,
    debug                        = 0,
-   noah_state_variables         = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',
-                                  'SOIL_M',   'QTY_SOIL_MOISTURE',
-                                  'SOIL_W',   'QTY_SOIL_LIQUID_WATER',
-                                  'SKINTEMP', 'QTY_SKIN_TEMPERATURE',
-                                  'SNODEP',   'QTY_SNOW_THICKNESS',
-                                  'WEASD',    'QTY_SNOW_WATER',
-                                  'CANWAT',   'QTY_CANOPY_WATER',
-                                  'QFX',      'QTY_LATENT_HEAT_FLUX',
-                                  'HFX',      'QTY_SENSIBLE_HEAT_FLUX',
-                                  'GRDFLX',   'QTY_GROUND_HEAT_FLUX'
+   noah_state_variables         = 'SOIL_T',   'KIND_SOIL_TEMPERATURE',
+                                  'SOIL_M',   'KIND_SOIL_MOISTURE',
+                                  'SOIL_W',   'KIND_SOIL_LIQUID_WATER',
+                                  'SKINTEMP', 'KIND_SKIN_TEMPERATURE',
+                                  'SNODEP',   'KIND_SNOW_THICKNESS',
+                                  'WEASD',    'KIND_SNOW_WATER',
+                                  'CANWAT',   'KIND_CANOPY_WATER',
+                                  'QFX',      'KIND_LATENT_HEAT_FLUX',
+                                  'HFX',      'KIND_SENSIBLE_HEAT_FLUX',
+                                  'GRDFLX',   'KIND_GROUND_HEAT_FLUX'
    /
 </pre>
 
@@ -494,8 +501,8 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 The DART 'KIND's match what the <em class=program>model_mod</em> knows
 how to interpolate, so you can't just add a new kind and expect it to work.
 There is a complex interplay between 
-<a href="../../observations/forward_operators/observations/forward_operators/obs_def_mod.html">obs_def_mod</a>,
-<a href="../../assimilation_code/programs/preprocess/preprocess.html">preprocess</a>, and
+<a href="../../obs_def/obs_def_mod.html">obs_def_mod</a>,
+<a href="../../preprocess/preprocess.html">preprocess</a>, and
 <a href="model_mod.html">model_mod</a> that defines what KINDs are supported.
 There is only a single KIND that works with each variable and the example shows
 the current KINDs. Support for these KINDs was provided by running 
@@ -503,11 +510,11 @@ the current KINDs. Support for these KINDs was provided by running
 
 <pre>
 &amp;preprocess_nml
-    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
-   input_files              = '../../../observations/forward_operators/obs_def_tower_mod.f90'
+    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
+   input_files              = '../../../obs_def/obs_def_tower_mod.f90'
   /
 </pre>
 
@@ -851,15 +858,15 @@ to model_mod if required.
         The kind is one of the list of supported observation kinds, found in
         the block of code starting
         <em class=code>! Integer definitions for DART TYPES</em>
-        in <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em>. To clarify between DART
-        'KIND's and 'TYPE's ... a KIND is a more generic reference (i.e. QTY_TEMPERATURE)
+        in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>. To clarify between DART
+        'KIND's and 'TYPE's ... a KIND is a more generic reference (i.e. KIND_TEMPERATURE)
         as opposed to the more specific TYPE (i.e. RADIOSONDE_TEMPERATURE).
         </TD></TR>
 
 </TABLE>
 
 <P>
-The list of supported variables in <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em>
+The list of supported variables in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>
 is created by <em class=program>preprocess</em> using the entries in
 <em class=file>input.nml</em>[<em class=code>&amp;preprocess_nml, &amp;obs_kind_nml</em>],
 <em class=file>DEFAULT_obs_kind_mod.F90</em>,
@@ -890,12 +897,12 @@ integer,                intent(out) :: <em class=code>istatus</em>
 
 <P>
 Given the DART vector, <em class=code>model_interpolate</em> returns the value of
-the desired KIND (i.e. QTY_TEMPERATURE) at the desired location. 
+the desired KIND (i.e. KIND_TEMPERATURE) at the desired location. 
 Put another way, <em class=code>model_interpolate</em> applies the observation
 operator <strong>H</strong> to the model state to create an 'expected' observation 
 at the desired location. Some observation operators are more complicated and are
 defined in their own modules - 
-<a href="../../observations/forward_operators/obs_def_COSMOS_mod.html">obs_def_COSMOS_mod.f90</a>, for example.
+<a href="../../obs_def/obs_def_COSMOS_mod.html">obs_def_COSMOS_mod.f90</a>, for example.
 If the interpolation is valid, <em class=code>istatus = 0</em>.
 Negative values are reserved for the system, any positive value indicates an error.
 </P>
@@ -1137,9 +1144,9 @@ are preserved in the netCDF file as variables <em class=code>inputnml</em> and
 <P>
 <em class=code>nc_write_model_atts</em>
 is responsible for the model-specific attributes in the following DART-output netCDF files:
-<em class=file>true_state.nc</em>,
-<em class=file>preassim.nc</em>, and
-<em class=file>analysis.nc</em>.
+<em class=file>True_State.nc</em>,
+<em class=file>Prior_Diag.nc</em>, and
+<em class=file>Posterior_Diag.nc</em>.
 </P>
 
 </div>
@@ -1605,11 +1612,11 @@ specified in <em class=file>input.nml</em> <em class=code>model_nml:debug</em> .
 <TABLE border=0 width=100% summary='output files'>
 <TR><TD><em class=code>&amp;model_nml:noah_netcdf_filename</em></TD>
     <TD>the updated RESTART file containing the NOAH model state.</TD></TR>
-<TR><TD>true_state.nc</TD>
+<TR><TD>True_State.nc</TD>
     <TD>the time-history of the "true" model state from an OSSE</TD></TR>
-<TR><TD>preassim.nc</TD>
+<TR><TD>Prior_Diag.nc</TD>
     <TD>the time-history of the model state(s) before assimilation</TD></TR>
-<TR><TD>analysis.nc </TD>
+<TR><TD>Posterior_Diag.nc </TD>
     <TD>the time-history of the model state(s) after assimilation</TD></TR>
 <TR><TD>dart_log.out [default name]</TD>
     <TD>the run-time diagnostic output</TD></TR>
