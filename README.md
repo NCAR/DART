@@ -72,7 +72,7 @@ The top level DART source code tree contains the following directories and files
 
 ## Bug reports and feature requests
 
-Use the GitHub [issue tracker](https://github.com/NCAR/DART-2.0/issues) 
+Use the GitHub [issue tracker](https://github.com/NCAR/DART/issues) 
 to submit a bug or request a feature.
 
 ## Citing DART
