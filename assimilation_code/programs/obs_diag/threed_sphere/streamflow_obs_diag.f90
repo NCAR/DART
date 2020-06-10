@@ -6,6 +6,11 @@
 !> regions and accumulates statistics for these epochs and regions.
 !> All 'possible' observation types are treated separately.
 !> The results are written to a netCDF file.
+!> This version is specifically for identity streamflow observations, i.e.
+!> as defined by the wrf-Hydro support.
+
+!> If the rank histogram is requested (and if the data is available),
+!> only the PRIOR rank is calculated.
 
 program obs_diag
 
@@ -55,7 +60,7 @@ use    utilities_mod, only : open_file, close_file, register_module, &
                              find_namelist_in_file, check_namelist_read,       &
                              do_nml_file, do_nml_term, finalize_utilities,     &
                              set_filename_list
-			     
+
 use netcdf_utilities_mod, only : nc_check
 
 use         sort_mod, only : sort
@@ -273,7 +278,7 @@ integer  :: Nplevels=0, Nhlevels=0, Nmlevels=0
 integer  :: iregion, iepoch, ivar, ifile, num_obs_in_epoch
 real(r8) :: obslon, obslat, obslevel, obsloc3(3)
 
-integer  :: obsindex, i, iunit, ierr, io, ikind
+integer  :: obsindex, i, iunit, io, ikind
 integer  :: seconds, days, Nepochs, num_input_files
 
 integer  :: num_trusted
@@ -479,8 +484,7 @@ ObsFileLoop : do ifile=1, num_input_files
 
    call SetIndices( obs_index, org_qc_index, dart_qc_index, &
             prior_mean_index,   posterior_mean_index,   &
-            prior_spread_index, posterior_spread_index, &
-            ens_copy_index )
+            prior_spread_index, posterior_spread_index)
 
    ! Loop over all potential time periods ... the observation sequence
    ! files are not required to be in any particular order.
@@ -692,8 +696,9 @@ ObsFileLoop : do ifile=1, num_input_files
 
          pr_zscore = InnovZscore(obs(1), pr_mean, pr_sprd, obs_error_variance, &
                                  qc_value, QC_MAX_PRIOR)
-         po_zscore = InnovZscore(obs(1), po_mean, po_sprd, obs_error_variance, &
-                                 qc_value, QC_MAX_POSTERIOR)
+
+         if (has_posteriors) po_zscore = InnovZscore(obs(1), po_mean, po_sprd, &
+                                    obs_error_variance, qc_value, QC_MAX_POSTERIOR)
 
          indx         = min(int(pr_zscore), MaxSigmaBins)
          nsigma(indx) = nsigma(indx) + 1
@@ -719,8 +724,7 @@ ObsFileLoop : do ifile=1, num_input_files
 
          if ( create_rank_histogram ) then
             call get_obs_values(observation, copyvals)
-            rank_histogram_bin = Rank_Histogram(copyvals, obs_index, &
-                 obs_error_variance, ens_copy_index)
+            rank_histogram_bin = Rank_Histogram(copyvals, obs_index, obs_error_variance )
          endif
 
          ! We have Nregions of interest.
@@ -1738,14 +1742,14 @@ type(obs_def_type) :: obs_def
 logical, SAVE :: first_time = .true.
 
 if ( .not. get_first_obs(my_sequence, my_obs1) ) then
-   call error_handler(E_ERR,'obs_diag','No first observation in '//trim(my_fname), &
+   call error_handler(E_ERR,'GetFirstLastObs','No first observation in '//trim(my_fname), &
    source,revision,revdate)
 endif
 call get_obs_def(my_obs1,   obs_def)
 my_seqT1 = get_obs_def_time(obs_def)
 
 if ( .not. get_last_obs(my_sequence, my_obsN) ) then
-   call error_handler(E_ERR,'obs_diag','No last observation in '//trim(my_fname), &
+   call error_handler(E_ERR,'GetFirstLastObs','No last observation in '//trim(my_fname), &
    source,revision,revdate)
 endif
 call get_obs_def(my_obsN,   obs_def)
@@ -1857,8 +1861,7 @@ end function GetEnsSize
 
 subroutine SetIndices( obs_index, org_qc_index, dart_qc_index,     &
                        prior_mean_index,   posterior_mean_index,   &
-                       prior_spread_index, posterior_spread_index, &
-                       ens_copy_index )
+                       prior_spread_index, posterior_spread_index)
 
 ! There are many 'copy' indices that need to be set from the obs_sequence
 ! metadata. Some are required, some are optional.
@@ -1870,9 +1873,8 @@ integer, intent(out) :: prior_mean_index
 integer, intent(out) :: posterior_mean_index
 integer, intent(out) :: prior_spread_index
 integer, intent(out) :: posterior_spread_index
-integer, intent(out) :: ens_copy_index(:)
 
-! Using 'seq' and 'ens_size' from global scope
+! Using 'seq', 'ens_size', and ens_copy_index from global scope
 
 integer :: i, ens_count
 character(len=metadatalength) :: metadata
@@ -2013,12 +2015,12 @@ if (dart_qc_index > 0 ) then
    call error_handler(E_MSG,'SetIndices',string1)
 endif
 
-if ( any( (/ prior_mean_index,     prior_spread_index, &
-         posterior_mean_index, posterior_spread_index /) < 0) ) then
-   string1 = 'Observation sequence has no prior/posterior information.'
+if ( any( (/ prior_mean_index, prior_spread_index/) < 0) ) then
+   string1 = 'Observation sequence has no prior information.'
    string2 = 'You will still get a count, maybe observation value, incoming qc, ...'
    string3 = 'For simple information, you may want to use "obs_seq_to_netcdf" instead.'
-   call error_handler(E_MSG, 'obs_diag', string1, text2=string2, text3=string3)
+   call error_handler(E_MSG, 'SetIndices', string1, &
+              source, revision, revdate, text2=string2, text3=string3)
 endif
 
 has_posteriors = .true.
@@ -2026,7 +2028,7 @@ if ( any( (/ posterior_mean_index, posterior_spread_index /) < 0) ) then
    has_posteriors = .false.
    string1 = 'Observation sequence has no posterior information,'
    string2 = 'therefore - posterior diagnostics are not possible.'
-   call error_handler(E_WARN, 'obs_diag', string1, &
+   call error_handler(E_WARN, 'SetIndices', string1, &
               source, revision, revdate, text2=string2)
 endif
 
@@ -2212,7 +2214,7 @@ end function InnovZscore
 
 
 function Rank_Histogram(copyvalues, obs_index, &
-                    error_variance, ens_copy_index ) result(rank)
+                    error_variance ) result(rank)
 
 ! Calculates the bin/rank
 ! We don't care about the QC value. If the ob wasn't assimilated
@@ -2221,7 +2223,6 @@ function Rank_Histogram(copyvalues, obs_index, &
 real(r8),dimension(:), intent(in)  :: copyvalues
 integer,               intent(in)  :: obs_index
 real(r8),              intent(in)  :: error_variance
-integer, dimension(:), intent(in)  :: ens_copy_index
 integer                            :: rank
 
 ! Local Variables
@@ -2499,9 +2500,6 @@ endif
 call IPE(prior%Nposs(iepoch,ilevel,iregion,flavor), 1)
 if (has_posteriors) &
    call IPE(poste%Nposs(iepoch,ilevel,iregion,flavor), 1)
-   
-call RPE(prior%observation(iepoch,ilevel,iregion,flavor), obsmean)
-call RPE(poste%observation(iepoch,ilevel,iregion,flavor), obsmean)
 
 !----------------------------------------------------------------------
 ! Select which set of qcs are valid and accrue everything
@@ -2517,6 +2515,7 @@ endif
 if ((      trusted .and.  any(trusted_prior_qcs == prior_qc)) .or. &
     (.not. trusted .and.  any(   good_prior_qcs == prior_qc))) then
    call IPE(prior%Nused(      iepoch,ilevel,iregion,flavor),      1    )
+   call RPE(prior%observation(iepoch,ilevel,iregion,flavor), obsmean   )
    call RPE(prior%ens_mean(   iepoch,ilevel,iregion,flavor), priormean )
    call RPE(prior%bias(       iepoch,ilevel,iregion,flavor), priorbias )
    call RPE(prior%rmse(       iepoch,ilevel,iregion,flavor), priorsqerr)
@@ -2565,19 +2564,18 @@ do iepoch = 1,Nepochs
 
    ! Normalize the priors
 
-   if (  prior%Nposs(      iepoch, ilev, iregion, ivar) /=0 ) then
-         prior%observation(iepoch, ilev, iregion, ivar) = &
-         prior%observation(iepoch, ilev, iregion, ivar) / &
-         prior%Nposs(      iepoch, ilev, iregion, ivar)
-   endif
-
    if (  prior%Nused(      iepoch, ilev, iregion, ivar) == 0) then
+         prior%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%bias(       iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%spread(     iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R4
    else
+         prior%observation(iepoch, ilev, iregion, ivar) = &
+         prior%observation(iepoch, ilev, iregion, ivar) / &
+         prior%Nused(      iepoch, ilev, iregion, ivar)
+
          prior%ens_mean(   iepoch, ilev, iregion, ivar) = &
          prior%ens_mean(   iepoch, ilev, iregion, ivar) / &
          prior%Nused(      iepoch, ilev, iregion, ivar)
@@ -2603,19 +2601,19 @@ do iepoch = 1,Nepochs
    endif
 
    ! Same thing for the posteriors
-   if (  poste%Nposs(      iepoch, ilev, iregion, ivar) /= 0) then
-         poste%observation(iepoch, ilev, iregion, ivar) = &
-         poste%observation(iepoch, ilev, iregion, ivar) / &
-         poste%Nposs(      iepoch, ilev, iregion, ivar)
-   endif
 
    if (  poste%Nused(      iepoch, ilev, iregion, ivar) == 0) then
+         poste%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%bias(       iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%spread(     iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R4
    else
+         poste%observation(iepoch, ilev, iregion, ivar) = &
+         poste%observation(iepoch, ilev, iregion, ivar) / &
+         poste%Nused(      iepoch, ilev, iregion, ivar)
+
          poste%ens_mean( iepoch, ilev, iregion, ivar) = &
          poste%ens_mean( iepoch, ilev, iregion, ivar) / &
          poste%Nused(      iepoch, ilev, iregion, ivar)
@@ -2664,9 +2662,10 @@ end subroutine Normalize4Dvars
 
 
 subroutine WriteNetCDF(fname)
+
 character(len=*), intent(in) :: fname
 
-integer :: ncid, i, nobs, typesdimlen
+integer :: ncid, i, nobs, typesdimlen, io
 integer ::  RegionDimID,  RegionVarID
 integer ::  MlevelDimID,  MlevelVarID
 integer ::  PlevelDimID,  PlevelVarID
@@ -2693,8 +2692,6 @@ if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'WriteNetCDF', &
    'Compiler does not support required kinds of variables.',source,revision,revdate)
 endif
-
-write(*,*)'Creating ',trim(fname)
 
 call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
          ncid = ncid), 'WriteNetCDF', 'create "'//trim(fname)//'"')
@@ -3190,16 +3187,16 @@ if ( create_rank_histogram ) then
    call Define_Prior_and_Posterior(ncid, prior, poste, &
                     TimeDimID, CopyDimID, RegionDimID, RankDimID)
    write(*,*)'Finished defining output variables ... writing priors ...'
-   ierr = WriteTLRV(ncid, prior, RankDimID)
+   call WriteTLRV(ncid, prior, RankDimID)
 else
    call Define_Prior_and_Posterior(ncid, prior, poste, &
                     TimeDimID, CopyDimID, RegionDimID)
    write(*,*)'Finished defining output variables ... writing priors ...'
-   ierr = WriteTLRV(ncid, prior)
+   call WriteTLRV(ncid, prior)
 endif
 
 write(*,*)'Finished writing priors ... writing posteriors.'
-ierr = WriteTLRV(ncid, poste)
+if (has_posteriors) call WriteTLRV(ncid, poste)
 
 !----------------------------------------------------------------------------
 ! finish ...
@@ -3501,18 +3498,22 @@ DEFINE : do ivar = 1,num_obs_types
 
    ! Define the poste variable and its attributes.
 
-   call nc_check(nf90_def_var(ncid, name=string2, xtype=nf90_real, &
-          dimids=(/ RegionDimID, LevelDimID, CopyDimID, TimeDimID /), &
-          varid=VarID), routine, 'region:def_var '//trim(string2))
-   call nc_check(nf90_put_att(ncid, VarID, '_FillValue',    MISSING_R4), &
-           routine,'put_att:fillvalue '//trim(string2))
-   call nc_check(nf90_put_att(ncid, VarID, 'missing_value', MISSING_R4), &
-           routine,'put_att:missing '//trim(string2))
+   if (has_posteriors) then
 
-   if ( is_observation_trusted(obs_type_strings(ivar)) ) then
-      call nc_check(nf90_put_att(ncid, VarID, 'TRUSTED', 'TRUE'), &
-           routine,'put_att:trusted '//trim(string2))
-      call error_handler(E_MSG,routine,string2,text2='is TRUSTED.')
+      call nc_check(nf90_def_var(ncid, name=string2, xtype=nf90_real, &
+             dimids=(/ RegionDimID, LevelDimID, CopyDimID, TimeDimID /), &
+             varid=VarID), routine, 'region:def_var '//trim(string2))
+      call nc_check(nf90_put_att(ncid, VarID, '_FillValue',    MISSING_R4), &
+              routine,'put_att:fillvalue '//trim(string2))
+      call nc_check(nf90_put_att(ncid, VarID, 'missing_value', MISSING_R4), &
+              routine,'put_att:missing '//trim(string2))
+   
+      if ( is_observation_trusted(obs_type_strings(ivar)) ) then
+         call nc_check(nf90_put_att(ncid, VarID, 'TRUSTED', 'TRUE'), &
+              routine,'put_att:trusted '//trim(string2))
+         call error_handler(E_MSG,routine,string2,text2='is TRUSTED.')
+      endif
+
    endif
 
    ! The rank histogram has no 'copy' dimension, so it must be handled differently.
@@ -3545,11 +3546,10 @@ end subroutine Define_Prior_and_Posterior
 !======================================================================
 
 
-function WriteTLRV(ncid, vrbl, RankDimID)
+subroutine WriteTLRV(ncid, vrbl, RankDimID)
 integer,           intent(in) :: ncid
 type(TLRV_type),   intent(in) :: vrbl
 integer, optional, intent(in) :: RankDimID
-integer :: WriteTLRV
 
 integer :: nobs, Nlevels, ivar, itime, ilevel, iregion
 integer :: Nbins, irank, ndata
@@ -3651,9 +3651,7 @@ FILL : do ivar = 1,num_obs_types
 
 enddo FILL
 
-WriteTLRV = 0
-
-end function WriteTLRV
+end subroutine WriteTLRV
 
 
 !======================================================================

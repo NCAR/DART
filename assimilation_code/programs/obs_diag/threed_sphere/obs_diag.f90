@@ -6,6 +6,8 @@
 !> regions and accumulates statistics for these epochs and regions.
 !> All 'possible' observation types are treated separately.
 !> The results are written to a netCDF file.
+!> If the rank histogram is requested (and if the data is available),
+!> only the PRIOR rank is calculated.
 
 program obs_diag
 
@@ -28,8 +30,9 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_qc, destroy_obs_sequence, read_obs_seq_header, &
                              get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
 
-use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location,  get_obs_def_type_of_obs
+use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, &
+                             get_obs_def_time, get_obs_def_location, &
+                             get_obs_def_type_of_obs
 
 use     obs_kind_mod, only : max_defined_types_of_obs, get_quantity_for_type_of_obs, &
                              get_name_for_type_of_obs, &
@@ -47,6 +50,7 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(*),  operator(+),  operator(-), &
                              operator(>),  operator(<),  operator(/), &
                              operator(/=), operator(<=), operator(>=)
+
 use    utilities_mod, only : open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG,  &
                              initialize_utilities, logfileunit, nmlfileunit,   &
@@ -215,7 +219,6 @@ type(location_type), dimension(MaxRegions) :: min_loc, max_loc
 character(len=stringlength), dimension(MaxTrusted) :: trusted_obs = 'null'
 
 logical :: print_mismatched_locs = .false.
-logical :: print_obs_locations   = .false.
 logical :: verbose               = .false.
 logical :: outliers_in_histogram = .false.
 logical :: create_rank_histogram = .true.
@@ -224,9 +227,9 @@ logical :: use_zero_error_obs    = .false.
 namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
                        first_bin_center, last_bin_center,                     &
                        bin_separation, bin_width, time_to_skip, max_num_bins, &
-                       plevel, hlevel, mlevel, &
+                       plevel, hlevel, mlevel,                                &
                        Nregions, lonlim1, lonlim2, latlim1, latlim2,          &
-                       reg_names, print_mismatched_locs, print_obs_locations, &
+                       reg_names, print_mismatched_locs,                      &
                        create_rank_histogram, outliers_in_histogram,          &
                        plevel_edges, hlevel_edges, mlevel_edges,              &
                        verbose, trusted_obs, use_zero_error_obs
@@ -485,7 +488,8 @@ ObsFileLoop : do ifile=1, num_input_files
    ens_size = GetEnsSize()
 
    if ((ens_size == 0) .and. create_rank_histogram) then
-      call error_handler(E_MSG,'obs_diag','Cannot create rank histogram. Zero ensemble members.')
+      call error_handler(E_MSG,'obs_diag', &
+                 'Cannot create rank histogram. Zero ensemble members.')
       create_rank_histogram = .false.
 
    elseif ((ens_size > 0) .and. create_rank_histogram ) then
@@ -518,25 +522,7 @@ ObsFileLoop : do ifile=1, num_input_files
 
    call SetIndices( obs_index, org_qc_index, dart_qc_index, &
             prior_mean_index,   posterior_mean_index,   &
-            prior_spread_index, posterior_spread_index, &
-            ens_copy_index )
-
-   if ( any( (/ prior_mean_index, prior_spread_index/) < 0) ) then
-      string1 = 'Observation sequence has no prior information.'
-      string2 = 'You will still get a count, maybe observation value, incoming qc, ...'
-      string3 = 'For simple information, you may want to use "obs_seq_to_netcdf" instead.'
-      call error_handler(E_MSG, 'obs_diag', string1, &
-                 source, revision, revdate, text2=string2, text3=string3)
-   endif
-
-   has_posteriors = .true.
-   if ( any( (/ posterior_mean_index, posterior_spread_index /) < 0) ) then
-      has_posteriors = .false.
-      string1 = 'Observation sequence has no posterior information,'
-      string2 = 'therefore - posterior diagnostics are not possible.'
-      call error_handler(E_WARN, 'obs_diag', string1, &
-                 source, revision, revdate, text2=string2)
-   endif
+            prior_spread_index, posterior_spread_index)
 
    ! Loop over all potential time periods ... the observation sequence
    ! files are not required to be in any particular order.
@@ -748,8 +734,6 @@ ObsFileLoop : do ifile=1, num_input_files
 
          pr_zscore = InnovZscore(obs(1), pr_mean, pr_sprd, obs_error_variance, &
                                  qc_value, QC_MAX_PRIOR)
-         po_zscore = InnovZscore(obs(1), po_mean, po_sprd, obs_error_variance, &
-                                 qc_value, QC_MAX_POSTERIOR)
 
          if (has_posteriors) po_zscore = InnovZscore(obs(1), po_mean, po_sprd, &
                                     obs_error_variance, qc_value, QC_MAX_POSTERIOR)
@@ -798,8 +782,7 @@ ObsFileLoop : do ifile=1, num_input_files
 
          if ( create_rank_histogram ) then
             call get_obs_values(observation, copyvals)
-            rank_histogram_bin = Rank_Histogram(copyvals, obs_index, &
-                 obs_error_variance, ens_copy_index)
+            rank_histogram_bin = Rank_Histogram(copyvals, obs_index, obs_error_variance )
          endif
 
          ! We have Nregions of interest.
@@ -2208,8 +2191,7 @@ end function GetEnsSize
 
 subroutine SetIndices( obs_index, org_qc_index, dart_qc_index,     &
                        prior_mean_index,   posterior_mean_index,   &
-                       prior_spread_index, posterior_spread_index, &
-                       ens_copy_index )
+                       prior_spread_index, posterior_spread_index)
 
 ! There are many 'copy' indices that need to be set from the obs_sequence
 ! metadata. Some are required, some are optional.
@@ -2221,9 +2203,8 @@ integer, intent(out) :: prior_mean_index
 integer, intent(out) :: posterior_mean_index
 integer, intent(out) :: prior_spread_index
 integer, intent(out) :: posterior_spread_index
-integer, intent(out) :: ens_copy_index(:)
 
-! Using 'seq' and 'ens_size' from global scope
+! Using 'seq', 'ens_size', and ens_copy_index from global scope
 
 integer :: i, ens_count
 character(len=metadatalength) :: metadata
@@ -2362,6 +2343,23 @@ if (dart_qc_index > 0 ) then
    write(string1,'(''"DART quality control" index '',i2,'' metadata '',a)') &
         dart_qc_index, trim(get_qc_meta_data(seq,dart_qc_index))
    call error_handler(E_MSG,'SetIndices',string1)
+endif
+
+if ( any( (/ prior_mean_index, prior_spread_index/) < 0) ) then
+   string1 = 'Observation sequence has no prior information.'
+   string2 = 'You will still get a count, maybe observation value, incoming qc, ...'
+   string3 = 'For simple information, you may want to use "obs_seq_to_netcdf" instead.'
+   call error_handler(E_MSG, 'SetIndices', string1, &
+              source, revision, revdate, text2=string2, text3=string3)
+endif
+
+has_posteriors = .true.
+if ( any( (/ posterior_mean_index, posterior_spread_index /) < 0) ) then
+   has_posteriors = .false.
+   string1 = 'Observation sequence has no posterior information,'
+   string2 = 'therefore - posterior diagnostics are not possible.'
+   call error_handler(E_WARN, 'SetIndices', string1, &
+              source, revision, revdate, text2=string2)
 endif
 
 end subroutine SetIndices
@@ -2583,7 +2581,7 @@ end function InnovZscore
 
 
 function Rank_Histogram(copyvalues, obs_index, &
-                    error_variance, ens_copy_index ) result(rank)
+                    error_variance ) result(rank)
 
 ! Calculates the bin/rank
 ! We don't care about the QC value. If the ob wasn't assimilated
@@ -2592,7 +2590,6 @@ function Rank_Histogram(copyvalues, obs_index, &
 real(r8),dimension(:), intent(in)  :: copyvalues
 integer,               intent(in)  :: obs_index
 real(r8),              intent(in)  :: error_variance
-integer, dimension(:), intent(in)  :: ens_copy_index
 integer                            :: rank
 
 ! Local Variables
@@ -4022,10 +4019,12 @@ if ( create_rank_histogram ) then
 else
    call WriteTLRV(ncid, prior, TimeDimID, CopyDimID, RegionDimID)
 endif
-call WriteTLRV(ncid, poste,    TimeDimID, CopyDimID, RegionDimID)
-
 call WriteLRV( ncid, priorAVG,            CopyDimID, RegionDimID)
-call WriteLRV( ncid, posteAVG,            CopyDimID, RegionDimID)
+
+if (has_posteriors) then
+   call WriteTLRV(ncid, poste,    TimeDimID, CopyDimID, RegionDimID)
+   call WriteLRV( ncid, posteAVG,            CopyDimID, RegionDimID)
+endif
 
 !----------------------------------------------------------------------------
 ! finish ...
@@ -4539,7 +4538,7 @@ DEFINE : do ivar = 1,num_obs_types
    if ( is_observation_trusted(obs_type_strings(ivar)) ) then
       call nc_check(nf90_put_att(ncid, VarID, 'TRUSTED', 'TRUE'), &
            'WriteLRV','put_att:trusted '//trim(string1))
-      call error_handler(E_MSG,'WriteLRV:',string1,text2='is trusted.')
+      call error_handler(E_MSG,'WriteLRV:',string1,text2='is TRUSTED.')
    endif
 
    call nc_check(nf90_set_fill(ncid, NF90_NOFILL, oldmode),  &
