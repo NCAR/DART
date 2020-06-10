@@ -31,18 +31,6 @@ use          location_mod,  only : location_type, set_vertical, set_location, &
                                    vertical_localization_on, get_close_type, get_maxdist, &
                                    get_close_init
 
-!SENote using 3d space location for now
-! NEED to understand how this relates to the standard threed_cartesian which is in the same directory
-! IN Addiion, the xyz_location_mod in the threed_cartesian directory in Manhattan is NOT consistent with
-! the one from CLASSIC. For now, I've added in the classic module in that directory but eventually this will
-! need reconciled. 
-use xyz_location_mod,       only : xyz_location_type, xyz_get_close_maxdist_init,          &
-                                   xyz_get_close_type, xyz_set_location, xyz_get_location, &
-                                   xyz_get_close_obs_init, xyz_get_close_obs_destroy,      &
-                                   xyz_find_nearest
-
-
-
 use         utilities_mod,  only : find_namelist_in_file, check_namelist_read, &
                                    string_to_logical, string_to_real,& 
                                    nmlfileunit, do_nml_file, do_nml_term, &
@@ -164,7 +152,7 @@ integer, parameter :: MAX_PERT = 100
 character(len=256) :: cam_template_filename           = 'caminput.nc'
 character(len=256) :: cam_phis_filename               = 'cam_phis.nc'
 
-!SENote added in namelist strings to identify the CS grid mapping files
+! Identify the CS grid mapping files
 character(len=256) :: homme_map_file                  = 'SEMapping.nc'            ! Corners of each cubed sphere cell.
 character(len=256) :: cs_grid_file                    = 'SEMapping_cs_grid.nc'    ! Relationships among corners/nodes.
 
@@ -244,8 +232,7 @@ real(r8), allocatable :: phis(:, :)
 !> don't have a real ensemble to use, or we don't care
 !> about absolute accuracy.
 
-! SENote: A veriety of module storage data structures for geometry of grid
-! Verify that all of these are still being used
+! A veriety of module storage data structures for geometry of grid
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! CS Variables holding relationships among cubed sphere nodes.
 ! Read in and/or set in static_init_model (and routines it calls) at the beginning of an assimilation.
@@ -284,10 +271,6 @@ real(r8), allocatable :: x_ax_bearings(:,:)  ! The directions from each node to 
 
 ! Locations of cubed sphere nodes, in DART's location_type format.
 type(location_type), allocatable :: cs_locs(:)
-
-! Location of cubed sphere nodes, in cartesian coordinates
-type(xyz_location_type), allocatable :: cs_locs_xyz(:)
-type(xyz_get_close_type)             :: cs_gc_xyz
 
 ! Structure containing grid point locations, etc.,
 ! defined in static_init_mod after reading in CS lons, lats, and levels,
@@ -408,8 +391,7 @@ call init_sign_of_vert_units()
 
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! SENote: This section reads and/or builds the tables needed for model_interpolate for SE
-! SENote: The building process needs to be tested.
+! This section reads and/or builds the tables needed for model_interpolate for SE
 ! Read in or create a file containing the relationships among cubed sphere nodes,
 ! such as neighbors, centers, and bearings, which will be used to identify the cell
 ! which contains an observation.
@@ -421,38 +403,37 @@ allocate(lon_rad(ncol), lat_rad(ncol))
 lon_rad(:) = grid_data%lon%vals(:)*DEG2RAD
 lat_rad(:) = grid_data%lat%vals(:)*DEG2RAD
 
-!SENote: Following indented block is also used for search for close corners
-! Need to make sure that all of it is really needed
-   ! Read some attributes from the cubed sphere model_config_file.
-   ! ne is the number of elements/cube edge.  Usually 0 for refined grids.
-   ! np is the number of nodes/element edge (shared with adjacent element.
-   nc_file_ID = nc_open_file_readonly(cam_template_filename, 'Reading ne and np from cam template file')
-   call nc_get_global_attribute(nc_file_ID, 'ne', ne, 'Reading ne from cam template file', cam_template_filename)
-   call nc_get_global_attribute(nc_file_ID, 'np', np, 'Reading np from cam template file', cam_template_filename)
-   call nc_close_file(nc_file_ID, 'Reading ne and np from cam template file', cam_template_filename)
+! Following indented block is also used for search for close corners
+! Read some attributes from the cubed sphere model_config_file.
+! ne is the number of elements/cube edge.  Usually 0 for refined grids.
+! np is the number of nodes/element edge (shared with adjacent element.
+nc_file_ID = nc_open_file_readonly(cam_template_filename, 'Reading ne and np from cam template file')
+call nc_get_global_attribute(nc_file_ID, 'ne', ne, 'Reading ne from cam template file', cam_template_filename)
+call nc_get_global_attribute(nc_file_ID, 'np', np, 'Reading np from cam template file', cam_template_filename)
+call nc_close_file(nc_file_ID, 'Reading ne and np from cam template file', cam_template_filename)
 
-   ! Calculate the nominal resolution of the (coarse) grid,
-   ! for use by model_interpolate's call to get_close_obs.
-   if (ne == 0) then
-      ! Refined mesh; assume the coarsest grid is the default '1-degree'.
-      ! Need factor of 1.5 to make sure that there are at least 2 nodes 'close' to any location.
-      ! There seems to be a tricky interplay between the lon-lat boxes used in the quick search
-      ! for potentially close nodes, and the cubed sphere grid, so that a coarse_grid of only
-      ! slightly more than 1.0 degrees can yield 0 close nodes.
-      coarse_grid = 1.2_r8 * DEG2RAD
-      l_refined = .true.
-   else
-      ! Standard cubed sphere; there are 3x num_elements/face_edge x 4 nodes
-      ! around the equator.  ne = 30 -> 3x4x30 = 360 nodes -> '1-degree'
-      ! Yielded a location with only 1 close ob, but need 2.
-      ! coarse_grid = (30.01_r8/ne) * DEG2RAD
-      coarse_grid = 1.2_r8*(30.0_r8/ne) * DEG2RAD
-   endif
-   if (print_details) then
-      write(string1, *) 'Cubed sphere coarse_grid resolution (rad) used in cs_gc definition = ',&
-                      coarse_grid,' because ne = ',ne
-      call error_handler(E_MSG, 'static_init_model', string1,source,revision,revdate)
-   endif
+! Calculate the nominal resolution of the (coarse) grid,
+! for use by model_interpolate's call to get_close_obs.
+if (ne == 0) then
+   ! Refined mesh; assume the coarsest grid is the default '1-degree'.
+   ! Need factor of 1.5 to make sure that there are at least 2 nodes 'close' to any location.
+   ! There seems to be a tricky interplay between the lon-lat boxes used in the quick search
+   ! for potentially close nodes, and the cubed sphere grid, so that a coarse_grid of only
+   ! slightly more than 1.0 degrees can yield 0 close nodes.
+   coarse_grid = 1.2_r8 * DEG2RAD
+   l_refined = .true.
+else
+   ! Standard cubed sphere; there are 3x num_elements/face_edge x 4 nodes
+   ! around the equator.  ne = 30 -> 3x4x30 = 360 nodes -> '1-degree'
+   ! Yielded a location with only 1 close ob, but need 2.
+   ! coarse_grid = (30.01_r8/ne) * DEG2RAD
+   coarse_grid = 1.2_r8*(30.0_r8/ne) * DEG2RAD
+endif
+if (print_details) then
+   write(string1, *) 'Cubed sphere coarse_grid resolution (rad) used in cs_gc definition = ',&
+                   coarse_grid,' because ne = ',ne
+   call error_handler(E_MSG, 'static_init_model', string1,source,revision,revdate)
+endif
 
 
 ! Fill cs_gc for use by model_mod.  Inputs and outputs are in global storage.
@@ -915,14 +896,6 @@ Quads: do cent = 1,ncenters
       ! Shifting preserves the order of the corners as we go around the cell (clockwise).
       sh_corn = cshift(corners(cent,:), c)
 
-      ! Check a few cells for corner consistency.
-      !SENote: this message string is too long for storage and probably useless, 
-      !if (print_details .and. sh_corn(4) < 10) then
-         !write(string1,'(A,5I7,/31X,4I7)') 'c, 4 corners, shifted = ', &
-              !c,(corners(cent,nbr),nbr=1,4),(sh_corn(nbr),nbr=1,4)
-         !call error_handler(E_MSG,'create_cs_grid_arrays',string1,source,revision,revdate)
-      !endif
-
       ! Increment the number of neighbors (and centers ) this corner(node) has.
       ! sh_corn(4) is used for all cases because the corner we're working on always
       ! ends up in that position, when c is incremented, then the corners are shifted.
@@ -1163,8 +1136,6 @@ type(location_type) :: get_location_from_index
 
 character(len=*), parameter :: routine = 'get_location_from_index'
 real(r8) :: use_vert_val
-
-!SENote variable declarations follow
 real(r8) :: my_lon, my_lat, my_vert
 
 ! full 2d fields are returned with column/level.
@@ -1332,8 +1303,8 @@ real(r8) :: vals_array(ref_nlevels,ens_size)
 character(len=*), parameter :: routine = 'get_se_values_from_nonstate_fields:'
 
 vals(:) = MISSING_R8
-!SENote: It appears that this 99 status value can never be returned. Left for backwards consistency
-!SENote with FV get_values_from_nonstate_fields but should be verified and removed
+! This 99 status value can never be returned. Left for backwards consistency
+! with FV get_values_from_nonstate_fields but should be verified and removed
 my_status(:) = 99
 
 select case (obs_quantity) 
@@ -1374,7 +1345,7 @@ end subroutine get_se_values_from_nonstate_fields
 !>          of interest (the interpolated value).
 !> @param istatus interpolation status ... 0 == success, /=0 is a failure
 !>
-!SENote: Many of these error status returns cannot actually happen. Need to verify these.
+! Many of these error status returns cannot actually happen. Need to verify these.
 !> istatus = 2    asked to interpolate an unknown/unsupported quantity
 !> istatus = 3    NOT USED: cannot locate horizontal quad
 !> istatus = 4    NOT USED: cannot locate enclosing vertical levels
@@ -1409,7 +1380,7 @@ character(len=*), parameter :: routine = 'model_interpolate:'
 integer  :: varid, which_vert, status1
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
-integer :: closest, cell_corners(4)
+integer :: cell_corners(4)
 real(r8) :: l_weight, m_weight
 type(location_type) :: location_copy
 
@@ -1436,7 +1407,6 @@ lon_lat_vert = get_location(location)
 which_vert   = nint(query_location(location)) 
 
 ! if we are avoiding assimilating obs above a given pressure, test here and return.
-!SENote: need to test that this is working
 if (discarding_high_obs) then
    call obs_too_high(lon_lat_vert(3), which_vert, status1)
    if (status1 /= 0) then
@@ -1452,7 +1422,7 @@ endif
 ! be skipped. Understand that and implement as needed.
 ! Note that cannot pass location directly because it is intent(inout) in coord_ind_cs.
 location_copy = location
-call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l_weight, m_weight)
+call coord_ind_cs(location_copy, obs_qty, cell_corners, l_weight, m_weight)
 
 ! Now do vertical conversions and get the vertical index for each ensemble member
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
@@ -1483,16 +1453,13 @@ end subroutine model_interpolate
 
 !-----------------------------------------------------------------------
 
-subroutine coord_ind_cs(obs_loc, obs_kind, closest_only, closest , cell_corners, l_weight, m_weight)
+subroutine coord_ind_cs(obs_loc, obs_kind, cell_corners, l_weight, m_weight)
 
-! Find the node closest to a location, and optionally the corners of the cell which contains 
-! the location.
+! Find the corners of the cell which contains the location.
 
 ! Variables needed by loc_get_close_obs:
 type(location_type),  intent(inout)  :: obs_loc
 integer,              intent(in)  :: obs_kind
-logical,              intent(in)  :: closest_only
-integer,              intent(out) :: closest
 integer,              intent(out) :: cell_corners(4)
 real(r8),             intent(out) :: l_weight
 real(r8),             intent(out) :: m_weight
@@ -1513,7 +1480,7 @@ real(r8), allocatable :: dist(:)
 ! and will not be reset during subsequent entries to this subroutine.)
 real(r8) :: dist_1, dist_2
 real(r8) :: lon_lat_lev(3)
-integer  :: k, k1, k2, closest2, origin
+integer  :: k, k1, k2, closest, closest2, origin
 logical  :: found_cell
 
 lon_lat_lev = get_location(obs_loc)
@@ -1522,16 +1489,6 @@ lon_lat_lev = get_location(obs_loc)
 ! This could be done by 2 calls to minloc(dist), with the 2nd call using a mask
 ! to prevent finding the closest, which was found in the first call.
 ! But would those 2 intrinsic searches through dist be faster than my 1 explicit search?
-
-if (closest_only) then
-   ! Use xyz/cartesian coordinates to quickly find the closest node.
-   ! If convert_vert only needs the closest node, don't find the l,m weights.
-   closest = find_closest_node(lon_lat_lev(2), lon_lat_lev(1))
-
-   ! Can return without deallocating close_ind and dist
-   ! because they haven't been allocated yet.
-   return
-endif
 
 ! Allocate space for the potentially close nodes.
 allocate(close_ind(ncol), dist(ncol))
@@ -1975,72 +1932,6 @@ endif
 
 end subroutine solve_quadratic
 
-!------------------------------------------------------------
-! Subroutines from mpas_atm/model_mod.f90, for using cartesian coordinates to
-! find closest node to an ob.
-
-subroutine init_closest_node()
-
-! use ncol, lats and lons of nodes (corners) to initialize a get_close structure
-! to be used later in find_closest_node().
-
-integer :: i
-
-allocate(cs_locs_xyz(ncol))
-
-do i=1, ncol
-   cs_locs_xyz(i) = xyz_set_location(grid_data%lon%vals(i), grid_data%lat%vals(i), 0.0_r8, earth_radius)
-enddo
-
-! the width (2nd arg of ...init) really isn't used anymore, but it's part of the
-! interface so we have to pass some number in.
-call xyz_get_close_maxdist_init(cs_gc_xyz, 1.0_r8)
-call xyz_get_close_obs_init    (cs_gc_xyz, ncol, cs_locs_xyz)
-
-end subroutine init_closest_node
-
-!------------------------------------------------------------
-
-function find_closest_node(lat, lon)
-
-! Determine the index for the closest node to the given point
-! 2D calculation only.
-
-real(r8), intent(in)  :: lat
-real(r8), intent(in)  :: lon
-integer               :: find_closest_node
-
-type(xyz_location_type) :: pointloc
-integer                 :: closest_node, rc
-! This 'save' is redundant with initializing the variable here in the declaration statement.
-logical, save           :: search_initialized = .false.
-
-! do this exactly once.
-if (.not. search_initialized) then
-   call init_closest_node()
-   search_initialized = .true.
-endif
-
-pointloc = xyz_set_location(lon, lat, 0.0_r8, earth_radius)
-
-call xyz_find_nearest(cs_gc_xyz, pointloc, cs_locs_xyz, closest_node, rc)
-
-! decide what to do if we don't find anything.
-if (rc /= 0 .or. closest_node < 0) then
-   if (my_task_id() == 0) then
-      write(string1,*) 'cannot find a nearest node to lon, lat: ', lon, lat
-      call error_handler(E_WARN, 'find_closest_node', string1,source,revision,revdate)
-      ! newFIXME; should this be E_ERR instead?
-   endif
-   find_closest_node = -1
-   return
-endif
-
-! this is the cell index for the closest center
-find_closest_node = closest_node
-
-end function find_closest_node
-
 !-----------------------------------------------------------------------
 !> internal only version of model interpolate. 
 !> does not check for locations too high - return all actual values.
@@ -2060,7 +1951,7 @@ integer,            intent(out) :: istatus(ens_size)
 character(len=*), parameter :: routine = 'interpolate_se_values:'
 
 integer  :: which_vert
-integer :: cell_corners(4), closest, i
+integer :: cell_corners(4), i
 type(location_type) :: location_copy
 real(r8) :: l_weight, m_weight
 real(r8) :: lon_lat_vert(3), quad_vals(4, ens_size)
@@ -2073,10 +1964,9 @@ which_vert    = nint(query_location(location))
 
 ! Do not want to propagate changes to the location back up the calling tree
 location_copy = location
-call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l_weight, m_weight)
+call coord_ind_cs(location_copy, obs_qty, cell_corners, l_weight, m_weight)
 
 !Now work on the vertical conversions and getting the vertical index for each ensemble member
-!SENOte: switching the order on the varid and obs_qty arguments from the call isn't a great idea
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
 
@@ -3891,8 +3781,6 @@ end subroutine get_close_obs
 !----------------------------------------------------------------------------
 
 
-!SENote: Need to test the convert all upfront options from Namelist
-
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, ens_handle)
 
@@ -3932,7 +3820,6 @@ endif
 ! does the base obs need conversion first?
 vert_type = query_location(base_loc)
 
-call write_location(0, base_loc)
 if (vert_type /= vertical_localization_type) then
    call convert_vert_one_obs(ens_handle, base_loc, base_type, &
                              vertical_localization_type, status)
