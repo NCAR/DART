@@ -68,7 +68,7 @@ The top level DART source code tree contains the following directories and files
 
 ## Bug reports and feature requests
 
-Use the GitHub [issue tracker](https://github.com/NCAR/DART-2.0/issues) 
+Use the GitHub [issue tracker](https://github.com/NCAR/DART/issues) 
 to submit a bug or request a feature.
 
 ## Citing DART
@@ -83,6 +83,13 @@ Update the DART version and year as appropriate.
 
 <a name="QuickStart"></a>
 ## Quick-start for the impatient:
+
+1. fork the NCAR/DART repo
+1. clone your (new) fork to your machine - this will set up a remote named 'origin'
+1. create a remote to point back to the NCAR/DART repo ... convention dictates that this remote should be called 'upstream'
+1. check out the appropriate branch
+1. Download one of the tar files (listed below) of 'large' files so you can test your DART installation.
+1. If you want to issue a PR, create a feature branch and push that to your fork and issue the PR.
 
 There are several large files that are needed to run some of the tests and examples but are not included
 in order to keep the repository as small as possible. If you are interested in running *bgrid_solo*, 
