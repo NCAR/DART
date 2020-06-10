@@ -56,9 +56,7 @@ use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_PRESSURE, &
                                    QTY_MOLEC_OXYGEN_MIXING_RATIO, &
                                    QTY_ION_O_MIXING_RATIO, QTY_ATOMIC_H_MIXING_RATIO, &
                                    QTY_ATOMIC_OXYGEN_MIXING_RATIO, QTY_NITROGEN, &
-                                   ! SENote: Added in for tests
                                    QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_CLOUD_LIQUID_WATER, QTY_CLOUD_ICE, &
-         
                                    get_index_for_quantity, get_num_quantities, &
                                    get_name_for_quantity, get_quantity_for_type_of_obs
 
@@ -167,7 +165,6 @@ character(len=256) :: cam_template_filename           = 'caminput.nc'
 character(len=256) :: cam_phis_filename               = 'cam_phis.nc'
 
 !SENote added in namelist strings to identify the CS grid mapping files
-! NOTE THAT THES lenghts may need to be 256 when we move to new netcdf code
 character(len=256) :: homme_map_file                  = 'SEMapping.nc'            ! Corners of each cubed sphere cell.
 character(len=256) :: cs_grid_file                    = 'SEMapping_cs_grid.nc'    ! Relationships among corners/nodes.
 
@@ -237,24 +234,9 @@ logical, save      :: module_initialized = .false.
 ! info and is required for getting state variables.
 integer :: domain_id
 
-! SENote: the stagger info in the next block will not be required
-integer, parameter :: STAGGER_NONE = -1
-integer, parameter :: STAGGER_U    =  1
-integer, parameter :: STAGGER_V    =  2
-integer, parameter :: STAGGER_W    =  3 
-integer, parameter :: STAGGER_UV   =  4
-
-type cam_stagger
-   integer, allocatable :: qty_stagger(:)
-end type
-
-type(cam_stagger) :: grid_stagger
-! SENote; end of stagger block that will be deleted
-
 ! Surface potential; used for calculation of geometric heights.
 ! SENote: phis will only have one dimension meaningful dimension. Could it be put in state structure?
 ! SENote: right now every process has their own complete copy of this
-! SENote: Initially appears that SE does not use phis
 real(r8), allocatable :: phis(:, :)
 
 !> build a pressure/height conversion column based on a
@@ -268,9 +250,6 @@ real(r8), allocatable :: phis(:, :)
 ! CS Variables holding relationships among cubed sphere nodes.
 ! Read in and/or set in static_init_model (and routines it calls) at the beginning of an assimilation.
 ! Used by model_interpolate.
-logical :: l_rectang = .true.        ! Flag to tell whether grid is logically rectangular
-                                     ! (Eul, FV) or not (cubed-sphere, ...?)
-                                     ! Will be set .false. if cam_template_filename has dimension 'ncol'.
 logical :: l_refined = .false.       ! Flag to tell whether grid is a refined mesh or not.
 
 ! ne = global metadata from cam_template_filename, giving the number of 'elements' per face edge of the 'cube'.
@@ -328,11 +307,10 @@ integer :: no_third_dimension = -99
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-!SENote: This variable gives extra output for the locations. More global way to do this?:w
+!SENote: This variable gives extra output for the locations. More global way to do this?
 ! set to .true. to get more details about the state vector and the
 ! CAM fields and sizes in the init code.
 logical :: print_details = .true.
-
 
 
 
@@ -357,14 +335,8 @@ contains
 
 subroutine static_init_model()
 
-integer :: iunit, io
-integer :: nfields
-
-!SENote
-type(location_type) :: test_loc
-integer(i8) :: test_index_in
-integer :: test_var_type, i, nc_file_ID
-real(r8) :: test_loc_vals(3)
+integer :: iunit, io, i 
+integer :: nc_file_ID, nfields
 
 character(len=*), parameter :: routine = 'static_init_model'
 
@@ -437,23 +409,17 @@ call init_sign_of_vert_units()
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! SENote: This section reads and/or builds the tables needed for model_interpolate for SE
+! SENote: The building process needs to be tested.
 ! Read in or create a file containing the relationships among cubed sphere nodes,
 ! such as neighbors, centers, and bearings, which will be used to identify the cell
 ! which contains an observation.
 ! Fields will be stored in global storage.
 ! Write the cubed sphere grid arrays to a new NetCDF file.
 
-if (file_exist(cs_grid_file)) then
-   call nc_read_cs_grid_file()
-elseif (file_exist(homme_map_file)) then
-   call create_cs_grid_arrays()
-   if (my_task_id() == 0) call nc_write_cs_grid_file( cs_grid_file, homme_map_file )
-else
-   write(string1, *)'No cs_grid_file "',trim(cs_grid_file), &
-                 '" nor homme_map_file "',trim(homme_map_file),'"'
-   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate)
-endif
-
+! Fill arrays that are useful for bearings and distances.
+allocate(lon_rad(ncol), lat_rad(ncol))
+lon_rad(:) = grid_data%lon%vals(:)*DEG2RAD
+lat_rad(:) = grid_data%lat%vals(:)*DEG2RAD
 
 !SENote: Following indented block is also used for search for close corners
 ! Need to make sure that all of it is really needed
@@ -488,43 +454,21 @@ endif
       call error_handler(E_MSG, 'static_init_model', string1,source,revision,revdate)
    endif
 
-   ! Fill cs_gc for use by model_mod.  Inputs and outputs are in global storage.
-   ! ncol is already defined before this call.
-   call fill_gc()
 
-   ! Fill arrays that are useful for bearings and distances.
-   allocate(lon_rad(ncol), lat_rad(ncol))
-   do i=1,ncol
-      lon_rad(i) = grid_data%lon%vals(i)*DEG2RAD
-      lat_rad(i) = grid_data%lat%vals(i)*DEG2RAD
-   enddo
+! Fill cs_gc for use by model_mod.  Inputs and outputs are in global storage.
+! ncol is already defined before this call.
+call fill_gc()
 
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! height
-! Get dimensions and surface geopotential from a new netcdf file and test for consistency.
-! Open file and read PHIS from it.
-! Allocate global variables which will be used in vertical interpolations
-! Check for pressures on vertically staggered grid, as well as standard grid.
-
-!SENote call read_cam_2Dreal(cam_phis, 'PHIS')
-
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-!SENote; Looking at metadata
-!write(*, *) 'end of static init model'
-!write(*, *) 'model size ', get_model_size()
-!do i = 1, 9500000, 48602
-   !test_index_in = i
-   !call get_state_meta_data(test_index_in, test_loc, test_var_type)
-   !test_loc_vals = get_location(test_loc)
-   !write(*, *) 'variable ', i, ' location is ', test_loc_vals(1:3), test_var_type
-   !! The test_var_type is a quantity?
-!
-!
-!
-   !write(*, *) 'DART quantity ', trim(get_name_for_quantity(test_var_type))
-  !! write(*, *) 'long name ', trim(get_long_name(domain_id, test_var_type))
-!enddo
+if (file_exist(cs_grid_file)) then
+   call nc_read_cs_grid_file()
+elseif (file_exist(homme_map_file)) then
+   call create_cs_grid_arrays()
+   if (my_task_id() == 0) call nc_write_cs_grid_file( cs_grid_file, homme_map_file )
+else
+   write(string1, *)'No cs_grid_file "',trim(cs_grid_file), &
+                 '" nor homme_map_file "',trim(homme_map_file),'"'
+   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate)
+endif
 
 end subroutine static_init_model
 
@@ -541,32 +485,19 @@ integer :: c
 ! May want to eliminate some of this.
 allocate(cs_locs(ncol), cs_kinds(ncol))
 
-!SENote
-write(*, *) 'in fill_gc'
-write(*, *) 'ncol ', ncol
-write(*, *) 'coarse_grid ', coarse_grid
-
-
 ! CS inputs in degrees.
 do c=1,ncol
    cs_locs(c)  = set_location(grid_data%lon%vals(c), grid_data%lat%vals(c), MISSING_R8, VERTISUNDEF)
    cs_kinds(c) = 0
 enddo
 
-!SENote: These interfaces to get_close have been changed in Manhattan. Now a single call.
-! Initialize cs_gc%maxdist using the maximum grid spacing.
-! There will always be at least 2 nodes within 1 coarse_grid in all directions.
-!SENotecall get_close_maxdist_init(cs_gc, coarse_grid)
-! Use cs_gc%maxdist and node locations to define the rest of cs_gc.
-!SENotecall get_close_obs_init(cs_gc, ncol, cs_locs)
-
 call get_close_init(cs_gc, ncol, coarse_grid, cs_locs)
-!SENote Test: call get_close_init(cs_gc, ncol, 1000 * coarse_grid, cs_locs)
 
 end subroutine fill_gc
 
 !-----------------------------------------------------------------------
 
+!SENote: Should use the next generation netcdf libraries instead of the old classic ones for this
 subroutine nc_read_cs_grid_file()
 
 ! Read the number of neighbors, corners, centers, a and b coefficients, and x_ax_bearings
@@ -625,14 +556,12 @@ if (nc_size == ncol .and. trim(nc_name) == 'ncol') then
    b             = MISSING_R8
    x_ax_bearings = MISSING_R8
 
-!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
    if (allocated(centers) .and. my_task_id() == 0 .and. print_details) then
       shp = shape(centers)
       write(string1,*) 'Shape of centers = ',shp
       call error_handler(E_MSG,'nc_read_cs_grid_file',string1,source,revision,revdate)
    endif
 
-!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
    if (allocated(corners) .and. my_task_id() == 0 .and. print_details) then
       shp = shape(corners)
       write(string1,*) 'Shape of corners = ',shp
@@ -682,6 +611,7 @@ end subroutine nc_read_cs_grid_file
 
 !-----------------------------------------------------------------------
 
+! SENote should use new netcdf support rather than Classic for this
 subroutine nc_write_cs_grid_file(cs_grid_file, homme_map_file)
 
 ! Write out the number of neighbors, the neighbors, corners, centers, and bearings
@@ -873,7 +803,6 @@ field_dim_IDs = MISSING_I                  !Array of dimension IDs for cfield
 if (file_exist(file_name)) then
    call nc_check(nf90_open(path=trim(file_name), mode=nf90_nowrite, ncid=nc_file_ID), &
               'read_cam_2Dint', 'opening '//trim(file_name))
-!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
    if (print_details .and. my_task_id() == 0) then
       write(string1,*) 'file_name for ',cfield,' is ', trim(file_name)
       call error_handler(E_MSG, 'read_cam_2Dint', string1,source,revision,revdate)
@@ -899,7 +828,6 @@ if (file_exist(file_name)) then
       name_dim2 = 'no2ndDim'
    endif
 
-!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
    if (print_details .and. my_task_id() == 0) then
       write(string1,*) cfield,' dimensions num_dim1, num_dim2 = ',num_dim1, num_dim2
       call error_handler(E_MSG, 'read_cam_2Dint', string1,source,revision,revdate)
@@ -988,11 +916,12 @@ Quads: do cent = 1,ncenters
       sh_corn = cshift(corners(cent,:), c)
 
       ! Check a few cells for corner consistency.
-      if (print_details .and. sh_corn(4) < 10) then
-         write(string1,'(A,5I7,/31X,4I7)') 'c, 4 corners, shifted = ', &
-              c,(corners(cent,nbr),nbr=1,4),(sh_corn(nbr),nbr=1,4)
-         call error_handler(E_MSG,'create_cs_grid_arrays',string1,source,revision,revdate)
-      endif
+      !SENote: this message string is too long for storage and probably useless, 
+      !if (print_details .and. sh_corn(4) < 10) then
+         !write(string1,'(A,5I7,/31X,4I7)') 'c, 4 corners, shifted = ', &
+              !c,(corners(cent,nbr),nbr=1,4),(sh_corn(nbr),nbr=1,4)
+         !call error_handler(E_MSG,'create_cs_grid_arrays',string1,source,revision,revdate)
+      !endif
 
       ! Increment the number of neighbors (and centers ) this corner(node) has.
       ! sh_corn(4) is used for all cases because the corner we're working on always
@@ -1107,7 +1036,6 @@ Quads: do cent = 1,ncenters
    enddo Corns
 enddo Quads
 
-
 ! Check that all nodes have at least 3 neighbors and no more than 6.
 do col = 1,ncol
    if (num_nghbrs(col) < 3 .or. num_nghbrs(col) > max_neighbors) then
@@ -1204,16 +1132,17 @@ integer, optional,   intent(out) :: var_type
 
 ! Local variables
 
-integer  :: iloc, vloc, jloc
+integer  :: column, level
 integer  :: myvarid, myqty, nd
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_model_variable_indices(index_in, iloc, jloc, vloc, var_id=myvarid, kind_index=myqty)
+call get_model_variable_indices(index_in, column, level, no_third_dimension, var_id=myvarid, kind_index=myqty)
 
 nd = get_num_dims(domain_id, myvarid)
 
-location = get_location_from_index(iloc, jloc, vloc, myqty, nd)
+location = get_location_from_index(column, level, myqty, nd)
+
 
 ! return state quantity for this index if requested
 if (present(var_type)) var_type = myqty
@@ -1221,40 +1150,34 @@ if (present(var_type)) var_type = myqty
 end subroutine get_state_meta_data
 
 !-----------------------------------------------------------------------
-!> given the (i,j,k) indices into a field in the state vector,
-!> and the quantity, and the dimensionality of the field (2d, 3d),
+!> given the (column, level) indices into a field in the state vector,
+!> and the quantity, and the dimensionality of the field (1d, 2d),
 !> compute the location of that item.  
-! SENote: this is totally different for SE.
 
-function get_location_from_index(i, j, k, q, nd)
-integer, intent(in) :: i
-integer, intent(in) :: j
-integer, intent(in) :: k
-integer, intent(in) :: q
+function get_location_from_index(column, level, qty, nd)
+integer, intent(in) :: column
+integer, intent(in) :: level
+integer, intent(in) :: qty
 integer, intent(in) :: nd
 type(location_type) :: get_location_from_index
 
 character(len=*), parameter :: routine = 'get_location_from_index'
-real(r8) :: slon_val
 real(r8) :: use_vert_val
-integer  :: use_vert_type
 
 !SENote variable declarations follow
 real(r8) :: my_lon, my_lat, my_vert
 
-!SENote: Following implemented for SE
-
-! full 2d fields are returned with lon/lat/level.
+! full 2d fields are returned with column/level.
 ! 1d fields are either surface fields, or if they
 ! are column integrated values then they are 'undefined'
 ! in the vertical.
 
 ! All fields share the same first coordinate into the column list
-my_lon = grid_data%lon%vals(i)
-my_lat = grid_data%lat%vals(i)
+my_lon = grid_data%lon%vals(column)
+my_lat = grid_data%lat%vals(column)
 ! For SE 3d spatial fields have a 2d storage
 if(nd == 2) then
-   my_vert = j
+   my_vert = level
    get_location_from_index = set_location(my_lon, my_lat, my_vert, VERTISLEVEL)
 elseif(nd == 1) then
    ! setting the vertical value to missing matches what the previous
@@ -1263,14 +1186,14 @@ elseif(nd == 1) then
    !   use_vert_val  = phis(lon_index, lat_index) / gravity not available in SE
    my_vert = MISSING_R8
    ! Add any 2d surface fields to this function
-   if(is_surface_field(q)) then
+   if(is_surface_field(qty)) then
       get_location_from_index = set_location(my_lon, my_lat, my_vert, VERTISSURFACE)
    else
       get_location_from_index = set_location(my_lon, my_lat, my_vert, VERTISUNDEF)
    endif
 else
    write(string1, *) 'state vector field not 1D or 2D and no code to handle other dimensionity'
-   write(string2, *) 'dimensionality = ', nd, ' quantity type = ', trim(get_name_for_quantity(q))
+   write(string2, *) 'dimensionality = ', nd, ' quantity type = ', trim(get_name_for_quantity(qty))
    call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
 endif
      
@@ -1284,13 +1207,13 @@ end function get_location_from_index
 !> have different vertical locations in different ensemble members
 !> see get_se_values_from_varid() below.
 
-subroutine get_se_values_from_single_level(ens_handle, ens_size, qty, column_index, lev_index, &
+subroutine get_se_values_from_single_level(ens_handle, ens_size, qty, column, level, &
                                         vals, my_status)
 type(ensemble_type), intent(in) :: ens_handle
 integer,             intent(in) :: ens_size
 integer,             intent(in) :: qty
-integer,             intent(in) :: column_index
-integer,             intent(in) :: lev_index
+integer,             intent(in) :: column
+integer,             intent(in) :: level
 real(r8),            intent(out) :: vals(ens_size)
 integer,             intent(out) :: my_status
 
@@ -1306,7 +1229,7 @@ if (varid < 0) then
    return
 endif
 
-state_indx = get_dart_vector_index(column_index, lev_index, no_third_dimension, domain_id, varid)
+state_indx = get_dart_vector_index(column, level, no_third_dimension, domain_id, varid)
 
 !SENote: Not clear we need error checks like this for things that should never happen.
 if (state_indx < 1 .or. state_indx > get_domain_size(domain_id)) then
@@ -1330,16 +1253,15 @@ end subroutine get_se_values_from_single_level
 !> and setting all members with those same levels in a single pass.
 !> 
 
-!SENote modified for se form fv base
-subroutine get_se_values_from_varid(ens_handle, ens_size, corner_index, lev_index, varid, &
+subroutine get_se_values_from_varid(ens_handle, ens_size, column, levels, varid, &
                                  vals, my_status)
 type(ensemble_type), intent(in)  :: ens_handle
-integer,  intent(in)  :: ens_size
-integer,  intent(in)  :: corner_index
-integer,  intent(in)  :: lev_index(ens_size)
-integer,  intent(in)  :: varid
-real(r8), intent(out) :: vals(ens_size)
-integer,  intent(out) :: my_status(ens_size)
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: column
+integer,             intent(in)  :: levels(ens_size)
+integer,             intent(in)  :: varid
+real(r8),            intent(out) :: vals(ens_size)
+integer,             intent(out) :: my_status(ens_size)
 
 integer(i8) :: state_indx
 integer  :: i, j
@@ -1353,7 +1275,7 @@ character(len=*), parameter :: routine = 'get_se_values_from_varid:'
 my_status(:) = 12
 member_done(:) = .false.
 
-! start with lev_index(1).  get the vals into a temp var.  
+! start with levels(1).  get the vals into a temp var.  
 ! run through 2-N. any other member that has the same level 
 ! set the outgoing values.  keep a separate flag for which 
 ! member(s) have been done.  skip to the next undone member 
@@ -1362,12 +1284,12 @@ member_done(:) = .false.
 do i=1, ens_size
 
    if (member_done(i)) cycle
-   state_indx = get_dart_vector_index(corner_index, lev_index(i), no_third_dimension, domain_id, varid)
+   state_indx = get_dart_vector_index(column, levels(i), no_third_dimension, domain_id, varid)
 
-   !SENote: Do we need error checks like this?
+   !SENote: Do we need error checks like this? Watch out for the ensemble size with levels being too much
    if (state_indx < 0) then
       write(string1,*) 'Should not happen: could not find dart state index from '
-      write(string2,*) 'corner and lev index :', corner_index, lev_index
+      write(string2,*) 'column and level index :', column, levels
       call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
       return
    endif
@@ -1379,7 +1301,7 @@ do i=1, ens_size
    do j=i, ens_size
       if (member_done(j)) cycle
 
-      if (lev_index(j) == lev_index(i)) then
+      if (levels(j) == levels(i)) then
          vals(j) = temp_vals(j)
          member_done(j) = .true.
          my_status(j) = 0
@@ -1394,12 +1316,12 @@ end subroutine get_se_values_from_varid
 !-----------------------------------------------------------------------
 !> this is just for 2d fields
 
-subroutine get_se_values_from_nonstate_fields(ens_handle, ens_size, column_index, &
-                                           lev_index, obs_quantity, vals, my_status)
+subroutine get_se_values_from_nonstate_fields(ens_handle, ens_size, column, &
+                                           levels, obs_quantity, vals, my_status)
 type(ensemble_type),  intent(in)  :: ens_handle
 integer,              intent(in)  :: ens_size
-integer,              intent(in)  :: column_index
-integer,              intent(in)  :: lev_index(ens_size)
+integer,              intent(in)  :: column
+integer,              intent(in)  :: levels(ens_size)
 integer,              intent(in)  :: obs_quantity
 real(r8),             intent(out) :: vals(ens_size)
 integer,              intent(out) :: my_status(ens_size)
@@ -1416,21 +1338,20 @@ my_status(:) = 99
 
 select case (obs_quantity) 
    case (QTY_PRESSURE)
-      call cam_se_pressure_levels(ens_handle, ens_size, column_index, ref_nlevels, &
+      call cam_se_pressure_levels(ens_handle, ens_size, column, ref_nlevels, &
                                vals_array, my_status)
       if (any(my_status /= 0)) return
 
       do imember=1,ens_size
-         vals(imember) = vals_array(lev_index(imember), imember)
+         vals(imember) = vals_array(levels(imember), imember)
       enddo
 
    case (QTY_VERTLEVEL)
-      vals(:)      = lev_index(:)
+      vals(:)      = levels(:)
       my_status(:) = 0
 
-!SENote: Turns out there was no height localization for non-height vertical obs in Manhattan of Classic
+!SENote: Turns out there was no height localization for non-height vertical obs in Manhattan or Classic
 !SENote: At present there is no QTY_GEOMETRIC_HEIGHT here as needed to convert to Height
-!SENote, what did this look like in get_values_from_nonstate_fields?
 
    case default
       write(string1,*)'contact dart support. unexpected error for quantity ', obs_quantity
@@ -1453,7 +1374,7 @@ end subroutine get_se_values_from_nonstate_fields
 !>          of interest (the interpolated value).
 !> @param istatus interpolation status ... 0 == success, /=0 is a failure
 !>
-!SENote: Many of these error status returns cannot actually happen. Need to verify and update.
+!SENote: Many of these error status returns cannot actually happen. Need to verify these.
 !> istatus = 2    asked to interpolate an unknown/unsupported quantity
 !> istatus = 3    NOT USED: cannot locate horizontal quad
 !> istatus = 4    NOT USED: cannot locate enclosing vertical levels
@@ -1486,15 +1407,11 @@ integer,            intent(out) :: istatus(ens_size)
 character(len=*), parameter :: routine = 'model_interpolate:'
 
 integer  :: varid, which_vert, status1
-integer  :: four_lons(4), four_lats(4)
-integer  :: status_array(ens_size)
-real(r8) :: lon_fract, lat_fract
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
-integer :: closest, cell_corners(4), i
+integer :: closest, cell_corners(4)
 real(r8) :: l_weight, m_weight
 type(location_type) :: location_copy
-
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1519,6 +1436,7 @@ lon_lat_vert = get_location(location)
 which_vert   = nint(query_location(location)) 
 
 ! if we are avoiding assimilating obs above a given pressure, test here and return.
+!SENote: need to test that this is working
 if (discarding_high_obs) then
    call obs_too_high(lon_lat_vert(3), which_vert, status1)
    if (status1 /= 0) then
@@ -1532,8 +1450,7 @@ endif
 ! First step, find the columns of the four 'corners' containing the location
 ! SENote2: In the CLASSIC, there is a possibility that the cell_corner was already found and this call can
 ! be skipped. Understand that and implement as needed.
-! Also note that cannot pass location directly because it is intent(inout) in coord_ind_cs.
-! Not clear that this will eventually be relevant, so look at changing it ther
+! Note that cannot pass location directly because it is intent(inout) in coord_ind_cs.
 location_copy = location
 call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l_weight, m_weight)
 
@@ -1568,11 +1485,10 @@ end subroutine model_interpolate
 
 subroutine coord_ind_cs(obs_loc, obs_kind, closest_only, closest , cell_corners, l_weight, m_weight)
 
-! Find the node closest to a location, and the possibly the corners of the cell which contains 
+! Find the node closest to a location, and optionally the corners of the cell which contains 
 ! the location.
 
 ! Variables needed by loc_get_close_obs:
-!SENote: Had to change this to intent(inout) because Manhattan loc_get_close_obs requires it
 type(location_type),  intent(inout)  :: obs_loc
 integer,              intent(in)  :: obs_kind
 logical,              intent(in)  :: closest_only
@@ -1584,7 +1500,7 @@ real(r8),             intent(out) :: m_weight
 ! Output from loc_get_close_obs
 integer  :: num_close
 
-! SENote: Take a look at trying to reduce these sizes
+! SENote: Need to radically reduce the memory usage for these for standard configurations. 
 ! It would be nice if these could be smaller, but I don't know what number would work.
 ! It has to be large enough to accommodate all of the grid points that might lie
 ! within 2xcutoff; resolution and location dependent.
@@ -1639,7 +1555,6 @@ allocate(close_ind(ncol), dist(ncol))
 ! Namelist or documented.
 call get_close(cs_gc, obs_loc, obs_kind, cs_locs, cs_kinds, &
                        num_close, close_ind, dist)
-
 
 dist_1 = 10.0_r8
 dist_2 = 10.0_r8
@@ -1948,7 +1863,6 @@ if (m_neg /= MISSING_R8) then
    endif
 
    ! Informational output, if the observation is exactly on the m-axis
-!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
    if (l_neg == 0.0_r8 .and. my_task_id() == 0) then
       write(string1,'(A,I6,1X,1p4E12.4)') 'l_neg cell, x_o - a(2)*m = ',cell, x_o ,a(2,origin,cell),m
       call error_handler(E_MSG, 'unit_square_location', string1,source,revision,revdate)
@@ -1957,7 +1871,6 @@ if (m_neg /= MISSING_R8) then
 endif
 
 ! Informational output, if the observation is exactly on the m-axis
-!SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
 !SENote: Why does this message get printed a billion times in CLASSIC?
 if (l == 0.0_r8 .and. my_task_id() == 0) then
    write(string1,'(A,I6,1X,1p4E12.4)') 'Ob is on x-axis: l-cell, x_o - a(2)*m = ',cell, x_o ,a(2,origin,cell),m
@@ -2012,8 +1925,6 @@ end subroutine unit_square_location
 
 !-----------------------------------------------------------------------
 
-
-!SENote: THIS IS NOT A NUMERICALLY STABLE QUADRATIC SOLVER: REPLACE
 subroutine solve_quadratic(a, b, c, r1, r2)
 
 real(r8), intent(in)  :: a
@@ -2078,7 +1989,6 @@ integer :: i
 allocate(cs_locs_xyz(ncol))
 
 do i=1, ncol
-   ! SENote: the lon and lat 1D arrays are now an element in the cam_grid type, declared grid_data
    cs_locs_xyz(i) = xyz_set_location(grid_data%lon%vals(i), grid_data%lat%vals(i), 0.0_r8, earth_radius)
 enddo
 
@@ -2117,7 +2027,6 @@ call xyz_find_nearest(cs_gc_xyz, pointloc, cs_locs_xyz, closest_node, rc)
 
 ! decide what to do if we don't find anything.
 if (rc /= 0 .or. closest_node < 0) then
-   !SENote: I have substituted my_task_id == 0 for the old "output_task0"; confirm
    if (my_task_id() == 0) then
       write(string1,*) 'cannot find a nearest node to lon, lat: ', lon, lat
       call error_handler(E_WARN, 'find_closest_node', string1,source,revision,revdate)
@@ -2135,7 +2044,7 @@ end function find_closest_node
 !-----------------------------------------------------------------------
 !> internal only version of model interpolate. 
 !> does not check for locations too high - return all actual values.
-!SENote: Could this be merged with model_interpolate?
+!SENote: Could this be merged with model_interpolate? Probably not worth the effort.
 
 subroutine interpolate_se_values(state_handle, ens_size, location, obs_qty, varid, &
                               interp_vals, istatus)
@@ -2162,10 +2071,9 @@ istatus(:)     = 99
 lon_lat_vert  = get_location(location)
 which_vert    = nint(query_location(location)) 
 
-!SENote: Do not want to propagate changes to the location back up the calling tree
+! Do not want to propagate changes to the location back up the calling tree
 location_copy = location
 call coord_ind_cs(location_copy, obs_qty, .false., closest , cell_corners, l_weight, m_weight)
-
 
 !Now work on the vertical conversions and getting the vertical index for each ensemble member
 !SENOte: switching the order on the varid and obs_qty arguments from the call isn't a great idea
@@ -2265,7 +2173,6 @@ else if (numdims == 1) then
    if (varid > 0) then
       level_one_array(:) = 1
       do icorner=1, 4
-         !SENote: just passing in corner indices
          call get_se_values_from_varid(state_handle,  ens_size, corners(icorner), & 
                                     level_one_array, varid, quad_vals(icorner,:),my_status)
 
@@ -2297,7 +2204,7 @@ end subroutine get_se_quad_vals
 
 !-----------------------------------------------------------------------
 !>
-!SENote: Returns my_status 0 for success, 16 if unable to find values at lower level
+! Returns my_status 0 for success, 16 if unable to find values at lower level
 ! and 17 if unable to find values at upper level.
 
 subroutine get_se_four_state_values(state_handle, ens_size, four_corners, &
@@ -2345,7 +2252,7 @@ end subroutine get_se_four_state_values
 !-----------------------------------------------------------------------
 !>
 
-!SENote: Returns my_status 0 for success, 16 if unable to find values at lower level
+! Returns my_status 0 for success, 16 if unable to find values at lower level
 ! and 17 if unable to find values at upper level.
 
 subroutine get_se_four_nonstate_values(state_handle, ens_size, four_corners, &
@@ -2407,10 +2314,10 @@ if (var_id > 0) then
 else
    select case (obs_quantity)
       case (QTY_SURFACE_ELEVATION)
-         !SENote: in SE this is a 1 dimensional field, but this is okay
+         ! In SE this is a 1 dimensional field, but this is okay
          get_dims_from_qty = 1
       case (QTY_PRESSURE, QTY_GEOMETRIC_HEIGHT)
-         !SENote: in SE these are 2d fields
+         ! In SE these are 2d fields
          get_dims_from_qty = 2
       case default 
          write(string1, *) 'we can not interpolate qty "', get_name_for_quantity(obs_quantity), &
@@ -2425,7 +2332,7 @@ end function get_dims_from_qty
 !>
 !>  This is for 2d special observations quantities not in the state
 
-!SENote: For now this can onlu get surface elevation (phis)
+! For now this can onlu get surface elevation (phis)
 
 subroutine get_se_quad_values(ens_size, column, obs_quantity, vals)
 integer,  intent(in) :: ens_size
@@ -2441,7 +2348,7 @@ real(r8) :: vals1(ens_size), vals2(ens_size)
 
 select case (obs_quantity)
    case (QTY_SURFACE_ELEVATION)
-      !SENote: Just return phis for this column
+      ! Just return phis for this column
       vals = phis(column, 1)
 
      !>@todo FIXME:
@@ -2475,33 +2382,10 @@ out_vals(:) = (levs1(:) * (1.0_r8-vert_fracts(:))) + &
 end subroutine vert_interp
 
 !-----------------------------------------------------------------------
-!> given lon/lat indices, add one to lat and subtract one from lon
-!> check for wraparound in lon, and north pole at lat.
-!> intent is that you give the indices into the staggered grid
-!> and the return values are the indices in the original unstaggered
-!> grid that you need to compute the midpoints for the staggers.
-!>@todo FIXME this needs a picture or ascii art
-
-subroutine quad_index_neighbors(lon_index, lat_index, prev_lon, next_lat)
-integer, intent(in)  :: lon_index
-integer, intent(in)  :: lat_index
-integer, intent(out) :: prev_lon
-integer, intent(out) :: next_lat
-
-next_lat = lat_index+1
-if (next_lat > grid_data%lat%nsize) next_lat = grid_data%lat%nsize
-
-prev_lon = lon_index-1
-if (prev_lon < 1) prev_lon = grid_data%lon%nsize
-
-end subroutine quad_index_neighbors
-
-
-!-----------------------------------------------------------------------
 !> given a column index number, a quantity and a vertical value and type,
 !> return which two levels these are between and the fraction across.
 !> 
-!SENote: my_status is 0 for success, 12 if values cannot be found, 10 for failed vertical
+! my_status is 0 for success, 12 if values cannot be found, 10 for failed vertical
 ! search for case VERTISPRESSURE, 11 for failed vertical search for VERTISHEIGHT,
 ! and 8 for out of range level for VERTISLEVEL
 
@@ -2538,13 +2422,11 @@ level_one = 1
 
 select case (which_vert)
 
-   !SENote: Classic has an option for scale_height. Not found here but no known obs are reported in scale height.
    case(VERTISPRESSURE)
       ! construct a pressure column here and find the model levels that enclose this value
       call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, column, level_one, &
          surf_pressure, status1)
 
-      !SENote: Need to make a careful study of the error value propagation throughout this call tree
       if (status1 /= 0) then
          my_status(:) = status1
          return
@@ -2645,10 +2527,10 @@ end subroutine find_se_vertical_levels
 !>
 !> this version does all ensemble members at once.
 
-subroutine cam_se_height_levels(ens_handle, ens_size, column_index, nlevels, height_array, my_status) 
+subroutine cam_se_height_levels(ens_handle, ens_size, column, nlevels, height_array, my_status) 
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: column_index
+integer,             intent(in)  :: column
 integer,             intent(in)  :: nlevels
 real(r8),            intent(out) :: height_array(nlevels, ens_size)
 integer,             intent(out) :: my_status(ens_size)
@@ -2662,22 +2544,21 @@ real(r8) :: tv(nlevels, ens_size)  ! Virtual temperature, top to bottom
 level_one = 1
 
 ! Get the surface pressure at this column
-call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, column_index, level_one, &
+call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, column, level_one, &
    surface_pressure, status1)
 
-! get the surface elevation from the phis, including stagger if needed
-call get_se_quad_values(1, column_index, QTY_SURFACE_ELEVATION, surface_elevation)
+! get the surface elevation from the phis
+call get_se_quad_values(1, column, QTY_SURFACE_ELEVATION, surface_elevation)
 
-call compute_se_virtual_temperature(ens_handle, ens_size, column_index, nlevels, tv, status1)
+call compute_se_virtual_temperature(ens_handle, ens_size, column, nlevels, tv, status1)
 
 if (status1 /= 0) then
    my_status = status1
    return
 endif
 
-!SENote: need to change this call CHECK THIS CAREFULLY
 if (use_variable_mean_mass) then
-   call compute_se_mean_mass(ens_handle, ens_size, column_index, nlevels, mbar, status1)
+   call compute_se_mean_mass(ens_handle, ens_size, column, nlevels, mbar, status1)
    if (status1 /= 0) then
       my_status = status1
       return
@@ -2714,7 +2595,7 @@ if (debug_level > 100) then
 endif
 
 ! convert entire array to geometric height (from potential height)
-call gph2gmh(height_array, grid_data%lat%vals(column_index))
+call gph2gmh(height_array, grid_data%lat%vals(column))
 
 if (debug_level > 100) then
  do imember = 1, ens_size
@@ -2738,6 +2619,8 @@ end subroutine cam_se_height_levels
 !> may be assimilated.
 !>
 !>
+
+!SENote: Can't this go in shared module?
 
 function shortest_time_between_assimilations()
 
@@ -2770,8 +2653,7 @@ subroutine end_model()
 
 call free_cam_grid(grid_data)
 
-! SENote: No phis available in SE for now
-!SENote not available, deallocate(phis)
+deallocate(phis)
 
 call free_std_atm_tables()
 
@@ -2854,20 +2736,10 @@ call nc_define_real_variable(     ncid, 'lon', (/ 'lon' /),                 rout
 call nc_add_attribute_to_variable(ncid, 'lon', 'long_name', 'longitude',    routine)
 call nc_add_attribute_to_variable(ncid, 'lon', 'units',     'degrees_east', routine)
 
-
-call nc_define_real_variable(     ncid, 'slon', (/ 'slon' /),                       routine)
-call nc_add_attribute_to_variable(ncid, 'slon', 'long_name', 'staggered longitude', routine)
-call nc_add_attribute_to_variable(ncid, 'slon', 'units',     'degrees_east',        routine)
-
 ! U,V Grid Latitudes
 call nc_define_real_variable(     ncid, 'lat', (/ 'lat' /),                  routine)
 call nc_add_attribute_to_variable(ncid, 'lat', 'long_name', 'latitude',      routine)
 call nc_add_attribute_to_variable(ncid, 'lat', 'units',     'degrees_north', routine)
-
-
-call nc_define_real_variable(     ncid, 'slat', (/ 'slat' /),                      routine)
-call nc_add_attribute_to_variable(ncid, 'slat', 'long_name', 'staggered latitude', routine)
-call nc_add_attribute_to_variable(ncid, 'slat', 'units',     'degrees_north',      routine)
 
 ! Vertical Grid Latitudes
 call nc_define_real_variable(     ncid, 'lev', (/ 'lev' /),                                                     routine)
@@ -2918,6 +2790,7 @@ call nc_end_define_mode(ncid, routine)
 
 call nc_put_variable(ncid, 'lon',  grid_data%lon%vals,  routine)
 call nc_put_variable(ncid, 'lat',  grid_data%lat%vals,  routine)
+!SENote: all the staggered stuff is gone for SE
 call nc_put_variable(ncid, 'slon', grid_data%slon%vals, routine)
 call nc_put_variable(ncid, 'slat', grid_data%slat%vals, routine)
 call nc_put_variable(ncid, 'lev',  grid_data%lev%vals,  routine)
@@ -2936,12 +2809,13 @@ end subroutine nc_write_model_atts
 
 !-----------------------------------------------------------------------
 !> writes CAM's model date and time of day into file.  CAM uses
-!> integer date values and interger time of day measured in seconds
+!> integer date values and integer time of day measured in seconds
 !>
 !> @param ncid         name of the file
 !> @param model_time   the current time of the model state
 !>
 
+!SENote: Can this go in shared module?
 subroutine write_model_time(ncid, model_time)
 integer,         intent(in) :: ncid
 type(time_type), intent(in) :: model_time
@@ -3171,9 +3045,7 @@ logical  :: update_list(MAX_STATE_VARIABLES)   = .FALSE.
 integer  ::   kind_list(MAX_STATE_VARIABLES)   = MISSING_I
 real(r8) ::  clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
-!SENote: Added temp variable to get ncol
 integer :: ncol_temp(1)
-
 
 nfields = 0
 ParseVariables : do i = 1, MAX_STATE_VARIABLES
@@ -3227,58 +3099,14 @@ endif
 domain_id = add_domain(cam_template_filename, nfields, var_names, kind_list, &
                        clamp_vals, update_list)
 
-! SENote: This seems like a good place to load up the module storage variable ncol
-! Try to get it from state structure in a nice way
+! This seems like a good place to load up the module storage variable ncol
 ! The size of the only surface pressure dimension is the number of columns
 ncol_temp = get_dim_lengths(domain_id,  get_varid_from_kind(domain_id, QTY_SURFACE_PRESSURE))
 ncol = ncol_temp(1)
 
-call fill_cam_stagger_info(grid_stagger)
-
 if (debug_level > 100) call state_structure_info(domain_id)
 
 end subroutine set_cam_variable_info
-
-
-!-----------------------------------------------------------------------
-!>
-!> Fill the qty_stagger array to tell what type of stagger each variable 
-!> has. This will be useful for interpolating observations.
-!> This currently doesn't support both slon/slat stagger - but cam-fv 
-!> doesn't have any fields like that.
-!>
-
-subroutine fill_cam_stagger_info(stagger)
-type(cam_stagger), intent(inout) :: stagger
-
-integer :: ivar, jdim, qty_index
-
-allocate(stagger%qty_stagger(0:get_num_quantities()))
-
-stagger%qty_stagger = STAGGER_NONE
-
-do ivar = 1, get_num_variables(domain_id)
-   do jdim = 1, get_num_dims(domain_id, ivar)
-
-      if (get_dim_name(domain_id, ivar, jdim) == 'slat') then
-         qty_index = get_kind_index(domain_id, ivar) 
-         stagger%qty_stagger(qty_index) = STAGGER_U
-      endif
-
-      if (get_dim_name(domain_id, ivar, jdim) == 'slon') then
-         qty_index = get_kind_index(domain_id, ivar)
-         stagger%qty_stagger(qty_index) = STAGGER_V
-      endif
-
-      if (get_dim_name(domain_id, ivar, jdim) == 'ilev') then
-         qty_index = get_kind_index(domain_id, ivar)
-         stagger%qty_stagger(qty_index) = STAGGER_W
-      endif
-
-   enddo
-enddo
-
-end subroutine fill_cam_stagger_info
 
 
 !-----------------------------------------------------------------------
@@ -3330,11 +3158,11 @@ end subroutine read_cam_phis_array
 !> this version does all ensemble members at once.
 !>
 
-subroutine compute_se_virtual_temperature(ens_handle, ens_size, column_index, nlevels, tv, istatus)
+subroutine compute_se_virtual_temperature(ens_handle, ens_size, column, nlevels, tv, istatus)
 
 type(ensemble_type), intent(in)   :: ens_handle
 integer,             intent(in)   :: ens_size
-integer,             intent(in)   :: column_index
+integer,             intent(in)   :: column
 integer,             intent(in)   :: nlevels
 real(r8),            intent(out)  :: tv(nlevels, ens_size)
 integer,             intent(out)  :: istatus
@@ -3351,13 +3179,13 @@ real(r8), parameter :: rr_factor = (rv/rd) - 1.0_r8
 ! construct a virtual temperature column, one for each ensemble member
 do k = 1, nlevels
    ! temperature
-   call get_se_values_from_single_level(ens_handle, ens_size, QTY_TEMPERATURE, column_index, k, &
+   call get_se_values_from_single_level(ens_handle, ens_size, QTY_TEMPERATURE, column, k, &
       temperature, istatus)
 
    if (istatus < 0) return
 
    ! specific humidity
-   call get_se_values_from_single_level(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, column_index, k, &
+   call get_se_values_from_single_level(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, column, k, &
       specific_humidity, istatus)
    
    if (istatus < 0) return
@@ -3376,10 +3204,10 @@ end subroutine compute_se_virtual_temperature
 
 
 !SENote: No test available? Need to work with Nick at some point to test WACCM-X configurations.
-subroutine compute_se_mean_mass(ens_handle, ens_size, col_index, nlevels, mbar, istatus)
+subroutine compute_se_mean_mass(ens_handle, ens_size, column, nlevels, mbar, istatus)
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: col_index
+integer,             intent(in)  :: column
 integer,             intent(in)  :: nlevels
 real(r8),            intent(out) :: mbar(nlevels, ens_size)
 integer,             intent(out) :: istatus
@@ -3390,19 +3218,31 @@ real(r8) :: mmr_o1(ens_size, nlevels), &
             mmr_h1(ens_size, nlevels), &
             mmr_n2(ens_size, nlevels)
 real(r8) :: O_molar_mass, O2_molar_mass, H_molar_mass, N2_molar_mass 
+integer  :: my_status, varid
 
 character(len=*), parameter :: routine = 'compute_se_mean_mass'
 
 !SENote: This subroutine has not been tested yet for SE. Need to work with WACCM folks to test.
 call error_handler(E_ERR, routine, 'Subroutine has not been tested', source, revision, revdate)
 
-
 ! do this outside the subroutine?  it never changes throughout the
 ! run of the program
 !SENote: could do an initialization with save storage
+! See if the quantities can be interpolated. 
+call ok_to_interpolate(QTY_ATOMIC_OXYGEN_MIXING_RATIO, varid, domain_id, my_status)
+if(my_status /= 0) call error_handler(E_ERR, routine, 'Cannot get QTY_ATOMIC_OXYGEN_MIXING_RATIO', source, revision, revdate)
 O_molar_mass  = get_molar_mass(QTY_ATOMIC_OXYGEN_MIXING_RATIO)
+
+call ok_to_interpolate(QTY_MOLEC_OXYGEN_MIXING_RATIO, varid, domain_id, my_status)
+if(my_status /= 0) call error_handler(E_ERR, routine, 'Cannot get QTY_MOLEC_OXYGEN_MIXING_RATIO', source, revision, revdate)
 O2_molar_mass = get_molar_mass(QTY_MOLEC_OXYGEN_MIXING_RATIO)
+
+call ok_to_interpolate(QTY_ATOMIC_H_MIXING_RATIO, varid, domain_id, my_status)
+if(my_status /= 0) call error_handler(E_ERR, routine, 'Cannot get QTY_ATOMIC_H_MIXING_RATIO', source, revision, revdate)
 H_molar_mass  = get_molar_mass(QTY_ATOMIC_H_MIXING_RATIO)
+
+call ok_to_interpolate(QTY_NITROGEN, varid, domain_id, my_status)
+if(my_status /= 0) call error_handler(E_ERR, routine, 'Cannot get QTY_NITROGEN', source, revision, revdate)
 N2_molar_mass = get_molar_mass(QTY_NITROGEN)
    
 
@@ -3413,17 +3253,17 @@ N2_molar_mass = get_molar_mass(QTY_NITROGEN)
 do k = 1, nlevels
 
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_ATOMIC_OXYGEN_MIXING_RATIO, &
-      col_index, k, mmr_o1(:, k), istatus)
+      column, k, mmr_o1(:, k), istatus)
    if (istatus /= 0) return
    !print *, 'mmr: ', trim(get_name_for_quantity(this_qty)), mmr_o1(1, k)
    
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_MOLEC_OXYGEN_MIXING_RATIO, &
-      col_index, k, mmr_o2(:, k), istatus)
+      column, k, mmr_o2(:, k), istatus)
    if (istatus /= 0) return
    !print *, 'mmr: ', trim(get_name_for_quantity(this_qty)), mmr_o2(1, k)
    
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_ATOMIC_H_MIXING_RATIO, &
-      col_index, k, mmr_h1(:, k), istatus)
+      column, k, mmr_h1(:, k), istatus)
    if (istatus /= 0) return
    !print *, 'mmr: ', trim(get_name_for_quantity(this_qty)), mmr_h1(1, k)
    
@@ -3437,7 +3277,7 @@ enddo
 end subroutine compute_se_mean_mass
 
 !-----------------------------------------------------------------------
-!> This subroutine computes converts vertical state
+!> This subroutine converts vertical state
 !>
 !>  in:    ens_handle  - mean ensemble handle
 !>  in:    num         - number of locations
@@ -3498,14 +3338,11 @@ integer,             intent(in)    :: ens_size
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
 
-integer  :: column, level, no_third_dimension, myqty, level_one, status1
+integer  :: column, level, myqty, level_one, status1
 integer  :: my_status(ens_size)
 real(r8) :: pressure_array(ref_nlevels), surface_pressure(ens_size)
 
 
-!SENote
-!Need to clean up the index naming here. See obs_vertical_to_pressure
-!Need to do the other state_vertical conversion routines correctly
 call get_model_variable_indices(location_indx, column, level, no_third_dimension, kind_index=myqty)
 
 if (is_surface_field(myqty)) then
@@ -3535,7 +3372,7 @@ integer,             intent(in)    :: ens_size
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
 
-integer  :: column, level, no_third_dimension, my_status(ens_size)
+integer  :: column, level, my_status(ens_size)
 real(r8) :: height_array(ref_nlevels, ens_size)
 
 ! build a height column and a pressure column and find the levels
@@ -3545,7 +3382,6 @@ call cam_se_height_levels(ens_handle, ens_size, column, ref_nlevels, &
                        height_array, my_status) 
 
 !>@todo FIXME this can only be used if ensemble size is 1
-!SENote: Confirm this
 call set_vertical(location, height_array(level, 1), VERTISHEIGHT)
 
 end subroutine state_vertical_to_height
@@ -3636,16 +3472,15 @@ integer,             intent(in)    :: ens_size
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
 
-integer  :: iloc, jloc, vloc
+integer  :: column, level
 
 !>@todo FIXME qty is currently unused.  if we need it, its here.
 !>if we really don't need it, we can remove it.  all the other
-!>corresponding routines like this use it.  (not clear what to
-!>return if field is W or something else with a vertical stagger.)
+!>corresponding routines like this use it. 
 
-call get_model_variable_indices(location_indx, iloc, jloc, vloc)
+call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
-call set_vertical(location, real(vloc,r8), VERTISLEVEL)
+call set_vertical(location, real(level, r8), VERTISLEVEL)
 
 end subroutine state_vertical_to_level
 
@@ -3655,11 +3490,11 @@ end subroutine state_vertical_to_level
 !>
 !> this version does all ensemble members at once.
 
-subroutine cam_se_pressure_levels(ens_handle, ens_size, col_index, nlevels, &
+subroutine cam_se_pressure_levels(ens_handle, ens_size, column, nlevels, &
                                pressure_array, my_status) 
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: col_index
+integer,             intent(in)  :: column
 integer,             intent(in)  :: nlevels
 real(r8),            intent(out) :: pressure_array(nlevels, ens_size)
 integer,             intent(out) :: my_status(ens_size)
@@ -3671,8 +3506,8 @@ real(r8)    :: surface_pressure(ens_size)
 level_one = 1
 
 ! get the surface pressure from the ens_handle
-      call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, col_index, level_one, &
-         surface_pressure, status1)
+call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, column, level_one, &
+                                     surface_pressure, status1)
 
 if (status1 /= 0) then
    my_status(:) = status1
@@ -3751,11 +3586,8 @@ endif
 call ok_to_interpolate(qty, varid, domain_id, my_status)
 if (my_status /= 0) return
 
-!SENote
-write(*, *) 'in obs_vertical_to_pressure'
 call interpolate_se_values(ens_handle, ens_size, location, &
                         qty, varid, pressure_array(:), status(:))
-
 
 if (status(1) /= 0) then
    my_status = status(1)
@@ -3782,7 +3614,7 @@ character(len=*), parameter :: routine = 'obs_vertical_to_height'
 
 !SENote Does this work for the FV? 
 ! Doesn't actually appear to work right for the FV which just blasts through a failed search 
-! for the height field. This could be fixed. Confirm with Kevin.
+! for the height field. This could be fixed.
 ens_size = 1
 
 call ok_to_interpolate(QTY_GEOMETRIC_HEIGHT, varid, domain_id, my_status)
@@ -3813,8 +3645,12 @@ real(r8) :: level_array(1)
 
 ens_size = 1
 varid = -1
-!SENote
-write(*, *) 'In obs_vertical_to_level'
+!SENote; This does not work yet so can't do vertical localization in level
+! of observations that are not on level.
+!SENote: could be implemented but is there any demand?
+call error_handler(E_ERR, 'obs_vertical_to_level',  &
+           'Localization in level for obs not on levels is not implemented', &
+           source, revision, revdate)
 
 !SENote: This has not been checked, just swapped the call to interpolate_values
 call interpolate_se_values(ens_handle, ens_size, location, &
@@ -3939,22 +3775,21 @@ integer,             intent(in)    :: otype
 integer,             intent(in)    :: vert_type
 integer,             intent(out)   :: status1
 
-type(location_type) :: bl(1)
-integer :: bq(1), bt(1), status(1)
+type(location_type) :: base_loc(1)
+integer :: base_qty(1), base_type(1), status(1)
 
 ! these need to be arrays.  kinda a pain.
-bl(1) = loc
-bt(1) = otype
-bq(1) = get_quantity_for_type_of_obs(otype)
+base_loc(1) = loc
+base_type(1) = otype
+base_qty(1) = get_quantity_for_type_of_obs(otype)
 
-call convert_vertical_obs(ens_handle, 1, bl, bq, bt, &
-                             vert_type, status)
+call convert_vertical_obs(ens_handle, 1, base_loc, base_qty, base_type, vert_type, status)
 
 status1 = status(1)
 
 if (status1 /= 0) return
 
-loc = bl(1)
+loc = base_loc(1)
 
 end subroutine convert_vert_one_obs
 
@@ -4055,8 +3890,6 @@ end subroutine get_close_obs
 
 !----------------------------------------------------------------------------
 
-!SENote
-! This now reproduces results from the Classic version with pressure vertical localization
 
 !SENote: Need to test the convert all upfront options from Namelist
 
@@ -4099,15 +3932,10 @@ endif
 ! does the base obs need conversion first?
 vert_type = query_location(base_loc)
 
-!SENote
-write(*, *) 'in get_close_state before convert_vert_one_obs'
 call write_location(0, base_loc)
 if (vert_type /= vertical_localization_type) then
    call convert_vert_one_obs(ens_handle, base_loc, base_type, &
                              vertical_localization_type, status)
-!SENote
-write(*, *) 'back form convert_vert_one_obs status ', status
-stop
    if (status /= 0) then
       num_close = 0
       return
