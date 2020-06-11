@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module utilities_mod
 
@@ -117,9 +115,9 @@ end interface
 logical :: standalone = .false.
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'utilities_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 character(len=512) :: msgstring1, msgstring2, msgstring3
 
@@ -2919,8 +2917,3 @@ end function interactive_i
 
 end module utilities_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

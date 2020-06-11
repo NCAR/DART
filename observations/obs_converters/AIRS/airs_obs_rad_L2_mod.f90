@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module airs_obs_rad_L2_mod
 
@@ -53,10 +51,9 @@ public :: make_obs_sequence, compute_thin_factor
 
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "airs_obs_rad_L2_mod"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'airs_obs_rad_L2_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 logical, save :: module_initialized = .false.
 character(len=512) :: msgstring

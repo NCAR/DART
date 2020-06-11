@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program convert_airs_rad_L2
 
@@ -28,17 +26,17 @@ implicit none
 ! ----------------------------------------------------------------------
 
 integer                 :: thin_factor, filecount
-character(len=256)      :: datafile(1), output_name, dartfile, msgstring
+character(len=256)      :: datafile(1), output_name, dartfile
+character(len=512)      :: msgstring
 type(airs_granule_type) :: granule
 type(obs_sequence_type) :: seq
 
 integer :: io, iunit, index, nchans
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "convert_airs_rad_L2"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'convert_airs_rad_L2.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters

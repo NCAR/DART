@@ -809,6 +809,7 @@ obs_kind_names(151) = obs_kind_type(QTY_O3,             'QTY_O3')
 obs_kind_names(153) = obs_kind_type(QTY_CO,             'QTY_CO')
 obs_kind_names(155) = obs_kind_type(QTY_NO,             'QTY_NO')
 obs_kind_names(156) = obs_kind_type(QTY_NO2,            'QTY_NO2')
+obs_kind_names(157) = obs_kind_type(QTY_N2O,            'QTY_N2O')
 
 obs_kind_names(161) = obs_kind_type(QTY_CO01,           'QTY_CO01')
 obs_kind_names(162) = obs_kind_type(QTY_CO02,           'QTY_CO02')

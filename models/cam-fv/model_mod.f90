@@ -2,7 +2,6 @@
 ! by ucar, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/dares/dart/dart_download
 !
-! $Id$
 !----------------------------------------------------------------
 !>
 !> this is the interface between the cam-fv atmosphere model and dart.
@@ -114,9 +113,9 @@ public :: nc_write_model_vars,           &
           init_conditions
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'cam-fv/model_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! maximum number of fields you can list to be perturbed
 ! to generate an ensemble if starting from a single state.
@@ -4217,10 +4216,10 @@ end subroutine free_std_atm_tables
 !--------------------------------------------------------------------
 
 subroutine load_low_top_table()
-	
+
 std_atm_table_len = 45
 allocate(std_atm_hgt_col(std_atm_table_len), std_atm_pres_col(std_atm_table_len))
-	
+
 std_atm_hgt_col(1)  = 86.0_r8 ; std_atm_pres_col(1)  = 3.732E-01_r8
 std_atm_hgt_col(2)  = 84.0_r8 ; std_atm_pres_col(2)  = 5.308E-01_r8
 std_atm_hgt_col(3)  = 82.0_r8 ; std_atm_pres_col(3)  = 7.498E-01_r8
@@ -4269,7 +4268,7 @@ std_atm_hgt_col(45) = -2.0_r8 ; std_atm_pres_col(45) = 1.278E+05_r8
 
 ! convert km to m
 std_atm_hgt_col(:) = std_atm_hgt_col(:) * 1000.0_r8
-	
+
 end subroutine load_low_top_table
 
 !--------------------------------------------------------------------
@@ -4485,15 +4484,10 @@ std_atm_hgt_col(201) =    0.0_r8  ;  std_atm_pres_col(201) = 1.013E+05_r8
 std_atm_hgt_col(:) = std_atm_hgt_col(:) * 1000.0_r8
 
 end subroutine load_high_top_table
-	
+
 !===================================================================
 ! End of model_mod
 !===================================================================
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -78,10 +78,9 @@ integer, parameter :: MAXCHANS = 13
 character(len=512) :: msgstring
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "gmi_L1_mod"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'gmi_L1_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 logical, save :: module_initialized = .false.
 

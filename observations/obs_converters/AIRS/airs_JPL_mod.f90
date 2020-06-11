@@ -1,5 +1,4 @@
 ! This code is not protected by the DART copyright agreement.
-! DART $Id$
 
 ! adapted from original JPL code, example AIRS readers
 !

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Main DART Ensemble Filtering Program
 
@@ -457,10 +455,9 @@ program rttov_test
    type(rttov_options_scatt), pointer :: opts_scatt  => null() ! Options for RTTOV-SCATT
 
    ! version controlled file description for error handling, do not edit
-   character(len=256), parameter :: source   = &
-      "rttov_test.f90"
-   character(len=32 ), parameter :: revision = "$Revision$"
-   character(len=128), parameter :: revdate  = "$Date$"
+   character(len=*), parameter :: source   = 'rttov_test.f90'
+   character(len=*), parameter :: revision = ''
+   character(len=*), parameter :: revdate  = ''
 
    character(len=512) :: string1, string2, string3
 
@@ -712,4 +709,4 @@ program rttov_test
    call error_handler(E_MSG,'rttov_test',string1,&
       source, revision, revdate)
 
-end program
+end program rttov_test

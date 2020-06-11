@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> @mainpage Remote Memory Access version of DART code.
 !>
@@ -19,8 +17,8 @@
 !> \page test
 
 !> WRF model mod
-module model_mod
 
+module model_mod
 
 ! Assimilation interface for WRF model
 !> \defgroup wrf model_mod
@@ -192,10 +190,9 @@ public :: wrf_dom, wrf_static_data_for_dart
 
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'wrf/model_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! miscellaneous
 integer, parameter :: max_state_variables = 100
@@ -8485,8 +8482,3 @@ end module model_mod
 
 !> @}
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
