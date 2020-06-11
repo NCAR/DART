@@ -73,8 +73,11 @@ use      obs_kind_mod,   only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
                                 QTY_DENSITY, QTY_FLASH_RATE_2D, &
                                 QTY_RAINWATER_MIXING_RATIO, QTY_HAIL_MIXING_RATIO, &
                                 QTY_GRAUPEL_MIXING_RATIO, QTY_SNOW_MIXING_RATIO, &
-                                QTY_CLOUD_LIQUID_WATER, QTY_CLOUD_ICE, &
-                                QTY_CONDENSATIONAL_HEATING, QTY_VAPOR_MIXING_RATIO, &
+                                QTY_CLOUDWATER_MIXING_RATIO, QTY_ICE_MIXING_RATIO, &
+                                QTY_CLOUD_FRACTION, QTY_CONDENSATIONAL_HEATING,  &
+                                QTY_VAPOR_MIXING_RATIO, QTY_2M_TEMPERATURE, &
+                                QTY_2M_SPECIFIC_HUMIDITY, QTY_10M_U_WIND_COMPONENT, &
+                                QTY_10M_V_WIND_COMPONENT, &
                                 QTY_ICE_NUMBER_CONCENTRATION, QTY_GEOPOTENTIAL_HEIGHT, &
                                 QTY_POTENTIAL_TEMPERATURE, QTY_SOIL_MOISTURE, &
                                 QTY_DROPLET_NUMBER_CONCENTR, QTY_SNOW_NUMBER_CONCENTR, &
@@ -86,6 +89,7 @@ use      obs_kind_mod,   only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
                                 QTY_VORTEX_LAT, QTY_VORTEX_LON, &
                                 QTY_VORTEX_PMIN, QTY_VORTEX_WMAX, &
                                 QTY_SKIN_TEMPERATURE, QTY_LANDMASK, &
+                                QTY_SURFACE_TYPE, &
                                 get_index_for_quantity, get_num_quantities, &
                                 get_name_for_quantity
 
@@ -105,11 +109,8 @@ use state_structure_mod, only : add_domain, get_model_variable_indices, &
                                 get_dart_vector_index
 
 ! FIXME:
-! the kinds QTY_CLOUD_LIQUID_WATER should be QTY_CLOUDWATER_MIXING_RATIO, 
-! and kind QTY_CLOUD_ICE should be QTY_ICE_MIXING_RATIO, but for backwards
-! compatibility with other models, they remain as is for now.  at the next
-! major dart release, the names will be made consistent.
-! ditto QTY_ICE_NUMBER_CONCENTRATION, which should be QTY_ICE_NUMBER_CONCENTR
+! the kinds 
+! QTY_ICE_NUMBER_CONCENTRATION should be QTY_ICE_NUMBER_CONCENTR
 ! to be consistent with the other concentration names.
 
 !nc -- module_map_utils split the declarations of PROJ_* into a separate module called
@@ -326,7 +327,8 @@ TYPE wrf_static_data_for_dart
    integer :: type_u, type_v, type_w, type_t, type_qv, type_qr, type_hdiab, &
               type_qndrp, type_qnsnow, type_qnrain, type_qngraupel, type_qnice, &
               type_qc, type_qg, type_qi, type_qs, type_gz, type_refl, type_fall_spd, &
-              type_dref, type_spdp, type_qh, type_qnhail, type_qhvol, type_qgvol
+              type_dref, type_spdp, type_qh, type_qnhail, type_qhvol, type_qgvol, &
+              type_cldfra
 
    integer :: type_u10, type_v10, type_t2, type_th2, type_q2, &
               type_ps, type_mu, type_tsk, type_tslb, type_sh2o, &
@@ -702,6 +704,7 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_qh     = get_type_ind_from_type_string(id,'QHAIL')
    wrf%dom(id)%type_qi     = get_type_ind_from_type_string(id,'QICE')
    wrf%dom(id)%type_qs     = get_type_ind_from_type_string(id,'QSNOW')
+   wrf%dom(id)%type_cldfra = get_type_ind_from_type_string(id,'CLDFRA')
    wrf%dom(id)%type_qgvol  = get_type_ind_from_type_string(id,'QVGRAUPEL')
    wrf%dom(id)%type_qhvol  = get_type_ind_from_type_string(id,'QVHAIL')
    wrf%dom(id)%type_qnice  = get_type_ind_from_type_string(id,'QNICE')
@@ -1117,6 +1120,9 @@ else
    if ( debug ) then
       write(*,*) 'is_vertical(PRESSURE) ',is_vertical(location,"PRESSURE")
       write(*,*) 'is_vertical(HEIGHT) ',is_vertical(location,"HEIGHT")
+      write(*,*) 'is_vertical(LEVEL) ',is_vertical(location,"LEVEL")
+      write(*,*) 'is_vertical(SURFACE) ',is_vertical(location,"SURFACE")
+      write(*,*) 'is_vertical(UNDEFINED) ',is_vertical(location,"UNDEFINED")
    endif
 
    ! HK
@@ -1202,7 +1208,7 @@ else
 
       enddo
 
-   elseif(is_vertical(location,"SURFACE")) then
+   elseif(is_vertical(location,"SURFACE") .or. obs_kind == QTY_SURFACE_ELEVATION) then
       zloc = 1.0_r8
       surf_var = .true.
       if(debug) print*,' obs is at the surface = ', xyz_loc(3)
@@ -1370,8 +1376,8 @@ else
        obs_kind == QTY_GRAUPEL_MIXING_RATIO .or. &
        obs_kind == QTY_HAIL_MIXING_RATIO .or. &
        obs_kind == QTY_SNOW_MIXING_RATIO .or. &
-       obs_kind == QTY_CLOUD_ICE .or. &
-       obs_kind == QTY_CLOUD_LIQUID_WATER .or. &
+       obs_kind == QTY_ICE_MIXING_RATIO .or. &
+       obs_kind == QTY_CLOUDWATER_MIXING_RATIO .or. &
        obs_kind == QTY_DROPLET_NUMBER_CONCENTR .or. &
        obs_kind == QTY_ICE_NUMBER_CONCENTRATION .or. &
        obs_kind == QTY_SNOW_NUMBER_CONCENTR .or. &
@@ -1382,7 +1388,8 @@ else
        obs_kind == QTY_POWER_WEIGHTED_FALL_SPEED .or. &
        obs_kind == QTY_RADAR_REFLECTIVITY .or. &
        obs_kind == QTY_DIFFERENTIAL_REFLECTIVITY .or. &
-       obs_kind == QTY_SPECIFIC_DIFFERENTIAL_PHASE ) then
+       obs_kind == QTY_SPECIFIC_DIFFERENTIAL_PHASE .or. &
+       obs_kind == QTY_CLOUD_FRACTION) then
 
        call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle)
        if (all(fld == missing_r8)) goto 200
@@ -1393,8 +1400,8 @@ else
           obs_kind == QTY_GRAUPEL_MIXING_RATIO .or. &
           obs_kind == QTY_HAIL_MIXING_RATIO .or. &
           obs_kind == QTY_SNOW_MIXING_RATIO .or. &
-          obs_kind == QTY_CLOUD_ICE .or. &
-          obs_kind == QTY_CLOUD_LIQUID_WATER .or. &
+          obs_kind == QTY_ICE_MIXING_RATIO .or. &
+          obs_kind == QTY_CLOUDWATER_MIXING_RATIO .or. &
           obs_kind == QTY_DROPLET_NUMBER_CONCENTR .or. &
           obs_kind == QTY_ICE_NUMBER_CONCENTRATION .or. &
           obs_kind == QTY_SNOW_NUMBER_CONCENTR .or. &
@@ -1580,6 +1587,60 @@ else
          endif
       endif
 
+   elseif (obs_kind == QTY_10M_U_WIND_COMPONENT .or. obs_kind == QTY_10M_V_WIND_COMPONENT) then
+      if ( ( wrf%dom(id)%type_u10 >= 0 ) .and. ( wrf%dom(id)%type_v10 >= 0 ) ) then
+
+   ! JPH -- should test this for doubly periodic
+   ! JPH -- does not pass for SCM config, so just do it below
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+                boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) )     &
+                .or. wrf%dom(id)%scm ) then
+
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners U10, V10 rc = ', rc
+
+            ! Interpolation for the U10 field
+            ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_u10)
+            iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_u10)
+            ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_u10)
+            iur = get_dart_vector_index(ur(1), ur(2), 1, domain_id(id), wrf%dom(id)%type_u10)
+
+            x_ill = get_state(ill, state_handle)
+            x_iul = get_state(iul, state_handle)
+            x_ilr = get_state(ilr, state_handle)
+            x_iur = get_state(iur, state_handle)
+
+            ugrid = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+
+            ! Interpolation for the V10 field
+            ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_v10)
+            iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_v10)
+            ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_v10)
+            iur = get_dart_vector_index(ur(1), ur(2), 1, domain_id(id), wrf%dom(id)%type_v10)
+
+            x_ill = get_state(ill, state_handle)
+            x_iul = get_state(iul, state_handle)
+            x_iur = get_state(iur, state_handle)
+            x_ilr = get_state(ilr, state_handle)
+
+            vgrid = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+
+            do e = 1, ens_size
+               call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid(e), vgrid(e), &
+                    utrue(e), vtrue(e))
+
+               ! U10 (U at 10 meters)
+               if( obs_kind == QTY_10M_U_WIND_COMPONENT) then
+                  fld(1, e) = utrue(e)
+               ! V10 (V at 10 meters)
+               else
+                  fld(1, e) = vtrue(e)
+               endif
+            enddo
+         endif
+      endif
    !-----------------------------------------------------
    ! 1.b Sensible Temperature (T, T2)
 
@@ -1587,91 +1648,88 @@ else
       ! This is for 3D temperature field -- surface temps later
       !print*, 'k ', k
 
-      if(.not. surf_var) then
+      if ( wrf%dom(id)%type_t >= 0 ) then
 
-         if ( wrf%dom(id)%type_t >= 0 ) then
+         do uk = 1, count ! for the different ks
 
-            do uk = 1, count ! for the different ks
+            ! Check to make sure retrieved integer gridpoints are in valid range
+            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+                 boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
 
-               ! Check to make sure retrieved integer gridpoints are in valid range
-               if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-                    boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-                    boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
-   
-                  call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-                  if ( rc .ne. 0 ) &
-                       print*, 'model_mod.f90 :: model_interpolate :: getCorners T rc = ', rc
-               
-                  ! Interpolation for T field at level k
-                  ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
-                  iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
-                  ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
-                  iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+               if ( rc .ne. 0 ) &
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners T rc = ', rc
+            
+               ! Interpolation for T field at level k
+               ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+               iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+               ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+               iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
 
-                  x_iul = get_state(iul, state_handle)
-                  x_ill = get_state(ill, state_handle)
-                  x_ilr = get_state(ilr, state_handle)
-                  x_iur = get_state(iur, state_handle)
+               x_iul = get_state(iul, state_handle)
+               x_ill = get_state(ill, state_handle)
+               x_ilr = get_state(ilr, state_handle)
+               x_iur = get_state(iur, state_handle)
 
-                  ! In terms of perturbation potential temperature
-                  a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+               ! In terms of perturbation potential temperature
+               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
 
-                  pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk), id, state_handle, ens_size)
-                  pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk), id, state_handle, ens_size)
-                  pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk), id, state_handle, ens_size)
-                  pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk), id, state_handle, ens_size)
+               pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk), id, state_handle, ens_size)
+               pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk), id, state_handle, ens_size)
+               pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk), id, state_handle, ens_size)
+               pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk), id, state_handle, ens_size)
 
-                  ! Pressure at location
-                  pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+               ! Pressure at location
+               pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
-                  do e = 1, ens_size
-                     if ( k(e) == uniquek(uk) ) then
-                        ! Full sensible temperature field
-                        fld(1, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
-                     endif
-                  enddo
-
-                  ! Interpolation for T field at level k+1
-                  ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-                  iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-                  ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-                  iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-
-                  x_ill = get_state(ill, state_handle)
-                  x_iul = get_state(iul, state_handle)
-                  x_iur = get_state(iur, state_handle)
-                  x_ilr = get_state(ilr, state_handle)
-
-                  ! In terms of perturbation potential temperature
-                  a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
-
-                  pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk)+1, id, state_handle, ens_size)
-                  pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk)+1, id, state_handle, ens_size)
-                  pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk)+1, id, state_handle, ens_size)
-                  pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk)+1, id, state_handle, ens_size)
-
-                  ! Pressure at location
-                  pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-
-                  do e = 1, ens_size
-                     if ( k(e) == uniquek(uk) ) then
+               do e = 1, ens_size
+                  if ( k(e) == uniquek(uk) ) then
                      ! Full sensible temperature field
-                     fld(2, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
-                     endif
-                  enddo
-                  
+                     fld(1, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
+                  endif
+               enddo
 
-               endif
-            enddo
-         endif
+               ! Interpolation for T field at level k+1
+               ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+               iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+               ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+               iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
 
-      ! This is for surface temperature (T2)
+               x_ill = get_state(ill, state_handle)
+               x_iul = get_state(iul, state_handle)
+               x_iur = get_state(iur, state_handle)
+               x_ilr = get_state(ilr, state_handle)
+
+               ! In terms of perturbation potential temperature
+               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+
+               pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk)+1, id, state_handle, ens_size)
+               pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk)+1, id, state_handle, ens_size)
+               pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk)+1, id, state_handle, ens_size)
+               pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk)+1, id, state_handle, ens_size)
+
+               ! Pressure at location
+               pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+               do e = 1, ens_size
+                  if ( k(e) == uniquek(uk) ) then
+                  ! Full sensible temperature field
+                  fld(2, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
+                  endif
+               enddo
+            endif
+         enddo
       else
-         
-         if ( wrf%dom(id)%type_t2 >= 0 ) then ! HK is there a better way to do this?
-            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t2, dxm, dx, dy, dym, ens_size, state_handle)
-            if (all(fld == missing_r8)) goto 200
-         endif
+         fld = missing_r8
+      end if
+   elseif (obs_kind == QTY_2M_TEMPERATURE) then
+      ! This is for 2-meter temperature
+      if ( wrf%dom(id)%type_t2 >= 0 ) then ! HK is there a better way to do this?
+         call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t2, dxm, dx, dy, dym, ens_size, state_handle)
+         if (all(fld == missing_r8)) goto 200
+      else
+         fld = missing_r8
       endif
 
    !-----------------------------------------------------
@@ -1903,7 +1961,7 @@ else
                
                call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
                if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners SH2 rc = ', rc
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners Q2 rc = ', rc
 
                ! Interpolation for the SH2 field
                ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_q2)
@@ -1943,6 +2001,34 @@ else
 
       ! Don't accept negative water vapor amounts (?)
      fld = max(0.0_r8, fld)
+
+   else if (obs_kind == QTY_2M_SPECIFIC_HUMIDITY ) then
+      ! FIXME: Q2 is actually a mixing ratio, not a specific humidity
+      if ( wrf%dom(id)%type_q2 >= 0 ) then
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+                boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) &
+                .or. wrf%dom(id)%scm ) then
+            
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners Q2 rc = ', rc
+
+            ! Interpolation for the SH2 field
+            ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_q2)
+            iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_q2)
+            ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_q2)
+            iur = get_dart_vector_index(ur(1), ur(2), 1, domain_id(id), wrf%dom(id)%type_q2)
+
+            x_ill = get_state(ill, state_handle)
+            x_iul = get_state(iul, state_handle)
+            x_iur = get_state(iur, state_handle)
+            x_ilr = get_state(ilr, state_handle)
+
+            a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+            fld(1,:) = a1
+         endif
+      endif
 
    !-----------------------------------------------------
    ! 1.t Pressure (P)
@@ -2685,11 +2771,11 @@ else
       ! Check to make sure retrieved integer gridpoints are in valid range
       if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
            boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
-      
+
          call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
          if ( rc .ne. 0 ) &
               print*, 'model_mod.f90 :: model_interpolate :: getCorners HGT rc = ', rc
-         
+        
          ! Interpolation for the HGT field -- HGT is NOT part of state vector x, but rather
          !   in the associated domain meta data
          fld(1, :) = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
@@ -2734,6 +2820,26 @@ else
                          dx*real(wrf%dom(id)%land(lr(1), lr(2))) ) + &
                    dy*( dxm*real(wrf%dom(id)%land(ul(1), ul(2))) + &
                          dx*real(wrf%dom(id)%land(ur(1), ur(2))) )
+
+      endif
+
+   else if( obs_kind == QTY_SURFACE_TYPE ) then ! 0 = land, 1 = water, 2 = sea ice (not yet supported)
+      if ( debug ) print*,'Getting land mask'
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
+      
+         call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: model_interpolate :: getCorners XLAND rc = ', rc
+         
+         ! Interpolation for the XLAND field -- XLAND is NOT part of state vector x, but rather
+         !   in the associated domain meta data
+         fld(1, :) = dym*( dxm*real(wrf%dom(id)%land(ll(1), ll(2))) + &
+                         dx*real(wrf%dom(id)%land(lr(1), lr(2))) ) + &
+                   dy*( dxm*real(wrf%dom(id)%land(ul(1), ul(2))) + &
+                         dx*real(wrf%dom(id)%land(ur(1), ur(2))) ) - 1
 
       endif
 
@@ -2789,6 +2895,7 @@ else
 
             ! First make sure fld(2,:) is no longer a missing value
             if ( fld(2,e) == missing_r8 ) then !HK should be any?
+               print *,'fld 2 is missing',surf_var
 
                expected_obs(e) = missing_r8
 
@@ -7498,6 +7605,7 @@ endif
 ! one ensemble member to another.
 in_state_vector(QTY_SURFACE_ELEVATION) = .true.
 in_state_vector(QTY_LANDMASK) = .true.
+in_state_vector(QTY_SURFACE_TYPE) = .true.
 
 ! there is no field that directly maps to the vortex measurements.
 ! if you have all the fields it needs, allow them.
@@ -8062,7 +8170,7 @@ if ( in_state ) then
 else ! not in state
 
    call error_handler(E_MSG, 'simple_interp_distrib', &
-      'obs_kind "'//trim(get_name_for_quantity(obs_kind))//'" is not in state vector', &
+      'obs_kind "'//trim(get_name_for_quantity(obs_kind))//'" is not in state vector 1', &
       source, revision, revdate)
    fld(2, ens_size) = missing_r8
    return
@@ -8155,12 +8263,15 @@ else if( ( obs_kind == QTY_HAIL_MIXING_RATIO )           .and. ( wrf%dom(id)%typ
 else if( ( obs_kind == QTY_SNOW_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qs >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qs
-else if( ( obs_kind == QTY_CLOUD_ICE )                   .and. ( wrf%dom(id)%type_qi >= 0 ) ) then
+else if( ( obs_kind == QTY_ICE_MIXING_RATIO )                   .and. ( wrf%dom(id)%type_qi >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qi
-else if( ( obs_kind == QTY_CLOUD_LIQUID_WATER )          .and. ( wrf%dom(id)%type_qc >= 0 ) ) then
+else if( ( obs_kind == QTY_CLOUDWATER_MIXING_RATIO )          .and. ( wrf%dom(id)%type_qc >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qc
+else if ( ( obs_kind == QTY_CLOUD_FRACTION )             .and. ( wrf%dom(id)%type_cldfra >= 0 ) )then
+   part_of_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_cldfra
 else if( ( obs_kind == QTY_DROPLET_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qndrp >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qndrp
@@ -8209,9 +8320,12 @@ else if ( ( obs_kind == QTY_SKIN_TEMPERATURE )              .and. ( wrf%dom(id)%
 else if ( ( obs_kind == QTY_GEOPOTENTIAL_HEIGHT )        .and. ( wrf%dom(id)%type_gz >= 0 ) )then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_gz
+else if ( ( obs_kind == QTY_2M_TEMPERATURE )        .and. ( wrf%dom(id)%type_t2 >= 0 ) )then
+   part_of_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_t2
 else
    call error_handler(E_MSG, 'obs_kind_in_state_vector', &
-      'obs_kind "'//trim(get_name_for_quantity(obs_kind))//'" is not in state vector', &
+      'obs_kind "'//trim(get_name_for_quantity(obs_kind))//'" is not in state vector 2', &
        source, revision, revdate)
    part_of_state_vector = .false.
    wrf_type = -1

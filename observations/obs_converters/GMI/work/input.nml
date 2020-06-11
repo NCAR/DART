@@ -5,42 +5,19 @@
      input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90',
    input_files              = '../../../../observations/forward_operators/obs_def_rttov_mod.f90',
-                              '../../../../observations/forward_operators/obs_def_AIRS_mod.f90'
  /
 
-! version 5 file?:
-!   l2_files = '../data/AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0.G08078150655.hdf'
-! version 6 file?:
-!   l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'
-
-&convert_airs_L2_nml
-   l2_files           = '',
-   l2_file_list       = 'l2_files_to_process' ,
+&convert_gmi_L1_nml
+   l1_files           = '',
+   l1_file_list       = 'l1_files_to_process' ,
    outputfile         = 'obs_seq.test'
-   min_MMR_threshold  = 1.0e-30
-   top_pressure_level = 0.0001,
    along_track_thin   = 1,
    cross_track_thin   = 1,
-   lon1               =   0.0, 
-   lon2               = 360.0, 
-   lat1               = -60.0, 
-   lat2               =  60.0
+   lon1               = 200.0, 
+   lon2               = 280.0, 
+   lat1               =  15.0, 
+   lat2               =  35.0
  /
-
-&convert_airs_rad_L2_nml
-   l2_files           = '',
-   l2_file_list       = 'l2_files_to_process' ,
-   outputfile         = 'obs_seq.test'
-   channel_list       = 168,900
-   along_track_thin   = 0,
-   cross_track_thin   = 0,
-   lon1               =   0.0, 
-   lon2               = 360.0, 
-   lat1               = -90.0, 
-   lat2               =  90.0
- /
-
-
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false. 
