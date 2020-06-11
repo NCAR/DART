@@ -59,21 +59,21 @@ use    utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG, E_WA
   implicit none
 
 ! include the interface files as per the RTTOV standard
-#include "rttov_direct.interface"
-#include "rttov_read_coefs.interface"
-#include "rttov_dealloc_coefs.interface"
-#include "rttov_read_scattcoeffs.interface"
-#include "rttov_dealloc_scattcoeffs.interface"
-#include "rttov_scatt_setupindex.interface"
-#include "rttov_scatt.interface"
-#include "rttov_alloc_direct.interface"
-#include "rttov_alloc_scatt_prof.interface"
-#include "rttov_user_options_checkinput.interface"
-#include "rttov_print_opts.interface"
-#include "rttov_print_opts_scatt.interface"
-#include "rttov_print_profile.interface"
-#include "rttov_print_cld_profile.interface"
-#include "rttov_skipcommentline.interface"
+include "rttov_direct.interface"
+include "rttov_read_coefs.interface"
+include "rttov_dealloc_coefs.interface"
+include "rttov_read_scattcoeffs.interface"
+include "rttov_dealloc_scattcoeffs.interface"
+include "rttov_scatt_setupindex.interface"
+include "rttov_scatt.interface"
+include "rttov_alloc_direct.interface"
+include "rttov_alloc_scatt_prof.interface"
+include "rttov_user_options_checkinput.interface"
+include "rttov_print_opts.interface"
+include "rttov_print_opts_scatt.interface"
+include "rttov_print_profile.interface"
+include "rttov_print_cld_profile.interface"
+include "rttov_skipcommentline.interface"
 
 !--------------------------
 !

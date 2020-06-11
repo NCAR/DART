@@ -8,43 +8,41 @@ module airs_obs_mod
 
 use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg
 
-use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def,     &
-                             write_obs_def, destroy_obs_def,                   &
-                             interactive_obs_def, copy_obs_def,                &
-                             set_obs_def_time, set_obs_def_type_of_obs,               &
+use obs_def_mod,      only : obs_def_type, read_obs_def, write_obs_def,        &
+                             set_obs_def_time, set_obs_def_type_of_obs,        &
                              set_obs_def_error_variance, set_obs_def_location, &
                              get_obs_def_location
 
-use time_manager_mod, only : time_type, get_date, set_date,            &
-                             get_time, set_time, set_calendar_type,    &
-                             GREGORIAN, print_date, print_time,        &
+use time_manager_mod, only : time_type, get_date, set_date,                    &
+                             get_time, set_time, set_calendar_type,            &
+                             GREGORIAN, print_date, print_time,                &
                              operator(+), operator(>=)
 
-use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
-                             register_module, error_handler,              &
+use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_MSG, is_longitude_between
 
-use     location_mod, only : location_type, set_location, VERTISPRESSURE, &
+use     location_mod, only : location_type, set_location, VERTISPRESSURE,      &
                              get_location
 
-use     obs_kind_mod, only : get_index_for_type_of_obs, &
-                             QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY, &
+use     obs_kind_mod, only : get_index_for_type_of_obs,                        &
                              AIRS_TEMPERATURE, AIRS_SPECIFIC_HUMIDITY
 
-use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
-                             set_obs_values, set_qc, obs_sequence_type,      &
-                             obs_type, copy_obs, set_copy_meta_data,         &
-                             set_qc_meta_data, set_obs_def, get_first_obs,   &
-                             get_last_obs, get_obs_def
+use obs_sequence_mod, only : init_obs_sequence, init_obs, obs_sequence_type,   &
+                             obs_type, set_copy_meta_data,                     &
+                             set_qc_meta_data
 
 use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 
 use obs_seq_utilities_mod, only : print_obs_seq
 
-
 use      obs_err_mod, only : rawin_temp_error
 
-use airs_JPL_mod   ! need ', only' list here
+use     airs_JPL_mod, only : AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK,            &
+                             AIRS_RET_STDPRESSURELEV, AIRS_RET_STDPRESSURELAY, &                 
+                             AIRS_RET_AIRSXTRACK, AIRS_RET_AIRSTRACK,          &
+                             AIRS_RET_CLOUD, AIRS_RET_H2OPRESSURELEV,          &
+                             AIRS_RET_H2OPRESSURELAY, airs_granule_type
+
 
 implicit none
 private
@@ -53,8 +51,7 @@ public :: make_obs_sequence, initialize_obs_sequence, compute_thin_factor
 
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "airs_obs_mod.f90"
+character(len=256), parameter :: source   = "airs_obs_mod.f90"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
