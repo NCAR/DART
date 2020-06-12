@@ -901,6 +901,9 @@ subroutine destroy_obs_def(obs_def)
 
 type(obs_def_type), intent(inout) :: obs_def
 
+real(r8) :: missing_r(1)
+
+
 if ( .not. module_initialized ) call initialize_module
 
 ! FIXME: not clear why we have to set all these to missing...
@@ -911,7 +914,8 @@ call set_obs_def_location(obs_def, set_location_missing() )
 obs_def%kind = missing_i
 call set_obs_def_time(obs_def, set_time_missing() )
 call set_obs_def_error_variance( obs_def, missing_r8) 
-call set_obs_def_external_FO(obs_def, .false., .false., missing_i, 1, (/missing_r8/))
+missing_r = missing_r8
+call set_obs_def_external_FO(obs_def, .false., .false., missing_i, 1, missing_r)
 if ( allocated(obs_def%external_FO)) deallocate(obs_def%external_FO) ! CSS
 
 end subroutine destroy_obs_def
