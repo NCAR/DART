@@ -36,7 +36,7 @@ use         utilities_mod,  only : find_namelist_in_file, check_namelist_read, &
                                    nmlfileunit, do_nml_file, do_nml_term, &
                                    register_module, error_handler, &
                                    file_exist, to_upper, E_ERR, E_MSG, E_WARN, array_dump, &
-                                   find_enclosing_indices, nc_check
+                                   find_enclosing_indices
 use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_PRESSURE, &
                                    QTY_GEOMETRIC_HEIGHT, QTY_VERTLEVEL, &
                                    QTY_SURFACE_PRESSURE, &
@@ -71,9 +71,9 @@ use   state_structure_mod,  only : add_domain, get_dart_vector_index, get_domain
                                    get_num_variables, get_varid_from_kind, &
                                    get_model_variable_indices, state_structure_info, get_short_name, &
                                    get_long_name, get_dim_lengths, get_variable_name
-use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, &
+use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, nc_create_file, &
                                    nc_add_attribute_to_variable, &
-                                   nc_define_integer_variable, &
+                                   nc_define_integer_variable, nc_define_double_variable, &
                                    nc_define_real_variable, &
                                    nc_define_real_scalar, &
                                    nc_add_global_creation_time, &
@@ -81,7 +81,8 @@ use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, &
                                    nc_define_dimension, nc_put_variable, &
                                    nc_synchronize_file, nc_end_define_mode, &
                                    nc_begin_define_mode, nc_open_file_readonly, &
-                                   nc_close_file, nc_variable_exists, nc_get_global_attribute
+                                   nc_close_file, nc_variable_exists, nc_get_global_attribute, &
+                                   nc_get_dimension_size
 use        chem_tables_mod, only : init_chem_tables, finalize_chem_tables, &
                                    get_molar_mass, get_volume_mixing_ratio
 use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
@@ -105,10 +106,6 @@ use    cam_common_code_mod, only : scale_height, HIGH_TOP_TABLE, LOW_TOP_TABLE, 
                                    build_heights, set_vert_localization, ok_to_interpolate, obs_too_high, &
                                    cdebug_level, get_cam_grid, free_cam_1d_array, free_cam_grid
 
-!SENote the routines to read in the grid geometry use the old netcdf calls
-! Tim's new calls are much better and should switch ASAP
-! Note also the failure to have use, only here which is annoying
-use netcdf
 use typeSizes
 
 implicit none
@@ -478,41 +475,23 @@ end subroutine fill_gc
 
 !-----------------------------------------------------------------------
 
-!SENote: Should use the next generation netcdf libraries instead of the old classic ones for this
+!SENote: Check this once more
 subroutine nc_read_cs_grid_file()
 
 ! Read the number of neighbors, corners, centers, a and b coefficients, and x_ax_bearings
 ! from a netCDF file once for this grid at the beginning of the assimilation.
 
-integer :: nc_file_ID, nc_var_ID, nc_size, n_dims, max_nghbrs, shp(2)
-character(len=NF90_MAX_NAME) :: nc_name
+integer :: nc_file_ID,  max_nghbrs, local_ncol
 
-! Open the cubed sphere grid relationships file
-call nc_check(nf90_open(path=trim(cs_grid_file), mode=nf90_nowrite, ncid=nc_file_ID), &
-      'nc_read_cs_grid_file', 'opening '//trim(cs_grid_file))
+! Open the file for reading
+nc_file_ID = nc_open_file_readonly(trim(cs_grid_file), 'reading the cs_grid_file')
 
-! learn how many dimensions are defined in this file.
-call nc_check(nf90_inquire(nc_file_ID, n_dims), 'nc_read_cs_grid_file', 'inquire n_dims')
+! Get the number of centers and number of corners and check the number of columns
+ncenters = nc_get_dimension_size(nc_file_ID, 'ncenters')
+ncorners = nc_get_dimension_size(nc_file_ID, 'ncorners')
+local_ncol = nc_get_dimension_size(nc_file_ID, 'ncol')
+max_nghbrs = nc_get_dimension_size(nc_file_ID, 'max_neighbors')
 
-! Dimensions written out:
-!              name="ncenters",      len = ncenters,      dimid = ncenters_ID), &
-!              name="ncorners",      len = ncorners,      dimid = ncorners_ID), &
-!              name="max_neighbors", len = max_neighbors, dimid = max_neighbors_ID), &
-!              name="ncol",          len = ncol,          dimid = ncol_ID), &
-!              name="ncoef_a",       len = 3,             dimid = a_ID), &
-!              name="ncoef_b",       len = 2,             dimid = b_ID), &
-call nc_check(nf90_inquire_dimension(nc_file_ID, 1, nc_name, ncenters), &
-              'nc_read_cs_grid_file', 'inquire for '//trim(nc_name))
-
-call nc_check(nf90_inquire_dimension(nc_file_ID, 2, nc_name, ncorners), &
-              'nc_read_cs_grid_file', 'inquire for '//trim(nc_name))
-
-call nc_check(nf90_inquire_dimension(nc_file_ID, 3, nc_name, max_nghbrs), &
-              'nc_read_cs_grid_file', 'inquire for '//trim(nc_name))
-if (trim(nc_name) /= 'max_neighbors') then
-   write(string1, *) trim(cs_grid_file),' max_nghbrs does not match ', trim(cam_template_filename)
-   call error_handler(E_ERR,'nc_read_cs_grid_file',string1,source,revision,revdate)
-endif
 ! Check value against the namelist/parameter value.
 if (max_nghbrs /= max_neighbors) then
    write(string1, *) trim(cs_grid_file),' max_nghbrs does not match max_neighbors', &
@@ -520,75 +499,27 @@ if (max_nghbrs /= max_neighbors) then
    call error_handler(E_ERR,'nc_read_cs_grid_file',string1,source,revision,revdate)
 endif
 
-call nc_check(nf90_inquire_dimension(nc_file_ID, 4, nc_name, nc_size), &
-              'nc_read_cs_grid_file', 'inquire for '//trim(nc_name))
-
-if (nc_size == ncol .and. trim(nc_name) == 'ncol') then
-   allocate (corners(ncenters,ncorners),  &
-             num_nghbrs           (ncol), &
-             centers(max_neighbors,ncol), &
-             x_ax_bearings  (ncorners,ncenters), &
-             a            (3,ncorners,ncenters), &
-             b            (2,ncorners,ncenters)  )
-   ! Initialize the grid variables
-   num_nghbrs    = MISSING_I
-   centers       = MISSING_I
-   a             = MISSING_R8
-   b             = MISSING_R8
-   x_ax_bearings = MISSING_R8
-
-   if (allocated(centers) .and. my_task_id() == 0 .and. print_details) then
-      shp = shape(centers)
-      write(string1,*) 'Shape of centers = ',shp
-      call error_handler(E_MSG,'nc_read_cs_grid_file',string1,source,revision,revdate)
-   endif
-
-   if (allocated(corners) .and. my_task_id() == 0 .and. print_details) then
-      shp = shape(corners)
-      write(string1,*) 'Shape of corners = ',shp
-      call error_handler(E_MSG,'nc_read_cs_grid_file',string1,source,revision,revdate)
-   endif
-else
-   write(string1,*) trim(cs_grid_file),' ncol does not match ', trim(cam_template_filename)
+! Check value against the namelist/parameter value.
+if (local_ncol /= ncol) then
+   write(string1, *) trim(cs_grid_file),' ncol in cs_grid_file does not match the one in caminput.nc', &
+         local_ncol, ncol
    call error_handler(E_ERR,'nc_read_cs_grid_file',string1,source,revision,revdate)
 endif
 
-call nc_check(nf90_inq_varid(nc_file_ID, 'num_nghbrs', nc_var_ID), &
-                'nc_read_cs_grid_file', 'inq_varid num_nghbrs')
-call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, num_nghbrs ), &
-                'nc_read_cs_grid_file', 'get_var num_nghbrs')
+! Allocate space for all the cs geometry variables
+allocate (corners(ncenters, ncorners),  num_nghbrs(ncol), centers(max_neighbors, ncol), &
+             x_ax_bearings(ncorners, ncenters), a(3, ncorners, ncenters), b(2, ncorners, ncenters))
 
-call nc_check(nf90_inq_varid(nc_file_ID, 'centers', nc_var_ID), &
-                'nc_read_cs_grid_file', 'inq_varid centers')
-call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, centers ), &
-                'nc_read_cs_grid_file', 'get_var centers')
-
-call nc_check(nf90_inq_varid(nc_file_ID, 'corners', nc_var_ID), &
-                'nc_read_cs_grid_file', 'inq_varid corners')
-call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, corners, &
-                           start=(/ 1, 1 /),count=(/ ncenters, ncorners /) ), &
-                'nc_read_cs_grid_file', 'get_var corners')
-
-call nc_check(nf90_inq_varid(nc_file_ID, 'a', nc_var_ID), &
-                'nc_read_cs_grid_file', 'inq_varid a')
-call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, a ), &
-                'nc_read_cs_grid_file', 'get_var a')
-
-call nc_check(nf90_inq_varid(nc_file_ID, 'b', nc_var_ID), &
-                'nc_read_cs_grid_file', 'inq_varid b')
-call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, b ), &
-                'nc_read_cs_grid_file', 'get_var b')
-
-call nc_check(nf90_inq_varid(nc_file_ID, 'x_ax_bearings', nc_var_ID), &
-                'nc_read_cs_grid_file', 'inq_varid x_ax_bearings')
-call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, x_ax_bearings ), &
-                'nc_read_cs_grid_file', 'get_var x_ax_bearings')
-
-call nc_check(nf90_close(nc_file_ID), 'nc_read_cs_grid_file', 'closing '//trim(cs_grid_file))
+! Read in the values for these fields
+call nc_get_variable(nc_file_ID, 'corners', corners)
+call nc_get_variable(nc_file_ID, 'num_nghbrs', num_nghbrs)
+call nc_get_variable(nc_file_ID, 'centers', centers)
+call nc_get_variable(nc_file_ID, 'x_ax_bearings', x_ax_bearings)
+call nc_get_variable(nc_file_ID, 'a', a)
+call nc_get_variable(nc_file_ID, 'b', b)
+call nc_close_file(nc_file_ID, 'closing cs_grid_file')
 
 end subroutine nc_read_cs_grid_file
-
-
 
 !-----------------------------------------------------------------------
 
@@ -603,235 +534,75 @@ character(len=*), intent(in) :: cs_grid_file
 character(len=*), intent(in) :: homme_map_file
 
 integer :: nc_file_ID
-integer ::                               &
-        ncenters_ID,       centers_var_ID,  &
-        ncorners_ID,       corners_var_ID,  &
-               a_ID,             a_var_ID,  &
-               b_ID,             b_var_ID,  &
-            ncol_ID, x_ax_bearings_var_ID,  &
-   max_neighbors_ID,    num_nghbrs_var_ID
-
 
 ! Create the file
-call nc_check(nf90_create(path=trim(cs_grid_file), cmode=NF90_SHARE, ncid=nc_file_ID), &
-              'nc_write_cs_grid_file', 'create '//trim(cs_grid_file))
-
-write(string1,*) trim(cs_grid_file),' is nc_file_ID ',nc_file_ID
-call error_handler(E_MSG,'nc_write_cs_grid_file',string1,source,revision,revdate)
+nc_file_ID = nc_create_file(trim(cs_grid_file), 'creating cs_grid_file')
 
 ! Define the dimensions
-call nc_check(nf90_def_dim(ncid=nc_file_ID,                                          &
-              name="ncenters",      len = ncenters,      dimid = ncenters_ID), &
-              'nc_write_cs_grid_file', 'def_dim ncenters '//trim(cs_grid_file))
-call nc_check(nf90_def_dim(ncid=nc_file_ID,                                          &
-              name="ncorners",      len = ncorners,      dimid = ncorners_ID), &
-              'nc_write_cs_grid_file', 'def_dim ncorners '//trim(cs_grid_file))
-call nc_check(nf90_def_dim(ncid=nc_file_ID,                                  &
-              name="max_neighbors", len = max_neighbors, dimid = max_neighbors_ID), &
-              'nc_write_cs_grid_file', 'def_dim max_neighbors'//trim(cs_grid_file))
-call nc_check(nf90_def_dim(ncid=nc_file_ID,                                  &
-              name="ncol",          len = ncol,          dimid = ncol_ID), &
-              'nc_write_cs_grid_file', 'def_dim ncol '//trim(cs_grid_file))
-call nc_check(nf90_def_dim(ncid=nc_file_ID,                                  &
-              name="ncoef_a",          len = 3,          dimid = a_ID), &
-              'nc_write_cs_grid_file', 'def_dim a '//trim(cs_grid_file))
-call nc_check(nf90_def_dim(ncid=nc_file_ID,                                  &
-              name="ncoef_b",          len = 2,          dimid = b_ID), &
-              'nc_write_cs_grid_file', 'def_dim b '//trim(cs_grid_file))
+call nc_define_dimension(nc_file_ID, 'ncenters', ncenters)
+call nc_define_dimension(nc_file_ID, 'ncorners', ncorners)
+call nc_define_dimension(nc_file_ID, 'max_neighbors', max_neighbors)
+call nc_define_dimension(nc_file_ID, 'ncol', ncol)
+call nc_define_dimension(nc_file_ID, 'ncoef_a', 3)
+call nc_define_dimension(nc_file_ID, 'ncoef_b', 2)
 
 ! Write Global Attributes
-call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "title", trim(cs_grid_file)), &
-              'nc_write_cs_grid_file',   'put_att title '//trim(cs_grid_file))
-call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "model_mod_source", source ), &
-              'nc_write_cs_grid_file',   'put_att model_mod_source '//trim(cs_grid_file))
-call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "model_mod_revision", revision ), &
-              'nc_write_cs_grid_file',   'put_att model_mod_revision '//trim(cs_grid_file))
-call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "model_mod_revdate", revdate ), &
-              'nc_write_cs_grid_file',   'put_att model_mod_revdate '//trim(cs_grid_file))
-
-call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "elements_per_cube_edge", ne ), &
-              'nc_write_cs_grid_file',   'put_att elements_per_cube_edge '//trim(cs_grid_file))
-call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "nodes_per_element_edge", np ), &
-              'nc_write_cs_grid_file',   'put_att nodes_per_elements_edge '//trim(cs_grid_file))
-call nc_check(nf90_put_att(nc_file_ID, NF90_GLOBAL, "HommeMapping_file", homme_map_file ), &
-              'nc_write_cs_grid_file',   'put_att HommeMapping_file '//trim(cs_grid_file))
+call nc_add_global_attribute(nc_file_ID, 'title', trim(cs_grid_file))
+call nc_add_global_attribute(nc_file_ID, 'model_mod_source', source)
+call nc_add_global_attribute(nc_file_ID, 'model_mod_revision', revision)
+call nc_add_global_attribute(nc_file_ID, 'model_mod_revdate', revdate)
+call nc_add_global_attribute(nc_file_ID, 'elements_per_cube_edge', ne)
+call nc_add_global_attribute(nc_file_ID, 'nodes_per_element_edge', np)
+call nc_add_global_attribute(nc_file_ID, 'HommeMapping_file', homme_map_file)
 
 ! Create variables and attributes.
-call nc_check(nf90_def_var(ncid=nc_file_ID, name="num_nghbrs", xtype=nf90_int, &
-              dimids=(/ ncol_ID /), varid=num_nghbrs_var_ID),  &
-              'nc_write_cs_grid_file', 'def_var num_nghbrs')
-call nc_check(nf90_put_att(nc_file_ID, num_nghbrs_var_ID, "long_name", &
-              "number of neighbors of each node/column"), &
-              'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(nc_file_ID, num_nghbrs_var_ID, "units",     "nondimensional"), &
-              'nc_write_cs_grid_file', 'units')
-call nc_check(nf90_put_att(nc_file_ID, num_nghbrs_var_ID, "valid_range", &
-              (/ 1, max_neighbors /)), 'nc_write_cs_grid_file', 'put_att valid_range')
+call nc_define_integer_variable(nc_file_ID, 'num_nghbrs', 'ncol')
+call nc_add_attribute_to_variable(nc_file_ID, 'num_nghbrs', 'long_name', 'number of neighbors of each node/column')
+call nc_add_attribute_to_variable(nc_file_ID, 'num_nghbrs', 'units', 'nondimensional')
+call nc_add_attribute_to_variable(nc_file_ID, 'num_nghbrs', 'valid_range', (/1, max_neighbors/))
 
-call nc_check(nf90_def_var(ncid=nc_file_ID, name="centers", xtype=nf90_int, &
-              dimids=(/ max_neighbors_ID, ncol_ID /), varid=centers_var_ID),  &
-              'nc_write_cs_grid_file', 'def_var centers')
-call nc_check(nf90_put_att(nc_file_ID, centers_var_ID, "long_name", &
-              "cells which use node/column as a corner"), &
-              'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(nc_file_ID, centers_var_ID, "units",     "nondimensional"), &
-              'nc_write_cs_grid_file', 'units')
-call nc_check(nf90_put_att(nc_file_ID, centers_var_ID, "valid_range", &
-              (/ 1, ncenters /)), 'nc_write_cs_grid_file', 'put_att valid_range')
-call nc_check(nf90_put_att(nc_file_ID, centers_var_ID, "missing_value", &
-              (/ MISSING_I /)), 'nc_write_cs_grid_file', 'put_att missing_value')
+call nc_define_integer_variable(nc_file_ID, 'centers', (/'max_neighbors', 'ncol         '/))
+call nc_add_attribute_to_variable(nc_file_ID, 'centers', 'long_name', 'cells which use node/column as a corner')
+call nc_add_attribute_to_variable(nc_file_ID, 'centers', 'units', 'nondimensional')
+call nc_add_attribute_to_variable(nc_file_ID, 'centers', 'valid_range', (/1, ncenters/))
+call nc_add_attribute_to_variable(nc_file_ID, 'centers', 'missing_value', MISSING_I)
 
-call nc_check(nf90_def_var(ncid=nc_file_ID, name="corners", xtype=nf90_int, &
-              dimids=(/ ncenters_ID, ncorners_ID /), varid=corners_var_ID),  &
-              'nc_write_cs_grid_file', 'def_var corners')
-call nc_check(nf90_put_att(nc_file_ID, corners_var_ID, "long_name", &
-              "corners/nodes of each cell "), &
-              'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(nc_file_ID, corners_var_ID, "units",     "nondimensional"), &
-              'nc_write_cs_grid_file', 'units')
-call nc_check(nf90_put_att(nc_file_ID, corners_var_ID, "valid_range", &
-              (/ 1, ncol /)), 'nc_write_cs_grid_file', 'put_att valid_range')
-call nc_check(nf90_put_att(nc_file_ID, corners_var_ID, "missing_value", &
-              (/ MISSING_I /)), 'nc_write_cs_grid_file', 'put_att missing_value')
+call nc_define_integer_variable(nc_file_ID, 'corners', (/'ncenters', 'ncorners'/))
+call nc_add_attribute_to_variable(nc_file_ID, 'corners', 'long_name', 'corners/nodes of each cell')
+call nc_add_attribute_to_variable(nc_file_ID, 'corners', 'units', 'nondimensional')
+call nc_add_attribute_to_variable(nc_file_ID, 'corners', 'valid_range', (/1, ncol/))
+call nc_add_attribute_to_variable(nc_file_ID, 'corners', 'missing_value', MISSING_I)
 
-call nc_check(nf90_def_var(ncid=nc_file_ID, name="a", xtype=nf90_double, &
-              dimids=(/ a_ID, ncorners_ID, ncenters_ID /), varid=a_var_ID),  &
-              'nc_write_cs_grid_file', 'def_var a')
-call nc_check(nf90_put_att(nc_file_ID, a_var_ID, "long_name",  &
-              "Coefficients of mapping from planar x coord to unit square"), &
-              'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(nc_file_ID, a_var_ID, "units",     "nondimensional"), &
-              'nc_write_cs_grid_file', 'units')
-!call nc_check(nf90_put_att(nc_file_ID, a_var_ID, "valid_range", &
-!              (/ 1, ncol /)), 'nc_write_cs_grid_file', 'put_att valid_range')
-call nc_check(nf90_put_att(nc_file_ID, a_var_ID, "missing_value", &
-              (/ MISSING_R8 /)), 'nc_write_cs_grid_file', 'put_att missing_value')
+call nc_define_double_variable(nc_file_ID, 'a', (/'ncoef_a ', 'ncorners', 'ncenters'/))
+call nc_add_attribute_to_variable(nc_file_ID, 'a', 'long_name', &
+   'Coefficients of mapping from planar x coord to unit square')
+call nc_add_attribute_to_variable(nc_file_ID, 'a', 'units', 'nondimensional')
+call nc_add_attribute_to_variable(nc_file_ID, 'a', 'missing_value', MISSING_R8)
 
+call nc_define_double_variable(nc_file_ID, 'b', (/'ncoef_b ', 'ncorners', 'ncenters'/))
+call nc_add_attribute_to_variable(nc_file_ID, 'b', 'long_name', &
+   'Coefficients of mapping from planar y coord to unit square')
+call nc_add_attribute_to_variable(nc_file_ID, 'b', 'units', 'nondimensional')
+call nc_add_attribute_to_variable(nc_file_ID, 'b', 'missing_value', MISSING_R8)
 
-call nc_check(nf90_def_var(ncid=nc_file_ID, name="b", xtype=nf90_double, &
-              dimids=(/ b_ID, ncorners_ID, ncenters_ID /), varid=b_var_ID),  &
-              'nc_write_cs_grid_file', 'def_var b')
-call nc_check(nf90_put_att(nc_file_ID, b_var_ID, "long_name", &
-              "Coefficients of mapping from planar y coord to unit square"), &
-              'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(nc_file_ID, b_var_ID, "units",     "nondimensional"), &
-              'nc_write_cs_grid_file', 'units')
-!call nc_check(nf90_put_att(nc_file_ID, b_var_ID, "valid_range", &
-!              (/ 1, ncol /)), 'nc_write_cs_grid_file', 'put_att valid_range')
-call nc_check(nf90_put_att(nc_file_ID, b_var_ID, "missing_value", &
-              (/ MISSING_R8 /)), 'nc_write_cs_grid_file', 'put_att missing_value')
+call nc_define_double_variable(nc_file_ID, 'x_ax_bearings', (/'ncorners', 'ncenters'/))
+call nc_add_attribute_to_variable(nc_file_ID, 'x_ax_bearings', 'long_name', &
+   'bearing (clockwise from North) from origin node(corner 4) of each mapping to corner 3')
+call nc_add_attribute_to_variable(nc_file_ID, 'x_ax_bearings', 'units', 'radians')
+call nc_add_attribute_to_variable(nc_file_ID, 'x_ax_bearings', 'valid_range', (/-PI, PI/))
+call nc_add_attribute_to_variable(nc_file_ID, 'x_ax_bearings', 'missing_value', MISSING_R8)
 
-call nc_check(nf90_def_var(ncid=nc_file_ID, name="x_ax_bearings", xtype=nf90_double, &
-              dimids=(/ ncorners_ID, ncenters_ID /), varid=x_ax_bearings_var_ID),  &
-              'nc_write_cs_grid_file', 'def_var x_ax_bearings')
-call nc_check(nf90_put_att(nc_file_ID, x_ax_bearings_var_ID, "long_name", &
-              "bearing (clockwise from North) from origin node(corner 4) of each mapping to corner 3"), &
-              'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(nc_file_ID, x_ax_bearings_var_ID, "units",     "radians"), &
-              'nc_write_cs_grid_file', 'units')
-call nc_check(nf90_put_att(nc_file_ID, x_ax_bearings_var_ID, "valid_range", &
-              (/ -PI, PI /)), 'nc_write_cs_grid_file', 'put_att valid_range')
-call nc_check(nf90_put_att(nc_file_ID, x_ax_bearings_var_ID, "missing_value", &
-              (/ MISSING_R8 /)), 'nc_write_cs_grid_file', 'put_att missing_value')
-
-! Leave define mode so we can fill
-call nc_check(nf90_enddef(nc_file_ID), 'nc_write_cs_grid_file', 'enddef '//trim(cs_grid_file))
-
-! sync to disk, but leave open
-call nc_check(nf90_sync(nc_file_ID), 'nc_write_cs_grid_file', 'sync '//trim(cs_grid_file))
-
-! Fill the variables
-call nc_check(nf90_put_var(nc_file_ID, num_nghbrs_var_ID, num_nghbrs),  &
-              'nc_write_cs_grid_file ','put_var num_nghbrs ')
-call nc_check(nf90_put_var(nc_file_ID, centers_var_ID, centers),        &
-              'nc_write_cs_grid_file ','put_var centers ')
-call nc_check(nf90_put_var(nc_file_ID, corners_var_ID, corners),        &
-              'nc_write_cs_grid_file ','put_var centers ')
-call nc_check(nf90_put_var(nc_file_ID, a_var_ID, a),    &
-              'nc_write_cs_grid_file ','put_var a ')
-call nc_check(nf90_put_var(nc_file_ID, b_var_ID, b),    &
-              'nc_write_cs_grid_file ','put_var b ')
-call nc_check(nf90_put_var(nc_file_ID, x_ax_bearings_var_ID, x_ax_bearings),      &
-              'nc_write_cs_grid_file ','put_var x_ax_bearings ')
-
-call nc_check(nf90_close(nc_file_ID), 'nc_write_cs_grid_file', 'closing '//trim(cs_grid_file))
+! Fill 'em up
+call nc_end_define_mode(nc_file_ID)
+call nc_put_variable(nc_file_ID, 'num_nghbrs', num_nghbrs)
+call nc_put_variable(nc_file_ID, 'centers', centers)
+call nc_put_variable(nc_file_ID, 'corners', corners)
+call nc_put_variable(nc_file_ID, 'a', a)
+call nc_put_variable(nc_file_ID, 'b', b)
+call nc_put_variable(nc_file_ID, 'x_ax_bearings', x_ax_bearings)
+call nc_close_file(nc_file_ID)
 
 end subroutine nc_write_cs_grid_file
-
-
-!-----------------------------------------------------------------------
-
-subroutine read_cam_2Dint(file_name, cfield, field, num_dim1, num_dim2)
-
-! Read 2d integer field from, e.g., HommeMapping.nc
-
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-character(len=*),     intent(in)  :: file_name
-character(len=*),     intent(in)  :: cfield
-integer, allocatable, intent(out) :: field(:,:)
-integer,              intent(out) :: num_dim1     !The dimension(s) of cfield
-integer,              intent(out) :: num_dim2
-
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-integer :: nc_file_ID, nc_var_ID                     !NetCDF variables
-integer :: field_dim_IDs(2)                          !Array of dimension IDs for cfield
-character(len=NF90_MAX_NAME) :: name_dim1,name_dim2  !Names of dimensions of cfield
-
-field_dim_IDs = MISSING_I                  !Array of dimension IDs for cfield
-
-if (file_exist(file_name)) then
-   call nc_check(nf90_open(path=trim(file_name), mode=nf90_nowrite, ncid=nc_file_ID), &
-              'read_cam_2Dint', 'opening '//trim(file_name))
-   if (print_details .and. my_task_id() == 0) then
-      write(string1,*) 'file_name for ',cfield,' is ', trim(file_name)
-      call error_handler(E_MSG, 'read_cam_2Dint', string1,source,revision,revdate)
-   endif
-
-   ! get field id
-   call nc_check(nf90_inq_varid(nc_file_ID, trim(cfield), nc_var_ID), &
-              'read_cam_2Dint', 'inq_varid: '//cfield)
-
-   ! get dimension 'id's
-   call nc_check(nf90_inquire_variable(nc_file_ID, nc_var_ID, dimids=field_dim_IDs), &
-              'read_cam_2Dint', 'inquire_variable: '//cfield)
-
-   ! get dimension sizes
-   ! The first spatial dimension is always present.
-   call nc_check(nf90_inquire_dimension(nc_file_ID, field_dim_IDs(1), name_dim1, num_dim1 ), &
-                 'read_cam_2Dint', 'inquire_dimension: '//name_dim1)
-   if (field_dim_IDs(2) /= MISSING_I)  then
-      call nc_check(nf90_inquire_dimension(nc_file_ID, field_dim_IDs(2), name_dim2, num_dim2 ), &
-                    'read_cam_2Dint', 'inquire_dimension: '//name_dim2)
-   else
-      num_dim2 = 1
-      name_dim2 = 'no2ndDim'
-   endif
-
-   if (print_details .and. my_task_id() == 0) then
-      write(string1,*) cfield,' dimensions num_dim1, num_dim2 = ',num_dim1, num_dim2
-      call error_handler(E_MSG, 'read_cam_2Dint', string1,source,revision,revdate)
-   endif
-else
-   write(string1,'(3A)') 'Required file "',trim(file_name),'" is missing.'
-   call error_handler(E_ERR, 'read_cam_2Dint', string1, source, revision, revdate)
-endif
-
-! Allocate array, based on size of this variable on the file.
-allocate(field(num_dim1,num_dim2))
-
-if (field_dim_IDs(2) /= MISSING_I)  then
-   call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, field, start=(/ 1, 1 /), &
-                 count=(/ num_dim1, num_dim2 /)), 'read_cam_2Dint', trim(cfield))
-else
-   call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, field),  &
-                  'read_cam_2Dint', trim(cfield))
-endif
-
-call nc_check(nf90_close(nc_file_ID), 'read_cam_2Dint', 'closing '//trim(file_name))
-
-end subroutine read_cam_2Dint
 
 !-----------------------------------------------------------------------
 
@@ -848,6 +619,7 @@ subroutine create_cs_grid_arrays()
 integer  :: sh_corn(4), n(4)     ! Shifted corners to put closest at the origin.
 integer  :: col, nbr, c, cent            ! Indices for loops.
 integer  :: num_n, min_ind(1)
+integer :: nc_file_ID
 real(r8) :: dist, angle
 real(r8) :: bearings(3), x_planar(3), y_planar(3)
 
@@ -858,18 +630,24 @@ real(r8) :: bearings(3), x_planar(3), y_planar(3)
 
 ! Get array of corner nodes/columns which define the cells (identified by 'center').
 if (file_exist(homme_map_file)) then
-   call read_cam_2Dint(homme_map_file, 'element_corners', corners,ncenters,ncorners)
+   nc_file_ID = nc_open_file_readonly(homme_map_file)
+   ncorners = nc_get_dimension_size(nc_file_ID, 'ncorners')
+   ncenters = nc_get_dimension_size(nc_file_ID, 'ncenters')
 
    if (ncenters /= (ncol -2) ) then
       write(string1, *) trim(homme_map_file),' ncenters inconsistent with ncol-2 ', ncenters, ncol
       call error_handler(E_ERR,'create_cs_grid_arrays',string1,source,revision,revdate)
    endif
 
-      allocate(num_nghbrs           (ncol), &
-               centers(max_neighbors,ncol), &
-               a          (3,ncorners,ncenters),   &
-               b          (2,ncorners,ncenters),   &
-               x_ax_bearings(ncorners,ncenters))
+   ! Allocate array for the homme mapping file contents
+   allocate(corners(ncenters, ncorners))
+
+   ! Read it in
+   call nc_get_variable(nc_file_ID, 'element_corners', corners)
+   call nc_close_file(nc_file_ID)
+
+   allocate(num_nghbrs           (ncol), centers(max_neighbors,ncol),  a(3,ncorners,ncenters),   &
+               b(2,ncorners,ncenters),  x_ax_bearings(ncorners,ncenters))
 
    num_nghbrs    = 0
    centers       = MISSING_I
