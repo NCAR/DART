@@ -35,8 +35,7 @@ use         utilities_mod,  only : find_namelist_in_file, check_namelist_read, &
                                    string_to_logical, string_to_real,& 
                                    nmlfileunit, do_nml_file, do_nml_term, &
                                    register_module, error_handler, &
-                                   file_exist, to_upper, E_ERR, E_MSG, E_WARN, array_dump, &
-                                   find_enclosing_indices
+                                   file_exist, to_upper, E_ERR, E_MSG, E_WARN, array_dump
 use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_PRESSURE, &
                                    QTY_GEOMETRIC_HEIGHT, QTY_VERTLEVEL, &
                                    QTY_SURFACE_PRESSURE, &
@@ -475,7 +474,6 @@ end subroutine fill_gc
 
 !-----------------------------------------------------------------------
 
-!SENote: Check this once more
 subroutine nc_read_cs_grid_file()
 
 ! Read the number of neighbors, corners, centers, a and b coefficients, and x_ax_bearings
@@ -523,12 +521,10 @@ end subroutine nc_read_cs_grid_file
 
 !-----------------------------------------------------------------------
 
-! SENote should use new netcdf support rather than Classic for this
 subroutine nc_write_cs_grid_file(cs_grid_file, homme_map_file)
 
 ! Write out the number of neighbors, the neighbors, corners, centers, and bearings
 ! to a netCDF file once for this grid at the beginning of the assimilation.
-! Called by static_init_model.
 
 character(len=*), intent(in) :: cs_grid_file
 character(len=*), intent(in) :: homme_map_file
@@ -901,7 +897,7 @@ if (present(var_type)) var_type = myqty
 end subroutine get_state_meta_data
 
 !-----------------------------------------------------------------------
-!> given the (column, level) indices into a field in the state vector,
+!> given the column and level in the state vector,
 !> and the quantity, and the dimensionality of the field (1d, 2d),
 !> compute the location of that item.  
 
@@ -1245,7 +1241,7 @@ real(r8),             intent(out) :: m_weight
 ! Output from loc_get_close_obs
 integer  :: num_close
 
-! SENote: Need to radically reduce the memory usage for these for standard configurations. 
+! SENote: Need to reduce the memory usage for these for standard configurations. Classic notes follow:
 ! It would be nice if these could be smaller, but I don't know what number would work.
 ! It has to be large enough to accommodate all of the grid points that might lie
 ! within 2xcutoff; resolution and location dependent.
@@ -1253,7 +1249,6 @@ integer  :: num_close
 integer, allocatable  :: close_ind(:)
 real(r8), allocatable :: dist(:)
 
-! Local Variables
 ! dist_# in radians (Can't be initialized here or they will get the 'save' property,
 ! and will not be reset during subsequent entries to this subroutine.)
 real(r8) :: dist_1, dist_2
@@ -1607,6 +1602,7 @@ endif
 
 ! Informational output, if the observation is exactly on the m-axis
 !SENote: Why does this message get printed a billion times in CLASSIC?
+! Doesn't seem to ever happen now
 if (l == 0.0_r8 .and. my_task_id() == 0) then
    write(string1,'(A,I6,1X,1p4E12.4)') 'Ob is on x-axis: l-cell, x_o - a(2)*m = ',cell, x_o ,a(2,origin,cell),m
    call error_handler(E_MSG, 'unit_square_location', string1,source,revision,revdate)
@@ -1661,6 +1657,7 @@ end subroutine unit_square_location
 !-----------------------------------------------------------------------
 
 subroutine solve_quadratic(a, b, c, r1, r2)
+!SENote: This is similar to the version in adaptive_inflation. Should put in utilities.
 
 real(r8), intent(in)  :: a
 real(r8), intent(in)  :: b
@@ -2288,7 +2285,6 @@ end subroutine cam_se_height_levels
 !>
 !>
 
-!SENote: Can't this go in shared module?
 
 function shortest_time_between_assimilations()
 
