@@ -2042,20 +2042,18 @@ type(ensemble_type), intent(inout) :: ens_handle
 integer               :: i
 logical               :: interf_provided ! model does the perturbing
 logical, allocatable  :: miss_me(:)
-integer               :: domain_length
-
+integer               :: domain_length ! the number of elements ON THIS TASK
 
 ! Copy from ensemble member 1 to the other copies
 do i = 1, ens_handle%my_num_vars
    ens_handle%copies(2:ens_size, i) = ens_handle%copies(1, i)  ! How slow is this?
 enddo
 
-domain_length = size(ens_handle%copies,2)
-
 ! If the state allows missing values, we have to record their locations
 ! and restore them in all the new perturbed copies.
 
 if (get_missing_ok_status()) then
+   domain_length = size(ens_handle%copies,2)
    allocate(miss_me(domain_length))
    miss_me = .false.
    where(ens_handle%copies(1, :) == missing_r8) miss_me = .true.
