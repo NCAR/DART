@@ -23,21 +23,19 @@ use   netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_get_
 implicit none
 private
 
+public :: scale_height
+public :: free_std_atm_tables
+public :: is_surface_field, init_globals
+public :: ref_nlevels, cam_grid, grid_data, are_damping
+public :: ramp_end, discarding_high_obs
+public :: vertical_localization_type, above_ramp_start
+public :: pressure_to_level, cuse_log_vertical_scale
+public :: cno_normalization_of_scale_heights, init_sign_of_vert_units
+public :: init_damping_ramp_info, init_discard_high_obs, build_cam_pressure_columns
+public :: height_to_level, check_good_levels, generic_height_to_pressure
+public :: gph2gmh, build_heights, set_vert_localization, ok_to_interpolate, obs_too_high
+public :: cdebug_level, get_cam_grid, free_cam_grid
 
-
-
-public :: scale_height, HIGH_TOP_TABLE, LOW_TOP_TABLE, std_atm_table_len, std_atm_hgt_col, std_atm_pres_col
-public :: load_low_top_table, load_high_top_table, store_std_atm_tables, free_std_atm_tables
-public :: high_top_threshold, is_surface_field, init_globals, ref_model_top_pressure, ref_surface_pressure
-public :: ref_nlevels, cam_1d_array, cam_grid, grid_data, are_damping
-public :: ramp_end, discarding_high_obs, no_assim_above_height, no_assim_above_level, no_assim_above_pressure
-public :: vertical_localization_type, above_ramp_start, v_above, v_down, v_difference, higher_is_smaller
-public :: pressure_to_level, cuse_log_vertical_scale, generic_pressure_to_height, single_pressure_value
-public :: convert_vertical_level_generic, cno_normalization_of_scale_heights, init_sign_of_vert_units
-public :: init_damping_ramp_info, init_discard_high_obs, single_pressure_column, build_cam_pressure_columns
-public :: height_to_level, check_good_levels, generic_cam_pressure_to_cam_level, generic_height_to_pressure
-public :: compute_surface_gravity, gph2gmh, build_heights, set_vert_localization, ok_to_interpolate, obs_too_high
-public :: cdebug_level, get_cam_grid, free_cam_1d_array, free_cam_grid
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = "$URL$"
