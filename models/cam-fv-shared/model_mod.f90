@@ -85,22 +85,20 @@ use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
                                    init_time => fail_init_time,    &
                                    init_conditions => fail_init_conditions
 
-use    cam_common_code_mod, only : scale_height, HIGH_TOP_TABLE, LOW_TOP_TABLE, std_atm_table_len, &
-                                   std_atm_hgt_col, std_atm_pres_col, load_low_top_table, &
-                                   load_high_top_table, store_std_atm_tables, free_std_atm_tables, &
-                                   high_top_threshold, is_surface_field, init_globals, ref_model_top_pressure, &
-                                   ref_surface_pressure, ref_nlevels, cam_1d_array, cam_grid, grid_data, &
-                                   are_damping, ramp_end, discarding_high_obs, no_assim_above_height, &
-                                   no_assim_above_level, no_assim_above_pressure, vertical_localization_type, &
-                                   above_ramp_start, v_above, v_down, v_difference, higher_is_smaller, &
-                                   pressure_to_level, cuse_log_vertical_scale, generic_pressure_to_height, &
-                                   single_pressure_value, convert_vertical_level_generic, &
+use    cam_common_code_mod, only : scale_height, &
+                                   free_std_atm_tables, &
+                                   is_surface_field, init_globals, &
+                                   ref_nlevels, cam_grid, grid_data, &
+                                   are_damping, ramp_end, discarding_high_obs, &
+                                   vertical_localization_type, &
+                                   above_ramp_start, &
+                                   pressure_to_level, cuse_log_vertical_scale, &
                                    cno_normalization_of_scale_heights, init_sign_of_vert_units, &
-                                   init_damping_ramp_info, init_discard_high_obs, single_pressure_column, &
+                                   init_damping_ramp_info, init_discard_high_obs, &
                                    build_cam_pressure_columns, height_to_level, check_good_levels, &
-                                   generic_cam_pressure_to_cam_level, compute_surface_gravity, gph2gmh, &
+                                   gph2gmh, &
                                    build_heights, set_vert_localization, ok_to_interpolate, obs_too_high, &
-                                   cdebug_level, get_cam_grid, free_cam_1d_array, free_cam_grid
+                                   cdebug_level, get_cam_grid, free_cam_grid
 
 implicit none
 private
