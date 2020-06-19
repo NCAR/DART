@@ -1169,7 +1169,7 @@ if(is_vertical(location, "SURFACE").and. sfc_elev_max_diff >= 0) then
       else
          istatus = 12
          if (debug > 10 .and. do_output()) &
-         print*, 'model_interpolate: abs(dz) > sfc_elev_max_diff:', llv(3)-zGridFace(1,cellid)
+         print*, 'model_interpolate: Skip due to abs(dz) > sfc_elev_max_diff:', llv(3)-zGridFace(1,cellid)
          goto 100
       endif
    endif
@@ -1274,7 +1274,7 @@ if ((obs_kind == QTY_U_WIND_COMPONENT .or. &
       ! return V
       call compute_u_with_rbf(state_handle, ens_size, location, .FALSE., expected_obs, istatus)
    endif
-   if (debug > 11 .and. do_output()) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus, expected_obs
+   if (debug > 11 .and. do_output()) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus(1), expected_obs(1)
    if (all(istatus /= 0)) goto 100   ! if everyone has failed, we can exit
 
 else if (obs_kind == QTY_TEMPERATURE) then
@@ -1291,13 +1291,13 @@ else if (obs_kind == QTY_TEMPERATURE) then
    expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus(:))
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: TEMPERATURE ', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: TEMPERATURE ', istatus(1), expected_obs(1), trim(locstring)
 
 else if (obs_kind == QTY_PRESSURE) then
    call  compute_pressure_at_loc(state_handle, ens_size, location, expected_obs, istatus)
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: PRESSURE ', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: PRESSURE ', istatus(1), expected_obs(1), trim(locstring)
 
 else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
    location_tmp = location
@@ -1319,7 +1319,7 @@ else if (obs_kind == QTY_VAPOR_MIXING_RATIO .or. obs_kind == QTY_2M_VAPOR_MIXING
    enddo
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus(1), expected_obs(1), trim(locstring)
 
 else if (obs_kind == QTY_SPECIFIC_HUMIDITY .or. obs_kind == QTY_2M_SPECIFIC_HUMIDITY) then
    if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
@@ -1343,7 +1343,7 @@ else if (obs_kind == QTY_SPECIFIC_HUMIDITY .or. obs_kind == QTY_2M_SPECIFIC_HUMI
    enddo
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: SH/SH2 ', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: SH/SH2 ', istatus(1), expected_obs(1), trim(locstring)
 
 else if (obs_kind == QTY_SURFACE_ELEVATION) then
 
@@ -1352,7 +1352,7 @@ else if (obs_kind == QTY_SURFACE_ELEVATION) then
    istatus(2:ens_size) = istatus(1)
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: SURFACE_ELEVATION', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: SURFACE_ELEVATION', istatus(1), expected_obs(1), trim(locstring)
 
 else
    ! all other kinds come here.
@@ -1363,7 +1363,8 @@ else
    expected_obs = values(1, :)
 
    if (debug > 11 .and. do_output()) then
-       print*, 'generic interpolation in compute_scalar_with_barycentric: ', obs_kind
+       print*, 'generic interpolation in compute_scalar_with_barycentric: ', obs_kind, &
+               trim(get_name_for_quantity(obs_kind))
        do e = 1, ens_size
           print*, 'member ',e, ' istatus(e)=',istatus(e), ', expected_obs(e)=', expected_obs(e)
        enddo
@@ -1409,7 +1410,7 @@ do e = 1, ens_size
       call error_handler(E_ERR,'model_interpolate', string1, source,revision,revdate)
    endif
 
-   if (debug > 11 .and. do_output()) then
+   if (debug > 12 .and. do_output()) then
       write(string2,*) 'Completed for member ',e,' obs_kind', obs_kind,' expected_obs = ', expected_obs(e)
       write(string3,*) 'istatus = ', istatus(e), ' at ', trim(locstring)
       call error_handler(E_MSG, 'model_interpolate', string2, source, revision, revdate, text2=string3)
@@ -4322,7 +4323,7 @@ endif
 
 if(debug > 10 .and. do_output()) then
    print *, 'compute_pressure_at_loc: base location ',llv(1:3)
-   print *, 'compute_pressure_at_loc: istatus, pressure ', istatus, ploc
+   print *, 'compute_pressure_at_loc: istatus, pressure ', istatus(1), ploc(1)
 endif
 
 end subroutine compute_pressure_at_loc
@@ -5336,7 +5337,7 @@ integer,     intent(out) :: lower(:), upper(:) ! ens_size
 real(r8),    intent(out) :: fract(:) ! ens_size
 integer,     intent(out) :: ier(:) ! ens_size
 
-integer  :: i, ier2
+integer  :: i, ier2, ifound
 real(r8) :: pr
 real(r8) :: pressure(nbounds, ens_size)
 integer  ::  e
@@ -5356,61 +5357,82 @@ ier = 0
 ! Find the lowest pressure
 call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, 1, nbounds, pressure(1, :), temp_ier)
-if(debug > 11 .and. do_output()) print *, 'find_pressure_bounds: find the lowest p, ier at k=1 ', pressure(1,:), ier
+if(debug > 10 .and. do_output()) &
+   print *, 'find_pressure_bounds k=1: p, temp_ier, ier', 1, pressure(1,:), temp_ier, ier
 
 where(ier(:) == 0) ier(:) = temp_ier(:)
 
 ! Get the highest pressure level
 call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, nbounds, nbounds, pressure(nbounds, :), temp_ier)
-if(debug > 11 .and. do_output()) print *, 'find_pressure_bounds: find the highest p, ier at k= ', nbounds, pressure(nbounds,:), ier
+if(debug > 10 .and. do_output()) &
+   print *, 'find_pressure_bounds k=N: p, temp_ier, ier', nbounds, pressure(nbounds,:), temp_ier, ier
 
 where(ier(:) == 0) ier(:) = temp_ier(:)
 
 ! Check for out of the column range
-where(p(:) > pressure(      1, :)) ier(:) = 80
 where(p(:) < pressure(nbounds, :)) ier(:) = 81
-
-if(all(ier /= 0)) return
+!where(p(:) > pressure(      1, :)) ier(:) = 80
 
 ! Loop through the rest of the column from the bottom up
 found_level(:) = .false.
 
-do i = 2, nbounds
+ifound = 0
+do e = 1, ens_size
+   if(p(e) >= pressure(1, e)) then
+      found_level(e) = .true.
+            fract(e) = 0.0_r8
+            lower(e) = 1
+            upper(e) = 1
+      ifound = ifound + 1
+   endif
+enddo !e = 1, ens_size
+
+if(ifound > 0) return
+if(all(ier /= 0)) return
+
+! Loop through the rest of the column from the bottom up
+LEVELLOOP : do i = 2, nbounds
    ! we've already done this call for level == nbounds
    if (i /= nbounds) then
       call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
          qv_base_offset, cellid, i, nbounds, pressure(i, :), temp_ier)
-      if(debug > 11 .and. do_output()) print *, 'find_pressure_bounds: find p, ier at k= ', i, pressure(i,:), ier
+      if(debug > 11 .and. do_output()) &
+         print *, 'find_pressure_bounds k=?: p, temp_ier, ier ', i, pressure(i,:), temp_ier, ier
 
       where (ier(:) == 0) ier(:) = temp_ier(:)
    endif
    
-   ! Check if pressure at lower level is larger than at upper level
-   ! (shouldn't happen).
+   ! Check if hydrostatic pressure at level is larger than pressure at lower level
+   ! (happens VERY RARELY, but it happens).
    if(any(pressure(i, :) > pressure(i-1, :))) then
+
       if (debug > 0 .and. do_output()) then
          write(*, *) 'lower pressure larger than upper pressure at cellid',  cellid
          do e=1, ens_size
-            write(*, *) 'ens#, level nums, pressures: ', e,i-1,i,pressure(i-1,e),pressure(i,e)
+            write(*, '(A,3I4,F9.2,A,F9.2)') &
+               'ens#, i, i-1, p(i), p(i-1) ', e,i,i-1,pressure(i,e),' ?>? ',pressure(i-1,e)
          enddo
       endif
-      where(pressure(i, :) > pressure(i-1, :)) ier(:) = 988
+
+!     This was causing an instability at any level above the lowest level to
+!     reject the entire column. That was deemed to be too extreme.
+!     where(pressure(i, :) > pressure(i-1, :)) ier(:) = 988
    endif
 
    ! each ensemble member could have a vertical between different levels,
    ! and more likely a different fract across a level.
-   do e = 1, ens_size
+   ENSEMBLELOOP : do e = 1, ens_size
 
       ! if we've already run into an error, or we've already found the
       ! level for this ensemble member, skip the rest of this loop.
-      if (ier(e) /= 0) cycle
-      if (found_level(e)) cycle
+      if (ier(e) /= 0)    cycle ENSEMBLELOOP
+      if (found_level(e)) cycle ENSEMBLELOOP
 
       ! Is pressure between levels i-1 and i?  
       ! if so, set the lower and upper level numbers and fraction across.
       ! fraction is 0 at level (i-1) and 1 at level(i).
-      if(p(e) > pressure(i, e)) then
+      if(p(e) >= pressure(i, e) .and. p(e) <= pressure(i-1, e)) then
          found_level(e) = .true.
          lower(e) = i - 1
          upper(e) = i
@@ -5423,13 +5445,13 @@ do i = 2, nbounds
             fract(e) = (p(e) - pressure(i-1,e)) / (pressure(i,e) - pressure(i-1,e))
          endif
 
-         if ((debug > 9) .and. do_output()) print '(A,3F26.18,2I4,F22.18)', &
+         if ((debug > 9) .and. do_output()) print '(A,3F10.2,2I4,F10.2)', &
             "find_pressure_bounds: p_in, pr(i-1), pr(i), lower, upper, fract = ", &
             p(e), pressure(i-1,e), pressure(i,e), lower(e), upper(e), fract(e)
 
       endif
-   enddo
-enddo
+   enddo ENSEMBLELOOP
+enddo LEVELLOOP
 
 end subroutine find_pressure_bounds
 
@@ -5879,7 +5901,7 @@ fract = 0.0_r8
 call find_vert_level(state_handle, ens_size, loc, nc, c, .true., lower, upper, fract, ier)
 
 if (debug > 10 .and. do_output()) then
-   write(string3,*) 'ier = ',ier (1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
+   write(string3,'(A,I5,A,3I10,A,3F7.2)') 'ier = ',ier(1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
    call error_handler(E_MSG, 'find_vert_indices', string3, source, revision, revdate)
 endif
 
