@@ -1821,7 +1821,7 @@ if (numdims == 2) then
                                 four_levs1, four_levs2, four_vert_fracts, &   
                                 varid, quad_vals, my_status)
 
-   else ! get 1d special variables in another ways ( like QTY_PRESSURE )
+   else ! get 2d special variables in another ways ( like QTY_PRESSURE )
       call get_se_four_nonstate_values(state_handle, ens_size, corners, &
                                    four_levs1, four_levs2, four_vert_fracts, & 
                                    obs_qty, quad_vals, my_status)
@@ -1888,6 +1888,9 @@ real(r8) :: vals1(ens_size), vals2(ens_size)
 
 character(len=*), parameter :: routine = 'get_se_four_state_values:'
 
+
+! SENote This is inefficient since get_se_values_from_varid is messy. Once we know the lower level for an ensmble
+! member, we know the level above and could minimize the work.
 do icorner=1, 4
    call get_se_values_from_varid(state_handle,  ens_size, four_corners(icorner), &
       four_levs1(icorner, :), varid, vals1, my_status)
@@ -1904,6 +1907,8 @@ do icorner=1, 4
       return
    endif
 
+   !SENote: this is more general. The vertical interpolation is linear in level, but this may be biased for 
+   !doing interpolation in height, scale_height, or pressure. Is it worth thinking about this?
    call vert_interp(ens_size, vals1, vals2, four_vert_fracts(icorner, :), & 
                     quad_vals(icorner, :))
 
@@ -1993,7 +1998,7 @@ end function get_dims_from_qty
 
 !-----------------------------------------------------------------------
 !>
-!>  This is for 2d special observations quantities not in the state
+!>  This is for 1d special observations quantities not in the state
 
 ! For now this can onlu get surface elevation (phis)
 
@@ -2967,6 +2972,9 @@ integer :: current_vert_type, ens_size, i
 
 ens_size = 1
 
+!SENote: A general note. If many states in the same column are being converted this is a remarkably 
+!inefficient way to do it.
+
 do i=1,num
    current_vert_type = nint(query_location(locs(i)))
 
@@ -3439,6 +3447,8 @@ integer,             intent(out)   :: status1
 
 type(location_type) :: base_loc(1)
 integer :: base_qty(1), base_type(1), status(1)
+
+! SENote: Only reason this is needed is to do the conversaion from a scalar to a 1-element array. Annoying.
 
 ! these need to be arrays.  kinda a pain.
 base_loc(1) = loc

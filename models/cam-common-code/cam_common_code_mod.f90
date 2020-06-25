@@ -267,7 +267,7 @@ grid_array%nsize = 1
 allocate(grid_array%vals(grid_array%nsize))
 
 ! SENote: Need to check to see if this variable exists
-! If it does not exist, and it is PO, then set it to 10000 for now
+! If it does not exist, and it is PO, then set it to 100000 for now
 if(varname == 'P0') then
    ! See if PO exists in the netcdf file
    if(.not. nc_variable_exists(ncid, 'PO')) then
@@ -480,7 +480,8 @@ endif
 call single_pressure_column(p_surf, nlevels, pm_ln)
 
 pm_ln(nlevels+1) = p_surf * grid_data%hybi%vals(nlevels+1)   ! surface interface
- 
+
+!SENote: This is the most horrid coding one could ever imagine. pm_ln was p, now it's pm_ln. 
 where (pm_ln >  0.0_r8)
    pm_ln = log(pm_ln)
 else where (pm_ln <= 0.0_r8)
@@ -692,6 +693,9 @@ end function generic_height_to_pressure
 
 
 !--------------------------------------------------------------------
+!SENote: This does not appear to be used at this point. 
+!SENote: This means that we don't need to use P0 at all?
+
 !> using the cam eta arrays, convert a pressure directly to model level
 !> use P0 as surface, ignore elevation.
 !> This is not currently being used but might be useful.
@@ -812,10 +816,7 @@ integer :: j, k
 ! cam model levels: 1 is the model top, N is the bottom.
 
 do j=1, ens_size
-   do k=1,n_levels
-      pressure_array(k, j) = ref_surface_pressure    * grid_data%hyam%vals(k) + &
-                                 surface_pressure(j) * grid_data%hybm%vals(k)
-   enddo
+   call single_pressure_column(surface_pressure(j), n_levels, pressure_array(:, j))
 enddo
 
 end subroutine build_cam_pressure_columns
@@ -839,8 +840,7 @@ integer :: k
 ! cam model levels: 1 is the model top, N is the bottom.
 
 do k=1, n_levels
-   pressure_array(k) = ref_surface_pressure * grid_data%hyam%vals(k) + &
-                           surface_pressure * grid_data%hybm%vals(k)
+   pressure_array(k) = single_pressure_value_int(surface_pressure, k)
 enddo
 
 end subroutine single_pressure_column
