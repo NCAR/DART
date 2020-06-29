@@ -955,6 +955,7 @@ end function get_location_from_index
 !> gets a single vertical location - if you need to get values which might 
 !> have different vertical locations in different ensemble members
 !> see get_se_values_from_varid() below.
+!> Returns a 0 for OK, returns 12 for my_status for unable to find.
 
 subroutine get_se_values_from_single_level(ens_handle, ens_size, qty, column, level, &
                                         vals, my_status)
@@ -1125,23 +1126,13 @@ end subroutine get_se_values_from_nonstate_fields
 !>
 ! Many of these error status returns cannot actually happen. Need to verify these.
 !> istatus = 2    asked to interpolate an unknown/unsupported quantity
-!> istatus = 3    NOT USED: cannot locate horizontal quad
-!> istatus = 4    NOT USED: cannot locate enclosing vertical levels
-!> istatus = 5    NOT USED: cannot retrieve state vector values
-!> istatus = 6    NOT USED: cannot get values at quad corners
-!> istatus = 7    unused (error code available)
-!> istatus = 8    cannot interpolate in the quad to get the values
-!> istatus = 9    unused (error code available)
-!> istatus = 10   cannot get vertical levels for an obs on pressure levels
-!> istatus = 11   cannot get vertical levels for an obs on height levels
+!> istatus = 8    cannot interpolate level, out of range
+!> istatus = 10   cannot interpolate in pressure
+!> istatus = 11   cannot interpolate in height
 !> istatus = 12   cannot get values from obs quantity
-!> istatus = 13   NOT USED: can not interpolate values of this quantity
 !> istatus = 14   obs above user-defined assimilation top pressure
-!> istatus = 15   NOT USED: can not get indices from given state vector index
 !> istatus = 16   cannot do vertical interpolation for bottom layer
 !> istatus = 17   cannot do vertical interpolation for top layer
-!> istatus = 98   unknown error - shouldn't happen
-!> istatus = 99   unknown error - shouldn't happen
 !>
 
 subroutine model_interpolate(state_handle, ens_size, location, obs_qty, interp_vals, istatus)
@@ -1168,7 +1159,7 @@ if ( .not. module_initialized ) call static_init_model
 interp_vals(:) = MISSING_R8
 istatus(:)     = 99
 
-! do we know how to interpolate this quantity?
+! do we know how to interpolate this quantity? Returns status1 = 0 if OK, status1 = 2 if not OK.
 call ok_to_interpolate(obs_qty, varid, domain_id, status1)
 
 if (status1 /= 0) then  
@@ -1186,6 +1177,7 @@ which_vert   = nint(query_location(location))
 
 ! if we are avoiding assimilating obs above a given pressure, test here and return.
 if (discarding_high_obs) then
+   ! Returns status1 = 0 if OK, status1 = 14 if too high.
    call obs_too_high(lon_lat_vert(3), which_vert, status1)
    if (status1 /= 0) then
       istatus(:) = status1
@@ -1205,6 +1197,9 @@ call coord_ind_cs(location_copy, obs_qty, cell_corners, l_weight, m_weight)
 ! Now do vertical conversions and get the vertical index for each ensemble member
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
+
+if (any(istatus /= 0)) return
+
 
 ! Then interpolate horizontally to the (lon,lat) of the ob.
 ! The following uses Jeff's recommended 'generalized quadrilateral interpolation', as in
@@ -1775,6 +1770,12 @@ end subroutine interpolate_se_values
 
 !-----------------------------------------------------------------------
 !>
+!> Finds the values at the quad corners for each ensemble member
+!>  Returns all ensemble size my_status as 12 if can't find values.
+!> Returns 10 for any ensemble member that cannot be interpolated in presure.
+!> Returns 11 for any ensemble member that cannot be interpolated in height.
+!> Returns 8 for all ensemble members if level is out of range.
+!> Returns for all ensemble members 16 for unable to find lower values, 17 for unable to find upper values.
 
 subroutine get_se_quad_vals(state_handle, ens_size, varid, obs_qty, corners, &
                          lon_lat_vert, which_vert, quad_vals, my_status)
@@ -1813,7 +1814,10 @@ if (numdims == 2) then
                                 which_vert, four_levs1(icorner, :), four_levs2(icorner, :), & 
                                 four_vert_fracts(icorner, :), my_status)
 
-      if (any(my_status /= 0)) return
+      if (any(my_status /= 0)) then
+         my_status = 12
+         return
+      endif
    enddo
    
    ! we have all the indices and fractions we could ever want.
@@ -2059,9 +2063,10 @@ end subroutine vert_interp
 !> given a column index number, a quantity and a vertical value and type,
 !> return which two levels these are between and the fraction across.
 !> 
-! my_status is 0 for success, 12 if values cannot be found, 10 for failed vertical
-! search for case VERTISPRESSURE, 11 for failed vertical search for VERTISHEIGHT,
-! and 8 for out of range level for VERTISLEVEL
+! my_status is 0 for success, 12 for all ensemble members if values cannot be found, 
+! 10 for any ensemble member that cannot be interpolated in pressure.
+! 11 for any ensemble member that cannot be interpolated in height.
+! 8 for all ensemble members if cannot be interpolated in level.
 
 subroutine find_se_vertical_levels(ens_handle, ens_size, column, vert_val, &
                                 which_vert, levs1, levs2, vert_fracts, my_status)
@@ -2101,6 +2106,7 @@ select case (which_vert)
       call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, column, level_one, &
          surf_pressure, status1)
 
+      ! Returns all my_status members as 12 if unable to find the value
       if (status1 /= 0) then
          my_status(:) = status1
          return
@@ -2109,6 +2115,7 @@ select case (which_vert)
       if(DRY_MASS_VERTICAL_COORDINATE) then
          call build_dry_mass_pressure_columns(ens_handle, ens_size, ref_nlevels, column, surf_pressure, &
             pressure_array, status1)
+      !CHECK THAT STATUS FOR CONSISTENCY
       else
          call build_cam_pressure_columns(ens_size, surf_pressure, ref_nlevels, pressure_array)
       endif
@@ -2117,6 +2124,7 @@ select case (which_vert)
 
 
       do imember = 1, ens_size
+         ! Returns my_status 10 if unable to interpolate in this column
          call pressure_to_level(ref_nlevels, pressure_array(:, imember), vert_val, & 
                                 levs1(imember), levs2(imember), vert_fracts(imember), my_status(imember))
       enddo
@@ -2131,6 +2139,7 @@ select case (which_vert)
 
    case(VERTISHEIGHT)
       ! construct a height column here and find the model levels that enclose this value
+      ! All my_status are returned as 12 if a failure
       call cam_se_height_levels(ens_handle, ens_size, column, ref_nlevels, &
                              height_array, my_status)
 
@@ -2144,13 +2153,11 @@ select case (which_vert)
       endif
 
       do imember=1, ens_size
+         ! Returns 11 if unable to interpolate in this column
          call height_to_level(ref_nlevels, height_array(:, imember), vert_val, & 
                              levs1(imember), levs2(imember), vert_fracts(imember), &
                              my_status(imember))
       enddo
-
-      !>@todo FIXME let successful members continue?
-      if (any(my_status /= 0)) return
 
       if (debug_level > 100) then
          do k = 1,ens_size
@@ -2158,6 +2165,8 @@ select case (which_vert)
                      k, levs1(k), levs2(k), vert_fracts(k), height_array(levs2(k),k), height_array(levs1(k), k)
          enddo
       endif
+
+      !>@todo FIXME let successful members continue?
       
    case(VERTISLEVEL)
       ! this routine returns false if the level number is out of range.
@@ -2286,6 +2295,7 @@ end subroutine build_dry_mass_pressure_columns
 !> Compute the heights at pressure midpoints
 !>
 !> this version does all ensemble members at once.
+!> Returns my_status 12 for all members if unable to compute levels.
 
 subroutine cam_se_height_levels(ens_handle, ens_size, column, nlevels, height_array, my_status) 
 type(ensemble_type), intent(in)  :: ens_handle
@@ -2303,13 +2313,18 @@ real(r8) :: tv(nlevels, ens_size)  ! Virtual temperature, top to bottom
 ! this is for surface obs
 level_one = 1
 
-! Get the surface pressure at this column
+! Get the surface pressure at this column; Returns status1 12 if value cannot be found
 call get_se_values_from_single_level(ens_handle, ens_size, QTY_SURFACE_PRESSURE, column, level_one, &
    surface_pressure, status1)
+if(status1 /= 0) then 
+   my_status = status1
+   return
+endif
 
 ! get the surface elevation from the phis
 call get_se_quad_values(1, column, QTY_SURFACE_ELEVATION, surface_elevation)
 
+! Returns status1 12 if unsuccessful in getting needed quantities
 call compute_se_virtual_temperature(ens_handle, ens_size, column, nlevels, tv, status1)
 
 if (status1 /= 0) then
@@ -2984,6 +2999,9 @@ character(len=*), parameter :: routine = 'compute_se_mean_mass'
 !SENote: This subroutine has not been tested yet for SE. Need to work with WACCM folks to test.
 call error_handler(E_ERR, routine, 'Subroutine has not been tested', source, revision, revdate)
 
+! Default is successful return
+istatus = 0
+
 ! do this outside the subroutine?  it never changes throughout the
 ! run of the program
 !SENote: could do an initialization with save storage
@@ -3045,6 +3063,7 @@ end subroutine compute_se_mean_mass
 !>  in:    loc_indx(:) - location index
 !>  in:    which_vert  - vertical location to convert
 !>  out:   istatus     - return status 0 is a successful conversion
+!> At present there is no way for this routine to fail.
 !>
 
 subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
@@ -3284,6 +3303,9 @@ my_status(:) = 0
 end subroutine cam_se_pressure_levels
 
 !--------------------------------------------------------------------
+!> Does an conversion to localization vertical coordinate for a set of obs
+!> Returns my_status 2 in not able to interp this quantity, 3 if get_se_quad_vals fails.
+
 subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, my_status)
 

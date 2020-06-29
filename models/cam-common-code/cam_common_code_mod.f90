@@ -756,6 +756,8 @@ integer,  intent(out) :: my_status
 
 character(len=*), parameter :: routine = 'height_to_level:'
 
+my_status = 0
+
 call find_enclosing_indices(nlevels, heights, h_val, lev1, lev2, fract, my_status, &
                             inverted = .true., log_scale = .false.)
 
@@ -1042,6 +1044,8 @@ integer,  intent(out) :: lev1
 integer,  intent(out) :: lev2
 real(r8), intent(out) :: fract
 integer,  intent(out) :: my_status
+
+my_status = 0
 
 call find_enclosing_indices(nlevels, pressures, p_val, lev1, lev2, fract, my_status, &
                             inverted = .false., log_scale = cuse_log_vertical_scale)
