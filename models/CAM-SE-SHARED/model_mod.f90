@@ -290,6 +290,12 @@ integer :: no_third_dimension = -99
 logical :: print_details = .true.
 
 
+!SENote TEMPORARY LOGICAL THAT SHOULD GO IN MODEL NAMELIST FOR NOW?
+logical :: DRY_MASS_VERTICAL_COORDINATE = .false.
+
+
+
+
 
 contains
 
@@ -2100,7 +2106,15 @@ select case (which_vert)
          return
       endif
 
-      call build_cam_pressure_columns(ens_size, surf_pressure, ref_nlevels, pressure_array)
+      if(DRY_MASS_VERTICAL_COORDINATE) then
+         call build_dry_mass_pressure_columns(ens_handle, ens_size, ref_nlevels, column, surf_pressure, &
+            pressure_array, status1)
+      else
+         call build_cam_pressure_columns(ens_size, surf_pressure, ref_nlevels, pressure_array)
+      endif
+
+
+
 
       do imember = 1, ens_size
          call pressure_to_level(ref_nlevels, pressure_array(:, imember), vert_val, & 
@@ -2188,6 +2202,84 @@ end select
 ! by this time someone has already set my_status(), good or bad.
 
 end subroutine find_se_vertical_levels
+
+
+!-----------------------------------------------------------------------
+!> Compute pressure column for the dry mass vertical coordinate option
+!>
+!> this version does all ensemble members at once.
+
+
+subroutine build_dry_mass_pressure_columns(ens_handle, ens_size, nlevels, column, surf_pressure, pressure, status)
+type(ensemble_type), intent(in)  :: ens_handle
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: nlevels
+integer,             intent(in)  :: column
+real(r8),            intent(in)  :: surf_pressure(ens_size)
+real(r8),            intent(out) :: pressure(nlevels, ens_size)
+integer,             intent(out) :: status
+
+real(r8), dimension(ens_size) :: specific_humidity, cldliq, cldice, sum_specific_water_ratios
+real(r8) :: sum_dry_mix_ratio(nlevels, ens_size)
+integer  :: k, istatus
+
+! Building pressure columns for dry mass vertical coordinate; Add in references to Lauritzen and pointer
+! to the document on the algorithm
+
+! Begin by getting column values for specific mixing ratio for water vapor (specific humidity), cloud liquid 
+! and cloud ice. For more accuracy could also include rain, snow, and any other tracers.
+! Note that other tracers in the dry mass cam/se have a dry mixing ratio, not specific mixing ratio (although
+! Peter plans to change this for consistency).
+
+!SENote: The following should all be 0, but A's at levels 2, 3, 4, and 5 are not.
+! This is confirmed in the caminput.nc file and is a PROBLEM.
+! Some tests on the A and B coefficients
+!do k = 1, nlevels
+   !write(*, *) k, (grid_data%hyai%vals(k) + grid_data%hyai%vals(k+1))/2.0_r8 - grid_data%hyam%vals(k)
+   !write(*, *) k, (grid_data%hybi%vals(k) + grid_data%hybi%vals(k+1))/2.0_r8 - grid_data%hybm%vals(k)
+!enddo
+!stop
+! Another test
+write(*, *) sum(grid_data%hyam%vals(:)), grid_data%hyai%vals(33) - grid_data%hyai%vals(1)
+stop
+
+
+
+pressure = MISSING_R8
+status = 1
+
+! Need the water tracer specific mixing ratios for ever level in the column to compute their mass sum
+do k = 1, nlevels
+   ! Specific Humidity
+   call get_se_values_from_single_level(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, column, k, &
+      specific_humidity, istatus)
+
+   if (istatus < 0) return
+   
+   ! Cloud liquid
+   call get_se_values_from_single_level(ens_handle, ens_size, QTY_CLOUD_LIQUID_WATER, column, k, &
+      cldliq, istatus)
+
+   if (istatus < 0) return
+
+
+   ! Cloud ice
+   call get_se_values_from_single_level(ens_handle, ens_size, QTY_CLOUD_ICE, column, k, &
+      cldice, istatus)
+
+   if (istatus < 0) return
+
+   ! Compute the sum of the dry mixing ratio of dry air plus all the water tracers (ref. to notes)
+   sum_specific_water_ratios = specific_humidity + cldliq + cldice 
+   sum_dry_mix_ratio(k, :) = 1.0_r8 + sum_specific_water_ratios / (1.0_r8 - sum_specific_water_ratios)
+
+enddo
+
+! Compute the dry mass at the bottom of the column
+
+
+
+end subroutine build_dry_mass_pressure_columns
 
 
 !-----------------------------------------------------------------------

@@ -115,14 +115,6 @@ real(r8), allocatable :: std_atm_hgt_col(:)
 real(r8), allocatable :: std_atm_pres_col(:)
 
 
-interface single_pressure_value
- module procedure single_pressure_value_int
- module procedure single_pressure_value_real
-end interface
-
-
-
-
 contains
 
 
@@ -693,35 +685,6 @@ end function generic_height_to_pressure
 
 
 !--------------------------------------------------------------------
-!SENote: This does not appear to be used at this point. 
-!SENote: This means that we don't need to use P0 at all?
-
-!> using the cam eta arrays, convert a pressure directly to model level
-!> use P0 as surface, ignore elevation.
-!> This is not currently being used but might be useful.
-
-function generic_cam_pressure_to_cam_level(pressure, status)
-real(r8), intent(in)  :: pressure
-integer,  intent(out) :: status
-real(r8) :: generic_cam_pressure_to_cam_level
-
-integer :: lev1, lev2
-real(r8) :: fract
-real(r8) :: pressure_array(ref_nlevels)
-
-generic_cam_pressure_to_cam_level = MISSING_R8
-
-call single_pressure_column(ref_surface_pressure, ref_nlevels, pressure_array)
-
-call pressure_to_level(ref_nlevels, pressure_array, pressure, &
-                       lev1, lev2, fract, status)
-if (status /= 0) return
-
-generic_cam_pressure_to_cam_level = lev1 + fract
-
-end function generic_cam_pressure_to_cam_level
-
-!-----------------------------------------------------------------------
 !> in cam level 1 is at the model top, level N is the lowest level
 !> our convention in this code is:  between levels a fraction of 0
 !> is 100% level 1, and fraction of 1 is 100% level 2.
@@ -836,12 +799,9 @@ real(r8),           intent(out) :: pressure_array(n_levels)
 
 integer :: k
 
-! Set midpoint pressures.  This array mirrors the order of the
-! cam model levels: 1 is the model top, N is the bottom.
-
-do k=1, n_levels
-   pressure_array(k) = single_pressure_value_int(surface_pressure, k)
-enddo
+! Set midpoint pressures.  
+pressure_array(1:n_levels) = ref_surface_pressure * grid_data%hyam%vals(1:n_levels) + &
+                                surface_pressure * grid_data%hybm%vals(1:n_levels)
 
 end subroutine single_pressure_column
 
@@ -863,6 +823,7 @@ integer :: my_status
 integer :: table_type
 character(len=16) :: out_fmt, out_fmt1, pres_fmt
 real(r8) :: no_assim_above_scaleh
+real(r8) :: temp_p_col(ref_nlevels)
 
 ! pick the better table: 
 !  one is more accurate for the lower atmosphere, 
@@ -882,7 +843,9 @@ write(string1, out_fmt1) &
    'Discarding observations higher than model level ', no_obs_assim_above_level
 call error_handler(E_MSG, 'init_discard_high_obs', string1, source, revision, revdate)
 
-no_assim_above_pressure = single_pressure_value(ref_surface_pressure, no_obs_assim_above_level)
+!SENote: Getting rid of single pressure call, converting to only column
+call single_pressure_column(ref_surface_pressure, ref_nlevels, temp_p_col)
+no_assim_above_pressure = temp_p_col(no_obs_assim_above_level)
 write(string1, pres_fmt) &
    ' ... which is equivalent to pressure level ', no_assim_above_pressure, ' Pascals'
 call error_handler(E_MSG, 'init_discard_high_obs', string1, source, revision, revdate)
@@ -939,7 +902,7 @@ if (table_type == HIGH_TOP_TABLE .and. &
     vertical_localization_type == VERTISPRESSURE) out_fmt = '(A,E12.5,A)'
 
 ! convert to vertical localization units
-call convert_vertical_level_generic(real(model_damping_ends_at_level, r8), &
+call convert_vertical_level_generic(model_damping_ends_at_level, &
                                          vertical_localization_type, ramp_end, string3, no_norm=.false.)
 
 ! check for conversion errors
@@ -950,7 +913,7 @@ if (ramp_end == MISSING_R8) then
 endif
 
 ! this value only used for print statement, unused otherwise
-call convert_vertical_level_generic(1.0_r8, vertical_localization_type, &
+call convert_vertical_level_generic(1, vertical_localization_type, &
                                     model_top, string3, no_norm=.false.)
 
 ! check for conversion errors
@@ -1011,7 +974,7 @@ end subroutine init_sign_of_vert_units
 !> it uses generic values to do a vertical conversion.
 
 subroutine convert_vertical_level_generic(level_value, want_vert_type, out_value, out_label, no_norm)
-real(r8),         intent(in)            :: level_value
+integer,          intent(in)            :: level_value
 integer,          intent(in)            :: want_vert_type
 real(r8),         intent(out)           :: out_value
 character(len=*), intent(out), optional :: out_label
@@ -1020,7 +983,7 @@ logical,          intent(in),  optional :: no_norm
 character(len=*), parameter :: routine = 'convert_vertical_level_generic'
 
 integer  :: status
-real(r8) :: tmp_val
+real(r8) :: tmp_val, temp_p_col(ref_nlevels)
 logical  :: no_norm_flag
 
 if (present(no_norm)) then
@@ -1030,11 +993,12 @@ else
 endif
 
 if (want_vert_type == VERTISLEVEL) then
-    out_value = level_value
+    out_value = real(level_value, r8)
     if (present(out_label)) out_label = 'levels'
 else
    ! convert to the requested units.  start by going to pressure
-   tmp_val = single_pressure_value(ref_surface_pressure, level_value)
+   call single_pressure_column(ref_surface_pressure, ref_nlevels, temp_p_col)
+   tmp_val = temp_p_col(level_value)
 
    select case (want_vert_type)
      case (VERTISPRESSURE)
@@ -1058,57 +1022,6 @@ else
 endif
 
 end subroutine convert_vertical_level_generic
-
-!-----------------------------------------------------------------------
-!> Compute pressure at one level given the surface pressure
-!> cam model levels: 1 is the model top, N is the bottom.
-!> in this version of the routine level is integer/whole value
-
-function single_pressure_value_int(surface_pressure, level)
-
-real(r8), intent(in)  :: surface_pressure   ! in pascals
-integer,  intent(in)  :: level
-real(r8) :: single_pressure_value_int
-
-! cam model levels: 1 is the model top, N is the bottom.
-
-single_pressure_value_int = ref_surface_pressure * grid_data%hyam%vals(level) + &
-                                surface_pressure * grid_data%hybm%vals(level)
-
-end function single_pressure_value_int
-
-!-----------------------------------------------------------------------
-!> Compute pressure at one level given the surface pressure
-!> cam model levels: 1 is the model top, N is the bottom.
-!> fraction = 0 is full level 1, fraction = 1 is full level 2
-!> level is real/fractional value
-
-
-function single_pressure_value_real(surface_pressure, level)
-
-real(r8), intent(in)  :: surface_pressure   ! in pascals
-real(r8), intent(in)  :: level
-real(r8) :: single_pressure_value_real
-
-integer :: k
-real(r8) :: fract, pres1, pres2
-
-k = int(level)
-fract = level - int(level)
-
-if (k /= ref_nlevels) then
-   pres1 = single_pressure_value_int(surface_pressure, k)
-   pres2 = single_pressure_value_int(surface_pressure, k+1)
-else
-   pres1 = single_pressure_value_int(surface_pressure, k-1)
-   pres2 = single_pressure_value_int(surface_pressure, k)
-   fract = 1.0_r8
-endif
-
-single_pressure_value_real = (pres1 * (1.0_r8 - fract)) + &
-                              pres2 * (fract)
-
-end function single_pressure_value_real
 
 !-----------------------------------------------------------------------
 !> return the level indices and fraction across the level.
