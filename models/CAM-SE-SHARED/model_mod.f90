@@ -91,7 +91,7 @@ use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
 use    cam_common_code_mod, only : scale_height, &
                                    free_std_atm_tables, &
                                    is_surface_field, init_globals, &
-                                   ref_nlevels, cam_grid, grid_data, &
+                                   ref_nlevels, ref_model_top_pressure, cam_grid, grid_data, &
                                    are_damping, ramp_end, discarding_high_obs, &
                                    vertical_localization_type, &
                                    above_ramp_start, &
@@ -1198,7 +1198,12 @@ call coord_ind_cs(location_copy, obs_qty, cell_corners, l_weight, m_weight)
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
 
-if (any(istatus /= 0)) return
+!SENote Do further study of how we want to return istatus for various failures
+! For now return istatus 12 for any of the failure modes
+if (any(istatus /= 0)) then
+   istatus = 12
+   return
+endif
 
 
 ! Then interpolate horizontally to the (lon,lat) of the ob.
@@ -1293,9 +1298,9 @@ k1 = MISSING_I
 ! Keep track of k1, k2, and distances in this search.
 ! Assign closest and closest2 afterwards.
 if (num_close <= 0) then
-   write(string1,*) 'Unusable num_close, obs_kind : ',num_close, obs_kind
+   write(string1,*) "Can't find enclosing quadrilatersl. Unusable num_close, obs_kind : ",num_close, obs_kind
    call write_location(0, obs_loc, charstring=string2)
-   write(string3,*) 'dist(1) = ',dist(1)
+   write(string3,*) 'Setting namelist approximate_distance = .false. might help: dist(1) = ',dist(1)
    call error_handler(E_ERR, 'coord_ind_cs', string1,source,revision,revdate,text2=string2, text3=string3)
 endif
 
@@ -1321,7 +1326,7 @@ if (k2 == MISSING_I) then
         'lon_lat_lev, obs_kind, num_close, closest, dist_1, dist_2 = ', &
          lon_lat_lev, obs_kind, num_close, closest, dist_1, dist_2
    call write_location(0, cs_locs(closest), charstring=string3)
-   string3 = 'closest node location = '//string3
+   string3 = 'Setting namelist approximate_distance = .false. might help: closest node location = '//string3
    call error_handler(E_ERR, 'coord_ind_cs', string1,source,revision,revdate,text2=string2,text3=string3)
 else
    closest2 = close_ind(k2)
@@ -1381,7 +1386,8 @@ else
    write(string1, '(A,2I8,A,2F10.4)') &
          'Neither of the 2 closest nodes ',  closest,closest2, &
          ' is a corner of the cell containing ob at ', lon_lat_lev(1),lon_lat_lev(2)
-   call error_handler(E_ERR, 'coord_ind_cs', string1,source,revision,revdate)
+   string2 = 'Setting namelist approximate_distance = .false. might help.'
+   call error_handler(E_ERR, 'coord_ind_cs', string1,source,revision,revdate, text2 = string2)
 endif
 
 deallocate(close_ind, dist)
@@ -2228,9 +2234,11 @@ real(r8),            intent(in)  :: surf_pressure(ens_size)
 real(r8),            intent(out) :: pressure(nlevels, ens_size)
 integer,             intent(out) :: status
 
-real(r8), dimension(ens_size) :: specific_humidity, cldliq, cldice, sum_specific_water_ratios
-real(r8) :: sum_dry_mix_ratio(nlevels, ens_size)
-integer  :: k, istatus
+real(r8) :: specific_humidity(ens_size), cldliq(ens_size), cldice(ens_size), sum_specific_water_ratios(ens_size)
+real(r8) :: a_width(nlevels), b_width(nlevels)
+real(r8) :: sum_dry_mix_ratio(nlevels, ens_size), dry_mass_top, mass_diff_term, denom, numer
+real(r8) :: dry_mass_sfc(ens_size)
+integer  :: k, n, istatus
 
 ! Building pressure columns for dry mass vertical coordinate; Add in references to Lauritzen and pointer
 ! to the document on the algorithm
@@ -2248,43 +2256,60 @@ integer  :: k, istatus
    !write(*, *) k, (grid_data%hybi%vals(k) + grid_data%hybi%vals(k+1))/2.0_r8 - grid_data%hybm%vals(k)
 !enddo
 !stop
-! Another test
-write(*, *) sum(grid_data%hyam%vals(:)), grid_data%hyai%vals(33) - grid_data%hyai%vals(1)
-stop
-
-
 
 pressure = MISSING_R8
-status = 1
+status = 99 
 
 ! Need the water tracer specific mixing ratios for ever level in the column to compute their mass sum
 do k = 1, nlevels
+
    ! Specific Humidity
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, column, k, &
       specific_humidity, istatus)
 
-   if (istatus < 0) return
+   ! BE VERY CAREFUL WITH CONSISTENT STATUS RETURNS
+   if (istatus /= 0) return
    
    ! Cloud liquid
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_CLOUD_LIQUID_WATER, column, k, &
       cldliq, istatus)
 
-   if (istatus < 0) return
-
+   if (istatus /= 0) return
 
    ! Cloud ice
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_CLOUD_ICE, column, k, &
       cldice, istatus)
 
-   if (istatus < 0) return
+   if (istatus /= 0) return
 
    ! Compute the sum of the dry mixing ratio of dry air plus all the water tracers (ref. to notes)
-   sum_specific_water_ratios = specific_humidity + cldliq + cldice 
-   sum_dry_mix_ratio(k, :) = 1.0_r8 + sum_specific_water_ratios / (1.0_r8 - sum_specific_water_ratios)
+   sum_specific_water_ratios = specific_humidity(:) + cldliq(:) + cldice(:) 
+   sum_dry_mix_ratio(k, :) = 1.0_r8 + sum_specific_water_ratios(:) / (1.0_r8 - sum_specific_water_ratios(:))
+
+   ! Compute the A 'width' and B 'width' of each level
+   a_width(k) = grid_data%hyai%vals(k + 1) - grid_data%hyai%vals(k)
+   b_width(k) = grid_data%hybi%vals(k + 1) - grid_data%hybi%vals(k)
 
 enddo
 
-! Compute the dry mass at the bottom of the column
+! Compute the dry mass at the bottom of the column for each enseble member
+! Do we need to worry about latitudinal variation in g?
+dry_mass_top = ref_model_top_pressure / gravity
+do n = 1, ens_size
+   mass_diff_term = (surf_pressure(n) - ref_model_top_pressure) / gravity
+   denom = mass_diff_term - dry_mass_top * sum(a_width(:) * sum_dry_mix_ratio(:, n))
+   numer = sum(b_width(:) * sum_dry_mix_ratio(:, n))
+   dry_mass_sfc(n) = denom/numer
+
+   ! Now compute the pressure columnsA
+   !!!sum_term = 0 
+   !!!do k = 1, nlevels
+      !!!sum_term = sum_term + (a_width(k)*dry_mass_top + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k)
+      !!!half_pressure(???) =pressure
+   !!!end do
+
+end do
+
 
 
 

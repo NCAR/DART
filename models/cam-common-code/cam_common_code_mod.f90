@@ -26,7 +26,7 @@ private
 public :: scale_height
 public :: free_std_atm_tables
 public :: is_surface_field, init_globals
-public :: ref_nlevels, cam_grid, grid_data, are_damping
+public :: ref_nlevels, ref_model_top_pressure, cam_grid, grid_data, are_damping
 public :: ramp_end, discarding_high_obs
 public :: vertical_localization_type, above_ramp_start
 public :: pressure_to_level, cuse_log_vertical_scale
