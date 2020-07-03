@@ -800,8 +800,19 @@ integer,            intent(in)  :: n_levels
 real(r8),           intent(out) :: pressure_array(n_levels)
 
 integer :: k
+real(r8) :: am(n_levels)
 
 ! Set midpoint pressures.  
+!SENote: There is an inconsistency between hyam and the mean of surrounding hyai in the
+! caminput.nc files. I suspect that a few of the hyam's are bad. For now, need to compared
+! to results for the dry mass which use the hyai, so switch to that here.
+! Have switched back to try to maintain bitwise consistency with original versions
+! but this issue needs to be resolved with the CAM developers.
+!!! am = (grid_data%hyai%vals(1:n_levels) + grid_data%hyai%vals(2:n_levels + 1)) / 2.0_r8
+!!!pressure_array(1:n_levels) = ref_surface_pressure * am(1:n_levels) + &
+                                !!!surface_pressure * grid_data%hybm%vals(1:n_levels)
+
+!SENote: Original code follows
 pressure_array(1:n_levels) = ref_surface_pressure * grid_data%hyam%vals(1:n_levels) + &
                                 surface_pressure * grid_data%hybm%vals(1:n_levels)
 
@@ -817,7 +828,10 @@ integer, intent(in) :: no_obs_assim_above_level
 ! a surface pressure of 1010 mb.  this is a fixed table and does not
 ! vary with temperature, humidity or surface elevation. 
 ! use only for quick conversions when absolute accuracy 
-! isn't a primary concern.
+! isn't a primary concern. It also is based on the standard (not the dry
+! mass) vertical coordinate. If there were a situation where the differences
+! were big might want to find a way to do this with dry mass, but probably
+! not an issue for any earth atmosphere.
 
 character(len=*), parameter :: routine = 'init_discard_high_obs'
 integer :: my_status

@@ -293,12 +293,7 @@ logical :: print_details = .true.
 !SENote TEMPORARY LOGICAL THAT SHOULD GO IN MODEL NAMELIST FOR NOW?
 logical :: DRY_MASS_VERTICAL_COORDINATE = .false.
 
-
-
-
-
 contains
-
 
 !-----------------------------------------------------------------------
 ! All the required interfaces are first.
@@ -1715,7 +1710,6 @@ end subroutine solve_quadratic
 !-----------------------------------------------------------------------
 !> internal only version of model interpolate. 
 !> does not check for locations too high - return all actual values.
-!SENote: Could this be merged with model_interpolate? Probably not worth the effort.
 
 subroutine interpolate_se_values(state_handle, ens_size, location, obs_qty, varid, &
                               interp_vals, istatus)
@@ -1750,13 +1744,17 @@ call coord_ind_cs(location_copy, obs_qty, cell_corners, l_weight, m_weight)
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
 
-if(istatus(1) /= 0) then
-   istatus(:) = 3  ! cannot locate enclosing horizontal quad
+!SENote: This old code block is not consistent with how the status reports are being done
+!if(istatus(1) /= 0) then
+   !istatus(:) = 3  ! cannot locate enclosing horizontal quad
+   !return
+!endif
+
+!SENote: For now return a 12 for all istatus members if there is any failure from get_se_quad_vals
+if (any(istatus /= 0)) then
+   istatus = 12
    return
 endif
-
-if (any(istatus /= 0)) return
-
 
 ! The following uses Jeff's recommended 'generalized quadrilateral interpolation', as in
 ! http://www.particleincell.com/2012/quad-interpolation/.
@@ -2121,13 +2119,10 @@ select case (which_vert)
       if(DRY_MASS_VERTICAL_COORDINATE) then
          call build_dry_mass_pressure_columns(ens_handle, ens_size, ref_nlevels, column, surf_pressure, &
             pressure_array, status1)
-      !CHECK THAT STATUS FOR CONSISTENCY
+      !SENote: CHECK THAT STATUS FOR CONSISTENCY
       else
          call build_cam_pressure_columns(ens_size, surf_pressure, ref_nlevels, pressure_array)
       endif
-
-
-
 
       do imember = 1, ens_size
          ! Returns my_status 10 if unable to interpolate in this column
@@ -2237,7 +2232,7 @@ integer,             intent(out) :: status
 real(r8) :: specific_humidity(ens_size), cldliq(ens_size), cldice(ens_size), sum_specific_water_ratios(ens_size)
 real(r8) :: a_width(nlevels), b_width(nlevels)
 real(r8) :: sum_dry_mix_ratio(nlevels, ens_size), dry_mass_top, mass_diff_term, denom, numer
-real(r8) :: dry_mass_sfc(ens_size)
+real(r8) :: dry_mass_sfc(ens_size), half_pressure(nlevels + 1)
 integer  :: k, n, istatus
 
 ! Building pressure columns for dry mass vertical coordinate; Add in references to Lauritzen and pointer
@@ -2265,22 +2260,22 @@ do k = 1, nlevels
 
    ! Specific Humidity
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, column, k, &
-      specific_humidity, istatus)
+      specific_humidity, status)
 
    ! BE VERY CAREFUL WITH CONSISTENT STATUS RETURNS
-   if (istatus /= 0) return
+   if (status /= 0) return
    
    ! Cloud liquid
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_CLOUD_LIQUID_WATER, column, k, &
-      cldliq, istatus)
+      cldliq, status)
 
-   if (istatus /= 0) return
+   if (status /= 0) return
 
    ! Cloud ice
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_CLOUD_ICE, column, k, &
-      cldice, istatus)
+      cldice, status)
 
-   if (istatus /= 0) return
+   if (status /= 0) return
 
    ! Compute the sum of the dry mixing ratio of dry air plus all the water tracers (ref. to notes)
    sum_specific_water_ratios = specific_humidity(:) + cldliq(:) + cldice(:) 
@@ -2294,24 +2289,24 @@ enddo
 
 ! Compute the dry mass at the bottom of the column for each enseble member
 ! Do we need to worry about latitudinal variation in g?
+! Nothing but dry air above the model top
 dry_mass_top = ref_model_top_pressure / gravity
 do n = 1, ens_size
    mass_diff_term = (surf_pressure(n) - ref_model_top_pressure) / gravity
-   denom = mass_diff_term - dry_mass_top * sum(a_width(:) * sum_dry_mix_ratio(:, n))
-   numer = sum(b_width(:) * sum_dry_mix_ratio(:, n))
-   dry_mass_sfc(n) = denom/numer
+   numer = mass_diff_term - dry_mass_top * sum(a_width(:) * sum_dry_mix_ratio(:, n)) / grid_data%hyai%vals(1)
+   denom = sum(b_width(:) * sum_dry_mix_ratio(:, n))
+   dry_mass_sfc(n) = numer / denom
 
-   ! Now compute the pressure columnsA
-   !!!sum_term = 0 
-   !!!do k = 1, nlevels
-      !!!sum_term = sum_term + (a_width(k)*dry_mass_top + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k)
-      !!!half_pressure(???) =pressure
-   !!!end do
-
+   ! Now compute the pressure columns
+   half_pressure(1) = ref_model_top_pressure
+   do k = 1, nlevels
+      half_pressure(k + 1) = half_pressure(k) + &
+         !gravity * (a_width(k)*dry_mass_top + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k, n)
+         ! NEXT LINE IS A KLUGE THAT ALMOST FIXES THINGS (MAKES THEM EXACT AT THE TOP, GET BUILD UP OF ROUND_OFF FURHTER DOWN?)
+         gravity * (a_width(k)*dry_mass_top / grid_data%hyai%vals(1) + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k, n)
+      pressure(k, n) = (half_pressure(k) + half_pressure(k + 1)) / 2
+   end do
 end do
-
-
-
 
 end subroutine build_dry_mass_pressure_columns
 
