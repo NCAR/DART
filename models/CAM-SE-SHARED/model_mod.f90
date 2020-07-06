@@ -3315,7 +3315,12 @@ if (status1 /= 0) then
    return
 endif
 
-call build_cam_pressure_columns(ens_size, surface_pressure, ref_nlevels, pressure_array)
+if(DRY_MASS_VERTICAL_COORDINATE) then
+   call build_dry_mass_pressure_columns(ens_handle, ens_size, ref_nlevels, column, surface_pressure, &
+      pressure_array, status1)
+else
+   call build_cam_pressure_columns(ens_size, surface_pressure, ref_nlevels, pressure_array)
+endif
 
 ! No error returns available if we get here, so all good
 my_status(:) = 0
