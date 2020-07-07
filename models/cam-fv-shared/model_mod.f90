@@ -1333,6 +1333,7 @@ integer,             intent(out) :: my_status(ens_size)
 integer  :: k, level_one, imember, status1
 real(r8) :: surface_elevation(1)
 real(r8) :: surface_pressure(ens_size), mbar(nlevels, ens_size)
+real(r8) :: pressure(nlevels, ens_size)
 real(r8) :: tv(nlevels, ens_size)  ! Virtual temperature, top to bottom
 
 ! this is for surface obs
@@ -1352,6 +1353,9 @@ if (status1 /= 0) then
    return
 endif
 
+! Build the pressure columns for the entire ensemble
+call build_cam_pressure_columns(ens_size, surface_pressure, nlevels, pressure)
+
 if (use_variable_mean_mass) then
    call compute_mean_mass(ens_handle, ens_size, lon_index, lat_index, nlevels, qty, mbar, status1)
 
@@ -1363,7 +1367,7 @@ if (use_variable_mean_mass) then
    ! compute the height columns for each ensemble member - passing mbar() array in.
    do imember = 1, ens_size
       call build_heights(nlevels, surface_pressure(imember), surface_elevation(1), &
-                         tv(:, imember), height_array(:, imember), mbar=mbar(:, imember))
+                         pressure(:, imember), tv(:, imember), height_array(:, imember), mbar=mbar(:, imember))
    enddo
 
 else
@@ -1372,7 +1376,7 @@ else
    ! in the variable mean mass case.)
    do imember = 1, ens_size
       call build_heights(nlevels, surface_pressure(imember), surface_elevation(1), &
-                         tv(:, imember), height_array(:, imember))
+                         pressure(:, imember), tv(:, imember), height_array(:, imember))
    enddo
 endif
 

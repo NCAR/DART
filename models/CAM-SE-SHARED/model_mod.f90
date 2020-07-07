@@ -143,6 +143,9 @@ character(len=128), parameter :: revdate  = "$Date$"
 integer, parameter :: MAX_PERT = 100
 
 ! model_nml namelist variables and default values
+! Which vertical coordinate: Dry mass if for versions with CESM2 and later
+logical            :: dry_mass_vertical_coordinate    = .true.
+
 character(len=256) :: cam_template_filename           = 'caminput.nc'
 character(len=256) :: cam_phis_filename               = 'cam_phis.nc'
 
@@ -154,10 +157,8 @@ character(len=32)  :: vertical_localization_coord     = 'PRESSURE'
 logical            :: use_log_vertical_scale          = .false.
 integer            :: assimilation_period_days        = 0
 integer            :: assimilation_period_seconds     = 21600
-! proposed changes:
-integer            :: no_obs_assim_above_level       = -1      ! model levels
-integer            :: model_damping_ends_at_level    = -1      ! model levels
-! end proposed changes
+integer            :: no_obs_assim_above_level        = -1      ! model levels
+integer            :: model_damping_ends_at_level     = -1      ! model levels
 integer            :: debug_level                     = 0
 logical            :: suppress_grid_info_in_output    = .false.
 logical            :: custom_routine_to_generate_ensemble = .true.
@@ -188,6 +189,7 @@ character(len=vtablenamelength) :: state_variables(MAX_STATE_VARIABLES * &
                                                    num_state_table_columns ) = ' '
 
 namelist /model_nml/  &
+   dry_mass_vertical_coordinate,        &
    cam_template_filename,               &
    cam_phis_filename,                   &
    homme_map_file,                      &
@@ -290,8 +292,6 @@ integer :: no_third_dimension = -99
 logical :: print_details = .true.
 
 
-!SENote TEMPORARY LOGICAL THAT SHOULD GO IN MODEL NAMELIST FOR NOW?
-logical :: DRY_MASS_VERTICAL_COORDINATE = .false.
 
 contains
 
@@ -1602,7 +1602,6 @@ endif
 
 ! Informational output, if the observation is exactly on the m-axis
 !SENote: Why does this message get printed a billion times in CLASSIC?
-! Doesn't seem to ever happen now
 if (l == 0.0_r8 .and. my_task_id() == 0) then
    write(string1,'(A,I6,1X,1p4E12.4)') 'Ob is on x-axis: l-cell, x_o - a(2)*m = ',cell, x_o ,a(2,origin,cell),m
    call error_handler(E_MSG, 'unit_square_location', string1,source,revision,revdate)
@@ -1807,7 +1806,7 @@ my_status(:) = 99
 numdims = get_dims_from_qty(obs_qty, varid)
 
 !SENote: The dimensions are one less than for the FV. Look for ways to share code
-! now here potentially we have different results for different
+! Now here potentially we have different results for different
 ! ensemble members.  the things that can vary are dimensioned by ens_size.
 
 if (numdims == 2) then
@@ -2116,10 +2115,14 @@ select case (which_vert)
          return
       endif
 
-      if(DRY_MASS_VERTICAL_COORDINATE) then
+      if(dry_mass_vertical_coordinate) then
          call build_dry_mass_pressure_columns(ens_handle, ens_size, ref_nlevels, column, surf_pressure, &
             pressure_array, status1)
-      !SENote: CHECK THAT STATUS FOR CONSISTENCY
+         ! All output variables set to missing already, just return with all my_status as 12
+         if(status1 /= 0) then
+            my_status = 12
+            return
+         endif
       else
          call build_cam_pressure_columns(ens_size, surf_pressure, ref_nlevels, pressure_array)
       endif
@@ -2191,17 +2194,17 @@ select case (which_vert)
       endif
 
 !SENote: This subroutine is only called from one place and only for 2d fields so this next block can't be reached
-!SENote: This allows removal of the obs_qty and varid arguments from the call
+! This allows removal of the obs_qty and varid arguments from the call
    ! 1d fields for SE
-   !SENotecase(VERTISUNDEF, VERTISSURFACE)
-      !SENoteif (get_dims_from_qty(obs_qty, var_id) == 2) then
-         !SENotelevs1(:) = ref_nlevels - 1
-         !SENotelevs2(:) = ref_nlevels
-         !SENotevert_fracts(:) = 1.0_r8
-         !SENotemy_status(:) = 0
-      !SENoteelse
-         !SENotemy_status(:) = 4 ! can not get vertical levels
-      !SENoteendif
+   !case(VERTISUNDEF, VERTISSURFACE)
+      !if (get_dims_from_qty(obs_qty, var_id) == 2) then
+         !levs1(:) = ref_nlevels - 1
+         !levs2(:) = ref_nlevels
+         !vert_fracts(:) = 1.0_r8
+         !my_status(:) = 0
+      !else
+         !my_status(:) = 4 ! can not get vertical levels
+      !endif
 
    case default
       write(string1, *) 'unsupported vertical type: ', which_vert
@@ -2252,8 +2255,7 @@ integer  :: k, n, istatus
 !enddo
 !stop
 
-pressure = MISSING_R8
-status = 99 
+! For now, will fail all ensemble members and levels if any level/member fails
 
 ! Need the water tracer specific mixing ratios for ever level in the column to compute their mass sum
 do k = 1, nlevels
@@ -2261,21 +2263,26 @@ do k = 1, nlevels
    ! Specific Humidity
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_SPECIFIC_HUMIDITY, column, k, &
       specific_humidity, status)
-
-   ! BE VERY CAREFUL WITH CONSISTENT STATUS RETURNS
-   if (status /= 0) return
+   if (status /= 0) then
+      pressure = MISSING_R8
+      return
+   endif
    
    ! Cloud liquid
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_CLOUD_LIQUID_WATER, column, k, &
       cldliq, status)
-
-   if (status /= 0) return
+   if (status /= 0) then
+      pressure = MISSING_R8
+      return
+   endif
 
    ! Cloud ice
    call get_se_values_from_single_level(ens_handle, ens_size, QTY_CLOUD_ICE, column, k, &
       cldice, status)
-
-   if (status /= 0) return
+   if (status /= 0) then
+      pressure = MISSING_R8
+      return
+   endif
 
    ! Compute the sum of the dry mixing ratio of dry air plus all the water tracers (ref. to notes)
    sum_specific_water_ratios = specific_humidity(:) + cldliq(:) + cldice(:) 
@@ -2302,11 +2309,13 @@ do n = 1, ens_size
    do k = 1, nlevels
       half_pressure(k + 1) = half_pressure(k) + &
          !gravity * (a_width(k)*dry_mass_top + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k, n)
-         ! NEXT LINE IS A KLUGE THAT ALMOST FIXES THINGS (MAKES THEM EXACT AT THE TOP, GET BUILD UP OF ROUND_OFF FURHTER DOWN?)
+         ! SENote: NEXT LINE IS BELIEVED TO BE CORRECT BUT NEEDS TO BE VETTED WITH CGD
          gravity * (a_width(k)*dry_mass_top / grid_data%hyai%vals(1) + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k, n)
       pressure(k, n) = (half_pressure(k) + half_pressure(k + 1)) / 2
    end do
 end do
+
+status = 0
 
 end subroutine build_dry_mass_pressure_columns
 
@@ -2328,6 +2337,7 @@ integer,             intent(out) :: my_status(ens_size)
 integer  :: k, level_one, imember, status1
 real(r8) :: surface_elevation(1)
 real(r8) :: surface_pressure(ens_size), mbar(nlevels, ens_size)
+real(r8) :: pressure(nlevels, ens_size)
 real(r8) :: tv(nlevels, ens_size)  ! Virtual temperature, top to bottom
 
 ! this is for surface obs
@@ -2352,6 +2362,19 @@ if (status1 /= 0) then
    return
 endif
 
+! Build the pressure columns for the entire ensemble
+if(dry_mass_vertical_coordinate) then
+   call build_dry_mass_pressure_columns(ens_handle, ens_size, nlevels, column, surface_pressure, &
+      pressure, status1)
+   if(status1 /= 0) then
+      my_status = 12
+      height_array = MISSING_R8
+      return
+   endif
+else
+   call build_cam_pressure_columns(ens_size, surface_pressure, nlevels, pressure)
+endif
+
 if (use_variable_mean_mass) then
    call compute_se_mean_mass(ens_handle, ens_size, column, nlevels, mbar, status1)
    if (status1 /= 0) then
@@ -2362,7 +2385,7 @@ if (use_variable_mean_mass) then
    ! compute the height columns for each ensemble member - passing mbar() array in.
    do imember = 1, ens_size
       call build_heights(nlevels, surface_pressure(imember), surface_elevation(1), &
-                         tv(:, imember), height_array(:, imember), mbar=mbar(:, imember))
+                         pressure(:, imember), tv(:, imember), height_array(:, imember), mbar=mbar(:, imember))
    enddo
 
 else
@@ -2371,7 +2394,7 @@ else
    ! in the variable mean mass case.)
    do imember = 1, ens_size
       call build_heights(nlevels, surface_pressure(imember), surface_elevation(1), &
-                         tv(:, imember), height_array(:, imember))
+                         pressure(:, imember), tv(:, imember), height_array(:, imember))
    enddo
 endif
 
@@ -2510,9 +2533,9 @@ endif
 
 call nc_define_dimension(ncid, 'lon',  grid_data%lon%nsize,  routine)
 call nc_define_dimension(ncid, 'lat',  grid_data%lat%nsize,  routine)
-!SENote
-!SENOTEcall nc_define_dimension(ncid, 'slon', grid_data%slon%nsize, routine)
-!SENOTEcall nc_define_dimension(ncid, 'slat', grid_data%slat%nsize, routine)
+!SENote: No staggered grids in SE
+!call nc_define_dimension(ncid, 'slon', grid_data%slon%nsize, routine)
+!call nc_define_dimension(ncid, 'slat', grid_data%slat%nsize, routine)
 call nc_define_dimension(ncid, 'lev',  grid_data%lev%nsize,  routine)
 call nc_define_dimension(ncid, 'ilev', grid_data%ilev%nsize, routine)
 call nc_define_dimension(ncid, 'gw',   grid_data%gw%nsize,   routine)
@@ -2586,8 +2609,8 @@ call nc_end_define_mode(ncid, routine)
 call nc_put_variable(ncid, 'lon',  grid_data%lon%vals,  routine)
 call nc_put_variable(ncid, 'lat',  grid_data%lat%vals,  routine)
 !SENote: all the staggered stuff is gone for SE
-!SENotecall nc_put_variable(ncid, 'slon', grid_data%slon%vals, routine)
-!SENotecall nc_put_variable(ncid, 'slat', grid_data%slat%vals, routine)
+!call nc_put_variable(ncid, 'slon', grid_data%slon%vals, routine)
+!call nc_put_variable(ncid, 'slat', grid_data%slat%vals, routine)
 call nc_put_variable(ncid, 'lev',  grid_data%lev%vals,  routine)
 call nc_put_variable(ncid, 'ilev', grid_data%ilev%vals, routine)
 call nc_put_variable(ncid, 'gw',   grid_data%gw%vals,   routine)
@@ -2997,7 +3020,6 @@ end subroutine compute_se_virtual_temperature
 !>
 
 
-!SENote: No test available? Need to work with Nick at some point to test WACCM-X configurations.
 subroutine compute_se_mean_mass(ens_handle, ens_size, column, nlevels, mbar, istatus)
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
@@ -3315,9 +3337,14 @@ if (status1 /= 0) then
    return
 endif
 
-if(DRY_MASS_VERTICAL_COORDINATE) then
+if(dry_mass_vertical_coordinate) then
    call build_dry_mass_pressure_columns(ens_handle, ens_size, ref_nlevels, column, surface_pressure, &
       pressure_array, status1)
+   if(status1 /= 0) then
+      my_status = 12
+      pressure_array = MISSING_R8
+      return
+   endif
 else
    call build_cam_pressure_columns(ens_size, surface_pressure, ref_nlevels, pressure_array)
 endif
@@ -3587,7 +3614,7 @@ integer,             intent(out)   :: status1
 type(location_type) :: base_loc(1)
 integer :: base_qty(1), base_type(1), status(1)
 
-! SENote: Only reason this is needed is to do the conversaion from a scalar to a 1-element array. Annoying.
+! SENote: Only reason this is needed is to do the conversion from a scalar to a 1-element array. Annoying.
 
 ! these need to be arrays.  kinda a pain.
 base_loc(1) = loc

@@ -152,8 +152,6 @@ call fill_cam_1d_array(ncid, 'hybi', grid%hybi)
 call fill_cam_1d_array(ncid, 'hyam', grid%hyam)
 call fill_cam_1d_array(ncid, 'hybm', grid%hybm)
 
-!SENOte WARNING: This is the issue with P0 not being in the SE restart files. For now, if it is not in the file
-! set to 100000, the value from standard FV files. NEED TO CLARIFY THIS WITH PETER.
 ! P0 is a scalar with no dimensionality
 call fill_cam_0d_array(ncid, 'P0',   grid%P0)
 
@@ -179,8 +177,6 @@ character(len=*), parameter :: routine = 'fill_cam_1d_array'
 !> files will have all the arrays we are asking for, then no.
 ! SENote: For the SE core, three of these don't exist (gw, slon, slat) so need to check
 ! If they don't exist, just don't fill the array for now
-
-!SENote: for now we need all of these dimensions for the netcdf IO, eventually need to remove
 
 if(nc_variable_exists(ncid, varname)) then
 
@@ -214,18 +210,13 @@ call free_cam_1d_array(grid%lon)
 call free_cam_1d_array(grid%lat)
 call free_cam_1d_array(grid%lev)
 call free_cam_1d_array(grid%ilev)
-
-!SENote: Eventually these will not be in SE state so won;t need removed
 call free_cam_1d_array(grid%slon)
 call free_cam_1d_array(grid%slat)
 call free_cam_1d_array(grid%gw)
-!SENote end
-
 call free_cam_1d_array(grid%hyai)
 call free_cam_1d_array(grid%hybi)
 call free_cam_1d_array(grid%hyam)
 call free_cam_1d_array(grid%hybm)
-
 call free_cam_1d_array(grid%P0)
 
 
@@ -258,8 +249,11 @@ character(len=*), parameter :: routine = 'fill_cam_0d_array'
 grid_array%nsize = 1
 allocate(grid_array%vals(grid_array%nsize))
 
+!SENOte WARNING: This is the issue with P0 not being in the SE restart files. For now, if it is not in the file
+! set to 100000, the value from standard FV files. NEED TO CLARIFY THIS WITH PETER LAURITZEN.
+! CGD notes that P0 was removed and Ptop is only in history files, so no alternative for now.
 ! SENote: Need to check to see if this variable exists
-! If it does not exist, and it is PO, then set it to 100000 for now
+! If it does not exist, and it is PO, then set it to 100000 for now 
 if(varname == 'P0') then
    ! See if PO exists in the netcdf file
    if(.not. nc_variable_exists(ncid, 'PO')) then
@@ -427,11 +421,12 @@ end subroutine set_vert_localization
 !>           constant is used instead.  an mbar() array of 1.0 is not the same 
 !>           as no parameter specified.
 
-subroutine build_heights(nlevels,p_surf,h_surf,virtual_temp,height_midpts,height_interf,mbar)
+subroutine build_heights(nlevels,p_surf,h_surf, pressure, virtual_temp,height_midpts,height_interf,mbar)
 
 integer,  intent(in)  :: nlevels                            ! Number of vertical levels
 real(r8), intent(in)  :: p_surf                             ! Surface pressure (pascals)
 real(r8), intent(in)  :: h_surf                             ! Surface height (m)
+real(r8), intent(in)  :: pressure( nlevels)                 ! Pressure
 real(r8), intent(in)  :: virtual_temp( nlevels)             ! Virtual Temperature
 real(r8), intent(out) :: height_midpts(nlevels)             ! Geopotential height at midpoints, top to bottom
 real(r8), intent(out), optional :: height_interf(nlevels+1) ! Geopotential height at interfaces, top to bottom
@@ -469,15 +464,25 @@ endif
 ! the pressure at nlevels+1 is the pressure of the 
 ! actual surface interface, not a midpoint!!
 
-call single_pressure_column(p_surf, nlevels, pm_ln)
+! The original routine that did this conversion allowed the bottom boundary of the lowest pressure
+! level to be something other than the surface pressure and computed it with the following :
+! p_surf * grid_data%hybi%vals(nlevels+1)   ! surface interface
+! However, all modern SE models appear to have the lowest level boundary the same as the surface. This
+! means that this can be replaced by just the surface pressure. If this is not true, careful thought is
+! required, especially for the dry_mass_vertical_coordinate.
+if(grid_data%hybi%vals(nlevels + 1) /= 1.0_r8) then
+   call error_handler(E_ERR, 'build_heights in cam_common_code_mod.f90', &
+      'lowest interface hybi not exactly 1. See comments in code', source, revision, revdate)
+endif 
 
-pm_ln(nlevels+1) = p_surf * grid_data%hybi%vals(nlevels+1)   ! surface interface
+! Put the log of the surface pressure in the top entry of the log pressure column for the conversion
+pm_ln(nlevels+1) = log(p_surf)
 
-!SENote: This is the most horrid coding one could ever imagine. pm_ln was p, now it's pm_ln. 
-where (pm_ln >  0.0_r8)
-   pm_ln = log(pm_ln)
-else where (pm_ln <= 0.0_r8)
-   pm_ln = 0
+! Some weird vertical coord could have top pressure 0, so leave this check
+where (pressure >  0.0_r8)
+   pm_ln(1:nlevels) = log(pressure)
+else where (pressure <= 0.0_r8)
+   pm_ln(1:nlevels) = 0
 end where
 
 !debug
@@ -804,7 +809,7 @@ real(r8) :: am(n_levels)
 
 ! Set midpoint pressures.  
 !SENote: There is an inconsistency between hyam and the mean of surrounding hyai in the
-! caminput.nc files. I suspect that a few of the hyam's are bad. For now, need to compared
+! caminput.nc files. I suspect that a few of the hyam's are bad. For now, need to compare
 ! to results for the dry mass which use the hyai, so switch to that here.
 ! Have switched back to try to maintain bitwise consistency with original versions
 ! but this issue needs to be resolved with the CAM developers.
@@ -859,7 +864,9 @@ write(string1, out_fmt1) &
    'Discarding observations higher than model level ', no_obs_assim_above_level
 call error_handler(E_MSG, 'init_discard_high_obs', string1, source, revision, revdate)
 
-!SENote: Getting rid of single pressure call, converting to only column
+! SENote: Accuracy in this computation is not necessary. This just assumed a dry climatological 
+! column and is one of only two places that the dry vertical coordinate interface ignores
+! the impact of water tracers.
 call single_pressure_column(ref_surface_pressure, ref_nlevels, temp_p_col)
 no_assim_above_pressure = temp_p_col(no_obs_assim_above_level)
 write(string1, pres_fmt) &
@@ -1013,6 +1020,9 @@ if (want_vert_type == VERTISLEVEL) then
     if (present(out_label)) out_label = 'levels'
 else
    ! convert to the requested units.  start by going to pressure
+   ! SENote: Accuracy in this computation is not necessary. This just assumed a dry climatological 
+   ! column and is one of only two places that the dry vertical coordinate interface ignores
+   ! the impact of water tracers.
    call single_pressure_column(ref_surface_pressure, ref_nlevels, temp_p_col)
    tmp_val = temp_p_col(level_value)
 
