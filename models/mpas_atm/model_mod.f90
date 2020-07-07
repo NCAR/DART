@@ -938,6 +938,7 @@ call set_vertical_localization_coord(vert_localization_coord)
 
 ! set an appropriate value for roundoff tests based
 ! on this code being compiled single or double precision.
+! set to 1e-5 (for single) or 1e-12 (for double precision).
 if (r8 == digits12) then
    roundoff = 1.0e-12_r8
 else
