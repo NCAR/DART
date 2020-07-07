@@ -218,6 +218,10 @@ real(r8), parameter :: rvord = rv/rgas
 ! for the highest accuracy this should match what the model uses.
 real(r8), parameter :: radius = 6371229.0 ! meters
 
+! roundoff error tolerance
+! set in static_init_model() to 1e-5 or 1e-12 depending on compiled precision
+real(r8) :: roundoff
+
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 
