@@ -938,6 +938,7 @@ call set_vertical_localization_coord(vert_localization_coord)
 
 ! set an appropriate value for roundoff tests based
 ! on this code being compiled single or double precision.
+! set to 1e-5 (for single) or 1e-12 (for double precision).
 if (r8 == digits12) then
    roundoff = 1.0e-12_r8
 else
@@ -5337,7 +5338,7 @@ integer,     intent(out) :: lower(:), upper(:) ! ens_size
 real(r8),    intent(out) :: fract(:) ! ens_size
 integer,     intent(out) :: ier(:) ! ens_size
 
-integer  :: i, ier2, ifound
+integer  :: i, ier2
 real(r8) :: pr
 real(r8) :: pressure(nbounds, ens_size)
 integer  ::  e
@@ -5374,25 +5375,23 @@ where(ier(:) == 0) ier(:) = temp_ier(:)
 where(p(:) < pressure(nbounds, :)) ier(:) = 81
 !where(p(:) > pressure(      1, :)) ier(:) = 80
 
-! Loop through the rest of the column from the bottom up
+if(all(ier /= 0)) return
+
 found_level(:) = .false.
 
-ifound = 0
+! Check if the obs is located below the lowest model level in each member.
 do e = 1, ens_size
    if(p(e) >= pressure(1, e)) then
       found_level(e) = .true.
             fract(e) = 0.0_r8
             lower(e) = 1
             upper(e) = 1
-      ifound = ifound + 1
    endif
 enddo !e = 1, ens_size
-
-if(ifound > 0) return
-if(all(ier /= 0)) return
+if(all(found_level)) return
 
 ! Loop through the rest of the column from the bottom up
-LEVELLOOP : do i = 2, nbounds
+do i = 2, nbounds
    ! we've already done this call for level == nbounds
    if (i /= nbounds) then
       call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
@@ -5403,36 +5402,31 @@ LEVELLOOP : do i = 2, nbounds
       where (ier(:) == 0) ier(:) = temp_ier(:)
    endif
    
-   ! Check if hydrostatic pressure at level is larger than pressure at lower level
-   ! (happens VERY RARELY, but it happens).
+   ! Check if pressure is not monotonically descreased with level.
    if(any(pressure(i, :) > pressure(i-1, :))) then
-
       if (debug > 0 .and. do_output()) then
-         write(*, *) 'lower pressure larger than upper pressure at cellid',  cellid
+         write(*, *) 'pressure at the level is larger than the level below at cellid',  cellid
          do e=1, ens_size
             write(*, '(A,3I4,F9.2,A,F9.2)') &
-               'ens#, i, i-1, p(i), p(i-1) ', e,i,i-1,pressure(i,e),' ?>? ',pressure(i-1,e)
+               'ens#, level, level-1, p(level), p(level-1) ', e,i,i-1,pressure(i,e),' ?>? ',pressure(i-1,e)
          enddo
       endif
-
-!     This was causing an instability at any level above the lowest level to
-!     reject the entire column. That was deemed to be too extreme.
-!     where(pressure(i, :) > pressure(i-1, :)) ier(:) = 988
+     where(pressure(i, :) > pressure(i-1, :)) ier(:) = 988
    endif
 
    ! each ensemble member could have a vertical between different levels,
    ! and more likely a different fract across a level.
-   ENSEMBLELOOP : do e = 1, ens_size
+   do e = 1, ens_size
 
       ! if we've already run into an error, or we've already found the
       ! level for this ensemble member, skip the rest of this loop.
-      if (ier(e) /= 0)    cycle ENSEMBLELOOP
-      if (found_level(e)) cycle ENSEMBLELOOP
+      if (ier(e) /= 0)    cycle
+      if (found_level(e)) cycle
 
       ! Is pressure between levels i-1 and i?  
       ! if so, set the lower and upper level numbers and fraction across.
       ! fraction is 0 at level (i-1) and 1 at level(i).
-      if(p(e) >= pressure(i, e) .and. p(e) <= pressure(i-1, e)) then
+      if(p(e) >= pressure(i, e)) then
          found_level(e) = .true.
          lower(e) = i - 1
          upper(e) = i
@@ -5450,8 +5444,8 @@ LEVELLOOP : do i = 2, nbounds
             p(e), pressure(i-1,e), pressure(i,e), lower(e), upper(e), fract(e)
 
       endif
-   enddo ENSEMBLELOOP
-enddo LEVELLOOP
+   enddo
+enddo
 
 end subroutine find_pressure_bounds
 
