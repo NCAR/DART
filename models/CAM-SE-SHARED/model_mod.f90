@@ -145,6 +145,8 @@ integer, parameter :: MAX_PERT = 100
 ! model_nml namelist variables and default values
 ! Which vertical coordinate: Dry mass if for versions with CESM2 and later
 logical            :: dry_mass_vertical_coordinate    = .true.
+! If false, uses less precise but vastly cheaper traditional hybrid vertical coordinate for get_close
+logical            :: precise_dry_mass_get_close      = .false.
 
 character(len=256) :: cam_template_filename           = 'caminput.nc'
 character(len=256) :: cam_phis_filename               = 'cam_phis.nc'
@@ -190,6 +192,7 @@ character(len=vtablenamelength) :: state_variables(MAX_STATE_VARIABLES * &
 
 namelist /model_nml/  &
    dry_mass_vertical_coordinate,        &
+   precise_dry_mass_get_close,          &
    cam_template_filename,               &
    cam_phis_filename,                   &
    homme_map_file,                      &
@@ -1062,12 +1065,13 @@ end subroutine get_se_values_from_varid
 !> this is just for 2d fields
 
 subroutine get_se_values_from_nonstate_fields(ens_handle, ens_size, column, &
-                                           levels, obs_quantity, vals, my_status)
+                                           levels, obs_quantity, precise, vals, my_status)
 type(ensemble_type),  intent(in)  :: ens_handle
 integer,              intent(in)  :: ens_size
 integer,              intent(in)  :: column
 integer,              intent(in)  :: levels(ens_size)
 integer,              intent(in)  :: obs_quantity
+logical,              intent(in)  :: precise
 real(r8),             intent(out) :: vals(ens_size)
 integer,              intent(out) :: my_status(ens_size)
 
@@ -1084,7 +1088,7 @@ my_status(:) = 99
 select case (obs_quantity) 
    case (QTY_PRESSURE)
       call cam_se_pressure_levels(ens_handle, ens_size, column, ref_nlevels, &
-                               vals_array, my_status)
+                               precise, vals_array, my_status)
       if (any(my_status /= 0)) return
 
       do imember=1,ens_size
@@ -1141,6 +1145,10 @@ integer,            intent(out) :: istatus(ens_size)
 
 character(len=*), parameter :: routine = 'model_interpolate:'
 
+! Should dry mass vertical coordinate be used to build vertical pressure columns? 
+! This is expensive but probably necessary to get unbiased forward operators
+logical :: precise = .true.
+
 integer  :: varid, which_vert, status1
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
@@ -1191,7 +1199,7 @@ call coord_ind_cs(location_copy, obs_qty, cell_corners, l_weight, m_weight)
 
 ! Now do vertical conversions and get the vertical index for each ensemble member
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
-                   lon_lat_vert, which_vert, quad_vals, istatus)
+                   lon_lat_vert, which_vert, precise, quad_vals, istatus)
 
 !SENote Do further study of how we want to return istatus for various failures
 ! For now return istatus 12 for any of the failure modes
@@ -1711,13 +1719,14 @@ end subroutine solve_quadratic
 !> does not check for locations too high - return all actual values.
 
 subroutine interpolate_se_values(state_handle, ens_size, location, obs_qty, varid, &
-                              interp_vals, istatus)
+                              precise, interp_vals, istatus)
 
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_qty
 integer,             intent(in) :: varid
+logical,             intent(in) :: precise
 real(r8),           intent(out) :: interp_vals(ens_size) 
 integer,            intent(out) :: istatus(ens_size)
 
@@ -1741,7 +1750,7 @@ call coord_ind_cs(location_copy, obs_qty, cell_corners, l_weight, m_weight)
 
 !Now work on the vertical conversions and getting the vertical index for each ensemble member
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
-                   lon_lat_vert, which_vert, quad_vals, istatus)
+                   lon_lat_vert, which_vert, precise, quad_vals, istatus)
 
 !SENote: This old code block is not consistent with how the status reports are being done
 !if(istatus(1) /= 0) then
@@ -1781,7 +1790,7 @@ end subroutine interpolate_se_values
 !> Returns for all ensemble members 16 for unable to find lower values, 17 for unable to find upper values.
 
 subroutine get_se_quad_vals(state_handle, ens_size, varid, obs_qty, corners, &
-                         lon_lat_vert, which_vert, quad_vals, my_status)
+                         lon_lat_vert, which_vert, precise, quad_vals, my_status)
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 integer,             intent(in) :: varid
@@ -1789,6 +1798,7 @@ integer,             intent(in) :: obs_qty
 integer,             intent(in) :: corners(4)
 real(r8),            intent(in) :: lon_lat_vert(3)
 integer,             intent(in) :: which_vert
+logical,             intent(in) :: precise
 real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
 integer,            intent(out) :: my_status(ens_size)
 
@@ -1814,7 +1824,7 @@ if (numdims == 2) then
    ! build 4 columns to find vertical level numbers
    do icorner=1, 4
       call find_se_vertical_levels(state_handle, ens_size, corners(icorner), lon_lat_vert(3), &
-                                which_vert, four_levs1(icorner, :), four_levs2(icorner, :), & 
+                                which_vert, precise, four_levs1(icorner, :), four_levs2(icorner, :), & 
                                 four_vert_fracts(icorner, :), my_status)
 
       if (any(my_status /= 0)) then
@@ -1837,7 +1847,7 @@ if (numdims == 2) then
    else ! get 2d special variables in another ways ( like QTY_PRESSURE )
       call get_se_four_nonstate_values(state_handle, ens_size, corners, &
                                    four_levs1, four_levs2, four_vert_fracts, & 
-                                   obs_qty, quad_vals, my_status)
+                                   obs_qty, precise, quad_vals, my_status)
 
    endif
 
@@ -1938,7 +1948,7 @@ end subroutine get_se_four_state_values
 
 subroutine get_se_four_nonstate_values(state_handle, ens_size, four_corners, &
                                  four_levs1, four_levs2, four_vert_fracts, &
-                                 obs_qty, quad_vals, my_status)
+                                 obs_qty, precise, quad_vals, my_status)
 
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
@@ -1946,6 +1956,7 @@ integer,             intent(in) :: four_corners(4)
 integer,             intent(in) :: four_levs1(4, ens_size), four_levs2(4, ens_size)
 real(r8),            intent(in) :: four_vert_fracts(4, ens_size)
 integer,             intent(in) :: obs_qty
+logical,             intent(in) :: precise
 real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
 integer,            intent(out) :: my_status(ens_size)
 
@@ -1956,14 +1967,14 @@ character(len=*), parameter :: routine = 'get_se_four_nonstate_values:'
 
 do icorner=1, 4
    call get_se_values_from_nonstate_fields(state_handle, ens_size, four_corners(icorner), &
-                              four_levs1(icorner, :), obs_qty, vals1, my_status)
+                              four_levs1(icorner, :), obs_qty, precise, vals1, my_status)
    if (any(my_status /= 0)) then
       my_status(:) = 16   ! cannot retrieve vals1 values
       return
    endif
 
    call get_se_values_from_nonstate_fields(state_handle,  ens_size, four_corners(icorner), &
-                              four_levs2(icorner, :), obs_qty, vals2, my_status)
+                              four_levs2(icorner, :), obs_qty, precise, vals2, my_status)
    if (any(my_status /= 0)) then
       my_status(:) = 17   ! cannot retrieve top values
       return
@@ -2072,12 +2083,13 @@ end subroutine vert_interp
 ! 8 for all ensemble members if cannot be interpolated in level.
 
 subroutine find_se_vertical_levels(ens_handle, ens_size, column, vert_val, &
-                                which_vert, levs1, levs2, vert_fracts, my_status)
+                                which_vert, precise, levs1, levs2, vert_fracts, my_status)
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: column
 real(r8),            intent(in)  :: vert_val
 integer,             intent(in)  :: which_vert
+logical,             intent(in)  :: precise
 integer,             intent(out) :: levs1(ens_size)
 integer,             intent(out) :: levs2(ens_size)
 real(r8),            intent(out) :: vert_fracts(ens_size)
@@ -2115,7 +2127,7 @@ select case (which_vert)
          return
       endif
 
-      if(dry_mass_vertical_coordinate) then
+      if(dry_mass_vertical_coordinate .and. precise) then
          call build_dry_mass_pressure_columns(ens_handle, ens_size, ref_nlevels, column, surf_pressure, &
             pressure_array, status1)
          ! All output variables set to missing already, just return with all my_status as 12
@@ -2145,7 +2157,7 @@ select case (which_vert)
       ! construct a height column here and find the model levels that enclose this value
       ! All my_status are returned as 12 if a failure
       call cam_se_height_levels(ens_handle, ens_size, column, ref_nlevels, &
-                             height_array, my_status)
+                             precise, height_array, my_status)
 
       !>@todo FIXME let successful members continue?
       if (any(my_status /= 0)) return
@@ -2257,6 +2269,9 @@ integer  :: k, n, istatus
 
 ! For now, will fail all ensemble members and levels if any level/member fails
 
+!SENOte
+write(*, *) 'entering build_dry_mass_pressure_columns;'
+
 ! Need the water tracer specific mixing ratios for ever level in the column to compute their mass sum
 do k = 1, nlevels
 
@@ -2326,11 +2341,12 @@ end subroutine build_dry_mass_pressure_columns
 !> this version does all ensemble members at once.
 !> Returns my_status 12 for all members if unable to compute levels.
 
-subroutine cam_se_height_levels(ens_handle, ens_size, column, nlevels, height_array, my_status) 
+subroutine cam_se_height_levels(ens_handle, ens_size, column, nlevels, precise, height_array, my_status) 
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: column
 integer,             intent(in)  :: nlevels
+logical,             intent(in)  :: precise
 real(r8),            intent(out) :: height_array(nlevels, ens_size)
 integer,             intent(out) :: my_status(ens_size)
 
@@ -2363,7 +2379,7 @@ if (status1 /= 0) then
 endif
 
 ! Build the pressure columns for the entire ensemble
-if(dry_mass_vertical_coordinate) then
+if(dry_mass_vertical_coordinate .and. precise) then
    call build_dry_mass_pressure_columns(ens_handle, ens_size, nlevels, column, surface_pressure, &
       pressure, status1)
    if(status1 /= 0) then
@@ -3136,13 +3152,13 @@ do i=1,num
 
    select case (which_vert)
       case (VERTISPRESSURE)
-         call state_vertical_to_pressure(    ens_handle, ens_size, locs(i), loc_indx(i))
+         call state_vertical_to_pressure(    ens_handle, ens_size, precise_dry_mass_get_close, locs(i), loc_indx(i))
       case (VERTISHEIGHT)
-         call state_vertical_to_height(      ens_handle, ens_size, locs(i), loc_indx(i))
+         call state_vertical_to_height(      ens_handle, ens_size, precise_dry_mass_get_close, locs(i), loc_indx(i))
       case (VERTISLEVEL)
          call state_vertical_to_level(                   ens_size, locs(i), loc_indx(i))
       case (VERTISSCALEHEIGHT)
-         call state_vertical_to_scaleheight( ens_handle, ens_size, locs(i), loc_indx(i))
+         call state_vertical_to_scaleheight( ens_handle, ens_size, precise_dry_mass_get_close, locs(i), loc_indx(i))
       case default
          write(string1,*)'unable to convert vertical state "', which_vert, '"'
          call error_handler(E_MSG,routine,string1,source,revision,revdate)
@@ -3155,9 +3171,10 @@ end subroutine convert_vertical_state
 
 !--------------------------------------------------------------------
 
-subroutine state_vertical_to_pressure(ens_handle, ens_size, location, location_indx)
+subroutine state_vertical_to_pressure(ens_handle, ens_size, precise, location, location_indx)
 type(ensemble_type), intent(in)    :: ens_handle
 integer,             intent(in)    :: ens_size
+logical,             intent(in)    :: precise
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
 
@@ -3180,7 +3197,7 @@ if (is_surface_field(myqty)) then
    call set_vertical(location, surface_pressure(1), VERTISPRESSURE)
 else
    call cam_se_pressure_levels(ens_handle, ens_size, column, ref_nlevels, &
-                            pressure_array, my_status)
+                            precise, pressure_array, my_status)
 
    call set_vertical(location, pressure_array(level), VERTISPRESSURE)
 endif
@@ -3189,9 +3206,10 @@ end subroutine state_vertical_to_pressure
 
 !--------------------------------------------------------------------
 
-subroutine state_vertical_to_height(ens_handle, ens_size, location, location_indx)
+subroutine state_vertical_to_height(ens_handle, ens_size, precise, location, location_indx)
 type(ensemble_type), intent(in)    :: ens_handle
 integer,             intent(in)    :: ens_size
+logical,             intent(in)    :: precise
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
 
@@ -3202,7 +3220,7 @@ real(r8) :: height_array(ref_nlevels, ens_size)
 call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
 call cam_se_height_levels(ens_handle, ens_size, column, ref_nlevels, &
-                       height_array, my_status) 
+                       precise, height_array, my_status) 
 
 !>@todo FIXME this can only be used if ensemble size is 1
 call set_vertical(location, height_array(level, 1), VERTISHEIGHT)
@@ -3211,9 +3229,10 @@ end subroutine state_vertical_to_height
 
 !--------------------------------------------------------------------
 
-subroutine state_vertical_to_scaleheight(ens_handle, ens_size, location, location_indx)
+subroutine state_vertical_to_scaleheight(ens_handle, ens_size, precise, location, location_indx)
 type(ensemble_type), intent(in)    :: ens_handle
 integer,             intent(in)    :: ens_size
+logical,             intent(in)    :: precise
 type(location_type), intent(inout) :: location
 integer(i8),         intent(in)    :: location_indx
 
@@ -3248,7 +3267,7 @@ if (no_normalization_of_scale_heights) then
       call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
       call cam_se_pressure_levels(ens_handle, ens_size, column,  ref_nlevels, &
-                               pressure_array, my_status)
+                               precise, pressure_array, my_status)
       if (any(my_status /= 0)) goto 200
    
       scaleheight_val = log(pressure_array(level))
@@ -3268,7 +3287,7 @@ else
       call get_model_variable_indices(location_indx, column, level, no_third_dimension)
 
       call cam_se_pressure_levels(ens_handle, ens_size, column, ref_nlevels, &
-                               pressure_array, my_status)
+                               precise, pressure_array, my_status)
       if (any(my_status /= 0)) goto 200
 
       ! get the surface pressure from the ens_handle
@@ -3314,11 +3333,12 @@ end subroutine state_vertical_to_level
 !> this version does all ensemble members at once.
 
 subroutine cam_se_pressure_levels(ens_handle, ens_size, column, nlevels, &
-                               pressure_array, my_status) 
+                               precise, pressure_array, my_status) 
 type(ensemble_type), intent(in)  :: ens_handle
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: column
 integer,             intent(in)  :: nlevels
+logical,             intent(in)  :: precise
 real(r8),            intent(out) :: pressure_array(nlevels, ens_size)
 integer,             intent(out) :: my_status(ens_size)
 
@@ -3337,7 +3357,7 @@ if (status1 /= 0) then
    return
 endif
 
-if(dry_mass_vertical_coordinate) then
+if(dry_mass_vertical_coordinate .and. precise) then
    call build_dry_mass_pressure_columns(ens_handle, ens_size, ref_nlevels, column, surface_pressure, &
       pressure_array, status1)
    if(status1 /= 0) then
@@ -3384,13 +3404,13 @@ do i=1,num
 
    select case (which_vert)
       case (VERTISPRESSURE)
-         call obs_vertical_to_pressure(   ens_handle, locs(i), my_status(i))
+         call obs_vertical_to_pressure(   ens_handle, precise_dry_mass_get_close, locs(i), my_status(i))
       case (VERTISHEIGHT)
-         call obs_vertical_to_height(     ens_handle, locs(i), my_status(i))
+         call obs_vertical_to_height(     ens_handle, precise_dry_mass_get_close, locs(i), my_status(i))
       case (VERTISLEVEL)
-         call obs_vertical_to_level(      ens_handle, locs(i), my_status(i))
+         call obs_vertical_to_level(      ens_handle, precise_dry_mass_get_close, locs(i), my_status(i))
       case (VERTISSCALEHEIGHT)
-         call obs_vertical_to_scaleheight(ens_handle, locs(i), my_status(i))
+         call obs_vertical_to_scaleheight(ens_handle, precise_dry_mass_get_close, locs(i), my_status(i))
       case default
          write(string1,*)'unable to convert vertical obs "', which_vert, '"'
          call error_handler(E_ERR,routine,string1,source,revision,revdate)
@@ -3401,9 +3421,10 @@ end subroutine convert_vertical_obs
 
 !--------------------------------------------------------------------
 
-subroutine obs_vertical_to_pressure(ens_handle, location, my_status)
+subroutine obs_vertical_to_pressure(ens_handle, precise, location, my_status)
 
 type(ensemble_type), intent(in)    :: ens_handle
+logical,             intent(in)    :: precise
 type(location_type), intent(inout) :: location
 integer,             intent(out)   :: my_status
 
@@ -3423,7 +3444,7 @@ call ok_to_interpolate(qty, varid, domain_id, my_status)
 if (my_status /= 0) return
 
 call interpolate_se_values(ens_handle, ens_size, location, &
-                        qty, varid, pressure_array(:), status(:))
+                        qty, varid, precise, pressure_array(:), status(:))
 
 if (status(1) /= 0) then
    my_status = status(1)
@@ -3438,8 +3459,9 @@ end subroutine obs_vertical_to_pressure
 
 !--------------------------------------------------------------------
 
-subroutine obs_vertical_to_height(ens_handle, location, my_status)
+subroutine obs_vertical_to_height(ens_handle, precise, location, my_status)
 type(ensemble_type), intent(in)    :: ens_handle
+logical,             intent(in)    :: precise
 type(location_type), intent(inout) :: location
 integer,             intent(out)   :: my_status
 
@@ -3457,7 +3479,7 @@ call ok_to_interpolate(QTY_GEOMETRIC_HEIGHT, varid, domain_id, my_status)
 if (my_status /= 0) return
 
 call interpolate_se_values(ens_handle, ens_size, location, &
-                        QTY_GEOMETRIC_HEIGHT, varid, height_array(:), status(:))
+                        QTY_GEOMETRIC_HEIGHT, varid, precise, height_array(:), status(:))
 if (status(1) /= 0) then
    my_status = status(1)
    return
@@ -3471,8 +3493,9 @@ end subroutine obs_vertical_to_height
 
 !--------------------------------------------------------------------
 
-subroutine obs_vertical_to_level(ens_handle, location, my_status)
+subroutine obs_vertical_to_level(ens_handle, precise, location, my_status)
 type(ensemble_type), intent(in)    :: ens_handle
+logical,             intent(in)    :: precise
 type(location_type), intent(inout) :: location
 integer,             intent(out)   :: my_status
 
@@ -3490,7 +3513,7 @@ call error_handler(E_ERR, 'obs_vertical_to_level',  &
 
 !SENote: This has not been checked, just swapped the call to interpolate_values
 call interpolate_se_values(ens_handle, ens_size, location, &
-                        QTY_VERTLEVEL, varid, level_array(:), status(:))
+                        QTY_VERTLEVEL, varid, precise, level_array(:), status(:))
 if (status(1) /= 0) then
    my_status = status(1)
    return
@@ -3504,8 +3527,9 @@ end subroutine obs_vertical_to_level
 
 !--------------------------------------------------------------------
 
-subroutine obs_vertical_to_scaleheight(ens_handle, location, my_status)
+subroutine obs_vertical_to_scaleheight(ens_handle, precise, location, my_status)
 type(ensemble_type), intent(in)    :: ens_handle
+logical,             intent(in)    :: precise
 type(location_type), intent(inout) :: location
 integer,             intent(out)   :: my_status
 
@@ -3542,7 +3566,7 @@ if (no_normalization_of_scale_heights) then
       my_status = 0
    else
       call interpolate_se_values(ens_handle, ens_size, location, ptype, varid1, &
-                              pressure_array(:), status(:))
+                              precise, pressure_array(:), status(:))
       if (status(1) /= 0) then
          my_status = status(1)
          return
@@ -3573,7 +3597,7 @@ else
          my_status = 0
       else
          call interpolate_se_values(ens_handle, ens_size, location, QTY_PRESSURE, varid1, &
-                                    pressure_array(:), status(:))
+                                    precise, pressure_array(:), status(:))
          if (status(1) /= 0) then
             my_status = status(1)
             return
@@ -3584,7 +3608,7 @@ else
       if (my_status /= 0) return
       
       call interpolate_se_values(ens_handle, ens_size, location, QTY_SURFACE_PRESSURE, varid2, &
-                                    surface_pressure_array(:), status(:))
+                                    precise, surface_pressure_array(:), status(:))
       if (status(1) /= 0) then
          my_status = status(1)
          return
