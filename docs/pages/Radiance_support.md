@@ -70,7 +70,7 @@ To get RTTOV to work with your model, you will need to follow these steps:
 3. Go into the models/<model of choice>/work directory for your model of choice
 4. Add your observation types (which are listed in obs_def_rttov_mod.html/f90) to the input.nml namelist (assimilate_ / evaluate_these_obs_types)
 5. Include observations/forward_operators/obs_def_rttov_mod.f90 in the input_files section under &preprocess
-6. Add observations/forward_operators/rttov_interface_mod.F90 to all of the path_name files that use obs_def_mod.f90
+6. Add observations/forward_operators/rttov_interface_mod.f90 to all of the path_name files that use obs_def_mod.f90
 7. In your model of choice, run ./quickbuild.csh and ensure the RTTOV libraries are built
 8. For OSSE runs with perfect_model_obs:
    - Create an observation sequence file using ./create_obs_sequence and ./create_fixed_network_seq as
