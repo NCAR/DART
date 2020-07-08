@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 # TJH   ADAPTIVE_INFLATION is disconnected from input.nml
 # TJH   ASSIM_INT_HOURS  is implicit in (ALL) the scripts except assim_advance.csh
@@ -21,11 +19,11 @@ set NUM_ENS            = 50
 set ASSIM_INT_MINUTES  = 0   # 0 means use ASSIM_INT_HOURS
 set ASSIM_INT_HOURS    = 6   # ignored if ASSIM_INT_MINUTES > 0
 set IC_PERT_SCALE      = 0.25
-set ADAPTIVE_INFLATION = 1   # set to 1 if using adaptive inflaton to tell the scripts to look for the files
+set ADAPTIVE_INFLATION = 1   # set to 1 if using adaptive inflation to tell the scripts to look for the files
 set NUM_DOMAINS        = 1
 
 #  Directories where things are run
-#  IMPORTANT : Scripts provided rely on this directory structure and these directory names relative to BASE_DIR.
+#  IMPORTANT : Scripts provided rely on this directory structure and names relative to BASE_DIR.
 #              Do not change, otherwise tutorial will fail.    
 set BASE_DIR         = /glade2/scratch2/USER/WORK_DIR     # set this appropriately #%%%#
 set RUN_DIR          = ${BASE_DIR}/rundir
@@ -65,36 +63,38 @@ set OBS_VERIF_DAYS      = 7
 #  Generic queuing system parameters
 set SUPER_PLATFORM      = cheyenne
 
-#  CHARGE ACCOUNTS
-set NCAR_GAU_ACCOUNT    = YOUR_ACCT   # set this appropriately #%%%#
-set CNCAR_GAU_ACCOUNT   = YOUR_ACCT   # set this appropriately #%%%#
-
 # TJH consistent way of checking the SUPER_PLATFORM and injecting that
 #     header information into the scripts ... rather than have scripts
 #     that have redundant blocks in them ...
+#
+set COMPUTER_CHARGE_ACCOUNT = YOUR_ACCT                  # set this appropriately #%%%#
+set EMAIL                   = YOUR_EMAIL@SOMEPLACE.COM   # set this appropriately #%%%#
 
-# yellowstone parameters
-set FILTER_QUEUE        = regular
-set FILTER_TIME         = 0:25
-set FILTER_CORES        = 512
-set ADVANCE_QUEUE       = regular
-set ADVANCE_TIME        = 0:18
-set ADVANCE_CORES       = 64
-set NCAR_FILTER_PTILE   = 16
-set NCAR_ADVANCE_PTILE  = 16
-# cheyenne parameters
-set CFILTER_QUEUE       = regular
-set CFILTER_TIME        = 0:35:00
-set CEMAIL              = YOUR_EMAIL@SOMEPLACE.COM      # set this appropriately #%%%#
-set CFILTER_NODES       = 10
-set CFILTER_PROCS       = 36
-set CFILTER_MPI         = 36
-set CADVANCE_QUEUE       = regular
-set CADVANCE_TIME        = 0:20:00
-set CDADVANCE_TIME       = 0:35:00
-set CADVANCE_NODES       = 3
-set CADVANCE_PROCS       = 36
-set CADVANCE_MPI         = 36
+if ( $SUPER_PLATFORM == 'cheyenne') then
+   # cheyenne values (uses 'PBS' queueing system) 
+   # set this appropriately #%%%#  ... ALL OF THESE if using PBS
+   set FILTER_QUEUE       = regular
+   set FILTER_TIME        = 0:35:00
+   set FILTER_NODES       = 10
+   set FILTER_PROCS       = 36
+   set FILTER_MPI         = 36
+   set ADVANCE_QUEUE       = regular
+   set ADVANCE_TIME        = 0:20:00
+   set ADVANCE_NODES       = 3
+   set ADVANCE_PROCS       = 36
+   set ADVANCE_MPI         = 36
+else
+   # yellowstone (uses 'LSF' queueing system)
+   # set this appropriately #%%%#  ... ALL OF THESE if using LSF
+   set FILTER_QUEUE        = regular
+   set FILTER_TIME         = 0:25
+   set FILTER_CORES        = 512
+   set ADVANCE_QUEUE       = regular
+   set ADVANCE_TIME        = 0:18
+   set ADVANCE_CORES       = 64
+   set FILTER_PTILE        = 16
+   set ADVANCE_PTILE       = 16
+endif
 
 #  System specific commands
 # TJH ... The LINK command probably should not have the force option.
@@ -108,7 +108,3 @@ setenv   LIST 'ls'
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
