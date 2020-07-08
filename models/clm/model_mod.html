@@ -464,7 +464,8 @@ prematurely terminating the namelist.
         <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em>
         AFTER it gets built by <em class=program>preprocess</em>. Most of
         the land observation kinds are specified by 
-        <em class=file>DART/observations/forward_operators/obs_def_tower_mod.f90</em>, so it should
+        <em class=file>DART/observations/forward_operators/obs_def_land_mod.f90</em> and
+        <em class=file>DART/observations/forward_operators/obs_def_tower_mod.f90</em>, so they should
         be specified in the preprocess_nml:input_files variable.
         </TD>
 </TR>
@@ -540,6 +541,7 @@ time_manager_mod
 threed_sphere/location_mod
 utilities_mod
 obs_kind_mod
+obs_def_land_mod
 obs_def_tower_mod
 random_seq_mod
 </PRE>
