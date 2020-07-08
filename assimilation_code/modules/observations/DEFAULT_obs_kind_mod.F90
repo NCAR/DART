@@ -146,8 +146,8 @@ integer, parameter, public :: &
     QTY_ALTIMETER_TENDENCY          = 48
 
 ! kind for precip water; contrast with
-! total precip water (also in this file), 
-! which is the total column integrated value. 
+! total precip water (also in this file),
+! which is the total column integrated value.
 integer, parameter, public :: &
     QTY_PRECIPITABLE_WATER          = 49
 
@@ -235,7 +235,7 @@ integer, parameter, public :: &
     QTY_TURBULENT_KINETIC_ENERGY    = 86, &
     QTY_TOTAL_PRECIPITABLE_WATER    = 87, & ! accumulated value - total water in a column
     QTY_VERTLEVEL                   = 88, &
-    QTY_MICROWAVE_BRIGHT_TEMP       = 89    ! this was used for a limited implementation, 
+    QTY_MICROWAVE_BRIGHT_TEMP       = 89    ! this was used for a limited implementation,
                                             ! more general quantities are found at 290
 
 ! kinds for NAAPS (Walter R. Sessions)
@@ -268,7 +268,7 @@ integer, parameter, public :: &
     QTY_SNOW_WATER                  = 108, &
     QTY_SNOWCOVER_FRAC              = 109, &
     QTY_LIQUID_WATER                = 110, &
-    QTY_ICE                         = 111, &
+    QTY_SOIL_ICE                    = 111, &
     QTY_CARBON                      = 112, &
     QTY_SOIL_CARBON                 = 113, &
     QTY_ROOT_CARBON                 = 114, &
@@ -286,7 +286,7 @@ integer, parameter, public :: &
     QTY_STEM_NITROGEN               = 126, &
     QTY_LEAF_NITROGEN               = 127, &
     QTY_WATER_TABLE_DEPTH           = 128, &
-    QTY_FPAR                        = 129, &
+    QTY_FRAC_PHOTO_AVAIL_RADIATION  = 129, &
     QTY_TOTAL_WATER_STORAGE         = 130, &
     QTY_SNOW_TEMPERATURE            = 131, &
     QTY_SURFACE_RUNOFF              = 132, &
@@ -294,23 +294,19 @@ integer, parameter, public :: &
     QTY_AQUIFER_WATER               = 134, &
     QTY_2M_VAPOR_MIXING_RATIO       = 135
 
-! kinds for NOAH  (Tim Hoar)
 integer, parameter, public :: &
     QTY_NEUTRON_INTENSITY           = 140, &
     QTY_CANOPY_WATER                = 141, &
     QTY_GROUND_HEAT_FLUX            = 142
 
-! more kinds for TIEGCM Alex Chartier 
+! more kinds for TIEGCM Alex Chartier
 integer, parameter, public :: &
     QTY_VERTICAL_TEC                = 143, &
     QTY_O_N2_COLUMN_DENSITY_RATIO   = 144
 
-!! For now we have agreed to reserve kind numbers 151 to 250
-!! for chemistry types, specifically for WRF-Chem/DART, but
-!! possibly of interest to other models with Chemistry species.
-!! DO NOT USE numbers between 151-250 without talking to me, please?  (nancy)
+!! Reserve kind numbers 151 to 250 for chemistry types.
+!! DO NOT USE numbers between 151-250 without talking to the DART group, please?
 
-! these chemistry kinds match the numbers Arthur Mizzi is using
 integer, parameter, public :: &
     QTY_O3                          = 151, &
     QTY_CO                          = 153, &
@@ -318,11 +314,11 @@ integer, parameter, public :: &
     QTY_NO2                         = 156, &  ! Nitrogen dioxide
     QTY_N2O                         = 157     ! JLS Nitrous oxide, for RTTOV
 
-! more chemistry kinds (Jerome Barre)  (through 249)
+! more chemistry kinds (Jerome Barre)
 integer, parameter, public :: &
     QTY_CO01                        = 161, &
     QTY_CO02                        = 162, &
-    QTY_CO03                        = 163 
+    QTY_CO03                        = 163
 
 integer, parameter, public :: &
     QTY_SFCO                        = 170, &
@@ -409,131 +405,187 @@ integer, parameter, public :: &
   QTY_CANOPY_TEMPERATURE            = 295, &
   QTY_BUCKET_MULTIPLIER             = 296, &
   QTY_RUNOFF_MULTIPLIER             = 297
- 
+
+!! Reserving LAND quantities from 301 to 399
+
 integer, parameter, public :: &
   QTY_VEGETATION_TEMPERATURE        = 301, &
   QTY_CANOPY_HEIGHT                 = 302, &
-  QTY_FPAR_DIRECT                   = 303, &
-  QTY_FPAR_DIFFUSE                  = 304, &
-  QTY_FPAR_SUNLIT_DIRECT            = 305, &
-  QTY_FPAR_SUNLIT_DIFFUSE           = 306, &
-  QTY_FPAR_SHADED_DIRECT            = 307, &
-  QTY_FPAR_SHADED_DIFFUSE           = 308, &
-  QTY_FPSN                          = 309, &
-  QTY_FSIF                          = 310
+  QTY_FRACTION_ABSORBED_PAR         = 303, &  ! "FAPAR"
+  QTY_PAR_DIRECT                    = 304, &
+  QTY_PAR_DIFFUSE                   = 305, &
+  QTY_FPAR_SUNLIT_DIRECT            = 306, &
+  QTY_FPAR_SUNLIT_DIFFUSE           = 307, &
+  QTY_FPAR_SHADED_DIRECT            = 308, &
+  QTY_FPAR_SHADED_DIFFUSE           = 309, &
+  QTY_FPSN                          = 310, &  ! ask Utah group ... SIF-related
+  QTY_FSIF                          = 311, &
+  QTY_GROSS_PRIMARY_PROD_FLUX       = 312, &
+  QTY_ER_FLUX                       = 313, &
+  QTY_BIOMASS                       = 314, &
+  QTY_SOIL_RESPIRATION_FLUX         = 315, &
+  QTY_NET_PRIMARY_PROD_FLUX         = 316, &
+  QTY_RADIATION_VISIBLE_DOWN        = 317, &
+  QTY_RADIATION_VISIBLE_UP          = 318, &
+  QTY_RADIATION_NEAR_IR_DOWN        = 319, &
+  QTY_RADIATION_NEAR_IR_UP          = 320, &
+  QTY_LIVE_STEM_CARBON              = 321, &
+  QTY_LIVE_STEM_NITROGEN            = 322, &
+  QTY_DEAD_STEM_CARBON              = 323, &
+  QTY_DEAD_STEM_NITROGEN            = 324, &
+  QTY_LIVE_ROOT_CARBON              = 325, &
+  QTY_LIVE_ROOT_NITROGEN            = 326, &
+  QTY_DEAD_ROOT_CARBON              = 327, &
+  QTY_DEAD_ROOT_NITROGEN            = 328, &
+  QTY_STEM_AREA_INDEX               = 329
 
-! kinds for CICE added by C. Bitz
+! QTYs for satellite brightness temperatures. Certain
+! frequencies/polarizations are better for cloudy vs. vegetated vs. ...
+! so there is a need to discriminate.
 integer, parameter, public :: &
-  QTY_SEAICE_AGREG_CONCENTR         = 311, &  ! aggregate over categories
-  QTY_SEAICE_AGREG_VOLUME           = 312, &
-  QTY_SEAICE_AGREG_SNOWVOLUME       = 313, &
-  QTY_SEAICE_AGREG_THICKNESS        = 314, &
-  QTY_SEAICE_AGREG_SNOWDEPTH        = 315, &
-  QTY_U_SEAICE_COMPONENT            = 316, &
-  QTY_V_SEAICE_COMPONENT            = 317, &
-  QTY_SEAICE_ALBEDODIRVIZ           = 318, &
-  QTY_SEAICE_ALBEDODIRNIR           = 319, &
-  QTY_SEAICE_ALBEDOINDVIZ           = 320, &
-  QTY_SEAICE_ALBEDOINDNIR           = 321, &
-  QTY_SEAICE_CONCENTR               = 322, &  ! for each category
-  QTY_SEAICE_VOLUME                 = 323, &
-  QTY_SEAICE_SNOWVOLUME             = 324, &
-  QTY_SEAICE_SURFACETEMP            = 325, &
-  QTY_SEAICE_FIRSTYEARAREA          = 326, &
-  QTY_SEAICE_ICEAGE                 = 327, &
-  QTY_SEAICE_LEVELAREA              = 328, &
-  QTY_SEAICE_LEVELVOLUME            = 329, &
-  QTY_SEAICE_MELTPONDAREA           = 330, &
-  QTY_SEAICE_MELTPONDDEPTH          = 331, &
-  QTY_SEAICE_MELTPONDLID            = 332, &
-  QTY_SEAICE_MELTPONDSNOW           = 333, &
-  QTY_SEAICE_SALINITY001            = 334, &   ! 00X refers to layer (ugh)
-  QTY_SEAICE_SALINITY002            = 335, &
-  QTY_SEAICE_SALINITY003            = 336, &
-  QTY_SEAICE_SALINITY004            = 337, &
-  QTY_SEAICE_SALINITY005            = 338, &
-  QTY_SEAICE_SALINITY006            = 339, &
-  QTY_SEAICE_SALINITY007            = 340, &
-  QTY_SEAICE_SALINITY008            = 341, &
-  QTY_SEAICE_ICEENTHALPY001         = 342, &
-  QTY_SEAICE_ICEENTHALPY002         = 343, &
-  QTY_SEAICE_ICEENTHALPY003         = 344, &
-  QTY_SEAICE_ICEENTHALPY004         = 345, &
-  QTY_SEAICE_ICEENTHALPY005         = 346, &
-  QTY_SEAICE_ICEENTHALPY006         = 347, &
-  QTY_SEAICE_ICEENTHALPY007         = 348, &
-  QTY_SEAICE_ICEENTHALPY008         = 349, &
-  QTY_SEAICE_SNOWENTHALPY001        = 350, &
-  QTY_SEAICE_SNOWENTHALPY002        = 351, &
-  QTY_SEAICE_SNOWENTHALPY003        = 352, &
-  QTY_SOM_TEMPERATURE               = 353, &
-  QTY_SEAICE_FY                     = 354, &
-  QTY_SEAICE_AGREG_FY               = 355, &
-  QTY_SEAICE_AGREG_SURFACETEMP      = 356, &
-  QTY_SEAICE_AGREG_FREEBOARD        = 357, &
-  QTY_SEAICE_CATEGORY               = 358
+  QTY_BRIGHTNESS_TEMPERATURE_6H     = 330, &
+  QTY_BRIGHTNESS_TEMPERATURE_6V     = 331, &
+  QTY_BRIGHTNESS_TEMPERATURE_10H    = 332, &
+  QTY_BRIGHTNESS_TEMPERATURE_10V    = 333, &
+  QTY_BRIGHTNESS_TEMPERATURE_18H    = 334, &
+  QTY_BRIGHTNESS_TEMPERATURE_18V    = 335, &
+  QTY_BRIGHTNESS_TEMPERATURE_23H    = 336, &
+  QTY_BRIGHTNESS_TEMPERATURE_23V    = 337, &
+  QTY_BRIGHTNESS_TEMPERATURE_36H    = 338, &
+  QTY_BRIGHTNESS_TEMPERATURE_36V    = 339, &
+  QTY_BRIGHTNESS_TEMPERATURE_89H    = 340, &
+  QTY_BRIGHTNESS_TEMPERATURE_89V    = 341, &
+  QTY_SNOW_GRAIN_SIZE               = 342, &
+  QTY_RTM_PARAMETERS_P              = 343, &
+  QTY_RTM_PARAMETERS_N              = 344, &
+  QTY_SAND_FRACTION                 = 345, &
+  QTY_CLAY_FRACTION                 = 346, &
+  QTY_CALIBRATED_SAND_FRACTION      = 347, &
+  QTY_CALIBRATED_CLAY_FRACTION      = 348, &
+  QTY_VEGETATED_AREA_FRACTION       = 349, &
+  QTY_STICKINESS                    = 350, &
+  QTY_B_PRIME                       = 351, &
+  QTY_X_LAMBDA                      = 352, &
+  QTY_UNCONFINED_WATER              = 353, &
+  QTY_SATURATED_WATER               = 354, &
+  QTY_SNOW_DEPTH                    = 355, &
+  QTY_SOLAR_INDUCED_FLUORESCENCE    = 356, &
+  QTY_PHOTO_AVAILABLE_RADIATION     = 357, &
+  QTY_ABSORBED_PAR                  = 358
+
+!! Reserving CICE quantities from 401 to 499
 
 integer, parameter, public :: &
-  QTY_SEA_SURFACE_ANOMALY           = 360
+  QTY_SEAICE_AGREG_CONCENTR         = 411, &  ! aggregate over categories
+  QTY_SEAICE_AGREG_VOLUME           = 412, &
+  QTY_SEAICE_AGREG_SNOWVOLUME       = 413, &
+  QTY_SEAICE_AGREG_THICKNESS        = 414, &
+  QTY_SEAICE_AGREG_SNOWDEPTH        = 415, &
+  QTY_U_SEAICE_COMPONENT            = 416, &
+  QTY_V_SEAICE_COMPONENT            = 417, &
+  QTY_SEAICE_ALBEDODIRVIZ           = 418, &
+  QTY_SEAICE_ALBEDODIRNIR           = 419, &
+  QTY_SEAICE_ALBEDOINDVIZ           = 420, &
+  QTY_SEAICE_ALBEDOINDNIR           = 421, &
+  QTY_SEAICE_CONCENTR               = 422, &  ! for each category
+  QTY_SEAICE_VOLUME                 = 423, &
+  QTY_SEAICE_SNOWVOLUME             = 424, &
+  QTY_SEAICE_SURFACETEMP            = 425, &
+  QTY_SEAICE_FIRSTYEARAREA          = 426, &
+  QTY_SEAICE_ICEAGE                 = 427, &
+  QTY_SEAICE_LEVELAREA              = 428, &
+  QTY_SEAICE_LEVELVOLUME            = 429, &
+  QTY_SEAICE_MELTPONDAREA           = 430, &
+  QTY_SEAICE_MELTPONDDEPTH          = 431, &
+  QTY_SEAICE_MELTPONDLID            = 432, &
+  QTY_SEAICE_MELTPONDSNOW           = 433, &
+  QTY_SEAICE_SALINITY001            = 434, &   ! 00X refers to layer (ugh)
+  QTY_SEAICE_SALINITY002            = 435, &
+  QTY_SEAICE_SALINITY003            = 436, &
+  QTY_SEAICE_SALINITY004            = 437, &
+  QTY_SEAICE_SALINITY005            = 438, &
+  QTY_SEAICE_SALINITY006            = 439, &
+  QTY_SEAICE_SALINITY007            = 440, &
+  QTY_SEAICE_SALINITY008            = 441, &
+  QTY_SEAICE_ICEENTHALPY001         = 442, &
+  QTY_SEAICE_ICEENTHALPY002         = 443, &
+  QTY_SEAICE_ICEENTHALPY003         = 444, &
+  QTY_SEAICE_ICEENTHALPY004         = 445, &
+  QTY_SEAICE_ICEENTHALPY005         = 446, &
+  QTY_SEAICE_ICEENTHALPY006         = 447, &
+  QTY_SEAICE_ICEENTHALPY007         = 448, &
+  QTY_SEAICE_ICEENTHALPY008         = 449, &
+  QTY_SEAICE_SNOWENTHALPY001        = 450, &
+  QTY_SEAICE_SNOWENTHALPY002        = 451, &
+  QTY_SEAICE_SNOWENTHALPY003        = 452, &
+  QTY_SOM_TEMPERATURE               = 453, &
+  QTY_SEAICE_FY                     = 454, &
+  QTY_SEAICE_AGREG_FY               = 455, &
+  QTY_SEAICE_AGREG_SURFACETEMP      = 456, &
+  QTY_SEAICE_AGREG_FREEBOARD        = 457, &
+  QTY_SEAICE_CATEGORY               = 458
 
 integer, parameter, public :: &
-  QTY_LARGE_SCALE_STATE             = 361, &
-  QTY_SMALL_SCALE_STATE             = 362
+  QTY_SEA_SURFACE_ANOMALY           = 460
+
+integer, parameter, public :: &
+  QTY_LARGE_SCALE_STATE             = 461, &
+  QTY_SMALL_SCALE_STATE             = 462
 
 ! see also CLW_PATH at 64
 integer, parameter, public :: &
-  QTY_CWP_PATH                      = 363, &
-  QTY_CWP_PATH_ZERO                 = 364
+  QTY_CWP_PATH                      = 463, &
+  QTY_CWP_PATH_ZERO                 = 464
 
 ! WACCM
 integer, parameter, public :: &
-  QTY_ION_O_MIXING_RATIO            = 365, &
-  QTY_ATOMIC_H_MIXING_RATIO         = 366
+  QTY_ION_O_MIXING_RATIO            = 465, &
+  QTY_ATOMIC_H_MIXING_RATIO         = 466
 
 integer, parameter, public :: &
-  QTY_ABSOLUTE_HUMIDITY             = 367
+  QTY_ABSOLUTE_HUMIDITY             = 467
 
+!! Reserving satellite quantities for radiances from 501 to 599
 ! Directly-observed (L1) satellite quantities
 ! and supporting fields for RTTOV
 integer, parameter, public :: &
-  QTY_RADIANCE                      = 401, &  ! L1 radiance (mW/cm^-1/sr/m^2)
-  QTY_BRIGHTNESS_TEMPERATURE        = 402, &  ! L1 brightness temperature (K)
-  QTY_SURFACE_TYPE                  = 403, &  ! land = 0, sea = 1, seaice = 2
-  QTY_WIND_FETCH                    = 404, &  ! Wind fetch, m
-  QTY_WATER_TYPE                    = 405, &  ! fresh = 0, ocean = 1
-  QTY_FOAM_FRAC                     = 406, &  ! Fraction of foam on ocean surface (0-1)
-  QTY_INSOLUBLE_AER                 = 407, &  ! Insoluble aerosol OPAC aerosol (INSO)
-  QTY_H2O_SOLUBLE_AER               = 408, &  ! Soluble aerosol OPAC aerosol (WASO)
-  QTY_SOOT                          = 409, &  ! Soot aerosol OPAC aerosol (SOOT)
-  QTY_SEASALT_ACCUM                 = 410, &  ! Sea salt (accumulation mode) OPAC aerosol (SSAM)
-  QTY_SEASALT_COARSE                = 411, &  ! Sea salt (coarse) OPAC aerosol (SSCM)
-  QTY_MINERAL_NUCLEUS               = 412, &  ! Mineral (nucleus) OPAC aerosol (MINM)
-  QTY_MINERAL_ACCUM                 = 413, &  ! Mineral (accumulation mode) OPAC aerosol (MIAM)
-  QTY_MINERAL_COARSE                = 414, &  ! Mineral (coarse mode) OPAC aerosol (MICM)
-  QTY_MINERAL_TRANSPORTED           = 415, &  ! Mineral (transported mode) OPAC aerosol (MITR)
-  QTY_SULPHATED_DROPS               = 416, &  ! Sulphated droplets OPAC aerosol (SUSO)
-  QTY_VOLCANIC_ASH                  = 417, &  ! Volcanic ash OPAC aerosol (VOLA)
-  QTY_NEW_VOLCANIC_ASH              = 418, &  ! New volcanic ash OPAC aerosol (VAPO)
-  QTY_ASIAN_DUST                    = 419, &  ! Asian dust OPAC aerosol (ASDU)
-  QTY_BLACK_CARBON                  = 420, &  ! Black carbon CAMS aerosol (BCAR)
-  QTY_DUST_BIN1                     = 421, &  ! Dust bin 1 CAMS aerosol (DUS1)
-  QTY_DUST_BIN2                     = 422, &  ! Dust bin 2 CAMS aerosol (DUS2)
-  QTY_DUST_BIN3                     = 423, &  ! Dust bin 3 CAMS aerosol (DUS3)
-  QTY_AMMONIUM_SULPHATE             = 424, &  ! Ammonium sulphate CAMS aerosol (SULP)
-  QTY_SEA_SALT_BIN1                 = 425, &  ! Sea salt bin 1 CAMS aerosol (SSA1)
-  QTY_SEA_SALT_BIN2                 = 426, &  ! Sea salt bin 2 CAMS aerosol (SSA2)
-  QTY_SEA_SALT_BIN3                 = 427, &  ! Sea salt bin 3 CAMS aerosol (SSA3)
-  QTY_HYDROPHILIC_ORGANIC_MATTER    = 428, &  ! Hydrophilic organic matter CAMS aerosol (OMAT)
-  QTY_CLOUDWATER_DE                 = 429, &  ! Cloud liquid water effective diameter (microns)
-  QTY_CLOUD_ICE_DE                  = 430, &  ! Cloud ice effective diameter (microns)
-  QTY_COLUMN_CLOUD_FRAC             = 431, &  ! Simple cloud fraction (0-1)
-  QTY_CLOUD_TOP_PRESSURE            = 432
+  QTY_RADIANCE                      = 501, &  ! L1 radiance (mW/cm^-1/sr/m^2)
+  QTY_BRIGHTNESS_TEMPERATURE        = 502, &  ! L1 brightness temperature (K)
+  QTY_SURFACE_TYPE                  = 503, &  ! land = 0, sea = 1, seaice = 2
+  QTY_WIND_FETCH                    = 504, &  ! Wind fetch, m
+  QTY_WATER_TYPE                    = 505, &  ! fresh = 0, ocean = 1
+  QTY_FOAM_FRAC                     = 506, &  ! Fraction of foam on ocean surface (0-1)
+  QTY_INSOLUBLE_AER                 = 507, &  ! Insoluble aerosol OPAC aerosol (INSO)
+  QTY_H2O_SOLUBLE_AER               = 508, &  ! Soluble aerosol OPAC aerosol (WASO)
+  QTY_SOOT                          = 509, &  ! Soot aerosol OPAC aerosol (SOOT)
+  QTY_SEASALT_ACCUM                 = 510, &  ! Sea salt (accumulation mode) OPAC aerosol (SSAM)
+  QTY_SEASALT_COARSE                = 511, &  ! Sea salt (coarse) OPAC aerosol (SSCM)
+  QTY_MINERAL_NUCLEUS               = 512, &  ! Mineral (nucleus) OPAC aerosol (MINM)
+  QTY_MINERAL_ACCUM                 = 513, &  ! Mineral (accumulation mode) OPAC aerosol (MIAM)
+  QTY_MINERAL_COARSE                = 514, &  ! Mineral (coarse mode) OPAC aerosol (MICM)
+  QTY_MINERAL_TRANSPORTED           = 515, &  ! Mineral (transported mode) OPAC aerosol (MITR)
+  QTY_SULPHATED_DROPS               = 516, &  ! Sulphated droplets OPAC aerosol (SUSO)
+  QTY_VOLCANIC_ASH                  = 517, &  ! Volcanic ash OPAC aerosol (VOLA)
+  QTY_NEW_VOLCANIC_ASH              = 518, &  ! New volcanic ash OPAC aerosol (VAPO)
+  QTY_ASIAN_DUST                    = 519, &  ! Asian dust OPAC aerosol (ASDU)
+  QTY_BLACK_CARBON                  = 520, &  ! Black carbon CAMS aerosol (BCAR)
+  QTY_DUST_BIN1                     = 521, &  ! Dust bin 1 CAMS aerosol (DUS1)
+  QTY_DUST_BIN2                     = 522, &  ! Dust bin 2 CAMS aerosol (DUS2)
+  QTY_DUST_BIN3                     = 523, &  ! Dust bin 3 CAMS aerosol (DUS3)
+  QTY_AMMONIUM_SULPHATE             = 524, &  ! Ammonium sulphate CAMS aerosol (SULP)
+  QTY_SEA_SALT_BIN1                 = 525, &  ! Sea salt bin 1 CAMS aerosol (SSA1)
+  QTY_SEA_SALT_BIN2                 = 526, &  ! Sea salt bin 2 CAMS aerosol (SSA2)
+  QTY_SEA_SALT_BIN3                 = 527, &  ! Sea salt bin 3 CAMS aerosol (SSA3)
+  QTY_HYDROPHILIC_ORGANIC_MATTER    = 528, &  ! Hydrophilic organic matter CAMS aerosol (OMAT)
+  QTY_CLOUDWATER_DE                 = 529, &  ! Cloud liquid water effective diameter (microns)
+  QTY_CLOUD_ICE_DE                  = 530, &  ! Cloud ice effective diameter (microns)
+  QTY_COLUMN_CLOUD_FRAC             = 531, &  ! Simple cloud fraction (0-1)
+  QTY_CLOUD_TOP_PRESSURE            = 532
 
-  
 ! max_defined_quantities is private to this module.  see comment below near the max_obs_specific
 ! declaration for more info about publics and private values.
 
-integer, parameter :: max_defined_quantities = 432
+integer, parameter :: max_defined_quantities = 532
 
 !----------------------------------------------------------------------------
 ! This list is autogenerated by the 'preprocess' program.  To add new
@@ -570,7 +622,7 @@ integer, parameter :: max_obs_specific = max_defined_types_of_obs
 
 character(len=512) :: msg_string, msg_string1
 
-integer :: num_kind_assimilate, num_kind_evaluate 
+integer :: num_kind_assimilate, num_kind_evaluate
 integer :: num_kind_use_precomputed_FOs
 
 ! Map from values of kind in obs_def to the fixed values in the list above.
@@ -616,7 +668,7 @@ type(obs_kind_type) :: obs_kind_names(0:max_defined_quantities)
 ! Namelist array to turn on any requested observation types
 character(len=obstypelength) :: assimilate_these_obs_types(500) = 'null'
 character(len=obstypelength) :: evaluate_these_obs_types(500) = 'null'
-character(len=obstypelength) :: use_precomputed_FOs_these_obs_types(500) = 'null' 
+character(len=obstypelength) :: use_precomputed_FOs_these_obs_types(500) = 'null'
 
 
 namelist /obs_kind_nml/ assimilate_these_obs_types, evaluate_these_obs_types, &
@@ -661,338 +713,387 @@ do i = 0, max_defined_quantities
    obs_kind_names(i) = obs_kind_type(i, 'UNKNOWN')
 enddo
 
-obs_kind_names( 0) = obs_kind_type(QTY_STATE_VARIABLE, 'QTY_STATE_VARIABLE')
-obs_kind_names( 1) = obs_kind_type(QTY_U_WIND_COMPONENT, 'QTY_U_WIND_COMPONENT')
-obs_kind_names( 2) = obs_kind_type(QTY_V_WIND_COMPONENT, 'QTY_V_WIND_COMPONENT')
-obs_kind_names( 3) = obs_kind_type(QTY_SURFACE_PRESSURE, 'QTY_SURFACE_PRESSURE')
-obs_kind_names( 4) = obs_kind_type(QTY_TEMPERATURE, 'QTY_TEMPERATURE')
-obs_kind_names( 5) = obs_kind_type(QTY_SPECIFIC_HUMIDITY, 'QTY_SPECIFIC_HUMIDITY')
-obs_kind_names( 6) = obs_kind_type(QTY_PRESSURE, 'QTY_PRESSURE')
-obs_kind_names( 7) = obs_kind_type(QTY_VERTICAL_VELOCITY, 'QTY_VERTICAL_VELOCITY')
-obs_kind_names( 8) = obs_kind_type(QTY_RAINWATER_MIXING_RATIO, 'QTY_RAINWATER_MIXING_RATIO')
-obs_kind_names( 9) = obs_kind_type(QTY_DEWPOINT, 'QTY_DEWPOINT')
-obs_kind_names(10) = obs_kind_type(QTY_DENSITY, 'QTY_DENSITY')
-obs_kind_names(11) = obs_kind_type(QTY_VELOCITY, 'QTY_VELOCITY')
-obs_kind_names(12) = obs_kind_type(QTY_RADAR_REFLECTIVITY, 'QTY_RADAR_REFLECTIVITY')
-obs_kind_names(13) = obs_kind_type(QTY_1D_INTEGRAL, 'QTY_1D_INTEGRAL')
-obs_kind_names(14) = obs_kind_type(QTY_GRAUPEL_MIXING_RATIO, 'QTY_GRAUPEL_MIXING_RATIO')
-obs_kind_names(15) = obs_kind_type(QTY_SNOW_MIXING_RATIO, 'QTY_SNOW_MIXING_RATIO')
-obs_kind_names(16) = obs_kind_type(QTY_GPSRO, 'QTY_GPSRO')
-obs_kind_names(17) = obs_kind_type(QTY_CLOUD_LIQUID_WATER, 'QTY_CLOUD_LIQUID_WATER')
-obs_kind_names(18) = obs_kind_type(QTY_CLOUD_ICE, 'QTY_CLOUD_ICE')
-obs_kind_names(19) = obs_kind_type(QTY_CONDENSATIONAL_HEATING, 'QTY_CONDENSATIONAL_HEATING')
-obs_kind_names(20) = obs_kind_type(QTY_VAPOR_MIXING_RATIO, 'QTY_VAPOR_MIXING_RATIO')
-obs_kind_names(21) = obs_kind_type(QTY_ICE_NUMBER_CONCENTRATION, 'QTY_ICE_NUMBER_CONCENTRATION')
-obs_kind_names(22) = obs_kind_type(QTY_GEOPOTENTIAL_HEIGHT, 'QTY_GEOPOTENTIAL_HEIGHT')
-obs_kind_names(23) = obs_kind_type(QTY_POTENTIAL_TEMPERATURE, 'QTY_POTENTIAL_TEMPERATURE')
-obs_kind_names(24) = obs_kind_type(QTY_SOIL_MOISTURE, 'QTY_SOIL_MOISTURE')
-obs_kind_names(25) = obs_kind_type(QTY_SURFACE_ELEVATION, 'QTY_SURFACE_ELEVATION')
-obs_kind_names(26) = obs_kind_type(QTY_GRAV_WAVE_DRAG_EFFIC, 'QTY_GRAV_WAVE_DRAG_EFFIC')
-obs_kind_names(27) = obs_kind_type(QTY_GRAV_WAVE_STRESS_FRACTION, 'QTY_GRAV_WAVE_STRESS_FRACTION')
-obs_kind_names(28) = obs_kind_type(QTY_TRACER_SOURCE, 'QTY_TRACER_SOURCE')
-obs_kind_names(29) = obs_kind_type(QTY_TRACER_CONCENTRATION, 'QTY_TRACER_CONCENTRATION')
-obs_kind_names(30) = obs_kind_type(QTY_MEAN_SOURCE, 'QTY_MEAN_SOURCE')
-obs_kind_names(31) = obs_kind_type(QTY_SOURCE_PHASE, 'QTY_SOURCE_PHASE')
-obs_kind_names(32) = obs_kind_type(QTY_POWER_WEIGHTED_FALL_SPEED, 'QTY_POWER_WEIGHTED_FALL_SPEED')
-obs_kind_names(33) = obs_kind_type(QTY_CLOUDWATER_MIXING_RATIO, 'QTY_CLOUDWATER_MIXING_RATIO')
-obs_kind_names(34) = obs_kind_type(QTY_ICE_MIXING_RATIO, 'QTY_ICE_MIXING_RATIO')
-obs_kind_names(35) = obs_kind_type(QTY_DROPLET_NUMBER_CONCENTR, 'QTY_DROPLET_NUMBER_CONCENTR')
-obs_kind_names(36) = obs_kind_type(QTY_SNOW_NUMBER_CONCENTR, 'QTY_SNOW_NUMBER_CONCENTR')
-obs_kind_names(37) = obs_kind_type(QTY_RAIN_NUMBER_CONCENTR, 'QTY_RAIN_NUMBER_CONCENTR')
-obs_kind_names(38) = obs_kind_type(QTY_GRAUPEL_NUMBER_CONCENTR, 'QTY_GRAUPEL_NUMBER_CONCENTR')
-obs_kind_names(39) = obs_kind_type(QTY_CLOUD_FRACTION, 'QTY_CLOUD_FRACTION')
-obs_kind_names(40) = obs_kind_type(QTY_ICE_FRACTION, 'QTY_ICE_FRACTION')
-obs_kind_names(41) = obs_kind_type(QTY_RELATIVE_HUMIDITY, 'QTY_RELATIVE_HUMIDITY')
-obs_kind_names(42) = obs_kind_type(QTY_ELECTRON_DENSITY, 'QTY_ELECTRON_DENSITY')
-obs_kind_names(43) = obs_kind_type(QTY_1D_PARAMETER, 'QTY_1D_PARAMETER')
-obs_kind_names(44) = obs_kind_type(QTY_2D_PARAMETER, 'QTY_2D_PARAMETER')
-obs_kind_names(45) = obs_kind_type(QTY_3D_PARAMETER, 'QTY_3D_PARAMETER')
-obs_kind_names(46) = obs_kind_type(QTY_ATOMIC_OXYGEN_MIXING_RATIO, 'QTY_ATOMIC_OXYGEN_MIXING_RATIO')
-obs_kind_names(47) = obs_kind_type(QTY_MOLEC_OXYGEN_MIXING_RATIO, 'QTY_MOLEC_OXYGEN_MIXING_RATIO')
-obs_kind_names(48) = obs_kind_type(QTY_ALTIMETER_TENDENCY, 'QTY_ALTIMETER_TENDENCY')
-obs_kind_names(49) = obs_kind_type(QTY_PRECIPITABLE_WATER, 'QTY_PRECIPITABLE_WATER')
-obs_kind_names(50) = obs_kind_type(QTY_SALINITY, 'QTY_SALINITY')
-obs_kind_names(51) = obs_kind_type(QTY_U_CURRENT_COMPONENT, 'QTY_U_CURRENT_COMPONENT')
-obs_kind_names(52) = obs_kind_type(QTY_V_CURRENT_COMPONENT, 'QTY_V_CURRENT_COMPONENT')
-obs_kind_names(53) = obs_kind_type(QTY_SEA_SURFACE_HEIGHT, 'QTY_SEA_SURFACE_HEIGHT')
-obs_kind_names(54) = obs_kind_type(QTY_DRY_LAND, 'QTY_DRY_LAND')
-obs_kind_names(55) = obs_kind_type(QTY_SEA_SURFACE_PRESSURE, 'QTY_SEA_SURFACE_PRESSURE')
-obs_kind_names(56) = obs_kind_type(QTY_W_CURRENT_COMPONENT, 'QTY_W_CURRENT_COMPONENT')
-obs_kind_names(57) = obs_kind_type(QTY_OCCULTATION_REFRACTIVITY, 'QTY_OCCULTATION_REFRACTIVITY')
-obs_kind_names(58) = obs_kind_type(QTY_OCCULTATION_EXCESSPHASE, 'QTY_OCCULTATION_EXCESSPHASE')
-obs_kind_names(59) = obs_kind_type(QTY_GEOMETRIC_HEIGHT, 'QTY_GEOMETRIC_HEIGHT')
-obs_kind_names(60) = obs_kind_type(QTY_INFRARED_RADIANCE, 'QTY_INFRARED_RADIANCE')
-obs_kind_names(61) = obs_kind_type(QTY_INFRARED_BRIGHT_TEMP, 'QTY_INFRARED_BRIGHT_TEMP')
-obs_kind_names(62) = obs_kind_type(QTY_LANDMASK, 'QTY_LANDMASK')
-obs_kind_names(63) = obs_kind_type(QTY_EDGE_NORMAL_SPEED, 'QTY_EDGE_NORMAL_SPEED')
-obs_kind_names(64) = obs_kind_type(QTY_CLW_PATH, 'QTY_CLW_PATH')
-obs_kind_names(65) = obs_kind_type(QTY_WIND_TURBINE_POWER, 'QTY_WIND_TURBINE_POWER')
-obs_kind_names(66) = obs_kind_type(QTY_2M_SPECIFIC_HUMIDITY, 'QTY_2M_SPECIFIC_HUMIDITY')
-obs_kind_names(67) = obs_kind_type(QTY_2M_TEMPERATURE, 'QTY_2M_TEMPERATURE')
-obs_kind_names(68) = obs_kind_type(QTY_10M_U_WIND_COMPONENT, 'QTY_10M_U_WIND_COMPONENT')
-obs_kind_names(69) = obs_kind_type(QTY_10M_V_WIND_COMPONENT, 'QTY_10M_V_WIND_COMPONENT')
-obs_kind_names(70) = obs_kind_type(QTY_SKIN_TEMPERATURE, 'QTY_SKIN_TEMPERATURE')
-obs_kind_names(71) = obs_kind_type(QTY_NADIR_RADIANCE, 'QTY_NADIR_RADIANCE')
-obs_kind_names(72) = obs_kind_type(QTY_TRACER_1_MIXING_RATIO, 'QTY_TRACER_1_MIXING_RATIO')
-obs_kind_names(73) = obs_kind_type(QTY_TRACER_2_MIXING_RATIO, 'QTY_TRACER_2_MIXING_RATIO')
-obs_kind_names(74) = obs_kind_type(QTY_SOIL_TEMPERATURE, 'QTY_SOIL_TEMPERATURE')
-obs_kind_names(75) = obs_kind_type(QTY_SOIL_LIQUID_WATER, 'QTY_SOIL_LIQUID_WATER')
-obs_kind_names(76) = obs_kind_type(QTY_VERTICAL_VORTICITY, 'QTY_VERTICAL_VORTICITY')
-obs_kind_names(77) = obs_kind_type(QTY_SURFACE_ALBEDO, 'QTY_SURFACE_ALBEDO')
-obs_kind_names(78) = obs_kind_type(QTY_SURFACE_EMISSIVITY, 'QTY_SURFACE_EMISSIVITY')
-obs_kind_names(79) = obs_kind_type(QTY_DUST_OPACITY_7MB, 'QTY_DUST_OPACITY_7MB')
-obs_kind_names(80) = obs_kind_type(QTY_THC, 'QTY_THC')
-obs_kind_names(81) = obs_kind_type(QTY_VORTEX_LON, 'QTY_VORTEX_LON')
-obs_kind_names(82) = obs_kind_type(QTY_VORTEX_LAT, 'QTY_VORTEX_LAT')
-obs_kind_names(83) = obs_kind_type(QTY_VORTEX_PMIN, 'QTY_VORTEX_PMIN')
-obs_kind_names(84) = obs_kind_type(QTY_VORTEX_WMAX, 'QTY_VORTEX_WMAX')
-obs_kind_names(85) = obs_kind_type(QTY_EXNER_FUNCTION, 'QTY_EXNER_FUNCTION')
-obs_kind_names(86) = obs_kind_type(QTY_TURBULENT_KINETIC_ENERGY, 'QTY_TURBULENT_KINETIC_ENERGY')
-obs_kind_names(87) = obs_kind_type(QTY_TOTAL_PRECIPITABLE_WATER, 'QTY_TOTAL_PRECIPITABLE_WATER')
-obs_kind_names(88) = obs_kind_type(QTY_VERTLEVEL, 'QTY_VERTLEVEL')
-obs_kind_names(89) = obs_kind_type(QTY_MICROWAVE_BRIGHT_TEMP, 'QTY_MICROWAVE_BRIGHT_TEMP')
-obs_kind_names(90) = obs_kind_type(QTY_INTEGRATED_SULFATE, 'QTY_INTEGRATED_SULFATE')
-obs_kind_names(91) = obs_kind_type(QTY_INTEGRATED_DUST, 'QTY_INTEGRATED_DUST')
-obs_kind_names(92) = obs_kind_type(QTY_INTEGRATED_SMOKE, 'QTY_INTEGRATED_SMOKE')
-obs_kind_names(93) = obs_kind_type(QTY_INTEGRATED_SEASALT, 'QTY_INTEGRATED_SEASALT')
-obs_kind_names(94) = obs_kind_type(QTY_INTEGRATED_AOD, 'QTY_INTEGRATED_AOD')
-obs_kind_names(95) = obs_kind_type(QTY_SO2, 'QTY_SO2')
-obs_kind_names(96) = obs_kind_type(QTY_SULFATE, 'QTY_SULFATE')
-obs_kind_names(97) = obs_kind_type(QTY_DUST, 'QTY_DUST')
-obs_kind_names(98) = obs_kind_type(QTY_SMOKE, 'QTY_SMOKE')
-obs_kind_names(99) = obs_kind_type(QTY_SEASALT, 'QTY_SEASALT')
-obs_kind_names(100) = obs_kind_type(QTY_HAIL_MIXING_RATIO, 'QTY_HAIL_MIXING_RATIO')
-obs_kind_names(101) = obs_kind_type(QTY_HAIL_NUMBER_CONCENTR, 'QTY_HAIL_NUMBER_CONCENTR')
-obs_kind_names(102) = obs_kind_type(QTY_GRAUPEL_VOLUME, 'QTY_GRAUPEL_VOLUME')
-obs_kind_names(103) = obs_kind_type(QTY_HAIL_VOLUME, 'QTY_HAIL_VOLUME')
-obs_kind_names(104) = obs_kind_type(QTY_DIFFERENTIAL_REFLECTIVITY, 'QTY_DIFFERENTIAL_REFLECTIVITY')
-obs_kind_names(105) = obs_kind_type(QTY_SPECIFIC_DIFFERENTIAL_PHASE, 'QTY_SPECIFIC_DIFFERENTIAL_PHASE')
-obs_kind_names(106) = obs_kind_type(QTY_FLASH_RATE_2D, 'QTY_FLASH_RATE_2D')
+obs_kind_names(  0) = obs_kind_type(QTY_STATE_VARIABLE              , 'QTY_STATE_VARIABLE')
+obs_kind_names(  1) = obs_kind_type(QTY_U_WIND_COMPONENT            , 'QTY_U_WIND_COMPONENT')
+obs_kind_names(  2) = obs_kind_type(QTY_V_WIND_COMPONENT            , 'QTY_V_WIND_COMPONENT')
+obs_kind_names(  3) = obs_kind_type(QTY_SURFACE_PRESSURE            , 'QTY_SURFACE_PRESSURE')
+obs_kind_names(  4) = obs_kind_type(QTY_TEMPERATURE                 , 'QTY_TEMPERATURE')
+obs_kind_names(  5) = obs_kind_type(QTY_SPECIFIC_HUMIDITY           , 'QTY_SPECIFIC_HUMIDITY')
+obs_kind_names(  6) = obs_kind_type(QTY_PRESSURE                    , 'QTY_PRESSURE')
+obs_kind_names(  7) = obs_kind_type(QTY_VERTICAL_VELOCITY           , 'QTY_VERTICAL_VELOCITY')
+obs_kind_names(  8) = obs_kind_type(QTY_RAINWATER_MIXING_RATIO      , 'QTY_RAINWATER_MIXING_RATIO')
+obs_kind_names(  9) = obs_kind_type(QTY_DEWPOINT                    , 'QTY_DEWPOINT')
+obs_kind_names( 10) = obs_kind_type(QTY_DENSITY                     , 'QTY_DENSITY')
+obs_kind_names( 11) = obs_kind_type(QTY_VELOCITY                    , 'QTY_VELOCITY')
+obs_kind_names( 12) = obs_kind_type(QTY_RADAR_REFLECTIVITY          , 'QTY_RADAR_REFLECTIVITY')
+obs_kind_names( 13) = obs_kind_type(QTY_1D_INTEGRAL                 , 'QTY_1D_INTEGRAL')
+obs_kind_names( 14) = obs_kind_type(QTY_GRAUPEL_MIXING_RATIO        , 'QTY_GRAUPEL_MIXING_RATIO')
+obs_kind_names( 15) = obs_kind_type(QTY_SNOW_MIXING_RATIO           , 'QTY_SNOW_MIXING_RATIO')
+obs_kind_names( 16) = obs_kind_type(QTY_GPSRO                       , 'QTY_GPSRO')
+obs_kind_names( 17) = obs_kind_type(QTY_CLOUD_LIQUID_WATER          , 'QTY_CLOUD_LIQUID_WATER')
+obs_kind_names( 18) = obs_kind_type(QTY_CLOUD_ICE                   , 'QTY_CLOUD_ICE')
+obs_kind_names( 19) = obs_kind_type(QTY_CONDENSATIONAL_HEATING      , 'QTY_CONDENSATIONAL_HEATING')
+obs_kind_names( 20) = obs_kind_type(QTY_VAPOR_MIXING_RATIO          , 'QTY_VAPOR_MIXING_RATIO')
+obs_kind_names( 21) = obs_kind_type(QTY_ICE_NUMBER_CONCENTRATION    , 'QTY_ICE_NUMBER_CONCENTRATION')
+obs_kind_names( 22) = obs_kind_type(QTY_GEOPOTENTIAL_HEIGHT         , 'QTY_GEOPOTENTIAL_HEIGHT')
+obs_kind_names( 23) = obs_kind_type(QTY_POTENTIAL_TEMPERATURE       , 'QTY_POTENTIAL_TEMPERATURE')
+obs_kind_names( 24) = obs_kind_type(QTY_SOIL_MOISTURE               , 'QTY_SOIL_MOISTURE')
+obs_kind_names( 25) = obs_kind_type(QTY_SURFACE_ELEVATION           , 'QTY_SURFACE_ELEVATION')
+obs_kind_names( 26) = obs_kind_type(QTY_GRAV_WAVE_DRAG_EFFIC        , 'QTY_GRAV_WAVE_DRAG_EFFIC')
+obs_kind_names( 27) = obs_kind_type(QTY_GRAV_WAVE_STRESS_FRACTION   , 'QTY_GRAV_WAVE_STRESS_FRACTION')
+obs_kind_names( 28) = obs_kind_type(QTY_TRACER_SOURCE               , 'QTY_TRACER_SOURCE')
+obs_kind_names( 29) = obs_kind_type(QTY_TRACER_CONCENTRATION        , 'QTY_TRACER_CONCENTRATION')
+obs_kind_names( 30) = obs_kind_type(QTY_MEAN_SOURCE                 , 'QTY_MEAN_SOURCE')
+obs_kind_names( 31) = obs_kind_type(QTY_SOURCE_PHASE                , 'QTY_SOURCE_PHASE')
+obs_kind_names( 32) = obs_kind_type(QTY_POWER_WEIGHTED_FALL_SPEED   , 'QTY_POWER_WEIGHTED_FALL_SPEED')
+obs_kind_names( 33) = obs_kind_type(QTY_CLOUDWATER_MIXING_RATIO     , 'QTY_CLOUDWATER_MIXING_RATIO')
+obs_kind_names( 34) = obs_kind_type(QTY_ICE_MIXING_RATIO            , 'QTY_ICE_MIXING_RATIO')
+obs_kind_names( 35) = obs_kind_type(QTY_DROPLET_NUMBER_CONCENTR     , 'QTY_DROPLET_NUMBER_CONCENTR')
+obs_kind_names( 36) = obs_kind_type(QTY_SNOW_NUMBER_CONCENTR        , 'QTY_SNOW_NUMBER_CONCENTR')
+obs_kind_names( 37) = obs_kind_type(QTY_RAIN_NUMBER_CONCENTR        , 'QTY_RAIN_NUMBER_CONCENTR')
+obs_kind_names( 38) = obs_kind_type(QTY_GRAUPEL_NUMBER_CONCENTR     , 'QTY_GRAUPEL_NUMBER_CONCENTR')
+obs_kind_names( 39) = obs_kind_type(QTY_CLOUD_FRACTION              , 'QTY_CLOUD_FRACTION')
+obs_kind_names( 40) = obs_kind_type(QTY_ICE_FRACTION                , 'QTY_ICE_FRACTION')
+obs_kind_names( 41) = obs_kind_type(QTY_RELATIVE_HUMIDITY           , 'QTY_RELATIVE_HUMIDITY')
+obs_kind_names( 42) = obs_kind_type(QTY_ELECTRON_DENSITY            , 'QTY_ELECTRON_DENSITY')
+obs_kind_names( 43) = obs_kind_type(QTY_1D_PARAMETER                , 'QTY_1D_PARAMETER')
+obs_kind_names( 44) = obs_kind_type(QTY_2D_PARAMETER                , 'QTY_2D_PARAMETER')
+obs_kind_names( 45) = obs_kind_type(QTY_3D_PARAMETER                , 'QTY_3D_PARAMETER')
+obs_kind_names( 46) = obs_kind_type(QTY_ATOMIC_OXYGEN_MIXING_RATIO  , 'QTY_ATOMIC_OXYGEN_MIXING_RATIO')
+obs_kind_names( 47) = obs_kind_type(QTY_MOLEC_OXYGEN_MIXING_RATIO   , 'QTY_MOLEC_OXYGEN_MIXING_RATIO')
+obs_kind_names( 48) = obs_kind_type(QTY_ALTIMETER_TENDENCY          , 'QTY_ALTIMETER_TENDENCY')
+obs_kind_names( 49) = obs_kind_type(QTY_PRECIPITABLE_WATER          , 'QTY_PRECIPITABLE_WATER')
+obs_kind_names( 50) = obs_kind_type(QTY_SALINITY                    , 'QTY_SALINITY')
+obs_kind_names( 51) = obs_kind_type(QTY_U_CURRENT_COMPONENT         , 'QTY_U_CURRENT_COMPONENT')
+obs_kind_names( 52) = obs_kind_type(QTY_V_CURRENT_COMPONENT         , 'QTY_V_CURRENT_COMPONENT')
+obs_kind_names( 53) = obs_kind_type(QTY_SEA_SURFACE_HEIGHT          , 'QTY_SEA_SURFACE_HEIGHT')
+obs_kind_names( 54) = obs_kind_type(QTY_DRY_LAND                    , 'QTY_DRY_LAND')
+obs_kind_names( 55) = obs_kind_type(QTY_SEA_SURFACE_PRESSURE        , 'QTY_SEA_SURFACE_PRESSURE')
+obs_kind_names( 56) = obs_kind_type(QTY_W_CURRENT_COMPONENT         , 'QTY_W_CURRENT_COMPONENT')
+obs_kind_names( 57) = obs_kind_type(QTY_OCCULTATION_REFRACTIVITY    , 'QTY_OCCULTATION_REFRACTIVITY')
+obs_kind_names( 58) = obs_kind_type(QTY_OCCULTATION_EXCESSPHASE     , 'QTY_OCCULTATION_EXCESSPHASE')
+obs_kind_names( 59) = obs_kind_type(QTY_GEOMETRIC_HEIGHT            , 'QTY_GEOMETRIC_HEIGHT')
+obs_kind_names( 60) = obs_kind_type(QTY_INFRARED_RADIANCE           , 'QTY_INFRARED_RADIANCE')
+obs_kind_names( 61) = obs_kind_type(QTY_INFRARED_BRIGHT_TEMP        , 'QTY_INFRARED_BRIGHT_TEMP')
+obs_kind_names( 62) = obs_kind_type(QTY_LANDMASK                    , 'QTY_LANDMASK')
+obs_kind_names( 63) = obs_kind_type(QTY_EDGE_NORMAL_SPEED           , 'QTY_EDGE_NORMAL_SPEED')
+obs_kind_names( 64) = obs_kind_type(QTY_CLW_PATH                    , 'QTY_CLW_PATH')
+obs_kind_names( 65) = obs_kind_type(QTY_WIND_TURBINE_POWER          , 'QTY_WIND_TURBINE_POWER')
+obs_kind_names( 66) = obs_kind_type(QTY_2M_SPECIFIC_HUMIDITY        , 'QTY_2M_SPECIFIC_HUMIDITY')
+obs_kind_names( 67) = obs_kind_type(QTY_2M_TEMPERATURE              , 'QTY_2M_TEMPERATURE')
+obs_kind_names( 68) = obs_kind_type(QTY_10M_U_WIND_COMPONENT        , 'QTY_10M_U_WIND_COMPONENT')
+obs_kind_names( 69) = obs_kind_type(QTY_10M_V_WIND_COMPONENT        , 'QTY_10M_V_WIND_COMPONENT')
+obs_kind_names( 70) = obs_kind_type(QTY_SKIN_TEMPERATURE            , 'QTY_SKIN_TEMPERATURE')
+obs_kind_names( 71) = obs_kind_type(QTY_NADIR_RADIANCE              , 'QTY_NADIR_RADIANCE')
+obs_kind_names( 72) = obs_kind_type(QTY_TRACER_1_MIXING_RATIO       , 'QTY_TRACER_1_MIXING_RATIO')
+obs_kind_names( 73) = obs_kind_type(QTY_TRACER_2_MIXING_RATIO       , 'QTY_TRACER_2_MIXING_RATIO')
+obs_kind_names( 74) = obs_kind_type(QTY_SOIL_TEMPERATURE            , 'QTY_SOIL_TEMPERATURE')
+obs_kind_names( 75) = obs_kind_type(QTY_SOIL_LIQUID_WATER           , 'QTY_SOIL_LIQUID_WATER')
+obs_kind_names( 76) = obs_kind_type(QTY_VERTICAL_VORTICITY          , 'QTY_VERTICAL_VORTICITY')
+obs_kind_names( 77) = obs_kind_type(QTY_SURFACE_ALBEDO              , 'QTY_SURFACE_ALBEDO')
+obs_kind_names( 78) = obs_kind_type(QTY_SURFACE_EMISSIVITY          , 'QTY_SURFACE_EMISSIVITY')
+obs_kind_names( 79) = obs_kind_type(QTY_DUST_OPACITY_7MB            , 'QTY_DUST_OPACITY_7MB')
+obs_kind_names( 80) = obs_kind_type(QTY_THC                         , 'QTY_THC')
+obs_kind_names( 81) = obs_kind_type(QTY_VORTEX_LON                  , 'QTY_VORTEX_LON')
+obs_kind_names( 82) = obs_kind_type(QTY_VORTEX_LAT                  , 'QTY_VORTEX_LAT')
+obs_kind_names( 83) = obs_kind_type(QTY_VORTEX_PMIN                 , 'QTY_VORTEX_PMIN')
+obs_kind_names( 84) = obs_kind_type(QTY_VORTEX_WMAX                 , 'QTY_VORTEX_WMAX')
+obs_kind_names( 85) = obs_kind_type(QTY_EXNER_FUNCTION              , 'QTY_EXNER_FUNCTION')
+obs_kind_names( 86) = obs_kind_type(QTY_TURBULENT_KINETIC_ENERGY    , 'QTY_TURBULENT_KINETIC_ENERGY')
+obs_kind_names( 87) = obs_kind_type(QTY_TOTAL_PRECIPITABLE_WATER    , 'QTY_TOTAL_PRECIPITABLE_WATER')
+obs_kind_names( 88) = obs_kind_type(QTY_VERTLEVEL                   , 'QTY_VERTLEVEL')
+obs_kind_names( 89) = obs_kind_type(QTY_MICROWAVE_BRIGHT_TEMP       , 'QTY_MICROWAVE_BRIGHT_TEMP')
+obs_kind_names( 90) = obs_kind_type(QTY_INTEGRATED_SULFATE          , 'QTY_INTEGRATED_SULFATE')
+obs_kind_names( 91) = obs_kind_type(QTY_INTEGRATED_DUST             , 'QTY_INTEGRATED_DUST')
+obs_kind_names( 92) = obs_kind_type(QTY_INTEGRATED_SMOKE            , 'QTY_INTEGRATED_SMOKE')
+obs_kind_names( 93) = obs_kind_type(QTY_INTEGRATED_SEASALT          , 'QTY_INTEGRATED_SEASALT')
+obs_kind_names( 94) = obs_kind_type(QTY_INTEGRATED_AOD              , 'QTY_INTEGRATED_AOD')
+obs_kind_names( 95) = obs_kind_type(QTY_SO2                         , 'QTY_SO2')
+obs_kind_names( 96) = obs_kind_type(QTY_SULFATE                     , 'QTY_SULFATE')
+obs_kind_names( 97) = obs_kind_type(QTY_DUST                        , 'QTY_DUST')
+obs_kind_names( 98) = obs_kind_type(QTY_SMOKE                       , 'QTY_SMOKE')
+obs_kind_names( 99) = obs_kind_type(QTY_SEASALT                     , 'QTY_SEASALT')
+obs_kind_names(100) = obs_kind_type(QTY_HAIL_MIXING_RATIO           , 'QTY_HAIL_MIXING_RATIO')
+obs_kind_names(101) = obs_kind_type(QTY_HAIL_NUMBER_CONCENTR        , 'QTY_HAIL_NUMBER_CONCENTR')
+obs_kind_names(102) = obs_kind_type(QTY_GRAUPEL_VOLUME              , 'QTY_GRAUPEL_VOLUME')
+obs_kind_names(103) = obs_kind_type(QTY_HAIL_VOLUME                 , 'QTY_HAIL_VOLUME')
+obs_kind_names(104) = obs_kind_type(QTY_DIFFERENTIAL_REFLECTIVITY   , 'QTY_DIFFERENTIAL_REFLECTIVITY')
+obs_kind_names(105) = obs_kind_type(QTY_SPECIFIC_DIFFERENTIAL_PHASE , 'QTY_SPECIFIC_DIFFERENTIAL_PHASE')
+obs_kind_names(106) = obs_kind_type(QTY_FLASH_RATE_2D               , 'QTY_FLASH_RATE_2D')
 
-obs_kind_names(107) = obs_kind_type(QTY_SNOW_THICKNESS        ,'QTY_SNOW_THICKNESS')
-obs_kind_names(108) = obs_kind_type(QTY_SNOW_WATER            ,'QTY_SNOW_WATER')
-obs_kind_names(109) = obs_kind_type(QTY_SNOWCOVER_FRAC        ,'QTY_SNOWCOVER_FRAC')
-obs_kind_names(110) = obs_kind_type(QTY_LIQUID_WATER          ,'QTY_LIQUID_WATER')
-obs_kind_names(111) = obs_kind_type(QTY_ICE                   ,'QTY_ICE')
-obs_kind_names(112) = obs_kind_type(QTY_CARBON                ,'QTY_CARBON')
-obs_kind_names(113) = obs_kind_type(QTY_SOIL_CARBON           ,'QTY_SOIL_CARBON')
-obs_kind_names(114) = obs_kind_type(QTY_ROOT_CARBON           ,'QTY_ROOT_CARBON')
-obs_kind_names(115) = obs_kind_type(QTY_STEM_CARBON           ,'QTY_STEM_CARBON')
-obs_kind_names(116) = obs_kind_type(QTY_LEAF_CARBON           ,'QTY_LEAF_CARBON')
-obs_kind_names(117) = obs_kind_type(QTY_LEAF_AREA_INDEX       ,'QTY_LEAF_AREA_INDEX')
-obs_kind_names(118) = obs_kind_type(QTY_NET_CARBON_FLUX       ,'QTY_NET_CARBON_FLUX')
-obs_kind_names(119) = obs_kind_type(QTY_LATENT_HEAT_FLUX      ,'QTY_LATENT_HEAT_FLUX')
-obs_kind_names(120) = obs_kind_type(QTY_SENSIBLE_HEAT_FLUX    ,'QTY_SENSIBLE_HEAT_FLUX')
-obs_kind_names(121) = obs_kind_type(QTY_RADIATION             ,'QTY_RADIATION')
-obs_kind_names(122) = obs_kind_type(QTY_NET_CARBON_PRODUCTION ,'QTY_NET_CARBON_PRODUCTION')
-obs_kind_names(123) = obs_kind_type(QTY_NITROGEN              ,'QTY_NITROGEN')
-obs_kind_names(124) = obs_kind_type(QTY_SOIL_NITROGEN         ,'QTY_SOIL_NITROGEN')
-obs_kind_names(125) = obs_kind_type(QTY_ROOT_NITROGEN         ,'QTY_ROOT_NITROGEN')
-obs_kind_names(126) = obs_kind_type(QTY_STEM_NITROGEN         ,'QTY_STEM_NITROGEN')
-obs_kind_names(127) = obs_kind_type(QTY_LEAF_NITROGEN         ,'QTY_LEAF_NITROGEN')
-obs_kind_names(128) = obs_kind_type(QTY_WATER_TABLE_DEPTH     ,'QTY_WATER_TABLE_DEPTH')
-obs_kind_names(129) = obs_kind_type(QTY_FPAR                  ,'QTY_FPAR')
-obs_kind_names(130) = obs_kind_type(QTY_TOTAL_WATER_STORAGE   ,'QTY_TOTAL_WATER_STORAGE')
-obs_kind_names(131) = obs_kind_type(QTY_SNOW_TEMPERATURE      ,'QTY_SNOW_TEMPERATURE')
-obs_kind_names(132) = obs_kind_type(QTY_SURFACE_RUNOFF        ,'QTY_SURFACE_RUNOFF')
-obs_kind_names(133) = obs_kind_type(QTY_UNDER_RUNOFF          ,'QTY_UNDER_RUNOFF')
-obs_kind_names(134) = obs_kind_type(QTY_AQUIFER_WATER         ,'QTY_AQUIFER_WATER')
-obs_kind_names(135) = obs_kind_type(QTY_2M_VAPOR_MIXING_RATIO ,'QTY_2M_VAPOR_MIXING_RATIO')
+obs_kind_names(107) = obs_kind_type(QTY_SNOW_THICKNESS              , 'QTY_SNOW_THICKNESS')
+obs_kind_names(108) = obs_kind_type(QTY_SNOW_WATER                  , 'QTY_SNOW_WATER')
+obs_kind_names(109) = obs_kind_type(QTY_SNOWCOVER_FRAC              , 'QTY_SNOWCOVER_FRAC')
+obs_kind_names(110) = obs_kind_type(QTY_LIQUID_WATER                , 'QTY_LIQUID_WATER')
+obs_kind_names(111) = obs_kind_type(QTY_SOIL_ICE                    , 'QTY_SOIL_ICE')
+obs_kind_names(112) = obs_kind_type(QTY_CARBON                      , 'QTY_CARBON')
+obs_kind_names(113) = obs_kind_type(QTY_SOIL_CARBON                 , 'QTY_SOIL_CARBON')
+obs_kind_names(114) = obs_kind_type(QTY_ROOT_CARBON                 , 'QTY_ROOT_CARBON')
+obs_kind_names(115) = obs_kind_type(QTY_STEM_CARBON                 , 'QTY_STEM_CARBON')
+obs_kind_names(116) = obs_kind_type(QTY_LEAF_CARBON                 , 'QTY_LEAF_CARBON')
+obs_kind_names(117) = obs_kind_type(QTY_LEAF_AREA_INDEX             , 'QTY_LEAF_AREA_INDEX')
+obs_kind_names(118) = obs_kind_type(QTY_NET_CARBON_FLUX             , 'QTY_NET_CARBON_FLUX')
+obs_kind_names(119) = obs_kind_type(QTY_LATENT_HEAT_FLUX            , 'QTY_LATENT_HEAT_FLUX')
+obs_kind_names(120) = obs_kind_type(QTY_SENSIBLE_HEAT_FLUX          , 'QTY_SENSIBLE_HEAT_FLUX')
+obs_kind_names(121) = obs_kind_type(QTY_RADIATION                   , 'QTY_RADIATION')
+obs_kind_names(122) = obs_kind_type(QTY_NET_CARBON_PRODUCTION       , 'QTY_NET_CARBON_PRODUCTION')
+obs_kind_names(123) = obs_kind_type(QTY_NITROGEN                    , 'QTY_NITROGEN')
+obs_kind_names(124) = obs_kind_type(QTY_SOIL_NITROGEN               , 'QTY_SOIL_NITROGEN')
+obs_kind_names(125) = obs_kind_type(QTY_ROOT_NITROGEN               , 'QTY_ROOT_NITROGEN')
+obs_kind_names(126) = obs_kind_type(QTY_STEM_NITROGEN               , 'QTY_STEM_NITROGEN')
+obs_kind_names(127) = obs_kind_type(QTY_LEAF_NITROGEN               , 'QTY_LEAF_NITROGEN')
+obs_kind_names(128) = obs_kind_type(QTY_WATER_TABLE_DEPTH           , 'QTY_WATER_TABLE_DEPTH')
+obs_kind_names(129) = obs_kind_type(QTY_FRAC_PHOTO_AVAIL_RADIATION  , 'QTY_FRAC_PHOTO_AVAIL_RADIATION')
+obs_kind_names(130) = obs_kind_type(QTY_TOTAL_WATER_STORAGE         , 'QTY_TOTAL_WATER_STORAGE')
+obs_kind_names(131) = obs_kind_type(QTY_SNOW_TEMPERATURE            , 'QTY_SNOW_TEMPERATURE')
+obs_kind_names(132) = obs_kind_type(QTY_SURFACE_RUNOFF              , 'QTY_SURFACE_RUNOFF')
+obs_kind_names(133) = obs_kind_type(QTY_UNDER_RUNOFF                , 'QTY_UNDER_RUNOFF')
+obs_kind_names(134) = obs_kind_type(QTY_AQUIFER_WATER               , 'QTY_AQUIFER_WATER')
+obs_kind_names(135) = obs_kind_type(QTY_2M_VAPOR_MIXING_RATIO       , 'QTY_2M_VAPOR_MIXING_RATIO')
 
-obs_kind_names(140) = obs_kind_type(QTY_NEUTRON_INTENSITY     ,'QTY_NEUTRON_INTENSITY')
-obs_kind_names(141) = obs_kind_type(QTY_CANOPY_WATER          ,'QTY_CANOPY_WATER')
-obs_kind_names(142) = obs_kind_type(QTY_GROUND_HEAT_FLUX      ,'QTY_GROUND_HEAT_FLUX')
-obs_kind_names(143) = obs_kind_type(QTY_VERTICAL_TEC          ,'QTY_VERTICAL_TEC')
-obs_kind_names(144) = obs_kind_type(QTY_O_N2_COLUMN_DENSITY_RATIO, 'QTY_O_N2_COLUMN_DENSITY_RATIO')
+obs_kind_names(140) = obs_kind_type(QTY_NEUTRON_INTENSITY           , 'QTY_NEUTRON_INTENSITY')
+obs_kind_names(141) = obs_kind_type(QTY_CANOPY_WATER                , 'QTY_CANOPY_WATER')
+obs_kind_names(142) = obs_kind_type(QTY_GROUND_HEAT_FLUX            , 'QTY_GROUND_HEAT_FLUX')
+obs_kind_names(143) = obs_kind_type(QTY_VERTICAL_TEC                , 'QTY_VERTICAL_TEC')
+obs_kind_names(144) = obs_kind_type(QTY_O_N2_COLUMN_DENSITY_RATIO   , 'QTY_O_N2_COLUMN_DENSITY_RATIO')
 
-obs_kind_names(151) = obs_kind_type(QTY_O3,             'QTY_O3')
-obs_kind_names(153) = obs_kind_type(QTY_CO,             'QTY_CO')
-obs_kind_names(155) = obs_kind_type(QTY_NO,             'QTY_NO')
-obs_kind_names(156) = obs_kind_type(QTY_NO2,            'QTY_NO2')
-obs_kind_names(157) = obs_kind_type(QTY_N2O,            'QTY_N2O')
+obs_kind_names(151) = obs_kind_type(QTY_O3                          , 'QTY_O3')
+obs_kind_names(153) = obs_kind_type(QTY_CO                          , 'QTY_CO')
+obs_kind_names(155) = obs_kind_type(QTY_NO                          , 'QTY_NO')
+obs_kind_names(156) = obs_kind_type(QTY_NO2                         , 'QTY_NO2')
+obs_kind_names(157) = obs_kind_type(QTY_N2O                         , 'QTY_N2O')
 
-obs_kind_names(161) = obs_kind_type(QTY_CO01,           'QTY_CO01')
-obs_kind_names(162) = obs_kind_type(QTY_CO02,           'QTY_CO02')
-obs_kind_names(163) = obs_kind_type(QTY_CO03,           'QTY_CO03')
+obs_kind_names(161) = obs_kind_type(QTY_CO01                        , 'QTY_CO01')
+obs_kind_names(162) = obs_kind_type(QTY_CO02                        , 'QTY_CO02')
+obs_kind_names(163) = obs_kind_type(QTY_CO03                        , 'QTY_CO03')
 
-obs_kind_names(170) = obs_kind_type(QTY_SFCO,           'QTY_SFCO')
-obs_kind_names(171) = obs_kind_type(QTY_SFCO01,         'QTY_SFCO01')
-obs_kind_names(172) = obs_kind_type(QTY_SFCO02,         'QTY_SFCO02')
-obs_kind_names(173) = obs_kind_type(QTY_SFCO03,         'QTY_SFCO03')
-obs_kind_names(174) = obs_kind_type(QTY_STATE_VAR_POWER,'QTY_STATE_VAR_POWER')
+obs_kind_names(170) = obs_kind_type(QTY_SFCO                        , 'QTY_SFCO')
+obs_kind_names(171) = obs_kind_type(QTY_SFCO01                      , 'QTY_SFCO01')
+obs_kind_names(172) = obs_kind_type(QTY_SFCO02                      , 'QTY_SFCO02')
+obs_kind_names(173) = obs_kind_type(QTY_SFCO03                      , 'QTY_SFCO03')
+obs_kind_names(174) = obs_kind_type(QTY_STATE_VAR_POWER             , 'QTY_STATE_VAR_POWER')
 
-obs_kind_names(200) = obs_kind_type(QTY_AOD,            'QTY_AOD')
-obs_kind_names(201) = obs_kind_type(QTY_CB1,            'QTY_CB1')
-obs_kind_names(202) = obs_kind_type(QTY_CB2,            'QTY_CB2')
-obs_kind_names(203) = obs_kind_type(QTY_OC1,            'QTY_OC1')
-obs_kind_names(204) = obs_kind_type(QTY_OC2,            'QTY_OC2')
-obs_kind_names(205) = obs_kind_type(QTY_CB1,            'QTY_CB102')
-obs_kind_names(206) = obs_kind_type(QTY_CB2,            'QTY_CB202')
-obs_kind_names(207) = obs_kind_type(QTY_OC1,            'QTY_OC102')
-obs_kind_names(208) = obs_kind_type(QTY_OC2,            'QTY_OC202')
+obs_kind_names(200) = obs_kind_type(QTY_AOD                         , 'QTY_AOD')
+obs_kind_names(201) = obs_kind_type(QTY_CB1                         , 'QTY_CB1')
+obs_kind_names(202) = obs_kind_type(QTY_CB2                         , 'QTY_CB2')
+obs_kind_names(203) = obs_kind_type(QTY_OC1                         , 'QTY_OC1')
+obs_kind_names(204) = obs_kind_type(QTY_OC2                         , 'QTY_OC2')
+obs_kind_names(205) = obs_kind_type(QTY_CB1                         , 'QTY_CB102')
+obs_kind_names(206) = obs_kind_type(QTY_CB2                         , 'QTY_CB202')
+obs_kind_names(207) = obs_kind_type(QTY_OC1                         , 'QTY_OC102')
+obs_kind_names(208) = obs_kind_type(QTY_OC2                         , 'QTY_OC202')
 
-obs_kind_names(221) = obs_kind_type(QTY_SFCB1,          'QTY_SFCB1')
-obs_kind_names(222) = obs_kind_type(QTY_SFCB2,          'QTY_SFCB2')
-obs_kind_names(223) = obs_kind_type(QTY_SFOC1,          'QTY_SFOC1')
-obs_kind_names(224) = obs_kind_type(QTY_SFOC2,          'QTY_SFOC2')
-obs_kind_names(225) = obs_kind_type(QTY_SFCB1,          'QTY_SFCB102')
-obs_kind_names(226) = obs_kind_type(QTY_SFCB2,          'QTY_SFCB202')
-obs_kind_names(227) = obs_kind_type(QTY_SFOC1,          'QTY_SFOC102')
-obs_kind_names(228) = obs_kind_type(QTY_SFOC2,          'QTY_SFOC202')
+obs_kind_names(221) = obs_kind_type(QTY_SFCB1                       , 'QTY_SFCB1')
+obs_kind_names(222) = obs_kind_type(QTY_SFCB2                       , 'QTY_SFCB2')
+obs_kind_names(223) = obs_kind_type(QTY_SFOC1                       , 'QTY_SFOC1')
+obs_kind_names(224) = obs_kind_type(QTY_SFOC2                       , 'QTY_SFOC2')
+obs_kind_names(225) = obs_kind_type(QTY_SFCB1                       , 'QTY_SFCB102')
+obs_kind_names(226) = obs_kind_type(QTY_SFCB2                       , 'QTY_SFCB202')
+obs_kind_names(227) = obs_kind_type(QTY_SFOC1                       , 'QTY_SFOC102')
+obs_kind_names(228) = obs_kind_type(QTY_SFOC2                       , 'QTY_SFOC202')
 
-obs_kind_names(247) = obs_kind_type(QTY_CO2,            'QTY_CO2')
-obs_kind_names(248) = obs_kind_type(QTY_NH3,            'QTY_NH3')
-obs_kind_names(249) = obs_kind_type(QTY_CH4,            'QTY_CH4')
+obs_kind_names(247) = obs_kind_type(QTY_CO2                         , 'QTY_CO2')
+obs_kind_names(248) = obs_kind_type(QTY_NH3                         , 'QTY_NH3')
+obs_kind_names(249) = obs_kind_type(QTY_CH4                         , 'QTY_CH4')
 
-obs_kind_names(251) = obs_kind_type(QTY_TEMPERATURE_ELECTRON  ,'QTY_TEMPERATURE_ELECTRON')
-obs_kind_names(252) = obs_kind_type(QTY_TEMPERATURE_ION       ,'QTY_TEMPERATURE_ION')
-obs_kind_names(253) = obs_kind_type(QTY_DENSITY_NEUTRAL_O3P   ,'QTY_DENSITY_NEUTRAL_O3P')
-obs_kind_names(254) = obs_kind_type(QTY_DENSITY_NEUTRAL_O2    ,'QTY_DENSITY_NEUTRAL_O2')
-obs_kind_names(255) = obs_kind_type(QTY_DENSITY_NEUTRAL_N2    ,'QTY_DENSITY_NEUTRAL_N2')
-obs_kind_names(256) = obs_kind_type(QTY_DENSITY_NEUTRAL_N4S   ,'QTY_DENSITY_NEUTRAL_N4S')
-obs_kind_names(257) = obs_kind_type(QTY_DENSITY_NEUTRAL_NO    ,'QTY_DENSITY_NEUTRAL_NO')
-obs_kind_names(258) = obs_kind_type(QTY_DENSITY_NEUTRAL_N2D   ,'QTY_DENSITY_NEUTRAL_N2D')
-obs_kind_names(259) = obs_kind_type(QTY_DENSITY_NEUTRAL_N2P   ,'QTY_DENSITY_NEUTRAL_N2P')
-obs_kind_names(260) = obs_kind_type(QTY_DENSITY_NEUTRAL_H     ,'QTY_DENSITY_NEUTRAL_H')
-obs_kind_names(261) = obs_kind_type(QTY_DENSITY_NEUTRAL_HE    ,'QTY_DENSITY_NEUTRAL_HE')
-obs_kind_names(262) = obs_kind_type(QTY_DENSITY_NEUTRAL_CO2   ,'QTY_DENSITY_NEUTRAL_CO2')
-obs_kind_names(263) = obs_kind_type(QTY_DENSITY_NEUTRAL_O1D   ,'QTY_DENSITY_NEUTRAL_O1D')
-obs_kind_names(264) = obs_kind_type(QTY_DENSITY_ION_O4SP      ,'QTY_DENSITY_ION_O4SP')
-obs_kind_names(265) = obs_kind_type(QTY_DENSITY_ION_O2P       ,'QTY_DENSITY_ION_O2P')
-obs_kind_names(266) = obs_kind_type(QTY_DENSITY_ION_N2P       ,'QTY_DENSITY_ION_N2P')
-obs_kind_names(267) = obs_kind_type(QTY_DENSITY_ION_NP        ,'QTY_DENSITY_ION_NP')
-obs_kind_names(268) = obs_kind_type(QTY_DENSITY_ION_NOP       ,'QTY_DENSITY_ION_NOP')
-obs_kind_names(269) = obs_kind_type(QTY_DENSITY_ION_O2DP      ,'QTY_DENSITY_ION_O2DP')
-obs_kind_names(270) = obs_kind_type(QTY_DENSITY_ION_O2PP      ,'QTY_DENSITY_ION_O2PP')
-obs_kind_names(271) = obs_kind_type(QTY_DENSITY_ION_HP        ,'QTY_DENSITY_ION_HP')
-obs_kind_names(272) = obs_kind_type(QTY_DENSITY_ION_HEP       ,'QTY_DENSITY_ION_HEP')
-obs_kind_names(273) = obs_kind_type(QTY_DENSITY_ION_E         ,'QTY_DENSITY_ION_E')
-obs_kind_names(274) = obs_kind_type(QTY_VELOCITY_U            ,'QTY_VELOCITY_U')
-obs_kind_names(275) = obs_kind_type(QTY_VELOCITY_V            ,'QTY_VELOCITY_V')
-obs_kind_names(276) = obs_kind_type(QTY_VELOCITY_W            ,'QTY_VELOCITY_W')
-obs_kind_names(277) = obs_kind_type(QTY_VELOCITY_U_ION        ,'QTY_VELOCITY_U_ION')
-obs_kind_names(278) = obs_kind_type(QTY_VELOCITY_V_ION        ,'QTY_VELOCITY_V_ION')
-obs_kind_names(279) = obs_kind_type(QTY_VELOCITY_W_ION        ,'QTY_VELOCITY_W_ION')
-obs_kind_names(280) = obs_kind_type(QTY_VELOCITY_VERTICAL_O3P ,'QTY_VELOCITY_VERTICAL_O3P')
-obs_kind_names(281) = obs_kind_type(QTY_VELOCITY_VERTICAL_O2  ,'QTY_VELOCITY_VERTICAL_O2')
-obs_kind_names(282) = obs_kind_type(QTY_VELOCITY_VERTICAL_N2  ,'QTY_VELOCITY_VERTICAL_N2')
-obs_kind_names(283) = obs_kind_type(QTY_VELOCITY_VERTICAL_N4S ,'QTY_VELOCITY_VERTICAL_N4S')
-obs_kind_names(284) = obs_kind_type(QTY_VELOCITY_VERTICAL_NO  ,'QTY_VELOCITY_VERTICAL_NO')
-obs_kind_names(285) = obs_kind_type(QTY_GND_GPS_VTEC          ,'QTY_GND_GPS_VTEC')
-obs_kind_names(286) = obs_kind_type(QTY_DENSITY_ION_OP        ,'QTY_DENSITY_ION_OP')
-obs_kind_names(287) = obs_kind_type(QTY_TOTAL_ELECTRON_COUNT  ,'QTY_TOTAL_ELECTRON_COUNT')
+obs_kind_names(251) = obs_kind_type(QTY_TEMPERATURE_ELECTRON        , 'QTY_TEMPERATURE_ELECTRON')
+obs_kind_names(252) = obs_kind_type(QTY_TEMPERATURE_ION             , 'QTY_TEMPERATURE_ION')
+obs_kind_names(253) = obs_kind_type(QTY_DENSITY_NEUTRAL_O3P         , 'QTY_DENSITY_NEUTRAL_O3P')
+obs_kind_names(254) = obs_kind_type(QTY_DENSITY_NEUTRAL_O2          , 'QTY_DENSITY_NEUTRAL_O2')
+obs_kind_names(255) = obs_kind_type(QTY_DENSITY_NEUTRAL_N2          , 'QTY_DENSITY_NEUTRAL_N2')
+obs_kind_names(256) = obs_kind_type(QTY_DENSITY_NEUTRAL_N4S         , 'QTY_DENSITY_NEUTRAL_N4S')
+obs_kind_names(257) = obs_kind_type(QTY_DENSITY_NEUTRAL_NO          , 'QTY_DENSITY_NEUTRAL_NO')
+obs_kind_names(258) = obs_kind_type(QTY_DENSITY_NEUTRAL_N2D         , 'QTY_DENSITY_NEUTRAL_N2D')
+obs_kind_names(259) = obs_kind_type(QTY_DENSITY_NEUTRAL_N2P         , 'QTY_DENSITY_NEUTRAL_N2P')
+obs_kind_names(260) = obs_kind_type(QTY_DENSITY_NEUTRAL_H           , 'QTY_DENSITY_NEUTRAL_H')
+obs_kind_names(261) = obs_kind_type(QTY_DENSITY_NEUTRAL_HE          , 'QTY_DENSITY_NEUTRAL_HE')
+obs_kind_names(262) = obs_kind_type(QTY_DENSITY_NEUTRAL_CO2         , 'QTY_DENSITY_NEUTRAL_CO2')
+obs_kind_names(263) = obs_kind_type(QTY_DENSITY_NEUTRAL_O1D         , 'QTY_DENSITY_NEUTRAL_O1D')
+obs_kind_names(264) = obs_kind_type(QTY_DENSITY_ION_O4SP            , 'QTY_DENSITY_ION_O4SP')
+obs_kind_names(265) = obs_kind_type(QTY_DENSITY_ION_O2P             , 'QTY_DENSITY_ION_O2P')
+obs_kind_names(266) = obs_kind_type(QTY_DENSITY_ION_N2P             , 'QTY_DENSITY_ION_N2P')
+obs_kind_names(267) = obs_kind_type(QTY_DENSITY_ION_NP              , 'QTY_DENSITY_ION_NP')
+obs_kind_names(268) = obs_kind_type(QTY_DENSITY_ION_NOP             , 'QTY_DENSITY_ION_NOP')
+obs_kind_names(269) = obs_kind_type(QTY_DENSITY_ION_O2DP            , 'QTY_DENSITY_ION_O2DP')
+obs_kind_names(270) = obs_kind_type(QTY_DENSITY_ION_O2PP            , 'QTY_DENSITY_ION_O2PP')
+obs_kind_names(271) = obs_kind_type(QTY_DENSITY_ION_HP              , 'QTY_DENSITY_ION_HP')
+obs_kind_names(272) = obs_kind_type(QTY_DENSITY_ION_HEP             , 'QTY_DENSITY_ION_HEP')
+obs_kind_names(273) = obs_kind_type(QTY_DENSITY_ION_E               , 'QTY_DENSITY_ION_E')
+obs_kind_names(274) = obs_kind_type(QTY_VELOCITY_U                  , 'QTY_VELOCITY_U')
+obs_kind_names(275) = obs_kind_type(QTY_VELOCITY_V                  , 'QTY_VELOCITY_V')
+obs_kind_names(276) = obs_kind_type(QTY_VELOCITY_W                  , 'QTY_VELOCITY_W')
+obs_kind_names(277) = obs_kind_type(QTY_VELOCITY_U_ION              , 'QTY_VELOCITY_U_ION')
+obs_kind_names(278) = obs_kind_type(QTY_VELOCITY_V_ION              , 'QTY_VELOCITY_V_ION')
+obs_kind_names(279) = obs_kind_type(QTY_VELOCITY_W_ION              , 'QTY_VELOCITY_W_ION')
+obs_kind_names(280) = obs_kind_type(QTY_VELOCITY_VERTICAL_O3P       , 'QTY_VELOCITY_VERTICAL_O3P')
+obs_kind_names(281) = obs_kind_type(QTY_VELOCITY_VERTICAL_O2        , 'QTY_VELOCITY_VERTICAL_O2')
+obs_kind_names(282) = obs_kind_type(QTY_VELOCITY_VERTICAL_N2        , 'QTY_VELOCITY_VERTICAL_N2')
+obs_kind_names(283) = obs_kind_type(QTY_VELOCITY_VERTICAL_N4S       , 'QTY_VELOCITY_VERTICAL_N4S')
+obs_kind_names(284) = obs_kind_type(QTY_VELOCITY_VERTICAL_NO        , 'QTY_VELOCITY_VERTICAL_NO')
+obs_kind_names(285) = obs_kind_type(QTY_GND_GPS_VTEC                , 'QTY_GND_GPS_VTEC')
+obs_kind_names(286) = obs_kind_type(QTY_DENSITY_ION_OP              , 'QTY_DENSITY_ION_OP')
+obs_kind_names(287) = obs_kind_type(QTY_TOTAL_ELECTRON_COUNT        , 'QTY_TOTAL_ELECTRON_COUNT')
 
-obs_kind_names(290) = obs_kind_type(QTY_STREAM_FLOW             ,'QTY_STREAM_FLOW')
-obs_kind_names(291) = obs_kind_type(QTY_SURFACE_HEAD            ,'QTY_SURFACE_HEAD')
-obs_kind_names(292) = obs_kind_type(QTY_DEEP_GROUNDWATER_LEVEL  ,'QTY_DEEP_GROUNDWATER_LEVEL')
-obs_kind_names(293) = obs_kind_type(QTY_STREAM_HEIGHT           ,'QTY_STREAM_HEIGHT')
-obs_kind_names(294) = obs_kind_type(QTY_GROUND_SURF_TEMPERATURE ,'QTY_GROUND_SURF_TEMPERATURE')
-obs_kind_names(295) = obs_kind_type(QTY_CANOPY_TEMPERATURE      ,'QTY_CANOPY_TEMPERATURE')
-obs_kind_names(296) = obs_kind_type(QTY_BUCKET_MULTIPLIER       ,'QTY_BUCKET_MULTIPLIER')
-obs_kind_names(297) = obs_kind_type(QTY_RUNOFF_MULTIPLIER       ,'QTY_RUNOFF_MULTIPLIER')
+obs_kind_names(290) = obs_kind_type(QTY_STREAM_FLOW                 , 'QTY_STREAM_FLOW')
+obs_kind_names(291) = obs_kind_type(QTY_SURFACE_HEAD                , 'QTY_SURFACE_HEAD')
+obs_kind_names(292) = obs_kind_type(QTY_DEEP_GROUNDWATER_LEVEL      , 'QTY_DEEP_GROUNDWATER_LEVEL')
+obs_kind_names(293) = obs_kind_type(QTY_STREAM_HEIGHT               , 'QTY_STREAM_HEIGHT')
+obs_kind_names(294) = obs_kind_type(QTY_GROUND_SURF_TEMPERATURE     , 'QTY_GROUND_SURF_TEMPERATURE')
+obs_kind_names(295) = obs_kind_type(QTY_CANOPY_TEMPERATURE          , 'QTY_CANOPY_TEMPERATURE')
+obs_kind_names(296) = obs_kind_type(QTY_BUCKET_MULTIPLIER           , 'QTY_BUCKET_MULTIPLIER')
+obs_kind_names(297) = obs_kind_type(QTY_RUNOFF_MULTIPLIER           , 'QTY_RUNOFF_MULTIPLIER')
 
-obs_kind_names(301) = obs_kind_type(QTY_VEGETATION_TEMPERATURE,'QTY_VEGETATION_TEMPERATURE')
-obs_kind_names(302) = obs_kind_type(QTY_CANOPY_HEIGHT         ,'QTY_CANOPY_HEIGHT')
-obs_kind_names(303) = obs_kind_type(QTY_FPAR_DIRECT           ,'QTY_FPAR_DIRECT')
-obs_kind_names(304) = obs_kind_type(QTY_FPAR_DIFFUSE          ,'QTY_FPAR_DIFFUSE')
-obs_kind_names(305) = obs_kind_type(QTY_FPAR_SUNLIT_DIRECT    ,'QTY_FPAR_SUNLIT_DIRECT')
-obs_kind_names(306) = obs_kind_type(QTY_FPAR_SUNLIT_DIFFUSE   ,'QTY_FPAR_SUNLIT_DIFFUSE')
-obs_kind_names(307) = obs_kind_type(QTY_FPAR_SHADED_DIRECT    ,'QTY_FPAR_SHADED_DIRECT')
-obs_kind_names(308) = obs_kind_type(QTY_FPAR_SHADED_DIFFUSE   ,'QTY_FPAR_SHADED_DIFFUSE')
-obs_kind_names(309) = obs_kind_type(QTY_FPSN                  ,'QTY_FPSN')
-obs_kind_names(310) = obs_kind_type(QTY_FSIF                  ,'QTY_FSIF')
+obs_kind_names(301) = obs_kind_type(QTY_VEGETATION_TEMPERATURE      , 'QTY_VEGETATION_TEMPERATURE')
+obs_kind_names(302) = obs_kind_type(QTY_CANOPY_HEIGHT               , 'QTY_CANOPY_HEIGHT')
+obs_kind_names(303) = obs_kind_type(QTY_FRACTION_ABSORBED_PAR       , 'QTY_FRACTION_ABSORBED_PAR')
+obs_kind_names(304) = obs_kind_type(QTY_PAR_DIRECT                  , 'QTY_PAR_DIRECT')
+obs_kind_names(305) = obs_kind_type(QTY_PAR_DIFFUSE                 , 'QTY_PAR_DIFFUSE')
+obs_kind_names(306) = obs_kind_type(QTY_FPAR_SUNLIT_DIRECT          , 'QTY_FPAR_SUNLIT_DIRECT')
+obs_kind_names(307) = obs_kind_type(QTY_FPAR_SUNLIT_DIFFUSE         , 'QTY_FPAR_SUNLIT_DIFFUSE')
+obs_kind_names(308) = obs_kind_type(QTY_FPAR_SHADED_DIRECT          , 'QTY_FPAR_SHADED_DIRECT')
+obs_kind_names(309) = obs_kind_type(QTY_FPAR_SHADED_DIFFUSE         , 'QTY_FPAR_SHADED_DIFFUSE')
+obs_kind_names(310) = obs_kind_type(QTY_FPSN                        , 'QTY_FPSN')
+obs_kind_names(311) = obs_kind_type(QTY_FSIF                        , 'QTY_FSIF')
+obs_kind_names(312) = obs_kind_type(QTY_GROSS_PRIMARY_PROD_FLUX     , 'QTY_GROSS_PRIMARY_PROD_FLUX')
+obs_kind_names(313) = obs_kind_type(QTY_ER_FLUX                     , 'QTY_ER_FLUX')
+obs_kind_names(314) = obs_kind_type(QTY_BIOMASS                     , 'QTY_BIOMASS')
+obs_kind_names(315) = obs_kind_type(QTY_SOIL_RESPIRATION_FLUX       , 'QTY_SOIL_RESPIRATION_FLUX')
+obs_kind_names(316) = obs_kind_type(QTY_NET_PRIMARY_PROD_FLUX       , 'QTY_NET_PRIMARY_PROD_FLUX')
+obs_kind_names(317) = obs_kind_type(QTY_RADIATION_VISIBLE_DOWN      , 'QTY_RADIATION_VISIBLE_DOWN')
+obs_kind_names(318) = obs_kind_type(QTY_RADIATION_VISIBLE_UP        , 'QTY_RADIATION_VISIBLE_UP')
+obs_kind_names(319) = obs_kind_type(QTY_RADIATION_NEAR_IR_DOWN      , 'QTY_RADIATION_NEAR_IR_DOWN')
+obs_kind_names(320) = obs_kind_type(QTY_RADIATION_NEAR_IR_UP        , 'QTY_RADIATION_NEAR_IR_UP')
+obs_kind_names(321) = obs_kind_type(QTY_LIVE_STEM_CARBON            , 'QTY_LIVE_STEM_CARBON')
+obs_kind_names(322) = obs_kind_type(QTY_LIVE_STEM_NITROGEN          , 'QTY_LIVE_STEM_NITROGEN')
+obs_kind_names(323) = obs_kind_type(QTY_DEAD_STEM_CARBON            , 'QTY_DEAD_STEM_CARBON')
+obs_kind_names(324) = obs_kind_type(QTY_DEAD_STEM_NITROGEN          , 'QTY_DEAD_STEM_NITROGEN')
+obs_kind_names(325) = obs_kind_type(QTY_LIVE_ROOT_CARBON            , 'QTY_LIVE_ROOT_CARBON')
+obs_kind_names(326) = obs_kind_type(QTY_LIVE_ROOT_NITROGEN          , 'QTY_LIVE_ROOT_NITROGEN')
+obs_kind_names(327) = obs_kind_type(QTY_DEAD_ROOT_CARBON            , 'QTY_DEAD_ROOT_CARBON')
+obs_kind_names(328) = obs_kind_type(QTY_DEAD_ROOT_NITROGEN          , 'QTY_DEAD_ROOT_NITROGEN')
+obs_kind_names(329) = obs_kind_type(QTY_STEM_AREA_INDEX             , 'QTY_STEM_AREA_INDEX')
+obs_kind_names(330) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_6H   , 'QTY_BRIGHTNESS_TEMPERATURE_6H')
+obs_kind_names(331) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_6V   , 'QTY_BRIGHTNESS_TEMPERATURE_6V')
+obs_kind_names(332) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_10H  , 'QTY_BRIGHTNESS_TEMPERATURE_10H')
+obs_kind_names(333) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_10V  , 'QTY_BRIGHTNESS_TEMPERATURE_10V')
+obs_kind_names(334) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_18H  , 'QTY_BRIGHTNESS_TEMPERATURE_18H')
+obs_kind_names(335) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_18V  , 'QTY_BRIGHTNESS_TEMPERATURE_18V')
+obs_kind_names(336) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_23H  , 'QTY_BRIGHTNESS_TEMPERATURE_23H')
+obs_kind_names(337) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_23V  , 'QTY_BRIGHTNESS_TEMPERATURE_23V')
+obs_kind_names(338) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_36H  , 'QTY_BRIGHTNESS_TEMPERATURE_36H')
+obs_kind_names(339) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_36V  , 'QTY_BRIGHTNESS_TEMPERATURE_36V')
+obs_kind_names(340) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_89H  , 'QTY_BRIGHTNESS_TEMPERATURE_89H')
+obs_kind_names(341) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE_89V  , 'QTY_BRIGHTNESS_TEMPERATURE_89V')
+obs_kind_names(342) = obs_kind_type(QTY_SNOW_GRAIN_SIZE             , 'QTY_SNOW_GRAIN_SIZE')
+obs_kind_names(343) = obs_kind_type(QTY_RTM_PARAMETERS_P            , 'QTY_RTM_PARAMETERS_P')
+obs_kind_names(344) = obs_kind_type(QTY_RTM_PARAMETERS_N            , 'QTY_RTM_PARAMETERS_N')
+obs_kind_names(345) = obs_kind_type(QTY_SAND_FRACTION               , 'QTY_SAND_FRACTION')
+obs_kind_names(346) = obs_kind_type(QTY_CLAY_FRACTION               , 'QTY_CLAY_FRACTION')
+obs_kind_names(347) = obs_kind_type(QTY_CALIBRATED_SAND_FRACTION    , 'QTY_CALIBRATED_SAND_FRACTION')
+obs_kind_names(348) = obs_kind_type(QTY_CALIBRATED_CLAY_FRACTION    , 'QTY_CALIBRATED_CLAY_FRACTION')
+obs_kind_names(349) = obs_kind_type(QTY_VEGETATED_AREA_FRACTION     , 'QTY_VEGETATED_AREA_FRACTION')
+obs_kind_names(350) = obs_kind_type(QTY_STICKINESS                  , 'QTY_STICKINESS')
+obs_kind_names(351) = obs_kind_type(QTY_B_PRIME                     , 'QTY_B_PRIME')
+obs_kind_names(352) = obs_kind_type(QTY_X_LAMBDA                    , 'QTY_X_LAMBDA')
+obs_kind_names(353) = obs_kind_type(QTY_UNCONFINED_WATER            , 'QTY_UNCONFINED_WATER')
+obs_kind_names(354) = obs_kind_type(QTY_SATURATED_WATER             , 'QTY_SATURATED_WATER')
+obs_kind_names(355) = obs_kind_type(QTY_SNOW_DEPTH                  , 'QTY_SNOW_DEPTH')
+obs_kind_names(356) = obs_kind_type(QTY_SOLAR_INDUCED_FLUORESCENCE  , 'QTY_SOLAR_INDUCED_FLUORESCENCE')
+obs_kind_names(357) = obs_kind_type(QTY_PHOTO_AVAILABLE_RADIATION   , 'QTY_PHOTO_AVAILABLE_RADIATION')
+obs_kind_names(358) = obs_kind_type(QTY_ABSORBED_PAR                , 'QTY_ABSORBED_PAR')
 
-obs_kind_names(311) = obs_kind_type(QTY_SEAICE_AGREG_CONCENTR ,'QTY_SEAICE_AGREG_CONCENTR')
-obs_kind_names(312) = obs_kind_type(QTY_SEAICE_AGREG_VOLUME   ,'QTY_SEAICE_AGREG_VOLUME')
-obs_kind_names(313) = obs_kind_type(QTY_SEAICE_AGREG_SNOWVOLUME,'QTY_SEAICE_AGREG_SNOWVOLUME')
-obs_kind_names(314) = obs_kind_type(QTY_SEAICE_AGREG_THICKNESS,'QTY_SEAICE_AGREG_THICKNESS')
-obs_kind_names(315) = obs_kind_type(QTY_SEAICE_AGREG_SNOWDEPTH,'QTY_SEAICE_AGREG_SNOWDEPTH')
-obs_kind_names(316) = obs_kind_type(QTY_U_SEAICE_COMPONENT    ,'QTY_U_SEAICE_COMPONENT')
-obs_kind_names(317) = obs_kind_type(QTY_V_SEAICE_COMPONENT    ,'QTY_V_SEAICE_COMPONENT')
-obs_kind_names(318) = obs_kind_type(QTY_SEAICE_ALBEDODIRVIZ   ,'QTY_SEAICE_ALBEDODIRVIZ')
-obs_kind_names(319) = obs_kind_type(QTY_SEAICE_ALBEDODIRNIR   ,'QTY_SEAICE_ALBEDODIRNIR')
-obs_kind_names(320) = obs_kind_type(QTY_SEAICE_ALBEDOINDVIZ   ,'QTY_SEAICE_ALBEDOINDVIZ')
-obs_kind_names(321) = obs_kind_type(QTY_SEAICE_ALBEDOINDNIR   ,'QTY_SEAICE_ALBEDOINDNIR')
-obs_kind_names(322) = obs_kind_type(QTY_SEAICE_CONCENTR       ,'QTY_SEAICE_CONCENTR')
-obs_kind_names(323) = obs_kind_type(QTY_SEAICE_VOLUME         ,'QTY_SEAICE_VOLUME')
-obs_kind_names(324) = obs_kind_type(QTY_SEAICE_SNOWVOLUME     ,'QTY_SEAICE_SNOWVOLUME')
-obs_kind_names(325) = obs_kind_type(QTY_SEAICE_SURFACETEMP    ,'QTY_SEAICE_SURFACETEMP')
-obs_kind_names(326) = obs_kind_type(QTY_SEAICE_FIRSTYEARAREA  ,'QTY_SEAICE_FIRSTYEARAREA')
-obs_kind_names(327) = obs_kind_type(QTY_SEAICE_ICEAGE         ,'QTY_SEAICE_ICEAGE')
-obs_kind_names(328) = obs_kind_type(QTY_SEAICE_LEVELAREA      ,'QTY_SEAICE_LEVELAREA')
-obs_kind_names(329) = obs_kind_type(QTY_SEAICE_LEVELVOLUME    ,'QTY_SEAICE_LEVELVOLUME')
-obs_kind_names(330) = obs_kind_type(QTY_SEAICE_MELTPONDAREA   ,'QTY_SEAICE_MELTPONDAREA')
-obs_kind_names(331) = obs_kind_type(QTY_SEAICE_MELTPONDDEPTH  ,'QTY_SEAICE_MELTPONDDEPTH')
-obs_kind_names(332) = obs_kind_type(QTY_SEAICE_MELTPONDLID    ,'QTY_SEAICE_MELTPONDLID')
-obs_kind_names(333) = obs_kind_type(QTY_SEAICE_MELTPONDSNOW   ,'QTY_SEAICE_MELTPONDSNOW')
-obs_kind_names(334) = obs_kind_type(QTY_SEAICE_SALINITY001    ,'QTY_SEAICE_SALINITY001')
-obs_kind_names(335) = obs_kind_type(QTY_SEAICE_SALINITY002    ,'QTY_SEAICE_SALINITY002')
-obs_kind_names(336) = obs_kind_type(QTY_SEAICE_SALINITY003    ,'QTY_SEAICE_SALINITY003')
-obs_kind_names(337) = obs_kind_type(QTY_SEAICE_SALINITY004    ,'QTY_SEAICE_SALINITY004')
-obs_kind_names(338) = obs_kind_type(QTY_SEAICE_SALINITY005    ,'QTY_SEAICE_SALINITY005')
-obs_kind_names(339) = obs_kind_type(QTY_SEAICE_SALINITY006    ,'QTY_SEAICE_SALINITY006')
-obs_kind_names(340) = obs_kind_type(QTY_SEAICE_SALINITY007    ,'QTY_SEAICE_SALINITY007')
-obs_kind_names(341) = obs_kind_type(QTY_SEAICE_SALINITY008    ,'QTY_SEAICE_SALINITY008')
-obs_kind_names(342) = obs_kind_type(QTY_SEAICE_ICEENTHALPY001 ,'QTY_SEAICE_ICEENTHALPY001')
-obs_kind_names(343) = obs_kind_type(QTY_SEAICE_ICEENTHALPY002 ,'QTY_SEAICE_ICEENTHALPY002')
-obs_kind_names(344) = obs_kind_type(QTY_SEAICE_ICEENTHALPY003 ,'QTY_SEAICE_ICEENTHALPY003')
-obs_kind_names(345) = obs_kind_type(QTY_SEAICE_ICEENTHALPY004 ,'QTY_SEAICE_ICEENTHALPY004')
-obs_kind_names(346) = obs_kind_type(QTY_SEAICE_ICEENTHALPY005 ,'QTY_SEAICE_ICEENTHALPY005')
-obs_kind_names(347) = obs_kind_type(QTY_SEAICE_ICEENTHALPY006 ,'QTY_SEAICE_ICEENTHALPY006')
-obs_kind_names(348) = obs_kind_type(QTY_SEAICE_ICEENTHALPY007 ,'QTY_SEAICE_ICEENTHALPY007')
-obs_kind_names(349) = obs_kind_type(QTY_SEAICE_ICEENTHALPY008 ,'QTY_SEAICE_ICEENTHALPY008')
-obs_kind_names(350) = obs_kind_type(QTY_SEAICE_SNOWENTHALPY001,'QTY_SEAICE_SNOWENTHALPY001')
-obs_kind_names(351) = obs_kind_type(QTY_SEAICE_SNOWENTHALPY002,'QTY_SEAICE_SNOWENTHALPY002')
-obs_kind_names(352) = obs_kind_type(QTY_SEAICE_SNOWENTHALPY003,'QTY_SEAICE_SNOWENTHALPY003')
-obs_kind_names(353) = obs_kind_type(QTY_SOM_TEMPERATURE,       'QTY_SOM_TEMPERATURE')
-obs_kind_names(354) = obs_kind_type(QTY_SEAICE_FY,             'QTY_SEAICE_FY')
-obs_kind_names(355) = obs_kind_type(QTY_SEAICE_AGREG_FY,       'QTY_SEAICE_AGREG_FY')
-obs_kind_names(356) = obs_kind_type(QTY_SEAICE_AGREG_SURFACETEMP,'QTY_SEAICE_AGREG_SURFACETEMP')
-obs_kind_names(357) = obs_kind_type(QTY_SEAICE_AGREG_FREEBOARD,'QTY_SEAICE_AGREG_FREEBOARD')
-obs_kind_names(358) = obs_kind_type(QTY_SEAICE_CATEGORY,       'QTY_SEAICE_CATEGORY')
+obs_kind_names(411) = obs_kind_type(QTY_SEAICE_AGREG_CONCENTR       , 'QTY_SEAICE_AGREG_CONCENTR')
+obs_kind_names(412) = obs_kind_type(QTY_SEAICE_AGREG_VOLUME         , 'QTY_SEAICE_AGREG_VOLUME')
+obs_kind_names(413) = obs_kind_type(QTY_SEAICE_AGREG_SNOWVOLUME     , 'QTY_SEAICE_AGREG_SNOWVOLUME')
+obs_kind_names(414) = obs_kind_type(QTY_SEAICE_AGREG_THICKNESS      , 'QTY_SEAICE_AGREG_THICKNESS')
+obs_kind_names(415) = obs_kind_type(QTY_SEAICE_AGREG_SNOWDEPTH      , 'QTY_SEAICE_AGREG_SNOWDEPTH')
+obs_kind_names(416) = obs_kind_type(QTY_U_SEAICE_COMPONENT          , 'QTY_U_SEAICE_COMPONENT')
+obs_kind_names(417) = obs_kind_type(QTY_V_SEAICE_COMPONENT          , 'QTY_V_SEAICE_COMPONENT')
+obs_kind_names(418) = obs_kind_type(QTY_SEAICE_ALBEDODIRVIZ         , 'QTY_SEAICE_ALBEDODIRVIZ')
+obs_kind_names(419) = obs_kind_type(QTY_SEAICE_ALBEDODIRNIR         , 'QTY_SEAICE_ALBEDODIRNIR')
+obs_kind_names(420) = obs_kind_type(QTY_SEAICE_ALBEDOINDVIZ         , 'QTY_SEAICE_ALBEDOINDVIZ')
+obs_kind_names(421) = obs_kind_type(QTY_SEAICE_ALBEDOINDNIR         , 'QTY_SEAICE_ALBEDOINDNIR')
+obs_kind_names(422) = obs_kind_type(QTY_SEAICE_CONCENTR             , 'QTY_SEAICE_CONCENTR')
+obs_kind_names(423) = obs_kind_type(QTY_SEAICE_VOLUME               , 'QTY_SEAICE_VOLUME')
+obs_kind_names(424) = obs_kind_type(QTY_SEAICE_SNOWVOLUME           , 'QTY_SEAICE_SNOWVOLUME')
+obs_kind_names(425) = obs_kind_type(QTY_SEAICE_SURFACETEMP          , 'QTY_SEAICE_SURFACETEMP')
+obs_kind_names(426) = obs_kind_type(QTY_SEAICE_FIRSTYEARAREA        , 'QTY_SEAICE_FIRSTYEARAREA')
+obs_kind_names(427) = obs_kind_type(QTY_SEAICE_ICEAGE               , 'QTY_SEAICE_ICEAGE')
+obs_kind_names(428) = obs_kind_type(QTY_SEAICE_LEVELAREA            , 'QTY_SEAICE_LEVELAREA')
+obs_kind_names(429) = obs_kind_type(QTY_SEAICE_LEVELVOLUME          , 'QTY_SEAICE_LEVELVOLUME')
+obs_kind_names(430) = obs_kind_type(QTY_SEAICE_MELTPONDAREA         , 'QTY_SEAICE_MELTPONDAREA')
+obs_kind_names(431) = obs_kind_type(QTY_SEAICE_MELTPONDDEPTH        , 'QTY_SEAICE_MELTPONDDEPTH')
+obs_kind_names(432) = obs_kind_type(QTY_SEAICE_MELTPONDLID          , 'QTY_SEAICE_MELTPONDLID')
+obs_kind_names(433) = obs_kind_type(QTY_SEAICE_MELTPONDSNOW         , 'QTY_SEAICE_MELTPONDSNOW')
+obs_kind_names(434) = obs_kind_type(QTY_SEAICE_SALINITY001          , 'QTY_SEAICE_SALINITY001')
+obs_kind_names(435) = obs_kind_type(QTY_SEAICE_SALINITY002          , 'QTY_SEAICE_SALINITY002')
+obs_kind_names(436) = obs_kind_type(QTY_SEAICE_SALINITY003          , 'QTY_SEAICE_SALINITY003')
+obs_kind_names(437) = obs_kind_type(QTY_SEAICE_SALINITY004          , 'QTY_SEAICE_SALINITY004')
+obs_kind_names(438) = obs_kind_type(QTY_SEAICE_SALINITY005          , 'QTY_SEAICE_SALINITY005')
+obs_kind_names(439) = obs_kind_type(QTY_SEAICE_SALINITY006          , 'QTY_SEAICE_SALINITY006')
+obs_kind_names(440) = obs_kind_type(QTY_SEAICE_SALINITY007          , 'QTY_SEAICE_SALINITY007')
+obs_kind_names(441) = obs_kind_type(QTY_SEAICE_SALINITY008          , 'QTY_SEAICE_SALINITY008')
+obs_kind_names(442) = obs_kind_type(QTY_SEAICE_ICEENTHALPY001       , 'QTY_SEAICE_ICEENTHALPY001')
+obs_kind_names(443) = obs_kind_type(QTY_SEAICE_ICEENTHALPY002       , 'QTY_SEAICE_ICEENTHALPY002')
+obs_kind_names(444) = obs_kind_type(QTY_SEAICE_ICEENTHALPY003       , 'QTY_SEAICE_ICEENTHALPY003')
+obs_kind_names(445) = obs_kind_type(QTY_SEAICE_ICEENTHALPY004       , 'QTY_SEAICE_ICEENTHALPY004')
+obs_kind_names(446) = obs_kind_type(QTY_SEAICE_ICEENTHALPY005       , 'QTY_SEAICE_ICEENTHALPY005')
+obs_kind_names(447) = obs_kind_type(QTY_SEAICE_ICEENTHALPY006       , 'QTY_SEAICE_ICEENTHALPY006')
+obs_kind_names(448) = obs_kind_type(QTY_SEAICE_ICEENTHALPY007       , 'QTY_SEAICE_ICEENTHALPY007')
+obs_kind_names(449) = obs_kind_type(QTY_SEAICE_ICEENTHALPY008       , 'QTY_SEAICE_ICEENTHALPY008')
+obs_kind_names(450) = obs_kind_type(QTY_SEAICE_SNOWENTHALPY001      , 'QTY_SEAICE_SNOWENTHALPY001')
+obs_kind_names(451) = obs_kind_type(QTY_SEAICE_SNOWENTHALPY002      , 'QTY_SEAICE_SNOWENTHALPY002')
+obs_kind_names(452) = obs_kind_type(QTY_SEAICE_SNOWENTHALPY003      , 'QTY_SEAICE_SNOWENTHALPY003')
+obs_kind_names(453) = obs_kind_type(QTY_SOM_TEMPERATURE             , 'QTY_SOM_TEMPERATURE')
+obs_kind_names(454) = obs_kind_type(QTY_SEAICE_FY                   , 'QTY_SEAICE_FY')
+obs_kind_names(455) = obs_kind_type(QTY_SEAICE_AGREG_FY             , 'QTY_SEAICE_AGREG_FY')
+obs_kind_names(456) = obs_kind_type(QTY_SEAICE_AGREG_SURFACETEMP    , 'QTY_SEAICE_AGREG_SURFACETEMP')
+obs_kind_names(457) = obs_kind_type(QTY_SEAICE_AGREG_FREEBOARD      , 'QTY_SEAICE_AGREG_FREEBOARD')
+obs_kind_names(458) = obs_kind_type(QTY_SEAICE_CATEGORY             , 'QTY_SEAICE_CATEGORY')
 
-obs_kind_names(360) = obs_kind_type(QTY_SEA_SURFACE_ANOMALY,   'QTY_SEA_SURFACE_ANOMALY')
-obs_kind_names(361) = obs_kind_type(QTY_LARGE_SCALE_STATE,     'QTY_LARGE_SCALE_STATE')
-obs_kind_names(362) = obs_kind_type(QTY_SMALL_SCALE_STATE,     'QTY_SMALL_SCALE_STATE')
-obs_kind_names(363) = obs_kind_type(QTY_CWP_PATH,              'QTY_CWP_PATH')
-obs_kind_names(364) = obs_kind_type(QTY_CWP_PATH_ZERO,         'QTY_CWP_PATH_ZERO')
-obs_kind_names(365) = obs_kind_type(QTY_ION_O_MIXING_RATIO,    'QTY_ION_O_MIXING_RATIO')
-obs_kind_names(366) = obs_kind_type(QTY_ATOMIC_H_MIXING_RATIO, 'QTY_ATOMIC_H_MIXING_RATIO')
+obs_kind_names(460) = obs_kind_type(QTY_SEA_SURFACE_ANOMALY         , 'QTY_SEA_SURFACE_ANOMALY')
+obs_kind_names(461) = obs_kind_type(QTY_LARGE_SCALE_STATE           , 'QTY_LARGE_SCALE_STATE')
+obs_kind_names(462) = obs_kind_type(QTY_SMALL_SCALE_STATE           , 'QTY_SMALL_SCALE_STATE')
+obs_kind_names(463) = obs_kind_type(QTY_CWP_PATH                    , 'QTY_CWP_PATH')
+obs_kind_names(464) = obs_kind_type(QTY_CWP_PATH_ZERO               , 'QTY_CWP_PATH_ZERO')
 
-obs_kind_names(367) = obs_kind_type(QTY_ABSOLUTE_HUMIDITY,     'QTY_ABSOLUTE_HUMIDITY')
+obs_kind_names(465) = obs_kind_type(QTY_ION_O_MIXING_RATIO          , 'QTY_ION_O_MIXING_RATIO')
+obs_kind_names(466) = obs_kind_type(QTY_ATOMIC_H_MIXING_RATIO       , 'QTY_ATOMIC_H_MIXING_RATIO')
 
-obs_kind_names(401) = obs_kind_type(QTY_RADIANCE,              'QTY_RADIANCE')
-obs_kind_names(402) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE,'QTY_BRIGHTNESS_TEMPERATURE')
-obs_kind_names(403) = obs_kind_type(QTY_SURFACE_TYPE,          'QTY_SURFACE_TYPE')
-obs_kind_names(404) = obs_kind_type(QTY_WIND_FETCH,            'QTY_WIND_FETCH')
-obs_kind_names(405) = obs_kind_type(QTY_WATER_TYPE,            'QTY_WATER_TYPE')
-obs_kind_names(406) = obs_kind_type(QTY_FOAM_FRAC,             'QTY_FOAM_FRAC')
-obs_kind_names(407) = obs_kind_type(QTY_INSOLUBLE_AER,         'QTY_INSOLUBLE_AER')
-obs_kind_names(408) = obs_kind_type(QTY_H2O_SOLUBLE_AER,       'QTY_H2O_SOLUBLE_AER')
-obs_kind_names(409) = obs_kind_type(QTY_SOOT,                  'QTY_SOOT')
-obs_kind_names(410) = obs_kind_type(QTY_SEASALT_ACCUM,         'QTY_SEASALT_ACCUM')
-obs_kind_names(411) = obs_kind_type(QTY_SEASALT_COARSE,        'QTY_SEASALT_COARSE')
-obs_kind_names(412) = obs_kind_type(QTY_MINERAL_NUCLEUS,       'QTY_MINERAL_NUCLEUS')
-obs_kind_names(413) = obs_kind_type(QTY_MINERAL_ACCUM,         'QTY_MINERAL_ACCUM')
-obs_kind_names(414) = obs_kind_type(QTY_MINERAL_COARSE,        'QTY_MINERAL_COARSE')
-obs_kind_names(415) = obs_kind_type(QTY_MINERAL_TRANSPORTED,   'QTY_MINERAL_TRANSPORTED')
-obs_kind_names(416) = obs_kind_type(QTY_SULPHATED_DROPS,       'QTY_SULPHATED_DROPS')
-obs_kind_names(417) = obs_kind_type(QTY_VOLCANIC_ASH,          'QTY_VOLCANIC_ASH')
-obs_kind_names(418) = obs_kind_type(QTY_NEW_VOLCANIC_ASH,      'QTY_NEW_VOLCANIC_ASH')
-obs_kind_names(419) = obs_kind_type(QTY_ASIAN_DUST,            'QTY_ASIAN_DUST')
-obs_kind_names(420) = obs_kind_type(QTY_BLACK_CARBON,          'QTY_BLACK_CARBON')
-obs_kind_names(421) = obs_kind_type(QTY_DUST_BIN1,             'QTY_DUST_BIN1')
-obs_kind_names(422) = obs_kind_type(QTY_DUST_BIN2,             'QTY_DUST_BIN2')
-obs_kind_names(423) = obs_kind_type(QTY_DUST_BIN3,             'QTY_DUST_BIN3')
-obs_kind_names(424) = obs_kind_type(QTY_AMMONIUM_SULPHATE,     'QTY_AMMONIUM_SULPHATE')
-obs_kind_names(425) = obs_kind_type(QTY_SEA_SALT_BIN1,         'QTY_SEA_SALT_BIN1')
-obs_kind_names(426) = obs_kind_type(QTY_SEA_SALT_BIN2,         'QTY_SEA_SALT_BIN2')
-obs_kind_names(427) = obs_kind_type(QTY_SEA_SALT_BIN3,         'QTY_SEA_SALT_BIN3')
-obs_kind_names(428) = obs_kind_type(QTY_HYDROPHILIC_ORGANIC_MATTER,'QTY_HYDROPHILIC_ORGANIC_MATTER')
-obs_kind_names(429) = obs_kind_type(QTY_CLOUDWATER_DE,         'QTY_CLOUDWATER_DE')
-obs_kind_names(430) = obs_kind_type(QTY_CLOUD_ICE_DE,          'QTY_CLOUD_ICE_DE')
-obs_kind_names(431) = obs_kind_type(QTY_COLUMN_CLOUD_FRAC,     'QTY_COLUMN_CLOUD_FRAC')
-obs_kind_names(432) = obs_kind_type(QTY_CLOUD_TOP_PRESSURE,    'QTY_CLOUD_TOP_PRESSURE')
+obs_kind_names(467) = obs_kind_type(QTY_ABSOLUTE_HUMIDITY           , 'QTY_ABSOLUTE_HUMIDITY')
+
+obs_kind_names(501) = obs_kind_type(QTY_RADIANCE                    , 'QTY_RADIANCE')
+obs_kind_names(502) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE      , 'QTY_BRIGHTNESS_TEMPERATURE')
+obs_kind_names(503) = obs_kind_type(QTY_SURFACE_TYPE                , 'QTY_SURFACE_TYPE')
+obs_kind_names(504) = obs_kind_type(QTY_WIND_FETCH                  , 'QTY_WIND_FETCH')
+obs_kind_names(505) = obs_kind_type(QTY_WATER_TYPE                  , 'QTY_WATER_TYPE')
+obs_kind_names(506) = obs_kind_type(QTY_FOAM_FRAC                   , 'QTY_FOAM_FRAC')
+obs_kind_names(507) = obs_kind_type(QTY_INSOLUBLE_AER               , 'QTY_INSOLUBLE_AER')
+obs_kind_names(508) = obs_kind_type(QTY_H2O_SOLUBLE_AER             , 'QTY_H2O_SOLUBLE_AER')
+obs_kind_names(509) = obs_kind_type(QTY_SOOT                        , 'QTY_SOOT')
+obs_kind_names(510) = obs_kind_type(QTY_SEASALT_ACCUM               , 'QTY_SEASALT_ACCUM')
+obs_kind_names(511) = obs_kind_type(QTY_SEASALT_COARSE              , 'QTY_SEASALT_COARSE')
+obs_kind_names(512) = obs_kind_type(QTY_MINERAL_NUCLEUS             , 'QTY_MINERAL_NUCLEUS')
+obs_kind_names(513) = obs_kind_type(QTY_MINERAL_ACCUM               , 'QTY_MINERAL_ACCUM')
+obs_kind_names(514) = obs_kind_type(QTY_MINERAL_COARSE              , 'QTY_MINERAL_COARSE')
+obs_kind_names(515) = obs_kind_type(QTY_MINERAL_TRANSPORTED         , 'QTY_MINERAL_TRANSPORTED')
+obs_kind_names(516) = obs_kind_type(QTY_SULPHATED_DROPS             , 'QTY_SULPHATED_DROPS')
+obs_kind_names(517) = obs_kind_type(QTY_VOLCANIC_ASH                , 'QTY_VOLCANIC_ASH')
+obs_kind_names(518) = obs_kind_type(QTY_NEW_VOLCANIC_ASH            , 'QTY_NEW_VOLCANIC_ASH')
+obs_kind_names(519) = obs_kind_type(QTY_ASIAN_DUST                  , 'QTY_ASIAN_DUST')
+obs_kind_names(520) = obs_kind_type(QTY_BLACK_CARBON                , 'QTY_BLACK_CARBON')
+obs_kind_names(521) = obs_kind_type(QTY_DUST_BIN1                   , 'QTY_DUST_BIN1')
+obs_kind_names(522) = obs_kind_type(QTY_DUST_BIN2                   , 'QTY_DUST_BIN2')
+obs_kind_names(523) = obs_kind_type(QTY_DUST_BIN3                   , 'QTY_DUST_BIN3')
+obs_kind_names(524) = obs_kind_type(QTY_AMMONIUM_SULPHATE           , 'QTY_AMMONIUM_SULPHATE')
+obs_kind_names(525) = obs_kind_type(QTY_SEA_SALT_BIN1               , 'QTY_SEA_SALT_BIN1')
+obs_kind_names(526) = obs_kind_type(QTY_SEA_SALT_BIN2               , 'QTY_SEA_SALT_BIN2')
+obs_kind_names(527) = obs_kind_type(QTY_SEA_SALT_BIN3               , 'QTY_SEA_SALT_BIN3')
+obs_kind_names(528) = obs_kind_type(QTY_HYDROPHILIC_ORGANIC_MATTER  , 'QTY_HYDROPHILIC_ORGANIC_MATTER')
+obs_kind_names(529) = obs_kind_type(QTY_CLOUDWATER_DE               , 'QTY_CLOUDWATER_DE')
+obs_kind_names(530) = obs_kind_type(QTY_CLOUD_ICE_DE                , 'QTY_CLOUD_ICE_DE')
+obs_kind_names(531) = obs_kind_type(QTY_COLUMN_CLOUD_FRAC           , 'QTY_COLUMN_CLOUD_FRAC')
+obs_kind_names(532) = obs_kind_type(QTY_CLOUD_TOP_PRESSURE          , 'QTY_CLOUD_TOP_PRESSURE')
 
 ! count here, then output below
 
@@ -1027,7 +1128,7 @@ endif
 
 if (do_output() .and. (num_kind_assimilate          > 0 .or. &
                        num_kind_evaluate            > 0 .or.  &
-                       num_kind_use_precomputed_FOs > 0 )) then  
+                       num_kind_use_precomputed_FOs > 0 )) then 
 
    write(*, *)
    write(*, *) '--------------------------------------------------------'
@@ -1445,7 +1546,7 @@ end subroutine write_type_of_obs_table
 subroutine read_type_of_obs_table(ifile, pre_I_format, fform)
 
 ! Reads the observation kind strings and corresponding integer
-! indices as a header for an obs_sequence file. 
+! indices as a header for an obs_sequence file.
 
 integer,                    intent(in) :: ifile
 logical,                    intent(in) :: pre_I_format
@@ -1458,7 +1559,7 @@ logical            :: is_ascii
 
 if ( .not. module_initialized ) call initialize_module
 
-! pre_I_format has been deprecated.  
+! pre_I_format has been deprecated.
 if(pre_I_format) then
    call error_handler(E_ERR, 'read_obs_kind: ', 'pre_I_format no longer supported', &
                       source, revision, revdate)

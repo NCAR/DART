@@ -77,7 +77,6 @@
 
 
 &obs_sequence_tool_nml
-   num_input_files   = 1,
    filename_seq      = './obs_seq.wod', 
    filename_out      = 'unused',
    print_only        = .true.,
