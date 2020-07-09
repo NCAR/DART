@@ -3,8 +3,8 @@
 +-----------------------+---------------------------------------------------------------------------------------------------+
 
 - INTRODUCTION_
-- SETUP_
-- `INITIAL ENSEMBLE`_
+- SETUP__
+- `INITIAL ENSEMBLE`__
 - `PREPARE OBSERVATIONS`_
 - CYCLING_
 - `CHECK RESULTS`_
@@ -91,7 +91,7 @@ forum for WRF-specific assistance.
 
 --------------
 
-.. _SETUP:
+.. __SETUP:
 
 Step 1: Setup
 ~~~~~~~~~~~~~
