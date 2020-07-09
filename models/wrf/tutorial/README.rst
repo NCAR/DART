@@ -111,9 +111,9 @@ page to download the DART software package. Set an environment variable
 depend on which shell you are using. For example, with the *tcsh*
 shell, you will use
 
-```
+``
 setenv DART_DIR <path_to_your_dart_installation>
-```
+``
 
 while for the *bash* shell you will use
 
