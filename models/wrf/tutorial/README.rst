@@ -91,7 +91,7 @@ forum for WRF-specific assistance.
 
 --------------
 
-.. __SETUP:
+.. _SETUP:
 
 Step 1: Setup
 ~~~~~~~~~~~~~
@@ -104,25 +104,18 @@ compilers, MPT, and netCDF4. In addition, you'll need to load the
 `ncl <https://www.ncl.ucar.edu/>`__ modules to run the set of scripts
 that accompany the tutorial.
 
-| If you have not already, see the `Getting
-  Started <https://dart.ucar.edu/pages/Getting_Started.html>`__ page to
-  download the DART software package. Set an environment variable
-  *DART\_DIR* to point to your base DART directory. How to do this will
-  depend on which shell you are using. For example, with the *tcsh*
-  shell, you will use
+If you have not already, see the
+`Getting Started <https://dart.ucar.edu/pages/Getting_Started.html>`__
+page to download the DART software package. Set an environment variable
+*DART_DIR* to point to your base DART directory. How to do this will
+depend on which shell you are using. For example, with the *tcsh*
+shell, you will use
 
-.. raw:: html
+```
+setenv DART_DIR <path_to_your_dart_installation>
+```
 
-   <div class="unix">
-
-setenv DART\_DIR <path\_to\_your\_dart\_installation>
-
-.. raw:: html
-
-   </div>
-
-| 
-| while for the *bash* shell you will use
+while for the *bash* shell you will use
 
 .. raw:: html
 
