@@ -603,6 +603,8 @@ get into the cycling the output will go in these directories.
 
 --------------
 
+.. _`INITIAL ENSEMBLE`:
+ 
 Step 2: Initial conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
