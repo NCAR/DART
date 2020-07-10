@@ -2457,7 +2457,7 @@ if (inum > 0) then
          temp2d(:,:) = temp2d(:,:) + ( alt1d(i+1)-alt1d(i) )  * ( density_ion_e(:,:,i+1)+density_ion_e(:,:,i) ) /2.0_r8
       end do  
       ! convert temp2d to TEC units
-      temp2d = temp2d/1d16
+      temp2d = temp2d/1e16_r8
    end if
    call unpack_data2d(temp2d, ivals(1), block, ncid, define) 
 end if
