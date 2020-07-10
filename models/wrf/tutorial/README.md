@@ -119,8 +119,8 @@ set an environment variable.
 In the same way, you will need to create a \"working\" directory and
 set your *BASE_DIR* variable. Create a work directory someplace with a
 lot of free space (approximately 100 Gb are needed to run this
-tutorial). On most large systems there is a \"scratch\" filesystem for
-this purpose. For the rest of these instructions we will assume you
+tutorial). ~On most large systems there is a \"scratch\" filesystem for
+this purpose.~ For the rest of these instructions we will assume you
 have an environment variable called *BASE_DIR* that points to this
 directory.
 
