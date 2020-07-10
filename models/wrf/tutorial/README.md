@@ -146,8 +146,7 @@ additional software packages (if needed):
     system this step can be skipped.)
 -   The tutorial-specific additional files needed to run the examples
     for this tutorial:
-    1.  the contents of
-        *DART_DIR/models/wrf/tutorial* from your DART code directory.
+    1.  the contents of `$DART_DIR/models/wrf/tutorial` from your DART code directory.
         
             cp -r $DART_DIR/models/wrf/tutorial $BASE_DIR
 
@@ -179,14 +178,14 @@ additional software packages (if needed):
 
 ### Build the DART executables.
 
-1.  Copy the tutorial DART namelist from *template/input.nml.template*
-    to *DART_DIR/models/wrf/work/input.nml*.
+1.  Copy the tutorial DART namelist from `$BASE_DIR/template/input.nml.template`
+    to `$DART_DIR/models/wrf/work/input.nml`.
 
         cd $BASE_DIR
         cp template/input.nml.template $DART_DIR/models/wrf/work/input.nml
 
 2.  It is assumed you have successfully configured the
-    *DART_DIR/build_templates/mkmf.template* file for your system.
+    `DART_DIR/build_templates/mkmf.template` file for your system.
     If not, you will need to do so now. See the
     [Getting Started](https://dart.ucar.edu/pages/Getting_Started.html)
     page for more detail, if necessary.
@@ -231,7 +230,7 @@ to avoid errors, you should build WRF, WPS, WRFDA, and DART with the
 same compiler you use for NetCDF. Likewise MPI should use the same
 compiler.
 
-Edit the *param.csh* script in *$BASE_DIR/scripts* with proper paths,
+Edit `$BASE_DIR/scripts/param.csh` with proper paths,
 info, etc. This is a script that sets variables which will be read by
 other WRF/DART scripts. There are some specific parameters for either
 the Cheyenne supercomputing system using the 
@@ -280,7 +279,7 @@ and move executables to proper locations.
     cd $BASE_DIR/scripts
     ./setup.csh param.csh
 
-So far, your *$BASE_DIR* should contain the following directories:
+So far, your `$BASE_DIR` should contain the following directories:
 
     icbc
     obs_diag
@@ -293,24 +292,24 @@ So far, your *$BASE_DIR* should contain the following directories:
     template
     tutorial
 
-Your *$BASE_DIR/rundir* directory should contain the following executables:
+Your `$BASE_DIR/rundir` directory should contain the following executables:
 
 executables:   [advance_time](../../../assimilation_code/programs/advance_time/advance_time.html),
                [fill_inflation_restart](../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html),
                [filter](../../../assimilation_code/programs/filter/filter.html),
                [obs_diag](../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html),
                [obs_seq_to_netcdf](../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html),
-               [obs_sequence_tool](../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html), *pert_wrf_bc*
+               [obs_sequence_tool](../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html), `pert_wrf_bc`
                (no helper page),
                [wrf_dart_obs_preprocess](../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html)
 
-directories:   *WRFIN* (empty), *WRFOUT* (empty), *WRF_RUN* (wrf executables and support files, except namelist.input)
+directories:   `WRFIN` (empty), `WRFOUT` (empty), `WRF_RUN` (wrf executables and support files, except namelist.input)
 
 scripts:       *add_bank_perts.ncl*, *new_advance_model.csh*
 
 support data:  *sampling_error_correction_table.nc*
 
-Check to make sure your *rundir/WRF_RUN* directory contains:
+Check to make sure your `$BASE_DIR/rundir/WRF_RUN` directory contains:
 
     da_wrfvar.exe
     wrf.exe
@@ -328,7 +327,7 @@ provided you with geogrid files, a small set of grib files, and a
 namelist to generate series of analyses for several days covering a
 North American region.
 
-Let\'s now look inside the *scripts* directory. You should find the
+Let\'s now look inside the `$BASE_DIR/scripts` directory. You should find the
 following scripts:
 
 <table>
@@ -365,25 +364,25 @@ Other than *param.csh*, which was covered above, make the following changes:
 <th>File name</th><th>Variable / value</th><th>Change description</th>
 </tr>
 <tr>
-<td> *driver.csh*</td>
+<td> driver.csh</td>
 <td>set datefnl = 2017042712</td>
 <td>Change to the final target date; here the final date is already set correctly for this tutorial.</td>
 </tr> 
 <tr>
-<td> *gen_retro_icbc.csh*</td>
+<td> gen_retro_icbc.csh</td>
 <td>set datefnl = 2017043000 </td>
 <td>This is the final date to create WRF initial/boundary conditions for.
 This is set to the last date that files are included in the tutorial.</td>
 </tr>
 <tr>
-<td> *gen_retro_icbc.csh*</td>
+<td> gen_retro_icbc.csh</td>
 <td>set paramfile = <full param.csh path\></td>
 <td> The full path to *param.csh*. Change this on the line after the comment.
 While these two files are in the same directory here, in general it is 
 helpful to have one *param.csh* for each experiment.</td>
 </tr>
 <tr>
-<td> *gen_pert_bank.csh*</td>
+<td> gen_pert_bank.csh</td>
 <td> All changes </td>
 <td> As the tutorial includes a perturbation bank, you will not need to run 
 this script for the tutorial, so you will not need to change these values.
@@ -392,17 +391,17 @@ However, you should set appropriate values when you are ready to generate your o
 </tr>
 </table>
 
-Next, move to the *perts* directory. Here you will find 100 perturbation
+Next, move to the `$BASE_DIR/perts` directory. Here you will find 100 perturbation
 files, called a \"perturbation bank.\" For your own case, you would need
 to create a perturbation bank of your own. A brief description for
 running the script is available inside the comments of that file.
 However, again, for this tutorial, this step has already been run for
-you. The *icbc* directory contains a *geo_em_d01.nc* file (geo
+you. The `$BASE_DIR/icbc` directory contains a *geo_em_d01.nc* file (geo
 information for our test domain), and grib files that will be used to
 generate the initial and boundary condition files. The *template*
 directory should contain namelists for WRF, WPS, and filter, along with
 a wrfinput file that matches what will be the analysis domain. Finally,
-the *output* directory contains observations within each directory name.
+the `$BSE_DIR/output` directory contains observations within each directory name.
 Template files will be placed here once created (done below), and as we
 get into the cycling the output will go in these directories.
 
@@ -427,10 +426,10 @@ to the forecast (target) lateral boundary state, such that after the
 integration the lateral boundaries have random errors.
 
 First, we need to generate a set of GFS states and boundary conditions
-that will be used in the cycling. Use the script (in the scripts dir)
-named *gen_retro_icbc.csh* to create this set of files, which will be
-added to a subdirectory corresponding to the date of the run under the
-\"output\" directory in *BASE_DIR*. Make sure *gen_retro_icbc.csh* has
+that will be used in the cycling. Use 
+`$BASE_DIR/scripts/*gen_retro_icbc.csh*` to create this set of files, which will be
+added to a subdirectory corresponding to the date of the run
+in the `$BASE_DIR/output` directory. Make sure *gen_retro_icbc.csh* has
 the appropriate path to your *param.csh* script. If the *param.csh*
 script also has the correct edits for paths and you have the executables
 placed in the rundir, etc., then running *gen_retro_icbc.csh* should
@@ -445,7 +444,7 @@ boundary file for each analysis time.
 delete output files if they already exist, and they will not for the
 first run.
 
-Once the script completes, inside your *output/2017042700 directory* you
+Once the script completes, inside your `output/2017042700 directory` you
 should see these files:
 
     wrfbdy_d01_152057_21600_mean
@@ -477,7 +476,7 @@ might also want to modify this script to test running a single member
 first --- just in case you have some debugging to do.
 
 When complete for the full ensemble, you should find 50 new files in the
-directory *output/2017042700/PRIORS* with names like *prior_d01.0001*,
+directory `output/2017042700/PRIORS` with names like *prior_d01.0001*,
 *prior_d01.0002*, etc\... You may receive an e-mail to helpfully inform
 you when each ensemble member has finished.
 
@@ -584,7 +583,7 @@ To (again, *optionally*) reproduce the observation sequence files in the
     page for more available namelist controls.
 
 -   Within the
-    *DART_DIR/observations/obs_converters/NCEP/prep_bufr/work*
+    `$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work`
     directory, edit the *prepbufr.csh* file and change *BUFR_dir*,
     *BUFR_idir*, *BUFR_odir*, and *BUFR_in* to match the locations and
     format of the data you downloaded. A little trial and error might be
@@ -593,8 +592,9 @@ To (again, *optionally*) reproduce the observation sequence files in the
 -   Copy over the executables from *../exe*, and run the *prepbufr.csh*
     script for a single day at a time:
 
-        cd *\$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work*
-        cp ../exe/\*.x . ./prepbufr.csh \<year\> \<month\> \<day\>
+        cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
+        cp ../exe/\*.x .
+        ./prepbufr.csh \<year\> \<month\> \<day\>
 
 
 -   Your PREPBUFR files have now been converted to an intermediate ASCII
@@ -629,24 +629,24 @@ To (again, *optionally*) reproduce the observation sequence files in the
 
 -   It is now time to build *ascii_to_obs* programs. Run the following:
 
-        cd *\$DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work*
+        cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
         ./quickbuild.csh
 
 -   Run the *create_real_obs* program to create the DART observation
     sequence files:
 
-        cd *\$DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work*
+        cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
         ./create_real_obs
 
 -   The program *create_real_obs* will create observation sequence files
     with one file for each six hour window. For a cycled experiment, the
     typical approach is to put a single set of observations, associated
     with a single analysis step, into a separate directory. For example,
-    within the *output* directory, we would create directories like
-    *2017042700*, *2017042706*, *2017042712*, etc. for 6-hourly cycling.
+    within the `output` directory, we would create directories like
+    `2017042700`, `2017042706`, `2017042712`, etc. for 6-hourly cycling.
     Place the observation files in the appropriate directory to match
     the contents in the files (e.g. *obs_seq2017042706*) and rename as
-    simply *obs_seq.out* (e.g. *output/2017042706/obs_seq.out*).
+    simply *obs_seq.out* (e.g. `output/2017042706/obs_seq.out`).
 
 -   It is helpful to also run the
     [wrf_dart_obs_preprocess](../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html)
