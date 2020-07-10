@@ -10,7 +10,8 @@
  [PREPARE INFLATION FILES](#Infprep) / 
  [CYCLING](#Cycle) / 
  [CHECK RESULTS](#Check) / 
- [TUTORIAL](#Tutorial)
+ [2014 TUTORIAL](#Tutorial) / 
+ [MORE RESOURCES](#Resources)
 
 <span id="top" class="anchor"></span>[](#top)
 
@@ -812,8 +813,9 @@ for science.
 If you encounter difficulties setting up, running, or evaluating the
 system performance, please contact us at dart(at)ucar(dot)edu.
 
-Agenda from the 22 Jan 2014 tutorial:
--------------------------------------
+<span id="Tutorial" class="anchor"></span>[](#Tutorial)
+
+## Agenda from the 22 Jan 2014 tutorial:
 
 -   Introduction (Anderson) - [DART Lab materials](../../../docs/DART_LAB/DART_LAB.html)
 -   WRF/DART basic building blocks (Romine)
@@ -828,8 +830,9 @@ Agenda from the 22 Jan 2014 tutorial:
     -[slides](https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_observation_processing.pdf)
 -   DART diagnostics (Hoar) - [observation diagnostics](https://dart.ucar.edu/pages/Diagnostics.html)
 
-Helpful links
--------------
+<span id="Resources" class="anchor"></span>[](#Resources)
+
+## More Resources
 
 -   [DART website](http://dart.ucar.edu)
 -   [DAReS website](http://www.image.ucar.edu/DAReS)
