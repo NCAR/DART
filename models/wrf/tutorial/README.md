@@ -361,22 +361,22 @@ Other than *param.csh*, which was covered above, make the following changes:
 
 <table>
 <tr>
-<th>File name</th><th>Variable / value</th><th>Change description</th>
+<th>File name</th><th>Variable&nbsp;/&nbsp;value</th><th>Change description</th>
 </tr>
 <tr>
 <td> driver.csh</td>
-<td>set datefnl = 2017042712</td>
+<td>datefnl&nbsp;=&nbsp;2017042712</td>
 <td>Change to the final target date; here the final date is already set correctly for this tutorial.</td>
 </tr> 
 <tr>
 <td> gen_retro_icbc.csh</td>
-<td>set datefnl = 2017043000 </td>
+<td>datefnl&nbsp;=&nbsp;2017043000 </td>
 <td>This is the final date to create WRF initial/boundary conditions for.
 This is set to the last date that files are included in the tutorial.</td>
 </tr>
 <tr>
 <td> gen_retro_icbc.csh</td>
-<td>set paramfile = <full param.csh path\></td>
+<td>paramfile = &lt;full&nbsp;path&nbsp;to&nbsp;param.csh&gt;</td>
 <td> The full path to *param.csh*. Change this on the line after the comment.
 While these two files are in the same directory here, in general it is 
 helpful to have one *param.csh* for each experiment.</td>
