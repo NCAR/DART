@@ -365,7 +365,7 @@ character(len=NF90_MAX_NAME),  intent(out) :: units
       long_name    = 'the vertical velocity of the He molecule' 
       units        = 'm/s'
 
-   case ('TEC')
+   case ('VTEC')
       gitm_varname = 'VTEC'
       gitm_dim     = -1
       gitm_index   = -1

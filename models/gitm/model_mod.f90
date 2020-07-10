@@ -2040,7 +2040,7 @@ logical,  intent(in)    :: define
 
 integer :: ib, jb
 integer :: starts(2)
-character(len=*), parameter :: routine = 'unpack_data'
+character(len=*), parameter :: routine = 'unpack_data2d'
 
 if (define) then
   
@@ -2049,7 +2049,7 @@ if (define) then
       call error_handler(E_MSG,routine,string1,source,revision,revdate)
    end if
 
-   call nc_define_double_variable(ncid, gitmvar(ivar)%varname, (/ LON_DIM_NAME, LAT_DIM_NAME, ALT_DIM_NAME /) )
+   call nc_define_double_variable(ncid, gitmvar(ivar)%varname, (/ LON_DIM_NAME, LAT_DIM_NAME /) )
    call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'long_name',      gitmvar(ivar)%long_name)
    call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'units',          gitmvar(ivar)%units)
    !call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'storder',        gitmvar(ivar)%storder)
@@ -2256,6 +2256,8 @@ real(r8) :: temp0d !Alex: single parameter has "zero dimensions"
 integer :: i, j, inum, maxsize, ivals(NSpeciesTotal)
 integer :: block(2) = 0
 
+logical :: no_idensity
+
 character(len=*), parameter :: routine = 'read_data_from_block'
 
 block(1) = ib
@@ -2330,6 +2332,9 @@ endif
 
 call get_index_from_gitm_varname('IDensityS', inum, ivals)
 
+! assume we could not find the electron density for VTEC calculations
+no_idensity = .true.
+
 if (inum > 0) then
    ! one or more items in the state vector need to replace the
    ! data in the output file.  loop over the index list in order.
@@ -2347,6 +2352,7 @@ if (inum > 0) then
             if (gitmvar(ivals(j))%gitm_index == ie_) then
                ! save the electron density for TEC computation
                density_ion_e(:,:,:) = temp3d(:,:,:)
+               no_idensity = .false.
             end if
             ! read from input but write from state vector
             call unpack_data(temp3d, ivals(j), block, ncid, define)
@@ -2435,15 +2441,21 @@ if (inum > 0) then
    enddo
 endif
 
-! add the TEC as an extended-state variable
-! NOTE: This variable will not be written out to the GITM blocks
-call get_index_from_gitm_varname('TEC', inum, ivals)
+! add the VTEC as an extended-state variable
+! NOTE: This variable will *not* be written out to the GITM blocks to netCDF program
+call get_index_from_gitm_varname('VTEC', inum, ivals)
+
+if (inum > 0 .and. no_idensity) then
+   write(string1,*) 'Cannot compute the VTEC without the electron density'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+end if
+
 if (.not. define) then
    temp2d = 0.
    ! comptue the TEC integral
-   do i =1,size(alt1d)-1 ! approximate the integral over the altitude as a sum of trapezoids
+   do i =nghost+1,size(alt1d)-nghost-1 ! approximate the integral over the altitude as a sum of trapezoids
       ! area of a trapezoid: A = (h2-h1) * (f2+f1)/2
-      temp2d(:,:) = temp2d(:,:) + ( alt1d(i+1)-alt1d(i) )  * ( density_ion_e(i+1,:,:)+density_ion_e(i,:,:) ) /2.0
+      temp2d(:,:) = temp2d(:,:) + ( alt1d(i+1)-alt1d(i) )  * ( density_ion_e(:,:,i+1)+density_ion_e(:,:,i) ) /2.0
    end do  
    ! convert temp2d to TEC units
    temp2d = temp2d/1e16
