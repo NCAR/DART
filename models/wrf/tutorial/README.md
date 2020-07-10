@@ -250,8 +250,8 @@ environment variables should be changed in the script:
 <a href="https://www.hpe.com/us/en/product-catalog/detail/pip.hpe-performance-software-message-passing-interface.1010144155.html">HPE MPI</a>)
 compiler). Note that on Cheyenne the default compiler is Intel.</td></tr>
 
-<tr><td>module load nco        </td><td>The [nco](http://nco.sourceforge.net/) package.</td></tr>
-<tr><td>module load ncl/6.6.2  </td><td>The [ncl](https://www.ncl.ucar.edu/) package.</td></tr>
+<tr><td>module load nco        </td><td>The <a href="http://nco.sourceforge.net">nco</a> package.</td></tr>
+<tr><td>module load ncl/6.6.2  </td><td>The <a href="https://www.ncl.ucar.edu">ncl</a> package.</td></tr>
 <tr><td>BASE_DIR               </td><td>The directory containing *icbc, output, perts,* etc.</td></tr>
 <tr><td>DART_DIR               </td><td>The DART directory.</td></tr>
 <tr><td>WRF_DM_SRC_DIR         </td><td>The directory of the WRF dmpar installation.</td></tr>
@@ -259,7 +259,7 @@ compiler). Note that on Cheyenne the default compiler is Intel.</td></tr>
 <tr><td>VAR_SRC_DIR            </td><td>The directory of the WRFDA installation.</td></tr>
 <tr><td>GEO_FILES_DIR          </td>
 <td>The root directory of the 
-[WPS_GEOG](https://dtcenter.org/wrf-nmm/users/OnLineTutorial/NMM/WPS/index.php) files.
+<a href="https://dtcenter.org/wrf-nmm/users/OnLineTutorial/NMM/WPS/index.php">WPS_GEOG</a> files.
 NOTE: on Cheyenne these are available in the */glade/u/home/wrfhelp/WPS_GEOG* directory</td></tr>
 <tr><td>GRIB_DATA_DIR          </td>
 <td>The root directory of the GRIB data input into *ungrib.exe*.
