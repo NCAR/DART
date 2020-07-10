@@ -1,5 +1,5 @@
 
-![logo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png){height="70px"}
+![logo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
 
 # WRF/DART materials for the Manhattan release.
 
