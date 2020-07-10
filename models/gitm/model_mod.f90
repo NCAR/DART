@@ -2452,7 +2452,7 @@ if (inum > 0) then
    if (.not. define) then
       temp2d = 0._r8
       ! comptue the TEC integral
-      do i =nghost+1,size(alt1d)-nghost-1 ! approximate the integral over the altitude as a sum of trapezoids
+      do i =1,nAltsPerBlock-1 ! approximate the integral over the altitude as a sum of trapezoids
          ! area of a trapezoid: A = (h2-h1) * (f2+f1)/2
          temp2d(:,:) = temp2d(:,:) + ( alt1d(i+1)-alt1d(i) )  * ( density_ion_e(:,:,i+1)+density_ion_e(:,:,i) ) /2.0_r8
       end do  
