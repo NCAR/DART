@@ -840,5 +840,5 @@ system performance, please contact us at dart(at)ucar(dot)edu.
 -   [Register for DART](https://www2.cisl.ucar.edu/software/dart/download)
 -   [Preparing MATLAB](https://dart.ucar.edu/pages/Getting_Started.html#matlab)
 -   [WRF model users page](http://www.mmm.ucar.edu/wrf/users)
--   [Check DART Issues](https://github.com/NCAR/DART/issues)
+-   [Check or Submit DART Issues](https://github.com/NCAR/DART/issues)
 -   Need help? e-mail dart (at) ucar (dot) edu
