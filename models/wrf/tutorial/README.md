@@ -174,9 +174,8 @@ additional software packages (if needed):
 
    Copy the contents (three namelist files) of `tutorial/template`
    to the `$BASE_DIR/template` directory.
-
-       cd $BASE_DIR/template
-       cp ../tutorial/template/* .
+   
+       cp $DART_DIR/models/wrf/tutorial/template/* $BASE_DIR/template
 
 ### Build the DART executables.
 
@@ -281,7 +280,7 @@ and move executables to proper locations.
     cd $BASE_DIR/scripts
     ./setup.csh param.csh
 
-So far, your *BASE_DIR* should contain the following directories:
+So far, your *$BASE_DIR* should contain the following directories:
 
     icbc
     obs_diag
@@ -294,7 +293,7 @@ So far, your *BASE_DIR* should contain the following directories:
     template
     tutorial
 
-Your *rundir* should contain the following executables:
+Your *$BASE_DIR/rundir* directory should contain the following executables:
 
 executables:   [advance_time](../../../assimilation_code/programs/advance_time/advance_time.html),
                [fill_inflation_restart](../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html),
