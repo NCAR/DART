@@ -2,25 +2,16 @@
 | |DART project logo|   | Jump to `DART Manhattan Documentation Main Index <../../../docs/html/Manhattan_release.html>`__   |
 +-----------------------+---------------------------------------------------------------------------------------------------+
 
-| `INTRODUCTION <#Intro>`__ / `SETUP <#SetUp>`__ / `INITIAL
-  ENSEMBLE <#InitialFiles>`__ / `PREPARE OBSERVATIONS <#Obsprep>`__ /
-  `CYCLING <#Cycle>`__ / `CHECK RESULTS <#Check>`__ /
-  `TUTORIAL <#Tutorial>`__ /
+- `INTRODUCTION`_
+- `SETUP`_
+- `INITIAL ENSEMBLE`_
+- `PREPARE OBSERVATIONS`_
+- `CYCLING`_
+- `CHECK RESULTS`_
+- `TUTORIAL`_
 
 WRF/DART materials for the Manhattan release.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. raw:: html
-
-   <div class="top">
-
-[`top <#>`__]
-
-.. raw:: html
-
-   </div>
-
---------------
 
 Introduction
 ~~~~~~~~~~~~
@@ -33,7 +24,21 @@ page before attempting this tutorial as you will find many helpful
 resources for learning the base DART configuration. This document covers
 only the WRF-specific aspects of integrating with DART.
 
-This tutorial introduces a "canned" WRFDART experiment involving an
+**DISCLAIMER**: We do not claim that this is a turnkey or blackbox system.
+Be mentally prepared to invest a reasonable amount of time on the
+learning curve. There are many outstanding research issues which have
+no easy answers here. This is not a one week/grad student/naive user system.
+Even after you get the code up and running, you have to be able to interpret
+the results, which requires developing specific skills.
+There are a lot of ways to alter how the system works -- localization,
+inflation, which variables and observations are assimilated, the assimilation
+window time, the model resolution, etc, etc.
+This is both good and bad - you have many ways of improving your results,
+but you have to take care on how you leave all the settings of these inputs.
+Getting a set of scripts that runs doesn't mean the system is running well,
+or producing useful results. Let the adventure begin!
+
+This tutorial introduces a "canned" WRF/DART experiment involving an
 ensemble of 50 members that will be initialized from GFS initial
 conditions at 2017/04/27 00:00 UTC using a domain of the continental
 United States. The data included in the tutorial lasts until 2017/04/30
@@ -52,24 +57,25 @@ will be advanced for 6 hours and a final assimilation cycle will be
 performed at 12:00 UTC. This process could then continue in order to
 investigate the strong rain and wind event.
 
-The goals of this tutorial are to demonstrate how WRFDART works. After
+The goals of this tutorial are to demonstrate how WRF/DART works. After
 running this tutorial, you will be able to understand the major steps
 involved in setting up your own data assimilation (DA) experiments.
 However, you will need to do additional work before you can expect to
-have a fully functional WRFDART system, as some of the steps involved in
+have a fully functional WRF/DART system, as some of the steps involved in
 this tutorial (in particular, the perturbation bank and the observation
 sequence files) are provided for you in order to simplify the process.
 Furthermore, if you are not running on the UCAR/NCAR Cheyenne
 supercomputing system, you will likely need to customize the
 assimilation scripts to match the details of your particular system.
 
-| This tutorial was assembled to be compatible with ~WRF V3.9.1 and the
-  DART Manhattan release. Other releases of WRF may or may not be
-  backwards or forwards compatible with this tutorial. Check the WRF
-  user guide or the
-  `WRFHELP <http://www2.mmm.ucar.edu/wrf/users/supports/wrfhelp.html>`__
-  forum for WRF-specific assistance.
-| *DISCLAIMER*: We have provided instructions for the NCAR supercomputer
+This tutorial was assembled to be compatible with ~WRF V3.9.1 and the
+DART Manhattan release. Other releases of WRF may or may not be
+backwards or forwards compatible with this tutorial. Check the WRF
+user guide or the
+`WRFHELP <http://www2.mmm.ucar.edu/wrf/users/supports/wrfhelp.html>`__
+forum for WRF-specific assistance.
+
+*DISCLAIMER*: We have provided instructions for the NCAR supercomputer
   Cheyenne, so you may need to tailor these instructions to your system
   if you are not using Cheyenne. These system-specific setup steps may
   take a good deal of effort, especially if you are unfamiliar with
@@ -81,20 +87,11 @@ assimilation scripts to match the details of your particular system.
   etc. This is both good and bad — you have many ways of improving your
   results, but you have to pay special attention to the settings of all
   these inputs. Getting a set of scripts that runs doesn't mean the
-  system is running well, or producing useful results. Let the adventure
-  begin! 
-
-.. raw:: html
-
-   <div class="top">
-
-[`top <#>`__]
-
-.. raw:: html
-
-   </div>
+  system is running well, or producing useful results. Let's get started!
 
 --------------
+
+.. _SETUP:
 
 Step 1: Setup
 ~~~~~~~~~~~~~
@@ -107,37 +104,23 @@ compilers, MPT, and netCDF4. In addition, you'll need to load the
 `ncl <https://www.ncl.ucar.edu/>`__ modules to run the set of scripts
 that accompany the tutorial.
 
-| If you have not already, see the `Getting
-  Started <https://dart.ucar.edu/pages/Getting_Started.html>`__ page to
-  download the DART software package. Set an environment variable
-  *DART\_DIR* to point to your base DART directory. How to do this will
-  depend on which shell you are using. For example, with the *tcsh*
-  shell, you will use
+If you have not already, see the
+`Getting Started <https://dart.ucar.edu/pages/Getting_Started.html>`__
+page to download the DART software package. Set an environment variable
+*DART_DIR* to point to your base DART directory. How to do this will
+depend on which shell you are using.
+For example, with the *tcsh* shell, you will use
 
-.. raw:: html
+``
+setenv DART_DIR <path_to_your_dart_installation>
+``
 
-   <div class="unix">
+while for the *bash* shell you will use
 
-setenv DART\_DIR <path\_to\_your\_dart\_installation>
+.. code:: unix
+  export DART\_DIR="<path\_to\_your\_dart\_installation>"
 
-.. raw:: html
 
-   </div>
-
-| 
-| while for the *bash* shell you will use
-
-.. raw:: html
-
-   <div class="unix">
-
-export DART\_DIR="<path\_to\_your\_dart\_installation>"
-
-.. raw:: html
-
-   </div>
-
-| 
 | In either case, you will replace <path\_to\_your\_dart\_installation>
   with the actual path to your DART installation. If you are using
   another shell, refer to your shell-specific documentation on how to
@@ -606,6 +589,8 @@ get into the cycling the output will go in these directories.
 
 --------------
 
+.. _`INITIAL ENSEMBLE`:
+ 
 Step 2: Initial conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
