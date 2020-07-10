@@ -1,7 +1,7 @@
 
 ![logo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
 
-# WRF/DART materials for the Manhattan release.
+# WRF/DART Tutorial Materials for the Manhattan Release.
 
  [INTRODUCTION](#top) / 
  [SETUP](#Setup) / 
