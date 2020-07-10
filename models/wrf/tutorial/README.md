@@ -43,7 +43,7 @@ before attempting this tutorial as you will find many helpful resources
 for learning the base DART configuration. This document covers only the
 WRF-specific aspects of integrating with DART.
 
-This tutorial introduces a "canned" WRFDART experiment involving an
+This tutorial introduces a "canned" WRF/DART experiment involving an
 ensemble of 50 members that will be initialized from GFS initial
 conditions at 2017/04/27 00:00 UTC using a domain of the continental
 United States. The data included in the tutorial lasts until 2017/04/30
@@ -66,7 +66,7 @@ The goals of this tutorial are to demonstrate how WRF/DART works. After
 running this tutorial, you will be able to understand the major steps
 involved in setting up your own data assimilation (DA) experiments.
 However, you will need to do additional work before you can expect to
-have a fully functional WRFDART system, as some of the steps involved in
+have a fully functional WRF/DART system, as some of the steps involved in
 this tutorial (in particular, the perturbation bank and the observation
 sequence files) are provided for you in order to simplify the process.
 Furthermore, if you are not running on the UCAR/NCAR Cheyenne
@@ -491,12 +491,12 @@ you when each ensemble member has finished.
 ## Step 3: Prepare observations (optional step)
 
 For the tutorial exercise, observation sequence files are provided to
-enable you to quickly get started running a test WRFDART system.
+enable you to quickly get started running a test WRF/DART system.
 
 However, observation processing is critical to the success of running
 DART and was covered in the
 [Getting Started](https://dart.ucar.edu/pages/Getting_Started.html) page.
-In brief, to add your own observations to WRFDART you will need to
+In brief, to add your own observations to WRF/DART you will need to
 understand the relationship between observation definitions and
 observation sequences, observation types and observation quantities, and
 understand how observation converters extract observations from their
@@ -508,7 +508,7 @@ contain a wide array of observation types from many platforms within a
 single file.
 
 If you wanted to generate your own observation sequence files from
-PREPBUFR for an experiment with WRFDART, you should follow the guidance
+PREPBUFR for an experiment with WRF/DART, you should follow the guidance
 on the
 [prepbufr](../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html)
 page to build the bufr conversion programs, get observation files for
@@ -738,7 +738,7 @@ necessary for ensemble data assimilation, for large models such as WRF
 that are run on a supercomputer queueing system, an additional layer of
 scripts is necessary to glue all of the pieces together. A set of
 scripts is provided with the tutorial tarball to provide you a starting
-point for your own WRFDART system. You will need to edit these scripts,
+point for your own WRF/DART system. You will need to edit these scripts,
 perhaps extensively, to run them within your particular computing
 environment. If you will run on NCAR\'s Cheyenne environment, fewer
 edits may be needed, but you should familiarize yourself with
@@ -746,7 +746,7 @@ edits may be needed, but you should familiarize yourself with
 if necessary.
 
 In this tutorial, we have previously edited the *param.csh* and other
-scripts. Throughout the WRFDART scripts, there are many options to
+scripts. Throughout the WRF/DART scripts, there are many options to
 adjust cycling frequency, domains, ensemble size, etc., which are
 available when adapting this set of scripts for your own research. To
 become more famililar with this set of scripts and to eventually make
