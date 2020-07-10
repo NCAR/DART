@@ -2298,8 +2298,6 @@ read(iunit)  alt1d(1-nGhost:nAltsPerBlock+nGhost)
 ! Read the index from the first species
 call get_index_from_gitm_varname('NDensityS', inum, ivals)
 
-print *,'using nSpeciesTotal',nSpeciesTotal
-
 if (inum > 0) then
    ! if i equals ival, use the data from the state vect
    ! otherwise read/write what's in the input file
@@ -2443,24 +2441,26 @@ endif
 
 ! add the VTEC as an extended-state variable
 ! NOTE: This variable will *not* be written out to the GITM blocks to netCDF program
-call get_index_from_gitm_varname('VTEC', inum, ivals)
+call get_index_from_gitm_varname('TEC', inum, ivals)
 
 if (inum > 0 .and. no_idensity) then
    write(string1,*) 'Cannot compute the VTEC without the electron density'
    call error_handler(E_ERR,routine,string1,source,revision,revdate)
 end if
 
-if (.not. define) then
-   temp2d = 0.
-   ! comptue the TEC integral
-   do i =nghost+1,size(alt1d)-nghost-1 ! approximate the integral over the altitude as a sum of trapezoids
-      ! area of a trapezoid: A = (h2-h1) * (f2+f1)/2
-      temp2d(:,:) = temp2d(:,:) + ( alt1d(i+1)-alt1d(i) )  * ( density_ion_e(:,:,i+1)+density_ion_e(:,:,i) ) /2.0
-   end do  
-   ! convert temp2d to TEC units
-   temp2d = temp2d/1e16
+if (inum > 0) then
+   if (.not. define) then
+      temp2d = 0.
+      ! comptue the TEC integral
+      do i =nghost+1,size(alt1d)-nghost-1 ! approximate the integral over the altitude as a sum of trapezoids
+         ! area of a trapezoid: A = (h2-h1) * (f2+f1)/2
+         temp2d(:,:) = temp2d(:,:) + ( alt1d(i+1)-alt1d(i) )  * ( density_ion_e(:,:,i+1)+density_ion_e(:,:,i) ) /2.0_r8
+      end do  
+      ! convert temp2d to TEC units
+      temp2d = temp2d/1d16
+   end if
+   call unpack_data2d(temp2d, ivals(1), block, ncid, define) 
 end if
-call unpack_data2d(temp2d, ivals(1), block, ncid, define) 
 
 !alex begin
 read(iunit)  temp0d

@@ -365,11 +365,11 @@ character(len=NF90_MAX_NAME),  intent(out) :: units
       long_name    = 'the vertical velocity of the He molecule' 
       units        = 'm/s'
 
-   case ('VTEC')
-      gitm_varname = 'VTEC'
+   case ('TEC')
+      gitm_varname = 'TEC'
       gitm_dim     = -1
       gitm_index   = -1
-      long_name    = 'the vertically integrated total electron density (total electron content)'
+      long_name    = 'VTEC'
       units        = 'TEC units'
 
    case ('f107') ! write(iRestartUnit_) f107_est !Alex !Does DART assume that anything that has gitm_dim = -1 is 3D? 
