@@ -100,6 +100,13 @@ compilers, MPT, and netCDF4. In addition, you\'ll need to load the
 [nco](http://nco.sourceforge.net/) and [ncl](https://www.ncl.ucar.edu/)
 modules to run the set of scripts that accompany the tutorial.
 
+There are multiple phases for the setup: building the DART executables,
+getting the initial WRF boundary conditions etc., building
+(or using existing) WRF executables, and configuring and staging the
+scripting needed to perform an experiment. 
+
+### Build the DART executables.
+
 If you have not already, see the
 [Getting Started](https://dart.ucar.edu/pages/Getting_Started.html)
 page to download the DART software package. Set an environment variable
@@ -116,78 +123,19 @@ with the actual path to your DART installation. If you are using
 another shell, refer to your shell-specific documentation on how to
 set an environment variable.
 
-In the same way, you will need to create a \"working\" directory and
-set your *BASE_DIR* variable. Create a work directory someplace with a
-lot of free space (approximately 100 Gb are needed to run this
-tutorial). For the rest of these instructions we will assume you
-have an environment variable called *BASE_DIR* that points to this
-directory.
+Building the DART executables for the tutorial follows the same process as building any
+of the DART executables. Configure the `mkmf.template` file for your system, configure
+the `input.nml` for the model you want to compile, and run `quickbuild.csh` (which is not
+necessarily quick, but it is quicker than doing it by hand) to compile all the programs
+you might need for an experiment with that model. 
 
-| shell | command |
-| ----  | ------- |
-| tcsh | `setenv BASE_DIR <path_to_your_working_directory>`   |
-| bash | `export BASE_DIR="<path_to_your_working_directory>"` |
-
-Now that you have your two environment variables setup, download these
-additional software packages (if needed) and data:
-
--   The
-    [WRF](http://www2.mmm.ucar.edu/wrf/users/download/get_source.html)
-    system (WPS, real_em build of WRF). It is assumed here that you are
-    already comfortable running WRF. If not, work through the [WRF model
-    tutorial](http://www2.mmm.ucar.edu/wrf/OnLineTutorial/index.htm)
-    first before trying to link WRF and DART together.
--   The
-    [WRFDA](http://www2.mmm.ucar.edu/wrf/users/wrfda/download/get_source.html)
-    package is needed to generate a set of perturbed initial
-    ensemble member files and also to generate perturbed boundary
-    condition files. Since the tutorial provides a perturbation bank for a
-    specific case, it is not required to actually _run_ _da_wrfvar.exe_
-    but it needs to be in the `WRF_RUN` directory for the tutorial.
--   The additional files needed to run the tutorial examples:
-    1.  Place [this very large tar file](./wrf_dart_tutorial_23May2018_v3.tar.gz)
-        in your BASE_DIR.  CAUTION: this is an approximately 15 GB file, so you might be
-        better off using \'wget\' to download the file directly to your
-        local system, e.g.:
-
-            cd $BASE_DIR
-            wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_23May2018_v3.tar.gz
-            tar -xzvf wrf_dart_tutorial_23May2018_v3.tar.gz
-
-    2.  After untarring the file you should see the following
-        directories: *icbc, output, perts,* and *template.* The
-        directory names (case sensitive) are important, as the scripts
-        rely on these local paths and file names.
-    3.  the contents of `$DART_DIR/models/wrf/tutorial` from your DART code directory.
-
-            cp -r $DART_DIR/models/wrf/tutorial $BASE_DIR
-
-### Build the software packages and copy files into place:
-
-   Copy the contents of `DART_DIR/models/wrf/shell_scripts`
-   to the `BASE_DIR/scripts` directory.
-
-       cp -R $DART_DIR/models/wrf/shell_scripts $BASE_DIR/scripts
-
-   Copy the contents (three namelist files) of `tutorial/template`
-   to the `$BASE_DIR/template` directory.
-
-       cp $DART_DIR/models/wrf/tutorial/template/* $BASE_DIR/template
-
-### Build the DART executables.
-
-1.  Copy the tutorial DART namelist from `$BASE_DIR/template/input.nml.template`
-    to `$DART_DIR/models/wrf/work/input.nml`.
-
-        cp $BASE_DIR/template/input.nml.template $DART_DIR/models/wrf/work/input.nml
-
-2.  It is assumed you have successfully configured the
-    `DART_DIR/build_templates/mkmf.template` file for your system.
+1.  It is assumed you have successfully configured the
+    `$DART_DIR/build_templates/mkmf.template` file for your system.
     If not, you will need to do so now. See the
     [Getting Started](https://dart.ucar.edu/pages/Getting_Started.html)
     page for more detail, if necessary.
 
-3.  [OPTIONAL] Modify the DART code to use 32bit reals. Most WRF/DART
+2.  [OPTIONAL] Modify the DART code to use 32bit reals. Most WRF/DART
     users run both the WRF model and the DART assimilation code using
     32bit reals. This is not the default for the DART code.
     Make this single code change before building the DART executables to
@@ -212,31 +160,100 @@ additional software packages (if needed) and data:
         ! integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! 8 byte reals
         integer, parameter :: r8 = r4                      ! alias r8 to r4
 
+3.  Copy the tutorial DART namelist from `$DART_DIR/models/wrf/template/input.nml.template`
+    to `$DART_DIR/models/wrf/work/input.nml`.
+
+        cd $DART_DIR/models/wrf
+        cp template/input.nml.template work/input.nml
+
 4.  Build the WRF/DART executables:
 
         cd $DART_DIR/models/wrf/work
         ./quickbuild.csh
 
+Many executables are built, the following executables are needed for the tutorial and will 
+be copied to the right place by the `setup.csh` script in a subsequent step:
+
+    advance_time
+    fill_inflation_restart
+    filter
+    obs_diag
+    obs_seq_to_netcdf
+    obs_sequence_tool
+    pert_wrf_bc
+    wrf_dart_obs_preprocess
+
+
+### Preparing the experiment directory:
+
+Approximately 100Gb of space is needed to run the tutorial.
+Create a \"work\" directory someplace with a lot of free space.
+The rest of the instructions assume you have an environment 
+variable called *BASE_DIR* that points to this directory.
+
+| shell | command |
+| ----  | ------- |
+| tcsh | `setenv BASE_DIR <path_to_your_working_directory>` |
+| bash | `export BASE_DIR=<path_to_your_working_directory>` |
+
+1. The WRF boundary conditions and perturbations required to make a viable ensemble are
+   available in a 15 GB tar file. Put this file in your `$BASE_DIR`. Since this is a 
+   large file, we suggest using \'wget\' to download the file directly to your local system:
+
+        cd $BASE_DIR
+        wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_23May2018_v3.tar.gz
+        tar -xzvf wrf_dart_tutorial_23May2018_v3.tar.gz
+
+   After untarring the file you should see the following directories: 
+   *icbc, output, perts,* and *template.*
+   The directory names (case sensitive) are important, as the scripts
+   rely on these local paths and file names.
+
+2. You will need template WRF namelists from the `$DART_DIR/models/wrf/tutorial/template` directory:
+
+        cp $DART_DIR/models/wrf/tutorial/template/namelist.input.meso   $BASE_DIR/template/.
+        cp $DART_DIR/models/wrf/tutorial/template/namelist.wps.template $BASE_DIR/template/.
+
+3. You will also need the scripting to run a WRF/DART experiment.
+   Copy the contents of `$DART_DIR/models/wrf/shell_scripts` to the `$BASE_DIR/scripts` directory.
+
+        cp -R $DART_DIR/models/wrf/shell_scripts $BASE_DIR/scripts
+
 ### Build or locate WRF executables.
 
-Build (or locate an appropriate build of) WRF, WPS and WRFDA. WRF and
-WRFDA should be built with the \"dmpar\" option, while WPS can be
+You must already be comfortable running 
+the [WRF](http://www2.mmm.ucar.edu/wrf/users/download/get_source.html)
+system (WPS, real_em build of WRF). If not, work through the 
+[WRF model tutorial](http://www2.mmm.ucar.edu/wrf/OnLineTutorial/index.htm)
+first before trying to link WRF and DART together.
+
+The [WRFDA](http://www2.mmm.ucar.edu/wrf/users/wrfda/download/get_source.html)
+package is needed to generate a set of perturbed initial
+ensemble member files and also to generate perturbed boundary
+condition files. Since the tutorial provides a perturbation bank for a
+specific case, it is not required to actually _run_ _da_wrfvar.exe_
+but it needs to be in the `WRF_RUN` directory for the tutorial.
+
+#### Build (or locate an appropriate build of) WRF, WPS and WRFDA.
+WRF and WRFDA should be built with the \"dmpar\" option, while WPS can be
 built \"serial\"ly. See the WRF/WRFDA documentation for more
 information about building these packages. *NOTE*: for consistency and
 to avoid errors, you should build WRF, WPS, WRFDA, and DART with the
 same compiler you use for NetCDF. Likewise MPI should use the same
-compiler.
+compiler. You will need the location of the WRF and WRFDA builds to 
+customize the `params.csh` script in the next step.
 
-Edit `$BASE_DIR/scripts/param.csh` with proper paths,
-info, etc. This is a script that sets variables which will be read by
-other WRF/DART scripts. There are some specific parameters for either
+#### Configure `$BASE_DIR/scripts/param.csh` with proper paths, info, etc.
+This is a script that sets variables which will be read by other WRF/DART scripts.
+There are some specific parameters for either
 the Cheyenne supercomputing system using the
-[PBS](https://www.pbsworks.com/) queueing system or the older
-(now defunct) Yellowstone system which used *LSF*
-
+[PBS](https://www.pbsworks.com/) queueing system or the 
+(decommissioned) Yellowstone system which used the *LSF* queueing system.
 If you are not using Cheyenne, you may still want to use this script
-to set your queueing-system specific parameters. The following
-environment variables should be changed in the script:
+to set your queueing-system specific parameters.
+
+*IMPORTANT*: All variables that are marked `'set this appropriately #%%%#'` need to
+be set. 
 
 <table>
 <tr><th>Script variable</th><th>Description</th></tr>
@@ -244,7 +261,6 @@ environment variables should be changed in the script:
 <td>The <a href="http://modules.sourceforge.net/">Environment Modules</a> MPI compiler to use (here the
 <a href="https://www.hpe.com/us/en/product-catalog/detail/pip.hpe-performance-software-message-passing-interface.1010144155.html">HPE MPI</a>)
 compiler). Note that on Cheyenne the default compiler is Intel.</td></tr>
-
 <tr><td>module load nco        </td><td>The <a href="http://nco.sourceforge.net">nco</a> package.</td></tr>
 <tr><td>module load ncl/6.6.2  </td><td>The <a href="https://www.ncl.ucar.edu">ncl</a> package.</td></tr>
 <tr><td>BASE_DIR               </td><td>The directory containing *icbc, output, perts,* etc.</td></tr>
@@ -265,7 +281,7 @@ to copy the appropriate Vtable file. For the tutorial, the value should be \'GFS
 <tr><td>NCAR_GAU_ACCOUNT      </td>
 <td>Set the project account for supercomputing charges.
 See your supercomputing project administrator for more information.</td></tr>
-<tr><td>CEMAIL                </td>
+<tr><td>EMAIL                </td>
 <td>Set the e-mail address used by PBS to send you information about when your job completes.</td></tr>
 
 </table>
@@ -344,7 +360,7 @@ following scripts:
 <tr><td>init_ensemble_var.csh </td><td>Create the perturbed initial conditions from the WRF-VAR system.</td></tr>
 <tr><td>mean_increment.ncl    </td><td>Compute the mean state-space increment, which can be used for plotting.</td></tr>
 <tr><td>new_advance_model.csh </td><td>Template for submitted job to advance the WRF model after running DART.</td></tr>
-<tr><td>param.csh             </td><td>Contains most of the key settings to run the DART system.</td></tr>
+<tr><td>param.csh             </td><td>Contains most of the key settings to run the WRF/DART system.</td></tr>
 <tr><td>prep_ic.csh           </td><td>Template for submitted job to prepare the initial conditions.</td></tr>
 <tr><td>real.csh              </td><td>Run the WRF real.exe program.</td></tr>
 <tr><td>setup.csh             </td><td>Create the proper directory structure and place executables/scripts in proper locations.</td></tr>

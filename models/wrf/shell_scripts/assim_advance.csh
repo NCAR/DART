@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 set datea     = ${1}
 set emember   = ${2}
@@ -50,6 +48,7 @@ endif
 touch wrf.info
 
 if ( $SUPER_PLATFORM == 'yellowstone' ) then
+
 cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
 ${gdatef[2]}  ${gdatef[1]}
 ${gdate[2]}   ${gdate[1]}
@@ -61,15 +60,13 @@ EOF
 else if ( $SUPER_PLATFORM == 'cheyenne' ) then
 
 # module load openmpi
- cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
- ${gdatef[2]}  ${gdatef[1]}
- ${gdate[2]}   ${gdate[1]}
+cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
+${gdatef[2]}  ${gdatef[1]}
+${gdate[2]}   ${gdate[1]}
 $yyyy $mm $dd $hh $nn $ss
            $domains
  mpiexec_mpt dplace -s 1  ./wrf.exe
 EOF
-# For the MPT execution - ill-behaved on Cheyenne
-# mpirun  ./wrf.exe
 
 endif
 
@@ -89,7 +86,3 @@ echo "duration = $length_time"
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
