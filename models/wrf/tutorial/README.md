@@ -3,14 +3,14 @@
 
 # WRF/DART Tutorial Materials for the Manhattan Release.
 
- [INTRODUCTION](#top) / 
- [SETUP](#Setup) / 
- [INITIAL ENSEMBLE](#InitialFiles) / 
- [PREPARE OBSERVATIONS](#Obsprep) / 
- [PREPARE INFLATION FILES](#Infprep) / 
- [CYCLING](#Cycle) / 
- [CHECK RESULTS](#Check) / 
- [2014 TUTORIAL](#Tutorial) / 
+ [INTRODUCTION](#top) /
+ [SETUP](#Setup) /
+ [INITIAL ENSEMBLE](#InitialFiles) /
+ [PREPARE OBSERVATIONS](#Obsprep) /
+ [PREPARE INFLATION FILES](#Infprep) /
+ [CYCLING](#Cycle) /
+ [CHECK RESULTS](#Check) /
+ [2014 TUTORIAL](#Tutorial) /
  [MORE RESOURCES](#Resources)
 
 <span id="top" class="anchor"></span>[](#top)
@@ -20,16 +20,16 @@
 ## Introduction
 
 This document will describe how to get started with your own
-Weather Research and Forecasting (WRF) data assimilation 
-experiments using DART. 
+Weather Research and Forecasting (WRF) data assimilation
+experiments using DART.
 
 *We do not claim that this is a "turnkey" or "black box" system.*
 Be mentally prepared to invest a reasonable amount of time on the learning curve.
 There are many outstanding research issues which have no easy answers.
 This is not a one week/grad student/naive user system. Even after you get
-the code up and running, you have to be able to interpret the results, 
-which requires developing specific skills. There are a lot of ways to alter 
-how the system works -- localization, inflation, which variables and observations 
+the code up and running, you have to be able to interpret the results,
+which requires developing specific skills. There are a lot of ways to alter
+how the system works -- localization, inflation, which variables and observations
 are assimilated, the assimilation window time, the model resolution, etc, etc.
 This is both good and bad - you have many ways of improving your results,
 but you have to take care on how you leave all the settings of these inputs.
@@ -108,8 +108,8 @@ depend on which shell you are using.
 
 | shell | command |
 | ----  | ------- |
-| tcsh | `setenv DART_DIR <path_to_your_dart_installation>`   |
-| bash | `export DART_DIR="<path_to_your_dart_installation>"` |
+| tcsh | `setenv DART_DIR <path_to_your_dart_installation>` |
+| bash | `export DART_DIR=<path_to_your_dart_installation>` |
 
 In either case, you will replace \<path_to_your_dart_installation\>
 with the actual path to your DART installation. If you are using
@@ -119,8 +119,7 @@ set an environment variable.
 In the same way, you will need to create a \"working\" directory and
 set your *BASE_DIR* variable. Create a work directory someplace with a
 lot of free space (approximately 100 Gb are needed to run this
-tutorial). ~On most large systems there is a \"scratch\" filesystem for
-this purpose.~ For the rest of these instructions we will assume you
+tutorial). For the rest of these instructions we will assume you
 have an environment variable called *BASE_DIR* that points to this
 directory.
 
@@ -130,7 +129,7 @@ directory.
 | bash | `export BASE_DIR="<path_to_your_working_directory>"` |
 
 Now that you have your two environment variables setup, download these
-additional software packages (if needed):
+additional software packages (if needed) and data:
 
 -   The
     [WRF](http://www2.mmm.ucar.edu/wrf/users/download/get_source.html)
@@ -140,17 +139,13 @@ additional software packages (if needed):
     first before trying to link WRF and DART together.
 -   The
     [WRFDA](http://www2.mmm.ucar.edu/wrf/users/wrfda/download/get_source.html)
-    package, which is needed to generate a set of perturbed initial
+    package is needed to generate a set of perturbed initial
     ensemble member files and also to generate perturbed boundary
-    condition files. (If running this tutorial on NCAR\'s Cheyenne
-    system this step can be skipped.)
--   The tutorial-specific additional files needed to run the examples
-    for this tutorial:
-    1.  the contents of `$DART_DIR/models/wrf/tutorial` from your DART code directory.
-        
-            cp -r $DART_DIR/models/wrf/tutorial $BASE_DIR
-
-    2.  Place [this very large tar file](./wrf_dart_tutorial_23May2018_v3.tar.gz)
+    condition files. Since the tutorial provides a perturbation bank for a
+    specific case, it is not required to actually _run_ _da_wrfvar.exe_
+    but it needs to be in the `WRF_RUN` directory for the tutorial.
+-   The additional files needed to run the tutorial examples:
+    1.  Place [this very large tar file](./wrf_dart_tutorial_23May2018_v3.tar.gz)
         in your BASE_DIR.  CAUTION: this is an approximately 15 GB file, so you might be
         better off using \'wget\' to download the file directly to your
         local system, e.g.:
@@ -159,21 +154,24 @@ additional software packages (if needed):
             wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_23May2018_v3.tar.gz
             tar -xzvf wrf_dart_tutorial_23May2018_v3.tar.gz
 
-    3.  After untarring the file you should see the following
+    2.  After untarring the file you should see the following
         directories: *icbc, output, perts,* and *template.* The
         directory names (case sensitive) are important, as the scripts
         rely on these local paths and file names.
+    3.  the contents of `$DART_DIR/models/wrf/tutorial` from your DART code directory.
+
+            cp -r $DART_DIR/models/wrf/tutorial $BASE_DIR
 
 ### Build the software packages and copy files into place:
 
-   Copy the contents of `DART_DIR/models/wrf/shell_scripts` 
+   Copy the contents of `DART_DIR/models/wrf/shell_scripts`
    to the `BASE_DIR/scripts` directory.
 
        cp -R $DART_DIR/models/wrf/shell_scripts $BASE_DIR/scripts
 
    Copy the contents (three namelist files) of `tutorial/template`
    to the `$BASE_DIR/template` directory.
-   
+
        cp $DART_DIR/models/wrf/tutorial/template/* $BASE_DIR/template
 
 ### Build the DART executables.
@@ -181,8 +179,7 @@ additional software packages (if needed):
 1.  Copy the tutorial DART namelist from `$BASE_DIR/template/input.nml.template`
     to `$DART_DIR/models/wrf/work/input.nml`.
 
-        cd $BASE_DIR
-        cp template/input.nml.template $DART_DIR/models/wrf/work/input.nml
+        cp $BASE_DIR/template/input.nml.template $DART_DIR/models/wrf/work/input.nml
 
 2.  It is assumed you have successfully configured the
     `DART_DIR/build_templates/mkmf.template` file for your system.
@@ -190,13 +187,13 @@ additional software packages (if needed):
     [Getting Started](https://dart.ucar.edu/pages/Getting_Started.html)
     page for more detail, if necessary.
 
-3.  Modify the DART code to use 32bit reals. Most WRF/DART
+3.  [OPTIONAL] Modify the DART code to use 32bit reals. Most WRF/DART
     users run both the WRF model and the DART assimilation code using
     32bit reals. This is not the default for the DART code.
     Make this single code change before building the DART executables to
     compile all reals as 32bit reals.
 
-    Edit `$DART_DIR/assimilation_code/modules/utilities/types_mod.f90` 
+    Edit `$DART_DIR/assimilation_code/modules/utilities/types_mod.f90`
     with your favorite editor. Change
 
         ! real precision:
@@ -206,7 +203,7 @@ additional software packages (if needed):
         integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! 8 byte reals
         !integer, parameter :: r8 = r4                      ! alias r8 to r4
 
-   to 
+   to
 
         ! real precision:
         ! TO RUN WITH REDUCED PRECISION REALS (and use correspondingly less memory)
@@ -233,8 +230,8 @@ compiler.
 Edit `$BASE_DIR/scripts/param.csh` with proper paths,
 info, etc. This is a script that sets variables which will be read by
 other WRF/DART scripts. There are some specific parameters for either
-the Cheyenne supercomputing system using the 
-[PBS](https://www.pbsworks.com/) queueing system or the older 
+the Cheyenne supercomputing system using the
+[PBS](https://www.pbsworks.com/) queueing system or the older
 (now defunct) Yellowstone system which used *LSF*
 
 If you are not using Cheyenne, you may still want to use this script
@@ -244,7 +241,7 @@ environment variables should be changed in the script:
 <table>
 <tr><th>Script variable</th><th>Description</th></tr>
 <tr><td> module load mpt</td>
-<td>The <a href="http://modules.sourceforge.net/">Environment Modules</a> MPI compiler to use (here the 
+<td>The <a href="http://modules.sourceforge.net/">Environment Modules</a> MPI compiler to use (here the
 <a href="https://www.hpe.com/us/en/product-catalog/detail/pip.hpe-performance-software-message-passing-interface.1010144155.html">HPE MPI</a>)
 compiler). Note that on Cheyenne the default compiler is Intel.</td></tr>
 
@@ -256,14 +253,14 @@ compiler). Note that on Cheyenne the default compiler is Intel.</td></tr>
 <tr><td>WPS_SRC_DIR            </td><td>The directory of the WPS installation.</td></tr>
 <tr><td>VAR_SRC_DIR            </td><td>The directory of the WRFDA installation.</td></tr>
 <tr><td>GEO_FILES_DIR          </td>
-<td>The root directory of the 
+<td>The root directory of the
 <a href="https://dtcenter.org/wrf-nmm/users/OnLineTutorial/NMM/WPS/index.php">WPS_GEOG</a> files.
 NOTE: on Cheyenne these are available in the */glade/u/home/wrfhelp/WPS_GEOG* directory</td></tr>
 <tr><td>GRIB_DATA_DIR          </td>
 <td>The root directory of the GRIB data input into *ungrib.exe*.
 For this tutorial the grib files are included, so use *${ICBC_DIR}/grib_data*</td></tr>
 <tr><td>GRIB_SRC              </td>
-<td>Set the type of GRIB data (e.g. \<Vtable.TYPE\>; this will be used by *ungrib.exe* 
+<td>Set the type of GRIB data (e.g. \<Vtable.TYPE\>; this will be used by *ungrib.exe*
 to copy the appropriate Vtable file. For the tutorial, the value should be \'GFS\'.</td></tr>
 <tr><td>NCAR_GAU_ACCOUNT      </td>
 <td>Set the project account for supercomputing charges.
@@ -292,18 +289,18 @@ So far, your `$BASE_DIR` should contain the following directories:
     template
     tutorial
 
-Your `$BASE_DIR/rundir` directory should contain the following executables:
+Your `$BASE_DIR/rundir` directory should contain the following:
 
 executables:   [advance_time](../../../assimilation_code/programs/advance_time/advance_time.html),
                [fill_inflation_restart](../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html),
                [filter](../../../assimilation_code/programs/filter/filter.html),
                [obs_diag](../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html),
                [obs_seq_to_netcdf](../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html),
-               [obs_sequence_tool](../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html), `pert_wrf_bc`
-               (no helper page),
+               [obs_sequence_tool](../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html),
+               `pert_wrf_bc` (no helper page),
                [wrf_dart_obs_preprocess](../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html)
 
-directories:   `WRFIN` (empty), `WRFOUT` (empty), `WRF_RUN` (wrf executables and support files, except namelist.input)
+directories:   `WRFIN` (empty), `WRFOUT` (empty), `WRF_RUN` (wrf executables and support files, *except namelist.input*)
 
 scripts:       *add_bank_perts.ncl*, *new_advance_model.csh*
 
@@ -316,6 +313,10 @@ Check to make sure your `$BASE_DIR/rundir/WRF_RUN` directory contains:
     real.exe
     be.dat
     contents of your WRF build run/ directory (support data files for WRF)
+
+Check to make sure your `$BASE_DIR/rundir/WRF_RUN` directory DOES NOT contain:
+
+    namelist.input
 
 For this tutorial, we are providing you with a specified WRF domain. To
 make your own, you would need to define your own wps namelist and use
@@ -367,7 +368,7 @@ Other than *param.csh*, which was covered above, make the following changes:
 <td> driver.csh</td>
 <td>datefnl&nbsp;=&nbsp;2017042712</td>
 <td>Change to the final target date; here the final date is already set correctly for this tutorial.</td>
-</tr> 
+</tr>
 <tr>
 <td> gen_retro_icbc.csh</td>
 <td>datefnl&nbsp;=&nbsp;2017043000 </td>
@@ -378,13 +379,13 @@ This is set to the last date that files are included in the tutorial.</td>
 <td> gen_retro_icbc.csh</td>
 <td>paramfile = &lt;full&nbsp;path&nbsp;to&nbsp;param.csh&gt;</td>
 <td> The full path to *param.csh*. Change this on the line after the comment.
-While these two files are in the same directory here, in general it is 
+While these two files are in the same directory here, in general it is
 helpful to have one *param.csh* for each experiment.</td>
 </tr>
 <tr>
 <td> gen_pert_bank.csh</td>
 <td> All changes </td>
-<td> As the tutorial includes a perturbation bank, you will not need to run 
+<td> As the tutorial includes a perturbation bank, you will not need to run
 this script for the tutorial, so you will not need to change these values.
 However, you should set appropriate values when you are ready to generate your own perturbation bank.
 </td>
@@ -401,7 +402,7 @@ information for our test domain), and grib files that will be used to
 generate the initial and boundary condition files. The *template*
 directory should contain namelists for WRF, WPS, and filter, along with
 a wrfinput file that matches what will be the analysis domain. Finally,
-the `$BSE_DIR/output` directory contains observations within each directory name.
+the `$BASE_DIR/output` directory contains observations within each directory name.
 Template files will be placed here once created (done below), and as we
 get into the cycling the output will go in these directories.
 
@@ -426,7 +427,7 @@ to the forecast (target) lateral boundary state, such that after the
 integration the lateral boundaries have random errors.
 
 First, we need to generate a set of GFS states and boundary conditions
-that will be used in the cycling. Use 
+that will be used in the cycling. Use
 `$BASE_DIR/scripts/*gen_retro_icbc.csh*` to create this set of files, which will be
 added to a subdirectory corresponding to the date of the run
 in the `$BASE_DIR/output` directory. Make sure *gen_retro_icbc.csh* has
@@ -486,7 +487,7 @@ you when each ensemble member has finished.
 
 <span id="Obsprep" class="anchor"></span>[](#Obsprep)
 
-## Step 3: Prepare observations (optional step)
+## Step 3: Prepare observations [OPTIONAL]
 
 For the tutorial exercise, observation sequence files are provided to
 enable you to quickly get started running a test WRF/DART system.
@@ -536,11 +537,11 @@ To (again, *optionally*) reproduce the observation sequence files in the
     *DART_DIR/observations/obs_converters/NCEP/prep_bufr/work/*
     directory and run *quickbuild.csh* to build the DART
     PREPBUFR-to-intermediate-file observation processor:
-    
+
         cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
         ./quickbuild.csh
 
--   Download the PREPBUFR observations for your desired time. Go to the 
+-   Download the PREPBUFR observations for your desired time. Go to the
     [NCAR/UCAR Research Data Archive](https://rda.ucar.edu/datasets/ds090.0/) page for the
     NCEP/NCAR Global Reanalysis Products. Register on the site, click on
     the \"Data Access\" tab, and follow either the instructions for
@@ -548,7 +549,7 @@ To (again, *optionally*) reproduce the observation sequence files in the
 
 -   The downloaded *.tar* file will often be COS-blocked. If so, the
     file will appear corrupted if you attempt to untar it without
-    converting the data. See the 
+    converting the data. See the
     [NCAR COS-block](https://rda.ucar.edu/#!cosb) page for more information on
     how to strip the COS-blocking off of your downloaded file.
 
