@@ -21,7 +21,31 @@
 
 This document will describe how to get started with your own
 Weather Research and Forecasting (WRF) data assimilation
-experiments using DART.
+experiments using DART and only covers only the
+WRF-specific aspects of integrating with DART. It is not wise
+to try to run WRF/DART if you have no experience with WRF and/or
+no experience with DART.
+
+This tutorial was assembled to be compatible with \~WRF V3.9.1 and the
+DART Manhattan release. Other releases of WRF may or may not be
+backwards or forwards compatible with this tutorial. 
+
+You must already be comfortable running 
+the [WRF](http://www2.mmm.ucar.edu/wrf/users/download/get_source.html)
+system (WPS, real_em build of WRF). If not, work through the 
+[WRF model tutorial](http://www2.mmm.ucar.edu/wrf/OnLineTutorial/index.htm)
+first before trying to link WRF and DART together.
+Check the WRF user guide or the
+[WRFHELP](http://www2.mmm.ucar.edu/wrf/users/supports/wrfhelp.html)
+forum for WRF-specific assistance.
+
+If you are new to DART, we recommend that you become familiar with 
+DART by working through the 
+[DART Tutorial](https://dart.ucar.edu/pages/Tutorial.html) 
+and then understanding the 
+[Getting Started](https://dart.ucar.edu/pages/Getting_Started.html)
+page before attempting the WRF/DART tutorial as you will find many helpful 
+resources for learning the base DART configuration. 
 
 *We do not claim that this is a "turnkey" or "black box" system.*
 Be mentally prepared to invest a reasonable amount of time on the learning curve.
@@ -36,12 +60,6 @@ but you have to take care on how you leave all the settings of these inputs.
 Getting a set of scripts that runs doesn't mean the system is running well,
 or producing useful results.
 So - if you're still reading: Let the adventure begin!
-
-If you are a new user to DART, we recommend you see the DART
-[Getting Started](https://dart.ucar.edu/pages/Getting_Started.html) page
-before attempting this tutorial as you will find many helpful resources
-for learning the base DART configuration. This document covers only the
-WRF-specific aspects of integrating with DART.
 
 This tutorial introduces a "canned" WRF/DART experiment involving an
 ensemble of 50 members that will be initialized from GFS initial
@@ -72,13 +90,6 @@ sequence files) are provided for you in order to simplify the process.
 Furthermore, if you are not running on the UCAR/NCAR Cheyenne
 supercomputing system, you will likely need to customize the
 assimilation scripts to match the details of your particular system.
-
-This tutorial was assembled to be compatible with \~WRF V3.9.1 and the
-DART Manhattan release. Other releases of WRF may or may not be
-backwards or forwards compatible with this tutorial. Check the WRF
-user guide or the
-[WRFHELP](http://www2.mmm.ucar.edu/wrf/users/supports/wrfhelp.html)
-forum for WRF-specific assistance.
 
 *DISCLAIMER*: We have provided instructions for the NCAR supercomputer
 Cheyenne, so you may need to tailor these instructions to your system
@@ -184,7 +195,7 @@ be copied to the right place by the *setup.csh* script in a subsequent step:
     wrf_dart_obs_preprocess
 
 
-### Preparing the experiment directory:
+### Preparing the experiment directory.
 
 Approximately 100Gb of space is needed to run the tutorial.
 Create a \"work\" directory someplace with a lot of free space.
@@ -221,12 +232,6 @@ variable called *BASE_DIR* that points to this directory.
         cp -R $DART_DIR/models/wrf/shell_scripts/* $BASE_DIR/scripts
 
 ### Build or locate WRF executables.
-
-You must already be comfortable running 
-the [WRF](http://www2.mmm.ucar.edu/wrf/users/download/get_source.html)
-system (WPS, real_em build of WRF). If not, work through the 
-[WRF model tutorial](http://www2.mmm.ucar.edu/wrf/OnLineTutorial/index.htm)
-first before trying to link WRF and DART together.
 
 The [WRFDA](http://www2.mmm.ucar.edu/wrf/users/wrfda/download/get_source.html)
 package is needed to generate a set of perturbed initial
@@ -959,7 +964,7 @@ or feel free to contact us at dart(at)ucar(dot)edu.
 
 <span id="Tutorial" class="anchor"></span>[](#Tutorial)
 
-## Agenda from the 22 Jan 2014 tutorial:
+## Agenda from the 22 Jan 2014 tutorial
 
 -   Introduction (Anderson) - [DART Lab materials](../../../docs/DART_LAB/DART_LAB.html)
 -   WRF/DART basic building blocks (Romine)
