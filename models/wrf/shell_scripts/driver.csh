@@ -230,7 +230,7 @@ while ( 1 == 1 )
       echo '#BSUB -R "span[ptile='"${FILTER_PTILE}]"'"\'                          >> script.sed
       echo "#=================================================================="  >> script.sed
       echo 's%${1}%'"${datea}%g"                                                  >> script.sed
-      echo 's%${3}%'"${paramfile}%g"                                              >> script.sed
+      echo 's%${2}%'"${paramfile}%g"                                              >> script.sed
       sed -f script.sed ${SHELL_SCRIPTS_DIR}/assimilate.csh >! assimilate.csh
 
       if ( $?reservation ) then
@@ -256,7 +256,7 @@ while ( 1 == 1 )
       echo "#PBS -l select=${FILTER_NODES}:ncpus=${FILTER_PROCS}:mpiprocs=${FILTER_MPI}\" >> script.sed
       echo "#================================================================="           >> script.sed
       echo 's%${1}%'"${datea}%g"                                                          >> script.sed
-      echo 's%${3}%'"${paramfile}%g"                                                      >> script.sed
+      echo 's%${2}%'"${paramfile}%g"                                                      >> script.sed
       sed -f script.sed ${SHELL_SCRIPTS_DIR}/assimilate.csh >! assimilate.csh
 
       qsub assimilate.csh

@@ -4,6 +4,9 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
+# datea, emember, paramfile are command-line arguments - OR -
+# are set by a string editor (sed) command.
+
 set datea     = ${1}
 set emember   = ${2}
 set paramfile = ${3}

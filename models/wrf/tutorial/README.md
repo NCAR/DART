@@ -172,7 +172,7 @@ you might need for an experiment with that model.
         ./quickbuild.csh
 
 Many executables are built, the following executables are needed for the tutorial and will 
-be copied to the right place by the `setup.csh` script in a subsequent step:
+be copied to the right place by the *setup.csh* script in a subsequent step:
 
     advance_time
     fill_inflation_restart
@@ -217,7 +217,8 @@ variable called *BASE_DIR* that points to this directory.
 3. You will also need the scripting to run a WRF/DART experiment.
    Copy the contents of `$DART_DIR/models/wrf/shell_scripts` to the `$BASE_DIR/scripts` directory.
 
-        cp -R $DART_DIR/models/wrf/shell_scripts $BASE_DIR/scripts
+        mkdir $BASE_DIR/scripts
+        cp -R $DART_DIR/models/wrf/shell_scripts/* $BASE_DIR/scripts
 
 ### Build or locate WRF executables.
 
@@ -231,17 +232,17 @@ The [WRFDA](http://www2.mmm.ucar.edu/wrf/users/wrfda/download/get_source.html)
 package is needed to generate a set of perturbed initial
 ensemble member files and also to generate perturbed boundary
 condition files. Since the tutorial provides a perturbation bank for a
-specific case, it is not required to actually _run_ _da_wrfvar.exe_
+specific case, it is not required to actually *run da_wrfvar.exe*
 but it needs to be in the `WRF_RUN` directory for the tutorial.
 
 #### Build (or locate an appropriate build of) WRF, WPS and WRFDA.
 WRF and WRFDA should be built with the \"dmpar\" option, while WPS can be
 built \"serial\"ly. See the WRF/WRFDA documentation for more
-information about building these packages. *NOTE*: for consistency and
+information about building these packages. **NOTE**: for consistency and
 to avoid errors, you should build WRF, WPS, WRFDA, and DART with the
 same compiler you use for NetCDF. Likewise MPI should use the same
 compiler. You will need the location of the WRF and WRFDA builds to 
-customize the `params.csh` script in the next step.
+customize the *params.csh* script in the next step.
 
 #### Configure `$BASE_DIR/scripts/param.csh` with proper paths, info, etc.
 This is a script that sets variables which will be read by other WRF/DART scripts.
@@ -252,37 +253,86 @@ the Cheyenne supercomputing system using the
 If you are not using Cheyenne, you may still want to use this script
 to set your queueing-system specific parameters.
 
-*IMPORTANT*: All variables that are marked `'set this appropriately #%%%#'` need to
-be set. 
+**IMPORTANT**: All variables that are marked `'set this appropriately #%%%#'` need to
+be set. This list is intended to provide some guidance on what needs to be set, but it
+is not an exhaustive list. 
 
 <table>
 <tr><th>Script variable</th><th>Description</th></tr>
-<tr><td> module load mpt</td>
-<td>The <a href="http://modules.sourceforge.net/">Environment Modules</a> MPI compiler to use (here the
+<tr>
+<td> module load mpt</td>
+<td>The <a href="http://modules.sourceforge.net/">Environment Modules</a> 
+MPI compiler to use (here the
 <a href="https://www.hpe.com/us/en/product-catalog/detail/pip.hpe-performance-software-message-passing-interface.1010144155.html">HPE MPI</a>)
-compiler). Note that on Cheyenne the default compiler is Intel.</td></tr>
-<tr><td>module load nco        </td><td>The <a href="http://nco.sourceforge.net">nco</a> package.</td></tr>
-<tr><td>module load ncl/6.6.2  </td><td>The <a href="https://www.ncl.ucar.edu">ncl</a> package.</td></tr>
-<tr><td>BASE_DIR               </td><td>The directory containing *icbc, output, perts,* etc.</td></tr>
-<tr><td>DART_DIR               </td><td>The DART directory.</td></tr>
-<tr><td>WRF_DM_SRC_DIR         </td><td>The directory of the WRF dmpar installation.</td></tr>
-<tr><td>WPS_SRC_DIR            </td><td>The directory of the WPS installation.</td></tr>
-<tr><td>VAR_SRC_DIR            </td><td>The directory of the WRFDA installation.</td></tr>
-<tr><td>GEO_FILES_DIR          </td>
+compiler). Note that on Cheyenne the default compiler is Intel.</td>
+</tr>
+
+<tr>
+<td>module load nco</td>
+<td>The <a href="http://nco.sourceforge.net">nco</a> package.</td>
+</tr>
+
+<tr>
+<td>module load ncl/6.6.2</td>
+<td>The <a href="https://www.ncl.ucar.edu">ncl</a> package.</td>
+</tr>
+
+<tr>
+<td>BASE_DIR</td>
+<td>The directory containing <strong>icbc, output, perts,</strong> etc.</td>
+</tr>
+
+<tr>
+<td>DART_DIR</td>
+<td>The DART directory.</td>
+</tr>
+
+<tr>
+<td>WRF_DM_SRC_DIR</td>
+<td>The directory of the WRF dmpar installation.</td>
+</tr>
+
+<tr>
+<td>WPS_SRC_DIR</td>
+<td>The directory of the WPS installation.</td>
+</tr>
+
+<tr>
+<td>VAR_SRC_DIR</td>
+<td>The directory of the WRFDA installation.</td>
+</tr>
+
+<tr>
+<td>GEO_FILES_DIR</td>
 <td>The root directory of the
-<a href="https://dtcenter.org/wrf-nmm/users/OnLineTutorial/NMM/WPS/index.php">WPS_GEOG</a> files.
-NOTE: on Cheyenne these are available in the */glade/u/home/wrfhelp/WPS_GEOG* directory</td></tr>
-<tr><td>GRIB_DATA_DIR          </td>
-<td>The root directory of the GRIB data input into *ungrib.exe*.
-For this tutorial the grib files are included, so use *${ICBC_DIR}/grib_data*</td></tr>
-<tr><td>GRIB_SRC              </td>
-<td>Set the type of GRIB data (e.g. \<Vtable.TYPE\>; this will be used by *ungrib.exe*
-to copy the appropriate Vtable file. For the tutorial, the value should be \'GFS\'.</td></tr>
-<tr><td>NCAR_GAU_ACCOUNT      </td>
-<td>Set the project account for supercomputing charges.
-See your supercomputing project administrator for more information.</td></tr>
-<tr><td>EMAIL                </td>
-<td>Set the e-mail address used by PBS to send you information about when your job completes.</td></tr>
+<a href="https://dtcenter.org/wrf-nmm/users/OnLineTutorial/NMM/WPS/index.php">WPS_GEOG</a>
+files. NOTE: on Cheyenne these are available in the 
+<strong>/glade/u/home/wrfhelp/WPS_GEOG</strong> directory</td>
+</tr>
+
+<tr>
+<td>GRIB_DATA_DIR</td>
+<td>The root directory of the GRIB data input into <strong>ungrib.exe</strong>.
+For this tutorial the grib files are included, 
+so use <strong>${ICBC_DIR}/grib_data</strong></td>
+</tr>
+
+<tr>
+<td>GRIB_SRC</td>
+<td>The type of GRIB data (e.g. &lt;Vtable.TYPE&gt;) to 
+use with <strong>ungrib.exe</strong> to copy the appropriate 
+Vtable file. For the tutorial, the value should be 'GFS'.</td>
+</tr>
+
+<tr>
+<td>COMPUTER_CHARGE_ACCOUNT</td>
+<td>The project account for supercomputing charges.
+See your supercomputing project administrator for more information.</td>
+</tr>
+
+<tr><td>EMAIL</td>
+<td>The e-mail address used by the queueing system to send job summary information.</td>
+</tr>
 
 </table>
 
@@ -303,7 +353,6 @@ So far, your `$BASE_DIR` should contain the following directories:
     rundir
     scripts
     template
-    tutorial
 
 Your `$BASE_DIR/rundir` directory should contain the following:
 
@@ -316,7 +365,7 @@ executables:   [advance_time](../../../assimilation_code/programs/advance_time/a
                `pert_wrf_bc` (no helper page),
                [wrf_dart_obs_preprocess](../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html)
 
-directories:   `WRFIN` (empty), `WRFOUT` (empty), `WRF_RUN` (wrf executables and support files, *except namelist.input*)
+directories:   `WRFIN` (empty), `WRFOUT` (empty), `WRF_RUN` (wrf executables and support files)
 
 scripts:       *add_bank_perts.ncl*, *new_advance_model.csh*
 
@@ -330,9 +379,10 @@ Check to make sure your `$BASE_DIR/rundir/WRF_RUN` directory contains:
     be.dat
     contents of your WRF build run/ directory (support data files for WRF)
 
-Check to make sure your `$BASE_DIR/rundir/WRF_RUN` directory DOES NOT contain:
-
-    namelist.input
+*NOTICE*: Be aware that the *setup.csh* script is designed to remove 
+`$BASE_DIR/rundir/WRF_RUN/namelist.input`. Subsequent scripting will modify
+`$BASE_DIR/template/namlist.input.meso` to create the `namelist.input` 
+for the experiment.
 
 For this tutorial, we are providing you with a specified WRF domain. To
 make your own, you would need to define your own wps namelist and use
@@ -348,22 +398,87 @@ Let\'s now look inside the `$BASE_DIR/scripts` directory. You should find the
 following scripts:
 
 <table>
-<tr><th>Script name           </th><th>Description</th></tr>
-<tr><td>add_bank_perts.ncl    </td><td>Add perturbations to each member.</td></tr>
-<tr><td>assim_advance.csh     </td><td>Template for a submitted job to advance ensemble members to the next analysis time.</td></tr>
-<tr><td>assimilate.csh        </td><td>Template for submitted job to conduct the assimilation.</td></tr>
-<tr><td>diagnostics_obs.csh   </td><td>Template for submitted job for observation specific diagnostics.</td></tr>
-<tr><td>driver.csh            </td><td>Primary script for running the cycled analysis system.</td></tr>
-<tr><td>first_advance.csh     </td><td>Template for submitted job to advance WRF model state (on the first time).</td></tr>
-<tr><td>gen_pert_bank.csh     </td><td>Save the perturbations generated by WRFDA CV3.</td></tr>
-<tr><td>gen_retro_icbc.csh    </td><td>Generate the wrfinput and wrfbdy files.</td></tr>
-<tr><td>init_ensemble_var.csh </td><td>Create the perturbed initial conditions from the WRF-VAR system.</td></tr>
-<tr><td>mean_increment.ncl    </td><td>Compute the mean state-space increment, which can be used for plotting.</td></tr>
-<tr><td>new_advance_model.csh </td><td>Template for submitted job to advance the WRF model after running DART.</td></tr>
-<tr><td>param.csh             </td><td>Contains most of the key settings to run the WRF/DART system.</td></tr>
-<tr><td>prep_ic.csh           </td><td>Template for submitted job to prepare the initial conditions.</td></tr>
-<tr><td>real.csh              </td><td>Run the WRF real.exe program.</td></tr>
-<tr><td>setup.csh             </td><td>Create the proper directory structure and place executables/scripts in proper locations.</td></tr>
+<tr>
+<th>Script name</th>
+<th>Description</th>
+</tr>
+
+<tr>
+<td>add_bank_perts.ncl</td>
+<td>Adds perturbations to each member.</td>
+</tr>
+
+<tr>
+<td>assim_advance.csh</td>
+<td>Advances 1 WRF ensemble member to the next analysis time.</td>
+</tr>
+
+<tr>
+<td>assimilate.csh</td>
+<td>Runs filter ... i.e. the assimilation.</td>
+</tr>
+
+<tr>
+<td>diagnostics_obs.csh</td>
+<td>Computes observation-space diagnostics and the 
+model-space mean analysis increment.</td>
+</tr>
+
+<tr>
+<td>driver.csh</td>
+<td>Primary script for running the cycled analysis system.</td>
+</tr>
+
+<tr>
+<td>first_advance.csh</td>
+<td>Advances 1 WRF ensemble member (on the first time).</td>
+</tr>
+
+<tr>
+<td>gen_pert_bank.csh</td>
+<td>Saves the perturbations generated by WRFDA CV3.</td>
+</tr>
+
+<tr>
+<td>gen_retro_icbc.csh</td>
+<td>Generates the wrfinput and wrfbdy files.</td>
+</tr>
+
+<tr>
+<td>init_ensemble_var.csh</td>
+<td>Creates the perturbed initial conditions from the WRF-VAR system.</td>
+</tr>
+
+<tr>
+<td>mean_increment.ncl</td>
+<td>Computes the mean state-space increment, which can be used for plotting.</td>
+</tr>
+
+<tr>
+<td>new_advance_model.csh</td>
+<td>advances the WRF model after running DART in a cycling context.</td>
+</tr>
+
+<tr>
+<td>param.csh</td>
+<td>Contains most of the key settings to run the WRF/DART system.</td>
+</tr>
+
+<tr>
+<td>prep_ic.csh</td>
+<td>Prepares the initial conditions for a single ensemble member.</td>
+</tr>
+
+<tr>
+<td>real.csh</td>
+<td>Runs the WRF real.exe program.</td>
+</tr>
+
+<tr>
+<td>setup.csh</td>
+<td>Creates the proper directory structure and place executables/scripts 
+in proper locations.</td>
+</tr>
 </table>
 
 You will need to edit the following scripts to provide the paths to where you
@@ -378,26 +493,32 @@ Other than *param.csh*, which was covered above, make the following changes:
 
 <table>
 <tr>
-<th>File name</th><th>Variable&nbsp;/&nbsp;value</th><th>Change description</th>
+<th>File name</th>
+<th>Variable&nbsp;/&nbsp;value</th>
+<th>Change description</th>
 </tr>
+
 <tr>
 <td> driver.csh</td>
 <td>datefnl&nbsp;=&nbsp;2017042712</td>
 <td>Change to the final target date; here the final date is already set correctly for this tutorial.</td>
 </tr>
+
 <tr>
 <td> gen_retro_icbc.csh</td>
 <td>datefnl&nbsp;=&nbsp;2017043000 </td>
 <td>This is the final date to create WRF initial/boundary conditions for.
 This is set to the last date that files are included in the tutorial.</td>
 </tr>
+
 <tr>
 <td> gen_retro_icbc.csh</td>
 <td>paramfile = &lt;full&nbsp;path&nbsp;to&nbsp;param.csh&gt;</td>
-<td> The full path to *param.csh*. Change this on the line after the comment.
+<td> The full path to param.csh. Change this on the line after the comment.
 While these two files are in the same directory here, in general it is
-helpful to have one *param.csh* for each experiment.</td>
+helpful to have one param.csh for each experiment.</td>
 </tr>
+
 <tr>
 <td> gen_pert_bank.csh</td>
 <td> All changes </td>
@@ -415,7 +536,7 @@ running the script is available inside the comments of that file.
 However, again, for this tutorial, this step has already been run for
 you. The `$BASE_DIR/icbc` directory contains a *geo_em_d01.nc* file (geo
 information for our test domain), and grib files that will be used to
-generate the initial and boundary condition files. The *template*
+generate the initial and boundary condition files. The `$BASE_DIR/template`
 directory should contain namelists for WRF, WPS, and filter, along with
 a wrfinput file that matches what will be the analysis domain. Finally,
 the `$BASE_DIR/output` directory contains observations within each directory name.
@@ -444,7 +565,7 @@ integration the lateral boundaries have random errors.
 
 First, we need to generate a set of GFS states and boundary conditions
 that will be used in the cycling. Use
-`$BASE_DIR/scripts/*gen_retro_icbc.csh*` to create this set of files, which will be
+`$BASE_DIR/scripts/gen_retro_icbc.csh` to create this set of files, which will be
 added to a subdirectory corresponding to the date of the run
 in the `$BASE_DIR/output` directory. Make sure *gen_retro_icbc.csh* has
 the appropriate path to your *param.csh* script. If the *param.csh*
@@ -461,7 +582,7 @@ boundary file for each analysis time.
 delete output files if they already exist, and they will not for the
 first run.
 
-Once the script completes, inside your `output/2017042700 directory` you
+Once the script completes, inside your `$BASE_DIR/output/2017042700` directory  you
 should see these files:
 
     wrfbdy_d01_152057_21600_mean
@@ -507,6 +628,7 @@ you when each ensemble member has finished.
 
 For the tutorial exercise, observation sequence files are provided to
 enable you to quickly get started running a test WRF/DART system.
+If you want to run with the example observations, you can [skip to Step 4](#Infprep).
 
 However, observation processing is critical to the success of running
 DART and was covered in the
@@ -531,8 +653,8 @@ the dates you plan to build an analysis for, and run the codes to
 generate an observation sequence file.
 
 For completeness, we list here how you could generate these observation
-sequence files yourself. *IMPORTANT:* the following steps are **not**
-necessary for the tutorial as the processed PREPBUFR observation
+sequence files yourself. **IMPORTANT:** the following steps are 
+**not necessary** for the tutorial as the processed PREPBUFR observation
 sequence files have already been provided for you. However, these steps
 are provided in order to help users get started with these observations
 quickly for their own experiments.
@@ -550,7 +672,7 @@ To (again, *optionally*) reproduce the observation sequence files in the
     and system settings.
 
 -   Go to the
-    *DART_DIR/observations/obs_converters/NCEP/prep_bufr/work/*
+    `$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work/`
     directory and run *quickbuild.csh* to build the DART
     PREPBUFR-to-intermediate-file observation processor:
 
@@ -558,9 +680,9 @@ To (again, *optionally*) reproduce the observation sequence files in the
         ./quickbuild.csh
 
 -   Download the PREPBUFR observations for your desired time. Go to the
-    [NCAR/UCAR Research Data Archive](https://rda.ucar.edu/datasets/ds090.0/) page for the
-    NCEP/NCAR Global Reanalysis Products. Register on the site, click on
-    the \"Data Access\" tab, and follow either the instructions for
+    [NCAR/UCAR Research Data Archive](https://rda.ucar.edu/datasets/ds090.0/)
+    page for the NCEP/NCAR Global Reanalysis Products. Register on the site,
+    click on the \"Data Access\" tab, and follow either the instructions for
     external users or NCAR internal users.
 
 -   The downloaded *.tar* file will often be COS-blocked. If so, the
@@ -571,7 +693,7 @@ To (again, *optionally*) reproduce the observation sequence files in the
 
 -   Untar the data in your desired directory.
 
--   In the *DART_DIR/observations/obs_converters/NCEP/prep_bufr/work*
+-   In the `$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work`
     directory, edit the *input.nml* file. This file will control what
     observations will be used for your experiment, so the namelist
     options are worth investigating a bit here. For example, you could
@@ -606,7 +728,7 @@ To (again, *optionally*) reproduce the observation sequence files in the
     format of the data you downloaded. A little trial and error might be
     necessary to get these set correctly.
 
--   Copy over the executables from *../exe*, and run the *prepbufr.csh*
+-   Copy over the executables from `../exe`, and run the *prepbufr.csh*
     script for a single day at a time:
 
         cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
@@ -694,7 +816,7 @@ experiment. The initial inflation files may be created with
 *fill_inflation_restart*, which was built by the *quickbuild.csh* step.
 A pair of inflation files is needed for each WRF domain.
 
-Within the *BASE_DIR/rundir* directory, the *input.nml* file has some
+Within the `$BASE_DIR/rundir` directory, the *input.nml* file has some
 settings that control the behavior of *fill_inflation_restart*. Within
 this file there is the section:
 
@@ -716,7 +838,7 @@ These settings write a prior inflation file with a inflation mean of 1.0
 and a prior inflation standard deviation of 0.6. These are reasonable
 defaults to use. The *input_state_files* variable controls which file to
 use as a template. You can either modify this namelist value to point to
-one of the *wrfinput_d01_XXX* files under *BASE_DIR/output/\<DATE\>*,
+one of the *wrfinput_d01_XXX* files under `$BASE_DIR/output/<DATE>`,
 for any given date, or you can copy one of the files to this directory.
 The actual contents of the file referenced by *input_state_files* do not
 matter, as this is only used as a template for the
@@ -773,20 +895,24 @@ all of the pieces work together.
 
 However, for this tutorial, we will only show you how the major
 components work. The next step in our process is the main *driver.csh*
-script, which expects a starting date as a command line argument
-(YYYYMMDDHH). So you would, for this tutorial, run it as:
+script, which expects a starting date (YYYYMMDDHH) and the full path of 
+the resource file as command line arguments.
+In this example (which uses csh/tcsh syntax), we are also capturing 
+the run-time output into a file named *run.out* and the entire command
+will be running in the background:
 
     cd $BASE_DIR/scripts
     ./driver.csh 2017042706 param.csh >& run.out &
 
-The script will check that the input files are present (wrfinput files,
-wrfbdy, observation sequence, and DART restart files), create a job
-script to run filter in rundir, monitor that expected output from filter
-is created, then generate job scripts for all of the model advances.
-After this completes, the script will check if this is the last analysis
-to determine if a new cycle is needed or not. A script is also launched
-by the driver to compute some observation space diagnostics and to
-convert the final observation sequence file into a netcdf format.
+*driver.csh* will 
+ - check that the input files are present 
+    (wrfinput files, wrfbdy, observation sequence, and DART restart files), 
+ - create a job script to run *filter* in `$BASE_DIR/rundir`, 
+ - monitor that expected output from *filter* is created, 
+ - submit jobs to advance the ensemble to the next analysis time,
+ - (simultaneously with the ensemble advance) compute assimilation diagnostics 
+ - archive and clean up 
+ - and continue to cycle until the final analysis time has been reached.
 
 \[[top](#)\]
 
@@ -801,18 +927,18 @@ well or if there are problems that need to be addressed. DART provides
 analysis system diagnostics in both state and observation space.
 
 Check to see if the analysis system actually changed the state. You
-should find a file in the *output/\$date* directory called
+should find a file in the *$BASE_DIR/output/<DATE>* directory called
 *analysis_increment.nc* which is the change in the ensemble mean state
-from the background to the analysis after running filter. Use a tool,
-such as ncview, to look at this file. You should see spatial patterns
+from the background to the analysis after running *filter*. Use a tool,
+such as *ncview*, to look at this file. You should see spatial patterns
 that look something like the meteorology of the day. These should be
 places where the background (short ensemble forecast) was adjusted based
 on the set of observations provided.
 
-You can also use the provided
+The *driver.csh* script also ran the *diagnostics_obs.csh* which runs the
 [obs_diag](../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html)
 program to investigate the observation space analysis statistics.
-You\'ll find the results of this in output/\$date/obs_diag_output.nc.
+You\'ll find the results of this in `$BASE_DIR/output/<DATE>/obs_diag_output.nc`.
 Additional statistics can be evaluated using the converted final
 observation sequence file in netcdf format from the
 [obs_seq_to_netcdf](../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html)
@@ -827,7 +953,9 @@ specification which are important to address before using system results
 for science.
 
 If you encounter difficulties setting up, running, or evaluating the
-system performance, please contact us at dart(at)ucar(dot)edu.
+system performance, please consider using the 
+[GitHub Issue](https://github.com/NCAR/DART/issues) facility 
+or feel free to contact us at dart(at)ucar(dot)edu.
 
 <span id="Tutorial" class="anchor"></span>[](#Tutorial)
 
@@ -850,11 +978,11 @@ system performance, please contact us at dart(at)ucar(dot)edu.
 
 ## More Resources
 
+-   [Check or Submit DART Issues](https://github.com/NCAR/DART/issues)
 -   [DART website](http://dart.ucar.edu)
 -   [DAReS website](http://www.image.ucar.edu/DAReS)
 -   [DART Manhattan release](../../../docs/html/index.html)
 -   [Register for DART](https://www2.cisl.ucar.edu/software/dart/download)
 -   [Preparing MATLAB](https://dart.ucar.edu/pages/Getting_Started.html#matlab)
 -   [WRF model users page](http://www.mmm.ucar.edu/wrf/users)
--   [Check or Submit DART Issues](https://github.com/NCAR/DART/issues)
 -   Need help? e-mail dart (at) ucar (dot) edu
