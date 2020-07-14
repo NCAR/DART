@@ -939,16 +939,18 @@ such as *ncview*, to look at this file. You should see spatial patterns
 that look something like the meteorology of the day. These should be
 places where the background (short ensemble forecast) was adjusted based
 on the set of observations provided.
+Please become familiar with the 
+[Diagnostics Section](https://dart.ucar.edu/pages/Diagnostics.html)
+of the DART Documentation. It starts out \'DID MY EXPERIMENT WORK?\'.
 
 The *driver.csh* script also ran the *diagnostics_obs.csh* which runs the
 [obs_diag](../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html)
 program to investigate the observation space analysis statistics.
 You\'ll find the results of this in `$BASE_DIR/output/<DATE>/obs_diag_output.nc`.
-Additional statistics can be evaluated using the converted final
-observation sequence file in netcdf format from the
-[obs_seq_to_netcdf](../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html)
-tool. This file has a name like *obs_epoch_029.nc*, where the number in
-the file is largest in the most recent set of observations processed.
+There are many Matlab scripts in the `$DART_DIR/diagnostics/matlab` directory
+that help explore the effectiveness of the assimilation.  Look for their examples in the
+[Observation-Space Diagnostics](https://dart.ucar.edu/pages/Diagnostics.html#obs_diagnostics) section.
+
 The additional files enable plotting the time series of recently
 assimilated observations once multiple cycles have been run. Be sure to
 check that a high percentage (\> 90%) of available observations were
@@ -956,6 +958,14 @@ assimilated. Low assimilation rates typically point to a problem with
 the background analysis, observation quality, and/or observation error
 specification which are important to address before using system results
 for science.
+
+Additional statistics can be evaluated using the converted final
+observation sequence file in netcdf format from the
+[obs_seq_to_netcdf](../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html)
+tool. This file has a name like *obs_epoch_029.nc*, where the number in
+the file is largest in the most recent set of observations processed.
+There are Matlab tools to explore where and why the observations were rejected.
+*plot_obs_netcdf.m* and *link_obs.m* are particularly useful.
 
 If you encounter difficulties setting up, running, or evaluating the
 system performance, please consider using the 
@@ -988,6 +998,6 @@ or feel free to contact us at dart(at)ucar(dot)edu.
 -   [DAReS website](http://www.image.ucar.edu/DAReS)
 -   [DART Manhattan release](../../../docs/html/index.html)
 -   [Register for DART](https://www2.cisl.ucar.edu/software/dart/download)
--   [Preparing MATLAB](https://dart.ucar.edu/pages/Getting_Started.html#matlab)
+-   [Preparing MATLAB](https://dart.ucar.edu/pages/Getting_Started.html#matlab) to use with DART.
 -   [WRF model users page](http://www.mmm.ucar.edu/wrf/users)
 -   Need help? e-mail dart (at) ucar (dot) edu
