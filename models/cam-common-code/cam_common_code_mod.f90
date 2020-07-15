@@ -1,41 +1,53 @@
 module cam_common_code_mod
 
-use          types_mod, only     : MISSING_R8, MISSING_I, r8, i8, DEG2RAD
+! This module contains only code that is used by both the cam-fv and cam-se model mods.
+! Much of this has to do with general computations for unstaggered columns, but there are a 
+! number of utility routines, also. The individual model_mods still contain significant overlap
+! in code in some places where communication, especially of the namelist, made sharing code
+! problematic.
 
-use      utilities_mod, only     : E_ERR, E_MSG,  error_handler, find_enclosing_indices, to_upper, &
-                                   array_dump
+use          types_mod,     only : MISSING_R8, MISSING_I, r8, i8, DEG2RAD
+
+use      utilities_mod,     only : E_ERR, E_MSG,  error_handler, find_enclosing_indices, to_upper, &
+                                   array_dump, file_exist
 
 use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_SURFACE_PRESSURE, QTY_PRESSURE, QTY_VERTLEVEL, &
                                    QTY_GEOMETRIC_HEIGHT, &
-                                   get_quantity_for_type_of_obs
+                                   get_quantity_for_type_of_obs, get_num_quantities, get_index_for_quantity
 
 use          location_mod,  only : location_type, get_close_type, vertical_localization_on, get_dist,  &
                                    set_location, query_location, get_maxdist, is_vertical, &
                                    VERTISUNDEF, VERTISPRESSURE, VERTISHEIGHT, VERTISLEVEL, VERTISSCALEHEIGHT, &
                                    VERTISSURFACE, set_vertical_localization_coord
 
-use    state_structure_mod, only : get_varid_from_kind
+use    state_structure_mod, only : get_varid_from_kind, get_model_variable_indices
 
-use   ensemble_manager_mod, only : ensemble_type
+use   ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars
+
 use   netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_get_variable, nc_get_variable_size, &
                                    nc_variable_exists
+
+use      time_manager_mod,  only : time_type, get_date, set_date
+
+use   netcdf_utilities_mod, only : nc_begin_define_mode, nc_define_integer_variable, &
+                                        nc_end_define_mode, nc_put_variable
+
+use         random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+
+use      mpi_utilities_mod, only : my_task_id
 
 implicit none
 private
 
-public :: scale_height
-public :: free_std_atm_tables
-public :: is_surface_field, init_globals
-public :: ref_nlevels, ref_model_top_pressure, cam_grid, grid_data, are_damping
-public :: ramp_end, discarding_high_obs
-public :: vertical_localization_type, above_ramp_start
-public :: pressure_to_level, cuse_log_vertical_scale
-public :: cno_normalization_of_scale_heights, init_sign_of_vert_units
-public :: init_damping_ramp_info, init_discard_high_obs, build_cam_pressure_columns
-public :: height_to_level, check_good_levels, generic_height_to_pressure
-public :: gph2gmh, build_heights, set_vert_localization, ok_to_interpolate, obs_too_high
-public :: cdebug_level, get_cam_grid, free_cam_grid
-
+public :: above_ramp_start, are_damping, build_cam_pressure_columns, build_heights, &
+          cam_grid, cdebug_level, check_good_levels, cno_normalization_of_scale_heights, &
+          common_pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
+          free_cam_grid, free_std_atm_tables, generic_height_to_pressure, get_cam_grid, &
+          gph2gmh, grid_data, height_to_level, init_damping_ramp_info, &
+          init_discard_high_obs, init_globals, init_sign_of_vert_units, &
+          is_surface_field, obs_too_high, ok_to_interpolate, pressure_to_level, ramp_end, &
+          read_model_time, ref_model_top_pressure, ref_nlevels, scale_height, &
+          set_vert_localization, vert_interp, vertical_localization_type, write_model_time
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = "$URL$"
@@ -49,6 +61,7 @@ type cam_1d_array
    real(r8), allocatable :: vals(:)
 end type
 
+! Note that the cam_grid type contains information about staggered grids that are only for FV
 type cam_grid
    type(cam_1d_array) :: lon
    type(cam_1d_array) :: lat
@@ -108,15 +121,13 @@ integer  :: ref_nlevels
 ! Precompute pressure <-> height map once based on either a low-top or
 ! high-top table depending on what the model top is.
 ! Used only to discard obs on heights above the user-defined top threshold.
-integer, parameter :: HIGH_TOP_TABLE = 1
-integer, parameter ::  LOW_TOP_TABLE = 2
-integer :: std_atm_table_len
+integer, parameter    :: HIGH_TOP_TABLE = 1
+integer, parameter    :: LOW_TOP_TABLE  = 2
+integer               :: std_atm_table_len
 real(r8), allocatable :: std_atm_hgt_col(:)
 real(r8), allocatable :: std_atm_pres_col(:)
 
-
 contains
-
 
 !-----------------------------------------------------------------------
 !> Read the data from the various cam grid arrays 
@@ -173,10 +184,7 @@ type(cam_1d_array), intent(inout) :: grid_array
 
 character(len=*), parameter :: routine = 'fill_cam_1d_array'
 
-!>@todo do we need to check that this exists?  if all cam input
-!> files will have all the arrays we are asking for, then no.
 ! SENote: For the SE core, three of these don't exist (gw, slon, slat) so need to check
-! If they don't exist, just don't fill the array for now
 
 if(nc_variable_exists(ncid, varname)) then
 
@@ -192,7 +200,6 @@ else
    allocate(grid_array%vals(1))
    grid_array%nsize = 1
    grid_array%vals(1) = MISSING_R8
-
 endif
 
 end subroutine fill_cam_1d_array
@@ -219,7 +226,6 @@ call free_cam_1d_array(grid%hyam)
 call free_cam_1d_array(grid%hybm)
 call free_cam_1d_array(grid%P0)
 
-
 end subroutine free_cam_grid
 
 !-----------------------------------------------------------------------
@@ -238,7 +244,6 @@ end subroutine free_cam_1d_array
 !> allocate space for a scalar variable and read values into the grid_array
 !>   
 
-
 subroutine fill_cam_0d_array(ncid, varname, grid_array)
 integer,            intent(in)    :: ncid
 character(len=*),   intent(in)    :: varname
@@ -252,8 +257,6 @@ allocate(grid_array%vals(grid_array%nsize))
 !SENOte WARNING: This is the issue with P0 not being in the SE restart files. For now, if it is not in the file
 ! set to 100000, the value from standard FV files. NEED TO CLARIFY THIS WITH PETER LAURITZEN.
 ! CGD notes that P0 was removed and Ptop is only in history files, so no alternative for now.
-! SENote: Need to check to see if this variable exists
-! If it does not exist, and it is PO, then set it to 100000 for now 
 if(varname == 'P0') then
    ! See if PO exists in the netcdf file
    if(.not. nc_variable_exists(ncid, 'PO')) then
@@ -333,7 +336,6 @@ if (varid > 0) then
    return
 endif
 
-
 ! add any quantities that can be interpolated to this list if they
 ! are not in the state vector.
 select case (obs_qty)
@@ -346,13 +348,11 @@ select case (obs_qty)
       my_status = 2
 end select
 
-
 end subroutine ok_to_interpolate
 
 !-----------------------------------------------------------------------
 !> convert from string to integer, and set in the dart code the
 !> vertical type we are going to want to localize in.
-!> 
 
 subroutine set_vert_localization(typename)
 character(len=*), intent(in)  :: typename
@@ -485,17 +485,6 @@ else where (pressure <= 0.0_r8)
    pm_ln(1:nlevels) = 0
 end where
 
-!debug
-!200 format (I3, 6(1X, F24.16))
-!201 format (A, 1X, I3, 6(1X, F24.16))
-!202 format (A, 6(1X, F24.16))
-!203 format (6(1X, F24.16))
-!
-!print *, 'pm_ln: '
-!do i=1, nlevels+1
-!  write(*, 200) i, pm_ln(i)
-!enddo
-!end debug
 
 !        height_midpts(1)=top  ->  height_midpts(nlevels)=bottom
 ! 
@@ -560,11 +549,6 @@ do k = 1,nlevels - 2
    enddo
 enddo
 
-!write(*, 202) 'psurf, hsurf: ', p_surf, h_surf
-!do k = 1,nlevels
-!   write(*, 201) 'k, height: ', k, height_midpts(k)
-!enddo
-
 ! not implemented yet.
 if (present(height_interf)) then
    height_interf(:) = MISSING_R8
@@ -575,7 +559,7 @@ end subroutine build_heights
 !-----------------------------------------------------------------------
 !>  Convert a 2d array of geopotential altitudes to mean sea level altitudes.
 !>  To avoid overflow with very high model tops, convert to km first, compute,
-!>  then convert back.  bof.
+!>  then convert back.
 
 subroutine gph2gmh(h, lat)
 real(r8), intent(inout) :: h(:,:)    ! geopotential altitude in m
@@ -583,7 +567,7 @@ real(r8), intent(in)    :: lat       ! latitude in degrees.
 
 real(r8), parameter ::  be = 6356.7516_r8        ! min earth radius, km
 real(r8), parameter ::  ae = 6378.1363_r8        ! max earth radius, km
-real(r8), parameter ::  G = 0.00980665_r8 ! WMO reference g value, km/s**2, at 45.542N(S)
+real(r8), parameter ::  G = 0.00980665_r8        ! WMO reference g value, km/s**2, at 45.542N(S)
 
 real(r8) :: g0
 real(r8) :: r0
@@ -687,6 +671,232 @@ generic_height_to_pressure = std_atm_pres_col(lev1) * (1.0_r8-fract) + &
 
 end function generic_height_to_pressure
 
+!-----------------------------------------------------------------------
+!> interpolate in the vertical between 2 arrays of items.
+!>
+!> vert_fracts: 0 is 100% of the first level and 
+!>              1 is 100% of the second level
+
+subroutine vert_interp(nitems, levs1, levs2, vert_fracts, out_vals)
+integer,  intent(in)  :: nitems
+real(r8), intent(in)  :: levs1(nitems)
+real(r8), intent(in)  :: levs2(nitems)
+real(r8), intent(in)  :: vert_fracts(nitems)
+real(r8), intent(out) :: out_vals(nitems)
+
+out_vals(:) = (levs1(:) * (1.0_r8-vert_fracts(:))) + &
+              (levs2(:) *         vert_fracts(:))
+
+end subroutine vert_interp
+
+
+!-----------------------------------------------------------------------
+!> writes CAM's model date and time of day into file.  CAM uses
+!> integer date values and integer time of day measured in seconds
+!>
+!> @param ncid         name of the file
+!> @param model_time   the current time of the model state
+!>
+
+subroutine write_model_time(ncid, model_time)
+integer,         intent(in) :: ncid
+type(time_type), intent(in) :: model_time
+
+integer :: iyear, imonth, iday, ihour, iminute, isecond
+integer :: cam_date(1), cam_tod(1)
+
+character(len=*), parameter :: routine = 'write_model_time'
+
+!SENote: this used to have a test for initialized, but it's not useful to get
+! here without already being initialized
+!if ( .not. module_initialized ) call static_init_model
+
+call get_date(model_time, iyear, imonth, iday, ihour, iminute, isecond)
+
+cam_date = iyear*10000 + imonth*100 + iday
+cam_tod  = ihour*3600  + iminute*60 + isecond
+
+! if the file doesn't already have a "date" variable make one
+if (.not. nc_variable_exists(ncid, "date")) then
+   call nc_begin_define_mode(ncid, routine)
+   call nc_define_integer_variable(ncid, 'date', (/ 'time' /), routine)
+   call nc_end_define_mode(ncid, routine)
+   call nc_put_variable(ncid, 'date', cam_date, routine)
+endif
+
+! if the file doesn't already have a "datesec" variable make one
+if (.not. nc_variable_exists(ncid, "datesec")) then
+   call nc_begin_define_mode(ncid, routine)
+   call nc_define_integer_variable(ncid, 'datesec', (/ 'time' /), routine)
+   call nc_end_define_mode(ncid, routine)
+   call nc_put_variable(ncid, 'datesec', cam_tod,  routine)
+endif
+
+end subroutine write_model_time
+
+!--------------------------------------------------------------------
+!>
+!> Read the time from the input file
+!>
+!> @param filename name of file that contains the time
+!>
+
+function read_model_time(filename)
+
+character(len=*), intent(in) :: filename
+type(time_type)              :: read_model_time
+
+integer :: ncid
+integer :: cam_date, cam_tod
+integer :: iyear, imonth, iday, ihour, imin, isec, rem
+
+character(len=*), parameter :: routine = 'read_model_time'
+
+!SENote: Doesn't actually need model to be initialized 
+!if ( .not. module_initialized ) call static_init_model
+
+if ( .not. file_exist(filename) ) then
+   write(string1,*) trim(filename), ' does not exist.'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+endif
+
+ncid = nc_open_file_readonly(filename, routine)
+
+! CAM initial files have two variables of length 
+! 'time' (the unlimited dimension): date, datesec
+
+call nc_get_variable(ncid, 'date',    cam_date, routine)
+call nc_get_variable(ncid, 'datesec', cam_tod,  routine)
+
+! 'date' is YYYYMMDD 
+! 'cam_tod' is seconds of current day
+iyear  = cam_date / 10000
+rem    = cam_date - iyear*10000
+imonth = rem / 100
+iday   = rem - imonth*100
+
+ihour  = cam_tod / 3600
+rem    = cam_tod - ihour*3600
+imin   = rem / 60
+isec   = rem - imin*60
+
+! some cam files are from before the start of the gregorian calendar.
+! since these are 'arbitrary' years, just change the offset.
+if (iyear < 1601) then
+   write(string1,*)' '
+   write(string2,*)'WARNING - ',trim(filename),' changing year from ', &
+                   iyear,'to',iyear+1601
+
+   call error_handler(E_MSG, routine, string1, source, revision, &
+                      revdate, text2=string2,text3='to make it a valid Gregorian date.')
+
+   write(string1,*)' '
+   call error_handler(E_MSG, routine, string1, source, revision)
+   iyear = iyear + 1601
+endif
+
+read_model_time = set_date(iyear,imonth,iday,ihour,imin,isec)
+
+call nc_close_file(ncid, routine)
+
+end function read_model_time
+
+!--------------------------------------------------------------------
+!> if the namelist is set to not use this custom routine, the default
+!> dart routine will add 'pert_amp' of noise to every field in the state
+!> to generate an ensemble from a single member.  if it is set to true
+!> this routine will be called.  the pert_amp will be ignored, and the
+!> given list of quantities will be perturbed by the given amplitude
+!> (which can be different for each field) to generate an ensemble.
+
+subroutine common_pert_model_copies(state_ens_handle, ens_size, MAX_PERT, &
+   custom_routine_to_generate_ensemble, fields_to_perturb, perturbation_amplitude, &
+   interf_provided)
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: ens_size
+integer,             intent(in)    :: MAX_PERT
+logical,             intent(in)    :: custom_routine_to_generate_ensemble
+character(len=32),   intent(in)    :: fields_to_perturb(MAX_PERT)
+real(r8),            intent(in)    :: perturbation_amplitude(MAX_PERT)
+logical,             intent(out)   :: interf_provided
+
+type(random_seq_type) :: seq
+
+integer :: iloc, jloc, vloc, myqty
+integer :: max_qtys, j
+
+integer(i8) :: i, state_items
+integer(i8), allocatable :: my_vars(:)
+
+logical,  allocatable :: do_these_qtys(:)
+real(r8), allocatable :: perturb_by(:)
+
+character(len=*), parameter :: routine = 'common_pert_model_copies:'
+
+! set by namelist to select using the default routine in filter
+! (adds the same noise to all parts of the state vector)
+! or the code here that lets you specify which fields get perturbed.
+if (custom_routine_to_generate_ensemble) then
+   interf_provided = .true.
+else
+   interf_provided = .false.
+   return
+endif
+
+! make sure each task is using a different random sequence
+call init_random_seq(seq, my_task_id())
+
+max_qtys = get_num_quantities()
+allocate(do_these_qtys(0:max_qtys), perturb_by(0:max_qtys))
+
+do_these_qtys(:) = .false.
+perturb_by(:)    = 0.0_r8
+
+! this loop is over the number of field names/perturb values
+! in the namelist.  it quits when it finds a blank field name.
+do i=1, MAX_PERT
+   if (fields_to_perturb(i) == '') exit
+
+   myqty = get_index_for_quantity(fields_to_perturb(i))
+   if (myqty < 0) then
+      string1 = 'unrecognized quantity name in "fields_to_perturb" list: ' // &
+                trim(fields_to_perturb(i))
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   endif
+
+   do_these_qtys(myqty) = .true.
+   perturb_by(myqty)    = perturbation_amplitude(i)
+enddo
+
+! get the global index numbers of the part of the state that 
+! we have in this task.  here is an example of how to work with
+! just the part of the state that is on the current task.
+state_items = get_my_num_vars(state_ens_handle)
+allocate(my_vars(state_items))
+call get_my_vars(state_ens_handle, my_vars)
+
+! this loop is over all the subset of the state items 
+! that are on this MPI task.
+do i=1, state_items
+
+   ! for each global index number in the state vector find
+   ! what quantity it is. (iloc,jloc,vloc are unused here)
+   call get_model_variable_indices(my_vars(i), iloc, jloc, vloc, kind_index=myqty)
+
+   ! if myqty is in the namelist, perturb it.  otherwise cycle
+   if (.not. do_these_qtys(myqty)) cycle
+
+   ! this loop is over the number of ensembles
+   do j=1, ens_size
+      state_ens_handle%copies(j, i) = random_gaussian(seq, state_ens_handle%copies(j, i), perturb_by(myqty))
+   enddo
+
+enddo
+
+deallocate(my_vars)
+deallocate(do_these_qtys, perturb_by)
+
+end subroutine common_pert_model_copies
 
 
 !--------------------------------------------------------------------
@@ -809,7 +1019,8 @@ real(r8) :: am(n_levels)
 
 ! Set midpoint pressures.  
 !SENote: There is an inconsistency between hyam and the mean of surrounding hyai in the
-! caminput.nc files. I suspect that a few of the hyam's are bad. For now, need to compare
+! caminput.nc files. Suspect that a few of the hyam's are bad, but it could also be
+! they hyai's or some combination. For now, need to compare
 ! to results for the dry mass which use the hyai, so switch to that here.
 ! Have switched back to try to maintain bitwise consistency with original versions
 ! but this issue needs to be resolved with the CAM developers.

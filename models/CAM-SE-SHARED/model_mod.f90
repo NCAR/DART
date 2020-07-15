@@ -88,21 +88,16 @@ use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
                                    init_time => fail_init_time,    &
                                    init_conditions => fail_init_conditions
 
-use    cam_common_code_mod, only : scale_height, &
-                                   free_std_atm_tables, &
-                                   is_surface_field, init_globals, &
-                                   ref_nlevels, ref_model_top_pressure, cam_grid, grid_data, &
-                                   are_damping, ramp_end, discarding_high_obs, &
-                                   vertical_localization_type, &
-                                   above_ramp_start, &
-                                   pressure_to_level, cuse_log_vertical_scale, &
-                                   cno_normalization_of_scale_heights, init_sign_of_vert_units, &
-                                   init_damping_ramp_info, init_discard_high_obs, &
-                                   build_cam_pressure_columns, height_to_level, check_good_levels, &
-                                   gph2gmh, &
-                                   build_heights, set_vert_localization, ok_to_interpolate, obs_too_high, &
-                                   cdebug_level, get_cam_grid, free_cam_grid
-
+use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pressure_columns, build_heights, &
+                                   cam_grid, cdebug_level, check_good_levels, cno_normalization_of_scale_heights, &
+                                   common_pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
+                                   free_cam_grid, free_std_atm_tables, generic_height_to_pressure, get_cam_grid, &
+                                   gph2gmh, grid_data, height_to_level, init_damping_ramp_info, &
+                                   init_discard_high_obs, init_globals, init_sign_of_vert_units, &
+                                   is_surface_field, obs_too_high, ok_to_interpolate, pressure_to_level, ramp_end, &
+                                   read_model_time, ref_model_top_pressure, ref_nlevels, scale_height, &
+                                   set_vert_localization, vert_interp, vertical_localization_type, write_model_time
+          
 use typeSizes
 
 implicit none
@@ -222,9 +217,8 @@ logical, save      :: module_initialized = .false.
 integer :: domain_id
 
 ! Surface potential; used for calculation of geometric heights.
-! SENote: phis will only have one dimension meaningful dimension. Could it be put in state structure?
 ! SENote: right now every process has their own complete copy of this
-real(r8), allocatable :: phis(:, :)
+real(r8), allocatable :: phis(:)
 
 logical :: l_refined = .false.       ! Flag to tell whether grid is a refined mesh or not.
 
@@ -284,8 +278,6 @@ integer :: no_third_dimension = -99
 ! set to .true. to get more details about the state vector and the
 ! CAM fields and sizes in the init code.
 logical :: print_details = .true.
-
-
 
 contains
 
@@ -786,114 +778,6 @@ call nc_synchronize_file(ncid, routine)
 
 end subroutine nc_write_model_atts
 
-!-----------------------------------------------------------------------
-!> writes CAM's model date and time of day into file.  CAM uses
-!> integer date values and integer time of day measured in seconds
-!>
-!> @param ncid         name of the file
-!> @param model_time   the current time of the model state
-!>
-
-subroutine write_model_time(ncid, model_time)
-integer,         intent(in) :: ncid
-type(time_type), intent(in) :: model_time
-
-integer :: iyear, imonth, iday, ihour, iminute, isecond
-integer :: cam_date(1), cam_tod(1)
-
-character(len=*), parameter :: routine = 'write_model_time'
-
-if ( .not. module_initialized ) call static_init_model
-
-call get_date(model_time, iyear, imonth, iday, ihour, iminute, isecond)
-
-cam_date = iyear*10000 + imonth*100 + iday
-cam_tod  = ihour*3600  + iminute*60 + isecond
-
-! if the file doesn't already have a "date" variable make one
-if (.not. nc_variable_exists(ncid, "date")) then
-   call nc_begin_define_mode(ncid, routine)
-   call nc_define_integer_variable(ncid, 'date', (/ 'time' /), routine)
-   call nc_end_define_mode(ncid, routine)
-   call nc_put_variable(ncid, 'date', cam_date, routine)
-endif
-
-! if the file doesn't already have a "datesec" variable make one
-if (.not. nc_variable_exists(ncid, "datesec")) then
-   call nc_begin_define_mode(ncid, routine)
-   call nc_define_integer_variable(ncid, 'datesec', (/ 'time' /), routine)
-   call nc_end_define_mode(ncid, routine)
-   call nc_put_variable(ncid, 'datesec', cam_tod,  routine)
-endif
-
-end subroutine write_model_time
-
-!--------------------------------------------------------------------
-!>
-!> Read the time from the input file
-!>
-!> @param filename name of file that contains the time
-!>
-
-function read_model_time(filename)
-
-character(len=*), intent(in) :: filename
-type(time_type)              :: read_model_time
-
-integer :: ncid
-integer :: cam_date, cam_tod
-integer :: iyear, imonth, iday, ihour, imin, isec, rem
-
-character(len=*), parameter :: routine = 'read_model_time'
-
-if ( .not. module_initialized ) call static_init_model
-
-if ( .not. file_exist(filename) ) then
-   write(string1,*) trim(filename), ' does not exist.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
-endif
-
-ncid = nc_open_file_readonly(filename, routine)
-
-! CAM initial files have two variables of length 
-! 'time' (the unlimited dimension): date, datesec
-
-call nc_get_variable(ncid, 'date',    cam_date, routine)
-call nc_get_variable(ncid, 'datesec', cam_tod,  routine)
-
-! 'date' is YYYYMMDD 
-! 'cam_tod' is seconds of current day
-iyear  = cam_date / 10000
-rem    = cam_date - iyear*10000
-imonth = rem / 100
-iday   = rem - imonth*100
-
-ihour  = cam_tod / 3600
-rem    = cam_tod - ihour*3600
-imin   = rem / 60
-isec   = rem - imin*60
-
-! some cam files are from before the start of the gregorian calendar.
-! since these are 'arbitrary' years, just change the offset.
-if (iyear < 1601) then
-   write(string1,*)' '
-   write(string2,*)'WARNING - ',trim(filename),' changing year from ', &
-                   iyear,'to',iyear+1601
-
-   call error_handler(E_MSG, routine, string1, source, revision, &
-                      revdate, text2=string2,text3='to make it a valid Gregorian date.')
-
-   write(string1,*)' '
-   call error_handler(E_MSG, routine, string1, source, revision)
-   iyear = iyear + 1601
-endif
-
-read_model_time = set_date(iyear,imonth,iday,ihour,imin,isec)
-
-call nc_close_file(ncid, routine)
-
-end function read_model_time
-
 
 !-----------------------------------------------------------------------
 !>
@@ -929,81 +813,9 @@ integer,             intent(in)    :: ens_size
 real(r8),            intent(in)    :: pert_amp   ! ignored in this version
 logical,             intent(out)   :: interf_provided
 
-type(random_seq_type) :: seq
-
-integer :: iloc, jloc, vloc, myqty
-integer :: max_qtys, j
-
-integer(i8) :: i, state_items
-integer(i8), allocatable :: my_vars(:)
-
-logical,  allocatable :: do_these_qtys(:)
-real(r8), allocatable :: perturb_by(:)
-
-character(len=*), parameter :: routine = 'pert_model_copies:'
-
-! set by namelist to select using the default routine in filter
-! (adds the same noise to all parts of the state vector)
-! or the code here that lets you specify which fields get perturbed.
-if (custom_routine_to_generate_ensemble) then
-   interf_provided = .true.
-else
-   interf_provided = .false.
-   return
-endif
-
-! make sure each task is using a different random sequence
-call init_random_seq(seq, my_task_id())
-
-max_qtys = get_num_quantities()
-allocate(do_these_qtys(0:max_qtys), perturb_by(0:max_qtys))
-
-do_these_qtys(:) = .false.
-perturb_by(:)    = 0.0_r8
-
-! this loop is over the number of field names/perturb values
-! in the namelist.  it quits when it finds a blank field name.
-do i=1, MAX_PERT
-   if (fields_to_perturb(i) == '') exit
- 
-   myqty = get_index_for_quantity(fields_to_perturb(i))
-   if (myqty < 0) then
-      string1 = 'unrecognized quantity name in "fields_to_perturb" list: ' // &
-                trim(fields_to_perturb(i))
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
-   endif
-
-   do_these_qtys(myqty) = .true.
-   perturb_by(myqty)    = perturbation_amplitude(i)
-enddo
-
-! get the global index numbers of the part of the state that 
-! we have in this task.  here is an example of how to work with
-! just the part of the state that is on the current task.
-state_items = get_my_num_vars(state_ens_handle)
-allocate(my_vars(state_items))
-call get_my_vars(state_ens_handle, my_vars)
-
-! this loop is over all the subset of the state items 
-! that are on this MPI task.
-do i=1, state_items
-
-   ! for each global index number in the state vector find
-   ! what quantity it is. (iloc,jloc,vloc are unused here)
-   call get_model_variable_indices(my_vars(i), iloc, jloc, vloc, kind_index=myqty)
-
-   ! if myqty is in the namelist, perturb it.  otherwise cycle
-   if (.not. do_these_qtys(myqty)) cycle
-  
-   ! this loop is over the number of ensembles
-   do j=1, ens_size
-      state_ens_handle%copies(j, i) = random_gaussian(seq, state_ens_handle%copies(j, i), perturb_by(myqty))
-   enddo
-
-enddo
-
-deallocate(my_vars)
-deallocate(do_these_qtys, perturb_by)
+call common_pert_model_copies(state_ens_handle, ens_size, MAX_PERT, &
+   custom_routine_to_generate_ensemble, fields_to_perturb, perturbation_amplitude, &
+   interf_provided)
 
 end subroutine pert_model_copies
 
@@ -1570,12 +1382,6 @@ call coord_ind_cs(location_copy, obs_qty, cell_corners, l_weight, m_weight)
 call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
                    lon_lat_vert, which_vert, precise, quad_vals, istatus)
 
-!SENote: This old code block is not consistent with how the status reports are being done
-!if(istatus(1) /= 0) then
-   !istatus(:) = 3  ! cannot locate enclosing horizontal quad
-   !return
-!endif
-
 !SENote: For now return a 12 for all istatus members if there is any failure from get_se_quad_vals
 if (any(istatus /= 0)) then
    istatus = 12
@@ -1633,7 +1439,6 @@ my_status(:) = 99
 ! need to consider the case for 2d vs 2d variables
 numdims = get_dims_from_qty(obs_qty, varid)
 
-!SENote: The dimensions are one less than for the FV. Look for ways to share code
 ! Now here potentially we have different results for different
 ! ensemble members.  the things that can vary are dimensioned by ens_size.
 
@@ -1807,7 +1612,7 @@ end subroutine get_se_four_nonstate_values
 
 
 !-----------------------------------------------------------------------
-!> figure out whether this is a 2d or 3d field based on the quantity.
+!> figure out whether this is a 1d or 2d field based on the quantity.
 !> if this field is in the state vector, use the state routines.
 !> if it's not, there are cases for known other quantities we can
 !> interpolate and return.  add any new non-state fields here.
@@ -1824,7 +1629,7 @@ if (var_id > 0) then
 else
    select case (obs_quantity)
       case (QTY_SURFACE_ELEVATION)
-         ! In SE this is a 1 dimensional field, but this is okay
+         ! In SE this is a 1 dimensional field
          get_dims_from_qty = 1
       case (QTY_PRESSURE, QTY_GEOMETRIC_HEIGHT)
          ! In SE these are 2d fields
@@ -1859,7 +1664,7 @@ real(r8) :: vals1(ens_size), vals2(ens_size)
 select case (obs_quantity)
    case (QTY_SURFACE_ELEVATION)
       ! Just return phis for this column
-      vals = phis(column, 1)
+      vals = phis(column)
 
      !>@todo FIXME:
      ! should this be using gravity at the given latitude? 
@@ -1872,24 +1677,6 @@ select case (obs_quantity)
 end select
 
 end subroutine get_se_quad_values
-
-!-----------------------------------------------------------------------
-!> interpolate in the vertical between 2 arrays of items.
-!>
-!> vert_fracts: 0 is 100% of the first level and 
-!>              1 is 100% of the second level
-
-subroutine vert_interp(nitems, levs1, levs2, vert_fracts, out_vals)
-integer,  intent(in)  :: nitems
-real(r8), intent(in)  :: levs1(nitems)
-real(r8), intent(in)  :: levs2(nitems)
-real(r8), intent(in)  :: vert_fracts(nitems)
-real(r8), intent(out) :: out_vals(nitems)
-
-out_vals(:) = (levs1(:) * (1.0_r8-vert_fracts(:))) + &
-              (levs2(:) *         vert_fracts(:))
-
-end subroutine vert_interp
 
 !-----------------------------------------------------------------------
 !> given a column index number, a quantity and a vertical value and type,
@@ -2086,9 +1873,6 @@ integer  :: k, n, istatus
 !stop
 
 ! For now, will fail all ensemble members and levels if any level/member fails
-
-!SENOte
-write(*, *) 'entering build_dry_mass_pressure_columns;'
 
 ! Need the water tracer specific mixing ratios for ever level in the column to compute their mass sum
 do k = 1, nlevels
@@ -2400,8 +2184,7 @@ ncid = nc_open_file_readonly(phis_filename, routine)
 
 call nc_get_variable_size(ncid, 'PHIS', nsize(:), routine)
 
-!SENote: phis array is really only 1D in the file, but keep a second dimension of 1 for shared code
-allocate( phis(nsize(1), 1) )
+allocate( phis(nsize(1)))
 
 call nc_get_variable(ncid, 'PHIS', phis, routine)
 
@@ -3365,7 +3148,8 @@ allocate(close_ind(ncol), dist(ncol))
 !   and gc%special_maxdist.
 !   Model_mod is not using either of those.
 !SENote IMPORTANT: This only works with approximate_distance = .false. Somehow this must be overridden from
-! Namelist or documented.
+! Namelist or documented. Note that there is an error trap for failure that recommends changing to 
+! approximate_distance false below.
 call get_close(cs_gc, obs_loc, obs_kind, cs_locs, cs_kinds, &
                        num_close, close_ind, dist)
 
