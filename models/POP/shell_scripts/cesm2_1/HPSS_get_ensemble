@@ -12,7 +12,8 @@
 # Purpose
 # ---------------------
 #
-# This script gets 80 POP restart files from HPSS.
+# This script gets POP restart files from HPSS and can be configured with 
+# a start year, end year and a span.
 #
 # ==============================================================================
 
@@ -38,7 +39,7 @@ cd ${save_path}
 while ($iyear <= $end_year)
     
     # Zero pad the year string so that there are 4 digits
-    setenv zero_filled_year = printf %04d $iyear  
+    setenv zero_filled_year = `printf %04d $iyear`
  
     setenv  pop_filename ${case_name}.pop.r.${zero_filled_year}-01-01-00000.nc
     setenv  ovf_filename ${case_name}.pop.ro.${zero_filled_year}-01-01-00000
