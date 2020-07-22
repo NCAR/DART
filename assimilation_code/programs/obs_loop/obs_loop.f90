@@ -193,20 +193,20 @@ if ( get_first_obs(seq_in, obs_in) )  then
 
 
       ! ----------- MODIFY HERE ----------------
-      !   modify obs_out to match what you need
+      ! modify obs_out to match what you need
 
-      ! if you need something in the obs_def type, here's how you do that
+      ! If you need something in the obs_def type, here's how you do that.
+      ! This just queries the location and then makes a call to unpackage
+      ! the location into an array.
+
       ! call get_obs_def(obs_out, this_obs_def)
-
-      ! If you just want to query some stuff about the observation
-
-      call get_obs_def(obs_out, this_obs_def)
-      obs_loc       = get_obs_def_location(this_obs_def)
-      obs_loc_array = get_location(obs_loc)
+      ! obs_loc       = get_obs_def_location(this_obs_def)
+      ! obs_loc_array = get_location(obs_loc)
  
-      ! change something
-      ! and you have to set it back if you change it
-      !call set_obs_def(obs_out, this_obs_def)
+      ! If you change something in the observation definition 
+      ! you have to update the actual observation.
+
+      ! call set_obs_def(obs_out, this_obs_def)
 
       ! if you do NOT want to insert this observation in the output
       ! file, set a condition that skips the next block.  you *must*
