@@ -1,5 +1,6 @@
 <dataSource>
-    Raeder et al. 80 member CAM/DART reanalysis
+    NCAR RDA ds345.0      
+    originally /glade/p/cisl/dares/johnsonb/CAM_DATM/Reanalysis
 </dataSource>
 <domainInfo>
     <variableNames>
@@ -10,39 +11,35 @@
         doma_mask     mask
     </variableNames>
     <filePath>
-        /glade/p/cisl/dares/thoar/CAM_DATM/4xdaily
+        /glade/collections/rda/data/ds345.0/cpl
     </filePath>
     <fileNames>
-        CAM_DATM.cplNINST.ha2x1dx6h.1998.nc
-        </fileNames>
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2011.nc
+    </fileNames>
 </domainInfo>
 <fieldInfo>
     <variableNames>
-        a2x6h_Sa_u           u
-        a2x6h_Sa_v           v
+        a2x1h_Sa_u           u
+        a2x1h_Sa_v           v
     </variableNames>
     <filePath>
-        /glade/p/cisl/dares/thoar/CAM_DATM/4xdaily
+        /glade/collections/rda/data/ds345.0/cpl
     </filePath>
     <tInterpAlgo>
         linear
     </tInterpAlgo>
     <fileNames>
-        CAM_DATM.cplNINST.ha2x1dx6h.1998.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.1999.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2000.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2001.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2002.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2003.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2004.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2005.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2006.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2007.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2008.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2009.nc
-        CAM_DATM.cplNINST.ha2x1dx6h.2010.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2011.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2012.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2013.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2014.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2015.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2016.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2017.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2018.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2019.nc
     </fileNames>
     <offset>
-        -10800
+        -1800
     </offset>
 </fieldInfo>
