@@ -83,9 +83,9 @@
 # and decreases the errors associated with inconsistent script settings.
 # ==============================================================================
 
-echo ''
-echo 'Source DART_params.csh.'
-echo ''
+echo ""
+echo "Source DART_params.csh."
+echo ""
 
 source ./DART_params.csh || exit 1
 
@@ -103,11 +103,11 @@ source ./DART_params.csh || exit 1
 
 setenv extra_string         ''
 setenv num_instances        80
-setenv CASE                 ${compset}.${resolution}_e${num_instances}${extra_string}
+setenv CASE                 ${case_string}.${resolution}_e${num_instances}${extra_string}
 
-echo ''
-echo 'Case name is set to ${CASE}'
-echo ''
+echo ""
+echo "Case name is set to ${CASE}"
+echo ""
 
 # ==============================================================================
 # Directories:
@@ -167,18 +167,17 @@ ${REMOVE} ${RUNDIR}
 set use_tasks_per_node = 36
 set nthreads = 1
 
-echo ''
-echo 'Invoking create_newcase.'
-echo ''
-echo '${cesmroot}/cime/scripts/create_newcase'
-echo '--case ${CASEROOT}'
-echo '--mach ${mach}'
-echo '--res ${resolution}'
-echo '--compset ${compset}'
-echo '--run-unsupported'
-echo '--pecount ${use_tasks_per_node}x${nthreads}'
-echo '--ninst ${num_instances}'
-echo '--multi-driver'
+echo ""
+echo "Invoking create_newcase."
+echo ""
+echo "${cesmroot}/cime/scripts/create_newcase"
+echo "--case ${CASEROOT}"
+echo "--mach ${mach}"
+echo "--res ${resolution}"
+echo "--compset ${compset}"
+echo "--run-unsupported"
+echo "--ninst ${num_instances}"
+echo "--multi-driver"
 
 ${cesmroot}/cime/scripts/create_newcase \
 --case ${CASEROOT} \
@@ -186,7 +185,6 @@ ${cesmroot}/cime/scripts/create_newcase \
 --res ${resolution} \
 --compset ${compset} \
 --run-unsupported \
---pecount ${use_tasks_per_node}x${nthreads} \
 --ninst ${num_instances} \
 --multi-driver
 
@@ -201,7 +199,6 @@ ${COPY} $ThisFileName ${CASEROOT}/${ThisFileName}.original
 ${COPY} DART_params.csh ${CASEROOT}
 
 # ==============================================================================
-# Record the DARTROOT directory and copy the DART setup script to CASEROOT.
 # CESM_DART_config can be run at some later date if desired, but it presumes
 # to be run from a CASEROOT directory. If CESM_DART_config does not exist locally,
 # then it better exist in the expected part of the DARTROOT tree.
@@ -211,27 +208,30 @@ if ( ! -e CESM_DART_config ) then
    ${COPY} ${DARTROOT}/models/POP/shell_scripts/${cesmtagmajor}/CESM_DART_config .
 endif
 
-if (   -e CESM_DART_config ) then
-   sed -e "s#BOGUS_DART_ROOT_STRING#$DARTROOT#" < CESM_DART_config >! temp.$$
-   ${MOVE} temp.$$ ${CASEROOT}/CESM_DART_config
-   chmod 755       ${CASEROOT}/CESM_DART_config
+if (  -e   CESM_DART_config ) then
+   ${COPY} CESM_DART_config ${CASEROOT}
 else
    echo "WARNING: the script to configure for data assimilation is not available."
    echo "         CESM_DART_config should be present locally or in"
    echo "         ${DARTROOT}/models/POP/shell_scripts/${cesmtagmajor}/"
-   echo "         You can stage this script later, but you must manually edit it"
-   echo "         to reflect the location of the DART code tree."
+   echo "         You can stage this script later if you must."
 endif
 
 # ==============================================================================
 # Configuring the case.
 # ==============================================================================
 
-echo ''
-echo 'Configuring the case.'
-echo ''
+echo ""
+echo "Configuring the case."
+echo ""
 
 cd ${CASEROOT}
+
+foreach FILE ( *xml )
+   if ( ! -e          ${FILE}.original ) then
+      ${COPY} ${FILE} ${FILE}.original
+   endif
+end
 
 # Since ccsm_getenv no longer exists, we set environmental variables here using
 # xmlquery
@@ -242,13 +242,14 @@ setenv COMP_LND           `./xmlquery COMP_LND           --value`
 # Make sure the land and atmosphere are 'data' components.
 
 if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
-   echo " "
+   echo ""
    echo "ERROR: This setup script is not appropriate for active land or atmosphere compsets."
    echo "ERROR: Please use the models/CESM/shell_scripts examples for these cases."
-   echo " "
+   echo ""
    exit -3
 endif
 
+@ number_of_threads = 1
 @ nodes_per_instance = 3
 @ ntasks_active = -1 * $nodes_per_instance
 @ ntasks_data   = -1
@@ -319,12 +320,6 @@ endif
 ./xmlchange DOUT_S_ROOT=${ARCHDIR}
 ./xmlchange DOUT_S_SAVE_INTERIM_RESTART_FILES=TRUE
 
-if ($short_term_archiver == 'off') then
-   ./xmlchange DOUT_S=FALSE
-else
-   ./xmlchange DOUT_S=TRUE
-endif
-
 # level of debug output, 0=minimum, 1=normal, 2=more, 3=too much, valid values: 0,1,2,3 (integer)
 
 ./xmlchange DEBUG=FALSE
@@ -339,9 +334,9 @@ endif
 # mods and put in the SourceMods subdirectory found in the 'CASEROOT' directory.
 # ==============================================================================
 
-echo ''
-echo 'Updating source files.'
-echo ''
+echo ""
+echo "Updating source files."
+echo ""
 
 if (    -d     ~/${cesmtag}/SourceMods ) then
    ${COPY} -r  ~/${cesmtag}/SourceMods/* ${CASEROOT}/SourceMods/
@@ -359,9 +354,9 @@ endif
 # Updating the run script to reflect queue and wallclock
 # ==============================================================================
 
-echo ''
-echo 'Updating the run script to set wallclock and queue.'
-echo ''
+echo ""
+echo "Updating the run script to set wallclock and queue."
+echo ""
 
 ./xmlchange --subgroup case.st_archive --id JOB_WALLCLOCK_TIME --val $timewall
 ./xmlchange --subgroup case.run --id USER_REQUESTED_WALLTIME --val $timewall
@@ -373,10 +368,10 @@ echo ''
 # This creates the EXEROOT and RUNDIR directories.
 # ==============================================================================
 
-echo ''
-echo 'Setting up the case ...'
-echo 'This creates the EXEROOT and RUNDIR directories.'
-echo ''
+echo ""
+echo "Setting up the case ..."
+echo "This creates the EXEROOT and RUNDIR directories."
+echo ""
 
 ./case.setup
 
@@ -389,9 +384,9 @@ endif
 # Modifying namelist templates for each instance.
 # ==============================================================================
 
-echo ''
-echo 'Modifying namelist templates for each instance.'
-echo ''
+echo ""
+echo "Modifying namelist templates for each instance."
+echo ""
 
 @ inst = 1
 while ($inst <= $num_instances)
@@ -455,9 +450,9 @@ end
 # Staging restart files now that the run directory exists
 # ==============================================================================
 
-echo ''
-echo 'Staging restart files now that the run directory exists'
-echo ''
+echo ""
+echo "Staging restart files now that the run directory exists"
+echo ""
 
 set init_time = ${reftimestamp}
 
@@ -479,23 +474,23 @@ set restart_time = $init_time
 
 # get the settings for this case from the CESM environment
 
-cd \${CASEROOT}
+cd ${CASEROOT}
 
-setenv RUNDIR           `./xmlquery RUNDIR           --value`
-setenv CONTINUE_RUN     `./xmlquery CONTINUE_RUN     --value`
+setenv RUNDIR           \`./xmlquery RUNDIR           --value\`
+setenv CONTINUE_RUN     \`./xmlquery CONTINUE_RUN     --value\`
 
 cd \${RUNDIR}
 
-echo 'Copying the required CESM files to the run directory to rerun'
-echo 'a previous step.  CONTINUE_RUN from env_run.xml is' \${CONTINUE_RUN}
+echo "Copying the required CESM files to the run directory to rerun"
+echo "a previous step.  CONTINUE_RUN from env_run.xml is" \${CONTINUE_RUN}
 if ( \${CONTINUE_RUN} == TRUE ) then
-  echo 'so files for some later step than the initial one will be restaged.'
+  echo "so files for some later step than the initial one will be restaged."
   echo "Date to reset files to is: \${restart_time}"
 else
-  echo 'so files for the initial step of this experiment will be restaged.'
+  echo "so files for the initial step of this experiment will be restaged."
   echo "Date to reset files to is: ${init_time}"
 endif
-echo ''
+echo ""
 
 if ( \${CONTINUE_RUN} == TRUE ) then
 
@@ -582,11 +577,11 @@ else     # CONTINUE_RUN == FALSE
    #----------------------------------------------------------------------
 
    # These are not needed, so remove the clutter
-   \rm -f rpointer.atm_????
-   \rm -f rpointer.ice_????
-   \rm -f rpointer.ocn_????.tavg
-   \rm -f rpointer.drv
-   \rm -f rpointer.rof
+   ${REMOVE} rpointer.atm_????
+   ${REMOVE} rpointer.ice_????
+   ${REMOVE} rpointer.ocn_????.tavg
+   ${REMOVE} rpointer.drv
+   ${REMOVE} rpointer.rof
 
    @ inst=1
    while (\$inst <= $num_instances)
@@ -595,7 +590,7 @@ else     # CONTINUE_RUN == FALSE
 
       echo "Staging initial files for instance \$inst of $num_instances"
 
-      #TH: The cice fname must match that in the user_nl_cice file
+      # The cice fname must match that in the user_nl_cice file
       ${LINK} ${stagedir}/${refcase}.cice\${inst_string}.r.${init_time}.nc .
 
       ${LINK} ${stagedir}/${refcase}.pop\${inst_string}.r.${init_time}.nc  .
@@ -603,7 +598,7 @@ else     # CONTINUE_RUN == FALSE
 
       echo "./${refcase}.pop\${inst_string}.ro.${init_time}"   >! rpointer.ocn\${inst_string}.ovf
       echo "./${refcase}.pop\${inst_string}.r.${init_time}.nc" >! rpointer.ocn\${inst_string}.restart
-      echo "RESTART_FMT=nc"                                  >> rpointer.ocn\${inst_string}.restart
+      echo "RESTART_FMT=nc"                                    >> rpointer.ocn\${inst_string}.restart
 
       @ inst ++
    end
@@ -630,15 +625,15 @@ chmod 0755 stage_cesm_files
 #
 # ==============================================================================
 
-echo ''
-echo 'To create custom stream files we:'
-echo '1. Use preview_namelists to obtain the contents of the stream txt files'
-echo '   in CaseDocs, and then place a copy of the modified stream txt file in'
-echo '   ${CASEROOT} with the string user_ prepended, and'
-echo '2. Copy a template stream txt file from this directory:'
-echo '   ${DARTROOT}/models/POP/shell_scripts/${cesmtagmajor}'
-echo '   and modify one for each instance.'
-echo ''
+echo ""
+echo "To create custom stream files we:"
+echo "1. Use preview_namelists to obtain the contents of the stream txt files"
+echo "   in CaseDocs, and then place a copy of the modified stream txt file in"
+echo "   ${CASEROOT} with the string user_ prepended, and"
+echo "2. Copy a template stream txt file from this directory:"
+echo "   ${DARTROOT}/models/POP/shell_scripts/${cesmtagmajor}"
+echo "   and modify one for each instance."
+echo ""
 
 ./preview_namelists || exit -3
 
@@ -670,9 +665,9 @@ end
 # conditions for a default year and modify the instance number.
 # The stream files for POP have no leading zeros in the instance number.
 
-echo ''
-echo 'Replacing each default stream txt file with one that uses CAM DATM'
-echo ''
+echo ""
+echo "Replacing each default stream txt file with one that uses CAM DATM"
+echo ""
 
 foreach FNAME (user*streams*)
    set name_parse = `echo ${FNAME} | sed 's/\_/ /g'`
@@ -703,9 +698,9 @@ end
 # Building the case.
 # ==============================================================================
 
-echo ''
-echo 'Building the case.'
-echo ''
+echo ""
+echo "Building the case."
+echo ""
 
 ${BUILD_WRAPPER} ./case.build
 
@@ -718,49 +713,58 @@ endif
 # Checking the case.
 # ==============================================================================
 
-echo ""
-echo "Checking the case."
-echo ""
-echo "1) cd ${RUNDIR}"
-echo "   and check the compatibility between the namelists/pointer"
-echo "   files and the files that were staged."
-echo ""
-echo "2) cd ${CASEROOT}"
-echo ""
-echo "3) The case is initially configured to do NO ASSIMILATION."
-echo "   When you are ready to add data assimilation, configure and execute"
-echo "   the ${CASEROOT}/CESM_DART_config script."
-echo ""
-echo "4) The very first CESM advance (i.e. CONTINUE_RUN=FALSE)"
-echo "   STOP_N must be longer than *AT LEAST 2 TIMES* the coupling"
-echo "   frequency between the atmosphere and ocean."
-echo "   If coupling once a day, the first advance MUST be at least 48 hours."
-echo "   If coupling 4 times a day, the first advance MUST be at least 12 hours."
-echo "   After that, STOP_N can be as short as a single coupling frequency."
-echo ""
-echo "5) Verify the contents of env_run.xml and submit the CESM job:"
-echo "   ./case.submit -M begin,end"
-echo ""
-echo "6) After the job has run, check to make sure it worked and that"
-echo "   a: POP is creating netCDF restart files,"
-echo "   b: the right restart files exist in the run directory,"
-echo "   c: (if you're running DART) the archive dart/hist directory has the DART output,"
-echo "   d: everything is working correctly ..."
-echo ""
-echo "7) To extend the run in $STOP_N '"$stop_option"' steps,"
-echo "   change the env_run.xml variables:"
-echo ""
-echo "   ./xmlchange CONTINUE_RUN=TRUE"
-echo "   ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
-echo "   ./xmlchange STOP_N=$STOP_N"
-echo ""
-echo "   and"
-echo "   ./case.submit"
-echo ""
-echo "Check the streams listed in the streams text files.  If more or different"
-echo 'dates need to be added, then do this in the $CASEROOT/user_*files*'
-echo "then invoke './preview_namelists' so you can check the information in the"
-echo "${CASEROOT}/CaseDocs or ${RUNDIR} directories."
-echo ""
+cat << EndOfText >! CESM_instructions.txt
+
+-------------------------------------------------------------------------
+
+Checking the case. 
+ 
+1) cd ${RUNDIR} 
+   and check the compatibility between the namelists/pointer 
+   files and the files that were staged. 
+ 
+2) cd ${CASEROOT} 
+ 
+3) The case is initially configured to do NO ASSIMILATION. 
+   When you are ready to add data assimilation, configure and execute 
+   the ${CASEROOT}/CESM_DART_config script. 
+ 
+4) The very first CESM advance (i.e. CONTINUE_RUN=FALSE) 
+   STOP_N must be longer than *AT LEAST 2 TIMES* the coupling 
+   frequency between the atmosphere and ocean. 
+   If coupling once a day, the first advance MUST be at least 48 hours. 
+   If coupling 4 times a day, the first advance MUST be at least 12 hours. 
+   After that, STOP_N can be as short as a single coupling frequency. 
+ 
+5) Verify the contents of env_run.xml and submit the CESM job: 
+   ./case.submit -M begin,end 
+ 
+6) After the job has run, check to make sure it worked and that 
+   a: POP is creating netCDF restart files, 
+   b: the right restart files exist in the run directory, 
+   c: (if you're running DART) the archive dart/hist directory has the DART output, 
+   d: everything is working correctly ... 
+ 
+7) To extend the run in $STOP_N "$stop_option" steps, 
+   change the env_run.xml variables: 
+ 
+   ./xmlchange CONTINUE_RUN=TRUE 
+   ./xmlchange RESUBMIT=<number_of_cycles_to_run> 
+   ./xmlchange STOP_N=$STOP_N 
+ 
+   and submit:
+   
+   ./case.submit -M begin,end 
+ 
+Check the streams listed in the streams text files.  If more or different 
+dates need to be added, change the $CASEROOT/user_*files*
+and invoke './preview_namelists' so you can check the information in the
+${CASEROOT}/CaseDocs or ${RUNDIR} directories. 
+
+-------------------------------------------------------------------------
+
+EndOfText
+
+cat CESM_instructions.txt
 
 exit 0
