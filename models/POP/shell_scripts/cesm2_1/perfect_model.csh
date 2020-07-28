@@ -49,14 +49,13 @@ cd ${RUNDIR}
 set FILE = `head -n 1 rpointer.ocn.restart`
 # :t is a csh modifier that returns the "tail" of the filename
 # essentially stripping away the filepath that prepends the file
-set FILE = $FILE:t
 # :r is a csh modifier that returns the "root" of the filename 
 # essentially stripping away the file suffix
-set FILE = $FILE:r
+set FILE = $FILE:t:r
 # :e is a csh modifier that returns the "extension" of the filename
 # since we stripped away the .nc in the previous command, the current
 # extension is the datetime in the form YYYY-MM-DD-SSSSS
-set OCN_DATE_EXT = `echo $FILE:e`
+set OCN_DATE_EXT = $FILE:e
 # Piping the datetime to this sed command replaces the hyphens with spaces
 set OCN_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 # Piping the indexed substrings to bc strips away the leading zeros
@@ -105,19 +104,31 @@ endif
 echo "`date` -- END COPY BLOCK"
 
 set OCN_RESTART_FILENAME = ${CASE}.pop.r.${OCN_DATE_EXT}.nc
-# BKJ I think setting this is unnecessary
-# set     OCN_NML_FILENAME = pop_in
-
 ${LINK} ./$OCN_RESTART_FILENAME pop.r.nc
-# BKJ I think setting this is unnecessary
-# ${LINK} ../$OCN_NML_FILENAME     pop_in
 
 #=========================================================================
 # Block 4: Advance the model and harvest the synthetic observations.
-# output files are:
-# True_state.nc   ...... the DART state
-# obs_seq.perfect ...... the synthetic observations
-# dart_log.out    ...... run-time output of all DART routines
+# 
+# Please consult the perfect_model_obs_nml in input.nml in order to 
+# interpret this section.
+# 
+# if write_output_state_to_file = .true. then DART outputs a state file.
+# This file is named using the value of output_state_files.
+# The default setting is output_state_files = 'perfect_restart.nc' 
+# 
+# The synthetic observations are also output. This file is named using 
+# the value of obs_seq_out_file_name. 
+# The default setting is obs_seq_out_filename = 'obs_seq.perfect'
+# 
+# Additionally, dart_log.out is created. It contains run-time output
+# of all DART routines.
+#
+# If input.nml:perfect_model_obs_nml:single_file_out = .true. , another
+# output file is created named true_state.nc. It contains the DART state.
+# This is identical to the original POP state but only contains the 
+# variables that are part of the DART model state and some additional
+# metadata to interpret locations, etc. The DART state-space diagnostics
+# reference this file.
 #=========================================================================
 
 echo "`date` -- BEGIN POP PERFECT_MODEL_OBS"
@@ -132,6 +143,7 @@ endif
 
 ${MOVE} obs_seq.perfect  ../pop_obs_seq.${OCN_DATE_EXT}.perfect
 ${MOVE} dart_log.out     ../pop_dart_log.${OCN_DATE_EXT}.out
+${MOVE} true_state.nc    ../pop_true_state.${OCN_DATE_EXT}.nc
 
 echo "`date` -- END   POP PERFECT_MODEL_OBS"
 
@@ -144,4 +156,3 @@ ${REMOVE} dart_log.nml
 echo "`date` -- END   GENERATE POP TRUE STATE"
 
 exit 0
-

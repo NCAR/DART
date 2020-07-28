@@ -261,10 +261,12 @@ ex_end
       endif
 
    endif
-
 else
    echo "Posterior Inflation       not requested for this assimilation."
 endif
+
+${REMOVE} pop_inflation_cookie
+
 
 #=========================================================================
 # Block 5: REQUIRED DART namelist settings
@@ -278,7 +280,7 @@ end
 # WARNING: this is the part where the files just get overwritten
 ${COPY} restarts_in.txt restarts_out.txt
 
-# POP always needs a pop_in and a pop.r.nc to start.
+# Filter needs a pop_in and a pop.r.nc to start.
 # Lots of ways to get the filename
 
 set OCN_RESTART_FILENAME = `head -n 1 rpointer.ocn_0001.restart`
@@ -318,10 +320,6 @@ echo "`date` -- BEGIN FILTER"
 ${LAUNCHCMD} ${EXEROOT}/filter || exit -6
 echo "`date` -- END FILTER"
 
-if ( $?LSB_PJL_TASK_GEOMETRY ) then
-   setenv LSB_PJL_TASK_GEOMETRY "${ORIGINAL_LAYOUT}"
-endif
-
 #=========================================================================
 # Block 7: Tag the output with the valid time of the model state
 #=========================================================================
@@ -355,4 +353,3 @@ ${MOVE} dart_log.out    ${CASE}.pop.dart_log.${OCN_DATE_EXT}.out
 echo "`date` -- END POP_ASSIMILATE"
 
 exit 0
-
