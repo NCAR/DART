@@ -20,6 +20,7 @@
 #               so consider its length and information content.
 # compset       Defines the vertical resolution and physics packages to be used.
 #               Must be a standard CESM compset; see the CESM documentation.
+# case_string   A unique string used to name a given case.
 # resolution    Defines the horizontal resolution and dynamics; see CESM docs.
 # cesmtag       The version of the CESM source code to use when building the code.
 # cesmtagmajor  The major release version of CESM, used to identify the
@@ -32,6 +33,7 @@
 setenv cesmtag        cesm2_1_1
 setenv resolution     f19_g17
 setenv compset        G
+setenv case_string    GNYF
 setenv cesmtagmajor   `echo ${cesmtag} | cut -c1-7`
 
 # ==============================================================================
@@ -78,14 +80,14 @@ setenv cesmroot         /glade/p/cesm/releases/$cesmtag
 
 # ==============================================================================
 # Set the variables needed for the DART configuration.
-# dartroot     Location of the root of _your_ DART installation
+# DARTROOT     Location of the root of _your_ DART installation
 # BASEOBSDIR   Part of the directory name containing the observation sequence 
 #              files to be used in the assimilation. The observations are presumed
 #              to be stored in sub-directories with names built from the year and
 #              month. 'BASEOBSDIR' will be inserted into the appropriate scripts.
 # ==============================================================================
 
-setenv dartroot               /glade/work/${USER}/git/DART
+setenv DARTROOT               /glade/work/${USER}/git/DART
 setenv BASEOBSDIR             /glade/p/cisl/dares/Observations/WOD09
 
 # ==============================================================================
@@ -127,7 +129,7 @@ setenv startdate     ${start_year}-${start_month}-${start_day}
 # VAR is the shell variable name, DIR is the value
 # ==============================================================================
  
-foreach VAR ( cesmroot dartroot stagedir )
+foreach VAR ( cesmroot DARTROOT stagedir )
    set DIR = `eval echo \${$VAR}`
    if ( ! -d $DIR ) then
       echo "ERROR: directory '$DIR' not found"
@@ -192,8 +194,6 @@ setenv timewall     00:15:00
 # If your platform does not have this restriction, set BUILD_WRAPPER to '' 
 # setenv BUILD_WRAPPER ''
 setenv BUILD_WRAPPER "qcmd -q share -l select=1 -A ${ACCOUNT} --"
-setenv nodes_per_instance 2
-setenv number_of_threads 1
 
 # Command to run an MPI executable on your machine
 setenv LAUNCHCMD 'mpiexec_mpt dplace -s 1'

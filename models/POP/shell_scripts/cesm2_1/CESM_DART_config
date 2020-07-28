@@ -45,10 +45,6 @@
 # Each model component has their own number of instances.
 # ==============================================================================
 
-setenv cesmtag              cesm2_1_1
-# Trim the minor version off cesmtag to get the major release
-setenv cesmtagmajor `echo ${cesmtag} | cut -c1-7`
-
 if ( ! -e ./xmlquery ) then
    echo "ERROR: $0 must be run from a CASEROOT directory".
    exit -1
@@ -58,6 +54,8 @@ setenv CASEROOT      `./xmlquery --value CASEROOT`
 setenv EXEROOT       `./xmlquery --value EXEROOT`
 setenv RUNDIR        `./xmlquery --value RUNDIR`
 setenv NINST_OCN     `./xmlquery --value NINST_OCN`
+
+source DART_params.csh
 
 # ==============================================================================
 # Turn on data assimilation in CESM
@@ -268,6 +266,19 @@ else
 endif
 
 # ==============================================================================
+# INFLATION : Initial setup for (default) adaptive state-space prior inflation
+# ==============================================================================
+
+# The initial inflation values may be specified in two ways. One is via the
+# namelist, the other is to run 'fill_inflation_restart' to create netCDF
+# inflation files. Either of these methods should ONLY be run on the first cycle.
+# The presence of the pop_inflation_cookie indicates the first cycle.
+
+if ( ${num_instances} > 1 ) then
+   date >! ${RUNDIR}/pop_inflation_cookie
+endif
+
+# ==============================================================================
 # What to do next
 # ==============================================================================
 
@@ -292,10 +303,16 @@ Check the DART configuration:
 5) If you stage your own inflation files, make sure you read the "INFLATION" section
    in ${CASEROOT}/assimilate.csh. At the very least, copy your inflation files
    in ${RUNDIR} into the appropriate names:
-      input_priorinf_mean.nc
-      input_priorinf_sd.nc
-      input_postinf_mean.nc 
-      input_postinf_sd.nc   
+      ${CASE}.pop.output_priorinf_mean.nc
+      ${CASE}.pop.output_priorinf_sd.nc
+      ${CASE}.pop.output_postinf_mean.nc 
+      ${CASE}.pop.output_postinf_sd.nc   
+   and remove the ${RUNDIR}/pop_inflation_cookie file. If that file remains,
+   your initial inflation values will come from the namelist! The staged files
+   should be 'output' as the logic of assimilate.csh renames the output of the
+   previous assimilation cycle to be reused as the input for next cycle.  
+
+   BEN: the assimilate.csh does not call fill_inflation_restart yet.
    If assimilate.csh does not find inflation files, it will call fill_inflation_restart
    to create some from the inflation values in input.nml.
 
@@ -306,6 +323,13 @@ Check the DART configuration:
 
 8) You can use ${CASEROOT}/stage_cesm_files to stage an ensemble of files
    to restart a run at a date for which you have a restart set.
+
+9) You can run multiple forecast/assimilation cycles in a single job by
+   setting the DATA_ASSIMILATION_CYCLES xml variable. To perform 4 cycles
+   in a single job - specify:
+   ./xmlchange --value DATA_ASSIMILATION_CYCLES=4
+   make sure you give the job enough wallclock to finish all 4 cycles,
+   and be prepared for your RUNDIR to be very full.
 
 -------------------------------------------------------------------------
 
