@@ -50,6 +50,7 @@ if ( ! -e ./xmlquery ) then
    exit -1
 endif
 
+setenv CASE          `./xmlquery --value CASE`
 setenv CASEROOT      `./xmlquery --value CASEROOT`
 setenv EXEROOT       `./xmlquery --value EXEROOT`
 setenv RUNDIR        `./xmlquery --value RUNDIR`
@@ -274,7 +275,7 @@ endif
 # inflation files. Either of these methods should ONLY be run on the first cycle.
 # The presence of the pop_inflation_cookie indicates the first cycle.
 
-if ( ${num_instances} > 1 ) then
+if ( ${NINST_OCN} > 1 ) then
    date >! ${RUNDIR}/pop_inflation_cookie
 endif
 
@@ -312,7 +313,6 @@ Check the DART configuration:
    should be 'output' as the logic of assimilate.csh renames the output of the
    previous assimilation cycle to be reused as the input for next cycle.  
 
-   BEN: the assimilate.csh does not call fill_inflation_restart yet.
    If assimilate.csh does not find inflation files, it will call fill_inflation_restart
    to create some from the inflation values in input.nml.
 
