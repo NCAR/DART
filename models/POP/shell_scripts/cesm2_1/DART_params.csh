@@ -31,7 +31,7 @@
 # ==============================================================================
 
 setenv cesmtag        cesm2_1_1
-setenv resolution     f19_g17
+setenv resolution     f09_g17
 setenv compset        G
 setenv case_string    GNYF
 setenv cesmtagmajor   `echo ${cesmtag} | cut -c1-7`
@@ -88,7 +88,7 @@ setenv cesmroot         /glade/p/cesm/releases/$cesmtag
 # ==============================================================================
 
 setenv DARTROOT               /glade/work/${USER}/git/DART
-setenv BASEOBSDIR             /glade/p/cisl/dares/Observations/WOD09
+setenv BASEOBSDIR             /glade/p/cisl/dares/Observations/WOD13
 
 # ==============================================================================
 # configure settings:
@@ -118,7 +118,7 @@ setenv stagedir /glade/scratch/${USER}/${refcase}/rest/${reftimestamp}
 # It does not have to match the reference (although changing the month/day seems bad).
 # runtime settings:
 
-setenv start_year    1998
+setenv start_year    2014
 setenv start_month   01
 setenv start_day     01
 setenv start_tod     00000
@@ -162,9 +162,9 @@ setenv resubmit     0
 # ==============================================================================
 # Settings for the data atmosphere
 
-setenv stream_year_align 1998
-setenv stream_year_first 1998
-setenv stream_year_last  2010
+setenv stream_year_align 2011
+setenv stream_year_first 2011
+setenv stream_year_last  2015
 
 setenv short_term_archiver off
 
