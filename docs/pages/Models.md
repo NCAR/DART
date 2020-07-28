@@ -570,6 +570,12 @@ satellite-borne accelerometers and electon density obtained from ground-based
 and space-based GNSS signals. TIEGCM2 is not yet supported, and the existing
 interfaces need to be updated to work under the Manhattan release.
 
+<span id="wrf-chem" class="anchor"></span>
+
+### WRF-CHEM
+
+Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
+If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
 
 \[[top](#)\]
 
