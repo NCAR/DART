@@ -5,9 +5,9 @@
    init_time_days             = -1
    init_time_seconds          = -1
 
-   write_output_state_to_file = .false.
+   write_output_state_to_file = .true.
    single_file_out            = .false.
-   output_state_files         = 'perfect_restart'
+   output_state_files         = 'perfect_restart.nc'
    output_interval            = 1
 
    async                      = 0
