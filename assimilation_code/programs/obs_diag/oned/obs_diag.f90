@@ -110,6 +110,10 @@ integer,  allocatable, dimension(:) :: keys
 integer,  allocatable, dimension(:) :: ens_copy_index
 
 logical :: out_of_range, is_there_one, keeper
+
+! Filter has an option to compute the posterior values or not; consequently
+! the observation sequences may not have posterior values at all. This
+! has a profound impact on the logic of 'obs_diag'
 logical :: has_posteriors = .true.
 
 !---------------------------------------------------------------------
