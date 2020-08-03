@@ -71,6 +71,10 @@ set YYYYMM   = `printf %04d%02d     ${OCN_YEAR} ${OCN_MONTH}`
 set OBSFNAME = obs_seq.0Z.${YYYYMMDD}
 set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}/${OBSFNAME}
 
+if ( -e obs_seq.out ) then
+    ${REMOVE} obs_seq.out
+endif
+
 if (  -e   ${OBS_FILE} ) then
    ${LINK} ${OBS_FILE} obs_seq.out
 else
@@ -95,8 +99,36 @@ endif
 
 echo "`date` -- END COPY BLOCK"
 
+
 #=========================================================================
-# Block 4: DART INFLATION
+# Block 4: REQUIRED DART namelist settings
+#=========================================================================
+${REMOVE} restarts_in.txt restarts_out.txt
+
+foreach FILE ( rpointer.ocn_????.restart )
+   head -n 1 ${FILE} >> restarts_in.txt
+end
+
+# WARNING: this is the part where the files just get overwritten
+${COPY} restarts_in.txt restarts_out.txt
+
+# Filter needs a pop_in and a pop.r.nc to start.
+# Lots of ways to get the filename
+
+set OCN_RESTART_FILENAME = `head -n 1 rpointer.ocn_0001.restart`
+
+if ( -e pop.r.nc  ) then
+    $REMOVE pop.r.nc
+endif
+if ( -e pop_in  ) then
+    $REMOVE pop_in
+endif
+
+${LINK} $OCN_RESTART_FILENAME pop.r.nc
+${LINK} pop_in_0001           pop_in
+
+#=========================================================================
+# Block 5: DART INFLATION
 # This stages the files that contain the inflation values.
 # The inflation values change through time and should be archived.
 #
@@ -164,6 +196,16 @@ if ( $PRIOR_INF > 0 ) then
 
       set PRIOR_TF = FALSE
 
+      if (-x ${EXEROOT}/fill_inflation_restart) then
+         ${EXEROOT}/fill_inflation_restart
+      else
+         echo "ERROR: Requested PRIOR inflation restart for the first cycle."
+         echo "       There are no existing inflation files available "
+         echo "       and ${EXEROOT}/fill_inflation_restart is missing."
+         echo "EXITING"
+         exit -3
+      endif
+
 ex input.nml <<ex_end
 g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
 g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
@@ -185,7 +227,7 @@ ex_end
       else
          echo "ERROR: Requested PRIOR inflation but specified no incoming inflation file."
          echo "ERROR: expected something like ${CASE}.pop.output_priorinf_mean.YYYY-MM-DD-SSSSS.nc"
-         exit -4
+         exit 127
       endif
 
       # Checking for a prior inflation sd file to use
@@ -223,6 +265,19 @@ if ( $POSTE_INF > 0 ) then
       # Since the local namelist comes from CASEROOT each time, we're golden.
 
       set POSTE_TF = FALSE
+
+      if (-x ${EXEROOT}/fill_inflation_restart) then
+         ${EXEROOT}/fill_inflation_restart
+         ${MOVE} input_priorinf_mean.nc input_postinf_mean.nc || exit 125
+         ${MOVE} input_priorinf_sd.nc   input_postinf_sd.nc   || exit 126
+
+      else
+         echo "ERROR: Requested POSTERIOR inflation restart for the first cycle."
+         echo "       There are no existing inflation files available "
+         echo "       and ${EXEROOT}/fill_inflation_restart is missing."
+         echo "EXITING"
+         exit 127
+      endif
 
 ex input.nml <<ex_end
 g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
@@ -268,25 +323,6 @@ endif
 ${REMOVE} pop_inflation_cookie
 
 
-#=========================================================================
-# Block 5: REQUIRED DART namelist settings
-#=========================================================================
-${REMOVE} restarts_in.txt restarts_out.txt
-
-foreach FILE ( rpointer.ocn_????.restart )
-   head -n 1 ${FILE} >> restarts_in.txt
-end
-
-# WARNING: this is the part where the files just get overwritten
-${COPY} restarts_in.txt restarts_out.txt
-
-# Filter needs a pop_in and a pop.r.nc to start.
-# Lots of ways to get the filename
-
-set OCN_RESTART_FILENAME = `head -n 1 rpointer.ocn_0001.restart`
-
-${LINK} $OCN_RESTART_FILENAME pop.r.nc
-${LINK} pop_in_0001          pop_in
 
 #=========================================================================
 # Block 6: Actually run the assimilation. 
