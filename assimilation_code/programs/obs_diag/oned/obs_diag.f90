@@ -62,7 +62,7 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'threed_sphere/obs_diag.f90'
+character(len=*), parameter :: source   = 'oned/obs_diag.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
@@ -639,7 +639,8 @@ ObsFileLoop : do ifile=1, num_input_files
 
          if ( create_rank_histogram ) then
             call get_obs_values(observation, copyvals)
-            rank_histogram_bin = Rank_Histogram(copyvals, obs_index, obs_error_variance)
+            rank_histogram_bin = Rank_Histogram(copyvals, obs_index, &
+                 obs_error_variance)
          endif
 
          ! We have Nregions of interest.
@@ -1336,12 +1337,12 @@ integer :: i, ens_count
 character(len=metadatalength) :: metadata
 
 obs_index              = -1
+org_qc_index           = -1
+dart_qc_index          = -1
 prior_mean_index       = -1
 posterior_mean_index   = -1
 prior_spread_index     = -1
 posterior_spread_index = -1
-org_qc_index           = -1
-dart_qc_index          = -1
 
 ens_count = 0
 
@@ -1545,13 +1546,13 @@ if (rank == 0) then ! ob is larger than largest ensemble member.
 endif
 
 
-if ( .true. )  then ! DEBUG block
-!  write(*,*)'observation error variance is ',error_variance
-!  write(*,*)'observation          value is ',obsvalue
+if ( .false. )  then ! DEBUG block
+   write(*,*)'observation error variance is ',error_variance
+   write(*,*)'observation          value is ',obsvalue
    write(*,*)'observation           rank is ',rank
-!  write(*,*)'noisy ensemble values are '
-!  write(*,*)ensemble_values
-!  write(*,*)
+   write(*,*)'noisy ensemble values are '
+   write(*,*)ensemble_values
+   write(*,*)
 endif
 
 end function Rank_Histogram
@@ -1716,14 +1717,9 @@ end function Rank_Histogram
    ! There is some debate about whether we should be considering the
    ! 'outlier' observations (DART QC == 7), so that is namelist controlled.
 
-!  write(*,*)'TJH Bin3D rank ', rank, any(iqc == hist_qcs(1:numqcvals))
-
    if (     (rank > 0) .and. create_rank_histogram ) then
       if ( any(iqc == hist_qcs(1:numqcvals) ) ) then 
-!        write(*,*)'TJH Bin3D ', iepoch,iregion,flavor,rank
          call IPE(prior%hist_bin(iepoch,iregion,flavor,rank), 1)
-      else
-!        write(*,*)'TJH Bin3D skipping IPE hist_bin'
       endif
    endif
 
@@ -2193,8 +2189,6 @@ end function Rank_Histogram
          Nbins   = size(vrbl%hist_bin,4)
          ndata   = sum(vrbl%hist_bin(:,:,ivar,:))
 
-!        write(*,*)'TJH debug ',trim(string1), Nbins, ndata, ivar
-
          if ( ndata > 0 ) then
 
             allocate(ichunk(Nregions,Nbins,Nepochs))
@@ -2205,7 +2199,6 @@ end function Rank_Histogram
             do irank   = 1,Nbins
 
             ichunk(iregion,irank,itime) = vrbl%hist_bin(itime,iregion,ivar,irank)
-!           write(*,*)'TJH WriteTRV ichunk', ichunk(iregion,irank,itime), vrbl%hist_bin(itime,iregion,ivar,irank)
 
             enddo
             enddo
