@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id: update_bc.f90 12937 2018-11-26 23:01:09Z nancy@ucar.edu $
 
 program update_bc
 
@@ -33,19 +35,15 @@ use        model_mod, only : static_init_model, statevector_to_analysis_file, &
                              print_variable_ranges, &  ! , get_num_vars
                              set_lbc_variables, force_u_into_state
 use state_structure_mod, only : get_num_variables, get_domain_size
-
-use netcdf_utilities_mod, only : nc_open_file_readonly, &
-                                 nc_open_file_readwrite, &
-                                 nc_close_file
-
 use netcdf
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'models/mpas_atm/update_bc.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = &
+   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/update_bc.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 12937 $"
+character(len=128), parameter :: revdate  = "$Date: 2018-11-26 16:01:09 -0700 (Mon, 26 Nov 2018) $"
 
 !------------------------------------------------------------------
 ! The namelist variables
@@ -54,18 +52,15 @@ character(len=*), parameter :: revdate  = ''
 character(len=256)  :: update_analysis_file_list = 'filter_in.txt'
 character(len=256)  :: update_boundary_file_list = 'boundary_inout.txt'
 integer             :: debug = 0
-logical             :: lbc_update_from_reconstructed_winds = .true.
-logical             :: lbc_update_winds_from_increments    = .true.
 
 
-namelist /update_bc_nml/ update_analysis_file_list, update_boundary_file_list, debug, &
-                         lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments
+namelist /update_bc_nml/ update_analysis_file_list, update_boundary_file_list, debug
 
 !----------------------------------------------------------------------
 character (len=256)   :: next_infile, next_outfile
 character (len=256)   :: bdy_template_filename
 character (len=256)   :: static_filename
-character (len=512)   :: string1
+character (len=256)   :: string1
 integer               :: iunit, io, x_size, nanlvars, nbdyvars
 integer               :: d1size, d2size
 integer               :: ncAnlID, ncBdyID, istatus
@@ -91,7 +86,6 @@ call check_namelist_read(iunit, io, "update_bc_nml")
 ! get the first member file to use as a template
 bdy_template_filename = get_next_filename(update_boundary_file_list, 1)
 
-! Note that force_u_into_state should be called before static_init_model, which is unusual.
 call force_u_into_state()
 call set_lbc_variables(bdy_template_filename)
 
@@ -123,15 +117,18 @@ fileloop: do        ! until out of files
   !----------------------------------------------------------------------
   ! Reads input lbc (prior) and filter (analysis) files 
   !----------------------------------------------------------------------
+  call nc_check(nf90_open(trim(next_infile), NF90_NOWRITE, ncAnlID), &
+             'update_bc','open '//trim(next_infile))
 
-  ncAnlID = nc_open_file_readonly(next_infile,  'update_bc - open readonly')
-  ncBdyID = nc_open_file_readwrite(next_outfile, 'update_bc - open readwrite')
+  ! Overwrite this mpas file for state vector later
+  call nc_check(nf90_open(trim(next_outfile), NF90_WRITE, ncBdyID), &
+             'update_bc','open '//trim(next_outfile))
 
   !----------------------------------------------------------------------
   ! Read the model time
   !----------------------------------------------------------------------
-  model_time = get_analysis_time(ncBdyID, next_outfile)
-  state_time = get_analysis_time(ncAnlID, next_infile)
+  model_time = get_analysis_time(ncBdyID, trim(next_outfile))
+  state_time = get_analysis_time(ncAnlID, trim(next_infile))
   call print_time(state_time,'DART current time')
   call print_time(model_time,'mpas current time')
 
@@ -145,8 +142,15 @@ fileloop: do        ! until out of files
   !----------------------------------------------------------------------
   ! Read analysis state vector (assuming to be available at the model time)
   !----------------------------------------------------------------------
+  !call read_transpose(state_ens_handle, name_handle, domain, dart_index, limit_mem)
   d1size = get_domain_size(1)
   d2size = get_domain_size(2)
+  if(debug > 0) then
+  print*,'update_bc: domain size in ', trim(next_infile)
+  print*, d1size
+  print*,'update_bc: domain size in ', trim(next_outfile)
+  print*, d2size
+  endif
   call read_variables(ncAnlID, statevector(1:d1size), 1, nanlvars, domain=1)
   call read_variables(ncBdyID, statevector(d1size+1:d1size+d2size), 1, nbdyvars, domain=2)
 
@@ -154,8 +158,7 @@ fileloop: do        ! until out of files
   ! update the current model state vector
   !----------------------------------------------------------------------
   write(*,*) 'Updating boundary variables in ',trim(next_outfile)
-  call statevector_to_boundary_file(statevector, ncBdyID, ncAnlID, &
-       lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments, debug)
+  call statevector_to_boundary_file(statevector, ncBdyID)
 
   !----------------------------------------------------------------------
   ! Log what we think we're doing, and exit.
@@ -166,12 +169,10 @@ fileloop: do        ! until out of files
   call print_date( model_time,'update_bc:model date',logfileunit)
   call print_time( model_time,'update_bc:model time',logfileunit)
 
-  ! Because the files were open with the nc_open_file...() routines,
-  ! it is not necessary to supply the filenames for error msg purposes.
-
-  call nc_close_file(ncAnlID,'update_bc')
-  call nc_close_file(ncBdyID,'update_bc')
-
+  call nc_check(nf90_close(ncAnlID), &
+             'update_mpas_states','close '//trim(next_infile))
+  call nc_check(nf90_close(ncBdyID), &
+             'update_mpas_states','close '//trim(next_outfile))
   filenum = filenum + 1
 
 end do fileloop
@@ -179,3 +180,9 @@ end do fileloop
 call finalize_utilities()
 
 end program update_bc
+
+! <next few lines under version control, do not edit>
+! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/update_bc.f90 $
+! $Id: update_bc.f90 12937 2018-11-26 23:01:09Z nancy@ucar.edu $
+! $Revision: 12937 $
+! $Date: 2018-11-26 16:01:09 -0700 (Mon, 26 Nov 2018) $
