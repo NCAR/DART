@@ -443,12 +443,12 @@ end type mw_metadata_type
 ! (ens_size).
 type atmos_profile_type
    real(8), allocatable :: temperature(:,:)    ! mandatory, level temperature (K)
-   real(8), allocatable :: pressure(:,:)       ! mandatory, level pressure (hPa)
+   real(8), allocatable :: pressure(:,:)       ! mandatory, level pressure (Pa)
    real(8), allocatable :: moisture(:,:)       ! mandatory, level water vapor (kg/kg)
-   real(8), allocatable :: sfc_p(:)            ! mandatory, surface pressure (hPa)
+   real(8), allocatable :: sfc_p(:)            ! mandatory, surface pressure (Pa)
    real(8), allocatable :: s2m_t(:)            ! mandatory, 2 meter temp (K)
    real(8), allocatable :: skin_temp(:)        ! mandatory, surface skin temp (K)
-   real(8), allocatable :: sfc_elev(:)         ! mandatory, surface elevation (km)
+   real(8), allocatable :: sfc_elev(:)         ! mandatory, surface elevation (m)
    real(8), allocatable :: surftype(:)         ! mandatory, surface type (land=0, water=1, seaice = 2) 
    real(8), allocatable :: s2m_q(:)            ! optional, 2 meter wator vapor (kg/kg) (used if add_q2m)
    real(8), allocatable :: s10m_u(:)           ! optional, 10 meter u wind (m/s) (used if add_uv10m)
