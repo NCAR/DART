@@ -100,7 +100,9 @@ use     obs_kind_mod, only : get_index_for_quantity,       &
                              QTY_GRAUPEL_MIXING_RATIO,     &
                              QTY_SPECIFIC_HUMIDITY,        &
                              QTY_GEOPOTENTIAL_HEIGHT,      &
-                             QTY_PRECIPITABLE_WATER
+                             QTY_PRECIPITABLE_WATER,       &
+                             QTY_SKIN_TEMPERATURE,         &  ! for rttov
+                             QTY_SURFACE_TYPE                 ! for rttov
 
 use mpi_utilities_mod, only: my_task_id, broadcast_minmax
 
@@ -171,6 +173,7 @@ public :: get_init_template_filename,   &
           get_analysis_time,            &
           get_grid_dims,                &
           get_xland,                    &
+          get_surftype,                 &
           get_cell_center_coords,       &
           get_bdy_mask,                 &
           print_variable_ranges,        &
@@ -423,7 +426,9 @@ real(r8), allocatable :: latEdge(:) ! edge longitudes (degrees, original radians
 real(r8), allocatable :: lonCell(:) ! cell center longitudes (degrees, original radians in file)
 real(r8), allocatable :: latCell(:) ! cell center latitudes  (degrees, original radians in file)
 real(r8), allocatable :: dcEdge(:)  ! distance between two adjacent cell centers (in meters)
-real(r8), allocatable :: xland(:)   ! LAND MASK (1 FOR LAND, 2 FOR WATER)
+real(r8), allocatable :: xland(:)   ! land-ocean mask (1=land including sea-ice ; 2=ocean)  
+real(r8), allocatable :: seaice(:)  ! sea-ice flag (0=no seaice; =1 otherwise) - for rttov
+real(r8), allocatable :: skintemp(:)! ground or water surface temperature      - for rttov
 real(r8), allocatable :: zGridFace(:,:)   ! geometric height at cell faces   (nVertLevelsP1,nCells)
 real(r8), allocatable :: zGridCenter(:,:) ! geometric height at cell centers (nVertLevels,  nCells)
 real(r8), allocatable :: zGridEdge(:,:)   ! geometric height at edge centers (nVertLevels,  nEdges)
@@ -444,6 +449,8 @@ real(r8), allocatable :: edgeNormalVectors(:,:)
 integer,  allocatable :: bdyMaskCell(:)
 integer,  allocatable :: bdyMaskEdge(:)
 integer,  allocatable :: maxLevelCell(:)
+
+integer,  allocatable :: surftype(:)   !  ! surface type (land=0, water=1, seaice = 2) - for rttov
 
 integer         :: model_size          ! the state vector length
 type(time_type) :: model_timestep      ! smallest time to adv model
@@ -628,6 +635,9 @@ allocate(cellsOnVertex(vertexDegree, nVertices))
 allocate(dcEdge(nEdges))
 allocate(nEdgesOnCell(nCells))
 allocate(xland(nCells))
+allocate(seaice(nCells))              ! for rttov
+allocate(skintemp(nCells))            ! for rttov
+allocate(surftype(nCells))            ! for rttov
 allocate(edgesOnCell(maxEdges, nCells))
 allocate(cellsOnEdge(2, nEdges))
 allocate(verticesOnCell(maxEdges, nCells))
@@ -1205,6 +1215,8 @@ else
          goodkind = .true.
       case (QTY_PRESSURE)   ! surface pressure should be in the state
          goodkind = .true.
+      case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE)   ! Ha: added for rttov
+         goodkind = .true.
       case (QTY_SPECIFIC_HUMIDITY, QTY_2M_SPECIFIC_HUMIDITY)
          goodkind = .true.
       case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT)
@@ -1308,7 +1320,8 @@ else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
      if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
    enddo
 
-else if (obs_kind == QTY_VAPOR_MIXING_RATIO .or. obs_kind == QTY_2M_VAPOR_MIXING_RATIO) then
+else if (obs_kind == QTY_VAPOR_MIXING_RATIO .or. obs_kind == QTY_2M_VAPOR_MIXING_RATIO .or. &
+         obs_kind == QTY_2M_SPECIFIC_HUMIDITY) then
    tvars(1) = get_progvar_index_from_kind(obs_kind)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
@@ -1322,12 +1335,8 @@ else if (obs_kind == QTY_VAPOR_MIXING_RATIO .or. obs_kind == QTY_2M_VAPOR_MIXING
    if (debug > 11 .and. do_output()) &
       print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus(1), expected_obs(1), trim(locstring)
 
-else if (obs_kind == QTY_SPECIFIC_HUMIDITY .or. obs_kind == QTY_2M_SPECIFIC_HUMIDITY) then
-   if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
-      tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
-   else
-      tvars(1) = get_progvar_index_from_kind(QTY_2M_VAPOR_MIXING_RATIO)
-   endif
+else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
+   tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
    if ( all(istatus /= 0 ) ) goto 100
@@ -1344,16 +1353,26 @@ else if (obs_kind == QTY_SPECIFIC_HUMIDITY .or. obs_kind == QTY_2M_SPECIFIC_HUMI
    enddo
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: SH/SH2 ', istatus(1), expected_obs(1), trim(locstring)
+      print *, 'model_interpolate: SH2 ', istatus(1), expected_obs(1), trim(locstring)
 
-else if (obs_kind == QTY_SURFACE_ELEVATION) then
+else if (obs_kind == QTY_SURFACE_ELEVATION .or. &
+         obs_kind == QTY_SKIN_TEMPERATURE  .or. obs_kind == QTY_SURFACE_TYPE ) then
 
-   call compute_elevation_with_barycentric(location, expected_obs(1), istatus(1))
+   if (obs_kind == QTY_SURFACE_ELEVATION) then
+       call compute_surface_data_with_barycentric(zGridFace(1,:), location, expected_obs(1), istatus(1))
+   else if (obs_kind == QTY_SKIN_TEMPERATURE) then
+       call compute_surface_data_with_barycentric(skintemp(:), location, expected_obs(1), istatus(1))
+   else if (obs_kind == QTY_SURFACE_TYPE) then
+       call get_surftype(nCells,surftype)
+       call compute_surface_data_with_barycentric(surftype(:)*1.0_r8, location, expected_obs(1), istatus(1))
+   endif
+
    expected_obs(2:ens_size) = expected_obs(1)
    istatus(2:ens_size) = istatus(1)
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: SURFACE_ELEVATION', istatus(1), expected_obs(1), trim(locstring)
+      print *, 'model_interpolate: ', trim(get_name_for_quantity(obs_kind)), ' ', istatus(1), &
+                                      expected_obs(1), trim(locstring)
 
 else
    ! all other kinds come here.
@@ -1664,6 +1683,9 @@ if (allocated(zGridCenter))    deallocate(zGridCenter)
 if (allocated(dcEdge))         deallocate(dcEdge)
 if (allocated(cellsOnVertex))  deallocate(cellsOnVertex)
 if (allocated(xland))          deallocate(xland)
+if (allocated(seaice))         deallocate(seaice)
+if (allocated(skintemp))       deallocate(skintemp)
+if (allocated(surftype))       deallocate(surftype)
 if (allocated(nEdgesOnCell))   deallocate(nEdgesOnCell)
 if (allocated(edgesOnCell))    deallocate(edgesOnCell)
 if (allocated(cellsOnEdge))    deallocate(cellsOnEdge)
@@ -3052,6 +3074,30 @@ end subroutine get_xland
 
 !------------------------------------------------------------------
 
+subroutine get_surftype(Cells,surface_type)
+
+! public routine for returning surface type (for rttov)
+! As defined in atmos_profile_type in rttov_interface_mod.f90
+! surface type (land=0, water=1, seaice = 2)
+
+integer,  intent(in)  :: Cells
+integer,  allocatable, intent(out) :: surface_type(:)
+
+if ( .not. module_initialized ) call static_init_model()
+
+allocate(surface_type(Cells))
+
+! xland(:)   ! land-ocean mask (1=land including sea-ice ; 2=ocean)  
+! seaice(:)  ! sea-ice flag (0=no seaice; =1 seaice) - for rttov
+
+surface_type = 0                          ! land
+where (seaice == 1.0_r8) surface_type  = 2     ! seaice
+where ( xland == 2.0_r8) surface_type  = 1     ! ocean
+
+end subroutine get_surftype
+
+!------------------------------------------------------------------
+
 subroutine get_cell_center_coords(Cells,Lats,Lons)
 
 ! public routine for returning cell center coordinates
@@ -3226,6 +3272,8 @@ call nc_get_variable(ncid, 'dcEdge',        dcEdge,        routine)
 call nc_get_variable(ncid, 'zgrid',         zGridFace,     routine)
 call nc_get_variable(ncid, 'cellsOnVertex', cellsOnVertex, routine)
 call nc_get_variable(ncid, 'xland',         xland,         routine)
+call nc_get_variable(ncid, 'seaice',        seaice,        routine)  ! Ha: added for rttov
+call nc_get_variable(ncid, 'skintemp',      skintemp,      routine)  ! Ha: added for rttov
 
 dxmax = maxval(dcEdge)  ! max grid resolution in meters
 
@@ -3274,6 +3322,8 @@ if ( debug > 9 .and. do_output() ) then
    write(*,*)'EdgesOnCell       range ',minval(EdgesOnCell),       maxval(EdgesOnCell)
    write(*,*)'cellsOnEdge       range ',minval(cellsOnEdge),       maxval(cellsOnEdge)
    write(*,*)'xland             range ',minval(xland),             maxval(xland)
+   write(*,*)'seaice            range ',minval(seaice),            maxval(seaice)       ! for rttov
+   write(*,*)'skintemp          range ',minval(skintemp),          maxval(skintemp)     ! for rttov
    if(data_on_edges) then
       write(*,*)'latEdge        range ',minval(latEdge),           maxval(latEdge)
       write(*,*)'lonEdge        range ',minval(lonEdge),           maxval(lonEdge)
@@ -5691,9 +5741,10 @@ end subroutine compute_scalar_with_barycentric
 
 !------------------------------------------------------------
 
-subroutine compute_elevation_with_barycentric(loc, dval, ier, this_cellid)
+subroutine compute_surface_data_with_barycentric(var1d, loc, dval, ier, this_cellid)
 
 type(location_type), intent(in)  :: loc
+real(r8),            intent(in)  :: var1d(:)
 real(r8),            intent(out) :: dval
 integer,             intent(out) :: ier
 integer, optional,   intent(in)  :: this_cellid
@@ -5708,16 +5759,17 @@ call find_triangle (loc, nc, c, weights, ier, this_cellid)
 if(ier /= 0) return
 
 do i = 1, nc
-   fdata(i) = zGridFace(1, c(i))    ! level 1, selected cell number
+   fdata(i) = var1d(c(i))    ! selected cell ID number
 enddo
 
 ! use weights to compute value at interp point.
 dval = sum(weights(1:nc) * fdata(1:nc))
 
 if(debug > 9 .and. do_output()) &
-   print '(A,7f12.5)','compute_elevation_with_barycentric: corner vals, weights, result: ',fdata(:),weights(:),dval
+   print '(A,7f12.5)','compute_surface_data_with_barycentric: corner vals, weights, result: ',&
+                      fdata(:),weights(:),dval
 
-end subroutine compute_elevation_with_barycentric
+end subroutine compute_surface_data_with_barycentric
 
 !------------------------------------------------------------
 
