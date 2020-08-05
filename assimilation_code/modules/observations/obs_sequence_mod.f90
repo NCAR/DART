@@ -2789,13 +2789,12 @@ identity_count = 0
 
 size_seq_in = get_num_obs(seq_in)
 if (size_seq_in == 0) then
-   string1 = 'observation sequence is empty'
    if (present(filename)) then
-      string2 = 'observation sequence file "'//trim(filename)//'" is empty'
+      string1 = 'observation sequence file "'//trim(filename)//'" is empty'
    else
-      string2 = 'observation sequence file is empty'
+      string1 = 'observation sequence is empty'
    endif
-   call error_handler(E_MSG,'print_obs_seq_summary',string1,text2=string2)
+   call error_handler(E_MSG,'print_obs_seq_summary',string1)
    return
 endif
 
