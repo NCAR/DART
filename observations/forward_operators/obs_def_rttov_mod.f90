@@ -580,7 +580,7 @@ type(mw_metadata_type)                 :: missing_mw_metadata
 character(len=5), parameter :: VISIR_STRING = 'visir'
 character(len=5), parameter :: MW_STRING    = 'mw   '
 
-logical :: debug = .false.
+logical :: debug = .true.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
 integer ::    visirnum = 0
@@ -3377,7 +3377,10 @@ real(r8) :: loc_value(ens_size), radiance(ens_size)
 type(location_type) :: loc
 integer :: maxlevels, numlevels
 
+type(location_type) :: loc_undef        ! surface location
 type(location_type) :: loc_sfc          ! surface location
+type(location_type) :: loc_2m           ! surface location
+type(location_type) :: loc_10m          ! surface location
 
 type(rttov_sensor_type), pointer :: sensor
 
@@ -3712,86 +3715,88 @@ GETLEVELDATA : do i = 1,numlevels
 
 end do GETLEVELDATA
 
-loc     = set_location(loc_lon, loc_lat, 1.0_r8, VERTISUNDEF )
+loc_undef = set_location(loc_lon, loc_lat, 1.0_r8, VERTISUNDEF )
 loc_sfc = set_location(loc_lon, loc_lat, 1.0_r8, VERTISSURFACE )
+loc_2m  = set_location(loc_lon, loc_lat, 2.0_r8, VERTISSURFACE )
+loc_10m = set_location(loc_lon, loc_lat, 10.0_r8, VERTISSURFACE )
 
 ! set the surface fields
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
-call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
-call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
-call interpolate(state_handle, ens_size, loc, QTY_2M_TEMPERATURE, atmos%s2m_t(:), this_istatus)
-call check_status('QTY_2M_TEMPERATURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+call interpolate(state_handle, ens_size, loc_2m, QTY_2M_TEMPERATURE, atmos%s2m_t(:), this_istatus)
+call check_status('QTY_2M_TEMPERATURE', ens_size, this_istatus, val, loc_2m, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SKIN_TEMPERATURE, atmos%skin_temp(:), this_istatus)
-call check_status('QTY_SKIN_TEMPERATURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+call check_status('QTY_SKIN_TEMPERATURE', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
 ! set to 2m if an error
 
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_TYPE, atmos%surftype(:), this_istatus)
-call check_status('QTY_SURFACE_TYPE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
+call check_status('QTY_SURFACE_TYPE', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
 ! if not available, lookup by lat/lon?
 
 if (use_q2m) then
-   call interpolate(state_handle, ens_size, loc, QTY_2M_SPECIFIC_HUMIDITY, atmos%s2m_q(:), this_istatus)
-   call check_status('QTY_2M_SPECIFIC_HUMIDITY', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call interpolate(state_handle, ens_size, loc_2m, QTY_2M_SPECIFIC_HUMIDITY, atmos%s2m_q(:), this_istatus)
+   call check_status('QTY_2M_SPECIFIC_HUMIDITY', ens_size, this_istatus, val, loc_2m, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 end if
 
 if (use_uv10m) then
-   call interpolate(state_handle, ens_size, loc, QTY_10M_U_WIND_COMPONENT, atmos%s10m_u(:), this_istatus)
-   call check_status('QTY_10M_U_WIND_COMPONENT', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call interpolate(state_handle, ens_size, loc_10m, QTY_10M_U_WIND_COMPONENT, atmos%s10m_u(:), this_istatus)
+   call check_status('QTY_10M_U_WIND_COMPONENT', ens_size, this_istatus, val, loc_10m, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
-   call interpolate(state_handle, ens_size, loc, QTY_10M_V_WIND_COMPONENT, atmos%s10m_v(:), this_istatus)
-   call check_status('QTY_10M_V_WIND_COMPONENT', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call interpolate(state_handle, ens_size, loc_10m, QTY_10M_V_WIND_COMPONENT, atmos%s10m_v(:), this_istatus)
+   call check_status('QTY_10M_V_WIND_COMPONENT', ens_size, this_istatus, val, loc_10m, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 end if
 
 if (use_wfetch) then
-   call interpolate(state_handle, ens_size, loc, QTY_WIND_FETCH, atmos%wfetch(:), this_istatus)
-   call check_status('QTY_WIND_FETCH', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call interpolate(state_handle, ens_size, loc_sfc, QTY_WIND_FETCH, atmos%wfetch(:), this_istatus)
+   call check_status('QTY_WIND_FETCH', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 end if
 
 if (use_water_type) then
    call interpolate(state_handle, ens_size, loc_sfc, QTY_WATER_TYPE, atmos%water_type(:), this_istatus)
-   call check_status('QTY_WATER_TYPE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call check_status('QTY_WATER_TYPE', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 end if
 
 if (use_salinity) then
    call interpolate(state_handle, ens_size, loc_sfc, QTY_SALINITY, atmos%sfc_salinity(:), this_istatus)
-   call check_status('QTY_SALINITY', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call check_status('QTY_SALINITY', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 end if
 
 if (supply_foam_fraction) then
    call interpolate(state_handle, ens_size, loc_sfc, QTY_FOAM_FRAC, atmos%sfc_foam_frac(:), this_istatus)
-   call check_status('QTY_FOAM_FRAC', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call check_status('QTY_FOAM_FRAC', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 end if
 
 if (use_sfc_snow_frac) then
    call interpolate(state_handle, ens_size, loc_sfc, QTY_SNOWCOVER_FRAC, atmos%sfc_snow_frac(:), this_istatus)
-   call check_status('QTY_SNOWCOVER_FRAC', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call check_status('QTY_SNOWCOVER_FRAC', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 end if
 
 if (add_clouds .and. htfrtc_simple_cloud) then
    ! specify simple cloud information - per column
-   call interpolate(state_handle, ens_size, loc, QTY_COLUMN_CLOUD_FRAC, clouds%simple_cfrac(:), this_istatus)
+   call interpolate(state_handle, ens_size, loc_undef, QTY_COLUMN_CLOUD_FRAC, clouds%simple_cfrac(:), this_istatus)
    call check_status('QTY_COLUMN_CLOUD_FRAC', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 
-   call interpolate(state_handle, ens_size, loc, QTY_CLOUD_TOP_PRESSURE, clouds%ctp(:), this_istatus)
+   call interpolate(state_handle, ens_size, loc_undef, QTY_CLOUD_TOP_PRESSURE, clouds%ctp(:), this_istatus)
    call check_status('QTY_CLOUD_TOP_PRESSURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 end if
