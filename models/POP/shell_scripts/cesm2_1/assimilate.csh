@@ -71,9 +71,7 @@ set YYYYMM   = `printf %04d%02d     ${OCN_YEAR} ${OCN_MONTH}`
 set OBSFNAME = obs_seq.0Z.${YYYYMMDD}
 set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}/${OBSFNAME}
 
-if ( -e obs_seq.out ) then
-    ${REMOVE} obs_seq.out
-endif
+${REMOVE} obs_seq.out
 
 if (  -e   ${OBS_FILE} ) then
    ${LINK} ${OBS_FILE} obs_seq.out

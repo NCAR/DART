@@ -604,7 +604,7 @@ else     # CONTINUE_RUN == FALSE
 
       echo "${stagedir}/${refcase}.pop\${true_string}.ro.${init_time}"   >! rpointer.ocn\${inst_string}.ovf
       echo "${stagedir}/${refcase}.pop\${true_string}.r.${init_time}.nc" >! rpointer.ocn\${inst_string}.restart
-      echo "RESTART_FMT=nc"                                  >> rpointer.ocn\${inst_string}.restart
+      echo "RESTART_FMT=nc"                                              >> rpointer.ocn\${inst_string}.restart
 
       @ inst ++
    end
