@@ -3716,7 +3716,7 @@ GETLEVELDATA : do i = 1,numlevels
 end do GETLEVELDATA
 
 loc_undef = set_location(loc_lon, loc_lat, 1.0_r8, VERTISUNDEF )
-loc_sfc = set_location(loc_lon, loc_lat, 1.0_r8, VERTISSURFACE )
+loc_sfc = set_location(loc_lon, loc_lat, 0.0_r8, VERTISSURFACE )
 loc_2m  = set_location(loc_lon, loc_lat, 2.0_r8, VERTISSURFACE )
 loc_10m = set_location(loc_lon, loc_lat, 10.0_r8, VERTISSURFACE )
 
