@@ -47,6 +47,15 @@
 ! (currently NOAA_1_VTPR1_RADIANCE and CLOUDSAT_1_CPR_TB, respectively), 
 ! all case statements in this obs def file must be modified appropriately to 
 ! ensure correct processing.  
+!
+! The units for the microwave brightness temperatures (any observations 
+! that have a quantity of QTY_BRIGHTNESS_TEMPERATURE) is degrees kelvin.
+!
+! The units for all observations with a quantity of QTY_RADANCE are the
+! SI units of radiance : watts per steradian per square meter (W/sr/m^2)
+!
+! The observation converters are responsible for providing these 
+! observations with the correct units.
 !----------------------------------------------------------------------
 
 ! BEGIN DART PREPROCESS KIND LIST
