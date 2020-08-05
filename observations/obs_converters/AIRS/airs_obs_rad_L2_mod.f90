@@ -36,11 +36,9 @@ use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type,      &
                              obs_type, copy_obs, set_copy_meta_data,         &
                              set_qc_meta_data, set_obs_def, get_first_obs,   &
-                             get_last_obs, get_obs_def
+                             get_last_obs, get_obs_def, print_obs_seq_summary
 
 use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
-
-use obs_seq_utilities_mod, only : print_obs_seq
 
 use airs_rad_L2_mod   ! need "only" list here
 
@@ -253,7 +251,7 @@ enddo rowloop
 write(msgstring,*) 'obs used = ', obs_num
 call error_handler(E_MSG, ' ', msgstring)
 
-call print_obs_seq(seq, '')
+call print_obs_seq_summary(seq)
 
 end subroutine make_obs_sequence
 
