@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # compile all converter programs
 
 #----------------------------------------------------------------------
@@ -17,8 +15,8 @@
 
 set nonomatch
 \rm -f preprocess *.o *.mod Makefile
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
+\rm -f ../../../../observations/forward_operators/obs_def_mod.f90
+\rm -f ../../../../assimilation_code/modules/observations/obs_kind_mod.f90
 
 set MODEL = "AIRS converters"
 
@@ -62,9 +60,4 @@ end
 echo "Success: All ${MODEL} programs compiled."
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 
