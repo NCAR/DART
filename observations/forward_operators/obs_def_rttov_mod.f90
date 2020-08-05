@@ -328,8 +328,6 @@ use         utilities_mod, only : to_upper
 !
 !    RTTOV is copyright 2017, EUMETSAT, All Rights Reserved.
 
-use types_mod, only : r8
-
 ! RTTOV module containing useful RTTOV constants
 use rttov_const, only :     &
       errorstatus_success, &
@@ -357,9 +355,6 @@ use rttov_types, only :     &
 use parkind1, only : jpim, jprb, jplm
 
 
-use rttov_types, only : rttov_options,       &
-                        rttov_options_scatt
-
 ! There are so many radiance observation types that it is impractical to list them all.
 use     obs_kind_mod
 
@@ -383,30 +378,13 @@ private
 
 public ::            set_visir_metadata, &
                         set_mw_metadata, &
-                     get_visir_metadata, &
+                     get_visir_metadata, & 
                         get_mw_metadata, &
                     read_rttov_metadata, &
                    write_rttov_metadata, &
              interactive_rttov_metadata, &
                   get_expected_radiance, &
-               get_rttov_option_logical, &
-                            get_channel
-
-! Expose publically the DART/RTTOV types and method calls
-public :: visir_metadata_type,               &
-          mw_metadata_type,                  &
-          atmos_profile_type,                &
-          aerosol_profile_type,              &
-          cloud_profile_type,                &
-          rttov_sensor_type,                 &
-          rttov_sensor_runtime_type,         &
-          rttov_satellite_type,              &
-          rttov_platform_type,               &
-          get_rttov_sensor,                  &
-          read_sensor_db_file,               &
-          sensor_runtime_setup,              &
-          do_forward_model,                  &
-          sensor_runtime_takedown
+               get_rttov_option_logical
 
 ! Metadata for rttov observations.
 
