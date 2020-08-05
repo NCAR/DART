@@ -51,8 +51,9 @@
 ! The units for the microwave brightness temperatures (any observations 
 ! that have a quantity of QTY_BRIGHTNESS_TEMPERATURE) is degrees kelvin.
 !
-! The units for all observations with a quantity of QTY_RADANCE are the
-! SI units of radiance : watts per steradian per square meter (W/sr/m^2)
+! The units for all observations with a quantity of QTY_RADANCE are as
+! described in the RTTOV v12 user guide V1.3 (p54): "mW/cm-1/sr/sq.m"
+! Doc ID: NWPSAF-MO-UD-037, Date: 05/03/2019
 !
 ! The observation converters are responsible for providing these 
 ! observations with the correct units.
