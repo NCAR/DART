@@ -786,7 +786,7 @@ do ivar = 1, nfields
    progvar(ivar)%indexN      = index1 + varsize - 1
    index1                    = index1 + varsize      ! sets up for next variable
 
-   !if ( debug > 11 .and. do_output()) call dump_progvar(ivar)
+   if ( debug > 11 .and. do_output()) call dump_progvar(ivar)
 
 enddo
 
@@ -1140,6 +1140,7 @@ logical  :: goodkind, surface_obs
 real(r8) :: lpres(ens_size), values(3, ens_size)
 real(r8) :: llv(3)    ! lon/lat/vert
 integer  :: e, verttype
+real(r8), allocatable, dimension(:)  :: var_1d
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1320,8 +1321,7 @@ else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
      if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
    enddo
 
-else if (obs_kind == QTY_VAPOR_MIXING_RATIO .or. obs_kind == QTY_2M_VAPOR_MIXING_RATIO .or. &
-         obs_kind == QTY_2M_SPECIFIC_HUMIDITY) then
+else if (obs_kind == QTY_VAPOR_MIXING_RATIO) then 
    tvars(1) = get_progvar_index_from_kind(obs_kind)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
@@ -5698,6 +5698,12 @@ do k=1, n
       low_offset = (c(i)-1) * nvert
       upp_offset = (c(i)-1) * nvert
 
+      if( nvert == 1 ) then         ! surface fields (1-D)
+
+          fdata(i,:) = get_state(index1 + low_offset + lower(i,1)-1, state_handle)
+
+      else                          ! 2-D fields
+
       did_member(:) = .false.
 
       do e = 1, ens_size
@@ -5710,8 +5716,8 @@ do k=1, n
          !> in some cases it could be 2 or 3 different pairs of levels because 
          !> of differences in vertical conversion that depends on per-member fields.
 
-         lowval(i,:) =  (get_state(index1 + low_offset + lower(i,e)-1, state_handle))
-         uppval(i,:) =  (get_state(index1 + upp_offset + upper(i,e)-1, state_handle))
+         lowval(i,:) = get_state(index1 + low_offset + lower(i,e)-1, state_handle)
+         uppval(i,:) = get_state(index1 + upp_offset + upper(i,e)-1, state_handle)      
 
          thislower = lower(i, e)
          thisupper = upper(i, e)
@@ -5725,6 +5731,8 @@ do k=1, n
             endif
          enddo
       enddo  ! end ens_size
+
+      endif                         ! 2-D fields
 
    enddo  ! corners
 
