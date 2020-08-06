@@ -3,52 +3,23 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 # if you are building this on cheyenne.ucar.edu (ncar supercomputer)
-# i've been able to use these two methods to build this converter:
+# you must have the hdf-eos5 module loaded, which defines the
+# following environment variables:
 #
-#  1) use the prebuild hdf-eos module on the system:
-#     a) unload the netcdf module, 
-#     b) load the hdf-eos module, then 
-#     c) reload netcdf
-#     d) uncomment the MYINCDIR, MYLIBDIR lines below that use the NCAR_... versions
-#
-#  2) use the older libs i have previously built:
-#     a) load the gnu compiler module
-#        (i get dup symbol errors with intel.)
-#     b) use the /glade/work/nancy versions of the dirs
+# NCAR_INC_HDFEOS5
+# NCAR_LDFLAGS_HDFEOS5
+# NCAR_LIBS_HDFEOS5
 
-# these env vars seem to be defined on cheyenne by loading the hdf-eos module:
-# NCAR_INC_HDFEOS
-# NCAR_LDFLAGS_HDFEOS
-# NCAR_LIBS_HDFEOS
+set MYINCDIR = "-I$NCAR_INC_HDFEOS5"
+set MYLIBDIR = "-L$NCAR_LDFLAGS_HDFEOS5"
+set MYLIBS   = "$NCAR_LIBS_HDFEOS5"
 
-set MYINCDIR = "-I$NCAR_INC_HDFEOS"
-set MYLIBDIR = "-L$NCAR_LIBS_HDFEOS"
-set MYLIBS   = "$NCAR_LIBS_HDFEOS"
-
-# or
-#
-#set JPGDIR = /glade/work/nancy
-#set HDFDIR = /glade/work/nancy
-#set EOSDIR = /glade/work/nancy
-#
-#set MYINCDIR = "-I$EOSDIR/include -I$HDFDIR/include -I$JPGDIR/include"
-#set MYLIBDIR = "-L$EOSDIR/lib     -L$HDFDIR/lib     -L$JPGDIR/lib"
-#set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
-#
-
-
-../../../../build_templates/mkmf -p convert_airs_L2 -t ../../../../build_templates/mkmf.template \
+     ../../../../build_templates/mkmf -p convert_airs_L2 \
+  -t ../../../../build_templates/mkmf.template \
  -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
  -a "../../../.." path_names_convert_airs_L2
 
 exit $status
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

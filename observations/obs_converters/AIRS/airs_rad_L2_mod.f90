@@ -170,20 +170,30 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
       integer stride(10)/1,1,1,1,1, 1,1,1,1,1/
                                 ! stride of each dimensions for Swath I/O
                                 ! 1 => use every element
-      integer edge(10)        ! size of each dimension for swath I/O
+      integer edge(10)          ! size of each dimension for swath I/O
                                 ! will be set for each individual read
-      integer swopen, swinqswath, swattach
-      integer swrdfld, swrdattr
-      integer swdetach, swclose
 
-      fid = swopen(file_name, 1)
+      ! Using the HDF-EOS5 functions simply required
+      ! putting an 'he5_' in front of the function. As far as I can tell from
+      ! https://hdfeos.org/examples/fort_he5_swath.php, the calling structure is
+      ! the same.
+
+      integer :: he5_swopen         ! open a swath file
+      integer :: he5_swattach       ! attatch to a swath object
+      integer :: he5_swinqswath     ! retieves number and names of swaths in file
+      integer :: he5_swrdfld        ! read data from a data field
+      integer :: he5_swrdattr       ! read swath attribute
+      integer :: he5_swdetach       ! detatching from the swath object
+      integer :: he5_swclose        ! closing the file
+
+      fid = he5_swopen(file_name, 1)
       if (fid .eq. -1) then
         print *, "Error ", fid, " opening file ", file_name
         stop
       end if
 
       ! Get name of swath(s)
-      nswath = swinqswath(file_name, swathname, nchar)
+      nswath = he5_swinqswath(file_name, swathname, nchar)
       if (nswath .ne. 1) then 
         print *, "swinqswath found ", nswath, " swaths for file ",  &
                 file_name, " Need exactly 1"
@@ -198,7 +208,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
       end if
 
       ! Attach to (open) the one swath.
-      swid = swattach(fid, swathname)
+      swid = he5_swattach(fid, swathname)
       if (swid .eq. -1) then 
         print *, "Failed to attach to swath ", swathname, &
                 " in file ", file_name
@@ -206,253 +216,253 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
       end if
 
 ! Attributes &
-      statn = swrdattr(swid, "processing_level", airs_cc_rad_gran%processing_level) 
+      statn = he5_swrdattr(swid, "processing_level", airs_cc_rad_gran%processing_level) 
       if (statn .ne. 0)  &
        print *, "Error ", statn, " reading attribute ", "processing_level"
  
-      statn = swrdattr(swid, "instrument", airs_cc_rad_gran%instrument) 
+      statn = he5_swrdattr(swid, "instrument", airs_cc_rad_gran%instrument) 
       if (statn .ne. 0)  &
        print *, "Error ", statn, " reading attribute ", "instrument"
  
-      statn = swrdattr(swid, "DayNightFlag", airs_cc_rad_gran%DayNightFlag) 
+      statn = he5_swrdattr(swid, "DayNightFlag", airs_cc_rad_gran%DayNightFlag) 
       if (statn .ne. 0)  &
        print *, "Error ", statn, " reading attribute ", "DayNightFlag"
  
-      statn = swrdattr(swid, "AutomaticQAFlag", airs_cc_rad_gran%AutomaticQAFlag) 
+      statn = he5_swrdattr(swid, "AutomaticQAFlag", airs_cc_rad_gran%AutomaticQAFlag) 
       if (statn .ne. 0)  &
        print *, "Error ", statn, " reading attribute ", "AutomaticQAFlag"
  
-      statn = swrdattr(swid, "NumTotalData", airs_cc_rad_gran%NumTotalData) 
+      statn = he5_swrdattr(swid, "NumTotalData", airs_cc_rad_gran%NumTotalData) 
       if (statn .ne. 0)  &
        print *, "Error ", statn, " reading attribute ", "NumTotalData"
  
-      statn = swrdattr(swid, "NumProcessData", airs_cc_rad_gran%NumProcessData) 
+      statn = he5_swrdattr(swid, "NumProcessData", airs_cc_rad_gran%NumProcessData) 
       if (statn .ne. 0)  &
        print *, "Error ", statn, " reading attribute ", "NumProcessData"
 
-      statn = swrdattr(swid, "NumSpecialData",  airs_cc_rad_gran%NumSpecialData)
+      statn = he5_swrdattr(swid, "NumSpecialData",  airs_cc_rad_gran%NumSpecialData)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "NumSpecialData"
 
-      statn = swrdattr(swid, "NumBadData", airs_cc_rad_gran%NumBadData)
+      statn = he5_swrdattr(swid, "NumBadData", airs_cc_rad_gran%NumBadData)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "NumBadData"
 
-      statn = swrdattr(swid, "NumMissingData", airs_cc_rad_gran%NumMissingData)
+      statn = he5_swrdattr(swid, "NumMissingData", airs_cc_rad_gran%NumMissingData)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "NumMissingData"
 
-      statn = swrdattr(swid, "NumLandSurface", airs_cc_rad_gran%NumLandSurface)
+      statn = he5_swrdattr(swid, "NumLandSurface", airs_cc_rad_gran%NumLandSurface)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "NumLandSurface"
 
-      statn = swrdattr(swid, "NumOceanSurface", airs_cc_rad_gran%NumOceanSurface)
+      statn = he5_swrdattr(swid, "NumOceanSurface", airs_cc_rad_gran%NumOceanSurface)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "NumOceanSurface"
 
-      statn = swrdattr(swid, "node_type", airs_cc_rad_gran%node_type)
+      statn = he5_swrdattr(swid, "node_type", airs_cc_rad_gran%node_type)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "node_type"
 
-      statn = swrdattr(swid, "start_year", airs_cc_rad_gran%start_year)
+      statn = he5_swrdattr(swid, "start_year", airs_cc_rad_gran%start_year)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "start_year"
 
-      statn = swrdattr(swid, "start_month", airs_cc_rad_gran%start_month)
+      statn = he5_swrdattr(swid, "start_month", airs_cc_rad_gran%start_month)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "start_month"
 
-      statn = swrdattr(swid, "start_day", airs_cc_rad_gran%start_day)
+      statn = he5_swrdattr(swid, "start_day", airs_cc_rad_gran%start_day)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "start_day"
 
-      statn = swrdattr(swid, "start_hour", airs_cc_rad_gran%start_hour)
+      statn = he5_swrdattr(swid, "start_hour", airs_cc_rad_gran%start_hour)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "start_hour"
 
-      statn = swrdattr(swid, "start_minute", airs_cc_rad_gran%start_minute)
+      statn = he5_swrdattr(swid, "start_minute", airs_cc_rad_gran%start_minute)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "start_minute"
 
-      statn = swrdattr(swid, "start_sec", airs_cc_rad_gran%start_sec)
+      statn = he5_swrdattr(swid, "start_sec", airs_cc_rad_gran%start_sec)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", "start_sec"
 
-      statn = swrdattr(swid, "start_orbit", &
+      statn = he5_swrdattr(swid, "start_orbit", &
                   airs_cc_rad_gran%start_orbit)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "start_orbit"
 
-      statn = swrdattr(swid, "end_orbit", &
+      statn = he5_swrdattr(swid, "end_orbit", &
                   airs_cc_rad_gran%end_orbit)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "end_orbit"
 
-      statn = swrdattr(swid, "orbit_path", &
+      statn = he5_swrdattr(swid, "orbit_path", &
                   airs_cc_rad_gran%orbit_path)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "orbit_path"
 
-      statn = swrdattr(swid, "start_orbit_row", &
+      statn = he5_swrdattr(swid, "start_orbit_row", &
                   airs_cc_rad_gran%start_orbit_row)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "start_orbit_row"
 
-      statn = swrdattr(swid, "end_orbit_row", &
+      statn = he5_swrdattr(swid, "end_orbit_row", &
                   airs_cc_rad_gran%end_orbit_row)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "end_orbit_row"
 
-      statn = swrdattr(swid, "granule_number", &
+      statn = he5_swrdattr(swid, "granule_number", &
                   airs_cc_rad_gran%granule_number)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "granule_number"
 
-      statn = swrdattr(swid, "num_scansets", &
+      statn = he5_swrdattr(swid, "num_scansets", &
                   airs_cc_rad_gran%num_scansets)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "num_scansets"
 
-      statn = swrdattr(swid, "num_scanlines", &
+      statn = he5_swrdattr(swid, "num_scanlines", &
                   airs_cc_rad_gran%num_scanlines)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "num_scanlines"
 
-      statn = swrdattr(swid, "start_Latitude", &
+      statn = he5_swrdattr(swid, "start_Latitude", &
                   airs_cc_rad_gran%start_Latitude)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "start_Latitude"
 
-      statn = swrdattr(swid, "start_Longitude", &
+      statn = he5_swrdattr(swid, "start_Longitude", &
                   airs_cc_rad_gran%start_Longitude)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "start_Longitude"
 
-      statn = swrdattr(swid, "start_Time", &
+      statn = he5_swrdattr(swid, "start_Time", &
                   airs_cc_rad_gran%start_Time)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "start_Time"
 
-      statn = swrdattr(swid, "end_Latitude", &
+      statn = he5_swrdattr(swid, "end_Latitude", &
                   airs_cc_rad_gran%end_Latitude)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "end_Latitude"
 
-      statn = swrdattr(swid, "end_Longitude", &
+      statn = he5_swrdattr(swid, "end_Longitude", &
                   airs_cc_rad_gran%end_Longitude)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "end_Longitude"
 
-      statn = swrdattr(swid, "end_Time", &
+      statn = he5_swrdattr(swid, "end_Time", &
                   airs_cc_rad_gran%end_Time)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "end_Time"
 
-      statn = swrdattr(swid, "eq_x_longitude", &
+      statn = he5_swrdattr(swid, "eq_x_longitude", &
                   airs_cc_rad_gran%eq_x_longitude)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "eq_x_longitude"
 
-      statn = swrdattr(swid, "eq_x_tai", &
+      statn = he5_swrdattr(swid, "eq_x_tai", &
                   airs_cc_rad_gran%eq_x_tai)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "eq_x_tai"
 
-      statn = swrdattr(swid, "LonGranuleCen", &
+      statn = he5_swrdattr(swid, "LonGranuleCen", &
                   airs_cc_rad_gran%LonGranuleCen)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "LonGranuleCen"
 
-      statn = swrdattr(swid, "LatGranuleCen", &
+      statn = he5_swrdattr(swid, "LatGranuleCen", &
                   airs_cc_rad_gran%LatGranuleCen)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "LatGranuleCen"
 
-      statn = swrdattr(swid, "LocTimeGranuleCen", &
+      statn = he5_swrdattr(swid, "LocTimeGranuleCen", &
                   airs_cc_rad_gran%LocTimeGranuleCen)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "LocTimeGranuleCen"
 
-      statn = swrdattr(swid, "num_fpe", &
+      statn = he5_swrdattr(swid, "num_fpe", &
                   airs_cc_rad_gran%num_fpe)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "num_fpe"
 
-      statn = swrdattr(swid, "orbitgeoqa", &
+      statn = he5_swrdattr(swid, "orbitgeoqa", &
                   airs_cc_rad_gran%orbitgeoqa)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "orbitgeoqa"
 
-      statn = swrdattr(swid, "num_satgeoqa", &
+      statn = he5_swrdattr(swid, "num_satgeoqa", &
                   airs_cc_rad_gran%num_satgeoqa)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "num_satgeoqa"
 
-      statn = swrdattr(swid, "num_glintgeoqa", &
+      statn = he5_swrdattr(swid, "num_glintgeoqa", &
                   airs_cc_rad_gran%num_glintgeoqa)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "num_glintgeoqa"
 
-      statn = swrdattr(swid, "num_moongeoqa", &
+      statn = he5_swrdattr(swid, "num_moongeoqa", &
                   airs_cc_rad_gran%num_moongeoqa)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "num_moongeoqa"
 
-      statn = swrdattr(swid, "num_ftptgeoqa", &
+      statn = he5_swrdattr(swid, "num_ftptgeoqa", &
                   airs_cc_rad_gran%num_ftptgeoqa)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "num_ftptgeoqa"
 
-      statn = swrdattr(swid, "num_zengeoqa", &
+      statn = he5_swrdattr(swid, "num_zengeoqa", &
                   airs_cc_rad_gran%num_zengeoqa)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "num_zengeoqa"
 
-      statn = swrdattr(swid, "num_demgeoqa", &
+      statn = he5_swrdattr(swid, "num_demgeoqa", &
                   airs_cc_rad_gran%num_demgeoqa)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "num_demgeoqa"
 
-      statn = swrdattr(swid, "CalGranSummary", &
+      statn = he5_swrdattr(swid, "CalGranSummary", &
                   airs_cc_rad_gran%CalGranSummary)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "CalGranSummary"
 
-      statn = swrdattr(swid, "DCR_scan", &
+      statn = he5_swrdattr(swid, "DCR_scan", &
                   airs_cc_rad_gran%DCR_scan)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
                  "DCR_scan"
 
-      statn = swrdattr(swid, "granules_present_L1B", &
+      statn = he5_swrdattr(swid, "granules_present_L1B", &
                         airs_cc_rad_gran%granules_present_L1B)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading attribute ", &
@@ -462,17 +472,17 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 ! Geolocation fields
       edge(1) = AIRS_CC_RAD_GEOXTRACK
       edge(2) = AIRS_CC_RAD_GEOTRACK
-      statn = swrdfld(swid, "Latitude", start, stride, edge, &
+      statn = he5_swrdfld(swid, "Latitude", start, stride, edge, &
                      airs_cc_rad_gran%Latitude)
       if (statn .ne. 0)  &
        print *, "Error ", statn, " reading field Latitude"
 
-      statn = swrdfld(swid, "Longitude", start, stride, edge, &
+      statn = he5_swrdfld(swid, "Longitude", start, stride, edge, &
                      airs_cc_rad_gran%Longitude)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading field Longitude"
 
-      statn = swrdfld(swid, "Time", start, stride, edge, &
+      statn = he5_swrdfld(swid, "Time", start, stride, edge, &
                      airs_cc_rad_gran%Time)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading field Time"
@@ -482,7 +492,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
       edge(3) = 45
       edge(2) = 30
       edge(1) = 2378 
-      statn = SWrdfld(swid, "radiances",  &
+      statn = he5_SWrdfld(swid, "radiances",  &
                   start, stride, edge, &
                   airs_cc_rad_gran%radiances) 
       if (statn .ne. 0)  &
@@ -491,7 +501,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
       edge(3) = 45
       edge(2) = 30
       edge(1) = 2378 
-      statn = SWrdfld(swid, "radiances_QC",  &
+      statn = he5_SWrdfld(swid, "radiances_QC",  &
                   start, stride, edge, &
                   airs_cc_rad_gran%radiances_QC) 
       if (statn .ne. 0)  &
@@ -500,7 +510,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
       edge(3) = 45
       edge(2) = 30
       edge(1) = 2378 
-      statn = SWrdfld(swid, "radiance_err",  &
+      statn = he5_SWrdfld(swid, "radiance_err",  &
                   start, stride, edge, &
                   airs_cc_rad_gran%radiance_err) 
       if (statn .ne. 0) &
@@ -510,14 +520,14 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
       edge(3) = 30
       edge(2) = 3
       edge(1) = 3
-      statn = SWrdfld(swid, "CldClearParam", &
+      statn = he5_SWrdfld(swid, "CldClearParam", &
                   start, stride, edge, &
                   airs_cc_rad_gran%CldClearParam)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading field ", "CldClearParam"
 
       edge(1) = 2378
-      statn = SWrdfld(swid, "nominal_freq", &
+      statn = he5_SWrdfld(swid, "nominal_freq", &
                   start, stride, edge, &
                   airs_cc_rad_gran%nominal_freq)
       if (statn .ne. 0) &
@@ -525,21 +535,21 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "scanang", &
+      statn = he5_SWrdfld(swid, "scanang", &
                   start, stride, edge, &
                   airs_cc_rad_gran%scanang)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading field ", "scanang"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "satheight", &
+      statn = he5_SWrdfld(swid, "satheight", &
                   start, stride, edge, &
                   airs_cc_rad_gran%satheight)
       if (statn .ne. 0) &
        print *, "Error ", statn, " reading field ", "satheight"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "satroll", &
+      statn = he5_SWrdfld(swid, "satroll", &
                   start, stride, edge, &
                   airs_cc_rad_gran%satroll)
       if (statn .ne. 0) &
@@ -547,7 +557,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "satroll"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "satpitch", &
+      statn = he5_SWrdfld(swid, "satpitch", &
                   start, stride, edge, &
                   airs_cc_rad_gran%satpitch)
       if (statn .ne. 0) &
@@ -555,7 +565,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "satpitch"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "satyaw", &
+      statn = he5_SWrdfld(swid, "satyaw", &
                   start, stride, edge, &
                   airs_cc_rad_gran%satyaw)
       if (statn .ne. 0) &
@@ -564,7 +574,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "satzen", &
+      statn = he5_SWrdfld(swid, "satzen", &
                   start, stride, edge, &
                   airs_cc_rad_gran%satzen)
       if (statn .ne. 0) &
@@ -573,7 +583,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "satazi", &
+      statn = he5_SWrdfld(swid, "satazi", &
                   start, stride, edge, &
                   airs_cc_rad_gran%satazi)
       if (statn .ne. 0) &
@@ -582,7 +592,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "solzen", &
+      statn = he5_SWrdfld(swid, "solzen", &
                   start, stride, edge, &
                   airs_cc_rad_gran%solzen)
       if (statn .ne. 0) &
@@ -591,7 +601,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "solazi", &
+      statn = he5_SWrdfld(swid, "solazi", &
                   start, stride, edge, &
                   airs_cc_rad_gran%solazi)
       if (statn .ne. 0) &
@@ -599,7 +609,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "solazi"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "glintlat", &
+      statn = he5_SWrdfld(swid, "glintlat", &
                   start, stride, edge, &
                   airs_cc_rad_gran%glintlat)
       if (statn .ne. 0) &
@@ -607,7 +617,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "glintlat"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "glintlon", &
+      statn = he5_SWrdfld(swid, "glintlon", &
                   start, stride, edge, &
                   airs_cc_rad_gran%glintlon)
       if (statn .ne. 0) &
@@ -616,7 +626,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "sun_glint_distance", &
+      statn = he5_SWrdfld(swid, "sun_glint_distance", &
                   start, stride, edge, &
                   airs_cc_rad_gran%sun_glint_distance)
       if (statn .ne. 0) &
@@ -624,7 +634,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "sun_glint_distance"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "nadirTAI", &
+      statn = he5_SWrdfld(swid, "nadirTAI", &
                   start, stride, edge, &
                   airs_cc_rad_gran%nadirTAI)
       if (statn .ne. 0) &
@@ -632,7 +642,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "nadirTAI"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "sat_lat", &
+      statn = he5_SWrdfld(swid, "sat_lat", &
                   start, stride, edge, &
                   airs_cc_rad_gran%sat_lat)
       if (statn .ne. 0) &
@@ -640,7 +650,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "sat_lat"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "sat_lon", &
+      statn = he5_SWrdfld(swid, "sat_lon", &
                   start, stride, edge, &
                   airs_cc_rad_gran%sat_lon)
       if (statn .ne. 0) &
@@ -648,7 +658,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "sat_lon"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "scan_node_type", &
+      statn = he5_SWrdfld(swid, "scan_node_type", &
                   start, stride, edge, &
                   airs_cc_rad_gran%scan_node_type)
       if (statn .ne. 0) &
@@ -657,7 +667,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "topog", &
+      statn = he5_SWrdfld(swid, "topog", &
                   start, stride, edge, &
                   airs_cc_rad_gran%topog)
       if (statn .ne. 0) &
@@ -666,7 +676,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "topog_err", &
+      statn = he5_SWrdfld(swid, "topog_err", &
                   start, stride, edge, &
                   airs_cc_rad_gran%topog_err)
       if (statn .ne. 0) &
@@ -675,7 +685,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "landFrac", &
+      statn = he5_SWrdfld(swid, "landFrac", &
                   start, stride, edge, &
                   airs_cc_rad_gran%landFrac)
       if (statn .ne. 0) &
@@ -684,7 +694,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "landFrac_err", &
+      statn = he5_SWrdfld(swid, "landFrac_err", &
                   start, stride, edge, &
                   airs_cc_rad_gran%landFrac_err)
       if (statn .ne. 0) &
@@ -693,7 +703,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "ftptgeoqa", &
+      statn = he5_SWrdfld(swid, "ftptgeoqa", &
                   start, stride, edge, &
                   airs_cc_rad_gran%ftptgeoqa)
       if (statn .ne. 0) &
@@ -702,7 +712,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "zengeoqa", &
+      statn = he5_SWrdfld(swid, "zengeoqa", &
                   start, stride, edge, &
                   airs_cc_rad_gran%zengeoqa)
       if (statn .ne. 0) &
@@ -711,7 +721,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "demgeoqa", &
+      statn = he5_SWrdfld(swid, "demgeoqa", &
                   start, stride, edge, &
                   airs_cc_rad_gran%demgeoqa)
       if (statn .ne. 0) &
@@ -719,7 +729,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "demgeoqa"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "satgeoqa", &
+      statn = he5_SWrdfld(swid, "satgeoqa", &
                   start, stride, edge, &
                   airs_cc_rad_gran%satgeoqa)
       if (statn .ne. 0) &
@@ -727,7 +737,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "satgeoqa"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "glintgeoqa", &
+      statn = he5_SWrdfld(swid, "glintgeoqa", &
                   start, stride, edge, &
                   airs_cc_rad_gran%glintgeoqa)
       if (statn .ne. 0) &
@@ -735,7 +745,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "glintgeoqa"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "moongeoqa", &
+      statn = he5_SWrdfld(swid, "moongeoqa", &
                   start, stride, edge, &
                   airs_cc_rad_gran%moongeoqa)
       if (statn .ne. 0) &
@@ -744,7 +754,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 2378
-      statn = SWrdfld(swid, "CalFlag", &
+      statn = he5_SWrdfld(swid, "CalFlag", &
                   start, stride, edge, &
                   airs_cc_rad_gran%CalFlag)
       if (statn .ne. 0) &
@@ -752,7 +762,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "CalFlag"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "CalScanSummary", &
+      statn = he5_SWrdfld(swid, "CalScanSummary", &
                   start, stride, edge, &
                   airs_cc_rad_gran%CalScanSummary)
       if (statn .ne. 0) &
@@ -760,7 +770,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "CalScanSummary"
 
       edge(1) = 2378
-      statn = SWrdfld(swid, "CalChanSummary", &
+      statn = he5_SWrdfld(swid, "CalChanSummary", &
                   start, stride, edge, &
                   airs_cc_rad_gran%CalChanSummary)
       if (statn .ne. 0) &
@@ -768,7 +778,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "CalChanSummary"
 
       edge(1) = 2378
-      statn = SWrdfld(swid, "ExcludedChans", &
+      statn = he5_SWrdfld(swid, "ExcludedChans", &
                   start, stride, edge, &
                   airs_cc_rad_gran%ExcludedChans)
       if (statn .ne. 0) &
@@ -776,7 +786,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "ExcludedChans"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "orbit_phase_deg", &
+      statn = he5_SWrdfld(swid, "orbit_phase_deg", &
                   start, stride, edge, &
                   airs_cc_rad_gran%orbit_phase_deg)
       if (statn .ne. 0) &
@@ -785,7 +795,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 17
-      statn = SWrdfld(swid, "shift_y0", &
+      statn = he5_SWrdfld(swid, "shift_y0", &
                   start, stride, edge, &
                   airs_cc_rad_gran%shift_y0)
       if (statn .ne. 0) &
@@ -794,7 +804,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 2378
-      statn = SWrdfld(swid, "scan_freq", &
+      statn = he5_SWrdfld(swid, "scan_freq", &
                   start, stride, edge, &
                   airs_cc_rad_gran%scan_freq)
       if (statn .ne. 0) &
@@ -803,7 +813,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "Doppler_shift_ppm", &
+      statn = he5_SWrdfld(swid, "Doppler_shift_ppm", &
                   start, stride, edge, &
                   airs_cc_rad_gran%Doppler_shift_ppm)
       if (statn .ne. 0) &
@@ -811,7 +821,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "Doppler_shift_ppm"
 
       edge(1) = 2378
-      statn = SWrdfld(swid, "NeN_L1B", &
+      statn = he5_SWrdfld(swid, "NeN_L1B", &
                   start, stride, edge, &
                   airs_cc_rad_gran%NeN_L1B)
       if (statn .ne. 0) &
@@ -819,7 +829,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "NeN_L1B"
 
       edge(1) = 2378
-      statn = SWrdfld(swid, "NeN_L1B_Static", &
+      statn = he5_SWrdfld(swid, "NeN_L1B_Static", &
                   start, stride, edge, &
                   airs_cc_rad_gran%NeN_L1B_Static)
       if (statn .ne. 0) &
@@ -828,7 +838,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "dust_flag", &
+      statn = he5_SWrdfld(swid, "dust_flag", &
                   start, stride, edge, &
                   airs_cc_rad_gran%dust_flag)
       if (statn .ne. 0) &
@@ -837,7 +847,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "CC_noise_eff_amp_factor", &
+      statn = he5_SWrdfld(swid, "CC_noise_eff_amp_factor", &
                   start, stride, edge, &
                   airs_cc_rad_gran%CC_noise_eff_amp_factor)
       if (statn .ne. 0) &
@@ -846,7 +856,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "CC1_noise_eff_amp_factor", &
+      statn = he5_SWrdfld(swid, "CC1_noise_eff_amp_factor", &
                   start, stride, edge, &
                   airs_cc_rad_gran%CC1_noise_eff_amp_factor)
       if (statn .ne. 0) &
@@ -855,7 +865,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "CC1_Resid", &
+      statn = he5_SWrdfld(swid, "CC1_Resid", &
                   start, stride, edge, &
                   airs_cc_rad_gran%CC1_Resid)
       if (statn .ne. 0) &
@@ -864,7 +874,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "CCfinal_Resid", &
+      statn = he5_SWrdfld(swid, "CCfinal_Resid", &
                   start, stride, edge, &
                   airs_cc_rad_gran%CCfinal_Resid)
       if (statn .ne. 0) &
@@ -873,7 +883,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "TotCld_4_CCfinal", &
+      statn = he5_SWrdfld(swid, "TotCld_4_CCfinal", &
                   start, stride, edge, &
                   airs_cc_rad_gran%TotCld_4_CCfinal)
       if (statn .ne. 0) &
@@ -882,7 +892,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "CCfinal_Noise_Amp", &
+      statn = he5_SWrdfld(swid, "CCfinal_Noise_Amp", &
                   start, stride, edge, &
                   airs_cc_rad_gran%CCfinal_Noise_Amp)
       if (statn .ne. 0) &
@@ -891,7 +901,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "invalid", &
+      statn = he5_SWrdfld(swid, "invalid", &
                   start, stride, edge, &
                   airs_cc_rad_gran%invalid)
       if (statn .ne. 0) &
@@ -900,7 +910,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "all_spots_avg", &
+      statn = he5_SWrdfld(swid, "all_spots_avg", &
                   start, stride, edge, &
                   airs_cc_rad_gran%all_spots_avg)
       if (statn .ne. 0) &
@@ -909,7 +919,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "MW_ret_used", &
+      statn = he5_SWrdfld(swid, "MW_ret_used", &
                   start, stride, edge, &
                   airs_cc_rad_gran%MW_ret_used)
       if (statn .ne. 0) &
@@ -918,7 +928,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "bad_clouds", &
+      statn = he5_SWrdfld(swid, "bad_clouds", &
                   start, stride, edge, &
                   airs_cc_rad_gran%bad_clouds)
       if (statn .ne. 0) &
@@ -927,7 +937,7 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "retrieval_type", &
+      statn = he5_SWrdfld(swid, "retrieval_type", &
                   start, stride, edge, &
                   airs_cc_rad_gran%retrieval_type)
       if (statn .ne. 0) &
@@ -935,10 +945,10 @@ subroutine airs_cc_rad_rdr(file_name, airs_cc_rad_gran)
                  "retrieval_type"
 
       ! Final clean-up
-      statn = swdetach(swid)
+      statn = he5_swdetach(swid)
       if (statn .ne. 0) &
        print *, "Error detaching from input file ", file_name
-      statn = swclose(fid)
+      statn = he5_swclose(fid)
       if (statn .ne. 0) &
        print *, "Error closing input file ", file_name
 

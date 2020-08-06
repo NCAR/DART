@@ -17,7 +17,7 @@ use    utilities_mod, only : initialize_utilities, register_module, &
                              do_nml_file, do_nml_term, set_filename_list, &
                              logfileunit, nmlfileunit, get_next_filename
 
-use airs_obs_rad_mod, only : make_obs_sequence, compute_thin_factor
+use airs_obs_rad_L2_mod, only : make_obs_sequence, compute_thin_factor
 
 implicit none
 
