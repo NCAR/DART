@@ -250,7 +250,7 @@ if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
 endif
 
 @ number_of_threads = 1
-@ nodes_per_instance = 3
+@ nodes_per_instance = 1
 @ ntasks_active = -1 * $nodes_per_instance
 @ ntasks_data   = -1
 
