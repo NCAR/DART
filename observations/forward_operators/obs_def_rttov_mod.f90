@@ -3793,11 +3793,11 @@ end if
 if (add_clouds .and. htfrtc_simple_cloud) then
    ! specify simple cloud information - per column
    call interpolate(state_handle, ens_size, loc_undef, QTY_COLUMN_CLOUD_FRAC, clouds%simple_cfrac(:), this_istatus)
-   call check_status('QTY_COLUMN_CLOUD_FRAC', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call check_status('QTY_COLUMN_CLOUD_FRAC', ens_size, this_istatus, val, loc_undef, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 
    call interpolate(state_handle, ens_size, loc_undef, QTY_CLOUD_TOP_PRESSURE, clouds%ctp(:), this_istatus)
-   call check_status('QTY_CLOUD_TOP_PRESSURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+   call check_status('QTY_CLOUD_TOP_PRESSURE', ens_size, this_istatus, val, loc_undef, istatus, routine, source, revision, revdate, .false., return_now)
    if (return_now) return
 end if
 
