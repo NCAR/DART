@@ -1140,7 +1140,6 @@ logical  :: goodkind, surface_obs
 real(r8) :: lpres(ens_size), values(3, ens_size)
 real(r8) :: llv(3)    ! lon/lat/vert
 integer  :: e, verttype
-real(r8), allocatable, dimension(:)  :: var_1d
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1194,10 +1193,11 @@ endif
 ! also there are options for the winds because mpas has both
 ! winds on the cell edges (normal only) and reconstructed winds
 ! at the cell centers (U,V).  there are namelist options to control
-! which to use if both are in the state vector.  we can compute
-! specific humidity from the vapor mixing ratio (which we know
-! we have because we require potential temp, mixing ratio, and
-! density to be in the state vector in all cases.)
+! which to use if both are in the state vector.  
+! As another note, mpas defines the model variable qv as water vapor 
+! mixing ratio while it defines q2 as 2-meter specific humidity,
+! not 2-m water vapor mixing ratio, so q2 should be specified as 
+! QTY_2M_SPECIFIC_HUMIDITY in mpas_state_variables in &mpas_vars_nml.
 
 ! is this field in the state?
 ivar = get_progvar_index_from_kind(obs_kind)
@@ -5717,7 +5717,7 @@ do k=1, n
          !> of differences in vertical conversion that depends on per-member fields.
 
          lowval(i,:) = get_state(index1 + low_offset + lower(i,e)-1, state_handle)
-         uppval(i,:) = get_state(index1 + upp_offset + upper(i,e)-1, state_handle)      
+         uppval(i,:) = get_state(index1 + upp_offset + upper(i,e)-1, state_handle)
 
          thislower = lower(i, e)
          thisupper = upper(i, e)
