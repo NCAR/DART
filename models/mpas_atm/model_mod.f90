@@ -1094,32 +1094,30 @@ dims(1:ndims) = get_dim_lengths(domid, ivar)
 end subroutine find_mpas_dims
 
 !------------------------------------------------------------------
-subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
+!> given a state vector, a location, and a QTY_xxx, return the
+!> interpolated value at that location, and an error code.  0 is success,
+!> anything positive is an error.  (negative reserved for system use)
+!>
+!>       ERROR codes:
+!>
+!>       ISTATUS = 99:  general error in case something terrible goes wrong...
+!>       ISTATUS = 88:  this kind is not in the state vector
+!>       ISTATUS = 81:  Vertical location too high
+!>       ISTATUS = 80:  Vertical location too low
+!>       ISTATUS = 11:  Could not find the closest cell center that contains this lat/lon
+!>       ISTATUS = 12:  Surface obs too far away from model elevation
+!>       ISTATUS = 13:  Missing value in interpolation.
+!>       ISTATUS = 14:  Could not find the other two cell centers of the triangle that contains this lat/lon
+!>       ISTATUS = 15:  Cell centers of the triangle fall in the lateral boundary zone
+!>       ISTATUS = 16:  Don't know how to do vertical velocity for now
+!>       ISTATUS = 17:  Unable to compute pressure values
+!>       ISTATUS = 18:  altitude illegal
+!>       ISTATUS = 19:  could not compute u using RBF code
+!>       ISTATUS = 101: Internal error; reached end of subroutine without
+!>                      finding an applicable case.
+!>       ISTATUS = 201: Reject observation from user specified pressure level
 
-! given a state vector, a location, and a QTY_xxx, return the
-! interpolated value at that location, and an error code.  0 is success,
-! anything positive is an error.  (negative reserved for system use)
-!
-!       ERROR codes:
-!
-!       ISTATUS = 99:  general error in case something terrible goes wrong...
-!       ISTATUS = 88:  this kind is not in the state vector
-!       ISTATUS = 82:  Unsupported vertical type (VERTISUNDEF)
-!       ISTATUS = 81:  Vertical location too high
-!       ISTATUS = 80:  Vertical location too low
-!       ISTATUS = 11:  Could not find the closest cell center that contains this lat/lon
-!       ISTATUS = 12:  Surface obs too far away from model elevation
-!       ISTATUS = 13:  Missing value in interpolation.
-!       ISTATUS = 14:  Could not find the other two cell centers of the triangle that contains this lat/lon
-!       ISTATUS = 15:  Cell centers of the triangle fall in the lateral boundary zone
-!       ISTATUS = 16:  Don't know how to do vertical velocity for now
-!       ISTATUS = 17:  Unable to compute pressure values
-!       ISTATUS = 18:  altitude illegal
-!       ISTATUS = 19:  could not compute u using RBF code
-!       ISTATUS = 101: Internal error; reached end of subroutine without
-!                      finding an applicable case.
-!       ISTATUS = 201: Reject observation from user specified pressure level
-!
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
 ! passed variables
 
@@ -5181,13 +5179,16 @@ ier = 3
 
 end subroutine find_height_bounds
 
+
 !------------------------------------------------------------------
+!> given a location and 3 cell ids, return three sets of:
+!> the two level numbers that enclose the given vertical value
+!> plus the fraction between them for each of the 3 cell centers.
+!> If the requested location uses a vertical coordinate that only
+!> has one level, both level numbers are identical ... 1 and the
+!> fractions are identical ... 0.0
 
 subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, oncenters, lower, upper, fract, ier)
-
-! given a location and 3 cell ids, return three sets of:
-!  the two level numbers that enclose the given vertical
-!  value plus the fraction between them for each of the 3 cell centers.
 
 ! note that this code handles data at cell centers, at edges, but not
 ! data on faces.  so far we don't have any on faces.
@@ -5243,18 +5244,9 @@ if ((debug > 10) .and. do_output()) then
    call error_handler(E_MSG, 'find_vert_level',string2,source, revision, revdate)
 endif
 
-! no defined vertical location (e.g. vertically integrated vals)
-if (verttype == VERTISUNDEF) then
-   ier = 82
-   return
-endif
-
-! vertical is defined to be on the surface (level 1 here).
-! for 2d fields there is no level 2, so since we are not
-! computing the fraction but setting it here and returning
-! we can set upper to be 1 as well and avoid a reference to
-! a non-existent level 1 for 2d fields in the calling code.
-if(verttype == VERTISSURFACE) then  ! same across the ensemble
+! VERTISSURFACE describes variables on A surface (not necessarily THE surface)
+! VERTISUNDEF describes no defined vertical location (e.g. vertically integrated vals)
+if(verttype == VERTISSURFACE .or. verttype == VERTISUNDEF) then  ! same across the ensemble
    lower(1:nc, :) = 1
    upper(1:nc, :) = 1
    fract(1:nc, :) = 0.0_r8 
@@ -5680,6 +5672,7 @@ if(ier(1) /= 0) then
    return
 endif
 
+! If the field is on a single level, lower and upper are both 1
 call find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
 if(all(ier /= 0)) return
 
@@ -5698,39 +5691,40 @@ do k=1, n
       low_offset = (c(i)-1) * nvert
       upp_offset = (c(i)-1) * nvert
 
-      if( nvert == 1 ) then         ! surface fields (1-D)
+      if( nvert == 1 ) then         ! fields on a surface (1-D, one level, ...)
 
-          fdata(i,:) = get_state(index1 + low_offset + lower(i,1)-1, state_handle)
+          ! Because 'lower(i,1)-1' evaluates to zero for 1-D, no need to add it
+          fdata(i,:) = get_state(index1 + low_offset, state_handle)
 
       else                          ! 2-D fields
 
-      did_member(:) = .false.
+         did_member(:) = .false.
 
-      do e = 1, ens_size
+         do e = 1, ens_size
 
-         if (did_member(e)) cycle
+            if (did_member(e)) cycle
 
-         !> minimize the number of times we call get_state() by
-         !> doing all the ensemble members which are between the same
-         !> two vertical levels.  this is true most of the time. 
-         !> in some cases it could be 2 or 3 different pairs of levels because 
-         !> of differences in vertical conversion that depends on per-member fields.
+            !> minimize the number of times we call get_state() by
+            !> doing all the ensemble members which are between the same
+            !> two vertical levels.  this is true most of the time. 
+            !> in some cases it could be 2 or 3 different pairs of levels because 
+            !> of differences in vertical conversion that depends on per-member fields.
 
-         lowval(i,:) = get_state(index1 + low_offset + lower(i,e)-1, state_handle)
-         uppval(i,:) = get_state(index1 + upp_offset + upper(i,e)-1, state_handle)
+            lowval(i,:) = get_state(index1 + low_offset + lower(i,e)-1, state_handle)
+            uppval(i,:) = get_state(index1 + upp_offset + upper(i,e)-1, state_handle)
 
-         thislower = lower(i, e)
-         thisupper = upper(i, e)
+            thislower = lower(i, e)
+            thisupper = upper(i, e)
 
-         ! for all remaining ensemble members, use these values if the lower and
-         ! upper level numbers are the same.  fract() will vary with member.
-         do e2=e, ens_size
-            if (thislower == lower(i, e2) .and. thisupper == upper(i, e2)) then
-               fdata(i, e2) = lowval(i, e2)*(1.0_r8 - fract(i, e2)) + uppval(i, e2)*fract(i, e2)
-               did_member(e2) = .true.
-            endif
-         enddo
-      enddo  ! end ens_size
+            ! for all remaining ensemble members, use these values if the lower and
+            ! upper level numbers are the same.  fract() will vary with member.
+            do e2=e, ens_size
+               if (thislower == lower(i, e2) .and. thisupper == upper(i, e2)) then
+                  fdata(i, e2) = lowval(i, e2)*(1.0_r8 - fract(i, e2)) + uppval(i, e2)*fract(i, e2)
+                  did_member(e2) = .true.
+               endif
+            enddo
+         enddo  ! end ens_size
 
       endif                         ! 2-D fields
 
@@ -5748,6 +5742,8 @@ enddo
 end subroutine compute_scalar_with_barycentric
 
 !------------------------------------------------------------
+!> Interpolates metadata variables to an arbitrary location.
+!> This routine can only be used with variables in module storage.
 
 subroutine compute_surface_data_with_barycentric(var1d, loc, dval, ier, this_cellid)
 
@@ -5930,8 +5926,9 @@ endif
 end subroutine find_triangle
 
 !------------------------------------------------------------
-!> what does this layer do?  this now seems identical to
-!> find_vert_level() plus some debug info.
+!> This routine adds some error checking because find_vert_level
+!> has some early return statements that prevent having the debugging
+!> information in it.
 
 subroutine find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
 
@@ -5947,8 +5944,8 @@ integer,             intent(out) :: ier(:) ! ens_size
 integer :: e
 
 ! initialization
-lower = MISSING_R8
-upper = MISSING_R8
+lower = MISSING_I
+upper = MISSING_I
 fract = 0.0_r8
 
 ! need vert index for the vertical level
