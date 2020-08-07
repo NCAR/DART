@@ -1,0 +1,10 @@
+
+&CONAGUA_convert_streamflow_nml
+   meta_data_file         = 'unset'
+   data_file_list         = 'unset'
+   obs_out_file           = 'obs_seq.out'
+   obs_fraction_for_error = 0.01
+   obs_min_err_std        = 0.5
+   debug                  = .false.
+  /
+

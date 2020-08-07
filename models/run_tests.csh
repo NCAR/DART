@@ -95,6 +95,7 @@ set DO_THESE_MODELS = ( \
   clm \
   cm1 \
   forced_lorenz_96 \
+  gitm \
   ikeda \
   lorenz_04 \
   lorenz_63 \
@@ -107,6 +108,7 @@ set DO_THESE_MODELS = ( \
   simple_advection \
   template \
   wrf \
+  wrf_hydro \
 )
 
 #----------------------------------------------------------------------

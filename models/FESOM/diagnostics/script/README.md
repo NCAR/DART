@@ -1,3 +1,8 @@
+
+<span id="TOP" class="anchor"></span>
+
+![DARTlogo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
+
 ### Further description of the scripts
 
 Scripts call a fortran tool to post-process the FESOM and DART outputs. They include a **tool** variable

@@ -19,11 +19,8 @@ module netcdf_utilities_mod
 !> in english what they do.  the intent is someone who does not know
 !> anything about netcdf can still use these.
 !>
-!> these are simple routines that can't possibly handle all options.  
-!> if you have complicated needs, write your own specialized routine, 
-!> either here or in the calling code.
-!> for example, the 'put_var' routine here doesn't have start or count, 
-!> intentionally, for array entries.
+!> The 'put_var' and 'get_var' routines take optional start, count, 
+!> stride, and map variables.
 !>
 
 
@@ -58,6 +55,7 @@ public :: nc_check,                       &
           nc_get_variable,                &
           nc_add_global_creation_time,    &
           nc_get_variable_num_dimensions, &
+          nc_get_variable_dimension_names, &
           nc_get_variable_size,           &
           nc_open_file_readonly,          &
           nc_open_file_readwrite,         &
@@ -1100,13 +1098,18 @@ end function nc_variable_exists
 ! put values into variables
 
 
-subroutine nc_put_char_1d(ncid, varname, varvals, context, filename)
+subroutine nc_put_char_1d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 character(len=*), intent(in) :: varvals
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_char_1d'
 integer :: ret, varid
@@ -1114,7 +1117,7 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_char_1d
@@ -1143,13 +1146,18 @@ end subroutine nc_put_single_int_1d
 
 !--------------------------------------------------------------------
 
-subroutine nc_put_int_1d(ncid, varname, varvals, context, filename)
+subroutine nc_put_int_1d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 integer,          intent(in) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_int_1d'
 integer :: ret, varid
@@ -1157,7 +1165,7 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_int_1d
@@ -1186,13 +1194,18 @@ end subroutine nc_put_single_real_1d
 
 !--------------------------------------------------------------------
 
-subroutine nc_put_real_1d(ncid, varname, varvals, context, filename)
+subroutine nc_put_real_1d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 real(r8),         intent(in) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_real_1d'
 integer :: ret, varid
@@ -1200,20 +1213,25 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_real_1d
 
 !--------------------------------------------------------------------
 
-subroutine nc_put_char_2d(ncid, varname, varvals, context, filename)
+subroutine nc_put_char_2d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 character(len=*), intent(in) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_char_2d'
 integer :: ret, varid
@@ -1221,20 +1239,25 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_char_2d
 
 !--------------------------------------------------------------------
 
-subroutine nc_put_int_2d(ncid, varname, varvals, context, filename)
+subroutine nc_put_int_2d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 integer,          intent(in) :: varvals(:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_int_2d'
 integer :: ret, varid
@@ -1242,20 +1265,25 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_int_2d
 
 !--------------------------------------------------------------------
 
-subroutine nc_put_real_2d(ncid, varname, varvals, context, filename)
+subroutine nc_put_real_2d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 real(r8),         intent(in) :: varvals(:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_real_2d'
 integer :: ret, varid
@@ -1263,20 +1291,25 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_real_2d
 
 !--------------------------------------------------------------------
 
-subroutine nc_put_int_3d(ncid, varname, varvals, context, filename)
+subroutine nc_put_int_3d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 integer,          intent(in) :: varvals(:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_int_3d'
 integer :: ret, varid
@@ -1284,20 +1317,25 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_int_3d
 
 !--------------------------------------------------------------------
 
-subroutine nc_put_real_3d(ncid, varname, varvals, context, filename)
+subroutine nc_put_real_3d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 real(r8),         intent(in) :: varvals(:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_real_3d'
 integer :: ret, varid
@@ -1305,20 +1343,25 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_real_3d
 
 !--------------------------------------------------------------------
 
-subroutine nc_put_int_4d(ncid, varname, varvals, context, filename)
+subroutine nc_put_int_4d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 integer,          intent(in) :: varvals(:,:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_int_4d'
 integer :: ret, varid
@@ -1326,20 +1369,25 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_int_4d
 
 !--------------------------------------------------------------------
 
-subroutine nc_put_real_4d(ncid, varname, varvals, context, filename)
+subroutine nc_put_real_4d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 real(r8),         intent(in) :: varvals(:,:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_put_real_4d'
 integer :: ret, varid
@@ -1347,7 +1395,7 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_var(ncid, varid, varvals)
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_put_real_4d
@@ -1363,13 +1411,18 @@ end subroutine nc_put_real_4d
 ! ever want to support these - just punt and make the caller drop down
 ! into direct calls to the netcdf lib.
 
-subroutine nc_get_short_1d(ncid, varname, varvals, context, filename)
+subroutine nc_get_short_1d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 integer(i2),      intent(out) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_short_1d'
 integer :: ret, varid
@@ -1380,7 +1433,7 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_short_1d
@@ -1411,13 +1464,18 @@ end subroutine nc_get_single_int_1d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_int_1d(ncid, varname, varvals, context, filename)
+subroutine nc_get_int_1d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 integer,          intent(out) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_int_1d'
 integer :: ret, varid
@@ -1428,7 +1486,7 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_int_1d
@@ -1459,7 +1517,8 @@ end subroutine nc_get_single_real_1d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_real_1d(ncid, varname, varvals, context, filename)
+subroutine nc_get_real_1d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 ! This will match r4 and if r8=r4 
 
@@ -1468,6 +1527,10 @@ character(len=*), intent(in)  :: varname
 real(r4),         intent(out) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_real_1d'
 integer :: ret, varid
@@ -1478,20 +1541,25 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_real_1d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_double_1d(ncid, varname, varvals, context, filename)
+subroutine nc_get_double_1d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 real(digits12),   intent(out) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_double_1d'
 integer :: ret, varid
@@ -1502,20 +1570,25 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_double_1d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_short_2d(ncid, varname, varvals, context, filename)
+subroutine nc_get_short_2d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 integer(i2),      intent(out) :: varvals(:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_short_2d'
 integer :: ret, varid
@@ -1526,20 +1599,25 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_short_2d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_int_2d(ncid, varname, varvals, context, filename)
+subroutine nc_get_int_2d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 integer,          intent(out) :: varvals(:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_int_2d'
 integer :: ret, varid
@@ -1550,19 +1628,24 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_int_2d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_real_2d(ncid, varname, varvals, context, filename)
+subroutine nc_get_real_2d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 real(r8),         intent(out) :: varvals(:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_real_2d'
 integer :: ret, varid
@@ -1573,20 +1656,25 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_real_2d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_short_3d(ncid, varname, varvals, context, filename)
+subroutine nc_get_short_3d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 integer(i2),      intent(out) :: varvals(:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_short_3d'
 integer :: ret, varid
@@ -1597,20 +1685,25 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_short_3d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_int_3d(ncid, varname, varvals, context, filename)
+subroutine nc_get_int_3d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 integer,          intent(out) :: varvals(:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_int_3d'
 integer :: ret, varid
@@ -1621,20 +1714,25 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_int_3d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_real_3d(ncid, varname, varvals, context, filename)
+subroutine nc_get_real_3d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 real(r8),         intent(out) :: varvals(:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_real_3d'
 integer :: ret, varid
@@ -1645,20 +1743,25 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_real_3d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_int_4d(ncid, varname, varvals, context, filename)
+subroutine nc_get_int_4d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 integer,          intent(out) :: varvals(:,:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_int_4d'
 integer :: ret, varid
@@ -1669,20 +1772,25 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_int_4d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_real_4d(ncid, varname, varvals, context, filename)
+subroutine nc_get_real_4d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
 real(r8),         intent(out) :: varvals(:,:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
 
 character(len=*), parameter :: routine = 'nc_get_real_4d'
 integer :: ret, varid
@@ -1693,7 +1801,7 @@ call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, 
 ! don't support variables which are supposed to have the values multiplied and shifted.
 if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
 
-ret = nf90_get_var(ncid, varid, varvals)
+ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_real_4d
@@ -1749,7 +1857,7 @@ ret = nf90_inquire_variable(ncid, varid, dimids=dimids, ndims=ndims)
 call nc_check(ret, routine, 'inquire dimensions for variable '//trim(varname), context, filename, ncid)
 
 if (ndims > size(varsize)) &
-   call nc_check(NF90_EDIMSIZE, routine, 'variable '//trim(varname)//' dimension mismatch', &
+   call nc_check(NF90_EDIMSIZE, routine, 'variable '//trim(varname)//' return varsize array too small', &
                  context, filename, ncid)
 
 ! in case the var is larger than ndims, set unused dims to -1
@@ -1782,6 +1890,40 @@ ret = nf90_inquire_variable(ncid, varid, ndims=numdims)
 call nc_check(ret, routine, 'inquire dimensions for variable '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_variable_num_dimensions 
+
+!------------------------------------------------------------------
+
+subroutine nc_get_variable_dimension_names(ncid, varname, dimnames, context, filename) 
+
+integer, intent(in) :: ncid
+character(len=*), intent(in):: varname
+character(len=*), intent(out) :: dimnames(:)
+character(len=*), intent(in), optional :: context
+character(len=*), intent(in), optional :: filename
+
+character(len=*), parameter :: routine = 'nc_get_variable_dimension_names'
+integer :: ret, i, ndims, varid, dimids(NF90_MAX_VAR_DIMS)
+
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
+
+ret = nf90_inquire_variable(ncid, varid, dimids=dimids, ndims=ndims)
+call nc_check(ret, routine, 'inquire dimensions for variable '//trim(varname), context, filename, ncid)
+
+if (ndims > size(dimnames)) &
+   call nc_check(NF90_EDIMSIZE, routine, 'variable '//trim(varname)//' return dimnames array too small', &
+                 context, filename, ncid)
+
+! in case the var is larger than ndims, set unused dims to ""
+dimnames(:) = ""
+do i=1, ndims
+   ret = nf90_inquire_dimension(ncid, dimids(i), name=dimnames(i))
+   call nc_check(ret, routine, 'inquire dimension name for variable '//trim(varname), &
+                 context, filename, ncid)
+enddo
+
+end subroutine nc_get_variable_dimension_names 
 
 !--------------------------------------------------------------------
 !--------------------------------------------------------------------

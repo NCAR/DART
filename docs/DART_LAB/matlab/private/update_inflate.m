@@ -6,14 +6,11 @@ function [new_cov_inflate, new_cov_inflate_sd] = update_inflate(x, sigma_p_2, ob
 % inflation for ensemble filters. Tellus A, 61, 72-83. doi: 10.1111/j.1600-0870.2008.00361.x 
 %
 % More documentation available at:
-% https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/assimilation_code/modules/assimilation/adaptive_inflate_mod.html
+% assimilation_code/modules/assimilation/adaptive_inflate_mod.html
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id$
-
 
 %% FIRST, update the inflation mean:
 
@@ -97,7 +94,3 @@ else
     if new_cov_inflate_sd < lambda_sd_LB, new_cov_inflate_sd = lambda_sd_LB; end
 end
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$

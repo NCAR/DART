@@ -1,0 +1,83 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1671\cocoasubrtf500
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 Menlo-Regular;\f2\fswiss\fcharset0 Helvetica-Bold;
+}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww21340\viewh16520\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 This document explains how 2DTEC*bin and 3DUSR*bin files were generated from GITM.\
+\
+GITM is a Fortran 90 code that runs on multiple CPUs on a given supercomputer. Each CPU computes the solution for a part of the simulation domain. For any given time when an output file (can be 2DTEC type and/or 3DUSR type) from GITM is requested, each CPU writes outputs to an individual file for that CPU only. Therefore, we have one output file for each CPU, at the requested output time. In addition, the root CPU writes a header file, which contains the time information, grid structure and variable list. After the GITM simulation was done, I ran a post processing script to combine all the output files from different CPUs along with the header file. The result of running this post processing script is the 2DTEC*bin and/or the 3DUSR*bin files that I sent to Jeff.\
+\
+This post processing script is also a Fortran 90 code. The original write statements in this code are: \
+\
+
+\f1         open(iOutputUnit_,file=FileName(1:iStart)//".bin",&\
+                status="unknown",form="unformatted")\
+        write(iOutputUnit_) Version\
+        write(iOutputUnit_) nLonsTotal, nLatsTotal, nAltsTotal\
+        write(iOutputUnit_) nVars\
+        do iVar=1,nVars\
+           write(iOutputUnit_) Variables(iVar)\
+        enddo\
+        write(iOutputUnit_) iYear, iMonth, iDay, iHour, iMinute, iSecond, iMilli\
+        do iVar = 1, nVars\
+           write(iOutputUnit_) AllData(:,:,:,iVar)\
+        enddo\
+
+\f0 \
+
+\f2\b Version
+\f0\b0  is the model version number. \
+
+\f2\b nLonsTotal, nLatsTotal, nAltsTota
+\f0\b0 l are the number of grid cells in longitude, latitude, and altitude. For 2DTEC*bin file, nAltsTotal = 1, since there is no altitude information for 2DTEC type of output. \
+
+\f2\b nVars
+\f0\b0  is the number of variables in this file.\
+
+\f2\b Variables 
+\f0\b0 are an array of variable names (field names as you suggested).\
+
+\f2\b iYear, iMonth, iDay, iHour, iMinute, iSecond, iMilli
+\f0\b0  is the time record of this output file.\
+
+\f2\b AllData
+\f0\b0  contains the actual data array.\
+\
+The Fortran formats are:\
+
+\f1 real    :: Version\
+integer :: nLonsTotal, nLatsTotal, nAltsTotal\
+integer :: nVars\
+character (len=40) :: Variables(nMaxVars) 
+\f0 and 
+\f1 integer, parameter :: nMaxVars = 200
+\f0 . However it is the value of nVars that matters as long as nVar < nMaxVars.\
+
+\f1 integer :: iYear,iMonth,iDay,iHour,iMinute,iSecond,iMilli
+\f0 \
+
+\f1 real, allocatable :: AllData(:,:,:,:) 
+\f0 and 
+\f1 allocate(AllData(nLonsTotal,nLatsTotal,nAltsTotal,nVars))
+\f0 \
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+}

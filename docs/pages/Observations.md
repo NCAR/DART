@@ -27,7 +27,7 @@ explore the documentation page without downloading DART, you may
 ## An overview of the DART 'preprocess' program
 
 ~~First and foremost, check out
-[preprocess.html](https://ncar.github.io/DART/api/v0.0.6/program/preprocess.html)
+[preprocess.html](../../assimilation_code/programs/preprocess/preprocess.html)
 for detailed information.~~
 
 **The *preprocess* program actually *builds* the source code that supports
@@ -415,13 +415,13 @@ the model consistent with those observations - the true state:
 
 Real observations come in a mind-boggling diversity of formats. We have
 converters for many formats in the `DART/observations/obs_converters`
-directory. The documentation for that directory is listed in
-[observations.html](Manhattan/observations/obs_converters/observations.html).  
+directory. The documentation for that directory is listed in the 
+[README.md](../../observations/obs_converters/README.md).  
 
 The converters are designed to work on one input file format and create
 (or add to) an output observation sequence. It may be desirable to
 post-process multiple observation sequence files with the
-[obs_sequence_tool](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html)
+[obs_sequence_tool](../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html)
 ... to select for timeframe, geographic region, etc.  
 
 Many of the formats require their own libraries (like HDF), and require
@@ -828,7 +828,7 @@ you advice and pointers on how to approach writing the code.
 # Working with observation sequences.
 
 First and foremost, check out the
-[obs_sequence_tool.html](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html)
+[obs_sequence_tool.html](../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html)
 document for detailed information and examples.  
 
 *obs_sequence_tool* is the primary tool for manipulating observation
@@ -873,7 +873,7 @@ performing the experiment you THINK you are performing
 
 # Adding support for a new observation TYPE.
 
-[DART/observations/forward_operators/obs_def_mod.html](https://ncar.github.io/DART/api/v0.0.6/module/obs_def_mod.html)
+[DART/observations/forward_operators/obs_def_mod.html](../../observations/forward_operators/obs_def_mod.html)
 is the source for detailed information.
 
 ---
