@@ -11,7 +11,6 @@ program netcdf_to_gitm_blocks
 !
 ! method: Read DART state netcdf files and overwrite values in a gitm restart file.
 !
-! NOT FINISHED!  HARDLY STARTED.
 ! this version assumes that the grid is global and the data needs to be
 ! blocked into one block per gitm mpi task.  there is a different converter
 ! for when gitm only needs a single input/output file.

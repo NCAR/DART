@@ -37,7 +37,7 @@ menu:
       - title: DART Parallelism
         url: /pages/dart_mpi.html
       - title: Frequently Asked Questions
-        url: /pages/DART2_Miscellany.html
+        url: /pages/Miscellany.html
   - title: Releases
     url: /pages/release.html
     submenu:
