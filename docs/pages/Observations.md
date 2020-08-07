@@ -415,8 +415,8 @@ the model consistent with those observations - the true state:
 
 Real observations come in a mind-boggling diversity of formats. We have
 converters for many formats in the `DART/observations/obs_converters`
-directory. The documentation for that directory is listed in
-[observations.html](Manhattan/observations/obs_converters/observations.html).  
+directory. The documentation for that directory is listed in the 
+[README.md](../../observations/obs_converters/README.md).  
 
 The converters are designed to work on one input file format and create
 (or add to) an output observation sequence. It may be desirable to
@@ -695,7 +695,8 @@ ARGO_SALINITY, etc. Each type is associated with a single underlying
 generic 'kind', which controls what forward operator code is called
 inside the model, e.g. QTY_TEMPERATURE, QTY_DENSITY, etc.
 
-See the [obs_def_mod.html](../forward_operators/obs_def_mod.html) for more details on
+See the [observations/forward_operators/obs_def_mod.html](https://www.image.ucar.edu/DAReS/DART/Manhattan/observations/forward_operators/obs_def_mod.html)
+for more details on
 how to use and add new DART types. The DART `obs_kind_mod.f90` defines a
 list of already defined observation types, and users can either use
 existing observation types in 'obs_def_xxx_mod.f90' files, or define

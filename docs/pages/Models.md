@@ -570,6 +570,12 @@ satellite-borne accelerometers and electon density obtained from ground-based
 and space-based GNSS signals. TIEGCM2 is not yet supported, and the existing
 interfaces need to be updated to work under the Manhattan release.
 
+<span id="wrf-chem" class="anchor"></span>
+
+### WRF-CHEM
+
+Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
+If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
 
 \[[top](#)\]
 
@@ -850,7 +856,7 @@ There are lots of ways to define an observation sequence that DART can
 use as input for a perfect model experiment. If you have observations in
 DART format already, you can simply use them. If you have observations
 in one of the formats already supported by the DART converters
-(check [DART/observations/obs_converters/observations.html](obs_converters_observations.html)),
+(check [DART/observations/obs_converters/README.md](obs_converters/README.md)),
 convert it to a DART observation sequence. You may need to use the
 [obs_sequence_tool](../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html)
 to combine multiple observation sequence files into observation sequence

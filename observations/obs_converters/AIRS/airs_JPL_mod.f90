@@ -1,5 +1,4 @@
 ! This code is not protected by the DART copyright agreement.
-! DART $Id$
 
 ! adapted from original JPL code, example AIRS readers
 !
@@ -800,8 +799,3 @@ end subroutine
 
 end module
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
