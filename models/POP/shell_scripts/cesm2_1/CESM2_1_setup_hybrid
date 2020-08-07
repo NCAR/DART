@@ -233,13 +233,10 @@ foreach FILE ( *xml )
    endif
 end
 
-# Since ccsm_getenv no longer exists, we set environmental variables here using
-# xmlquery
-
-setenv COMP_ATM           `./xmlquery COMP_ATM           --value`
-setenv COMP_LND           `./xmlquery COMP_LND           --value`
-
 # Make sure the land and atmosphere are 'data' components.
+
+setenv COMP_ATM  `./xmlquery COMP_ATM --value`
+setenv COMP_LND  `./xmlquery COMP_LND --value`
 
 if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
    echo ""
@@ -248,6 +245,13 @@ if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
    echo ""
    exit -3
 endif
+
+# This configures each POP model instance to run on a single node. 
+# Given the resolution and the machine architecture, you may need to use 
+# more nodes per instance.  In the multi-instance configuration, getting the 
+# optimal layout is quite problematic. Running the components sequentially 
+# has been show to be robust, so we are setting the ROOTPEs to zero 
+# (which makes them run sequentially).
 
 @ number_of_threads = 1
 @ nodes_per_instance = 1
@@ -302,8 +306,9 @@ endif
 ./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
 ./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
 
-# The streams files were generated with a NO_LEAP calendar in mind.
-# We need to test these with a GREGORIAN calendar.
+# The default for G compsets, e.g. those using the COREv2 and JRA-55
+# streamfiles, is to have NO_LEAP calendars by default while the CAM
+# reanalysis has a GREGORIAN calendar, so we change it here.
 ./xmlchange CALENDAR=GREGORIAN
 
 ./xmlchange STOP_OPTION=$stop_option
@@ -332,6 +337,9 @@ endif
 # Until then, this script accesses sourcemods from a hardwired location.
 # If you have additional sourcemods, they will need to be merged into any DART
 # mods and put in the SourceMods subdirectory found in the 'CASEROOT' directory.
+#
+# There are SourceMods that enable POP to recompute the barotropic velocity
+# to prevent the barotropic solver from crashing.
 # ==============================================================================
 
 echo ""
@@ -342,7 +350,8 @@ if (    -d     ~/${cesmtag}/SourceMods ) then
    ${COPY} -r  ~/${cesmtag}/SourceMods/* ${CASEROOT}/SourceMods/
 else
    echo "ERROR - No SourceMods for this case."
-   echo "DART requires modifications to several src files."
+   echo "DART requires modifications to several src files that cause POP to"
+   echo "recompute the barotropic velocity after assimilation."
    echo "Download the appropriate files for CESM2_1 from:"
    echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
@@ -352,6 +361,8 @@ endif
 
 # ==============================================================================
 # Updating the run script to reflect queue and wallclock
+# In an ensemble run, a lot of data is created. The short-term archiver
+# runs serially and may require a significant amount of time.
 # ==============================================================================
 
 echo ""
@@ -478,6 +489,8 @@ cd ${CASEROOT}
 
 setenv RUNDIR           \`./xmlquery RUNDIR           --value\`
 setenv CONTINUE_RUN     \`./xmlquery CONTINUE_RUN     --value\`
+setenv ARCHIVED         \`./xmlquery DOUT_S           --value\`
+setenv ARCHIVE_DIR      \`./xmlquery DOUT_S_ROOT      --value\`
 
 cd \${RUNDIR}
 
@@ -506,21 +519,22 @@ if ( \${CONTINUE_RUN} == TRUE ) then
    #  of the short term archive 'rest' restart directories.  This assumes
    #  the long term archiver has NOT copied these files to the HPSS yet.
 
-   if (  \${DOUT_S} == TRUE ) then
+   if (  \${ARCHIVED} == TRUE ) then
 
       # The restarts should be in the short term archive directory.  See
       # https://esmci.github.io/cime/versions/master/html/users_guide/running-a-case.html
       # for more help and information.
 
-      set RESTARTDIR = \${DOUT_S_ROOT}/rest/\${restart_time}
+      set RESTARTDIR = \${ARCHIVE_DIR}/rest/\${restart_time}
 
       if ( ! -d \${RESTARTDIR} ) then
 
-         echo "restart file directory not found: "
+         echo ""
+         echo "ERROR: restart file directory not found: "
          echo " \${RESTARTDIR}"
          echo "If the long-term archiver is on, you may have to restore this directory first."
          echo "You can also check for either a .sta or a .sta2 hidden subdirectory in"
-         echo "\${DOUT_S_ROOT}"
+         echo "\${ARCHIVE_DIR}"
          echo "which may contain the 'rest' directory you need,"
          echo "and then modify RESTARTDIR in this script."
          exit -1
@@ -717,49 +731,50 @@ cat << EndOfText >! CESM_instructions.txt
 
 -------------------------------------------------------------------------
 
-Checking the case. 
- 
-1) cd ${RUNDIR} 
-   and check the compatibility between the namelists/pointer 
-   files and the files that were staged. 
- 
-2) cd ${CASEROOT} 
- 
-3) The case is initially configured to do NO ASSIMILATION. 
-   When you are ready to add data assimilation, configure and execute 
-   the ${CASEROOT}/CESM_DART_config script. 
- 
-4) The very first CESM advance (i.e. CONTINUE_RUN=FALSE) 
-   STOP_N must be longer than *AT LEAST 2 TIMES* the coupling 
-   frequency between the atmosphere and ocean. 
-   If coupling once a day, the first advance MUST be at least 48 hours. 
-   If coupling 4 times a day, the first advance MUST be at least 12 hours. 
-   After that, STOP_N can be as short as a single coupling frequency. 
- 
-5) Verify the contents of env_run.xml and submit the CESM job: 
-   ./case.submit -M begin,end 
- 
-6) After the job has run, check to make sure it worked and that 
-   a: POP is creating netCDF restart files, 
-   b: the right restart files exist in the run directory, 
-   c: (if you're running DART) the archive dart/hist directory has the DART output, 
-   d: everything is working correctly ... 
- 
-7) To extend the run in $STOP_N "$stop_option" steps, 
-   change the env_run.xml variables: 
- 
-   ./xmlchange CONTINUE_RUN=TRUE 
-   ./xmlchange RESUBMIT=<number_of_cycles_to_run> 
-   ./xmlchange STOP_N=$STOP_N 
- 
+Checking the case.
+
+1) cd ${RUNDIR}
+   and check the compatibility between the namelists/pointer
+   files and the files that were staged.
+
+2) cd ${CASEROOT}
+
+3) The case is initially configured to do NO ASSIMILATION.
+   When you are ready to add data assimilation, configure and execute
+   the ${CASEROOT}/CESM_DART_config script.
+
+4) The very first CESM advance (i.e. CONTINUE_RUN=FALSE)
+   STOP_N must be longer than *AT LEAST 2 TIMES* the coupling
+   frequency between the atmosphere and ocean.
+   If coupling once a day, the first advance MUST be at least 48 hours.
+   If coupling 4 times a day, the first advance MUST be at least 12 hours.
+   After that, STOP_N can be as short as a single coupling frequency.
+
+5) Verify the contents of env_run.xml and submit the CESM job:
+   ./case.submit -M begin,end
+
+6) After the job has run, check to make sure it worked and that
+   a: POP is creating netCDF restart files,
+   b: the right restart files exist in the run directory,
+   c: (if you're running DART) the archive dart/hist directory has the DART output,
+   d: everything is working correctly ...
+
+7) To extend the run in $STOP_N "$stop_option" steps,
+   change the env_run.xml variables:
+
+   ./xmlchange CONTINUE_RUN=TRUE
+   ./xmlchange RESUBMIT=<number_of_cycles_to_run>
+   ./xmlchange STOP_N=$STOP_N
+
    and submit:
-   
-   ./case.submit -M begin,end 
- 
-Check the streams listed in the streams text files.  If more or different 
+
+   ./case.submit -M begin,end
+
+Check the streams listed in the streams text files.  If more or different
 dates need to be added, change the $CASEROOT/user_*files*
 and invoke './preview_namelists' so you can check the information in the
-${CASEROOT}/CaseDocs or ${RUNDIR} directories. 
+${CASEROOT}/CaseDocs or
+${RUNDIR} directories.
 
 -------------------------------------------------------------------------
 
