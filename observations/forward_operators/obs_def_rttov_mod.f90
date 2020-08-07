@@ -2115,7 +2115,7 @@ DO imem = 1, ens_size
          end if
 
          if (allocated(clouds % rain)) then
-            totalwater(:) = totalwater(:) + clouds % clw(imem,lvlidx)
+            totalwater(:) = totalwater(:) + clouds % rain(imem,lvlidx)
          end if
 
          totalice(:) = 0.0d0
