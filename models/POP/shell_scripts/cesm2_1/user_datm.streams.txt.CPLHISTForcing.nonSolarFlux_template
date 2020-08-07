@@ -1,6 +1,11 @@
 <dataSource>
-    NCAR RDA ds345.0      
-    originally /glade/p/cisl/dares/johnsonb/CAM_DATM/Reanalysis
+    The CAM6-DART Ensemble Reanalysis (NCAR RDA ds345.0) contains
+    DATM forcing files particularly appropriate for CESM experiments.
+    https://rda.ucar.edu/datasets/ds345.0
+
+    They are available on spinning disk (compressed) on
+    the NCAR supercomputers at:
+    /glade/collections/rda/data/ds345.0/cpl
 </dataSource>
 <domainInfo>
     <variableNames>
@@ -11,7 +16,7 @@
         doma_mask     mask
     </variableNames>
     <filePath>
-        /glade/collections/rda/data/ds345.0/cpl
+        /glade/p/cisl/dares/johnsonb/CAM_DATM/Reanalysis
     </filePath>
     <fileNames>
         f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x3h.2011.nc
@@ -26,13 +31,13 @@
         a2x3h_Faxa_lwdn      lwdn
     </variableNames>
     <filePath>
-        /glade/collections/rda/data/ds345.0/cpl
+        /glade/p/cisl/dares/johnsonb/CAM_DATM/Reanalysis
     </filePath>
     <fileNames>
         f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x3h.2011.nc
         f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x3h.2012.nc
         f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x3h.2013.nc
-	f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x3h.2014.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x3h.2014.nc
         f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x3h.2015.nc
         f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x3h.2016.nc
         f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x3h.2017.nc
