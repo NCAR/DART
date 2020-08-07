@@ -175,7 +175,7 @@ set  OBSERVATIONDIR = /ptmp/${user}/POP_OSSE/1_7_Jan2000
  ${COPY} ${DARTDIR}/work/restart_file_tool          .
 
 # shell scripts
- ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
+ ${COPY} ${DARTDIR}/shell_scripts/cesm1_x/advance_model.csh .
 
 # data files
  ${COPY} ${DARTDIR}/work/input.nml                  .
