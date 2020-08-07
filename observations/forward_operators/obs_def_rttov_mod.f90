@@ -2351,8 +2351,8 @@ DO imem = 1, ens_size
       runtime % profiles(imem) % azangle     = visir_md % sat_az
 
       ! Solar zenith and azimuth angles (degrees), only relevant if use_solar
-      runtime % profiles(imem) % sunzenangle = visir_md % sun_az
-      runtime % profiles(imem) % sunazangle  = visir_md % sun_ze
+      runtime % profiles(imem) % sunzenangle = visir_md % sun_ze
+      runtime % profiles(imem) % sunazangle  = visir_md % sun_az
    else
       ! Sat. zenith and azimuth angles (degrees)
       runtime % profiles(imem) % zenangle    = mw_md % sat_ze
