@@ -23,14 +23,16 @@ functions depending on the model and model setup. In some cases RTTOV default
 climatologies can be used, but at a minimum the following quantities must be supplied by the
 model_mod interpolate:
 
-**QTY_PRESSURE**           - atmospheric pressure in hPa at the model levels
-**QTY_TEMPERATURE**        - atmospheric temperature in K at the model levels
-**QTY_VAPOR_MIXING_RATIO** - atmospheric humidity mixing ratio in kg/kg at the model levels
-**QTY_SURFACE_PRESSURE**   - the surface pressure in hPa
-**QTY_SURFACE_ELEVATION**  - the surface elevation in km
-**QTY_2M_TEMPERATURE**     - the atmospheric temperature in K at 2 m above the surface
-**QTY_SKIN_TEMPERATURE**   - the surface (skin) temperature in K
-**QTY_SURFACE_TYPE**       - 0 = land, 1 = water, 2 = sea ice
+| Quantity | Description |
+| -------- | ----------- | 
+| **QTY_PRESSURE**           | atmospheric pressure in hPa at the model levels |
+| **QTY_TEMPERATURE**        | atmospheric temperature in K at the model levels |
+| **QTY_VAPOR_MIXING_RATIO** | atmospheric humidity mixing ratio in kg/kg at the model levels |
+| **QTY_SURFACE_PRESSURE**   | the surface pressure in hPa |
+| **QTY_SURFACE_ELEVATION**  | the surface elevation in km |
+| **QTY_2M_TEMPERATURE**     | the atmospheric temperature in K at 2 m above the surface | 
+| **QTY_SKIN_TEMPERATURE**   | the surface (skin) temperature in K |
+| **QTY_SURFACE_TYPE**       | 0 = land, 1 = water, 2 = sea ice | 
 
 If a DART model_mod cannot provide these required quantities, the RTTOV forward operator 
 will fail and cannot be used. It may be possible to look up surface elevation or surface 
