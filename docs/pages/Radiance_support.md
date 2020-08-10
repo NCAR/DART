@@ -85,16 +85,16 @@ To get RTTOV to work with your model, you will need to follow these steps:
    - Setup your ensemble as appropriate
    - Run filter and analyze the results in the usual way
 
-Note that currently obervation converters are only provided for AIRS, AMSU/A,
+Note that currently obervation converters are only provided for AIRS, AMSU/A, GOES,
 and GMI. These converters can be found in the observations/obs_converters
 directories. The L1 converters are the appropriate converters for the radiance
 or brightness temperatures (rather than retrievals). If you need real L1 data
 for another satellite (as opposed to running an OSSE with perfect_model_obs
 where you can generate your own data), you may be able to use one of these
 converters to get you started. We welcome your contributions back to the DART
-public repository.
+public repository. Please issue a pull request to https://github.com/NCAR/DART.
 
-Note that the observation converters will require the HDF-EOS libraries.
+Note that some of the observation converters may require the HDF-EOS libraries.
 See the BUILDME script in each directory for help in building these
 observation converters.
 
