@@ -15,8 +15,8 @@
 
 set nonomatch
 \rm -f preprocess *.o *.mod Makefile
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
+\rm -f ../../../../observations/forward_operators/obs_def_mod.f90
+\rm -f ../../../../assimilation_code/modules/observations/obs_kind_mod.f90
 
 set MODEL = "GMI converters"
 

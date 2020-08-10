@@ -15,7 +15,8 @@ use time_manager_mod, only : time_type, get_date, set_date,            &
 
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, obs_sequence_type,              &
-                             obs_type, set_copy_meta_data, set_qc_meta_data
+                             obs_type, set_copy_meta_data, set_qc_meta_data, &
+                             print_obs_seq_summary
 
 use     location_mod, only : location_type, set_location, VERTISUNDEF, &
                              get_location
@@ -24,8 +25,6 @@ use     obs_kind_mod, only : get_index_for_type_of_obs
 use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 use obs_def_rttov_mod, only : set_mw_metadata, &
                               get_rttov_option_logical
-
-use obs_seq_utilities_mod, only : print_obs_seq
 
 use hdf5
 
@@ -509,7 +508,7 @@ scanloop:  do iscan=1,swath%nscans
 enddo scanloop
 
 ! Print a little summary
-call print_obs_seq(seq, '')
+call print_obs_seq_summary(seq)
 
 write(msgstring,*) 'Finished loading ',obs_num-1,' of ',key,'total GMI observations for swath ' // &
    swath%dset_prefix
