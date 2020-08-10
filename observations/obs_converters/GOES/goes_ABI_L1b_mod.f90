@@ -42,15 +42,15 @@ type goes_abi_map_type
    integer :: nx
    integer :: ny
 
-   real(4),    allocatable :: x(:) 
+   real(r8),   allocatable :: x(:)     
    integer(2), allocatable :: x_raw(:) ! GOES fixed grid projection x-coordinate
    real(4)                 :: x_scale
    real(4)                 :: x_offset
-   real(4),    allocatable :: y(:) 
+   real(r8),   allocatable :: y(:) 
    integer(2), allocatable :: y_raw(:) ! GOES fixed grid projection y-coordinate
    real(4)                 :: y_scale
    real(4)                 :: y_offset
-   real(4),    allocatable :: rad(:,:)
+   real(r8),   allocatable :: rad(:,:)
    integer(2), allocatable :: rad_raw(:,:) ! radiances, unit (after scale and offset) is mW m-2 sr-1 (cm-1)-1
    real(4)                 :: rad_scale
    real(4)                 :: rad_offset
@@ -60,9 +60,9 @@ type goes_abi_map_type
    real(4)                 :: r_pol ! radius of earth at poles
    real(4)                 :: H ! the total height of satellite 
    real(digits12)          :: t ! mid-point of scan. number of seconds since 2000 01/01 12:00
-   real(4)                 :: sc_lat
-   real(4)                 :: sc_lon
-   real(r8),   allocatable :: lat(:,:)
+   real(4)                 :: sc_lat ! space-craft latitude
+   real(4)                 :: sc_lon ! space-craft longitude
+   real(r8),   allocatable :: lat(:,:) 
    real(r8),   allocatable :: lon(:,:)
 
 end type
