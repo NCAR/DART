@@ -16,7 +16,8 @@ program update_bc
 !         The input list should be matched with output_state_file_list in &filter_nml.
 !         
 ! author: Soyoung Ha 23 Aug 16
-!         Updated in 4 May 2017 for the Manhatten release
+!         Updated in  4 May 2017 for the Manhatten release
+!         Updated in 28 Jul 2020 for checking dimension sizes in analysis and lbc files.
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
@@ -36,6 +37,7 @@ use state_structure_mod, only : get_num_variables, get_domain_size
 
 use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_open_file_readwrite, &
+                                 nc_get_dimension_size,   &   ! Ha
                                  nc_close_file
 
 use netcdf
@@ -73,6 +75,10 @@ integer               :: filenum
 real(r8), allocatable :: statevector(:)
 type(time_type)       :: model_time
 type(time_type)       :: state_time
+integer :: nCellsA      = -1  ! Total number of cells  in ncAnlID
+integer :: nCellsB      = -1  ! Total number of cells  in ncBdyID
+integer :: nVertLevelsA = -1  ! Total number of levels in ncAnlID
+integer :: nVertLevelsB = -1  ! Total number of levels in ncBdyID
 !----------------------------------------------------------------------
 
 call initialize_utilities(progname='update_bc')
@@ -143,10 +149,26 @@ fileloop: do        ! until out of files
   endif
 
   !----------------------------------------------------------------------
+  ! Check dimension size in both files
+  !----------------------------------------------------------------------
+  nCellsA      = nc_get_dimension_size(ncAnlID, 'nCells',      'update_bc')        ! Ha
+  nCellsB      = nc_get_dimension_size(ncBdyID, 'nCells',      'update_bc')        ! Ha
+  nVertLevelsA = nc_get_dimension_size(ncAnlID, 'nVertLevels', 'update_bc')        ! Ha
+  nVertLevelsB = nc_get_dimension_size(ncBdyID, 'nVertLevels', 'update_bc')        ! Ha
+  print*,'nCells, nVertLevels:', nCellsA, nVertLevelsA,' in ',trim(next_infile)    ! Ha
+
+  if((nCellsA /= nCellsB) .or. (nVertLevelsA /= nVertLevelsB)) then  ! Ha
+     print*,'nCells, nVertLevels:', nCellsB, nVertLevelsB,' in ',trim(next_outfile)
+     write(string1,*) 'Domain size mismatches'
+     call error_handler(E_ERR,'update_bc',string1,source,revision,revdate)
+  endif
+
+  !----------------------------------------------------------------------
   ! Read analysis state vector (assuming to be available at the model time)
   !----------------------------------------------------------------------
   d1size = get_domain_size(1)
   d2size = get_domain_size(2)
+
   call read_variables(ncAnlID, statevector(1:d1size), 1, nanlvars, domain=1)
   call read_variables(ncBdyID, statevector(d1size+1:d1size+d2size), 1, nbdyvars, domain=2)
 
