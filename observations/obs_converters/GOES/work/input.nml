@@ -18,6 +18,7 @@
    lat1               =  25.0, 
    lat2               =  50.0
    goes_num           = 16
+   obs_err            = 0.2
  /
 
 &obs_sequence_nml

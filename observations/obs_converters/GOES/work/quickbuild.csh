@@ -18,7 +18,7 @@ set nonomatch
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
-set MODEL = "GMI converters"
+set MODEL = "GOES ABI L1B converter"
 
 @ n = 1
 

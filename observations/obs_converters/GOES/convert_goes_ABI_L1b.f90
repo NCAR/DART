@@ -55,13 +55,16 @@ integer  :: y_thin = 0
 integer  :: goes_num = 16
 logical  :: reject_dqf_1 = .true.
 
+real(r8) :: obs_err               ! the fixed obs error (std dev, in radiance units)
+                                  ! TODO: make this more sophisticated
+
 integer  :: i
 
 namelist /convert_goes_ABI_L1b_nml/ l1_files, l1_file_list, &
                                     outputfile, &
                                     lon1, lon2, lat1, lat2, &
                                     x_thin, y_thin, goes_num, &
-                                    reject_dqf_1
+                                    reject_dqf_1, obs_err
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
@@ -98,7 +101,7 @@ do index=1, filecount
 
    ! convert derived type information to DART sequence
    call make_obs_sequence(seq, map, lon1, lon2, lat1, lat2, &
-                          x_thin, y_thin, goes_num, reject_dqf_1)
+                          x_thin, y_thin, goes_num, reject_dqf_1, obs_err)
 
    ! write the sequence to a disk file
    call write_obs_seq(seq, outputfile)

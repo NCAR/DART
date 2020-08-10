@@ -11,7 +11,8 @@ use utilities_mod, only : error_handler, E_MSG, E_ERR, &
 
 use time_manager_mod, only : time_type, get_date, set_date,            &
                              get_time, set_time, set_calendar_type,    &
-                             GREGORIAN, print_date, print_time, increment_time
+                             GREGORIAN, print_date, print_time,        &
+                             operator(+)
 
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, obs_sequence_type,              &
@@ -59,10 +60,10 @@ type goes_abi_map_type
    real(4)                 :: r_pol ! radius of earth at poles
    real(4)                 :: H ! the total height of satellite 
    real(digits12)          :: t ! mid-point of scan. number of seconds since 2000 01/01 12:00
-   real(r8),   allocatable :: lat(:,:)
-   real(r8),   allocatable :: lon(:,:)
    real(4)                 :: sc_lat
    real(4)                 :: sc_lon
+   real(r8),   allocatable :: lat(:,:)
+   real(r8),   allocatable :: lon(:,:)
 
 end type
 
@@ -103,11 +104,11 @@ character(len=*), parameter :: routine = 'goes_load_abi_map'
 character(len=512) :: string1
 
 integer :: i, j
-real(8) :: a, b, c, r_fac, xv, yv, r_s
-real(8) :: sx, sy, sz
-real(8) :: time_r8
+real(digits12) :: a, b, c, r_fac, xv, yv, r_s
+real(digits12) :: sx, sy, sz
+real(digits12) :: time_r8
 
-real(4), parameter :: r2d = 180./(atan(1.)*4.)
+real(digits12), parameter :: r2d = 180._digits12/(atan(1._digits12)*4._digits12)
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -119,7 +120,7 @@ map%filename = l1b_file
 
 ! read x_raw from the file and convert it to x
 call nc_check( nf90_open(l1b_file, nf90_nowrite, fid), 'file open', l1b_file)
-call nc_check( nf90_inq_dimid(fid, "x", varid),          'inq dimid x', l1b_file)
+call nc_check( nf90_inq_dimid(fid, "x", varid), 'inq dimid x', l1b_file)
 call nc_check( nf90_inquire_dimension(fid, varid, len=map%nx), 'inq dim x', l1b_file)
 
 allocate(map%x_raw(map%nx))
@@ -132,7 +133,7 @@ call nc_check( nf90_get_att(fid, varid, 'add_offset', map%x_offset) ,'get_att x 
 map%x = real(map%x_raw)*map%x_scale + map%x_offset
 
 ! read y_raw from the file and convert it to y
-call nc_check( nf90_inq_dimid(fid, "y", varid),          'inq dimid y', l1b_file)
+call nc_check( nf90_inq_dimid(fid, "y", varid), 'inq dimid y', l1b_file)
 call nc_check( nf90_inquire_dimension(fid, varid, len=map%ny), 'inq dim y', l1b_file)
 
 allocate(map%y_raw(map%ny))
@@ -157,7 +158,7 @@ map%Rad = real(map%Rad_raw)*map%Rad_scale + map%Rad_offset
 allocate(map%dqf(map%nx,map%ny))
 
 ! read data quality flag (DQF)
-call nc_check( nf90_inq_varid(fid, "DQF", varid) , 'inq varid DQF', l1b_file)
+call nc_check( nf90_inq_varid(fid, "DQF", varid), 'inq varid DQF', l1b_file)
 call nc_check( nf90_get_var(fid, varid, map%DQF), 'get var   DQF', l1b_file)
 
 ! read the projection information
@@ -202,20 +203,18 @@ map%lon = MISSING_R8
 
 r_fac = (map%r_eq**2)/(map%r_pol**2)
 
-print *,'nx/ny:',map%nx,map%ny,map%H,map%r_eq
-
 ! now convert the GOES x/y projection to lat/lon pairs
 do i=1,map%nx
     xv = map%x(i)
     do j=1,map%ny
         yv = map%y(j)
-        ! convert up to double precision here as b**2 - 4*a*c is a bit numerically nasty
-        a = dble(sin(xv)**2 + cos(xv)**2 * ( cos(yv)**2 + r_fac * sin(yv)**2 ))
-        b = dble(-2. * map%H * cos(xv) * cos(yv))
-        c = dble(map%H**2 - map%r_eq**2)
+        ! convert up to digits12 precision here as b**2 - 4*a*c is a bit numerically nasty
+        a = sin(xv)**2 + cos(xv)**2 * ( cos(yv)**2 + r_fac * sin(yv)**2 )
+        b = -2._digits12 * map%H * cos(xv) * cos(yv)
+        c = map%H**2 - map%r_eq**2
 
-        if (b**2 >= 4.0d0*a*c) then
-            r_s = (-b - sqrt(b**2-4.0d0*a*c))/(2.0d0*a)
+        if (b**2 >= 4.0_digits12*a*c) then
+            r_s = (-b - sqrt(b**2-4.0_digits12*a*c))/(2.0_digits12*a)
             sx = r_s * cos(xv)*cos(yv)
             sy = -r_s * sin(xv)
             sz = r_s * cos(xv)*sin(yv)
@@ -226,28 +225,6 @@ do i=1,map%nx
     end do
 end do
 
-print *,'lat/lon at 1850/319:',map%lat(1850,319),' N, ',map%lon(1850,319), ' W' 
-
-!allocate(map%s1%noiseLevel(9))
-!
-!! According to https://www.star.nesdis.noaa.gov/mirs/gpmgoes.php
-!map%s1%noiseLevel(1) = 0.96 ! 10.65 V
-!map%s1%noiseLevel(2) = 0.96 ! 10.65 H
-!map%s1%noiseLevel(3) = 0.84 ! 18.7  V
-!map%s1%noiseLevel(4) = 0.84 ! 18.7  H
-!map%s1%noiseLevel(5) = 1.05 ! 23.8  V
-!map%s1%noiseLevel(6) = 0.65 ! 36.5  V
-!map%s1%noiseLevel(7) = 0.65 ! 36.5  H
-!map%s1%noiseLevel(8) = 0.57 ! 89.0  V
-!map%s1%noiseLevel(9) = 0.57 ! 89.0  H
-!
-!allocate(map%s2%noiseLevel(4))
-!
-!map%s2%noiseLevel(1) = 1.5 ! 166.0  V
-!map%s2%noiseLevel(2) = 1.5 ! 166.0  H
-!map%s2%noiseLevel(3) = 1.5 ! 183.31±3  V
-!map%s2%noiseLevel(4) = 1.5 ! 183.31±7  V
-
 end subroutine goes_load_ABI_map
 
 !------------------------------------------------------------------------------
@@ -256,7 +233,8 @@ end subroutine goes_load_ABI_map
 !  a bounding box and only extract data within that region.
 
 subroutine make_obs_sequence (seq, map, lon1, lon2, lat1, lat2, &
-                             x_thin, y_thin, goes_num, reject_dqf_1)
+                              x_thin, y_thin, goes_num, reject_dqf_1, &
+                              obs_err_spec)
 
 type(obs_sequence_type),    intent(inout) :: seq
 type(goes_abi_map_type),    intent(in)    :: map
@@ -264,6 +242,7 @@ real(r8),                   intent(in)    :: lon1, lon2, lat1, lat2
 integer,                    intent(in)    :: x_thin, y_thin
 integer,                    intent(in)    :: goes_num
 logical,                    intent(in)    :: reject_dqf_1
+real(r8),                   intent(in)    :: obs_err_spec
 
 type(obs_type)          :: obs, prev_obs
 
@@ -422,25 +401,22 @@ xloop: do ix=1,map%nx
 
       ! calculate the bearing between the obs lat/lon and the SClat/lon
       sat_az = atan2(sin(lam2-lam1)*cos(phi2),&
-                             cos(phi1)*sin(phi2)-sin(phi1)*cos(phi2)*cos(lam2-lam1))/deg2rad
+                     cos(phi1)*sin(phi2)-sin(phi1)*cos(phi2)*cos(lam2-lam1))/deg2rad
 
       rdays = floor(map%t/86400.0_digits12)
       remainder = map%t - rdays*86400.0_digits12
 
       start_time = set_date(2000,1,1,12,0,0)
-      obs_time = set_time(nint(remainder),nint(rdays))
-      call get_time(start_time, seconds, days)
-      obs_time = increment_time(obs_time, seconds, days)
+      obs_time = set_time(nint(remainder),nint(rdays)) + start_time
       call get_time(obs_time, seconds, days)
 
       ! create the radiance obs for this observation, add to sequence
 
-      ! apparently -9999 is missing data, outside of qc mechanism
       obs_value = map%Rad(ix, iy)
       if (obs_value < 0.0_r8) cycle yloop
 
-      ! TODO: specify this as a function of channel or namelist
-      obs_err = 0.2
+      ! TODO: specify this as a function of channel
+      obs_err = obs_err_spec
 
       ! column integrated value, so no vertical location
       vloc = 0.0_r8
@@ -470,7 +446,7 @@ xloop: do ix=1,map%nx
       obs_num = obs_num + 1
    enddo yloop
 enddo xloop
-!
+
 !! Print a little summary
 !call print_obs_seq(seq, '')
 
