@@ -4145,7 +4145,7 @@ call nc_check(nf90_put_att(ncid, MubVarID(id), 'coordinates', &
    call nc_check(nf90_def_var(ncid, name='XLONG_U', xtype=nf90_real, &
                  dimids= (/ weStagDimID(id), snDimID(id) /), varid=LonuVarID(id)),  &
                  'nc_write_model_atts','def_var XLONG_U')
-   call nc_check(nf90_put_att(ncid, LonVarID(id), 'long_name', &
+   call nc_check(nf90_put_att(ncid, LonuVarID(id), 'long_name', &
                  'LONGITUDE, WEST IS NEGATIVE'), &
                  'nc_write_model_atts','put_att XLONG_U'//' long_name')
    call nc_check(nf90_put_att(ncid, LonuVarID(id), 'units', 'degrees_east'), &
