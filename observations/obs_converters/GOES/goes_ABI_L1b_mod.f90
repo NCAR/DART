@@ -4,8 +4,9 @@
 
 module goes_ABI_L1b_mod
 
-use types_mod,     only : r8, deg2rad, rad2deg, PI, digits12, &
+use types_mod,     only : r4, r8, deg2rad, rad2deg, PI, digits12, &
                           MISSING_R8
+
 use utilities_mod, only : error_handler, E_MSG, E_ERR, &
                           is_longitude_between, register_module
 
@@ -22,7 +23,9 @@ use     location_mod, only : location_type, set_location, VERTISUNDEF, &
                              get_location
 
 use     obs_kind_mod,  only : get_index_for_type_of_obs
+
 use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
+
 use obs_def_rttov_mod, only : set_visir_metadata, &
                               get_rttov_option_logical
 
@@ -36,34 +39,37 @@ private
 
 public :: goes_abi_map_type, goes_load_abi_map, make_obs_sequence
 
+!>@todo FIXME ... we should be using a lot more of the netcdf_utilities interfaces.
+!>                they greatly simplify the code.
+
 type goes_abi_map_type
    character(:), allocatable :: filename
    integer :: channel
    integer :: nx
    integer :: ny
 
-   real(r8),   allocatable :: x(:)     
-   integer(2), allocatable :: x_raw(:) ! GOES fixed grid projection x-coordinate
-   real(4)                 :: x_scale
-   real(4)                 :: x_offset
-   real(r8),   allocatable :: y(:) 
-   integer(2), allocatable :: y_raw(:) ! GOES fixed grid projection y-coordinate
-   real(4)                 :: y_scale
-   real(4)                 :: y_offset
-   real(r8),   allocatable :: rad(:,:)
-   integer(2), allocatable :: rad_raw(:,:) ! radiances, unit (after scale and offset) is mW m-2 sr-1 (cm-1)-1
-   real(4)                 :: rad_scale
-   real(4)                 :: rad_offset
-   integer(1), allocatable :: dqf(:,:) ! data quality flag. 0 = good, 1 is conditionally okay, 2-4 is bad.
-   real(4)                 :: lon_origin
-   real(4)                 :: r_eq  ! radius of earth at equator
-   real(4)                 :: r_pol ! radius of earth at poles
-   real(4)                 :: H ! the total height of satellite 
-   real(digits12)          :: t ! mid-point of scan. number of seconds since 2000 01/01 12:00
-   real(4)                 :: sc_lat ! space-craft latitude
-   real(4)                 :: sc_lon ! space-craft longitude
-   real(r8),   allocatable :: lat(:,:) 
-   real(r8),   allocatable :: lon(:,:)
+   real(r8),    allocatable :: x(:)     
+   integer,     allocatable :: x_raw(:) ! GOES fixed grid projection x-coordinate
+   real(r4)                 :: x_scale
+   real(r4)                 :: x_offset
+   real(r8),    allocatable :: y(:) 
+   integer,     allocatable :: y_raw(:) ! GOES fixed grid projection y-coordinate
+   real(r4)                 :: y_scale
+   real(r4)                 :: y_offset
+   real(r8),    allocatable :: rad(:,:)
+   integer,     allocatable :: rad_raw(:,:) ! radiances, unit (after scale and offset) is mW m-2 sr-1 (cm-1)-1
+   real(r4)                 :: rad_scale
+   real(r4)                 :: rad_offset
+   integer(1),  allocatable :: dqf(:,:) ! data quality flag. 0 = good, 1 is conditionally okay, 2-4 is bad.
+   real(r4)                 :: lon_origin
+   real(r4)                 :: r_eq  ! radius of earth at equator
+   real(r4)                 :: r_pol ! radius of earth at poles
+   real(r4)                 :: H ! the total height of satellite 
+   real(digits12)           :: t ! mid-point of scan. number of seconds since 2000 01/01 12:00
+   real(r4)                 :: sc_lat ! space-craft latitude
+   real(r4)                 :: sc_lon ! space-craft longitude
+   real(r8),    allocatable :: lat(:,:) 
+   real(r8),    allocatable :: lon(:,:)
 
 end type
 
@@ -108,7 +114,7 @@ real(digits12) :: a, b, c, r_fac, xv, yv, r_s
 real(digits12) :: sx, sy, sz
 real(digits12) :: time_r8
 
-real(digits12), parameter :: r2d = 180._digits12/(atan(1._digits12)*4._digits12)
+real(digits12), parameter :: r2d = 180.0_digits12/(atan(1.0_digits12)*4.0_digits12)
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -210,14 +216,14 @@ do i=1,map%nx
         yv = map%y(j)
         ! convert up to digits12 precision here as b**2 - 4*a*c is a bit numerically nasty
         a = sin(xv)**2 + cos(xv)**2 * ( cos(yv)**2 + r_fac * sin(yv)**2 )
-        b = -2._digits12 * map%H * cos(xv) * cos(yv)
+        b = -2.0_digits12 * map%H * cos(xv) * cos(yv)
         c = map%H**2 - map%r_eq**2
 
         if (b**2 >= 4.0_digits12*a*c) then
             r_s = (-b - sqrt(b**2-4.0_digits12*a*c))/(2.0_digits12*a)
-            sx = r_s * cos(xv)*cos(yv)
-            sy = -r_s * sin(xv)
-            sz = r_s * cos(xv)*sin(yv)
+            sx  =  r_s * cos(xv)*cos(yv)
+            sy  = -r_s * sin(xv)
+            sz  =  r_s * cos(xv)*sin(yv)
 
             map%lat(i,j) = r2d * atan(r_fac*(sz/sqrt((map%H-sx)**2+sy**2)))
             map%lon(i,j) = r2d * (map%lon_origin - atan(sy/(map%H-sx)))
@@ -256,7 +262,7 @@ real(r8) :: obs_value, obs_err
 real(r8) :: rqc
 real(r8) :: latd, lond, beta
 
-real(r8) :: lam1, lam2, phi1, phi2, x, y, r_fac
+real(r8) :: lam1, lam2, phi1, phi2, r_fac
 
 real(digits12) :: rdays, remainder
 
@@ -391,7 +397,7 @@ xloop: do ix=1,map%nx
       beta = acos(cos(latd)*cos(lond))
 
       sat_ze = map%H * sin(beta) / sqrt( r_fac + map%H**2 - 2.0_r8*map%r_eq*map%H*cos(beta) )
-      sat_ze = max(-1.0,min(1.0, sat_ze))
+      sat_ze = max(-1.0_r8,min(1.0_r8, sat_ze))
       sat_ze = asin(sat_ze) / deg2rad
 
       lam1 = deg2rad*map%lon(ix,iy)*deg2rad
@@ -405,6 +411,16 @@ xloop: do ix=1,map%nx
 
       rdays = floor(map%t/86400.0_digits12)
       remainder = map%t - rdays*86400.0_digits12
+
+      !>@todo FIXME : the dart_time_io_mod.f90 or the netcdf_utilities_mod.f90 should
+      !> have a routne to read the attribute and set the start_time ....
+      ! start_time comes from the 't' variable 'units' attribute
+      ! double t ;
+      ! t:long_name = "J2000 epoch mid-point between the start and end image scan in seconds" ;
+      ! t:standard_name = "time" ;
+      ! t:units = "seconds since 2000-01-01 12:00:00" ;
+      ! t:axis = "T" ;
+      ! t:bounds = "time_bounds" ;
 
       start_time = set_date(2000,1,1,12,0,0)
       obs_time = set_time(nint(remainder),nint(rdays)) + start_time

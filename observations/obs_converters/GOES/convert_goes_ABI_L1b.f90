@@ -26,9 +26,9 @@ implicit none
 
 integer                 :: filecount
 type(goes_ABI_map_type) :: map
-type(obs_sequence_type)     :: seq
+type(obs_sequence_type) :: seq
 
-integer :: io, iunit, index
+integer :: io, iunit, ifile
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'convert_goes_ABI_L1b.f90'
@@ -54,17 +54,16 @@ integer  :: x_thin = 0
 integer  :: y_thin = 0
 integer  :: goes_num = 16
 logical  :: reject_dqf_1 = .true.
+logical  :: verbose = .false.
 
 real(r8) :: obs_err               ! the fixed obs error (std dev, in radiance units)
                                   ! TODO: make this more sophisticated
-
-integer  :: i
 
 namelist /convert_goes_ABI_L1b_nml/ l1_files, l1_file_list, &
                                     outputfile, &
                                     lon1, lon2, lat1, lat2, &
                                     x_thin, y_thin, goes_num, &
-                                    reject_dqf_1, obs_err
+                                    reject_dqf_1, obs_err, verbose
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
@@ -89,15 +88,14 @@ call check_namelist_read(iunit, io, 'convert_goes_ABI_L1b_nml')
 if (do_nml_file()) write(nmlfileunit, nml=convert_goes_ABI_L1b_nml)
 if (do_nml_term()) write(    *      , nml=convert_goes_ABI_L1b_nml)
 
-
 ! when this routine returns, the l1_files variable will have
 ! all the filenames, regardless of which way they were specified.
 filecount = set_filename_list(l1_files, l1_file_list, "convert_goes_ABI_L1b")
 
 ! for each input file
-do index=1, filecount
-   ! read from HDF file into a derived type that holds all the information
-   call goes_load_ABI_map(l1_files(index), map)
+do ifile=1, filecount
+   ! read from netCDF file into a derived type that holds all the information
+   call goes_load_ABI_map(l1_files(ifile), map)
 
    ! convert derived type information to DART sequence
    call make_obs_sequence(seq, map, lon1, lon2, lat1, lat2, &
@@ -105,6 +103,8 @@ do index=1, filecount
 
    ! write the sequence to a disk file
    call write_obs_seq(seq, outputfile)
+
+!  if (verbose) call print_obs_seq_summary(seq,l1_files(ifile))
 
    ! release the sequence memory
    call destroy_obs_sequence(seq)

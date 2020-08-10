@@ -15,8 +15,8 @@
 
 set nonomatch
 \rm -f preprocess *.o *.mod Makefile
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
+\rm -f ../../../../observations/forward_operators/obs_def_mod.f90
+\rm -f ../../../../assimilation_code/modules/observations/obs_kind_mod.f90
 
 set MODEL = "GOES ABI L1B converter"
 
@@ -57,7 +57,9 @@ end
 
 \rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
+echo
 echo "Success: All ${MODEL} programs compiled."
+echo
 
 exit 0
 
