@@ -272,6 +272,7 @@ integer :: platform_id, sat_id, sensor_id
 type(time_type) :: obs_time, start_time
 
 integer :: robstype
+integer :: goes_channel
 
 integer :: num_copies, num_qc
 ! max possible obs from this one map. in practice if the
@@ -450,9 +451,12 @@ xloop: do ix=1,map%nx
          specularity = MISSING_R8
       end if
 
+      ! the RTTOV ABI coefficients start from channel 7
+      goes_channel = map%channel-6
+
       ! add additional metadata for this obs type.  returns key to use in create call
       call set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform_id, sat_id, sensor_id, & 
-         map%channel, specularity)
+         goes_channel, specularity)
 
       call create_3d_obs(olat, olon, vloc, which_vert, obs_value, robstype, &
                              obs_err, days, seconds, rqc, obs, key)
