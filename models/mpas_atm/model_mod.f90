@@ -3077,7 +3077,7 @@ end subroutine get_xland
 subroutine get_surftype(Cells,surface_type)
 
 ! public routine for returning surface type (for rttov)
-! As defined in atmos_profile_type in rttov_interface_mod.f90
+! As defined in atmos_profile_type in obs_def_rttov_mod.f90
 ! surface type (land=0, water=1, seaice = 2)
 
 integer,  intent(in)  :: Cells
