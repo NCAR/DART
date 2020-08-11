@@ -250,7 +250,6 @@ run_experiment:
 
       assim_tools_nml:
         cutoff: 10000000.  # 0.5*(max_link_distance/1000.0)/6371.
-        anamorphosis: [true]
 
       cov_cutoff_nml:
         select_localization: 1
