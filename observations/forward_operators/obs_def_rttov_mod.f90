@@ -536,7 +536,7 @@ type rttov_sensor_type
    integer              :: platform_id
    integer              :: satellite_id
    integer              :: sensor_id
-   character(len=512)   :: obs_type
+   character(len=512)   :: base_obs_type
    character(len=3)     :: sensor_type_name ! mw, ir, or vis
    integer              :: sensor_type_num  ! vis = 1, ir = 2, mw = 3
    character(len=512)   :: coefficient_file
@@ -794,14 +794,14 @@ contains
 ! given information. Note that this will create the platform, satellite,
 ! and/or sensors as necessary.
 ! 
-subroutine add_sensor(platform_id, satellite_id, sensor_id, sensor_type_name, obs_type, &
-   coef_file, channels)
+subroutine add_sensor(platform_id, satellite_id, sensor_id, sensor_type_name, &
+   base_obs_type, coef_file, channels)
 
    integer,          intent(in) :: platform_id        ! the RTTOV platform id
    integer,          intent(in) :: satellite_id       ! the RTTOV satellite id
    integer,          intent(in) :: sensor_id          ! the RTTOV sensor id
    character(len=*), intent(in) :: sensor_type_name   ! the type of sensor (vis, ir, mw)
-   character(len=*), intent(in) :: obs_type           ! the DART observation type without _RADIANCE, _TB, or _BDRF
+   character(len=*), intent(in) :: base_obs_type      ! the DART observation type without _RADIANCE, _TB, or _BDRF
    character(len=*), intent(in) :: coef_file          ! the RTTOV coefficient file
    integer,          intent(in) :: channels(:)        ! the channels to simulate (or 0-length for all)
 
@@ -821,7 +821,7 @@ subroutine add_sensor(platform_id, satellite_id, sensor_id, sensor_type_name, ob
    character(len=512) :: string1
    character(len=512) :: string2
 
-   string2 = 'name: ' // trim(obs_type)
+   string2 = 'name: ' // trim(base_obs_type)
 
    ! check 
    if (platform_id <= 0 .or. satellite_id < 0 .or. sensor_id < 0) then
@@ -930,10 +930,10 @@ subroutine add_sensor(platform_id, satellite_id, sensor_id, sensor_type_name, ob
 
    ! setup our new sensor structure to be added
    allocate(new_sensor)
-   new_sensor % platform_id  = platform_id
-   new_sensor % satellite_id = satellite_id
-   new_sensor % sensor_id    = sensor_id
-   new_sensor % obs_type     = obs_type
+   new_sensor % platform_id   = platform_id
+   new_sensor % satellite_id  = satellite_id
+   new_sensor % sensor_id     = sensor_id
+   new_sensor % base_obs_type = base_obs_type
    new_sensor % sensor_type_name = sensor_type_name
 
    if (trim(sensor_type_name) == 'vis') then
@@ -1014,16 +1014,16 @@ end subroutine add_sensor
 ! file. The contents of the file are assumed to be an "unformatted"
 ! (aka text) CSV file with the following contents:
 ! 
-! <obs_type>,<platform_id>,<satellite_id>,<sensor_id>,<sensor_type>,<coef_file>,[channel list]
+! <base_obs_type>,<platform_id>,<satellite_id>,<sensor_id>,<sensor_type>,<coef_file>,[channel list]
 !
 ! where: 
-!     obs_type     is the DART observation quantity minus _RADIANCE, _TB, or _BDRF
-!     platform_id  is the RTTOV platform id
-!     satellite_id is the RTTOV satellite id
-!     sensor_id    is the RTTOV sensor id
-!     sensor_type  is vis, ir, or mw (visible, infrared, or microwave)
-!     coef_file    is the RTTOV coefficient file
-!     channel_list is an optional list of channels (can be zero-length, meaning all available channels should be used) 
+!     base_obs_type is the DART observation quantity minus _RADIANCE, _TB, or _BDRF
+!     platform_id   is the RTTOV platform id
+!     satellite_id  is the RTTOV satellite id
+!     sensor_id     is the RTTOV sensor id
+!     sensor_type   is vis, ir, or mw (visible, infrared, or microwave)
+!     coef_file     is the RTTOV coefficient file
+!     channel_list  is an optional list of channels (can be zero-length, meaning all available channels should be used) 
 ! 
 subroutine read_sensor_db_file(sensor_db_file)
 
@@ -1038,7 +1038,7 @@ integer :: nlines, io, size_read, line_len, maxline_len
 integer :: i
 character(len=100) :: imsg
 
-character(len=256) :: obs_type
+character(len=256) :: base_obs_type
 integer :: dbUnit
 integer :: platform_id
 integer :: satellite_id
@@ -1161,7 +1161,7 @@ lineloop: do
          end if
          select case (toknum)
             case (1)
-               obs_type = token
+               base_obs_type = token
             case (2)
                platform_id = str2int(token)
             case (3)
@@ -1181,12 +1181,12 @@ lineloop: do
    end do
 
    if (debug) then
-      write(string1,*)'values:',trim(obs_type),platform_id,satellite_id,sensor_id,&
+      write(string1,*)'values:',trim(base_obs_type),platform_id,satellite_id,sensor_id,&
          trim(sensor_type),trim(coef_file),channels
       call error_handler(E_MSG, routine, string1, source, revision, revdate)
    end if
 
-   call add_sensor(platform_id, satellite_id, sensor_id, sensor_type, obs_type, &
+   call add_sensor(platform_id, satellite_id, sensor_id, sensor_type, base_obs_type, &
       coef_file, channels)
 
    deallocate(channels)
@@ -1351,7 +1351,7 @@ logical,                   optional, intent(in)     :: use_totalice ! only relev
 character(len=*), parameter :: routine = 'sensor_runtime_setup'
 
 character(len=512) :: string1
-character(len=512) :: string2 ! used to hold the sensor % obs_type, don't overwrite
+character(len=512) :: string2 ! used to hold the sensor % base_obs_type, don't overwrite
 
 type(rttov_sensor_runtime_type), pointer :: runtime
 
@@ -1369,7 +1369,7 @@ integer :: i, ich, nch
 logical(kind=jplm), pointer :: use_chan(:,:)  => null() ! flags to specify channels to simulate
 
 ! used below, don't overwrite
-string2 = 'name: ' // trim(sensor % obs_type)
+string2 = 'name: ' // trim(sensor % base_obs_type)
 
 instrument(1) = sensor % platform_id
 instrument(2) = sensor % satellite_id
@@ -1885,7 +1885,7 @@ type(visir_metadata_type),     pointer, intent(in)  :: visir_md
 type(mw_metadata_type),        pointer, intent(in)  :: mw_md
 
 character(len=obstypelength) :: obs_qty_string
-integer                      :: obs_type
+integer                      :: obs_type_num
 
 integer :: ilvl, imem 
 
@@ -1919,7 +1919,7 @@ end if
 
 error_status(:) = 0 ! 0 is success
 
-string2 = 'name: ' // trim(sensor % obs_type)
+string2 = 'name: ' // trim(sensor % base_obs_type)
 
 instrument(1) = sensor % platform_id
 instrument(2) = sensor % satellite_id
@@ -2472,23 +2472,23 @@ end if
 
 ! utility from obs_kind_mod for getting string of obs qty
 obs_qty_string = get_name_for_type_of_obs(flavor)
-obs_type = get_quantity_for_type_of_obs(flavor)
+obs_type_num   = get_quantity_for_type_of_obs(flavor)
 
-if (obs_type == QTY_RADIANCE) then
+if (obs_type_num == QTY_RADIANCE) then
    do imem = 1, ens_size
       radiances(imem) = runtime % radiance % total(imem)
    end do
    if (debug) then
       print*, 'RADIANCE % TOTAL for ',trim(obs_qty_string),'= ', radiances(:)
    end if
-elseif (obs_type == QTY_BRIGHTNESS_TEMPERATURE) then
+elseif (obs_type_num == QTY_BRIGHTNESS_TEMPERATURE) then
    do imem = 1, ens_size
       radiances(imem) = runtime % radiance % bt(imem)
    end do
    if (debug) then
       print*, 'RADIANCE % BT for ',trim(obs_qty_string),'= ', radiances(:)
    end if
-elseif (obs_type == QTY_BI_DIRECTIONAL_REFLECTANCE) then
+elseif (obs_type_num == QTY_BI_DIRECTIONAL_REFLECTANCE) then
    do imem = 1, ens_size
       radiances(imem) = runtime % radiance % refl(imem)
    end do
