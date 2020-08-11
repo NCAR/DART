@@ -198,6 +198,8 @@
 ! MSG_2_SEVIRI_RADIANCE,        QTY_RADIANCE
 ! MSG_3_SEVIRI_RADIANCE,        QTY_RADIANCE
 ! MSG_4_SEVIRI_RADIANCE,        QTY_RADIANCE
+! MSG_4_SEVIRI_TB,              QTY_BRIGHTNESS_TEMPERATURE
+! MSG_4_SEVIRI_BDRF,            QTY_BI_DIRECTIONAL_REFLECTANCE
 ! FY1_3_MVISR_RADIANCE,         QTY_RADIANCE
 ! FY1_4_MVISR_RADIANCE,         QTY_RADIANCE
 ! MTSAT_1_IMAGER_RADIANCE,      QTY_RADIANCE
@@ -281,7 +283,7 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !      case(NOAA_1_VTPR1_RADIANCE:CLOUDSAT_1_CPR_TB)
-!         call get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
+!         call get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, obs_def%key, get_obs_def_type_of_obs(obs_def), expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 
@@ -306,7 +308,7 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_rttov_mod
 
-use        types_mod, only : r8, MISSING_R8, MISSING_I
+use        types_mod, only : r8, MISSING_R8, MISSING_I, obstypelength
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              ascii_file_format, nmlfileunit, do_nml_file, &
@@ -403,20 +405,20 @@ type visir_metadata_type
    real(8) :: sat_ze      ! zenith of satellite position (degrees)
    real(8) :: sun_az      ! azimuth of solar position (degrees, only used with add_solar)
    real(8) :: sun_ze      ! zenith of solar position  (degrees, only used with add_solar)
-   integer  :: platform_id ! see rttov user guide, table 2
-   integer  :: sat_id      ! see rttov user guide, table 2
-   integer  :: sensor_id   ! see rttov user guide, table 3
-   integer  :: channel     ! each channel is a different obs
+   integer :: platform_id ! see rttov user guide, table 2
+   integer :: sat_id      ! see rttov user guide, table 2
+   integer :: sensor_id   ! see rttov user guide, table 3
+   integer :: channel     ! each channel is a different obs
    real(8) :: specularity ! specularity (0-1, only used with do_lambertian)
 end type visir_metadata_type
 
 type mw_metadata_type
    real(8) :: sat_az      ! azimuth of satellite position (degrees)
    real(8) :: sat_ze      ! zenith of satellite position (degrees)
-   integer  :: platform_id ! see rttov user guide, table 2
-   integer  :: sat_id      ! see rttov user guide, table 2
-   integer  :: sensor_id   ! see rttov user guide, table 3
-   integer  :: channel     !  each channel is a different obs
+   integer :: platform_id ! see rttov user guide, table 2
+   integer :: sat_id      ! see rttov user guide, table 2
+   integer :: sensor_id   ! see rttov user guide, table 3
+   integer :: channel     !  each channel is a different obs
    real(8) :: mag_field   ! strength of mag_field (Gauss, )
    real(8) :: cosbk       ! cosine of angle between mag field and viewing angle
    real(8) :: fastem_p1 ! FASTEM land/sea ice parameter 1
@@ -463,7 +465,7 @@ end type trace_gas_profile_type
 ! size of the arrays are (ens_size, numlevels-1)
 type aerosol_profile_type
    real(8), allocatable :: insoluble(:,:)                  ! INSO (kg/kg), OPAC only
-   real(8), allocatable :: water_soluble(:,:)             ! WASO, OPAC
+   real(8), allocatable :: water_soluble(:,:)              ! WASO, OPAC
    real(8), allocatable :: soot(:,:)                       ! SOOT, OPAC
    real(8), allocatable :: sea_salt_accum(:,:)             ! SSAM, OPAC
    real(8), allocatable :: sea_salt_coarse(:,:)            ! SSCM, OPAC
@@ -610,6 +612,7 @@ logical              :: fix_hgpl             = .false.  ! surface elevation assi
 logical              :: do_lambertian        = .false.  ! treat surface as Lambertian instead of specular? (all)
 logical              :: lambertian_fixed_angle = .true. ! use fixed angle for Lambertian calculations? (all, do_lambertian only)
 logical              :: rad_down_lin_tau     = .true.   ! use linear-in-tau approximation? (all)
+real(r8)             :: max_zenith_angle     = 75.      ! maximum zenith angle to accept (in degrees) (all)
 logical              :: use_q2m              = .false.  ! use surface humidity? (all)
 logical              :: use_uv10m            = .false.  ! use u and v 10 meters? (all, used in sea surface emissivity and BRDF models)
 logical              :: use_wfetch           = .false.  ! use wind fetch (length of water wind has blown over in m)  (all, used in sea surface BRDF models)
@@ -682,6 +685,7 @@ namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               do_lambertian,          &
                               lambertian_fixed_angle, &
                               rad_down_lin_tau,       &
+                              max_zenith_angle,       &
                               use_q2m,                &
                               use_uv10m,              &
                               use_wfetch,             &
@@ -797,7 +801,7 @@ subroutine add_sensor(platform_id, satellite_id, sensor_id, sensor_type_name, ob
    integer,          intent(in) :: satellite_id       ! the RTTOV satellite id
    integer,          intent(in) :: sensor_id          ! the RTTOV sensor id
    character(len=*), intent(in) :: sensor_type_name   ! the type of sensor (vis, ir, mw)
-   character(len=*), intent(in) :: obs_type           ! the DART observation type
+   character(len=*), intent(in) :: obs_type           ! the DART observation type without _RADIANCE, _TB, or _BDRF
    character(len=*), intent(in) :: coef_file          ! the RTTOV coefficient file
    integer,          intent(in) :: channels(:)        ! the channels to simulate (or 0-length for all)
 
@@ -1013,7 +1017,7 @@ end subroutine add_sensor
 ! <obs_type>,<platform_id>,<satellite_id>,<sensor_id>,<sensor_type>,<coef_file>,[channel list]
 !
 ! where: 
-!     obs_type     is the DART observation quantity,
+!     obs_type     is the DART observation quantity minus _RADIANCE, _TB, or _BDRF
 !     platform_id  is the RTTOV platform id
 !     satellite_id is the RTTOV satellite id
 !     sensor_id    is the RTTOV sensor id
@@ -1846,16 +1850,19 @@ end subroutine cloud_profile_setup
 ! Run the forward model for the given sensor, preallocating arrays and
 ! initializing the sensor if necessary (which will be on the first call
 ! to this operator and the first time using the sensor, respectively).
+!
+! istatus: Returns  0 if everything is OK, >0 if error occured.
+!                 101 = zenith angle was greater than max_zenith_angle
 
-subroutine do_forward_model(ens_size, nlevels, location,   &
-   atmos, trace_gas, clouds, aerosols, sensor, channel,    &
-   first_lvl_is_sfc, mw_clear_sky_only, clw_scheme,        &
-   ice_scheme, idg_scheme, aerosl_type, do_lambertian,     &
-   use_totalice, use_zeeman, radiances, error_status,      &
-   visir_md, mw_md)
+subroutine do_forward_model(ens_size, nlevels, flavor, location, &
+   atmos, trace_gas, clouds, aerosols, sensor, channel,          &
+   first_lvl_is_sfc, mw_clear_sky_only, clw_scheme, ice_scheme,  &
+   idg_scheme, aerosl_type, do_lambertian, use_totalice,         &
+   use_zeeman, radiances, error_status, visir_md, mw_md)
 
 integer,                                intent(in)  :: ens_size
 integer,                                intent(in)  :: nlevels
+integer,                                intent(in)  :: flavor
 type(location_type),                    intent(in)  :: location
 type(atmos_profile_type),               intent(in)  :: atmos
 type(trace_gas_profile_type),           intent(in)  :: trace_gas
@@ -1876,6 +1883,9 @@ real(r8),                               intent(out) :: radiances(ens_size)
 integer,                                intent(out) :: error_status(ens_size)
 type(visir_metadata_type),     pointer, intent(in)  :: visir_md
 type(mw_metadata_type),        pointer, intent(in)  :: mw_md
+
+character(len=obstypelength) :: obs_qty_string
+integer                      :: obs_type
 
 integer :: ilvl, imem 
 
@@ -2332,7 +2342,7 @@ DO imem = 1, ens_size
 
    if (is_visir .and. do_lambertian) then
       ! Surface specularity (0-1)
-      runtime % profiles(imem) % skin % specularity = visir_md%specularity
+      runtime % profiles(imem) % skin % specularity = visir_md % specularity
    end if
 
    if (allocated(clouds % simple_cfrac)) then
@@ -2347,15 +2357,25 @@ DO imem = 1, ens_size
 
    if (is_visir) then
       ! Sat. zenith and azimuth angles (degrees)
-      runtime % profiles(imem) % zenangle    = visir_md % sat_ze
+      if (visir_md % sat_ze > max_zenith_angle) then
+        radiances(:) = MISSING_R8
+        error_status(:) = 101
+        return
+      end if
+      runtime % profiles(imem) % zenangle    = max(visir_md % sat_ze,0.)
       runtime % profiles(imem) % azangle     = visir_md % sat_az
 
       ! Solar zenith and azimuth angles (degrees), only relevant if use_solar
       runtime % profiles(imem) % sunzenangle = visir_md % sun_ze
       runtime % profiles(imem) % sunazangle  = visir_md % sun_az
    else
+      if (mw_md % sat_ze > max_zenith_angle) then
+        radiances(:) = MISSING_R8
+        error_status(:) = 101
+        return
+      end if
       ! Sat. zenith and azimuth angles (degrees)
-      runtime % profiles(imem) % zenangle    = mw_md % sat_ze
+      runtime % profiles(imem) % zenangle    = max(mw_md % sat_ze,0.)
       runtime % profiles(imem) % azangle     = mw_md % sat_az
    end if
 
@@ -2450,20 +2470,34 @@ else
    end if
 end if
 
-if (is_visir) then
+! utility from obs_kind_mod for getting string of obs qty
+obs_qty_string = get_name_for_type_of_obs(flavor)
+obs_type = get_quantity_for_type_of_obs(flavor)
+
+if (obs_type == QTY_RADIANCE) then
    do imem = 1, ens_size
       radiances(imem) = runtime % radiance % total(imem)
    end do
    if (debug) then
-      print*, 'RADIANCE % TOTAL = ', runtime % radiance % total(:)
+      print*, 'RADIANCE % TOTAL for ',trim(obs_qty_string),'= ', radiances(:)
    end if
-else
+elseif (obs_type == QTY_BRIGHTNESS_TEMPERATURE) then
    do imem = 1, ens_size
       radiances(imem) = runtime % radiance % bt(imem)
    end do
    if (debug) then
-      print*, 'RADIANCE % BT = ', runtime % radiance % bt(:)
+      print*, 'RADIANCE % BT for ',trim(obs_qty_string),'= ', radiances(:)
    end if
+elseif (obs_type == QTY_BI_DIRECTIONAL_REFLECTANCE) then
+   do imem = 1, ens_size
+      radiances(imem) = runtime % radiance % refl(imem)
+   end do
+   if (debug) then
+      print*, 'RADIANCE % REFL for ',trim(obs_qty_string),'= ', radiances(:)
+   end if
+else
+   call error_handler(E_ERR, 'unknown observation quantity for ' // trim(obs_qty_string), &
+      source, revision, revdate)
 end if
 
 IF (errorstatus /= errorstatus_success) THEN
@@ -3355,13 +3389,14 @@ end subroutine interactive_rttov_metadata
 
 
 !----------------------------------------------------------------------
-subroutine get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, key, val, istatus)
+subroutine get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, key, flavor, val, istatus)
 
 integer,             intent(in)  :: obs_kind_ind
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location          ! location of obs
 integer,             intent(in)  :: key               ! key into module metadata
+integer,             intent(in)  :: flavor            ! flavor of obs
 real(r8),            intent(out) :: val(ens_size)     ! value of obs
 integer,             intent(out) :: istatus(ens_size) ! status of the calculation
 
@@ -3809,6 +3844,7 @@ end if
 
 call do_forward_model(ens_size=ens_size,                    &
                       nlevels=numlevels,                    &
+                      flavor=flavor,                        &
                       location=location,                    &
                       atmos=atmos,                          &
                       trace_gas=trace_gas,                  &
@@ -4026,7 +4062,7 @@ if (return_now) then
    if (required) then
       write(string1,*) 'Could not find required field ' // trim(field_name), ' istatus:',istatus,&
          'location:',locv(1),'/',locv(2),'/',locv(3)
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+      call error_handler(E_WARN,routine,string1,source,revision,revdate)
    else if (debug) then
       write(string1,*) 'Could not find requested field ' // trim(field_name), ' istatus:',istatus,&
          'location:',locv(1),'/',locv(2),'/',locv(3)
