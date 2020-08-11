@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # This is an example script for how to run the filter program
 # in parallel by submitting it to a batch system.  Note that
 # this version does NOT have an async 4 option because the
@@ -110,8 +108,4 @@ endif
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Since the files are already created with a 'time' record dimension,
 # It is perhaps simpler to concatenate along the time dimension and
 # then concatenate all the ensemble members. This unfortunately
@@ -161,7 +159,3 @@ ls -1 HYDRO_RST.*.tempvar.nc | sort | ncrcat -h -H -O -o ../HYDRO_RST.${MYEXT}.n
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
