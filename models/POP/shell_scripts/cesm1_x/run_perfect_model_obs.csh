@@ -179,7 +179,7 @@ set POPFILE = `head -1 ${POPDIR}/rpointer.ocn.20.restart`
  ${COPY} ${DARTDIR}/work/pop_to_dart                .
 
 # shell scripts
- ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
+ ${COPY} ${DARTDIR}/shell_scripts/cesm1_x/advance_model.csh .
 
 # data files
  ${COPY} ${DARTDIR}/work/input.nml                  .

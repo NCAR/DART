@@ -67,8 +67,6 @@ cp -f input.workshop.nml input.nml
 #----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
 
 set MODEL = "lorenz_63"
 

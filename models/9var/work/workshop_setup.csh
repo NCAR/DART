@@ -64,8 +64,6 @@ if ( ! -e  filter_input.nc ) ncgen -o  filter_input.nc  filter_input.cdl
 #----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
 
 set MODEL = "9var"
 
