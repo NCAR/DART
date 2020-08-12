@@ -34,6 +34,7 @@
                               '../../../observations/forward_operators/obs_def_vortex_mod.f90',
                               '../../../observations/forward_operators/obs_def_gts_mod.f90',
                               '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
+                              '../../../observations/forward_operators/obs_def_rttov_mod.f90'
    /
 
 

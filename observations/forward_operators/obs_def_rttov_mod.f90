@@ -388,15 +388,33 @@ private
 ! then the converters just use the metadata and filter
 ! uses both...  or something.
 
-public ::            set_visir_metadata, &
-                        set_mw_metadata, &
-                     get_visir_metadata, & 
-                        get_mw_metadata, &
-                    read_rttov_metadata, &
-                   write_rttov_metadata, &
-             interactive_rttov_metadata, &
-                  get_expected_radiance, &
-               get_rttov_option_logical
+public ::         set_visir_metadata, &
+                     set_mw_metadata, &
+                  get_visir_metadata, & 
+                     get_mw_metadata, &
+                 read_rttov_metadata, &
+                write_rttov_metadata, &
+          interactive_rttov_metadata, &
+               get_expected_radiance, &
+            get_rttov_option_logical
+
+! The rttov_test.f90 program uses these, but no one else should.
+
+public ::     atmos_profile_type, &
+          trace_gas_profile_type, &
+              cloud_profile_type, &
+            aerosol_profile_type, &
+               rttov_sensor_type, &
+             visir_metadata_type, &
+                mw_metadata_type, &
+            sensor_runtime_setup, &
+             atmos_profile_setup, &
+         trace_gas_profile_setup, &
+           aerosol_profile_setup, &
+             cloud_profile_setup, &
+             read_sensor_db_file, &
+                get_rttov_sensor, &
+                do_forward_model
 
 ! Metadata for rttov observations.
 
