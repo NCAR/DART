@@ -2,17 +2,39 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-!> Main DART Ensemble Filtering Program
+!> test of rttov interfaces
 
 program rttov_test
 
-   use utilities_mod, only : register_module, &
-                             file_exist, error_handler, E_ERR, E_MSG, &
-                             initialize_utilities, finalize_utilities, nmlfileunit
+use         types_mod, only : r8
 
-   use rttov_types,   only :    &
-         rttov_options,         &
-         rttov_options_scatt
+use     utilities_mod, only : register_module, initialize_utilities, &
+                              error_handler, E_ERR, E_MSG, &
+                              finalize_utilities 
+
+use      location_mod, only : location_type
+
+use      obs_kind_mod, only : get_index_for_type_of_obs
+
+! The obs_def_rttov_mod.f90 has a bunch of includes for the RTTOV modules.
+
+use obs_def_rttov_mod, only : atmos_profile_type, &
+                              trace_gas_profile_type, &
+                              cloud_profile_type, &
+                              aerosol_profile_type, &
+                              rttov_sensor_type, &
+                              visir_metadata_type, &
+                              mw_metadata_type, &
+                              get_rttov_sensor, &
+                              sensor_runtime_setup, &
+                              do_forward_model, &
+                              read_sensor_db_file, &
+                              atmos_profile_setup, &
+                              trace_gas_profile_setup, &
+                              aerosol_profile_setup, &
+                              cloud_profile_setup
+
+use       rttov_types, only : rttov_options, rttov_options_scatt
 
    implicit none
 
@@ -58,6 +80,7 @@ program rttov_test
 
    logical :: add_aerosl  = .false.
    integer :: aerosl_type = 1  ! OPAC
+   integer :: flavor
 
    logical :: cfrac_data          = .true.
    logical :: clw_data            = .true.
@@ -617,8 +640,10 @@ program rttov_test
    mw_md    => null()
    channel = 168
 
+   flavor = get_index_for_type_of_obs('MSG_4_SEVIRI_RADIANCE')
+
    ! test 3.5: call the IR forward operator
-   call do_forward_model(ens_size, numlevels, location,       &
+   call do_forward_model(ens_size, numlevels, flavor, location, &
       atmos, trace_gas, clouds, aerosols, sensor_ir, channel, &
       first_lvl_is_sfc, mw_clear_sky_only, clw_scheme,        &
       ice_scheme, idg_scheme, aerosl_type, do_lambertian,     &
@@ -695,7 +720,7 @@ program rttov_test
    channel  = 1
 
    ! test 4.4: call the MW scatt forward operator
-   call do_forward_model(ens_size, numlevels, location,       &
+   call do_forward_model(ens_size, numlevels, flavor, location,       &
       atmos, trace_gas, clouds, aerosols, sensor_mw, channel, &
       first_lvl_is_sfc, mw_clear_sky_only, clw_scheme,        &
       ice_scheme, idg_scheme, aerosl_type, do_lambertian,     &
@@ -706,5 +731,7 @@ program rttov_test
 
    call error_handler(E_MSG,'rttov_test',string1,&
       source, revision, revdate)
+
+   call finalize_utilities('rttov_test')
 
 end program rttov_test
