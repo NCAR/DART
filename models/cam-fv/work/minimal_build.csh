@@ -8,8 +8,6 @@
 #
 # setenv MP_MPILIB pempi
 
-# \rm -f ../../../obs_def/obs_def_mod.f90
-# \rm -f ../../../obs_kind/obs_kind_mod.f90
 # ./preprocess || exit 99
 # 
 # csh ./mkmf_cam_to_dart

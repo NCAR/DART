@@ -1,10 +1,57 @@
-#!/bin/sh -v
-
+#!/bin/sh
 # 
+# updated  5 Aug 2020
+
+echo 
+echo  'The converters require HDF-EOS libraries.'
+echo  'The HDF-EOS requirement has been a problem. The short of it is that we have HDF-EOS5'
+echo  'installed on the supercomputers, but none of the others. It is also available via'
+echo  'MacPorts (hdfeos5). Consequently, I have used the HDF-EOS5 interfaces.'
+echo 
+echo  'If the he5_hdfeos libraries are installed on your system, you are in luck.'
+echo  'On our system, it has been useful to define variables like:'
+echo 
+echo  'setenv("NCAR_INC_HDFEOS5",    "/glade/u/apps/ch/opt/hdf-eos5/5.1.16/intel/19.0.5/include")'
+echo  'setenv("NCAR_LDFLAGS_HDFEOS5","/glade/u/apps/ch/opt/hdf-eos5/5.1.16/intel/19.0.5/lib")'
+echo  'setenv("NCAR_LIBS_HDFEOS5","-Wl,-Bstatic -lGctp -lhe5_hdfeos -lsz -lz -Wl,-Bdynamic")'
+echo  'which we then use in mkmf_convert_airs_L2'
+echo 
+echo  'If you need to build the HDF-EOS5 libraries, you may try to follow the steps'
+echo  'outlined in this script. They are quite old, and need to be updated to install'
+echo  'HDF-EOS5 instead of HDF-EOS2. You will have to edit this script, first, by'
+echo  'removing the early exit ...'
+echo
+
+exit
+
+# ------------------------------------------------------------------------------
+##
+## It has been very difficult to find the download site for _any_ of the HDF-EOS 
+## versions. One dogged individual found that if you _knew_ the full URL, you could
+## download it:
+## https://observer.gsfc.nasa.gov/ftp/edhs/hdfeos5/latest_release/HDF-EOS5.1.16.tar.Z 
+##
+## All attempts to use ftp met with failure (some information has been obfuscated):
+##
+##    0[405] cheyenne2:~/src > ftp edhs1.gsfc.nasa.gov
+##    Wrapper for lftp to simulate compatibility with lukemftp
+##    Name (xxxxx): anonymous
+##    Password:                                   
+##    lftp anonymous@edhs1.gsfc.nasa.gov:~> cd /edhs/hdfeos/latest_release
+##    ---- Connecting to edhs1.gsfc.nasa.gov (xxxx:xxx:xxx:xxx::xxx) port xx
+##    **** connect(control_sock): Network is unreachable
+##    cd: Fatal error: max-retries exceeded (Network is unreachable)
+##    lftp anonymous@edhs1.gsfc.nasa.gov:~> mget /edhs/hdfeos/latest_release/HDF-EOS5.1.16.tar.Z 
+##    ---- Connecting to edhs1.gsfc.nasa.gov (xxx.xxx.xxx.xx) port xx
+##    `/edhs/hdfeos/latest_release/HDF-EOS5.1.16.tar.Z' at 0 [Connecting...]
+##    **** Timeout - reconnecting                                             
+##    mget: /edhs/hdfeos/latest_release/HDF-EOS5.1.16.tar.Z: Fatal error: max-retries exceeded
+##
+# ------------------------------------------------------------------------------
+
 # nsc 11 mar 2013
 # updated 16 jul 2018
-# 
-
+#
 # change this to true to try the ftp
 # to download a new version.  this may have
 # moved locations - i haven't verified it recently.

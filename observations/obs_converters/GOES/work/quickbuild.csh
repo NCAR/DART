@@ -16,7 +16,7 @@
 set nonomatch
 \rm -f preprocess *.o *.mod Makefile
 
-set MODEL = "create_real_obs"
+set MODEL = "GOES ABI L1B converter"
 
 @ n = 1
 
@@ -55,8 +55,9 @@ end
 
 \rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
+echo
 echo "Success: All ${MODEL} programs compiled."
+echo
 
 exit 0
-
 
