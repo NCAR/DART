@@ -183,7 +183,7 @@ observation_preparation:
       # ppn is the number of processors per node. This is required to be correct.
       ncpus: 36
       mpiprocs: 36
-      account: 'P48500028'
+      account: 'P4850xxxx'
       walltime: '00:40'
       job_name: 'flo_cut_obs_prep' #_{model_start_time_str}'
       queue: 'regular'
@@ -266,7 +266,7 @@ run_experiment:
     scheduler:
       nnodes: 7
       ppn_use: 36
-      account: P48500028
+      account: P4850xxxx
       walltime: '01:00'
       job_name: ens_adv
       queue: regular

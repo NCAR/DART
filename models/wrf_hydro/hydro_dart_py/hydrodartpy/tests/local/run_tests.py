@@ -20,7 +20,7 @@ def run_tests(
     scheduler: bool=False,
     ncores: int=216,
     nnodes: int=6,
-    account: str='NRAL0017',
+    account: str='NRALxxxx',
     walltime: str='02:00:00',
     queue: str='regular',
     print_log: bool=False,

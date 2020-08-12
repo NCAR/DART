@@ -69,7 +69,7 @@ observation_preparation:
     scheduler:
       ncpus: 36
       mpiprocs: 36
-      account: 'NRAL0017'
+      account: 'NRALxxxx'
       walltime: '00:40'
       job_name: 'florence_obs_prep' #_{model_start_time_str}'
       queue: 'premium'
