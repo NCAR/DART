@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Top level script to perform an assimilation.
 #
 # This script is designed to be submitted as a batch job but may be run from 
@@ -291,8 +289,4 @@ ls -lrt
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

@@ -4,6 +4,11 @@
 !
 ! $Id$
 
+!> See the mpi_utilities_mod.f90 documentation for more information on
+!> this file.  If you change either file you must make the corresponding
+!> changes in the other if it affects a public interface.  They must stay
+!> in sync.
+!>
 !> Substitute this code for mpi_utilities_mod.f90 if you do not want to
 !> have to link in an MPI library, and you only want to run single task.
 !> Many of the single task DART utility programs use this file instead of
@@ -251,7 +256,7 @@ end subroutine send_to
 
 subroutine receive_from(src_id, destarray, time, label)
  integer, intent(in) :: src_id
- real(r8), intent(out) :: destarray(:)
+ real(r8), intent(inout) :: destarray(:)    ! really only out, but avoid compiler warnings
  type(time_type), intent(out), optional :: time
  character(len=*), intent(in), optional :: label
 
@@ -266,9 +271,10 @@ end subroutine receive_from
 
 !> The array already has the values, nothing to do.  Not an error to call.
 
-subroutine array_broadcast(array, root)
+subroutine array_broadcast(array, root, icount)
  real(r8), intent(inout) :: array(:)
  integer, intent(in) :: root
+ integer, intent(in), optional :: icount
 
 if ( .not. module_initialized ) call initialize_mpi_utilities()
 
@@ -396,9 +402,9 @@ end subroutine sum_across_tasks_real
 
 subroutine send_sum_to(local_val, task, global_val)
 
-real(r8), intent(in)  :: local_val(:)  !> addend vals on each task
-integer,  intent(in)  :: task          !> task to collect on
-real(r8), intent(out) :: global_val(:) !> results returned only on given task
+real(r8), intent(in)  :: local_val(:)  !! addend vals on each task
+integer,  intent(in)  :: task          !! task to collect on
+real(r8), intent(out) :: global_val(:) !! results returned only on given task
 
 global_val(:) = local_val(:) ! only one task.
 
@@ -410,9 +416,9 @@ end subroutine send_sum_to
 
 subroutine send_minmax_to(minmax, task, global_val)
 
-real(r8), intent(in)  :: minmax(2)     !> min max on each task
-integer,  intent(in)  :: task          !> task to collect on
-real(r8), intent(out) :: global_val(2) !> results returned only on given task
+real(r8), intent(in)  :: minmax(2)     !! min max on each task
+integer,  intent(in)  :: task          !! task to collect on
+real(r8), intent(out) :: global_val(2) !! results returned only on given task
 
 global_val(:) = minmax(:) ! only one task.
 
@@ -454,9 +460,7 @@ end subroutine broadcast_minmax
 subroutine broadcast_flag(flag, root)
 
 logical, intent(inout) :: flag
-integer, intent(in)    :: root !> relative to get_dart_mpi_comm()
-
-integer :: errcode
+integer, intent(in)    :: root !! relative to get_dart_mpi_comm()
 
 ! does nothing because data is already there
 
@@ -551,8 +555,8 @@ end subroutine sleep_seconds
 !> must be supplied to read_timer function to get
 !> elapsed time since that timer was set.  contrast this with
 !> 'start_timer/read_timer' in the utils module which returns
-!> elapsed seconds.  this returns whatever units the mpi wtime()
-!> function returns.
+!> elapsed seconds.  this returns whatever units the fortran
+!> intrinsic system_clock() returns.
 !>
 !> usage:
 !>  real(digits12) :: base, time_elapsed
@@ -564,7 +568,7 @@ subroutine start_mpi_timer(base)
 
 real(digits12), intent(out) :: base
 
-integer :: temp
+integer(i8) :: temp
 
 call system_clock(temp)
 base = real(temp, digits12)
@@ -583,7 +587,7 @@ real(digits12), intent(in) :: base
 real(digits12) :: read_mpi_timer
 
 real(digits12) :: now
-integer :: temp
+integer(i8) :: temp
 
 call system_clock(temp)
 now = real(temp, digits12)

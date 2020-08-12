@@ -4,24 +4,34 @@
 !
 ! $Id$
 
-program text_to_obs
+! An example program to create DART format observations from a text input file
+!
+! An example program that reads text (ascii) input lines and creates
+! DART observations from them.  This is more of a template program.
+! You will have to modify it for your own use.  In particular
+! you will have to adapt the read routine to match your white-space 
+! separated values or fixed-width column data.
+!
+! This program now includes a small namelist.  The items in the namelist
+! can be changed at runtime without having to recompile the program.
+! Having the input and output filenames in the namelist should make it
+! simpler to script the conversion of a series of files.
+!
+! history:
+!  created 29 Mar 2010   nancy collins NCAR/IMAGe
+!  updated  8 Feb 2016   minor changes to wind conversion, and updated
+!                        comments to try to be more helpful.
+!  updated 29 Aug 2019   added namelist with example values
+!
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   text_to_obs - an example program to create DART format observations
-!      from a text-based input data file.  see below for where to adapt
-!      the read routine to match your white-space separated values or 
-!      fixed-width column data.
-!
-!     created 29 Mar 2010   nancy collins NCAR/IMAGe
-!     updated  8 Feb 2016   minor changes to wind conversion, and updated
-!                           comments to try to be more helpful.
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+program text_to_obs
 
 use         types_mod, only : r8, PI, DEG2RAD
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
-                              open_file, close_file
+                              open_file, close_file, &
+                              find_namelist_in_file, check_namelist_read, &
+                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
+                              do_nml_file, do_nml_term
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                               operator(>=), increment_time, get_time, &
                               operator(-), GREGORIAN, operator(+), print_date
@@ -30,16 +40,23 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               static_init_obs_sequence, init_obs, write_obs_seq, & 
                               init_obs_sequence, get_num_obs, & 
                               set_copy_meta_data, set_qc_meta_data
+
+! Change these to the actual types of observations you have.
 use      obs_kind_mod, only : EVAL_U_WIND_COMPONENT, EVAL_V_WIND_COMPONENT, &
                               EVAL_TEMPERATURE
 
 implicit none
 
-character(len=64), parameter :: text_input_file = 'textdata.input'
-character(len=64), parameter :: obs_out_file    = 'obs_seq.out'
+! variables that can be changed at runtime from a namelist
+! add any other options here that would be useful for your application.
+character(len=256) :: text_input_file = '../data/text_input_file'
+character(len=256) :: obs_out_file    = 'obs_seq.out'
+logical            :: debug           = .false.  ! set to .true. to print info
 
-logical, parameter :: debug = .false.  ! set to .true. to print info
+namelist /text_to_obs_nml/ text_input_file, obs_out_file, debug
 
+
+! local variables
 character (len=129) :: input_line
 
 integer :: oday, osec, rcio, iunit, otype
@@ -55,9 +72,20 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: ref_day0, time_obs, prev_time
 
+
 ! start of executable code
 
 call initialize_utilities('text_to_obs')
+
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "text_to_obs_nml", iunit)
+read(iunit, nml = text_to_obs_nml, iostat = rcio)
+call check_namelist_read(iunit, rcio, "text_to_obs_nml")
+
+! Record the namelist values used for the run 
+if (do_nml_file()) write(nmlfileunit, nml=text_to_obs_nml)
+if (do_nml_term()) write(     *     , nml=text_to_obs_nml)
+
 
 ! time setup
 call set_calendar_type(GREGORIAN)
@@ -122,8 +150,8 @@ obsloop: do    ! no end limit - have the loop break when input ends
    !  error: very important - the instrument error plus representativeness error
    !        (see html file for more info)
 
-   ! the code here assumes an input line has: a type (1/2), location, time, value, obs error
-   ! **this is probably where you will need to adapt this code for your input data values**
+   ! this code here assumes an input line has: a type (1/2), location, time, value, obs error
+   ! **this is where you will need to adapt this code for your input data values**
 
    ! read in entire text line into a buffer
    read(iunit, "(A)", iostat=rcio) input_line
@@ -257,23 +285,25 @@ contains
 !             qc value, and that this obs type has no additional required
 !             data (e.g. gps and radar obs need additional data per obs)
 !
+! inputs:
 !    lat   - latitude of observation
 !    lon   - longitude of observation
 !    vval  - vertical coordinate
 !    vkind - kind of vertical coordinate (pressure, level, etc)
 !    obsv  - observation value
-!    okind - observation kind
+!    otype - observation type
 !    oerr  - observation error
 !    day   - gregorian day
 !    sec   - gregorian second
 !    qc    - quality control value
+! outputs:
 !    obs   - observation type
 !
 !     created Oct. 2007 Ryan Torn, NCAR/MMM
 !     adapted for more generic use 11 Mar 2010, nancy collins, ncar/image
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine create_3d_obs(lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, obs)
+subroutine create_3d_obs(lat, lon, vval, vkind, obsv, otype, oerr, day, sec, qc, obs)
 use        types_mod, only : r8
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location
@@ -281,7 +311,7 @@ use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : set_location
 
- integer,        intent(in)    :: okind, vkind, day, sec
+ integer,        intent(in)    :: otype, vkind, day, sec
  real(r8),       intent(in)    :: lat, lon, vval, obsv, oerr, qc
  type(obs_type), intent(inout) :: obs
 
@@ -289,7 +319,7 @@ real(r8)           :: obs_val(1), qc_val(1)
 type(obs_def_type) :: obs_def
 
 call set_obs_def_location(obs_def, set_location(lon, lat, vval, vkind))
-call set_obs_def_type_of_obs(obs_def, okind)
+call set_obs_def_type_of_obs(obs_def, otype)
 call set_obs_def_time(obs_def, set_time(sec, day))
 call set_obs_def_error_variance(obs_def, oerr * oerr)
 call set_obs_def(obs, obs_def)
@@ -312,8 +342,8 @@ end subroutine create_3d_obs
 !     obs_time - time of this observation, in dart time_type format
 !     prev_obs - the previous observation that was added to this sequence
 !                (will be updated by this routine)
-!     prev_time - the time of the previously added observation (will also
-!                be updated by this routine)
+!     prev_time - the time of the previously added observation 
+!                (will also be updated by this routine)
 !     first_obs - should be initialized to be .true., and then will be
 !                updated by this routine to be .false. after the first obs
 !                has been added to this sequence.

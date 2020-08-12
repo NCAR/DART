@@ -774,6 +774,9 @@ MODULE map_utils
       REAL(r8)                              :: scale_top
 
       ! Executable code
+
+      ! Thanks to Kevin Manning for the 'cone' fix.  It must be set to 1.0
+      !  to fix wind rotation for polar stereographic projection
       reflon = proj%stdlon + 90.0_r8
       proj%cone = 1.0_r8
 

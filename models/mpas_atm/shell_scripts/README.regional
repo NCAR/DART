@@ -1,0 +1,55 @@
+# How to create regional MPAS files in MPAS V7.0
+# What you need to run: WPS/ungrib.exe, gpmetis, MPAS/init_atmosphere (three times)
+# Sample files for this step are provided in ../data/, but you need to prepare
+# your grid file for your own global mesh (e.g. grid.nc) to start with.
+#
+# Soyoung Ha  MMM/NCAR Feb-2020
+
+1. Create a regional grid and a graph file (from a global MPAS grid.nc)
+   git clone https://github.com/MiCurry/MPAS-Limited-Area
+   Edit points.txt for the regional mesh you want to define
+   create_region points.txt grid.nc
+   => region.grid.nc (cut out from the global grid.nc)
+   => region.graph.info (this file is needed for the next step).
+
+2. Create a regional static.nc file (in a serial mode)
+   Edit namelist.init_atmosphere as below.
+    config_blend_bdy_terrain = false
+    config_static_interp = true
+    config_native_gwd_static = true
+    config_vertical_grid = false
+   Edit streams.init_atmosphere for input (region.grid.nc) and output (region.static.nc).
+   Run init_atmosphere_model with 1 MPI task.
+   => region.static.nc
+
+3. For a parallel run, create the graph.info file with multi processor decomposition 
+   (ex. 144 = 36 procs * 4 nodes)
+   ln -s /glade/u/home/duda/metis-5.1.0-intel/bin/gpmetis .  # cheyenne only
+   ./gpmetis -minconn -contig -niter=200 region.graph.info 144
+   => region.graph.info.144
+ 
+4. Create a regional init.nc file (in parallel)
+   Run WPS/ungrib.exe over the analysis of interest (ex. GFS analysis) => GFS:YYYY-MM-DD_HH_00
+   Edit namelist.init_atmosphere as below.
+    config_met_prefix = 'GFS'
+    config_blend_bdy_terrain = false
+    config_static_interp = false
+    config_native_gwd_static = false
+    config_vertical_grid = true 
+    config_met_interp = true 
+    config_block_decomp_file_prefix = 'region.graph.info.part.'
+   Edit streams.init_atmosphere for input (region.static.nc) and output (region.init.nc).
+   Run init_atmosphere_model with n MPI tasks. (ex. 4 tasks for region.graph.info.144 in cheyenne)
+   => region.init.nc
+
+5. Create lateral boundary conditions (in parallel)
+   Edit namelist.init_atmosphere as below.
+    config_init_case = 9
+   (Also edit config_start_time and config_stop_time as you want.)
+   Edit streams.init_atmosphere for immutable_stream input (region.init.nc) and lbc (for its filename and output_interval).
+   Run init_atmosphere_model with n MPI tasks. (Same as #4 above.)
+   => lbc.$Y-$M-$D_$h.nc 
+     (Note this file name has been changed from lbc.$Y-$M-$D_$h.$m.$s.nc)
+
+For more details or any questions, please contact Soyoung Ha (syha@ucar.edu) or dart@ucar.edu.
+

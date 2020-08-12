@@ -1604,8 +1604,3 @@ end subroutine set_new_data
 !---------------------------------------------------------------------
 end program obs_sequence_tool
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

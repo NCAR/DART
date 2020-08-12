@@ -4,6 +4,10 @@
 !
 ! $Id$
 
+!> This program users to construct a table that is read by filter at 
+!> run-time to localize the impact of sets of observation types on sets of 
+!> state vector quantities. 
+
 !> The standard DART algorithms compute increments for an observation and then
 !> compute corresponding increments for each model state variable due to that
 !> observation. To do this, DART computes a sample regression coefficient using
@@ -41,7 +45,6 @@
 !> in the assimilation_code/modules/observations/DEFAULT_obs_kinds_mod.F90 file.
 !> (Note you must add new quantities in 2 places 
 !> if you do alter this file.)
-!>
 
 
 
@@ -138,8 +141,3 @@ call finalize_utilities('obs_impact_tool')
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

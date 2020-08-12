@@ -2393,7 +2393,9 @@ endif
 
 ! and finally, convert to sensible (in-situ) temperature.
 ! potential temp in degrees C, pressure in decibars, salinity in psu or pss (g/kg).
-do e = 1, ens_size !> @todo should this vectorize inside insitu_temp?
+
+!> @todo should this vectorize inside insitu_temp?
+do e = 1, ens_size
    call insitu_temp(potential_temp(e), salinity_val(e)*1000.0_r8, pres_val(e)*10.0_r8, expected_obs(e))
    if (debug > 2) print *, 's,pt,pres,t: ', salinity_val(e), potential_temp(e), pres_val(e), expected_obs(e)
 enddo

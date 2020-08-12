@@ -24,10 +24,10 @@ use           filter_mod, only : filter_set_initial_time
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
+character(len=256), parameter :: source   = &
    "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 integer :: num_ens     = 1
 integer :: num_domains = 1

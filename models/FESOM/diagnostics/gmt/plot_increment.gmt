@@ -1,0 +1,75 @@
+#!/bin/bash
+#----------------------------------------------------------
+#-- GMT SCRIPT TO PLOT HORIZONTAL SECTIONS FOR TSS --------
+#-- MODIFY DATE AND LAYER BY A SUBMIT SCRIPT USING SED ----
+#----------------------------------------------------------
+#-- SET PARAMETERS FROM SUBMIT SCRIPT ---------------------
+#----------------------------------------------------------
+LAYERNUMBER=
+YEAR=YEAR2PLOT
+VAR=VARIABLE2PLOT
+EXP=EXPCODE
+DATADIR=OUTDIR
+INITDAY=149018
+FESOMDAY=
+DARTDAY=
+DARTSEC=
+DAY=$( echo ${DAY2PLOT} | awk '{printf("%03d\n",$1)}' )
+DATE=$( sh ~/script/sh/CALCDATE.sh 1 ${YEAR} $[ ${DARTDAY} - ${INITDAY} ] )
+LAYER=$( echo ${LAYERNUMBER} | awk '{printf("%03d\n",$1)}' )
+FILENAME=INC_${EXP}_${YEAR}_${DARTDAY}_${DARTSEC}_LEV${LAYER};
+#----------------------------------------------------------
+#-- SET GMT DEFAULTS --------------------------------------
+#----------------------------------------------------------
+gmtset PS_MEDIA=20ix14i IO_NAN_RECORDS=pass PLOT_DEGREE_FORMAT ddd:mm:ssF
+gmtset FONT_ANNOT_PRIMARY=15p,Courier-Bold,black FONT_ANNOT_SECONDARY=15p,Courier-Bold,black
+gmtset FONT_LABEL=15p,Courier-Bold,black
+gmtset MAP_FRAME_TYPE=fancy MAP_FRAME_PEN=thin MAP_FRAME_WIDTH=2p
+#----------------------------------------------------------
+#---DEFINE FILENAMES REGIONS PROJECTIONS AND GMT FLAGS ----
+#----------------------------------------------------------
+fig=${FILENAME}_${VAR}; ps=${fig}.ps
+outpng=${DATADIR}/out.png
+DATANAM=${FILENAME}.asc;
+REGIONA="-R22.5421/33.004/38.6973/42.98632"; BSMAPA="-Ba1f0.5WsNe -P -St"
+REGIONA="-R25.5421/30.104/39.6973/41.58632"; BSMAPA="-Ba1f0.5WSne -P -St"
+REGIONM="-R26.85/30/40.20/41.2"; BSMAPM="-Ba0.4f0.1wsNE -P -St"
+REGIONB="-R28.75/29.25/40.75/41.3"; BSMAPB="-Ba0.2f0.1WSne -P -St"
+REGIOND="-R26/27/39.75/40.75"; BSMAPD="-Ba0.2f0.1wSnE -P -St"
+PROJNON="-JX15/8"; #PROJNON="-Jm0.75i"
+PROJGEO="-JX15d/8d"; #PROJGEO="-Jm0.75i"
+CONNECT="-Qelem2d.new"
+DRAWCOAST="pscoast -R ${PROJGEO} -W0.5p,black -Df -K -O -V3"
+DAYTIME=$( echo "${DARTSEC} / 3600" | bc | awk '{printf("%02d:00\n",$1)}' )
+#############################################################################
+############# PREPARE CPT COLOR PALETTES VARIABLE ATTRIBUTES ################
+#############################################################################
+if [ ${VAR} = "SAL" ];then 
+	gmtset COLOR_BACKGROUND=mediumpurple COLOR_FOREGROUND=gray COLOR_NAN=gray
+	COL=4; VARNAME=SALINITY; UNIT=psu
+elif [ ${VAR} = "TEM" ];then 
+	gmtset COLOR_BACKGROUND=mediumpurple COLOR_FOREGROUND=gray COLOR_NAN=gray
+	COL=3; VARNAME=TEMPERATURE; UNIT=@+0@+C;
+else 
+	echo "VARIABLE is not define for makecpt"
+fi
+		makecpt -Csst_rainbow -T-1./1./0.01 -M >CPT_${EXP}.cpt; TSS=0.5
+
+#############################################################################
+############# PREPARE INPUT FILES ###########################################
+#############################################################################
+awk '{print $1,$2,$'${COL}'}' ${DATANAM} > tss${LAYER}_${EXP}.dat 
+#############################################################################
+############# TURKISH STRAITS SYSTEM ########################################
+#############################################################################
+pscontour tss${LAYER}_${EXP}.dat ${REGIONA} ${PROJNON} ${CONNECT} ${BSMAPA} -K -Yc -Xc -Lthin,black -CCPT_${EXP}.cpt -I -V3 > $ps
+#echo "29.2327000000 40.8333000000 1" | psxy -R -J -Sc -W0.1p,black -K -O  >> $ps
+echo "25.6 41.5 ${VARNAME}" | pstext -R ${PROJGEO} -F+jTL+f12p,Courier-Bold -K -O -N  >> $ps
+echo "25.6 41.3 ${DATE} ${DAYTIME}" | pstext -R ${PROJGEO} -F+jTL+f12p,Courier-Bold -K -O -N  >> $ps
+echo "25.6 41.1 DEPTH:${LAYER} m." | pstext -R ${PROJGEO} -F+jTL+f12p,Courier-Bold -K -O -N  >> $ps
+psscale -D4.15i/0.23i/2.5i/0.075ih -Aal -CCPT_${EXP}.cpt -B${TSS}/:${UNIT}: -E -O >> $ps
+ps2raster -Tg -V3 -P -F${outpng} $ps 
+convert -trim -alpha off -antialias -scale 80% ${outpng} ${fig}.png
+rm ${ps} CPT_${EXP}.cpt ${outpng}
+rm tss${LAYER}_${EXP}.dat
+exit

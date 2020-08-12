@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # This script has 4 logical 'blocks':
 # 1) creates a clean, temporary directory in which to run a model instance 
 #    and copies the necessary files into the temporary directory
@@ -197,8 +195,4 @@ cd ..
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

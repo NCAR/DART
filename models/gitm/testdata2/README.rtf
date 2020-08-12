@@ -1,0 +1,107 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1671\cocoasubrtf500
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fswiss\fcharset0 Helvetica-Bold;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww21060\viewh23080\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 This folder contains two example output files (2DTEC*bin and 3DUSR*bin) from a WP-GITM run. This particular WP-GITM simulation was the "non-perturbed" run for the March 11, 2011 Tohoku-Oki Tsunami arrival at the US West Coast. In this run, there was no tsunami perturbation. I also produced an identical WP-GITM run with the tsubami perturbation. The difference between the two runs gives the ionospheric disturbances due to the tsunami. The "non-perturbed" and "perturbed" runs have the identical domain size, grid resolution and simulation begin and end times, therefore I only included the output files from the "non-perturbed" run as examples.\
+\
+
+\f1\b WP-GITM simulation setting
+\f0\b0 \
+\
+The WP-GITM simulation that generated these two output files was a regional simulation. The simulation started at 14:45UT and ended at 20:45UT on March 11, 2011. The domain covers from 228E to 252E and 30N to 50N horizontally. So it is a local region of 24 degrees in longitude by 20 degrees in latitude. The horizontal grid size is 0.2 degrees in both longitude and latitude. In the vertical direction, the domain covers a typical altitude range that a global GITM simulation would cover. Specifically, for this run, the altitude range is from about 96.7km to about 615.5km. The vertical grid size is 1/3 of the local scale height, therefore it increases with height. \
+\
+The exact grid point locations in longitude, latitude, and altitude are listed below:\
+\
+Longitude (in degrees)\
+       227.89999       228.09999       228.29999       228.49999       228.69999       228.89999\
+       229.09999       229.29999       229.49999       229.69999       229.89999       230.09999\
+       230.29999       230.49999       230.69999       230.89999       231.09999       231.29999\
+       231.49999       231.69999       231.89999       232.09999       232.29999       232.49999\
+       232.69999       232.89999       233.09999       233.29999       233.49999       233.69999\
+       233.89999       234.09999       234.29999       234.49999       234.69999       234.89999\
+       235.09999       235.29999       235.49999       235.69999       235.89999       236.09999\
+       236.29999       236.49999       236.69999       236.89999       237.09999       237.29999\
+       237.49999       237.69999       237.89999       238.09999       238.29999       238.49999\
+       238.69999       238.89999       239.09999       239.29999       239.49999       239.69999\
+       239.89999       240.09999       240.29999       240.49999       240.69999       240.89999\
+       241.09999       241.29999       241.49999       241.69999       241.89999       242.09999\
+       242.29999       242.49999       242.69999       242.89999       243.09999       243.29999\
+       243.49999       243.69999       243.89999       244.09999       244.29999       244.49999\
+       244.69999       244.89999       245.09999       245.29999       245.49999       245.69999\
+       245.89999       246.09999       246.29999       246.49999       246.69999       246.89999\
+       247.09999       247.29999       247.49999       247.69999       247.89999       248.09999\
+       248.29999       248.49999       248.69999       248.89999       249.09999       249.29999\
+       249.49999       249.69999       249.89999       250.09999       250.29999       250.49999\
+       250.69999       250.89999       251.09999       251.29999       251.49999       251.69999\
+       251.89999       252.09999       252.29999       252.49999\
+\
+Latitude (in degrees)\
+       29.699999       29.899999       30.099999       30.299999       30.499999       30.699999\
+       30.899999       31.099999       31.299999       31.499999       31.699999       31.899999\
+       32.099999       32.299999       32.499999       32.699999       32.899999       33.099999\
+       33.299999       33.499999       33.699999       33.899999       34.099999       34.299999\
+       34.499999       34.699999       34.899999       35.099999       35.299999       35.499999\
+       35.699999       35.899999       36.099999       36.299999       36.499999       36.699999\
+       36.899999       37.099999       37.299999       37.499999       37.699999       37.899999\
+       38.099999       38.299999       38.499999       38.699999       38.899999       39.099999\
+       39.299999       39.499999       39.699999       39.899999       40.099999       40.299999\
+       40.499999       40.699999       40.899999       41.099999       41.299999       41.499999\
+       41.699999       41.899999       42.099999       42.299999       42.499999       42.699999\
+       42.899999       43.099999       43.299999       43.499999       43.699999       43.899999\
+       44.099999       44.299999       44.499999       44.699999       44.899999       45.099999\
+       45.299999       45.499999       45.699999       45.899999       46.099999       46.299999\
+       46.499999       46.699999       46.899999       47.099999       47.299999       47.499999\
+       47.699999       47.899999       48.099999       48.299999       48.499999       48.699999\
+       48.899999       49.099999       49.299999       49.499999       49.699999       49.899999\
+       50.099999       50.299999\
+\
+Altitude (in km)\
+       96.671336       98.335668       100.00000       101.66433       103.33010       105.00483\
+       106.70053       108.43486       110.23391       112.13836       114.21207       116.54718\
+       119.28394       122.62777       126.71098       131.40142       136.73382       142.72987\
+       149.39763       156.73230       164.71812       173.33109       182.54111       192.31535\
+       202.62023       213.42290       224.69219       236.39867       248.51434       261.01217\
+       273.86553       287.04771       300.53176       314.28587       328.28885       342.51369\
+       356.93433       371.52613       386.26624       401.13379       416.11025       431.17888\
+       446.32527       461.53697       476.80332       492.11527       507.46517       522.84662\
+       538.25424       553.68356       569.13086       584.59305       600.06757       615.54208\
+\
+For the altitude grid, the lowest two grids (at 96.7km and 98.3km in this run) are ghost cells, where the lower boundary conditions of GITM is defined. The lower boundary conditions include the density, velocity, and temperature of neutrals and ions, typically from empirical models. For our application, we only deal with the following variables at the lower boundary: 1) the neutral mass density 2) the eastward, northward, and upward neutral wind and 3) the neutral temperature. From a given tsunami, the WP model will provide perturbations in 1), 2) and 3). These perturbations are added on top of the boundary conditions specified from empirical models. Perturbations in a few other variables are also specified at the lower boundary, but they are all derived from 1) or 2). I will skip the details here for simplicity of this document.\
+\
+Similar to the vertical direction, there are two layers of ghost cells at each horizontal boundary as well. These are included as the first two and last two grid points in the Longitude and Latitude grid listed above.\
+\
+\
+
+\f1\b Explanation of 3DUSR*bin and 2DTEC*bin files
+\f0\b0 \
+\
+Both files are saved at the end of this particular WP-GITM run, at 20:45UT on March 11, 2011.\
+\
+3DUSR_t110311_204500.bin contains a 4-D array of size [9, 124, 104, 54]. The first index is for 9 variables in the order of \'93Longitude, Latitude, Altitude, Neutral Density, Electron Density, East Wind, North Wind, Vertical Wind, and Neutral Temperature\'94. The second, third and last indices represent the grid point locations in longitude, latitude, and altitude, respectively. Important Note: the unit for the longitude and latitude is radian, and the unit for the altitude is meter.\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 2DTEC_t110311_204500.bin contains a 3-D array of size [5,120,100]. The first index is for 5 variables in the order of \'93Longitude, Latitude, Altitude, Solar Zenith Angle, and Vertical TEC\'94. The second and last indices represent the grid point locations in longitude and latitude. The unit for the longitude and latitude is radian. Important Note: the ghost cells at horizontal boundaries are not included in this type of output files. Therefore, there are only 120 grid points in longitude and 100 grid points in latitude. \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+}

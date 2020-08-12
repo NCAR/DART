@@ -4,8 +4,23 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
 
+if ( ! $?REMOVE) then
+   setenv REMOVE 'rm -f'
+endif
+if ( ! $?REMOVE_DIR) then
+   setenv REMOVE_DIR 'rmdir'
+endif
+if ( ! $?COPY) then
+   setenv COPY 'cp -f'
+endif
+if ( ! $?MOVE) then
+   setenv MOVE 'mv -f'
+endif
+
+if ( ! $?host) then
+   setenv host `uname -n`
+endif
 
 echo 
 echo 
@@ -15,14 +30,13 @@ echo "=================================================================="
 echo 
 echo 
 
+set nonomatch
 set startdir=`pwd`
-
 set LOGDIR=${startdir}/testing_logs
-echo putting build and run logs in:
-echo $LOGDIR
 
 mkdir -p ${LOGDIR}
-\rm -f ${LOGDIR}/*
+${REMOVE} ${LOGDIR}/*
+echo "build and run logs are in: $LOGDIR"
 
 echo 
 echo 
@@ -67,13 +81,14 @@ if ( -f ../../build_templates/mkmf.template ) then
       echo set NCEP BUFR library compiler choice in NCEP/prep_bufr/install.sh
       echo this script will use whatever compiler is selected there
    endif
+
 endif
 
 cd NCEP/prep_bufr
 
 set FAILURE = 0
 
-( ./install.sh > ${LOGDIR}/buildlog.NCEP.out ) || set FAILURE = 1
+( ./install.sh >& ${LOGDIR}/buildlog.NCEP.out ) || set FAILURE = 1
 
 echo 
 echo 
@@ -111,11 +126,25 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
 
    cd $wdir
    echo
-   echo building in $wdir
+   echo "building in $wdir"
+
+   # save original input.nml & obs seq files here
+   set SAVEDIR = saveme.test_dart
+   mkdir -p ${SAVEDIR}
+   if ( -e input.nml ) then 
+      ${COPY} input.nml ${SAVEDIR}
+   endif
+   if ( -e obs_seq.* ) then
+      ${COPY} obs_seq.* ${SAVEDIR}
+   endif
+
+   # If there is a testing namelist, use it.
+   if ( -f input.nml.testing ) then
+      ${COPY} input.nml.testing input.nml
+   endif
 
    set FAILURE = 0
    ( ./quickbuild.csh > ${LOGDIR}/buildlog.${project}.out ) || set FAILURE = 1
-
    echo
 
    if ( $FAILURE ) then
@@ -151,29 +180,38 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
       echo 
       echo "Executing converters in directory $wdir"
 
-      \rm -f *.o *.mod
-      \rm -f Makefile input.nml.*_default .cppdefs
+      ${REMOVE} *.o *.mod
+      ${REMOVE} Makefile input.nml.*_default .cppdefs
 
       foreach TARGET ( mkmf_* )
          set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
          echo "Running $PROG"
-         if ( -f ${PROG}.in ) then
-           ( ./$PROG < ${PROG}.in > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
+   
+         # for programs which read standard input, put what they need into a prog.in file
+         # in the tests directory.
+         # if we miss any programs which need input and we don't have a .in file, have it
+         # read from /dev/null so it errors out and doesn't just sit there waiting for input
+         if ( -f ../work/${PROG}.in ) then
+           ( ./$PROG < ../work/${PROG}.in > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
          else
-           ( ./$PROG > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
+           ( ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
          endif
          if ( $FAILURE ) then
             echo "ERROR - unsuccessful run of $PROG at "`date`
          else
             echo "Successful run of $PROG at "`date`
-            \rm -f $PROG
+            ${REMOVE} $PROG
          endif
       end
 
       echo
 
    endif
+
+   echo "Restoring original input.nml and obs_seq files"
+   ${MOVE} ${SAVEDIR}/* .
+   ${REMOVE_DIR} ${SAVEDIR}
 
    echo "=================================================================="
    echo
@@ -190,9 +228,4 @@ echo
 echo 
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

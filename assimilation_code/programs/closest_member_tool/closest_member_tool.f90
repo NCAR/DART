@@ -4,16 +4,11 @@
 !
 ! $Id$
 
-!> @mainpage
-!> @{
-!> @brief  Select the member closest to the ensemble mean.
+!> Select the member closest to the ensemble mean.
 !>
-!>  This program has options to compute <em> distance </em> in several different ways
-!>  and returns the ensemble member which has the smallest total distance from
-!>  the ensemble mean.
-!> @}
-!>
-!>
+!> This program has options to compute <em> distance </em> in several different ways
+!> and returns the ensemble member which has the smallest total distance from
+!> the ensemble mean.
 
 program closest_member_tool
 
@@ -58,10 +53,10 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_c
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
+character(len=256), parameter :: source   = &
    "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 integer               :: iunit, io, ens, i, j, total_j, qtyindex
 integer               :: num_qtys, stype
@@ -200,7 +195,7 @@ enddo
 
 ! Read the ensemble from files
 member_time = set_time_missing()
-call read_state(ens_handle, ens_file_info, read_time_from_file=.false., time=member_time)
+call read_state(ens_handle, ens_file_info, read_time_from_file=.false., model_time=member_time)
 
 ! Compute mean
 ENS_MEAN_COPY = ens_size + 1
@@ -427,8 +422,3 @@ end function compute_diff
 
 end program closest_member_tool
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

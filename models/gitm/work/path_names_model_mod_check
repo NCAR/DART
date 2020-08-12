@@ -36,6 +36,7 @@ assimilation_code/programs/model_mod_check/model_mod_check.f90
 models/gitm/GITM2/src/ModConstants.f90
 models/gitm/GITM2/src/ModEarth.f90
 models/gitm/GITM2/src/ModKind.f90
+models/gitm/GITM2/src/ModOrbital.f90
 models/gitm/GITM2/src/ModSize.f90
 models/gitm/GITM2/src/ModTime.f90
 models/gitm/GITM2/src/time_routines.f90
@@ -44,5 +45,6 @@ models/gitm/model_mod.f90
 models/model_mod_tools/model_check_utilities_mod.f90
 models/model_mod_tools/test_interpolate_threed_sphere.f90
 models/utilities/default_model_mod.f90
+models/utilities/quad_utils_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90

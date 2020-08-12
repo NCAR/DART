@@ -4,18 +4,15 @@
 !
 ! $Id$
 
-!----------------------------------------------------------------------
-!> purpose: generate initial inflation files so an experiment starting up
-!> can always start from a restart file without having to alter the namelist
-!> between cycles 1 and 2.
+!> Generate initial inflation files from namelist values.
+!> This way an experiment can always start from a restart file 
+!> without having to alter the namelist between cycles 1 and 2.
 !>
 !> an alternative to running this program is to use the nco utilities thus:
 !>
 !> Here is an example using version 4.4.2 or later of the NCO tools:
 !>   ncap2 -s "T=1.0;U=1.0;V=1.0" wrfinput_d01 prior_inflation_mean.nc
 !>   ncap2 -s "T=0.6;U=0.6;V=0.6" wrfinput_d01 prior_inflation_sd.nc'
-!>
-!----------------------------------------------------------------------
 
 program fill_inflation_restart
 
@@ -34,7 +31,7 @@ use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
 
 use   state_vector_io_mod, only : state_vector_io_init, read_state, write_state
 
-use   state_structure_mod, only : get_num_domains
+use   state_structure_mod, only : get_num_domains, set_update_list, get_num_variables
 
 use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
                                   stage_metadata_type, get_stage_metadata, &
@@ -94,7 +91,7 @@ integer               :: ncopies = 2    ! {prior,posterior}_inf_{mean,sd}
 logical               :: read_time_from_file = .true.
 
 ! counter variables
-integer :: idom, imem, ndomains
+integer :: idom, imem, ndomains, ivars
 
 ! message strings
 character(len=512) :: my_base, my_desc, my_stage
@@ -189,6 +186,27 @@ enddo
 
 call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
 
+! if users have variables in the dart state which are set to 'no update'
+! for assimilation purposes, they still have to have corresponding fields 
+! in the inflation files. (science question is what those values should be.)
+!
+! the normal write routine skips 'no update' fields, so the output of
+! this program would be missing those fields and cause an error when
+! filter tries to read the inflation files.  the following code 
+! overwrites the update flag values so all variables are always written.
+!
+! also tell users to script their workflows to copy the input inflation
+! file to the output name before running filter, so there is an existing
+! output inflation file for filter to update. it will already include the
+! 'no update' fields, whose inflation values will remain unchanged. 
+! this prevents confusing errors at the next execution of filter.
+! [ed note: tim is brilliant.]
+
+do idom = 1, ndomains
+   ivars = get_num_variables(idom)   
+   call set_update_list(idom, ivars, (/ ( .TRUE., imem=1,ivars ) /) )
+enddo
+
 ! Initialize file output to default inflation file names
 call io_filenames_init(file_info_output,           &
                        ncopies      = ncopies,     &
@@ -219,15 +237,15 @@ real(r8),         intent(in) :: inf_sd
 character(len=*), intent(in) :: stage
 
 if (inf_mean == MISSING_R8 .or. inf_sd == MISSING_R8) then
-   write(string1,*) 'you must specify both inf_mean and inf_sd values'
+   write(string1,*) 'you must specify both inflation mean and inflation standard deviation values'
    write(string2,*) 'you have "',trim(stage),'_inf_mean = ', inf_mean,'" and '
    write(string3,*) '         "',trim(stage),'_inf_sd   = ', inf_sd,  '"     '
    call error_handler(E_MSG, 'fill_inflation_restart: ', string1,  &
                       source, revision, revdate, text2=string2, text3=string3)
    return
 endif
-ens_handle%copies(ss_inflate_index   , :) = prior_inf_mean
-ens_handle%copies(ss_inflate_sd_index, :) = prior_inf_sd
+ens_handle%copies(ss_inflate_index   , :) = inf_mean
+ens_handle%copies(ss_inflate_sd_index, :) = inf_sd
 
 write(my_stage,'(3A)') 'input_', stage, 'inf'
 write(my_base, '(A)')  'mean'
@@ -308,10 +326,4 @@ call finalize_mpi_utilities()
 end subroutine finalize_modules_used
 
 end program fill_inflation_restart
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 

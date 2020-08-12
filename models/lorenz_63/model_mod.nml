@@ -4,5 +4,6 @@
    b      = 2.6666666666667,
    deltat = 0.01,
    time_step_days = 0,
-   time_step_seconds = 3600  /
-
+   time_step_seconds = 3600,
+   solver = 'RK2' 
+/

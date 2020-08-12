@@ -165,13 +165,13 @@ end subroutine state_vector_io_init
 !>     Still doing a full all vars to all copies for dart format read though.
 
 
-subroutine read_state(state_ens_handle, file_info, read_time_from_file, time, &
+subroutine read_state(state_ens_handle, file_info, read_time_from_file, model_time, &
             prior_inflate_handle, post_inflate_handle, perturb_from_single_copy)
 
 type(ensemble_type),         intent(inout) :: state_ens_handle
 type(file_info_type),        intent(in)    :: file_info
 logical,                     intent(in)    :: read_time_from_file ! state time
-type(time_type),             intent(inout) :: time
+type(time_type),             intent(inout) :: model_time
 type(adaptive_inflate_type), optional, intent(in) :: prior_inflate_handle
 type(adaptive_inflate_type), optional, intent(in) :: post_inflate_handle
 logical,                     optional, intent(in) :: perturb_from_single_copy
@@ -220,9 +220,9 @@ endif
 
 if (get_single_file(file_info)) then
    ! NOTE: single file is set only in filter, and pmo
-   call read_single_file(state_ens_handle, file_info, read_time_from_file, time, perturb_from_single_copy)
+   call read_single_file(state_ens_handle, file_info, read_time_from_file, model_time, perturb_from_single_copy)
 else
-   call read_restart_direct(state_ens_handle, file_info, read_time_from_file, time)
+   call read_restart_direct(state_ens_handle, file_info, read_time_from_file, model_time)
 endif
 
 end subroutine read_state
@@ -275,15 +275,15 @@ end subroutine write_state
 !> Read the restart information directly from the model netcdf file
 
 
-subroutine read_restart_direct(state_ens_handle, file_info, use_time_from_file, time)
+subroutine read_restart_direct(state_ens_handle, file_info, use_time_from_file, model_time)
 
 type(ensemble_type),  intent(inout) :: state_ens_handle
 type(file_info_type), intent(in)    :: file_info
 logical,              intent(in)    :: use_time_from_file
-type(time_type),      intent(inout) :: time
+type(time_type),      intent(inout) :: model_time
 
 integer :: dart_index ! where to start in state_ens_handle%copies
-integer :: domain     ! loop index
+integer :: domain
 type(stage_metadata_type) :: restart_files
 
 ! check whether file_info handle is initialized
@@ -295,10 +295,10 @@ restart_files = get_stage_metadata(file_info)
 ! read time from input file if time not set in namelist
 !>@todo Check time constistency across files? This is assuming they are consistent.
 if(use_time_from_file) then
-   time = read_model_time(get_restart_filename(restart_files, 1, 1)) ! Any of the restarts?
+   model_time = read_model_time(get_restart_filename(restart_files, 1, 1)) ! Any of the restarts?
 endif
 
-state_ens_handle%time = time
+state_ens_handle%time = model_time
 
 ! read in the data and transpose
 dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose

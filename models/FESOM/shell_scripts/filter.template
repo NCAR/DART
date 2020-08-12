@@ -1,0 +1,111 @@
+#!/bin/bash
+#
+# filter.template modifies input.nml, runs filter, renames output ...
+#----------------------------------------------------------------------
+# LSF options
+#
+#BSUB -a poe
+#BSUB -J filter                # Name of the job.
+#BSUB -o LOG/filter_%J.out     # Appends std output to file %J.out.
+#BSUB -e LOG/filter_%J.out     # Appends std error to file %J.err.
+#BSUB -q poe_short             # queue
+#BSUB -R "span[ptile=16]"      #
+#BSUB -n 16                    #
+#----------------------------------------------------------------------
+# PBS options  (set for the NCAR machine "cheyenne")
+#
+#PBS -N filter
+#PBS -l walltime=0:20:00
+#PBS -q regular
+#PBS -j oe
+#PBS -A P86850054
+#PBS -l select=1:ncpus=36:mpiprocs=36
+#----------------------------------------------------------------------
+
+#-- Load Experiment Environment Variables -----------------
+. environment.load
+
+# Translate the queueing-specific variables into a common tongue.
+
+if [[ $SCHEDULER = "lsf" ]] ; then
+
+   JOBDIR=${LS_SUBCWD}         # directory of this script
+   JOBNAM=${LSB_JOBNAME}       # name of this script
+
+elif [[ ${SCHEDULER} = "pbs" ]] ; then
+
+   JOBDIR=${PBS_O_WORKDIR}     # directory of this script
+   JOBNAM=${PBS_JOBNAME}       # name of this script
+   MPIEXEC=mpiexec_mpt
+   TMPDIR=/glade/scratch/$USER/temp
+   mkdir -p $TMPDIR
+
+fi
+
+cd ${FILDIR}
+
+#-- Ensemble Required Variables ---------------------------
+# only need 1 namelist.config ... use ensemble member 1
+
+ENSNO=$( echo 1 | awk '{ printf("%02d\n", $1) }' )
+ENSINFO=${ENSID}${ENSNO}
+
+${COPY} ../${ENSINFO}/namelist.config .
+
+#-- DART I/O files ----------------------------------------
+# The strategy here is that the observation sequence file has ALL
+# the observations for the entire experiment. We need to tell DART
+# the first/last times of the observations for this assimilation cycle.
+
+${COPY} ${OBSSEQ} obs_seq.out
+
+DART_INIT_TIME_DAYS=($(cat FESOM_time | sed -n 1,1p | sed 's;_\|:\|=\|,; ;g' | sed 's/[A-Za-z]*//g'))
+DART_INIT_TIME_SECS=($(cat FESOM_time | sed -n 2,2p | sed 's;_\|:\|=\|,; ;g' | sed 's/[A-Za-z]*//g'))
+DART_FIRST_OBS_DAYS=($(cat FESOM_time | sed -n 3,3p | sed 's;_\|:\|=\|,; ;g' | sed 's/[A-Za-z]*//g'))
+DART_FIRST_OBS_SECS=($(cat FESOM_time | sed -n 4,4p | sed 's;_\|:\|=\|,; ;g' | sed 's/[A-Za-z]*//g'))
+DART_FINAL_OBS_DAYS=($(cat FESOM_time | sed -n 5,5p | sed 's;_\|:\|=\|,; ;g' | sed 's/[A-Za-z]*//g'))
+DART_FINAL_OBS_SECS=($(cat FESOM_time | sed -n 6,6p | sed 's;_\|:\|=\|,; ;g' | sed 's/[A-Za-z]*//g'))
+ANALYSISFILE=../${ENSINFO}/${ENSINFO}.${EXPYR}.oce.nc
+
+#-- Modify DART input.nml.template ------------------------
+
+sed -e "s;^   model_analysis_filename.*$;   model_analysis_filename = '${ANALYSISFILE}';g" -e \
+       "s/^   assimilation_period_days.*$/   assimilation_period_days = 0/g"               -e \
+       "s/^   assimilation_period_seconds.*$/   assimilation_period_seconds = ${CYCLE}/g"  -e \
+       "s/^   init_time_days.*$/   init_time_days = ${DART_INIT_TIME_DAYS}/g"              -e \
+       "s/^   init_time_seconds.*$/   init_time_seconds = ${DART_INIT_TIME_SECS}/g"        -e \
+       "s/^   first_obs_days.*$/   first_obs_days = ${DART_FIRST_OBS_DAYS}/g"              -e \
+       "s/^   first_obs_seconds.*$/   first_obs_seconds = ${DART_FIRST_OBS_SECS}/g"        -e \
+       "s/^   last_obs_days.*$/   last_obs_days = ${DART_FINAL_OBS_DAYS}/g"                -e \
+       "s/^   last_obs_seconds.*$/   last_obs_seconds = ${DART_FINAL_OBS_SECS}/g"          -e \
+       "s/^   num_output_state_members.*$/   num_output_state_members = ${MEMNO}/g"        -e \
+       "s/^   num_output_obs_members.*$/   num_output_obs_members     = ${MEMNO}/g"        -e \
+       "s/^   ens_size.*$/   ens_size      = ${MEMNO}/g"  \
+       ${DRTDIR}/input.nml > input.nml || exit 1
+
+#-- DART FEOM time handshaking ----------------------------
+# The times are used to rename the output from this cycle.
+
+DARTIME=($(grep 'FESOM    stop at :' FESOM_time | sed 's;_\|:\|=\|,; ;g' | sed 's/[A-Za-z]*//g'))
+DARTDAY=$( echo ${DARTIME[0]} | awk '{ printf("%06d\n", $1) }' )
+DARTSEC=$( echo ${DARTIME[1]} | awk '{ printf("%05d\n", $1) }' )
+
+echo "Filter assimilating at ${DARTIME[@]} "`date`
+
+${MPIEXEC} ${DRTDIR}/filter
+
+echo "Filter finished   with ${DARTIME[@]} "`date`
+
+#-- rename diagnostic outputs -----------------------------
+
+for FILE in obs_seq.final \
+            preassim_mean.nc preassim_sd.nc \
+            postassim_mean.nc postassim_sd.nc \
+            output_mean.nc output_sd.nc; do
+
+    [ -e $FILE ] && BASE=${FILE%.*} && \
+                    EXT=${FILE##*.} && \
+          ${COPY} $FILE ${BASE}_${DARTDAY}_${DARTSEC}.${EXT}
+                      
+done
+

@@ -41,15 +41,8 @@ use obs_def_utilities_mod, only : track_status
 
 use     obs_kind_mod,      only : get_index_for_quantity, &
                                   get_name_for_quantity, &
-                                  QTY_SOIL_TEMPERATURE, &
-                                  QTY_LIQUID_WATER, &
-                                  QTY_ICE, &
                                   QTY_SNOWCOVER_FRAC, &
-                                  QTY_SNOW_THICKNESS, &
-                                  QTY_LEAF_CARBON, &
-                                  QTY_WATER_TABLE_DEPTH, &
-                                  QTY_GEOPOTENTIAL_HEIGHT, &
-                                  QTY_SOIL_NITROGEN
+                                  QTY_GEOPOTENTIAL_HEIGHT
 
 use  ensemble_manager_mod, only : ensemble_type
 
@@ -76,6 +69,8 @@ use   state_structure_mod, only : add_domain,      get_domain_size,   &
                                   state_structure_info
 
 use     mpi_utilities_mod, only : my_task_id
+
+use           options_mod, only : set_missing_ok_status
 
 use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -121,8 +116,7 @@ public :: nc_write_model_vars, &
           convert_vertical_state
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
+character(len=*), parameter :: source   = "$URL$"
 character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 
@@ -175,7 +169,7 @@ integer               :: debug    = 0  ! turn up for more and more debug message
 character(len=obstypelength) :: lsm_variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ' '
 
 !nc -- we are adding these to the model.nml until they appear in the NetCDF files
-logical :: polar = .false.         ! wrap over the poles
+logical :: polar      = .false.    ! wrap over the poles
 logical :: periodic_x = .false.    ! wrap in longitude or x
 logical :: periodic_y = .false.    ! used for single column model, wrap in y
 
@@ -186,7 +180,8 @@ namelist /model_nml/ domain_shapefiles, &
                      model_perturbation_amplitude, &
                      perturb_distribution, &
                      debug, &
-                     lsm_variables
+                     lsm_variables, &
+                     polar, periodic_x, periodic_y
 
 !------------------------------------------------------------------
 
@@ -260,6 +255,9 @@ call check_namelist_read(iunit, io, 'model_nml')
 ! Record the DART namelist values used for the run ...
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
+
+! It is OK for this model to have MISSING_R8 in the DART state.
+call set_missing_ok_status(.true.)
 
 call set_calendar_type( calendar )
 
@@ -848,6 +846,17 @@ if(debug > 1) then
    enddo
 endif
 
+!This is the check routine, skip the Non-uniform part, 
+! If one or more of the ensemble members doesn't have snow,
+! we must reject the observation because we do not have
+! a full rank ensemble for the regression. We don't know
+! how to make snow  
+if ( (obs_kind == QTY_SNOWCOVER_FRAC) .and. &
+     any(expected_obs <= 0.0) )  then
+    expected_obs = missing_r8
+    istatus      = 12
+endif
+
 end subroutine model_interpolate
 
 
@@ -1410,10 +1419,29 @@ character(len=*), parameter :: routine = 'read_wrf_file_attributes'
 integer :: io, ncid, DimID
 real(r8) :: dummy
 
-write(string1,*)trim(routine),' "'//trim(lsm%dom(dom_id)%filename)//'"'
-ncid = nc_open_file_readonly(lsm%dom(dom_id)%filename, string1)
+! set the metadata that should be in the netCDF file but is being read from the module
+
+lsm%dom(dom_id)%periodic_x = periodic_x
+lsm%dom(dom_id)%periodic_y = periodic_y
+lsm%dom(dom_id)%polar      = polar
+
+! Only a subset of the wrf grid logic is implemented in this (noah) 
+! If people are going across the prime meridian or ... that logic is not
+! implemented yet. 
+
+if (periodic_x .or. periodic_y .or. polar) then
+
+   write(string1,*)'Only a subset of the wrf grid logic is supported in our noah implementation.'
+   write(string2,*)'We do not support periodic boundary conditions. Unsupported namelist setting:'
+   write(string3,*)'periodic_x=',periodic_x,'; periodic_y=',periodic_y,'; polar=',polar
+   call error_handler(E_ERR, routine, string1, source, revision, revdate, &
+                      text2=string2, text3=string3)
+endif
 
 ! get meta data and static data we need
+
+write(string1,*)trim(routine),' "'//trim(lsm%dom(dom_id)%filename)//'"'
+ncid = nc_open_file_readonly(lsm%dom(dom_id)%filename, string1)
 
 io = nf90_inq_dimid(ncid, 'south_north', DimID)
 call nc_check(io, routine, 'inq_dimid','south_north',ncid=ncid)
@@ -1595,6 +1623,7 @@ do while (.not. dom_found)
 
    else
 
+      !>@todo is the min(max()) bit necessary given the abs(oblat) just above
       call latlon_to_ij(lsm%dom(dom_id)%proj, &
                min(max(obslat,-89.9999999_r8),89.9999999_r8),obslon,iloc,jloc)
 
@@ -1845,8 +1874,3 @@ end subroutine get_vertical_array
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

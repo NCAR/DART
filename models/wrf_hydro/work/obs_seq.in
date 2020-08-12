@@ -1,0 +1,15 @@
+  obs_sequence
+obs_kind_definitions
+           0
+  num_copies:            0  num_qc:            0
+  num_obs:            1  max_num_obs:            1
+  first:            1  last:            1
+ OBS            1
+          -1          -1          -1
+obdef
+loc3d
+     4.906395338871564   0.631740759225300   117.2900 3
+kind
+        -1594
+  0 152564 
+  10.0

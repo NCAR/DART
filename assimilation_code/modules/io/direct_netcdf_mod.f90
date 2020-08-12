@@ -480,13 +480,13 @@ end subroutine finalize_single_file_io
 !> read a single netcdf file containing all of the members
 !> and possibly inflation information
 
-subroutine read_single_file(state_ens_handle, file_handle, use_time_from_file, time, pert_from_single_copy)
+subroutine read_single_file(state_ens_handle, file_handle, use_time_from_file, mtime, pert_from_single_copy)
 
-type(ensemble_type),  intent(inout) :: state_ens_handle      !> ensemble handle to store data
-type(file_info_type), intent(in)    :: file_handle           !> file handle for file names
-logical,              intent(in)    :: use_time_from_file    !> read time from file
-type(time_type),      intent(inout) :: time                  !> external time
-logical, optional,    intent(in)    :: pert_from_single_copy !> reading single file and perturbing
+type(ensemble_type),  intent(inout) :: state_ens_handle      !! ensemble handle to store data
+type(file_info_type), intent(in)    :: file_handle           !! file handle for file names
+logical,              intent(in)    :: use_time_from_file    !! read time from file
+type(time_type),      intent(inout) :: mtime                 !! external time
+logical, optional,    intent(in)    :: pert_from_single_copy !! reading single file and perturbing
 
 ! NetCDF IO variables
 integer                               :: my_ncid, varid, TimeDimID, MemDimID, ret 
@@ -522,9 +522,9 @@ fname = get_restart_filename(file_handle%stage_metadata, 1, domain)
 
 !>@todo Check time consistency across files? This is assuming they are consistent.
 ! read time from input file if time not set in namelist
-if( use_time_from_file ) time = read_model_time(fname)
+if( use_time_from_file ) mtime = read_model_time(fname)
 
-state_ens_handle%time = time
+state_ens_handle%time = mtime
 
 ret = nf90_open(fname, NF90_NOWRITE, my_ncid)
 call nc_check(ret, 'read_single_file: nf90_open', fname)
@@ -786,8 +786,11 @@ endif
 
 curr_ens_time = ens_handle%current_time
 
-domain = 1 !>@todo : only a single domain for single file read supported. need
-           !>        to consider case for multiple domains.
+!>@todo : only a single domain for single file read supported.
+!>        need to consider case for multiple domains.
+
+domain = 1
+
 if (my_task_id() == SINGLE_IO_TASK_ID) then
    fname = get_restart_filename(file_handle%stage_metadata, 1, domain)
    
@@ -1002,7 +1005,10 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
          call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
          ncfile_out = create_and_open_state_output(name_handle, domain, copy, &
                                                    dart_time, write_single_precision)
-
+         !>@todo if multiple domains exist in the same file, only the variables
+         !>      from the first domain are created by create_and_open_state_output()
+         !>      and since the file exists, the variables for the additional domains
+         !>      never get defined in the netCDF file.
       endif
    endif
 
@@ -1559,14 +1565,14 @@ do i = start_var, end_var
       allocate(dims(get_io_num_dims(domain, i)))
 
       dims = get_io_dim_lengths(domain, i)
-
+!>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
-      call nc_check(ret, 'write_variables:', 'getting variable "'//trim(get_variable_name(domain,i))//'"')
+      call nc_check(ret, 'write_variables:', 'nf90_inq_varid "'//trim(get_variable_name(domain,i))//'"')
 
       if (missing_possible) call set_model_missing_value(var_block(istart:iend), domain, i)
 
       ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
-      call nc_check(ret, 'write_variables:', 'writing "'//trim(get_variable_name(domain,i))//'"')
+      call nc_check(ret, 'write_variables:', 'nf90_put_var "'//trim(get_variable_name(domain,i))//'"')
 
       deallocate(dims)
    endif
@@ -1594,19 +1600,21 @@ function create_and_open_state_output(name_handle, dom_id, copy_number, &
                 dart_time, single_precision_output) result(ncfile_out)
 
 type(stage_metadata_type), intent(in) :: name_handle
-integer,                   intent(in) :: dom_id !< domain
+integer,                   intent(in) :: dom_id
 integer,                   intent(in) :: copy_number
 type(time_type),           intent(in) :: dart_time
 logical,                   intent(in) :: single_precision_output
 integer :: ncfile_out
 
-integer :: ret !> netcdf return code
+character(len=*), parameter :: routine = 'create_and_open_state_output'
+
+integer :: ret
 integer :: create_mode
-integer :: i, j ! loop variables
+integer :: i, j
 integer :: new_dimid
 integer :: new_varid
 integer :: ndims
-integer :: xtype ! precision for netcdf file
+integer :: xtype
 integer :: dimids(NF90_MAX_VAR_DIMS)
 
 character(len=256) :: filename
@@ -1614,41 +1622,42 @@ character(len=256) :: filename
 filename = get_restart_filename(name_handle, copy_number, dom_id)
 
 write(msgstring,*) 'Creating output file ', trim(filename)
-call error_handler(E_ALLMSG,'create_and_open_state_output:', msgstring)
+call error_handler(E_ALLMSG, routine, msgstring)
 
 ! What file options do you want?
 create_mode = ior(NF90_CLOBBER, NF90_64BIT_OFFSET)
 ret = nf90_create(filename, create_mode, ncfile_out)
-call nc_check(ret, 'create_and_open_state_output: creating', trim(filename))
+call nc_check(ret, routine, 'nf90_create "'//trim(filename)//'"')
 
 ret = nf90_enddef(ncfile_out)
-call nc_check(ret, 'create_and_open_state_output', 'end define mode')
+call nc_check(ret, routine, 'end define mode')
 
 ! write grid information
 call nc_write_model_atts(ncfile_out, dom_id)
-call nc_check(nf90_Redef(ncfile_out),'create_and_open_state_output',   'redef ')
+call nc_check(nf90_Redef(ncfile_out), routine, 'redef ')
 
 ! filename discription
-call nc_write_file_information(ncfile_out, filename, get_file_description(name_handle, copy_number, dom_id))
-
+call nc_write_file_information(ncfile_out, filename, &
+          get_file_description(name_handle, copy_number, dom_id))
 
 ! revision information
 call nc_write_revision_info(ncfile_out)
 
 ! clamping information
-call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, from_scratch=.true.)
-
+call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, &
+          from_scratch=.true.)
 
 ! define dimensions, loop around unique dimensions
 do i = 1, get_io_num_unique_dims(dom_id)
    if ( trim(get_io_unique_dim_name(dom_id, i)) == 'time' ) then
       ret = nf90_def_dim(ncfile_out, 'time', NF90_UNLIMITED, new_dimid)
    else
-      ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), get_io_unique_dim_length(dom_id, i), new_dimid)
+      ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), &
+                       get_io_unique_dim_length(dom_id, i), new_dimid)
    endif
    !>@todo if we already have a unique names we can take this test out
    if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
-      call nc_check(ret, 'create_and_open_state_output', &
+      call nc_check(ret, routine, &
               'defining dimensions'//trim(get_io_unique_dim_name(dom_id, i)))
    endif
 enddo
@@ -1671,13 +1680,14 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
       ! query the dimension ids
       do j = 1, ndims
          ret = nf90_inq_dimid(ncfile_out, get_dim_name(dom_id, i, j), dimids(j))
-         call nc_check(ret, 'create_and_open_state_output', 'querying dimensions')
+         call nc_check(ret, routine, 'querying dimensions')
       enddo
   
       ! define variable name and attributes
+      write(msgstring,*) '"'//trim(get_variable_name(dom_id, i))//'"'
       ret = nf90_def_var(ncfile_out, trim(get_variable_name(dom_id, i)), &
                          xtype=xtype, dimids=dimids(1:ndims), varid=new_varid)
-      call nc_check(ret, 'create_and_open_state_output', 'defining variable')
+      call nc_check(ret, routine, 'defining variable '//trim(msgstring))
   
       call set_var_id(dom_id, i, new_varid)
   
@@ -1688,10 +1698,9 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
 enddo
 
 ret = nf90_enddef(ncfile_out)
-call nc_check(ret, 'create_and_open_state_output', 'end define mode')
+call nc_check(ret, routine, 'nf90_enddef end define mode')
 
 call write_model_time(ncfile_out, dart_time)
-
 
 end function create_and_open_state_output
 
@@ -2162,14 +2171,13 @@ subroutine recv_variables_to_write(state_ens_handle, sending_pe, start, &
                 elm_count, block_size, variable_block)
 
 type(ensemble_type), intent(in)    :: state_ens_handle
-integer,             intent(in)    :: sending_pe !> sending_pe
-integer,             intent(in)    :: start !> start in vars array on receiver.
-integer,             intent(in)    :: elm_count !> how many elements
-integer,             intent(in)    :: block_size !> size of info on sender - the receiver only
-                                              !> gets part of this.
-real(r8),            intent(inout) :: variable_block(block_size) !> variable info
+integer,             intent(in)    :: sending_pe !! sending_pe
+integer,             intent(in)    :: start      !! start in vars array on receiver.
+integer,             intent(in)    :: elm_count  !! how many elements
+integer,             intent(in)    :: block_size !! size of info on sender - the receiver only gets part of this.
+real(r8),            intent(inout) :: variable_block(block_size) !! variable info
 
-real(r8), allocatable :: buffer(:) !> for making send array contiguous
+real(r8), allocatable :: buffer(:) !! for making send array contiguous
 
 if (state_ens_handle%distribution_type == 1) then
 
@@ -2215,7 +2223,8 @@ character(len=NF90_MAX_NAME) :: dimname, varname
 ncFileID%diag_id = create_diagnostic_structure()
 my_ncid          = ncFileID%ncid
 
-domain = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
+!>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
+domain = 1
 
 do ivar = 1, get_num_variables(domain)
 
@@ -2290,7 +2299,9 @@ if(my_task_id()==SINGLE_IO_TASK_ID) then
       my_xtype = nf90_real
    endif
 
-   domain = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILES
+   !>@todo ONLY ONE DOMAIN FOR SINGLE FILES
+   domain = 1
+
    ! Define dimensions for state
    do ivar = 1, get_num_variables(domain)
 
@@ -2363,7 +2374,8 @@ character(len=NF90_MAX_NAME) :: dimname, varname, extraname
 
 my_ncid = ncFileID%ncid
 
-domain    = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
+!>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
+domain    = 1
 
 do ivar = 1, get_num_variables(domain)
 
@@ -2441,7 +2453,9 @@ if(my_task_id()==SINGLE_IO_TASK_ID) then
       my_xtype = nf90_real
    endif
 
-   domain = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILES
+   !>@todo ONLY ONE DOMAIN FOR SINGLE FILES
+   domain = 1
+
    ! Define dimensions for state
    do ivar = 1, get_num_variables(domain)
       varname = get_variable_name(domain, ivar)
@@ -2479,12 +2493,12 @@ end subroutine write_extra_attributes
 !------------------------------------------------------------------
 !> helper function to return the netcdf dimension id's and lengths
 
-subroutine get_dimension_info(copy, dom_id, var_id, time, is_extra, numdims, start, lengths)
+subroutine get_dimension_info(copy, dom_id, var_id, timestep, is_extra, numdims, start, lengths)
 
 integer, intent(in)  :: copy 
 integer, intent(in)  :: dom_id 
 integer, intent(in)  :: var_id 
-integer, intent(in)  :: time
+integer, intent(in)  :: timestep
 logical, intent(in)  :: is_extra
 integer, intent(out) :: numdims
 integer, intent(out) :: start  (NF90_MAX_VAR_DIMS)
@@ -2511,9 +2525,9 @@ do jdim = 1, numdims
       if ( is_extra ) then 
          ! extra copies have time but it might not be the jdim dimension
          dcount        = dcount + 1
-         start(dcount) = time! time
+         start(dcount) = timestep
       else
-         start(jdim)   = time 
+         start(jdim)   = timestep 
       endif
 
    else if ( dimname == 'member') then
@@ -2770,11 +2784,11 @@ end function nc_get_tindex
 !> This REQUIRES that "time" is a coordinate variable AND it is the
 !> unlimited dimension. If not ... bad things happen.
 
-function nc_append_time(ncFileID, time) result(lngth)
+function nc_append_time(ncFileID, dart_time) result(lngth)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
-type(time_type), intent(in) :: time
-integer                     :: lngth
+type(time_type),        intent(in)    :: dart_time
+integer                               :: lngth
 
 integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer  :: TimeVarID
@@ -2838,7 +2852,7 @@ if ( lngth == ncFileID%NtimesMAX ) then
 
 endif
 
-call get_time(time, secs, days)         ! get time components to append
+call get_time(dart_time, secs, days)    ! get time components to append
 realtime = days + secs/86400.0_digits12 ! time base is "days since ..."
 lngth           = lngth + 1             ! index of new time 
 ncFileID%Ntimes = lngth                 ! new working length of time mirror
@@ -2846,7 +2860,7 @@ ncFileID%Ntimes = lngth                 ! new working length of time mirror
 call nc_check(nf90_put_var(my_ncid, TimeVarID, realtime, start=(/ lngth /) ), &
            'nc_append_time', 'put_var time')
 
-ncFileID%times( lngth) = time
+ncFileID%times( lngth) = dart_time
 ncFileID%rtimes(lngth) = realtime
 
 write(msgstring,*)'ncFileID (',my_ncid,') : "',trim(varname), &

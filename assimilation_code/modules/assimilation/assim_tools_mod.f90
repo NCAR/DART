@@ -18,9 +18,7 @@ use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_o
                                  find_namelist_in_file, register_module, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
-
-use       sort_mod,       only : index_sort
-
+use       sort_mod,       only : index_sort 
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
@@ -348,17 +346,17 @@ integer(i8) :: state_index
 integer(i8), allocatable :: my_state_indx(:)
 integer(i8), allocatable :: my_obs_indx(:)
 
-integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
-integer  :: obs_mean_index, obs_var_index
-integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
-integer  :: num_close_obs, obs_index, num_close_states
-integer  :: total_num_close_obs, last_num_close_obs, last_num_close_states
-integer  :: base_obs_kind, base_obs_type, nth_obs
-integer  :: num_close_obs_cached, num_close_states_cached
-integer  :: num_close_obs_calls_made, num_close_states_calls_made
-integer  :: localization_unit, secs, days, rev_num_close_obs
-integer  :: whichvert_obs_in_localization_coord
-integer  :: istatus
+integer :: my_num_obs, i, j, owner, owners_index, my_num_state
+integer :: obs_mean_index, obs_var_index
+integer :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
+integer :: num_close_obs, obs_index, num_close_states
+integer :: total_num_close_obs, last_num_close_obs, last_num_close_states
+integer :: base_obs_kind, base_obs_type, nth_obs
+integer :: num_close_obs_cached, num_close_states_cached
+integer :: num_close_obs_calls_made, num_close_states_calls_made
+integer :: localization_unit, secs, days, rev_num_close_obs
+integer :: whichvert_obs_in_localization_coord
+integer :: istatus
 integer, allocatable :: close_obs_ind(:)
 integer, allocatable :: close_state_ind(:)
 integer, allocatable :: last_close_obs_ind(:)
@@ -368,10 +366,10 @@ integer, allocatable :: my_obs_type(:)
 integer, allocatable :: my_state_kind(:)
 integer, allocatable :: vstatus(:)
 
-character(len = 200)  :: base_loc_text   ! longer than longest location formatting possible
+character(len = 200) :: base_loc_text   ! longer than longest location formatting possible
 
-type(location_type) :: base_obs_loc, last_base_obs_loc, last_base_states_loc
-type(location_type) :: dummyloc
+type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
+type(location_type)  :: dummyloc
 type(location_type), allocatable :: my_obs_loc(:)
 type(location_type), allocatable :: my_state_loc(:)
 
@@ -553,7 +551,7 @@ if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
             if (vstatus(i) /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
          endif
       enddo
-   endif
+   endif 
    if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'convert_vertical_obs')
 endif
 

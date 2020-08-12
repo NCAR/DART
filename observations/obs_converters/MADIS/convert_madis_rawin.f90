@@ -36,7 +36,7 @@ program convert_madis_rawin
 use         types_mod, only : r8, missing_r8
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               find_namelist_in_file, check_namelist_read,         &
-                              do_nml_file, do_nml_term, logfileunit, nmlfileunit
+                              do_nml_file, do_nml_term, nmlfileunit
 use  netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_check
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                                   increment_time, get_time, operator(-), GREGORIAN
@@ -62,7 +62,8 @@ use          obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT,      &
                                   RADIOSONDE_SURFACE_ALTIMETER 
 use             sort_mod,  only : index_sort
 use     obs_utilities_mod, only : add_obs_to_seq, create_3d_obs, &
-                                  getdimlen, getvar_int, set_missing_name
+                                  getdimlen, getvar_int, set_missing_name, &
+                                  get_or_fill_int
 
 use           netcdf
 
@@ -74,10 +75,10 @@ character(len=129), parameter :: rawin_out_file = 'obs_seq.rawin'
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
-integer :: oday, osec, nsig, nsound, nused, io, iunit, & 
-           nmaxml, nmaxsw, nmaxst, maxobs, nvars_man, nvars_sigt, k, n, i, ncid
+integer :: oday, osec, nsig, nsound, nused, io, iunit, &
+           nmaxml, nmaxsw, nmaxswp, nmaxswh, nmaxst, maxobs, nvars_man, nvars_sigt, k, n, i, ncid
 
-integer, allocatable :: obscnt(:), used(:), sorted_used(:), tused(:), nman(:)
+integer,  allocatable :: obscnt(:), used(:), sorted_used(:), tused(:), nman(:)
 real(r8), allocatable :: lon(:), lat(:), elev(:), otime(:)
 
 logical :: fexist, first_obs
@@ -107,13 +108,15 @@ logical :: include_specific_humidity = .true.
 logical :: include_relative_humidity = .false.
 logical :: include_dewpoint          = .false.
 logical :: use_input_qc              = .true. 
-logical :: wind_use_vert_pressure    = .true.
+logical :: wind_use_vert_pressure    = .true.  ! use what you find.  if both, use this one.
+logical :: verbose                   = .false. ! get more output
 
 ! mandatory levels are always converted.  significant levels are controlled
 ! by these vars.  if you are using the namelist they are set by the
 ! namelist in input.nml.  if not, you are prompted at runtime for T/F responses.
 logical :: do_significant_level_temps = .true.
 logical :: do_significant_level_winds = .true.
+character(len=32) :: sig_wind_type = 'unknown'
 
 logical :: use_namelist = .false.
 
@@ -123,7 +126,8 @@ logical :: use_namelist = .false.
 namelist /convert_madis_rawin_nml/ &
    do_significant_level_temps, do_significant_level_winds,  &
    wind_use_vert_pressure, LH_err, include_specific_humidity, &
-   include_relative_humidity, include_dewpoint, use_input_qc
+   include_relative_humidity, include_dewpoint, use_input_qc, &
+   verbose
 
 !-------- start of executable code -----------
 
@@ -144,13 +148,6 @@ else
    read*, do_significant_level_winds, do_significant_level_temps
 endif
 
-! shouldn't need to do this now - the nf90 open will catch it below
-inquire(file=trim(rawin_in_file), exist=fexist) ! check for drop file 
-if ( .NOT. fexist ) then
-  print*,'Rawinsonde file ',rawin_in_file,' does not exist, exiting'
-  stop
-endif
-
 ! put the reference date into DART format
 call set_calendar_type(GREGORIAN)
 comp_day0 = set_date(1970, 1, 1, 0, 0, 0)
@@ -163,34 +160,51 @@ ncid = nc_open_file_readonly(rawin_in_file, 'convert_madis_rawin')
 call getdimlen(ncid, "recNum", nsound)
 call set_missing_name("missing_value")
 
+if (verbose) print *, 'total number of soundings = ', nsound
+
 allocate(obscnt(nsound))  
 allocate(lon(nsound), lat(nsound), elev(nsound), otime(nsound))
 allocate(nman(nsound), used(nsound), sorted_used(nsound), tused(nsound))
 
-nmaxml = 0  ;  nmaxsw = 0  ;  nmaxst = 0
+! apparently the code uses 99999 as missing data.
+! don't include that in the counts.  get all the values
+! so you can print them if asked, and then set the optional
+! ones to 0 if not requested.
 
+! mandatory levels
 call getvar_int(ncid, "numMand", obscnt)
-do n = 1, nsound 
-  if ( obscnt(n) > nmaxml .and. obscnt(n) < 25 )  nmaxml = obscnt(n)
-enddo
+nmaxml = maxval(obscnt, mask=obscnt<1000)
+if (verbose) print *, 'max mandatory levels per sounding, over all soundings = ', nmaxml
 
-if ( do_significant_level_winds ) then
-  if ( wind_use_vert_pressure ) then
-     call getvar_int(ncid, "numSigPresW", obscnt)
-  else
-     call getvar_int(ncid, "numSigW", obscnt)
-  endif
-  do n = 1, nsound
-    if ( obscnt(n) > nmaxsw .and. obscnt(n) < 150 )  nmaxsw = obscnt(n)
-  enddo
+! significant level temps
+call getvar_int(ncid, "numSigT", obscnt)
+nmaxst = maxval(obscnt, mask=obscnt<1000)
+if (verbose) print *, 'max significant level temperatures per sounding, over all soundings = ', nmaxst
+
+if ( .not. do_significant_level_temps ) nmaxst = 0
+
+! significant level winds
+! slightly more complex in that they could be on pressure levels,
+! heights, or both.  find the max of either.
+
+! this call fills the array with 0s if not present
+call get_or_fill_int(ncid, "numSigPresW", obscnt)
+nmaxswp = maxval(obscnt, mask=obscnt<1000)
+if (verbose) print *, 'max significant level winds per sounding, pressure vertical, over all soundings = ', nmaxswp
+
+call get_or_fill_int(ncid, "numSigW", obscnt)
+nmaxswh = maxval(obscnt, mask=obscnt<1000)
+if (verbose) print *, 'max significant level winds per sounding, height vertical, over all soundings = ', nmaxswh
+
+if ( .not. do_significant_level_winds ) then
+  nmaxsw = 0
+else
+  nmaxsw = max(nmaxswp, nmaxswh)
 endif
 
-if ( do_significant_level_temps ) then
-  call getvar_int(ncid, "numSigT", obscnt)
-  do n = 1, nsound
-    if ( obscnt(n) > nmaxst .and. obscnt(n) < 150 )  nmaxst = obscnt(n)
-  enddo
-endif
+
+
+! compute the largest possible number of obs that can be created from this input
 
 nvars_man = 4
 nvars_sigt = 1
@@ -220,6 +234,8 @@ if ( fexist ) then
 
   ! existing file found, append to it
   call read_obs_seq(rawin_out_file, 0, 0, maxobs, obs_seq)
+  
+  if (verbose) print *, 'existing file found, appending to it'
 
 else
 
@@ -232,6 +248,7 @@ else
     call set_qc_meta_data(obs_seq, n, 'Data QC')
   enddo
 
+  if (verbose) print *, 'creating new obs_seq file'
 endif
 
 ! Set the DART data quality control.  Be consistent with NCEP codes;
@@ -257,7 +274,7 @@ sondeloop1 : do n = 1, nsound !  loop over all soundings in the file
   if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle sondeloop1
   if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle sondeloop1
 
-  ! Check for duplicate observations
+  ! Check for duplicate soundings
   do i = 1, nused
     if ( lon(n) == lon(used(i)) .and. &
          lat(n) == lat(used(i)) ) cycle sondeloop1
@@ -269,8 +286,12 @@ sondeloop1 : do n = 1, nsound !  loop over all soundings in the file
 
 enddo sondeloop1
 
-! sort by obs time
+! sort by obs time.  this will make it much faster to create
+! the output file because it won't have to search the linked list
+! for the right insertion point.
+
 call index_sort(tused, sorted_used, nused)
+
 
 sondeloop2: do i = 1, nused
 
@@ -449,9 +470,10 @@ sondeloop2: do i = 1, nused
 
 
   !  If desired, read the significant-level temperature data, write to obs_seq
+  !  skip soundings with nsig of 99999
   call getvar_int_1d_1val(ncid, "numSigT", n, nsig )
 
-  if ( do_significant_level_temps .and. nsig <= nmaxst .and. nsig > 0) then
+  if ( do_significant_level_temps .and. nsig > 0 .and. nsig <= nmaxst) then
 
     allocate(pres(nsig))     ;  allocate(tair(nsig))     ;  allocate(tdew(nsig))
     allocate(qc_pres(nsig))  ;  allocate(qc_tair(nsig))  ;  allocate(qc_tdew(nsig))
@@ -573,13 +595,24 @@ sondeloop2: do i = 1, nused
   endif
 
   !  If desired, read the pressure significant-level wind data, write to obs_seq
-  if ( wind_use_vert_pressure ) then
-      call getvar_int_1d_1val(ncid, "numSigPresW", n, nsig )
-  else
-      nsig = 0
+  !  Convert whichever is present - with vert units of pressure or height.
+
+  ! select pressure or height, depending on which one is there.
+  if ( do_significant_level_winds ) &
+    call single_vert_type_sigwinds(ncid, nsound, n, sig_wind_type)
+
+
+  !  note that pressure vs height are two separate sections because
+  !  the netcdf arrays with data have slightly different field names,
+  !  and the vertical coordinate is different in the create obs call.
+
+  nsig = 0
+  if ( do_significant_level_winds .and. sig_wind_type == "pressure") then
+    call getvar_int_1d_1val(ncid, "numSigPresW", n, nsig )
   endif
 
-  if ( do_significant_level_winds .and. nsig > 0 .and. nsig <= nmaxsw) then
+  !  nsig is 0 if not doing sig winds, and skip soundings with nsig of 99999
+  if ( nsig > 0 .and. nsig <= nmaxsw ) then
 
     allocate(pres(nsig))     ;  allocate(wdir(nsig))     ;  allocate(wspd(nsig))
     allocate(qc_pres(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
@@ -635,13 +668,13 @@ sondeloop2: do i = 1, nused
   endif
 
   !  If desired, read the height significant-level wind data, write to obs_seq
-  if (.not. wind_use_vert_pressure ) then
-      call getvar_int_1d_1val(ncid, "numSigW", n, nsig )
-  else
-      nsig = 0
+  nsig = 0
+  if ( do_significant_level_winds .and. sig_wind_type == "height") then
+    call getvar_int_1d_1val(ncid, "numSigW", n, nsig )
   endif
 
-  if ( do_significant_level_winds .and. nsig > 0 .and. nsig <= nmaxsw) then
+  !  nsig is 0 if not doing sig winds, and skip soundings with nsig of 99999
+  if ( nsig > 0 .and. nsig <= nmaxsw ) then
 
     allocate(hght(nsig))     ;  allocate(wdir(nsig))     ;  allocate(wspd(nsig))
     allocate(qc_hght(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
@@ -713,6 +746,57 @@ if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, rawin_out_file)
 call finalize_utilities()
 
 contains
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! make sure this sounding doesn't have significant level winds on both
+! pressure and height.  glen has files where some non-conus radiosondes
+! do have both in the same sounding.  we aren't sure if these are disjoint
+! obs or replicated obs, so to err on the safe side we're only converting
+! one or the other.
+
+subroutine single_vert_type_sigwinds(ncid, max_sound, this_sound, sig_wind_type)
+ integer, intent(in) :: ncid
+ integer, intent(in) :: max_sound
+ integer, intent(in) :: this_sound
+ character(len=*), intent(out) :: sig_wind_type
+
+integer, allocatable :: p(:), h(:)
+integer :: pcount, hcount
+integer :: MAX_CNT = 1000
+
+allocate(p(max_sound), h(max_sound))
+
+! avoid 9999 or 99999 which is used as a fill
+call get_or_fill_int(ncid, "numSigPresW", p)
+pcount = min(p(this_sound), MAX_CNT)
+if (pcount == MAX_CNT) pcount = 0
+
+call get_or_fill_int(ncid, "numSigW", h)
+hcount = min(h(this_sound), MAX_CNT)
+if (hcount == MAX_CNT) hcount = 0
+
+if (pcount > 0 .and. hcount > 0) then
+  if ( wind_use_vert_pressure ) then
+    sig_wind_type = 'pressure'
+    if (verbose) print *, 'sounding ', this_sound, ' has sigwinds on both; will use pressure levels based on setting of "wind_use_vert_pressure"'
+  else
+    sig_wind_type = 'height'
+    if (verbose) print *, 'sounding ', this_sound, ' has sigwinds on both; will use height levels based on setting of "wind_use_vert_pressure"'
+  endif
+else if (pcount > 0) then
+  sig_wind_type = 'pressure'
+  if (verbose) print *, 'sounding ', this_sound, ' has significant level winds on pressure levels'
+else if (hcount > 0) then
+  sig_wind_type = 'height'
+  if (verbose) print *, 'sounding ', this_sound, ' has significant level winds on height levels'
+else
+  sig_wind_type = 'none'
+endif
+
+deallocate(p, h)
+
+end subroutine single_vert_type_sigwinds
+
 
 ! specialized versions of the netcdf get routines that seem to be
 ! pretty specific to this version of the code, so i didn't put them
@@ -868,7 +952,7 @@ if (nfrc == NF90_NOERR) then
                   'get_or_fill_int_2d', 'reading '//trim(varname) )
 else
    darray = 0
-   if (start == 1) & 
+   if (start == 1 .and. verbose) & 
      print *, 'QC field named ' // trim(varname) // ' was not found in input, 0 used instead'
 endif
 

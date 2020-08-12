@@ -1,7 +1,5 @@
-! This code may (or may not) be part of the GITM distribution,
-! So it is not protected by the DART copyright agreement.
-!
-! DART $Id$
+!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
+!  For more information, see http://csem.engin.umich.edu/tools/swmf
 
 module ModTime
 
@@ -195,9 +193,3 @@ module ModTime
 !  end subroutine time_real_to_int
 
 end module ModTime
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

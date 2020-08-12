@@ -173,8 +173,3 @@ var = (s_x2 - sx**2 / n) / (n - 1)
 
 end subroutine sample_mean_var
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

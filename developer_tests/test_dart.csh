@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # test_dart.csh can be run from the command line or a batch system.
 #               This compiles many of the programs (but not all) and
 #               runs a limited number of tests.
@@ -42,9 +40,10 @@
 # qsub     submitting a job
 # 
 #PBS -N dart_test     
-#PBS -l walltime=02:00:00
+#PBS -l walltime=03:00:00
 #PBS -A P86850054 
 #PBS -j oe
+#PBS -k eod
 #PBS -m ae
 #
 # for mpi tests:
@@ -109,6 +108,11 @@ if ( ! $?host) then
 endif
 echo "Running $0 on $host"
 echo "The top-level DART directory is $DARTHOME"
+
+# Report on which git branch is being tested and if there are modifications.
+# Hopefully, no need to know about untracked files.
+
+git status -uno
 
 
 #----------------------------------------------------------------------
@@ -232,9 +236,4 @@ echo
 echo
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

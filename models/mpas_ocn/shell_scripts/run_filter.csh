@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Script to start an MPI version of filter, and then optionally
 # run the model advance if &filter_nml has async=4 (parallel filter
 # AND parallel model).  This version gets the number of ensemble members
@@ -330,8 +328,4 @@ endif
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

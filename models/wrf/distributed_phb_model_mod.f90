@@ -2904,7 +2904,7 @@ istatus = 1
 
 ! first off, check if ob is identity ob.  if so get_state_meta_data() will 
 ! return location information already in the requested vertical type.
-!> @todo This in not true anymore if you don't convert all the state variables 
+!>@todo This in not true anymore if you don't convert all the state variables 
 ! to the localization coordinate in get_state_meta_data
 if (obs_kind < 0) then
    call get_state_meta_data(state_handle, int(obs_kind,i8),location)
@@ -4994,7 +4994,7 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
 
       ! I'm not quite sure where this comes from, but I will trust them on it....
       ! Do you have to do this per ensemble?
-      !> @todo This is messy
+      !>@todo This is messy
       do e = 1,ens_size
 
          if ( x_ill(e) /= 0.0_r8 .and. x_ilr(e) /= 0.0_r8 .and. x_iul(e) /= 0.0_r8 .and. &
@@ -5550,7 +5550,8 @@ else
 
       do i = 1, size(intermediate)
          if (intermediate(i) <= 0.0_r8) then
-            interp_4pressure_distrib(i) = edgep(i) !> @todo is this correct?
+            !>@todo is this correct?
+            interp_4pressure_distrib(i) = edgep(i)
          else
             interp_4pressure_distrib(i) = exp(intermediate(i))
          endif
@@ -7792,7 +7793,8 @@ integer               :: var_id
    !        wrf%dom(id)%phb(wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts)
    !endif
 
-phb_filename = 'wrfinput_d01' !> @todo filenames
+!>@todo filenames
+phb_filename = 'wrfinput_d01'
 call create_groups ! each group reads in the grid info in parallel
 call read_phb ! read in the grid info
 call create_window ! phb
@@ -8713,7 +8715,7 @@ integer               :: wrf_type
 real(r8), dimension(ens_size) ::x_ill, x_iul, x_ilr, x_iur
 
 ! Confirm that the obs kind is in the DART state vector and return the wrf_type
-!> @todo should boundsCheck always be temperatue type? This is what it is in the original code
+!>@todo should boundsCheck always be temperatue type? This is what it is in the original code
 call obs_kind_in_state_vector(in_state, wrf_type, obs_kind, id)
 
 if ( in_state ) then
@@ -8808,7 +8810,7 @@ fld(:,:) = missing_r8
 
 ! Find the wrf_type from the obs kind
 ! check for in state is performed before surface_interp_distrib is called
-!> @todo should boundsCheck always be temperatue type? This is what it is in the original code
+!>@todo should boundsCheck always be temperatue type? This is what it is in the original code
 call obs_kind_in_state_vector(in_state, wrf_type, obs_kind, id)
 
 ! Check to make sure retrieved integer gridpoints are in valid range
@@ -9025,12 +9027,14 @@ call nc_check( nf90_put_var(ncid, var_id, timestring), &
                'write_model_time', 'put_var Times' )
 
 end subroutine write_model_time
+
 !--------------------------------------------------------------------
 !> This returns the vertical coordinate of an observation in the
 !> requested vertical localization coordinate. 
 !> Aim: to have only the process who owns the observation do this calulation, 
 !> rather than all processeses doing the same calculation in get_close_obs
 !> I don't know whether this is a good idea.
+
 subroutine convert_base_obs_location(obs_loc, state_handle, vert_coord, istatus)
 
 type(location_type), intent(inout) :: obs_loc
@@ -9039,7 +9043,8 @@ real(r8),              intent(out) :: vert_coord
 integer,               intent(out) :: istatus
 
 real(r8), dimension(3) :: base_array
-integer                :: base_obs_kind !> @todo Should check for identity obs
+!>@todo Should check for identity obs
+integer                :: base_obs_kind
 integer                :: base_which ! vertical coorardiate
 integer                :: istatus_v
 
@@ -9056,8 +9061,7 @@ istatus = istatus_v
 base_array = get_location(obs_loc)
 vert_coord = base_array(3)
 
-!> @todot set location so you don't redo this calculation in get_close_obs NOPE  they are two different structures
-!obs_loc = set_location(base_array(1), base_array(2), base_array(3), wrf%dom(1)%localization_coord )
+!>@todo set location so you don't redo this calculation in get_close_obs NOPE  they are two different structures !obs_loc = set_location(base_array(1), base_array(2), base_array(3), wrf%dom(1)%localization_coord )
 
 end subroutine convert_base_obs_location
 

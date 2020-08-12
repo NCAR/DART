@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module filter_mod
 
@@ -101,10 +99,9 @@ public :: filter_sync_keys_time, &
           filter_main
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'filter_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! Some convenient global storage items
 character(len=512)      :: msgstring
@@ -591,7 +588,9 @@ call filter_generate_copy_meta_data(seq, in_obs_copy, &
       compute_posterior)
 
 if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
-if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.) !> @todo fudge
+
+!>@todo fudge
+if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.)
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
@@ -1542,17 +1541,17 @@ end function get_blank_qc_index
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_initial_time(days, seconds, time, read_time_from_file)
+subroutine filter_set_initial_time(days, seconds, dart_time, read_time_from_file)
 
 integer,         intent(in)  :: days, seconds
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 logical,         intent(out) :: read_time_from_file
 
 if(days >= 0) then
-   time = set_time(seconds, days)
+   dart_time = set_time(seconds, days)
    read_time_from_file = .false.
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
    read_time_from_file = .true.
 endif
 
@@ -1560,15 +1559,15 @@ end subroutine filter_set_initial_time
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_window_time(time)
+subroutine filter_set_window_time(dart_time)
 
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 
 
 if(obs_window_days >= 0) then
-   time = set_time(obs_window_seconds, obs_window_days)
+   dart_time = set_time(obs_window_seconds, obs_window_days)
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
 endif
 
 end subroutine filter_set_window_time
@@ -1997,7 +1996,7 @@ integer,             intent(in)    :: prior_post
 integer,             intent(in)    :: ens_size
 integer,             intent(in)    :: keys(:) ! I think this is still var size
 
-character*12 :: task
+character(len=12) :: task
 integer :: j, i
 integer :: forward_unit
 
@@ -2040,18 +2039,22 @@ subroutine create_ensemble_from_single_file(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
 
-integer               :: i ! loop variable
+integer               :: i
 logical               :: interf_provided ! model does the perturbing
 logical, allocatable  :: miss_me(:)
+integer               :: partial_state_on_my_task ! the number of elements ON THIS TASK
 
 ! Copy from ensemble member 1 to the other copies
 do i = 1, ens_handle%my_num_vars
    ens_handle%copies(2:ens_size, i) = ens_handle%copies(1, i)  ! How slow is this?
 enddo
 
-! store missing_r8 locations
-if (get_missing_ok_status()) then ! missing_r8 is allowed in the state
-   allocate(miss_me(ens_size))
+! If the state allows missing values, we have to record their locations
+! and restore them in all the new perturbed copies.
+
+if (get_missing_ok_status()) then
+   partial_state_on_my_task = size(ens_handle%copies,2)
+   allocate(miss_me(partial_state_on_my_task))
    miss_me = .false.
    where(ens_handle%copies(1, :) == missing_r8) miss_me = .true.
 endif
@@ -2061,11 +2064,12 @@ if (.not. interf_provided) then
    call perturb_copies_task_bitwise(ens_handle)
 endif
 
-! Put back in missing_r8
+! Restore the missing_r8
 if (get_missing_ok_status()) then
    do i = 1, ens_size
       where(miss_me) ens_handle%copies(i, :) = missing_r8
    enddo
+   deallocate(miss_me)
 endif
 
 end subroutine create_ensemble_from_single_file
@@ -2720,27 +2724,23 @@ subroutine test_obs_copies(obs_fwd_op_ens_handle, information)
 type(ensemble_type), intent(in) :: obs_fwd_op_ens_handle
 character(len=*),    intent(in) :: information
 
-character(len=20)  :: task_str !< string to hold the task number
-character(len=129) :: file_obscopies !< output file name
-integer :: i
+character(len=20)  :: task_str !! string to hold the task number
+character(len=256) :: file_obscopies !! output file name
+integer :: i, iunit
 
 write(task_str, '(i10)') obs_fwd_op_ens_handle%my_pe
 file_obscopies = TRIM('obscopies_' // TRIM(ADJUSTL(information)) // TRIM(ADJUSTL(task_str)))
-open(15, file=file_obscopies, status ='unknown')
+
+iunit = open_file(file_obscopies, 'formatted', 'append')
 
 do i = 1, obs_fwd_op_ens_handle%num_copies - 4
-   write(15, *) obs_fwd_op_ens_handle%copies(i,:)
+   write(iunit, *) obs_fwd_op_ens_handle%copies(i,:)
 enddo
 
-close(15)
+close(iunit)
 
 end subroutine test_obs_copies
 
 !-------------------------------------------------------------------
 end module filter_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

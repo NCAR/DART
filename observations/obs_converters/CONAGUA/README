@@ -23,7 +23,8 @@ text/text_to_obs.f90 \
 text_GITM/text_to_obs.f90
 
 One of these should be close enough. Some are more sophisticated in that
-they try to determine which column contains the string that identifies the year,mondy, day, etc. - as opposed to hardcoding the knowledge about which column is which.
+they try to determine which column contains the string that identifies the year, mondy, day, etc. - 
+as opposed to hardcoding the knowledge about which column is which.
 
 These are the meanings for each of the column headers in the daily observation files:
 pk_anio = Year

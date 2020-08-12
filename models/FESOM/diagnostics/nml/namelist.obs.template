@@ -1,0 +1,41 @@
+
+&debugging
+debug=1
+/
+
+&ctd_obs
+ctddir='/users/home/ans051/FEOM_PREPROC/OBSERVATION/CTD'
+wrkdir='/work/ans051/TSS/POSTPROC/CTD'
+surveyyr=2008
+surveyno=TK0929
+obslist=OBSFILELIST
+/
+
+&fb_obs
+fb_layer   = 4
+fb_outdir  = '/users/home/ans051/FEOM_PREPROC/OBSERVATION/OSSE/SYNTOBS'
+ferrylist  = '/users/home/ans051/FEOM_PREPROC/OBSERVATION/OSSE/obsFerry_List'
+/
+
+&synt_profile
+synt_proutdir  = '/users/home/ans051/FEOM_PREPROC/OBSERVATION/OSSE/SYNTOBS'
+synt_profilst  = '/users/home/ans051/FEOM_PREPROC/OBSERVATION/OSSE/synt_profilst'
+ulayer         = 1
+blayer         = 50
+
+/
+
+&perturbation
+stmean     = 0.
+stdev_tem  = 0.1
+stdev_sal  = 0.04
+/
+&region
+bounds=27.0, 30.0, 40.2, 41.03
+/
+
+&ship_track
+ship_dir='/users/home/ans051/FEOM_PREPROC/OBSERVATION/SESAME_2008'
+ship_mnth=APR
+ship_year=08
+/

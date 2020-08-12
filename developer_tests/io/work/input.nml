@@ -23,6 +23,7 @@
                               '../../../observations/forward_operators/obs_def_eval_mod.f90',
                               '../../../observations/forward_operators/obs_def_gps_mod.f90',
                               '../../../observations/forward_operators/obs_def_gts_mod.f90',
+                              '../../../observations/forward_operators/obs_def_land_mod.f90',
                               '../../../observations/forward_operators/obs_def_metar_mod.f90',
                               '../../../observations/forward_operators/obs_def_ocean_mod.f90',
                               '../../../observations/forward_operators/obs_def_pe2lyr_mod.f90',

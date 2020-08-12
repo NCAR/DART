@@ -6,8 +6,8 @@
  
 PROGRAM gts_to_dart
 
-use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD, earth_radius
-use     utilities_mod, only : open_file, close_file, initialize_utilities, &
+use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD
+use     utilities_mod, only : close_file, initialize_utilities, &
                               register_module, logfileunit, E_MSG, finalize_utilities, &
                               error_handler, find_namelist_in_file, check_namelist_read
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, insert_obs_in_seq, &
@@ -161,8 +161,8 @@ call set_calendar_type(calendar_type)
 !-----------------------------------------------------------------------------!
 ! Read 3D-VAR GTS observation file
 ! at the end, 'ob' contains all observations
+! iunit hardcoded at 99 to match 3DVAR_OBSPROC:DA_Setup_Obs_Structures.inc
 !-----------------------------------------------------------------------------!
-!iunit = open_file(gts_file, action = 'read')
 iunit = 99
 open(iunit, file=gts_file)
 

@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 #----------------------------------------------------------------------
 # compile all programs in the current directory with a mkmf_xxx file.
@@ -24,12 +22,11 @@
 set BUILDING = "noah"
 
 # programs which have the option of building with MPI:
-set MPI_TARGETS = "filter perfect_model_obs model_mod_check closest_member_tool"
+set MPI_TARGETS = "filter perfect_model_obs model_mod_check"
 
 # set default (override with -mpi or -nompi):
 #  0 = build without MPI, 1 = build with MPI
 set with_mpi = 0
-
 
 # ---------------
 # shouldn't have to modify this script below here.
@@ -179,8 +176,4 @@ echo "Success: All MPI parallel DART programs compiled."
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

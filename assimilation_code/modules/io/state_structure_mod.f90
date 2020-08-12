@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !-------------------------------------------------------------------------------
 
@@ -82,6 +80,7 @@ public :: add_domain,                 &
           get_variable_name,          &
           get_kind_string,            &
           get_kind_index,             &
+          get_varid_from_varname,     & 
           get_varid_from_kind,        & 
           get_varids_from_kind,       & 
           get_num_variables,          &
@@ -118,6 +117,9 @@ public :: add_domain,                 &
           get_missing_value,          &
           get_add_offset,             &
           get_scale_factor,           &
+          set_dart_kinds,             &
+          set_clamping,               &
+          set_update_list,            &
           add_dimension_to_variable,  &
           finished_adding_domain,     &
           state_structure_info
@@ -129,10 +131,9 @@ public :: create_diagnostic_structure, &
           end_diagnostic_structure
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'state_structure_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 character(len=512) :: string1, string2, string3
 
@@ -326,9 +327,10 @@ integer :: dom_id
 integer :: ivar
 
 ! add to domains
-call assert_below_max_num_domains()
+call assert_below_max_num_domains('add_domain_from_file')
 state%num_domains = state%num_domains + 1
-dom_id = state%num_domains !>@todo this should be a handle.
+!>@todo dom_id should be a handle.
+dom_id = state%num_domains
 
 ! save information about the information file
 state%domain(dom_id)%info_file = info_file
@@ -379,7 +381,7 @@ integer :: dom_id
 integer :: ivar
 
 ! add to domains
-call assert_below_max_num_domains()
+call assert_below_max_num_domains('add_domain_from_spec')
 state%num_domains = state%num_domains + 1
 dom_id = state%num_domains
 
@@ -415,7 +417,7 @@ integer :: dom_id
 integer :: domain_offset
 
 ! add to domains
-call assert_below_max_num_domains()
+call assert_below_max_num_domains('add_domain_blank')
 
 state%num_domains = state%num_domains + 1
 dom_id = state%num_domains
@@ -453,9 +455,7 @@ state%domain(dom_id)%original_dim_IDs(3)    =  NF90_UNLIMITED
 allocate(state%domain(dom_id)%variable(1))
 
 state%domain(dom_id)%variable(1)%varname            = 'state'
-state%domain(dom_id)%variable(1)%io_info%units      = 'none'
 state%domain(dom_id)%variable(1)%numdims            = 1
-state%domain(dom_id)%variable(1)%io_info%io_numdims = 3
 state%domain(dom_id)%variable(1)%var_size           = domain_size
 
 state%domain(dom_id)%variable(1)%index_start = domain_offset + 1
@@ -474,11 +474,12 @@ state%domain(dom_id)%variable(1)%dimlens(1) =  domain_size
 state%domain(dom_id)%variable(1)%dimlens(2) =  1
 state%domain(dom_id)%variable(1)%dimlens(3) =  1
 
+state%domain(dom_id)%variable(1)%io_info%xtype        = NF90_DOUBLE
+state%domain(dom_id)%variable(1)%io_info%units        = 'none'
+state%domain(dom_id)%variable(1)%io_info%io_numdims   = 3
 state%domain(dom_id)%variable(1)%io_info%io_dimids(1) = 1
 state%domain(dom_id)%variable(1)%io_info%io_dimids(2) = 2
 state%domain(dom_id)%variable(1)%io_info%io_dimids(3) = NF90_UNLIMITED
-
-state%domain(dom_id)%variable(1)%io_info%xtype = NF90_DOUBLE
 
 end function add_domain_blank
 
@@ -1215,6 +1216,7 @@ end function get_unlimited_dimid
 !-------------------------------------------------------------------------------
 !> Adding space for an unlimited dimension in the dimesion arrays
 !> The unlimited dimension needs to be last in the list for def_var
+!>@todo this is a terrible name. The unlimited dimension can be for anything, not just time.
 
 
 subroutine add_time_unlimited(unlimited_dimId)
@@ -2182,10 +2184,17 @@ end function get_scale_factor
 !> to be exceeded.
 
 
-subroutine assert_below_max_num_domains()
+subroutine assert_below_max_num_domains(context)
+character(len=*), optional, intent(in) :: context
+
+if (present(context)) then
+   write(string1,*)trim(context), ':requesting to add domain #', &
+                   state%num_domains + 1
+else
+   write(string1,*)'requesting to add domain #', state%num_domains + 1
+endif
 
 if (state%num_domains + 1 > MAX_NUM_DOMS) then
-   write(string1,*)'requesting to add domain #',state%num_domains + 1
    write(string2,*)'maximum number of domains is ',MAX_NUM_DOMS
    write(string3,*)'increase "MAX_NUM_DOMS" in the common/types_mod.f90 and recompile'
    call error_handler(E_ERR, 'assert_below_max_num_domains', string1, &
@@ -2291,8 +2300,3 @@ end subroutine check_domain_id
 !> @}
 end module state_structure_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

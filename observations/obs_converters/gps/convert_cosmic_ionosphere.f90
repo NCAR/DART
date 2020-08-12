@@ -75,10 +75,10 @@ character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 character(len=*), parameter :: routine  = 'convert_cosmic_ionosphere'
 
-integer, parameter :: METHOD_CONSTANT      = 1   !> = 'constant'
-integer, parameter :: METHOD_SCALED        = 2   !> = 'scaled'
-integer, parameter :: METHOD_LOOKUP        = 3   !> = 'lookup'
-integer, parameter :: METHOD_SCALED_LOOKUP = 4   !> = 'scaled_lookup'
+integer, parameter :: METHOD_CONSTANT      = 1   !! = 'constant'
+integer, parameter :: METHOD_SCALED        = 2   !! = 'scaled'
+integer, parameter :: METHOD_LOOKUP        = 3   !! = 'lookup'
+integer, parameter :: METHOD_SCALED_LOOKUP = 4   !! = 'scaled_lookup'
 integer            :: method
 
 character (len=512) :: string1, string2, string3
@@ -400,11 +400,11 @@ contains
 
 subroutine interp_height_wght(hght, level, iz, zgrid, wght)
 
-integer,  intent(in)  :: iz       !> number of vertical levels
-real(r8), intent(in)  :: hght(iz) !> height levels in column
-real(r8), intent(in)  :: level    !> height level to interpolate to
-integer,  intent(out) :: zgrid    !> index of lowest level for interpolation
-real(r8), intent(out) :: wght     !> weight to give to the lower level in interpolation
+integer,  intent(in)  :: iz       !! number of vertical levels
+real(r8), intent(in)  :: hght(iz) !! height levels in column
+real(r8), intent(in)  :: level    !! height level to interpolate to
+integer,  intent(out) :: zgrid    !! index of lowest level for interpolation
+real(r8), intent(out) :: wght     !! weight to give to the lower level in interpolation
 
 integer :: k, klev, kbot, ktop, kinc, kleva
 
@@ -443,9 +443,9 @@ end subroutine interp_height_wght
 
 function compute_lon_wrap(lon1, lon2, weight)
 
-real(r8), intent(in) :: lon1   !> longitude in degrees between -180 and +180
-real(r8), intent(in) :: lon2   !> longitude in degrees between -180 and +180
-real(r8), intent(in) :: weight !> interpolation weight between lon1 and lon2 (0 to 1)
+real(r8), intent(in) :: lon1   !! longitude in degrees between -180 and +180
+real(r8), intent(in) :: lon2   !! longitude in degrees between -180 and +180
+real(r8), intent(in) :: weight !! interpolation weight between lon1 and lon2 (0 to 1)
 real(r8) :: compute_lon_wrap
 
 ! if the longitudes are the same sign (both negative or both positive)
@@ -501,15 +501,15 @@ end function compute_lon_wrap
 
 function electron_density_error(lon, lat, hght, ihour, imin, method, factor, obsval)
 
-real(r8), intent(in)  :: lon     !> input real value geometric height [km]
-real(r8), intent(in)  :: lat     !> latitude in degrees
-real(r8), intent(in)  :: hght    !> height of observation
-integer,  intent(in)  :: ihour   !> hour of day ... UTC
-integer,  intent(in)  :: imin    !> minute of day ... UTC
-integer,  intent(in)  :: method  !> integer describing algorithm
-real(r8), intent(in)  :: factor  !> multiplier to scale all the errors up or down for testing
-real(r8), intent(in)  :: obsval  !> observation value
-real(r8)              :: electron_density_error !> output electron density error variance
+real(r8), intent(in)  :: lon     !! input real value geometric height [km]
+real(r8), intent(in)  :: lat     !! latitude in degrees
+real(r8), intent(in)  :: hght    !! height of observation
+integer,  intent(in)  :: ihour   !! hour of day ... UTC
+integer,  intent(in)  :: imin    !! minute of day ... UTC
+integer,  intent(in)  :: method  !! integer describing algorithm
+real(r8), intent(in)  :: factor  !! multiplier to scale all the errors up or down for testing
+real(r8), intent(in)  :: obsval  !! observation value
+real(r8)              :: electron_density_error !! output electron density error variance
 
 real(r8) :: percent
 
@@ -549,11 +549,11 @@ end function electron_density_error
 
 function ionprf_obserr_percent(lone, late, hghte, houre, mine)
 
-real(r8), intent(in) ::  lone  !> longitude of electron density observation
-real(r8), intent(in) ::  late  !> latitude of electron density observation
-real(r8), intent(in) :: hghte  !> height of electron density observation (in km)
-integer,  intent(in) :: houre  !> UTC hour of day
-integer,  intent(in) ::  mine  !> UTC minute of hour
+real(r8), intent(in) ::  lone  !! longitude of electron density observation
+real(r8), intent(in) ::  late  !! latitude of electron density observation
+real(r8), intent(in) :: hghte  !! height of electron density observation (in km)
+integer,  intent(in) :: houre  !! UTC hour of day
+integer,  intent(in) ::  mine  !! UTC minute of hour
 
 character(len=*), parameter :: routine = 'ionprf_obserr_percent'
 

@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 #-------------------------------------------------------------------------------
 # DESCRIPTION:
 #
@@ -44,7 +42,7 @@
 #
 #PBS -N DART_cleanup         
 #PBS -l walltime=00:10:00
-#PBS -q premium
+#PBS -q regular
 #PBS -l select=1:ncpus=36:mpiprocs=36
 #PBS -A NRAL0017
 #
@@ -60,15 +58,15 @@
 #BSUB -o DART_cleanup.%J.log
 #BSUB -q regular
 #BSUB -n 16
-#BSUB -W 0:10:00
+#BSUB -W 0:30:00
 #BSUB -P project
 #
 #===============================================================================
 
 # USER SETTINGS HERE
 
-set DARTdir = /glade/work/${USER}/DART/wrf_hydro_dart_git/wrf_hydro_dart/models/wrf_hydro
-set HydroDARTdir = /glade/scratch/thoar/wrfhydro_dart/sixmile/runs/test1
+set DARTdir = ${HOME}/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro
+set HydroDARTdir = /glade/scratch/${USER}/wrfhydro_dart/flo_cut/runs/da_ln1_n80_op2_lp4_sp4_noloc_ga_ana_sample_var
 set MARKER = all
 
 # END USER SETTINGS
@@ -338,8 +336,4 @@ echo "job ended at "`date`
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

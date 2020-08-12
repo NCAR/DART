@@ -1,57 +1,56 @@
 
-### THIS IS FOR DART ###
-FORCING_FILE_DIRECTORY = "/home1/04270/l_jing/git/mygitresp/wrf_hydro_dart/models/noah/forcing"
+### FORCING_FILE_DIRECTORY IS FOR DART ###
+FORCING_FILE_DIRECTORY = 'noah/forcing'
 
 &NOAHLSM_OFFLINE
 
- hrldas_constants_file = 'wrfinput.nc'
+   HRLDAS_CONSTANTS_FILE = 'wrfinput.nc'
 
- INDIR = '/work/04270/l_jing/lonestar/gldas/2000_2014_forcing'
- OUTDIR = '/scratch/04270/l_jing/hrldas_old_sai_unlimited'
+   INDIR  = '.'
+   OUTDIR = '.'
 
- START_YEAR  = 2001
- START_MONTH = 01
- START_DAY   = 01
- START_HOUR  = 0
- START_MIN   = 0
+   RESTART_FILENAME_REQUESTED = 'restart.nc'
 
- RESTART_FILENAME_REQUESTED = 'restart.nc'
+   START_YEAR  = 2001
+   START_MONTH = 01
+   START_DAY   = 01
+   START_HOUR  = 0
+   START_MIN   = 0
 
- KDAY = 1
+   KDAY = 1
 
- DYNAMIC_VEG_OPTION                = 1
- CANOPY_STOMATAL_RESISTANCE_OPTION = 1
- BTR_OPTION                        = 1
- RUNOFF_OPTION                     = 1
- SURFACE_DRAG_OPTION               = 1
- FROZEN_SOIL_OPTION                = 1
- SUPERCOOLED_WATER_OPTION          = 1
- RADIATIVE_TRANSFER_OPTION         = 1
- SNOW_ALBEDO_OPTION                = 2
- PCP_PARTITION_OPTION              = 1
- TBOT_OPTION                       = 2
- TEMP_TIME_SCHEME_OPTION           = 1
- SOIL_HYDRAULIC_PARAMETER_OPTION   = 1
+   DYNAMIC_VEG_OPTION                = 1
+   CANOPY_STOMATAL_RESISTANCE_OPTION = 1
+   BTR_OPTION                        = 1
+   RUNOFF_OPTION                     = 1
+   SURFACE_DRAG_OPTION               = 1
+   FROZEN_SOIL_OPTION                = 1
+   SUPERCOOLED_WATER_OPTION          = 1
+   RADIATIVE_TRANSFER_OPTION         = 1
+   SNOW_ALBEDO_OPTION                = 2
+   PCP_PARTITION_OPTION              = 1
+   TBOT_OPTION                       = 2
+   TEMP_TIME_SCHEME_OPTION           = 1
+   SOIL_HYDRAULIC_PARAMETER_OPTION   = 1
 
- FORCING_TIMESTEP = 21600
- NOAH_TIMESTEP    = 10800
- OUTPUT_TIMESTEP  = 21600
+   FORCING_TIMESTEP = 21600
+   NOAH_TIMESTEP    = 10800
+   OUTPUT_TIMESTEP  = 21600
 
- SPLIT_OUTPUT_COUNT = 1
- RESTART_FREQUENCY_HOURS = 24
+   SPLIT_OUTPUT_COUNT = 1
+   RESTART_FREQUENCY_HOURS = 24
 
+   NSOIL=4
+   soil_thick_input(1) = 0.10
+   soil_thick_input(2) = 0.30
+   soil_thick_input(3) = 0.60
+   soil_thick_input(4) = 1.00
 
- NSOIL=4
- soil_thick_input(1) = 0.10
- soil_thick_input(2) = 0.30
- soil_thick_input(3) = 0.60
- soil_thick_input(4) = 1.00
- 
- ZLVL = 30.0
+   ZLVL = 30.0
 
-/
+  /
 
 &URBAN_OFFLINE
- UCMCALL = 0
- ZLVL_URBAN = 15.0
-/
+   UCMCALL = 0
+   ZLVL_URBAN = 15.0
+  /

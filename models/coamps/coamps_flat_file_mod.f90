@@ -3,8 +3,6 @@
 !
 ! DART $Id$
 
-module coamps_grid_mod
-
 !------------------------------
 ! MODULE:       coamps_flatfile_mod
 ! AUTHOR:       T. R. Whitcomb and P. A. Reinecke
@@ -14,6 +12,7 @@ module coamps_grid_mod
 ! Module containing the data structure and routines for dealing with
 ! COAMPS flat files.
 !------------------------------ 
+
 module coamps_flat_file_mod
 
   use coamps_util_mod,      only : C_REAL,               & 
