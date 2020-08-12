@@ -61,8 +61,4 @@ echo "Success: All ${MODEL} programs compiled."
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 
