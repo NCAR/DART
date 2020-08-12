@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # check_tests.csh  run this after running test_dart.csh and it will
 #                  look for errors in the build or run logs.
 #                  some errors are expected (requires special files or
@@ -110,8 +108,4 @@ fgrep -C $nlines -i " error " ${DARTHOME}/developer_tests/testing_logs/*
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 
