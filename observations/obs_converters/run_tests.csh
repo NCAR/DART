@@ -81,13 +81,14 @@ if ( -f ../../build_templates/mkmf.template ) then
       echo set NCEP BUFR library compiler choice in NCEP/prep_bufr/install.sh
       echo this script will use whatever compiler is selected there
    endif
+
 endif
 
 cd NCEP/prep_bufr
 
 set FAILURE = 0
 
-( ./install.sh > ${LOGDIR}/buildlog.NCEP.out ) || set FAILURE = 1
+( ./install.sh >& ${LOGDIR}/buildlog.NCEP.out ) || set FAILURE = 1
 
 echo 
 echo 
@@ -130,7 +131,12 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
    # save original input.nml & obs seq files here
    set SAVEDIR = saveme.test_dart
    mkdir -p ${SAVEDIR}
-   ${COPY} input.nml obs_seq.* ${SAVEDIR}
+   if ( -e input.nml ) then 
+      ${COPY} input.nml ${SAVEDIR}
+   endif
+   if ( -e obs_seq.* ) then
+      ${COPY} obs_seq.* ${SAVEDIR}
+   endif
 
    # If there is a testing namelist, use it.
    if ( -f input.nml.testing ) then
