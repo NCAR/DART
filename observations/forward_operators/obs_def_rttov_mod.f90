@@ -2212,8 +2212,8 @@ DO imem = 1, ens_size
          ! all types of ice cloud (kg/kg) go in 6, Ice Cloud (CIRR, but not just cirrus)
          ! convert levels to layers
          runtime % profiles(imem) % cloud(6,:) = 0.5_jprb*(totalice(ly1idx) + &
-                                                        totalice(ly2idx))
-
+                                                           totalice(ly2idx))
+         
          ! allow specification of ice effective diameter
          if (allocated(clouds % icede)) then
             ! Ice effective diameter (microns), convert levels to layers
@@ -2223,16 +2223,20 @@ DO imem = 1, ens_size
 
          if (allocated(clouds % cfrac)) then
             ! Cloud fraction (0-1), convert levels to layers
-            runtime % profiles(imem) % cfrac(:) = 0.5_jprb*(clouds % cfrac(imem,ly1idx) + &
-                                                         clouds % cfrac(imem,ly2idx))
+            runtime % profiles(imem) % cfrac(:) = min(max(0.5_jprb*(clouds % cfrac(imem,ly1idx) + &
+                                                         clouds % cfrac(imem,ly2idx)),0._jprb),1._jprb)
+         else
+            ! Assume cloud fraction is 1 everywhere. No harm if no clouds.
+            runtime % profiles(imem) % cfrac(:) = 1.0_jprb
          end if
       end if ! add IR clouds
    else if (is_mw) then
       ! RTTOV-SCATT, add MW clouds
       if (allocated(clouds % cfrac)) then
-         runtime % cld_profiles(imem) % cc(:) = clouds % cfrac(imem, lvlidx)
+         runtime % cld_profiles(imem) % cc(:) = min(max(clouds % cfrac(imem, lvlidx),0._jprb),1._jprb)
       else
-         runtime % cld_profiles(imem) % cc(:) = 0.0_jprb
+         ! Assume cloud fraction is 1 everywhere. No harm if no clouds.
+         runtime % cld_profiles(imem) % cc(:) = 1.0_jprb
       end if
 
 
