@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # script for copying 1 day/obs_seq of restart files to the mass store.
 # CAM,CLM, and possibly filter_ic for each ensemble member are lumped together
 # so that we can retrieve a subset of the ensemble members for a new experiment.
@@ -238,8 +236,4 @@ chmod 444 saved_restart
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

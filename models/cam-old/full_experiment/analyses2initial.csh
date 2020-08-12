@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Extract the mean copy for each state vector field from each of the timeslots 
 # on a file (Posterior usually) and put each timeslot into CAM initial file format.
 # The non-state fields are ensemble averages of all the caminput_#.nc from the same 
@@ -138,8 +136,4 @@ echo "- - - - - - - - - -"
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

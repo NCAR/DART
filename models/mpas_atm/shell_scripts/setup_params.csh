@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 #set echo
 ########################################################################################
 # Set up parameters that are used for other scripts throughout the cycling period.
@@ -88,8 +86,4 @@ set   LINK = 'ln -sf'
 unalias cd
 unalias ls
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 
