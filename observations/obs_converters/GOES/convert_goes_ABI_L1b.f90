@@ -9,7 +9,7 @@ program convert_goes_ABI_L1b
 use types_mod,        only : r8, deg2rad, PI
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence, &
-                             init_obs_sequence
+                             init_obs_sequence, print_obs_seq_summary
 use goes_ABI_L1b_mod, only : goes_ABI_map_type, goes_load_ABI_map, &
                              make_obs_sequence
 use    utilities_mod, only : initialize_utilities, register_module, &
@@ -104,7 +104,7 @@ do ifile=1, filecount
    ! write the sequence to a disk file
    call write_obs_seq(seq, outputfile)
 
-!  if (verbose) call print_obs_seq_summary(seq,l1_files(ifile))
+   if (verbose) call print_obs_seq_summary(seq,l1_files(ifile))
 
    ! release the sequence memory
    call destroy_obs_sequence(seq)
