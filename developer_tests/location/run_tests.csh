@@ -7,6 +7,7 @@
 # this script builds and  runs the location test code for each of the
 # possible location modules.
 
+set nonomatch
 set LOGDIR = `pwd`/testing_logs
 mkdir -p $LOGDIR
 \rm -f $LOGDIR/*
