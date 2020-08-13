@@ -3,7 +3,7 @@
 
 Contacts: 
 James McCreight(jamesmcc-at-ucar-dot-edu)  
-Moha Gharamti (mgharamti-at-ucar-dot-edu).
+Moha Gharamti (gharamti-at-ucar-dot-edu).
 
 |                                      |                                 |
 | ------------------------------------ | ------------------------------- |
@@ -22,15 +22,36 @@ Moha Gharamti (mgharamti-at-ucar-dot-edu).
 | `noah_hydro_mod.f90`                 | Some model_mod interfaces more specific to Noah? |
 | `create_identity_streamflow_obs.f90` | For creating identity streamflow obs for the NHDPlus-based channel-network configuration of WRF-Hydro. |
 
-The modules used to test and run HydroDART on cheyenne are:
+The modules used to test and run HydroDART on cheyenne (pre- July 2020 OS upgrade) are:
 
 - ncarenv/1.3   
-- ncarcompilers/0.5.0   
 - intel/18.0.5
+- ncarcompilers/0.5.0   
 - openmpi/3.1.4
 - netcdf/4.6.3   
-- ncview/2.1.7   
 - nco/4.7.9   
+- python/3.7.5   
+
+The modules used to test and run HydroDART on cheyenne (post- July 2020 OS upgrade) are:
+
+- ncarenv/1.3   
+- intel/19.0.5
+- ncarcompilers/0.5.0   
+- openmpi/4.0.3
+- netcdf/4.7.3   
+- nco/4.7.9   
+- python/3.7.5   
+
+Some users have also reported success with
+
+- ncarenv/1.3
+- intel/19.0.5
+- ncarcompilers/0.5.0
+- netcdf/4.7.3
+- impi/2019.6.154
+- nco/4.7.9
+- python/3.7.5   
 
 ## Setup experiments
 See python/experiment.
+

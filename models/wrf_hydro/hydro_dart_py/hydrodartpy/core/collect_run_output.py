@@ -66,19 +66,6 @@ def collect_run_output(
             ds.to_netcdf(out_file)
             del ds
 
-    # # A check... to hold on to for a while.
-    # import xarray as xr
-    # import pathlib
-    # run_dir = pathlib.Path('/glade/scratch/jamesmcc/wrfhydro_dart/flo_cut/runs/bucket1')
-    # new_files = sorted(run_dir.glob("all*.nc"))
-    # for file in new_files:
-    #     old_file = run_dir / 'cleanup_dart' / file.name
-    #     print(old_file)
-    #     o = xr.open_dataset(old_file)
-    #     n = xr.open_dataset(file)
-    #     assert o.equals(n)
-    # Success.
-
     #-------------------------------------------------------
     # 2. Collect members. This replaces DART_cleanup_pack_members.csh and DART_cleanup.csh
     #    The explicit handling of individual members happens in wrfhydropy.open_dart_dataset
