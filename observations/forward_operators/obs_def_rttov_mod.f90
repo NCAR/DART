@@ -3986,7 +3986,7 @@ if (is_visir) then
       newlength = 2 * orglength
 
       ! News. Tell the user we are increasing storage.
-      write(string1, *) 'key (',key,') exceeds visir_obs_metadata length (',orglength,')'
+      write(string1, *) 'Warning: key (',key,') exceeds visir_obs_metadata length (',orglength,')'
       write(string2, *) 'Increasing visir_obs_metadata to length ',newlength
       call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 
@@ -4013,7 +4013,7 @@ else
       newlength = 2 * orglength
 
       ! News. Tell the user we are increasing storage.
-      write(string1, *) 'key (',key,') exceeds mw_obs_metadata length (',orglength,')'
+      write(string1, *) 'Warning: key (',key,') exceeds mw_obs_metadata length (',orglength,')'
       write(string2, *) 'Increasing mw_obs_metadata to length ',newlength
       call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 
