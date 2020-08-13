@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Purpose: Given a first guess ensemble mean, generate ensemble members
 #          from wrf/3dvar covariances.
 #
@@ -118,8 +116,4 @@ end
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

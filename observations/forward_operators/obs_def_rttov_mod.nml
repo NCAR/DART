@@ -4,6 +4,7 @@
    interp_mode            = 1 
    do_checkinput          = .true.
    apply_reg_limits       = .true.
+   max_zenith_angle       = 75.0
    verbose                = .true.
    fix_hgpl               = .false.
    do_lambertian          = .false.
