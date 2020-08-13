@@ -67,7 +67,7 @@ Swath S1 has 9 channels which are similar to TRMM TMI (10V 10H 19V 19H 23V 37V 3
 Swath S2 has 4 channels similar to AMSU-B (166V 166H 183+/-3V 183+/-8V).  
 Data for both swaths is observed in the same revolution of the instrument.  
 
-The run-time output (no thinning, whole globe, i.e. about 8 million observations):
+Partial run-time output for one file (no thinning, whole globe, i.e. about 8 million observations):
 
 ```
   ...
