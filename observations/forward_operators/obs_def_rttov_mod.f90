@@ -450,77 +450,77 @@ end type mw_metadata_type
 ! For 2D fields, the order is (ens_size, numlevels), while 1D fields are 
 ! (ens_size).
 type atmos_profile_type
-   real(jprb), allocatable :: temperature(:,:)    ! mandatory, level temperature (K)
-   real(jprb), allocatable :: pressure(:,:)       ! mandatory, level pressure (Pa)
-   real(jprb), allocatable :: moisture(:,:)       ! mandatory, level water vapor (kg/kg)
-   real(jprb), allocatable :: sfc_p(:)            ! mandatory, surface pressure (Pa)
-   real(jprb), allocatable :: s2m_t(:)            ! mandatory, 2 meter temp (K)
-   real(jprb), allocatable :: skin_temp(:)        ! mandatory, surface skin temp (K)
-   real(jprb), allocatable :: sfc_elev(:)         ! mandatory, surface elevation (m)
-   real(jprb), allocatable :: surftype(:)         ! mandatory, surface type (land=0, water=1, seaice = 2) 
-   real(jprb), allocatable :: s2m_q(:)            ! optional, 2 meter wator vapor (kg/kg) (used if add_q2m)
-   real(jprb), allocatable :: s10m_u(:)           ! optional, 10 meter u wind (m/s) (used if add_uv10m)
-   real(jprb), allocatable :: s10m_v(:)           ! optional, 10 meter v wind (m/s) (used if add_uv10m)
-   real(jprb), allocatable :: wfetch(:)           ! optional, wind fetch (m) (used if use_wfetch)
-   real(jprb), allocatable :: water_type(:)       ! optional, water type (fresh=0, ocean=1) (used if use_water_type)
-   real(jprb), allocatable :: sfc_salinity(:)     ! optional, ocean salinity (practial salinity unit) (used if use_salinity)
-   real(jprb), allocatable :: sfc_foam_frac(:)    ! optional, foam fraction (0-1) (used if supply_foam_fraction)
-   real(jprb), allocatable :: sfc_snow_frac(:)    ! optional, snow cover (0-1) (used if use_sfc_snow_frac)
+   real(r8), allocatable :: temperature(:,:)    ! mandatory, level temperature (K)
+   real(r8), allocatable :: pressure(:,:)       ! mandatory, level pressure (Pa)
+   real(r8), allocatable :: moisture(:,:)       ! mandatory, level water vapor (kg/kg)
+   real(r8), allocatable :: sfc_p(:)            ! mandatory, surface pressure (Pa)
+   real(r8), allocatable :: s2m_t(:)            ! mandatory, 2 meter temp (K)
+   real(r8), allocatable :: skin_temp(:)        ! mandatory, surface skin temp (K)
+   real(r8), allocatable :: sfc_elev(:)         ! mandatory, surface elevation (m)
+   real(r8), allocatable :: surftype(:)         ! mandatory, surface type (land=0, water=1, seaice = 2) 
+   real(r8), allocatable :: s2m_q(:)            ! optional, 2 meter wator vapor (kg/kg) (used if add_q2m)
+   real(r8), allocatable :: s10m_u(:)           ! optional, 10 meter u wind (m/s) (used if add_uv10m)
+   real(r8), allocatable :: s10m_v(:)           ! optional, 10 meter v wind (m/s) (used if add_uv10m)
+   real(r8), allocatable :: wfetch(:)           ! optional, wind fetch (m) (used if use_wfetch)
+   real(r8), allocatable :: water_type(:)       ! optional, water type (fresh=0, ocean=1) (used if use_water_type)
+   real(r8), allocatable :: sfc_salinity(:)     ! optional, ocean salinity (practial salinity unit) (used if use_salinity)
+   real(r8), allocatable :: sfc_foam_frac(:)    ! optional, foam fraction (0-1) (used if supply_foam_fraction)
+   real(r8), allocatable :: sfc_snow_frac(:)    ! optional, snow cover (0-1) (used if use_sfc_snow_frac)
 end type atmos_profile_type
 
 ! container type for trace gasses. Note these values are on levels, so the 
 ! size of the arrays are (ens_size, numlevels)
 type trace_gas_profile_type
-   real(jprb), allocatable :: ozone(:,:)         ! ozone concentration (kg/kg) (used if add_ozone)
-   real(jprb), allocatable :: co2(:,:)           ! CO2 concentration   (kg/kg) (used if add_co2)
-   real(jprb), allocatable :: n2o(:,:)           ! N2O concentration   (kg/kg) (used if add_n2o)
-   real(jprb), allocatable :: ch4(:,:)           ! CH4 concentration   (kg/kg) (used if add_ch4)
-   real(jprb), allocatable :: co(:,:)            ! CO concentration    (kg/kg) (used if add_co)
-   real(jprb), allocatable :: so2(:,:)           ! SO2 concentration   (kg/kg) (used if add_so2)
+   real(r8), allocatable :: ozone(:,:)         ! ozone concentration (kg/kg) (used if add_ozone)
+   real(r8), allocatable :: co2(:,:)           ! CO2 concentration   (kg/kg) (used if add_co2)
+   real(r8), allocatable :: n2o(:,:)           ! N2O concentration   (kg/kg) (used if add_n2o)
+   real(r8), allocatable :: ch4(:,:)           ! CH4 concentration   (kg/kg) (used if add_ch4)
+   real(r8), allocatable :: co(:,:)            ! CO concentration    (kg/kg) (used if add_co)
+   real(r8), allocatable :: so2(:,:)           ! SO2 concentration   (kg/kg) (used if add_so2)
 end type trace_gas_profile_type
 
 ! Container type for aerosols. Note these values are on layers, so the 
 ! size of the arrays are (ens_size, numlevels-1)
 type aerosol_profile_type
-   real(jprb), allocatable :: insoluble(:,:)                  ! INSO (kg/kg), OPAC only
-   real(jprb), allocatable :: water_soluble(:,:)              ! WASO, OPAC
-   real(jprb), allocatable :: soot(:,:)                       ! SOOT, OPAC
-   real(jprb), allocatable :: sea_salt_accum(:,:)             ! SSAM, OPAC
-   real(jprb), allocatable :: sea_salt_coarse(:,:)            ! SSCM, OPAC
-   real(jprb), allocatable :: mineral_nucleus(:,:)            ! MINM, OPAC
-   real(jprb), allocatable :: mineral_accum(:,:)              ! MIAM, OPAC
-   real(jprb), allocatable :: mineral_coarse(:,:)             ! MICM, OPAC
-   real(jprb), allocatable :: mineral_transport(:,:)          ! MITR, OPAC
-   real(jprb), allocatable :: sulphated_droplets(:,:)         ! SUSO, OPAC
-   real(jprb), allocatable :: volcanic_ash(:,:)               ! VOLA, OPAC
-   real(jprb), allocatable :: new_volcanic_ash(:,:)           ! VAPO, OPAC
-   real(jprb), allocatable :: asian_dust(:,:)                 ! ASDU, OPAC
-   real(jprb), allocatable :: black_carbon(:,:)               ! BCAR, CAMS
-   real(jprb), allocatable :: dust_bin1(:,:)                  ! DUS1, CAMS
-   real(jprb), allocatable :: dust_bin2(:,:)                  ! DUS2, CAMS
-   real(jprb), allocatable :: dust_bin3(:,:)                  ! DUS3, CAMS
-   real(jprb), allocatable :: ammonium_sulphate(:,:)          ! SULP, CAMS
-   real(jprb), allocatable :: sea_salt_bin1(:,:)              ! SSA1, CAMS
-   real(jprb), allocatable :: sea_salt_bin2(:,:)              ! SSA2, CAMS
-   real(jprb), allocatable :: sea_salt_bin3(:,:)              ! SSA3, CAMS
-   real(jprb), allocatable :: hydrophilic_organic_matter(:,:) ! OMAT, CAMS
+   real(r8), allocatable :: insoluble(:,:)                  ! INSO (kg/kg), OPAC only
+   real(r8), allocatable :: water_soluble(:,:)              ! WASO, OPAC
+   real(r8), allocatable :: soot(:,:)                       ! SOOT, OPAC
+   real(r8), allocatable :: sea_salt_accum(:,:)             ! SSAM, OPAC
+   real(r8), allocatable :: sea_salt_coarse(:,:)            ! SSCM, OPAC
+   real(r8), allocatable :: mineral_nucleus(:,:)            ! MINM, OPAC
+   real(r8), allocatable :: mineral_accum(:,:)              ! MIAM, OPAC
+   real(r8), allocatable :: mineral_coarse(:,:)             ! MICM, OPAC
+   real(r8), allocatable :: mineral_transport(:,:)          ! MITR, OPAC
+   real(r8), allocatable :: sulphated_droplets(:,:)         ! SUSO, OPAC
+   real(r8), allocatable :: volcanic_ash(:,:)               ! VOLA, OPAC
+   real(r8), allocatable :: new_volcanic_ash(:,:)           ! VAPO, OPAC
+   real(r8), allocatable :: asian_dust(:,:)                 ! ASDU, OPAC
+   real(r8), allocatable :: black_carbon(:,:)               ! BCAR, CAMS
+   real(r8), allocatable :: dust_bin1(:,:)                  ! DUS1, CAMS
+   real(r8), allocatable :: dust_bin2(:,:)                  ! DUS2, CAMS
+   real(r8), allocatable :: dust_bin3(:,:)                  ! DUS3, CAMS
+   real(r8), allocatable :: ammonium_sulphate(:,:)          ! SULP, CAMS
+   real(r8), allocatable :: sea_salt_bin1(:,:)              ! SSA1, CAMS
+   real(r8), allocatable :: sea_salt_bin2(:,:)              ! SSA2, CAMS
+   real(r8), allocatable :: sea_salt_bin3(:,:)              ! SSA3, CAMS
+   real(r8), allocatable :: hydrophilic_organic_matter(:,:) ! OMAT, CAMS
 end type aerosol_profile_type
 
 ! container type for clouds - note RTTOV uses different cloud fields depending on scheme, frequency, type, etc. Note these values are on layers, not levels, so the 
 ! size of the arrays are (ens_size, numlevels-1)
 type cloud_profile_type
-   real(jprb), allocatable :: cfrac(:,:)         ! (VIS/IR/MW) cloud fractional cover (0-1) 
-   real(jprb), allocatable :: simple_cfrac(:)    ! (VIS/IR)    cloud fraction for simple cloud (0-1) 
-   real(jprb), allocatable :: ctp(:)             ! (VIS/IR)    cloud top pressure for simple cloud (hPa) 
-   real(jprb), allocatable :: w(:,:)             ! (VIS/IR)    vertical velocity (used for classification of cumulus vs. stratus)
-   real(jprb), allocatable :: clw(:,:)           ! (VIS/IR/MW) cloud non-precipitating water
-   real(jprb), allocatable :: rain(:,:)          ! (VIS/IR/MW) cloud precipitating water
-   real(jprb), allocatable :: ciw(:,:)           ! (VIS/IR/MW) cloud non-precipitating ice concentration
-   real(jprb), allocatable :: snow(:,:)          ! (VIS/IR/MW) cloud precipitating ice (fluffy)
-   real(jprb), allocatable :: graupel(:,:)       ! (VIS/IR/MW) cloud precipitating ice (soft hail / snow pellets)
-   real(jprb), allocatable :: hail(:,:)          ! (VIS/IR/MW) cloud precipitating ice (hard hail)
-   real(jprb), allocatable :: clwde(:,:)         ! (VIS/IR)    cloud liquid effective diameter if clw_scheme = 2
-   real(jprb), allocatable :: icede(:,:)         ! (VIS/IR)    cloud liquid effective diameter if ice_scheme = 1
+   real(r8), allocatable :: cfrac(:,:)         ! (VIS/IR/MW) cloud fractional cover (0-1) 
+   real(r8), allocatable :: simple_cfrac(:)    ! (VIS/IR)    cloud fraction for simple cloud (0-1) 
+   real(r8), allocatable :: ctp(:)             ! (VIS/IR)    cloud top pressure for simple cloud (hPa) 
+   real(r8), allocatable :: w(:,:)             ! (VIS/IR)    vertical velocity (used for classification of cumulus vs. stratus)
+   real(r8), allocatable :: clw(:,:)           ! (VIS/IR/MW) cloud non-precipitating water
+   real(r8), allocatable :: rain(:,:)          ! (VIS/IR/MW) cloud precipitating water
+   real(r8), allocatable :: ciw(:,:)           ! (VIS/IR/MW) cloud non-precipitating ice concentration
+   real(r8), allocatable :: snow(:,:)          ! (VIS/IR/MW) cloud precipitating ice (fluffy)
+   real(r8), allocatable :: graupel(:,:)       ! (VIS/IR/MW) cloud precipitating ice (soft hail / snow pellets)
+   real(r8), allocatable :: hail(:,:)          ! (VIS/IR/MW) cloud precipitating ice (hard hail)
+   real(r8), allocatable :: clwde(:,:)         ! (VIS/IR)    cloud liquid effective diameter if clw_scheme = 2
+   real(r8), allocatable :: icede(:,:)         ! (VIS/IR)    cloud liquid effective diameter if ice_scheme = 1
 end type cloud_profile_type
 
 ! Container for the DART/rttov run-time structures to be used (per sensor)
