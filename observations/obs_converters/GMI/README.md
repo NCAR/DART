@@ -67,35 +67,36 @@ Swath S1 has 9 channels which are similar to TRMM TMI (10V 10H 19V 19H 23V 37V 3
 Swath S2 has 4 channels similar to AMSU-B (166V 166H 183+/-3V 183+/-8V).  
 Data for both swaths is observed in the same revolution of the instrument.  
 
-The run-time output (no thinning, whole globe) looks like this:
+The run-time output (no thinning, whole globe, i.e. about 8 million observations):
 
 ```
+  ...
    Data Metadata: observation
      QC Metadata: GMI QC
- First timestamp: day=151747, sec=756
-   calendar Date: 2016 Jun 21 00:12:36
-  Last timestamp: day=151747, sec=6308
-   calendar Date: 2016 Jun 21 01:45:08
-   Number of obs processed  :               5732694
+ First timestamp: day=151747, sec=6309
+   calendar Date: 2016 Jun 21 01:45:09
+  Last timestamp: day=151747, sec=11863
+   calendar Date: 2016 Jun 21 03:17:43
+   Number of obs processed  :               5734296
    ---------------------------------------------------------
-                      GPM_1_GMI_TB 5732694 obs
+                      GPM_1_GMI_TB 5734296 obs
  
-  add_swath_observations  Finished loading      5732694  of      5732694 total GMI observations for swath /S1
-  set_mw_metadata  key (     6400001 ) exceeds mw_obs_metadata length (     6400000 )
-  set_mw_metadata ...  Increasing mw_obs_metadata to length     12800000
+  add_swath_observations:  Converted      5734296  obs for swath /S1; total GMI obs =      5734296
  
    Data Metadata: observation
      QC Metadata: GMI QC
- First timestamp: day=151747, sec=756
-   calendar Date: 2016 Jun 21 00:12:36
-  Last timestamp: day=151747, sec=6308
-   calendar Date: 2016 Jun 21 01:45:08
-   Number of obs processed  :               8277238
+ First timestamp: day=151747, sec=6309
+   calendar Date: 2016 Jun 21 01:45:09
+  Last timestamp: day=151747, sec=11863
+   calendar Date: 2016 Jun 21 03:17:43
+   Number of obs processed  :               8279480
    ---------------------------------------------------------
-                      GPM_1_GMI_TB 8277238 obs
+                      GPM_1_GMI_TB 8279480 obs
  
-  add_swath_observations  Finished loading      2544544  of      8277238 total GMI observations for swath /S2
-  write_obs_seq  opening formatted observation sequence file "obs_seq.gmi"
+  add_swath_observations:  Converted      2545184  obs for swath /S2; total GMI obs =      8279480
+
+  write_obs_seq  opening unformatted observation sequence file "obs_seq.gmi"
   write_obs_seq  closed observation sequence file "obs_seq.gmi"
   convert_gmi_L1.f90 Finished successfully.
+  ...
 ```
