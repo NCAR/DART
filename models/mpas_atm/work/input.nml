@@ -213,7 +213,6 @@
                           'qv',                    'QTY_VAPOR_MIXING_RATIO',
                           'surface_pressure',      'QTY_SURFACE_PRESSURE',
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
-                          'rho','0.01','NULL','CLAMP',
   /
 
 &update_mpas_states_nml
