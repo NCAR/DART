@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Script to compare the output files from running test_dart.csh on two
 # code bases (in preparation to merge, for example). The files under version
 # control are not considered, and the executables themselves are not considered.
@@ -116,7 +114,3 @@ end
 
 exit 0  
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

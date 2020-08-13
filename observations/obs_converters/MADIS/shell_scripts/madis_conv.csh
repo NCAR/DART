@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # madis converter - reads in the madis netcdf hourly files
 # and output a DART obs_seq file.  this is a one-for-one process; to do the
 # next phase where all obs within particular time windows are selected,
@@ -197,8 +195,4 @@ rm -f ${type}_input.nc
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

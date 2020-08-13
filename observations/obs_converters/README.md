@@ -286,6 +286,7 @@ The current list of converters include:
 -   [Ameriflux](Ameriflux/level4_to_obs.html)
 -   [COSMOS](COSMOS/COSMOS_to_obs.html)
 -   [DWL](DWL/dwl_to_obs.html)
+-   [GOES](GOES/README.md)
 -   [GPSPW](GPSPW/README)
 -   [GSI2DART](GSI2DART/README)
 -   [GTSPP](GTSPP/GTSPP.html)

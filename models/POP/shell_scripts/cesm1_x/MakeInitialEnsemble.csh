@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 #=============================================================================
 # So the background is that I want 40 restart files to create an initial
 # conditions file with 40 ensemble members. 
@@ -215,8 +213,4 @@ end
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

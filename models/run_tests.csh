@@ -10,6 +10,7 @@
 #
 #----------------------------------------------------------------------
 
+set nonomatch
 set usingmpi=no
 set MPICMD=""
 set LOGDIR=`pwd`/testing_logs

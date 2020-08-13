@@ -150,18 +150,28 @@ contains
                                 ! 1 => use every element
       integer :: edge(10)       ! size of each dimension for swath I/O
                                 ! will be set for each individual read
-      integer :: swopen, swinqswath, swattach
-      integer :: swrdfld, swrdattr
-      integer :: swdetach, swclose
 
-      fid = swopen(file_name, 1)
+      ! Using the HDF-EOS5 functions simply required
+      ! putting an 'he5_' in front of the function. As far as I can tell from
+      ! https://hdfeos.org/examples/fort_he5_swath.php, the calling structure is
+      ! the same.
+      
+      integer :: he5_swopen         ! open a swath file
+      integer :: he5_swattach       ! attatch to a swath object
+      integer :: he5_swinqswath     ! retieves number and names of swaths in file
+      integer :: he5_swrdfld        ! read data from a data field
+      integer :: he5_swrdattr       ! read swath attribute
+      integer :: he5_swdetach       ! detatching from the swath object
+      integer :: he5_swclose        ! closing the file
+
+      fid = he5_swopen(file_name, 1)
       if (fid .eq. -1) then
         print *, "Error ", fid, " opening file ", file_name
         stop
       end if
 
       ! Get name of swath(s)
-      nswath = swinqswath(file_name, swathname, nchar)
+      nswath = he5_swinqswath(file_name, swathname, nchar)
       if (nswath .ne. 1) then
         print *, "swinqswath found ", nswath, " swaths for file ", &
                  file_name, " Need exactly 1"
@@ -178,7 +188,7 @@ contains
       end if
 
       ! Attach to (open) the one swath.
-      swid = swattach(fid, swathname)
+      swid = he5_swattach(fid, swathname)
       if (swid .eq. -1) then
         print *, "Failed to attach to swath ", swathname, &
                  " in file ", file_name
@@ -186,55 +196,55 @@ contains
       end if
 
 ! Attributes
-      statn = swrdattr(swid, "NumLandSurface", &
+      statn = he5_swrdattr(swid, "NumLandSurface", &
                    airs_ret_gran%NumLandSurface)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumLandSurface"
 
-      statn = swrdattr(swid, "NumOceanSurface", &
+      statn = he5_swrdattr(swid, "NumOceanSurface", &
                    airs_ret_gran%NumOceanSurface)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumOceanSurface"
 
-      statn = swrdattr(swid, "start_year", &
+      statn = he5_swrdattr(swid, "start_year", &
                    airs_ret_gran%start_year)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "start_year"
 
-      statn = swrdattr(swid, "start_month", &
+      statn = he5_swrdattr(swid, "start_month", &
                    airs_ret_gran%start_month)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "start_month"
 
-      statn = swrdattr(swid, "start_day", &
+      statn = he5_swrdattr(swid, "start_day", &
                    airs_ret_gran%start_day)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "start_day"
 
-      statn = swrdattr(swid, "start_hour", &
+      statn = he5_swrdattr(swid, "start_hour", &
                    airs_ret_gran%start_hour)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "start_hour"
 
-      statn = swrdattr(swid, "start_minute", &
+      statn = he5_swrdattr(swid, "start_minute", &
                    airs_ret_gran%start_minute)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "start_minute"
 
-      statn = swrdattr(swid, "start_sec", &
+      statn = he5_swrdattr(swid, "start_sec", &
                    airs_ret_gran%start_sec)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "start_sec"
 
-      statn = swrdattr(swid, "granule_number", &
+      statn = he5_swrdattr(swid, "granule_number", &
                    airs_ret_gran%granule_number)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
@@ -243,17 +253,17 @@ contains
 ! Geolocation fields
       edge(1) = AIRS_RET_GEOXTRACK
       edge(2) = AIRS_RET_GEOTRACK
-      statn = swrdfld(swid, "Latitude", start, stride, edge, &
+      statn = he5_swrdfld(swid, "Latitude", start, stride, edge, &
                       airs_ret_gran%Latitude)
       if (statn .ne. 0)  &
         print *, "Error ", statn, " reading field Latitude"
 
-      statn = swrdfld(swid, "Longitude", start, stride, edge, &
+      statn = he5_swrdfld(swid, "Longitude", start, stride, edge, &
                       airs_ret_gran%Longitude)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field Longitude"
 
-      statn = swrdfld(swid, "Time", start, stride, edge, &
+      statn = he5_swrdfld(swid, "Time", start, stride, edge, &
                       airs_ret_gran%Time)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field Time"
@@ -261,7 +271,7 @@ contains
 
 ! Data Fields
       edge(1) = 45
-      statn = SWrdfld(swid, "sat_lat", &
+      statn = he5_SWrdfld(swid, "sat_lat", &
                    start, stride, edge, &
                    airs_ret_gran%sat_lat)
       if (statn .ne. 0) &
@@ -269,7 +279,7 @@ contains
                   "sat_lat"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "sat_lon", &
+      statn = he5_SWrdfld(swid, "sat_lon", &
                    start, stride, edge, &
                    airs_ret_gran%sat_lon)
       if (statn .ne. 0) &
@@ -277,7 +287,7 @@ contains
                   "sat_lon"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "scan_node_type", &
+      statn = he5_SWrdfld(swid, "scan_node_type", &
                    start, stride, edge, &
                    airs_ret_gran%scan_node_type)
       if (statn .ne. 0) &
@@ -286,7 +296,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "satzen", &
+      statn = he5_SWrdfld(swid, "satzen", &
                    start, stride, edge, &
                    airs_ret_gran%satzen)
       if (statn .ne. 0) &
@@ -295,7 +305,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "satazi", &
+      statn = he5_SWrdfld(swid, "satazi", &
                    start, stride, edge, &
                    airs_ret_gran%satazi)
       if (statn .ne. 0) &
@@ -304,7 +314,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "solzen", &
+      statn = he5_SWrdfld(swid, "solzen", &
                    start, stride, edge, &
                    airs_ret_gran%solzen)
       if (statn .ne. 0) &
@@ -313,7 +323,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "solazi", &
+      statn = he5_SWrdfld(swid, "solazi", &
                    start, stride, edge, &
                    airs_ret_gran%solazi)
       if (statn .ne. 0) &
@@ -321,7 +331,7 @@ contains
                   "solazi"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "glintlat", &
+      statn = he5_SWrdfld(swid, "glintlat", &
                    start, stride, edge, &
                    airs_ret_gran%glintlat)
       if (statn .ne. 0) &
@@ -329,7 +339,7 @@ contains
                   "glintlat"
 
       edge(1) = 45
-      statn = SWrdfld(swid, "glintlon", &
+      statn = he5_SWrdfld(swid, "glintlon", &
                    start, stride, edge, &
                    airs_ret_gran%glintlon)
       if (statn .ne. 0) &
@@ -338,7 +348,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "sun_glint_distance", &
+      statn = he5_SWrdfld(swid, "sun_glint_distance", &
                    start, stride, edge, &
                    airs_ret_gran%sun_glint_distance)
       if (statn .ne. 0) &
@@ -347,7 +357,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "topog", &
+      statn = he5_SWrdfld(swid, "topog", &
                    start, stride, edge, &
                    airs_ret_gran%topog)
       if (statn .ne. 0) &
@@ -356,7 +366,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "topog_err", &
+      statn = he5_SWrdfld(swid, "topog_err", &
                    start, stride, edge, &
                    airs_ret_gran%topog_err)
       if (statn .ne. 0) &
@@ -365,7 +375,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "landFrac", &
+      statn = he5_SWrdfld(swid, "landFrac", &
                    start, stride, edge, &
                    airs_ret_gran%landFrac)
       if (statn .ne. 0) &
@@ -374,7 +384,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "landFrac_err", &
+      statn = he5_SWrdfld(swid, "landFrac_err", &
                    start, stride, edge, &
                    airs_ret_gran%landFrac_err)
       if (statn .ne. 0) &
@@ -382,7 +392,7 @@ contains
                   "landFrac_err"
 
       edge(1) = 28
-      statn = SWrdfld(swid, "pressStd", &
+      statn = he5_SWrdfld(swid, "pressStd", &
                    start, stride, edge, &
                    airs_ret_gran%pressStd)
       if (statn .ne. 0) &
@@ -390,7 +400,7 @@ contains
                   "pressStd"
 
       edge(1) = 15
-      statn = SWrdfld(swid, "pressH2O", &
+      statn = he5_SWrdfld(swid, "pressH2O", &
                    start, stride, edge, &
                    airs_ret_gran%pressH2O)
       if (statn .ne. 0) &
@@ -401,7 +411,7 @@ contains
       edge(3) = 30
       edge(2) = 3
       edge(1) = 3
-      statn = SWrdfld(swid, "latAIRS", &
+      statn = he5_SWrdfld(swid, "latAIRS", &
                    start, stride, edge, &
                    airs_ret_gran%latAIRS)
       if (statn .ne. 0) &
@@ -412,7 +422,7 @@ contains
       edge(3) = 30
       edge(2) = 3
       edge(1) = 3
-      statn = SWrdfld(swid, "lonAIRS", &
+      statn = he5_SWrdfld(swid, "lonAIRS", &
                    start, stride, edge, &
                    airs_ret_gran%lonAIRS)
       if (statn .ne. 0) &
@@ -422,7 +432,7 @@ contains
       if (ver == 5) then
          edge(2) = 45
          edge(1) = 30
-         statn = SWrdfld(swid, "Qual_Guess_PSurf", &
+         statn = he5_SWrdfld(swid, "Qual_Guess_PSurf", &
                       start, stride, edge, &
                       airs_ret_gran%Qual_Guess_PSurf)
          if (statn .ne. 0) &
@@ -434,7 +444,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "PSurfStd", &
+      statn = he5_SWrdfld(swid, "PSurfStd", &
                    start, stride, edge, &
                    airs_ret_gran%PSurfStd)
       if (statn .ne. 0) &
@@ -443,7 +453,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "nSurfStd", &
+      statn = he5_SWrdfld(swid, "nSurfStd", &
                    start, stride, edge, &
                    airs_ret_gran%nSurfStd)
       if (statn .ne. 0) &
@@ -452,7 +462,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "PBest", &
+      statn = he5_SWrdfld(swid, "PBest", &
                    start, stride, edge, &
                    airs_ret_gran%PBest)
       if (statn .ne. 0) &
@@ -461,7 +471,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "PGood", &
+      statn = he5_SWrdfld(swid, "PGood", &
                    start, stride, edge, &
                    airs_ret_gran%PGood)
       if (statn .ne. 0) &
@@ -470,7 +480,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "nBestStd", &
+      statn = he5_SWrdfld(swid, "nBestStd", &
                    start, stride, edge, &
                    airs_ret_gran%nBestStd)
       if (statn .ne. 0) &
@@ -479,7 +489,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "nGoodStd", &
+      statn = he5_SWrdfld(swid, "nGoodStd", &
                    start, stride, edge, &
                    airs_ret_gran%nGoodStd)
       if (statn .ne. 0) &
@@ -489,7 +499,7 @@ contains
       edge(3) = 45
       edge(2) = 30
       edge(1) = 28
-      statn = SWrdfld(swid, "TAirStd", &
+      statn = he5_SWrdfld(swid, "TAirStd", &
                    start, stride, edge, &
                    airs_ret_gran%TAirStd)
       if (statn .ne. 0) &
@@ -499,7 +509,7 @@ contains
       edge(3) = 45
       edge(2) = 30
       edge(1) = 28
-      statn = SWrdfld(swid, "TAirStdErr", &
+      statn = he5_SWrdfld(swid, "TAirStdErr", &
                    start, stride, edge, &
                    airs_ret_gran%TAirStdErr)
       if (statn .ne. 0) &
@@ -510,7 +520,7 @@ contains
          edge(3) = 45
          edge(2) = 30
          edge(1) = 28
-         statn = SWrdfld(swid, "TAirStd_QC", &
+         statn = he5_SWrdfld(swid, "TAirStd_QC", &
                       start, stride, edge, &
                       airs_ret_gran%TAirStd_QC)
          if (statn .ne. 0) &
@@ -522,7 +532,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "TSurfAir", &
+      statn = he5_SWrdfld(swid, "TSurfAir", &
                    start, stride, edge, &
                    airs_ret_gran%TSurfAir)
       if (statn .ne. 0) &
@@ -531,7 +541,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "TSurfAirErr", &
+      statn = he5_SWrdfld(swid, "TSurfAirErr", &
                    start, stride, edge, &
                    airs_ret_gran%TSurfAirErr)
       if (statn .ne. 0) &
@@ -541,7 +551,7 @@ contains
       if (ver == 6) then
          edge(2) = 45
          edge(1) = 30
-         statn = SWrdfld(swid, "TSurfAir_QC", &
+         statn = he5_SWrdfld(swid, "TSurfAir_QC", &
                       start, stride, edge, &
                       airs_ret_gran%TSurfAir_QC)
          if (statn .ne. 0) &
@@ -554,7 +564,7 @@ contains
       if (ver == 5) then
          edge(2) = 45
          edge(1) = 30
-         statn = SWrdfld(swid, "Qual_Surf", &
+         statn = he5_SWrdfld(swid, "Qual_Surf", &
                       start, stride, edge, &
                       airs_ret_gran%Qual_Surf)
          if (statn .ne. 0) &
@@ -566,7 +576,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "TSurfStd", &
+      statn = he5_SWrdfld(swid, "TSurfStd", &
                    start, stride, edge, &
                    airs_ret_gran%TSurfStd)
       if (statn .ne. 0) &
@@ -575,7 +585,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "TSurfStdErr", &
+      statn = he5_SWrdfld(swid, "TSurfStdErr", &
                    start, stride, edge, &
                    airs_ret_gran%TSurfStdErr)
       if (statn .ne. 0) &
@@ -586,7 +596,7 @@ contains
       if (ver == 5) then
          edge(2) = 45
          edge(1) = 30
-         statn = SWrdfld(swid, "Qual_H2O", &
+         statn = he5_SWrdfld(swid, "Qual_H2O", &
                       start, stride, edge, &
                       airs_ret_gran%Qual_H2O)
          if (statn .ne. 0) &
@@ -599,7 +609,7 @@ contains
       edge(3) = 45
       edge(2) = 30
       edge(1) = 14
-      statn = SWrdfld(swid, "H2OMMRStd", &
+      statn = he5_SWrdfld(swid, "H2OMMRStd", &
                    start, stride, edge, &
                    airs_ret_gran%H2OMMRStd)
       if (statn .ne. 0) &
@@ -609,7 +619,7 @@ contains
       edge(3) = 45
       edge(2) = 30
       edge(1) = 14
-      statn = SWrdfld(swid, "H2OMMRStdErr", &
+      statn = he5_SWrdfld(swid, "H2OMMRStdErr", &
                    start, stride, edge, &
                    airs_ret_gran%H2OMMRStdErr)
       if (statn .ne. 0) &
@@ -620,7 +630,7 @@ contains
          edge(3) = 45
          edge(2) = 30
          edge(1) = 14
-         statn = SWrdfld(swid, "H2OMMRStd_QC", &
+         statn = he5_SWrdfld(swid, "H2OMMRStd_QC", &
                       start, stride, edge, &
                       airs_ret_gran%H2OMMRStd_QC)
          if (statn .ne. 0) &
@@ -632,7 +642,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "totH2OStd", &
+      statn = he5_SWrdfld(swid, "totH2OStd", &
                    start, stride, edge, &
                    airs_ret_gran%totH2OStd)
       if (statn .ne. 0) &
@@ -641,7 +651,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "totH2OStdErr", &
+      statn = he5_SWrdfld(swid, "totH2OStdErr", &
                    start, stride, edge, &
                    airs_ret_gran%totH2OStdErr)
       if (statn .ne. 0) &
@@ -651,7 +661,7 @@ contains
       if (ver == 6) then
          edge(2) = 45
          edge(1) = 30
-         statn = SWrdfld(swid, "totH2OStd_QC", &
+         statn = he5_SWrdfld(swid, "totH2OStd_QC", &
                       start, stride, edge, &
                       airs_ret_gran%totH2OStd_QC)
          if (statn .ne. 0) &
@@ -664,7 +674,7 @@ contains
       if (ver == 5) then
          edge(2) = 45
          edge(1) = 30
-         statn = SWrdfld(swid, "numCloud", &
+         statn = he5_SWrdfld(swid, "numCloud", &
                       start, stride, edge, &
                       airs_ret_gran%numCloud)
          if (statn .ne. 0) &
@@ -678,7 +688,7 @@ contains
          edge(3) = 45
          edge(2) = 30
          edge(1) = 2
-         statn = SWrdfld(swid, "TCldTopStd", &
+         statn = he5_SWrdfld(swid, "TCldTopStd", &
                       start, stride, edge, &
                       airs_ret_gran%TCldTopStd)
          if (statn .ne. 0) &
@@ -688,7 +698,7 @@ contains
          edge(3) = 45
          edge(2) = 30
          edge(1) = 2
-         statn = SWrdfld(swid, "TCldTopStdErr", &
+         statn = he5_SWrdfld(swid, "TCldTopStdErr", &
                       start, stride, edge, &
                       airs_ret_gran%TCldTopStdErr)
          if (statn .ne. 0) &
@@ -698,7 +708,7 @@ contains
          edge(3) = 45
          edge(2) = 30
          edge(1) = 2
-         statn = SWrdfld(swid, "PCldTopStd", &
+         statn = he5_SWrdfld(swid, "PCldTopStd", &
                       start, stride, edge, &
                       airs_ret_gran%PCldTopStd)
          if (statn .ne. 0) &
@@ -708,7 +718,7 @@ contains
          edge(3) = 45
          edge(2) = 30
          edge(1) = 2
-         statn = SWrdfld(swid, "PCldTopStdErr", &
+         statn = he5_SWrdfld(swid, "PCldTopStdErr", &
                       start, stride, edge, &
                       airs_ret_gran%PCldTopStdErr)
          if (statn .ne. 0) &
@@ -726,7 +736,7 @@ contains
       edge(3) = 3
       edge(2) = 3
       edge(1) = 2
-      statn = SWrdfld(swid, "CldFrcStd", &
+      statn = he5_SWrdfld(swid, "CldFrcStd", &
                    start, stride, edge, &
                    airs_ret_gran%CldFrcStd)
       if (statn .ne. 0) &
@@ -738,7 +748,7 @@ contains
       edge(3) = 3
       edge(2) = 3
       edge(1) = 2
-      statn = SWrdfld(swid, "CldFrcStdErr", &
+      statn = he5_SWrdfld(swid, "CldFrcStdErr", &
                    start, stride, edge, &
                    airs_ret_gran%CldFrcStdErr)
       if (statn .ne. 0) &
@@ -747,7 +757,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "totCldH2OStd", &
+      statn = he5_SWrdfld(swid, "totCldH2OStd", &
                    start, stride, edge, &
                    airs_ret_gran%totCldH2OStd)
       if (statn .ne. 0) &
@@ -756,7 +766,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "totCldH2OStdErr", &
+      statn = he5_SWrdfld(swid, "totCldH2OStdErr", &
                    start, stride, edge, &
                    airs_ret_gran%totCldH2OStdErr)
       if (statn .ne. 0) &
@@ -765,7 +775,7 @@ contains
 
       edge(2) = 45
       edge(1) = 30
-      statn = SWrdfld(swid, "retrieval_type", &
+      statn = he5_SWrdfld(swid, "retrieval_type", &
                    start, stride, edge, &
                    airs_ret_gran%retrieval_type)
       if (statn .ne. 0) &
@@ -775,7 +785,7 @@ contains
       if (ver == 5) then
          edge(2) = 45
          edge(1) = 30
-         statn = SWrdfld(swid, "Startup", &
+         statn = he5_SWrdfld(swid, "Startup", &
                       start, stride, edge, &
                       airs_ret_gran%Startup)
          if (statn .ne. 0) &
@@ -787,10 +797,10 @@ contains
 
 
       ! Final clean-up
-      statn = swdetach(swid)
+      statn = he5_swdetach(swid)
       if (statn .ne. 0) &
         print *, "Error detaching from input file ", file_name
-      statn = swclose(fid)
+      statn = he5_swclose(fid)
       if (statn .ne. 0) &
         print *, "Error closing input file ", file_name
 
