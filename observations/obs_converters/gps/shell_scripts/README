@@ -2,7 +2,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
 
 The instructions for how to do large numbers of file conversions
 have been moved to the gps.html file one directory up from here.
@@ -10,7 +9,3 @@ have been moved to the gps.html file one directory up from here.
 It describes the scripts here and how they are intended to be used.
 
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

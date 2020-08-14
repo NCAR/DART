@@ -10,6 +10,7 @@
 #
 #----------------------------------------------------------------------
 
+set nonomatch
 set usingmpi=no
 set MPICMD=""
 set LOGDIR=`pwd`/testing_logs
@@ -233,7 +234,7 @@ foreach MODEL ( $DO_THESE_MODELS )
     echo
     echo "=================================================================="
     if ( $FAILURE ) then
-      echo "ERROR - unsuccessful test of $MODEL at "`date`
+      echo "ERROR - unsuccessful test of $MODEL"
 
       switch ( $MODEL )
          case FESOM
@@ -252,7 +253,7 @@ foreach MODEL ( $DO_THESE_MODELS )
       endsw
 
     else
-      echo "End of succesful test of $MODEL at "`date`
+      echo "End of succesful test of $MODEL"
     endif
     echo "=================================================================="
     echo

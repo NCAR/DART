@@ -77,6 +77,8 @@ use     dart_gitm_mod,      only : get_nSpecies, get_nSpeciesTotal, get_nIons, &
                                    get_nLatsPerBlock, get_nAltsPerBlock,       &
                                    decode_gitm_indices
 
+use     ModPlanet,          only : ie_
+
 use netcdf
 
 implicit none
@@ -2024,6 +2026,56 @@ end subroutine unpack_data
 
 !==================================================================
 
+! put the requested data into a netcdf variable
+
+subroutine unpack_data2d(data2d, ivar, block, ncid, define)
+
+real(r8), intent(in)    :: data2d(1-nGhost:nLonsPerBlock+nGhost, &
+                                  1-nGhost:nLatsPerBlock+nGhost)
+
+integer,  intent(in)    :: ivar         ! variable index
+integer,  intent(in)    :: block(2)
+integer,  intent(in)    :: ncid
+logical,  intent(in)    :: define
+
+integer :: ib, jb
+integer :: starts(2)
+character(len=*), parameter :: routine = 'unpack_data2d'
+
+if (define) then
+  
+   if (debug > 10) then 
+      write(string1,'(A,I0,2A)') 'Defining ivar = ', ivar,':',trim(gitmvar(ivar)%varname)
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   end if
+
+   call nc_define_double_variable(ncid, gitmvar(ivar)%varname, (/ LON_DIM_NAME, LAT_DIM_NAME /) )
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'long_name',      gitmvar(ivar)%long_name)
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'units',          gitmvar(ivar)%units)
+   !call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'storder',        gitmvar(ivar)%storder)
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'gitm_varname',   gitmvar(ivar)%gitm_varname)
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'gitm_dim',       gitmvar(ivar)%gitm_dim)
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'gitm_index',     gitmvar(ivar)%gitm_index)
+
+else
+   ib = block(1)
+   jb = block(2)
+
+   ! to compute the start, consider (ib-1)*nLonsPerBlock+1
+   starts(1) = (ib-1)*nLonsPerBlock+1
+   starts(2) = (jb-1)*nLatsPerBlock+1
+
+   call nc_put_variable(ncid, gitmvar(ivar)%varname, &
+      data2d(1:nLonsPerBlock,1:nLatsPerBlock), &
+      context=routine, nc_start=starts, &
+      nc_count=(/nLonsPerBlock,nLatsPerBlock/))
+end if
+
+end subroutine unpack_data2d
+
+
+!==================================================================
+
 
 !> put the f107 estimate (a scalar, hence 0d) into the state vector.
 !> Written specifically
@@ -2198,10 +2250,13 @@ integer,  intent(in) :: ib, jb
 integer,  intent(in) :: ncid
 logical,  intent(in) :: define
 
-real(r8), allocatable :: temp1d(:), temp3d(:,:,:), temp4d(:,:,:,:)
+real(r8), allocatable :: temp1d(:), temp2d(:,:), temp3d(:,:,:), temp4d(:,:,:,:)
+real(r8), allocatable :: alt1d(:), density_ion_e(:,:,:)
 real(r8) :: temp0d !Alex: single parameter has "zero dimensions"
 integer :: i, j, inum, maxsize, ivals(NSpeciesTotal)
 integer :: block(2) = 0
+
+logical :: no_idensity
 
 character(len=*), parameter :: routine = 'read_data_from_block'
 
@@ -2211,11 +2266,22 @@ block(2) = jb
 ! a temp array large enough to hold any of the
 ! Lon,Lat or Alt array from a block plus ghost cells
 allocate(temp1d(1-nGhost:max(nLonsPerBlock,nLatsPerBlock,nAltsPerBlock)+nGhost))
+! treat alt specially since we want to derive TEC here
+allocate( alt1d(1-nGhost:max(nLonsPerBlock,nLatsPerBlock,nAltsPerBlock)+nGhost))
+
+! temp array large enough to hold any 2D field 
+allocate(temp2d(1-nGhost:nLonsPerBlock+nGhost, &
+                1-nGhost:nLatsPerBlock+nGhost))
 
 ! temp array large enough to hold 1 species, temperature, etc
 allocate(temp3d(1-nGhost:nLonsPerBlock+nGhost, &
                 1-nGhost:nLatsPerBlock+nGhost, &
                 1-nGhost:nAltsPerBlock+nGhost))
+
+! save density_ion_e to compute TEC
+allocate(density_ion_e(1-nGhost:nLonsPerBlock+nGhost, &
+                       1-nGhost:nLatsPerBlock+nGhost, &
+                       1-nGhost:nAltsPerBlock+nGhost))
 
 ! temp array large enough to hold velocity vect, etc
 maxsize = max(3, nSpecies)
@@ -2226,13 +2292,11 @@ allocate(temp4d(1-nGhost:nLonsPerBlock+nGhost, &
 ! get past lon and lat arrays and read in alt array
 read(iunit) temp1d(1-nGhost:nLonsPerBlock+nGhost)
 read(iunit) temp1d(1-nGhost:nLatsPerBlock+nGhost)
-read(iunit) temp1d(1-nGhost:nAltsPerBlock+nGhost)
+! save the alt1d for later TEC computation
+read(iunit)  alt1d(1-nGhost:nAltsPerBlock+nGhost)
 
-! FIXME: where do these names come from?
-! shouldn't it be the namelist???
+! Read the index from the first species
 call get_index_from_gitm_varname('NDensityS', inum, ivals)
-
-print *,'using nSpeciesTotal',nSpeciesTotal
 
 if (inum > 0) then
    ! if i equals ival, use the data from the state vect
@@ -2266,6 +2330,9 @@ endif
 
 call get_index_from_gitm_varname('IDensityS', inum, ivals)
 
+! assume we could not find the electron density for VTEC calculations
+no_idensity = .true.
+
 if (inum > 0) then
    ! one or more items in the state vector need to replace the
    ! data in the output file.  loop over the index list in order.
@@ -2279,6 +2346,12 @@ if (inum > 0) then
       read(iunit)  temp3d
       if (j <= inum) then
          if (i == gitmvar(ivals(j))%gitm_index) then
+            ! ie_, the gitm index for electron density, comes from ModEarth 
+            if (gitmvar(ivals(j))%gitm_index == ie_) then
+               ! save the electron density for TEC computation
+               density_ion_e(:,:,:) = temp3d(:,:,:)
+               no_idensity = .false.
+            end if
             ! read from input but write from state vector
             call unpack_data(temp3d, ivals(j), block, ncid, define)
             j = j + 1
@@ -2366,6 +2439,29 @@ if (inum > 0) then
    enddo
 endif
 
+! add the VTEC as an extended-state variable
+! NOTE: This variable will *not* be written out to the GITM blocks to netCDF program
+call get_index_from_gitm_varname('TEC', inum, ivals)
+
+if (inum > 0 .and. no_idensity) then
+   write(string1,*) 'Cannot compute the VTEC without the electron density'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+end if
+
+if (inum > 0) then
+   if (.not. define) then
+      temp2d = 0._r8
+      ! comptue the TEC integral
+      do i =1,nAltsPerBlock-1 ! approximate the integral over the altitude as a sum of trapezoids
+         ! area of a trapezoid: A = (h2-h1) * (f2+f1)/2
+         temp2d(:,:) = temp2d(:,:) + ( alt1d(i+1)-alt1d(i) )  * ( density_ion_e(:,:,i+1)+density_ion_e(:,:,i) ) /2.0_r8
+      end do  
+      ! convert temp2d to TEC units
+      temp2d = temp2d/1e16_r8
+   end if
+   call unpack_data2d(temp2d, ivals(1), block, ncid, define) 
+end if
+
 !alex begin
 read(iunit)  temp0d
 !gitm_index = get_index_start(domain_id, 'VerticalVelocity')
@@ -2382,7 +2478,8 @@ endif
 !alex end
 
 !print *, 'calling dealloc'
-deallocate(temp1d, temp3d, temp4d)
+deallocate(temp1d, temp2d, temp3d, temp4d)
+deallocate(alt1d, density_ion_e)
 
 end subroutine read_data_from_block
 

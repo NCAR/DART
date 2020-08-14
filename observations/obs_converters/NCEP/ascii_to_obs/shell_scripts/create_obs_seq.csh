@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 #--------------------------------------------------------------
 # DESCRIPTION:
 #    Run create_obs_seq for the timespan described in input.nml
@@ -104,8 +102,4 @@ end
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

@@ -1,40 +1,38 @@
 &perfect_model_obs_nml
-   read_input_state_from_file = .true.,
-   write_output_state_to_file = .false.,
-   async                      = 0,
-   init_time_days             = -1,
-   init_time_seconds          = -1,
-   first_obs_days             = -1,
-   first_obs_seconds          = -1,
-   last_obs_days              = -1,
-   last_obs_seconds           = -1,
-   output_interval            = 1,
+   read_input_state_from_file = .true.
+   write_output_state_to_file = .false.
+   async                      = 0
+   init_time_days             = -1
+   init_time_seconds          = -1
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+   output_interval            = 1
    single_file_in             = .false.
    single_file_out            = .false.
-   input_state_files          = 'clm_restart.nc', 'clm_history.nc', 'clm_vector_history.nc'
-   output_state_files         = 'restart_out.nc', 'history_out.nc', 'vector_history_out.nc'
-   obs_seq_in_file_name       = "obs_seq.in",
-   obs_seq_out_file_name      = "obs_seq.out",
-   adv_ens_command            = "../shell_scripts/advance_model.csh",
-   output_timestamps          = .false.,
-   trace_execution            = .true.,
-   output_forward_op_errors   = .false.,
-   print_every_nth_obs        = -1,
-   silence                    = .false.,
+   input_state_files          = 'clm_restart.nc', 'clm_history.nc'
+   output_state_files         = 'restart_out.nc', 'history_out.nc'
+   obs_seq_in_file_name       = 'obs_seq.in'
+   obs_seq_out_file_name      = 'obs_seq.out'
+   adv_ens_command            = 'cannot_advance_clm'
+   output_timestamps          = .false.
+   trace_execution            = .true.
+   output_forward_op_errors   = .false.
+   print_every_nth_obs        = -1
+   silence                    = .false.
    /
 
 &filter_nml
    async                    = 0
-   adv_ens_command          = "no_advance_script"
+   adv_ens_command          = 'cannot_advance_clm'
    ens_size                 = 3
-   obs_sequence_in_name     = "obs_seq.1000obs"
-   obs_sequence_out_name    = "obs_seq.final"
-   input_state_file_list    = "restart_files.txt", 
-                              "history_files.txt"
-                              "history_vector_files.txt", 
-   output_state_file_list   = "restart_files_out.txt", 
-                              "history_files_out.txt" 
-                              "history_vector_files_out.txt", 
+   obs_sequence_in_name     = 'obs_seq.1000obs'
+   obs_sequence_out_name    = 'obs_seq.final'
+   input_state_file_list    = 'restart_files.txt',
+                              'history_files.txt' 
+   output_state_file_list   = 'restart_files_out.txt',
+                              'history_files_out.txt'
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
@@ -45,18 +43,17 @@
    num_output_obs_members   = 3
    output_interval          = 1
    num_groups               = 1
-   distributed_state        = .true.
    compute_posterior        = .true.
    output_forward_op_errors = .false.
    output_timestamps        = .true.
    trace_execution          = .true.
    silence                  = .false.
-   
+
    stages_to_write          = 'preassim', 'output'
    output_members           = .true.
    output_mean              = .true.
    output_sd                = .true.
-   write_all_stages_at_end  = .true.
+   write_all_stages_at_end  = .false.
 
    inf_flavor                  = 0,                       0
    inf_initial_from_restart    = .false.,                 .false.
@@ -121,9 +118,9 @@
 
 &reg_factor_nml
    select_regression    = 1
-   input_reg_file       = "time_mean_reg"
+   input_reg_file       = 'time_mean_reg'
    save_reg_diagnostics = .false.
-   reg_diagnostics_file = "reg_diagnostics"
+   reg_diagnostics_file = 'reg_diagnostics'
    /
 
 
@@ -137,7 +134,8 @@
    output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
      input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
     output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
-   input_files              = '../../../observations/forward_operators/obs_def_tower_mod.f90',
+   input_files              = '../../../observations/forward_operators/obs_def_land_mod.f90',
+                              '../../../observations/forward_operators/obs_def_tower_mod.f90',
                               '../../../observations/forward_operators/obs_def_COSMOS_mod.f90'
    /
 
@@ -242,11 +240,11 @@
 &obs_diag_nml
    obs_sequence_name = ''
    obs_sequence_list = 'obs_seq_files.txt'
-   first_bin_center =  2004, 1,  1, 0, 0, 0 
-   last_bin_center  =  2004, 1,  8, 0, 0, 0 
-   bin_separation   =     0, 0,  1, 0, 0, 0 
-   bin_width        =     0, 0,  1, 0, 0, 0 
-   time_to_skip     =     0, 0,  0, 0, 0, 0 
+   first_bin_center =  2004, 1,  1, 0, 0, 0
+   last_bin_center  =  2004, 1,  8, 0, 0, 0
+   bin_separation   =     0, 0,  1, 0, 0, 0
+   bin_width        =     0, 0,  1, 0, 0, 0
+   time_to_skip     =     0, 0,  0, 0, 0, 0
    max_num_bins     = 1000
    trusted_obs      = 'null'
    Nregions   = 4
@@ -313,7 +311,7 @@
    loc_of_interest       = 254.727854, 39.9768545, 0.35
    quantity_of_interest  = 'QTY_LEAF_CARBON'
    interp_test_vertcoord = 'VERTISHEIGHT'
-   interp_test_lonrange  = 320.0, 90.0 
+   interp_test_lonrange  = 320.0, 90.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = 0.0, 75.0
    interp_test_dlat      = 1.0
