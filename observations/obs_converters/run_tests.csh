@@ -88,7 +88,7 @@ cd NCEP/prep_bufr
 
 set FAILURE = 0
 
-( ./install.sh >& ${LOGDIR}/buildlog.NCEP.out ) || set FAILURE = 1
+( ./install.sh > ${LOGDIR}/buildlog.NCEP.out ) || set FAILURE = 1
 
 echo 
 echo 
@@ -148,7 +148,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
    echo
 
    if ( $FAILURE ) then
-      echo "ERROR - unsuccessful build of $project at "`date`
+      echo "ERROR - unsuccessful build of $project"
       echo 
 
       switch ( $project )
@@ -176,7 +176,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
          breaksw
       endsw
    else
-      echo "Successful build of obs converter $project ended at "`date`
+      echo "Successful build of obs converter $project"
       echo 
       echo "Executing converters in directory $wdir"
 
@@ -198,9 +198,9 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
            ( ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
          endif
          if ( $FAILURE ) then
-            echo "ERROR - unsuccessful run of $PROG at "`date`
+            echo "ERROR - unsuccessful run of $PROG"
          else
-            echo "Successful run of $PROG at "`date`
+            echo "Successful run of $PROG"
             ${REMOVE} $PROG
          endif
       end
