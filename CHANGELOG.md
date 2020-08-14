@@ -894,3 +894,7 @@ and `assim_tools_mod.pf.f90` in sync with `assim_tools_mod.f90`.
 - Converted CHANGELOG to a markdown document.
 
 - Converted `observations/obs_converters/observations.html` to `observations/obs_converters/README.md`
+
+- Refactored `obs_def_tower_mod.f90` to put basic land observation support in `obs_def_land_mod.f90`.
+  `obs_def_tower_mod.f90` is now specifically for flux tower support.
+

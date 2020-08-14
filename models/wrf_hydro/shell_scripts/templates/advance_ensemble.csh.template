@@ -1,0 +1,215 @@
+#!/bin/tcsh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: $
+#
+# This script submits the jobs to advance the ensemble members using
+# a JOB ARRAY. EACH ENSEMBLE MEMBER GETS EXECUTED ON ITS OWN NODE(s).
+# The run-time control file for hydro gets updated with the next filename
+# and DSTART appropriate for the next forecast cycle.
+#
+# The prerequisite for this script is that advance_ensemble.csh has been run.
+# Things to note: many strings are intended to be replaced when this
+# template gets copied and ultimately submitted. Anything that starts
+# with 'My' is a string that gets replaced in the "normal" hydro fashion.
+# The next few are not standard.
+#
+# Myens_size             gets replaced in the 'stage_experiment.csh' script
+# SXXXXX                 gets replaced if this is a dependent job (with SBATCH)
+# FILTERJOBID            gets replaced by the job ID that must finish first
+# EXPERIMENT_DIRECTORY   gets replaced in the 'stage_experiment.csh' script
+#
+#==========================================================================
+# SLURM directives 			sbatch advance_ensemble.csh
+# 					squeue -u $USER
+# 					scancel <jobnumber>
+#SBATCH --ignore-pbs
+#SBATCH --array=1-Myens_size
+#SBATCH --ntasks=16
+#SBATCH --time=10:00
+#SBATCH --job-name=hydro_advance
+#SBATCH --output=hydro_advance-%A-%a.out
+#SBATCH --error=hydro_advance-%A-%a.err
+#
+#==========================================================================
+# PBS directives                	qsub test_batch.csh
+# 					qstat -u $USER
+# 					qdel <jobnumber>
+#PBS -J 1-Myens_size
+#PBS -l walltime=00:10:00
+#PBS -q economy
+#PBS -l select=1:ncpus=36:mpiprocs=36
+#PBS -A P86850054
+#PBS -N hydro_advance
+#
+#==========================================================================
+# LSF directives 			bsub < advance_ensemble.csh
+# 					bjobs
+# 					bkill <jobnumber>
+#BSUB -J hydro_advance[1-Myens_size]
+#BSUB -o hydro_advance.%J.%I.log
+#BSUB -N -u ${USER}@ucar.edu
+#BSUB -q small
+#BSUB -n 16
+#BSUB -W 0:10
+#BSUB -P P8685nnnn
+
+#==========================================================================
+# Figure out the platform-specific nuances.
+#==========================================================================
+if ($?SLURM_JOB_ID) then
+
+   set     JOBNAME = $SLURM_JOB_NAME
+   set       JOBID = $SLURM_JOBID
+   set ARRAY_INDEX = $SLURM_ARRAY_TASK_ID
+   set    NODELIST = $SLURM_NODELIST
+   set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
+
+else if ($?PBS_O_WORKDIR) then
+
+   env | grep PBS | sort
+
+   set     JOBNAME = $PBS_JOBNAME
+   set       JOBID = "$PBS_JOBID"
+   set ARRAY_INDEX = $PBS_ARRAY_INDEX
+   set    NODELIST = `cat "${PBS_NODEFILE}"`
+   set   LAUNCHCMD = "mpiexec_mpt"
+
+   # CISL suggests users set TMPDIR when running batch jobs on Cheyenne
+   mkdir -p /glade/scratch/$USER/temp
+   setenv TMPDIR /glade/scratch/$USER/temp
+
+else if ($?LS_SUBCWD) then
+
+   set     JOBNAME = $LSB_JOBNAME
+   set       JOBID = $LSB_JOBID
+   set ARRAY_INDEX = $LSB_JOBINDEX
+   set    NODELIST = $LSB_SUB_HOST
+   set   LAUNCHCMD = "mpirun.lsf"
+
+else
+   echo "This script must be run with a queueing system that supports job arrays."
+   exit 1
+endif
+
+#--------------------------------------------------------------------------
+# Just an echo of job attributes
+#--------------------------------------------------------------------------
+
+set member = $ARRAY_INDEX
+set MEMBER_DIRECTORY = `printf "member_%04d" $member`
+cd EXPERIMENT_DIRECTORY/$MEMBER_DIRECTORY
+
+echo
+echo "#---------------------------------------------------------------------"
+echo "# hydro $member started at "`date`
+echo "#---------------------------------------------------------------------"
+echo
+echo "${JOBNAME} ($JOBID) working directory "`pwd`
+echo "${JOBNAME} ($JOBID) running       on ${NODELIST}"
+echo "${JOBNAME} ($JOBID) started at "`date`
+echo
+
+rm -f log_$member.txt
+
+#--------------------------------------------------------------------------
+echo "advancing member $member at ..."`date`
+#--------------------------------------------------------------------------
+
+
+# clean up from last advance
+# some of these must be copied at some point?? for diagnostics?
+rm -f  restart.nc  restart.hydro.nc  dart_restart  restart.assimOnly.nc
+rm -f  wrf_hydro_advance_information.txt
+rm -f  HYDRO_RST.*  RESTART.*
+# if perturbed forcings are used, there will be *LDASIN_DOMAIN* here. see below.
+rm -f  *.LDASOUT_DOMAIN*  *LDASIN_DOMAIN*
+rm -f  *.LSMOUT_DOMAIN*  *.RTOUT_DOMAIN*  *.CHRTOUT*  *.CHANOBS*  frxst_pts_out.txt
+rm -f  qstrmvol*  diag_hydro.*  stderr.txt stdout.txt  GW_*.txt  *.GW_DOMAIN*
+
+
+
+cp -p ${CENTRALDIR}/namelist.hrldas
+cp -p ${CENTRALDIR}/hydro.namelist
+cp -p ${CENTRALDIR}/input.nml
+
+ln -s ${CENTRALDIR}/DOMAIN .
+ln -s ${CENTRALDIR}/FORCING .
+
+# Get parameters.
+foreach FILE ( ${loginDir}/PARAMS.gathered/* )
+    ln -s $FILE . || exit 2
+end
+k
+
+# JAMES magic happens here ... 
+# Prep anything for any active component ...
+
+
+
+
+
+
+
+# get the DSTART time so we can get the right observation file
+set INPUT_FILE = `sed -n -e '/ININAME/s/.*== *//p' Myhydro_STDIN` || exit 1
+set     DSTART = `../get_ocean_time.csh ${INPUT_FILE}`       || exit 1
+
+# Set hydro standard input parameters needed in template scripts.
+
+\cp ../s4dvar.in.template MyAPARNAM
+set OBS_PREF = ../Obs/obs
+set  NEW_OBS = `printf %s_%d.nc ${OBS_PREF} $DSTART`
+MySUBSTITUTE MyAPARNAM     MyOBSname   $NEW_OBS
+
+# Advance the model
+${LAUNCHCMD} ../Myhydro_EXE Myhydro_STDIN >& log_$member.txt || exit 2
+
+# Check for successful completion - log file should NOT have something like:
+# Blowing-up: Saving latest model state into  RESTART file
+grep -i blow log_$member.txt > /dev/null
+if ($status == 0) then
+   echo "hydro member $member FAILED."
+   echo "hydro member $member FAILED."
+   echo "hydro member $member FAILED."
+   exit 1
+endif
+
+# The hydro restart file will be treated as the DART prior.
+# DART will create an updated hydro posterior.
+# Tag the output with the current ocean time.
+
+set DSTART = `../get_ocean_time.csh ${DAI_FILE}` || exit 3
+
+set hydro_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $member $DSTART`
+set hydro_POSTERIOR = `printf hydro_posterior_%04d_%d.nc $member $DSTART`
+set hydro_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $member $DSTART`
+set SAFETY         = `printf hydro_dai_original_%04d_%d.nc $member $DSTART`
+
+\cp -v ${DAI_FILE} ${SAFETY}          || exit 1
+\mv -v ${DAI_FILE} ${hydro_POSTERIOR}  || exit 1
+\mv -v ${RST_FILE} ${hydro_PRIOR}      || exit 1
+\mv -v ${OBS_FILE} ${hydro_OBSFILE}    || exit 1
+
+# Update the ocean.in file with the new DSTART value
+
+\cp ../ocean.in.template  Myhydro_STDIN
+
+MySUBSTITUTE Myhydro_STDIN  MyDSTART   ${DSTART}
+MySUBSTITUTE Myhydro_STDIN  MyININAME  ${hydro_POSTERIOR}
+
+echo
+echo "#---------------------------------------------------------------------"
+echo "# hydro member $member completed at "`date`
+echo "#---------------------------------------------------------------------"
+echo
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL: $
+# $Revision: $
+# $Date: $

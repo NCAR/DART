@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # I am going to process one day per task and one month at a time via the job
 # array syntax.
 #
@@ -166,8 +164,4 @@ echo "${JOBNAME} ($JOBID) job $TASKID finished at "`date`
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

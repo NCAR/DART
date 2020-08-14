@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
-#
 # This script cleans up a DART work dir.  It removes all the executables
 # built by the quickbuild.csh script, plus other files created by the
 # quickbuild.csh script (e.g. Makefile, input.nml.*_default, etc),
@@ -75,8 +73,4 @@ end
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL:$
-# $Revision:$
-# $Date:$
 
