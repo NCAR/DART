@@ -95,7 +95,7 @@ The DART workflow is usually:
 <li>build the DART executables with support for <em class=mono>MODIS_LEAF_AREA_INDEX</em>
     and <em class=mono>MODIS_FPAR</em> observations.
     This is done by running <em class=program>preprocess</em> with
-    <em class=file>obs_def_land_mod.f90</em> in the list of 
+    <em class=file>obs_def_tower_mod.f90</em> in the list of 
     <em class=code>input_files</em> for <em class=code>preprocess_nml</em> and 
     then building <em class=program>MOD15A2_to_obs</em> in the usual DART way.</li>
 <li>provide basic information via the 
@@ -442,7 +442,7 @@ likely to need to be made.
 
 <P>
 See the general discussion in the
-<a href="../README.md#Decisions">obs_converters/README.md</a>
+<a href="../observations.html#Decisions">observations introduction</a>
 page about what options are available for the things you need to
 specify.  These include setting a time, specifying an expected error,
 setting a location, and an observation type.

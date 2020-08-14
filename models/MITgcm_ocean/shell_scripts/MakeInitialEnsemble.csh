@@ -3,6 +3,8 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 # So the background is that I want 40 snapshot files to create an initial
 # conditions file with 40 ensemble members. 
@@ -239,4 +241,8 @@ cat ens_mem_* >! filter_ics
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 !> converts an observation sequence file to a netCDF file but only retains
 !> basic metadata. Metadata to specific observation types is not converted.
@@ -47,9 +49,10 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_seq_to_netcdf.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
@@ -452,6 +455,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          ncunit = NC_Compatibility_Check(ncName, iepoch)
       else
          ncunit = InitNetCDF(ncName, iepoch)
+         append_to_netcdf = .true.
       endif
 
       ngood = 0
@@ -1221,6 +1225,7 @@ enddo
 NC_Compatibility_Check = ncid
 
 end function NC_Compatibility_Check
+
 
 
 

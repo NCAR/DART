@@ -31,6 +31,7 @@
    filename_seq         = 'obs_seq_1.out', 'obs_seq_2.out',
    filename_out         = 'obs_seq.combined',
    filename_seq_list    = '',
+   num_input_files      = 2,
    first_obs_days       = -1,
    first_obs_seconds    = -1,
    last_obs_days        = -1,

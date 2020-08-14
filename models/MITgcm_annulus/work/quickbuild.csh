@@ -3,6 +3,8 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 #----------------------------------------------------------------------
 # compile all programs in the current directory with a mkmf_xxx file.
@@ -16,6 +18,8 @@
 #----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod Makefile .cppdefs
+\rm -f ../../../obs_def/obs_def_mod.f90
+\rm -f ../../../obs_kind/obs_kind_mod.f90
 
 set MODEL = "MITgcm_annulus"
 
@@ -115,4 +119,8 @@ echo ' for mpich run "mpd" once, then "runme_filter"'
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

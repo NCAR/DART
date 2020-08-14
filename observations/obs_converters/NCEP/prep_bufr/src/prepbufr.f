@@ -199,8 +199,8 @@ c----------------------------------------------------------------------
           if ( debug ) print*, 'idate= ', idate, idate00, hour01, time0
           hour01 =  hour01 + time0
 
-          if ( USE_THIS_DATA_REAL(real(hdr(6)),otype_use,inum_otype) 
-     &           .and. debug ) then  !  print data read in
+          if ( USE_THIS_DATA_REAL(hdr(6),otype_use,inum_otype) .and. 
+     &                    debug ) then  !  print data read in
 
             WRITE  ( UNIT = iuno, FMT = '("#", 132("-") )' )
             WRITE  ( UNIT = iuno, FMT = '("#", A3,6x,a6,1x,a6,3x,

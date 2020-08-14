@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # ---------------------------------------------------------------------
 # Converts 'old' CLM restart files to whatever resolution you like.
 # I ran a default case for the time period and compset of interest and
@@ -45,4 +47,8 @@ end
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

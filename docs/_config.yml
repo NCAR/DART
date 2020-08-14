@@ -25,7 +25,7 @@ github_username:
 
 # Build settings
 markdown: kramdown
-remote_theme: ncar/koru-jekyll@1.0.33
+remote_theme: ncar/koru-jekyll@1.0.15
 plugins:
   - jekyll-feed
   - jekyll-remote-theme

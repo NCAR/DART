@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # madis data window program -- reads hourly or daily obs_seq files
 # by type, and outputs a single obs_seq file with all obs for that
 # window.  the output file can then be input directly to the dart
@@ -361,4 +363,8 @@ end
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

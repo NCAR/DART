@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # script for copying diagnostics files to mass store.
 #
 # This version works with the new HPSS system instead
@@ -339,4 +341,8 @@ chmod 444 $saved
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

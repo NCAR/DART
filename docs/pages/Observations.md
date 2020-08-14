@@ -27,7 +27,7 @@ explore the documentation page without downloading DART, you may
 ## An overview of the DART 'preprocess' program
 
 ~~First and foremost, check out
-[preprocess.html](../../assimilation_code/programs/preprocess/preprocess.html)
+[preprocess.html](https://ncar.github.io/DART/api/v0.0.6/program/preprocess.html)
 for detailed information.~~
 
 **The *preprocess* program actually *builds* the source code that supports
@@ -415,13 +415,13 @@ the model consistent with those observations - the true state:
 
 Real observations come in a mind-boggling diversity of formats. We have
 converters for many formats in the `DART/observations/obs_converters`
-directory. The documentation for that directory is listed in the 
-[README.md](../../observations/obs_converters/README.md).  
+directory. The documentation for that directory is listed in
+[observations.html](Manhattan/observations/obs_converters/observations.html).  
 
 The converters are designed to work on one input file format and create
 (or add to) an output observation sequence. It may be desirable to
 post-process multiple observation sequence files with the
-[obs_sequence_tool](../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html)
+[obs_sequence_tool](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html)
 ... to select for timeframe, geographic region, etc.  
 
 Many of the formats require their own libraries (like HDF), and require
@@ -558,7 +558,7 @@ If your input data format is:
 | netCDF | Start with the *MADIS* converters, and in particular try the `convert_madis_profiler.f90` file because it is the most straightforward. Another good option is `SST/oi_sst_to_obs.f90`. |  
 | Comma separated text | Start with the *Ameriflux* converter. |  
 | Generic text | Start with the *text* converter. |  
-| HDF-EOS5 | Start with the *AIRS* converter. |  
+| HDF-EOS | Start with the *AIRS* converter. |  
 | BUFR or prepBUFR | Start with the *NCEP* converter. |  
 | Dense data, like Satellite swaths | Start with the *tpw* converter, which includes code that averages the raw data in space and time. |  
 | Ray-path integrated data | Start with the *GPS* converter, which includes code that traces a path and integrates values along the ray. |  
@@ -695,8 +695,7 @@ ARGO_SALINITY, etc. Each type is associated with a single underlying
 generic 'kind', which controls what forward operator code is called
 inside the model, e.g. QTY_TEMPERATURE, QTY_DENSITY, etc.
 
-See the [observations/forward_operators/obs_def_mod.html](https://www.image.ucar.edu/DAReS/DART/Manhattan/observations/forward_operators/obs_def_mod.html)
-for more details on
+See the [obs_def_mod.html](../forward_operators/obs_def_mod.html) for more details on
 how to use and add new DART types. The DART `obs_kind_mod.f90` defines a
 list of already defined observation types, and users can either use
 existing observation types in 'obs_def_xxx_mod.f90' files, or define
@@ -751,7 +750,6 @@ Each directory has at least one converter:
   - [Ameriflux](Ameriflux/level4_to_obs.html) <!-- CHAMP --> <!-- CNOFS -->
   - [COSMOS](COSMOS/COSMOS_to_obs.html)
   - [DWL](DWL/dwl_to_obs.html)
-  - [GOES](GOES/README.md)
   - [GPSPW](GPSPW/README)
   - [GSI2DART](GSI2DART/README)
   - [GTSPP](GTSPP/GTSPP.html)
@@ -830,7 +828,7 @@ you advice and pointers on how to approach writing the code.
 # Working with observation sequences.
 
 First and foremost, check out the
-[obs_sequence_tool.html](../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html)
+[obs_sequence_tool.html](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html)
 document for detailed information and examples.  
 
 *obs_sequence_tool* is the primary tool for manipulating observation
@@ -875,7 +873,7 @@ performing the experiment you THINK you are performing
 
 # Adding support for a new observation TYPE.
 
-[DART/observations/forward_operators/obs_def_mod.html](../../observations/forward_operators/obs_def_mod.html)
+[DART/observations/forward_operators/obs_def_mod.html](https://ncar.github.io/DART/api/v0.0.6/module/obs_def_mod.html)
 is the source for detailed information.
 
 ---

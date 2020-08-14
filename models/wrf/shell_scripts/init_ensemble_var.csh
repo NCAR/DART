@@ -3,6 +3,9 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 
 # init_ensemble_var.csh - script that creates perturbed initial
 #                         conditions from the WRF-VAR system.
@@ -84,13 +87,12 @@ EOF
 #=================================================================
 #PBS -N first_advance_${n}
 #PBS -j oe
-#PBS -A ${COMPUTER_CHARGE_ACCOUNT}
-#PBS -l walltime=${ADVANCE_TIME}
-#PBS -q ${ADVANCE_QUEUE}
+#PBS -A ${CNCAR_GAU_ACCOUNT}
+#PBS -l walltime=${CADVANCE_TIME}
+#PBS -q ${CADVANCE_QUEUE}
 #PBS -m ae
-#PBS -M ${EMAIL}
-#PBS -k eod
-#PBS -l select=${ADVANCE_NODES}:ncpus=${ADVANCE_PROCS}:mpiprocs=${ADVANCE_MPI}
+#PBS -M ${CEMAIL}
+#PBS -l select=${CADVANCE_NODES}:ncpus=${CADVANCE_PROCS}:mpiprocs=${CADVANCE_MPI}
 #=================================================================
 
    echo "rt_assim_init_${n}.csh is running in `pwd`"
@@ -129,3 +131,7 @@ end
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

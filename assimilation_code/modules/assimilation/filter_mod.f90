@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module filter_mod
 
@@ -99,9 +101,10 @@ public :: filter_sync_keys_time, &
           filter_main
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'filter_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! Some convenient global storage items
 character(len=512)      :: msgstring
@@ -1670,11 +1673,8 @@ call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 
 ! allocate temp space for sending data only on the task that will
 ! write the obs_seq.final file
-if (my_task == io_task) then
-   allocate(obs_temp(num_obs_in_set))
-else ! TJH: this change became necessary when using Intel 19.0.5 ...
-   allocate(obs_temp(1))
-endif
+if (my_task == io_task) allocate(obs_temp(num_obs_in_set))
+
 
 ! Update the ensemble mean
 call get_copy(io_task, obs_fwd_op_ens_handle, OBS_MEAN_START, obs_temp)
@@ -1720,7 +1720,7 @@ if(my_task == io_task) then
    end do
 endif
 
-deallocate(obs_temp)
+if (my_task == io_task) deallocate(obs_temp)
 
 end subroutine obs_space_diagnostics
 
@@ -2042,22 +2042,18 @@ subroutine create_ensemble_from_single_file(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
 
-integer               :: i
+integer               :: i ! loop variable
 logical               :: interf_provided ! model does the perturbing
 logical, allocatable  :: miss_me(:)
-integer               :: partial_state_on_my_task ! the number of elements ON THIS TASK
 
 ! Copy from ensemble member 1 to the other copies
 do i = 1, ens_handle%my_num_vars
    ens_handle%copies(2:ens_size, i) = ens_handle%copies(1, i)  ! How slow is this?
 enddo
 
-! If the state allows missing values, we have to record their locations
-! and restore them in all the new perturbed copies.
-
-if (get_missing_ok_status()) then
-   partial_state_on_my_task = size(ens_handle%copies,2)
-   allocate(miss_me(partial_state_on_my_task))
+! store missing_r8 locations
+if (get_missing_ok_status()) then ! missing_r8 is allowed in the state
+   allocate(miss_me(ens_size))
    miss_me = .false.
    where(ens_handle%copies(1, :) == missing_r8) miss_me = .true.
 endif
@@ -2067,12 +2063,11 @@ if (.not. interf_provided) then
    call perturb_copies_task_bitwise(ens_handle)
 endif
 
-! Restore the missing_r8
+! Put back in missing_r8
 if (get_missing_ok_status()) then
    do i = 1, ens_size
       where(miss_me) ens_handle%copies(i, :) = missing_r8
    enddo
-   deallocate(miss_me)
 endif
 
 end subroutine create_ensemble_from_single_file
@@ -2728,22 +2723,26 @@ type(ensemble_type), intent(in) :: obs_fwd_op_ens_handle
 character(len=*),    intent(in) :: information
 
 character(len=20)  :: task_str !! string to hold the task number
-character(len=256) :: file_obscopies !! output file name
-integer :: i, iunit
+character(len=129) :: file_obscopies !! output file name
+integer :: i
 
 write(task_str, '(i10)') obs_fwd_op_ens_handle%my_pe
 file_obscopies = TRIM('obscopies_' // TRIM(ADJUSTL(information)) // TRIM(ADJUSTL(task_str)))
-
-iunit = open_file(file_obscopies, 'formatted', 'append')
+open(15, file=file_obscopies, status ='unknown')
 
 do i = 1, obs_fwd_op_ens_handle%num_copies - 4
-   write(iunit, *) obs_fwd_op_ens_handle%copies(i,:)
+   write(15, *) obs_fwd_op_ens_handle%copies(i,:)
 enddo
 
-close(iunit)
+close(15)
 
 end subroutine test_obs_copies
 
 !-------------------------------------------------------------------
 end module filter_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

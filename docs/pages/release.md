@@ -14,7 +14,7 @@ The DART programs are highly portable, having been compiled with many
 Fortran 90 compilers and run on linux compute-servers, linux clusters,
 OSX laptops/desktops, SGI Altix clusters, supercomputers running AIX,
 and more. Read the
-[Customizations](Getting_Started.html#customizations)
+[Customizations](Getting_Starting.html#customizations)
 section for help in building on new platforms.
 
 DART employs a modular programming approach to apply an Ensemble Kalman
@@ -39,8 +39,8 @@ that facilitate exploration of the results, but the netCDF files are
 inherently portable and contain all the necessary metadata to interpret
 the contents with other analysis programs such as NCL, R, etc.
 
-To get started running with Lorenz 63 model refer to the 
-[Lorenz 63 section](Getting_Started.html#Lorenz63) of the *Getting Started* document.
+To get started running with Lorenz 63 model refer to
+[Getting FIXME Started](Manhattan_getting_started.html)
 
 <span id="CurrentUsers"></span>
 
@@ -48,7 +48,7 @@ To get started running with Lorenz 63 model refer to the
 
 -----
 
-## About the Manhattan layout change ...
+## Notes for Current Users - FIXME - 
 
 If you have been updating from the rma\_trunk branch of the DART
 subversion repository you will notice that the code tree has been
@@ -64,11 +64,11 @@ structure looks like :
   - *models*
   - *observations*
 
-We suggest that current users checkout a fresh version of Manhattan in a
+~~We suggest that current users checkout a fresh version of Manhattan in a
 new location. To see which files need to be moved, run 'svn status' on
 your original checked out version. Anything with an M or ? in the first
-column needs to be moved to the new location in the new tree. Please
-[contact DART](mailto:dart@ucar.edu) if you have any issues migrating
+column needs to be moved to the new location in the new tree.~~ Please
+[contact](mailto:dart@ucar.edu) DART if you have any issues migrating
 your existing code to the new tree structure.
 
 There is a list of non-backwards compatible changes 
@@ -99,8 +99,8 @@ compatible with the Lanai release (13 Dec 2013):
 1.  We no longer require model data to be converted to DART format
     restart files. We directly read and write netCDF format only. To
     specify the input and output files for filter, there are new
-    namelist items in the &filter_nml namelist:
-    `input_state_file_list` and `output_state_file_list` .
+    namelist items in the \&filter_nml namelist:
+    `'input_state_file_list'` and `'output_state_file_list'` .
 
 2.  The information formerly in `Prior_Diag.nc` and
     `Posterior_Diag.nc` has been moved. If you are reading and writing
@@ -153,8 +153,8 @@ compatible with the Lanai release (13 Dec 2013):
         write out the state variable (this is the prefered method for
         adding new models, it requires less code from the model developer)
 
-5.  There are several namelist changes mainly in the &filter_nml and
-    &perfect_model_mod which are outlined in detail in
+5.  There are several namelist changes mainly in the \&filter_nml and
+    \&perfect_model_mod which are outlined in detail in
     [Manhattan_diffs_from_Lanai](Manhattan_diffs_from_Lanai.html)
 
 6.  All modules have been moved to *DART/assimilation_code/modules/*
@@ -171,11 +171,12 @@ compatible with the Lanai release (13 Dec 2013):
     *obs_def/obs_def_\*_mod.f90* to
     *observations/forward_operators*
 
-10. The tutorial files have moved to *DART/docs/tutorial* directory
+10. The tutorial files have moved to *DART/docs/tutorial
+    directory*
 
-11. The *fill_inflation_restart* program now creates
-    inflation files in netCDF format. You can still create inflation files
-    using *ncap2*. Here is an example using version 4.4.2 or
+11. The program *fill_inflation_restart* is OBSOLETE since DART
+    inflation files are now in netCDF format. Now inflation files can be
+    filled using *ncap2*. Here is an example using version 4.4.2 or
     later of the NCO tools:
     
     ``` 
@@ -275,11 +276,9 @@ compatible with the Lanai release (13 Dec 2013):
     the \&filter_nml 'stages_to_write' mentioned above.
     
     To generate a netCDF file from a .cdl file run:
-   
-    ``` 
-    ncgen -o perfect_input.nc perfect_input.cdl
-    ncgen -o filter_input.nc filter_input.cdl
-    ```
+    
+    >  ncgen -o perfect_input.nc perfect_input.cdl
+    >  ncgen -o filter_input.nc filter_input.cdl
 
 <span id="NewFeatures"></span>
 
@@ -353,17 +352,17 @@ are still supported in DART
   - **bgrid_solo**
       - DART interface documentation for the
        [bgrid solo](models/bgrid_solo/model_mod.html) model.
-  - **CAM-FV, CAM-CHEM, WACCM, WACCM-X**
+  - **cam-fv**
       - DART interface documentation for the
-       [CAM finite volume](models/cam-fv/model_mod.html) family of global atmospheric models.
+       [CAM finite volume](models/cam-fv/model_mod.html) global atmospheric model.
       - Documentation for the
        [CAM model](http://www.cesm.ucar.edu/models/atm-cam/).
-  - **CICE (NEW)**
+  - **cice (NEW)**
       - DART interface documentation for the
         [CICE](models/cice/model_mod.html) model.
       - Documentation for the
         [CICE model](http://www.cesm.ucar.edu/models/ccsm4.0/cice/).
-  - **CM1 (NEW)**
+  - **cm1 (NEW)**
       - DART interface documentation for the
         [CM1 cloud-resolving model](models/cm1/model_mod.html).
       - Documentation for the
@@ -383,7 +382,7 @@ are still supported in DART
   - **lorenz_04**
       - DART interface documentation for the
         [lorenz_04](models/lorenz_04/model_mod.html) model.
-  - **MPAS_ATM** (netCDF overwrite not supported for update_u_from_reconstruct = .true. )
+  - **mpas_atm** (netCDF overwrite not supported for update_u_from_reconstruct = .true. )
       - DART interface documentation for the
         [MPAS atmosphere](models/mpas_atm/model_mod.html) model.
       - Documentation for the
@@ -400,19 +399,11 @@ are still supported in DART
   - **simple_advection**
       - DART interface documentation for the
         [simple advection](models/simple_advection/model_mod.html) model.
-  - **WRF**
+  - **wrf**
       - DART interface documentation for the
         [WRF](models/wrf/model_mod.html) regional forecast model.
-      - Documentation for the [WRF model](http://www.wrf-model.org/index.php).
-  - **NOAH-MP**
-      - Documentation for [(NOAH-MP LSM)](https://ral.ucar.edu/solutions/products/noah-multiparameterization-land-surface-model-noah-mp-lsm)
-  - **FESOM**
-      - DART interface documentation for the
-        [FESOM model interface](models/FESOM/Readme.md)
-  - **GITM**
-      - Documentation for the The Global Ionosphere Thermosphere Model
-        [(GITM)](https://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM)
-
+      - Documentation for the [WRF
+        model](http://www.wrf-model.org/index.php).
 
 The *DART/models/template* directory contains sample files for adding a
 new model. See the 
@@ -579,12 +570,6 @@ scripting, setup, and build information since the Lanai release.
 -----
 
 ## Known Problems
-
-  - The move to provide DART through GitHub offers us the opportunity
-    to revise the way we distribute documentation. We are still exploring
-    options for the best way to provide content that is accessible both
-    offline and through GitHub Pages. Please bear with us, but please do
-    point out broken links and offer suggestions on ways we can improve.
 
   - There are many changes in this release and more updates are expected
     to come soon. We are not aware of any obvious bugs, but if you

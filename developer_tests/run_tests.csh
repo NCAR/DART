@@ -10,7 +10,6 @@
 #
 #----------------------------------------------------------------------
 
-set nonomatch
 set usingmpi=no
 set MPICMD=""
 
@@ -139,9 +138,9 @@ foreach TESTFILE ( $HAS_TESTS )
            echo Starting $PROG
 
            if ( -f using_mpi_for_$PROG ) then
-              ( ${MPICMD} ./$PROG >> ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+              ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
            else
-              (           ./$PROG >> ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+              (           ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
            endif
          
            if ( $FAILURE ) then

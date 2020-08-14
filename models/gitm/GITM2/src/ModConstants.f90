@@ -1,5 +1,8 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! This code may (or may not) be part of the GITM distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
 module ModConstants
 
 !-------------------------------------------------------------------
@@ -31,3 +34,9 @@ module ModConstants
        SpecificHeatPressure/SpecificHeatVolume
 
 end module ModConstants
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

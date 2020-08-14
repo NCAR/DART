@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # Standard script for use in assimilation applications
 # where the model advance is executed as a separate process.
 # Can be used as-is with most low-order models and the bgrid model which
@@ -240,4 +242,8 @@ cd ..
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

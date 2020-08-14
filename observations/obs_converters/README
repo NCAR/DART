@@ -1,0 +1,22 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+18 November 2008
+
+This directory is a work in progress.  There are currently about
+10 other observation sources and types which we are in the process
+of collecting information and conversion programs for and which will
+eventually be added to this directory.  In the meantime, if you have
+converters for data or interest in something that is not in the
+repository, please email the DART group.
+
+Thanks for your patience,
+The DART Development Group
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
