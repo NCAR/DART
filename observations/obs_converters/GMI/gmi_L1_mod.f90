@@ -358,7 +358,7 @@ real(8) :: fastem_p4
 real(8) :: fastem_p5
 
 type(time_type) :: obs_time
-character(len=*), parameter :: routine = 'add_swath_observations'
+character(len=*), parameter :: routine = 'add_swath_observations:'
 
 integer :: robstype
 
@@ -510,8 +510,8 @@ enddo scanloop
 ! Print a little summary
 call print_obs_seq_summary(seq)
 
-write(msgstring,*) 'Finished loading ',obs_num-1,' of ',key,'total GMI observations for swath ' // &
-   swath%dset_prefix
+write(msgstring,*) 'Converted ',obs_num-1,' obs for swath ',swath%dset_prefix, &
+                   '; total GMI obs = ',key
 call error_handler(E_MSG, routine, msgstring, source, revision, revdate)
 
 end subroutine add_swath_observations

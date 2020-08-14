@@ -1871,6 +1871,7 @@ end subroutine cloud_profile_setup
 !
 ! istatus: Returns  0 if everything is OK, >0 if error occured.
 !                 101 = zenith angle was greater than max_zenith_angle
+!                 102 = non-monotonically decreasing pressure detected
 
 subroutine do_forward_model(ens_size, nlevels, flavor, location, &
    atmos, trace_gas, clouds, aerosols, sensor, channel,          &
@@ -2028,6 +2029,21 @@ ly2idx = lvlidx(2:nlevels)
 ! There is one profile per ensemble member
 DO imem = 1, ens_size
 
+   ! check that the pressure is monotonically decreasing from TOA down
+   do ilvl = 1, nlevels-1
+      if (atmos % pressure(imem,lvlidx(ilvl)) > atmos % pressure(imem,lvlidx(ilvl+1))) then
+         if (debug) then
+            write(string1,*) 'For ens #',imem,', pressure ',lvlidx(ilvl),' was greater than pressure ',&
+                lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' > ',atmos%pressure(imem,lvlidx(ilvl+1))
+            call error_handler(E_MSG,routine,string1,source,revision,revdate)
+         end if
+
+         radiances(:) = MISSING_R8
+         error_status(:) = 102
+         return
+      end if
+   end do
+
    surftype   = nint(atmos%surftype(imem))
 
    runtime % profiles(imem) % nlevels = nlevels
@@ -2047,84 +2063,84 @@ DO imem = 1, ens_size
    ! the arrays are assumed to have been allocated - this was already checked in obs_def
    if (is_visir .or. mw_clear_sky_only) then
       if (runtime % opts % rt_ir % ozone_data) then
-         runtime % profiles(imem) % o3(:) = trace_gas % ozone(imem,lvlidx)
+         runtime % profiles(imem) % o3(:) = max(trace_gas % ozone(imem,lvlidx),0.0_r8)
       end if
 
       if (runtime % opts % rt_ir % co2_data) then
-         runtime % profiles(imem) % co2(:) = trace_gas % co2(imem,lvlidx)
+         runtime % profiles(imem) % co2(:) = max(trace_gas % co2(imem,lvlidx),0.0_r8)
       end if
 
       if (runtime % opts % rt_ir % n2o_data) then
-         runtime % profiles(imem) % n2o(:) = trace_gas % n2o(imem,lvlidx)
+         runtime % profiles(imem) % n2o(:) = max(trace_gas % n2o(imem,lvlidx),0.0_r8)
       end if
 
       if (runtime % opts % rt_ir % ch4_data) then
-         runtime % profiles(imem) % ch4(:) = trace_gas % ch4(imem,lvlidx)
+         runtime % profiles(imem) % ch4(:) = max(trace_gas % ch4(imem,lvlidx),0.0_r8)
       end if
 
       if (runtime % opts % rt_ir % co_data) then
-         runtime % profiles(imem) % co(:)  = trace_gas % co(imem,lvlidx)
+         runtime % profiles(imem) % co(:)  = max(trace_gas % co(imem,lvlidx),0.0_r8)
       end if
 
       if (runtime % opts % rt_ir % so2_data) then
-         runtime % profiles(imem) % so2(:) = trace_gas % so2(imem,lvlidx)
+         runtime % profiles(imem) % so2(:) = max(trace_gas % so2(imem,lvlidx),0.0_r8)
       end if
 
       ! "clear-sky" cloud-liquid water data for microwave (not RTTOV-SCATT)
       if (is_mw .and. runtime % opts % rt_mw % clw_data) then
-         runtime % profiles(imem) % clw(:) = clouds % clw(imem,lvlidx)
+         runtime % profiles(imem) % clw(:) = max(clouds % clw(imem,lvlidx),0.0_r8)
       end if
 
       ! add aerosols
       if (runtime % opts % rt_ir % addaerosl) then
          if (aerosl_type == 1) then 
             ! OPAC, convert from levels to layers
-            runtime % profiles(imem) % aerosols(1,:) = 0.5_jprb*(aerosols % insoluble(imem,ly1idx) +           &
-                                                              aerosols % insoluble(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(2,:) = 0.5_jprb*(aerosols % water_soluble(imem,ly1idx) +      &
-                                                              aerosols % water_soluble(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(3,:) = 0.5_jprb*(aerosols % soot(imem,ly1idx) +                &
-                                                              aerosols % soot(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(4,:) = 0.5_jprb*(aerosols % sea_salt_accum(imem,ly1idx) +      &
-                                                              aerosols % sea_salt_accum(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(5,:) = 0.5_jprb*(aerosols % sea_salt_coarse(imem,ly1idx) +     &
-                                                              aerosols % sea_salt_coarse(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(6,:) = 0.5_jprb*(aerosols % mineral_nucleus(imem,ly1idx) +     &
-                                                              aerosols % mineral_nucleus(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(7,:) = 0.5_jprb*(aerosols % mineral_accum(imem,ly1idx) +       &
-                                                              aerosols % mineral_accum(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(8,:) = 0.5_jprb*(aerosols % mineral_coarse(imem,ly1idx) +      &
-                                                              aerosols % mineral_coarse(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(9,:) = 0.5_jprb*(aerosols % mineral_transport(imem,ly1idx) +   &
-                                                              aerosols % mineral_transport(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(10,:) = 0.5_jprb*(aerosols % sulphated_droplets(imem,ly1idx) + &
-                                                               aerosols % sulphated_droplets(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(11,:) = 0.5_jprb*(aerosols % volcanic_ash(imem,ly1idx) +       &
-                                                               aerosols % volcanic_ash(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(12,:) = 0.5_jprb*(aerosols % new_volcanic_ash(imem,ly1idx) +   &
-                                                               aerosols % new_volcanic_ash(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(13,:) = 0.5_jprb*(aerosols % asian_dust(imem,ly1idx) +         &
-                                                               aerosols % asian_dust(imem,ly2idx))
+            runtime % profiles(imem) % aerosols(1,:) = max(0.5_jprb*(aerosols % insoluble(imem,ly1idx) +      &
+                                                              aerosols % insoluble(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(2,:) = max(0.5_jprb*(aerosols % water_soluble(imem,ly1idx) +  &
+                                                              aerosols % water_soluble(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(3,:) = max(0.5_jprb*(aerosols % soot(imem,ly1idx) +           &
+                                                              aerosols % soot(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(4,:) = max(0.5_jprb*(aerosols % sea_salt_accum(imem,ly1idx) +      &
+                                                              aerosols % sea_salt_accum(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(5,:) = max(0.5_jprb*(aerosols % sea_salt_coarse(imem,ly1idx) +     &
+                                                              aerosols % sea_salt_coarse(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(6,:) = max(0.5_jprb*(aerosols % mineral_nucleus(imem,ly1idx) +     &
+                                                              aerosols % mineral_nucleus(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(7,:) = max(0.5_jprb*(aerosols % mineral_accum(imem,ly1idx) +       &
+                                                              aerosols % mineral_accum(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(8,:) = max(0.5_jprb*(aerosols % mineral_coarse(imem,ly1idx) +      &
+                                                              aerosols % mineral_coarse(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(9,:) = max(0.5_jprb*(aerosols % mineral_transport(imem,ly1idx) +   &
+                                                              aerosols % mineral_transport(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(10,:) = max(0.5_jprb*(aerosols % sulphated_droplets(imem,ly1idx) + &
+                                                               aerosols % sulphated_droplets(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(11,:) = max(0.5_jprb*(aerosols % volcanic_ash(imem,ly1idx) +       &
+                                                               aerosols % volcanic_ash(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(12,:) = max(0.5_jprb*(aerosols % new_volcanic_ash(imem,ly1idx) +   &
+                                                               aerosols % new_volcanic_ash(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(13,:) = max(0.5_jprb*(aerosols % asian_dust(imem,ly1idx) +         &
+                                                               aerosols % asian_dust(imem,ly2idx)),0.0_r8)
          elseif (aerosl_type == 2) then
             ! CAMS, convert from levels to levels
-            runtime % profiles(imem) % aerosols(1,:) = 0.5_jprb*(aerosols % black_carbon(imem,ly1idx) +               &
-                                                              aerosols % black_carbon(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(2,:) = 0.5_jprb*(aerosols % dust_bin1(imem,ly1idx) +                  &
-                                                              aerosols % dust_bin1(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(3,:) = 0.5_jprb*(aerosols % dust_bin2(imem,ly1idx) +                  &
-                                                              aerosols % dust_bin2(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(4,:) = 0.5_jprb*(aerosols % dust_bin3(imem,ly1idx) +                  &
-                                                              aerosols % dust_bin3(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(5,:) = 0.5_jprb*(aerosols % ammonium_sulphate(imem,ly1idx) +          &
-                                                              aerosols % ammonium_sulphate(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(6,:) = 0.5_jprb*(aerosols % sea_salt_bin1(imem,ly1idx) +              &
-                                                              aerosols % sea_salt_bin1(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(7,:) = 0.5_jprb*(aerosols % sea_salt_bin2(imem,ly1idx) +              &
-                                                              aerosols % sea_salt_bin2(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(8,:) = 0.5_jprb*(aerosols % sea_salt_bin3(imem,ly1idx) +              &
-                                                              aerosols % sea_salt_bin3(imem,ly2idx))
-            runtime % profiles(imem) % aerosols(9,:) = 0.5_jprb*(aerosols % hydrophilic_organic_matter(imem,ly1idx) + &
-                                                              aerosols % hydrophilic_organic_matter(imem,ly2idx))
+            runtime % profiles(imem) % aerosols(1,:) = max(0.5_jprb*(aerosols % black_carbon(imem,ly1idx) +               &
+                                                              aerosols % black_carbon(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(2,:) = max(0.5_jprb*(aerosols % dust_bin1(imem,ly1idx) +                  &
+                                                              aerosols % dust_bin1(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(3,:) = max(0.5_jprb*(aerosols % dust_bin2(imem,ly1idx) +                  &
+                                                              aerosols % dust_bin2(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(4,:) = max(0.5_jprb*(aerosols % dust_bin3(imem,ly1idx) +                  &
+                                                              aerosols % dust_bin3(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(5,:) = max(0.5_jprb*(aerosols % ammonium_sulphate(imem,ly1idx) +          &
+                                                              aerosols % ammonium_sulphate(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(6,:) = max(0.5_jprb*(aerosols % sea_salt_bin1(imem,ly1idx) +              &
+                                                              aerosols % sea_salt_bin1(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(7,:) = max(0.5_jprb*(aerosols % sea_salt_bin2(imem,ly1idx) +              &
+                                                              aerosols % sea_salt_bin2(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(8,:) = max(0.5_jprb*(aerosols % sea_salt_bin3(imem,ly1idx) +              &
+                                                              aerosols % sea_salt_bin3(imem,ly2idx)),0.0_r8)
+            runtime % profiles(imem) % aerosols(9,:) = max(0.5_jprb*(aerosols % hydrophilic_organic_matter(imem,ly1idx) + &
+                                                              aerosols % hydrophilic_organic_matter(imem,ly2idx)),0.0_r8)
          else
             write(string1,*)'Unknown aerosol type ',aerosl_type,&
                ' for platform/sat/sensor id combination:',instrument
@@ -2139,29 +2155,29 @@ DO imem = 1, ens_size
          totalwater(:) = 0.0_jprb
 
          if (allocated(clouds % clw)) then
-            totalwater(:) = totalwater(:) + clouds % clw(imem,lvlidx)
+            totalwater(:) = totalwater(:) + max(clouds % clw(imem,lvlidx),0.0_r8)
          end if
 
          if (allocated(clouds % rain)) then
-            totalwater(:) = totalwater(:) + clouds % rain(imem,lvlidx)
+            totalwater(:) = totalwater(:) + max(clouds % rain(imem,lvlidx),0.0_r8)
          end if
 
-         totalice(:) = 0.0_jprb
+         totalice(:) = 0.0_r8
 
          if (allocated(clouds % ciw)) then
-            totalice(:) = totalice(:) + clouds % ciw(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % ciw(imem,lvlidx),0.0_r8)
          end if 
 
          if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + clouds % snow(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
          end if 
 
          if (allocated(clouds % graupel)) then
-            totalice(:) = totalice(:) + clouds % graupel(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
          end if 
 
          if (allocated(clouds % hail)) then
-            totalice(:) = totalice(:) + clouds % hail(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
          end if 
 
          ! Classify liquid water cloud type. If the maximum absolute w is > 0.5 m/s, classify as a cumulus cloud.
@@ -2206,7 +2222,7 @@ DO imem = 1, ens_size
          if (allocated(clouds % clwde)) then
             ! Liquid water effective diameter (microns), convert levels to layers
             runtime % profiles(imem)% clwde(:) = 0.5_jprb*(clouds % clwde(imem,ly1idx) + &
-                                                        clouds % clwde(imem,ly2idx))
+                                                           clouds % clwde(imem,ly2idx))
          end if
 
          ! all types of ice cloud (kg/kg) go in 6, Ice Cloud (CIRR, but not just cirrus)
@@ -2218,13 +2234,13 @@ DO imem = 1, ens_size
          if (allocated(clouds % icede)) then
             ! Ice effective diameter (microns), convert levels to layers
             runtime % profiles(imem) % icede(:) = 0.5_jprb*(clouds % icede(imem,ly1idx) + &
-                                                         clouds % icede(imem,ly2idx))
+                                                            clouds % icede(imem,ly2idx))
          end if
 
          if (allocated(clouds % cfrac)) then
             ! Cloud fraction (0-1), convert levels to layers
             runtime % profiles(imem) % cfrac(:) = min(max(0.5_jprb*(clouds % cfrac(imem,ly1idx) + &
-                                                         clouds % cfrac(imem,ly2idx)),0._jprb),1._jprb)
+                                                         clouds % cfrac(imem,ly2idx)),0.0_r8),1.0_r8)
          else
             ! Assume cloud fraction is 1 everywhere. No harm if no clouds.
             runtime % profiles(imem) % cfrac(:) = 1.0_jprb
@@ -2233,7 +2249,7 @@ DO imem = 1, ens_size
    else if (is_mw) then
       ! RTTOV-SCATT, add MW clouds
       if (allocated(clouds % cfrac)) then
-         runtime % cld_profiles(imem) % cc(:) = min(max(clouds % cfrac(imem, lvlidx),0._jprb),1._jprb)
+         runtime % cld_profiles(imem) % cc(:) = min(max(clouds % cfrac(imem, lvlidx),0.0_r8),1.0_r8)
       else
          ! Assume cloud fraction is 1 everywhere. No harm if no clouds.
          runtime % cld_profiles(imem) % cc(:) = 1.0_jprb
@@ -2241,55 +2257,55 @@ DO imem = 1, ens_size
 
 
       if (allocated(clouds % clw)) then
-         runtime % cld_profiles(imem) % clw(:) = clouds % clw(imem,lvlidx)
+         runtime % cld_profiles(imem) % clw(:) = max(clouds % clw(imem,lvlidx),0.0_r8)
       else
          runtime % cld_profiles(imem) % clw = 0.0_jprb
       end if
 
       if (allocated(clouds % rain)) then
-         runtime % cld_profiles(imem) % rain(:) = clouds % rain(imem,lvlidx)
+         runtime % cld_profiles(imem) % rain(:) = max(clouds % rain(imem,lvlidx),0.0_r8)
       else
          runtime % cld_profiles(imem) % rain = 0.0_jprb
       end if
 
       if (use_totalice) then
-         totalice(:) = 0.0_jprb
+         totalice(:) = 0.0_r8
 
          if (allocated(clouds % ciw)) then
-            totalice(:) = totalice(:) + clouds % ciw(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % ciw(imem,lvlidx),0.0_r8)
          end if 
 
          if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + clouds % snow(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
          end if 
 
          if (allocated(clouds % graupel)) then
-            totalice(:) = totalice(:) + clouds % graupel(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
          end if 
 
          if (allocated(clouds % hail)) then
-            totalice(:) = totalice(:) + clouds % hail(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
          end if 
 
          runtime % cld_profiles(imem) % totalice(:) = totalice(:)
       else
          if (allocated(clouds % ciw)) then
-            runtime % cld_profiles(imem) % ciw(:) = clouds % ciw(imem,lvlidx)
+            runtime % cld_profiles(imem) % ciw(:) = max(clouds % ciw(imem,lvlidx),0.0_r8)
          end if 
 
          ! "totalice" here is being used only for solid precipitation (no ciw)
-         totalice(:) = 0.0_jprb
+         totalice(:) = 0.0_r8
 
          if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + clouds % snow(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
          end if 
 
          if (allocated(clouds % graupel)) then
-            totalice(:) = totalice(:) + clouds % graupel(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
          end if 
 
          if (allocated(clouds % hail)) then
-            totalice(:) = totalice(:) + clouds % hail(imem,lvlidx)
+            totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
          end if 
 
          runtime % cld_profiles(imem) % sp(:) = totalice(:)
@@ -2345,12 +2361,12 @@ DO imem = 1, ens_size
 
    if (allocated(atmos % sfc_foam_frac)) then
       ! Surface foam fraction (0-1)
-      runtime % profiles(imem) % skin % foam_fraction = atmos % sfc_foam_frac(imem)
+      runtime % profiles(imem) % skin % foam_fraction = min(max(atmos % sfc_foam_frac(imem),0.0_r8),1.0_r8)
    end if
 
    if (allocated(atmos % sfc_snow_frac)) then
       ! Surface snow fraction (0-1)
-      runtime % profiles(imem) % skin % snow_fraction = atmos % sfc_snow_frac(imem)
+      runtime % profiles(imem) % skin % snow_fraction = min(max(atmos % sfc_snow_frac(imem),0.0_r8),1.0_r8)
    end if
 
    if (is_mw) then
@@ -2364,12 +2380,12 @@ DO imem = 1, ens_size
 
    if (is_visir .and. do_lambertian) then
       ! Surface specularity (0-1)
-      runtime % profiles(imem) % skin % specularity = visir_md % specularity
+      runtime % profiles(imem) % skin % specularity = min(max(visir_md % specularity,0.0_jprb),1.0_jprb)
    end if
 
    if (allocated(clouds % simple_cfrac)) then
       ! Simple (column) cloud fraction, 0-1
-      runtime % profiles(imem) % cfraction = clouds % simple_cfrac(imem)
+      runtime % profiles(imem) % cfraction = min(max(clouds % simple_cfrac(imem),0.0_r8),1.0_r8)
    end if
 
    if (allocated(clouds % ctp)) then
@@ -2384,11 +2400,11 @@ DO imem = 1, ens_size
         error_status(:) = 101
         return
       end if
-      runtime % profiles(imem) % zenangle    = max(visir_md % sat_ze,0.)
+      runtime % profiles(imem) % zenangle    = max(visir_md % sat_ze,0.0_jprb)
       runtime % profiles(imem) % azangle     = visir_md % sat_az
 
       ! Solar zenith and azimuth angles (degrees), only relevant if use_solar
-      runtime % profiles(imem) % sunzenangle = visir_md % sun_ze
+      runtime % profiles(imem) % sunzenangle = max(visir_md % sun_ze,0.0_jprb)
       runtime % profiles(imem) % sunazangle  = visir_md % sun_az
    else
       if (mw_md % sat_ze > max_zenith_angle) then
@@ -2397,7 +2413,7 @@ DO imem = 1, ens_size
         return
       end if
       ! Sat. zenith and azimuth angles (degrees)
-      runtime % profiles(imem) % zenangle    = max(mw_md % sat_ze,0.)
+      runtime % profiles(imem) % zenangle    = max(mw_md % sat_ze,0.0_jprb)
       runtime % profiles(imem) % azangle     = mw_md % sat_az
    end if
 
@@ -2416,7 +2432,7 @@ end do ! profile data
 ! 6. Specify surface emissivity and reflectance
 ! --------------------------------------------------------------------------
 
-! In this example we have no values for input emissivities
+! Here we assume we have no values for input emissivities
 runtime % emissivity(:) % emis_in = 0._jprb
 
 ! Calculate emissivity within RTTOV where the input emissivity value is
@@ -3986,7 +4002,7 @@ if (is_visir) then
       newlength = 2 * orglength
 
       ! News. Tell the user we are increasing storage.
-      write(string1, *) 'key (',key,') exceeds visir_obs_metadata length (',orglength,')'
+      write(string1, *) 'Warning: key (',key,') exceeds visir_obs_metadata length (',orglength,')'
       write(string2, *) 'Increasing visir_obs_metadata to length ',newlength
       call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 
@@ -4013,7 +4029,7 @@ else
       newlength = 2 * orglength
 
       ! News. Tell the user we are increasing storage.
-      write(string1, *) 'key (',key,') exceeds mw_obs_metadata length (',orglength,')'
+      write(string1, *) 'Warning: key (',key,') exceeds mw_obs_metadata length (',orglength,')'
       write(string2, *) 'Increasing mw_obs_metadata to length ',newlength
       call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 
