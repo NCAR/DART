@@ -78,7 +78,10 @@ observations will then be performed at 06:00 UTC, at which time analysis
 files will be generated to begin a new ensemble forecast. The WRF model
 will be advanced for 6 hours and a final assimilation cycle will be
 performed at 12:00 UTC. This process could then continue in order to
-investigate the strong rain and wind event.
+investigate the strong rain and wind event. For what it's worth, on NCAR's
+_Cheyenne_ under the default test configuration for this case, it can take
+an hour to complete a forecast/assimilation cycle. Since the tutorial 
+runs for two cycles, it can take twice as long.
 
 The goals of this tutorial are to demonstrate how WRF/DART works. After
 running this tutorial, you will be able to understand the major steps
@@ -886,7 +889,10 @@ perhaps extensively, to run them within your particular computing
 environment. If you will run on NCAR\'s Cheyenne environment, fewer
 edits may be needed, but you should familiarize yourself with
 [running jobs on Cheyenne](https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne/quick-start-cheyenne)
-if necessary.
+if necessary. A single forecast/assimilation cycle of this tutorial
+can take an hour on Cheyenne - longer if debug options are enabled or the
+shared nodes are busy - shorter if more cores or a higher optimization
+level is acceptable.
 
 In this tutorial, we have previously edited the *param.csh* and other
 scripts. Throughout the WRF/DART scripts, there are many options to

@@ -10,8 +10,6 @@
 #                            grib files.  Job will submit individual
 #                            members to a queuing system (or run them
 #                            sequentially).
-#
-# DART $Id$
 ####################################################################################
 
 if ( $#argv >= 1 ) then
@@ -140,7 +138,3 @@ while ( $n <= $ENS_SIZE )
 
 end
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

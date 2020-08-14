@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # job.csh ... Script to run whole assimilation experiment; multiple obs_seq.out files. 
 # Resulting series of jobs can take days to run, depending on the numbers of: 
 #  > observation sequence files (each is a separate job and may be queued), 
@@ -1390,8 +1388,4 @@ if (obs_seq_1_depend == 'false' ) ${REMOVE} ~/lnd.*.rpointer
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

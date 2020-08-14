@@ -7,6 +7,7 @@
 # this script builds and  runs the location test code for each of the
 # possible location modules.
 
+set nonomatch
 set LOGDIR = `pwd`/testing_logs
 mkdir -p $LOGDIR
 \rm -f $LOGDIR/*
@@ -54,7 +55,7 @@ foreach i ( $LOCLIST )
  else
 
     ls -l location_test
-    ( ./location_test  < test.in > $LOGDIR/runlog.$i.out ) || set FAILURE = 1
+    ( ./location_test < test.in > $LOGDIR/runlog.$i.out ) || set FAILURE = 1
 
    echo
    echo
