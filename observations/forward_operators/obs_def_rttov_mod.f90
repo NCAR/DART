@@ -1871,7 +1871,7 @@ end subroutine cloud_profile_setup
 !
 ! istatus: Returns  0 if everything is OK, >0 if error occured.
 !                 101 = zenith angle was greater than max_zenith_angle
-!                 102 = non-monotonically decreasing pressure detected
+!                 102 = non-monotonic pressure detected
 
 subroutine do_forward_model(ens_size, nlevels, flavor, location, &
    atmos, trace_gas, clouds, aerosols, sensor, channel,          &
@@ -2029,7 +2029,7 @@ ly2idx = lvlidx(2:nlevels)
 ! There is one profile per ensemble member
 DO imem = 1, ens_size
 
-   ! check that the pressure is monotonically decreasing from TOA down
+   ! check that the pressure is monotonically increasing from TOA down
    do ilvl = 1, nlevels-1
       if (atmos % pressure(imem,lvlidx(ilvl)) > atmos % pressure(imem,lvlidx(ilvl+1))) then
          if (debug) then
