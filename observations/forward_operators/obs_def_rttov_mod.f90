@@ -3446,7 +3446,7 @@ integer :: this_istatus(ens_size)
 integer  :: i
 real(r8) :: loc_array(3)
 real(r8) :: loc_lon, loc_lat
-real(r8) :: loc_value(ens_size), radiance(ens_size)
+real(r8) :: loc_value(ens_size)
 type(location_type) :: loc
 integer :: maxlevels, numlevels
 
@@ -3899,17 +3899,17 @@ call do_forward_model(ens_size=ens_size,                    &
                       do_lambertian=do_lambertian,          &
                       use_totalice=use_totalice,            &
                       use_zeeman=use_zeeman,                &
-                      radiances=radiance,                   &
+                      radiances=val,                        &
                       error_status=this_istatus,            &
                       visir_md=visir_md,                    &
                       mw_md=mw_md) 
 
 ! copy the status from this_istatus to istatus, set missing if error
-call track_status(ens_size, this_istatus, radiance, istatus, return_now)
+call track_status(ens_size, this_istatus, val, istatus, return_now)
 
 if (debug) then
    print*, 'istatus  = ', istatus 
-   print*, 'radiance = ', radiance
+   print*, 'radiance = ', val
 end if
 
 end subroutine get_expected_radiance
