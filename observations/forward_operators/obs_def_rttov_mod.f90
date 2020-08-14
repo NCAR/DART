@@ -2033,8 +2033,8 @@ DO imem = 1, ens_size
    do ilvl = 1, nlevels-1
       if (atmos % pressure(imem,lvlidx(ilvl)) > atmos % pressure(imem,lvlidx(ilvl+1))) then
          if (debug) then
-            write(string1,*) 'For ens #',imem,', pressure ',lvlidx(ilvl),' was less than pressure ',&
-                lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' < ',atmos%pressure(imem,lvlidx(ilvl+1))
+            write(string1,*) 'For ens #',imem,', pressure ',lvlidx(ilvl),' was greater than pressure ',&
+                lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' > ',atmos%pressure(imem,lvlidx(ilvl+1))
             call error_handler(E_MSG,routine,string1,source,revision,revdate)
          end if
 
