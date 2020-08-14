@@ -3904,16 +3904,13 @@ call do_forward_model(ens_size=ens_size,                    &
                       visir_md=visir_md,                    &
                       mw_md=mw_md) 
 
+! copy the status from this_istatus to istatus, set missing if error
+call track_status(ens_size, this_istatus, radiance, istatus, return_now)
+
 if (debug) then
    print*, 'istatus  = ', istatus 
    print*, 'radiance = ', radiance
 end if
-
-!=================================================================================
-! ... and finally set the return the radiance forward operator value
-
-where (istatus == 0) val = radiance
-where (istatus /= 0) val = missing_r8
 
 end subroutine get_expected_radiance
 
