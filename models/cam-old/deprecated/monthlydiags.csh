@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # run obs_diag on the mainframe a month at a time.  produce
 # obs_diag_output.nc file(s) which need to be copied to 
 # another machine which has matlab to finish generating 
@@ -97,8 +95,4 @@ echo all done
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

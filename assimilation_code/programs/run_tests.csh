@@ -10,6 +10,7 @@
 #
 #----------------------------------------------------------------------
 
+set nonomatch
 set usingmpi=no
 set MPICMD=""
 set LOGDIR=`pwd`/testing_logs
@@ -159,7 +160,7 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
     echo
     if ( $FAILURE ) then
       echo "=================================================================="
-      echo "ERROR - unsuccessful build of $PROGRAMDIRECTORY at "`date`
+      echo "ERROR - unsuccessful build of $PROGRAMDIRECTORY"
       switch ( $PROGRAMDIRECTORY )
          case system_simulation
             echo "obs_sampling_err.f90 build expected to fail if running in reduced precision"
@@ -177,7 +178,7 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
       continue
     else
       echo "=================================================================="
-      echo "End of successful build of $PROGRAMDIRECTORY at "`date`
+      echo "End of successful build of $PROGRAMDIRECTORY"
       echo "=================================================================="
       echo
       echo
@@ -187,7 +188,7 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
 #      echo
 #      echo
 #      echo "=================================================================="
-#      echo "Running tests for $PROGRAMDIRECTORY starting at "`date`
+#      echo "Running tests for $PROGRAMDIRECTORY"
 #      echo "=================================================================="
 #      echo
 #      echo
@@ -202,9 +203,9 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
 #           echo "++++++++++++++++++"
 #           echo Starting $PROG
 #           if ( -f using_mpi_for_$PROG ) then
-#              ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.$PROG.out ) || set FAILURE = 1
+#              ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.$PROGRAMDIRECTORY.$PROG.out ) || set FAILURE = 1
 #           else
-#              (           ./$PROG  > ${LOGDIR}/runlog.$PROG.out ) || set FAILURE = 1
+#              (           ./$PROG  > ${LOGDIR}/runlog.$PROGRAMDIRECTORY.$PROG.out ) || set FAILURE = 1
 #           endif
 #           echo Finished $PROG
 #           echo "++++++++++++++++++"
@@ -217,7 +218,7 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
 #      echo
 #      echo
 #      echo "=================================================================="
-#      echo "Done with tests of $PROGRAMDIRECTORY at "`date`
+#      echo "Done with tests of $PROGRAMDIRECTORY"
 #      echo "=================================================================="
 #      echo
 #      echo

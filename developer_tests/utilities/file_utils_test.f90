@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id: file_utils_test.f90 11289 2017-03-10 21:56:06Z hendric@ucar.edu $
 
 program file_utils_test
 
@@ -16,14 +14,12 @@ use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/developer_tests/utilities/file_utils_test.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 11289 $"
-character(len=128), parameter :: revdate  = "$Date: 2017-03-10 14:56:06 -0700 (Fri, 10 Mar 2017) $"
+character(len=*), parameter :: source   = 'file_utils_test.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 logical, save :: module_initialized = .false.
 
-character(len=128) :: msgstring
 integer :: iunit, io
 character(len=8) :: task_id
 integer  :: test1
@@ -50,7 +46,7 @@ namelist /file_utils_test_nml/  test1, test2, test3
 !----------------------------------------------------------------------
 
 ! initialize the dart libs
-call initialize_mpi_utilities('file_utils_test')
+call initialize_mpi_utilities(source)
 call register_module(source, revision, revdate)
 
 ! Read the namelist entry
@@ -65,7 +61,7 @@ if (do_nml_term()) write(     *     , nml=file_utils_test_nml)
 write(task_id, '(i5)' ) my_task_id()
 
 ! finalize file_utils_test
-call error_handler(E_MSG,'file_utils_test','Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG,source,'Finished successfully.',source,revision,revdate)
 call finalize_mpi_utilities()
 
 ! end of main code
@@ -74,8 +70,3 @@ call finalize_mpi_utilities()
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/developer_tests/utilities/file_utils_test.f90 $
-! $Id: file_utils_test.f90 11289 2017-03-10 21:56:06Z hendric@ucar.edu $
-! $Revision: 11289 $
-! $Date: 2017-03-10 14:56:06 -0700 (Fri, 10 Mar 2017) $

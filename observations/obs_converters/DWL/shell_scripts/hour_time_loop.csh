@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # this is a template for a shell script that can loop
 # over multiple hours and can roll over day, month, and
 # even year boundaries.  see the section inside the loop
@@ -151,8 +149,4 @@ exit 0
 #%# mv obs_seq.combined obs_seq.$curhr
 #%# 
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

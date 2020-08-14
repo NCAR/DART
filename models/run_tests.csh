@@ -10,6 +10,7 @@
 #
 #----------------------------------------------------------------------
 
+set nonomatch
 set usingmpi=no
 set MPICMD=""
 set LOGDIR=`pwd`/testing_logs
@@ -95,6 +96,7 @@ set DO_THESE_MODELS = ( \
   clm \
   cm1 \
   forced_lorenz_96 \
+  gitm \
   ikeda \
   lorenz_04 \
   lorenz_63 \
@@ -107,6 +109,7 @@ set DO_THESE_MODELS = ( \
   simple_advection \
   template \
   wrf \
+  wrf_hydro \
 )
 
 #----------------------------------------------------------------------
@@ -231,7 +234,7 @@ foreach MODEL ( $DO_THESE_MODELS )
     echo
     echo "=================================================================="
     if ( $FAILURE ) then
-      echo "ERROR - unsuccessful test of $MODEL at "`date`
+      echo "ERROR - unsuccessful test of $MODEL"
 
       switch ( $MODEL )
          case FESOM
@@ -250,7 +253,7 @@ foreach MODEL ( $DO_THESE_MODELS )
       endsw
 
     else
-      echo "End of succesful test of $MODEL at "`date`
+      echo "End of succesful test of $MODEL"
     endif
     echo "=================================================================="
     echo
