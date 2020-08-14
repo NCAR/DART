@@ -2,6 +2,7 @@
 ! by ucar, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/dares/dart/dart_download
 !
+! $Id$
 !----------------------------------------------------------------
 !>
 !> this is the interface between the cam-fv atmosphere model and dart.
@@ -113,9 +114,9 @@ public :: nc_write_model_vars,           &
           init_conditions
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'cam-fv/model_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! maximum number of fields you can list to be perturbed
 ! to generate an ensemble if starting from a single state.
@@ -780,11 +781,9 @@ integer  :: four_lons(4), four_lats(4)
 integer  :: status_array(ens_size)
 real(r8) :: lon_fract, lat_fract
 real(r8) :: lon_lat_vert(3)
-real(r8) :: quad_vals(ens_size,4)
+real(r8) :: quad_vals(4, ens_size)
 type(quad_interp_handle) :: interp_handle   ! should this be a pointer?? 
                                             ! is it replicating the internal arrays on assignment?
-
-integer :: imem
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -840,12 +839,14 @@ if (any(status_array /= 0)) then
    return
 endif
 
-do imem=1,ens_size
-   ! do the horizontal interpolation for each ensemble member.
-   ! call one at a time to avoid creating temporary arrays
-   call quad_lon_lat_evaluate(interp_handle, lon_fract, lat_fract, &
-                              quad_vals(:,imem), interp_vals(imem), status_array(imem))
-end do
+! do the horizontal interpolation for each ensemble member
+call quad_lon_lat_evaluate(interp_handle, lon_fract, lat_fract, ens_size, &
+                           quad_vals, interp_vals, status_array)
+
+if (any(status_array /= 0)) then
+   istatus(:) = 8   ! cannot evaluate in the quad
+   return
+endif
 
 if (using_chemistry) &
    interp_vals = interp_vals * get_volume_mixing_ratio(obs_qty)
@@ -962,13 +963,13 @@ integer,             intent(in) :: four_lons(4)
 integer,             intent(in) :: four_lats(4)
 real(r8),            intent(in) :: lon_lat_vert(3)
 integer,             intent(in) :: which_vert
-real(r8),           intent(out) :: quad_vals(ens_size,4) !< array of interpolated values
+real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
 integer,            intent(out) :: my_status(ens_size)
 
 integer  :: icorner, numdims
 integer  :: level_one_array(ens_size)
-integer  :: four_levs1(ens_size, 4), four_levs2(ens_size, 4)
-real(r8) :: four_vert_fracts(ens_size, 4)
+integer  :: four_levs1(4, ens_size), four_levs2(4, ens_size)
+real(r8) :: four_vert_fracts(4, ens_size)
 
 character(len=*), parameter :: routine = 'get_quad_vals:'
 
@@ -988,8 +989,8 @@ if (numdims == 3) then
       call find_vertical_levels(state_handle, ens_size, &
                                 four_lons(icorner), four_lats(icorner), lon_lat_vert(3), &
                                 which_vert, obs_qty, varid, &
-                                four_levs1(:,icorner), four_levs2(:,icorner), & 
-                                four_vert_fracts(:,icorner), my_status)
+                                four_levs1(icorner, :), four_levs2(icorner, :), & 
+                                four_vert_fracts(icorner, :), my_status)
       if (any(my_status /= 0)) return
   
    enddo
@@ -1021,7 +1022,7 @@ else if (numdims == 2) then
       do icorner=1, 4
          call get_values_from_varid(state_handle,  ens_size, & 
                                     four_lons(icorner), four_lats(icorner), &
-                                    level_one_array, varid, quad_vals(:,icorner),my_status)
+                                    level_one_array, varid, quad_vals(icorner,:),my_status)
          if (any(my_status /= 0)) return
 
       enddo
@@ -1029,7 +1030,7 @@ else if (numdims == 2) then
    else ! special 2d case
       do icorner=1, 4
          call get_quad_values(ens_size, four_lons(icorner), four_lats(icorner), &
-                               obs_qty, obs_qty, quad_vals(:,icorner))
+                               obs_qty, obs_qty, quad_vals(icorner,:))
       enddo
       ! apparently this can't fail
       my_status(:) = 0
@@ -1058,10 +1059,10 @@ subroutine get_four_state_values(state_handle, ens_size, four_lons, four_lats, &
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 integer,             intent(in) :: four_lons(4), four_lats(4)
-integer,             intent(in) :: four_levs1(ens_size,4), four_levs2(ens_size,4)
-real(r8),            intent(in) :: four_vert_fracts(ens_size,4)
+integer,             intent(in) :: four_levs1(4, ens_size), four_levs2(4, ens_size)
+real(r8),            intent(in) :: four_vert_fracts(4, ens_size)
 integer,             intent(in) :: varid
-real(r8),           intent(out) :: quad_vals(ens_size,4) !< array of interpolated values
+real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
 integer,            intent(out) :: my_status(ens_size)
 
 integer  :: icorner
@@ -1072,7 +1073,7 @@ character(len=*), parameter :: routine = 'get_four_state_values:'
 do icorner=1, 4
    call get_values_from_varid(state_handle,  ens_size, &
                               four_lons(icorner), four_lats(icorner), &
-                              four_levs1(:,icorner), varid, vals1, &
+                              four_levs1(icorner, :), varid, vals1, &
                               my_status)
 
    if (any(my_status /= 0)) then
@@ -1082,14 +1083,14 @@ do icorner=1, 4
 
    call get_values_from_varid(state_handle,  ens_size, &
                               four_lons(icorner), four_lats(icorner), &
-                              four_levs2(:,icorner), varid, vals2, my_status)
+                              four_levs2(icorner, :), varid, vals2, my_status)
    if (any(my_status /= 0)) then
       my_status(:) = 17   ! cannot retrieve top values
       return
    endif
 
-   call vert_interp(ens_size, vals1, vals2, four_vert_fracts(:,icorner), & 
-                    quad_vals(:,icorner))
+   call vert_interp(ens_size, vals1, vals2, four_vert_fracts(icorner, :), & 
+                    quad_vals(icorner, :))
 
 enddo
 
@@ -1106,10 +1107,10 @@ subroutine get_four_nonstate_values(state_handle, ens_size, four_lons, four_lats
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 integer,             intent(in) :: four_lons(4), four_lats(4)
-integer,             intent(in) :: four_levs1(ens_size,4), four_levs2(ens_size,4)
-real(r8),            intent(in) :: four_vert_fracts(ens_size,4)
+integer,             intent(in) :: four_levs1(4, ens_size), four_levs2(4, ens_size)
+real(r8),            intent(in) :: four_vert_fracts(4, ens_size)
 integer,             intent(in) :: obs_qty
-real(r8),           intent(out) :: quad_vals(ens_size,4) !< array of interpolated values
+real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
 integer,            intent(out) :: my_status(ens_size)
 
 integer  :: icorner
@@ -1120,7 +1121,7 @@ character(len=*), parameter :: routine = 'get_four_nonstate_values:'
 do icorner=1, 4
    call get_values_from_nonstate_fields(state_handle,  ens_size, &
                               four_lons(icorner), four_lats(icorner), &
-                              four_levs1(:,icorner), obs_qty, vals1, my_status)
+                              four_levs1(icorner, :), obs_qty, vals1, my_status)
    if (any(my_status /= 0)) then
       my_status(:) = 16   ! cannot retrieve vals1 values
       return
@@ -1128,14 +1129,14 @@ do icorner=1, 4
 
    call get_values_from_nonstate_fields(state_handle,  ens_size, &
                               four_lons(icorner), four_lats(icorner), &
-                              four_levs2(:,icorner), obs_qty, vals2, my_status)
+                              four_levs2(icorner, :), obs_qty, vals2, my_status)
    if (any(my_status /= 0)) then
       my_status(:) = 17   ! cannot retrieve top values
       return
    endif
 
-   call vert_interp(ens_size, vals1, vals2, four_vert_fracts(:,icorner), &
-                    quad_vals(:,icorner))
+   call vert_interp(ens_size, vals1, vals2, four_vert_fracts(icorner, :), &
+                    quad_vals(icorner, :))
 
 enddo
 
@@ -1246,7 +1247,8 @@ select case (obs_quantity)
      
        ! no stagger - cell centers, or W stagger
        case default
-          vals = phis(lon_index, lat_index)
+  
+        vals = phis(lon_index, lat_index)
   
      end select
     
@@ -4216,10 +4218,10 @@ end subroutine free_std_atm_tables
 !--------------------------------------------------------------------
 
 subroutine load_low_top_table()
-
+	
 std_atm_table_len = 45
 allocate(std_atm_hgt_col(std_atm_table_len), std_atm_pres_col(std_atm_table_len))
-
+	
 std_atm_hgt_col(1)  = 86.0_r8 ; std_atm_pres_col(1)  = 3.732E-01_r8
 std_atm_hgt_col(2)  = 84.0_r8 ; std_atm_pres_col(2)  = 5.308E-01_r8
 std_atm_hgt_col(3)  = 82.0_r8 ; std_atm_pres_col(3)  = 7.498E-01_r8
@@ -4268,7 +4270,7 @@ std_atm_hgt_col(45) = -2.0_r8 ; std_atm_pres_col(45) = 1.278E+05_r8
 
 ! convert km to m
 std_atm_hgt_col(:) = std_atm_hgt_col(:) * 1000.0_r8
-
+	
 end subroutine load_low_top_table
 
 !--------------------------------------------------------------------
@@ -4484,10 +4486,15 @@ std_atm_hgt_col(201) =    0.0_r8  ;  std_atm_pres_col(201) = 1.013E+05_r8
 std_atm_hgt_col(:) = std_atm_hgt_col(:) * 1000.0_r8
 
 end subroutine load_high_top_table
-
+	
 !===================================================================
 ! End of model_mod
 !===================================================================
 
 end module model_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

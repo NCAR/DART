@@ -1,5 +1,5 @@
 
-![DARTlogo](docs/images/Dartboard7.png "DART Logo")
+![DARTlogo](documentation/images/Dartboard7.png "DART Logo")
 
 Copyright 2019 University Corporation for Atmospheric Research
 

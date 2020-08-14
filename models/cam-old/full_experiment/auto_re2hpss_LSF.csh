@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # Saves restart files to MSS. CAM/CLM/ICE, and filter.
 #
 # THIS VERSION is intended to work with the new HPSS system instead of the
@@ -244,4 +246,8 @@ echo "finished with auto_re2hpss at " `date`
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

@@ -3,6 +3,9 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 
 if ( $#argv > 0 ) then
    set n     = ${1}   # pass in the ensemble member number
@@ -56,3 +59,7 @@ touch ${RUN_DIR}/ic_d${dchar}_${n}_ready
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

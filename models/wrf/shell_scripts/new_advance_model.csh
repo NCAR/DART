@@ -1,12 +1,12 @@
 #!/bin/csh
-#
+
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
- 
+#
 # Shell script to run the WRF model from DART input.
 # where the model advance is executed as a separate process.
-#
+
 # This script performs the following:
 # 1.  Creates a temporary directory to run a WRF realization (see options)
 # 2.  Copies or links the necessary files into the temporary directory

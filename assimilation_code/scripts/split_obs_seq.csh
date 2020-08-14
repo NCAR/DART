@@ -3,6 +3,8 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 # Example of a shell script to split a series of obs_sequence files
 # into a series of multiple smaller files.  It requires the 'advance_time'
@@ -102,4 +104,8 @@ echo 'Finished'
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

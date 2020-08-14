@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # SCRIPT:	run_pmo.csh
 # AUTHOR:	T. R. Whitcomb
 #           Naval Research Laboratory
@@ -32,4 +34,8 @@ rm ${LOGFILE}
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

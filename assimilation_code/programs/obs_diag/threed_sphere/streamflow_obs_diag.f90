@@ -1,18 +1,17 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-
-!> The programs defines a series of epochs (periods of time) and geographic
-!> regions and accumulates statistics for these epochs and regions.
-!> All 'possible' observation types are treated separately.
-!> The results are written to a netCDF file.
-!> This version is specifically for identity streamflow observations, i.e.
-!> as defined by the wrf-Hydro support.
-
-!> If the rank histogram is requested (and if the data is available),
-!> only the PRIOR rank is calculated.
+!
+! $Id$
 
 program obs_diag
+
+!-----------------------------------------------------------------------
+! The programs defines a series of epochs (periods of time) and geographic
+! regions and accumulates statistics for these epochs and regions.
+!
+! All 'possible' obs_kinds are treated separately.
+!-----------------------------------------------------------------------
 
 ! In Atmospheric Science, 'spread' has units of standard deviation ...
 ! In filter:obs_space_diagnostics() the 'spread' copies are converted to
@@ -58,10 +57,8 @@ use    utilities_mod, only : open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG,  &
                              initialize_utilities, logfileunit, nmlfileunit,   &
                              find_namelist_in_file, check_namelist_read,       &
-                             do_nml_file, do_nml_term, finalize_utilities,     &
-                             set_filename_list
-
-use netcdf_utilities_mod, only : nc_check
+                             nc_check, do_nml_file, do_nml_term,               &
+                             set_filename_list, finalize_utilities
 
 use         sort_mod, only : sort
 
@@ -74,9 +71,10 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'threed_sphere/streamflow_obs_diag.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source   = &
+   "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 !---------------------------------------------------------------------
 
@@ -127,11 +125,6 @@ integer,  allocatable, dimension(:) :: ens_copy_index
 
 logical :: out_of_range, keeper
 
-! Filter has an option to compute the posterior values or not; consequently
-! the observation sequences may not have posterior values at all. This
-! has a profound impact on the logic of 'obs_diag'
-logical :: has_posteriors = .true.
-
 !---------------------------------------------------------------------
 ! variables associated with quality control
 !
@@ -159,7 +152,7 @@ logical :: has_posteriors = .true.
 ! Anything with a DART QC == 6 has MISSING values for all DART copies
 ! Anything with a DART QC == 7 has 'good' values for all DART copies, EXCEPT
 ! ambiguous case:
-! prior rejected (7) ... posterior fails (should be 7 & 2)
+! prior rejected (7) ... posterior fails (should be 7 & 4)
 !
 ! FIXME can there be a case where the prior is evaluated and the posterior QC is wrong
 ! FIXME ... there are cases where the prior fails but the posterior works ...
@@ -167,9 +160,6 @@ logical :: has_posteriors = .true.
 integer             :: org_qc_index, dart_qc_index, qc_value
 integer, parameter  :: QC_MAX_PRIOR     = 3
 integer, parameter  :: QC_MAX_POSTERIOR = 1
-integer, parameter  :: QC_OUTLIER       = 7
-integer, parameter  :: QC_PO_FOP_FAIL   = 2
-
 real(r8), allocatable, dimension(:) :: qc
 real(r8), allocatable, dimension(:) :: copyvals
 
@@ -188,7 +178,7 @@ real(r8):: input_qc_threshold    = 3.0_r8    ! maximum NCEP QC factor
 
 !-----------------------------------------------------------------------
 ! Namelist with default values
-
+!
 character(len=256) :: obs_sequence_name(max_num_input_files) = ''
 character(len=256) :: obs_sequence_list = ''
 integer, dimension(6) :: first_bin_center = (/ 2003, 1, 1, 0, 0, 0 /)
@@ -282,7 +272,7 @@ integer  :: Nplevels=0, Nhlevels=0, Nmlevels=0
 integer  :: iregion, iepoch, ivar, ifile, num_obs_in_epoch
 real(r8) :: obslon, obslat, obslevel, obsloc3(3)
 
-integer  :: obsindex, i, iunit, io, ikind
+integer  :: obsindex, i, iunit, ierr, io, ikind
 integer  :: seconds, days, Nepochs, num_input_files
 
 integer  :: num_trusted
@@ -488,7 +478,8 @@ ObsFileLoop : do ifile=1, num_input_files
 
    call SetIndices( obs_index, org_qc_index, dart_qc_index, &
             prior_mean_index,   posterior_mean_index,   &
-            prior_spread_index, posterior_spread_index)
+            prior_spread_index, posterior_spread_index, &
+            ens_copy_index )
 
    ! Loop over all potential time periods ... the observation sequence
    ! files are not required to be in any particular order.
@@ -649,10 +640,10 @@ ObsFileLoop : do ifile=1, num_input_files
          endif
          endif
 
-         ! There is an ambiguous case wherein the prior is rejected (DART QC == 7)
-         ! and the posterior forward operator fails (DART QC == 2). In this case,
+         ! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
+         ! and the posterior forward operator fails (DART QC ==4). In this case,
          ! the DART_QC only reflects the fact the prior was rejected - HOWEVER -
-         ! the posterior mean,spread are set to MISSING. 
+         ! the posterior mean,spread are set to MISSING.
          !
          ! If it is your intent to compare identical prior and posterior TRUSTED
          ! observations, then you should enable the following few lines of code.
@@ -661,13 +652,13 @@ ObsFileLoop : do ifile=1, num_input_files
          !
          ! This is the only block of code you should need to change.
 
-         if (qc_value == QC_OUTLIER .and. posterior_mean(1) == MISSING_R8) then
+         if ((qc_value == 7) .and. (abs(posterior_mean(1) - MISSING_R8) < 1.0_r8)) then
             write(string1,*)'WARNING ambiguous case for obs index ',obsindex
             string2 = 'obs failed outlier threshhold AND posterior operator failed.'
-            string3 = 'Counting as a Prior QC == 7, Posterior QC == 2.'
+            string3 = 'Counting as a Prior QC == 7, Posterior QC == 4.'
             if (trusted) then
-! COMMENT      string3 = 'WARNING changing DART QC from 7 to 2'
-! COMMENT      qc_value = 2
+! COMMENT      string3 = 'WARNING changing DART QC from 7 to 4'
+! COMMENT      qc_value = 4
             endif
             call error_handler(E_MSG,'obs_diag',string1,text2=string2,text3=string3)
             num_ambiguous = num_ambiguous + 1
@@ -700,9 +691,8 @@ ObsFileLoop : do ifile=1, num_input_files
 
          pr_zscore = InnovZscore(obs(1), pr_mean, pr_sprd, obs_error_variance, &
                                  qc_value, QC_MAX_PRIOR)
-
-         if (has_posteriors) po_zscore = InnovZscore(obs(1), po_mean, po_sprd, &
-                                    obs_error_variance, qc_value, QC_MAX_POSTERIOR)
+         po_zscore = InnovZscore(obs(1), po_mean, po_sprd, obs_error_variance, &
+                                 qc_value, QC_MAX_POSTERIOR)
 
          indx         = min(int(pr_zscore), MaxSigmaBins)
          nsigma(indx) = nsigma(indx) + 1
@@ -728,7 +718,8 @@ ObsFileLoop : do ifile=1, num_input_files
 
          if ( create_rank_histogram ) then
             call get_obs_values(observation, copyvals)
-            rank_histogram_bin = Rank_Histogram(copyvals, obs_index, obs_error_variance )
+            rank_histogram_bin = Rank_Histogram(copyvals, obs_index, &
+                 obs_error_variance, ens_copy_index)
          endif
 
          ! We have Nregions of interest.
@@ -748,10 +739,8 @@ ObsFileLoop : do ifile=1, num_input_files
             if ((level_index < 1) .or. (level_index > Nlevels)) then
                prior%NbadLV(iepoch,:,iregion,flavor) = &
                prior%NbadLV(iepoch,:,iregion,flavor) + 1
-               if (has_posteriors) then
-                  poste%NbadLV(iepoch,:,iregion,flavor) = &
-                  poste%NbadLV(iepoch,:,iregion,flavor) + 1
-               endif
+               poste%NbadLV(iepoch,:,iregion,flavor) = &
+               poste%NbadLV(iepoch,:,iregion,flavor) + 1
                cycle Areas
             endif
 
@@ -761,8 +750,7 @@ ObsFileLoop : do ifile=1, num_input_files
             if (      org_qc_index  > 0 ) then
                if (qc(org_qc_index) > input_qc_threshold ) then
                call IPE(prior%NbigQC(iepoch,level_index,iregion,flavor), 1)
-                  if (has_posteriors) &
-                     call IPE(poste%NbigQC(iepoch,level_index,iregion,flavor), 1)
+               call IPE(poste%NbigQC(iepoch,level_index,iregion,flavor), 1)
                endif
             endif
 
@@ -778,7 +766,7 @@ ObsFileLoop : do ifile=1, num_input_files
                call IPE(prior%NbadIZ(iepoch,level_index,iregion,flavor), 1)
             endif
 
-            if(po_zscore > rat_cri .and. has_posteriors) then
+            if( po_zscore > rat_cri ) then
                call IPE(poste%NbadIZ(iepoch,level_index,iregion,flavor), 1)
             endif
 
@@ -833,8 +821,8 @@ write(*,*) '# bad UV (wind pairs): ',sum(prior%NbadUV)
 write(*,*) '# bad Level          : ',sum(prior%NbadLV(:,1,:,:))
 write(*,*) '# big (original) QC  : ',sum(prior%NbigQC)
 write(*,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
-if (has_posteriors) write(*,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
-write(*,*) '# priorQC 7 postQC 2 : ',num_ambiguous
+write(*,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
+write(*,*) '# priorQC 7 postQC 4 : ',num_ambiguous
 write(*,*)
 write(*,*) '# trusted prior   : ',sum(prior%Ntrusted)
 write(*,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
@@ -847,20 +835,17 @@ write(*,*) '# prior DART QC 6 : ',sum(prior%NDartQC_6)
 write(*,*) '# prior DART QC 7 : ',sum(prior%NDartQC_7)
 write(*,*) '# prior DART QC 8 : ',sum(prior%NDartQC_8)
 write(*,*)
-
-if (has_posteriors) then
-   write(*,*) '# trusted poste   : ',sum(poste%Ntrusted)
-   write(*,*) '# poste DART QC 0 : ',sum(poste%NDartQC_0)
-   write(*,*) '# poste DART QC 1 : ',sum(poste%NDartQC_1)
-   write(*,*) '# poste DART QC 2 : ',sum(poste%NDartQC_2)
-   write(*,*) '# poste DART QC 3 : ',sum(poste%NDartQC_3)
-   write(*,*) '# poste DART QC 4 : ',sum(poste%NDartQC_4)
-   write(*,*) '# poste DART QC 5 : ',sum(poste%NDartQC_5)
-   write(*,*) '# poste DART QC 6 : ',sum(poste%NDartQC_6)
-   write(*,*) '# poste DART QC 7 : ',sum(poste%NDartQC_7)
-   write(*,*) '# poste DART QC 8 : ',sum(poste%NDartQC_8)
-   write(*,*)
-endif
+write(*,*) '# trusted poste   : ',sum(poste%Ntrusted)
+write(*,*) '# poste DART QC 0 : ',sum(poste%NDartQC_0)
+write(*,*) '# poste DART QC 1 : ',sum(poste%NDartQC_1)
+write(*,*) '# poste DART QC 2 : ',sum(poste%NDartQC_2)
+write(*,*) '# poste DART QC 3 : ',sum(poste%NDartQC_3)
+write(*,*) '# poste DART QC 4 : ',sum(poste%NDartQC_4)
+write(*,*) '# poste DART QC 5 : ',sum(poste%NDartQC_5)
+write(*,*) '# poste DART QC 6 : ',sum(poste%NDartQC_6)
+write(*,*) '# poste DART QC 7 : ',sum(poste%NDartQC_7)
+write(*,*) '# poste DART QC 8 : ',sum(poste%NDartQC_8)
+write(*,*)
 
 write(logfileunit,*)
 write(logfileunit,*) '# observations used  : ',sum(obs_used_in_epoch)
@@ -871,8 +856,8 @@ write(logfileunit,*) '# bad UV (wind pairs): ',sum(prior%NbadUV)
 write(logfileunit,*) '# bad Level          : ',sum(prior%NbadLV(:,1,:,:))
 write(logfileunit,*) '# big (original) QC  : ',sum(prior%NbigQC)
 write(logfileunit,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
-if (has_posteriors) write(logfileunit,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
-write(logfileunit,*) '# priorQC 7 postQC 2 : ',num_ambiguous
+write(logfileunit,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
+write(logfileunit,*) '# priorQC 7 postQC 4 : ',num_ambiguous
 write(logfileunit,*)
 write(logfileunit,*) '# trusted prior   : ',sum(prior%Ntrusted)
 write(logfileunit,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
@@ -885,20 +870,17 @@ write(logfileunit,*) '# prior DART QC 6 : ',sum(prior%NDartQC_6)
 write(logfileunit,*) '# prior DART QC 7 : ',sum(prior%NDartQC_7)
 write(logfileunit,*) '# prior DART QC 8 : ',sum(prior%NDartQC_8)
 write(logfileunit,*)
-
-if (has_posteriors) then
-   write(logfileunit,*) '# trusted poste   : ',sum(poste%Ntrusted)
-   write(logfileunit,*) '# poste DART QC 0 : ',sum(poste%NDartQC_0)
-   write(logfileunit,*) '# poste DART QC 1 : ',sum(poste%NDartQC_1)
-   write(logfileunit,*) '# poste DART QC 2 : ',sum(poste%NDartQC_2)
-   write(logfileunit,*) '# poste DART QC 3 : ',sum(poste%NDartQC_3)
-   write(logfileunit,*) '# poste DART QC 4 : ',sum(poste%NDartQC_4)
-   write(logfileunit,*) '# poste DART QC 5 : ',sum(poste%NDartQC_5)
-   write(logfileunit,*) '# poste DART QC 6 : ',sum(poste%NDartQC_6)
-   write(logfileunit,*) '# poste DART QC 7 : ',sum(poste%NDartQC_7)
-   write(logfileunit,*) '# poste DART QC 8 : ',sum(poste%NDartQC_8)
-   write(logfileunit,*)
-endif
+write(logfileunit,*) '# trusted poste   : ',sum(poste%Ntrusted)
+write(logfileunit,*) '# poste DART QC 0 : ',sum(poste%NDartQC_0)
+write(logfileunit,*) '# poste DART QC 1 : ',sum(poste%NDartQC_1)
+write(logfileunit,*) '# poste DART QC 2 : ',sum(poste%NDartQC_2)
+write(logfileunit,*) '# poste DART QC 3 : ',sum(poste%NDartQC_3)
+write(logfileunit,*) '# poste DART QC 4 : ',sum(poste%NDartQC_4)
+write(logfileunit,*) '# poste DART QC 5 : ',sum(poste%NDartQC_5)
+write(logfileunit,*) '# poste DART QC 6 : ',sum(poste%NDartQC_6)
+write(logfileunit,*) '# poste DART QC 7 : ',sum(poste%NDartQC_7)
+write(logfileunit,*) '# poste DART QC 8 : ',sum(poste%NDartQC_8)
+write(logfileunit,*)
 
 ! If the namelist input does not result in some observations, print
 ! a little summary that may result in better user input.
@@ -1746,14 +1728,14 @@ type(obs_def_type) :: obs_def
 logical, SAVE :: first_time = .true.
 
 if ( .not. get_first_obs(my_sequence, my_obs1) ) then
-   call error_handler(E_ERR,'GetFirstLastObs','No first observation in '//trim(my_fname), &
+   call error_handler(E_ERR,'obs_diag','No first observation in '//trim(my_fname), &
    source,revision,revdate)
 endif
 call get_obs_def(my_obs1,   obs_def)
 my_seqT1 = get_obs_def_time(obs_def)
 
 if ( .not. get_last_obs(my_sequence, my_obsN) ) then
-   call error_handler(E_ERR,'GetFirstLastObs','No last observation in '//trim(my_fname), &
+   call error_handler(E_ERR,'obs_diag','No last observation in '//trim(my_fname), &
    source,revision,revdate)
 endif
 call get_obs_def(my_obsN,   obs_def)
@@ -1865,7 +1847,8 @@ end function GetEnsSize
 
 subroutine SetIndices( obs_index, org_qc_index, dart_qc_index,     &
                        prior_mean_index,   posterior_mean_index,   &
-                       prior_spread_index, posterior_spread_index)
+                       prior_spread_index, posterior_spread_index, &
+                       ens_copy_index )
 
 ! There are many 'copy' indices that need to be set from the obs_sequence
 ! metadata. Some are required, some are optional.
@@ -1877,8 +1860,9 @@ integer, intent(out) :: prior_mean_index
 integer, intent(out) :: posterior_mean_index
 integer, intent(out) :: prior_spread_index
 integer, intent(out) :: posterior_spread_index
+integer, intent(out) :: ens_copy_index(:)
 
-! Using 'seq', 'ens_size', and ens_copy_index from global scope
+! Using 'seq' and 'ens_size' from global scope
 
 integer :: i, ens_count
 character(len=metadatalength) :: metadata
@@ -2019,21 +2003,12 @@ if (dart_qc_index > 0 ) then
    call error_handler(E_MSG,'SetIndices',string1)
 endif
 
-if ( any( (/ prior_mean_index, prior_spread_index/) < 0) ) then
-   string1 = 'Observation sequence has no prior information.'
+if ( any( (/ prior_mean_index,     prior_spread_index, &
+         posterior_mean_index, posterior_spread_index /) < 0) ) then
+   string1 = 'Observation sequence has no prior/posterior information.'
    string2 = 'You will still get a count, maybe observation value, incoming qc, ...'
    string3 = 'For simple information, you may want to use "obs_seq_to_netcdf" instead.'
-   call error_handler(E_MSG, 'SetIndices', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
-endif
-
-has_posteriors = .true.
-if ( any( (/ posterior_mean_index, posterior_spread_index /) < 0) ) then
-   has_posteriors = .false.
-   string1 = 'Observation sequence has no posterior information,'
-   string2 = 'therefore - posterior diagnostics are not possible.'
-   call error_handler(E_WARN, 'SetIndices', string1, &
-              source, revision, revdate, text2=string2)
+   call error_handler(E_MSG, 'obs_diag', string1, text2=string2, text3=string3)
 endif
 
 end subroutine SetIndices
@@ -2218,7 +2193,7 @@ end function InnovZscore
 
 
 function Rank_Histogram(copyvalues, obs_index, &
-                    error_variance ) result(rank)
+                    error_variance, ens_copy_index ) result(rank)
 
 ! Calculates the bin/rank
 ! We don't care about the QC value. If the ob wasn't assimilated
@@ -2227,6 +2202,7 @@ function Rank_Histogram(copyvalues, obs_index, &
 real(r8),dimension(:), intent(in)  :: copyvalues
 integer,               intent(in)  :: obs_index
 real(r8),              intent(in)  :: error_variance
+integer, dimension(:), intent(in)  :: ens_copy_index
 integer                            :: rank
 
 ! Local Variables
@@ -2313,46 +2289,39 @@ endif
 
 if (        myqc == 0 ) then
    call IPE(prior%NDartQC_0(iepoch,ilevel,iregion,itype), 1)
-   if (has_posteriors) &
-      call IPE(poste%NDartQC_0(iepoch,ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_0(iepoch,ilevel,iregion,itype), 1)
 
 elseif (    myqc == 1 ) then
    call IPE(prior%NDartQC_1(iepoch,ilevel,iregion,itype), 1)
-   if (has_posteriors) &
-      call IPE(poste%NDartQC_1(iepoch,ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_1(iepoch,ilevel,iregion,itype), 1)
 
 elseif (    myqc == 2 ) then
    call IPE(prior%NDartQC_2(iepoch,ilevel,iregion,itype), 1)
-   if (has_posteriors) &
-      call IPE(poste%NDartQC_2(iepoch,ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_2(iepoch,ilevel,iregion,itype), 1)
 
 elseif (    myqc == 3 ) then
    call IPE(prior%NDartQC_3(iepoch,ilevel,iregion,itype), 1)
-   if (has_posteriors) &
-      call IPE(poste%NDartQC_3(iepoch,ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_3(iepoch,ilevel,iregion,itype), 1)
 
 elseif (    myqc == 4 ) then
    call IPE(prior%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
-   if (has_posteriors) &
-      call IPE(poste%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
 
 elseif (    myqc == 5 ) then
    call IPE(prior%NDartQC_5(iepoch,ilevel,iregion,itype), 1)
-   if (has_posteriors) &
-      call IPE(poste%NDartQC_5(iepoch,ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_5(iepoch,ilevel,iregion,itype), 1)
 
 elseif (    myqc == 6 ) then
    call IPE(prior%NDartQC_6(iepoch,ilevel,iregion,itype), 1)
-   if (has_posteriors) &
-      call IPE(poste%NDartQC_6(iepoch,ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_6(iepoch,ilevel,iregion,itype), 1)
 
-elseif (    myqc == QC_OUTLIER ) then
+elseif (    myqc == 7 ) then
    call IPE(prior%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
 
-   if (present(posterior_mean) .and. has_posteriors) then
-      if (posterior_mean == MISSING_R8) then
-         ! ACTUALLY A FAILED POSTERIOR FORWARD OPERATOR - ambiguous case
-         call IPE(poste%NDartQC_2(iepoch,ilevel,iregion,itype), 1)
+   if (present(posterior_mean)) then
+      if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
+         ! ACTUALLY A FAILED FORWARD OPERATOR - ambiguous case
+         call IPE(poste%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
       else
          call IPE(poste%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
       endif
@@ -2360,8 +2329,7 @@ elseif (    myqc == QC_OUTLIER ) then
 
 elseif (    myqc == 8 ) then
    call IPE(prior%NDartQC_8(iepoch,ilevel,iregion,itype), 1)
-   if (has_posteriors) &
-      call IPE(poste%NDartQC_8(iepoch,ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_8(iepoch,ilevel,iregion,itype), 1)
 
 endif
 
@@ -2414,12 +2382,12 @@ logical, dimension(7) :: optionals
 prior_qc     = iqc
 posterior_qc = iqc
 
-! There is an ambiguous case wherein the prior is rejected (DART QC == 7)
-! and the posterior forward operator fails (DART QC == 2). In this case,
+! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
+! and the posterior forward operator fails (DART QC ==4). In this case,
 ! the DART_QC reflects the fact the prior was rejected - HOWEVER -
 ! the posterior mean,spread are set to MISSING.
 
-if (prior_qc == QC_OUTLIER .and. pomean == MISSING_R8) posterior_qc = QC_PO_FOP_FAIL
+if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
 
 ! Check to see if we are creating wind speeds from U,V components
 
@@ -2432,10 +2400,10 @@ if ( all(optionals) ) then
    prior_qc     = maxval( (/ iqc, uqc /) )
 
    ! If either the U or V is ambiguous, the wind is ambiguous
-   if     (uqc == QC_OUTLIER .and. upomean == MISSING_R8) then
-      posterior_qc = QC_PO_FOP_FAIL
-   elseif (iqc == QC_OUTLIER .and.  pomean == MISSING_R8) then
-      posterior_qc = QC_PO_FOP_FAIL
+   if     ((uqc == 7) .and. (abs(upomean - MISSING_R8) > 1.0_r8)) then
+      posterior_qc = 4
+   elseif ((iqc == 7) .and. (abs( pomean - MISSING_R8) > 1.0_r8)) then
+      posterior_qc = 4
    else
       posterior_qc = maxval( (/ iqc, uqc /) )
    endif
@@ -2502,8 +2470,10 @@ endif
 !----------------------------------------------------------------------
 
 call IPE(prior%Nposs(iepoch,ilevel,iregion,flavor), 1)
-if (has_posteriors) &
-   call IPE(poste%Nposs(iepoch,ilevel,iregion,flavor), 1)
+call IPE(poste%Nposs(iepoch,ilevel,iregion,flavor), 1)
+
+call RPE(prior%observation(iepoch,ilevel,iregion,flavor), obsmean)
+call RPE(poste%observation(iepoch,ilevel,iregion,flavor), obsmean)
 
 !----------------------------------------------------------------------
 ! Select which set of qcs are valid and accrue everything
@@ -2511,15 +2481,13 @@ if (has_posteriors) &
 
 if ( trusted ) then
    call IPE(prior%Ntrusted(iepoch,ilevel,iregion,flavor), 1)
-   if (has_posteriors) &
-      call IPE(poste%Ntrusted(iepoch,ilevel,iregion,flavor), 1)
+   call IPE(poste%Ntrusted(iepoch,ilevel,iregion,flavor), 1)
 endif
 
 ! Accrue the PRIOR quantities
 if ((      trusted .and.  any(trusted_prior_qcs == prior_qc)) .or. &
     (.not. trusted .and.  any(   good_prior_qcs == prior_qc))) then
    call IPE(prior%Nused(      iepoch,ilevel,iregion,flavor),      1    )
-   call RPE(prior%observation(iepoch,ilevel,iregion,flavor), obsmean   )
    call RPE(prior%ens_mean(   iepoch,ilevel,iregion,flavor), priormean )
    call RPE(prior%bias(       iepoch,ilevel,iregion,flavor), priorbias )
    call RPE(prior%rmse(       iepoch,ilevel,iregion,flavor), priorsqerr)
@@ -2530,19 +2498,16 @@ else
 endif
 
 ! Accrue the POSTERIOR quantities
-if (has_posteriors) then
-   if ((      trusted .and.  any(trusted_poste_qcs == posterior_qc)) .or. &
-       (.not. trusted .and.  any(   good_poste_qcs == posterior_qc))) then
-      call IPE(poste%Nused(      iepoch,ilevel,iregion,flavor),      1   )
-      call RPE(poste%observation(iepoch,ilevel,iregion,flavor), obsmean  )
-      call RPE(poste%ens_mean(   iepoch,ilevel,iregion,flavor), postmean )
-      call RPE(poste%bias(       iepoch,ilevel,iregion,flavor), postbias )
-      call RPE(poste%rmse(       iepoch,ilevel,iregion,flavor), postsqerr)
-      call RPE(poste%spread(     iepoch,ilevel,iregion,flavor), posterior_variance)
-      call RPE(poste%totspread(  iepoch,ilevel,iregion,flavor), posterior_varianceplus)
-   else
-      call IPE(poste%NbadDartQC(iepoch,ilevel,iregion,flavor),       1    )
-   endif
+if ((      trusted .and.  any(trusted_poste_qcs == posterior_qc)) .or. &
+    (.not. trusted .and.  any(   good_poste_qcs == posterior_qc))) then
+   call IPE(poste%Nused(      iepoch,ilevel,iregion,flavor),      1   )
+   call RPE(poste%ens_mean(   iepoch,ilevel,iregion,flavor), postmean )
+   call RPE(poste%bias(       iepoch,ilevel,iregion,flavor), postbias )
+   call RPE(poste%rmse(       iepoch,ilevel,iregion,flavor), postsqerr)
+   call RPE(poste%spread(     iepoch,ilevel,iregion,flavor), posterior_variance)
+   call RPE(poste%totspread(  iepoch,ilevel,iregion,flavor), posterior_varianceplus)
+else
+   call IPE(poste%NbadDartQC(iepoch,ilevel,iregion,flavor),       1    )
 endif
 
 end subroutine Bin4D
@@ -2568,18 +2533,19 @@ do iepoch = 1,Nepochs
 
    ! Normalize the priors
 
+   if (  prior%Nposs(      iepoch, ilev, iregion, ivar) /=0 ) then
+         prior%observation(iepoch, ilev, iregion, ivar) = &
+         prior%observation(iepoch, ilev, iregion, ivar) / &
+         prior%Nposs(      iepoch, ilev, iregion, ivar)
+   endif
+
    if (  prior%Nused(      iepoch, ilev, iregion, ivar) == 0) then
-         prior%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%bias(       iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%spread(     iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R4
    else
-         prior%observation(iepoch, ilev, iregion, ivar) = &
-         prior%observation(iepoch, ilev, iregion, ivar) / &
-         prior%Nused(      iepoch, ilev, iregion, ivar)
-
          prior%ens_mean(   iepoch, ilev, iregion, ivar) = &
          prior%ens_mean(   iepoch, ilev, iregion, ivar) / &
          prior%Nused(      iepoch, ilev, iregion, ivar)
@@ -2605,19 +2571,19 @@ do iepoch = 1,Nepochs
    endif
 
    ! Same thing for the posteriors
+   if (  poste%Nposs(      iepoch, ilev, iregion, ivar) /= 0) then
+         poste%observation(iepoch, ilev, iregion, ivar) = &
+         poste%observation(iepoch, ilev, iregion, ivar) / &
+         poste%Nposs(      iepoch, ilev, iregion, ivar)
+   endif
 
    if (  poste%Nused(      iepoch, ilev, iregion, ivar) == 0) then
-         poste%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%bias(       iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%spread(     iepoch, ilev, iregion, ivar) = MISSING_R4
          poste%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R4
    else
-         poste%observation(iepoch, ilev, iregion, ivar) = &
-         poste%observation(iepoch, ilev, iregion, ivar) / &
-         poste%Nused(      iepoch, ilev, iregion, ivar)
-
          poste%ens_mean( iepoch, ilev, iregion, ivar) = &
          poste%ens_mean( iepoch, ilev, iregion, ivar) / &
          poste%Nused(      iepoch, ilev, iregion, ivar)
@@ -2666,10 +2632,9 @@ end subroutine Normalize4Dvars
 
 
 subroutine WriteNetCDF(fname)
-
 character(len=*), intent(in) :: fname
 
-integer :: ncid, i, nobs, typesdimlen, io
+integer :: ncid, i, nobs, typesdimlen
 integer ::  RegionDimID,  RegionVarID
 integer ::  MlevelDimID,  MlevelVarID
 integer ::  PlevelDimID,  PlevelVarID
@@ -2696,6 +2661,8 @@ if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'WriteNetCDF', &
    'Compiler does not support required kinds of variables.',source,revision,revdate)
 endif
+
+write(*,*)'Creating ',trim(fname)
 
 call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
          ncid = ncid), 'WriteNetCDF', 'create "'//trim(fname)//'"')
@@ -2780,14 +2747,14 @@ enddo
 
 FILEloop : do i = 1, num_input_files
 
-  write(string1,'(''obs_seq_file_'',i5.5)')i
-  io = nf90_put_att(ncid, NF90_GLOBAL, trim(string1), trim(obs_sequence_name(i)))
-  call nc_check(io, 'WriteNetCDF', 'put_att input file names')
+  write(string1,'(''obs_seq_file_'',i4.4)')i
+  io = nf90_put_att(ncid, NF90_GLOBAL, trim(string1), trim(obs_sequence_name(i)) )
+  call nc_check(io, 'WriteNetCDF', 'observation sequence filename archiving')
 
 enddo FILEloop
 
-io = nf90_put_att(ncid, NF90_GLOBAL, 'NumIdentityObs', Nidentity)
-call nc_check(io, 'WriteNetCDF', 'put_att identity '//trim(fname))
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'NumIdentityObs', Nidentity ), &
+           'WriteNetCDF', 'put_att identity '//trim(fname))
 
 !----------------------------------------------------------------------------
 ! Write all observation types that are used. Requires counting how many
@@ -2809,7 +2776,7 @@ endif
 typesdimlen = 0
 do ivar = 1,max_defined_types_of_obs
 
-   nobs = sum(prior%Nposs(:,:,:,ivar))
+   nobs = sum(poste%Nposs(:,:,:,ivar))
 
    if ( verbose ) then
       write(string1,'(i4,1x,(a32),1x,i8,1x,'' obs@vert '',i3,f11.3)') ivar, &
@@ -3181,7 +3148,6 @@ call nc_check(nf90_sync( ncid), 'WriteNetCDF', 'sync '//trim(fname))
 
 !----------------------------------------------------------------------------
 ! write the data we took such pains to collate ...
-! The priors always have values. It is possible that there are no posteriors.
 !----------------------------------------------------------------------------
 
 write(*,*)'Finished writing metadata ... defining output variables ...'
@@ -3191,16 +3157,16 @@ if ( create_rank_histogram ) then
    call Define_Prior_and_Posterior(ncid, prior, poste, &
                     TimeDimID, CopyDimID, RegionDimID, RankDimID)
    write(*,*)'Finished defining output variables ... writing priors ...'
-   call WriteTLRV(ncid, prior, RankDimID)
+   ierr = WriteTLRV(ncid, prior, RankDimID)
 else
    call Define_Prior_and_Posterior(ncid, prior, poste, &
                     TimeDimID, CopyDimID, RegionDimID)
    write(*,*)'Finished defining output variables ... writing priors ...'
-   call WriteTLRV(ncid, prior)
+   ierr = WriteTLRV(ncid, prior)
 endif
 
 write(*,*)'Finished writing priors ... writing posteriors.'
-if (has_posteriors) call WriteTLRV(ncid, poste)
+ierr = WriteTLRV(ncid, poste)
 
 !----------------------------------------------------------------------------
 ! finish ...
@@ -3502,22 +3468,18 @@ DEFINE : do ivar = 1,num_obs_types
 
    ! Define the poste variable and its attributes.
 
-   if (has_posteriors) then
+   call nc_check(nf90_def_var(ncid, name=string2, xtype=nf90_real, &
+          dimids=(/ RegionDimID, LevelDimID, CopyDimID, TimeDimID /), &
+          varid=VarID), routine, 'region:def_var '//trim(string2))
+   call nc_check(nf90_put_att(ncid, VarID, '_FillValue',    MISSING_R4), &
+           routine,'put_att:fillvalue '//trim(string2))
+   call nc_check(nf90_put_att(ncid, VarID, 'missing_value', MISSING_R4), &
+           routine,'put_att:missing '//trim(string2))
 
-      call nc_check(nf90_def_var(ncid, name=string2, xtype=nf90_real, &
-             dimids=(/ RegionDimID, LevelDimID, CopyDimID, TimeDimID /), &
-             varid=VarID), routine, 'region:def_var '//trim(string2))
-      call nc_check(nf90_put_att(ncid, VarID, '_FillValue',    MISSING_R4), &
-              routine,'put_att:fillvalue '//trim(string2))
-      call nc_check(nf90_put_att(ncid, VarID, 'missing_value', MISSING_R4), &
-              routine,'put_att:missing '//trim(string2))
-   
-      if ( is_observation_trusted(obs_type_strings(ivar)) ) then
-         call nc_check(nf90_put_att(ncid, VarID, 'TRUSTED', 'TRUE'), &
-              routine,'put_att:trusted '//trim(string2))
-         call error_handler(E_MSG,routine,string2,text2='is TRUSTED.')
-      endif
-
+   if ( is_observation_trusted(obs_type_strings(ivar)) ) then
+      call nc_check(nf90_put_att(ncid, VarID, 'TRUSTED', 'TRUE'), &
+           routine,'put_att:trusted '//trim(string2))
+      call error_handler(E_MSG,routine,string2,text2='is TRUSTED.')
    endif
 
    ! The rank histogram has no 'copy' dimension, so it must be handled differently.
@@ -3550,10 +3512,11 @@ end subroutine Define_Prior_and_Posterior
 !======================================================================
 
 
-subroutine WriteTLRV(ncid, vrbl, RankDimID)
+function WriteTLRV(ncid, vrbl, RankDimID)
 integer,           intent(in) :: ncid
 type(TLRV_type),   intent(in) :: vrbl
 integer, optional, intent(in) :: RankDimID
+integer :: WriteTLRV
 
 integer :: nobs, Nlevels, ivar, itime, ilevel, iregion
 integer :: Nbins, irank, ndata
@@ -3655,7 +3618,9 @@ FILL : do ivar = 1,num_obs_types
 
 enddo FILL
 
-end subroutine WriteTLRV
+WriteTLRV = 0
+
+end function WriteTLRV
 
 
 !======================================================================
@@ -3852,3 +3817,8 @@ end function lookup_flavor
 
 end program obs_diag
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

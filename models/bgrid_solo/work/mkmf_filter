@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # usage: mkmf_filter [ -mpi | -nompi ]
 #
 # without any args, builds filter without mpi libraries, and it will run
@@ -62,9 +64,13 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f path_names_filter.back
 
-     ../../../build_templates/mkmf -p filter \
- -t  ../../../build_templates/mkmf.template -c"-Duse_netCDF" \
- -a "../../.." ${wrapper_arg} path_names_filter
+../../../build_templates/mkmf -p filter -t ../../../build_templates/mkmf.template   \
+        -a "../../.." ${wrapper_arg} path_names_filter
 
 exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

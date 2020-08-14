@@ -83,7 +83,7 @@ sections, each of which can be read independently:
 This section details how to get started with DART as quickly as possible. This
 section may be for you if you want to see that DART works before spending a lot
 of time learning about the details. However, if this level of detail is too
-sparse for you, or if you run into any problems, please refer to
+sparse for you or if you run into any problems, please refer to
 [More detailed DART setup instructions](#DetailedSetup).
 
 The DART source code is distributed on the GitHub repository
@@ -529,13 +529,13 @@ seven `mkmf_xxxxxx` files for the following programs:
 
 | Program | Purpose |
 | :------ | :------ |
-| [preprocess](../../assimilation_code/programs/preprocess/preprocess.html) | creates custom source code for just the observations of interest |
-| [create_obs_sequence](../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
-| [create_fixed_network_seq](../../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
-| [perfect_model_obs](../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html) | spinup and generate "true state" for synthetic observation experiments |
-| [filter](../../assimilation_code/programs/filter/filter.html) | perform data assimilation analysis |
-| [obs_diag](../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html) | creates observation-space diagnostic files in netCDF format to support visualization and quantification. |
-| [obs_sequence_tool](../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html) | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
+| [preprocess](https://ncar.github.io/DART/api/v0.0.6/program/preprocess.html) | creates custom source code for just the observations of interest |
+| [create_obs_sequence](https://ncar.github.io/DART/api/v0.0.6/program/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
+| [create_fixed_network_seq](https://ncar.github.io/DART/api/v0.0.6/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
+| [perfect_model_obs](https://ncar.github.io/DART/api/v0.0.6/program/perfect_model_obs.html) | spinup and generate "true state" for synthetic observation experiments |
+| [filter](https://ncar.github.io/DART/api/v0.0.6/program/filter.html) | perform data assimilation analysis |
+| [obs_diag](https://ncar.github.io/DART/api/v0.0.6/program/obs_diag.html) | creates observation-space diagnostic files in netCDF format to support visualization and quantification. |
+| [obs_sequence_tool](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html) | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
 
 As mentioned above, `quickbuild.csh` is a script that will build every
 executable in the directory. There is an optional argument that will

@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # This is shell script to create many synthetic observation sequence files
 # by looping over multiple hours and can roll over day, month, and
 # even year boundaries.
@@ -182,4 +184,8 @@ exit 0
 #%# mv obs_seq.combined obs_seq.$curhr
 #%#
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

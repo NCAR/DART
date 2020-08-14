@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 # This script compiles all executables in this directory.
 
 #----------------------------------------------------------------------
@@ -189,4 +191,8 @@ echo "Success: All MPI parallel DART programs compiled."
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

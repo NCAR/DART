@@ -41,8 +41,15 @@ use obs_def_utilities_mod, only : track_status
 
 use     obs_kind_mod,      only : get_index_for_quantity, &
                                   get_name_for_quantity, &
+                                  QTY_SOIL_TEMPERATURE, &
+                                  QTY_LIQUID_WATER, &
+                                  QTY_ICE, &
                                   QTY_SNOWCOVER_FRAC, &
-                                  QTY_GEOPOTENTIAL_HEIGHT
+                                  QTY_SNOW_THICKNESS, &
+                                  QTY_LEAF_CARBON, &
+                                  QTY_WATER_TABLE_DEPTH, &
+                                  QTY_GEOPOTENTIAL_HEIGHT, &
+                                  QTY_SOIL_NITROGEN
 
 use  ensemble_manager_mod, only : ensemble_type
 

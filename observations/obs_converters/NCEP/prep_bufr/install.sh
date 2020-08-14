@@ -1,6 +1,7 @@
 #!/bin/sh 
 #
 # This file is not protected by the DART copyright agreement.
+# DART $Id$
 #
 #  ------------------------------------------------------------------------
 #  This script will make executables which extract data
@@ -101,12 +102,12 @@ fi
 cc="$cc -O"
 ff="$ff -O"
 
+
+
 #  Compile and archive the Bufr Library
 #  ------------------------------------
 
 echo 'Compiling the Bufr library'
-echo "cc is set to $cc"
-echo "ff is set to $ff"
 
 cd lib
 $ff -c *.f
@@ -151,4 +152,9 @@ echo 'Finished making executables'
 cd ..
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

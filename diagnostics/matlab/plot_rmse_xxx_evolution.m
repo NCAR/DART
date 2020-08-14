@@ -212,29 +212,24 @@ for ivar = 1:plotdat.nvars
     [dimnames, ~] = nc_var_dims(fname, plotdat.guessvar);
     
     if ( plotdat.dimensionality == 1 ) % observations on a unit circle, no level
-        plotdat.varlevels   = 1;
-        plotdat.level       = 1;
+        plotdat.level = 1;
         plotdat.level_units = [];
     elseif ( strfind(dimnames{2},'surface') > 0 )
-        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'surface';
     elseif ( strfind(dimnames{2},'undef') > 0 )
-        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'undefined';
     else
-        plotdat.varlevels   = ncread(fname, dimnames{2});
+        plotdat.level       = ncread(fname, dimnames{2});
         plotdat.level_units = nc_read_att(fname, dimnames{2}, 'units');
-        nlevels             = length(plotdat.varlevels);
+        nlevels             = length(plotdat.level);
         if (p.Results.level < 0 )
             % use all the levels
-            plotdat.level   = 1:nlevels;
         elseif (p.Results.level > 0 && p.Results.level < nlevels)
-            plotdat.level   = round(p.Results.level);
+            plotdat.level   = p.Results.level;
         else
-            str1 = sprintf('valid level values are 1 <= %d',nlevels);
-            error('%s\n%f is not a valid level for %s\n',str1,p.Results.level,plotdat.guessvar)
+            error('%d is not a valid level for %s',p.Results.level,plotdat.guessvar)
         end
     end
     
@@ -254,25 +249,26 @@ for ivar = 1:plotdat.nvars
     end
     
     for ilevel = 1:length(plotdat.level)
+        
         priorQCs = get_qc_values(fname, plotdat.guessvar, ...
-            'levelindex', plotdat.level(ilevel), ...
+            'levelindex', ilevel, ...
             'fatal', false, ...
             'verbose', verbose);
-        plotdat.mylevel   = plotdat.level(ilevel);
+        plotdat.mylevel   = ilevel;
         plotdat.ges_Neval = priorQCs.num_evaluated;
         plotdat.ges_Nposs = priorQCs.nposs;
         plotdat.ges_Nused = priorQCs.nused;
-        plotdat.ges_copy  = guess(:,plotdat.mylevel,plotdat.copyindex,:);
-        plotdat.ges_rmse  = guess(:,plotdat.mylevel,plotdat.rmseindex,:);
+        plotdat.ges_copy  = guess(:,ilevel,plotdat.copyindex,:);
+        plotdat.ges_rmse  = guess(:,ilevel,plotdat.rmseindex,:);
         
         if (has_posterior)
             posteQCs = get_qc_values(fname, plotdat.analyvar, ...
-                'levelindex', plotdat.mylevel, ...
+                'levelindex', ilevel, ...
                 'fatal', false, ...
                 'verbose', verbose);
             plotdat.anl_Nused = posteQCs.nused;
-            plotdat.anl_copy  = analy(:,plotdat.mylevel,plotdat.copyindex,:);
-            plotdat.anl_rmse  = analy(:,plotdat.mylevel,plotdat.rmseindex,:);
+            plotdat.anl_copy  = analy(:,ilevel,plotdat.copyindex,:);
+            plotdat.anl_rmse  = analy(:,ilevel,plotdat.rmseindex,:);
         else
             plotdat.anl_Nused = zeros(size(plotdat.ges_Nused));
             plotdat.anl_copy  = plotdat.ges_copy;  % needed for determining limits
@@ -297,9 +293,9 @@ for ivar = 1:plotdat.nvars
             if ( isempty(plotdat.level_units) )
                 plotdat.title = plotdat.myvarname;
             else
-                plotdat.title = sprintf('%s @ %f %s',    ...
-                    plotdat.myvarname,     ... 
-                    plotdat.varlevels(plotdat.mylevel), ...
+                plotdat.title = sprintf('%s @ %d %s',    ...
+                    plotdat.myvarname,     ...
+                    plotdat.level(ilevel), ...
                     plotdat.level_units);
             end
             
@@ -356,7 +352,7 @@ else
 end
 
 if verbose
-    fprintf('region %d %s level %f nobs_poss %d prior %d poste %d\n', ...
+    fprintf('region %d %s level %d nobs_poss %d prior %d poste %d\n', ...
         plotdat.region, plotdat.myvarname, plotdat.mylevel, ...
         sum(ges_Nposs), sum(ges_Nused), anl_Ngood)
     fprintf('%s; %s\n\n', legstr_rmse, legstr_other)

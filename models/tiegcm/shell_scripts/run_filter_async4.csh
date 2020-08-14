@@ -4,6 +4,8 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
+#
 ##------------------------------------------------------------------------------
 ## This block of directives constitutes the preamble for the LSF queuing system
 ## LSF is used on the IBM   Linux cluster 'lightning'
@@ -197,4 +199,8 @@ endif
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 
