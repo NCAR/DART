@@ -55,7 +55,7 @@ foreach i ( $LOCLIST )
  else
 
     ls -l location_test
-    ( ./location_test  < test.in > $LOGDIR/runlog.$i.out ) || set FAILURE = 1
+    ( ./location_test < test.in > $LOGDIR/runlog.$i.out ) || set FAILURE = 1
 
    echo
    echo
