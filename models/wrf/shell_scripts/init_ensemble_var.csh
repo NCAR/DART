@@ -4,7 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-
 # init_ensemble_var.csh - script that creates perturbed initial
 #                         conditions from the WRF-VAR system.
 #                         (perts are drawn from the perturbation bank)
@@ -85,12 +84,13 @@ EOF
 #=================================================================
 #PBS -N first_advance_${n}
 #PBS -j oe
-#PBS -A ${CNCAR_GAU_ACCOUNT}
-#PBS -l walltime=${CADVANCE_TIME}
-#PBS -q ${CADVANCE_QUEUE}
+#PBS -A ${COMPUTER_CHARGE_ACCOUNT}
+#PBS -l walltime=${ADVANCE_TIME}
+#PBS -q ${ADVANCE_QUEUE}
 #PBS -m ae
-#PBS -M ${CEMAIL}
-#PBS -l select=${CADVANCE_NODES}:ncpus=${CADVANCE_PROCS}:mpiprocs=${CADVANCE_MPI}
+#PBS -M ${EMAIL}
+#PBS -k eod
+#PBS -l select=${ADVANCE_NODES}:ncpus=${ADVANCE_PROCS}:mpiprocs=${ADVANCE_MPI}
 #=================================================================
 
    echo "rt_assim_init_${n}.csh is running in `pwd`"
