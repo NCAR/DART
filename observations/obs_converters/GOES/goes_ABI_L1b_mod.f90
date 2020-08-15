@@ -339,7 +339,7 @@ sensor_id   = 44  ! ABI
 !  loop over all observations within the file
 
 obs_num = 1
-if (vloc_pres_hPa == MISSING_R8) then
+if (vloc_pres_hPa < 0.0_r8) then
     which_vert = VERTISUNDEF
 else
     which_vert = VERTISPRESSURE
@@ -440,8 +440,8 @@ xloop: do ix=1,map%nx
       ! TODO: specify this as a function of channel
       obs_err = obs_err_spec
 
-      if (vloc_pres_hPa == MISSING_R8) then
-          ! so no vertical location
+      if (vloc_pres_hPa < 0.0_r8) then
+          ! disable pressure location, use VERTISUNDEF, so no single vertical location
           vloc = 0.0_r8
       else
           ! assign the integrated column a vertical location

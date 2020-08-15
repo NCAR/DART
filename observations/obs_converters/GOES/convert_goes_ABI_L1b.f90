@@ -58,8 +58,8 @@ logical  :: verbose = .false.
 
 real(r8) :: obs_err   = MISSING_R8     ! the fixed obs error (std dev, in radiance units)
                                        ! TODO: make this more sophisticated
-real(r8) :: vloc_pres_hPa = MISSING_R8 ! the fixed location to "place" this observation
-                                       ! in hPa
+real(r8) :: vloc_pres_hPa = -1.0_r8    ! the fixed location to "place" this observation
+                                       ! in hPa. Negative means disable and use VERTISUNDEF
 
 namelist /convert_goes_ABI_L1b_nml/ l1_files, l1_file_list, &
                                     outputfile, &
@@ -95,7 +95,7 @@ if (obs_err == MISSING_R8) then
   call error_handler(E_ERR, source, 'An obs_err value was not specified in the namelist, but is required.',source,revision,revdate)
 end if
 
-if (vloc_pres_hPa == MISSING_R8) then
+if (vloc_pres_hPa < 0.0_r8) then
   call error_handler(E_MSG, source, 'No vertical pressure level defined, using VERTISUNDEF.',source,revision,revdate)
 end if
 
