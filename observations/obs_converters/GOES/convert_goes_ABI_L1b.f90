@@ -6,7 +6,7 @@ program convert_goes_ABI_L1b
 
 ! Program to read GOES-R (16/17) L1b radiances
 
-use types_mod,        only : r8, deg2rad, PI
+use types_mod,        only : r8, deg2rad, PI, MISSING_R8
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence, &
                              init_obs_sequence, print_obs_seq_summary
@@ -56,14 +56,17 @@ integer  :: goes_num = 16
 logical  :: reject_dqf_1 = .true.
 logical  :: verbose = .false.
 
-real(r8) :: obs_err               ! the fixed obs error (std dev, in radiance units)
-                                  ! TODO: make this more sophisticated
+real(r8) :: obs_err   = MISSING_R8     ! the fixed obs error (std dev, in radiance units)
+                                       ! TODO: make this more sophisticated
+real(r8) :: vloc_pres_hPa = MISSING_R8 ! the fixed location to "place" this observation
+                                       ! in hPa
 
 namelist /convert_goes_ABI_L1b_nml/ l1_files, l1_file_list, &
                                     outputfile, &
                                     lon1, lon2, lat1, lat2, &
                                     x_thin, y_thin, goes_num, &
-                                    reject_dqf_1, obs_err, verbose
+                                    reject_dqf_1, obs_err, verbose, &
+                                    vloc_pres_hPa
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
@@ -88,6 +91,14 @@ call check_namelist_read(iunit, io, 'convert_goes_ABI_L1b_nml')
 if (do_nml_file()) write(nmlfileunit, nml=convert_goes_ABI_L1b_nml)
 if (do_nml_term()) write(    *      , nml=convert_goes_ABI_L1b_nml)
 
+if (obs_err == MISSING_R8) then
+  call error_handler(E_ERR, source, 'An obs_err value was not specified in the namelist, but is required.',source,revision,revdate)
+end if
+
+if (vloc_pres_hPa == MISSING_R8) then
+  call error_handler(E_MSG, source, 'No vertical pressure level defined, using VERTISUNDEF.',source,revision,revdate)
+end if
+
 ! when this routine returns, the l1_files variable will have
 ! all the filenames, regardless of which way they were specified.
 filecount = set_filename_list(l1_files, l1_file_list, "convert_goes_ABI_L1b")
@@ -99,7 +110,8 @@ do ifile=1, filecount
 
    ! convert derived type information to DART sequence
    call make_obs_sequence(seq, map, lon1, lon2, lat1, lat2, &
-                          x_thin, y_thin, goes_num, reject_dqf_1, obs_err)
+                          x_thin, y_thin, goes_num, reject_dqf_1, obs_err, &
+                          vloc_pres_hPa)
 
    ! write the sequence to a disk file
    call write_obs_seq(seq, outputfile)
