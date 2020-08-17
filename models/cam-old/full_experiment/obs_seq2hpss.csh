@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Script for archiving months of obs_seq.final files 
 # (for easier access than diagnostics.tar.gz)
 #
@@ -153,8 +151,4 @@ chmod 444 $saved
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

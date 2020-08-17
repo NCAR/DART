@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # This is an example script for how to run a perfect_model experiment.
 # All the required files have been staged in CENTRALDIR and the namelists
 # have been customized for the experiment. Since perfect_model_obs is a single-
@@ -57,8 +55,4 @@ endif
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

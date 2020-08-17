@@ -100,7 +100,9 @@ use     obs_kind_mod, only : get_index_for_quantity,       &
                              QTY_GRAUPEL_MIXING_RATIO,     &
                              QTY_SPECIFIC_HUMIDITY,        &
                              QTY_GEOPOTENTIAL_HEIGHT,      &
-                             QTY_PRECIPITABLE_WATER
+                             QTY_PRECIPITABLE_WATER,       &
+                             QTY_SKIN_TEMPERATURE,         &  ! for rttov
+                             QTY_SURFACE_TYPE                 ! for rttov
 
 use mpi_utilities_mod, only: my_task_id, broadcast_minmax
 
@@ -171,6 +173,7 @@ public :: get_init_template_filename,   &
           get_analysis_time,            &
           get_grid_dims,                &
           get_xland,                    &
+          get_surftype,                 &
           get_cell_center_coords,       &
           get_bdy_mask,                 &
           print_variable_ranges,        &
@@ -423,7 +426,9 @@ real(r8), allocatable :: latEdge(:) ! edge longitudes (degrees, original radians
 real(r8), allocatable :: lonCell(:) ! cell center longitudes (degrees, original radians in file)
 real(r8), allocatable :: latCell(:) ! cell center latitudes  (degrees, original radians in file)
 real(r8), allocatable :: dcEdge(:)  ! distance between two adjacent cell centers (in meters)
-real(r8), allocatable :: xland(:)   ! LAND MASK (1 FOR LAND, 2 FOR WATER)
+real(r8), allocatable :: xland(:)   ! land-ocean mask (1=land including sea-ice ; 2=ocean)  
+real(r8), allocatable :: seaice(:)  ! sea-ice flag (0=no seaice; =1 otherwise) - for rttov
+real(r8), allocatable :: skintemp(:)! ground or water surface temperature      - for rttov
 real(r8), allocatable :: zGridFace(:,:)   ! geometric height at cell faces   (nVertLevelsP1,nCells)
 real(r8), allocatable :: zGridCenter(:,:) ! geometric height at cell centers (nVertLevels,  nCells)
 real(r8), allocatable :: zGridEdge(:,:)   ! geometric height at edge centers (nVertLevels,  nEdges)
@@ -444,6 +449,8 @@ real(r8), allocatable :: edgeNormalVectors(:,:)
 integer,  allocatable :: bdyMaskCell(:)
 integer,  allocatable :: bdyMaskEdge(:)
 integer,  allocatable :: maxLevelCell(:)
+
+integer,  allocatable :: surftype(:)   !  ! surface type (land=0, water=1, seaice = 2) - for rttov
 
 integer         :: model_size          ! the state vector length
 type(time_type) :: model_timestep      ! smallest time to adv model
@@ -628,6 +635,9 @@ allocate(cellsOnVertex(vertexDegree, nVertices))
 allocate(dcEdge(nEdges))
 allocate(nEdgesOnCell(nCells))
 allocate(xland(nCells))
+allocate(seaice(nCells))              ! for rttov
+allocate(skintemp(nCells))            ! for rttov
+allocate(surftype(nCells))            ! for rttov
 allocate(edgesOnCell(maxEdges, nCells))
 allocate(cellsOnEdge(2, nEdges))
 allocate(verticesOnCell(maxEdges, nCells))
@@ -776,7 +786,7 @@ do ivar = 1, nfields
    progvar(ivar)%indexN      = index1 + varsize - 1
    index1                    = index1 + varsize      ! sets up for next variable
 
-   !if ( debug > 11 .and. do_output()) call dump_progvar(ivar)
+   if ( debug > 11 .and. do_output()) call dump_progvar(ivar)
 
 enddo
 
@@ -938,6 +948,7 @@ call set_vertical_localization_coord(vert_localization_coord)
 
 ! set an appropriate value for roundoff tests based
 ! on this code being compiled single or double precision.
+! set to 1e-5 (for single) or 1e-12 (for double precision).
 if (r8 == digits12) then
    roundoff = 1.0e-12_r8
 else
@@ -1083,32 +1094,30 @@ dims(1:ndims) = get_dim_lengths(domid, ivar)
 end subroutine find_mpas_dims
 
 !------------------------------------------------------------------
-subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
+!> given a state vector, a location, and a QTY_xxx, return the
+!> interpolated value at that location, and an error code.  0 is success,
+!> anything positive is an error.  (negative reserved for system use)
+!>
+!>       ERROR codes:
+!>
+!>       ISTATUS = 99:  general error in case something terrible goes wrong...
+!>       ISTATUS = 88:  this kind is not in the state vector
+!>       ISTATUS = 81:  Vertical location too high
+!>       ISTATUS = 80:  Vertical location too low
+!>       ISTATUS = 11:  Could not find the closest cell center that contains this lat/lon
+!>       ISTATUS = 12:  Surface obs too far away from model elevation
+!>       ISTATUS = 13:  Missing value in interpolation.
+!>       ISTATUS = 14:  Could not find the other two cell centers of the triangle that contains this lat/lon
+!>       ISTATUS = 15:  Cell centers of the triangle fall in the lateral boundary zone
+!>       ISTATUS = 16:  Don't know how to do vertical velocity for now
+!>       ISTATUS = 17:  Unable to compute pressure values
+!>       ISTATUS = 18:  altitude illegal
+!>       ISTATUS = 19:  could not compute u using RBF code
+!>       ISTATUS = 101: Internal error; reached end of subroutine without
+!>                      finding an applicable case.
+!>       ISTATUS = 201: Reject observation from user specified pressure level
 
-! given a state vector, a location, and a QTY_xxx, return the
-! interpolated value at that location, and an error code.  0 is success,
-! anything positive is an error.  (negative reserved for system use)
-!
-!       ERROR codes:
-!
-!       ISTATUS = 99:  general error in case something terrible goes wrong...
-!       ISTATUS = 88:  this kind is not in the state vector
-!       ISTATUS = 82:  Unsupported vertical type (VERTISUNDEF)
-!       ISTATUS = 81:  Vertical location too high
-!       ISTATUS = 80:  Vertical location too low
-!       ISTATUS = 11:  Could not find the closest cell center that contains this lat/lon
-!       ISTATUS = 12:  Surface obs too far away from model elevation
-!       ISTATUS = 13:  Missing value in interpolation.
-!       ISTATUS = 14:  Could not find the other two cell centers of the triangle that contains this lat/lon
-!       ISTATUS = 15:  Cell centers of the triangle fall in the lateral boundary zone
-!       ISTATUS = 16:  Don't know how to do vertical velocity for now
-!       ISTATUS = 17:  Unable to compute pressure values
-!       ISTATUS = 18:  altitude illegal
-!       ISTATUS = 19:  could not compute u using RBF code
-!       ISTATUS = 101: Internal error; reached end of subroutine without
-!                      finding an applicable case.
-!       ISTATUS = 201: Reject observation from user specified pressure level
-!
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
 ! passed variables
 
@@ -1169,7 +1178,7 @@ if(is_vertical(location, "SURFACE").and. sfc_elev_max_diff >= 0) then
       else
          istatus = 12
          if (debug > 10 .and. do_output()) &
-         print*, 'model_interpolate: abs(dz) > sfc_elev_max_diff:', llv(3)-zGridFace(1,cellid)
+         print*, 'model_interpolate: Skip due to abs(dz) > sfc_elev_max_diff:', llv(3)-zGridFace(1,cellid)
          goto 100
       endif
    endif
@@ -1182,10 +1191,11 @@ endif
 ! also there are options for the winds because mpas has both
 ! winds on the cell edges (normal only) and reconstructed winds
 ! at the cell centers (U,V).  there are namelist options to control
-! which to use if both are in the state vector.  we can compute
-! specific humidity from the vapor mixing ratio (which we know
-! we have because we require potential temp, mixing ratio, and
-! density to be in the state vector in all cases.)
+! which to use if both are in the state vector.  
+! As another note, mpas defines the model variable qv as water vapor 
+! mixing ratio while it defines q2 as 2-meter specific humidity,
+! not 2-m water vapor mixing ratio, so q2 should be specified as 
+! QTY_2M_SPECIFIC_HUMIDITY in mpas_state_variables in &mpas_vars_nml.
 
 ! is this field in the state?
 ivar = get_progvar_index_from_kind(obs_kind)
@@ -1203,6 +1213,8 @@ else
       case (QTY_SURFACE_ELEVATION, QTY_GEOPOTENTIAL_HEIGHT)
          goodkind = .true.
       case (QTY_PRESSURE)   ! surface pressure should be in the state
+         goodkind = .true.
+      case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE)   ! Ha: added for rttov
          goodkind = .true.
       case (QTY_SPECIFIC_HUMIDITY, QTY_2M_SPECIFIC_HUMIDITY)
          goodkind = .true.
@@ -1274,7 +1286,7 @@ if ((obs_kind == QTY_U_WIND_COMPONENT .or. &
       ! return V
       call compute_u_with_rbf(state_handle, ens_size, location, .FALSE., expected_obs, istatus)
    endif
-   if (debug > 11 .and. do_output()) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus, expected_obs
+   if (debug > 11 .and. do_output()) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus(1), expected_obs(1)
    if (all(istatus /= 0)) goto 100   ! if everyone has failed, we can exit
 
 else if (obs_kind == QTY_TEMPERATURE) then
@@ -1291,13 +1303,13 @@ else if (obs_kind == QTY_TEMPERATURE) then
    expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus(:))
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: TEMPERATURE ', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: TEMPERATURE ', istatus(1), expected_obs(1), trim(locstring)
 
 else if (obs_kind == QTY_PRESSURE) then
    call  compute_pressure_at_loc(state_handle, ens_size, location, expected_obs, istatus)
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: PRESSURE ', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: PRESSURE ', istatus(1), expected_obs(1), trim(locstring)
 
 else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
    location_tmp = location
@@ -1307,7 +1319,7 @@ else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
      if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
    enddo
 
-else if (obs_kind == QTY_VAPOR_MIXING_RATIO .or. obs_kind == QTY_2M_VAPOR_MIXING_RATIO) then
+else if (obs_kind == QTY_VAPOR_MIXING_RATIO) then 
    tvars(1) = get_progvar_index_from_kind(obs_kind)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
@@ -1319,14 +1331,10 @@ else if (obs_kind == QTY_VAPOR_MIXING_RATIO .or. obs_kind == QTY_2M_VAPOR_MIXING
    enddo
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus(1), expected_obs(1), trim(locstring)
 
-else if (obs_kind == QTY_SPECIFIC_HUMIDITY .or. obs_kind == QTY_2M_SPECIFIC_HUMIDITY) then
-   if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
-      tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
-   else
-      tvars(1) = get_progvar_index_from_kind(QTY_2M_VAPOR_MIXING_RATIO)
-   endif
+else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
+   tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
    if ( all(istatus /= 0 ) ) goto 100
@@ -1343,16 +1351,26 @@ else if (obs_kind == QTY_SPECIFIC_HUMIDITY .or. obs_kind == QTY_2M_SPECIFIC_HUMI
    enddo
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: SH/SH2 ', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: SH2 ', istatus(1), expected_obs(1), trim(locstring)
 
-else if (obs_kind == QTY_SURFACE_ELEVATION) then
+else if (obs_kind == QTY_SURFACE_ELEVATION .or. &
+         obs_kind == QTY_SKIN_TEMPERATURE  .or. obs_kind == QTY_SURFACE_TYPE ) then
 
-   call compute_elevation_with_barycentric(location, expected_obs(1), istatus(1))
+   if (obs_kind == QTY_SURFACE_ELEVATION) then
+       call compute_surface_data_with_barycentric(zGridFace(1,:), location, expected_obs(1), istatus(1))
+   else if (obs_kind == QTY_SKIN_TEMPERATURE) then
+       call compute_surface_data_with_barycentric(skintemp(:), location, expected_obs(1), istatus(1))
+   else if (obs_kind == QTY_SURFACE_TYPE) then
+       call get_surftype(nCells,surftype)
+       call compute_surface_data_with_barycentric(surftype(:)*1.0_r8, location, expected_obs(1), istatus(1))
+   endif
+
    expected_obs(2:ens_size) = expected_obs(1)
    istatus(2:ens_size) = istatus(1)
 
    if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: SURFACE_ELEVATION', istatus, expected_obs, trim(locstring)
+      print *, 'model_interpolate: ', trim(get_name_for_quantity(obs_kind)), ' ', istatus(1), &
+                                      expected_obs(1), trim(locstring)
 
 else
    ! all other kinds come here.
@@ -1363,7 +1381,8 @@ else
    expected_obs = values(1, :)
 
    if (debug > 11 .and. do_output()) then
-       print*, 'generic interpolation in compute_scalar_with_barycentric: ', obs_kind
+       print*, 'generic interpolation in compute_scalar_with_barycentric: ', obs_kind, &
+               trim(get_name_for_quantity(obs_kind))
        do e = 1, ens_size
           print*, 'member ',e, ' istatus(e)=',istatus(e), ', expected_obs(e)=', expected_obs(e)
        enddo
@@ -1409,7 +1428,7 @@ do e = 1, ens_size
       call error_handler(E_ERR,'model_interpolate', string1, source,revision,revdate)
    endif
 
-   if (debug > 11 .and. do_output()) then
+   if (debug > 12 .and. do_output()) then
       write(string2,*) 'Completed for member ',e,' obs_kind', obs_kind,' expected_obs = ', expected_obs(e)
       write(string3,*) 'istatus = ', istatus(e), ' at ', trim(locstring)
       call error_handler(E_MSG, 'model_interpolate', string2, source, revision, revdate, text2=string3)
@@ -1662,6 +1681,9 @@ if (allocated(zGridCenter))    deallocate(zGridCenter)
 if (allocated(dcEdge))         deallocate(dcEdge)
 if (allocated(cellsOnVertex))  deallocate(cellsOnVertex)
 if (allocated(xland))          deallocate(xland)
+if (allocated(seaice))         deallocate(seaice)
+if (allocated(skintemp))       deallocate(skintemp)
+if (allocated(surftype))       deallocate(surftype)
 if (allocated(nEdgesOnCell))   deallocate(nEdgesOnCell)
 if (allocated(edgesOnCell))    deallocate(edgesOnCell)
 if (allocated(cellsOnEdge))    deallocate(cellsOnEdge)
@@ -3050,6 +3072,30 @@ end subroutine get_xland
 
 !------------------------------------------------------------------
 
+subroutine get_surftype(Cells,surface_type)
+
+! public routine for returning surface type (for rttov)
+! As defined in atmos_profile_type in obs_def_rttov_mod.f90
+! surface type (land=0, water=1, seaice = 2)
+
+integer,  intent(in)  :: Cells
+integer,  allocatable, intent(out) :: surface_type(:)
+
+if ( .not. module_initialized ) call static_init_model()
+
+allocate(surface_type(Cells))
+
+! xland(:)   ! land-ocean mask (1=land including sea-ice ; 2=ocean)  
+! seaice(:)  ! sea-ice flag (0=no seaice; =1 seaice) - for rttov
+
+surface_type = 0                          ! land
+where (seaice == 1.0_r8) surface_type  = 2     ! seaice
+where ( xland == 2.0_r8) surface_type  = 1     ! ocean
+
+end subroutine get_surftype
+
+!------------------------------------------------------------------
+
 subroutine get_cell_center_coords(Cells,Lats,Lons)
 
 ! public routine for returning cell center coordinates
@@ -3224,6 +3270,8 @@ call nc_get_variable(ncid, 'dcEdge',        dcEdge,        routine)
 call nc_get_variable(ncid, 'zgrid',         zGridFace,     routine)
 call nc_get_variable(ncid, 'cellsOnVertex', cellsOnVertex, routine)
 call nc_get_variable(ncid, 'xland',         xland,         routine)
+call nc_get_variable(ncid, 'seaice',        seaice,        routine)  ! Ha: added for rttov
+call nc_get_variable(ncid, 'skintemp',      skintemp,      routine)  ! Ha: added for rttov
 
 dxmax = maxval(dcEdge)  ! max grid resolution in meters
 
@@ -3272,6 +3320,8 @@ if ( debug > 9 .and. do_output() ) then
    write(*,*)'EdgesOnCell       range ',minval(EdgesOnCell),       maxval(EdgesOnCell)
    write(*,*)'cellsOnEdge       range ',minval(cellsOnEdge),       maxval(cellsOnEdge)
    write(*,*)'xland             range ',minval(xland),             maxval(xland)
+   write(*,*)'seaice            range ',minval(seaice),            maxval(seaice)       ! for rttov
+   write(*,*)'skintemp          range ',minval(skintemp),          maxval(skintemp)     ! for rttov
    if(data_on_edges) then
       write(*,*)'latEdge        range ',minval(latEdge),           maxval(latEdge)
       write(*,*)'lonEdge        range ',minval(lonEdge),           maxval(lonEdge)
@@ -4322,7 +4372,7 @@ endif
 
 if(debug > 10 .and. do_output()) then
    print *, 'compute_pressure_at_loc: base location ',llv(1:3)
-   print *, 'compute_pressure_at_loc: istatus, pressure ', istatus, ploc
+   print *, 'compute_pressure_at_loc: istatus, pressure ', istatus(1), ploc(1)
 endif
 
 end subroutine compute_pressure_at_loc
@@ -5129,13 +5179,16 @@ ier = 3
 
 end subroutine find_height_bounds
 
+
 !------------------------------------------------------------------
+!> given a location and 3 cell ids, return three sets of:
+!> the two level numbers that enclose the given vertical value
+!> plus the fraction between them for each of the 3 cell centers.
+!> If the requested location uses a vertical coordinate that only
+!> has one level, both level numbers are identical ... 1 and the
+!> fractions are identical ... 0.0
 
 subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, oncenters, lower, upper, fract, ier)
-
-! given a location and 3 cell ids, return three sets of:
-!  the two level numbers that enclose the given vertical
-!  value plus the fraction between them for each of the 3 cell centers.
 
 ! note that this code handles data at cell centers, at edges, but not
 ! data on faces.  so far we don't have any on faces.
@@ -5191,18 +5244,9 @@ if ((debug > 10) .and. do_output()) then
    call error_handler(E_MSG, 'find_vert_level',string2,source, revision, revdate)
 endif
 
-! no defined vertical location (e.g. vertically integrated vals)
-if (verttype == VERTISUNDEF) then
-   ier = 82
-   return
-endif
-
-! vertical is defined to be on the surface (level 1 here).
-! for 2d fields there is no level 2, so since we are not
-! computing the fraction but setting it here and returning
-! we can set upper to be 1 as well and avoid a reference to
-! a non-existent level 1 for 2d fields in the calling code.
-if(verttype == VERTISSURFACE) then  ! same across the ensemble
+! VERTISSURFACE describes variables on A surface (not necessarily THE surface)
+! VERTISUNDEF describes no defined vertical location (e.g. vertically integrated vals)
+if(verttype == VERTISSURFACE .or. verttype == VERTISUNDEF) then  ! same across the ensemble
    lower(1:nc, :) = 1
    upper(1:nc, :) = 1
    fract(1:nc, :) = 0.0_r8 
@@ -5356,46 +5400,60 @@ ier = 0
 ! Find the lowest pressure
 call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, 1, nbounds, pressure(1, :), temp_ier)
-if(debug > 11 .and. do_output()) print *, 'find_pressure_bounds: find the lowest p, ier at k=1 ', pressure(1,:), ier
+if(debug > 10 .and. do_output()) &
+   print *, 'find_pressure_bounds k=1: p, temp_ier, ier', 1, pressure(1,:), temp_ier, ier
 
 where(ier(:) == 0) ier(:) = temp_ier(:)
 
 ! Get the highest pressure level
 call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, nbounds, nbounds, pressure(nbounds, :), temp_ier)
-if(debug > 11 .and. do_output()) print *, 'find_pressure_bounds: find the highest p, ier at k= ', nbounds, pressure(nbounds,:), ier
+if(debug > 10 .and. do_output()) &
+   print *, 'find_pressure_bounds k=N: p, temp_ier, ier', nbounds, pressure(nbounds,:), temp_ier, ier
 
 where(ier(:) == 0) ier(:) = temp_ier(:)
 
 ! Check for out of the column range
-where(p(:) > pressure(      1, :)) ier(:) = 80
 where(p(:) < pressure(nbounds, :)) ier(:) = 81
+!where(p(:) > pressure(      1, :)) ier(:) = 80
 
 if(all(ier /= 0)) return
 
-! Loop through the rest of the column from the bottom up
 found_level(:) = .false.
 
+! Check if the obs is located below the lowest model level in each member.
+do e = 1, ens_size
+   if(p(e) >= pressure(1, e)) then
+      found_level(e) = .true.
+            fract(e) = 0.0_r8
+            lower(e) = 1
+            upper(e) = 1
+   endif
+enddo !e = 1, ens_size
+if(all(found_level)) return
+
+! Loop through the rest of the column from the bottom up
 do i = 2, nbounds
    ! we've already done this call for level == nbounds
    if (i /= nbounds) then
       call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
          qv_base_offset, cellid, i, nbounds, pressure(i, :), temp_ier)
-      if(debug > 11 .and. do_output()) print *, 'find_pressure_bounds: find p, ier at k= ', i, pressure(i,:), ier
+      if(debug > 11 .and. do_output()) &
+         print *, 'find_pressure_bounds k=?: p, temp_ier, ier ', i, pressure(i,:), temp_ier, ier
 
       where (ier(:) == 0) ier(:) = temp_ier(:)
    endif
    
-   ! Check if pressure at lower level is larger than at upper level
-   ! (shouldn't happen).
+   ! Check if pressure is not monotonically descreased with level.
    if(any(pressure(i, :) > pressure(i-1, :))) then
       if (debug > 0 .and. do_output()) then
-         write(*, *) 'lower pressure larger than upper pressure at cellid',  cellid
+         write(*, *) 'pressure at the level is larger than the level below at cellid',  cellid
          do e=1, ens_size
-            write(*, *) 'ens#, level nums, pressures: ', e,i-1,i,pressure(i-1,e),pressure(i,e)
+            write(*, '(A,3I4,F9.2,A,F9.2)') &
+               'ens#, level, level-1, p(level), p(level-1) ', e,i,i-1,pressure(i,e),' ?>? ',pressure(i-1,e)
          enddo
       endif
-      where(pressure(i, :) > pressure(i-1, :)) ier(:) = 988
+     where(pressure(i, :) > pressure(i-1, :)) ier(:) = 988
    endif
 
    ! each ensemble member could have a vertical between different levels,
@@ -5404,13 +5462,13 @@ do i = 2, nbounds
 
       ! if we've already run into an error, or we've already found the
       ! level for this ensemble member, skip the rest of this loop.
-      if (ier(e) /= 0) cycle
+      if (ier(e) /= 0)    cycle
       if (found_level(e)) cycle
 
       ! Is pressure between levels i-1 and i?  
       ! if so, set the lower and upper level numbers and fraction across.
       ! fraction is 0 at level (i-1) and 1 at level(i).
-      if(p(e) > pressure(i, e)) then
+      if(p(e) >= pressure(i, e)) then
          found_level(e) = .true.
          lower(e) = i - 1
          upper(e) = i
@@ -5423,7 +5481,7 @@ do i = 2, nbounds
             fract(e) = (p(e) - pressure(i-1,e)) / (pressure(i,e) - pressure(i-1,e))
          endif
 
-         if ((debug > 9) .and. do_output()) print '(A,3F26.18,2I4,F22.18)', &
+         if ((debug > 9) .and. do_output()) print '(A,3F10.2,2I4,F10.2)', &
             "find_pressure_bounds: p_in, pr(i-1), pr(i), lower, upper, fract = ", &
             p(e), pressure(i-1,e), pressure(i,e), lower(e), upper(e), fract(e)
 
@@ -5614,6 +5672,7 @@ if(ier(1) /= 0) then
    return
 endif
 
+! If the field is on a single level, lower and upper are both 1
 call find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
 if(all(ier /= 0)) return
 
@@ -5632,33 +5691,42 @@ do k=1, n
       low_offset = (c(i)-1) * nvert
       upp_offset = (c(i)-1) * nvert
 
-      did_member(:) = .false.
+      if( nvert == 1 ) then         ! fields on a surface (1-D, one level, ...)
 
-      do e = 1, ens_size
+          ! Because 'lower(i,1)-1' evaluates to zero for 1-D, no need to add it
+          fdata(i,:) = get_state(index1 + low_offset, state_handle)
 
-         if (did_member(e)) cycle
+      else                          ! 2-D fields
 
-         !> minimize the number of times we call get_state() by
-         !> doing all the ensemble members which are between the same
-         !> two vertical levels.  this is true most of the time. 
-         !> in some cases it could be 2 or 3 different pairs of levels because 
-         !> of differences in vertical conversion that depends on per-member fields.
+         did_member(:) = .false.
 
-         lowval(i,:) =  (get_state(index1 + low_offset + lower(i,e)-1, state_handle))
-         uppval(i,:) =  (get_state(index1 + upp_offset + upper(i,e)-1, state_handle))
+         do e = 1, ens_size
 
-         thislower = lower(i, e)
-         thisupper = upper(i, e)
+            if (did_member(e)) cycle
 
-         ! for all remaining ensemble members, use these values if the lower and
-         ! upper level numbers are the same.  fract() will vary with member.
-         do e2=e, ens_size
-            if (thislower == lower(i, e2) .and. thisupper == upper(i, e2)) then
-               fdata(i, e2) = lowval(i, e2)*(1.0_r8 - fract(i, e2)) + uppval(i, e2)*fract(i, e2)
-               did_member(e2) = .true.
-            endif
-         enddo
-      enddo  ! end ens_size
+            !> minimize the number of times we call get_state() by
+            !> doing all the ensemble members which are between the same
+            !> two vertical levels.  this is true most of the time. 
+            !> in some cases it could be 2 or 3 different pairs of levels because 
+            !> of differences in vertical conversion that depends on per-member fields.
+
+            lowval(i,:) = get_state(index1 + low_offset + lower(i,e)-1, state_handle)
+            uppval(i,:) = get_state(index1 + upp_offset + upper(i,e)-1, state_handle)
+
+            thislower = lower(i, e)
+            thisupper = upper(i, e)
+
+            ! for all remaining ensemble members, use these values if the lower and
+            ! upper level numbers are the same.  fract() will vary with member.
+            do e2=e, ens_size
+               if (thislower == lower(i, e2) .and. thisupper == upper(i, e2)) then
+                  fdata(i, e2) = lowval(i, e2)*(1.0_r8 - fract(i, e2)) + uppval(i, e2)*fract(i, e2)
+                  did_member(e2) = .true.
+               endif
+            enddo
+         enddo  ! end ens_size
+
+      endif                         ! 2-D fields
 
    enddo  ! corners
 
@@ -5674,10 +5742,13 @@ enddo
 end subroutine compute_scalar_with_barycentric
 
 !------------------------------------------------------------
+!> Interpolates metadata variables to an arbitrary location.
+!> This routine can only be used with variables in module storage.
 
-subroutine compute_elevation_with_barycentric(loc, dval, ier, this_cellid)
+subroutine compute_surface_data_with_barycentric(var1d, loc, dval, ier, this_cellid)
 
 type(location_type), intent(in)  :: loc
+real(r8),            intent(in)  :: var1d(:)
 real(r8),            intent(out) :: dval
 integer,             intent(out) :: ier
 integer, optional,   intent(in)  :: this_cellid
@@ -5692,16 +5763,17 @@ call find_triangle (loc, nc, c, weights, ier, this_cellid)
 if(ier /= 0) return
 
 do i = 1, nc
-   fdata(i) = zGridFace(1, c(i))    ! level 1, selected cell number
+   fdata(i) = var1d(c(i))    ! selected cell ID number
 enddo
 
 ! use weights to compute value at interp point.
 dval = sum(weights(1:nc) * fdata(1:nc))
 
 if(debug > 9 .and. do_output()) &
-   print '(A,7f12.5)','compute_elevation_with_barycentric: corner vals, weights, result: ',fdata(:),weights(:),dval
+   print '(A,7f12.5)','compute_surface_data_with_barycentric: corner vals, weights, result: ',&
+                      fdata(:),weights(:),dval
 
-end subroutine compute_elevation_with_barycentric
+end subroutine compute_surface_data_with_barycentric
 
 !------------------------------------------------------------
 
@@ -5854,8 +5926,9 @@ endif
 end subroutine find_triangle
 
 !------------------------------------------------------------
-!> what does this layer do?  this now seems identical to
-!> find_vert_level() plus some debug info.
+!> This routine adds some error checking because find_vert_level
+!> has some early return statements that prevent having the debugging
+!> information in it.
 
 subroutine find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
 
@@ -5871,15 +5944,15 @@ integer,             intent(out) :: ier(:) ! ens_size
 integer :: e
 
 ! initialization
-lower = MISSING_R8
-upper = MISSING_R8
+lower = MISSING_I
+upper = MISSING_I
 fract = 0.0_r8
 
 ! need vert index for the vertical level
 call find_vert_level(state_handle, ens_size, loc, nc, c, .true., lower, upper, fract, ier)
 
 if (debug > 10 .and. do_output()) then
-   write(string3,*) 'ier = ',ier (1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
+   write(string3,'(A,I5,A,3I10,A,3F7.2)') 'ier = ',ier(1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
    call error_handler(E_MSG, 'find_vert_indices', string3, source, revision, revdate)
 endif
 

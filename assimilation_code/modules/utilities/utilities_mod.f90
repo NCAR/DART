@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module utilities_mod
 
@@ -77,7 +75,9 @@ public :: get_unit, &
           check_namelist_read, &
           do_nml_file, &
           do_nml_term, &
-          log_it
+          log_it, &
+          interactive_r, &
+          interactive_i
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -115,9 +115,9 @@ end interface
 logical :: standalone = .false.
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'utilities_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 character(len=512) :: msgstring1, msgstring2, msgstring3
 
@@ -2822,8 +2822,94 @@ call error_handler(E_MSG, 'dump_unit_attributes', string1, &
 
 end subroutine output_unit_attribs
 
-!-----------------------------------------------------------------------
-!-----------------------------------------------------------------------
+!----------------------------------------------------------------------
+!> prompt for a real value, optionally setting min and/or max limits
+!> loops until valid value input.
+
+function interactive_r(str1,minvalue,maxvalue)
+real(r8)                       :: interactive_r
+character(len=*),   intent(in) :: str1
+real(r8), optional, intent(in) :: minvalue
+real(r8), optional, intent(in) :: maxvalue
+
+
+! Prompt and ensure value is in range if limits are specified
+
+if (present(minvalue) .and. present(maxvalue)) then
+
+   interactive_r = minvalue - 1.0_r8
+   MINMAXLOOP : do while ((interactive_r < minvalue) .or. (interactive_r > maxvalue))
+      write(*, *) 'Enter '//str1
+      read( *, *) interactive_r
+   end do MINMAXLOOP
+
+elseif (present(minvalue)) then
+
+   interactive_r = minvalue - 1.0_r8
+   MINLOOP : do while (interactive_r < minvalue)
+      write(*, *) 'Enter '//str1
+      read( *, *) interactive_r
+   end do MINLOOP
+
+elseif (present(maxvalue)) then
+
+   interactive_r = maxvalue + 1.0_r8
+   MAXLOOP : do while (interactive_r > maxvalue) 
+      write(*, *) 'Enter '//str1
+      read( *, *) interactive_r
+   end do MAXLOOP
+
+else ! anything goes ... cannot check
+      write(*, *) 'Enter '//str1
+      read( *, *) interactive_r
+endif
+
+end function interactive_r
+
+
+!----------------------------------------------------------------------
+!> prompt for an integer value, optionally setting min and/or max limits
+!> loops until valid value input.
+
+function interactive_i(str1,minvalue,maxvalue)
+integer                        :: interactive_i
+character(len=*),   intent(in) :: str1
+integer,  optional, intent(in) :: minvalue
+integer,  optional, intent(in) :: maxvalue
+
+! Prompt with a minimum amount of error checking
+
+if (present(minvalue) .and. present(maxvalue)) then
+
+   interactive_i = minvalue - 1
+   MINMAXLOOP : do while ((interactive_i < minvalue) .or. (interactive_i > maxvalue))
+      write(*, *) 'Enter '//str1
+      read( *, *) interactive_i
+   end do MINMAXLOOP
+
+elseif (present(minvalue)) then
+
+   interactive_i = minvalue - 1
+   MINLOOP : do while (interactive_i < minvalue)
+      write(*, *) 'Enter '//str1
+      read( *, *) interactive_i
+   end do MINLOOP
+
+elseif (present(maxvalue)) then
+
+   interactive_i = maxvalue + 1
+   MAXLOOP : do while (interactive_i > maxvalue)
+      write(*, *) 'Enter '//str1
+      read( *, *) interactive_i
+   end do MAXLOOP
+
+else ! anything goes ... cannot check
+      write(*, *) 'Enter '//str1
+      read( *, *) interactive_i
+endif
+
+end function interactive_i
+
 
 !=======================================================================
 ! End of utilities_mod
@@ -2831,8 +2917,3 @@ end subroutine output_unit_attribs
 
 end module utilities_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

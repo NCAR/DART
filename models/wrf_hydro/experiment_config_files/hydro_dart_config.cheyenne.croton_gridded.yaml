@@ -140,7 +140,7 @@ run_experiment:
   wrf_hydro_ens_advance:
     nproc: 2
     nnodes: 1
-    account: 'NRAL0017'
+    account: 'NRALxxxx'
     walltime: '00:01'
     job_name: '6mile_ens_adv'
     queue: 'regular'
@@ -161,7 +161,7 @@ run_experiment:
       nproc: 2
       nnodes: 1
       ppn_max: 36
-      account: 'NRAL0017'
+      account: 'NRALxxxx'
       walltime: '00:01'
       job_name: '6mile_filter' #_{model_start_time_str}'
       queue: 'regular'
