@@ -20,6 +20,7 @@
 #PBS -q regular               
 #PBS -o gen_retro_icbc.out                    
 #PBS -j oe                              
+#PBS -k eod                              
 #PBS -l select=5:ncpus=60:mpiprocs=60
 #PBS -V                        
 
@@ -174,11 +175,12 @@ EOF
       echo "2i\"                                      >! script.sed
       echo "#======================================\" >> script.sed
       echo "#PBS -N run_real\"                        >> script.sed
-      echo "#PBS -A ${CNCAR_GAU_ACCOUNT}\"            >> script.sed
+      echo "#PBS -A ${COMPUTER_CHARGE_ACCOUNT}\"      >> script.sed
       echo "#PBS -l walltime=00:05:00\"               >> script.sed
-      echo "#PBS -q ${CADVANCE_QUEUE}\"               >> script.sed
+      echo "#PBS -q ${ADVANCE_QUEUE}\"                >> script.sed
       echo "#PBS -o run_real.out\"                    >> script.sed
       echo "#PBS -j oe\"                              >> script.sed
+      echo "#PBS -k eod\"                             >> script.sed
       echo "#PBS -l select=3:ncpus=36:mpiprocs=36\"   >> script.sed
       echo "#PBS -V\"                                 >> script.sed
       echo "#======================================\" >> script.sed

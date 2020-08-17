@@ -4,7 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-
 #   driver.csh - script that is the driver for the
 #                            CONUS analysis system
 #                            MODIFIED for new DART direct
@@ -82,10 +81,10 @@ while ( 1 == 1 )
    if ( $SUPER_PLATFORM == 'yellowstone' ) then
       set ic_queue = caldera
       set logfile = "${RUN_DIR}/ic_gen.log"
-      set sub_command = "bsub -q ${ic_queue} -W 00:05 -o ${logfile} -n 1 -P ${NCAR_GAU_ACCOUNT}"
+      set sub_command = "bsub -q ${ic_queue} -W 00:05 -o ${logfile} -n 1 -P ${COMPUTER_CHARGE_ACCOUNT}"
    else if ( $SUPER_PLATFORM == 'cheyenne' ) then
       set ic_queue = "economy"
-      set sub_command = "qsub -l select=1:ncpus=2:mpiprocs=36:mem=5GB -l walltime=00:03:00 -q ${ic_queue} -A ${CNCAR_GAU_ACCOUNT} -j oe -N icgen "
+      set sub_command = "qsub -l select=1:ncpus=2:mpiprocs=36:mem=5GB -l walltime=00:03:00 -q ${ic_queue} -A ${COMPUTER_CHARGE_ACCOUNT} -j oe -k eod -N icgen "
    endif
 
    echo "this platform is $SUPER_PLATFORM and the job submission command is $sub_command"
@@ -223,15 +222,15 @@ while ( 1 == 1 )
       echo "#==================================================================\" >> script.sed
       echo "#BSUB -J assimilate_${datea}\"                                        >> script.sed
       echo "#BSUB -o assimilate_${datea}.%J.log\"                                 >> script.sed
-      echo "#BSUB -P ${NCAR_GAU_ACCOUNT}\"                                        >> script.sed
+      echo "#BSUB -P ${COMPUTER_CHARGE_ACCOUNT}\"                                 >> script.sed
       echo "#BSUB -W ${FILTER_TIME}\"                                             >> script.sed
       echo "#BSUB -q ${FILTER_QUEUE}\"                                            >> script.sed
       echo "#BSUB -n ${FILTER_CORES}\"                                            >> script.sed
       echo "#BSUB -x\"                                                            >> script.sed
-      echo '#BSUB -R "span[ptile='"${NCAR_FILTER_PTILE}]"'"\'                     >> script.sed
+      echo '#BSUB -R "span[ptile='"${FILTER_PTILE}]"'"\'                          >> script.sed
       echo "#=================================================================="  >> script.sed
       echo 's%${1}%'"${datea}%g"                                                  >> script.sed
-      echo 's%${3}%'"${paramfile}%g"                                              >> script.sed
+      echo 's%${2}%'"${paramfile}%g"                                              >> script.sed
       sed -f script.sed ${SHELL_SCRIPTS_DIR}/assimilate.csh >! assimilate.csh
 
       if ( $?reservation ) then
@@ -244,24 +243,25 @@ while ( 1 == 1 )
 
    else if ( $SUPER_PLATFORM == 'cheyenne' ) then
 
-      echo "2i\"                                                                             >! script.sed
-      echo "#=================================================================\"             >> script.sed
-      echo "#PBS -N assimilate_${datea}\"                                                    >> script.sed
-      echo "#PBS -j oe\"                                                                     >> script.sed
-      echo "#PBS -A ${CNCAR_GAU_ACCOUNT}\"                                                   >> script.sed
-      echo "#PBS -l walltime=${CFILTER_TIME}\"                                               >> script.sed
-      echo "#PBS -q ${CFILTER_QUEUE}\"                                                       >> script.sed
-      echo "#PBS -m ae\"                                                                     >> script.sed
-      echo "#PBS -M ${CEMAIL}\"                                                              >> script.sed
-      echo "#PBS -l select=${CFILTER_NODES}:ncpus=${CFILTER_PROCS}:mpiprocs=${CFILTER_MPI}\" >> script.sed
-      echo "#================================================================="              >> script.sed
-      echo 's%${1}%'"${datea}%g"                                                             >> script.sed
-      echo 's%${3}%'"${paramfile}%g"                                                         >> script.sed
+      echo "2i\"                                                                          >! script.sed
+      echo "#=================================================================\"          >> script.sed
+      echo "#PBS -N assimilate_${datea}\"                                                 >> script.sed
+      echo "#PBS -j oe\"                                                                  >> script.sed
+      echo "#PBS -A ${COMPUTER_CHARGE_ACCOUNT}\"                                          >> script.sed
+      echo "#PBS -l walltime=${FILTER_TIME}\"                                             >> script.sed
+      echo "#PBS -q ${FILTER_QUEUE}\"                                                     >> script.sed
+      echo "#PBS -m ae\"                                                                  >> script.sed
+      echo "#PBS -M ${EMAIL}\"                                                            >> script.sed
+      echo "#PBS -k eod\"                                                                 >> script.sed
+      echo "#PBS -l select=${FILTER_NODES}:ncpus=${FILTER_PROCS}:mpiprocs=${FILTER_MPI}\" >> script.sed
+      echo "#================================================================="           >> script.sed
+      echo 's%${1}%'"${datea}%g"                                                          >> script.sed
+      echo 's%${2}%'"${paramfile}%g"                                                      >> script.sed
       sed -f script.sed ${SHELL_SCRIPTS_DIR}/assimilate.csh >! assimilate.csh
 
       qsub assimilate.csh
 
-      set this_filter_runtime = $CFILTER_TIME
+      set this_filter_runtime = $FILTER_TIME
 
    endif
 
@@ -381,12 +381,12 @@ while ( 1 == 1 )
          echo "#==================================================================\" >> script.sed
          echo "#BSUB -J assim_advance_${n}\"                                         >> script.sed
          echo "#BSUB -o assim_advance_${n}.%J.log\"                                  >> script.sed
-         echo "#BSUB -P ${NCAR_GAU_ACCOUNT}\"                                        >> script.sed
+         echo "#BSUB -P ${COMPUTER_CHARGE_ACCOUNT}\"                                 >> script.sed
          echo "#BSUB -W ${ADVANCE_TIME}\"                                            >> script.sed
          echo "#BSUB -q ${ADVANCE_QUEUE}\"                                           >> script.sed
          echo "#BSUB -n ${ADVANCE_CORES}\"                                           >> script.sed
          echo "#BSUB -x\"                                                            >> script.sed
-         echo '#BSUB -R "span[ptile='"${NCAR_ADVANCE_PTILE}"']"\'                    >> script.sed
+         echo '#BSUB -R "span[ptile='"${ADVANCE_PTILE}"']"\'                         >> script.sed
          echo "#=================================================================="  >> script.sed
          echo 's%${1}%'"${datea}%g"                                                  >> script.sed
          echo 's%${2}%'"${n}%g"                                                      >> script.sed
@@ -402,20 +402,21 @@ while ( 1 == 1 )
 
       else if ( $SUPER_PLATFORM == 'cheyenne' ) then
 
-         echo "2i\"                                                                                >! script.sed
-         echo "#=================================================================\"                >> script.sed
-         echo "#PBS -N assim_advance_${n}\"                                                        >> script.sed
-         echo "#PBS -j oe\"                                                                        >> script.sed
-         echo "#PBS -A ${CNCAR_GAU_ACCOUNT}\"                                                      >> script.sed
-         echo "#PBS -l walltime=${CADVANCE_TIME}\"                                                 >> script.sed
-         echo "#PBS -q ${CADVANCE_QUEUE}\"                                                         >> script.sed
-         echo "#PBS -m a\"                                                                         >> script.sed
-         echo "#PBS -M ${CEMAIL}\"                                                                 >> script.sed
-         echo "#PBS -l select=${CADVANCE_NODES}:ncpus=${CADVANCE_PROCS}:mpiprocs=${CADVANCE_MPI}\" >> script.sed
-         echo "#================================================================="                 >> script.sed
-         echo 's%${1}%'"${datea}%g"                                                                >> script.sed
-         echo 's%${2}%'"${n}%g"                                                                    >> script.sed
-         echo 's%${3}%'"${paramfile}%g"                                                            >> script.sed
+         echo "2i\"                                                                             >! script.sed
+         echo "#=================================================================\"             >> script.sed
+         echo "#PBS -N assim_advance_${n}\"                                                     >> script.sed
+         echo "#PBS -j oe\"                                                                     >> script.sed
+         echo "#PBS -A ${COMPUTER_CHARGE_ACCOUNT}\"                                             >> script.sed
+         echo "#PBS -l walltime=${ADVANCE_TIME}\"                                               >> script.sed
+         echo "#PBS -q ${ADVANCE_QUEUE}\"                                                       >> script.sed
+         echo "#PBS -m a\"                                                                      >> script.sed
+         echo "#PBS -M ${EMAIL}\"                                                               >> script.sed
+         echo "#PBS -k eod\"                                                                    >> script.sed
+         echo "#PBS -l select=${ADVANCE_NODES}:ncpus=${ADVANCE_PROCS}:mpiprocs=${ADVANCE_MPI}\" >> script.sed
+         echo "#================================================================="              >> script.sed
+         echo 's%${1}%'"${datea}%g"                                                             >> script.sed
+         echo 's%${2}%'"${n}%g"                                                                 >> script.sed
+         echo 's%${3}%'"${paramfile}%g"                                                         >> script.sed
 
          sed -f script.sed ${SHELL_SCRIPTS_DIR}/assim_advance.csh >! assim_advance_mem${n}.csh
          qsub assim_advance_mem${n}.csh

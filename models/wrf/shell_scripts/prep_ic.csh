@@ -4,7 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-
 if ( $#argv > 0 ) then
    set n     = ${1}   # pass in the ensemble member number
    set datep = ${2}   # needed for correct path to file
