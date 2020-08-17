@@ -18,8 +18,9 @@
    lat1               =  25.0
    lat2               =  50.0
    goes_num           = 16
-   obs_err            = 0.2
-   verbose            = .false.
+   obs_err            = 1.0
+   verbose            = .true.
+   vloc_pres_hPa      = 340.
  /
 
 &obs_sequence_nml

@@ -59,6 +59,10 @@ You should read the RTTOV user guide carefully as DART primarily acts as a
 pass through. Refer to the setup instructions included with the RTTOV
 documentation.
 
+It may also be useful to refer to:
+
+https://github.com/NCAR/DART/wiki/Getting-Started-with-DART-RTTOV
+
 Once you have successfully installed RTTOV, you should customize the
 mkmf.template.rttov.gfortran file to your own build system, possibly referring
 to the other mkmf.template examples for additional information if you are not
