@@ -9,10 +9,12 @@ use params, only : datestring, datapath, convert_conv, lie_about_ob_times, recen
                    obloclon, obloclat, obpress, obtime, biaspreds, anal_ob, stattype, indxsat, &
                    obtype, obsmod_cleanup, write_FO_for_these_obs_types, write_prior_copies, &
                    exclude_these_obs_types, output_option, anal_ob_chunk
-use radinfo, only : radinfo_read, radinfo_clean
-use mpi_readobs, only : mpi_getobs
-use dart_obs_seq_mod, only : dart_obs_seq
-use utilities_mod, only : find_namelist_in_file, check_namelist_read,initialize_utilities,finalize_utilities
+use           radinfo, only : radinfo_read, radinfo_clean
+use       mpi_readobs, only : mpi_getobs
+use  dart_obs_seq_mod, only : dart_obs_seq
+use     utilities_mod, only : find_namelist_in_file, check_namelist_read, &
+                              initialize_utilities, finalize_utilities
+use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 
 implicit none
 
@@ -24,8 +26,8 @@ integer(i_kind) :: unitnml, io
 integer(i_kind) :: pe_write_conv,pe_write_rad
 integer(i_kind),allocatable,dimension(:) :: ista, iend, displs, scount
 character(len=4) :: char_proc
-character(len=129) :: my_output_filename
-character(len=129) :: obs_seq_out_filename_conv, obs_seq_out_filename_sat
+character(len=256) :: my_output_filename
+character(len=256) :: obs_seq_out_filename_conv, obs_seq_out_filename_sat
 real(r_single),    allocatable, dimension(:) :: workgrid_in, workgrid_out
 
 ! namelist variables are declared and initialized in params and radinfo
@@ -50,18 +52,18 @@ call check_namelist_read(unitnml, io, "gsi_to_dart_nml")
 
 ! Do some error checking
 if (numproc .lt. ens_size+1) then
-   print *,'total number of mpi tasks must be >= ens_size+1'
-   print *,'tasks, ens_size+1 = ',numproc,ens_size+1
+   print *,'ERROR: total number of mpi tasks must be >= ens_size+1'
+   print *,'ERROR: tasks, ens_size+1 = ',numproc,ens_size+1
    call stop2(19)
 endif
 
 if ( output_option .gt. 3 .or. output_option .le. 0) then
-   write(6,*)' output_option must be 1, 2, or 3, not ',output_option
+   write(6,*)'ERROR: output_option must be 1, 2, or 3, not ',output_option
    call stop2(20)
 endif
 
 if ( .not. convert_sat .and. .not. convert_conv ) then
-   write(6,*)' Both convert_sat and convert_conv are false. This program will not do anything, so exiting here.'
+   write(6,*)'ERROR: Both convert_sat and convert_conv are false. This program will not do anything, so exiting here.'
    call stop2(21)
 endif
 
