@@ -84,7 +84,7 @@ endif
 echo
 echo
 echo "=================================================================="
-echo "Starting tests of dart programs at "`date`
+echo "Starting tests of DART programs at "`date`
 echo "=================================================================="
 echo
 echo
@@ -141,9 +141,9 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
     
     echo
     echo
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo "Compiling $PROGRAMDIRECTORY starting at "`date`
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo
     echo
 
@@ -158,7 +158,7 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
     echo
     echo
     if ( $FAILURE ) then
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       echo "ERROR - unsuccessful build of $PROGRAMDIRECTORY"
       switch ( $PROGRAMDIRECTORY )
          case system_simulation
@@ -171,14 +171,14 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
             echo "unexpected error"
          breaksw
       endsw
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       echo
       echo
       continue
     else
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       echo "End of successful build of $PROGRAMDIRECTORY"
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       echo
       echo
 
@@ -234,7 +234,7 @@ echo
 echo
 echo
 echo "=================================================================="
-echo "Ending tests of dart programs at "`date`
+echo "End of DART program tests at "`date`
 echo "=================================================================="
 echo
 echo

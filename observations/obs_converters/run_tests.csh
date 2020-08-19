@@ -101,9 +101,9 @@ ${REMOVE} ${LOGDIR}/*
 echo "build and run logs are in: $LOGDIR"
 
 echo 
-echo "=================================================================="
-echo "Compiling NCEP BUFR libs starting at "`date`
-echo "=================================================================="
+echo "------------------------------------------------------------------"
+echo "Building NCEP BUFR libs starting at "`date`
+echo "------------------------------------------------------------------"
 echo 
 echo 
 
@@ -153,14 +153,14 @@ set FAILURE = 0
 
 echo 
 echo 
-echo "=================================================================="
+echo "------------------------------------------------------------------"
 echo "Build of NCEP BUFR libs ended at "`date`
 if ( $FAILURE ) then
       echo 
       echo "ERROR - build was unsuccessful"
       echo 
 endif
-echo "=================================================================="
+echo "------------------------------------------------------------------"
 echo 
 echo 
 
@@ -178,9 +178,9 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
 
    echo 
    echo 
-   echo "=================================================================="
-   echo "Compiling obs converter $project starting at "`date`
-   echo "=================================================================="
+   echo "------------------------------------------------------------------"
+   echo "Testing obs converter $project starting at "`date`
+   echo "------------------------------------------------------------------"
    echo 
    echo 
 
@@ -296,7 +296,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
    ${MOVE} ${SAVEDIR}/* .
    ${REMOVE_DIR} ${SAVEDIR}
 
-   echo "=================================================================="
+   echo "------------------------------------------------------------------"
    echo
    echo
   
