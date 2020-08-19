@@ -18,12 +18,6 @@
 # rm -f ../enkf/kinds.f90
 # /usr/bin/cpp -P -D_REAL8_ -traditional-cpp ../enkf/kinds.F90 > ../enkf/kinds.f90
 
-# make a backup copy of the path_names file, and then use
-# sed to make sure it includes either the non-mpi subroutines,
-# or the subroutines which really call mpi.
-
-cp -f path_names_gsi_to_dart path_names_gsi_to_dart.back
-
 echo "Making Makefile with MPI"
 touch using_mpi_for_gsi_to_dart
 
