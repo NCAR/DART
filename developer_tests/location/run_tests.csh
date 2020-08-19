@@ -6,13 +6,13 @@
 
 # this script builds and  runs the location test code for each of the
 # possible location modules.
+#
+#----------------------------------------------------------------------
+
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
 
 set nonomatch
-set LOGDIR = `pwd`/testing_logs
-mkdir -p $LOGDIR
-\rm -f $LOGDIR/*
-echo "build and run logs are in: $LOGDIR"
-
 
 echo
 echo
@@ -22,6 +22,10 @@ echo "=================================================================="
 echo
 echo
 
+set LOGDIR = `pwd`/testing_logs
+mkdir -p $LOGDIR
+\rm -f $LOGDIR/*
+echo "build and run logs are in: $LOGDIR"
 
 set LOCLIST = ( annulus channel column oned threed \
                 threed_cartesian threed_sphere \

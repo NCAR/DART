@@ -16,6 +16,10 @@
 #
 #----------------------------------------------------------------------
 
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
+set nonomatch
+
 set usingmpi=no
 set MPICMD=""
 
@@ -64,10 +68,6 @@ else
   exit -1
 endif
 
-# prevent shell warning messages about no files found when trying
-# to remove files using wildcards.
-set nonomatch
-
 if ( ! $?REMOVE) then
    setenv REMOVE 'rm -f'
 endif
@@ -91,6 +91,8 @@ echo "=================================================================="
 echo "Start of observation converter tests at "`date`
 echo "=================================================================="
 echo 
+echo 
+echo "Running observation converter tests on $host"
 
 set startdir=`pwd`
 set LOGDIR=${startdir}/testing_logs

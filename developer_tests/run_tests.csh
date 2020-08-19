@@ -10,6 +10,10 @@
 #
 #----------------------------------------------------------------------
 
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
+set nonomatch
+
 set usingmpi=no
 set MPICMD=""
 
@@ -58,23 +62,27 @@ else
   exit -1
 endif
 
-# prevent shell warning messages about no files found when trying
-# to remove files using wildcards.
-set nonomatch
-
-set LOGDIR=`pwd`/testing_logs
-
 if ( ! $?REMOVE) then
    setenv REMOVE 'rm -f'
 endif
-
-#----------------------------------------------------------------------
 
 if ( ! $?host) then
    setenv host `uname -n`
 endif
 
-echo "Running DART developer tests on $host"
+echo
+echo
+echo "=================================================================="
+echo "Starting DART developer_tests at "`date`
+echo "=================================================================="
+echo
+echo
+echo "Running developer_tests on $host"
+
+set LOGDIR=`pwd`/testing_logs
+${REMOVE} -r $LOGDIR
+mkdir -p $LOGDIR
+echo "build and run logs are in: $LOGDIR"
 
 #----------------------------------------------------------------------
 
@@ -88,11 +96,6 @@ set HAS_TESTS = `ls */work/quickbuild.csh`
 # Compile and run all executables 
 #----------------------------------------------------------------------
 
-${REMOVE} -r $LOGDIR
-mkdir -p $LOGDIR
-echo "build and run logs are in: $LOGDIR"
-
-
 @ testnum = 0
 
 foreach TESTFILE ( $HAS_TESTS ) 
@@ -103,7 +106,7 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     echo
     echo "=================================================================="
-    echo "Compiling tests in $TESTDIR starting at "`date`
+    echo "Compiling tests in $TESTDIR"
     echo "=================================================================="
     echo
     echo
@@ -119,13 +122,13 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     if ( $FAILURE ) then
       echo "=================================================================="
-      echo "ERROR - unsuccessful build in $TESTDIR at "`date`
+      echo "ERROR - unsuccessful build in $TESTDIR"
       echo "=================================================================="
       cd $TOPDIR
       continue
     else
       echo "=================================================================="
-      echo "Running tests in $TESTDIR starting at "`date`
+      echo "Running tests in $TESTDIR"
       echo "=================================================================="
       echo
       echo
@@ -180,7 +183,7 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     echo
     echo "=================================================================="
-    echo "Done running tests in $TESTDIR at "`date`
+    echo "Done running tests in $TESTDIR"
     echo "=================================================================="
     echo
     echo
