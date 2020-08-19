@@ -106,7 +106,7 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     echo
     echo "------------------------------------------------------------------"
-    echo "Compiling tests in $TESTDIR"
+    echo "Compiling tests in $TESTDIR starting at "`date`
     echo "------------------------------------------------------------------"
     echo
     echo
@@ -183,7 +183,7 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     echo
     echo "------------------------------------------------------------------"
-    echo "Done running tests in $TESTDIR"
+    echo "Done running tests in $TESTDIR at "`date`
     echo "------------------------------------------------------------------"
     echo
     echo
