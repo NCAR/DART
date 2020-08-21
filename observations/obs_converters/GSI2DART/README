@@ -47,3 +47,17 @@ ISSUES:
      ! If both verts are surface, do only horizontal
      if(loc1%which_vert == VERTISSURFACE .and. loc2%which_vert == VERTISSURFACE) comp_h_only = .true.
 
+
+RUNNING WITH 32 BIT REALS:
+
+   This requires changes in two places:
+   1) DART/assimilation_code/modules/utilities/types_mod.f90   change required:  r8 = r4
+   2) work/mkmf_gsi_to_dart                                    change required:  -D_REAL4_
+
+   If these are not set in a compatible fashion, you will fail to compile with the following error (or something similar):
+
+../../../../observations/obs_converters/GSI2DART/dart_obs_seq_mod.f90(213): error #6284:
+   There is no matching specific function for this generic function reference.   [SET_LOCATION]
+      location = set_location(lon, lat, vloc, which_vert)
+-----------------^
+
