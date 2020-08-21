@@ -32,18 +32,37 @@ module mpisetup
 !$$$
 
 use kinds, only: r_kind, r_single, r_double
+
 implicit none
+
 ! mpi definitions.
 include 'mpif.h'
+
 integer, public :: numproc, nproc
 integer, public :: mpi_status(mpi_status_size)
 integer, public :: mpi_realkind
+integer, public :: my_communicator
 
 contains
 
 subroutine mpi_initialize()
 integer :: ierr
-call mpi_init(ierr)
+logical :: already
+
+ierr = -999
+call MPI_Initialized(already, ierr)
+if (ierr /= MPI_SUCCESS) then
+   write(*, *) 'MPI_Initialized returned error code ', ierr
+   call exit(-99)
+endif
+if (.not.already) then
+   call mpi_init(ierr)
+   if (ierr /= MPI_SUCCESS) then
+      write(*, *) 'mpi_init returned error code ', ierr
+      call exit(-99)
+   endif
+endif
+
 ! nproc is process number, numproc is total number of processes.
 call mpi_comm_rank(mpi_comm_world,nproc,ierr)
 call mpi_comm_size(mpi_comm_world,numproc,ierr)
@@ -57,6 +76,8 @@ else
    print *,'illegal r_kind (must be single or double)'
    call mpi_cleanup()
 endif
+my_communicator = mpi_comm_world
+
 end subroutine mpi_initialize
 
 subroutine mpi_cleanup()

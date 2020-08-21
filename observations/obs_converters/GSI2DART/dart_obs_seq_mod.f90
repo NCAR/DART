@@ -11,7 +11,7 @@ use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, in
                               destroy_obs, destroy_obs_sequence
 use       obs_def_mod, only : set_obs_def_location, set_obs_def_error_variance, &
                               set_obs_def_type_of_obs, set_obs_def_time, set_obs_def_key, &
-                              obs_def_type,set_obs_def_external_FO,destroy_obs_def ! CSS added set_obs_def_external_FO, destroy_obs_def
+                              obs_def_type, set_obs_def_external_FO, destroy_obs_def
 use   obs_def_gps_mod, only : set_gpsro_ref
 use         types_mod, only : obstypelength
 use      obs_kind_mod
@@ -19,14 +19,16 @@ use      location_mod, only : location_type, set_location, VERTISSURFACE, VERTIS
 use  time_manager_mod, only : time_type, set_date, set_time, set_calendar_type, GREGORIAN, &
                               increment_time, decrement_time, get_time
 use radinfo, only           : nuchan
-use utilities_mod, only     : to_upper
+use utilities_mod, only     : to_upper, error_handler, E_ERR, E_MSG
 
 implicit none
-
 private 
 
 ! Public subroutine
-public :: dart_obs_seq
+public :: dart_obs_seq, set_debug
+
+character(len=512) :: string1
+logical :: debug = .false.
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 contains
@@ -50,7 +52,7 @@ subroutine dart_obs_seq (datestring,                              &
    type(obs_def_type)      :: obs_def
    type(location_type)     :: location
    type(time_type)         :: time_obs, prev_time
-   integer                 :: i, k, n, which_vert, ie, obskind, obs_kind_gen
+   integer                 :: i, k, n, which_vert, ie, obskind, obs_quantity
    character(len = 129)    :: copy_meta_data, qc_meta_data
    logical                 :: first_obs
    integer                 :: year, month, day, hour, days, seconds
@@ -136,12 +138,17 @@ subroutine dart_obs_seq (datestring,                              &
          if ( .not. convert_conv ) cycle obsloop
       endif
 
-      ! here, obskind is really obs_type, obs_kind_gen is the generic kind
+      ! here, obskind is really obs_type, obs_quantity is the generic quantity
       if ( is_conv ) then
-         call prepbufr_to_dart_obs_kind(obtype(i),stattype(i),obskind,which_vert,obs_kind_gen)
+         call prepbufr_to_dart_obs_kind(obtype(i),stattype(i),obskind,which_vert,obs_quantity)
       else if ( is_sat .and. convert_sat ) then
-         call radiance_to_dart_obs_kind(obtype(i),nuchan(indxsat(i-nobs_conv-nobs_oz)),obskind,which_vert,obs_kind_gen) ! indxsat has size "nobs_sat"
+         call radiance_to_dart_obs_kind(obtype(i),nuchan(indxsat(i-nobs_conv-nobs_oz)),obskind,which_vert,obs_quantity) ! indxsat has size "nobs_sat"
       end if
+
+      if ( obskind < 0 ) then ! unsupported by prepbufr_to_dart_obs_kind or radiance_to_dart_obs_kind
+          if (debug) write(*,*)'obskind, obs_quantity',obskind,obs_quantity
+          cycle obsloop
+      endif
 
       ! time info
       read(datestring, '(i4,3i2)') year, month, day, hour
@@ -186,7 +193,7 @@ subroutine dart_obs_seq (datestring,                              &
       endif
 
       ! modify observations and observation errors if necessary
-      if( obs_kind_gen == QTY_SURFACE_PRESSURE) then
+      if( obs_quantity == QTY_SURFACE_PRESSURE) then
          ens_copy(1) = ens_copy(1)*100.0 ! Get into Pa
          oerr = oerr * 10000.0             ! Get into Pa^2--this is variance
          anal_ob(1:ens_size,i) = anal_ob(1:ens_size,i) * 100.        ! Get into Pa
@@ -249,14 +256,23 @@ subroutine dart_obs_seq (datestring,                              &
 
    call destroy_obs_def(obs_def)  ! CSS added, is this needed?
    call destroy_obs(obs)  
-!   call destroy_obs(prev_obs)
    call destroy_obs_sequence(seq)
 
    if (allocated(ens_copy)) deallocate(ens_copy)
 
 end subroutine dart_obs_seq
 
-subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs_kind_gen)
+subroutine set_debug(debug_in)
+    logical, intent(in) :: debug_in
+    debug = debug_in
+end subroutine set_debug
+
+
+!-----------------------------------------------------------------------
+! Everything below here is private
+!-----------------------------------------------------------------------
+
+subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs_quantity)
 
 ! based on DART/observations/NCEP/ascii_to_obs/real_obs_mod.f90
 
@@ -265,7 +281,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    integer,           intent(in)  :: obstype !prepbufr report type
    integer,           intent(out) :: obs_kind
    integer,           intent(out) :: which_vert
-   integer,           intent(out) :: obs_kind_gen
+   integer,           intent(out) :: obs_quantity
 
 !   assign each observation the correct observation type
 !------------------------------------------------------------------------------
@@ -273,15 +289,15 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    ! make sure we do not fall through the code below without setting
    ! a valid obs kind (e.g. the obstype is one not listed)
    obs_kind = -1
-   obs_kind_gen = -1
+   obs_quantity = -1
 
    if(obtype(1:3) == 'gps') then
      obs_kind     = GPSRO_REFRACTIVITY
-     obs_kind_gen = GPSRO_REFRACTIVITY
+     obs_quantity = GPSRO_REFRACTIVITY
    endif
 
    if(obtype(1:3) == '  t') then
-     obs_kind_gen = QTY_TEMPERATURE
+     obs_quantity = QTY_TEMPERATURE
      if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_TEMPERATURE
      if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_TEMPERATURE
      if(obstype == 133                    ) obs_kind = ACARS_TEMPERATURE
@@ -292,7 +308,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    endif
 
    if(obtype(1:3) == '  q') then
-     obs_kind_gen = QTY_SPECIFIC_HUMIDITY
+     obs_quantity = QTY_SPECIFIC_HUMIDITY
      if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_RELATIVE_HUMIDITY  ! RADIOSONDE_SPECIFIC_HUMIDITY
      if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_RELATIVE_HUMIDITY    ! AIRCRAFT_SPECIFIC_HUMIDITY
      if(obstype == 133                    ) obs_kind = ACARS_RELATIVE_HUMIDITY       ! ACARS_SPECIFIC_HUMIDITY
@@ -301,7 +317,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    endif
 
    if(obtype(1:3) == ' ps') then
-     obs_kind_gen = QTY_SURFACE_PRESSURE
+     obs_quantity = QTY_SURFACE_PRESSURE
      ! what to use: PRESSURE or ALTIMETER ?
      if(obstype == 120                    ) obs_kind = RADIOSONDE_SURFACE_PRESSURE ! RADIOSONDE_SURFACE_ALTIMETER
      if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_PRESSURE !MARINE_SFC_ALTIMETER
@@ -309,7 +325,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    endif
 
    if(obtype(1:3) == '  u') then
-     obs_kind_gen = QTY_U_WIND_COMPONENT
+     obs_quantity = QTY_U_WIND_COMPONENT
      if(obstype == 220 .or. obstype == 232)  obs_kind = RADIOSONDE_U_WIND_COMPONENT
      if(obstype == 221                    )  obs_kind = RADIOSONDE_U_WIND_COMPONENT
      if(obstype == 223                    )  obs_kind = PROFILER_U_WIND_COMPONENT
@@ -327,7 +343,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    endif
 
    if(obtype(1:3) == '  v') then
-     obs_kind_gen = QTY_V_WIND_COMPONENT
+     obs_quantity = QTY_V_WIND_COMPONENT
      if(obstype == 220 .or. obstype == 232)  obs_kind = RADIOSONDE_V_WIND_COMPONENT
      if(obstype == 221                    )  obs_kind = RADIOSONDE_V_WIND_COMPONENT
      if(obstype == 223                    )  obs_kind = PROFILER_V_WIND_COMPONENT
@@ -344,13 +360,14 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
      if(obstype >= 289 .and. obstype <= 291) obs_kind = QKSWND_V_WIND_COMPONENT
    endif
 
-   if (obs_kind < 0) then
+   if (debug .and. obs_kind < 0) then
       ! the "real" fix if the record type is not found might actually be to
       ! accept all record types within valid ranges, and depend on the first
       ! preprocessing steps (in the prepbufr converter) to remove obs record
       ! types which are not desired.  for now, avoid giving them the wrong type
       ! and quietly loop.
-      print *, 'unrecognized obtype or obstype: ', obtype, obstype
+      write(string1,*) 'unsupported obtype,obstype combination: ', obtype, obstype
+      call error_handler(E_MSG,'prepbufr_to_dart_obs_kind',string1,'dart_obs_seq_mod.f90')
    endif
 
    which_vert = VERTISPRESSURE
@@ -358,11 +375,11 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
 !  if ( obstype >= 280 .and. obstype <= 291 ) which_vert = VERTISSURFACE
 end subroutine prepbufr_to_dart_obs_kind
 
-subroutine radiance_to_dart_obs_kind(obtype, channel, obs_kind, which_vert, obs_kind_gen)
-   character(len=20), intent(in)  :: obtype  !'ps','u','v','oz','t','amsua_n15', etc.
+subroutine radiance_to_dart_obs_kind(obtype, channel, obs_kind, which_vert, obs_quantity)
+   character(len=*),  intent(in)  :: obtype  !'ps','u','v','oz','t','amsua_n15', etc.
    integer,           intent(in)  :: channel ! radiance channel
    integer,           intent(out) :: obs_kind, which_vert
-   integer,           intent(out) :: obs_kind_gen
+   integer,           intent(out) :: obs_quantity
 
    character(len=256)             :: str_channel, this_string
 
@@ -374,9 +391,10 @@ subroutine radiance_to_dart_obs_kind(obtype, channel, obs_kind, which_vert, obs_
    call replace_hyphen(this_string)  ! Bad things will happen in DART preprocess "obs_def" files if there are hyphens in names. Replace with underscores
    
    ! Be careful about upper/lower case.  Make sure this matches the obs_def
-   obs_kind =  get_index_for_type_of_obs(this_string)    ! from obs_kind_mod
-   obs_kind_gen = QTY_TEMPERATURE ! QTY_RADIANCE
-   which_vert  = VERTISPRESSURE
+   obs_kind     = get_index_for_type_of_obs(this_string)    ! from obs_kind_mod
+   obs_quantity = QTY_TEMPERATURE ! QTY_RADIANCE
+   which_vert   = VERTISPRESSURE
+
 end subroutine radiance_to_dart_obs_kind
 
 subroutine replace_hyphen(string)

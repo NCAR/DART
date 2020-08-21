@@ -9,13 +9,17 @@ use params, only : datestring, datapath, convert_conv, lie_about_ob_times, recen
                    obloclon, obloclat, obpress, obtime, biaspreds, anal_ob, stattype, indxsat, &
                    obtype, obsmod_cleanup, write_FO_for_these_obs_types, write_prior_copies, &
                    exclude_these_obs_types, output_option, anal_ob_chunk
-use radinfo, only : radinfo_read, radinfo_clean
-use mpi_readobs, only : mpi_getobs
-use dart_obs_seq_mod, only : dart_obs_seq
-use utilities_mod, only : find_namelist_in_file, check_namelist_read,initialize_utilities,finalize_utilities
+
+use           radinfo, only : radinfo_read, radinfo_clean
+use       mpi_readobs, only : mpi_getobs
+use  dart_obs_seq_mod, only : dart_obs_seq, set_debug
+use     utilities_mod, only : find_namelist_in_file, check_namelist_read
+!use     utilities_mod, only : initialize_utilities, finalize_utilities
+use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 
 implicit none
 
+logical         :: debug = .false.
 integer(i_kind) :: nobs_sat, nobs_oz, nobs_conv, nobstot
 integer(i_kind) :: nobs_start, nobs_end
 integer(i_kind) :: i, irank
@@ -33,20 +37,29 @@ namelist /gsi_to_dart_nml/ ens_size, &
    convert_conv, convert_sat, datestring, datapath, sattypes_rad, dsis, sattypes_oz, &
    write_FO_for_these_obs_types, write_prior_copies, &
    exclude_these_obs_types, output_option, obs_seq_out_filename, &
-   lie_about_ob_times, recenter_about_mean_prior
+   lie_about_ob_times, recenter_about_mean_prior, debug
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! initialize MPI ( from mpisetup)
-call mpi_initialize  ! sets nproc, numproc (from mpisetup), where nproc is process number, numproc is total number of processes
+! initialize MPI if need be (from mpisetup)
+! sets nproc      process number
+! sets numproc    total number of processes
+! sets mpi_realkind, mpi_status
+! sets my_communicator (mpi_comm_world)
+
+call mpi_initialize
 
 ! Print out some info
-if ( nproc == 0 ) call initialize_utilities('gsi2dart')
+call initialize_mpi_utilities('gsi_to_dart',communicator=my_communicator)
+! call initialize_utilities('gsi_to_dart')
 
 ! Read namelist on all PEs
 call find_namelist_in_file("input.nml", "gsi_to_dart_nml", unitnml)
 read(unitnml, nml = gsi_to_dart_nml, iostat = io)
 call check_namelist_read(unitnml, io, "gsi_to_dart_nml")
+
+! Pass the debug value to the dart_obs_seq_mod
+call set_debug(debug)
 
 ! Do some error checking
 if (numproc .lt. ens_size+1) then
@@ -56,12 +69,12 @@ if (numproc .lt. ens_size+1) then
 endif
 
 if ( output_option .gt. 3 .or. output_option .le. 0) then
-   write(6,*)' output_option must be 1, 2, or 3, not ',output_option
+   write(*,*)' output_option must be 1, 2, or 3, not ',output_option
    call stop2(20)
 endif
 
 if ( .not. convert_sat .and. .not. convert_conv ) then
-   write(6,*)' Both convert_sat and convert_conv are false. This program will not do anything, so exiting here.'
+   write(*,*)' Both convert_sat and convert_conv are false. This program will not do anything, so exiting here.'
    call stop2(21)
 endif
 
@@ -79,7 +92,7 @@ if ( convert_sat ) then
    ! initialize satellite stuff
    call radinfo_read
 endif
-if(nproc == 0)write(6,*) 'number of satellite radiance files used ',nsats_rad
+if(nproc == 0) write(*,*) 'number of satellite radiance files used ',nsats_rad
 
 ! find number of ozone files
 nsats_oz=0
@@ -87,7 +100,7 @@ do i=1,nsatmax_oz
   if(sattypes_oz(i) == ' ') cycle
   nsats_oz=nsats_oz+1
 end do
-if(nproc == 0)write(6,*) 'number of satellite ozone files used ',nsats_oz
+if(nproc == 0) write(*,*) 'number of satellite ozone files used ',nsats_oz
 
 ! read the diag files to get obs, ob priors, and observation errors/location/time
 call mpi_getobs(datapath, datestring, nobs_conv, nobs_oz, nobs_sat, nobstot, &
@@ -97,12 +110,12 @@ call mpi_getobs(datapath, datestring, nobs_conv, nobs_oz, nobs_sat, nobstot, &
                 anal_ob,indxsat,ens_size)  ! anal_ob only allocated on nproc==0
                                            ! everything else on all PEs
 
-if(nproc == 0)write(6,*) 'total number of obs ',nobstot
+if(nproc == 0) write(*,*) 'total number of obs ',nobstot
 
 ! output obs_sequence file
 if ( output_option .eq. 3 ) then
    if ( .not. allocated(anal_ob)) allocate(anal_ob(ens_size,nobstot)) ! may have been allocated in mpi_getobs
-   call mpi_bcast(anal_ob,nobstot*ens_size,mpi_real4,0,mpi_comm_world,ierr) !  should really do mpi_scatterv...but doing so doesn't seem to save memory overall...
+   call mpi_bcast(anal_ob,nobstot*ens_size,mpi_realkind,0,mpi_comm_world,ierr) !  should really do mpi_scatterv...but doing so doesn't seem to save memory overall...
 
    if ( convert_conv ) then
       nobs_start = 1
@@ -124,7 +137,7 @@ if ( output_option .eq. 3 ) then
      call para_range(nobs_start, nobs_end, numproc, irank, ista(irank), iend(irank))
 !     scount(irank) = iend(irank)-ista(irank) + 1  ! number of obs on this PE
    enddo
-   write(6,*)'The processor ', nproc, ' will write obs from ', ista(nproc), ' to ', iend(nproc)
+   write(*,*)'The processor ', nproc, ' will write obs from ', ista(nproc), ' to ', iend(nproc)
 !  displs(0) = 0
 !  do i = 1, numproc-1
 !     displs(i) = scount(i-1) + displs(i-1)
@@ -137,14 +150,14 @@ if ( output_option .eq. 3 ) then
 !  do i = 1,ens_size
 !     if ( nproc .eq. 0 ) workgrid_in(:) = anal_ob(i,:)
 !     call mpi_scatterv(workgrid_in(:),scount,displs, &
-!             & mpi_real4,workgrid_out(:),scount(nproc),mpi_real4,0,&
+!             & mpi_realkind,workgrid_out(:),scount(nproc),mpi_realkind,0,&
 !             & mpi_comm_world,ierr)
 !     anal_ob_chunk(i,:) = workgrid_out(:)
 !  enddo
 
    write(char_proc,'(i4.4)') nproc
    my_output_filename = trim(adjustl(obs_seq_out_filename))//'.'//char_proc
-   write(6,*)'About to write ',trim(my_output_filename),' from processor',nproc
+   write(*,*)'About to write ',trim(my_output_filename),' from processor',nproc
    if ( ista(nproc).le.iend(nproc)) then  ! Make sure the starting ob to process <= ending ob to process (probably should never happen)
       call dart_obs_seq (datestring,            &
          nobs_conv, nobs_oz, nobs_sat, nobstot, &
@@ -160,8 +173,8 @@ else if ( output_option .eq. 2 ) then
    if ( convert_sat .and. nproc == pe_write_rad) then
       if ( .not. allocated(anal_ob)) allocate(anal_ob(ens_size,nobstot)) ! may have been allocated in mpi_getobs
    endif
-   if ( convert_sat .and. nproc==0)            call mpi_send(anal_ob,nobstot*ens_size,mpi_real4,pe_write_rad,1,mpi_comm_world,ierr) ! send from nproc=0
-   if ( convert_sat .and. nproc==pe_write_rad) call mpi_recv(anal_ob,nobstot*ens_size,mpi_real4,0,1,mpi_comm_world,mpi_status,ierr) ! recieve on nproc=pe_write_rad
+   if ( convert_sat .and. nproc==0)            call mpi_send(anal_ob,nobstot*ens_size,mpi_realkind,pe_write_rad,1,mpi_comm_world,ierr) ! send from nproc=0
+   if ( convert_sat .and. nproc==pe_write_rad) call mpi_recv(anal_ob,nobstot*ens_size,mpi_realkind,0,1,mpi_comm_world,mpi_status,ierr) ! recieve on nproc=pe_write_rad
    ! what if pe_write_rad == 0?  will the mpi_send/recv fail (sending and receiving from same processor)?
 
    obs_seq_out_filename_conv = trim(adjustl(obs_seq_out_filename))//'.conv'
@@ -170,7 +183,7 @@ else if ( output_option .eq. 2 ) then
    ! write out DART obs_sequence files
    if ( convert_conv .and. nobs_conv > 0 ) then
       if ( nproc == pe_write_conv ) then
-         write(6,*)'About to write '//trim(adjustl(obs_seq_out_filename_conv))
+         write(*,*)'About to write "'//trim(obs_seq_out_filename_conv)//'"'
          call dart_obs_seq (datestring,                            &
                             nobs_conv, nobs_oz, nobs_sat, nobstot, &
                             ens_size, obs_seq_out_filename_conv,     &
@@ -180,7 +193,7 @@ else if ( output_option .eq. 2 ) then
 
    if ( convert_sat .and. nobs_sat > 0 ) then
       if ( nproc == pe_write_rad ) then
-         write(6,*)'About to write '//trim(adjustl(obs_seq_out_filename_sat))
+         write(*,*)'About to write "'//trim(obs_seq_out_filename_sat)//'"'
          call dart_obs_seq (datestring,                            &
                             nobs_conv, nobs_oz, nobs_sat, nobstot, &
                             ens_size, obs_seq_out_filename_sat,      &
@@ -190,7 +203,7 @@ else if ( output_option .eq. 2 ) then
 else if ( output_option .eq. 1 ) then
    ! write out DART obs_sequence files
    if ( nproc == pe_write_conv ) then
-      write(6,*)'About to write '//trim(adjustl(obs_seq_out_filename))
+      write(*,*)'About to write "'//trim(obs_seq_out_filename)//'"'
       call dart_obs_seq (datestring,                            &
                          nobs_conv, nobs_oz, nobs_sat, nobstot, &
                          ens_size, obs_seq_out_filename,     &
@@ -202,11 +215,11 @@ endif
 call obsmod_cleanup ! from params
 if ( convert_sat ) call radinfo_clean  ! from radinfo
 
-! finalize MPI
-call mpi_cleanup ! from mpisetup
-
 ! print ending info
-if ( nproc == 0 ) call finalize_utilities()
+call finalize_mpi_utilities(callfinalize=.false.)
+
+! finalize MPI
+call mpi_cleanup
 
 end program gsi_to_dart
 
@@ -222,7 +235,7 @@ subroutine stop2(ierror_code)
   integer(i_kind), intent(in) :: ierror_code
   integer(i_kind)             :: ierr
 
-  write(6,*)'****STOP2****  ABORTING EXECUTION w/code=',ierror_code
+  write(*,*)'****STOP2****  ABORTING EXECUTION w/code=',ierror_code
   write(0,*)'****STOP2****  ABORTING EXECUTION w/code=',ierror_code
   call mpi_abort(mpi_comm_world,ierror_code,ierr)
   stop
