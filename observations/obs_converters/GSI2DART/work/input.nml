@@ -19,12 +19,12 @@
 
 &gsi_to_dart_nml
    datestring                   = '2017042300'
-   datapath                     = './'
+   datapath                     = '../data/'
    convert_conv                 = .true.
    convert_sat                  = .false.
    obs_seq_out_filename         = 'obs_seq.out'
    sattypes_oz                  = ' '
-   ens_size                     = 80
+   ens_size                     = 1
    output_option                = 2
    write_prior_copies           = .false.
    write_FO_for_these_obs_types = 'all'
@@ -32,16 +32,18 @@
    output_option                = 2
    lie_about_ob_times           = .true.
    recenter_about_mean_prior    = .true.
+   sattypes_rad(01) = 'amsua_n18',     dsis(01) = 'amsua_n18'
+   sattypes_rad(02) = 'amsua_n19',     dsis(02) = 'amsua_n19'
+   sattypes_rad(03) = 'amsua_metop-a', dsis(03) = 'amsua_metop-a'
+   sattypes_rad(04) = 'mhs_n18',       dsis(04) = 'mhs_n18'
+   sattypes_rad(05) = 'mhs_n19',       dsis(05) = 'mhs_n19'
+   sattypes_rad(06) = 'mhs_metop-a',   dsis(06) = 'mhs_metop-a'
  /
 
-# Other options for gsi_to_dart_nml
-!  sattypes_rad(1)  = 'amsua_n19',     dsis(1)  = 'amsua_n19'
-!  sattypes_rad(01) = 'amsua_n18',     dsis(01) = 'amsua_n18'
-!  sattypes_rad(02) = 'amsua_n19',     dsis(02) = 'amsua_n19'
-!  sattypes_rad(03) = 'amsua_metop-a', dsis(03) = 'amsua_metop-a'
-!  sattypes_rad(04) = 'mhs_n18',       dsis(04) = 'mhs_n18'
-!  sattypes_rad(05) = 'mhs_n19',       dsis(05) = 'mhs_n19'
-!  sattypes_rad(06) = 'mhs_metop-a',   dsis(06) = 'mhs_metop-a'
+# Examples of what you could do in gsi_to_dart_nml:
+!  write_FO_for_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT', 	
+!                                 'RADIOSONDE_V_WIND_COMPONENT', 	
+!  exclude_these_obs_types      = 'GPSRO_REFRACTIVITY', 
 
 
 &obs_kind_nml
