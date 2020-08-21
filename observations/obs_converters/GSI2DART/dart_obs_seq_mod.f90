@@ -363,7 +363,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
       ! accept all record types within valid ranges, and depend on the first
       ! preprocessing steps (in the prepbufr converter) to remove obs record
       ! types which are not desired.  for now, avoid giving them the wrong type
-      ! and quietly loop.
+      ! and quietly loop. (the looping happens just after this function returns)
       write(string1,*) 'unsupported obtype,report type combination: ', obtype, obstype
       call error_handler(E_MSG,'prepbufr_to_dart_obs_kind',string1,'dart_obs_seq_mod.f90')
    endif
