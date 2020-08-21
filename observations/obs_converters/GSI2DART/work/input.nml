@@ -6,16 +6,17 @@
     output_obs_def_mod_file = '../../../forward_operators/obs_def_mod.f90'
    input_files              = '../../../forward_operators/obs_def_reanalysis_bufr_mod.f90',
                               '../../../forward_operators/obs_def_altimeter_mod.f90',
-                              '../../../forward_operators/obs_def_radar_mod.f90',
-                              '../../../forward_operators/obs_def_metar_mod.f90',
                               '../../../forward_operators/obs_def_dew_point_mod.f90',
-                              '../../../forward_operators/obs_def_rel_humidity_mod.f90',
                               '../../../forward_operators/obs_def_gps_mod.f90',
                               '../../../forward_operators/obs_def_gts_mod.f90',
-                              '../../../forward_operators/obs_def_QuikSCAT_mod.f90',
+                              '../../../forward_operators/obs_def_mesonet_mod.f90',
+                              '../../../forward_operators/obs_def_metar_mod.f90',
+                              '../../../forward_operators/obs_def_radar_mod.f90',
+                              '../../../forward_operators/obs_def_radiance_mod.f90',
+                              '../../../forward_operators/obs_def_rel_humidity_mod.f90',
                               '../../../forward_operators/obs_def_vortex_mod.f90',
-                              '../../../forward_operators/obs_def_radiance_mod.f90'
- /
+                              '../../../forward_operators/obs_def_QuikSCAT_mod.f90'
+  /
 
 &gsi_to_dart_nml
    datestring                   = '2017042300'
@@ -23,28 +24,31 @@
    convert_conv                 = .true.
    convert_sat                  = .false.
    obs_seq_out_filename         = 'obs_seq.out'
+   sattypes_rad(1)              = 'amsua_n19'
+   dsis(1)                      = 'amsua_n19'
    sattypes_oz                  = ' '
    ens_size                     = 1
    output_option                = 2
+   debug                        = .false.
+   lie_about_ob_times           = .true.
+   recenter_about_mean_prior    = .true.
    write_prior_copies           = .false.
    write_FO_for_these_obs_types = 'all'
    exclude_these_obs_types      = ' '
-   output_option                = 2
-   lie_about_ob_times           = .true.
-   recenter_about_mean_prior    = .true.
-   sattypes_rad(01) = 'amsua_n18',     dsis(01) = 'amsua_n18'
-   sattypes_rad(02) = 'amsua_n19',     dsis(02) = 'amsua_n19'
-   sattypes_rad(03) = 'amsua_metop-a', dsis(03) = 'amsua_metop-a'
-   sattypes_rad(04) = 'mhs_n18',       dsis(04) = 'mhs_n18'
-   sattypes_rad(05) = 'mhs_n19',       dsis(05) = 'mhs_n19'
-   sattypes_rad(06) = 'mhs_metop-a',   dsis(06) = 'mhs_metop-a'
  /
 
 # Examples of what you could do in gsi_to_dart_nml:
 !  write_FO_for_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT', 	
 !                                 'RADIOSONDE_V_WIND_COMPONENT', 	
 !  exclude_these_obs_types      = 'GPSRO_REFRACTIVITY', 
-
+!  sattypes_rad(01) = 'amsua_n18',     dsis(01) = 'amsua_n18'
+!  sattypes_rad(02) = 'amsua_n19',     dsis(02) = 'amsua_n19'
+!  sattypes_rad(03) = 'amsua_metop-a', dsis(03) = 'amsua_metop-a'
+!  sattypes_rad(04) = 'mhs_n18',       dsis(04) = 'mhs_n18'
+!  sattypes_rad(05) = 'mhs_n19',       dsis(05) = 'mhs_n19'
+!  sattypes_rad(06) = 'mhs_metop-a',   dsis(06) = 'mhs_metop-a'
+!  variance_coef                = 1000.0
+!  modify_dart_qc_flag_for_big_ob_error = .false.
 
 &obs_kind_nml
  /

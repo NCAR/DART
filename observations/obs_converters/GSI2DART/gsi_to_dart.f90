@@ -4,11 +4,11 @@ use kinds
 use mpisetup
 use params, only : datestring, datapath, convert_conv, lie_about_ob_times, recenter_about_mean_prior, &
                    convert_sat, sattypes_rad, dsis, sattypes_oz,dsis, ens_size, obs_seq_out_filename, &
-                   nsats_rad,nsats_oz,nsatmax_rad,nsatmax_oz, &
+                   nsats_rad,nsats_oz,nsatmax_rad,nsatmax_oz, modify_dart_qc_flag_for_big_ob_error, &
                    obsprd_prior, ensmean_obnobc, ensmean_ob, ob, oberrvar, oberrvar_orig, &
                    obloclon, obloclat, obpress, obtime, biaspreds, anal_ob, stattype, indxsat, &
                    obtype, obsmod_cleanup, write_FO_for_these_obs_types, write_prior_copies, &
-                   exclude_these_obs_types, output_option, anal_ob_chunk
+                   exclude_these_obs_types, output_option, anal_ob_chunk, variance_coef
 
 use           radinfo, only : radinfo_read, radinfo_clean
 use       mpi_readobs, only : mpi_getobs
@@ -36,7 +36,8 @@ namelist /gsi_to_dart_nml/ ens_size, &
    convert_conv, convert_sat, datestring, datapath, sattypes_rad, dsis, sattypes_oz, &
    write_FO_for_these_obs_types, write_prior_copies, &
    exclude_these_obs_types, output_option, obs_seq_out_filename, &
-   lie_about_ob_times, recenter_about_mean_prior, debug
+   lie_about_ob_times, recenter_about_mean_prior, debug, &
+   modify_dart_qc_flag_for_big_ob_error, variance_coef
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
