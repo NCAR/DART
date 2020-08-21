@@ -145,10 +145,8 @@ subroutine dart_obs_seq (datestring,                              &
          call radiance_to_dart_obs_kind(obtype(i),nuchan(indxsat(i-nobs_conv-nobs_oz)),obskind,which_vert,obs_quantity) ! indxsat has size "nobs_sat"
       end if
 
-      if ( obskind < 0 ) then ! unsupported by prepbufr_to_dart_obs_kind or radiance_to_dart_obs_kind
-          if (debug) write(*,*)'obskind, obs_quantity',obskind,obs_quantity
-          cycle obsloop
-      endif
+      ! skip if unsupported by prepbufr_to_dart_obs_kind or radiance_to_dart_obs_kind
+      if ( obskind < 0 ) cycle obsloop
 
       ! time info
       read(datestring, '(i4,3i2)') year, month, day, hour
@@ -366,7 +364,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
       ! preprocessing steps (in the prepbufr converter) to remove obs record
       ! types which are not desired.  for now, avoid giving them the wrong type
       ! and quietly loop.
-      write(string1,*) 'unsupported obtype,obstype combination: ', obtype, obstype
+      write(string1,*) 'unsupported obtype,report type combination: ', obtype, obstype
       call error_handler(E_MSG,'prepbufr_to_dart_obs_kind',string1,'dart_obs_seq_mod.f90')
    endif
 

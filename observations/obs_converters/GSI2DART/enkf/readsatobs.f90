@@ -90,7 +90,7 @@ subroutine get_num_satobs(obspath,datestring,num_obs_tot,id)
         inquire(file=obsfile,exist=fexist)
         if (.not.fexist) goto 900
 
-        open(iunit,form="unformatted",file=obsfile,iostat=ios)
+        open(iunit,form="unformatted",file=obsfile,iostat=ios,convert='BIG_ENDIAN')
         rewind(iunit)
         call read_radiag_header(iunit,npred_radiag,lretrieval,header_fix0,header_chan0,data_name0,iflag,lverbose)
 
@@ -175,7 +175,7 @@ subroutine get_satobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x
      inquire(file=obsfile,exist=fexist1)
      if(.not.fexist1) goto 900
 
-     open(iunit,form="unformatted",file=obsfile)
+     open(iunit,form="unformatted",file=obsfile,convert='BIG_ENDIAN')
      rewind(iunit)
      call read_radiag_header(iunit,npred_radiag,lretrieval,header_fix1,header_chan1,data_name1,iflag,lverbose)
 
@@ -188,7 +188,7 @@ subroutine get_satobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x
        inquire(file=obsfile2,exist=fexist2)
        if(.not.fexist2) goto 900
 
-       open(iunit2,form="unformatted",file=obsfile2)
+       open(iunit2,form="unformatted",file=obsfile2,convert='BIG_ENDIAN')
        rewind(iunit2)
        call read_radiag_header(iunit2,npred_radiag,lretrieval,header_fix2,header_chan2,data_name2,iflag2,lverbose)
      end if

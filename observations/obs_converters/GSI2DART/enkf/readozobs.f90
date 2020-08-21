@@ -65,7 +65,7 @@ subroutine get_num_ozobs(obspath,datestring,num_obs_tot,id)
         obsfile = trim(adjustl(obspath))//"diag_"//trim(sattypes_oz(nsat))//"_ges."//trim(adjustl(id))
         endif
         !print *,obsfile
-        open(iunit,form="unformatted",file=obsfile,iostat=ios)
+        open(iunit,form="unformatted",file=obsfile,iostat=ios,convert='BIG_ENDIAN')
         read(iunit,err=20,end=30) isis,dplat,obstype,jiter,nlevs,idate,iint,ireal,iextra
         allocate(pob(nlevs),grs(nlevs),err(nlevs),iouse(nlevs))
         read(iunit,err=20,end=30) pob,grs,err,iouse
@@ -145,7 +145,7 @@ subroutine get_ozobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x_
       obsfile = trim(adjustl(obspath))//"diag_"//trim(sattypes_oz(nsat))//"_ges."//trim(adjustl(id))
       endif
       !print *,obsfile
-      open(iunit,form="unformatted",file=obsfile,iostat=ios)
+      open(iunit,form="unformatted",file=obsfile,iostat=ios,convert='BIG_ENDIAN')
       read(iunit,err=20,end=30) isis,dplat,obstype,jiter,nlevs,idate,iint,ireal,iextra
       allocate(pob(nlevs),grs(nlevs),err(nlevs),iouse(nlevs))
       read(iunit,err=20,end=30) pob,grs,err,iouse
@@ -156,7 +156,7 @@ subroutine get_ozobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x_
         obsfile2 = trim(adjustl(obspath))//"diag_"//trim(sattypes_oz(nsat))//"_ges."//trim(adjustl(id2))
         endif
         !print *,obsfile2
-        open(iunit2,form="unformatted",file=obsfile2,iostat=ios)
+        open(iunit2,form="unformatted",file=obsfile2,iostat=ios,convert='BIG_ENDIAN')
         read(iunit2,err=20,end=30) isis2,dplat2,obstype2,jiter2,nlevs2,idate2,iint2,ireal2,iextra2
         if(isis /= isis2 .or. dplat /= dplat2 .or. obstype /= obstype2 .or. jiter /= jiter2 .or. &
            nlevs /= nlevs2 .or. idate /= idate2 .or. iint /= iint2 .or. ireal /= ireal2)then

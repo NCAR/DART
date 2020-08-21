@@ -12,8 +12,8 @@
    write_prior_copies           = .false.
    exclude_these_obs_types      = ' '
    output_option                = 1
-   obs_seq_out_filename         = obs_seq.out
    lie_about_ob_times           = .false.
    recenter_about_mean_prior    = .true.
-   /
+   debug                        = .false.
+  /
 

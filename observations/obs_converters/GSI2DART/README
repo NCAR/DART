@@ -11,6 +11,12 @@ are placed under the directory enkf
    kinds.F90
    mpi_readobs.f90
    read_diag.f90
+
+The following files had their open() statements modified to read 'BIG_ENDIAN' files
+without the need to compile EVERYTHING with the -convert big_endian compiler option:
+original: open(iunit,form="unformatted",file=obsfile,iostat=ios)
+modifed:  open(iunit,form="unformatted",file=obsfile,iostat=ios,convert='BIG_ENDIAN')
+
    readconvobs.f90
    readozobs.f90
    readsatobs.f90
@@ -25,7 +31,7 @@ DART modifications:
 For the Intel compiler you may need to add the compile flag "-nostdinc"
 to avoid inserting the standard C include files which have incompatible
 comment characters for fortran.  Do this in the work/mkmf_gsi_to_dart file
-by adding it to the "-c" string contents.
+by adding it to the "-c" string contents. (This was NOT needed for IFORT 19.0.5.281)
 
 
 ISSUES:

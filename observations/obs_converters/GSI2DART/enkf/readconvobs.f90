@@ -70,7 +70,7 @@ subroutine get_num_convobs(obspath,datestring,num_obs_tot,id)
     obsfile = trim(adjustl(obspath))//"diag_conv_ges."//trim(adjustl(id))
     endif
     !print *,obsfile
-    open(iunit,form="unformatted",file=obsfile,iostat=ios)
+    open(iunit,form="unformatted",file=obsfile,iostat=ios,convert='BIG_ENDIAN')
     read(iunit) idate
     !print *,idate
 10  continue
@@ -225,7 +225,7 @@ subroutine get_convobs_data(obspath, datestring, nobs_max, h_x_ensmean, h_xnobc,
   obsfile = trim(adjustl(obspath))//"diag_conv_ges."//trim(adjustl(id))
   endif
   !print *,obsfile
-  open(iunit,form="unformatted",file=obsfile,iostat=ios)
+  open(iunit,form="unformatted",file=obsfile,iostat=ios,convert='BIG_ENDIAN')
   read(iunit) idate
   !print *,idate
   if(twofiles) then
@@ -234,7 +234,7 @@ subroutine get_convobs_data(obspath, datestring, nobs_max, h_x_ensmean, h_xnobc,
     if (.not. fexist .or. datestring .eq. '0000000000') then
     obsfile2 = trim(adjustl(obspath))//"diag_conv_ges."//trim(adjustl(id2))
     endif
-    open(iunit2,form="unformatted",file=obsfile2,iostat=ios)
+    open(iunit2,form="unformatted",file=obsfile2,iostat=ios,convert='BIG_ENDIAN')
     read(iunit2) idate
    end if
 10 continue

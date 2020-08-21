@@ -14,7 +14,6 @@ use           radinfo, only : radinfo_read, radinfo_clean
 use       mpi_readobs, only : mpi_getobs
 use  dart_obs_seq_mod, only : dart_obs_seq, set_debug
 use     utilities_mod, only : find_namelist_in_file, check_namelist_read
-!use     utilities_mod, only : initialize_utilities, finalize_utilities
 use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 
 implicit none
@@ -51,7 +50,6 @@ call mpi_initialize
 
 ! Print out some info
 call initialize_mpi_utilities('gsi_to_dart',communicator=my_communicator)
-! call initialize_utilities('gsi_to_dart')
 
 ! Read namelist on all PEs
 call find_namelist_in_file("input.nml", "gsi_to_dart_nml", unitnml)
