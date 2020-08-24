@@ -1,21 +1,33 @@
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
+###########
+LMDZ README
+###########
 
-The detailed documentation of interface codes and scripts for 
-running will be added later. 
+Contents
+========
 
-Please contact me if you have any queries
+#. `Overview`_
+#. `Terms of Use`_
+#. `References`_
 
-Tarkeshwar Singh
-E-mail: tarkphysics87@gmail.com
-Research Scholar
-Centre for Atmospheric Sciences
-Indian Institute of Technology (IIT) Delhi
+Overview
+========
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+The `Laboratoire de Météorologie Dynamique Zoom (LMDZ) <https://lmdz.lmd.jussieu.fr/le-projet-lmdz-en-bref-en>`_ model is a global atmospheric model developed by the Institut Pierre-Simon Laplace (IPSL) in France. It serves as the atmospheric component of the IPSL Integrated Climate Model.
+
+The DART interface to LMDZ was primarily developed by Tarkeshwar Singh while he was at the Indian Institute of Technology at Delhi. He later moved to the Nansen Environmental and Remote Sensing Center in Bergen, Norway. A detailed description of the LMDZ DART implementation is published in Singh et al. (2015). [1]_
+
+Please email `Tarkeshwar <tarkphysics87@gmail.com>`_ for documentation beyond what is contained within the repository.
+
+Terms of Use
+============
+
+|Copyright| University Corporation for Atmospheric Research
+
+Licensed under the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable law or agreed to in writing, software distributed under this license is distributed on an "as is" basis, without warranties or conditions of any kind, either express or implied.
+
+.. |Copyright| unicode:: 0xA9 .. copyright sign
+
+References
+==========
+
+.. [1] **Singh, Tarkeshwar, Rashmi Mitta, and H.C. Upadhyaya**, 2015: Ensemble Adjustment Kalman Filter Data Assimilation for a Global Atmospheric Model. *International Conference on Dynamic Data-Driven Environmental Systems Science*, 284-298, `doi:10.1007/978-3-319-25138-7_26 <http://dx.doi.org/doi:10.1007/978-3-319-25138-7_26>`_.
