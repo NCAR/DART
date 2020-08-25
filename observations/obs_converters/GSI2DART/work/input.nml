@@ -19,28 +19,30 @@
   /
 
 &gsi_to_dart_nml
+   datapath  = '/gpfs/fs1/scratch/schwartz/JTTI/VarBC_test/2017042300/obs_seq/d01_test/'
    datestring                   = '2017042300'
-   datapath                     = '../data/'
    convert_conv                 = .true.
-   convert_sat                  = .false.
+   convert_sat                  = .true.
    obs_seq_out_filename         = 'obs_seq.out'
-   sattypes_rad(1)              = 'amsua_n19'
-   dsis(1)                      = 'amsua_n19'
    sattypes_oz                  = ' '
-   ens_size                     = 1
-   output_option                = 2
-   debug                        = .false.
-   lie_about_ob_times           = .true.
-   recenter_about_mean_prior    = .true.
+   ens_size                     = 2
    write_prior_copies           = .false.
    write_FO_for_these_obs_types = 'all'
    exclude_these_obs_types      = ' '
+   output_option                = 2
+   lie_about_ob_times           =.true.
+   recenter_about_mean_prior    = .true.
+   modify_dart_qc_flag_for_big_ob_error = .false.
+   variance_coef                        = 10.0
+   sattypes_rad(01)='amsua_n18', dsis(01)='amsua_n18'
+   sattypes_rad(02)='amsua_n19', dsis(02)='amsua_n19'
+   sattypes_rad(03)='amsua_metop-a', dsis(03)='amsua_metop-a'
  /
 
 # Examples of what you could do in gsi_to_dart_nml:
 !  write_FO_for_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT', 	
 !                                 'RADIOSONDE_V_WIND_COMPONENT', 	
-!  exclude_these_obs_types      = 'GPSRO_REFRACTIVITY', 
+!  exclude_these_obs_types      = 'GPSRO_REFRACTIVITY',
 !  sattypes_rad(01) = 'amsua_n18',     dsis(01) = 'amsua_n18'
 !  sattypes_rad(02) = 'amsua_n19',     dsis(02) = 'amsua_n19'
 !  sattypes_rad(03) = 'amsua_metop-a', dsis(03) = 'amsua_metop-a'
@@ -57,11 +59,11 @@
  /
 
 &utilities_nml
- module_details = .false.,
+ module_details = .false.
  /
 
 &obs_def_gps_nml
- max_gpsro_obs = 1000000,
+ max_gpsro_obs = 1000000
  /
 
 &obs_sequence_nml
