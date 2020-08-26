@@ -12,10 +12,15 @@ are placed under the directory enkf
    mpi_readobs.f90
    read_diag.f90
 
+Note that 'kinds.F90' get preprocessed into 'mykinds.f90'. Case-insensitive filesystems
+should be banned ... until then, it is more robust to implement some name change during preprocessing.
+The 'path_names_gsi_to_dart' reflects the processed filename.
+
 The following files had their open() statements modified to read 'BIG_ENDIAN' files
-without the need to compile EVERYTHING with the -convert big_endian compiler option:
+without the need to compile EVERYTHING with the -convert big_endian compiler option.
+Using the DART open_file() routine also provides some nice error handling.
 original: open(iunit,form="unformatted",file=obsfile,iostat=ios)
-modifed:  open(iunit,form="unformatted",file=obsfile,iostat=ios,convert='BIG_ENDIAN')
+modifed:  iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
 
    readconvobs.f90
    readozobs.f90
@@ -24,15 +29,15 @@ modifed:  open(iunit,form="unformatted",file=obsfile,iostat=ios,convert='BIG_END
 DART modifications:
    modified ../../../obs_def/DEFAULT_obs_def_mod.F90
    modified ../../../obs_kind/DEFAULT_obs_kind_mod.F90
-   modified ../../../preprocess/preprocess.f90
    Added   ../../../obs_def/obs_def_radiance_mod.f90 which has radiance observation types
-
 
 For the Intel compiler you may need to add the compile flag "-nostdinc"
 to avoid inserting the standard C include files which have incompatible
 comment characters for fortran.  Do this in the work/mkmf_gsi_to_dart file
 by adding it to the "-c" string contents. (This was NOT needed for IFORT 19.0.5.281)
 
+The converter has been tested with the DART 'r8' datatype redefined to be 'r4'
+and the converter mkmf_gsi_to_dart script has the preprocess directive -D_REAL4_
 
 ISSUES:
 

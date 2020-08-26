@@ -114,7 +114,7 @@ if(nproc == 0) write(*,*) 'total number of obs ',nobstot
 ! output obs_sequence file
 if ( output_option .eq. 3 ) then
    if ( .not. allocated(anal_ob)) allocate(anal_ob(ens_size,nobstot)) ! may have been allocated in mpi_getobs
-   call mpi_bcast(anal_ob,nobstot*ens_size,mpi_realkind,0,mpi_comm_world,ierr) !  should really do mpi_scatterv...but doing so doesn't seem to save memory overall...
+   call mpi_bcast(anal_ob,nobstot*ens_size,mpi_real4,0,mpi_comm_world,ierr) !  should really do mpi_scatterv...but doing so doesn't seem to save memory overall...
 
    if ( convert_conv ) then
       nobs_start = 1
@@ -172,8 +172,8 @@ else if ( output_option .eq. 2 ) then
    if ( convert_sat .and. nproc == pe_write_rad) then
       if ( .not. allocated(anal_ob)) allocate(anal_ob(ens_size,nobstot)) ! may have been allocated in mpi_getobs
    endif
-   if ( convert_sat .and. nproc==0)            call mpi_send(anal_ob,nobstot*ens_size,mpi_realkind,pe_write_rad,1,mpi_comm_world,ierr) ! send from nproc=0
-   if ( convert_sat .and. nproc==pe_write_rad) call mpi_recv(anal_ob,nobstot*ens_size,mpi_realkind,0,1,mpi_comm_world,mpi_status,ierr) ! recieve on nproc=pe_write_rad
+   if ( convert_sat .and. nproc==0)            call mpi_send(anal_ob,nobstot*ens_size,mpi_real4,pe_write_rad,1,mpi_comm_world,ierr) ! send from nproc=0
+   if ( convert_sat .and. nproc==pe_write_rad) call mpi_recv(anal_ob,nobstot*ens_size,mpi_real4,0,1,mpi_comm_world,mpi_status,ierr) ! recieve on nproc=pe_write_rad
    ! what if pe_write_rad == 0?  will the mpi_send/recv fail (sending and receiving from same processor)?
 
    obs_seq_out_filename_conv = trim(adjustl(obs_seq_out_filename))//'.conv'
