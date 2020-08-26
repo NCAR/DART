@@ -19,6 +19,7 @@ module readsatobs
 !
 ! program history log:
 !   2009-02-23  Initial version.
+!   2019-08-26  A little more error handling. Using open_file()
 !
 ! attributes:
 !   language: f95
@@ -95,7 +96,7 @@ subroutine get_num_satobs(obspath,datestring,num_obs_tot,id)
            write(*,*)'File "'//trim(obsfile)//'" does not exist.'
            goto 900
         endif
-        print *,'readsatobs: opening "'//trim(obsfile)//'"'
+        !print *,'readsatobs: opening "'//trim(obsfile)//'"'
         iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
         rewind(iunit)
         call read_radiag_header(iunit,npred_radiag,lretrieval,header_fix0,header_chan0,data_name0,iflag,lverbose)
@@ -186,7 +187,7 @@ subroutine get_satobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x
         write(*,*)'File "'//trim(obsfile)//'" does not exist.'
         goto 900
      endif 
-     print *,'readsatobs: opening "'//trim(obsfile)//'"'
+     !print *,'readsatobs: opening "'//trim(obsfile)//'"'
      iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
      rewind(iunit)
      call read_radiag_header(iunit,npred_radiag,lretrieval,header_fix1,header_chan1,data_name1,iflag,lverbose)
@@ -202,7 +203,7 @@ subroutine get_satobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x
            write(*,*)'File "'//trim(obsfile2)//'" does not exist.'
            goto 900
        endif
-       print *,'readsatobs: opening "'//trim(obsfile2)//'"'
+       !print *,'readsatobs: opening "'//trim(obsfile2)//'"'
        iunit2 = open_file(obsfile2,form='unformatted',action='read',convert='BIG_ENDIAN')
        rewind(iunit2)
        call read_radiag_header(iunit2,npred_radiag,lretrieval,header_fix2,header_chan2,data_name2,iflag2,lverbose)

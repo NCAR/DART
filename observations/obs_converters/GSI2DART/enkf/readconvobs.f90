@@ -16,6 +16,7 @@ module readconvobs
 !
 ! program history log:
 !   2009-02-23  Initial version.
+!   2019-08-26  A little more error handling. Using open_file()
 !
 ! attributes:
 !   language: f95
@@ -72,7 +73,7 @@ subroutine get_num_convobs(obspath,datestring,num_obs_tot,id)
     if (.not. fexist .or. datestring .eq. '0000000000') then
     obsfile = trim(adjustl(obspath))//"diag_conv_ges."//trim(adjustl(id))
     endif
-    print *,'readconvobs: opening "'//trim(obsfile)//'"'
+    !print *,'readconvobs: opening "'//trim(obsfile)//'"'
     iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
     read(iunit) idate
     !print *,idate
@@ -227,7 +228,7 @@ subroutine get_convobs_data(obspath, datestring, nobs_max, h_x_ensmean, h_xnobc,
   if (.not. fexist .or. datestring .eq. '0000000000') then
   obsfile = trim(adjustl(obspath))//"diag_conv_ges."//trim(adjustl(id))
   endif
-  print *,'readconvobs: opening "'//trim(obsfile)//'"'
+  !print *,'readconvobs: opening "'//trim(obsfile)//'"'
   iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
   read(iunit) idate
   !print *,idate
@@ -237,7 +238,7 @@ subroutine get_convobs_data(obspath, datestring, nobs_max, h_x_ensmean, h_xnobc,
     if (.not. fexist .or. datestring .eq. '0000000000') then
     obsfile2 = trim(adjustl(obspath))//"diag_conv_ges."//trim(adjustl(id2))
     endif
-    print *,'readconvobs: opening "'//trim(obsfile2)//'"'
+    !print *,'readconvobs: opening "'//trim(obsfile2)//'"'
     iunit2 = open_file(obsfile2,form='unformatted',action='read',convert='BIG_ENDIAN')
     read(iunit2) idate
    end if

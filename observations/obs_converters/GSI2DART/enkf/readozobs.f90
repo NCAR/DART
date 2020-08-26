@@ -16,6 +16,7 @@ module readozobs
 !
 ! program history log:
 !   2009-02-23  Initial version.
+!   2019-08-26  A little more error handling. Using open_file()
 !
 ! attributes:
 !   language: f95
@@ -65,7 +66,7 @@ subroutine get_num_ozobs(obspath,datestring,num_obs_tot,id)
         if (.not. fexist .or. datestring .eq. '0000000000') then
         obsfile = trim(adjustl(obspath))//"diag_"//trim(sattypes_oz(nsat))//"_ges."//trim(adjustl(id))
         endif
-        print *,'readozobs: opening "'//trim(obsfile)//'"'
+        !print *,'readozobs: opening "'//trim(obsfile)//'"'
         iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
         read(iunit,err=20,end=30) isis,dplat,obstype,jiter,nlevs,idate,iint,ireal,iextra
         allocate(pob(nlevs),grs(nlevs),err(nlevs),iouse(nlevs))
@@ -145,7 +146,7 @@ subroutine get_ozobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x_
       if (.not. fexist .or. datestring .eq. '0000000000') then
       obsfile = trim(adjustl(obspath))//"diag_"//trim(sattypes_oz(nsat))//"_ges."//trim(adjustl(id))
       endif 
-      print *,'readozobs: opening "'//trim(obsfile)//'"'
+      !print *,'readozobs: opening "'//trim(obsfile)//'"'
       iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
       read(iunit,err=20,end=30) isis,dplat,obstype,jiter,nlevs,idate,iint,ireal,iextra
       allocate(pob(nlevs),grs(nlevs),err(nlevs),iouse(nlevs))
@@ -156,7 +157,7 @@ subroutine get_ozobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x_
         if (.not. fexist .or. datestring .eq. '0000000000') then
         obsfile2 = trim(adjustl(obspath))//"diag_"//trim(sattypes_oz(nsat))//"_ges."//trim(adjustl(id2))
         endif
-        print *,'readozobs: opening "'//trim(obsfile2)//'"'
+        !print *,'readozobs: opening "'//trim(obsfile2)//'"'
         iunit2 = open_file(obsfile2,form='unformatted',action='read',convert='BIG_ENDIAN')
         read(iunit2,err=20,end=30) isis2,dplat2,obstype2,jiter2,nlevs2,idate2,iint2,ireal2,iextra2
         if(isis /= isis2 .or. dplat /= dplat2 .or. obstype /= obstype2 .or. jiter /= jiter2 .or. &

@@ -13,7 +13,7 @@
 # we need to preprocess enkf/kinds.F90
 
 rm -f ../enkf/mykinds.f90
-cpp -P -D_REAL4_ -traditional-cpp ../enkf/kinds.F90 > ../enkf/mykinds.f90
+cpp -P -D_REAL8_ -traditional-cpp ../enkf/kinds.F90 > ../enkf/mykinds.f90
 
 echo "Making Makefile with MPI"
 touch using_mpi_for_gsi_to_dart

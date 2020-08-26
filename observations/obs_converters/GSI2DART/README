@@ -36,9 +36,6 @@ to avoid inserting the standard C include files which have incompatible
 comment characters for fortran.  Do this in the work/mkmf_gsi_to_dart file
 by adding it to the "-c" string contents. (This was NOT needed for IFORT 19.0.5.281)
 
-The converter has been tested with the DART 'r8' datatype redefined to be 'r4'
-and the converter mkmf_gsi_to_dart script has the preprocess directive -D_REAL4_
-
 ISSUES:
 
 1) Radiance and surface pressure bias correction
@@ -52,14 +49,17 @@ ISSUES:
      ! If both verts are surface, do only horizontal
      if(loc1%which_vert == VERTISSURFACE .and. loc2%which_vert == VERTISSURFACE) comp_h_only = .true.
 
-
 RUNNING WITH 32 BIT REALS:
 
-   This requires changes in two places:
+The converter has been tested with 64-bit reals as well as 32-bit reals
+(i.e. r8=r4 and -D_REAL_4). The answers are different only at the roundoff level.
+
+This requires changes in two places:
+
    1) DART/assimilation_code/modules/utilities/types_mod.f90   change required:  r8 = r4
    2) work/mkmf_gsi_to_dart                                    change required:  -D_REAL4_
 
-   If these are not set in a compatible fashion, you will fail to compile with the following error (or something similar):
+If these are not set in a compatible fashion, you will fail to compile with the following error (or something similar):
 
 ../../../../observations/obs_converters/GSI2DART/dart_obs_seq_mod.f90(213): error #6284:
    There is no matching specific function for this generic function reference.   [SET_LOCATION]

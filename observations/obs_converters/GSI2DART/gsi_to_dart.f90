@@ -41,11 +41,14 @@ namelist /gsi_to_dart_nml/ ens_size, &
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! initialize MPI if need be (from mpisetup)
-! sets nproc      process number
-! sets numproc    total number of processes
-! sets mpi_realkind, mpi_status
-! sets my_communicator (mpi_comm_world)
+! Initialize MPI (from mpisetup module)
+! provides nproc           process number
+! provides numproc         total number of processes
+! provides my_communicator (mpi_comm_world)
+! provides mpi_realkind
+! provides mpi_status
+! provides mpi_real4   NOTE: many variables are declared 'r_single', which requires
+!                      the use of mpi_real4 in certain calls as opposed to mpi_realkind.
 
 call mpi_initialize
 
