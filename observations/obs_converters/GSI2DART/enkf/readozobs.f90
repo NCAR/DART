@@ -16,7 +16,7 @@ module readozobs
 !
 ! program history log:
 !   2009-02-23  Initial version.
-!   2019-08-26  A little more error handling. Using open_file()
+!   2020-08-26  A little more error handling. Using open_file()
 !
 ! attributes:
 !   language: f95
