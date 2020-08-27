@@ -45,10 +45,9 @@ namelist /gsi_to_dart_nml/ ens_size, &
 ! provides nproc           process number
 ! provides numproc         total number of processes
 ! provides mpi_comm_world
-! provides mpi_realkind
 ! provides mpi_status
 ! provides mpi_real4   NOTE: many variables are declared 'r_single', which requires
-!                      the use of mpi_real4 in certain calls as opposed to mpi_realkind.
+!                      the use of mpi_real4, even when the CPP directive is _REAL8_.
 
 call mpi_initialize
 
@@ -163,7 +162,7 @@ if ( output_option .eq. 3 ) then
 !  do i = 1,ens_size
 !     if ( nproc .eq. 0 ) workgrid_in(:) = anal_ob(i,:)
 !     call mpi_scatterv(workgrid_in(:),scount,displs, &
-!             & mpi_realkind,workgrid_out(:),scount(nproc),mpi_realkind,0,&
+!             & mpi_real4,workgrid_out(:),scount(nproc),mpi_real4,0,&
 !             & mpi_comm_world,ierr)
 !     anal_ob_chunk(i,:) = workgrid_out(:)
 !  enddo
@@ -250,12 +249,7 @@ subroutine stop2(ierror_code)
 
   write(*,*)'****STOP2****  ABORTING EXECUTION w/code=',ierror_code
   write(0,*)'****STOP2****  ABORTING EXECUTION w/code=',ierror_code
-! call mpi_abort(mpi_comm_world,ierror_code,ierr)
-  call mpi_finalize(ierr)
-  if (ierr /= MPI_SUCCESS) then
-     write(*,*)'MPI_FINALIZE returned error code: ',ierr
-     write(0,*)'MPI_FINALIZE returned error code: ',ierr
-  endif
+  call mpi_abort(mpi_comm_world,ierror_code,ierr)
   stop
   return
 end subroutine stop2
