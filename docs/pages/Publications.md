@@ -327,7 +327,7 @@ The Data Assimilation Research Testbed: A Community Facility.
    K. D. Raeder, N. S. Collins, S. Tilmes, G. Francis, C. Clerbaux, L. Emmons,
    G. Pfister, P.-F. Coheur and D. Hurtmans**, 2015  
      Assessing the impacts of assimilating IASI and MOPITT CO retrievals using
-     CESM-CAM-chem and DART  
+     CESM-CAM-chem and DART.  
      *Journal of Geophysical Research: Atmospheres*, **120**, no. 19,
      [doi:10.1002/2015JD023467](http://dx.doi.org/doi:10.1002/2015JD023467)
 
@@ -347,6 +347,14 @@ The Data Assimilation Research Testbed: A Community Facility.
      A comparison of model error representations in mesoscale ensemble data assimilation.  
      *Monthly Weather Review*, **143**, 3893-3911,
      [doi:10.1175/MWR-D-14-00395.1](http://dx.doi.org/doi:10.1175/MWR-D-14-00395.1)
+
+
+ ![](http://www.image.ucar.edu/images/pin4.gif) **Singh, T., R. Mitta, H.C. Upadhyaya**,
+   2015  
+     Ensemble Adjustment Kalman Filter Data Assimilation for a Global Atmospheric Model.  
+     *International Conference on Dynamic Data-Driven Environmental Systems Science*, 
+     284-298, [doi:10.1007/978-3-319-25138-7_26](http://dx.doi.org/doi:10.1007/978-3-319-25138-7_26)
+
 
 ---
 ## 2014
