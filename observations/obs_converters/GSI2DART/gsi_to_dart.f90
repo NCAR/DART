@@ -27,8 +27,8 @@ integer(i_kind) :: unitnml, io
 integer(i_kind) :: pe_write_conv,pe_write_rad
 integer(i_kind),allocatable,dimension(:) :: ista, iend, displs, scount
 character(len=4) :: char_proc
-character(len=129) :: my_output_filename
-character(len=129) :: obs_seq_out_filename_conv, obs_seq_out_filename_sat
+character(len=256) :: my_output_filename
+character(len=256) :: obs_seq_out_filename_conv, obs_seq_out_filename_sat
 real(r_single),    allocatable, dimension(:) :: workgrid_in, workgrid_out
 
 ! namelist variables are declared and initialized in params and radinfo
@@ -44,7 +44,7 @@ namelist /gsi_to_dart_nml/ ens_size, &
 ! Initialize MPI (from mpisetup module)
 ! provides nproc           process number
 ! provides numproc         total number of processes
-! provides my_communicator (mpi_comm_world)
+! provides mpi_comm_world
 ! provides mpi_realkind
 ! provides mpi_status
 ! provides mpi_real4   NOTE: many variables are declared 'r_single', which requires
@@ -53,7 +53,12 @@ namelist /gsi_to_dart_nml/ ens_size, &
 call mpi_initialize
 
 ! Print out some info
-call initialize_mpi_utilities('gsi_to_dart',communicator=my_communicator)
+call initialize_mpi_utilities('gsi_to_dart',communicator=mpi_comm_world)
+
+! The barrier makes sure the 'starting' banner from initialize_mpi_utilities is
+! printed before any subsequent print statements. Some tasks were printing the
+! error messages before the starting banner ... 
+call mpi_barrier(mpi_comm_world,ierr)
 
 ! Read namelist on all PEs
 call find_namelist_in_file("input.nml", "gsi_to_dart_nml", unitnml)
@@ -64,7 +69,13 @@ call check_namelist_read(unitnml, io, "gsi_to_dart_nml")
 call set_debug(debug)
 
 ! Do some error checking
-if (numproc .lt. ens_size+1) then
+if (ens_size < 2) then
+   print *,'ERROR: ens_size ',ens_size,' must be > 1'
+   call stop2(18)
+endif
+
+! Do some error checking
+if (numproc < ens_size+1) then
    print *,'total number of mpi tasks must be >= ens_size+1'
    print *,'tasks, ens_size+1 = ',numproc,ens_size+1
    call stop2(19)
@@ -231,7 +242,7 @@ subroutine stop2(ierror_code)
 ! adapted from GSI/src/main/stop1.f90
 
   use kinds, only: i_kind
-  use mpisetup, only : mpi_comm_world
+  use mpisetup, only : mpi_comm_world, MPI_SUCCESS
   implicit none
 
   integer(i_kind), intent(in) :: ierror_code
@@ -239,7 +250,12 @@ subroutine stop2(ierror_code)
 
   write(*,*)'****STOP2****  ABORTING EXECUTION w/code=',ierror_code
   write(0,*)'****STOP2****  ABORTING EXECUTION w/code=',ierror_code
-  call mpi_abort(mpi_comm_world,ierror_code,ierr)
+! call mpi_abort(mpi_comm_world,ierror_code,ierr)
+  call mpi_finalize(ierr)
+  if (ierr /= MPI_SUCCESS) then
+     write(*,*)'MPI_FINALIZE returned error code: ',ierr
+     write(0,*)'MPI_FINALIZE returned error code: ',ierr
+  endif
   stop
   return
 end subroutine stop2
