@@ -1,0 +1,25 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+
+# if you are building this on cheyenne.ucar.edu (ncar supercomputer)
+# you must have the hdf-eos5 module loaded, which defines the
+# following environment variables:
+#
+# NCAR_INC_HDFEOS5
+# NCAR_LDFLAGS_HDFEOS5
+# NCAR_LIBS_HDFEOS5
+
+set MYINCDIR = "-I$NCAR_INC_HDFEOS5"
+set MYLIBDIR = "-L$NCAR_LDFLAGS_HDFEOS5"
+set MYLIBS   = "$NCAR_LIBS_HDFEOS5"
+
+     ../../../../build_templates/mkmf -p convert_amsu_L1 \
+  -t ../../../../build_templates/mkmf.template \
+ -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
+ -a "../../../.." path_names_convert_amsu_L1
+
+exit $status
+
