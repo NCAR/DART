@@ -4,8 +4,8 @@
 
 program convert_amsu_L1
 
-! Program to read the AIRS retrievals for temperature
-! and humidity. 
+! Program to read the AMSU/A brightness temperatures.
+! Flown on the AIRS platform.
 
 use types_mod,        only : r8, deg2rad, PI
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
@@ -89,7 +89,6 @@ call check_namelist_read(iunit, io, 'convert_amsu_L1_nml')
 ! Record the namelist values used for the run ...
 if (do_nml_file()) write(nmlfileunit, nml=convert_amsu_L1_nml)
 if (do_nml_term()) write(    *      , nml=convert_amsu_L1_nml)
-
 
 ! when this routine returns, the l1_files variable will have
 ! all the filenames, regardless of which way they were specified.

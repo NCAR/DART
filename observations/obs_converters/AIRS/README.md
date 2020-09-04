@@ -33,6 +33,8 @@ Publisher: Goddard Earth Sciences Data and Information Services Center (GES DISC
 Release Date: 2007-07-26T00:00:00.000Z
 Linkage: https://disc.gsfc.nasa.gov/datacollection/AIRABRAD_005.html
 
+https://docserver.gesdisc.eosdis.nasa.gov/repository/Mission/AIRS/3.3_ScienceDataProductDocumentation/3.3.4_ProductGenerationAlgorithms/README.AIRABRAD.pdf
+
 ## Instructions to download the AIRABRAD dataset for the AMSUA converter
 
 1. Go to https://earthdata.nasa.gov
