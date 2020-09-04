@@ -537,30 +537,43 @@ call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, insert_init_string, l
 
 !--
 
-! Write out the definitions of each entry of obs_qty_names
-call write_blank_line(obs_qty_out_unit)
-write(line, '(A)') 'do i = 0, max_defined_quantities'
-write(obs_qty_out_unit, '(A)') trim(line)
-write(line, '(A)') '   obs_qty_names(i) = obs_qty_type(i, "UNKNOWN", "none", MISSING_R8, MISSING_R8)'
-write(obs_qty_out_unit, '(A)') trim(line)
-write(line, '(A)') 'enddo'
-write(obs_qty_out_unit, '(A)') trim(line)
-call write_blank_line(obs_qty_out_unit)
+! Write out the initialization of each entry of obs_qty_info
+! FIXME: needed now that we're initializing the type when defined?
+!call write_blank_line(obs_qty_out_unit)
+!write(line, '(A)') 'do i = 0, max_defined_quantities'
+!write(obs_qty_out_unit, '(A)') trim(line)
+!write(line, '(A)') '   obs_qty_info(i) = obs_qty_type(i, "UNKNOWN", "none", MISSING_R8, MISSING_R8)'
+!write(obs_qty_out_unit, '(A)') trim(line)
+!write(line, '(A)') 'enddo'
+!write(obs_qty_out_unit, '(A)') trim(line)
+!call write_blank_line(obs_qty_out_unit)
+
+! obs_qty_type now:
+!   integer                      :: index = -1
+!   character(len=obstypelength) :: name = ''
+!   ! FIXME: these need to be extensible, generic name/value pairs.
+!   ! start out with a few fixed names for testing/prototyping.
+!   character(len=valuelen)      :: units = 'none'
+!   character(len=valuelen)      :: pdf   = 'none'
+!   real(r8)                     :: minbound = MISSING_R8
+!   real(r8)                     :: maxbound = MISSING_R8
+!   integer                      :: nitems = 0
+!   character(len=namelen)       :: itemname(MAX_ITEMS)  = ''
+!   character(len=valuelen)      :: itemvalue(MAX_ITEMS) = ''
 
 
-! Write out the definitions of each entry of obs_qty_names
+! Write out the definitions of each entry of obs_qty_info
 do i = 0, num_qtys_found-1
-   write(line, '(A,I5,5A)') 'obs_qty_names(', &
-      i, ') = obs_qty_type(', trim(qty_info(i)%name),  ", '", &
-      trim(qty_info(i)%name), "', &"
+   write(line, '(2(A,I5),3A)') 'obs_qty_info(', &
+      i, ') = obs_qty_type(', i, ", '", trim(qty_info(i)%name), "', &"
    write(obs_qty_out_unit, '(A)') trim(line)
    write(line, '(3A,2(F20.12,A))') "     '", &
       trim(qty_info(i)%ud_units_name), &
-      "' ,", &
+      "' , 'none', ", &
       qty_info(i)%minbound, &
       ", ", &
       qty_info(i)%maxbound, &
-      ")"
+      ", 0, '', '')"
    write(obs_qty_out_unit, '(A)') trim(line)
 enddo
 call write_blank_line(obs_qty_out_unit)

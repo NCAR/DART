@@ -253,7 +253,8 @@ if (do_output() .and. (num_types_assimilate > 0 .or. &
          call log_it('   none')
    else
       do i = 1, num_types_use_precomputed_FOs
-
+         call log_it('   '//trim(use_precomputed_FOs_these_obs_types(i)))
+      enddo
    endif
    call log_it('')
 endif
@@ -477,9 +478,9 @@ call validate_metadata_strings(obs_qty_ind, itemname, itemvalue)
 ! they could replace existing value for that name; or error out.
 
 do i=1, obs_qty_info(obs_qty_ind)%nitems
-   if (obs_qty_info(obs_qty_ind)%name(i) == itemname) then
+   if (obs_qty_info(obs_qty_ind)%itemname(i) == itemname) then
       ! item already found - do what? replace
-      obs_qty_info(obs_qty_ind)%itemvalue = itemvalue
+      obs_qty_info(obs_qty_ind)%itemvalue(i) = itemvalue
       ! or error out?
       ! call error_handler()
       return
@@ -487,9 +488,10 @@ do i=1, obs_qty_info(obs_qty_ind)%nitems
 enddo
 
 ! add new entry
-obs_qty_info(obs_qty_ind)%nitems = obs_qty_info(obs_qty_ind)%nitems + 1 
-obs_qty_info(obs_qty_ind)%itemname = itemname
-obs_qty_info(obs_qty_ind)%itemvalue = itemvalue
+i = obs_qty_info(obs_qty_ind)%nitems + 1 
+obs_qty_info(obs_qty_ind)%nitems = i
+obs_qty_info(obs_qty_ind)%itemname(i) = itemname
+obs_qty_info(obs_qty_ind)%itemvalue(i) = itemvalue
 
 end subroutine set_namevalue_for_quantity
 
@@ -514,8 +516,8 @@ if (.not. module_initialized) call initialize_module
 call validate_obs_qty_index(obs_qty_ind, routine)
 
 do i=1, obs_qty_info(obs_qty_ind)%nitems
-   if (obs_qty_info(obs_qty_ind)%name(i) == itemname) then
-      get_itemvalue_for_quantity = obs_qty_info(obs_qty_ind)%itemvalue
+   if (obs_qty_info(obs_qty_ind)%itemname(i) == itemname) then
+      get_itemvalue_for_quantity = obs_qty_info(obs_qty_ind)%itemvalue(i)
       return
    endif
 enddo
@@ -925,8 +927,6 @@ endif
 
 end subroutine validate_obs_qty_index
 
-subroutine set_namevalue_for_quantity(obs_qty_ind, itemname, itemvalue)
-
 !----------------------------------------------------------------------------
 
 subroutine validate_metadata_strings(obs_qty_ind, itemname, itemvalue)
@@ -937,16 +937,16 @@ character(len=*), intent(in) :: itemvalue
 
 character(len=*), parameter :: routine = 'validate_metadata_strings'
 
-if (trimlen(itemname) > namelen) then
-  write(string1, *) 'quantity ', obs_qty_ind, ' metadata name "'//trim(itemname)//" must be shorter than', namelen
-  write(string2, *) 'quantity ', obs_qty_ind, ' is ', get_name_for_quantity(obs_qty_ind)
-  call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
+if (len_trim(itemname) > namelen) then
+  write(msg_string, *) 'quantity ', obs_qty_ind, ' metadata name "'//trim(itemname)//'" must be shorter than', namelen
+  write(msg_string1, *) 'quantity ', obs_qty_ind, ' is ', get_name_for_quantity(obs_qty_ind)
+  call error_handler(E_ERR, routine, msg_string, source, revision, revdate, text2=msg_string1)
 endif
 
-if (trimlen(itemvalue) > valuelen) then
-  write(string1, *) 'quantity ', obs_qty_ind, ' metadata value "'//trim(itemvalue)//" must be shorter than', valuelen
-  write(string2, *) 'quantity ', obs_qty_ind, ' is ', get_name_for_quantity(obs_qty_ind)
-  call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
+if (len_trim(itemvalue) > valuelen) then
+  write(msg_string, *) 'quantity ', obs_qty_ind, ' metadata value "'//trim(itemvalue)//'" must be shorter than', valuelen
+  write(msg_string1, *) 'quantity ', obs_qty_ind, ' is ', get_name_for_quantity(obs_qty_ind)
+  call error_handler(E_ERR, routine, msg_string, source, revision, revdate, text2=msg_string1)
 endif
 
 end subroutine validate_metadata_strings
