@@ -1,0 +1,275 @@
+!     QTY_10M_U_WIND_COMPONENT          "m/s"    MISSING_R8   MISSING_R8
+!     QTY_10M_V_WIND_COMPONENT          "m/s"    MISSING_R8   MISSING_R8
+!     QTY_1D_PARAMETER                  "none"   MISSING_R8   MISSING_R8
+!     QTY_2D_PARAMETER                  "none"   MISSING_R8   MISSING_R8
+!     QTY_2M_SPECIFIC_HUMIDITY          "none"   MISSING_R8   MISSING_R8
+!     QTY_2M_TEMPERATURE                "K"      MISSING_R8   MISSING_R8
+!     QTY_3D_PARAMETER                  "none"   MISSING_R8   MISSING_R8
+!     QTY_ALTIMETER_TENDENCY            "none"   MISSING_R8   MISSING_R8
+!     QTY_AOD                           "none"   MISSING_R8   MISSING_R8
+!     QTY_ATOMIC_H_MIXING_RATIO         "none"   MISSING_R8   MISSING_R8
+!     QTY_ATOMIC_OXYGEN_MIXING_RATIO    "none"   MISSING_R8   MISSING_R8
+!     QTY_CANOPY_WATER                  "none"
+!     QTY_CARBON                        "none"
+!     QTY_CB1                           "none"   MISSING_R8   MISSING_R8
+!     QTY_CB102                         "none"   MISSING_R8   MISSING_R8
+!     QTY_CB2                           "none"   MISSING_R8   MISSING_R8
+!     QTY_CB202                         "none"   MISSING_R8   MISSING_R8
+!     QTY_CH4                           "none"   MISSING_R8   MISSING_R8
+!     QTY_CLOUDWATER_MIXING_RATIO       "none"   MISSING_R8   MISSING_R8
+!     QTY_CLOUD_FRACTION                "none"   MISSING_R8   MISSING_R8
+!     QTY_CLOUD_ICE                     "none"   MISSING_R8   MISSING_R8
+!     QTY_CLOUD_LIQUID_WATER            "none"   MISSING_R8   MISSING_R8
+!     QTY_CLW_PATH                      "none"   MISSING_R8   MISSING_R8
+!     QTY_CO                            "none"   MISSING_R8   MISSING_R8
+!     QTY_CO01                          "none"   MISSING_R8   MISSING_R8
+!     QTY_CO02                          "none"   MISSING_R8   MISSING_R8
+!     QTY_CO03                          "none"   MISSING_R8   MISSING_R8
+!     QTY_CO2                           "none"   MISSING_R8   MISSING_R8
+!     QTY_CONDENSATIONAL_HEATING        "none"   MISSING_R8   MISSING_R8
+!     QTY_CWP_PATH                      "none"   MISSING_R8   MISSING_R8
+!     QTY_CWP_PATH_ZERO                 "none"   MISSING_R8   MISSING_R8
+!     QTY_DENSITY                       "none"   MISSING_R8   MISSING_R8
+!     QTY_DEWPOINT                      "none"   MISSING_R8   MISSING_R8
+!     QTY_DIFFERENTIAL_REFLECTIVITY     "none"   MISSING_R8   MISSING_R8
+!     QTY_DROPLET_NUMBER_CONCENTR       "none"   MISSING_R8   MISSING_R8
+!     QTY_DRY_LAND                    "none"  0.0           1.0
+!     QTY_DUST                          "none"   MISSING_R8   MISSING_R8
+!     QTY_DUST_OPACITY_7MB              "none"   MISSING_R8   MISSING_R8
+!     QTY_EDGE_NORMAL_SPEED             "m/s"    MISSING_R8   MISSING_R8
+!     QTY_ELECTRON_DENSITY              "none"   MISSING_R8   MISSING_R8
+!     QTY_EXNER_FUNCTION                "none"   MISSING_R8   MISSING_R8
+!     QTY_FLASH_RATE_2D                 "none"   MISSING_R8   MISSING_R8
+!     QTY_FPAR                          "none"
+!     QTY_GEOMETRIC_HEIGHT              "m"      MISSING_R8   MISSING_R8
+!     QTY_GEOMETRIC_HEIGHT              "none"   MISSING_R8   MISSING_R8
+!     QTY_GEOPOTENTIAL_HEIGHT           "m"      MISSING_R8   MISSING_R8
+!     QTY_GPSRO                         "none"   MISSING_R8   MISSING_R8
+!     QTY_GRAUPEL_MIXING_RATIO          "none"   MISSING_R8   MISSING_R8
+!     QTY_GRAUPEL_NUMBER_CONCENTR       "none"   MISSING_R8   MISSING_R8
+!     QTY_GRAUPEL_VOLUME                "none"   MISSING_R8   MISSING_R8
+!     QTY_GRAV_WAVE_DRAG_EFFIC          "none"   MISSING_R8   MISSING_R8
+!     QTY_GRAV_WAVE_STRESS_FRACTION     "none"   MISSING_R8   MISSING_R8
+!     QTY_GROUND_HEAT_FLUX              "none"
+!     QTY_HAIL_MIXING_RATIO             "none"   MISSING_R8   MISSING_R8
+!     QTY_HAIL_NUMBER_CONCENTR          "none"   MISSING_R8   MISSING_R8
+!     QTY_HAIL_VOLUME                   "none"   MISSING_R8   MISSING_R8
+!     QTY_ICE                           "none"
+!     QTY_ICE_FRACTION                  "none"   MISSING_R8   MISSING_R8
+!     QTY_ICE_MIXING_RATIO              "none"   MISSING_R8   MISSING_R8
+!     QTY_ICE_NUMBER_CONCENTRATION      "none"   MISSING_R8   MISSING_R8
+!     QTY_INFRARED_BRIGHT_TEMP          "none"   MISSING_R8   MISSING_R8
+!     QTY_INFRARED_RADIANCE             "none"   MISSING_R8   MISSING_R8
+!     QTY_INTEGRATED_AOD                "none"   MISSING_R8   MISSING_R8
+!     QTY_INTEGRATED_DUST               "none"   MISSING_R8   MISSING_R8
+!     QTY_INTEGRATED_SEASALT            "none"   MISSING_R8   MISSING_R8
+!     QTY_INTEGRATED_SMOKE              "none"   MISSING_R8   MISSING_R8
+!     QTY_INTEGRATED_SULFATE            "none"   MISSING_R8   MISSING_R8
+!     QTY_ION_O_MIXING_RATIO            "none"   MISSING_R8   MISSING_R8
+!     QTY_LANDMASK                      "none"   MISSING_R8   MISSING_R8
+!     QTY_LATENT_HEAT_FLUX              "none"
+!     QTY_LEAF_AREA_INDEX               "none"
+!     QTY_LEAF_CARBON                   "none"
+!     QTY_LEAF_NITROGEN                 "none"
+!     QTY_LIQUID_WATER                  "none"
+!     QTY_MICROWAVE_BRIGHT_TEMP         "none"   MISSING_R8   MISSING_R8
+!     QTY_MOLEC_OXYGEN_MIXING_RATIO     "none"   MISSING_R8   MISSING_R8
+!     QTY_NADIR_RADIANCE                "none"   MISSING_R8   MISSING_R8
+!     QTY_NET_CARBON_FLUX               "none"
+!     QTY_NET_CARBON_PRODUCTION         "none"
+!     QTY_NEUTRON_INTENSITY             "none"
+!     QTY_NH3                           "none"   MISSING_R8   MISSING_R8
+!     QTY_NITROGEN                      "none"
+!     QTY_NITROGEN                      "none"   MISSING_R8   MISSING_R8
+!     QTY_NO                            "none"   MISSING_R8   MISSING_R8
+!     QTY_NO2                           "none"   MISSING_R8   MISSING_R8
+!     QTY_O3                            "none"   MISSING_R8   MISSING_R8
+!     QTY_OC1                           "none"   MISSING_R8   MISSING_R8
+!     QTY_OC102                         "none"   MISSING_R8   MISSING_R8
+!     QTY_OC2                           "none"   MISSING_R8   MISSING_R8
+!     QTY_OC202                         "none"   MISSING_R8   MISSING_R8
+!     QTY_OCCULTATION_EXCESSPHASE       "none"   MISSING_R8   MISSING_R8
+!     QTY_OCCULTATION_REFRACTIVITY      "none"   MISSING_R8   MISSING_R8
+!     QTY_O_N2_COLUMN_DENSITY_RATIO     "none"   MISSING_R8   MISSING_R8
+!     QTY_POTENTIAL_TEMPERATURE         "none"   MISSING_R8   MISSING_R8
+!     QTY_POTENTIAL_TEMPERATURE       "none"  0.0           MISSING_R8
+!     QTY_POWER_WEIGHTED_FALL_SPEED     "none"   MISSING_R8   MISSING_R8
+!     QTY_PRECIPITABLE_WATER            "none"   MISSING_R8   MISSING_R8
+!     QTY_PRESSURE                      "hPa"    0.0          MISSING_R8
+!     QTY_PRESSURE                    "none"  0.0           MISSING_R8
+!     QTY_RADAR_REFLECTIVITY            "none"   MISSING_R8   MISSING_R8
+!     QTY_RADIATION                     "none"
+!     QTY_RAINWATER_MIXING_RATIO        "none"   MISSING_R8   MISSING_R8
+!     QTY_RAIN_NUMBER_CONCENTR          "none"   MISSING_R8   MISSING_R8
+!     QTY_RELATIVE_HUMIDITY             "none"   MISSING_R8   MISSING_R8
+!     QTY_ROOT_CARBON                   "none"
+!     QTY_ROOT_NITROGEN                 "none"
+!     QTY_SALINITY                    "none"  0.0           MISSING_R8
+!     QTY_SEASALT                       "none"   MISSING_R8   MISSING_R8
+!     QTY_SEA_SURFACE_ANOMALY         "none"  MISSING_R8    MISSING_R8
+!     QTY_SEA_SURFACE_HEIGHT          "none"  MISSING_R8    MISSING_R8
+!     QTY_SEA_SURFACE_PRESSURE        "none"  MISSING_R8    MISSING_R8
+!     QTY_SENSIBLE_HEAT_FLUX            "none"
+!     QTY_SFCB1                         "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCB102                       "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCB2                         "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCB202                       "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCO                          "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCO01                        "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCO02                        "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCO03                        "none"   MISSING_R8   MISSING_R8
+!     QTY_SFOC1                         "none"   MISSING_R8   MISSING_R8
+!     QTY_SFOC102                       "none"   MISSING_R8   MISSING_R8
+!     QTY_SFOC2                         "none"   MISSING_R8   MISSING_R8
+!     QTY_SFOC202                       "none"   MISSING_R8   MISSING_R8
+!     QTY_SKIN_TEMPERATURE              "K"      MISSING_R8   MISSING_R8
+!     QTY_SKIN_TEMPERATURE              "none"   MISSING_R8   MISSING_R8
+!     QTY_SMOKE                         "none"   MISSING_R8   MISSING_R8
+!     QTY_SNOWCOVER_FRAC                "none"
+!     QTY_SNOW_MIXING_RATIO             "none"   MISSING_R8   MISSING_R8
+!     QTY_SNOW_NUMBER_CONCENTR          "none"   MISSING_R8   MISSING_R8
+!     QTY_SNOW_THICKNESS                "none"
+!     QTY_SNOW_WATER                    "none"
+!     QTY_SO2                           "none"   MISSING_R8   MISSING_R8
+!     QTY_SOIL_CARBON                   "none"
+!     QTY_SOIL_LIQUID_WATER             "none"   MISSING_R8   MISSING_R8
+!     QTY_SOIL_MOISTURE                 "none"   MISSING_R8   MISSING_R8
+!     QTY_SOIL_NITROGEN                 "none"
+!     QTY_SOIL_TEMPERATURE              "K"      MISSING_R8   MISSING_R8
+!     QTY_SOIL_TEMPERATURE              "none"   MISSING_R8   MISSING_R8
+!     QTY_SPECIFIC_DIFFERENTIAL_PHASE   "none"   MISSING_R8   MISSING_R8
+!     QTY_SPECIFIC_HUMIDITY             "none"   MISSING_R8   MISSING_R8
+!     QTY_STATE_VARIABLE                "none"   MISSING_R8   MISSING_R8
+!     QTY_STEM_CARBON                   "none"
+!     QTY_STEM_NITROGEN                 "none"
+!     QTY_SULFATE                       "none"   MISSING_R8   MISSING_R8
+!     QTY_SURFACE_ALBEDO                "none"   MISSING_R8   MISSING_R8
+!     QTY_SURFACE_ELEVATION             "m"      MISSING_R8   MISSING_R8
+!     QTY_SURFACE_EMISSIVITY            "none"   MISSING_R8   MISSING_R8
+!     QTY_SURFACE_PRESSURE              "hPa"    0.0          MISSING_R8
+!     QTY_TEMPERATURE                   "K"      0.0          MISSING_R8
+!     QTY_TEMPERATURE                 "none"  0.0           MISSING_R8
+!     QTY_THC                           "none"   MISSING_R8   MISSING_R8
+!     QTY_TOTAL_PRECIPITABLE_WATER      "none"   MISSING_R8   MISSING_R8
+!     QTY_TOTAL_WATER_STORAGE           "none"
+!     QTY_TRACER_1_MIXING_RATIO         "none"   MISSING_R8   MISSING_R8
+!     QTY_TRACER_2_MIXING_RATIO         "none"   MISSING_R8   MISSING_R8
+!     QTY_TURBULENT_KINETIC_ENERGY      "none"   MISSING_R8   MISSING_R8
+!     QTY_U_CURRENT_COMPONENT         "none"  MISSING_R8    MISSING_R8
+!     QTY_U_WIND_COMPONENT              "m/s"    MISSING_R8   MISSING_R8
+!     QTY_U_WIND_COMPONENT            "none"  MISSING_R8    MISSING_R8
+!     QTY_VAPOR_MIXING_RATIO            "none"   MISSING_R8   MISSING_R8
+!     QTY_VELOCITY                      "m/s"    MISSING_R8   MISSING_R8
+!     QTY_VELOCITY                    "none"  0.0           MISSING_R8
+!     QTY_VERTICAL_TEC                  "none"   MISSING_R8   MISSING_R8
+!     QTY_VERTICAL_VELOCITY             "m/s"    MISSING_R8   MISSING_R8
+!     QTY_VERTICAL_VORTICITY            "none"   MISSING_R8   MISSING_R8
+!     QTY_VERTLEVEL                     "none"   MISSING_R8   MISSING_R8
+!     QTY_VORTEX_LAT                    "degrees" MISSING_R8   MISSING_R8
+!     QTY_VORTEX_LON                    "degrees" MISSING_R8   MISSING_R8
+!     QTY_VORTEX_PMIN                   "hPa"     MISSING_R8   MISSING_R8
+!     QTY_VORTEX_WMAX                   "m/s"     MISSING_R8   MISSING_R8
+!     QTY_V_CURRENT_COMPONENT         "none"  MISSING_R8    MISSING_R8
+!     QTY_V_WIND_COMPONENT              "m/s"    MISSING_R8   MISSING_R8
+!     QTY_V_WIND_COMPONENT            "none"  MISSING_R8    MISSING_R8
+!     QTY_WATER_TABLE_DEPTH             "none"
+!     QTY_WIND_TURBINE_POWER            "none"   MISSING_R8   MISSING_R8
+!     QTY_W_CURRENT_COMPONENT         "none"  MISSING_R8    MISSING_R8
+!   QTY_BRIGHTNESS_TEMPERATURE          "none"
+!   QTY_CANOPY_HEIGHT                   "none"
+!   QTY_DENSITY_ION_E                   "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_HEP                 "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_HP                  "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_N2P                 "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_NOP                 "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_NP                  "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_O2DP                "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_O2P                 "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_O2PP                "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_O4SP                "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_ION_OP                  "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_CO2             "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_H               "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_HE              "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_N2              "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_N2D             "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_N2P             "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_N4S             "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_NO              "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_O1D             "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_O2              "none"   MISSING_R8   MISSING_R8
+!   QTY_DENSITY_NEUTRAL_O3P             "none"   MISSING_R8   MISSING_R8
+!   QTY_FPAR_DIFFUSE                    "none"
+!   QTY_FPAR_DIRECT                     "none"
+!   QTY_FPAR_SHADED_DIFFUSE             "none"
+!   QTY_FPAR_SHADED_DIRECT              "none"
+!   QTY_FPAR_SUNLIT_DIFFUSE             "none"
+!   QTY_FPAR_SUNLIT_DIRECT              "none"
+!   QTY_FPSN                            "none"
+!   QTY_FSIF                            "none"
+!   QTY_GND_GPS_VTEC                    "none"   MISSING_R8   MISSING_R8
+!   QTY_SEAICE_AGREG_CONCENTR           "none"
+!   QTY_SEAICE_AGREG_FY                 "none"
+!   QTY_SEAICE_AGREG_SNOWDEPTH          "none"
+!   QTY_SEAICE_AGREG_SNOWVOLUME         "none"
+!   QTY_SEAICE_AGREG_SURFACETEMP        "none"
+!   QTY_SEAICE_AGREG_THICKNESS          "none"
+!   QTY_SEAICE_AGREG_VOLUME             "none"
+!   QTY_SEAICE_ALBEDODIRNIR             "none"
+!   QTY_SEAICE_ALBEDODIRVIZ             "none"
+!   QTY_SEAICE_ALBEDOINDNIR             "none"
+!   QTY_SEAICE_ALBEDOINDVIZ             "none"
+!   QTY_SEAICE_CONCENTR                 "none"
+!   QTY_SEAICE_FIRSTYEARAREA            "none"
+!   QTY_SEAICE_FY                       "none"
+!   QTY_SEAICE_ICEAGE                   "none"
+!   QTY_SEAICE_ICEENTHALPY001           "none"
+!   QTY_SEAICE_ICEENTHALPY002           "none"
+!   QTY_SEAICE_ICEENTHALPY003           "none"
+!   QTY_SEAICE_ICEENTHALPY004           "none"
+!   QTY_SEAICE_ICEENTHALPY005           "none"
+!   QTY_SEAICE_ICEENTHALPY006           "none"
+!   QTY_SEAICE_ICEENTHALPY007           "none"
+!   QTY_SEAICE_ICEENTHALPY008           "none"
+!   QTY_SEAICE_LEVELAREA                "none"
+!   QTY_SEAICE_LEVELVOLUME              "none"
+!   QTY_SEAICE_MELTPONDAREA             "none"
+!   QTY_SEAICE_MELTPONDDEPTH            "none"
+!   QTY_SEAICE_MELTPONDLID              "none"
+!   QTY_SEAICE_MELTPONDSNOW             "none"
+!   QTY_SEAICE_SALINITY001              "none"
+!   QTY_SEAICE_SALINITY002              "none"
+!   QTY_SEAICE_SALINITY003              "none"
+!   QTY_SEAICE_SALINITY004              "none"
+!   QTY_SEAICE_SALINITY005              "none"
+!   QTY_SEAICE_SALINITY006              "none"
+!   QTY_SEAICE_SALINITY007              "none"
+!   QTY_SEAICE_SALINITY008              "none"
+!   QTY_SEAICE_SNOWENTHALPY001          "none"
+!   QTY_SEAICE_SNOWENTHALPY002          "none"
+!   QTY_SEAICE_SNOWENTHALPY003          "none"
+!   QTY_SEAICE_SNOWVOLUME               "none"
+!   QTY_SEAICE_SURFACETEMP              "none"
+!   QTY_SEAICE_VOLUME                   "none"
+!   QTY_SOM_TEMPERATURE                 "none"
+!   QTY_TEMPERATURE_ELECTRON            "none"   MISSING_R8   MISSING_R8
+!   QTY_TEMPERATURE_ION                 "none"   MISSING_R8   MISSING_R8
+!   QTY_U_SEAICE_COMPONENT              "none"
+!   QTY_VEGETATION_TEMPERATURE          "none"
+!   QTY_VELOCITY_U                      "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_U_ION                  "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_V                      "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_VERTICAL_N2            "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_VERTICAL_N4S           "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_VERTICAL_NO            "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_VERTICAL_O2            "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_VERTICAL_O3P           "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_V_ION                  "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_W                      "none"   MISSING_R8   MISSING_R8
+!   QTY_VELOCITY_W_ION                  "none"   MISSING_R8   MISSING_R8
+!   QTY_V_SEAICE_COMPONENT              "none"
+!  QTY_1D_INTEGRAL         none      ! compute value with an integral 
+!  QTY_LARGE_SCALE_STATE   none      ! state varies with large time/space scale
+!  QTY_SMALL_SCALE_STATE   none      ! state varies with small time/space scale
+!  QTY_STATE_VARIABLE      none      ! basic item in a state 
+!  QTY_STATE_VAR_POWER     none      ! raising a state value to a power
