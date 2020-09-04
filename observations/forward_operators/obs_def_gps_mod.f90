@@ -11,17 +11,18 @@
 ! all gps obs in all input files, which if you are reading multiple obs_seq
 ! files (e.g. for the obs_diag program) might be a larger number than 100K.
 
+!
 !>@todo we should have a local vs nonlocal forward operator for GPS RO,
 !>so we don't have to add the metadata for the local operator.  big space
 !>and time savings.  also, we should add GPSRO_BENDING_ANGLE if someone
 !>can contribute a forward operator for it.
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS QUANTITY LIST
 ! TEMPERATURE,             QTY_TEMPERATURE,        COMMON_CODE
 ! SPECIFIC_HUMIDITY,       QTY_SPECIFIC_HUMIDITY,  COMMON_CODE
 ! PRESSURE,                QTY_PRESSURE,           COMMON_CODE
 ! GPSRO_REFRACTIVITY,      QTY_GPSRO
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS QUANTITY LIST
 
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
