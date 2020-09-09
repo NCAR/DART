@@ -12,10 +12,20 @@ Contents
 Overview
 ========
 
-This observation converter implements a slightly more intricate process than the typical observation converters contained in DART. It takes a set of observations and:
+This converter is designed to convert observation files created by the Gridpoint Statistical Interpolation (GSI) system maintained by the National Oceanic and Atmospheric Administration (NOAA) into DART observation sequence files. The files created by GSI are 'BIG_ENDIAN' and have filenames such as:
 
-- first applies the analysis scheme from the National Centers for Environmental Prediction Gridpoint Statistical Interpolation (GSI) system
-- then converts the GSI observations into the observation sequence format used in DART.
+- diag_amsua_metop-a_ges.ensmean
+- diag_amsua_metop-a_ges.mem001
+- diag_amsua_metop-a_ges.mem002
+- diag_amsua_n18_ges.ensmean
+- diag_amsua_n18_ges.mem001
+- diag_amsua_n18_ges.mem002
+- diag_amsua_n19_ges.ensmean
+- diag_amsua_n19_ges.mem001
+- diag_amsua_n19_ges.mem002
+- diag_conv_ges.ensmean
+- diag_conv_ges.mem001
+- diag_conv_ges.mem002
 
 The GSI system uses the Message Passing Interface (MPI) to process observations in parallel (even when converting a small amount of observations) so MPI is required to execute this observation converter.
 
