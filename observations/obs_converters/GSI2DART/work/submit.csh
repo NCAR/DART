@@ -22,7 +22,7 @@
 #SBAXXX --ntasks=81
 #SBAXXX --ntasks-per-node=36
 #SBAXXX --time=00:03:00
-#SBAXXX -A P86850054
+#SBAXXX -A P########
 #SBAXXX -p dav
 #SBAXXX -e testslurm.%j.err
 #SBAXXX -o testslurm.%j.out
@@ -37,11 +37,11 @@
 #PBS -l walltime=00:03:00
 #PBS -q economy
 #PBS -l select=3:ncpus=36:mpiprocs=36
-#PBS -A P86850054
+#PBS -A P########
 #PBS -j oe
 #PBS -k eod
 #PBS -m abe
-#PBS -M thoar@ucar.edu
+#PBS -M ${USER}@ucar.edu
 #
 #==========================================================================
 # LSF directives                bsub < submit.csh
@@ -51,7 +51,7 @@
 #BSUB -o output.driver
 #BSUB -e output.driver
 #BSUB -q regular
-#BSUB -P P64000510
+#BSUB -P P########
 #BSUB -W 15
 #BSUB -R "span[ptile=16]"
 #BSUB -N -u ${USER}@ucar.edu
