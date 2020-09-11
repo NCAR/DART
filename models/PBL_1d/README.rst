@@ -1,26 +1,27 @@
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
+#############
+PBL_1D README
+#############
 
-The PBL_1D directory has been deprecated in favor of using the WRF/DART model
-interface.  There is now support for WRF single column mode built into the
-standard model_mod in that directory.
+Contents
+========
 
-If you are interested in more information on this configuration, email us
-at dart at ucar dot edu.
+#. `Overview`_
+#. `Terms of Use`_
 
-If you already have access to the DART Developers Wiki, look here:
+Overview
+========
 
-https://wiki.ucar.edu/display/DARTdev/WRF+Single+Column+Model
+The PBL_1D directory has been deprecated in favor of using the WRF/DART model interface.  There is now support for WRF single column mode built into the standard model_mod in that directory.
 
-If you really want the files that used to be in this directory, check them
-out from the Kodiak release of DART.
+If you are interested in more information on this configuration, please email us at dart@ucar.edu.
 
-Contact dart at ucar dot edu for more information or questions.
+If you really want the files that used to be in this directory, check them out from the Kodiak release of DART.
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+Terms of Use
+============
+
+|Copyright| University Corporation for Atmospheric Research
+
+Licensed under the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable law or agreed to in writing, software distributed under this license is distributed on an "as is" basis, without warranties or conditions of any kind, either express or implied.
+
+.. |Copyright| unicode:: 0xA9 .. copyright sign
