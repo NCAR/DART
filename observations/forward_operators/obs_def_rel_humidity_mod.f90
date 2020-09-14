@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
 !RADIOSONDE_RELATIVE_HUMIDITY,    QTY_RELATIVE_HUMIDITY
@@ -13,6 +11,7 @@
 !LAND_SFC_RELATIVE_HUMIDITY,      QTY_RELATIVE_HUMIDITY
 !METAR_RELATIVE_HUMIDITY_2_METER, QTY_RELATIVE_HUMIDITY
 !AIRS_RELATIVE_HUMIDITY,          QTY_RELATIVE_HUMIDITY
+!MESONET_RELATIVE_HUMIDITY,       QTY_RELATIVE_HUMIDITY
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -23,7 +22,7 @@
 !         case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
 !              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
 !              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
-!              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
+!              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY, MESONET_RELATIVE_HUMIDITY)
 !            call get_expected_relative_humidity(state_handle, ens_size, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
@@ -31,7 +30,7 @@
 !         case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
 !              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
 !              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
-!              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
+!              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY, MESONET_RELATIVE_HUMIDITY)
 !            continue
 ! END DART PREPROCESS READ_OBS_DEF
 
@@ -39,7 +38,7 @@
 !         case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
 !              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
 !              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
-!              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
+!              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY, MESONET_RELATIVE_HUMIDITY)
 !            continue
 ! END DART PREPROCESS WRITE_OBS_DEF
 
@@ -47,23 +46,21 @@
 !         case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
 !              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
 !              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
-!              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
+!              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY, MESONET_RELATIVE_HUMIDITY)
 !            continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_rel_humidity_mod
 
-use        types_mod, only : r8, missing_r8, L_over_Rv
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, E_ALLMSG
-use     location_mod, only : location_type, set_location, get_location, write_location, &
-                             read_location, is_vertical
-use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_PRESSURE, QTY_VAPOR_MIXING_RATIO
-
-use ensemble_manager_mod,  only : ensemble_type
+use             types_mod, only : r8, missing_r8, L_over_Rv
+use         utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, E_ALLMSG
+use          location_mod, only : location_type, set_location, get_location, write_location, &
+                                  read_location, is_vertical
+use       assim_model_mod, only : interpolate
+use          obs_kind_mod, only : QTY_TEMPERATURE, QTY_PRESSURE, QTY_VAPOR_MIXING_RATIO
+use  ensemble_manager_mod, only : ensemble_type
 use obs_def_utilities_mod, only : track_status
-
 
 implicit none
 private
@@ -71,10 +68,9 @@ private
 public :: get_expected_relative_humidity
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'obs_def_rel_humidity_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 logical, save       :: module_initialized   = .false.
 logical, save       :: first_time_warn_low  = .true.
@@ -198,8 +194,3 @@ end subroutine get_expected_relative_humidity
 end module obs_def_rel_humidity_mod
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

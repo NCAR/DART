@@ -10,10 +10,12 @@
 #
 #----------------------------------------------------------------------
 
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
 set nonomatch
+
 set usingmpi=no
 set MPICMD=""
-set LOGDIR=`pwd`/testing_logs
 
 if ( $#argv > 0 ) then
   if ( "$argv[1]" == "-mpi" ) then
@@ -77,8 +79,6 @@ if ( ! $?host) then
    setenv host `uname -n`
 endif
 
-echo "Running DART model test on $host"
-
 #----------------------------------------------------------------------
 
 set modeldir = `pwd`
@@ -123,7 +123,9 @@ echo "Starting tests of model directory at "`date`
 echo "=================================================================="
 echo
 echo
+echo "Running DART model test on $host"
 
+set LOGDIR=`pwd`/testing_logs
 ${REMOVE} ${LOGDIR}/buildlog.*.out ${LOGDIR}/runlog.*.out
 mkdir -p ${LOGDIR}
 echo "build and run logs are in: $LOGDIR"
@@ -135,9 +137,9 @@ foreach MODEL ( $DO_THESE_MODELS )
     
     echo
     echo
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo "Testing $MODEL starting at "`date`
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo
     echo
 
@@ -232,7 +234,7 @@ foreach MODEL ( $DO_THESE_MODELS )
 
     echo
     echo
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     if ( $FAILURE ) then
       echo "ERROR - unsuccessful test of $MODEL"
 
@@ -255,7 +257,7 @@ foreach MODEL ( $DO_THESE_MODELS )
     else
       echo "End of succesful test of $MODEL"
     endif
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo
     echo
 
