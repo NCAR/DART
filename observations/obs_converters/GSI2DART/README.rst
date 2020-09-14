@@ -12,7 +12,13 @@ Contents
 Overview
 ========
 
-This converter is designed to convert observation files created by the Gridpoint Statistical Interpolation (GSI) system maintained by the National Oceanic and Atmospheric Administration (NOAA) into DART observation sequence files. The files created by GSI are 'BIG_ENDIAN' and have filenames such as:
+The GSI2DART converter was contributed by **Craig Schwartz** of the 
+Mesoscale & Microscale Meteorology Lab at NCAR. *Thanks Craig!* 
+
+This converter is designed to convert observation files created by the Gridpoint 
+Statistical Interpolation (GSI) system maintained by the National Oceanic and 
+Atmospheric Administration (NOAA) into DART observation sequence files.
+The files created by GSI are 'BIG_ENDIAN' and have filenames such as:
 
 - diag_amsua_metop-a_ges.ensmean
 - diag_amsua_metop-a_ges.mem001
@@ -27,15 +33,22 @@ This converter is designed to convert observation files created by the Gridpoint
 - diag_conv_ges.mem001
 - diag_conv_ges.mem002
 
-The GSI system uses the Message Passing Interface (MPI) to process observations in parallel (even when converting a small amount of observations) so MPI is required to execute this observation converter.
+The DART converter uses routines from the GSI system that use the Message Passing 
+Interface (MPI) to process observations in parallel (even when converting a small 
+amount of observations) so MPI is required to execute this observation converter.
 
-Due to these prerequisites, we provide a detailed description of this directory to guide the user.
+Due to these prerequisites, we provide a detailed description of this directory to 
+guide the user.
 
-This directory contains copies of several source code files from GSI. The GSI source code is available via a Github repository managed by NOAA's Environmental Modeling Center (EMC):
+This directory contains copies of several source code files from GSI. 
+The GSI source code is available via a Github repository managed by NOAA's 
+Environmental Modeling Center (EMC):
 
 https://github.com/NOAA-EMC/GSI
 
-To differentiate between the sets of code, we refer to the root directory of the NOAA-EMC repository as ``GSI`` and refer to the root directory of this observation converter as ``GSI2DART``.
+To differentiate between the sets of code, we refer to the root directory of the 
+NOAA-EMC repository as ``GSI`` and refer to the root directory of this observation 
+converter as ``GSI2DART``.
 
 ``GSI2DART/enkf`` copies seven files from ``GSI/src`` mostly without modification:
 
@@ -47,9 +60,17 @@ To differentiate between the sets of code, we refer to the root directory of the
 6. ``GSI2DART/enkf/readozobs.f90`` from ``GSI/enkf/readozobs.f90``
 7. ``GSI2DART/enkf/readsatobs.f90`` from ``GSI/enkf/readsatobs.f90``
 
-Note that within ``GSI`` the source file ``kinds.F90`` has an upper-case ``F90`` suffix. Within the ``GSI2DART`` observation converter, it gets preprocessed into ``mykinds.f90`` with a lower-case ``f90`` suffix. Case-insensitive filesystems should be banned ... until then, it is more robust to implement some name change during preprocessing. The path name specified in ``GSI2DART/work/path_names_gsi_to_dart`` reflects this processed filename.
+Note that within ``GSI`` the source file ``kinds.F90`` has an upper-case ``F90`` 
+suffix. Within the ``GSI2DART`` observation converter, it gets preprocessed 
+into ``mykinds.f90`` with a lower-case ``f90`` suffix. Case-insensitive filesystems 
+should be banned ... until then, it is more robust to implement some name change 
+during preprocessing. The path name specified 
+in ``GSI2DART/work/path_names_gsi_to_dart`` reflects this processed filename.
 
-The following three files had their open() statements modified to read 'BIG_ENDIAN' files without the need to compile EVERYTHING with the ``-convert big_endian`` compiler option. Using the DART open_file() routine also provides some nice error handling.
+The following three files had their open() statements modified to read 
+'BIG_ENDIAN' files without the need to compile EVERYTHING with 
+the ``-convert big_endian`` compiler option. Using the DART open_file() 
+routine also provides some nice error handling.
 
 - original: :fortran:`open(iunit,form="unformatted",file=obsfile,iostat=ios)`
 - modified: :fortran:`iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')`
@@ -75,7 +96,8 @@ The source files within ``GSI2DART`` are:
 Elsewhere in the repository
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This observation converter required modifying two files and adding a module for radiance observation types.
+This observation converter required modifying two files and adding a module for 
+radiance observation types.
 
 - Modified ``../../forward_operators/DEFAULT_obs_def_mod.F90``
 - Modified ``../../DEFAULT_obs_kind_mod.F90``
@@ -84,7 +106,11 @@ This observation converter required modifying two files and adding a module for 
 Compiler notes
 ~~~~~~~~~~~~~~
 
-When using ifort, the Intel Fortran compiler, you may need to add the compiler flag ``-nostdinc`` to avoid inserting the standard C include files which have incompatible comment characters for Fortran.  You can add this compiler flag in the the ``GSI2DART/work/mkmf_gsi_to_dart`` file by adding it to the "-c" string contents.
+When using ifort, the Intel Fortran compiler, you may need to add the compiler 
+flag ``-nostdinc`` to avoid inserting the standard C include files which have 
+incompatible comment characters for Fortran.  You can add this compiler flag 
+in the the ``GSI2DART/work/mkmf_gsi_to_dart`` file by adding it to the "-c" 
+string contents.
 
 *Please note: this was NOT needed for ifort version 19.0.5.281.*
 
@@ -97,6 +123,9 @@ Additional files and directories
 
 Issues
 ======
+
+1. The converter requires an ensemble size greater than one and will MPI_Abort() 
+if only one ensemble member is requested.
 
 The following are issues previously recorded in the README:
 
@@ -116,14 +145,16 @@ The following are issues previously recorded in the README:
 Running with 32 bit reals
 -------------------------
 
-The converter has been tested with 64-bit reals as well as 32-bit reals (i.e. r8=r4 and -D_REAL_4). The answers are different only at the roundoff level.
+The converter has been tested with 64-bit reals as well as 32-bit reals 
+(i.e. r8=r4 and -D_REAL_4). The answers are different only at the roundoff level.
 
 This requires changes in two places:
 
 1. ``DART/assimilation_code/modules/utilities/types_mod.f90`` change required:  r8 = r4
 2. ``GSI2DART/work/mkmf_gsi_to_dart`` change required:  -D_REAL4_
 
-If these are not set in a compatible fashion, you will fail to compile with the following error (or something similar):
+If these are not set in a compatible fashion, you will fail to compile with the
+following error (or something similar):
 
 .. code-block:: bash
 
