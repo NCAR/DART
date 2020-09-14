@@ -65,15 +65,9 @@ use utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG,   &
                            initialize_utilities, do_nml_file, do_nml_term, &
                            find_namelist_in_file, check_namelist_read,     &
                            finalize_utilities, log_it
-use parse_args_mod, only : get_args_from_string
+use parse_args_mod, only : get_args_from_string, get_name_val_pairs_from_string
 
 implicit none
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
 
 ! Pick something ridiculously large and forget about it (lazy)
 integer, parameter   :: max_types = 5000, max_qtys = 5000
@@ -84,7 +78,8 @@ integer              :: iunit, ierr, io, i, j, k
 integer              :: l_string, l2_string, total_len
 integer              :: linenum1, linenum2, linenum3, linenum4
 integer              :: num_types_found, num_qtys_found
-logical              :: duplicate, qty_found, temp_user
+logical              :: duplicate, qty_found, temp_user, is_more
+character(len = 256) :: valtokens(max_qtys)
 character(len = 512) :: err_string
 character(len = 6)   :: full_line_in  = '(A256)'
 character(len = 3)   :: full_line_out = '(A)'
@@ -95,16 +90,16 @@ logical :: DEBUG = .false.
 ! to handle error conditions.
 integer, parameter   :: MAX_TOKENS = 20
 integer              :: ntokens
-character(len=128)   :: token(MAX_TOKENS)
+character(len=256)   :: token(MAX_TOKENS)
 
 integer, parameter :: MAX_NAME_LEN = 32
 character(len=MAX_NAME_LEN) :: temp_type, temp_qty
 
 type qty_info_type
-   character(len=MAX_NAME_LEN) :: name          = 'null'
-   character(len=128)          :: ud_units_name = 'none'
-   real(r8)                    :: minbound      = MISSING_R8
-   real(r8)                    :: maxbound      = MISSING_R8
+   character(len=MAX_NAME_LEN) :: name                 = 'null'
+   integer                     :: num_nameval_pairs    = 0
+   character(len=256)          :: namepair(MAX_TOKENS) = ''
+   character(len=256)          :: valpair(MAX_TOKENS)  = ''
 end type qty_info_type
 
 type(qty_info_type) :: qty_info(0:max_qtys)
@@ -204,12 +199,16 @@ namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_qty_mod_file,   &
 
 !Begin by reading the namelist
 call initialize_utilities('preprocess')
-call register_module(source, revision, revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "preprocess_nml", iunit)
 read(iunit, nml = preprocess_nml, iostat = io)
 call check_namelist_read(iunit, io, "preprocess_nml")
+
+! for backwards compatibility, if no quantity files are given use this default file
+! with all the defined quantities.
+if (quantity_files(1) == 'null') &
+   quantity_files(1) = '../../../assimilation_code/modules/observations/all_quantities.txt'
 
 ! Output the namelist file information
 call log_it('Path names of default obs_def and obs_qty modules')
@@ -308,21 +307,21 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
       ! ntokens == 0 means cycle without error
       ! ntokens > 0 means some work to do
 
-      call parse_line(line, ntokens, token, err_string)
+      call parse_line(line, ntokens, token, err_string, pairs_expected=.true., valtokens=valtokens)
       if (ntokens < 0) &
          call quantity_error(err_string, line, quantity_files(j), linenum2)
    
       if (ntokens == 0) cycle DEFINE_QTYS
 
-      if (ntokens > 4 .or. ntokens == 3) then
-         err_string = 'expected QTY_xxx units minbound maxbound. unable to process.'
-         call quantity_error(err_string, line, quantity_files(j), linenum2)
-      endif
+      !if (ntokens > 4 .or. ntokens == 3) then
+      !   err_string = 'expected QTY_xxx units minbound maxbound. unable to process.'
+      !   call quantity_error(err_string, line, quantity_files(j), linenum2)
+      !endif
 
-      if (ntokens < 2) then
-         err_string = 'expected QTY_xxx units. unable to process.'
-         call quantity_error(err_string, line, quantity_files(j), linenum2)
-      endif
+      !if (ntokens < 2) then
+      !   err_string = 'expected QTY_xxx units. unable to process.'
+      !   call quantity_error(err_string, line, quantity_files(j), linenum2)
+      !endif
 
       if (token(1)(1:4) /= 'QTY_') then
          err_string = 'QTY_xxx not found as first word on line'
@@ -346,19 +345,11 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
    
       if (.not. duplicate) then
          qty_info(num_qtys_found)%name = trim(token(1))
-         qty_info(num_qtys_found)%ud_units_name = trim(token(2))
-         if (ntokens > 2) then
-            call string_to_real(token(3), qty_info(num_qtys_found)%minbound, err_string)
-            if (err_string /= '') then
-               err_string = trim(err_string) // ' min bounds'
-               call quantity_error(err_string, line, quantity_files(j), linenum2)
-            endif
-            call string_to_real(token(4), qty_info(num_qtys_found)%maxbound, err_string)
-            if (err_string /= '') then
-               err_string = trim(err_string) // ' max bounds'
-               call quantity_error(err_string, line, quantity_files(j), linenum2)
-            endif
-         endif
+         do i=1, ntokens-1
+            qty_info(num_qtys_found)%namepair(i) = trim(token(i+1))
+            qty_info(num_qtys_found)%valpair(i)  = trim(valtokens(i+1))
+         enddo
+         qty_info(num_qtys_found)%num_nameval_pairs = ntokens-1
          num_qtys_found = num_qtys_found + 1
       endif
    
@@ -400,7 +391,7 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
       ! All lines between start/end must be type/qty lines.
       ! Format:  ! type_string, qty_string [, COMMON_CODE]
 
-      call parse_line(line, ntokens, token, err_string)
+      call parse_line(line, ntokens, token, err_string, pairs_expected=.false.)
       if (ntokens < 0) &
          call typeqty_error(err_string, line, obs_type_files(j), linenum2)
    
@@ -564,17 +555,22 @@ call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, insert_init_string, l
 
 ! Write out the definitions of each entry of obs_qty_info
 do i = 0, num_qtys_found-1
-   write(line, '(2(A,I5),3A)') 'obs_qty_info(', &
-      i, ') = obs_qty_type(', i, ", '", trim(qty_info(i)%name), "', &"
+   write(line, *) 'obs_qty_info(', i, ')%index = ', i
    write(obs_qty_out_unit, '(A)') trim(line)
-   write(line, '(3A,2(F20.12,A))') "     '", &
-      trim(qty_info(i)%ud_units_name), &
-      "' , 'none', ", &
-      qty_info(i)%minbound, &
-      ", ", &
-      qty_info(i)%maxbound, &
-      ", 0, '', '')"
+
+   write(line, *) 'obs_qty_info(', i, ')%name = ', '"'//trim(qty_info(i)%name)//'"'
    write(obs_qty_out_unit, '(A)') trim(line)
+
+   write(line, *) 'obs_qty_info(', i, ')%nitems = ', qty_info(i)%num_nameval_pairs
+   write(obs_qty_out_unit, '(A)') trim(line)
+
+   do j=1, qty_info(i)%num_nameval_pairs
+      write(line, *) 'obs_qty_info(', i, ')%itemname(', j, ') = ', '"'//trim(qty_info(i)%namepair(j))//'"'
+      write(obs_qty_out_unit, '(A)') trim(line)
+      write(line, *) 'obs_qty_info(', i, ')%itemvalue(', j, ') = ', '"'//trim(qty_info(i)%valpair(j))//'"'
+      write(obs_qty_out_unit, '(A)') trim(line)
+   enddo
+   call write_blank_line(obs_qty_out_unit)  ! too many blank lines?
 enddo
 call write_blank_line(obs_qty_out_unit)
 
@@ -721,7 +717,7 @@ call copy_until_end(obs_def_in_unit, obs_def_out_unit)
 call close_file(obs_def_in_unit)
 call close_file(obs_def_out_unit)
 
-call error_handler(E_MSG,'preprocess','Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG,'preprocess','Finished successfully.')
 call finalize_utilities('preprocess')
 
 !------------------------------------------------------------------------------
@@ -785,8 +781,7 @@ FIND_NEXT: do
    if(ierr /= 0) then
       write(err_string,  *) 'Did not find required line containing ', trim(stop_string)
       write(err_string2, *) 'reading file ', trim(iname)
-      call error_handler(E_ERR, 'preprocess', err_string, &
-            source, revision, revdate, text2=err_string2)
+      call error_handler(E_ERR, 'preprocess', err_string, text2=err_string2)
    endif
    linenum = linenum + 1
 
@@ -803,8 +798,7 @@ FIND_NEXT: do
        if(ierr /= 0) then
           write(err_string,  *) 'Write error, returned code = ', ierr
           write(err_string2, *) 'writing file ', trim(oname)
-          call error_handler(E_ERR, 'preprocess', err_string, &
-                source, revision, revdate, text2=err_string2)
+          call error_handler(E_ERR, 'preprocess', err_string, text2=err_string2)
        endif
    endif
 
@@ -848,7 +842,7 @@ write(err_string, '(2A,I5)') trim(file), ", line number", linenum
 call error_handler(E_MSG, 'bad file:', err_string)
 call error_handler(E_MSG, 'bad line contents:', line)
 write(err_string, *) 'See msg lines above for error details'
-call error_handler(E_ERR, 'preprocess', err_string, source, revision, revdate)
+call error_handler(E_ERR, 'preprocess', err_string)
 
 end subroutine typeqty_error
 
@@ -870,7 +864,7 @@ write(err_string, '(2A,I5)') trim(file), ", line number", linenum
 call error_handler(E_MSG, 'bad file:', err_string)
 call error_handler(E_MSG, 'bad line contents:', line)
 write(err_string, *) 'See msg lines above for error details'
-call error_handler(E_ERR, 'preprocess', err_string, source, revision, revdate)
+call error_handler(E_ERR, 'preprocess', err_string)
 
 end subroutine quantity_error
 
@@ -895,8 +889,7 @@ endif
 ! If end of file, input file is incomplete or weird stuff happened
 write(err_string, *) 'file ', trim(filename), &
                   ' does NOT contain ', trim(end_string)
-call error_handler(E_ERR, 'preprocess', err_string, &
-                   source, revision, revdate)
+call error_handler(E_ERR, 'preprocess', err_string)
 
 end subroutine get_next_line
 
@@ -917,8 +910,7 @@ endif
 ! If file does not exist it is an error
 write(err_string, *) trim(label) // ' ' // trim(filename), & 
                      ' does NOT exist (and must).'
-call error_handler(E_ERR, 'preprocess', err_string, &
-      source, revision, revdate)
+call error_handler(E_ERR, 'preprocess', err_string)
 
 end subroutine open_file_for_read
 
@@ -941,8 +933,7 @@ endif
 ! If file *does* exist and we haven't said ok to overwrite, error
 write(err_string, *) trim(label) // ' ' // trim(filename), &
                      ' exists and will not be overwritten: Please remove or rename'
-call error_handler(E_ERR, 'preprocess', err_string, &
-      source, revision, revdate)
+call error_handler(E_ERR, 'preprocess', err_string)
 
 end subroutine open_file_for_write
 
@@ -954,8 +945,7 @@ subroutine cannot_be_null(varvalue, varname)
 if(varvalue /= 'null') return
 
 call error_handler(E_ERR, 'preprocess', &
-                  'Namelist must provide ' // trim(varname), &
-                   source, revision, revdate)
+                  'Namelist must provide ' // trim(varname))
 
 end subroutine cannot_be_null
 
@@ -966,11 +956,13 @@ end subroutine cannot_be_null
 ! ntokens == 0 means cycle without error
 ! ntokens > 0 means some work to do
 
-subroutine parse_line(line, ntokens, tokens, estring)
+subroutine parse_line(line, ntokens, tokens, estring, pairs_expected, valtokens)
  character(len=*), intent(in)  :: line
  integer,          intent(out) :: ntokens
  character(len=*), intent(out) :: tokens(MAX_TOKENS)
  character(len=*), intent(out) :: estring
+ logical,          intent(in)  :: pairs_expected
+ character(len=*), intent(out), optional :: valtokens(MAX_TOKENS)
 
 character(len=256) :: test
 integer :: i
@@ -1018,14 +1010,32 @@ do
    test(i:i) = ' '
 enddo
 
+! parse name or name=val pairs here?
+! call get_name_val_pairs_from_string(inline, argcount, argnames, argvals, continuation)
+
+
 ! parse here
-call get_args_from_string(test, ntokens, tokens)
-if (DEBUG) then
+if (pairs_expected) then
+   call get_name_val_pairs_from_string(test, ntokens, tokens, valtokens, is_more)
+else
+   call get_args_from_string(test, ntokens, tokens)
+endif
+
+!if (DEBUG) then
+if (.true.) then
    print *, "line: ", trim(test)
-   print *, "ntokens, tokens: ", ntokens
-   do i=1, ntokens
-      print *, i, trim(tokens(i))
-   enddo
+   if (pairs_expected) then
+      print *, "ntokens, name/val tokens: ", ntokens
+      do i=1, ntokens
+         print *, i, trim(tokens(i)), ' = ', trim(valtokens(i))
+      enddo
+      print *, "is more?", is_more
+   else
+      print *, "ntokens, tokens: ", ntokens
+      do i=1, ntokens
+         print *, i, trim(tokens(i))
+      enddo
+   endif
 endif
 
 end subroutine parse_line

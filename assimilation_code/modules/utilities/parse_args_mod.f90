@@ -54,11 +54,6 @@ use utilities_mod, only : error_handler, E_ERR
 implicit none
 private
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
 public :: get_args_from_string, get_name_val_pairs_from_string
 
 
@@ -188,12 +183,12 @@ enddo LINE
 
 if (argcount > maxw) then
    write(msgstring,*) 'more blank-separated args than max number allowed by calling code, ', maxw
-   call error_handler(E_ERR,routine,msgstring, source,revision,revdate)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 if (wordlen > maxl) then
    write(msgstring,*) 'one or more args longer than max length allowed by calling code, ', maxl
-   call error_handler(E_ERR,routine,msgstring, source,revision,revdate)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 !DEBUG print *, 'argcount = ', argcount
@@ -252,11 +247,11 @@ maxl = len(argnames(1))
 
 if (size(argvals) /= maxw) then
    write(msgstring,*) 'array size of argnames and argvals must be the same.', size(argvals), ' != ', maxw
-   call error_handler(E_ERR,routine,msgstring, source,revision,revdate)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 if (len(argvals(1)) /= maxl) then
    write(msgstring,*) 'character length of argnames and argvals must be the same.', len(argvals(1)), ' != ', maxl
-   call error_handler(E_ERR,routine,msgstring, source,revision,revdate)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 ! return vals
@@ -294,7 +289,7 @@ LINE: do
 !DEBUG print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
       else if (inname) then
          write(msgstring,*) 'name without value found at end of line'
-         call error_handler(E_ERR,routine,msgstring, source,revision,revdate)
+         call error_handler(E_ERR,routine,msgstring)
       endif
       exit LINE
    endif
@@ -378,7 +373,7 @@ LINE: do
          else if (thisc == '&') then
             ! error for continue inside pair?
             write(msgstring,*) 'name without value found at end of line'
-            call error_handler(E_ERR,routine,msgstring, source,revision,revdate)
+            call error_handler(E_ERR,routine,msgstring)
          else if (thisc == '=') then
             continue
          else if (thisc /= ' ') then
@@ -396,12 +391,12 @@ enddo LINE
 
 if (argcount > maxw) then
    write(msgstring,*) 'more blank-separated args than max number allowed by calling code, ', maxw
-   call error_handler(E_ERR,routine,msgstring, source,revision,revdate)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 if (wordlen > maxl) then
    write(msgstring,*) 'one or more args longer than max length allowed by calling code, ', maxl
-   call error_handler(E_ERR,routine,msgstring, source,revision,revdate)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 !DEBUG print *, 'argcount = ', argcount
@@ -417,8 +412,3 @@ end subroutine get_name_val_pairs_from_string
 
 end module parse_args_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
