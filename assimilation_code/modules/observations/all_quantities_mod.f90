@@ -1,3 +1,7 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !     QTY_10M_U_WIND_COMPONENT          units="m/s"       
 !     QTY_10M_V_WIND_COMPONENT          units="m/s"       

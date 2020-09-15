@@ -20,7 +20,8 @@ module obs_kind_mod
 use        types_mod, only : obstypelength, r8, MISSING_R8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN,  &
                              logfileunit, find_namelist_in_file, log_it,     &
-                             check_namelist_read, do_output, ascii_file_format
+                             check_namelist_read, do_output, ascii_file_format, &
+                             string_to_real
 
 implicit none
 private
@@ -137,10 +138,10 @@ type obs_qty_type
    character(len=obstypelength) :: name = ''
    ! FIXME: these need to be extensible, generic name/value pairs.
    ! start out with a few fixed names for testing/prototyping.
-   character(len=valuelen)      :: units = 'none'
-   character(len=valuelen)      :: pdf   = 'none'
-   real(r8)                     :: minbound = MISSING_R8
-   real(r8)                     :: maxbound = MISSING_R8
+!   character(len=valuelen)      :: units = 'none'
+!   character(len=valuelen)      :: pdf   = 'none'
+!   real(r8)                     :: minbound = MISSING_R8
+!   real(r8)                     :: maxbound = MISSING_R8
    integer                      :: nitems = 0
    character(len=namelen)       :: itemname(MAX_ITEMS)  = ''
    character(len=valuelen)      :: itemvalue(MAX_ITEMS) = ''
@@ -455,11 +456,11 @@ end function get_index_for_quantity
 
 !----------------------------------------------------------------------------
 ! Add a name/value pair to this quantity.
+! Error if index out of range
+!
 ! FIXME: find a better identifier than 'item' here? meta something?
 
 subroutine set_namevalue_for_quantity(obs_qty_ind, itemname, itemvalue)
-
-! Error if index out of range
 
 integer, intent(in) :: obs_qty_ind
 character(len=*), intent(in) :: itemname
@@ -497,12 +498,12 @@ end subroutine set_namevalue_for_quantity
 
 !----------------------------------------------------------------------------
 ! Get string value for quantity by (qty index, item name) of name/value pair
-! FIXME: find a better identifier than 'item' here.
+! Error if qty index out of range
+! Returns '' if no item name match  (or 'null'?)
+
+! (FIXME: terminology: metadata vs item vs ??)
 
 function get_itemvalue_for_quantity(obs_qty_ind, itemname)
-
-! Error if qty index out of range
-! Returns 'null' if no item name match
 
 integer, intent(in) :: obs_qty_ind
 character(len=*), intent(in) :: itemname
@@ -522,30 +523,38 @@ do i=1, obs_qty_info(obs_qty_ind)%nitems
    endif
 enddo
 
-get_itemvalue_for_quantity = 'null'
+get_itemvalue_for_quantity = ''
 
 end function get_itemvalue_for_quantity
 
 !----------------------------------------------------------------------------
-! FIXME: are units more fundamental or should they go though
-! the generic name=value interface?
-! Get units string for quantity by index
-
-function get_units_for_quantity(obs_qty_ind)
+! FIXME: are units more fundamental somehow?
+! this is a convenience routine which gets units out of the name/value pair
+! list if there.  otherwise returns "none" (should be "null"?)
 
 ! Returns the units string for this quantity index
 ! Error if index out of range
 
+function get_units_for_quantity(obs_qty_ind)
+
 integer, intent(in) :: obs_qty_ind
 character(len=128)  :: get_units_for_quantity
 
+integer :: i
 character(len=*), parameter :: routine = 'get_units_for_quantity'
 
 if (.not. module_initialized) call initialize_module
 
 call validate_obs_qty_index(obs_qty_ind, routine)
 
-get_units_for_quantity = obs_qty_info(obs_qty_ind)%units
+do i=1, obs_qty_info(obs_qty_ind)%nitems
+   if (obs_qty_info(obs_qty_ind)%itemname(i) == "units") then
+      get_units_for_quantity = obs_qty_info(obs_qty_ind)%itemvalue(i)
+      return
+   endif
+enddo
+
+get_units_for_quantity = 'none'
 
 end function get_units_for_quantity
 
@@ -553,22 +562,28 @@ end function get_units_for_quantity
 ! FIXME: are pdfs more fundamental or should they go though
 ! the generic name=value interface?
 ! Get pdf string for quantity by index
+! Error if index out of range
 
 function get_pdf_for_quantity(obs_qty_ind)
-
-! Returns the pdf string for this quantity index
-! Error if index out of range
 
 integer, intent(in) :: obs_qty_ind
 character(len=128)  :: get_pdf_for_quantity
 
+integer :: i
 character(len=*), parameter :: routine = 'get_pdf_for_quantity'
 
 if (.not. module_initialized) call initialize_module
 
 call validate_obs_qty_index(obs_qty_ind, routine)
 
-get_pdf_for_quantity = obs_qty_info(obs_qty_ind)%pdf
+do i=1, obs_qty_info(obs_qty_ind)%nitems
+   if (obs_qty_info(obs_qty_ind)%itemname(i) == "pdf") then
+      get_pdf_for_quantity = obs_qty_info(obs_qty_ind)%itemvalue(i)
+      return
+   endif
+enddo
+
+get_pdf_for_quantity = 'none'
 
 end function get_pdf_for_quantity
 
@@ -579,26 +594,40 @@ end function get_pdf_for_quantity
 ! Returns .false. for 'hasbounds' if both min and max are missing_r8
 ! (hopefully a shortcut for calling code to skip additional tests.)
 
-subroutine get_bounds_for_quantity(obs_qty_ind, hasbounds, minbounds, maxbounds)
+subroutine get_bounds_for_quantity(obs_qty_ind, hasbounds, minbound, maxbound)
 
 ! Returns the min/max bounds, if any, for this quantity index
 ! Returns MISSING_R8 if no bounds
 
 integer,  intent(in)  :: obs_qty_ind
 logical,  intent(out) :: hasbounds
-real(r8), intent(out) :: minbounds
-real(r8), intent(out) :: maxbounds
+real(r8), intent(out) :: minbound
+real(r8), intent(out) :: maxbound
 
+integer :: i
+character(len=valuelen) :: boundstring
 character(len=*), parameter :: routine = 'get_bounds_for_quantity'
 
 if (.not. module_initialized) call initialize_module
 
 call validate_obs_qty_index(obs_qty_ind, routine)
 
-minbounds = obs_qty_info(obs_qty_ind)%minbound
-maxbounds = obs_qty_info(obs_qty_ind)%maxbound
+hasbounds = .false.
+minbound = MISSING_R8
+maxbound = MISSING_R8
 
-hasbounds = .not. (minbounds == MISSING_R8 .and. maxbounds == MISSING_R8)
+do i=1, obs_qty_info(obs_qty_ind)%nitems
+   if (obs_qty_info(obs_qty_ind)%itemname(i) == "minbound") then
+      boundstring = obs_qty_info(obs_qty_ind)%itemvalue(i)
+      minbound = string_to_real(boundstring)
+   endif
+   if (obs_qty_info(obs_qty_ind)%itemname(i) == "maxbound") then
+      boundstring = obs_qty_info(obs_qty_ind)%itemvalue(i)
+      maxbound = string_to_real(boundstring)
+   endif
+enddo
+
+hasbounds = .not. (minbound == MISSING_R8 .and. maxbound == MISSING_R8)
 
 end subroutine get_bounds_for_quantity
 

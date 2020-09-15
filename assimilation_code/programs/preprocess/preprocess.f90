@@ -174,25 +174,38 @@ integer, parameter   :: max_obs_type_files = 1000
 integer, parameter   :: max_quantity_files = 1000
 logical :: file_has_usercode(max_obs_type_files) = .false.
 
+integer, parameter :: NML_STRLEN = 256
+
 ! The namelist reads in a sequence of path_names that are absolute or
 ! relative to the working directory in which preprocess is being executed
 ! and these files are used to fill in observation type/qty details in
 ! DEFAULT_obs_def_mod.f90 and DEFAULT_obs_qty_mod.f90.
-character(len = 256) :: input_obs_def_mod_file = &
-                        '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
-character(len = 256) :: output_obs_def_mod_file = &
-                        '../../../observations/forward_operators/obs_def_mod.f90'
-character(len = 256) :: input_obs_qty_mod_file = &
-                        '../../../assimilation_code/modules/observations/DEFAULT_obs_qty_mod.F90'
-character(len = 256) :: output_obs_qty_mod_file = &
-                        '../../../assimilation_code/modules/observations/obs_qty_mod.f90'
-character(len = 256) :: obs_type_files(max_obs_type_files) = 'null'
-character(len = 256) :: quantity_files(max_quantity_files) = 'null'
-logical              :: overwrite_output = .true.
 
-namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_qty_mod_file,   &
-                          output_obs_def_mod_file, output_obs_qty_mod_file, &
-                          obs_type_files, quantity_files, overwrite_output
+! original values:
+character(len=NML_STRLEN) :: input_obs_def_mod_file = &
+                        '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+character(len=NML_STRLEN) :: output_obs_def_mod_file = &
+                        '../../../observations/forward_operators/obs_def_mod.f90'
+character(len=NML_STRLEN) :: input_obs_kind_mod_file = &
+                        '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+character(len=NML_STRLEN) :: output_obs_kind_mod_file = &
+                        '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+character(len=NML_STRLEN) :: input_files(max_obs_type_files) = 'null'
+logical                   :: overwrite_output
+
+! jump through hoops to maintain backwards compatibility in namelist.
+! xx_obs_def_mod_file, overwrite_output same as before. 
+! but if these have been changed from the defaults, they override the older values.
+character(len=NML_STRLEN) :: input_obs_qty_mod_file = 'was input_obs_kind_mod_file'
+character(len=NML_STRLEN) :: output_obs_qty_mod_file = 'was output_obs_kind_mod_file'
+character(len=NML_STRLEN) :: obs_type_files(max_obs_type_files) = 'was input_files'
+character(len=NML_STRLEN) :: quantity_files(max_quantity_files) = '_new_nml_item_'
+
+namelist /preprocess_nml/ input_obs_def_mod_file, output_obs_def_mod_file,   &
+                          input_obs_qty_mod_file, output_obs_qty_mod_file,   &
+                          input_obs_kind_mod_file, output_obs_kind_mod_file, &  ! deprecate
+                          obs_type_files, quantity_files, overwrite_output,  &
+                          input_files                                           ! deprecate
 
 !---------------------------------------------------------------------------
 ! start of program code
@@ -205,10 +218,10 @@ call find_namelist_in_file("input.nml", "preprocess_nml", iunit)
 read(iunit, nml = preprocess_nml, iostat = io)
 call check_namelist_read(iunit, io, "preprocess_nml")
 
-! for backwards compatibility, if no quantity files are given use this default file
-! with all the defined quantities.
-if (quantity_files(1) == 'null') &
-   quantity_files(1) = '../../../assimilation_code/modules/observations/all_quantities.txt'
+! mess with the namelists so we can rename items to be more accurate
+! without breaking the world.  this should be removed when it is deemed
+! ok to change namelist entries.
+call ensure_backwards_compatibility()
 
 ! Output the namelist file information
 call log_it('Path names of default obs_def and obs_qty modules')
@@ -1026,8 +1039,7 @@ endif
 ! get anything?
 if (ntokens <= 0) return
 
-!if (DEBUG) then
-if (.true.) then
+if (DEBUG) then
    print *, "line: ", trim(test)
    if (pairs_expected) then
       print *, "ntokens, name/val tokens: ", ntokens
@@ -1047,24 +1059,53 @@ endif
 end subroutine parse_line
 
 !------------------------------------------------------------------------------
+! mess with the namelist entries to remain backwards compatible.
 
-subroutine string_to_real(s, r, estring)
- character(len=*), intent(in) :: s
- real(r8), intent(out) :: r
- character(len=*), intent(out) :: estring
+subroutine ensure_backwards_compatibility()
 
-estring = ''
-r = MISSING_R8
+integer :: i
 
-if (s == 'MISSING_R8' .or. s == 'NA') return
+! copy over the older named entries to the new names if the new name
+! was not found/set by reading the namelist.
 
-read(s, *, iostat=ierr) r
-if(ierr /= 0) then
-   estring = 'unable to convert string to real number'   
-   return
+if (input_obs_qty_mod_file == 'was input_obs_kind_mod_file') &
+   input_obs_qty_mod_file = input_obs_kind_mod_file
+
+if (output_obs_qty_mod_file == 'was output_obs_kind_mod_file') &
+   output_obs_qty_mod_file = output_obs_kind_mod_file
+
+! this is trickier because it is an array of strings.  if you
+! initialize it, all the entries are set to the initial string.
+! the code expects 'null' to end the list.  simple solution is
+! to test and copy over all input_file entries which should set
+! unused entries to null.
+if (obs_type_files(1) == 'was input_files') then
+   do i=1, max_obs_type_files
+     obs_type_files(i) = input_files(i)
+   enddo
 endif
 
-end subroutine string_to_real
+! since we changed the defaults, fix up if caller did specify 
+! one or more qty files.
+do i=1, max_obs_type_files
+   if (obs_type_files(i) == 'was input_files') obs_type_files(i) = 'null'
+enddo
+
+! for backwards compatibility, if no quantity files are given use this default file
+! which contains all previously defined quantities.  again, since it is a string array
+! set all entries to null then set the first one to the single default file.
+if (quantity_files(1) == '_new_nml_item_') then
+   quantity_files(:) = 'null'
+   quantity_files(1) = '../../../assimilation_code/modules/observations/all_quantities_mod.f90'
+endif
+
+! since we changed the defaults, fix up if caller did specify 
+! one or more qty files.
+do i=1, max_quantity_files
+   if (quantity_files(i) == '_new_nml_item_') quantity_files(i) = 'null'
+enddo
+
+end subroutine ensure_backwards_compatibility
 
 !------------------------------------------------------------------------------
 
