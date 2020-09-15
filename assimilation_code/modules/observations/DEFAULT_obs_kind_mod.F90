@@ -39,6 +39,8 @@ public :: get_name_for_type_of_obs,       &
           get_name_for_quantity,          &
           get_index_for_quantity,         &
           set_namevalue_for_quantity,     &
+          get_num_items_for_quantity,     &
+          get_itemname_for_quantity,      &
           get_itemvalue_for_quantity,     &
           get_units_for_quantity,         &   ! perhaps subsumed by itemvalue?
           get_pdf_for_quantity,           &   ! perhaps subsumed by itemvalue?
@@ -494,6 +496,54 @@ obs_qty_info(obs_qty_ind)%itemvalue(i) = itemvalue
 end subroutine set_namevalue_for_quantity
 
 !----------------------------------------------------------------------------
+! Get number of name/value items for quantity
+! Error if qty index out of range
+
+! (FIXME: terminology: metadata vs item vs ??)
+
+function get_num_items_for_quantity(obs_qty_ind)
+
+integer, intent(in) :: obs_qty_ind
+integer :: get_num_items_for_quantity
+
+integer :: i
+character(len=*), parameter :: routine = 'get_num_items_for_quantity'
+
+if (.not. module_initialized) call initialize_module
+
+call validate_obs_qty_index(obs_qty_ind, routine)
+
+get_num_items_for_quantity = obs_qty_info(obs_qty_ind)%nitems
+
+end function get_num_items_for_quantity
+
+!----------------------------------------------------------------------------
+! Get string value for item name by index for quantity of name/value pair
+! Error if qty index out of range
+! Error if item index out of range
+
+! (FIXME: terminology: metadata vs item vs ??)
+
+function get_itemname_for_quantity(obs_qty_ind, item_index)
+
+integer, intent(in) :: obs_qty_ind
+integer, intent(in) :: item_index
+character(len=namelen) :: get_itemname_for_quantity
+
+integer :: i
+character(len=*), parameter :: routine = 'get_itemname_for_quantity'
+
+if (.not. module_initialized) call initialize_module
+
+! this validates the quantity index first, then the item index.
+! if it returns w/o error, both indices are safe to use.
+call validate_qty_item_index(obs_qty_ind, item_index, routine)
+
+get_itemname_for_quantity = obs_qty_info(obs_qty_ind)%itemname(item_index)
+
+end function get_itemname_for_quantity
+
+!----------------------------------------------------------------------------
 ! Get string value for quantity by (qty index, item name) of name/value pair
 ! Error if qty index out of range
 ! Returns '' if no item name match  (or 'null'?)
@@ -831,8 +881,8 @@ else
    read(ifile,    iostat=rc) header
 endif
 
-if(rc /= 0 .or. (header /= 'obs_kind_definitions' .and. header /= 'obs_type_definitions')) then
-   write(msg_string,  *) 'Did not find expected "obs_kind_definitions" or "obs_type_definitions"string at start of obs_seq file '
+if(rc /= 0 .or. (header /= 'obs_type_definitions' .and. header /= 'obs_kind_definitions')) then
+   write(msg_string,  *) 'Did not find expected "obs_type_definitions" or "obs_kind_definitions" string at start of obs_seq file '
    write(msg_string1, *) 'Possible causes include: not an obs_seq file format, corrupted file, or wrong-endian binary file'
    call error_handler(E_ERR, routine, msg_string, source, revision, revdate, text2=msg_string1)
 endif
@@ -953,6 +1003,31 @@ if (test_me < 0 .or. test_me > max_defined_quantities) then
 endif
 
 end subroutine validate_obs_qty_index
+
+!----------------------------------------------------------------------------
+!> call this routine only where if an index is expected to be valid. 
+!> (it is a fatal error if not.)  don't call this routine from code where 
+!> an out-of-range value is handled (e.g. it returns -1 instead).
+
+subroutine validate_qty_item_index(qty_index, test_me, calling_routine)
+integer,          intent(in) :: qty_index
+integer,          intent(in) :: test_me
+character(len=*), intent(in) :: calling_routine
+
+integer :: nitems
+
+! test before using index
+call validate_obs_qty_index(qty_index, calling_routine)
+
+nitems = obs_qty_info(qty_index)%nitems
+
+if (test_me < 1 .or. test_me > nitems) then
+   write(msg_string,'(3(A,I6))') 'item number ', test_me, ' for obs quantity number ', qty_index, &
+                                   ' ('//trim(obs_type_info(qty_index)%name)//') must be between 1 and ', nitems
+   call error_handler(E_ERR, calling_routine, msg_string, source, revision, revdate)
+endif
+
+end subroutine validate_qty_item_index
 
 !----------------------------------------------------------------------------
 
