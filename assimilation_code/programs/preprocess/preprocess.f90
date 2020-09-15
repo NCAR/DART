@@ -65,7 +65,7 @@ use utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG,   &
                            initialize_utilities, do_nml_file, do_nml_term, &
                            find_namelist_in_file, check_namelist_read,     &
                            finalize_utilities, log_it
-use parse_args_mod, only : get_args_from_string, get_name_val_pairs_from_string
+use parse_args_mod, only : get_args_from_string, get_name_val_pairs_from_string, get_next_arg
 
 implicit none
 
@@ -292,15 +292,12 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
       !
       ! Formats accepted:  
       !
-      ! QTY_string, "units"
-      ! QTY_string, "units" ! optional comment
+      ! QTY_string
+      ! QTY_string units=unit_string name=value ...
       !
-      ! QTY_string, "units", minbound, maxbound
-      ! QTY_string, "units", minbound, maxbound  ! both required if either specified
+      ! QTY_string ! comments
       !       
       ! ! comment
-      ! ! if setting only one bound, use MISSING_R8 as the value?  or NA? 
-      ! !  it is a string at this point so can be anything we choose.
       ! !
    
       ! ntokens < 0 means error
@@ -856,10 +853,9 @@ call error_handler(E_MSG, 'preprocess error:', &
    'obs_qty file has bad Quantity line')
 call error_handler(E_MSG, 'preprocess error:', errtext)
 call error_handler(E_MSG, 'expected input:', &
-   '! QTY_xxx "units"   or  ! comment line ')
+   '! QTY_xxx   or  ! comment line ')
 call error_handler(E_MSG, 'or:', &
-   '! QTY_xxx "units" min_bounds max_bounds')
-call error_handler(E_MSG, 'where:', 'if unbounded on one side, use NA or MISSING_R8')
+   '! QTY_xxx name=value ... ')
 write(err_string, '(2A,I5)') trim(file), ", line number", linenum
 call error_handler(E_MSG, 'bad file:', err_string)
 call error_handler(E_MSG, 'bad line contents:', line)
@@ -967,6 +963,8 @@ subroutine parse_line(line, ntokens, tokens, estring, pairs_expected, valtokens)
 character(len=256) :: test
 integer :: i
 integer :: trimmed_len, start_of_comment
+integer :: npairs, endoff
+character(len=256) :: namepairs(MAX_TOKENS), valpairs(MAX_TOKENS)
 
 ntokens = 0
 estring = ''
@@ -993,9 +991,10 @@ if (start_of_comment > 0) &
 trimmed_len = len_trim(test)
 if (trimmed_len == 0) return
 
-! hack for now - remove all commas from line.
-! this will only mess things up if there is a
-! unit type with a comma in it.
+! hack for now - replace all commas from line with spaces.
+! this could mess things up if there is a unit type with a 
+! comma in it, or a description which includes a comma.
+! FIXME: reconsider this decision
 
 do 
    i = index(test, ',')
@@ -1010,30 +1009,37 @@ do
    test(i:i) = ' '
 enddo
 
-! parse name or name=val pairs here?
-! call get_name_val_pairs_from_string(inline, argcount, argnames, argvals, continuation)
-
-
 ! parse here
 if (pairs_expected) then
-   call get_name_val_pairs_from_string(test, ntokens, tokens, valtokens, is_more)
+   call get_next_arg(test, 1, tokens(1), endoff)
+   valtokens(1) = ''
+   call get_name_val_pairs_from_string(test(endoff:), npairs, namepairs, valpairs, is_more)
+   ntokens = 1 + npairs
+   do i=2, ntokens
+      tokens(i) = namepairs(i-1)
+      valtokens(i) = valpairs(i-1)
+   enddo
 else
    call get_args_from_string(test, ntokens, tokens)
 endif
+
+! get anything?
+if (ntokens <= 0) return
 
 !if (DEBUG) then
 if (.true.) then
    print *, "line: ", trim(test)
    if (pairs_expected) then
       print *, "ntokens, name/val tokens: ", ntokens
-      do i=1, ntokens
-         print *, i, trim(tokens(i)), ' = ', trim(valtokens(i))
+      print *, 1, trim(tokens(1))
+      do i=2, ntokens
+         print *, i, " ", trim(tokens(i)), ' = ', trim(valtokens(i))
       enddo
       print *, "is more?", is_more
    else
       print *, "ntokens, tokens: ", ntokens
       do i=1, ntokens
-         print *, i, trim(tokens(i))
+         print *, i, " ", trim(tokens(i))
       enddo
    endif
 endif
