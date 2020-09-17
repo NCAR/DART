@@ -427,4 +427,28 @@
    verbose    = .true.
   /
 
+# possible vertical coordinate systems are:
+# VERTISUNDEF VERTISSURFACE VERTISLEVEL VERTISPRESSURE VERTISHEIGHT VERTISSCALEHEIGHT
+#   quantity_of_interest = 'QTY_TEMPERATURE'
+#   quantity_of_interest = 'QTY_SALINITY'
+#   quantity_of_interest = 'QTY_U_CURRENT'
+#   quantity_of_interest = 'QTY_V_CURRENT'
+#   quantity_of_interest = 'QTY_DENSITY'
+
+&model_mod_check_nml
+   input_state_files     = 'TEST_EXEC/filter_ics.0001.nc'
+   output_state_files    = 'check_me'
+   verbose               = .TRUE.
+   test1thru             = 0
+   run_tests             = 1, 2, 3, 4, 7
+   x_ind                 = 1234
+   loc_of_interest       = 26.0924, 40.1515, 12.01
+   quantity_of_interest  = 'QTY_SALINITY'
+   interp_test_lonrange  = 22.0, 33.0
+   interp_test_dlon      = 0.25
+   interp_test_latrange  = 38.0, 43.0
+   interp_test_dlat      = 0.25
+   interp_test_vertrange = 1.0,  301.0
+   interp_test_dvert     = 300.0
+   /
 

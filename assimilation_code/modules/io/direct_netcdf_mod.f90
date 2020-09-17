@@ -125,10 +125,9 @@ public :: read_transpose,            &
           nc_get_num_times
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'direct_netcdf_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! only a single MPI Task reads and writes reads the state variable,
 ! when using single_file_{input,output} = .true.
@@ -1891,12 +1890,10 @@ end subroutine nc_write_global_att_clamping
 !-------------------------------------------------
 !> Write revision information
 !>@todo this should only be done for _new_ files that DART creates - performance issue
-!>@todo this will change when we move to GIT
-
 
 subroutine nc_write_revision_info(ncFileID)
 
-integer,          intent(in) :: ncFileID
+integer, intent(in) :: ncFileID
 
 ! we are going to need these to record the creation date in the netCDF file.
 ! This is entirely optional, but nice.
@@ -1915,10 +1912,6 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_creation_date' ,str1    
            'nc_write_revision_info', 'creation put ')
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_source'  ,source  ), &
            'nc_write_revision_info', 'source put ')
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_revision',revision), &
-           'nc_write_revision_info', 'revision put ')
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_revdate' ,revdate ), &
-           'nc_write_revision_info', 'revdate put ')
 
 end subroutine nc_write_revision_info
 

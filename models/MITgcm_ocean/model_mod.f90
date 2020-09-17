@@ -32,10 +32,7 @@ use mpi_utilities_mod, only: my_task_id
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 
-!!!!! TODO: check if needed
-use netcdf
-
-use default_model_mod,   only : pert_model_copies, nc_write_model_vars
+use default_model_mod,   only : nc_write_model_vars
 
 use dart_time_io_mod,      only : write_model_time
 
@@ -50,6 +47,9 @@ use state_structure_mod, only : add_domain, get_model_variable_indices, &
                                 get_index_start, get_index_end, &
                                 get_dart_vector_index, get_num_variables, &
                                 get_num_dims, get_domain_size
+
+!!!!! TODO: check if needed
+use netcdf
 
 implicit none
 private
@@ -80,11 +80,9 @@ public :: get_model_size,         &
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
-public :: prog_var_to_vector, vector_to_prog_var, &
-          MIT_meta_type, read_meta, write_meta, &
-          read_snapshot, write_snapshot, get_gridsize, &
+public :: MIT_meta_type, read_meta, write_meta, &
+          get_gridsize, &
           write_data_namelistfile, set_model_end_time, &
-          snapshot_files_to_sv, sv_to_snapshot_files, &
           timestep_to_DARTtime, DARTtime_to_MITtime, &
           DARTtime_to_timestepindex, &
           lon_bounds,lat_bounds, lon_dist, max_nx, max_ny, max_nz, max_nr, MAX_LEN_FNAM 
@@ -312,21 +310,6 @@ type MIT_meta_type
    integer :: nrecords
    integer :: timeStepNumber    ! optional
 end type MIT_meta_type
-
-INTERFACE read_snapshot
-      MODULE PROCEDURE read_2d_snapshot
-      MODULE PROCEDURE read_3d_snapshot
-END INTERFACE
-
-INTERFACE write_snapshot
-      MODULE PROCEDURE write_2d_snapshot
-      MODULE PROCEDURE write_3d_snapshot
-END INTERFACE
-
-INTERFACE vector_to_prog_var
-      MODULE PROCEDURE vector_to_2d_prog_var
-      MODULE PROCEDURE vector_to_3d_prog_var
-END INTERFACE
 
 integer :: domain_id
 
@@ -1257,46 +1240,27 @@ end subroutine end_model
 
 
 
-!function nc_write_model_atts( ncFileID ) result (ierr)
-subroutine nc_write_model_atts(ncFileID, domain_id)
 !------------------------------------------------------------------
-! TJH -- Writes the model-specific attributes to a netCDF file.
-!     This includes coordinate variables and some metadata, but NOT
-!     the model state vector.
-!
+!> Writes the model-specific attributes to a netCDF file.
+!> This includes coordinate variables and some metadata,
+!> but NOT the model state.
+
+subroutine nc_write_model_atts(ncFileID, domain_id)
+
 ! assim_model_mod:init_diag_output uses information from the location_mod
 !     to define the location dimension and variable ID. All we need to do
 !     is query, verify, and fill ...
 !
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode 
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
-
 use typeSizes
 use netcdf
 
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-integer, intent(in) :: domain_id
-integer              :: ierr          ! return value of function
+integer, intent(in)  :: ncFileID
+integer, intent(in)  :: domain_id
 
+integer :: ierr
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
-!----------------------------------------------------------------------
-! variables if we just blast out one long state vector
-!----------------------------------------------------------------------
-
-integer :: StateVarDimID   ! netCDF pointer to state variable dimension (model size)
-integer :: MemberDimID     ! netCDF pointer to dimension of ensemble    (ens_size)
 !integer :: TimeDimID       ! netCDF pointer to time dimension           (unlimited)
-
-integer :: StateVarVarID   ! netCDF pointer to state variable coordinate array
-integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 
 !----------------------------------------------------------------------
 ! variables if we parse the state vector into prognostic variables.
@@ -1360,12 +1324,6 @@ call nc_check(nf90_Redef(ncFileID),"nc_write_model_atts",   "redef "//trim(filen
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
 
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
-
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date" ,str1    ), &
-           "nc_write_model_atts", "creation put "//trim(filename))
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ), &
            "nc_write_model_atts", "source put "//trim(filename))
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision), &
@@ -1492,171 +1450,50 @@ end subroutine nc_write_model_atts
 
 
 
-!--- function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
-!--- !------------------------------------------------------------------
-!--- ! TJH 24 Oct 2006 -- Writes the model variables to a netCDF file.
-!--- !
-!--- ! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
-!--- ! return code is always '0 == normal', since the fatal errors stop execution.
-!--- !
-!--- ! For the lorenz_96 model, each state variable is at a separate location.
-!--- ! that's all the model-specific attributes I can think of ...
-!--- !
-!--- ! assim_model_mod:init_diag_output uses information from the location_mod
-!--- !     to define the location dimension and variable ID. All we need to do
-!--- !     is query, verify, and fill ...
-!--- !
-!--- ! Typical sequence for adding new dimensions,variables,attributes:
-!--- ! NF90_OPEN             ! open existing netCDF dataset
-!--- !    NF90_redef         ! put into define mode
-!--- !    NF90_def_dim       ! define additional dimensions (if any)
-!--- !    NF90_def_var       ! define variables: from name, type, and dims
-!--- !    NF90_put_att       ! assign attribute values
-!--- ! NF90_ENDDEF           ! end definitions: leave define mode
-!--- !    NF90_put_var       ! provide values for variable
-!--- ! NF90_CLOSE            ! close: save updated netCDF dataset
-!--- 
-!--- use typeSizes
-!--- use netcdf
-!--- 
-!--- integer,                intent(in) :: ncFileID      ! netCDF file identifier
-!--- real(r8), dimension(:), intent(in) :: statevec
-!--- integer,                intent(in) :: copyindex
-!--- integer,                intent(in) :: timeindex
-!--- integer                            :: ierr          ! return value of function
-!--- 
-!--- integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-!--- integer :: VarID
-!--- 
-!--- real(r4), dimension(Nx,Ny,Nz) :: data_3d
-!--- real(r4), dimension(Nx,Ny)    :: data_2d
-!--- character(len=128)  :: filename
-!--- 
-!--- if ( .not. module_initialized ) call static_init_model
-!--- 
-!--- ierr = -1 ! assume things go poorly
-!--- 
-!--- !--------------------------------------------------------------------
-!--- ! we only have a netcdf handle here so we do not know the filename
-!--- ! or the fortran unit number.  but construct a string with at least
-!--- ! the netcdf handle, so in case of error we can trace back to see
-!--- ! which netcdf file is involved.
-!--- !--------------------------------------------------------------------
-!--- 
-!--- write(filename,*) 'ncFileID', ncFileID
-!--- 
-!--- !-------------------------------------------------------------------------------
-!--- ! make sure ncFileID refers to an open netCDF file, 
-!--- !-------------------------------------------------------------------------------
-!--- 
-!--- call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-!---               "nc_write_model_vars", "inquire "//trim(filename))
-!--- 
-!--- if ( output_state_vector ) then
-!--- 
-!---    call nc_check(NF90_inq_varid(ncFileID, "state", VarID), &
-!---                  "nc_write_model_vars", "state inq_varid "//trim(filename))
-!---    call nc_check(NF90_put_var(ncFileID,VarID,statevec,start=(/1,copyindex,timeindex/)),&
-!---                  "nc_write_model_vars", "state put_var "//trim(filename))
-!--- 
-!--- else
-!--- 
-!---    !----------------------------------------------------------------------------
-!---    ! We need to process the prognostic variables.
-!---    ! Replace missing values (0.0) with netcdf missing value.
-!---    ! Staggered grid causes some logistical problems.
-!---    ! Hopefully, the conversion between r8 and r4 still preserves 'hard' zeros.
-!---    !----------------------------------------------------------------------------
-!--- 
-!---    call vector_to_prog_var(statevec,S_index,data_3d)
-!---    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-!---    call nc_check(NF90_inq_varid(ncFileID, "S", VarID), &
-!---                 "nc_write_model_vars", "S inq_varid "//trim(filename))
-!---    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-!---                 "nc_write_model_vars", "S put_var "//trim(filename))
-!--- 
-!---    call vector_to_prog_var(statevec,T_index,data_3d)
-!---    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-!---    call nc_check(NF90_inq_varid(ncFileID, "T", VarID), &
-!---                 "nc_write_model_vars", "T inq_varid "//trim(filename))
-!---    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-!---                 "nc_write_model_vars", "T put_var "//trim(filename))
-!--- 
-!---    call vector_to_prog_var(statevec,U_index,data_3d)
-!---    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-!---    call nc_check(NF90_inq_varid(ncFileID, "U", VarID), &
-!---                 "nc_write_model_vars", "U inq_varid "//trim(filename))
-!---    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-!---                 "nc_write_model_vars", "U put_var "//trim(filename))
-!--- 
-!---    call vector_to_prog_var(statevec,V_index,data_3d)
-!---    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-!---    call nc_check(NF90_inq_varid(ncFileID, "V", VarID), &
-!---                 "nc_write_model_vars", "V inq_varid "//trim(filename))
-!---    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-!---                 "nc_write_model_vars", "V put_var "//trim(filename))
-!--- 
-!---    call vector_to_prog_var(statevec,Eta_index,data_2d)
-!---    where (data_2d == 0.0_r4) data_2d = NF90_FILL_REAL
-!---    call nc_check(NF90_inq_varid(ncFileID, "Eta", VarID), &
-!---                 "nc_write_model_vars", "Eta inq_varid "//trim(filename))
-!---    call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
-!---                 "nc_write_model_vars", "Eta put_var "//trim(filename))
-!--- 
-!--- endif
-!--- 
-!--- !-------------------------------------------------------------------------------
-!--- ! Flush the buffer and leave netCDF file open
-!--- !-------------------------------------------------------------------------------
-!--- 
-!--- call nc_check(nf90_sync(ncFileID), "nc_write_model_vars", "sync "//trim(filename))
-!--- 
-!--- ierr = 0 ! If we got here, things went well.
-!--- 
-!--- end function nc_write_model_vars
+!------------------------------------------------------------------
+! Create an ensemble of states from a single state.
 
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
-!-rename it pert_model_copies and adapt if needed
-!--- subroutine pert_model_state(state, pert_state, interf_provided)
-!--- !------------------------------------------------------------------
-!--- !
-!--- ! Perturbs a model state for generating initial ensembles.
-!--- ! The perturbed state is returned in pert_state.
-!--- ! A model may choose to provide a NULL INTERFACE by returning
-!--- ! .false. for the interf_provided argument. This indicates to
-!--- ! the filter that if it needs to generate perturbed states, it
-!--- ! may do so by adding a perturbation to each model state 
-!--- ! variable independently. The interf_provided argument
-!--- ! should be returned as .true. if the model wants to do its own
-!--- ! perturbing of states.
-!--- 
-!--- real(r8), intent(in)  :: state(:)
-!--- real(r8), intent(out) :: pert_state(:)
-!--- logical,  intent(out) :: interf_provided
-!--- 
-!--- integer :: i
-!--- logical, save :: random_seq_init = .false.
-!--- 
-!--- if ( .not. module_initialized ) call static_init_model
-!--- 
-!--- interf_provided = .true.
-!--- 
-!--- ! Initialize my random number sequence
-!--- if(.not. random_seq_init) then
-!---    call init_random_seq(random_seq, my_task_id())
-!---    random_seq_init = .true.
-!--- endif
-!--- 
-!--- ! only perturb the non-zero values.  0 is a flag for missing
-!--- ! ocean cells (e.g. land or under the sea floor)
-!--- do i=1,size(state)
-!---    if (state(i) /= 0.0_r8) &
-!---       pert_state(i) = random_gaussian(random_seq, state(i), &
-!---                                       model_perturbation_amplitude)
-!--- enddo
-!--- 
-!--- 
-!--- end subroutine pert_model_state
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: pert_amp
+logical,             intent(out)   :: interf_provided
+
+integer     :: i, j, var_type
+
+type(random_seq_type) :: random_seq
+
+if ( .not. module_initialized ) call static_init_model
+
+interf_provided = .true.
+
+call error_handler(E_MSG,'WARNING - MITgcm_ocean:pert_model_copies is untested.', source) 
+
+call init_random_seq(random_seq, my_task_id())
+
+! only perturb the actual ocean cells;
+! leave the land and ocean floor values alone.
+! Only perturb the non-zero values. 0.0 is a flag for 'missing'
+! ocean cells (e.g. land or under the sea floor)
+do i=1,state_ens_handle%my_num_vars
+   MEMBERS : do j=1, ens_size
+
+      if( state_ens_handle%copies(j,i) == 0.0_r8 ) cycle MEMBERS
+
+      state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
+                                     state_ens_handle%copies(j,i), &
+                                     model_perturbation_amplitude)
+   enddo MEMBERS
+enddo
+
+! NOTE: This routine is not complete. We should find the global min/max
+! for the variable - of the values that are not 'missing'
+! The FESOM model has something close, but there is no land mask to worry about.
+
+!>@todo keep variable from exceeding the original range
+
+end subroutine pert_model_copies
 
 
 !--------------------------------------------------------------------
@@ -1668,6 +1505,9 @@ character(len=*), intent(in) :: filename
 type(time_type)              :: read_model_time
 
 if ( .not. module_initialized ) call static_init_model
+
+! The filename is not actually used for this model.
+! The time comes from the MITgcm namelists, which are read in static_init_model
 
 read_model_time = model_time
 
@@ -1681,13 +1521,12 @@ read_model_time = model_time
 end function read_model_time
 
 
+!------------------------------------------------------------------
+!> If the ensemble mean will be needed for some operation, this
+!> code must allocate space for the ensemble mean.
+!> If the ensemble mean is not needed, this routine does nothing.
 
 subroutine ens_mean_for_model(ens_mean)
-!------------------------------------------------------------------
-! If needed by the model interface, this is the current mean
-! for all state vector items across all ensembles. It is up to this
-! code to allocate space and save a copy if it is going to be used
-! later on.  For now, we are ignoring it.
 
 real(r8), intent(in) :: ens_mean(:)
 
@@ -1963,639 +1802,19 @@ close(iunit)
 end subroutine write_meta
 
 
-
-subroutine read_2d_snapshot(fbase, x, timestep, vartype)
-!------------------------------------------------------------------
+!-------------------------------------------------------------------------------
+!> The MITtime is composed of an offset to a fixed time base.
+!> The base time is derived from the namelist in 'date.cal',
+!> the model timestep (deltaT) is from the namelist 'PARM03',
+!> and the timestepindex is the middle portion of the filename
+!> of the MIT files   [S,T,U,V,Eta].nnnnnnnnnn.dat 
 !
-! This routine reads the Fortran direct access binary files ... eg
-! U.nnnnnnnnnn.data    by getting the dimension information from
-! U.nnnnnnnnnn.meta
-!
-! As it stands now ... the .data files appear to be big-endian.
-
-character(len=*),           intent(in)  :: fbase
-real(r4), dimension(:,:),   intent(out) :: x
-integer,                    intent(out) :: timestep
-character(len=*), optional, intent(in)  :: vartype
-
-character(len=128) :: metafilename, datafilename
-type(MIT_meta_type):: metadata
-integer :: iunit, io
-integer :: reclen
-
-if ( .not. module_initialized ) call static_init_model
-
-if (present(vartype)) then
-   metafilename = vartype//'.'//trim(fbase)//'.meta'
-   datafilename = vartype//'.'//trim(fbase)//'.data'
-else
-   metafilename = trim(fbase)//'.meta'
-   datafilename = trim(fbase)//'.data'
-endif
-
-! If the companion ".meta" file exists, it is used. 
-! Otherwise, the namelist variables are used.
-
-metadata = read_meta(fbase,vartype)
-timestep = metadata%timeStepNumber
-
-! check to make sure storage modes match
-! somehow have to pair the string with the fortran kind
-! and protect against the redefinition of 'r4' ...
-! This code is not robust as it stands ...
-
-if     ( index(metadata%dataprec,'float32') > 0 ) then
-   ! r4 is probably OK
-else if( index(metadata%dataprec,'real*4') > 0 ) then
-   ! r4 is probably OK
-else
-   write(msgstring,*) 'storage mode mismatch for ', trim(datafilename)
-   call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-! Check dimensions
-
-if (size(x, 1) /= metadata%dimList(1) ) then
-   write(msgstring,*)trim(metafilename),' dim 1 does not match delX grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,1),' got ',metadata%dimList(1)
-   call error_handler(E_ERR,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
-endif
-
-if (size(x, 2) /= metadata%dimList(2)) then
-   write(msgstring,*)trim(metafilename),' dim 2 does not match delY grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,2),' got ',metadata%dimList(2)
-   call error_handler(E_ERR,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
-endif
-
-reclen = product(shape(x)) * item_size_direct_access
-
-if (do_output()) write(logfileunit,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
-if (do_output()) write(     *     ,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
-
-! Get next available unit number, read file.
-
-iunit = get_unit()
-open(unit=iunit, file=datafilename, action='read', access='direct', recl=reclen, iostat=io)
-if (io /= 0) then
-   write(msgstring,*) 'cannot open (',io,') file ', trim(datafilename),' for reading.'
-   call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-read(iunit, rec=1, iostat = io) x
-if (io /= 0) then
-   write(msgstring,*) 'unable to read (',io,') snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-close(iunit)
-
-
-end subroutine read_2d_snapshot
-
-
-
-subroutine read_3d_snapshot(fbase, x, timestep, vartype)
-!------------------------------------------------------------------
-!
-! This routine reads the Fortran direct access binary files ... eg
-! U.nnnnnnnnnn.data    by getting the dimension information from
-! U.nnnnnnnnnn.meta
-!
-! As it stands now ... the .data files appear to be big-endian.
-
-character(len=*),           intent(in)  :: fbase
-real(r4), dimension(:,:,:), intent(out) :: x
-integer,                    intent(out) :: timestep
-character(len=*), optional, intent(in)  :: vartype
-
-character(len=128) :: metafilename, datafilename
-type(MIT_meta_type):: metadata
-integer :: iunit, io
-integer :: reclen
-
-if ( .not. module_initialized ) call static_init_model
-
-if (present(vartype)) then
-   metafilename = vartype//'.'//trim(fbase)//'.meta'
-   datafilename = vartype//'.'//trim(fbase)//'.data'
-else
-   metafilename = trim(fbase)//'.meta'
-   datafilename = trim(fbase)//'.data'
-endif
-
-! If the companion ".meta" file exists, it is used. 
-! Otherwise, the namelist variables are used.
-
-metadata = read_meta(fbase,vartype)
-timestep = metadata%timeStepNumber
-
-! check to make sure storage modes match
-! somehow have to pair the string with the fortran kind
-! and protect against the redefinition of 'r4' ...
-! This code is not robust as it stands ...
-
-if     ( index(metadata%dataprec,'float32') > 0 ) then
-   ! r4 is probably OK
-else if( index(metadata%dataprec,'real*4') > 0 ) then
-   ! r4 is probably OK
-else
-   write(msgstring,*) 'storage mode mismatch for ', trim(datafilename)
-   call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-! Check dimensions
-
-if (size(x, 1) /= metadata%dimList(1) ) then
-   write(msgstring,*)trim(metafilename),' dim 1 does not match delX grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,1),' got ',metadata%dimList(1)
-   call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-endif
-
-if (size(x, 2) /= metadata%dimList(2)) then
-   write(msgstring,*)trim(metafilename),' dim 2 does not match delY grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,2),' got ',metadata%dimList(2)
-   call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-endif
-
-if (size(x, 3) /= metadata%dimList(3)) then
-   write(msgstring,*)trim(metafilename),' dim 3 does not match delZ grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,3),' got ',metadata%dimList(3)
-   call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-endif
-
-reclen = product(shape(x)) * item_size_direct_access
-
-! Get next available unit number, read file.
-
-iunit = get_unit()
-open(unit=iunit, file=datafilename, action='read', access='direct', recl=reclen, iostat=io)
-if (io /= 0) then
-   write(msgstring,*) 'cannot open file ', trim(datafilename),' for reading.'
-   call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-read(iunit, rec=1, iostat = io) x
-if (io /= 0) then
-   write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-close(iunit)
-
-end subroutine read_3d_snapshot
-
-
-
-subroutine write_2d_snapshot(x, fbase, timestepindex)
-!------------------------------------------------------------------
-!
-! This routine writes the Fortran direct access binary files ... eg
-! U.nnnnnnnnnn.data    and
-! U.nnnnnnnnnn.meta
-!
-! As it stands now ... the .data files appear to be big-endian.
-
-real(r4), dimension(:,:), intent(in) :: x
-character(len=*),         intent(in) :: fbase
-integer, optional,        intent(in) :: timestepindex
-
-character(len=128) :: metafilename, datafilename
-type(MIT_meta_type) :: metadata
-integer :: iunit, io
-integer :: reclen
-
-if ( .not. module_initialized ) call static_init_model
-
-metafilename = trim(fbase)//'.meta'
-datafilename = trim(fbase)//'.data'
-
-metadata%nDims = 2
-metadata%dimList(:) = (/ Nx, Ny, 0 /)
-metadata%dataprec = "float32"
-metadata%reclen = Nx * Ny 
-metadata%nrecords = 1
-if (present(timestepindex)) then
-   metadata%timeStepNumber = timestepindex
-else
-   metadata%timeStepNumber = 0
-endif
-
-call write_meta(metadata, fbase)
-
-reclen = metadata%reclen * item_size_direct_access
-
-iunit = get_unit()
-open(unit=iunit, file=datafilename, action='write', access='direct', recl=reclen, iostat=io)
-if (io /= 0) then
-   write(msgstring,*) 'cannot open file ', trim(datafilename),' for reading.'
-   call error_handler(E_ERR,'model_mod:write_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-write(iunit, rec=1, iostat = io) x
-if (io /= 0) then
-   write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'write_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-close(iunit)
-
-end subroutine write_2d_snapshot
-
-
-subroutine write_3d_snapshot(x, fbase, timestepindex)
-!------------------------------------------------------------------
-!
-! This routine writes the Fortran direct access binary files ... eg
-! U.nnnnnnnnnn.data  and the associated
-! U.nnnnnnnnnn.meta 
-!
-! As it stands now ... the .data files appear to be big-endian.
-
-real(r4), dimension(:,:,:), intent(in) :: x
-character(len=*),           intent(in) :: fbase
-integer, optional,          intent(in) :: timestepindex
-
-character(len=128) :: metafilename, datafilename
-type(MIT_meta_type) :: metadata
-integer :: iunit, io
-integer :: reclen
-
-if ( .not. module_initialized ) call static_init_model
-
-metafilename = trim(fbase)//'.meta'
-datafilename = trim(fbase)//'.data'
-
-metadata%nDims = 3
-metadata%dimList(:) = (/ Nx, Ny, Nz /)
-metadata%dataprec = "float32"     ! FIXME depends on defn of 'r4' 
-metadata%reclen = Nx * Ny * Nz
-metadata%nrecords = 1
-if (present(timestepindex)) then
-   metadata%timeStepNumber = timestepindex
-else
-   metadata%timeStepNumber = 0
-endif
-
-call write_meta(metadata, fbase)
-
-reclen = metadata%reclen * item_size_direct_access
-
-! Get next available unit number, write file.
-
-iunit = get_unit()
-open(unit=iunit, file=datafilename, action='write', access='direct', recl=reclen, iostat=io)
-if (io /= 0) then
-   write(msgstring,*) 'cannot open file ', trim(datafilename),' for writing.'
-   call error_handler(E_ERR,'model_mod:write_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-write(iunit, rec=1, iostat = io) x
-if (io /= 0) then
-   write(msgstring,*) 'unable to write snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'write_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-close(iunit)
-
-end subroutine write_3d_snapshot
-
-
-subroutine snapshot_files_to_sv(timestepcount, state_vector)
-!------------------------------------------------------------------
-!
-integer,  intent(in)    :: timestepcount 
-real(r8), intent(inout) :: state_vector(:)
-
-! temp space to hold data while we are reading it
-!real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
-real(r4), allocatable  :: data_2d_array(:,:), data_3d_array(:,:,:)
-integer :: i, j, k, l, indx, timestepcount_out
-
-! These must be a fixed number and in a fixed order.
-character(len=128)  :: prefixstring
-
-allocate(data_2d_array(Nx,Ny))
-allocate(data_3d_array(Nx,Ny,Nz))
-
-if ( .not. module_initialized ) call static_init_model
-
-! start counting up and filling the state vector
-! one item at a time, linearizing the 3d arrays into a single
-! 1d list of numbers.
-indx = 1
-
-! fill S, T, U, V in that order
-do l=1, n3dfields
-
-   ! the filenames are constructed here and assumed to be:
-   !  Variable.Timestep.[data,.meta]
-   ! e.g. S.0000000672.data
-   !      S.0000000672.meta
-   write(prefixstring, '(A,''.'',I10.10)') trim(progvarnames(l)),timestepcount
-
-   call read_snapshot(prefixstring, data_3d_array, timestepcount_out)
-   do k = 1, Nz
-   do j = 1, Ny
-   do i = 1, Nx
-      state_vector(indx) = data_3d_array(i, j, k)
-      indx = indx + 1
-   enddo
-   enddo
-   enddo
-
-enddo
-
-! and finally, Eta (and any other 2d fields)
-do l=(n3dfields+1), (n3dfields+n2dfields)
-
-   write(prefixstring, '(A,''.'',I10.10)') trim(progvarnames(l)), timestepcount
-
-   call read_snapshot(prefixstring, data_2d_array, timestepcount_out)
-   do j = 1, Ny
-   do i = 1, Nx
-      state_vector(indx) = data_2d_array(i, j)
-      indx = indx + 1
-   enddo
-   enddo
-
-enddo
-
-deallocate(data_2d_array)
-deallocate(data_3d_array)
-
-end subroutine snapshot_files_to_sv
-
-
-
-subroutine sv_to_snapshot_files(state_vector, date1, date2)
-!------------------------------------------------------------------
-!
-real(r8), intent(in) :: state_vector(:)
-integer,  intent(in) :: date1, date2 
-
-! temp space to hold data while we are writing it
-real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
-integer :: i, j, k, l, indx
-
-! These must be a fixed number and in a fixed order.
-character(len=128)  :: prefixstring
-
-if ( .not. module_initialized ) call static_init_model
-
-! start counting up and filling the state vector
-! one item at a time, linearizing the 3d arrays into a single
-! 1d list of numbers.
-indx = 1
-
-! fill S, T, U, V in that order
-do l=1, n3dfields
-
-   ! the filenames are going to be constructed here and assumed to be:
-   !  Variable.Basename.Timestep.data  and .meta
-   ! e.g. S.Prior.0000000672.data
-   !      S.Prior.0000000672.meta
-   write(prefixstring, '(A,''.'',I8.8,''.'',I6.6)') trim(progvarnames(l)),date1,date2
-
-   do k = 1, Nz
-   do j = 1, Ny
-   do i = 1, Nx
-      data_3d_array(i, j, k) = state_vector(indx)
-      indx = indx + 1
-   enddo
-   enddo
-   enddo
-   call write_snapshot(data_3d_array, prefixstring, timestepcount)
-
-enddo
-
-! and finally, Eta (and any other 2d fields)
-do l=(n3dfields+1), (n3dfields+n2dfields)
-
-   write(prefixstring, '(A,''.'',I8.8,''.'',I6.6)') trim(progvarnames(l)),date1,date2
-
-   do j = 1, Ny
-   do i = 1, Nx
-      data_2d_array(i, j) = state_vector(indx)
-      indx = indx + 1
-   enddo
-   enddo
-   call write_snapshot(data_2d_array, prefixstring, timestepcount)
-
-enddo
-
-end subroutine sv_to_snapshot_files
-
-
-
-subroutine prog_var_to_vector(s,t,u,v,eta,x)
-!------------------------------------------------------------------
-! deprecated in favor of snapshot_files_to_sv
-
-real(r4), dimension(:,:,:), intent(in)  :: s,t,u,v
-real(r4), dimension(:,:),   intent(in)  :: eta
-real(r8), dimension(:),     intent(out) :: x
-
-integer :: i,j,k,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-! check shapes
-
-if (size(s,1) /= Nx) then
-   write(msgstring,*) 'dim 1 of S /= Nx ',size(s,1),Nx
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(s,2) /= Ny) then
-   write(msgstring,*) 'dim 2 of S /= Ny ',size(s,2),Ny
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(s,3) /= Nz) then
-   write(msgstring,*) 'dim 3 of S /= Nz ',size(s,3),Nz
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(eta,1) /= Nx) then
-   write(msgstring,*) 'dim 1 of Eta /= Nx ',size(eta,1),Nx
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(eta,2) /= Ny) then
-   write(msgstring,*) 'dim 2 of Eta /= Ny ',size(eta,2),Ny
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-! Should check sizes of T,U,V against that of S
-
-ii = 0
-
-! Salinity
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = s(i,j,k)
-enddo
-enddo
-enddo
-
-! Temperature
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = t(i,j,k)
-enddo
-enddo
-enddo
-
-! E-W 
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = u(i,j,k)
-enddo
-enddo
-enddo
-
-! N-S
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = v(i,j,k)
-enddo
-enddo
-enddo
-
-! Sea Surface Height
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = eta(i,j)
-enddo
-enddo
-
-if (ii /= get_model_size()) then
-   write(msgstring,*)'data size ',ii,' /= ',get_model_size(),' model size'
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-end subroutine prog_var_to_vector
-
-
-
-subroutine vector_to_2d_prog_var(x, varindex, data_2d_array)
-!------------------------------------------------------------------
-!
-real(r8), dimension(:),   intent(in)  :: x
-integer,                  intent(in)  :: varindex
-real(r4), dimension(:,:), intent(out) :: data_2d_array
-
-integer :: i,j,ii
-integer :: dim1,dim2
-character(len=128) :: varname
-
-if ( .not. module_initialized ) call static_init_model
-
-dim1 = size(data_2d_array,1)
-dim2 = size(data_2d_array,2)
-
-varname = progvarnames(varindex)
-
-if (dim1 /= Nx) then
-   write(msgstring,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'model_mod:vector_to_2d_prog_var',msgstring,source,revision,revdate) 
-endif
-if (dim2 /= Ny) then
-   write(msgstring,*)trim(varname),' 2d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'model_mod:vector_to_2d_prog_var',msgstring,source,revision,revdate) 
-endif
-
-ii = start_index(varindex)
-
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   data_2d_array(i,j) = x(ii)
-   ii = ii + 1
-enddo
-enddo
-
-end subroutine vector_to_2d_prog_var
-
-
-
-subroutine vector_to_3d_prog_var(x, varindex, data_3d_array)
-!------------------------------------------------------------------
-!
-real(r8), dimension(:),     intent(in)  :: x
-integer,                    intent(in)  :: varindex
-real(r4), dimension(:,:,:), intent(out) :: data_3d_array
-
-integer :: i,j,k,ii
-integer :: dim1,dim2,dim3
-character(len=128) :: varname
-
-if ( .not. module_initialized ) call static_init_model
-
-dim1 = size(data_3d_array,1)
-dim2 = size(data_3d_array,2)
-dim3 = size(data_3d_array,3)
-
-varname = progvarnames(varindex)
-
-if (dim1 /= Nx) then
-   write(msgstring,*)trim(varname),' 3d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'model_mod:vector_to_3d_prog_var',msgstring,source,revision,revdate) 
-endif
-if (dim2 /= Ny) then
-   write(msgstring,*)trim(varname),' 3d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'model_mod:vector_to_3d_prog_var',msgstring,source,revision,revdate) 
-endif
-if (dim3 /= Nz) then
-   write(msgstring,*)trim(varname),' 3d array dim 3 ',dim3,' /= ',Nz
-   call error_handler(E_ERR,'model_mod:vector_to_3d_prog_var',msgstring,source,revision,revdate) 
-endif
-
-ii = start_index(varindex)
-
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   data_3d_array(i,j,k) = x(ii)
-   ii = ii + 1
-enddo
-enddo
-enddo
-
-end subroutine vector_to_3d_prog_var
-
+!> (namelist) startDate_1  yyyymmdd (year/month/day)
+!> (namelist) startDate_2    hhmmss (hours/minutes/seconds)
+!> (namelist) deltaTmom   aka 'timestep' ... r4 ... implies roundoff nuances
 
 function timestep_to_DARTtime(TimeStepIndex)
-!
-! The MITtime is composed of an offset to a fixed time base.
-! The base time is derived from the namelist in 'date.cal',
-! the model timestep (deltaT) is from the namelist 'PARM03',
-! and the timestepindex is the middle portion of the filename
-! of the MIT files   [S,T,U,V,Eta].nnnnnnnnnn.dat 
-!
-! (namelist) startDate_1  yyyymmdd (year/month/day)
-! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
-! (namelist) deltaTmom   aka 'timestep' ... r4 ... implies roundoff nuances
-!
+
 integer, intent(in) :: TimeStepIndex
 type(time_type)     :: timestep_to_DARTtime
 
