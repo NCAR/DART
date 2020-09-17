@@ -2,23 +2,23 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
+! $Id: model_mod.f90 11626 2017-05-11 17:27:50Z nancy@ucar.edu $
 
 module model_mod
 
 ! This is the interface between the MITgcm ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8, SECPERDAY
+use        types_mod, only : r4, r8, i8, SECPERDAY
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              set_calendar_type, GREGORIAN, print_time, print_date, &
                              operator(*),  operator(+), operator(-), &
                              operator(>),  operator(<), operator(/), &
                              operator(/=), operator(<=)
-use     location_mod, only : location_type,      get_close_maxdist_init, &
-                             get_close_obs_init, get_close_obs, set_location, &
-                             VERTISHEIGHT, get_location, vert_is_height, &
-                             vert_is_level, vert_is_surface
+use     location_mod, only : location_type,      get_close_init, &
+                             get_close_state,    get_close_obs, set_location, &
+                             VERTISHEIGHT, get_location, is_vertical, &
+                             convert_vertical_obs, convert_vertical_state
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, nc_check, do_output, to_upper, &
                              find_namelist_in_file, check_namelist_read, &
@@ -28,7 +28,35 @@ use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPON
 use mpi_utilities_mod, only: my_task_id
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 
+!!!!! TODO: check if needed
 use netcdf
+
+use default_model_mod,   only : pert_model_copies, nc_write_model_vars
+
+use dart_time_io_mod,      only : read_model_time, write_model_time
+
+
+use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_index, &
+                                  get_my_vars, get_copy_owner_index
+!use ensemble_manager_mod,  only : ensemble_type
+
+
+use distributed_state_mod, only : get_state
+
+
+!use state_structure_mod, only : add_domain, get_model_variable_indices, &
+!                                state_structure_info, &
+!                                get_index_start, get_index_end, &
+!                                get_dart_vector_index
+
+!use state_structure_mod,   only : add_domain, get_model_variable_indices, &
+!                                  get_num_variables, get_index_start, &
+!                                  get_num_dims, get_domain_size, &
+!                                  get_dart_vector_index
+
+use state_structure_mod, only : add_domain
+
+
 
 implicit none
 private
@@ -39,17 +67,22 @@ public :: get_model_size,         &
           adv_1step,              &
           get_state_meta_data,    &
           model_interpolate,      &
-          get_model_time_step,    &
+          shortest_time_between_assimilations, &
           end_model,              &
           static_init_model,      &
           init_time,              &
           init_conditions,        &
           nc_write_model_atts,    &
           nc_write_model_vars,    &
-          pert_model_state,       &
-          get_close_maxdist_init, &
-          get_close_obs_init,     &
+          !pert_model_state,       &
+          pert_model_copies,      &
+          get_close_init, &
           get_close_obs,          &
+          get_close_state, &
+          convert_vertical_obs, &
+          convert_vertical_state, &
+          read_model_time, &
+          write_model_time, &
           ens_mean_for_model
 
 ! generally useful routines for various support purposes.
@@ -60,13 +93,14 @@ public :: prog_var_to_vector, vector_to_prog_var, &
           write_data_namelistfile, set_model_end_time, &
           snapshot_files_to_sv, sv_to_snapshot_files, &
           timestep_to_DARTtime, DARTtime_to_MITtime, &
-          DARTtime_to_timestepindex 
+          DARTtime_to_timestepindex, &
+          lon_bounds,lat_bounds, lon_dist, max_nx, max_ny, max_nz, max_nr, MAX_LEN_FNAM 
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/MITgcm_ocean/model_mod.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 11626 $"
+character(len=128), parameter :: revdate  = "$Date: 2017-05-11 20:27:50 +0300 (Thu, 11 May 2017) $"
 
 character(len=129) :: msgstring
 logical, save :: module_initialized = .false.
@@ -102,6 +136,7 @@ character(len=9) :: TheCalendar = 'gregorian'
 integer          :: startDate_1 = 19530101
 integer          :: startDate_2 =          60000
 logical          :: calendarDumps = .false.
+logical          :: pickupStrictlyMatch = .false.
 
 NAMELIST /CAL_NML/ TheCalendar, startDate_1, startDate_2, calendarDumps
 
@@ -142,7 +177,8 @@ real(r8) :: pickupSuff, &
 integer :: nIter0, nTimeSteps, nEndIter, momForcingOutAB, tracForcingOutAB
 logical :: forcing_In_AB, &
       momDissip_In_AB, doAB_onGtGs, &
-      startFromPickupAB2
+      startFromPickupAB2, &
+      checkIniTemp, checkIniSalt
 
 !--   Gridding parameters variable declarations 
 logical :: usingCartesianGrid, usingCylindricalGrid, &
@@ -186,7 +222,8 @@ NAMELIST /PARM03/ &
       tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
       tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
       periodicExternalForcing, externForcingPeriod, externForcingCycle, &
-      calendarDumps
+      calendarDumps, &
+            pickupStrictlyMatch
 
 !--   Gridding parameters namelist
 NAMELIST /PARM04/ &
@@ -209,7 +246,8 @@ NAMELIST /PARM05/ &
       dQdTFile, ploadFile,tCylIn,tCylOut, &
       eddyTauxFile, eddyTauyFile, &
       mdsioLocalDir, &
-      the_run_name
+      the_run_name, &
+      checkIniTemp, checkIniSalt
 
 !------------------------------------------------------------------
 !
@@ -235,7 +273,8 @@ integer, parameter :: Eta_index = 5
 
 ! (the absoft compiler likes them to all be the same length during declaration)
 ! we trim the blanks off before use anyway, so ...
-character(len=128) :: progvarnames(nfields) = (/'S  ','T  ','U  ','V  ','Eta'/)
+character(len=128) :: progvarnames(nfields) = (/'PSAL','PTMP','UVEL','VVEL','ETA'/)
+integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf files.
 
 integer :: start_index(nfields)
 
@@ -260,10 +299,8 @@ integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
 integer :: model_size    ! the state vector length
-
 ! Skeleton of a model_nml that would be in input.nml
 ! This is where dart-related model parms could be set.
-logical  :: output_state_vector = .false.
 integer  :: assimilation_period_days = 7
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
@@ -298,6 +335,7 @@ INTERFACE vector_to_prog_var
       MODULE PROCEDURE vector_to_3d_prog_var
 END INTERFACE
 
+integer :: domain_id
 
 contains
 
@@ -402,9 +440,15 @@ if (do_output()) write(logfileunit,*)msgstring
 delX(:) = 0.0_r4
 delY(:) = 0.0_r4
 delZ(:) = 0.0_r4
+delR(:) = 0.0_r4
 call find_namelist_in_file("data", "PARM04", iunit)
 read(iunit, nml = PARM04, iostat = io)
 call check_namelist_read(iunit, io, "PARM04")
+
+! we use either delR or delZ in mitgcm
+if (delR(1) /= 0.0_r4) then
+   delZ = delR
+endif
 
 ! Input datasets are in PARM05
 call find_namelist_in_file("data", "PARM05", iunit)
@@ -455,8 +499,15 @@ endif
 
 ! We know enough to allocate grid variables. 
 
-allocate(XC(Nx), YC(Ny), ZC(Nz))
-allocate(XG(Nx), YG(Ny), ZG(Nz))
+if (.not. allocated(XC)) allocate(XC(Nx))
+if (.not. allocated(YC)) allocate(YC(Ny))
+if (.not. allocated(ZC)) allocate(ZC(Nz))
+if (.not. allocated(XG)) allocate(XG(Nx))
+if (.not. allocated(YG)) allocate(YG(Ny))
+if (.not. allocated(ZG)) allocate(ZG(Nz))
+
+!allocate(XC(Nx), YC(Ny), ZC(Nz))
+!allocate(XG(Nx), YG(Ny), ZG(Nz))
 
 ! XG (the grid edges) and XC (the grid centroids) must be computed.
 
@@ -508,6 +559,8 @@ if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 !print *, ' 2d field size: ', n2dfields * (Nx * Ny)
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 if (do_output()) write(*,*) 'model_size = ', model_size
+domain_id = add_domain('filter_ics.0001', nfields, var_names = progvarnames)
+
 
 end subroutine static_init_model
 
@@ -601,30 +654,32 @@ time = set_time(0,0)
 end subroutine init_time
 
 
-
-subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, obs_quantity, interp_val, istatus)
 !=======================================================================
 !
 
-real(r8),            intent(in) :: x(:)
-type(location_type), intent(in) :: location
-integer,             intent(in) :: obs_type
-real(r8),           intent(out) :: interp_val
-integer,            intent(out) :: istatus
+type(ensemble_type),   intent(in)  :: state_handle
+integer,               intent(in)  :: ens_size
+type(location_type),   intent(in)  :: location 
+integer,               intent(in)  :: obs_quantity
+real(r8),              intent(out) :: interp_val(ens_size)
+integer,               intent(out) :: istatus(ens_size)
 
 ! Model interpolate will interpolate any state variable (S, T, U, V, Eta) to
 ! the given location given a state vector. The type of the variable being
-! interpolated is obs_type since normally this is used to find the expected
+! interpolated is obs_quantity since normally this is used to find the expected
 ! value of an observation at some location. The interpolated value is 
 ! returned in interp_val and istatus is 0 for success.
 
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
-integer        :: base_offset, offset, ind
+integer(i8)        :: base_offset, offset
+integer        :: ind
 integer        :: hgt_bot, hgt_top
 real(r8)       :: hgt_fract
-real(r8)       :: top_val, bot_val
+real(r8),dimension(ens_size)       :: top_val, bot_val
 integer        :: hstatus
+integer        :: i
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -637,13 +692,13 @@ loc_array = get_location(location)
 llon    = loc_array(1)
 llat    = loc_array(2)
 lheight = loc_array(3)
-
-if( vert_is_height(location) ) then
-   ! Nothing to do 
-elseif ( vert_is_surface(location) ) then
-   ! Nothing to do 
-elseif (vert_is_level(location)) then
-   ! convert the level index to an actual depth 
+   
+if( is_vertical(location,"HEIGHT") ) then
+      ! Nothing to do 
+elseif ( is_vertical(location,"SURFACE") ) then
+! Nothing to do 
+elseif (is_vertical(location,"LEVEL")) then
+! convert the level index to an actual depth 
    ind = nint(loc_array(3))
    if ( (ind < 1) .or. (ind > size(zc)) ) then 
       lheight = zc(ind)
@@ -655,59 +710,60 @@ else   ! if pressure or undefined, we don't know what to do
    istatus = 7
    return
 endif
-
+   
 ! Do horizontal interpolations for the appropriate levels
 ! Find the basic offset of this field
-if(obs_type == QTY_SALINITY) then
+if(obs_quantity == QTY_SALINITY) then
    base_offset = start_index(1)
-else if(obs_type == QTY_TEMPERATURE) then
+else if(obs_quantity == QTY_TEMPERATURE) then
    base_offset = start_index(2)
-else if(obs_type == QTY_U_CURRENT_COMPONENT) then
+else if(obs_quantity == QTY_U_CURRENT_COMPONENT) then
    base_offset = start_index(3)
-else if(obs_type == QTY_V_CURRENT_COMPONENT) then
+else if(obs_quantity == QTY_V_CURRENT_COMPONENT) then
    base_offset = start_index(4)
-else if(obs_type == QTY_SEA_SURFACE_HEIGHT) then
+else if(obs_quantity == QTY_SEA_SURFACE_HEIGHT) then
    base_offset = start_index(5)
 else
-   ! Not a legal type for interpolation, return istatus error
+! Not a legal type for interpolation, return istatus error
    istatus = 5
    return
 endif
-
-!print *, 'base offset now ', base_offset
-
+   
 ! For Sea Surface Height don't need the vertical coordinate
-if( vert_is_surface(location) ) then
-   call lat_lon_interpolate(x(base_offset:), llon, llat, obs_type, interp_val, istatus)
+if( is_vertical(location,"SURFACE") ) then
+   call lat_lon_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_quantity, interp_val, istatus)
    return
 endif
-
+   
 ! Get the bounding vertical levels and the fraction between bottom and top
 call height_bounds(lheight, nz, zc, hgt_bot, hgt_top, hgt_fract, hstatus)
 if(hstatus /= 0) then
    istatus = 2
    return
 endif
-
+   
 ! Find the base location for the top height and interpolate horizontally on this level
 offset = base_offset + (hgt_top - 1) * nx * ny
-!print *, 'relative top height offset = ', offset - base_offset
-!print *, 'absolute top height offset = ', offset
-call lat_lon_interpolate(x(offset:), llon, llat, obs_type, top_val, istatus)
+!print *, 'relative top height offset = ', offset(1) - base_offset
+!print *, 'absolute top height offset = ', offset(1)
+call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, obs_quantity, top_val, istatus)
 ! Failed istatus from interpolate means give up
-if(istatus /= 0) return
-
+do i =1,ens_size
+   if(istatus(i) /= 0) return
+enddo
+   
 ! Find the base location for the bottom height and interpolate horizontally on this level
 offset = base_offset + (hgt_bot - 1) * nx * ny
-!print *, 'relative bot height offset = ', offset - base_offset
-!print *, 'absolute bot height offset = ', offset
-call lat_lon_interpolate(x(offset:), llon, llat, obs_type, bot_val, istatus)
+!print *, 'relative bot height offset = ', offset(1) - base_offset
+!print *, 'absolute bot height offset = ', offset(1)
+call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, obs_quantity, bot_val, istatus)
 ! Failed istatus from interpolate means give up
-if(istatus /= 0) return
-
+do i =1,ens_size
+   if(istatus(i) /= 0) return
+enddo
 ! Then weight them by the fraction and return
 interp_val = bot_val + hgt_fract * (top_val - bot_val)
-!print *, 'model_interp: interp val = ',interp_val
+!print *, 'model_interp: interp val = ',interp_val(1)
 
 end subroutine model_interpolate
 
@@ -762,27 +818,27 @@ istatus = 2
 end subroutine height_bounds
 
 
-subroutine lat_lon_interpolate(x, llon, llat, var_type, interp_val, istatus)
+subroutine lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, var_type, interp_val, istatus)
 !=======================================================================
 !
 
 ! Subroutine to interpolate to a lat lon location given that portion of state
 ! vector. 
-! NOTE: Using array sections to pass in the x array may be inefficient on some
-! compiler/platform setups. Might want to pass in the entire array with a base
-! offset value instead of the section if this is an issue.
 
-real(r8),            intent(in) :: x(:)
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+integer(i8),         intent(in)  :: offset
+
 real(r8),            intent(in) :: llon, llat
 integer,             intent(in) :: var_type
-integer,            intent(out) :: istatus
-real(r8),           intent(out) :: interp_val
+integer,            intent(out) :: istatus(ens_size)
+real(r8),           intent(out) :: interp_val(ens_size)
 
 ! Local storage
 real(r8) :: lat_array(ny), lon_array(nx)
 integer  :: lat_bot, lat_top, lon_bot, lon_top
 real(r8) :: lat_fract, lon_fract
-real(r8) :: pa, pb, pc, pd, xbot, xtop
+real(r8),dimension(ens_size) :: pa, pb, pc, pd, xbot, xtop
 integer  :: lat_status, lon_status
 logical  :: masked
 
@@ -791,7 +847,6 @@ if ( .not. module_initialized ) call static_init_model
 ! Succesful return has istatus of 0
 istatus = 0
 
-! Failed return values for istatus are ?????
 
 ! Find out what latitude box and fraction
 ! The latitude grid being used depends on the variable type
@@ -840,45 +895,45 @@ endif
 !print *, 'lon_bot, lon_top = ', lon_bot, lon_top
 !print *, 'lat_bot, lat_top = ', lat_bot, lat_top
 
-pa = get_val(lon_bot, lat_bot, nx, x, masked)
+pa = get_val(lon_bot, lat_bot, nx, state_handle, offset, ens_size, masked)
 !print *, 'pa = ', pa
 if(masked) then
    istatus = 3
    return
 endif
-pb = get_val(lon_top, lat_bot, nx, x, masked)
+pb = get_val(lon_top, lat_bot, nx, state_handle, offset, ens_size, masked)
 !print *, 'pb = ', pb
 if(masked) then
    istatus = 3
    return
 endif
-pc = get_val(lon_bot, lat_top, nx, x, masked)
+pc = get_val(lon_bot, lat_top, nx, state_handle, offset, ens_size, masked)
 !print *, 'pc = ', pc
 if(masked) then
    istatus = 3
    return
 endif
-pd = get_val(lon_top, lat_top, nx, x, masked)
+pd = get_val(lon_top, lat_top, nx, state_handle, offset, ens_size, masked)
 !print *, 'pd = ', pd
 if(masked) then
    istatus = 3
    return
 endif
 
-!print *, 'pa,b,c,d = ', pa, pb, pc, pd
+!print *, 'pa,b,c,d = ', pa(1), pb(1), pc(1), pd(1)
 
 ! Finish bi-linear interpolation 
 ! First interpolate in longitude
-!print *, 'bot lon_fract, delta = ', lon_fract, (pb-pa)
+!print *, 'bot lon_fract, delta = ', lon_fract, (pb(1)-pa(1))
 xbot = pa + lon_fract * (pb - pa)
-!print *, 'xbot = ', xbot
-!print *, 'top lon_fract, delta = ', lon_fract, (pd-pc)
+!print *, 'xbot = ', xbot(1)
+!print *, 'top lon_fract, delta = ', lon_fract, (pd(1)-pc(1))
 xtop = pc + lon_fract * (pd - pc)
-!print *, 'xtop = ', xtop
+!print *, 'xtop = ', xtop(1)
 ! Now interpolate in latitude
-!print *, 'lat_fract, delta = ', lat_fract, (xtop - xbot)
+!print *, 'lat_fract, delta = ', lat_fract, (xtop(1) - xbot(1))
 interp_val = xbot + lat_fract * (xtop - xbot)
-!print *, 'lat_lon_interp: interp_val = ', interp_val
+!print *, 'lat_lon_interp: interp_val = ', interp_val(1)
 
 end subroutine lat_lon_interpolate
 
@@ -1019,33 +1074,42 @@ endif
 end function lon_dist
 
 
-function get_val(lon_index, lat_index, nlon, x, masked)
+!Lanai version: function get_val(lon_index, lat_index, nlon, x, masked)
+function get_val(lon_index, lat_index, nlon, state_handle,offset,ens_size, masked)
 !=======================================================================
 !
 
 ! Returns the value from a single level array given the lat and lon indices
 integer,     intent(in) :: lon_index, lat_index, nlon
-real(r8),    intent(in) :: x(:)
+!Lanai: real(r8),    intent(in) :: x(:)
+type(ensemble_type), intent(in) :: state_handle
+integer(i8),        intent(in)      :: offset
+integer,        intent(in)      :: ens_size
+
 logical,    intent(out) :: masked
-real(r8)                :: get_val
+!Lanai: real(r8)                :: get_val
+real(r8)                :: get_val(ens_size)
+integer(i8) :: state_index
+integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
 ! Layout has lons varying most rapidly
 !print *, 'lat_index, lon_index, nlon', lat_index, lon_index, nlon
 !print *, 'computing index val ', (lat_index - 1) * nlon + lon_index
-get_val = x((lat_index - 1) * nlon + lon_index)
+!Lanai: get_val = x((lat_index - 1) * nlon + lon_index)
+state_index=int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offset-1,i8)
+get_val = get_state(state_index,state_handle)
 !print *, 'get_val = ', get_val
 
 ! Masked returns false if the value is masked
-! A grid variable is assumed to be masked if its value is exactly 0.
+! A grid variable is assumed to be masked if its value is FVAL. 
+!Just to maintain legacy, we also assume that A grid variable is assumed to be masked if its value is exactly 0.
 ! See discussion in lat_lon_interpolate.
-if(get_val == 0.0_r8) then
-   masked = .true.
-else
-   masked = .false.
-endif
-
+masked = .false.
+do i=1,ens_size
+ if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
+enddo
 !print *, 'masked is ', masked
 end function get_val
 
@@ -1078,20 +1142,20 @@ end function set_model_time_step
 
 
 
-function get_model_time_step()
+function shortest_time_between_assimilations()
 !------------------------------------------------------------------
 !
 ! Returns the the time step of the model; the smallest increment
 ! in time that the model is capable of advancing the state in a given
 ! implementation. This interface is required for all applications.
 
-type(time_type) :: get_model_time_step
+type(time_type) :: shortest_time_between_assimilations
 
 if ( .not. module_initialized ) call static_init_model
 
-get_model_time_step = model_timestep
+shortest_time_between_assimilations = model_timestep
 
-end function get_model_time_step
+end function shortest_time_between_assimilations
 
 
 
@@ -1125,7 +1189,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
 
-integer,             intent(in)  :: index_in
+integer(i8),          intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
@@ -1198,7 +1262,8 @@ end subroutine end_model
 
 
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+!function nc_write_model_atts( ncFileID ) result (ierr)
+subroutine nc_write_model_atts(ncFileID, domain_id)
 !------------------------------------------------------------------
 ! TJH -- Writes the model-specific attributes to a netCDF file.
 !     This includes coordinate variables and some metadata, but NOT
@@ -1222,6 +1287,7 @@ use typeSizes
 use netcdf
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
+integer, intent(in) :: domain_id
 integer              :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
@@ -1232,7 +1298,7 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
 integer :: StateVarDimID   ! netCDF pointer to state variable dimension (model size)
 integer :: MemberDimID     ! netCDF pointer to dimension of ensemble    (ens_size)
-integer :: TimeDimID       ! netCDF pointer to time dimension           (unlimited)
+!integer :: TimeDimID       ! netCDF pointer to time dimension           (unlimited)
 
 integer :: StateVarVarID   ! netCDF pointer to state variable coordinate array
 integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
@@ -1294,30 +1360,6 @@ call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimited
                                    "nc_write_model_atts", "inquire "//trim(filename))
 call nc_check(nf90_Redef(ncFileID),"nc_write_model_atts",   "redef "//trim(filename))
 
-!-------------------------------------------------------------------------------
-! We need the dimension ID for the number of copies/ensemble members, and
-! we might as well check to make sure that Time is the Unlimited dimension. 
-! Our job is create the 'model size' dimension.
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="NMLlinelen", dimid=LineLenDimID), &
-                           "nc_write_model_atts","inq_dimid NMLlinelen")
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
-                           "nc_write_model_atts", "copy dimid "//trim(filename))
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID), &
-                           "nc_write_model_atts", "time dimid "//trim(filename))
-
-if ( TimeDimID /= unlimitedDimId ) then
-   write(msgstring,*)"Time Dimension ID ",TimeDimID, &
-             " should equal Unlimited Dimension ID",unlimitedDimID
-   call error_handler(E_ERR,"nc_write_model_atts", msgstring, source, revision, revdate)
-endif
-
-!-------------------------------------------------------------------------------
-! Define the model size / state variable dimension / whatever ...
-!-------------------------------------------------------------------------------
-call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", len=model_size, &
-        dimid = StateVarDimID),"nc_write_model_atts", "state def_dim "//trim(filename))
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
@@ -1342,67 +1384,6 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model",  "MITgcm_ocean" ), &
 ! Determine shape of most important namelist
 !-------------------------------------------------------------------------------
 
-call find_textfile_dims("data", nlines, linelen)
-
-allocate(textblock(nlines))
-textblock = ''
-
-call nc_check(nf90_def_dim(ncid=ncFileID, name="nlines", &
-              len = nlines, dimid = nlinesDimID), &
-              'nc_write_model_atts', 'def_dim nlines ')
-
-call nc_check(nf90_def_var(ncFileID,name="datanml", xtype=nf90_char,    &
-              dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
-              'nc_write_model_atts', 'def_var datanml')
-call nc_check(nf90_put_att(ncFileID, nmlVarID, "long_name",       &
-              "contents of data namelist"), 'nc_write_model_atts', 'put_att datanml')
-
-!-------------------------------------------------------------------------------
-! Here is the extensible part. The simplest scenario is to output the state vector,
-! parsing the state vector into model-specific parts is complicated, and you need
-! to know the geometry, the output variables (PS,U,V,T,Q,...) etc. We're skipping
-! complicated part.
-!-------------------------------------------------------------------------------
-
-if ( output_state_vector ) then
-
-   !----------------------------------------------------------------------------
-   ! Create a variable for the state vector
-   !----------------------------------------------------------------------------
-
-  ! Define the state vector coordinate variable and some attributes.
-   call nc_check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-                 dimids=StateVarDimID, varid=StateVarVarID), "nc_write_model_atts", &
-                 "statevariable def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,StateVarVarID,"long_name","State Variable ID"),&
-                 "nc_write_model_atts","statevariable long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units","indexical"), &
-                 "nc_write_model_atts", "statevariable units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,StateVarVarID,"valid_range",(/ 1,model_size /)),&
-                 "nc_write_model_atts", "statevariable valid_range "//trim(filename))
-
-   ! Define the actual (3D) state vector, which gets filled as time goes on ... 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
-                 dimids=(/StateVarDimID,MemberDimID,unlimitedDimID/),varid=StateVarID),&
-                 "nc_write_model_atts","state def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,StateVarID,"long_name","model state or fcopy"),&
-                 "nc_write_model_atts", "state long_name "//trim(filename))
-
-   ! Leave define mode so we can fill the coordinate variable.
-   call nc_check(nf90_enddef(ncfileID),"nc_write_model_atts","state enddef "//trim(filename))
-
-   ! Fill the state variable coordinate variable
-   call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), &
-                 "nc_write_model_atts", "state put_var "//trim(filename))
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to output the prognostic variables.
-   !----------------------------------------------------------------------------
-   ! Define the new dimensions IDs
-   !----------------------------------------------------------------------------
-   
    call nc_check(nf90_def_dim(ncid=ncFileID, name="XG", &
           len = Nx, dimid = XGDimID),"nc_write_model_atts", "XG def_dim "//trim(filename))
    call nc_check(nf90_def_dim(ncid=ncFileID, name="XC", &
@@ -1469,21 +1450,6 @@ else
                  "nc_write_model_atts", "YC valid_range "//trim(filename))
 
    ! Depths
-   call nc_check(nf90_def_var(ncFileID,name="ZG",xtype=nf90_real,dimids=ZGDimID,varid=ZGVarID), &
-                 "nc_write_model_atts", "ZG def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "long_name", "depth at grid edges"), &
-                 "nc_write_model_atts", "ZG long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "cartesian_axis", "Z"),   &
-                 "nc_write_model_atts", "ZG cartesian_axis "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "units", "meters"),  &
-                 "nc_write_model_atts", "ZG units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "positive", "up"),  &
-                 "nc_write_model_atts", "ZG units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "comment", &
-                  "more negative is closer to the center of the earth"),  &
-                 "nc_write_model_atts", "ZG comment "//trim(filename))
-
-   ! Depths
    call nc_check(nf90_def_var(ncFileID,name="ZC",xtype=nf90_real,dimids=ZCDimID,varid=ZCVarID), &
                  "nc_write_model_atts", "ZC def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, ZCVarID, "long_name", "depth at grid centroids"), &
@@ -1498,67 +1464,6 @@ else
                   "more negative is closer to the center of the earth"),  &
                  "nc_write_model_atts", "ZC comment "//trim(filename))
 
-   !----------------------------------------------------------------------------
-   ! Create the (empty) Prognostic Variables and the Attributes
-   !----------------------------------------------------------------------------
-
-   call nc_check(nf90_def_var(ncid=ncFileID, name="S", xtype=nf90_real, &
-         dimids = (/XCDimID,YCDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=SVarID),&
-         "nc_write_model_atts", "S def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "long_name", "salinity"), &
-         "nc_write_model_atts", "S long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "S fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "units", "psu"), &
-         "nc_write_model_atts", "S units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "units_long_name", "practical salinity units"), &
-         "nc_write_model_atts", "S units_long_name "//trim(filename))
-
-   call nc_check(nf90_def_var(ncid=ncFileID, name="T", xtype=nf90_real, &
-         dimids=(/XCDimID,YCDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=TVarID),&
-         "nc_write_model_atts", "T def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "long_name", "Temperature"), &
-         "nc_write_model_atts", "T long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "T fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "units", "C"), &
-         "nc_write_model_atts", "T units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "units_long_name", "degrees celsius"), &
-         "nc_write_model_atts", "T units_long_name "//trim(filename))
-
-   call nc_check(nf90_def_var(ncid=ncFileID, name="U", xtype=nf90_real, &
-         dimids=(/XGDimID,YCDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
-         "nc_write_model_atts", "U def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "long_name", "Zonal Velocity"), &
-         "nc_write_model_atts", "U long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "U fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "units", "m/s"), &
-         "nc_write_model_atts", "U units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "units_long_name", "meters per second"), &
-         "nc_write_model_atts", "U units_long_name "//trim(filename))
-
-   call nc_check(nf90_def_var(ncid=ncFileID, name="V", xtype=nf90_real, &
-         dimids=(/XCDimID,YGDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
-         "nc_write_model_atts", "V def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "long_name", "Meridional Velocity"), &
-         "nc_write_model_atts", "V long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "V fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "units", "m/s"), &
-         "nc_write_model_atts", "V units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "units_long_name", "meters per second"), &
-         "nc_write_model_atts", "V units_long_name "//trim(filename))
-
-   call nc_check(nf90_def_var(ncid=ncFileID, name="Eta", xtype=nf90_real, &
-         dimids=(/XCDimID,YCDimID,MemberDimID,unlimitedDimID/),varid=EtaVarID), &
-         "nc_write_model_atts", "Eta def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, EtaVarID, "long_name", "sea surface height"), &
-         "nc_write_model_atts", "Eta long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, EtaVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "Eta fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, EtaVarID, "units", "meters"), &
-         "nc_write_model_atts", "Eta units "//trim(filename))
 
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -1576,21 +1481,9 @@ else
                 "nc_write_model_atts", "YG put_var "//trim(filename))
    call nc_check(nf90_put_var(ncFileID, YCVarID, YC ), &
                 "nc_write_model_atts", "YC put_var "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, ZGVarID, ZG ), &
-                "nc_write_model_atts", "ZG put_var "//trim(filename))
    call nc_check(nf90_put_var(ncFileID, ZCVarID, ZC ), &
                 "nc_write_model_atts", "ZC put_var "//trim(filename))
 
-endif
-
-!-------------------------------------------------------------------------------
-! Fill the variables we can
-!-------------------------------------------------------------------------------
-
-call file_to_text("data", textblock)
-call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
-              'nc_write_model_atts', 'put_var nmlVarID')
-deallocate(textblock)
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
@@ -1599,175 +1492,176 @@ call nc_check(nf90_sync(ncFileID), "nc_write_model_atts", "atts sync")
 
 ierr = 0 ! If we got here, things went well.
 
-end function nc_write_model_atts
+!end function nc_write_model_atts
+end subroutine nc_write_model_atts
 
 
 
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
-!------------------------------------------------------------------
-! TJH 24 Oct 2006 -- Writes the model variables to a netCDF file.
-!
-! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! For the lorenz_96 model, each state variable is at a separate location.
-! that's all the model-specific attributes I can think of ...
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
-
-use typeSizes
-use netcdf
-
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: VarID
-
-real(r4), dimension(Nx,Ny,Nz) :: data_3d
-real(r4), dimension(Nx,Ny)    :: data_2d
-character(len=128)  :: filename
-
-if ( .not. module_initialized ) call static_init_model
-
-ierr = -1 ! assume things go poorly
-
-!--------------------------------------------------------------------
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-!--------------------------------------------------------------------
-
-write(filename,*) 'ncFileID', ncFileID
-
-!-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file, 
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-              "nc_write_model_vars", "inquire "//trim(filename))
-
-if ( output_state_vector ) then
-
-   call nc_check(NF90_inq_varid(ncFileID, "state", VarID), &
-                 "nc_write_model_vars", "state inq_varid "//trim(filename))
-   call nc_check(NF90_put_var(ncFileID,VarID,statevec,start=(/1,copyindex,timeindex/)),&
-                 "nc_write_model_vars", "state put_var "//trim(filename))
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to process the prognostic variables.
-   ! Replace missing values (0.0) with netcdf missing value.
-   ! Staggered grid causes some logistical problems.
-   ! Hopefully, the conversion between r8 and r4 still preserves 'hard' zeros.
-   !----------------------------------------------------------------------------
-
-   call vector_to_prog_var(statevec,S_index,data_3d)
-   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "S", VarID), &
-                "nc_write_model_vars", "S inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "S put_var "//trim(filename))
-
-   call vector_to_prog_var(statevec,T_index,data_3d)
-   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "T", VarID), &
-                "nc_write_model_vars", "T inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "T put_var "//trim(filename))
-
-   call vector_to_prog_var(statevec,U_index,data_3d)
-   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "U", VarID), &
-                "nc_write_model_vars", "U inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "U put_var "//trim(filename))
-
-   call vector_to_prog_var(statevec,V_index,data_3d)
-   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "V", VarID), &
-                "nc_write_model_vars", "V inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "V put_var "//trim(filename))
-
-   call vector_to_prog_var(statevec,Eta_index,data_2d)
-   where (data_2d == 0.0_r4) data_2d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "Eta", VarID), &
-                "nc_write_model_vars", "Eta inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "Eta put_var "//trim(filename))
-
-endif
-
-!-------------------------------------------------------------------------------
-! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_sync(ncFileID), "nc_write_model_vars", "sync "//trim(filename))
-
-ierr = 0 ! If we got here, things went well.
-
-end function nc_write_model_vars
-
-
-
-subroutine pert_model_state(state, pert_state, interf_provided)
-!------------------------------------------------------------------
-!
-! Perturbs a model state for generating initial ensembles.
-! The perturbed state is returned in pert_state.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding a perturbation to each model state 
-! variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.
-
-real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
-logical,  intent(out) :: interf_provided
-
-integer :: i
-logical, save :: random_seq_init = .false.
-
-if ( .not. module_initialized ) call static_init_model
-
-interf_provided = .true.
-
-! Initialize my random number sequence
-if(.not. random_seq_init) then
-   call init_random_seq(random_seq, my_task_id())
-   random_seq_init = .true.
-endif
-
-! only perturb the non-zero values.  0 is a flag for missing
-! ocean cells (e.g. land or under the sea floor)
-do i=1,size(state)
-   if (state(i) /= 0.0_r8) &
-      pert_state(i) = random_gaussian(random_seq, state(i), &
-                                      model_perturbation_amplitude)
-enddo
+!--- function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
+!--- !------------------------------------------------------------------
+!--- ! TJH 24 Oct 2006 -- Writes the model variables to a netCDF file.
+!--- !
+!--- ! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
+!--- ! return code is always '0 == normal', since the fatal errors stop execution.
+!--- !
+!--- ! For the lorenz_96 model, each state variable is at a separate location.
+!--- ! that's all the model-specific attributes I can think of ...
+!--- !
+!--- ! assim_model_mod:init_diag_output uses information from the location_mod
+!--- !     to define the location dimension and variable ID. All we need to do
+!--- !     is query, verify, and fill ...
+!--- !
+!--- ! Typical sequence for adding new dimensions,variables,attributes:
+!--- ! NF90_OPEN             ! open existing netCDF dataset
+!--- !    NF90_redef         ! put into define mode
+!--- !    NF90_def_dim       ! define additional dimensions (if any)
+!--- !    NF90_def_var       ! define variables: from name, type, and dims
+!--- !    NF90_put_att       ! assign attribute values
+!--- ! NF90_ENDDEF           ! end definitions: leave define mode
+!--- !    NF90_put_var       ! provide values for variable
+!--- ! NF90_CLOSE            ! close: save updated netCDF dataset
+!--- 
+!--- use typeSizes
+!--- use netcdf
+!--- 
+!--- integer,                intent(in) :: ncFileID      ! netCDF file identifier
+!--- real(r8), dimension(:), intent(in) :: statevec
+!--- integer,                intent(in) :: copyindex
+!--- integer,                intent(in) :: timeindex
+!--- integer                            :: ierr          ! return value of function
+!--- 
+!--- integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+!--- integer :: VarID
+!--- 
+!--- real(r4), dimension(Nx,Ny,Nz) :: data_3d
+!--- real(r4), dimension(Nx,Ny)    :: data_2d
+!--- character(len=128)  :: filename
+!--- 
+!--- if ( .not. module_initialized ) call static_init_model
+!--- 
+!--- ierr = -1 ! assume things go poorly
+!--- 
+!--- !--------------------------------------------------------------------
+!--- ! we only have a netcdf handle here so we do not know the filename
+!--- ! or the fortran unit number.  but construct a string with at least
+!--- ! the netcdf handle, so in case of error we can trace back to see
+!--- ! which netcdf file is involved.
+!--- !--------------------------------------------------------------------
+!--- 
+!--- write(filename,*) 'ncFileID', ncFileID
+!--- 
+!--- !-------------------------------------------------------------------------------
+!--- ! make sure ncFileID refers to an open netCDF file, 
+!--- !-------------------------------------------------------------------------------
+!--- 
+!--- call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
+!---               "nc_write_model_vars", "inquire "//trim(filename))
+!--- 
+!--- if ( output_state_vector ) then
+!--- 
+!---    call nc_check(NF90_inq_varid(ncFileID, "state", VarID), &
+!---                  "nc_write_model_vars", "state inq_varid "//trim(filename))
+!---    call nc_check(NF90_put_var(ncFileID,VarID,statevec,start=(/1,copyindex,timeindex/)),&
+!---                  "nc_write_model_vars", "state put_var "//trim(filename))
+!--- 
+!--- else
+!--- 
+!---    !----------------------------------------------------------------------------
+!---    ! We need to process the prognostic variables.
+!---    ! Replace missing values (0.0) with netcdf missing value.
+!---    ! Staggered grid causes some logistical problems.
+!---    ! Hopefully, the conversion between r8 and r4 still preserves 'hard' zeros.
+!---    !----------------------------------------------------------------------------
+!--- 
+!---    call vector_to_prog_var(statevec,S_index,data_3d)
+!---    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
+!---    call nc_check(NF90_inq_varid(ncFileID, "S", VarID), &
+!---                 "nc_write_model_vars", "S inq_varid "//trim(filename))
+!---    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+!---                 "nc_write_model_vars", "S put_var "//trim(filename))
+!--- 
+!---    call vector_to_prog_var(statevec,T_index,data_3d)
+!---    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
+!---    call nc_check(NF90_inq_varid(ncFileID, "T", VarID), &
+!---                 "nc_write_model_vars", "T inq_varid "//trim(filename))
+!---    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+!---                 "nc_write_model_vars", "T put_var "//trim(filename))
+!--- 
+!---    call vector_to_prog_var(statevec,U_index,data_3d)
+!---    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
+!---    call nc_check(NF90_inq_varid(ncFileID, "U", VarID), &
+!---                 "nc_write_model_vars", "U inq_varid "//trim(filename))
+!---    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+!---                 "nc_write_model_vars", "U put_var "//trim(filename))
+!--- 
+!---    call vector_to_prog_var(statevec,V_index,data_3d)
+!---    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
+!---    call nc_check(NF90_inq_varid(ncFileID, "V", VarID), &
+!---                 "nc_write_model_vars", "V inq_varid "//trim(filename))
+!---    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+!---                 "nc_write_model_vars", "V put_var "//trim(filename))
+!--- 
+!---    call vector_to_prog_var(statevec,Eta_index,data_2d)
+!---    where (data_2d == 0.0_r4) data_2d = NF90_FILL_REAL
+!---    call nc_check(NF90_inq_varid(ncFileID, "Eta", VarID), &
+!---                 "nc_write_model_vars", "Eta inq_varid "//trim(filename))
+!---    call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
+!---                 "nc_write_model_vars", "Eta put_var "//trim(filename))
+!--- 
+!--- endif
+!--- 
+!--- !-------------------------------------------------------------------------------
+!--- ! Flush the buffer and leave netCDF file open
+!--- !-------------------------------------------------------------------------------
+!--- 
+!--- call nc_check(nf90_sync(ncFileID), "nc_write_model_vars", "sync "//trim(filename))
+!--- 
+!--- ierr = 0 ! If we got here, things went well.
+!--- 
+!--- end function nc_write_model_vars
 
 
-end subroutine pert_model_state
+!-rename it pert_model_copies and adapt if needed
+!--- subroutine pert_model_state(state, pert_state, interf_provided)
+!--- !------------------------------------------------------------------
+!--- !
+!--- ! Perturbs a model state for generating initial ensembles.
+!--- ! The perturbed state is returned in pert_state.
+!--- ! A model may choose to provide a NULL INTERFACE by returning
+!--- ! .false. for the interf_provided argument. This indicates to
+!--- ! the filter that if it needs to generate perturbed states, it
+!--- ! may do so by adding a perturbation to each model state 
+!--- ! variable independently. The interf_provided argument
+!--- ! should be returned as .true. if the model wants to do its own
+!--- ! perturbing of states.
+!--- 
+!--- real(r8), intent(in)  :: state(:)
+!--- real(r8), intent(out) :: pert_state(:)
+!--- logical,  intent(out) :: interf_provided
+!--- 
+!--- integer :: i
+!--- logical, save :: random_seq_init = .false.
+!--- 
+!--- if ( .not. module_initialized ) call static_init_model
+!--- 
+!--- interf_provided = .true.
+!--- 
+!--- ! Initialize my random number sequence
+!--- if(.not. random_seq_init) then
+!---    call init_random_seq(random_seq, my_task_id())
+!---    random_seq_init = .true.
+!--- endif
+!--- 
+!--- ! only perturb the non-zero values.  0 is a flag for missing
+!--- ! ocean cells (e.g. land or under the sea floor)
+!--- do i=1,size(state)
+!---    if (state(i) /= 0.0_r8) &
+!---       pert_state(i) = random_gaussian(random_seq, state(i), &
+!---                                       model_perturbation_amplitude)
+!--- enddo
+!--- 
+!--- 
+!--- end subroutine pert_model_state
 
 
 
@@ -2362,11 +2256,15 @@ integer,  intent(in)    :: timestepcount
 real(r8), intent(inout) :: state_vector(:)
 
 ! temp space to hold data while we are reading it
-real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
+!real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
+real(r4), allocatable  :: data_2d_array(:,:), data_3d_array(:,:,:)
 integer :: i, j, k, l, indx, timestepcount_out
 
 ! These must be a fixed number and in a fixed order.
 character(len=128)  :: prefixstring
+
+allocate(data_2d_array(Nx,Ny))
+allocate(data_3d_array(Nx,Ny,Nz))
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2410,6 +2308,9 @@ do l=(n3dfields+1), (n3dfields+n2dfields)
    enddo
 
 enddo
+
+deallocate(data_2d_array)
+deallocate(data_3d_array)
 
 end subroutine snapshot_files_to_sv
 
@@ -2883,8 +2784,8 @@ if (io /= 0 ) then
 endif
 
 endTime  = MyEndTime
-dumpFreq = MyEndTime
-taveFreq = MyEndTime
+dumpFreq = 10800
+taveFreq = 0
 
 ! Find how many more lines till the end-of-file 
 linenumE = 0
@@ -2958,7 +2859,7 @@ end subroutine write_data_namelistfile
 end module model_mod
 
 ! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/MITgcm_ocean/model_mod.f90 $
+! $Id: model_mod.f90 11626 2017-05-11 17:27:50Z nancy@ucar.edu $
+! $Revision: 11626 $
+! $Date: 2017-05-11 20:27:50 +0300 (Thu, 11 May 2017) $

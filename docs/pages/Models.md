@@ -49,6 +49,7 @@ observations of these systems. Or at least, we like to think so ...
    [POP](#POP)
    [CM1](#CM1)
    [FESOM](#fesom)
+   [MITgcm_ocean](#MITgcm_ocean)
    [NOAH-MP](#noah-mp)
    [WRF-Hydro](#wrf-hydro) 
    [gitm](#gitm)
@@ -57,7 +58,6 @@ observations of these systems. Or at least, we like to think so ...
 ### Models supported in Lanai:
    [GCCOM](#GCCOM)
    [LMDZ](#LMDZ) 
-   [MITgcm_ocean](#MITgcm_ocean)
    [NAAPS](#NAAPS)
    [AM2](#AM2)
    [CAM-SE](#cam-se)
@@ -352,6 +352,15 @@ scripting support and some diagnostic routines were
 contributed by **Ali Aydoğdu**.
 *Status:* available for community use.
 
+<span id="MITgcm_ocean" class="anchor"></span>
+
+### MITgcm_ocean
+
+The [MIT ocean GCM](http://mitgcm.org/) version 'checkpoint59a' is the
+foundation of this implementation. It was modified by **Ibrahim Hoteit**
+(then of Scripps) to accomodate the interfaces needed by DART. *Status:*
+supported, and currently being ported to Manhattan.
+
 <span id="noah-mp" class="anchor"></span>
 
 ### NOAH-MP
@@ -425,15 +434,6 @@ From the LMDZ homepage:
 > Titan, Venus, Exoplanets). The 'Z' in LMDZ stands for "zoom"
 > (and the 'LMD' is for  'Laboratoire de Météorologie Dynamique").
 
-
-<span id="MITgcm_ocean" class="anchor"></span>
-
-### MITgcm_ocean
-
-The [MIT ocean GCM](http://mitgcm.org/) version 'checkpoint59a' is the
-foundation of this implementation. It was modified by **Ibrahim Hoteit**
-(then of Scripps) to accomodate the interfaces needed by DART. *Status:*
-supported, and currently being ported to Manhattan.
 
 <span id="NAAPS" class="anchor"></span>
 

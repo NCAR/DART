@@ -16,6 +16,8 @@
 #----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod Makefile .cppdefs
+module swap PrgEnv-intel PrgEnv-cray 
+     module load cray-netcdf
 
 set MODEL = "MITgcm_ocean"
 
