@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id: model_mod.f90 11626 2017-05-11 17:27:50Z nancy@ucar.edu $
 
 module model_mod
 
@@ -10,22 +8,28 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, i8, SECPERDAY
+
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              set_calendar_type, GREGORIAN, print_time, print_date, &
                              operator(*),  operator(+), operator(-), &
                              operator(>),  operator(<), operator(/), &
                              operator(/=), operator(<=)
+
 use     location_mod, only : location_type,      get_close_init, &
                              get_close_state,    get_close_obs, set_location, &
                              VERTISHEIGHT, get_location, is_vertical, &
                              convert_vertical_obs, convert_vertical_state
+
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, nc_check, do_output, to_upper, &
                              find_namelist_in_file, check_namelist_read, &
                              open_file, file_exist, find_textfile_dims, file_to_text
+
 use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT, &
                              QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT
+
 use mpi_utilities_mod, only: my_task_id
+
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 
 !!!!! TODO: check if needed
@@ -33,30 +37,19 @@ use netcdf
 
 use default_model_mod,   only : pert_model_copies, nc_write_model_vars
 
-use dart_time_io_mod,      only : read_model_time, write_model_time
+use dart_time_io_mod,      only : write_model_time
 
 
 use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_index, &
                                   get_my_vars, get_copy_owner_index
-!use ensemble_manager_mod,  only : ensemble_type
-
 
 use distributed_state_mod, only : get_state
 
-
-!use state_structure_mod, only : add_domain, get_model_variable_indices, &
-!                                state_structure_info, &
-!                                get_index_start, get_index_end, &
-!                                get_dart_vector_index
-
-!use state_structure_mod,   only : add_domain, get_model_variable_indices, &
-!                                  get_num_variables, get_index_start, &
-!                                  get_num_dims, get_domain_size, &
-!                                  get_dart_vector_index
-
-use state_structure_mod, only : add_domain
-
-
+use state_structure_mod, only : add_domain, get_model_variable_indices, &
+                                state_structure_info, &
+                                get_index_start, get_index_end, &
+                                get_dart_vector_index, get_num_variables, &
+                                get_num_dims, get_domain_size
 
 implicit none
 private
@@ -97,17 +90,15 @@ public :: prog_var_to_vector, vector_to_prog_var, &
           lon_bounds,lat_bounds, lon_dist, max_nx, max_ny, max_nz, max_nr, MAX_LEN_FNAM 
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/MITgcm_ocean/model_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 11626 $"
-character(len=128), parameter :: revdate  = "$Date: 2017-05-11 20:27:50 +0300 (Thu, 11 May 2017) $"
+character(len=*), parameter :: source   = 'MITgcm_ocean/model_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
-character(len=129) :: msgstring
+character(len=512) :: msgstring
 logical, save :: module_initialized = .false.
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
-
 
 !! FIXME: This is horrid ... 'reclen' is compiler-dependent.
 !! IBM XLF  -- item_size_direct_access == 4,8
@@ -299,15 +290,17 @@ integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
 integer :: model_size    ! the state vector length
-! Skeleton of a model_nml that would be in input.nml
-! This is where dart-related model parms could be set.
+
+
+character(len=256) :: model_shape_file = 'filter_ics.0001'
 integer  :: assimilation_period_days = 7
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 
 namelist /model_nml/ assimilation_period_days,    &
                      assimilation_period_seconds, &
-                     model_perturbation_amplitude
+                     model_perturbation_amplitude, &
+                     model_shape_file
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
@@ -558,8 +551,10 @@ if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 !print *, ' 3d field size: ', n3dfields * (Nx * Ny * Nz)
 !print *, ' 2d field size: ', n2dfields * (Nx * Ny)
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
+
 if (do_output()) write(*,*) 'model_size = ', model_size
-domain_id = add_domain('filter_ics.0001', nfields, var_names = progvarnames)
+
+domain_id = add_domain(model_shape_file, nfields, var_names = progvarnames)
 
 
 end subroutine static_init_model
@@ -1663,6 +1658,27 @@ end subroutine nc_write_model_atts
 !--- 
 !--- end subroutine pert_model_state
 
+
+!--------------------------------------------------------------------
+!> read the time from the input file
+
+function read_model_time(filename)
+
+character(len=*), intent(in) :: filename
+type(time_type)              :: read_model_time
+
+if ( .not. module_initialized ) call static_init_model
+
+read_model_time = model_time
+
+!if (do_output() .and. debug > 0 .and. present(last_time)) then
+   call print_time(read_model_time, str='MITgcm_ocean time is ',iunit=logfileunit)
+   call print_time(read_model_time, str='MITgcm_ocean time is ')
+   call print_date(read_model_time, str='MITgcm_ocean date is ',iunit=logfileunit)
+   call print_date(read_model_time, str='MITgcm_ocean date is ')
+!endif
+
+end function read_model_time
 
 
 
@@ -2851,15 +2867,8 @@ close(ounit)
 
 end subroutine write_data_namelistfile
 
-
-
 !===================================================================
-! End of model_mod
+! End of MITgcm_ocean model_mod
 !===================================================================
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/MITgcm_ocean/model_mod.f90 $
-! $Id: model_mod.f90 11626 2017-05-11 17:27:50Z nancy@ucar.edu $
-! $Revision: 11626 $
-! $Date: 2017-05-11 20:27:50 +0300 (Thu, 11 May 2017) $

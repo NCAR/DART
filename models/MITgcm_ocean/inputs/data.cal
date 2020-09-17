@@ -1,6 +1,6 @@
- &CAL_NML
- THECALENDAR     = 'gregorian',
- STARTDATE_1 = 20110101,
- STARTDATE_2     =           0,
- CALENDARDUMPS   = F,
+&CAL_NML
+ THECALENDAR     = 'gregorian'
+ STARTDATE_1     = 20110101
+ STARTDATE_2     = 0
+ CALENDARDUMPS   = F
  /
