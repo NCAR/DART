@@ -1,22 +1,33 @@
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
+##################
+COAMPS Nest README
+##################
 
-An updated version of the coamps model interfaces and scripts.
-Contributed by Alex Reinecke, NRL, Monterey.
+Contents
+========
 
-The primary differences from the original coamps model code are:
+#. `Overview`_
+#. `Terms of Use`_
 
- - the ability to assimilate nested domains
- - assimilates real observations
- - a simplified way to specify the state vector
- - I/O COAMPS data files 
- - extensive script updates to accommodate additional HPC environments
+Overview
+========
 
+An updated version of the COAMPS model interfaces and scripts.
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+This interface was contributed by Alex Reinecke of the Naval Research Lab-Monterey.
+
+The primary differences from the original COAMPS model code are:
+
+- the ability to assimilate nested domains
+- assimilates real observations
+- a simplified way to specify the state vector
+- I/O COAMPS data files
+- extensive script updates to accommodate additional HPC environments
+
+Terms of Use
+============
+
+|Copyright| University Corporation for Atmospheric Research
+
+Licensed under the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable law or agreed to in writing, software distributed under this license is distributed on an "as is" basis, without warranties or conditions of any kind, either express or implied.
+
+.. |Copyright| unicode:: 0xA9 .. copyright sign
