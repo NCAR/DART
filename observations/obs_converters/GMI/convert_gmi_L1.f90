@@ -94,6 +94,9 @@ if (do_nml_term()) write(    *      , nml=convert_gmi_L1_nml)
 ! all the filenames, regardless of which way they were specified.
 filecount = set_filename_list(l1_files, l1_file_list, "convert_gmi_L1")
 
+! If no channels are specified in the namelist, 
+! all the channels will be output.
+
 nchans = 0
 do while (channel_list(nchans+1) > 0 .and. nchans < MAXCHANS)
    nchans = nchans + 1

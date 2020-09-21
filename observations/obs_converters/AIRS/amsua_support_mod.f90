@@ -39,8 +39,6 @@ use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 use obs_def_rttov_mod, only : set_mw_metadata, &
                               get_rttov_option_logical
 
-use hdf5
-
 implicit none
 private
 
@@ -56,17 +54,17 @@ interface read_attribute
 end interface
 
 ! Using the HDF-EOS5 functions simply required
-! putting an 'he5_' in front of the function. As far as I can tell from
-! https://hdfeos.org/examples/fort_he5_swath.php, the calling structure is
+! putting an '' in front of the function. As far as I can tell from
+! https://hdfeos.org/examples/fort_swath.php, the calling structure is
 ! the same.
 !
-! integer :: he5_swopen         ! open a swath file
-! integer :: he5_swattach       ! attatch to a swath object
-! integer :: he5_swinqswath     ! retieves number and names of swaths in file
-! integer :: he5_swrdfld        ! read data from a data field
-! integer :: he5_swrdattr       ! read swath attribute
-! integer :: he5_swdetach       ! detatching from the swath object
-! integer :: he5_swclose        ! closing the file
+! integer :: SWopen         ! open a swath file
+! integer :: SWattach       ! attatch to a swath object
+! integer :: SWinqswath     ! retieves number and names of swaths in file
+! integer :: SWrdfld        ! read data from a data field
+! integer :: SWrdattr       ! read swath attribute
+! integer :: SWdetach       ! detatching from the swath object
+! integer :: SWclose        ! closing the file
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'amsua_support_mod.f90'
@@ -654,32 +652,32 @@ integer :: swid                 ! HDF-EOS swath ID
 integer :: nchar                ! Number of characters
 character(len=256) :: swathname ! Name of swath
 integer :: nswath               ! Number of swaths
-integer :: start(10) = 0        ! start of each dimensions for Swath I/O
+integer :: start(10) = 0        ! start of each dimensions for swath I/O
                                 ! 0 => start with first element
-integer :: stride(10) = 1       ! stride of each dimensions for Swath I/O
+integer :: stride(10) = 1       ! stride of each dimensions for swath I/O
                                 ! 1 => use every element
 integer :: edge(10)             ! size of each dimension for swath I/O
                                 ! will be set for each individual read
 
-integer :: he5_swopen           ! open a swath file
-integer :: he5_swinqswath       ! retrieves number and names of swaths in file
-integer :: he5_swattach         ! attatch to a swath object
-integer :: he5_swrdfld          ! read data from a data field
-integer :: he5_swdetach         ! detatching from the swath object
-integer :: he5_swclose          ! closes the file
+integer :: SWopen           ! open a swath file
+integer :: SWinqswath       ! retrieves number and names of swaths in file
+integer :: SWattach         ! attatch to a swath object
+integer :: SWrdfld          ! read data from a data field
+integer :: SWdetach         ! detatching from the swath object
+integer :: SWclose          ! closes the file
 
 if ( .not. module_initialized ) call initialize_module
 
-fid = he5_swopen(file_name, 101)
+fid = SWopen(file_name, 101)
 if (fid .eq. -1) then
   print *, "Error ", fid, " opening file ", file_name
   stop
 end if
 
 ! Get name of swath(s)
-nswath = he5_swinqswath(file_name, swathname, nchar)
+nswath = SWinqswath(file_name, swathname, nchar)
 if (nswath .ne. 1) then
-  print *, "he5_swinqswath found ", nswath, " swaths for file ", file_name, " Need exactly 1"
+  print *, "SWinqswath found ", nswath, " swaths for file ", file_name, " Need exactly 1"
   stop
 end if
 
@@ -691,7 +689,7 @@ if (swathname .ne. 'L1B_AMSU') then
 end if
 
 ! Attach to (open) the one swath.
-swid = he5_swattach(fid, swathname)
+swid = SWattach(fid, swathname)
 if (swid .eq. -1) then
   print *, "Failed to attach to swath ", swathname, " in file ", file_name
   stop
@@ -854,608 +852,608 @@ call dump_attributes(amsua_bt_gran)
 ! Geolocation fields
 edge(1) = AMSUA_BT_GEOXTRACK
 edge(2) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "Latitude", start, stride, edge, amsua_bt_gran%Latitude)
+statn = SWrdfld(swid, "Latitude", start, stride, edge, amsua_bt_gran%Latitude)
 
-statn = he5_swrdfld(swid, "Longitude", start, stride, edge, amsua_bt_gran%Longitude)
+statn = SWrdfld(swid, "Longitude", start, stride, edge, amsua_bt_gran%Longitude)
 
-statn = he5_swrdfld(swid, "Time", start, stride, edge, amsua_bt_gran%Time)
+statn = SWrdfld(swid, "Time", start, stride, edge, amsua_bt_gran%Time)
 
 
 ! Data Fields
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "scanang", start, stride, edge, amsua_bt_gran%scanang)
+statn = SWrdfld(swid, "scanang", start, stride, edge, amsua_bt_gran%scanang)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "satheight", start, stride, edge, amsua_bt_gran%satheight)
+statn = SWrdfld(swid, "satheight", start, stride, edge, amsua_bt_gran%satheight)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "satroll", start, stride, edge, amsua_bt_gran%satroll)
+statn = SWrdfld(swid, "satroll", start, stride, edge, amsua_bt_gran%satroll)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "satpitch", start, stride, edge, amsua_bt_gran%satpitch)
+statn = SWrdfld(swid, "satpitch", start, stride, edge, amsua_bt_gran%satpitch)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "satyaw", start, stride, edge, amsua_bt_gran%satyaw)
+statn = SWrdfld(swid, "satyaw", start, stride, edge, amsua_bt_gran%satyaw)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "satgeoqa", start, stride, edge, amsua_bt_gran%satgeoqa)
+statn = SWrdfld(swid, "satgeoqa", start, stride, edge, amsua_bt_gran%satgeoqa)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "glintgeoqa", start, stride, edge, amsua_bt_gran%glintgeoqa)
+statn = SWrdfld(swid, "glintgeoqa", start, stride, edge, amsua_bt_gran%glintgeoqa)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "moongeoqa", start, stride, edge, amsua_bt_gran%moongeoqa)
+statn = SWrdfld(swid, "moongeoqa", start, stride, edge, amsua_bt_gran%moongeoqa)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "ftptgeoqa", start, stride, edge, amsua_bt_gran%ftptgeoqa)
+statn = SWrdfld(swid, "ftptgeoqa", start, stride, edge, amsua_bt_gran%ftptgeoqa)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "zengeoqa", start, stride, edge, amsua_bt_gran%zengeoqa)
+statn = SWrdfld(swid, "zengeoqa", start, stride, edge, amsua_bt_gran%zengeoqa)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "demgeoqa", start, stride, edge, amsua_bt_gran%demgeoqa)
+statn = SWrdfld(swid, "demgeoqa", start, stride, edge, amsua_bt_gran%demgeoqa)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "nadirTAI", start, stride, edge, amsua_bt_gran%nadirTAI)
+statn = SWrdfld(swid, "nadirTAI", start, stride, edge, amsua_bt_gran%nadirTAI)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "sat_lat", start, stride, edge, amsua_bt_gran%sat_lat)
+statn = SWrdfld(swid, "sat_lat", start, stride, edge, amsua_bt_gran%sat_lat)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "sat_lon", start, stride, edge, amsua_bt_gran%sat_lon)
+statn = SWrdfld(swid, "sat_lon", start, stride, edge, amsua_bt_gran%sat_lon)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "scan_node_type", start, stride, edge, amsua_bt_gran%scan_node_type)
+statn = SWrdfld(swid, "scan_node_type", start, stride, edge, amsua_bt_gran%scan_node_type)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "satzen", start, stride, edge, amsua_bt_gran%satzen)
+statn = SWrdfld(swid, "satzen", start, stride, edge, amsua_bt_gran%satzen)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "satazi", start, stride, edge, amsua_bt_gran%satazi)
+statn = SWrdfld(swid, "satazi", start, stride, edge, amsua_bt_gran%satazi)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "solzen", start, stride, edge, amsua_bt_gran%solzen)
+statn = SWrdfld(swid, "solzen", start, stride, edge, amsua_bt_gran%solzen)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "solazi", start, stride, edge, amsua_bt_gran%solazi)
+statn = SWrdfld(swid, "solazi", start, stride, edge, amsua_bt_gran%solazi)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "glintlat", start, stride, edge, amsua_bt_gran%glintlat)
+statn = SWrdfld(swid, "glintlat", start, stride, edge, amsua_bt_gran%glintlat)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "glintlon", start, stride, edge, amsua_bt_gran%glintlon)
+statn = SWrdfld(swid, "glintlon", start, stride, edge, amsua_bt_gran%glintlon)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "sun_glint_distance", start, stride, edge, amsua_bt_gran%sun_glint_distance)
+statn = SWrdfld(swid, "sun_glint_distance", start, stride, edge, amsua_bt_gran%sun_glint_distance)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "topog", start, stride, edge, amsua_bt_gran%topog)
+statn = SWrdfld(swid, "topog", start, stride, edge, amsua_bt_gran%topog)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "topog_err", start, stride, edge, amsua_bt_gran%topog_err)
+statn = SWrdfld(swid, "topog_err", start, stride, edge, amsua_bt_gran%topog_err)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "landFrac", start, stride, edge, amsua_bt_gran%landFrac)
+statn = SWrdfld(swid, "landFrac", start, stride, edge, amsua_bt_gran%landFrac)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_GEOXTRACK
-statn = he5_swrdfld(swid, "landFrac_err", start, stride, edge, amsua_bt_gran%landFrac_err)
+statn = SWrdfld(swid, "landFrac_err", start, stride, edge, amsua_bt_gran%landFrac_err)
 
 edge(3) = AMSUA_BT_GEOTRACK
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "antenna_temp", start, stride, edge, amsua_bt_gran%antenna_temp)
+statn = SWrdfld(swid, "antenna_temp", start, stride, edge, amsua_bt_gran%antenna_temp)
 
 edge(3) = AMSUA_BT_GEOTRACK
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "brightness_temp", start, stride, edge, amsua_bt_gran%brightness_temp)
+statn = SWrdfld(swid, "brightness_temp", start, stride, edge, amsua_bt_gran%brightness_temp)
 
 edge(3) = AMSUA_BT_GEOTRACK
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "brightness_temp_err", start, stride, edge, amsua_bt_gran%brightness_temp_err)
+statn = SWrdfld(swid, "brightness_temp_err", start, stride, edge, amsua_bt_gran%brightness_temp_err)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "center_freq", start, stride, edge, amsua_bt_gran%center_freq)
+statn = SWrdfld(swid, "center_freq", start, stride, edge, amsua_bt_gran%center_freq)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "IF_offset_1", start, stride, edge, amsua_bt_gran%IF_offset_1)
+statn = SWrdfld(swid, "IF_offset_1", start, stride, edge, amsua_bt_gran%IF_offset_1)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "IF_offset_2", start, stride, edge, amsua_bt_gran%IF_offset_2)
+statn = SWrdfld(swid, "IF_offset_2", start, stride, edge, amsua_bt_gran%IF_offset_2)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bandwidth", start, stride, edge, amsua_bt_gran%bandwidth)
+statn = SWrdfld(swid, "bandwidth", start, stride, edge, amsua_bt_gran%bandwidth)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "num_calibrated_scanlines", start, stride, edge, amsua_bt_gran%num_calibrated_scanlines)
+statn = SWrdfld(swid, "num_calibrated_scanlines", start, stride, edge, amsua_bt_gran%num_calibrated_scanlines)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "num_scanlines_ch_cal_problems", start, stride, edge, amsua_bt_gran%num_scanlines_ch_cal_problems)
-
-edge(2) = 2
-edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.min", start, stride, edge, amsua_bt_gran%bb_signals%min)
+statn = SWrdfld(swid, "num_scanlines_ch_cal_problems", start, stride, edge, amsua_bt_gran%num_scanlines_ch_cal_problems)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.max", start, stride, edge, amsua_bt_gran%bb_signals%max)
+statn = SWrdfld(swid, "bb_signals.min", start, stride, edge, amsua_bt_gran%bb_signals%min)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.mean", start, stride, edge, amsua_bt_gran%bb_signals%mean)
+statn = SWrdfld(swid, "bb_signals.max", start, stride, edge, amsua_bt_gran%bb_signals%max)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.dev", start, stride, edge, amsua_bt_gran%bb_signals%dev)
+statn = SWrdfld(swid, "bb_signals.mean", start, stride, edge, amsua_bt_gran%bb_signals%mean)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.num", start, stride, edge, amsua_bt_gran%bb_signals%num)
+statn = SWrdfld(swid, "bb_signals.dev", start, stride, edge, amsua_bt_gran%bb_signals%dev)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.num_bad", start, stride, edge, amsua_bt_gran%bb_signals%num_bad)
+statn = SWrdfld(swid, "bb_signals.num", start, stride, edge, amsua_bt_gran%bb_signals%num)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.max_track", start, stride, edge, amsua_bt_gran%bb_signals%max_track)
+statn = SWrdfld(swid, "bb_signals.num_bad", start, stride, edge, amsua_bt_gran%bb_signals%num_bad)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.max_xtrack", start, stride, edge, amsua_bt_gran%bb_signals%max_xtrack)
+statn = SWrdfld(swid, "bb_signals.max_track", start, stride, edge, amsua_bt_gran%bb_signals%max_track)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.min_track", start, stride, edge, amsua_bt_gran%bb_signals%min_track)
+statn = SWrdfld(swid, "bb_signals.max_xtrack", start, stride, edge, amsua_bt_gran%bb_signals%max_xtrack)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "bb_signals.min_xtrack", start, stride, edge, amsua_bt_gran%bb_signals%min_xtrack)
+statn = SWrdfld(swid, "bb_signals.min_track", start, stride, edge, amsua_bt_gran%bb_signals%min_track)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.min", start, stride, edge, amsua_bt_gran%space_signals%min)
+statn = SWrdfld(swid, "bb_signals.min_xtrack", start, stride, edge, amsua_bt_gran%bb_signals%min_xtrack)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.max", start, stride, edge, amsua_bt_gran%space_signals%max)
+statn = SWrdfld(swid, "space_signals.min", start, stride, edge, amsua_bt_gran%space_signals%min)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.mean", start, stride, edge, amsua_bt_gran%space_signals%mean)
+statn = SWrdfld(swid, "space_signals.max", start, stride, edge, amsua_bt_gran%space_signals%max)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.dev", start, stride, edge, amsua_bt_gran%space_signals%dev)
+statn = SWrdfld(swid, "space_signals.mean", start, stride, edge, amsua_bt_gran%space_signals%mean)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.num", start, stride, edge, amsua_bt_gran%space_signals%num)
+statn = SWrdfld(swid, "space_signals.dev", start, stride, edge, amsua_bt_gran%space_signals%dev)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.num_bad", start, stride, edge, amsua_bt_gran%space_signals%num_bad)
+statn = SWrdfld(swid, "space_signals.num", start, stride, edge, amsua_bt_gran%space_signals%num)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.max_track", start, stride, edge, amsua_bt_gran%space_signals%max_track)
+statn = SWrdfld(swid, "space_signals.num_bad", start, stride, edge, amsua_bt_gran%space_signals%num_bad)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.max_xtrack", start, stride, edge, amsua_bt_gran%space_signals%max_xtrack)
+statn = SWrdfld(swid, "space_signals.max_track", start, stride, edge, amsua_bt_gran%space_signals%max_track)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.min_track", start, stride, edge, amsua_bt_gran%space_signals%min_track)
+statn = SWrdfld(swid, "space_signals.max_xtrack", start, stride, edge, amsua_bt_gran%space_signals%max_xtrack)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "space_signals.min_xtrack", start, stride, edge, amsua_bt_gran%space_signals%min_xtrack)
+statn = SWrdfld(swid, "space_signals.min_track", start, stride, edge, amsua_bt_gran%space_signals%min_track)
+
+edge(2) = 2
+edge(1) = AMSUA_BT_CHANNEL
+statn = SWrdfld(swid, "space_signals.min_xtrack", start, stride, edge, amsua_bt_gran%space_signals%min_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.min", start, stride, edge, amsua_bt_gran%gain_stats%min)
+statn = SWrdfld(swid, "gain_stats.min", start, stride, edge, amsua_bt_gran%gain_stats%min)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.max", start, stride, edge, amsua_bt_gran%gain_stats%max)
+statn = SWrdfld(swid, "gain_stats.max", start, stride, edge, amsua_bt_gran%gain_stats%max)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.mean", start, stride, edge, amsua_bt_gran%gain_stats%mean)
+statn = SWrdfld(swid, "gain_stats.mean", start, stride, edge, amsua_bt_gran%gain_stats%mean)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.dev", start, stride, edge, amsua_bt_gran%gain_stats%dev)
+statn = SWrdfld(swid, "gain_stats.dev", start, stride, edge, amsua_bt_gran%gain_stats%dev)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.num", start, stride, edge, amsua_bt_gran%gain_stats%num)
+statn = SWrdfld(swid, "gain_stats.num", start, stride, edge, amsua_bt_gran%gain_stats%num)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.num_bad", start, stride, edge, amsua_bt_gran%gain_stats%num_bad)
+statn = SWrdfld(swid, "gain_stats.num_bad", start, stride, edge, amsua_bt_gran%gain_stats%num_bad)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.max_track", start, stride, edge, amsua_bt_gran%gain_stats%max_track)
+statn = SWrdfld(swid, "gain_stats.max_track", start, stride, edge, amsua_bt_gran%gain_stats%max_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.max_xtrack", start, stride, edge, amsua_bt_gran%gain_stats%max_xtrack)
+statn = SWrdfld(swid, "gain_stats.max_xtrack", start, stride, edge, amsua_bt_gran%gain_stats%max_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.min_track", start, stride, edge, amsua_bt_gran%gain_stats%min_track)
+statn = SWrdfld(swid, "gain_stats.min_track", start, stride, edge, amsua_bt_gran%gain_stats%min_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "gain_stats.min_xtrack", start, stride, edge, amsua_bt_gran%gain_stats%min_xtrack)
+statn = SWrdfld(swid, "gain_stats.min_xtrack", start, stride, edge, amsua_bt_gran%gain_stats%min_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "NeDT", start, stride, edge, amsua_bt_gran%NeDT)
+statn = SWrdfld(swid, "NeDT", start, stride, edge, amsua_bt_gran%NeDT)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.min", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%min)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.min", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%min)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.max", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%max)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.max", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%max)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.mean", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%mean)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.mean", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%mean)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.dev", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%dev)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.dev", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%dev)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.num", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%num)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.num", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%num)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.num_bad", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%num_bad)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.num_bad", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%num_bad)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.max_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%max_track)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.max_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%max_track)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.max_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%max_xtrack)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.max_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%max_xtrack)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.min_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%min_track)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.min_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%min_track)
 
 edge(2) = AMSUA_BT_GEOXTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_scene_count.min_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%min_xtrack)
+statn = SWrdfld(swid, "QA_unfiltered_scene_count.min_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_scene_count%min_xtrack)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.min", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%min)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.min", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%min)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.max", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%max)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.max", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%max)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.mean", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%mean)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.mean", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%mean)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.dev", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%dev)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.dev", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%dev)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.num", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%num)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.num", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%num)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.num_bad", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%num_bad)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.num_bad", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%num_bad)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.max_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%max_track)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.max_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%max_track)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.max_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%max_xtrack)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.max_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%max_xtrack)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.min_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%min_track)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.min_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%min_track)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_BB_count.min_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%min_xtrack)
+statn = SWrdfld(swid, "QA_unfiltered_BB_count.min_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_BB_count%min_xtrack)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.min", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%min)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.min", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%min)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.max", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%max)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.max", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%max)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.mean", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%mean)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.mean", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%mean)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.dev", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%dev)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.dev", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%dev)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.num", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%num)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.num", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%num)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.num_bad", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%num_bad)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.num_bad", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%num_bad)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.max_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%max_track)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.max_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%max_track)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.max_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%max_xtrack)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.max_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%max_xtrack)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.min_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%min_track)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.min_track", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%min_track)
 
 edge(2) = 2
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_unfiltered_space_count.min_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%min_xtrack)
+statn = SWrdfld(swid, "QA_unfiltered_space_count.min_xtrack", start, stride, edge, amsua_bt_gran%QA_unfiltered_space_count%min_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.min", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%min)
+statn = SWrdfld(swid, "QA_cal_coef_a0.min", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%min)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.max", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%max)
+statn = SWrdfld(swid, "QA_cal_coef_a0.max", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%max)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.mean", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%mean)
+statn = SWrdfld(swid, "QA_cal_coef_a0.mean", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%mean)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.dev", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%dev)
+statn = SWrdfld(swid, "QA_cal_coef_a0.dev", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%dev)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.num", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%num)
+statn = SWrdfld(swid, "QA_cal_coef_a0.num", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%num)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.num_bad", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%num_bad)
+statn = SWrdfld(swid, "QA_cal_coef_a0.num_bad", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%num_bad)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.max_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%max_track)
+statn = SWrdfld(swid, "QA_cal_coef_a0.max_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%max_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.max_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%max_xtrack)
+statn = SWrdfld(swid, "QA_cal_coef_a0.max_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%max_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.min_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%min_track)
+statn = SWrdfld(swid, "QA_cal_coef_a0.min_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%min_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a0.min_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%min_xtrack)
+statn = SWrdfld(swid, "QA_cal_coef_a0.min_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a0%min_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.min", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%min)
+statn = SWrdfld(swid, "QA_cal_coef_a1.min", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%min)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.max", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%max)
+statn = SWrdfld(swid, "QA_cal_coef_a1.max", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%max)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.mean", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%mean)
+statn = SWrdfld(swid, "QA_cal_coef_a1.mean", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%mean)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.dev", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%dev)
+statn = SWrdfld(swid, "QA_cal_coef_a1.dev", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%dev)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.num", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%num)
+statn = SWrdfld(swid, "QA_cal_coef_a1.num", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%num)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.num_bad", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%num_bad)
+statn = SWrdfld(swid, "QA_cal_coef_a1.num_bad", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%num_bad)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.max_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%max_track)
+statn = SWrdfld(swid, "QA_cal_coef_a1.max_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%max_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.max_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%max_xtrack)
+statn = SWrdfld(swid, "QA_cal_coef_a1.max_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%max_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.min_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%min_track)
+statn = SWrdfld(swid, "QA_cal_coef_a1.min_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%min_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a1.min_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%min_xtrack)
+statn = SWrdfld(swid, "QA_cal_coef_a1.min_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a1%min_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.min", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%min)
+statn = SWrdfld(swid, "QA_cal_coef_a2.min", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%min)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.max", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%max)
+statn = SWrdfld(swid, "QA_cal_coef_a2.max", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%max)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.mean", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%mean)
+statn = SWrdfld(swid, "QA_cal_coef_a2.mean", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%mean)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.dev", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%dev)
+statn = SWrdfld(swid, "QA_cal_coef_a2.dev", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%dev)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.num", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%num)
+statn = SWrdfld(swid, "QA_cal_coef_a2.num", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%num)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.num_bad", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%num_bad)
+statn = SWrdfld(swid, "QA_cal_coef_a2.num_bad", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%num_bad)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.max_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%max_track)
+statn = SWrdfld(swid, "QA_cal_coef_a2.max_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%max_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.max_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%max_xtrack)
+statn = SWrdfld(swid, "QA_cal_coef_a2.max_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%max_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.min_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%min_track)
+statn = SWrdfld(swid, "QA_cal_coef_a2.min_track", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%min_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_cal_coef_a2.min_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%min_xtrack)
+statn = SWrdfld(swid, "QA_cal_coef_a2.min_xtrack", start, stride, edge, amsua_bt_gran%QA_cal_coef_a2%min_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.min", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%min)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.min", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%min)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.max", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%max)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.max", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%max)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.mean", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%mean)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.mean", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%mean)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.dev", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%dev)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.dev", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%dev)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.num", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%num)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.num", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%num)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.num_bad", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%num_bad)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.num_bad", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%num_bad)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.max_track", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%max_track)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.max_track", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%max_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.max_xtrack", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%max_xtrack)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.max_xtrack", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%max_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.min_track", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%min_track)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.min_track", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%min_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_bb_raw_noise_counts.min_xtrack", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%min_xtrack)
+statn = SWrdfld(swid, "QA_bb_raw_noise_counts.min_xtrack", start, stride, edge, amsua_bt_gran%QA_bb_raw_noise_counts%min_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.min", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%min)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.min", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%min)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.max", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%max)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.max", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%max)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.mean", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%mean)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.mean", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%mean)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.dev", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%dev)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.dev", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%dev)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.num", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%num)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.num", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%num)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.num_bad", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%num_bad)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.num_bad", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%num_bad)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.max_track", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%max_track)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.max_track", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%max_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.max_xtrack", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%max_xtrack)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.max_xtrack", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%max_xtrack)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.min_track", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%min_track)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.min_track", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%min_track)
 
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "QA_sv_raw_noise_counts.min_xtrack", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%min_xtrack)
+statn = SWrdfld(swid, "QA_sv_raw_noise_counts.min_xtrack", start, stride, edge, amsua_bt_gran%QA_sv_raw_noise_counts%min_xtrack)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "state1", start, stride, edge, amsua_bt_gran%state1)
+statn = SWrdfld(swid, "state1", start, stride, edge, amsua_bt_gran%state1)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "state2", start, stride, edge, amsua_bt_gran%state2)
+statn = SWrdfld(swid, "state2", start, stride, edge, amsua_bt_gran%state2)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "cal_coef_a0", start, stride, edge, amsua_bt_gran%cal_coef_a0)
+statn = SWrdfld(swid, "cal_coef_a0", start, stride, edge, amsua_bt_gran%cal_coef_a0)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "cal_coef_a0_err", start, stride, edge, amsua_bt_gran%cal_coef_a0_err)
+statn = SWrdfld(swid, "cal_coef_a0_err", start, stride, edge, amsua_bt_gran%cal_coef_a0_err)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "cal_coef_a1", start, stride, edge, amsua_bt_gran%cal_coef_a1)
+statn = SWrdfld(swid, "cal_coef_a1", start, stride, edge, amsua_bt_gran%cal_coef_a1)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "cal_coef_a1_err", start, stride, edge, amsua_bt_gran%cal_coef_a1_err)
+statn = SWrdfld(swid, "cal_coef_a1_err", start, stride, edge, amsua_bt_gran%cal_coef_a1_err)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "cal_coef_a2", start, stride, edge, amsua_bt_gran%cal_coef_a2)
+statn = SWrdfld(swid, "cal_coef_a2", start, stride, edge, amsua_bt_gran%cal_coef_a2)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "cal_coef_a2_err", start, stride, edge, amsua_bt_gran%cal_coef_a2_err)
+statn = SWrdfld(swid, "cal_coef_a2_err", start, stride, edge, amsua_bt_gran%cal_coef_a2_err)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a1_ColdCalPstion", start, stride, edge, amsua_bt_gran%a1_ColdCalPstion)
+statn = SWrdfld(swid, "a1_ColdCalPstion", start, stride, edge, amsua_bt_gran%a1_ColdCalPstion)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a2_ColdCalPstion", start, stride, edge, amsua_bt_gran%a2_ColdCalPstion)
+statn = SWrdfld(swid, "a2_ColdCalPstion", start, stride, edge, amsua_bt_gran%a2_ColdCalPstion)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a1_PLO_Redundncy", start, stride, edge, amsua_bt_gran%a1_PLO_Redundncy)
+statn = SWrdfld(swid, "a1_PLO_Redundncy", start, stride, edge, amsua_bt_gran%a1_PLO_Redundncy)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a11_mux_temp_used", start, stride, edge, amsua_bt_gran%a11_mux_temp_used)
+statn = SWrdfld(swid, "a11_mux_temp_used", start, stride, edge, amsua_bt_gran%a11_mux_temp_used)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a11_receiver_temp", start, stride, edge, amsua_bt_gran%a11_receiver_temp)
+statn = SWrdfld(swid, "a11_receiver_temp", start, stride, edge, amsua_bt_gran%a11_receiver_temp)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a11_target_temp", start, stride, edge, amsua_bt_gran%a11_target_temp)
+statn = SWrdfld(swid, "a11_target_temp", start, stride, edge, amsua_bt_gran%a11_target_temp)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a12_mux_temp_used", start, stride, edge, amsua_bt_gran%a12_mux_temp_used)
+statn = SWrdfld(swid, "a12_mux_temp_used", start, stride, edge, amsua_bt_gran%a12_mux_temp_used)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a12_receiver_temp", start, stride, edge, amsua_bt_gran%a12_receiver_temp)
+statn = SWrdfld(swid, "a12_receiver_temp", start, stride, edge, amsua_bt_gran%a12_receiver_temp)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a12_target_temp", start, stride, edge, amsua_bt_gran%a12_target_temp)
+statn = SWrdfld(swid, "a12_target_temp", start, stride, edge, amsua_bt_gran%a12_target_temp)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a2_diplexer_temp_used", start, stride, edge, amsua_bt_gran%a2_diplexer_temp_used)
+statn = SWrdfld(swid, "a2_diplexer_temp_used", start, stride, edge, amsua_bt_gran%a2_diplexer_temp_used)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a2_receiver_temp", start, stride, edge, amsua_bt_gran%a2_receiver_temp)
+statn = SWrdfld(swid, "a2_receiver_temp", start, stride, edge, amsua_bt_gran%a2_receiver_temp)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "a2_target_temp", start, stride, edge, amsua_bt_gran%a2_target_temp)
+statn = SWrdfld(swid, "a2_target_temp", start, stride, edge, amsua_bt_gran%a2_target_temp)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "qa_scanline", start, stride, edge, amsua_bt_gran%qa_scanline)
+statn = SWrdfld(swid, "qa_scanline", start, stride, edge, amsua_bt_gran%qa_scanline)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "qa_receiver_a11", start, stride, edge, amsua_bt_gran%qa_receiver_a11)
+statn = SWrdfld(swid, "qa_receiver_a11", start, stride, edge, amsua_bt_gran%qa_receiver_a11)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "qa_receiver_a12", start, stride, edge, amsua_bt_gran%qa_receiver_a12)
+statn = SWrdfld(swid, "qa_receiver_a12", start, stride, edge, amsua_bt_gran%qa_receiver_a12)
 
 edge(1) = AMSUA_BT_GEOTRACK
-statn = he5_swrdfld(swid, "qa_receiver_a2", start, stride, edge, amsua_bt_gran%qa_receiver_a2)
+statn = SWrdfld(swid, "qa_receiver_a2", start, stride, edge, amsua_bt_gran%qa_receiver_a2)
 
 edge(2) = AMSUA_BT_GEOTRACK
 edge(1) = AMSUA_BT_CHANNEL
-statn = he5_swrdfld(swid, "qa_channel", start, stride, edge, amsua_bt_gran%qa_channel)
+statn = SWrdfld(swid, "qa_channel", start, stride, edge, amsua_bt_gran%qa_channel)
 
 
 ! Final clean-up
-statn = he5_swdetach(swid)
+statn = SWdetach(swid)
 if (statn /= 0 ) print *, "Error detaching from input file ", file_name
-statn = he5_swclose(fid)
+statn = SWclose(fid)
 if (statn /= 0 ) print *, "Error closing input file ", file_name
 
 
@@ -1483,10 +1481,10 @@ character(len=*),           intent(in)    :: variable_name
 character(len=*),           intent(inout) :: variable
 character(len=*), optional, intent(in)    :: filename
 
-integer :: he5_swrdattr
+integer :: SWrdattr
 integer :: statn
 
-statn = he5_swrdattr(swid, variable_name, variable)
+statn = SWrdattr(swid, variable_name, variable)
 if (statn /= 0) then
    print *,'ERROR reading "'//trim(variable_name)//'"'
    if (present(filename)) print *,'         from "'//trim(filename)//'"'
@@ -1502,10 +1500,10 @@ character(len=*),           intent(in)    :: variable_name
 integer,                    intent(inout) :: variable
 character(len=*), optional, intent(in)    :: filename
 
-integer :: he5_swrdattr
+integer :: SWrdattr
 integer :: statn
 
-statn = he5_swrdattr(swid, variable_name, variable)
+statn = SWrdattr(swid, variable_name, variable)
 if (statn /= 0) then
    print *,'ERROR reading "'//trim(variable_name)//'" from'
    if (present(filename)) print *,'         from "'//trim(filename)//'"'
@@ -1521,10 +1519,10 @@ character(len=*),           intent(in)    :: variable_name
 integer*2,                  intent(inout) :: variable
 character(len=*), optional, intent(in)    :: filename
 
-integer :: he5_swrdattr
+integer :: SWrdattr
 integer :: statn
 
-statn = he5_swrdattr(swid, variable_name, variable)
+statn = SWrdattr(swid, variable_name, variable)
 if (statn /= 0) then
    print *,'ERROR reading "'//trim(variable_name)//'" from'
    if (present(filename)) print *,'         from "'//trim(filename)//'"'
@@ -1540,10 +1538,10 @@ character(len=*),           intent(in)    :: variable_name
 byte,                       intent(inout) :: variable
 character(len=*), optional, intent(in)    :: filename
 
-integer :: he5_swrdattr
+integer :: SWrdattr
 integer :: statn
 
-statn = he5_swrdattr(swid, variable_name, variable)
+statn = SWrdattr(swid, variable_name, variable)
 if (statn /= 0) then
    print *,'ERROR reading "'//trim(variable_name)//'" from'
    if (present(filename)) print *,'         from "'//trim(filename)//'"'
@@ -1559,10 +1557,10 @@ character(len=*),           intent(in)    :: variable_name
 real,                       intent(inout) :: variable
 character(len=*), optional, intent(in)    :: filename
 
-integer :: he5_swrdattr
+integer :: SWrdattr
 integer :: statn
 
-statn = he5_swrdattr(swid, variable_name, variable)
+statn = SWrdattr(swid, variable_name, variable)
 if (statn /= 0) then
    print *,'ERROR reading "'//trim(variable_name)//'" from'
    if (present(filename)) print *,'         from "'//trim(filename)//'"'
@@ -1578,10 +1576,10 @@ character(len=*),           intent(in)    :: variable_name
 real*8,                     intent(inout) :: variable
 character(len=*), optional, intent(in)    :: filename
 
-integer :: he5_swrdattr
+integer :: SWrdattr
 integer :: statn
 
-statn = he5_swrdattr(swid, variable_name, variable)
+statn = SWrdattr(swid, variable_name, variable)
 if (statn /= 0) then
    print *,'ERROR reading "'//trim(variable_name)//'" from'
    if (present(filename)) print *,'         from "'//trim(filename)//'"'

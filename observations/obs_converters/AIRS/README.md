@@ -56,3 +56,17 @@ Each granule is about 28M and has names like:
 
 
 TIM: see the GMI readme for more content - this file is not done!
+
+
+https://wiki.earthdata.nasa.gov/display/DAS/HDF-EOS2+to+HDF-EOS5+Conversion+Tool
+https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads
+I downloaded 
+* hdf-4.2.13.tar.gz
+* HDF-EOS2.20v1.00.tar.Z
+* HDF-EOS2.20v1.00_TestDriver.tar.Z
+* HDF-EOS_REF.pdf
+* HDF-EOS_UG.pdf
+* jpegsrc.v9b.tar.gz
+* zlib-1.2.11.tar.gz
+
+

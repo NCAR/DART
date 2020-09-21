@@ -5,20 +5,20 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
 # if you are building this on cheyenne.ucar.edu (ncar supercomputer)
-# you must have the hdf-eos5 module loaded, which defines the
+# you must have the hdf (-eos4) module loaded, which defines the
 # following environment variables:
 #
-# NCAR_INC_HDFEOS5
-# NCAR_LDFLAGS_HDFEOS5
-# NCAR_LIBS_HDFEOS5
+# NCAR_INC_HDF
+# NCAR_LDFLAGS_HDF
+# NCAR_LIBS_HDF
 
-set MYINCDIR = "-I$NCAR_INC_HDFEOS5"
-set MYLIBDIR = "-L$NCAR_LDFLAGS_HDFEOS5"
-set MYLIBS   = "$NCAR_LIBS_HDFEOS5"
+#set MYINCDIR = "-I$NCAR_INC_HDF"
+#set MYLIBDIR = "-L$NCAR_LDFLAGS_HDF"
+#set MYLIBS   = "$NCAR_LIBS_HDF"
 
+# -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
      ../../../../build_templates/mkmf -p convert_amsu_L1 \
   -t ../../../../build_templates/mkmf.template \
- -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
  -a "../../../.." path_names_convert_amsu_L1
 
 exit $status

@@ -22,11 +22,11 @@ echo  'HDF-EOS5 instead of HDF-EOS2. You will have to edit this script, first, b
 echo  'removing the early exit ...'
 echo
 
-exit
+# exit
 
 # ------------------------------------------------------------------------------
 ##
-## It has been very difficult to find the download site for _any_ of the HDF-EOS 
+## It has been very difficult to find the download site for _any_ of the HDF-EOS5 
 ## versions. One dogged individual found that if you _knew_ the full URL, you could
 ## download it:
 ## https://observer.gsfc.nasa.gov/ftp/edhs/hdfeos5/latest_release/HDF-EOS5.1.16.tar.Z 
@@ -91,64 +91,96 @@ fi
 # this is probably appropriate for a mac osx system.
 # set it to your home or work directory on cheyenne.
 
-set BASEDIR = /Users/$USER
-#set BASEDIR = /glade/u/home/$USER
+# BASEDIR=/Users/$USER
+BASEDIR=/glade/u/home/$USER
 
 # make the target install dirs
-mkdir -p ${BASEDIR}/eos/{lib,bin,man,man/man1} 
+mkdir -p ${BASEDIR}/eos/{lib,bin,include,man,man/man1,share} 
 
-echo zlib:
+echo ''
+echo '======================================================================'
+if [ -f ${BASEDIR}/eos/lib/libz.a ]; then
+   echo 'zlib already exists - no need to build.'
+else
+   echo 'building zlib at '`date`
+   cd zlib-1.2.11 || exit 1
+   ./configure --prefix=${BASEDIR}/eos || exit 1
+   make clean     || exit 1
+   make           || exit 1
+   make test      || exit 1
+   make install   || exit 1
+   cd ..
+fi
 
-cd zlib-1.2.11
-./configure --prefix=${BASEDIR}/eos
-make clean
-make
-make test 
-make install
-cd ..
+echo ''
+echo '======================================================================'
+if [ -f ${BASEDIR}/eos/lib/libjpeg.a ]; then
+   echo 'jpeg already exists - no need to build.'
+else
+   echo 'buiding jpeg at '`date`
+   cd jpeg-9b        || exit 2
+   ./configure --prefix=${BASEDIR}/eos --libdir=${BASEDIR}/eos/lib || exit 2
+   make clean        || exit 2
+   make              || exit 2
+   make test         || exit 2
+   make install      || exit 2
+#  make install-lib  || exit 2
+   cd ..
+fi
+ 
+echo ''
+echo '======================================================================'
+if [ -f ${BASEDIR}/eos/lib/libmfhdf.a ]; then
+   echo 'hdf4 already exists - no need to build.'
+else
+   echo 'building hdf4 at '`date`
+   # (there is apparently no 'make test')
+   
+   cd hdf-4.2.13 || exit 3
+   ./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos \
+                                       --with-jpeg=${BASEDIR}/eos || exit 3
+   make clean    || exit 3
+   make          || exit 3
+   make install  || exit 3
+   cd ..
+fi
+  
+echo ''
+echo '======================================================================'
+if [ -f ${BASEDIR}/eos/lib/libhdfeos.a ]; then
+   echo 'hdf-eos already exists - no need to build.'
+else
+   echo 'building hdf-eos at '`date`
+   cd hdfeos    || exit 4
+   # (the CC= is crucial)
+   # ./configure CC='gfortran -Df2cFortran' --prefix=${BASEDIR}/eos \
+   ./configure --prefix=${BASEDIR}/eos \
+               --with-zlib=${BASEDIR}/eos \
+               --with-jpeg=${BASEDIR}/eos \
+               --with-hdf=${BASEDIR}/eos || exit 4
+   make clean   || exit 4
+   make         || exit 4
+   make install || exit 4
+   cd ..
+fi
 
-echo jpeg:
-
-cd jpeg-9b
-./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos
-make clean
-make
-make test 
-make install 
-make install-lib
-cd ..
-
-echo hdf4:
-
-cd hdf-4.2.13
-./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos --with-jpeg=${BASEDIR}/eos
-make clean
-make
-# (there is apparently no 'make test')
-make install
-cd ..
-
-echo hdf5:
-
-cd hdf5-1.10.1
-./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos --with-jpeg=${BASEDIR}/eos
-make clean
-make
-# (there is apparently no 'make test')
-make install
-cd ..
-
-echo hdf-eos:
-
-cd hdfeos
-./configure CC='gfortran -Df2cFortran' --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos --with-jpeg=${BASEDIR}/eos
-# (the CC= is crucial)
-make clean
-make
-# (i didn't build the test drivers so i didn't do make test)
-make install
-cd ..
-
+echo ''
+echo '======================================================================'
+if [ -f ${BASEDIR}/eos/lib/LIBJPEG.a ]; then
+   echo 'hdf5 already exists - no need to build.'
+else
+   echo 'building hdf5 at '`date`
+   ## (there is apparently no 'make test')
+   # 
+   # cd hdf5-1.10.1 || exit 5
+   # ./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos \
+   #                                     --with-jpeg=${BASEDIR}/eos || exit 5
+   # make clean     || exit 5
+   # make           || exit 5
+   # make install   || exit 5
+   # cd ..
+fi
+   
 echo exiting early
 exit 0
 
@@ -156,13 +188,11 @@ echo AIRS converter:
 
 cd $DART/observations/obs_converters/AIRS/work
 
-echo edit mkmf_convert_airs_L2 to have all the base paths
-echo be ${BASEDIR}/eos instead of whatever.  make it look like:
+echo 'edit mkmf_convert_airs_L2 to have all the base paths'
+echo 'be ${BASEDIR}/eos instead of whatever.  make it look like:'
 echo ' '
 echo 'set JPGDIR = ${BASEDIR}/eos'
-echo ' '
 echo 'set HDFDIR = ${BASEDIR}/eos'
-echo ' '
 echo 'set EOSDIR = ${BASEDIR}/eos'
 echo ' '
 
