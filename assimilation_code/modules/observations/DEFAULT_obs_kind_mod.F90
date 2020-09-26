@@ -86,8 +86,8 @@ character(len=512) :: msg_string, msg_string1
 
 ! @todo FIXME: what is the right len for a units and
 ! other name/value pair strings?
-integer, parameter :: namelen  = 128
-integer, parameter :: valuelen = 128
+integer, parameter :: namelen  = 256
+integer, parameter :: valuelen = 256
 
 integer :: num_types_assimilate, num_types_evaluate 
 integer :: num_types_use_precomputed_FOs

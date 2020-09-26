@@ -31,23 +31,6 @@
 !> to keep things working, are still outputing "use obs_kind_mod" instead 
 !> of "use obs_qty_mod".   this should change but i'm not sure when.
 !>
-!> @todo FIXME: this version is being changed to require at least 2 strings
-!> per line - the qty name and units (which could be "none" if there really
-!> are none).  
-!> it can also have 2 additional optional tokens on the line which are any 
-!> physical limits for the min and max values of this quantity.  for example, 
-!> temperature in K can't be negative. relative humidity must be [0,1].  
-!>
-!> don't specify them if there aren't any limits, and use MISSING_R8 (or NA?)
-!> for any bounds where there is only either a minimum or maximum 
-!> but not the other. (if you specify either, two numbers will be required.)
-!>
-!> note to me:
-!> since this is a text processor, could NA, null, or MISSING_R8 all be used?
-!> the token MISSING_R8 should be output but may not ever be interpreted by 
-!> this program. is r8 really needed as well?  again, text based processing.  
-!> i guess for a numeric value it should be vetted to be valid here?
-!>
 !> @todo FIXME: this code now creates an obs_def_mod.f90 that contains
 !> a use line for all the known quantities, not just those referenced
 !> by the obs_def_xxx_mod.f90 file.  the obs_kind_mod.f90 has to define
@@ -73,12 +56,11 @@ implicit none
 integer, parameter   :: max_types = 5000, max_qtys = 5000
 
 
-character(len = 256) :: line, test, test2, t_string
-integer              :: iunit, ierr, io, i, j, k
-integer              :: l_string, l2_string, total_len
+character(len = 256) :: line, test, t_string
+integer              :: iunit, io, i, j, k, l
 integer              :: linenum1, linenum2, linenum3, linenum4
 integer              :: num_types_found, num_qtys_found
-logical              :: duplicate, qty_found, temp_user, is_more
+logical              :: duplicate, qty_found, temp_user, is_more, match
 character(len = 256) :: valtokens(max_qtys)
 character(len = 512) :: err_string
 character(len = 6)   :: full_line_in  = '(A256)'
@@ -244,7 +226,7 @@ call log_it('INPUT obs_def files:')
 do i = 1, max_obs_type_files
    if(obs_type_files(i) == 'null') exit
    call log_it(obs_type_files(i))
-   num_obs_type_files= i
+   num_obs_type_files = i
 enddo
 
 call log_it('INPUT quantity files:')
@@ -306,12 +288,12 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
       ! Formats accepted:  
       !
       ! QTY_string
-      ! QTY_string units=unit_string name=value ...
+      ! QTY_string name=value ...
       !
       ! QTY_string ! comments
       !       
       ! ! comment
-      ! !
+      !
    
       ! ntokens < 0 means error
       ! ntokens == 0 means cycle without error
@@ -322,16 +304,6 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
          call quantity_error(err_string, line, quantity_files(j), linenum2)
    
       if (ntokens == 0) cycle DEFINE_QTYS
-
-      !if (ntokens > 4 .or. ntokens == 3) then
-      !   err_string = 'expected QTY_xxx units minbound maxbound. unable to process.'
-      !   call quantity_error(err_string, line, quantity_files(j), linenum2)
-      !endif
-
-      !if (ntokens < 2) then
-      !   err_string = 'expected QTY_xxx units. unable to process.'
-      !   call quantity_error(err_string, line, quantity_files(j), linenum2)
-      !endif
 
       if (token(1)(1:4) /= 'QTY_') then
          err_string = 'QTY_xxx not found as first word on line'
@@ -345,19 +317,49 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
 
       ! this loop adds a new quantity to the string array if it's new.
       duplicate = .false.
-      do i=0, num_qtys_found-1
+      qtys: do i=0, num_qtys_found-1
          if (qty_info(i)%name == token(1)) then
             duplicate = .true.
             ! @todo FIXME test dups here for identity in all other fields
+            ! ok, if existing name found, can easily verify value is same.
+            ! what about new names?  add them?  error out?  
+            ! something like:
+            ! i is entry index that matches this new line
+            ! but metadata items could be in a different order, so have to
+            ! loop over each item and search the existing pairs
+            tokens: do l=2, ntokens
+               match = .false.
+               do k=1, qty_info(i)%num_nameval_pairs 
+                  if (qty_info(i)%namepair(k) /= token(l)) cycle tokens
+                  ! now i = qty index, l=new token index, k = existing token index
+                  if (qty_info(i)%valpair(k) /= valtokens(l)) then
+                     print *, 'duplicate token name with different value found'
+                     print *, i, l, k, trim(qty_info(i)%valpair(k)), ' /= ', trim(valtokens(l))
+                     !error out with helpful message about what was already
+                     !found vs what is here on this line.
+                  endif
+                  match = .true.
+               enddo
+               if (match) cycle tokens
+               print *, 'new token found here that was not in previous definition'
+               print *, i, l, trim(token(l))//"="//trim(valtokens(l))
+               ! if no match, what? error OR  add here?
+               print *, 'for now, adding to definition'
+               print *, i, j, k, l, trim(qty_info(i)%name), ' ', trim(token(l))//"="//trim(valtokens(l))
+               k = qty_info(i)%num_nameval_pairs + 1
+               qty_info(i)%num_nameval_pairs = k
+               qty_info(i)%namepair(k) = token(l)
+               qty_info(i)%valpair(k) = valtokens(l)
+            enddo tokens
             exit
          endif
-      enddo
+      enddo qtys
    
       if (.not. duplicate) then
-         qty_info(num_qtys_found)%name = trim(token(1))
+         qty_info(num_qtys_found)%name = token(1)
          do i=1, ntokens-1
-            qty_info(num_qtys_found)%namepair(i) = trim(token(i+1))
-            qty_info(num_qtys_found)%valpair(i)  = trim(valtokens(i+1))
+            qty_info(num_qtys_found)%namepair(i) = token(i+1)
+            qty_info(num_qtys_found)%valpair(i)  = valtokens(i+1)
          enddo
          qty_info(num_qtys_found)%num_nameval_pairs = ntokens-1
          num_qtys_found = num_qtys_found + 1
