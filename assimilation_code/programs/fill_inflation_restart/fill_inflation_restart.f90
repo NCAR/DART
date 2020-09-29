@@ -327,9 +327,4 @@ end subroutine finalize_modules_used
 
 end program fill_inflation_restart
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
