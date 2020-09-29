@@ -180,7 +180,7 @@ character(len=NML_STRLEN) :: input_files(max_obs_type_files) = 'null'
 logical                   :: overwrite_output = .true.
 
 ! jump through hoops to maintain backwards compatibility in namelist.
-! xx_obs_def_mod_file, overwrite_output same as before. 
+! {input,output}_obs_def_mod_file, overwrite_output same as before. 
 ! but if these have been changed from the defaults, they override the older values.
 character(len=NML_STRLEN) :: input_obs_qty_mod_file = 'was input_obs_kind_mod_file'
 character(len=NML_STRLEN) :: output_obs_qty_mod_file = 'was output_obs_kind_mod_file'
