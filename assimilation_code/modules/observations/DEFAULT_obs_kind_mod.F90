@@ -42,9 +42,7 @@ public :: get_name_for_type_of_obs,       &
           get_num_items_for_quantity,     &
           get_itemname_for_quantity,      &
           get_itemvalue_for_quantity,     &
-          get_units_for_quantity,         &   ! perhaps subsumed by itemvalue?
-          get_pdf_for_quantity,           &   ! perhaps subsumed by itemvalue?
-          get_bounds_for_quantity             ! perhaps subsumed by itemvalue?
+          has_bounds_for_quantity 
 
 public :: get_num_types_of_obs, get_num_quantities
 
@@ -575,81 +573,17 @@ get_itemvalue_for_quantity = ''
 end function get_itemvalue_for_quantity
 
 !----------------------------------------------------------------------------
-! FIXME: are units more fundamental somehow?
-! this is a convenience routine which gets units out of the name/value pair
-! list if there.  otherwise returns "none" (should be "null"?)
-
-! Returns the units string for this quantity index
-! Error if index out of range
-
-function get_units_for_quantity(obs_qty_ind)
-
-integer, intent(in) :: obs_qty_ind
-character(len=128)  :: get_units_for_quantity
-
-integer :: i
-character(len=*), parameter :: routine = 'get_units_for_quantity'
-
-if (.not. module_initialized) call initialize_module
-
-call validate_obs_qty_index(obs_qty_ind, routine)
-
-do i=1, obs_qty_info(obs_qty_ind)%nitems
-   if (obs_qty_info(obs_qty_ind)%itemname(i) == "units") then
-      get_units_for_quantity = obs_qty_info(obs_qty_ind)%itemvalue(i)
-      return
-   endif
-enddo
-
-get_units_for_quantity = 'none'
-
-end function get_units_for_quantity
-
-!----------------------------------------------------------------------------
-! FIXME: are pdfs more fundamental or should they go though
-! the generic name=value interface?
-! Get pdf string for quantity by index
-! Error if index out of range
-
-function get_pdf_for_quantity(obs_qty_ind)
-
-integer, intent(in) :: obs_qty_ind
-character(len=128)  :: get_pdf_for_quantity
-
-integer :: i
-character(len=*), parameter :: routine = 'get_pdf_for_quantity'
-
-if (.not. module_initialized) call initialize_module
-
-call validate_obs_qty_index(obs_qty_ind, routine)
-
-do i=1, obs_qty_info(obs_qty_ind)%nitems
-   if (obs_qty_info(obs_qty_ind)%itemname(i) == "pdf") then
-      get_pdf_for_quantity = obs_qty_info(obs_qty_ind)%itemvalue(i)
-      return
-   endif
-enddo
-
-get_pdf_for_quantity = 'none'
-
-end function get_pdf_for_quantity
-
-!----------------------------------------------------------------------------
-! FIXME: are bounds more fundamental or should they go though
-! the generic name=value interface?
+! convenience routine, could also be queried using the generic name=value interface
 ! Get bounds values for quantity by index
-! Returns .false. for 'hasbounds' if both min and max are missing_r8
-! (hopefully a shortcut for calling code to skip additional tests.)
+! Returns .false. if both min and max are missing_r8
+! A potential code shortcut for calling code if no bounds are present
 
-subroutine get_bounds_for_quantity(obs_qty_ind, hasbounds, minbound, maxbound)
-
-! Returns the min/max bounds, if any, for this quantity index
-! Returns MISSING_R8 if no bounds
+function has_bounds_for_quantity(obs_qty_ind, minbound, maxbound)
 
 integer,  intent(in)  :: obs_qty_ind
-logical,  intent(out) :: hasbounds
 real(r8), intent(out) :: minbound
 real(r8), intent(out) :: maxbound
+logical :: has_bounds_for_quantity
 
 integer :: i
 character(len=valuelen) :: boundstring
@@ -659,7 +593,6 @@ if (.not. module_initialized) call initialize_module
 
 call validate_obs_qty_index(obs_qty_ind, routine)
 
-hasbounds = .false.
 minbound = MISSING_R8
 maxbound = MISSING_R8
 
@@ -674,9 +607,9 @@ do i=1, obs_qty_info(obs_qty_ind)%nitems
    endif
 enddo
 
-hasbounds = .not. (minbound == MISSING_R8 .and. maxbound == MISSING_R8)
+has_bounds_for_quantity = .not. (minbound == MISSING_R8 .and. maxbound == MISSING_R8)
 
-end subroutine get_bounds_for_quantity
+end function has_bounds_for_quantity
 
 !----------------------------------------------------------------------------
 !> Accessor function to return observation type count
