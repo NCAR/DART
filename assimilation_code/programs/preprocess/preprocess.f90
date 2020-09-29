@@ -286,7 +286,11 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
       ! Look for the ! END QTY LIST in the current line
       test = adjustl(line)
       if(test == qty_enddefn_string) exit DEFINE_QTYS
-      if(test == knd_enddefn_string) exit DEFINE_QTYS
+      if(test == knd_enddefn_string) then
+         ! FIXME: here is where you could print out a 'deprecated' warning
+         ! if the alternate delimiter form is encountered.
+         exit DEFINE_QTYS
+      endif
    
       ! All lines between start/end must be comments or QTY_xxx strings
       !
@@ -404,7 +408,11 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
       ! Look for the ! END QUANTITY LIST in the current line
       test = adjustl(line)
       if(test == qty_endlist_string) exit EXTRACT_TYPES
-      if(test == knd_endlist_string) exit EXTRACT_TYPES
+      if(test == knd_endlist_string) then
+         ! FIXME: here is where you could print out a 'deprecated' warning
+         ! if the alternate delimiter form is encountered.
+         exit EXTRACT_TYPES
+      endif
 
       ! All lines between start/end must be type/qty lines.
       ! Format:  ! type_string, qty_string [, COMMON_CODE]
@@ -810,6 +818,8 @@ FIND_NEXT: do
    if(index(line, trim(stop_string)) > 0) exit FIND_NEXT
    if(present(alt_stop_string)) then
       if(index(line, trim(alt_stop_string)) > 0) exit FIND_NEXT
+      ! FIXME: here is where you could print out a 'deprecated' warning
+      ! if the alternate delimiter form is encountered.
    endif
 
    ! if doing a copy, write it verbatim to the output file
