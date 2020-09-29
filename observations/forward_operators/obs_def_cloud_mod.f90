@@ -4,11 +4,11 @@
 !
 ! $Id$
 
-! BEGIN DART PREPROCESS QUANTITY LIST
+! BEGIN DART PREPROCESS KIND LIST
 !CLOUD_LIQUID_WATER, QTY_CLOUD_LIQUID_WATER,  COMMON_CODE
 !CLOUD_ICE,          QTY_CLOUD_ICE,           COMMON_CODE
 !CLOUD_FRACTION,     QTY_CLOUD_FRACTION,      COMMON_CODE
-! END DART PREPROCESS QUANTITY LIST
+! END DART PREPROCESS KIND LIST
 
 ! eventually these should become the following to be consistent
 ! with other types of mixing ratios.  this is just a proposed

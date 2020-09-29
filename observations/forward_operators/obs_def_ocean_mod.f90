@@ -4,7 +4,7 @@
 !
 ! $Id$
 
-! BEGIN DART PREPROCESS QUANTITY LIST
+! BEGIN DART PREPROCESS KIND LIST
 !SALINITY,                      QTY_SALINITY,              COMMON_CODE
 !TEMPERATURE,                   QTY_TEMPERATURE,           COMMON_CODE
 !U_CURRENT_COMPONENT,           QTY_U_CURRENT_COMPONENT,   COMMON_CODE
@@ -70,7 +70,7 @@
 !HFRADAR_RADIAL_VELOCITY,       QTY_VELOCITY
 !FERRYBOX_SALINITY,             QTY_SALINITY,              COMMON_CODE
 !FERRYBOX_TEMPERATURE,          QTY_TEMPERATURE,           COMMON_CODE
-! END DART PREPROCESS QUANTITY LIST
+! END DART PREPROCESS KIND LIST
 
 ! From Ibrahim - 19 May 2009
 ! "Concerning the radar observations: we can use a format very similar to what we 

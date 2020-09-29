@@ -99,9 +99,9 @@ type(obs_info_type) :: obs_info(1:max_types)
 ! specific marker strings
 !                                                                1         2         3         4         5         6
 !                                                       123456789012345678901234567890123456789012345678901234567890
-character(len=*),parameter :: qty_startlist_string  = '! BEGIN DART PREPROCESS QUANTITY LIST'
+character(len=*),parameter :: typ_startdefn_string  = '! BEGIN DART PREPROCESS TYPE DEFINITIONS'
 character(len=*),parameter :: knd_startlist_string  = '! BEGIN DART PREPROCESS KIND LIST'
-character(len=*),parameter :: qty_endlist_string    = '! END DART PREPROCESS QUANTITY LIST'
+character(len=*),parameter :: typ_enddefn_string    = '! END DART PREPROCESS TYPE DEFINITIONS'
 character(len=*),parameter :: knd_endlist_string    = '! END DART PREPROCESS KIND LIST'
 character(len=*),parameter :: qty_startdefn_string  = '! BEGIN DART PREPROCESS QUANTITY DEFINITIONS'
 character(len=*),parameter :: knd_startdefn_string  = '! BEGIN DART PREPROCESS KIND DEFINITIONS'
@@ -395,19 +395,19 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
 
    call open_file_for_read(obs_type_files(j), 'obs_type_files', in_unit)
 
-   ! Read until the ! BEGIN QUANTITY LIST is found
+   ! Read until the ! BEGIN TYPE DEFINITIONS is found
    linenum2 = 0
-   call read_until(in_unit, obs_type_files(j), qty_startlist_string, linenum2, knd_startlist_string)
+   call read_until(in_unit, obs_type_files(j), typ_startdefn_string, linenum2, knd_startlist_string)
 
    ! Subsequent lines contain the type_identifier (same as type_string), and
    ! qty_string separated by commas, and optional usercode flag
    EXTRACT_TYPES: do
-      call get_next_line(in_unit, full_line_in, qty_endlist_string, &
+      call get_next_line(in_unit, full_line_in, typ_enddefn_string, &
                          obs_type_files(j), linenum2, knd_endlist_string)
 
-      ! Look for the ! END QUANTITY LIST in the current line
+      ! Look for the ! END TYPE DEFINITIONS in the current line
       test = adjustl(line)
-      if(test == qty_endlist_string) exit EXTRACT_TYPES
+      if(test == typ_enddefn_string) exit EXTRACT_TYPES
       if(test == knd_endlist_string) then
          ! FIXME: here is where you could print out a 'deprecated' warning
          ! if the alternate delimiter form is encountered.

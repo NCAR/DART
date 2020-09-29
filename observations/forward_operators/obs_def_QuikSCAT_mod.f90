@@ -14,10 +14,10 @@
 ! a specific type for them allows for the ability to differentiate them
 ! from other wind observation types, allowing for impact assessment, for example.
 
-! BEGIN DART PREPROCESS QUANTITY LIST
+! BEGIN DART PREPROCESS KIND LIST
 ! QKSWND_U_WIND_COMPONENT,  QTY_U_WIND_COMPONENT,  COMMON_CODE
 ! QKSWND_V_WIND_COMPONENT,  QTY_V_WIND_COMPONENT,  COMMON_CODE
-! END DART PREPROCESS QUANTITY LIST
+! END DART PREPROCESS KIND LIST
 
 ! <next few lines under version control, do not edit>
 ! $URL$

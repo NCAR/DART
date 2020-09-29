@@ -29,12 +29,12 @@
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
-! BEGIN DART PREPROCESS QUANTITY LIST
+! BEGIN DART PREPROCESS KIND LIST
 ! DOPPLER_RADIAL_VELOCITY, QTY_VELOCITY
 ! RADAR_REFLECTIVITY, QTY_RADAR_REFLECTIVITY
 ! RADAR_CLEARAIR_REFLECTIVITY, QTY_RADAR_REFLECTIVITY
 ! PRECIPITATION_FALL_SPEED, QTY_POWER_WEIGHTED_FALL_SPEED
-! END DART PREPROCESS QUANTITY LIST
+! END DART PREPROCESS KIND LIST
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------

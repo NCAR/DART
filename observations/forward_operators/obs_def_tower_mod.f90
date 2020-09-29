@@ -2,7 +2,7 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-! BEGIN DART PREPROCESS QUANTITY LIST
+! BEGIN DART PREPROCESS KIND LIST
 !WATER_TABLE_DEPTH,              QTY_WATER_TABLE_DEPTH,        COMMON_CODE
 !SOIL_TEMPERATURE,               QTY_SOIL_TEMPERATURE,         COMMON_CODE
 !SOIL_MOISTURE,                  QTY_SOIL_MOISTURE,            COMMON_CODE
@@ -27,7 +27,7 @@
 !TOWER_GPP_FLUX,                 QTY_GROSS_PRIMARY_PROD_FLUX
 !TOWER_ER_FLUX,                  QTY_ER_FLUX
 !TOWER_NETC_ECO_EXCHANGE,        QTY_NET_CARBON_PRODUCTION
-! END DART PREPROCESS QUANTITY LIST
+! END DART PREPROCESS KIND LIST
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE

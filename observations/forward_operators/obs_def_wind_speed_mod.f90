@@ -12,9 +12,9 @@
 ! right column must be a generic kind that already exists in
 ! the obs_kind/DEFAULT_obs_kind_mod.F90 file.
 
-! BEGIN DART PREPROCESS QUANTITY LIST
+! BEGIN DART PREPROCESS KIND LIST
 ! RADIOSONDE_WIND_SPEED,         QTY_VELOCITY
-! END DART PREPROCESS QUANTITY LIST
+! END DART PREPROCESS KIND LIST
 
 ! This section will be added to the main obs_def_mod.f90 that
 ! is going to be generated, to allow it to call the code we

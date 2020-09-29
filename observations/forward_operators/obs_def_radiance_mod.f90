@@ -7,7 +7,7 @@
 ! This module supports the observation types from the AIRS instruments.
 ! http://winds.jpl.nasa.gov/missions/quikscat/index.cfm
 
-! BEGIN DART PREPROCESS QUANTITY LIST
+! BEGIN DART PREPROCESS KIND LIST
 ! AMSUA_METOP_A_CH5,            QTY_TEMPERATURE,        COMMON_CODE
 ! AMSUA_METOP_A_CH6,            QTY_TEMPERATURE,        COMMON_CODE
 ! AMSUA_METOP_A_CH7,            QTY_TEMPERATURE,        COMMON_CODE
@@ -34,7 +34,7 @@
 ! MHS_N18_CH3,                  QTY_TEMPERATURE,        COMMON_CODE
 ! MHS_N18_CH4,                  QTY_TEMPERATURE,        COMMON_CODE
 ! MHS_N18_CH5,                  QTY_TEMPERATURE,        COMMON_CODE
-! END DART PREPROCESS QUANTITY LIST
+! END DART PREPROCESS KIND LIST
 
 ! <next few lines under version control, do not edit>
 ! $URL$
