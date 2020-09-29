@@ -97,14 +97,18 @@ end type obs_info_type
 type(obs_info_type) :: obs_info(1:max_types)
 
 ! specific marker strings
-!                                                             1         2         3         4         5         6
-!                                                    123456789012345678901234567890123456789012345678901234567890
-character(len=*),parameter :: qty_start_string   = '! BEGIN DART PREPROCESS QUANTITY LIST'
-character(len=*),parameter :: qty_end_string     = '! END DART PREPROCESS QUANTITY LIST'
-character(len=*),parameter :: qty2_start_string  = '! BEGIN DART PREPROCESS QUANTITY DEFINITIONS'
-character(len=*),parameter :: qty2_end_string    = '! END DART PREPROCESS QUANTITY DEFINITIONS'
-character(len=*),parameter :: insert_ints_string = '! DART PREPROCESS INTEGER DECLARATIONS INSERTED HERE'
-character(len=*),parameter :: insert_init_string = '! DART PREPROCESS DERIVED TYPE INITIALIZATIONS INSERTED HERE'
+!                                                                1         2         3         4         5         6
+!                                                       123456789012345678901234567890123456789012345678901234567890
+character(len=*),parameter :: qty_startlist_string  = '! BEGIN DART PREPROCESS QUANTITY LIST'
+character(len=*),parameter :: knd_startlist_string  = '! BEGIN DART PREPROCESS KIND LIST'
+character(len=*),parameter :: qty_endlist_string    = '! END DART PREPROCESS QUANTITY LIST'
+character(len=*),parameter :: knd_endlist_string    = '! END DART PREPROCESS KIND LIST'
+character(len=*),parameter :: qty_startdefn_string  = '! BEGIN DART PREPROCESS QUANTITY DEFINITIONS'
+character(len=*),parameter :: knd_startdefn_string  = '! BEGIN DART PREPROCESS KIND DEFINITIONS'
+character(len=*),parameter :: qty_enddefn_string    = '! END DART PREPROCESS QUANTITY DEFINITIONS'
+character(len=*),parameter :: knd_enddefn_string    = '! END DART PREPROCESS KIND DEFINITIONS'
+character(len=*),parameter :: insert_ints_string    = '! DART PREPROCESS INTEGER DECLARATIONS INSERTED HERE'
+character(len=*),parameter :: insert_init_string    = '! DART PREPROCESS DERIVED TYPE INITIALIZATIONS INSERTED HERE'
 
 ! output format decorations
 character(len = 78) :: separator_line = &
@@ -173,7 +177,7 @@ character(len=NML_STRLEN) :: input_obs_kind_mod_file = &
 character(len=NML_STRLEN) :: output_obs_kind_mod_file = &
                         '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
 character(len=NML_STRLEN) :: input_files(max_obs_type_files) = 'null'
-logical                   :: overwrite_output
+logical                   :: overwrite_output = .true.
 
 ! jump through hoops to maintain backwards compatibility in namelist.
 ! xx_obs_def_mod_file, overwrite_output same as before. 
@@ -271,17 +275,18 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
 
    ! Read until the ! BEGIN QUANTITY DEFINITION marker string is found
    linenum2 = 0
-   call read_until(in_unit, quantity_files(j), qty2_start_string, linenum2)
+   call read_until(in_unit, quantity_files(j), qty_startdefn_string, linenum2, knd_startdefn_string)
 
    ! Subsequent lines can contain QTY_xxx lines or comments or
    ! the end string.
    DEFINE_QTYS: do
-      call get_next_line(in_unit, full_line_in, qty2_end_string, &
-                         quantity_files(j), linenum2)
+      call get_next_line(in_unit, full_line_in, qty_enddefn_string, &
+                         quantity_files(j), linenum2, knd_enddefn_string)
 
       ! Look for the ! END QTY LIST in the current line
       test = adjustl(line)
-      if(test == qty2_end_string) exit DEFINE_QTYS
+      if(test == qty_enddefn_string) exit DEFINE_QTYS
+      if(test == knd_enddefn_string) exit DEFINE_QTYS
    
       ! All lines between start/end must be comments or QTY_xxx strings
       !
@@ -388,17 +393,18 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
 
    ! Read until the ! BEGIN QUANTITY LIST is found
    linenum2 = 0
-   call read_until(in_unit, obs_type_files(j), qty_start_string, linenum2)
+   call read_until(in_unit, obs_type_files(j), qty_startlist_string, linenum2, knd_startlist_string)
 
    ! Subsequent lines contain the type_identifier (same as type_string), and
    ! qty_string separated by commas, and optional usercode flag
    EXTRACT_TYPES: do
-      call get_next_line(in_unit, full_line_in, qty_end_string, &
-                         obs_type_files(j), linenum2)
+      call get_next_line(in_unit, full_line_in, qty_endlist_string, &
+                         obs_type_files(j), linenum2, knd_endlist_string)
 
       ! Look for the ! END QUANTITY LIST in the current line
       test = adjustl(line)
-      if(test == qty_end_string) exit EXTRACT_TYPES
+      if(test == qty_endlist_string) exit EXTRACT_TYPES
+      if(test == knd_endlist_string) exit EXTRACT_TYPES
 
       ! All lines between start/end must be type/qty lines.
       ! Format:  ! type_string, qty_string [, COMMON_CODE]
@@ -740,20 +746,21 @@ contains
 !> (which is a fatal error) or until the requested line contents
 !> is found.  update the linenum so reasonable error messages
 !> can be provided.
-subroutine read_until(iunit, iname, stop_string, linenum)
+subroutine read_until(iunit, iname, stop_string, linenum, alt_stop_string)
 
 integer, intent(in) :: iunit
 character(len=*), intent(in) :: iname
 character(len=*), intent(in) :: stop_string
 integer, intent(inout) :: linenum
+character(len=*), intent(in), optional :: alt_stop_string
 
-call do_until(iunit, iname, stop_string, linenum, .false., 0, '', .false.)
+call do_until(iunit, iname, stop_string, linenum, .false., 0, '', .false., alt_stop_string)
 
 end subroutine read_until
 
 !------------------------------------------------------------------------------
 
-subroutine copy_until(iunit, iname, stop_string, linenum, ounit, oname, trimfirst)
+subroutine copy_until(iunit, iname, stop_string, linenum, ounit, oname, trimfirst, alt_stop_string)
 
 integer, intent(in) :: iunit
 character(len=*), intent(in) :: iname
@@ -762,14 +769,15 @@ integer, intent(inout) :: linenum
 integer, intent(in) :: ounit
 character(len=*), intent(in) :: oname
 logical, intent(in) :: trimfirst
+character(len=*), intent(in), optional :: alt_stop_string
 
-call do_until(iunit, iname, stop_string, linenum, .true., ounit, oname, trimfirst)
+call do_until(iunit, iname, stop_string, linenum, .true., ounit, oname, trimfirst, alt_stop_string)
 
 end subroutine copy_until
 
 !------------------------------------------------------------------------------
 
-subroutine do_until(iunit, iname, stop_string, linenum, docopy, ounit, oname, trimfirst)
+subroutine do_until(iunit, iname, stop_string, linenum, docopy, ounit, oname, trimfirst, alt_stop_string)
 
 integer, intent(in) :: iunit
 character(len=*), intent(in) :: iname
@@ -779,6 +787,7 @@ logical, intent(in) :: docopy
 integer, intent(in) :: ounit
 character(len=*), intent(in) :: oname
 logical, intent(in) :: trimfirst
+character(len=*), intent(in), optional :: alt_stop_string
 
 integer :: ierr
 character(len=256) :: line   ! this should match the format length
@@ -799,6 +808,9 @@ FIND_NEXT: do
 
    ! Look for the required string in the current line
    if(index(line, trim(stop_string)) > 0) exit FIND_NEXT
+   if(present(alt_stop_string)) then
+      if(index(line, trim(alt_stop_string)) > 0) exit FIND_NEXT
+   endif
 
    ! if doing a copy, write it verbatim to the output file
    if (docopy) then
@@ -884,10 +896,11 @@ end subroutine quantity_error
 ! get the next line from the input file, and bump up the line count
 ! it is an error if you get to the end of the file.
 
-subroutine get_next_line(iunit, format, end_string, filename, linenum)
+subroutine get_next_line(iunit, format, end_string, filename, linenum, alt_end_string)
  integer, intent(in) :: iunit
  character(len=*), intent(in) :: format, end_string, filename
  integer, intent(inout) :: linenum
+ character(len=*), intent(in), optional :: alt_end_string
 
 integer :: ierr
 
@@ -899,7 +912,7 @@ endif
 
 ! If end of file, input file is incomplete or weird stuff happened
 write(err_string, *) 'file ', trim(filename), &
-                  ' does NOT contain ', trim(end_string)
+                  ' does NOT contain ', trim(end_string), ' or ', trim(alt_end_string)
 call error_handler(E_ERR, 'preprocess', err_string)
 
 end subroutine get_next_line
