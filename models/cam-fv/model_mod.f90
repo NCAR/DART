@@ -2267,18 +2267,8 @@ endif
 
 ! CAM is a single domain (only a single grid, no nests or multiple grids)
 
-! @todo FIXME:
-! break add_domain() into smaller routines?  e.g. add_domain(fname, nfields, varnames, qtynames) only
-! then set routines for limits and limit type, and another routine for update/noupdate.
-! defaults remain same.  but for readability, extensibility, etc - separate these out??
-
 domain_id = add_domain(cam_template_filename, nfields, var_names, kind_list, &
                        clamp_vals, update_list)
-
-!domain_id = add_domain(cam_template_filename, nfields, var_names, kind_list, &
-!                       limit_vals, limit_type, update_list)
-
-! @todo FIXME limit_type = "clamp" (backwards compatible), "anamorphosis" (moha's new stuff)
 
 call fill_cam_stagger_info(grid_stagger)
 
