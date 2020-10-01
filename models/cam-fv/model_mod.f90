@@ -2265,7 +2265,7 @@ if (nfields == MAX_STATE_VARIABLES) then
    call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 endif
 
-! CAM is a single domain (only a single grid, no nests or multiple grids)
+! CAM only has a single domain (only a single grid, no nests or multiple grids)
 
 domain_id = add_domain(cam_template_filename, nfields, var_names, kind_list, &
                        clamp_vals, update_list)
