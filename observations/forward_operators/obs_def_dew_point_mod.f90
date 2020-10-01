@@ -2,9 +2,8 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! DEWPOINT,                QTY_DEWPOINT
 ! DEWPOINT_2_METER,        QTY_DEWPOINT
 ! BUOY_DEWPOINT,           QTY_DEWPOINT
@@ -22,7 +21,7 @@
 ! ACARS_DEWPOINT,          QTY_DEWPOINT
 ! MARINE_SFC_DEWPOINT,     QTY_DEWPOINT
 ! LAND_SFC_DEWPOINT,       QTY_DEWPOINT
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_dew_point_mod, only : get_expected_dew_point
@@ -220,8 +219,3 @@ end subroutine get_expected_dew_point
 end module obs_def_dew_point_mod
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

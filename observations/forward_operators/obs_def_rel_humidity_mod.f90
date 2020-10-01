@@ -2,9 +2,8 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !RADIOSONDE_RELATIVE_HUMIDITY,    QTY_RELATIVE_HUMIDITY
 !DROPSONDE_RELATIVE_HUMIDITY,     QTY_RELATIVE_HUMIDITY
 !AIRCRAFT_RELATIVE_HUMIDITY,      QTY_RELATIVE_HUMIDITY
@@ -13,7 +12,7 @@
 !LAND_SFC_RELATIVE_HUMIDITY,      QTY_RELATIVE_HUMIDITY
 !METAR_RELATIVE_HUMIDITY_2_METER, QTY_RELATIVE_HUMIDITY
 !AIRS_RELATIVE_HUMIDITY,          QTY_RELATIVE_HUMIDITY
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_rel_humidity_mod, only : get_expected_relative_humidity
@@ -198,8 +197,3 @@ end subroutine get_expected_relative_humidity
 end module obs_def_rel_humidity_mod
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

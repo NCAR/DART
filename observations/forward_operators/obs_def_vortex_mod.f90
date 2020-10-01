@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 !>@todo  make a namelist-defined grid (lower left corner, nx, ny, dx, dy)
 !> allocate, call interp for t, u, v, p and fill it.  store the location
@@ -10,12 +9,12 @@
 !> calls for this same location.
 !>
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! VORTEX_LAT, QTY_VORTEX_LAT
 ! VORTEX_LON, QTY_VORTEX_LON
 ! VORTEX_PMIN, QTY_VORTEX_PMIN
 ! VORTEX_WMAX, QTY_VORTEX_WMAX
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_vortex_mod, only : get_expected_vortex_info
@@ -142,8 +141,3 @@ end subroutine get_expected_vortex_info
 end module obs_def_vortex_mod
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

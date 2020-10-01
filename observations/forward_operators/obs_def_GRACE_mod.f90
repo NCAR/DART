@@ -2,14 +2,13 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 ! This is for the GRACE total water storage observation operator.
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! WATER_UNCONFINED_AQUIFER,   QTY_LIQUID_WATER,        COMMON_CODE
 ! GRACE_TOTAL_WATER_STORAGE,  QTY_TOTAL_WATER_STORAGE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 !-------------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE

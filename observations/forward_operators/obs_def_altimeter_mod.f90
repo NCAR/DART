@@ -2,15 +2,14 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! RADIOSONDE_SURFACE_ALTIMETER, QTY_SURFACE_PRESSURE
 ! DROPSONDE_SURFACE_ALTIMETER,  QTY_SURFACE_PRESSURE
 ! MARINE_SFC_ALTIMETER,         QTY_SURFACE_PRESSURE
 ! LAND_SFC_ALTIMETER,           QTY_SURFACE_PRESSURE
 ! METAR_ALTIMETER,              QTY_SURFACE_PRESSURE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_altimeter_mod, only : get_expected_altimeter, compute_altimeter
@@ -148,8 +147,3 @@ end module obs_def_altimeter_mod
 
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

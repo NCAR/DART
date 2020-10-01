@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 ! Forward operator to compute total precipitable water in a column,
 ! in centimeters, over the ocean.   Can be used as an example of a
@@ -22,13 +21,13 @@
 ! to something like xxx_TOTAL_PRECIP_WATER to give you room to
 ! put in more descriptive platform names.
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !  AQUA_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
 ! TERRA_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
 !  AMSR_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
 ! MODIS_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
 !   GPS_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !  use obs_def_tpw_mod, only : get_expected_tpw
@@ -339,8 +338,3 @@ end module obs_def_tpw_mod
 
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
