@@ -2,12 +2,11 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 !>@todo FIXME: check to see if obs are of volume or thickness - for now we
 ! will assume volume.
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !SYN_SEAICE_CONCENTR,             QTY_SEAICE_CONCENTR,           COMMON_CODE
 !SAT_U_SEAICE_COMPONENT,          QTY_U_SEAICE_COMPONENT,        COMMON_CODE
 !SAT_V_SEAICE_COMPONENT,          QTY_V_SEAICE_COMPONENT,        COMMON_CODE
@@ -24,7 +23,7 @@
 !SAT_SEAICE_AGREG_SNOWVOLUME,     QTY_SEAICE_AGREG_SNOWVOLUME
 !SAT_SEAICE_AGREG_THICKNESS,      QTY_SEAICE_AGREG_THICKNESS
 !SAT_SEAICE_AGREG_SNOWDEPTH,      QTY_SEAICE_AGREG_SNOWDEPTH
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -447,8 +446,3 @@ end module obs_def_cice_mod
 ! END DART PREPROCESS MODULE CODE
 !-----------------------------------------------------------------------------
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

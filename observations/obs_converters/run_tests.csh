@@ -248,7 +248,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
          set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
          echo "Running $PROG"
-   
+
          # for programs which read standard input, put what they need into a prog.in file
          # in the tests directory.
          # if we miss any programs which need input and we don't have a .in file, have it

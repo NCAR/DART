@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 !-----------------------------------------------------------------------------
 ! DART radar observation module, including the observation operators for the
@@ -29,12 +28,12 @@
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! DOPPLER_RADIAL_VELOCITY, QTY_VELOCITY
 ! RADAR_REFLECTIVITY, QTY_RADAR_REFLECTIVITY
 ! RADAR_CLEARAIR_REFLECTIVITY, QTY_RADAR_REFLECTIVITY
 ! PRECIPITATION_FALL_SPEED, QTY_POWER_WEIGHTED_FALL_SPEED
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
@@ -1619,8 +1618,3 @@ end module obs_def_radar_mod
 ! END DART PREPROCESS MODULE CODE
 !-----------------------------------------------------------------------------
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

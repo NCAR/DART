@@ -4,6 +4,8 @@
 !
 ! DART $Id$
 
+!> This program removes duplicate observations.
+
 !> This file contains 1 module and 1 program.  the module code has
 !> to come first, so page down for the main program. 
 !> The module is a custom sort routine needed to compare 2 observations, 
@@ -159,6 +161,8 @@ end function obssort
 end module special_sort
 
 !---------------------------------------------------------------------
+
+!> simple program that opens an obs_seq file and loops over the obs
 
 !> program that opens an obs_seq file and loops over the obs
 !> and copies them to a new output file.   this is intended to be a

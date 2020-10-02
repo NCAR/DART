@@ -2,9 +2,8 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !SALINITY,                      QTY_SALINITY,              COMMON_CODE
 !TEMPERATURE,                   QTY_TEMPERATURE,           COMMON_CODE
 !U_CURRENT_COMPONENT,           QTY_U_CURRENT_COMPONENT,   COMMON_CODE
@@ -70,7 +69,7 @@
 !HFRADAR_RADIAL_VELOCITY,       QTY_VELOCITY
 !FERRYBOX_SALINITY,             QTY_SALINITY,              COMMON_CODE
 !FERRYBOX_TEMPERATURE,          QTY_TEMPERATURE,           COMMON_CODE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! From Ibrahim - 19 May 2009
 ! "Concerning the radar observations: we can use a format very similar to what we 
@@ -703,8 +702,3 @@ end module obs_def_ocean_mod
 ! END DART PREPROCESS MODULE CODE
 !-----------------------------------------------------------------------------
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

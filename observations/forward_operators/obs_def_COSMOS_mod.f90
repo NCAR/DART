@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 !----------------------------------------------------------------------
 ! This module provides support for observations from COSMOS.
@@ -28,9 +27,9 @@
 !    4.0000000000000000
 !----------------------------------------------------------------------
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! COSMOS_NEUTRON_INTENSITY,    QTY_NEUTRON_INTENSITY
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -795,8 +794,3 @@ end module obs_def_COSMOS_mod
 
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

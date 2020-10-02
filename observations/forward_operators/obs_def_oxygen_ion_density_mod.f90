@@ -8,14 +8,14 @@
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! DENSITY_ION_E,               QTY_DENSITY_ION_E
 ! MOLEC_OXYGEN_MIXING_RATIO,   QTY_MOLEC_OXYGEN_MIXING_RATIO
 ! ATOMIC_OXYGEN_MIXING_RATIO,  QTY_ATOMIC_OXYGEN_MIXING_RATIO
 ! DENSITY_ION_OP,              QTY_DENSITY_ION_OP
 ! ION_O_MIXING_RATIO,          QTY_ION_O_MIXING_RATIO
 ! ATOMIC_H_MIXING_RATIO,       QTY_ATOMIC_H_MIXING_RATIO
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 !-----------------------------------------------------------------------------
                              
 !-----------------------------------------------------------------------------

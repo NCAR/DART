@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 !----------------------------------------------------------------------
 !> Utilities that can be used by any of the obs_def_xxx_mods.
