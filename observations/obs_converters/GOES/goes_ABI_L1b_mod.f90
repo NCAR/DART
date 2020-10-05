@@ -20,7 +20,7 @@ use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              obs_type, set_copy_meta_data, set_qc_meta_data
 
 use     location_mod, only : location_type, set_location, VERTISUNDEF, &
-                             get_location
+                             VERTISPRESSURE, get_location
 
 use     obs_kind_mod,  only : get_index_for_type_of_obs
 
@@ -240,7 +240,7 @@ end subroutine goes_load_ABI_map
 
 subroutine make_obs_sequence (seq, map, lon1, lon2, lat1, lat2, &
                               x_thin, y_thin, goes_num, reject_dqf_1, &
-                              obs_err_spec)
+                              obs_err_spec, vloc_pres_hPa)
 
 type(obs_sequence_type),    intent(inout) :: seq
 type(goes_abi_map_type),    intent(in)    :: map
@@ -249,6 +249,7 @@ integer,                    intent(in)    :: x_thin, y_thin
 integer,                    intent(in)    :: goes_num
 logical,                    intent(in)    :: reject_dqf_1
 real(r8),                   intent(in)    :: obs_err_spec
+real(r8),                   intent(in)    :: vloc_pres_hPa
 
 type(obs_type)          :: obs, prev_obs
 
@@ -338,7 +339,11 @@ sensor_id   = 44  ! ABI
 !  loop over all observations within the file
 
 obs_num = 1
-which_vert = VERTISUNDEF
+if (vloc_pres_hPa < 0.0_r8) then
+    which_vert = VERTISUNDEF
+else
+    which_vert = VERTISPRESSURE
+end if
 
 ! assign each observation the correct observation type
 robstype = get_index_for_type_of_obs(obs_type_name)
@@ -435,8 +440,14 @@ xloop: do ix=1,map%nx
       ! TODO: specify this as a function of channel
       obs_err = obs_err_spec
 
-      ! column integrated value, so no vertical location
-      vloc = 0.0_r8
+      if (vloc_pres_hPa < 0.0_r8) then
+          ! disable pressure location, use VERTISUNDEF, so no single vertical location
+          vloc = 0.0_r8
+      else
+          ! assign the integrated column a vertical location
+          ! can correspond to the height of the peak of the weighting function
+          vloc = vloc_pres_hPa*100._r8 ! convert from hPa to Pa
+      end if
 
       ! We don't yet have specularity data to add to the observations.
       if (get_rttov_option_logical('do_lambertian')) then

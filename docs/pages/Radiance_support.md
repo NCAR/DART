@@ -1,11 +1,14 @@
-This document is a mini-README for DART's support for satellite radiance
+
+## Introduction to DART's support for RTTOV
+
+This document serves as an orientation for DART's support for satellite radiance
 assimilation. At the current time, only ECMWF's RTTOV radiative transfer
 model is supported.
 
-1. Introduction to DART's support for RTTOV
-
-DART now includes the ability to use the RTTOV forward operators for satellite
-radiance assimilation.
+DART now includes the ability to use the RTTOV forward operators for 
+satellite radiance assimilation. This is a new capability for DART, 
+please submit issues with the 
+[DART Issues](https://github.com/NCAR/DART/issues) facility.
 
 Note that DART support for RTTOV does not mean that all issues regarding satellite
 data assimilation with an ensemble system have been solved. Rather, the DART team
@@ -44,7 +47,7 @@ Beyond these fields, there are many other optional fields (such as clouds, trace
 aerosols) that can be specified. See the obs_def_rttov_mod.html page in the
 observations/forward_operators directory for a complete list of values.
 
-2. Setting up DART+RTTOV
+### Setting up DART+RTTOV
 
 The RTTOV code and coefficients can be downloaded from this page:
 
@@ -55,6 +58,10 @@ You will need to register for a free account before downloading the code.
 You should read the RTTOV user guide carefully as DART primarily acts as a
 pass through. Refer to the setup instructions included with the RTTOV
 documentation.
+
+It may also be useful to refer to:
+
+https://github.com/NCAR/DART/wiki/Getting-Started-with-DART-RTTOV
 
 Once you have successfully installed RTTOV, you should customize the
 mkmf.template.rttov.gfortran file to your own build system, possibly referring
@@ -97,7 +104,7 @@ Note that some of the observation converters may require the HDF-EOS libraries.
 See the BUILDME script in each directory for help in building these
 observation converters.
 
-3. Current list of known issues
+### Current list of known issues
 
 DART support for satellite radiances cannot be considered 100% complete. The following
 details the known issues that are being considered with DART's support for

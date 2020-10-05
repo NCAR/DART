@@ -3,8 +3,14 @@ The following files are copied from GSI/enkf without modifications
    constants.f90
    kinds.F90
    read_diag.f90
+   mpi_readobs.f90
+
+The following have had their open statements modified to always read big_endian files:
+
    readconvobs.f90
    readozobs.f90
    readsatobs.f90
-   mpi_readobs.f90
+
+original : open(iunit,form="unformatted",file=obsfile,iostat=ios)
+modified : open(iunit,form="unformatted",file=obsfile,iostat=ios,convert='BIG_ENDIAN')
 
