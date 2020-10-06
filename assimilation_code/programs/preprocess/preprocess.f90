@@ -1095,6 +1095,9 @@ integer :: i
 character(len=256) :: darthome
 integer            :: varlength
 integer            :: istat
+character(len=*),parameter :: all_quantities_fname = &
+                              '/assimilation_code/modules/observations/all_quantities_mod.f90'
+integer            :: pathpart2 = len(all_quantities_fname)
 
 ! copy over the older named entries to the new names if the new name
 ! was not found/set by reading the namelist.
@@ -1131,13 +1134,15 @@ if (quantity_files(1) == '_new_nml_item_') then
    ! determine the location of the all_quantities_mod.f90 
    ! Since preprocess is run from multiple 'depths' of directories, providing a
    ! single relative path cannot work. This can be mitigated by setting
-   ! an environment variable named 'DART'
+   ! an environment variable named 'DARTHOME'
+   ! @todo FIXME ... better error message if DARTHOME is super long and wont fit
 
-   call get_environment_variable('DART',darthome,varlength,istat)
-   if (istat == 0 .and. varlength > 0 .and. varlength <= len(darthome)) then
-      write(quantity_files(1),'(A,''/assimilation_code/modules/observations/all_quantities_mod.f90'')')trim(darthome)
+   call get_environment_variable('DARTHOME',darthome,varlength,istat)
+   if (istat == 0 .and. varlength > 0 .and. varlength+pathpart2 <= len(quantity_files(1))) then
+      write(quantity_files(1),'(A)') trim(darthome)//all_quantities_fname
    else
-      quantity_files(1) = '../../../assimilation_code/modules/observations/all_quantities_mod.f90'
+      ! provide a default that works for models/XXXX/work 
+      write(quantity_files(1),'(A)') '../../..'//all_quantities_fname
    endif
 endif
 

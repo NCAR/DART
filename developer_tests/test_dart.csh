@@ -44,7 +44,7 @@
 #PBS -A P86850054 
 #PBS -j oe
 #PBS -k eod
-#PBS -m ae
+#PBS -m abe
 #
 # for mpi tests:
 #PBS -q regular 
@@ -69,6 +69,11 @@ if ( $#argv > 0 ) then
     echo " default is to run tests using MPI."
     exit -1
   endif
+endif
+
+if (! $?DART) then
+  echo "the environment variable 'DART' must be set to the "
+  exit 1
 endif
 
 # set any batch system specific items here
@@ -101,7 +106,7 @@ endif
 # cd to the top level DART directory and 
 # record where we are running this script
 cd ..
-set DARTHOME = `pwd`
+setenv DARTHOME `pwd`
 
 if ( ! $?host) then
    setenv host `uname -n`
