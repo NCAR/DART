@@ -160,6 +160,7 @@ integer, parameter   :: max_obs_type_files = 1000
 integer, parameter   :: max_quantity_files = 1000
 logical :: file_has_usercode(max_obs_type_files) = .false.
 
+
 integer, parameter :: NML_STRLEN = 256
 
 ! The namelist reads in a sequence of path_names that are absolute or
@@ -1090,6 +1091,11 @@ subroutine ensure_backwards_compatibility()
 
 integer :: i
 
+! variables needed to determine location of all_quantities_mod.f90
+character(len=256) :: darthome
+integer            :: varlength
+integer            :: istat
+
 ! copy over the older named entries to the new names if the new name
 ! was not found/set by reading the namelist.
 
@@ -1121,7 +1127,18 @@ enddo
 ! set all entries to null then set the first one to the single default file.
 if (quantity_files(1) == '_new_nml_item_') then
    quantity_files(:) = 'null'
-   quantity_files(1) = '../../../assimilation_code/modules/observations/all_quantities_mod.f90'
+
+   ! determine the location of the all_quantities_mod.f90 
+   ! Since preprocess is run from multiple 'depths' of directories, providing a
+   ! single relative path cannot work. This can be mitigated by setting
+   ! an environment variable named 'DART'
+
+   call get_environment_variable('DART',darthome,varlength,istat)
+   if (istat == 0 .and. varlength > 0 .and. varlength <= len(darthome)) then
+      write(quantity_files(1),'(A,''/assimilation_code/modules/observations/all_quantities_mod.f90'')')trim(darthome)
+   else
+      quantity_files(1) = '../../../assimilation_code/modules/observations/all_quantities_mod.f90'
+   endif
 endif
 
 ! since we changed the defaults, fix up if caller did specify 
