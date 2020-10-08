@@ -244,6 +244,11 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
       ${REMOVE} *.o *.mod
       ${REMOVE} Makefile input.nml.*_default .cppdefs
 
+      # @todo FIXME ... can skip running preprocess at this point, SHOULD run the
+      # observation converter programs (whatever name) BEFORE running obs_sequence_tool
+      # as it is, the obs_sequence_tool is failing because the obs_seq.out has not
+      # been created yet.
+
       foreach TARGET ( mkmf_* )
          set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
