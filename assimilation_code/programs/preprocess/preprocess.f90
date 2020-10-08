@@ -62,7 +62,7 @@ integer              :: linenum1, linenum2, linenum3, linenum4
 integer              :: num_types_found, num_qtys_found
 logical              :: duplicate, qty_found, temp_user, is_more, match
 character(len = 256) :: valtokens(max_qtys)
-character(len = 512) :: err_string
+character(len = 512) :: err_string, err_string2, err_string3
 character(len = 6)   :: full_line_in  = '(A256)'
 character(len = 3)   :: full_line_out = '(A)'
 
@@ -800,7 +800,6 @@ character(len=*), intent(in), optional :: alt_stop_string
 
 integer :: ierr
 character(len=256) :: line   ! this should match the format length
-character(len=512) :: err_string2
 
 ! Read until the given string is found
 FIND_NEXT: do
@@ -1091,14 +1090,6 @@ subroutine ensure_backwards_compatibility()
 
 integer :: i
 
-! variables needed to determine location of all_quantities_mod.f90
-character(len=256) :: darthome
-integer            :: varlength
-integer            :: istat
-character(len=*),parameter :: all_quantities_fname = &
-                              '/assimilation_code/modules/observations/all_quantities_mod.f90'
-integer            :: pathpart2 = len(all_quantities_fname)
-
 ! copy over the older named entries to the new names if the new name
 ! was not found/set by reading the namelist.
 
@@ -1130,20 +1121,7 @@ enddo
 ! set all entries to null then set the first one to the single default file.
 if (quantity_files(1) == '_new_nml_item_') then
    quantity_files(:) = 'null'
-
-   ! determine the location of the all_quantities_mod.f90 
-   ! Since preprocess is run from multiple 'depths' of directories, providing a
-   ! single relative path cannot work. This can be mitigated by setting
-   ! an environment variable named 'DARTHOME'
-   ! @todo FIXME ... better error message if DARTHOME is super long and wont fit
-
-   call get_environment_variable('DARTHOME',darthome,varlength,istat)
-   if (istat == 0 .and. varlength > 0 .and. varlength+pathpart2 <= len(quantity_files(1))) then
-      write(quantity_files(1),'(A)') trim(darthome)//all_quantities_fname
-   else
-      ! provide a default that works for models/XXXX/work 
-      write(quantity_files(1),'(A)') '../../..'//all_quantities_fname
-   endif
+   quantity_files(1) = default_quantity_file()
 endif
 
 ! since we changed the defaults, fix up if caller did specify 
@@ -1171,6 +1149,42 @@ subroutine write_blank_line(unitnum)
 write(unitnum, '(A)') blank_line
 
 end subroutine write_blank_line
+
+!------------------------------------------------------------------------------
+!> Determine the location of the file providing backwards-compatible behavior
+!> if people do not supply a specific xxx_quantities_mod.f90
+!> This happens if they do not specify a preprocess_nml:quantity_files entry. 
+
+function default_quantity_file 
+character(len=256) :: default_quantity_file
+
+integer            :: i
+character(len=256) :: all_quantities_fname = &
+               'assimilation_code/modules/observations/all_quantities_mod.f90'
+
+default_quantity_file = all_quantities_fname
+
+ITERATE : do i = 1,10
+
+   ! RETURN early if the filename exists
+   if ( file_exist(default_quantity_file) ) return
+
+   ! Check to see if the candidate name will fit.
+   if (len_trim(default_quantity_file) < 256-4) then
+      write(default_quantity_file,'(''../'',A)') trim(default_quantity_file)
+   else
+      exit ITERATE
+   endif
+
+enddo ITERATE
+
+write(err_string ,*)'Unable to determine location of default quantity module.'
+write(err_string2,*)'checked up through "'//trim(default_quantity_file)//'"'
+write(err_string3,*)'Provide your own through preprocess_nml:quantity_files'
+call error_handler(E_ERR, 'preprocess:default_quantity_file', err_string, &
+           text2=err_string2, text3=err_string3)
+
+end function default_quantity_file
 
 !------------------------------------------------------------------------------
 
