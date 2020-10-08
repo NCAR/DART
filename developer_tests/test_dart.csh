@@ -71,11 +71,6 @@ if ( $#argv > 0 ) then
   endif
 endif
 
-if (! $?DART) then
-  echo "the environment variable 'DART' must be set to the "
-  exit 1
-endif
-
 # set any batch system specific items here
 if ($?SLURM_JOB_ID) then
   # e.g. casper
@@ -106,7 +101,7 @@ endif
 # cd to the top level DART directory and 
 # record where we are running this script
 cd ..
-setenv DARTHOME `pwd`
+set DARTHOME = `pwd`
 
 if ( ! $?host) then
    setenv host `uname -n`
