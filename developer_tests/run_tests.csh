@@ -122,7 +122,7 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     if ( $FAILURE ) then
       echo "------------------------------------------------------------------"
-      echo "ERROR - unsuccessful build in $TESTDIR"
+      echo "ERROR - unsuccessful build in $TESTDIR at "`date`
       echo "------------------------------------------------------------------"
       cd $TOPDIR
       continue
@@ -147,7 +147,7 @@ foreach TESTFILE ( $HAS_TESTS )
            endif
          
            if ( $FAILURE ) then
-              echo "ERROR - unsuccessful run of $PROG"
+              echo "ERROR - unsuccessful run of $PROG at "`date`
 
               switch ( $PROG )
                  case stacktest
@@ -204,6 +204,12 @@ echo "=================================================================="
 set FAILURE = 0
 
 ( ./run_tests.csh > ${LOGDIR}/location_tests.out ) || set FAILURE = 1
+
+if ( $FAILURE ) then
+  echo "------------------------------------------------------------------"
+  echo "ERROR - unsuccessful location tests at "`date`
+  echo "------------------------------------------------------------------"
+endif
 
 echo
 echo
