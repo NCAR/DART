@@ -250,6 +250,9 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
       # been created yet.
 
       foreach TARGET ( mkmf_* )
+
+         if ( $TARGET == "mkmf_preprocess" && (-e preprocess)) goto skip
+
          set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
          echo "Running $PROG"
@@ -291,6 +294,8 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
             echo "Successful run of $PROG"
             ${REMOVE} $PROG
          endif
+
+      skip:
       end
 
       echo
