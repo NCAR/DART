@@ -3148,6 +3148,12 @@ function generate_seed(timestamp)
 ! expected to be used to seed a random number generator in a way
 ! that you can reproduce the same sequence if seeded again from
 ! the same time value.
+!
+! the return value needs to be an i4 since seeds are only i4. 
+! compute total number of seconds using a double integer (i8) and 
+! return the least significant 32 bits.  a simple assignment could
+! overflow an i4, and the seed needs to be as unique as possible
+! so preserving the least significant digits is the better choice.
 
 type(time_type), intent(in) :: timestamp
 integer                     :: generate_seed

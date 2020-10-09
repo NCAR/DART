@@ -4,6 +4,69 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# At present, the GSI2DART converter MUST be compiled with MPI,
+# and we need to get the mpi_launch_command to run it.
+# Consequently, I am making the interface to this script look similar
+# to the developer_tests/run_tests.csh, which is a bit of overkill.
+# The mkmf_gsi_to_dart compiles with MPI even without the -mpi flag,
+# but I don't want to pass the -mpi flag to all the quickbuild.csh
+# scripts in the obs_converters directory ...
+#
+# usage: [ -mpi | -nompi ] [ -mpicmd name_of_mpi_launch_command ]
+#
+#----------------------------------------------------------------------
+
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
+set nonomatch
+
+set usingmpi=no
+set MPICMD=""
+
+if ( $#argv > 0 ) then
+  if ( "$argv[1]" == "-mpi" ) then
+    set usingmpi=yes
+  else if ( "$argv[1]" == "-nompi" ) then
+    set usingmpi=no
+  else
+    echo "Unrecognized argument to $0: $argv[1]"
+    echo "Usage: $0 [ -mpi | -nompi ]  [ -mpicmd name_of_mpi_launch_command ]"
+    echo " default is to run tests without MPI"
+    exit -1
+  endif
+  shift
+endif
+
+if ( $#argv > 1 ) then
+  if ( "$argv[1]" == "-mpicmd" ) then
+    set MPICMD = "$argv[2]"
+  else
+    echo "Unrecognized argument to $0: $argv[1]"
+    echo "Usage: $0 [ -mpi | -nompi ]  [ -mpicmd name_of_mpi_launch_command ]"
+    echo " default is to run tests without MPI"
+    exit -1
+  endif
+  shift
+endif
+
+# set the environment variable MPI to anything in order to enable the
+# MPI builds and tests.  set the argument to the build scripts so it
+# knows which ones to build.
+if ( "$usingmpi" == "yes" ) then
+  echo "Building with MPI support."
+  set QUICKBUILD_ARG='-mpi'
+  if ( ! $?MPICMD) then
+    set MPICMD='mpirun -n 2'
+  endif
+  echo "MPI programs will be started with: $MPICMD"
+else if ( "$usingmpi" == "no" ) then
+  echo "Building WITHOUT MPI support."
+  set QUICKBUILD_ARG='-nompi'
+  set MPICMD=""
+else
+  echo "Internal error: unrecognized value of usingmpi; should not happen"
+  exit -1
+endif
 
 if ( ! $?REMOVE) then
    setenv REMOVE 'rm -f'
@@ -29,20 +92,18 @@ echo "Start of observation converter tests at "`date`
 echo "=================================================================="
 echo 
 echo 
+echo "Running observation converter tests on $host"
 
-set nonomatch
 set startdir=`pwd`
 set LOGDIR=${startdir}/testing_logs
-
 mkdir -p ${LOGDIR}
 ${REMOVE} ${LOGDIR}/*
 echo "build and run logs are in: $LOGDIR"
 
 echo 
-echo 
-echo "=================================================================="
-echo "Compiling NCEP BUFR libs starting at "`date`
-echo "=================================================================="
+echo "------------------------------------------------------------------"
+echo "Building NCEP BUFR libs starting at "`date`
+echo "------------------------------------------------------------------"
 echo 
 echo 
 
@@ -92,14 +153,14 @@ set FAILURE = 0
 
 echo 
 echo 
-echo "=================================================================="
+echo "------------------------------------------------------------------"
 echo "Build of NCEP BUFR libs ended at "`date`
 if ( $FAILURE ) then
       echo 
       echo "ERROR - build was unsuccessful"
       echo 
 endif
-echo "=================================================================="
+echo "------------------------------------------------------------------"
 echo 
 echo 
 
@@ -117,9 +178,9 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
 
    echo 
    echo 
-   echo "=================================================================="
-   echo "Compiling obs converter $project starting at "`date`
-   echo "=================================================================="
+   echo "------------------------------------------------------------------"
+   echo "Testing obs converter $project starting at "`date`
+   echo "------------------------------------------------------------------"
    echo 
    echo 
 
@@ -193,12 +254,34 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
          # if we miss any programs which need input and we don't have a .in file, have it
          # read from /dev/null so it errors out and doesn't just sit there waiting for input
          if ( -f ../work/${PROG}.in ) then
-           ( ./$PROG < ../work/${PROG}.in > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
+
+           if ( -f using_mpi_for_$PROG ) then
+              ( ${MPICMD} ./$PROG < ../work/${PROG}.in > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
+           else
+              (           ./$PROG < ../work/${PROG}.in > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
+           endif
+
          else
-           ( ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
+
+           if ( -f using_mpi_for_$PROG ) then
+              ( ${MPICMD} ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
+           else
+              (           ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.${PROG}.out ) || set FAILURE = 1
+           endif
          endif
          if ( $FAILURE ) then
-            echo "ERROR - unsuccessful run of $PROG"
+
+            switch ( $PROG )
+               case gsi_to_dart
+                  echo "gsi_to_dart is expected to fail with MPI errors"
+                  echo "(because there are no input files)."
+               breaksw
+                  
+               default
+                  echo "ERROR - unsuccessful run of $PROG"
+               breaksw
+            endsw
+
          else
             echo "Successful run of $PROG"
             ${REMOVE} $PROG
@@ -213,7 +296,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
    ${MOVE} ${SAVEDIR}/* .
    ${REMOVE_DIR} ${SAVEDIR}
 
-   echo "=================================================================="
+   echo "------------------------------------------------------------------"
    echo
    echo
   

@@ -114,6 +114,11 @@ echo "The top-level DART directory is $DARTHOME"
 
 git status -uno
 
+# maybe report on the environment 
+which module
+if ($status == 0) then
+   module list
+endif
 
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
@@ -169,7 +174,7 @@ echo "are not fatal."
 
 cd ${DARTHOME}/observations/obs_converters
 
-./run_tests.csh
+./run_tests.csh $MPIFLAG -mpicmd "$MPICMD"
 
 echo
 echo

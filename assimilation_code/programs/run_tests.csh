@@ -10,10 +10,12 @@
 #
 #----------------------------------------------------------------------
 
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
 set nonomatch
+
 set usingmpi=no
 set MPICMD=""
-set LOGDIR=`pwd`/testing_logs
 
 if ( $#argv > 0 ) then
   if ( "$argv[1]" == "-mpi" ) then
@@ -79,11 +81,21 @@ if ( ! $?host) then
    setenv host `uname -n`
 endif
 
+echo
+echo
+echo "=================================================================="
+echo "Starting tests of DART programs at "`date`
+echo "=================================================================="
+echo
+echo
 echo "Running DART programs test on $host"
 
-#----------------------------------------------------------------------
-
 set PARENTDIR = `pwd`
+
+set LOGDIR=`pwd`/testing_logs
+mkdir -p $LOGDIR
+\rm -f $LOGDIR/*
+echo "build and run logs are in: $LOGDIR"
 
 # set the list of programs to include here
 
@@ -123,28 +135,15 @@ set DO_THESE_DIRECTORIES = ( \
 # Compile all executables for each directory.
 #----------------------------------------------------------------------
 
-echo
-echo
-echo "=================================================================="
-echo "Starting tests of dart programs at "`date`
-echo "=================================================================="
-echo
-echo
-
-mkdir -p $LOGDIR
-\rm -f $LOGDIR/*
-echo "build and run logs are in: $LOGDIR"
-
-
 @ counter = 0
 
 foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES ) 
     
     echo
     echo
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo "Compiling $PROGRAMDIRECTORY starting at "`date`
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo
     echo
 
@@ -159,7 +158,7 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
     echo
     echo
     if ( $FAILURE ) then
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       echo "ERROR - unsuccessful build of $PROGRAMDIRECTORY"
       switch ( $PROGRAMDIRECTORY )
          case system_simulation
@@ -172,14 +171,14 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
             echo "unexpected error"
          breaksw
       endsw
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       echo
       echo
       continue
     else
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       echo "End of successful build of $PROGRAMDIRECTORY"
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       echo
       echo
 
@@ -235,7 +234,7 @@ echo
 echo
 echo
 echo "=================================================================="
-echo "Ending tests of dart programs at "`date`
+echo "End of DART program tests at "`date`
 echo "=================================================================="
 echo
 echo

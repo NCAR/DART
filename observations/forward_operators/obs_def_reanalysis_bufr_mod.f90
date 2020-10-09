@@ -1,7 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
 
 ! !!! Note about Specific Humidity observations:
 ! !!! UNITS in original BUFR are g/kg; This is converted to kg/kg by
@@ -45,5 +44,9 @@
 !AIRS_TEMPERATURE,             QTY_TEMPERATURE,          COMMON_CODE
 !AIRS_SPECIFIC_HUMIDITY,       QTY_SPECIFIC_HUMIDITY,    COMMON_CODE
 !GPS_PRECIPITABLE_WATER,       QTY_PRECIPITABLE_WATER,   COMMON_CODE
+!VADWND_U_WIND_COMPONENT,      QTY_U_WIND_COMPONENT,     COMMON_CODE
+!VADWND_V_WIND_COMPONENT,      QTY_V_WIND_COMPONENT,     COMMON_CODE
+!CIMMS_AMV_U_WIND_COMPONENT,   QTY_U_WIND_COMPONENT,     COMMON_CODE
+!CIMMS_AMV_V_WIND_COMPONENT,   QTY_V_WIND_COMPONENT,     COMMON_CODE
 ! END DART PREPROCESS TYPE DEFINITIONS
 
