@@ -62,7 +62,7 @@ integer              :: linenum1, linenum2, linenum3, linenum4
 integer              :: num_types_found, num_qtys_found
 logical              :: duplicate, qty_found, temp_user, is_more, match
 character(len = 256) :: valtokens(max_qtys)
-character(len = 512) :: err_string
+character(len = 512) :: err_string, err_string2, err_string3
 character(len = 6)   :: full_line_in  = '(A256)'
 character(len = 3)   :: full_line_out = '(A)'
 
@@ -159,6 +159,7 @@ integer :: obs_qty_in_unit, obs_qty_out_unit, in_unit
 integer, parameter   :: max_obs_type_files = 1000
 integer, parameter   :: max_quantity_files = 1000
 logical :: file_has_usercode(max_obs_type_files) = .false.
+
 
 integer, parameter :: NML_STRLEN = 256
 
@@ -799,7 +800,6 @@ character(len=*), intent(in), optional :: alt_stop_string
 
 integer :: ierr
 character(len=256) :: line   ! this should match the format length
-character(len=512) :: err_string2
 
 ! Read until the given string is found
 FIND_NEXT: do
@@ -1121,7 +1121,7 @@ enddo
 ! set all entries to null then set the first one to the single default file.
 if (quantity_files(1) == '_new_nml_item_') then
    quantity_files(:) = 'null'
-   quantity_files(1) = '../../../assimilation_code/modules/observations/all_quantities_mod.f90'
+   quantity_files(1) = default_quantity_file()
 endif
 
 ! since we changed the defaults, fix up if caller did specify 
@@ -1149,6 +1149,42 @@ subroutine write_blank_line(unitnum)
 write(unitnum, '(A)') blank_line
 
 end subroutine write_blank_line
+
+!------------------------------------------------------------------------------
+!> Determine the location of the file providing backwards-compatible behavior
+!> if people do not supply a specific xxx_quantities_mod.f90
+!> This happens if they do not specify a preprocess_nml:quantity_files entry. 
+
+function default_quantity_file 
+character(len=256) :: default_quantity_file
+
+integer            :: i
+character(len=256) :: all_quantities_fname = &
+               'assimilation_code/modules/observations/all_quantities_mod.f90'
+
+default_quantity_file = all_quantities_fname
+
+ITERATE : do i = 1,10
+
+   ! RETURN early if the filename exists
+   if ( file_exist(default_quantity_file) ) return
+
+   ! Check to see if the candidate name will fit.
+   if (len_trim(default_quantity_file) < 256-4) then
+      write(default_quantity_file,'(''../'',A)') trim(default_quantity_file)
+   else
+      exit ITERATE
+   endif
+
+enddo ITERATE
+
+write(err_string ,*)'Unable to determine location of default quantity module.'
+write(err_string2,*)'checked up through "'//trim(default_quantity_file)//'"'
+write(err_string3,*)'Provide your own through preprocess_nml:quantity_files'
+call error_handler(E_ERR, 'preprocess:default_quantity_file', err_string, &
+           text2=err_string2, text3=err_string3)
+
+end function default_quantity_file
 
 !------------------------------------------------------------------------------
 
