@@ -8,7 +8,7 @@
  /
 
 &dwl_to_obs_nml
-   text_input_file = 'dwldata.input'
+   text_input_file = '../data/text_input_file'
    obs_out_file    = 'obs_seq.out' 
    max_obs         = 100000
    add_obs_data    = .true.

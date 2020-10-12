@@ -42,12 +42,12 @@
    /
 
 &obs_sequence_tool_nml
-   filename_seq         = 'Austin_Cary.obs_seq.out', 'SantaRita.obs_seq.out',
-   filename_out         = 'obs_seq.combined',
-   filename_seq_list    = '',
-   first_obs_days       = -1,
-   first_obs_seconds    = -1,
-   last_obs_days        = -1,
+   filename_seq         = 'SantaRita.obs_seq.out'
+   filename_out         = 'obs_seq.combined'
+   filename_seq_list    = ''
+   first_obs_days       = -1
+   first_obs_seconds    = -1
+   last_obs_days        = -1
    last_obs_seconds     = -1 
    /
 
