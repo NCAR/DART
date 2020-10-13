@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 !> Define the observation types and obs/state quantities understood by DART.
 !>
@@ -288,7 +287,8 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
       test = adjustl(line)
       if(test == qty_enddefn_string) exit DEFINE_QTYS
       if(test == knd_enddefn_string) then
-         ! FIXME: here is where you could print out a 'deprecated' warning
+         ! @todo FIXME: after some adjustment time, here is 
+         ! where you would print out a 'deprecated' warning
          ! if the alternate delimiter form is encountered.
          exit DEFINE_QTYS
       endif
@@ -330,38 +330,8 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
       qtys: do i=0, num_qtys_found-1
          if (qty_info(i)%name == token(1)) then
             duplicate = .true.
-            ! @todo FIXME test dups here for identity in all other fields
-            ! ok, if existing name found, can easily verify value is same.
-            ! what about new names?  add them?  error out?  
-            ! something like:
-            ! i is entry index that matches this new line
-            ! but metadata items could be in a different order, so have to
-            ! loop over each item and search the existing pairs
-            tokens: do l=2, ntokens
-               match = .false.
-               do k=1, qty_info(i)%num_nameval_pairs 
-                  if (qty_info(i)%namepair(k) /= token(l)) cycle tokens
-                  ! now i = qty index, l=new token index, k = existing token index
-                  if (qty_info(i)%valpair(k) /= valtokens(l)) then
-                     print *, 'duplicate token name with different value found'
-                     print *, i, l, k, trim(qty_info(i)%valpair(k)), ' /= ', trim(valtokens(l))
-                     !error out with helpful message about what was already
-                     !found vs what is here on this line.
-                  endif
-                  match = .true.
-               enddo
-               if (match) cycle tokens
-               print *, 'new token found here that was not in previous definition'
-               print *, i, l, trim(token(l))//"="//trim(valtokens(l))
-               ! if no match, what? error OR  add here?
-               print *, 'for now, adding to definition'
-               print *, i, j, k, l, trim(qty_info(i)%name), ' ', trim(token(l))//"="//trim(valtokens(l))
-               k = qty_info(i)%num_nameval_pairs + 1
-               qty_info(i)%num_nameval_pairs = k
-               qty_info(i)%namepair(k) = token(l)
-               qty_info(i)%valpair(k) = valtokens(l)
-            enddo tokens
-            exit
+            call resolve_duplicates(i, ntokens, token, valtokens, quantity_files(j), linenum2) 
+            exit qtys
          endif
       enddo qtys
    
@@ -985,6 +955,24 @@ end subroutine cannot_be_null
 
 !------------------------------------------------------------------------------
 
+subroutine write_separator_line(unitnum)
+ integer, intent(in) :: unitnum
+
+write(unitnum, '(A)') separator_line
+
+end subroutine write_separator_line
+
+!------------------------------------------------------------------------------
+
+subroutine write_blank_line(unitnum)
+ integer, intent(in) :: unitnum
+
+write(unitnum, '(A)') blank_line
+
+end subroutine write_blank_line
+
+!------------------------------------------------------------------------------
+
 ! can this be common for qtys & types?  maybe...
 ! ntokens < 0 means error
 ! ntokens == 0 means cycle without error
@@ -1084,7 +1072,141 @@ endif
 end subroutine parse_line
 
 !------------------------------------------------------------------------------
+
+! this routine must resolve what happens if another entry for the same
+! quantity is encountered.  its choices are: to fatally error out, to add
+! a metadata name=val pair to the existing entry, print a warning,
+! allow a duplicate if the new entry is a subset of the old -- see the
+! comments in the code for what each section is doing in case someone
+! wants to change the behavior, add printed warnings, etc.
+
+subroutine resolve_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
+ integer, intent(in) :: qty_indx
+ integer, intent(in) :: ntokens
+ character(len=*), intent(in) :: tname(MAX_TOKENS)
+ character(len=*), intent(in) :: tval(MAX_TOKENS)
+ character(len=*), intent(in) :: infile
+ integer, intent(in) :: linenum
+ 
+integer :: k, l
+logical :: match(MAX_TOKENS)
+
+! two checks needed here.
+!
+! one is to find all existing entries in the new list and make
+! sure the values match.  also track which ones we've found, so we
+! can flag missing entries.
+!
+! two is looking for new entries which aren't in the existing list.
+! make it easy to see where to change the behavior if someone
+! decides that should be ok.  for now, it is an error.
+! 
+! in both cases, metadata items could be in a different order
+! which is not an error.
+
+tokens: do l=2, ntokens
+   match(:) = .false.
+   do k=1, qty_info(qty_indx)%num_nameval_pairs 
+      if (qty_info(qty_indx)%namepair(k) /= tname(l)) cycle tokens
+
+      ! l=new token index, k = existing token index
+      if (qty_info(qty_indx)%valpair(k) /= tval(l)) then
+         !print *, 'duplicate token name with different value found'
+         !print *, trim(qty_info(qty_indx)%name), ' ', trim(qty_info(qty_indx)%valpair(k)), ' /= ', trim(tval(l))
+         call incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
+      endif
+      match(l) = .true.
+   enddo
+   if (match(l)) cycle tokens
+
+   ! we have found a new token.  for now, we aren't allowing this.
+   ! if you want to add it, comment in the code below
+   call incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
+
+! here is the code if you wanted to combine new metadata items from
+! different occurrances of the same QTY line.
+
+   !print *, 'adding to definition:'
+   !print *, trim(qty_info(qty_indx)%name), ' ', trim(tname(l))//"="//trim(tval(l))
+   !k = qty_info(qty_indx)%num_nameval_pairs + 1
+   !qty_info(qty_indx)%num_nameval_pairs = k
+   !qty_info(qty_indx)%namepair(k) = tname(l)
+   !qty_info(qty_indx)%valpair(k) = tval(l)
+enddo tokens
+
+! if we get here and all tokens haven't been matched, error out.
+! comment this section out if you want to allow this instead.
+
+l = qty_info(qty_indx)%num_nameval_pairs
+if (.not. all(match(1:l))) &
+   call incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
+
+end subroutine resolve_duplicates
+
+!------------------------------------------------------------------------------
+
+! we have decided these don't match.  give the user help figuring out why.
+! this routine currently errors out with a fatal error, so does not return.
+
+subroutine incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
+ integer, intent(in) :: qty_indx
+ integer, intent(in) :: ntokens
+ character(len=*), intent(in) :: tname(MAX_TOKENS)
+ character(len=*), intent(in) :: tval(MAX_TOKENS)
+ character(len=*), intent(in) :: infile
+ integer, intent(in) :: linenum
+
+integer :: i, j
+character(len=*), parameter :: routine = 'incompatible_duplicates'
+character(len=1) :: empty = ''
+
+! get existing entry from qty_info(qty_indx)
+! get new info from ntokens, tname=tval
+! print infile, linenum for newer duplicate - we don't have
+! the original entry info anymore
+
+call error_handler(E_MSG, empty, empty)
+call error_handler(E_MSG, empty, ' incompatible duplicate entry detected')
+
+if (qty_info(qty_indx)%num_nameval_pairs == 0) then
+   write(err_string, *) 'existing entry for '//trim(qty_info(qty_indx)%name)//' has no metadata'
+   call error_handler(E_MSG, empty, err_string)
+else
+   write(err_string, *) 'existing entry for '//trim(qty_info(qty_indx)%name)//' has this metadata:'
+   call error_handler(E_MSG, empty, err_string)
+   do i=1, qty_info(qty_indx)%num_nameval_pairs 
+      write(err_string, *) i, " "//trim(qty_info(qty_indx)%namepair(i))//"="//trim(qty_info(qty_indx)%valpair(i))
+      call error_handler(E_MSG, empty, err_string)
+   enddo
+endif
+
+call error_handler(E_MSG, empty, empty)
+
+write(err_string, *) 'in file '//trim(infile)//' at line number ', linenum
+call error_handler(E_MSG, empty, err_string)
+
+if (ntokens <= 1) then
+   write(err_string, *) 'duplicate entry for '//trim(token(1))// ' has no metadata'
+   call error_handler(E_MSG, empty, err_string)
+else
+   write(err_string, *) 'duplicate entry for '//trim(token(1))// ' has this metadata:'
+   call error_handler(E_MSG, empty, err_string)
+   do i=2, ntokens
+      ! token 1 is the qty name.  
+      write(err_string, *) i-1, " "//trim(tname(i))//"="//trim(tval(i))
+      call error_handler(E_MSG, empty, err_string)
+   enddo
+endif
+
+call error_handler(E_ERR, routine, 'resolve entries to proceed')
+
+end subroutine incompatible_duplicates
+
+!------------------------------------------------------------------------------
+
 ! mess with the namelist entries to remain backwards compatible.
+! after some adjustment time, start warning about deprecated names
+! and eventually error out and remove this subroutine.
 
 subroutine ensure_backwards_compatibility()
 
@@ -1134,55 +1256,36 @@ end subroutine ensure_backwards_compatibility
 
 !------------------------------------------------------------------------------
 
-subroutine write_separator_line(unitnum)
- integer, intent(in) :: unitnum
-
-write(unitnum, '(A)') separator_line
-
-end subroutine write_separator_line
-
-!------------------------------------------------------------------------------
-
-subroutine write_blank_line(unitnum)
- integer, intent(in) :: unitnum
-
-write(unitnum, '(A)') blank_line
-
-end subroutine write_blank_line
-
-!------------------------------------------------------------------------------
 !> Determine the location of the file providing backwards-compatible behavior
-!> if people do not supply a specific xxx_quantities_mod.f90
-!> This happens if they do not specify a preprocess_nml:quantity_files entry. 
+!> if people do not supply one or more specific xxx_quantities_mod.f90 files
+!> in the preprocess_nml:quantity_files namelist.
+!>
+!> Remove this routine once backwards compatibility issues have been fully deprecated
 
-function default_quantity_file 
+function default_quantity_file()
 character(len=256) :: default_quantity_file
 
-integer            :: i
-character(len=256) :: all_quantities_fname = &
-               'assimilation_code/modules/observations/all_quantities_mod.f90'
+integer :: i
 
-default_quantity_file = all_quantities_fname
+default_quantity_file = &
+   'assimilation_code/modules/observations/default_quantities_mod.f90'
 
 ITERATE : do i = 1,10
 
-   ! RETURN early if the filename exists
+   ! RETURN successfully if the filename exists
    if ( file_exist(default_quantity_file) ) return
 
-   ! Check to see if the candidate name will fit.
-   if (len_trim(default_quantity_file) < 256-4) then
-      write(default_quantity_file,'(''../'',A)') trim(default_quantity_file)
-   else
-      exit ITERATE
-   endif
+   ! Check to see if the candidate name is too long
+   if (len_trim(default_quantity_file) + 4 >= len(default_quantity_file)) exit ITERATE
+
+   write(default_quantity_file,'(''../'',A)') trim(default_quantity_file)
 
 enddo ITERATE
 
-write(err_string ,*)'Unable to determine location of default quantity module.'
-write(err_string2,*)'checked up through "'//trim(default_quantity_file)//'"'
-write(err_string3,*)'Provide your own through preprocess_nml:quantity_files'
-call error_handler(E_ERR, 'preprocess:default_quantity_file', err_string, &
-           text2=err_string2, text3=err_string3)
+write(err_string ,*)'Unable to find relative location of default_quantities_mod.f90'
+write(err_string2,*)'Normally located in assimilation_code/modules/observations in DART source tree'
+write(err_string3,*)'Set namelist preprocess_nml:quantity_files to appropriate quantity file(s)'
+call error_handler(E_ERR, 'default_quantity_file', err_string, text2=err_string2, text3=err_string3)
 
 end function default_quantity_file
 
