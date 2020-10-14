@@ -1268,7 +1268,7 @@ ITERATE : do i = 1,10
    ! Check to see if the candidate name is too long
    if (len_trim(default_quantity_file) + 4 >= len(default_quantity_file)) exit ITERATE
 
-   write(default_quantity_file,'(''../'',A)') trim(default_quantity_file)
+   write(default_quantity_file,'(A)') '../'//trim(default_quantity_file)
 
 enddo ITERATE
 
