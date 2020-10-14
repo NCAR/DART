@@ -85,9 +85,11 @@ integer :: maxw, maxl
 integer :: wordlen, i
 
 character(len=len(inline)) :: argline
-character(len=128) :: msgstring
+character(len=512) :: msgstring, msgstring2
 character :: endword, thisc
 character(len=*), parameter :: routine = 'get_args_from_string'
+
+logical :: debug = .false. ! true to debug this routine, warning verbose
 
 
 ! maxw is max number of arg 'words' allowed
@@ -110,7 +112,7 @@ inword = .false.
 wordlen = 0
 endword = ' '
 
-!DEBUG print *, 'line = ', '"'//trim(argline)//'"'
+if (debug) print *, 'line = ', '"'//trim(argline)//'"'
 
 NEXTCHAR: do
    ! end of input?
@@ -120,10 +122,10 @@ NEXTCHAR: do
          argcount = argcount + 1
          if (argcount > maxw) exit NEXTCHAR
          wordlen = thisoff-firstoff-1
-!DEBUG print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+if (debug) print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
          if (wordlen > maxl) exit NEXTCHAR
          argwords(argcount) = argline(firstoff:firstoff+wordlen)
-!DEBUG print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
+if (debug) print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
       endif
       exit NEXTCHAR
    endif
@@ -131,8 +133,8 @@ NEXTCHAR: do
    ! next character on line
    thisc = argline(thisoff:thisoff)
 
-!DEBUG print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, finaloff, &
-!DEBUG           inword, '"'//endword//'"', ' ', '"'//thisc//'"'
+if (debug) print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, finaloff, &
+                     inword, '"'//endword//'"', ' ', '"'//thisc//'"'
 
    ! escaped chars - backslash prevents interpretation of next char
    if (thisc == '\') then
@@ -172,10 +174,10 @@ NEXTCHAR: do
          if (argcount > maxw) exit NEXTCHAR
          if (thisc == ' ') endword = thisc
          wordlen = thisoff-firstoff-1
-!DEBUG print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+if (debug)  print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
          if (wordlen > maxl) exit NEXTCHAR
          argwords(argcount) = argline(firstoff:firstoff+wordlen)
-!DEBUG print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
+if (debug)  print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
       endif
       thisoff = thisoff + 1
       cycle NEXTCHAR
@@ -193,10 +195,12 @@ if (wordlen > maxl) then
    call error_handler(E_ERR,routine,msgstring)
 endif
 
-!DEBUG print *, 'argcount = ', argcount
-!DEBUG do i=1, argcount
-!DEBUG    print *, 'arg', i, ' is "'//trim(argwords(i))//'"'
-!DEBUG enddo
+if (debug) then
+   print *, 'argcount = ', argcount
+   do i=1, argcount
+      print *, 'arg', i, ' is "'//trim(argwords(i))//'"'
+   enddo
+endif
 
 
 end subroutine get_args_from_string
@@ -236,9 +240,11 @@ integer :: maxw, maxl
 integer :: wordlen, i
 
 character(len=len(inline)) :: argline
-character(len=128) :: msgstring
+character(len=512) :: msgstring, msgstring2
 character :: endword, thisc
 character(len=*), parameter :: routine = 'get_name_val_pairs_from_string'
+
+logical :: debug = .false. ! true to debug this routine, warning verbose
 
 
 ! maxw is max number of arg 'words' allowed
@@ -277,7 +283,7 @@ inval = .false.
 wordlen = 0
 endword = ' '
 
-!DEBUG print *, 'line = ', '"'//trim(argline)//'"'
+if (debug) print *, 'line = ', '"'//trim(argline)//'"'
 
 NEXTCHAR: do
    ! end of input?
@@ -285,13 +291,14 @@ NEXTCHAR: do
       ! if currently in the value part of a pair, complete it
       if (inval) then
          wordlen = thisoff-firstoff-1
-!DEBUG print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+if(debug) print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
          if (wordlen > maxl) exit NEXTCHAR
          argvals(argcount) = argline(firstoff:firstoff+wordlen)
-!DEBUG print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
+if(debug) print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
       else if (inname) then
          write(msgstring,*) 'name without value found at end of line'
-         call error_handler(E_ERR,routine,msgstring)
+         write(msgstring2,*) 'line = ', '"'//trim(argline)//'"'
+         call error_handler(E_ERR,routine,msgstring,text2=msgstring2)
       endif
       exit NEXTCHAR
    endif
@@ -299,8 +306,8 @@ NEXTCHAR: do
    ! next character on line
    thisc = argline(thisoff:thisoff)
 
-!DEBUG print *, 'thisoff, finaloff, inpair, inname, inval, endword, thisc = ', &
-!DEBUG          thisoff, finaloff, inpair, inname, inval,  '"'//endword1//'" "'//thisc//'"'
+if(debug) print *, 'thisoff, finaloff, inpair, inname, inval, endword, thisc = ', &
+          thisoff, finaloff, inpair, inname, inval,  '"'//endword//'" "'//thisc//'"'
 
    ! escaped chars - backslash prevents interpretation of next char
    ! shift remainder of line 1 char to the left.
@@ -348,10 +355,10 @@ NEXTCHAR: do
                endword = thisc
             endif
             wordlen = thisoff-firstoff-1
-!DEBUG print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+if(debug) print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
             if (wordlen > maxl) exit NEXTCHAR
             argnames(argcount) = argline(firstoff:firstoff+wordlen)
-!DEBUG print *, 'name: arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
+if(debug) print *, 'name: arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
             if (thisc == '=') then
                endword = ' '
                firstoff = thisoff+1
@@ -362,10 +369,10 @@ NEXTCHAR: do
             inval = .false.
             inpair = .false.
             wordlen = thisoff-firstoff-1
-!DEBUG print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+if(debug) print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
             if (wordlen > maxl) exit NEXTCHAR
             argvals(argcount) = argline(firstoff:firstoff+wordlen)
-!DEBUG print *, 'vals: arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
+if(debug) print *, 'vals: arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
          endif
       else if (.not. inname .and. .not. inval) then
          if (thisc == '"' .or. thisc == "'") then
@@ -401,11 +408,13 @@ if (wordlen > maxl) then
    call error_handler(E_ERR,routine,msgstring)
 endif
 
-!DEBUG print *, 'argcount = ', argcount
-!DEBUG do i=1, argcount
-!DEBUG    print *, 'argname', i, ' is "'//trim(argnames(i))//'"'
-!DEBUG    print *, 'argvalu', i, ' is "'//trim(argvals(i))//'"'
-!DEBUG enddo
+if(debug) then
+   print *, 'argcount = ', argcount
+   do i=1, argcount
+      print *, 'argname', i, ' is "'//trim(argnames(i))//'"'
+      print *, 'argvalu', i, ' is "'//trim(argvals(i))//'"'
+   enddo
+endif
 
 
 end subroutine get_name_val_pairs_from_string
@@ -440,6 +449,8 @@ character(len=128) :: msgstring
 character :: endword, thisc
 character(len=*), parameter :: routine = 'get_next_arg'
 
+logical :: debug = .false. ! true to debug this routine, warning verbose
+
 
 ! maxw is max number of arg 'words' allowed
 ! maxl is the max length of any one 'word'
@@ -460,7 +471,7 @@ inword = .false.
 wordlen = 0
 endword = ' '
 
-!DEBUG print *, 'line = ', '"'//trim(argline)//'"'
+if (debug) print *, 'line = ', '"'//trim(argline)//'"'
 
 NEXTCHAR: do
    ! end of input?
@@ -468,10 +479,10 @@ NEXTCHAR: do
       ! if currently in a word, complete it
       if (inword) then
          wordlen = thisoff-firstoff-1
-!DEBUG print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+if (debug) print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
          if (wordlen > maxl) exit NEXTCHAR
          argword = argline(firstoff:firstoff+wordlen)
-!DEBUG print *, '1 arg is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
+if (debug) print *, '1 arg is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
       endif
       exit NEXTCHAR
    endif
@@ -479,8 +490,8 @@ NEXTCHAR: do
    ! next character on line
    thisc = argline(thisoff:thisoff)
 
-!DEBUG print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, finaloff, &
-!DEBUG           inword, '"'//endword//'"', ' ', '"'//thisc//'"'
+if (debug) print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, finaloff, &
+                     inword, '"'//endword//'"', ' ', '"'//thisc//'"'
 
    ! escaped chars - backslash prevents interpretation of next char
    if (thisc == '\') then
@@ -518,10 +529,10 @@ NEXTCHAR: do
          inword = .false.
          if (thisc == ' ') endword = thisc
          wordlen = thisoff-firstoff-1
-!DEBUG print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+if (debug) print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
          if (wordlen > maxl) exit NEXTCHAR
          argword = argline(firstoff:firstoff+wordlen)
-!DEBUG print *, '2 arg is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
+if (debug) print *, '2 arg is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
       endif
       thisoff = thisoff + 1
       if (inword) then
@@ -540,7 +551,7 @@ if (wordlen > maxl) then
    call error_handler(E_ERR,routine,msgstring)
 endif
 
-!DEBUG print *, '3 arg is "'//trim(argword)//'"'
+if (debug) print *, '3 arg is "'//trim(argword)//'"'
 
 
 end subroutine get_next_arg

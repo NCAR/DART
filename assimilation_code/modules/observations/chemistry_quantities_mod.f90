@@ -15,8 +15,6 @@
 
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !
-!     QTY_STATE_VARIABLE                units="none"
-!
 !     QTY_O3                            units="none"
 !     QTY_CO                            units="none"
 !     QTY_NO                            units="none"

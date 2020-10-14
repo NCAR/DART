@@ -23,13 +23,13 @@
 !  QTY_SMALL_SCALE_STATE            desc="state varies with small time/space scale"
 ! 
 ! ! tests for duplicate difference detection:
-! !  QTY_STATE_VARIABLE
-! !  QTY_STATE_VARIABLE               desc="bob"
-! !  QTY_STATE_VARIABLE               start="bob"
-! !  QTY_STATE_VARIABLE   start=bob   desc="basic item in a state"
-! !  QTY_STATE_VARIABLE               desc="basic item in a state"  end=bob
-! !  QTY_STATE_VARIABLE   start=bob   desc="basic item in a state"  end=bob
-! !  QTY_STATE_VARIABLE               desc="basic item in a state"
+!    QTY_STATE_VARIABLE
+!    QTY_STATE_VARIABLE               desc="bob"
+!    QTY_STATE_VARIABLE               start="bob"
+!    QTY_STATE_VARIABLE   start=bob   desc="basic item in a state"
+!    QTY_STATE_VARIABLE               desc="basic item in a state"  end=bob
+!    QTY_STATE_VARIABLE   start=bob   desc="basic item in a state"  end=bob
+!    QTY_STATE_VARIABLE               desc="basic item in a state"
 !
 ! END DART PREPROCESS QUANTITY DEFINITIONS
 

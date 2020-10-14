@@ -54,24 +54,24 @@ implicit none
 ! Pick something ridiculously large and forget about it (lazy)
 integer, parameter   :: max_types = 5000, max_qtys = 5000
 
+! max valid number of tokens per line.  allocate more
+! to handle error conditions.
+integer, parameter   :: MAX_TOKENS = 20
+integer              :: ntokens
+character(len=256)   :: token(MAX_TOKENS)
+character(len=256)   :: valtokens(MAX_TOKENS)
+
 
 character(len = 256) :: line, test, t_string
 integer              :: iunit, io, i, j, k, l
 integer              :: linenum1, linenum2, linenum3, linenum4
 integer              :: num_types_found, num_qtys_found
 logical              :: duplicate, qty_found, temp_user, is_more, match
-character(len = 256) :: valtokens(max_qtys)
 character(len = 512) :: err_string, err_string2, err_string3
 character(len = 6)   :: full_line_in  = '(A256)'
 character(len = 3)   :: full_line_out = '(A)'
 
 logical :: DEBUG = .false.
-
-! max valid number of tokens per line is 4.  allocate more
-! to handle error conditions.
-integer, parameter   :: MAX_TOKENS = 20
-integer              :: ntokens
-character(len=256)   :: token(MAX_TOKENS)
 
 integer, parameter :: MAX_NAME_LEN = 32
 character(len=MAX_NAME_LEN) :: temp_type, temp_qty
@@ -262,6 +262,9 @@ num_qtys_found = 0
 
 ! QTY_STATE_VARIABLE is always defined (and always offset 0).
 qty_info(num_qtys_found)%name = 'QTY_STATE_VARIABLE'
+qty_info(num_qtys_found)%namepair(1) = 'desc'
+qty_info(num_qtys_found)%valpair(1)  = 'basic item in a state'
+qty_info(num_qtys_found)%num_nameval_pairs = 1
 num_qtys_found = num_qtys_found + 1
 
 !> for each quantity input file, read in quantities to be used.
@@ -524,31 +527,6 @@ call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, insert_init_string, l
                 obs_qty_out_unit, output_obs_qty_mod_file, .false.)
 
 !--
-
-! Write out the initialization of each entry of obs_qty_info
-! FIXME: needed now that we're initializing the type when defined?
-!call write_blank_line(obs_qty_out_unit)
-!write(line, '(A)') 'do i = 0, max_defined_quantities'
-!write(obs_qty_out_unit, '(A)') trim(line)
-!write(line, '(A)') '   obs_qty_info(i) = obs_qty_type(i, "UNKNOWN", "none", MISSING_R8, MISSING_R8)'
-!write(obs_qty_out_unit, '(A)') trim(line)
-!write(line, '(A)') 'enddo'
-!write(obs_qty_out_unit, '(A)') trim(line)
-!call write_blank_line(obs_qty_out_unit)
-
-! obs_qty_type now:
-!   integer                      :: index = -1
-!   character(len=obstypelength) :: name = ''
-!   ! FIXME: these need to be extensible, generic name/value pairs.
-!   ! start out with a few fixed names for testing/prototyping.
-!   character(len=valuelen)      :: units = 'none'
-!   character(len=valuelen)      :: pdf   = 'none'
-!   real(r8)                     :: minbound = MISSING_R8
-!   real(r8)                     :: maxbound = MISSING_R8
-!   integer                      :: nitems = 0
-!   character(len=namelen)       :: itemname(MAX_ITEMS)  = ''
-!   character(len=valuelen)      :: itemvalue(MAX_ITEMS) = ''
-
 
 ! Write out the definitions of each entry of obs_qty_info
 do i = 0, num_qtys_found-1
@@ -978,13 +956,15 @@ end subroutine write_blank_line
 ! ntokens == 0 means cycle without error
 ! ntokens > 0 means some work to do
 
+! apparently intent(out) strings must have a length.
+
 subroutine parse_line(line, ntokens, tokens, estring, pairs_expected, valtokens)
- character(len=*), intent(in)  :: line
- integer,          intent(out) :: ntokens
- character(len=*), intent(out) :: tokens(MAX_TOKENS)
- character(len=*), intent(out) :: estring
- logical,          intent(in)  :: pairs_expected
- character(len=*), intent(out), optional :: valtokens(MAX_TOKENS)
+ character(len=*),   intent(in)  :: line
+ integer,            intent(out) :: ntokens
+ character(len=256), intent(out) :: tokens(:)
+ character(len=512), intent(out) :: estring
+ logical,            intent(in)  :: pairs_expected
+ character(len=256), intent(out), optional :: valtokens(:)
 
 character(len=256) :: test
 integer :: i
@@ -1036,7 +1016,7 @@ do
 enddo
 
 ! parse here
-if (pairs_expected) then
+if (pairs_expected .and. present(valtokens)) then
    call get_next_arg(test, 1, tokens(1), endoff)
    valtokens(1) = ''
    call get_name_val_pairs_from_string(test(endoff:), npairs, namepairs, valpairs, is_more)
@@ -1104,15 +1084,17 @@ logical :: match(MAX_TOKENS)
 ! in both cases, metadata items could be in a different order
 ! which is not an error.
 
+! this loop starts at 2 because 1 is the QTY name.
+! the token pairs are tname(2), tval(2), tname(3), tval(3), etc.
 tokens: do l=2, ntokens
    match(:) = .false.
+   ! loop over any existing name,val pairs already associated with this entry
    do k=1, qty_info(qty_indx)%num_nameval_pairs 
+
       if (qty_info(qty_indx)%namepair(k) /= tname(l)) cycle tokens
 
       ! l=new token index, k = existing token index
       if (qty_info(qty_indx)%valpair(k) /= tval(l)) then
-         !print *, 'duplicate token name with different value found'
-         !print *, trim(qty_info(qty_indx)%name), ' ', trim(qty_info(qty_indx)%valpair(k)), ' /= ', trim(tval(l))
          call incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
       endif
       match(l) = .true.
@@ -1120,14 +1102,12 @@ tokens: do l=2, ntokens
    if (match(l)) cycle tokens
 
    ! we have found a new token.  for now, we aren't allowing this.
-   ! if you want to add it, comment in the code below
+   ! if you want to add it, comment this line out and comment in the code below
    call incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
 
-! here is the code if you wanted to combine new metadata items from
-! different occurrances of the same QTY line.
+   ! here is the code if you wanted to combine new metadata items from
+   ! different occurrances of the same QTY line.
 
-   !print *, 'adding to definition:'
-   !print *, trim(qty_info(qty_indx)%name), ' ', trim(tname(l))//"="//trim(tval(l))
    !k = qty_info(qty_indx)%num_nameval_pairs + 1
    !qty_info(qty_indx)%num_nameval_pairs = k
    !qty_info(qty_indx)%namepair(k) = tname(l)
@@ -1137,9 +1117,18 @@ enddo tokens
 ! if we get here and all tokens haven't been matched, error out.
 ! comment this section out if you want to allow this instead.
 
+! the valid match array values start at 2 since token 1 is the
+! quantity, and go to number of pairs + 1 (since skipping first
+! token).  this line is making sure all existing metadata pairs
+! have also been specified here in a duplicate entry.
 l = qty_info(qty_indx)%num_nameval_pairs
-if (.not. all(match(1:l))) &
+k = l+1
+if ((l > 0) .and. (.not. all(match(2:k)))) then
+   !print *, 'not all metadata matched existing entry:'
+   !print *, l, match(2:k)
+
    call incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
+endif
 
 end subroutine resolve_duplicates
 
@@ -1166,39 +1155,40 @@ character(len=1) :: empty = ''
 ! the original entry info anymore
 
 call error_handler(E_MSG, empty, empty)
-call error_handler(E_MSG, empty, ' incompatible duplicate entry detected')
+call error_handler(E_MSG, empty, 'Incompatible duplicate entry detected')
 
 if (qty_info(qty_indx)%num_nameval_pairs == 0) then
-   write(err_string, *) 'existing entry for '//trim(qty_info(qty_indx)%name)//' has no metadata'
+   write(err_string, "(A)") 'Existing entry for '//trim(qty_info(qty_indx)%name)//' has no metadata'
    call error_handler(E_MSG, empty, err_string)
 else
-   write(err_string, *) 'existing entry for '//trim(qty_info(qty_indx)%name)//' has this metadata:'
+   write(err_string, "(A)") 'Existing entry for '//trim(qty_info(qty_indx)%name)//' has this metadata:'
    call error_handler(E_MSG, empty, err_string)
    do i=1, qty_info(qty_indx)%num_nameval_pairs 
-      write(err_string, *) i, " "//trim(qty_info(qty_indx)%namepair(i))//"="//trim(qty_info(qty_indx)%valpair(i))
+      write(err_string, "(A,I3,A)") 'item ', i, ":  '"//trim(qty_info(qty_indx)%namepair(i))//"="//trim(qty_info(qty_indx)%valpair(i))//"'"
       call error_handler(E_MSG, empty, err_string)
    enddo
 endif
 
 call error_handler(E_MSG, empty, empty)
 
-write(err_string, *) 'in file '//trim(infile)//' at line number ', linenum
-call error_handler(E_MSG, empty, err_string)
-
 if (ntokens <= 1) then
-   write(err_string, *) 'duplicate entry for '//trim(token(1))// ' has no metadata'
+   write(err_string, "(A)") 'Duplicate entry for '//trim(token(1))// ' has no metadata'
    call error_handler(E_MSG, empty, err_string)
 else
-   write(err_string, *) 'duplicate entry for '//trim(token(1))// ' has this metadata:'
+   write(err_string, "(A)") 'Duplicate entry for '//trim(token(1))// ' has this metadata:'
    call error_handler(E_MSG, empty, err_string)
    do i=2, ntokens
       ! token 1 is the qty name.  
-      write(err_string, *) i-1, " "//trim(tname(i))//"="//trim(tval(i))
+      write(err_string, "(A,I3,A)") 'item ', i-1, ":  '"//trim(tname(i))//"="//trim(tval(i))//"'"
       call error_handler(E_MSG, empty, err_string)
    enddo
 endif
+write(err_string, "(A,I5)") 'File '//trim(infile)//' at line number ', linenum
+call error_handler(E_MSG, empty, err_string)
 
-call error_handler(E_ERR, routine, 'resolve entries to proceed')
+
+call error_handler(E_MSG, empty, empty)
+call error_handler(E_ERR, routine, 'Resolve entries to proceed')
 
 end subroutine incompatible_duplicates
 
