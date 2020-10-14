@@ -1068,7 +1068,7 @@ subroutine resolve_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
  character(len=*), intent(in) :: infile
  integer, intent(in) :: linenum
  
-integer :: k, l
+integer :: k, l, first_t, last_t
 logical :: match(MAX_TOKENS)
 
 ! two checks needed here.
@@ -1084,25 +1084,30 @@ logical :: match(MAX_TOKENS)
 ! in both cases, metadata items could be in a different order
 ! which is not an error.
 
+!print *, 'working on quantity ', trim(qty_info(qty_indx)%name)
+
 ! this loop starts at 2 because 1 is the QTY name.
 ! the token pairs are tname(2), tval(2), tname(3), tval(3), etc.
 tokens: do l=2, ntokens
-   match(:) = .false.
+   match(l) = .false.
    ! loop over any existing name,val pairs already associated with this entry
    do k=1, qty_info(qty_indx)%num_nameval_pairs 
 
-      if (qty_info(qty_indx)%namepair(k) /= tname(l)) cycle tokens
+      if (qty_info(qty_indx)%namepair(k) /= tname(l)) cycle 
 
       ! l=new token index, k = existing token index
       if (qty_info(qty_indx)%valpair(k) /= tval(l)) then
+!print *, 'found inconsistent value for same name: ', trim(qty_info(qty_indx)%valpair(k))," /= ",trim(tval(l))
          call incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
       endif
+!print *, 'found match to existing name/value pair: ', trim(tname(l))," == ",trim(tval(l))
       match(l) = .true.
    enddo
    if (match(l)) cycle tokens
 
    ! we have found a new token.  for now, we aren't allowing this.
    ! if you want to add it, comment this line out and comment in the code below
+!print *, 'found new name not in previous entries, "'//trim(tval(l))//'"'
    call incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
 
    ! here is the code if you wanted to combine new metadata items from
@@ -1121,11 +1126,12 @@ enddo tokens
 ! quantity, and go to number of pairs + 1 (since skipping first
 ! token).  this line is making sure all existing metadata pairs
 ! have also been specified here in a duplicate entry.
+first_t = 2
 l = qty_info(qty_indx)%num_nameval_pairs
-k = l+1
-if ((l > 0) .and. (.not. all(match(2:k)))) then
-   !print *, 'not all metadata matched existing entry:'
-   !print *, l, match(2:k)
+last_t = (2+l) - 1
+if ((l > 0) .and. (.not. all(match(first_t:last_t)))) then
+!   print *, 'not all metadata matched existing entry:'
+!   print *, l, match(first_t:last_t)
 
    call incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
 endif

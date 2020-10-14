@@ -49,7 +49,7 @@
 !     QTY_TRACER_2_MIXING_RATIO
 !     ! Is QTY_TRACER_MIXING_RATIO necessary with QTY_TRACER_CONCENTRATION
 !     !   also available from the simple advection model?
-!     QTY_SOIL_TEMPERATURE
+!     QTY_SOIL_TEMPERATURE           units="K"     desc="is soil temp really in K or C?"
 !     QTY_SOIL_LIQUID_WATER
 ! 
 ! ! more kinds for planetary remote sensing (c.lee)

@@ -106,7 +106,7 @@
 !     QTY_TRACER_1_MIXING_RATIO
 !     QTY_TRACER_2_MIXING_RATIO
 !     ! this or QTY_TRACER_CONCENTRATION?
-!     QTY_SOIL_TEMPERATURE              units="K"
+!     QTY_SOIL_TEMPERATURE              units="K"   desc="is soil temp really in K or C?"
 !     QTY_SOIL_LIQUID_WATER
 ! 
 ! ! kinds for NCOMMAS  (Lou W., Ted M.)
