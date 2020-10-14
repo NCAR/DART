@@ -25,8 +25,8 @@
 !     QTY_3D_PARAMETER
 ! 
 ! ! kinds for CHAMP upper atmosphere computations
-!     QTY_ATOMIC_OXYGEN_MIXING_RATIO
-!     QTY_MOLEC_OXYGEN_MIXING_RATIO
+!     QTY_ATOMIC_OXYGEN_MIXING_RATIO    units=none
+!     QTY_MOLEC_OXYGEN_MIXING_RATIO     units=none
 ! 
 ! ! proposed new kinds for COSMIC GPS/RO obs
 ! ! (currently unused)
@@ -35,7 +35,7 @@
 ! 
 ! ! kind for the other way of measuring elevation
 ! ! contrast this with geopotential height
-!     QTY_GEOMETRIC_HEIGHT
+!     QTY_GEOMETRIC_HEIGHT      units=m
 ! 
 ! ! kinds for satellite radiances (jason o.)
 !     QTY_INFRARED_RADIANCE
@@ -43,7 +43,7 @@
 !     QTY_LANDMASK
 ! 
 ! ! kinds for planetary remote sensing (wglawson, c.lee)
-!     QTY_SKIN_TEMPERATURE
+!     QTY_SKIN_TEMPERATURE    units=K
 !     QTY_NADIR_RADIANCE
 !     QTY_TRACER_1_MIXING_RATIO
 !     QTY_TRACER_2_MIXING_RATIO
