@@ -723,6 +723,10 @@ select case(level)
 
       call log_it(msgtype)
       call log_it(wherefrom)
+      ! @todo FIXME 'wherefrom' on the line above already includes the
+      ! calling routine name.  the next line should probably be removed
+      ! at some point.  i didn't do it now because it would make diffs
+      ! with older files show differences that aren't significant.
       call log_it(' routine: '//trim(routine))
       call log_it(' message: '//trim(text))
       if (present(text2)) call log_it(' message: ... '//trim(text2))
