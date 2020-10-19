@@ -26,15 +26,45 @@ The Data Assimilation Research Testbed: A Community Facility.
 *Bulletin of the American Meteorological Society*, **90**, 1283-1296,
 [doi:10.1175/2009BAMS2618.1](http://dx.doi.org/10.1175/2009BAMS2618.1)
 
-----
+---
+## 2020
+---
+
+ ![](http://www.image.ucar.edu/images/pin4.gif) **Castruccio, F. S., A. Karspeck, G.
+   Danabasoglu, J. Hendricks, T. J. Hoar, N. S. Collins, J. L. Anderson** 2020  
+     An EnOI‐based Data Assimilation System with DART for a High‐Resolution
+     Version of the CESM2 Ocean Component
+     *Journal of Advances in Modeling Earth Systems*, **12**,
+     [doi:10.1029/2020MS002176](https://doi.org/10.1029/2020MS002176)
+
+
+ ![](http://www.image.ucar.edu/images/pin4.gif) **Moore, A., J. Zavala-Garay,
+   H. G. Arango, C. A. Edwards, J. L. Anderson, T. J. Hoar** 2020  
+     Regional and basin scale applications of ensemble adjustment Kalman filter
+     and 4D-Var ocean data assimilation systems.
+     *Progress in Oceanography*, **189**, 102450,
+     [doi:0.1016/j.pocean.2020.102450](https://doi.org/10.1016/j.pocean.2020.102450)
+
+---
+## 2019
+---
+
+ ![](http://www.image.ucar.edu/images/pin4.gif) **Gopalakrishnan, G., I. Hoteit,
+   B. Cornuelle, and D. Rudnick** 2019  
+     Comparison of 4DVAR and EnKF states estimates and forecasts in the Gulf of
+     Mexico.
+     *Quarterly Journal of the Royal Meteorological Society*, **145**, 1354-1376,
+     [doi:10.1002/qj.3493](https://doi.org/10.1002/qj.3493)
+
+---
 ## 2018
-----
+---
 
  ![](http://www.image.ucar.edu/images/pin4.gif) **Aydoğdu, A., Hoar, T. J.,
    Vukicevic, T., Anderson, J. L., Pinardi, N., Karspeck, A., Hendricks, J.,
    Collins, N., Macchia, F., and Özsoy, E.** 2018  
      OSSE for a sustainable marine observing network in the Sea of Marmara.  
-     *Nonlin. Processes Geophys*, **25**, 537-551,
+     *Nonlinear Processes in Geophysics*, **25**, 537-551,
      [doi.org/10.5194/npg-25-537-2018](https://doi.org/10.5194/npg-25-537-2018)
 
 
@@ -45,7 +75,7 @@ The Data Assimilation Research Testbed: A Community Facility.
 
 
  ![](http://www.image.ucar.edu/images/pin4.gif) **Karspeck, A. R., G. Danabasoglu,
-   J. L. Anderson, S. Karol, N. Collins, M. Vertenstein, K. Raeder, T. Hoar, 
+   J. L. Anderson, S. Karol, N. Collins, M. Vertenstein, K. Raeder, T. Hoar,
    R. Neale, J. Edwards and A. Craig**, 2018  
      A global coupled ensemble data assimilation system using the Community
      Earth System Model and the Data Assimilation Research Testbed.  
@@ -97,7 +127,7 @@ The Data Assimilation Research Testbed: A Community Facility.
 
 ---
 ## 2017
-----
+---
 
  ![](http://www.image.ucar.edu/images/pin4.gif) **Gaubert, B., H. M. Worden,
    A. F. J. Arellano, L. K. Emmons, S. Tilmes, J. Barré, S. Martinez Alonso,
@@ -352,7 +382,7 @@ The Data Assimilation Research Testbed: A Community Facility.
  ![](http://www.image.ucar.edu/images/pin4.gif) **Singh, T., R. Mitta, H.C. Upadhyaya**,
    2015  
      Ensemble Adjustment Kalman Filter Data Assimilation for a Global Atmospheric Model.  
-     *International Conference on Dynamic Data-Driven Environmental Systems Science*, 
+     *International Conference on Dynamic Data-Driven Environmental Systems Science*,
      284-298, [doi:10.1007/978-3-319-25138-7_26](http://dx.doi.org/doi:10.1007/978-3-319-25138-7_26)
 
 
@@ -989,4 +1019,3 @@ The Data Assimilation Research Testbed: A Community Facility.
      [doi:10.1175/1520-0493(2001)129&lt;2884:AEAKFF&gt;2.0.CO;2](http://dx.doi.org/10.1175/1520-0493(2001)129%3C2884%3AAEAKFF%3E2.0.CO%3B2)
 
 ----
-
