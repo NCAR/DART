@@ -39,6 +39,8 @@ use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 use obs_def_rttov_mod, only : set_mw_metadata, &
                               get_rttov_option_logical
 
+use amsua_bt_mod
+
 implicit none
 private
 
@@ -53,11 +55,6 @@ interface read_attribute
    module procedure read_real8_attribute
 end interface
 
-! Using the HDF-EOS5 functions simply required
-! putting an '' in front of the function. As far as I can tell from
-! https://hdfeos.org/examples/fort_swath.php, the calling structure is
-! the same.
-!
 ! integer :: SWopen         ! open a swath file
 ! integer :: SWattach       ! attatch to a swath object
 ! integer :: SWinqswath     ! retieves number and names of swaths in file
