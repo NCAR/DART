@@ -53,7 +53,7 @@ The Data Assimilation Research Testbed: A Community Facility.
    B. Cornuelle, and D. Rudnick** 2019  
      Comparison of 4DVAR and EnKF states estimates and forecasts in the Gulf of
      Mexico.
-     *Quarterly Journal of the Royal Meteorological Society* , **145**, 1354-1376,
+     *Quarterly Journal of the Royal Meteorological Society*, **145**, 1354-1376,
      [doi:10.1002/qj.3493](https://doi.org/10.1002/qj.3493)
 
 ---
