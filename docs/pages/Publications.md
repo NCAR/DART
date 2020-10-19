@@ -30,11 +30,19 @@ The Data Assimilation Research Testbed: A Community Facility.
 ## 2020
 ---
 
+ ![](http://www.image.ucar.edu/images/pin4.gif) **Castruccio, F. S., A. Karspeck, G.
+   Danabasoglu, J. Hendricks, T. J. Hoar, N. S. Collins, J. L. Anderson** 2020  
+     An EnOI‐based Data Assimilation System with DART for a High‐Resolution
+     Version of the CESM2 Ocean Component
+     *Journal of Advances in Modeling Earth Systems*, **12**,
+     [doi:10.1029/2020MS002176](https://doi.org/10.1029/2020MS002176)
+
+
  ![](http://www.image.ucar.edu/images/pin4.gif) **Moore, A., J. Zavala-Garay,
    H. G. Arango, C. A. Edwards, J. L. Anderson, T. J. Hoar** 2020  
      Regional and basin scale applications of ensemble adjustment Kalman filter
      and 4D-Var ocean data assimilation systems.
-     *Prog. Oceanogr.*, **189**, 102450,
+     *Progress in Oceanography*, **189**, 102450,
      [doi:0.1016/j.pocean.2020.102450](https://doi.org/10.1016/j.pocean.2020.102450)
 
 ---
@@ -45,7 +53,7 @@ The Data Assimilation Research Testbed: A Community Facility.
    B. Cornuelle, and D. Rudnick** 2019  
      Comparison of 4DVAR and EnKF states estimates and forecasts in the Gulf of
      Mexico.
-     *Q J R Meteorol Soc*, **145**, 1354-1376,
+     *Quarterly Journal of the Royal Meteorological Society* , **145**, 1354-1376,
      [doi:10.1002/qj.3493](https://doi.org/10.1002/qj.3493)
 
 ---
@@ -56,7 +64,7 @@ The Data Assimilation Research Testbed: A Community Facility.
    Vukicevic, T., Anderson, J. L., Pinardi, N., Karspeck, A., Hendricks, J.,
    Collins, N., Macchia, F., and Özsoy, E.** 2018  
      OSSE for a sustainable marine observing network in the Sea of Marmara.  
-     *Nonlin. Processes Geophys*, **25**, 537-551,
+     *Nonlinear Processes in Geophysics*, **25**, 537-551,
      [doi.org/10.5194/npg-25-537-2018](https://doi.org/10.5194/npg-25-537-2018)
 
 
