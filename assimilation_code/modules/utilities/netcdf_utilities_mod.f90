@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module netcdf_utilities_mod
 
@@ -64,7 +62,8 @@ public :: nc_check,                       &
           nc_close_file,                  &
           nc_begin_define_mode,           &
           nc_end_define_mode,             &
-          nc_synchronize_file
+          nc_synchronize_file,            &
+          NF90_MAX_NAME, NF90_MAX_VAR_DIMS
 
 
 ! note here that you only need to distinguish between
@@ -128,34 +127,38 @@ end interface
 
 interface nc_put_variable
    module procedure nc_put_char_1d
-   module procedure nc_put_single_int_1d
-   module procedure nc_put_int_1d
-   module procedure nc_put_single_real_1d
-   module procedure nc_put_real_1d
    module procedure nc_put_char_2d
+   module procedure nc_put_single_int_1d
+   module procedure nc_put_single_real_1d
+   module procedure nc_put_int_1d
    module procedure nc_put_int_2d
-   module procedure nc_put_real_2d
    module procedure nc_put_int_3d
-   module procedure nc_put_real_3d
    module procedure nc_put_int_4d
+   module procedure nc_put_real_1d
+   module procedure nc_put_real_2d
+   module procedure nc_put_real_3d
    module procedure nc_put_real_4d
+   module procedure nc_put_double_1d
+   module procedure nc_put_double_2d
+   module procedure nc_put_double_3d
+   module procedure nc_put_double_4d
 end interface
 
 interface nc_get_variable
    module procedure nc_get_short_1d
-   module procedure nc_get_single_int_1d
-   module procedure nc_get_int_1d
-   module procedure nc_get_single_real_1d
-   module procedure nc_get_real_1d
-   module procedure nc_get_double_1d
    module procedure nc_get_short_2d
-   module procedure nc_get_int_2d
-   module procedure nc_get_real_2d
    module procedure nc_get_short_3d
+   module procedure nc_get_single_int_1d
+   module procedure nc_get_single_real_1d
+   module procedure nc_get_int_1d
+   module procedure nc_get_int_2d
    module procedure nc_get_int_3d
-   module procedure nc_get_real_3d
    module procedure nc_get_int_4d
+   module procedure nc_get_real_1d
+   module procedure nc_get_real_2d
+   module procedure nc_get_real_3d
    module procedure nc_get_real_4d
+   module procedure nc_get_double_1d
 end interface
 
 interface nc_get_variable_size
@@ -164,9 +167,9 @@ interface nc_get_variable_size
 end interface
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'netcdf_utilities_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 character(len=512) :: msgstring1
 
@@ -1013,7 +1016,8 @@ endif
 
 do i=1, ndims
    ret = nf90_inq_dimid(ncid, dimnames(i), dimids(i))
-   call nc_check(ret, routine, 'inquire dimension id for dim '//trim(dimnames(i)), context, filename, ncid)
+   write(msgstring1,*)'"'//trim(varname)//'" inquire dimension id for dim "'//trim(dimnames(i))//'"'
+   call nc_check(ret, routine, msgstring1, context, filename, ncid)
 enddo
 
 ret = nf90_def_var(ncid, varname, nf90_double, dimids(1:ndims), varid=varid)
@@ -1173,11 +1177,11 @@ subroutine nc_put_single_real_1d(ncid, varname, varindex, varval, context, filen
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
 integer,          intent(in) :: varindex
-real(r8),         intent(in) :: varval
+real(r4),         intent(in) :: varval
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
 
-character(len=*), parameter :: routine = 'nc_put_real_1d'
+character(len=*), parameter :: routine = 'nc_put_single_real_1d'
 integer :: ret, varid
 
 ret = nf90_inq_varid(ncid, varname, varid)
@@ -1195,7 +1199,7 @@ subroutine nc_put_real_1d(ncid, varname, varvals, context, filename, &
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
-real(r8),         intent(in) :: varvals(:)
+real(r4),         intent(in) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
 integer,          intent(in), optional :: nc_start(:)
@@ -1273,7 +1277,7 @@ subroutine nc_put_real_2d(ncid, varname, varvals, context, filename, &
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
-real(r8),         intent(in) :: varvals(:,:)
+real(r4),         intent(in) :: varvals(:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
 integer,          intent(in), optional :: nc_start(:)
@@ -1325,7 +1329,7 @@ subroutine nc_put_real_3d(ncid, varname, varvals, context, filename, &
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
-real(r8),         intent(in) :: varvals(:,:,:)
+real(r4),         intent(in) :: varvals(:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
 integer,          intent(in), optional :: nc_start(:)
@@ -1377,7 +1381,7 @@ subroutine nc_put_real_4d(ncid, varname, varvals, context, filename, &
 
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: varname
-real(r8),         intent(in) :: varvals(:,:,:,:)
+real(r4),         intent(in) :: varvals(:,:,:,:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
 integer,          intent(in), optional :: nc_start(:)
@@ -1397,6 +1401,109 @@ call nc_check(ret, routine, 'put values for '//trim(varname), context, filename,
 end subroutine nc_put_real_4d
 
 !--------------------------------------------------------------------
+
+subroutine nc_put_double_1d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: varname
+real(digits12),   intent(in) :: varvals(:)
+character(len=*), intent(in), optional :: context
+character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
+
+character(len=*), parameter :: routine = 'nc_put_double_1d'
+integer :: ret, varid
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
+
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
+call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
+
+end subroutine nc_put_double_1d
+
+!--------------------------------------------------------------------
+
+subroutine nc_put_double_2d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: varname
+real(digits12),   intent(in) :: varvals(:,:)
+character(len=*), intent(in), optional :: context
+character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
+
+character(len=*), parameter :: routine = 'nc_put_double_2d'
+integer :: ret, varid
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
+
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
+call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
+
+end subroutine nc_put_double_2d
+
+!--------------------------------------------------------------------
+
+subroutine nc_put_double_3d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: varname
+real(digits12),   intent(in) :: varvals(:,:,:)
+character(len=*), intent(in), optional :: context
+character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
+
+character(len=*), parameter :: routine = 'nc_put_double_3d'
+integer :: ret, varid
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
+
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
+call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
+
+end subroutine nc_put_double_3d
+
+!--------------------------------------------------------------------
+
+subroutine nc_put_double_4d(ncid, varname, varvals, context, filename, &
+   nc_start, nc_count, nc_stride, nc_map)
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: varname
+real(digits12),   intent(in) :: varvals(:,:,:,:)
+character(len=*), intent(in), optional :: context
+character(len=*), intent(in), optional :: filename
+integer,          intent(in), optional :: nc_start(:)
+integer,          intent(in), optional :: nc_count(:)
+integer,          intent(in), optional :: nc_stride(:)
+integer,          intent(in), optional :: nc_map(:)
+
+character(len=*), parameter :: routine = 'nc_put_double_4d'
+integer :: ret, varid
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
+
+ret = nf90_put_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
+call nc_check(ret, routine, 'put values for '//trim(varname), context, filename, ncid)
+
+end subroutine nc_put_double_4d
+
 !--------------------------------------------------------------------
 ! get values from variables
 !
