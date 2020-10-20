@@ -2,23 +2,33 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-!     A short main program to test reading AMSU brightness temperature.
-!     March, 2012
-!     Feng Ding
-
 program L1_AMSUA_to_netcdf
 
-use amsua_support_mod
+use    utilities_mod, only : initialize_utilities, register_module, &
+                             error_handler, finalize_utilities, E_ERR, E_MSG, &
+                             find_namelist_in_file, check_namelist_read, &
+                             do_nml_file, do_nml_term, set_filename_list, &
+                             logfileunit, nmlfileunit, get_next_filename
 
-! INCLUDE 'amsua_bt_typ.inc'
-! INCLUDE 'amsua_bt_struct.inc'
+use amsua_bt_mod, only : amsua_bt_granule, &
+                         AMSUA_BT_CHANNEL, &
+                         amsua_bt_rdr
 
 implicit none
+
+! ----------------------------------------------------------------------
+! Declare local parameters
+! ----------------------------------------------------------------------
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'L1_AMSUA_to_netcdf.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
+
+TYPE(amsua_bt_granule) amsua_bt_gran
+
+integer :: iunit, io
+integer :: chan    !0-based channel index.
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -32,32 +42,35 @@ integer            :: xtrack = 0 ! 0-based index across-track
 namelist /L1_AMSUA_to_netcdf_nml/ file_name, outputfile, &
                                track, xtrack
 
-TYPE(amsua_bt_gran_t) amsua_bt_gran
+! ----------------------------------------------------------------------
+! start of executable program code
+! ----------------------------------------------------------------------
 
-integer :: chan    !0-based channel index.
+call initialize_utilities('L1_AMSUA_to_netcdf')
+call register_module(source,revision,revdate)
 
 !----------------------------------------------------------------------
 ! Read the namelist
 !----------------------------------------------------------------------
 
-call find_namelist_in_file('input.nml', 'convert_airs_L2_nml', iunit)
-read(iunit, nml = convert_airs_L2_nml, iostat = io)
-call check_namelist_read(iunit, io, 'convert_airs_L2_nml')
+call find_namelist_in_file('input.nml', 'L1_AMSUA_to_netcdf_nml', iunit)
+read(iunit, nml = L1_AMSUA_to_netcdf_nml, iostat = io)
+call check_namelist_read(iunit, io, 'L1_AMSUA_to_netcdf_nml')
 
 ! Record the namelist values used for the run ...
-if (do_nml_file()) write(nmlfileunit, nml=convert_airs_L2_nml)
-if (do_nml_term()) write(    *      , nml=convert_airs_L2_nml)
+if (do_nml_file()) write(nmlfileunit, nml=L1_AMSUA_to_netcdf_nml)
+if (do_nml_term()) write(    *      , nml=L1_AMSUA_to_netcdf_nml)
 
 
-if (iargc().ne.3) then
+!if (iargc().ne.3) then
     print *, "This code extracts a single profile from a specified"
     print *, " input file to stdout. It requires exactly three "
     print *, "arguments."
     print *, "  1) scan line number [1, 45]"
     print *, "  2) field-of-view number [1, 30]"
     print *, "  3) file name"
-    STOP
- end if 
+!    STOP
+! end if 
 
 if (track.lt.1.OR.track.gt.45) then
   print *, "Error: along-track scan line number [1, 45]"
@@ -71,7 +84,7 @@ if (xtrack.lt.1.OR.xtrack.gt.30) then
   STOP
 endif
 
-CALL amsua_bt_rdr(file_name, amsua_bt_gran)
+call amsua_bt_rdr(file_name, amsua_bt_gran)
 
 ! Each AMSU-A scan has 2 "state"s, indicating whether the AMSU-A1 and
 ! AMSU-A2 instruments were in science mode when the data
@@ -115,5 +128,6 @@ DO chan = 1, AMSUA_BT_CHANNEL
    WRITE(*, "(f8.2)") amsua_bt_gran%brightness_temp(chan,xtrack,track)
 ENDDO
 
-STOP
+call finalize_utilities()
+
 end program L1_AMSUA_to_netcdf

@@ -129,29 +129,35 @@ LD = ifort
 
 # You will likely not need to modify below this line
 
-HDFINC = $(HDFDIR)/include
-HDFLIB = $(HDFDIR)/lib
-HDFLIBS = -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 
+#HDFINC = /glade/u/home/thoar/hdf-eos/include
+#HDFLIB = /glade/u/home/thoar/hdf-eos/lib
+#HDFLIBS = -lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz
+
+#HDF5DIR = /glade/u/apps/ch/opt/hdf-eos5/5.1.16/intel/19.0.5
+#HDF5INC = $(HDF5DIR)/include
+#HDF5LIB = $(HDF5DIR)/lib
+#HDF5LIBS = -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
 
 RTMOD = $(RTTOV)/mod
 RTINC = $(RTTOV)/include
 RTLIB = $(RTTOV)/lib
 RTLIBS = -lrttov12_wrapper -lrttov12_mw_scatt -lrttov12_brdf_atlas -lrttov12_emis_atlas -lrttov12_other -lrttov12_parallel -lrttov12_coef_io -lrttov12_hdf -lrttov12_main 
 
-RTINCS = -I$(RTINC) -I$(RTMOD) -I$(HDFINC)
-RTLIBDIRS = -L$(RTLIB) -L$(HDFLIB)
+RTINCS = -I$(RTINC) -I$(RTMOD)
+RTLIBDIRS = -L$(RTLIB) 
 
-INCS = -I$(NETCDF)/include $(RTINCS)
-LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf $(RTLIBDIRS) $(RTLIBS) $(HDFLIBS)
+INCS = -I$(NETCDF)/include $(RTINCS) 
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf \
+       -L$(RTLIB)   $(RTLIBS) 
 
-FFLAGS  = -O -assume buffered_io $(INCS)
+# FFLAGS  = -O0 -assume buffered_io $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
-# FFLAGS = -g -C -check noarg_temp_created -fpe0 \
-#          -fp-model precise  -ftrapuv -traceback \
-#          -warn declarations,uncalled,unused $(INCS)
-#
+ FFLAGS = -g -C -check noarg_temp_created -fpe0 \
+          -fp-model precise  -ftrapuv -traceback \
+          -warn declarations,uncalled,unused $(INCS)
+
 # Some optimized (BLAS, LAPACK) libraries may be available with the Intel Math Kernel Libraries:
 # LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
 

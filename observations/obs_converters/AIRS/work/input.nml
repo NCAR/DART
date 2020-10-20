@@ -47,6 +47,14 @@
    lat2               =  90.0
   /
 
+&L1_AMSUA_to_netcdf_nml
+   file_name  = '../data/AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf'
+   outputfile = 'obs_seq.amsua'
+   track      = 23
+   xtrack     = 30
+  /
+
+
 &obs_sequence_nml
    write_binary_obs_sequence = .false.
   /

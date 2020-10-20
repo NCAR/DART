@@ -11,14 +11,19 @@
 # NCAR_INC_HDF
 # NCAR_LDFLAGS_HDF
 # NCAR_LIBS_HDF
-
+#
 #set MYINCDIR = "-I$NCAR_INC_HDF"
 #set MYLIBDIR = "-L$NCAR_LDFLAGS_HDF"
 #set MYLIBS   = "$NCAR_LIBS_HDF"
 
-# -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
+set MYINCDIR = "-I/glade/u/home/thoar/hdf-eos/include"
+set MYLIBDIR = "-L/glade/u/home/thoar/hdf-eos/lib"
+set MYLIBS   = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
+
+
      ../../../../build_templates/mkmf -p convert_amsu_L1 \
   -t ../../../../build_templates/mkmf.template \
+  -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
  -a "../../../.." path_names_convert_amsu_L1
 
 exit $status

@@ -70,3 +70,19 @@ I downloaded
 * zlib-1.2.11.tar.gz
 
 
+The HDF Support portal is https://portal.hdfgroup.org/display/support
+and has links for documentation, downloads, HDF-EOS, etc...
+There is a download for the 'H4H5Tools 2.2.5' that I will be using to
+create a standalone converter so that the AIRS c
+
+
+
+https://hdfeos.org/software/library.php#HDF-EOS2
+
+Compatibility Library download location:
+https://opensource.gsfc.nasa.gov/projects/HDF-EOS2/index.php
+he2he5_lib.zip
+he2to5.zip
+
+https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads  has a link to hdf-eos v2.20
+

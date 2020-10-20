@@ -16,8 +16,8 @@
 #set MYLIBDIR = "-L$NCAR_LDFLAGS_HDF"
 #set MYLIBS   = "$NCAR_LIBS_HDF"
 
-set MYINCDIR = "-I/glade/u/home/thoar/eos/include"
-set MYLIBDIR = "-L/glade/u/home/thoar/eos/lib"
+set MYINCDIR = "-I/glade/work/thoar/hdf-eos/include"
+set MYLIBDIR = "-L/glade/work/thoar/hdf-eos/lib"
 set MYLIBS   = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
 
      ../../../../build_templates/mkmf -p L1_AMSUA_to_netcdf \
