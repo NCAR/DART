@@ -1031,7 +1031,8 @@ AdvanceTime : do
    ! (it was applied earlier, this is computing the updated values for
    ! the next cycle.)
 
-   if(do_ss_inflate(post_inflate)) then
+  !if(do_ss_inflate(post_inflate)) then ! CSS commented out
+   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) then ! CSS added second condition. Don't update inflation if RTPS
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
