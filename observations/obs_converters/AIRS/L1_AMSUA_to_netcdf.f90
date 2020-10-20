@@ -10,9 +10,13 @@ use    utilities_mod, only : initialize_utilities, register_module, &
                              do_nml_file, do_nml_term, set_filename_list, &
                              logfileunit, nmlfileunit, get_next_filename
 
-use amsua_bt_mod, only : amsua_bt_granule, &
-                         AMSUA_BT_CHANNEL, &
-                         amsua_bt_rdr
+use amsua_bt_mod, only : amsua_bt_granule, AMSUA_BT_CHANNEL, amsua_bt_rdr, &
+                         define_amsua_dimensions, &
+                         define_amsua_variables, &
+                         fill_amsua_variables
+
+use netcdf_utilities_mod, only : nc_create_file, nc_begin_define_mode, &
+                                 nc_end_define_mode, nc_close_file
 
 implicit none
 
@@ -25,9 +29,9 @@ character(len=*), parameter :: source   = 'L1_AMSUA_to_netcdf.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
-TYPE(amsua_bt_granule) amsua_bt_gran
+type(amsua_bt_granule) :: amsua_bt_gran
 
-integer :: iunit, io
+integer :: iunit, io, ncid
 integer :: chan    !0-based channel index.
 
 ! ----------------------------------------------------------------------
@@ -35,7 +39,7 @@ integer :: chan    !0-based channel index.
 ! ----------------------------------------------------------------------
 
 character(len=256) :: file_name  = ''
-character(len=256) :: outputfile = ''
+character(len=256) :: outputfile = 'amsua_bt_granule.nc'
 integer            :: track  = 1 ! 0-based index along track
 integer            :: xtrack = 0 ! 0-based index across-track
 
@@ -127,6 +131,19 @@ print *, "# -9999 flags bad value"
 DO chan = 1, AMSUA_BT_CHANNEL 
    WRITE(*, "(f8.2)") amsua_bt_gran%brightness_temp(chan,xtrack,track)
 ENDDO
+
+!-------------------------------------------------------------------------------
+! convert the granule to netCDF
+!-------------------------------------------------------------------------------
+
+ncid = nc_create_file( outputfile, source)
+!call nc_begin_define_mode(   ncid, source)
+call define_amsua_dimensions(amsua_bt_gran, ncid, source)
+call define_amsua_variables( amsua_bt_gran, ncid, source)
+call nc_end_define_mode(     ncid, source)
+call fill_amsua_variables(   amsua_bt_gran, ncid, source)
+call nc_close_file(          ncid, source)
+
 
 call finalize_utilities()
 
