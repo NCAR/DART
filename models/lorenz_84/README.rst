@@ -13,7 +13,11 @@ Contents
 Overview
 ========
 
-This model was described in Lorenz (1984). [1]_ In Lorenz 84, DART advances the model, gets the model state and metadata describing this state, find states variables that are close to a given location, and does spatial interpolation for model state variables. The distinctive part of the model interfaces is the `namelist`_.
+This model was described in Lorenz (1984). [1]_ In Lorenz 84, DART advances the
+model, gets the model state and metadata describing this state, find states
+variables that are close to a given location, and does spatial interpolation
+for model state variables. The distinctive part of the model interfaces is the
+`namelist`_.
 
 The system of equations is:
 
@@ -29,12 +33,16 @@ and, within DART, the model parameters have default values of:
 
 .. a=\frac{1}{4}, b=4, F=8, G=\frac{5}{4}
 
-that can be altered by editing the ``&model_nml`` `namelist`_ in the ``input.nml`` file.
+that can be altered by editing the ``&model_nml`` `namelist`_ in the
+``input.nml`` file.
 
 Namelist
 ========
 
-The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists start with an ampersand ``&`` and terminate with a slash ``/``. Character strings that contain a ``/`` must be enclosed in quotes to prevent them from prematurely terminating the namelist.
+The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
+start with an ampersand ``&`` and terminate with a slash ``/``. Character
+strings that contain a ``/`` must be enclosed in quotes to prevent them from
+prematurely terminating the namelist.
 
 .. code-block:: fortran
 
@@ -79,14 +87,21 @@ Terms of Use
 
 |Copyright| University Corporation for Atmospheric Research
 
-Licensed under the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable law or agreed to in writing, software distributed under this license is distributed on an "as is" basis, without warranties or conditions of any kind, either express or implied.
+Licensed under the `Apache License, Version 2.0
+<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
+law or agreed to in writing, software distributed under this license is
+distributed on an "as is" basis, without warranties or conditions of any kind,
+either express or implied.
 
 .. |Copyright| unicode:: 0xA9 .. copyright sign
 
 References
 ==========
 
-.. [1] Lorenz, Edward N., 1984: Irregularity: A Fundamental Property of the Atmosphere. *Tellus*, **36A**, 98-110.
+.. [1] Lorenz, Edward N., 1984: Irregularity: A Fundamental Property of the
+       Atmosphere. *Tellus*, **36A**, 98-110, 
+       `doi:10.1111/j.1600-0870.1984.tb00230.x
+       <https://doi.org/10.1111/j.1600-0870.1984.tb00230.x>`__
 
 .. |Lorenz 84 system of equations| image:: ./images/lorenz_84_equations.svg
 
