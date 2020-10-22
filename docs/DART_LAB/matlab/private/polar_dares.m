@@ -142,21 +142,21 @@ function hpol = polar_dares(THETA, RHO, SPEC)
                 'HandleVisibility', 'off', 'Parent', cax);
         end
         
-        % draw radial circles
-        c82 = cos(82 * pi / 180);
-        s82 = sin(82 * pi / 180);
+        % draw radial circles (remove annotation; not useful here!)
+%         c82 = cos(82 * pi / 180);
+%         s82 = sin(82 * pi / 180);
         rinc = (rmax - rmin) / rticks;
         for i = (rmin + rinc) : rinc : rmax - 1
             hhh = line(xunit * i, yunit * i, 'LineStyle', ls, 'Color', tc, 'LineWidth', 1, ...
                 'HandleVisibility', 'off', 'Parent', cax);
-            text((i + rinc / 20) * c82, (i + rinc / 20) * s82, ...
-                ['  ' num2str(i)], 'VerticalAlignment', 'bottom', ...
-                'HandleVisibility', 'off', 'Parent', cax);
+%             text((i + rinc / 20) * c82, (i + rinc / 20) * s82, ...
+%                 ['  ' num2str(i)], 'VerticalAlignment', 'bottom', ...
+%                 'HandleVisibility', 'off', 'Parent', cax);
         end
         set(hhh, 'LineStyle', '-'); % Make outer circle solid
         
         % plot spokes
-        th = (1 : 6) * 2 * pi / 12;
+        th = (1 : 4) * 2 * pi / 8;
         cst = cos(th);
         snt = sin(th);
         cs = [-cst; cst];
@@ -166,17 +166,14 @@ function hpol = polar_dares(THETA, RHO, SPEC)
         
         % annotate spokes in degrees
         rt = 1.1 * rmax;
+        grid1 = [ 5, 10, 15, 20];  
+        grid2 = [25, 30, 35, 40];
         for i = 1 : length(th)
-            text(rt * cst(i), rt * snt(i), int2str(i * 30),...
+            text(rt * cst(i), rt * snt(i), int2str(grid1(i)),...
                 'HorizontalAlignment', 'center', ...
-                'HandleVisibility', 'off', 'Parent', cax, 'FontSize', 12);
-            if i == length(th)
-                loc = int2str(0);
-            else
-                loc = int2str(180 + i * 30);
-            end
-            text(-rt * cst(i), -rt * snt(i), loc, 'HorizontalAlignment', 'center', ...
-                'HandleVisibility', 'off', 'Parent', cax, 'FontSize', 12);
+                'HandleVisibility', 'off', 'Parent', cax, 'FontSize', 14); 
+            text(-rt * cst(i), -rt * snt(i), int2str(grid2(i)), 'HorizontalAlignment', 'center', ...
+                'HandleVisibility', 'off', 'Parent', cax, 'FontSize', 14); 
         end
         
         % set view to 2-D
