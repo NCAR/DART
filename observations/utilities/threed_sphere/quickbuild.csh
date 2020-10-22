@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Script to manage the compilation of all components.
 
 #----------------------------------------------------------------------
@@ -16,8 +14,6 @@
 #----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod Makefile .cppdefs
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
 
 set MODEL = "observations/utilities/threed_sphere"
 
@@ -64,8 +60,4 @@ echo ""
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

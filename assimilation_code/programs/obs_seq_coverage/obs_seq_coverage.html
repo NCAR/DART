@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>program obs_seq_coverage</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
-<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
+<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,14 +14,9 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
-    <td>
-       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
-          <small><small>version information for this file: <br />
-          <!-- version tag follows, do not edit -->
-          $Id$</small></small>
-       </P></td>
+    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
 </tr>
 </table>
 
@@ -52,7 +47,7 @@ application of the forward operator to create observation copies that will
 not be used anyway ... 
 </P>
 
-<img src="../../../documentation/images/forecasting_diagram.png" alt="forecast evaluation schematic" width=90% />
+<img src="../../../docs/images/forecasting_diagram.png" alt="forecast evaluation schematic" width=90% />
 
 <P>
 <em class=program>obs_seq_coverage</em> results in two output files:
@@ -102,14 +97,14 @@ has a verification interval of 6 hours and a forecast length of 24 hours. We ado
 convention of also including the initial conditions (a "nowcast") in the 
 "forecast", so there are 5 times of interest - which we will call 
 <em class=option>verification times</em> and are represented by 
-<img src="../../../documentation/images/verification_time_icon.png" alt="verification icon" width=3% />.
+<img src="../../../docs/images/verification_time_icon.png" alt="verification icon" width=3% />.
 The candidate observation sequence files are scanned to select all the
 observations that are <strong>closest</strong> to the verification times.
 The difference in time between the "nowcast" and the "forecast" is the
 <em class=option>forecast lead</em>.
 <br />
 <br />
-<img src="../../../documentation/images/simple_forecast.png" alt="simple forecast" width=60% />
+<img src="../../../docs/images/simple_forecast.png" alt="simple forecast" width=60% />
 <br />
 <br />
 So - that is simple enough if there is only one forecast, but this is rarely
@@ -140,7 +135,7 @@ VT8 (18Z day2), and
 VT9 (24Z day2 / 00Z day3).
 <br />
 <br /><a name="coverage"></a>
-<img src="../../../documentation/images/obs_seq_coverage_diagram.png" alt="coverage timetable" width=100% />
+<img src="../../../docs/images/obs_seq_coverage_diagram.png" alt="coverage timetable" width=100% />
 <br />
 <br />
 Note that, if you wanted to, you could launch forecasts at VT2, VT3, and VT4 without
@@ -483,7 +478,7 @@ is supported.</strong>
 <a NAME="example48x6"></a>
 <H3 class=indent1>Example: a single 48-hour forecast that is evaluated every 6 hours.</H3>
 <p>
-<img src="../../../documentation/images/verification_48hrX6hr.png" alt="Example 1" width=75% />
+<img src="../../../docs/images/verification_48hrX6hr.png" alt="Example 1" width=75% />
 <br />
 <br />
 In this example, we are generating an <em class=file>obsdef_mask.txt</em>
@@ -882,14 +877,6 @@ by UCAR, "as is", without charge, subject to all terms of use at
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
-
-<TABLE border=0 cellpadding=0 width=100% summary="">
-<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
-<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 

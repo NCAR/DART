@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module model_mod
 
@@ -14,8 +12,21 @@ module model_mod
 ! be used by converters and utilities and those interfaces can be anything
 ! that is useful to other pieces of code.
 
+! This revision of the model_mod supports both a global MPAS grid and
+! a regional grid.  For the regional grid only observations which 
+! are completely inside the interior will be assimilated, meaning obs
+! which need interpolation information from the boundary cells 
+! (in any of the 7 boundary layers) will be rejected.  However, during the
+! assimilation phase all locations in the local grid will be impacted, 
+! even locations in the boundary layers if there are obs close to the
+! boundaries.  A post-processing step will smooth the GFS external
+! values with the values updated by the assimilation in the boundary layers.
 
-! Routines in other modules that are used here.
+! Note that to reject obs during interpolation requires the model_interpolate()
+! routine to check and return an error, but during the vertical conversion and
+! get_close routines all state point operations must succeed, even those
+! in the boundary layers.  Pay close attention to which internal routines are used
+! by each to make sure the intended actions are what happens.
 
 use        types_mod, only : r4, r8, i8, digits12, SECPERDAY, MISSING_R8,      &
                              rad2deg, deg2rad, PI, MISSING_I, obstypelength
@@ -37,7 +48,13 @@ use     location_mod, only : location_type, get_dist, query_location,          &
                              
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_check, &
-                                 nc_begin_define_mode, nc_end_define_mode
+                                 nc_begin_define_mode, nc_end_define_mode,                       &
+                                 nc_open_file_readonly, nc_close_file,                           &
+                                 nc_add_attribute_to_variable, nc_define_dimension,              &
+                                 nc_define_unlimited_dimension, nc_define_character_variable,    &
+                                 nc_define_real_variable, nc_get_variable, nc_put_variable,      &
+                                 nc_get_dimension_size, nc_variable_exists, nc_dimension_exists, &
+                                 nc_define_integer_variable
 
 use location_io_mod,      only :  nc_write_location_atts, nc_write_location
 
@@ -47,7 +64,7 @@ use default_model_mod,     only : nc_write_model_vars, adv_1step,          &
 
 use xyz_location_mod, only : xyz_location_type, xyz_set_location, xyz_get_location,         &
                              xyz_get_close_type, xyz_get_close_init, xyz_get_close_destroy, &
-                             xyz_find_nearest
+                             xyz_find_nearest, xyz_use_great_circle_dist
 
 use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
@@ -57,33 +74,37 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              file_to_text, close_file, do_nml_file,            &
                              do_nml_term, scalar
 
-use     obs_kind_mod, only : get_index_for_quantity,  &
-                             get_name_for_quantity,   &
-                             QTY_SURFACE_ELEVATION,  &
-                             QTY_SURFACE_PRESSURE,   &
-                             QTY_10M_U_WIND_COMPONENT, &
-                             QTY_10M_V_WIND_COMPONENT, &
-                             QTY_2M_TEMPERATURE,  &
-                             QTY_2M_SPECIFIC_HUMIDITY,  &
-                             QTY_VERTICAL_VELOCITY,  &
-                             QTY_POTENTIAL_TEMPERATURE, &
-                             QTY_EDGE_NORMAL_SPEED,  &
-                             QTY_TEMPERATURE,        &
-                             QTY_U_WIND_COMPONENT,   &
-                             QTY_V_WIND_COMPONENT,   &
-                             QTY_PRESSURE,           &
-                             QTY_DENSITY,            &
-                             QTY_VAPOR_MIXING_RATIO,      &
-                             QTY_CLOUDWATER_MIXING_RATIO, &
-                             QTY_RAINWATER_MIXING_RATIO,  &
-                             QTY_ICE_MIXING_RATIO,        &
-                             QTY_SNOW_MIXING_RATIO,       &
-                             QTY_GRAUPEL_MIXING_RATIO,    &
-                             QTY_SPECIFIC_HUMIDITY,       &
-                             QTY_GEOPOTENTIAL_HEIGHT, &
-                             QTY_PRECIPITABLE_WATER
+use     obs_kind_mod, only : get_index_for_quantity,       &
+                             get_name_for_quantity,        &
+                             get_quantity_for_type_of_obs, &
+                             QTY_SURFACE_ELEVATION,        &
+                             QTY_SURFACE_PRESSURE,         &
+                             QTY_10M_U_WIND_COMPONENT,     &
+                             QTY_10M_V_WIND_COMPONENT,     &
+                             QTY_2M_TEMPERATURE,           &
+                             QTY_2M_SPECIFIC_HUMIDITY,     &
+                             QTY_VERTICAL_VELOCITY,        &
+                             QTY_POTENTIAL_TEMPERATURE,    &
+                             QTY_EDGE_NORMAL_SPEED,        &
+                             QTY_TEMPERATURE,              &
+                             QTY_U_WIND_COMPONENT,         &
+                             QTY_V_WIND_COMPONENT,         &
+                             QTY_PRESSURE,                 &
+                             QTY_DENSITY,                  &
+                             QTY_VAPOR_MIXING_RATIO,       &
+                             QTY_2M_VAPOR_MIXING_RATIO,    &
+                             QTY_CLOUDWATER_MIXING_RATIO,  &
+                             QTY_RAINWATER_MIXING_RATIO,   &
+                             QTY_ICE_MIXING_RATIO,         &
+                             QTY_SNOW_MIXING_RATIO,        &
+                             QTY_GRAUPEL_MIXING_RATIO,     &
+                             QTY_SPECIFIC_HUMIDITY,        &
+                             QTY_GEOPOTENTIAL_HEIGHT,      &
+                             QTY_PRECIPITABLE_WATER,       &
+                             QTY_SKIN_TEMPERATURE,         &  ! for rttov
+                             QTY_SURFACE_TYPE                 ! for rttov
 
-use mpi_utilities_mod, only: my_task_id, broadcast_minmax, task_count
+use mpi_utilities_mod, only: my_task_id, broadcast_minmax
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
@@ -107,7 +128,10 @@ use get_geometry_mod
 use get_reconstruct_mod
 
 use state_structure_mod, only :  add_domain, get_model_variable_indices, &
-                                 state_structure_info, get_index_start, get_index_end, get_num_variables
+                                 state_structure_info, get_index_start, get_index_end, &
+                                 get_num_variables, get_domain_size, get_varid_from_varname, &
+                                 get_variable_name, get_num_dims, get_dim_lengths, &
+                                 get_dart_vector_index, get_varid_from_kind
 
 
 implicit none
@@ -142,48 +166,65 @@ public :: init_time,                      &
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 
-public :: get_model_analysis_filename,  &
-          get_grid_definition_filename, &
+public :: get_init_template_filename,   &
           analysis_file_to_statevector, &
           statevector_to_analysis_file, &
+          statevector_to_boundary_file, &
           get_analysis_time,            &
           get_grid_dims,                &
           get_xland,                    &
+          get_surftype,                 &
+          get_cell_center_coords,       &
+          get_bdy_mask,                 &
           print_variable_ranges,        &
           find_closest_cell_center,     &
           find_triangle,                &
           read_2d_from_nc_file,         &
-          find_height_bounds
+          find_height_bounds,           &
+          cell_ok_to_interpolate,       &
+          is_global_grid,               &
+          uv_cell_to_edges
+
+! try adjusting what static_init_model does, before it is called.
+! the main update_bc program, for example, can call these before
+! calling static_init_model() and that will modify what it does.
+public :: set_lbc_variables, &
+          force_u_into_state
+
+! set_lbc_variables sets the lbc_variables string array
+! force_u_into_state sets a logical add_u_to_state_list that forces u to be in state
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'models/mpas_atm/model_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! module global storage; maintains values between calls, accessible by
 ! any subroutine
-character(len=256) :: string1, string2, string3, locstring
+character(len=512) :: string1, string2, string3
+character(len=256) :: locstring
 logical, save :: module_initialized = .false.
+
+! length of an mpas (also wrf) time string:  YYYY-MM-DD_hh:mm:ss
+integer, parameter :: TIMELEN = 19
 
 ! Real (physical) constants as defined exactly in MPAS.
 ! redefined here for consistency with the model.
 real(r8), parameter :: rgas = 287.0_r8
+real(r8), parameter :: rv = 461.6_r8
 real(r8), parameter :: cp = 1003.0_r8
 real(r8), parameter :: cv = 716.0_r8
 real(r8), parameter :: p0 = 100000.0_r8
 real(r8), parameter :: rcv = rgas/(cp-rgas)
+real(r8), parameter :: rvord = rv/rgas    
 
 ! earth radius; needed to convert lat/lon to x,y,z cartesian coords.
-! FIXME: one of the example ocean files had a global attr with 6371220.0
-! instead of 1229.   ??
-real(r8), parameter :: radius = 6371229.0 ! meters
+! for the highest accuracy this should match what the model uses.
+real(r8), parameter :: radius = 6371229.0_r8 ! meters
 
-! roundoff error for single precision
-!real(r8), parameter :: roundoff = 1.0e-5_r8
-
-! r8 r4
-real(r8), parameter :: roundoff = 1.0e-12_r8
+! roundoff error tolerance
+! set in static_init_model() to 1e-5 or 1e-12 depending on compiled precision
+real(r8) :: roundoff
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
@@ -194,7 +235,6 @@ type(xyz_get_close_type)             :: cc_gc
 type(xyz_location_type), allocatable :: cell_locs(:)
 logical :: search_initialized = .false.
 
-
 ! compile-time control over whether grid information is written to the
 ! diagnostic files or not.  if it is, the files are self-contained (e.g. for
 ! ease of plotting), but are also much larger than they would be otherwise.
@@ -203,20 +243,26 @@ logical :: search_initialized = .false.
 logical :: add_static_data_to_diags = .false.
 
 ! variables which are in the module namelist
+character(len=256) :: init_template_filename = 'mpas_init.nc'
+character(len=256) :: bdy_template_filename = ''
 integer            :: vert_localization_coord = VERTISHEIGHT
 integer            :: assimilation_period_days = 0
 integer            :: assimilation_period_seconds = 21600
 real(r8)           :: model_perturbation_amplitude = 0.0001   ! tiny amounts
+logical            :: log_p_vert_interp = .true.     ! if true, interpolate vertical pressure in log space
+character(len=32)  :: calendar = 'Gregorian'
 real(r8)           :: highest_obs_pressure_mb   = 100.0_r8    ! do not assimilate obs higher than this level.
 real(r8)           :: sfc_elev_max_diff = -1.0_r8    ! do not assimilate if |model - station| height is larger than this [m].
-logical            :: log_p_vert_interp = .true.     ! if true, interpolate vertical pressure in log space
-integer            :: debug = 0   ! turn up for more and more debug messages
 integer            :: xyzdebug = 0
-character(len=32)  :: calendar = 'Gregorian'
-character(len=256) :: model_analysis_filename = 'mpas_init.nc'
-character(len=256) :: grid_definition_filename = 'mpas_init.nc'
+integer            :: debug = 0   ! turn up for more and more debug messages
 
-integer :: domid ! For state_structure_mod access
+! this is not in the namelist or supported generally.
+! (setting this to true avoids the surface elevation max diff 
+! test for elevation and surface pressure.)
+logical :: always_assim_surf_altimeters = .false.
+
+integer :: anl_domid = -1 ! For state_structure_mod access
+integer :: lbc_domid = -1
 
 ! if .false. use U/V reconstructed winds tri interp at centers for wind forward ops
 ! if .true.  use edge normal winds (u) with RBF functs for wind forward ops
@@ -236,6 +282,11 @@ logical :: update_u_from_reconstruct = .true.
 ! assimilation, and use only the increments to update the edge winds
 logical :: use_increments_for_u_update = .true.
 
+! if set by: call force_u_into_state()  *BEFORE* calling static_init_model(),
+! the code will add U (edge normal winds) to the mpas state vector even if it
+! isn't in the namelist.
+logical :: add_u_to_state_list = .false.
+
 ! if > 0, amount of distance in fractional model levels that a vertical
 ! point can be above or below the top or bottom of the grid and still be
 ! evaluated without error.  if extrapolate is true, extrapolate from the
@@ -243,9 +294,39 @@ logical :: use_increments_for_u_update = .true.
 real(r8) :: outside_grid_level_tolerance = -1.0_r8
 logical  :: extrapolate = .false.
 
+! if the calling code updates an existing file it simply writes the state variable
+! data.  if it needs to create a file from scratch it calls nc_write_model_atts()
+! to optionally add grid info or any other non-state variables or attributes.
+! setting this to .true. adds the mpas grid info to the file.  .false. does
+! not and results in smaller diag/output files.
+logical :: write_grid_to_diag_files = .false. 
+
+! in converting to scale height for the vertical, set this to .false. to
+! use simply the log of the pressure.  to normalize by the surface pressure
+! (backwards compatible with previous code), set this to .true.
+logical :: no_normalization_of_scale_heights = .true. 
+
+! for regional MPAS
+real(r8) :: dxmax  ! max distance between two adjacent cell centers in the mesh (in meters)
+
+! when updating boundary files for regional mpas, note whether the boundary
+! file has the reconstructed winds (lbc_ur, lbc_vr) or not. (this is set by
+! looking at the bdy template file and seeing if those variables are there.)  
+! if not, the other two options are ignored.  
+! if they are in the lbc file, then the other logicals control whether to use 
+! them instead of updating the U edge winds directly, and whether to use the 
+! reconstructed increments or not. 
+! the latter two options could be added to the namelist if someone wanted to
+! explore the options for how the edge winds are updated in the boundary file.
+! for now they're not - they're hardcoded true.
+! note that these are for the boundary file update only - there are separate
+! options for how to update the U winds in the main assimilation state.
+
+logical :: lbc_file_has_reconstructed_winds     = .false.  
+
+
 namelist /model_nml/             &
-   model_analysis_filename,      &
-   grid_definition_filename,     &
+   init_template_filename,       &
    vert_localization_coord,      &
    assimilation_period_days,     &
    assimilation_period_seconds,  &
@@ -261,7 +342,9 @@ namelist /model_nml/             &
    highest_obs_pressure_mb,      &
    outside_grid_level_tolerance, &
    extrapolate,                  &
-   sfc_elev_max_diff
+   sfc_elev_max_diff,            &
+   write_grid_to_diag_files,     &
+   no_normalization_of_scale_heights
 
 ! DART state vector contents are specified in the input.nml:&mpas_vars_nml namelist.
 integer, parameter :: max_state_variables = 80
@@ -271,21 +354,26 @@ character(len=NF90_MAX_NAME) :: mpas_state_variables(max_state_variables * num_s
 character(len=NF90_MAX_NAME) :: mpas_state_bounds(num_bounds_table_columns, max_state_variables ) = ' '
 character(len=NF90_MAX_NAME) :: variable_table(max_state_variables, num_state_table_columns )
 
+! this is special and not in the namelist.  boundary files have a fixed
+! set of variables with fixed names.
+character(len=NF90_MAX_NAME) :: lbc_variables(max_state_variables) = ''
+
 namelist /mpas_vars_nml/ mpas_state_variables, mpas_state_bounds
 
-! FIXME: this shouldn't be a global.  the progvar array
-! should be allocated at run time and nfields should be part
-! of a larger derived type that includes nfields and an array
-! of progvartypes.
 integer :: nfields
 
+!>@todo FIXME - REMOVE AS MUCH OF THIS AS POSSIBLE.
+!> some of this information is in the state structure now.
+!> the duplicate progvar stuff should be removed and the 
+!> state routines used instead.  this duplicates work and 
+!> makes us keep up code in 2 different places.
+
+! original code:
 ! Everything needed to describe a variable
 
 type progvartype
    private
    character(len=NF90_MAX_NAME) :: varname
-   character(len=NF90_MAX_NAME) :: long_name
-   character(len=NF90_MAX_NAME) :: units
    character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimname
    integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
    integer :: xtype         ! netCDF variable type (NF90_double, etc.)
@@ -337,7 +425,10 @@ real(r8), allocatable :: lonEdge(:) ! edge longitudes (degrees, original radians
 real(r8), allocatable :: latEdge(:) ! edge longitudes (degrees, original radians in file)
 real(r8), allocatable :: lonCell(:) ! cell center longitudes (degrees, original radians in file)
 real(r8), allocatable :: latCell(:) ! cell center latitudes  (degrees, original radians in file)
-real(r8), allocatable :: xland(:)   ! LAND MASK (1 FOR LAND, 2 FOR WATER)
+real(r8), allocatable :: dcEdge(:)  ! distance between two adjacent cell centers (in meters)
+real(r8), allocatable :: xland(:)   ! land-ocean mask (1=land including sea-ice ; 2=ocean)  
+real(r8), allocatable :: seaice(:)  ! sea-ice flag (0=no seaice; =1 otherwise) - for rttov
+real(r8), allocatable :: skintemp(:)! ground or water surface temperature      - for rttov
 real(r8), allocatable :: zGridFace(:,:)   ! geometric height at cell faces   (nVertLevelsP1,nCells)
 real(r8), allocatable :: zGridCenter(:,:) ! geometric height at cell centers (nVertLevels,  nCells)
 real(r8), allocatable :: zGridEdge(:,:)   ! geometric height at edge centers (nVertLevels,  nEdges)
@@ -355,11 +446,11 @@ real(r8), allocatable :: edgeNormalVectors(:,:)
 ! Boundary information might be needed ... regional configuration?
 ! Read if available.
 
-integer,  allocatable :: boundaryEdge(:,:)
-integer,  allocatable :: boundaryVertex(:,:)
+integer,  allocatable :: bdyMaskCell(:)
+integer,  allocatable :: bdyMaskEdge(:)
 integer,  allocatable :: maxLevelCell(:)
 
-real(r8), allocatable :: ens_mean(:)   ! needed to convert vertical distances consistently
+integer,  allocatable :: surftype(:)   !  ! surface type (land=0, water=1, seaice = 2) - for rttov
 
 integer         :: model_size          ! the state vector length
 type(time_type) :: model_timestep      ! smallest time to adv model
@@ -458,6 +549,7 @@ contains
 !------------------------------------------------------------------
 
 subroutine static_init_model()
+!>@todo FIXME - can we add an optional arg here for update_bc use?
 
 ! Called to do one time initialization of the model.
 !
@@ -474,18 +566,20 @@ integer :: ncid, VarID, numdims, varsize, dimlen
 integer :: iunit, io, ivar, i, index1, indexN, iloc, kloc
 integer :: ss, dd, z1, m1
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
-integer :: cel1, cel2
+integer :: cel1, cel2, lbc_nfields
 logical :: both
 real(r8) :: variable_bounds(max_state_variables, 2)
+integer :: variable_qtys(max_state_variables)
+character(len=*), parameter :: routine = 'static_init_model'
 
 if ( module_initialized ) return ! only need to do this once.
-
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
 
 ! Since this routine calls other routines that could call this routine
 ! we'll say we've been initialized pretty dang early.
 module_initialized = .true.
+
+! Print module information to log file and stdout.
+call register_module(source, revision, revdate)
 
 ! Read the DART namelist for this model
 call find_namelist_in_file('input.nml', 'model_nml', iunit)
@@ -515,25 +609,35 @@ model_timestep = set_model_time_step()
 
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
-write(string1,*)'assimilation period is ',dd,' days ',ss,' seconds'
-call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
+write(string1,*)'assimilation window is ',dd,' days ',ss,' seconds'
+call error_handler(E_MSG,routine,string1,source,revision,revdate)
 
 !---------------------------------------------------------------
 ! 1) get grid dimensions
 ! 2) allocate space for the grids
 ! 3) read them from the analysis file
 
-! read_grid_dims() fills in the following module global variables:
-!  nCells, nVertices, nEdges, maxEdges, nVertLevels, nVertLevelsP1, vertexDegree, nSoilLevels
-call read_grid_dims()
+ncid = nc_open_file_readonly(init_template_filename, routine)
+
+! move this up - some of the routines below depend on having
+! the variable table parsed already, and U added if needed.
+call verify_state_variables( mpas_state_variables, ncid, init_template_filename, &
+                             nfields, variable_table)
+
+! get sizes
+call read_grid_dims(ncid)
 
 allocate(latCell(nCells), lonCell(nCells))
 allocate(zGridFace(nVertLevelsP1, nCells))
 allocate(zGridCenter(nVertLevels, nCells))
 
 allocate(cellsOnVertex(vertexDegree, nVertices))
+allocate(dcEdge(nEdges))
 allocate(nEdgesOnCell(nCells))
 allocate(xland(nCells))
+allocate(seaice(nCells))              ! for rttov
+allocate(skintemp(nCells))            ! for rttov
+allocate(surftype(nCells))            ! for rttov
 allocate(edgesOnCell(maxEdges, nCells))
 allocate(cellsOnEdge(2, nEdges))
 allocate(verticesOnCell(maxEdges, nCells))
@@ -542,7 +646,7 @@ allocate(xVertex(nVertices), yVertex(nVertices), zVertex(nVertices))
 
 ! see if U is in the state vector list.  if not, don't read in or
 ! use any of the Edge arrays to save space.
-data_on_edges = is_edgedata_in_state_vector(mpas_state_variables)
+data_on_edges = is_edgedata_in_state_vector(variable_table, lbc_variables)
 
 if(data_on_edges) then
    allocate(zGridEdge(nVertLevels, nEdges))
@@ -550,10 +654,14 @@ if(data_on_edges) then
    allocate(latEdge(nEdges), lonEdge(nEdges))
 endif
 
-! this reads in latCell, lonCell, zGridFace, cellsOnVertex
-call get_grid()
+! is this a global or regional grid?
+! if regional, allocate and read in the boundary info here.
+call set_global_grid(ncid)
 
-! read in vert cell face locations and then compute vertical center locations
+! fill in the grid values
+call get_grid(ncid)
+
+! vertical faces are in the input file.  compute vertical center locations here.
 do kloc=1, nCells
    do iloc=1, nVertLevels
       zGridCenter(iloc,kloc) = (zGridFace(iloc,kloc) + zGridFace(iloc+1,kloc))*0.5_r8
@@ -584,22 +692,11 @@ endif
 
 !---------------------------------------------------------------
 ! Compile the list of model variables to use in the creation
-! of the DART state vector. Required to determine model_size.
+! of the DART state vector.
 !
-! Verify all variables are in the model analysis file
+! THIS CODE SHOULD BE REMOVED - it is done by the add_domain code.
 !
-! Compute the offsets into the state vector for the start of each
-! different variable type. Requires reading shapes from the model
-! analysis file. As long as TIME is the LAST dimension, we're OK.
-!
-! Record the extent of the data type in the state vector.
 
-
-call nc_check( nf90_open(trim(model_analysis_filename), NF90_NOWRITE, ncid), &
-                  'static_init_model', 'open '//trim(model_analysis_filename))
-
-call verify_state_variables( mpas_state_variables, ncid, model_analysis_filename, &
-                             nfields, variable_table)
 
 TimeDimID = FindTimeDimension( ncid )
 
@@ -609,7 +706,7 @@ if (TimeDimID < 0 ) then
 endif
 
 call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimID), &
-                    'static_init_model', 'inquire '//trim(model_analysis_filename))
+                    'static_init_model', 'inquire '//trim(init_template_filename))
 
 if ( (TimeDimID > 0) .and. (unlimitedDimID > 0) .and. (TimeDimID /= unlimitedDimID)) then
    write(string1,*)'IF Time is not the unlimited dimension, I am lost.'
@@ -631,30 +728,13 @@ do ivar = 1, nfields
    progvar(ivar)%numcells    = MISSING_I
    progvar(ivar)%numedges    = MISSING_I
 
-   string2 = trim(model_analysis_filename)//' '//trim(varname)
+   string2 = trim(init_template_filename)//' '//trim(varname)
 
    call nc_check(nf90_inq_varid(ncid, trim(varname), VarID), &
             'static_init_model', 'inq_varid '//trim(string2))
 
    call nc_check(nf90_inquire_variable(ncid, VarID, xtype=progvar(ivar)%xtype, &
            dimids=dimIDs, ndims=numdims), 'static_init_model', 'inquire '//trim(string2))
-
-   ! If the long_name and/or units attributes are set, get them.
-   ! They are not REQUIRED to exist but are nice to use if they are present.
-
-   if( nf90_inquire_attribute(    ncid, VarID, 'long_name') == NF90_NOERR ) then
-      call nc_check( nf90_get_att(ncid, VarID, 'long_name' , progvar(ivar)%long_name), &
-                  'static_init_model', 'get_att long_name '//trim(string2))
-   else
-      progvar(ivar)%long_name = varname
-   endif
-
-   if( nf90_inquire_attribute(    ncid, VarID, 'units') == NF90_NOERR )  then
-      call nc_check( nf90_get_att(ncid, VarID, 'units' , progvar(ivar)%units), &
-                  'static_init_model', 'get_att units '//trim(string2))
-   else
-      progvar(ivar)%units = 'unknown'
-   endif
 
    ! Since we are not concerned with the TIME dimension, we need to skip it.
    ! When the variables are read, only a single timestep is ingested into
@@ -706,14 +786,15 @@ do ivar = 1, nfields
    progvar(ivar)%indexN      = index1 + varsize - 1
    index1                    = index1 + varsize      ! sets up for next variable
 
-   if ( debug > 4 ) call dump_progvar(ivar)
+   if ( debug > 11 .and. do_output()) call dump_progvar(ivar)
 
 enddo
 
-call nc_check( nf90_close(ncid), &
-                  'static_init_model', 'close '//trim(model_analysis_filename))
+call nc_close_file(ncid, routine)
 
-model_size = progvar(nfields)%indexN
+
+! FIXME: moved below to after add_domain() calls
+!model_size = progvar(nfields)%indexN
 
 if ( debug > 0 .and. do_output()) then
   write(logfileunit,*)
@@ -722,14 +803,14 @@ if ( debug > 0 .and. do_output()) then
                                           nCells, nEdges, nVertices, nVertLevels
   write(     *     ,'(" static_init_model: nCells, nEdges, nVertices, nVertLevels =",4(1x,i9))') &
                                           nCells, nEdges, nVertices, nVertLevels
-  write(logfileunit, *)'static_init_model: model_size = ', model_size
-  write(     *     , *)'static_init_model: model_size = ', model_size
+!  write(logfileunit, *)'static_init_model: model_size = ', model_size
+!  write(     *     , *)'static_init_model: model_size = ', model_size
   if ( global_grid ) then
      write(logfileunit, *)'static_init_model: grid is a global grid '
      write(     *     , *)'static_init_model: grid is a global grid '
   else
-     write(logfileunit, *)'static_init_model: grid has boundaries '
-     write(     *     , *)'static_init_model: grid has boundaries '
+     write(logfileunit, *)'static_init_model: grid is NOT a global grid. Lateral boundaries exist '
+     write(     *     , *)'static_init_model: grid is NOT a global grid. Lateral boundaries exist '
   endif
   if ( all_levels_exist_everywhere ) then
      write(logfileunit, *)'static_init_model: all cells have same number of vertical levels '
@@ -739,6 +820,55 @@ if ( debug > 0 .and. do_output()) then
      write(     *     , *)'static_init_model: cells have varying number of vertical levels '
   endif
 endif
+
+
+! set the domain(s) in the state structure here
+
+variable_bounds(1:nfields, 1) = progvar(1:nfields)%range(1)
+variable_bounds(1:nfields, 2) = progvar(1:nfields)%range(2)
+variable_qtys(1:nfields) = progvar(1:nfields)%dart_kind
+
+anl_domid = add_domain(init_template_filename, nfields,           &
+                       var_names  = variable_table (1:nfields,1), &
+                       kind_list  = variable_qtys(1:nfields),     &
+                       clamp_vals = variable_bounds(1:nfields,:) )
+
+model_size = get_domain_size(anl_domid)
+if ( debug > 4 .and. do_output()) print*,'model_size(anl_domid)=',model_size  ! HA
+
+lbc_nfields = 0
+
+! if we have a lateral boundary file, add it to the domain
+! so we have access to the corresponding lbc_xxx fields.
+!>@todo FIXME: if we want to do increments, we could also add a
+! third domain which is the original forecast fields before
+! the assimilation (so we can compute increments)
+if (.not. global_grid .and. lbc_variables(1) /= '') then
+   ! regional: count number of lbc fields to read in
+   COUNTUP: do i=1, max_state_variables
+      if (lbc_variables(i) /= '') then
+         lbc_nfields = lbc_nfields + 1
+      else
+         exit COUNTUP
+      endif
+   enddo COUNTUP
+   if( debug > 4 .and. do_output()) print*, 'Regional: number of lbc fields to read in = ', lbc_nfields
+   lbc_domid = add_domain(bdy_template_filename, lbc_nfields,    &
+                          var_names  = lbc_variables)
+                        ! FIXME clamp_vals = variable_bounds(1:nfields,:) )
+   if( debug > 4 .and. do_output()) print*, 'model_size, lbc_domid =',model_size,lbc_domid
+
+   model_size = model_size + get_domain_size(lbc_domid)
+else
+   lbc_domid = -1
+endif
+
+if ( debug > 4 .and. do_output()) then
+     call state_structure_info(anl_domid)
+     print*, 'model_size =',model_size
+     if(lbc_domid >= 0) print*, 'get_domain_size(lbc_domid):',get_domain_size(lbc_domid)
+endif
+!if ( debug > 4 .and. do_output() .and. lbc_domid >= 0) call state_structure_info(lbc_domid)
 
 ! do some sanity checking here:
 
@@ -793,9 +923,12 @@ endif
 ! basically we cannot do much without having at least these
 ! three fields in the state vector.  refuse to go further
 ! if these are not present:
-if ((get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
-    (get_progvar_index_from_kind(QTY_DENSITY) < 0) .or. &
-    (get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO) < 0)) then
+!print *, get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
+!print *, get_varid_from_kind(anl_domid, QTY_DENSITY) 
+!print *, get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO) 
+if ((get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
+    (get_varid_from_kind(anl_domid, QTY_DENSITY) < 0) .or. &
+    (get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO) < 0)) then
    write(string1, *) 'State vector is missing one or more of the following fields:'
    write(string2, *) 'Potential Temperature (theta), Density (rho), Vapor Mixing Ratio (qv).'
    write(string3, *) 'Cannot convert between height/pressure nor compute sensible temps.'
@@ -810,19 +943,17 @@ if (extrapolate) then
                       source, revision, revdate)
 endif
 
-allocate( ens_mean(model_size) )
-
-variable_bounds(1:nfields, 1) = progvar(1:nfields)%range(1)
-variable_bounds(1:nfields, 2) = progvar(1:nfields)%range(2)
-
-domid =  add_domain( trim(model_analysis_filename), nfields,    &
-                     var_names  = variable_table (1:nfields,1), &
-                     clamp_vals = variable_bounds(1:nfields,:) )
-
-if ( debug > 4 .and. do_output()) call state_structure_info(domid)
-
 ! tell the location module how we want to localize in the vertical
 call set_vertical_localization_coord(vert_localization_coord)
+
+! set an appropriate value for roundoff tests based
+! on this code being compiled single or double precision.
+! set to 1e-5 (for single) or 1e-12 (for double precision).
+if (r8 == digits12) then
+   roundoff = 1.0e-12_r8
+else
+   roundoff = 1.0e-5_r8
+endif
 
 end subroutine static_init_model
 
@@ -842,9 +973,7 @@ integer, optional,   intent(out) :: var_type
 
 ! Local variables
 
-integer  :: i, j, k ! Indices into variable (note k is not used in MPAS)
-integer  :: nzp, iloc, vloc, nf
-integer  :: istatus
+integer  :: nzp, iloc, vloc, nf, ndim
 real(r8) :: height
 type(location_type) :: new_location
 
@@ -852,17 +981,7 @@ if ( .not. module_initialized ) call static_init_model
 
 ! get the local indicies and type from dart index. kloc is a dummy variable for this subroutine
 
-call get_model_variable_indices(index_in, i, j, k, var_id=nf)
-
-if (progvar(nf)%numdims == 2) then  ! variable(vcol, iloc)
-   vloc = i
-   iloc = j
-elseif (progvar(nf)%numdims == 1) then ! variable(iloc)
-   iloc = i
-   vloc = 1
-else
-   call error_handler(E_ERR, 'get_state_meta_data ', 'expecting 1D or 2D variable')
-endif
+call find_mpas_indices(index_in, iloc, vloc, ndim, nf)
 
 nzp  = progvar(nf)%numvertical
 
@@ -907,20 +1026,7 @@ endif
 ! cannot do vertical conversion here.  assim_tools will call vertical conversion
 ! on the obs and on the state.
 
-!! Let us return the vert location with the requested vertical localization coordinate
-!! hoping that the code can run faster when same points are close to many obs
-!! since vert_convert does not need to be called repeatedly in get_close_obs any more.
-!! FIXME: we should test this to see if it's a win (in computation time).  for obs
-!! which are not dense relative to the grid, this might be slower than doing the
-! conversions on demand in the localization code (in get_close_obs()).
-!
-!if ( vertical_localization_on() .and. vert_localization_coord /= VERTISHEIGHT ) then
-!     new_location = location
-!     call vert_convert(state_handle, new_location, progvar(nf)%dart_kind, istatus)
-!     if(istatus == 0) location = new_location
-!endif
-
-if (debug > 20) then
+if (debug > 20 .and. do_output()) then
 
     write(*,'("INDEX_IN / IVAR : ",(i10,2x),(i5,2x))') index_in, nf
     write(*,'("                 ILOC, VLOC: ",2(i5,2x))') iloc, vloc
@@ -934,29 +1040,84 @@ endif
 
 end subroutine get_state_meta_data
 
+!------------------------------------------------------------------
+!> given an index into the state vector, return with the cellid
+!> and the vertical level if this is a 2d variable.  also return
+!> the dimensionality, and optionally the progvar index.
+
+subroutine find_mpas_indices(index_in, cellid, vert_level, ndim, nf)
+integer(i8), intent(in)  :: index_in
+integer,     intent(out) :: cellid
+integer,     intent(out) :: vert_level
+integer,     intent(out), optional :: ndim
+integer,     intent(out), optional :: nf
+
+integer  :: i, j, k ! Indices into variable (note k is not used in MPAS)
+integer  :: nzp, iloc, vloc, nnf
+
+! get the local indicies and type from dart index. 'k' is a dummy variable for this subroutine
+
+call get_model_variable_indices(index_in, i, j, k, var_id=nnf)
+
+if (progvar(nnf)%numdims == 2) then     ! variable(vcol, iloc)
+   vert_level = i
+   cellid = j
+elseif (progvar(nnf)%numdims == 1) then ! variable(iloc)
+   cellid = i
+   vert_level = 1
+else
+   call error_handler(E_ERR, 'find_mpas_indices ', 'expecting 1D or 2D variable')
+endif
+
+if (present(ndim)) ndim = progvar(nnf)%numdims
+if (present(nf)) nf = nnf
+
+end subroutine find_mpas_indices
 
 !------------------------------------------------------------------
-subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
+!> given a domain and varid, return 3 dimensions - setting to 1 if
+!> not present.
 
-! given a state vector, a location, and a QTY_xxx, return the
-! interpolated value at that location, and an error code.  0 is success,
-! anything positive is an error.  (negative reserved for system use)
-!
-!       ERROR codes:
-!
-!       ISTATUS = 99:  general error in case something terrible goes wrong...
-!       ISTATUS = 88:  this kind is not in the state vector
-!       ISTATUS = 11:  Could not find a triangle that contains this lat/lon
-!       ISTATUS = 12:  Height vertical coordinate out of model range.
-!       ISTATUS = 13:  Missing value in interpolation.
-!       ISTATUS = 16:  Don't know how to do vertical velocity for now
-!       ISTATUS = 17:  Unable to compute pressure values
-!       ISTATUS = 18:  altitude illegal
-!       ISTATUS = 19:  could not compute u using RBF code
-!       ISTATUS = 101: Internal error; reached end of subroutine without
-!                      finding an applicable case.
-!       ISTATUS = 201: Reject observation from user specified pressure level
-!
+subroutine find_mpas_dims(domid, ivar, ndims, dims)
+integer, intent(in)  :: domid
+integer, intent(in)  :: ivar
+integer, intent(out) :: ndims
+integer, intent(out) :: dims(3)
+
+! start with everything 1, then set values which are different
+dims(:) = 1
+
+! get the domain info
+ndims = get_num_dims(domid, ivar)
+dims(1:ndims) = get_dim_lengths(domid, ivar)
+
+end subroutine find_mpas_dims
+
+!------------------------------------------------------------------
+!> given a state vector, a location, and a QTY_xxx, return the
+!> interpolated value at that location, and an error code.  0 is success,
+!> anything positive is an error.  (negative reserved for system use)
+!>
+!>       ERROR codes:
+!>
+!>       ISTATUS = 99:  general error in case something terrible goes wrong...
+!>       ISTATUS = 88:  this kind is not in the state vector
+!>       ISTATUS = 81:  Vertical location too high
+!>       ISTATUS = 80:  Vertical location too low
+!>       ISTATUS = 11:  Could not find the closest cell center that contains this lat/lon
+!>       ISTATUS = 12:  Surface obs too far away from model elevation
+!>       ISTATUS = 13:  Missing value in interpolation.
+!>       ISTATUS = 14:  Could not find the other two cell centers of the triangle that contains this lat/lon
+!>       ISTATUS = 15:  Cell centers of the triangle fall in the lateral boundary zone
+!>       ISTATUS = 16:  Don't know how to do vertical velocity for now
+!>       ISTATUS = 17:  Unable to compute pressure values
+!>       ISTATUS = 18:  altitude illegal
+!>       ISTATUS = 19:  could not compute u using RBF code
+!>       ISTATUS = 101: Internal error; reached end of subroutine without
+!>                      finding an applicable case.
+!>       ISTATUS = 201: Reject observation from user specified pressure level
+
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
 ! passed variables
 
@@ -973,7 +1134,7 @@ type(location_type) :: location_tmp(ens_size)
 integer  :: ivar, obs_kind
 integer  :: tvars(3)
 integer  :: cellid
-logical  :: goodkind
+logical  :: goodkind, surface_obs
 real(r8) :: lpres(ens_size), values(3, ens_size)
 real(r8) :: llv(3)    ! lon/lat/vert
 integer  :: e, verttype
@@ -992,73 +1153,72 @@ call write_location(0,location,charstring=locstring)
 
 llv = get_location(location)
 verttype = nint(query_location(location))
+surface_obs = (verttype == VERTISSURFACE) 
 
-if (debug > 10) &
-print *, 'task ', my_task_id(), ' model_interpolate: obs_kind', obs_kind,' at', trim(locstring)
+! this routine returns the cellid for a global mpas grid, same as
+! find_closest_cell_center().
+! for a regional grid it only returns a good cellid if the closest cell center
+! AND the other 2 triangle points surrounding this location are completely inside 
+! the grid and none of the vertices are in the boundary region.
+cellid = cell_ok_to_interpolate(location)
+if (cellid < 1) then
+   !print *, 'model_interpolate: lon/lat is outside the domain: ', llv(1), llv(2)
+   istatus = 11
+   goto 100
+endif
 
 ! Reject obs if the station height is far way from the model terrain.
-! HK is this the same across the ensemble?
 if(is_vertical(location, "SURFACE").and. sfc_elev_max_diff >= 0) then
-   cellid = find_closest_cell_center(llv(2), llv(1))
-   if (cellid < 1) then
-      if(debug > 0) print *, 'no closest cell center for lat/lon: ', llv(1), llv(2), cellid
-      goto 100
-   endif
    if(abs(llv(3) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
-      !Soyoung: No threshold for surface altimeter 
-      !if(obs_kind == QTY_SURFACE_PRESSURE .or. obs_kind == QTY_SURFACE_ELEVATION) then
-      !   istatus = 0
-      !else
+      ! allow experimentation with always accepting surface altimeters
+      ! by setting this module global variable to .true. at top of file.
+      if (always_assim_surf_altimeters .and. &
+          (obs_kind == QTY_SURFACE_PRESSURE .or. obs_kind == QTY_SURFACE_ELEVATION)) then
+         istatus = 0
+      else
          istatus = 12
+         if (debug > 10 .and. do_output()) &
+         print*, 'model_interpolate: Skip due to abs(dz) > sfc_elev_max_diff:', llv(3)-zGridFace(1,cellid)
          goto 100
-      !endif
+      endif
    endif
 endif
 
-
-! see if observation kind is in the state vector.  this sets an
+! see if observation quantity is in the state vector.  this sets an
 ! error code and returns without a fatal error if answer is no.
 ! exceptions:  the state vector has potential temp, but we can
 ! compute sensible temperature from pot_temp, rho, and qv.
 ! also there are options for the winds because mpas has both
 ! winds on the cell edges (normal only) and reconstructed winds
 ! at the cell centers (U,V).  there are namelist options to control
-! which to use if both are in the state vector.  we can compute
-! specific humidity from the vapor mixing ratio (which we know
-! we have because we require potential temp, mixing ratio, and
-! density to be in the state vector in all cases.)
+! which to use if both are in the state vector.  
+! As another note, mpas defines the model variable qv as water vapor 
+! mixing ratio while it defines q2 as 2-meter specific humidity,
+! not 2-m water vapor mixing ratio, so q2 should be specified as 
+! QTY_2M_SPECIFIC_HUMIDITY in mpas_state_variables in &mpas_vars_nml.
 
+! is this field in the state?
 ivar = get_progvar_index_from_kind(obs_kind)
 if (ivar > 0) then
-   goodkind = .true.
+   goodkind = .true.     ! yes
+
 else
-   goodkind = .false.
+   goodkind = .false.    ! but check for exceptions
+
    ! exceptions if the kind isn't directly
    ! a field in the state vector:
    select case (obs_kind)
-      case (QTY_TEMPERATURE)
+      case (QTY_TEMPERATURE, QTY_2M_TEMPERATURE)
          goodkind = .true.
-      case (QTY_SURFACE_ELEVATION)
+      case (QTY_SURFACE_ELEVATION, QTY_GEOPOTENTIAL_HEIGHT)
          goodkind = .true.
-      case (QTY_SURFACE_PRESSURE)
+      case (QTY_PRESSURE)   ! surface pressure should be in the state
          goodkind = .true.
-      case (QTY_PRESSURE)
+      case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE)   ! Ha: added for rttov
          goodkind = .true.
-      case (QTY_GEOPOTENTIAL_HEIGHT)
+      case (QTY_SPECIFIC_HUMIDITY, QTY_2M_SPECIFIC_HUMIDITY)
          goodkind = .true.
-      case (QTY_SPECIFIC_HUMIDITY)
-         goodkind = .true.
-      case (QTY_PRECIPITABLE_WATER) 
-         goodkind = .true.
-      case (QTY_10M_U_WIND_COMPONENT)
-         goodkind = .true.
-      case (QTY_10M_V_WIND_COMPONENT)
-         goodkind = .true.
-      case (QTY_2M_TEMPERATURE)
-         goodkind = .true.
-      case (QTY_2M_SPECIFIC_HUMIDITY)
-         goodkind = .true.
-      case (QTY_U_WIND_COMPONENT,QTY_V_WIND_COMPONENT)
+      case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT)
          ! if the reconstructed winds at the cell centers aren't there,
          ! we can use the edge normal winds, if the user allows it.
          if (get_progvar_index_from_kind(QTY_EDGE_NORMAL_SPEED) > 0 &
@@ -1066,17 +1226,52 @@ else
    end select
 endif
 
+if (debug > 10 .and. do_output()) &
+   print *, 'model_interpolate: ivar, goodkind? ', ivar, goodkind,' ',&
+             trim(get_name_for_quantity(obs_kind)),' at ',trim(locstring)
+
 ! this kind is not in the state vector and it isn't one of the exceptions
 ! that we know how to handle.
 if (.not. goodkind) then
-   if (debug > 4) print *, 'model_interpolate: kind rejected', obs_kind
    istatus(:) = 88
+   if (debug > 4 .and. do_output()) print *, 'model_interpolate: kind rejected', obs_kind
    goto 100
 endif
 
-! Not prepared to do w interpolation at this time
+! Reject obs above a user specified pressure level.
+! this is expensive - only do it if users want to reject observations
+! at the top of the model.  negative values mean ignore this test.
+
+if (.not.surface_obs) then
+
+if (highest_obs_pressure_mb > 0.0) then
+   if (.not.(is_vertical(location, "SURFACE")) .and. (.not.(is_vertical(location, "UNDEFINED")))) then
+
+   call compute_pressure_at_loc(state_handle, ens_size, location, lpres, istatus)
+   where (lpres < highest_obs_pressure_mb * 100.0_r8)
+      ! Exclude from assimilation the obs above a user specified level
+      istatus(:) = 201
+   end where
+
+   if (debug > 10 .and. do_output()) then
+      do e = 1, ens_size
+         if (istatus(e) == 201) print *, 'ens ', e, ' rejected, pressure < upper limit', lpres(e), highest_obs_pressure_mb
+      enddo
+   endif
+   if (all(istatus /= 0)) goto 100   ! if everyone has failed, we can quit
+
+   endif
+endif
+
+if (debug > 11 .and. do_output()) then
+  print *, 'high pressure test is passed, ready to interpolate kind ', obs_kind
+endif
+
+endif !(.not.surface_obs) then
+
+! Not prepared to do W interpolation at this time
 if(obs_kind == QTY_VERTICAL_VELOCITY) then
-   if (debug > 4) print *, 'model_interpolate: code does not handle vertical velocity yet'
+   if (debug > 4 .and. do_output()) print *, 'model_interpolate: code does not handle vertical velocity yet'
    istatus(:) = 16
    goto 100
 endif
@@ -1091,7 +1286,7 @@ if ((obs_kind == QTY_U_WIND_COMPONENT .or. &
       ! return V
       call compute_u_with_rbf(state_handle, ens_size, location, .FALSE., expected_obs, istatus)
    endif
-   if (debug > 11) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus, expected_obs
+   if (debug > 11 .and. do_output()) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus(1), expected_obs(1)
    if (all(istatus /= 0)) goto 100   ! if everyone has failed, we can exit
 
 else if (obs_kind == QTY_TEMPERATURE) then
@@ -1102,38 +1297,32 @@ else if (obs_kind == QTY_TEMPERATURE) then
    tvars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 3, tvars, values, istatus)
-   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
    if (all(istatus /= 0)) goto 100
 
    ! convert pot_temp, density, vapor mixing ratio into sensible temperature
    expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus(:))
-   where (istatus /= 0) expected_obs = missing_r8
 
-   if (debug > 10) &
-      print *, 'model_interpolate: TEMPERATURE ', istatus, expected_obs, trim(locstring)
+   if (debug > 11 .and. do_output()) &
+      print *, 'model_interpolate: TEMPERATURE ', istatus(1), expected_obs(1), trim(locstring)
 
 else if (obs_kind == QTY_PRESSURE) then
    call  compute_pressure_at_loc(state_handle, ens_size, location, expected_obs, istatus)
 
-   if (debug > 10) &
-      print *, 'model_interpolate: PRESSURE ', istatus, expected_obs, trim(locstring)
-
-   if (all(istatus /= 0)) goto 100
+   if (debug > 11 .and. do_output()) &
+      print *, 'model_interpolate: PRESSURE ', istatus(1), expected_obs(1), trim(locstring)
 
 else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
    location_tmp = location
    call convert_vert_distrib(state_handle, ens_size, location_tmp, QTY_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
-   where (istatus /= 0) expected_obs = MISSING_R8
 
    do e = 1, ens_size
      if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
    enddo
 
-else if (obs_kind == QTY_VAPOR_MIXING_RATIO) then
-   tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+else if (obs_kind == QTY_VAPOR_MIXING_RATIO) then 
+   tvars(1) = get_progvar_index_from_kind(obs_kind)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
-   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
    if ( all(istatus /= 0 ) ) goto 100
 
    ! Don't accept negative moisture
@@ -1141,14 +1330,13 @@ else if (obs_kind == QTY_VAPOR_MIXING_RATIO) then
       if(istatus(e) == 0) expected_obs(e) = max(values(1, e),0.0_r8)
    enddo
 
-   if (debug > 10) &
-      print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus, expected_obs, trim(locstring)
+   if (debug > 11 .and. do_output()) &
+      print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus(1), expected_obs(1), trim(locstring)
 
 else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
    tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
-   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
    if ( all(istatus /= 0 ) ) goto 100
 
    ! compute vapor pressure, then: sh = vp / (1.0 + vp)
@@ -1162,79 +1350,66 @@ else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
       endif 
    enddo
 
-   if (debug > 10) &
-      print *, 'model_interpolate: SH ', istatus, expected_obs, trim(locstring)
+   if (debug > 11 .and. do_output()) &
+      print *, 'model_interpolate: SH2 ', istatus(1), expected_obs(1), trim(locstring)
 
-else if (obs_kind == QTY_SURFACE_ELEVATION) then
+else if (obs_kind == QTY_SURFACE_ELEVATION .or. &
+         obs_kind == QTY_SKIN_TEMPERATURE  .or. obs_kind == QTY_SURFACE_TYPE ) then
 
-   call compute_elevation_with_barycentric(location, expected_obs(1), istatus(1))
-   istatus(2:ens_size) = istatus(1)
-   if (istatus(1) /= 0) then
-      expected_obs = missing_r8
-      goto 100
+   if (obs_kind == QTY_SURFACE_ELEVATION) then
+       call compute_surface_data_with_barycentric(zGridFace(1,:), location, expected_obs(1), istatus(1))
+   else if (obs_kind == QTY_SKIN_TEMPERATURE) then
+       call compute_surface_data_with_barycentric(skintemp(:), location, expected_obs(1), istatus(1))
+   else if (obs_kind == QTY_SURFACE_TYPE) then
+       call get_surftype(nCells,surftype)
+       call compute_surface_data_with_barycentric(surftype(:)*1.0_r8, location, expected_obs(1), istatus(1))
    endif
 
    expected_obs(2:ens_size) = expected_obs(1)
+   istatus(2:ens_size) = istatus(1)
 
-   if (debug > 10) &
-      print *, 'model_interpolate: SURFACE_ELEVATION', istatus, expected_obs, trim(locstring)
-
-!>@todo check againt trunk, it does QTY_PRECIPITABLE_WATER and QTY_SURFACE_PRESSURE in the same if
-!> statement
-else if (obs_kind == QTY_PRECIPITABLE_WATER) then
-   tvars(1) = ivar
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
-   expected_obs = values(1, :)
-   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
-   if ( all(istatus /= 0) ) goto 100
+   if (debug > 11 .and. do_output()) &
+      print *, 'model_interpolate: ', trim(get_name_for_quantity(obs_kind)), ' ', istatus(1), &
+                                      expected_obs(1), trim(locstring)
 
 else
-   ! direct interpolation, kind is in the state vector
+   ! all other kinds come here.
+   ! direct interpolation: kind is in the state vector and no clamping or other conversions needed
 
    tvars(1) = ivar
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
-   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
-   if ( all(istatus /= 0) ) goto 100
 
-   if (debug > 10) &
-       print *, 'model_interpolate: generic interpolation: ', obs_kind, istatus, expected_obs
-
-endif
-
-! Reject obs above a user specified pressure level.
-! this is expensive - only do it if users want to reject observations
-! at the top of the model.  negative values mean ignore this test.
-if (highest_obs_pressure_mb > 0.0) then
-   call compute_pressure_at_loc(state_handle, ens_size, location, lpres, istatus)
-   where (lpres < highest_obs_pressure_mb * 100.0_r8)
-      ! Exclude from assimilation the obs above a user specified level
-      expected_obs = MISSING_R8
-      istatus = 201
-      ! goto 100
-   end where
-
-   if (debug > 10) then
-      do e = 1, ens_size
-         if (istatus(e) == 201) print *, 'ens ', e, ' rejected, pressure < upper limit', lpres(e), highest_obs_pressure_mb
-      enddo
+   if (debug > 11 .and. do_output()) then
+       print*, 'generic interpolation in compute_scalar_with_barycentric: ', obs_kind, &
+               trim(get_name_for_quantity(obs_kind))
+       do e = 1, ens_size
+          print*, 'member ',e, ' istatus(e)=',istatus(e), ', expected_obs(e)=', expected_obs(e)
+       enddo
    endif
+
 endif
+
 
 100 continue
 
-! this is for debugging - when we're confident the code is
-! returning consistent values and rc codes, both these tests can
-! be removed for speed.  FIXME.
+! this is for debugging - when we're confident the code is returning
+! consistent values and rc codes, both these tests can be removed for speed. 
+! also optionally check for generated NaNs for now.
+
 do e = 1, ens_size
 
-   if ((istatus(e) /= 0 .and. expected_obs(e) /= MISSING_R8) .or. &
+   if ((istatus(e) < 0) .or. &
+       (istatus(e) /= 0 .and. expected_obs(e) /= MISSING_R8) .or. &
        (istatus(e) == 0 .and. expected_obs(e) == MISSING_R8)) then
 
-      write(string2,*) 'member ',e,' obs_kind', obs_kind,' value = ', expected_obs(e), ' istatus = ', istatus(e)
+      write(string2,*) 'member ',e,' obs_kind', obs_kind,' value = ', expected_obs(e), &
+                       ' istatus = ', istatus(e), ' cellid:',cellid,' location ', trim(locstring)
       write(string3,*) 'at location ', trim(locstring)
 
-      if (istatus(e) /= 0 .and. expected_obs(e) /= MISSING_R8) then
+      if (istatus(e) < 0) then
+         write(string1,*) 'interp routine returned a negative status which is an illegal value'
+      else if (istatus(e) /= 0 .and. expected_obs(e) /= MISSING_R8) then
          write(string1,*) 'interp routine returned a bad status but not a MISSING_R8 value'
       else
          write(string1,*) 'interp routine returned a good status but set value to MISSING_R8'
@@ -1244,7 +1419,16 @@ do e = 1, ens_size
                          text2=string2, text3=string3)
    endif
 
-   if (debug > 10) then
+   ! the only portable, reliable test for NaNs we know - if some number is neither
+   ! less than nor equal to/greater than 0, it must be a NaN.  all numerical comparisons
+   ! fail if one or more of the operands are NaN.
+
+   if (.not. expected_obs(e) < 0 .and. .not. expected_obs(e) >= 0) then
+      write(string1,*) 'member ', e, ' expected obs may be NaN: ', expected_obs(e)
+      call error_handler(E_ERR,'model_interpolate', string1, source,revision,revdate)
+   endif
+
+   if (debug > 12 .and. do_output()) then
       write(string2,*) 'Completed for member ',e,' obs_kind', obs_kind,' expected_obs = ', expected_obs(e)
       write(string3,*) 'istatus = ', istatus(e), ' at ', trim(locstring)
       call error_handler(E_MSG, 'model_interpolate', string2, source, revision, revdate, text2=string3)
@@ -1261,49 +1445,17 @@ subroutine nc_write_model_atts(ncid, domain_id)
 integer, intent(in) :: ncid
 integer, intent(in) :: domain_id
 
-! for the dimensions and coordinate variables
-integer :: nCellsDimID
-integer :: nEdgesDimID, maxEdgesDimID
-integer :: nVerticesDimID
-integer :: VertexDegreeDimID
-integer :: nSoilLevelsDimID
-integer :: nVertLevelsDimID
-integer :: nVertLevelsP1DimID
+character(len=*), parameter :: routine = 'nc_write_model_atts'
 
+real(r8), allocatable :: data1d(:)
+integer :: ncid2
 
-integer :: VarID, mpasFileID
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: mydimids
-integer :: myndims
-
-character(len=128) :: filename
-
-real(r8), allocatable, dimension(:)   :: data1d
-
-
-if ( .not. module_initialized ) call static_init_model
-
-!--------------------------------------------------------------------
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-!--------------------------------------------------------------------
-
-write(filename,*) 'ncid', ncid
 
 !-------------------------------------------------------------------------------
-! make sure ncid refers to an open netCDF file,
-! and then put into define mode.
+! put file into define mode.
 !-------------------------------------------------------------------------------
 
 call nc_begin_define_mode(ncid)
-
-!-------------------------------------------------------------------------------
-! We need the dimension ID for the number of copies/ensemble members, and
-! we might as well check to make sure that Time is the Unlimited dimension.
-! Our job is create the 'model size' dimension.
-!-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes
@@ -1319,153 +1471,92 @@ call nc_add_global_attribute(ncid, "model", "MPAS_ATM")
 
 
 !----------------------------------------------------------------------------
-! Define the new dimensions IDs
+! if not adding grid info, return here
 !----------------------------------------------------------------------------
 
-call nc_check(nf90_def_dim(ncid, name='nCells', &
-       len = nCells, dimid = nCellsDimID),'nc_write_model_atts', 'nCells def_dim '//trim(filename))
+if (.not. write_grid_to_diag_files) then
+   call nc_end_define_mode(ncid)
+   call nc_synchronize_file(ncid)
+   return
+endif
 
-call nc_check(nf90_def_dim(ncid, name='nEdges', &
-       len = nEdges, dimid = nEdgesDimID),'nc_write_model_atts', 'nEdges def_dim '//trim(filename))
+!----------------------------------------------------------------------------
+!  Everything below here is static grid info
+!----------------------------------------------------------------------------
 
-call nc_check(nf90_def_dim(ncid, name='nVertLevels', &
-       len = nVertLevels, dimid = NVertLevelsDimID),'nc_write_model_atts', &
-                                   'nVertLevels def_dim '//trim(filename))
+!----------------------------------------------------------------------------
+! Dimensions 
+!----------------------------------------------------------------------------
 
-call nc_check(nf90_def_dim(ncid, name='nVertLevelsP1', &
-       len = nVertLevelsP1, dimid = NVertLevelsP1DimID),'nc_write_model_atts', &
-                                   'nVertLevelsP1 def_dim '//trim(filename))
+call nc_define_dimension(ncid, 'nCells',        nCells,        routine)
+call nc_define_dimension(ncid, 'nEdges',        nEdges,        routine)
+call nc_define_dimension(ncid, 'nVertLevels',   nVertLevels,   routine)
+call nc_define_dimension(ncid, 'nVertLevelsP1', nVertLevelsP1, routine)
+call nc_define_dimension(ncid, 'nSoilLevels',   nSoilLevels,   routine)
 
-call nc_check(nf90_def_dim(ncid, name='nSoilLevels', &
-       len = nSoilLevels, dimid = nSoilLevelsDimID),'nc_write_model_atts', &
-            'nSoilLevels def_dim '//trim(filename))
+call nc_define_dimension(ncid, 'maxEdges',      maxEdges,     routine)
+call nc_define_dimension(ncid, 'nVertices',     nVertices,    routine)
+call nc_define_dimension(ncid, 'VertexDegree',  VertexDegree, routine)
 
+!----------------------------------------------------------------------------
+! Coordinate Variables and the Attributes
+!----------------------------------------------------------------------------
+! Cell Longitudes
+call      nc_define_real_variable(ncid, 'lonCell', 'nCells', routine)
+call nc_add_attribute_to_variable(ncid, 'lonCell', 'long_name',   'cell center longitudes', routine)
+call nc_add_attribute_to_variable(ncid, 'lonCell', 'units',       'degrees_east',           routine)
+call nc_add_attribute_to_variable(ncid, 'lonCell', 'valid_range', (/ 0.0_r8, 360.0_r8 /),   routine)
 
-if (add_static_data_to_diags) then
-   !----------------------------------------------------------------------------
-   ! Dimensions needed only if you are writing out static grid information
-   !----------------------------------------------------------------------------
-   call nc_check(nf90_def_dim(ncid, name='maxEdges', &
-          len = maxEdges, dimid = maxEdgesDimID),'nc_write_model_atts', 'maxEdges def_dim '//trim(filename))
+! Cell Latitudes
+call      nc_define_real_variable(ncid, 'latCell', 'nCells', routine)
+call nc_add_attribute_to_variable(ncid, 'latCell', 'long_name',   'cell center latitudes',  routine)
+call nc_add_attribute_to_variable(ncid, 'latCell', 'units',       'degrees_north',          routine)
+call nc_add_attribute_to_variable(ncid, 'latCell', 'valid_range', (/ -90.0_r8, 90.0_r8 /),  routine)
 
-   call nc_check(nf90_def_dim(ncid, name='nVertices', &
-          len = nVertices, dimid = nVerticesDimID),'nc_write_model_atts', &
-               'nVertices def_dim '//trim(filename))
+! Grid vertical information
+call      nc_define_real_variable(ncid, 'zgrid', (/ 'nVertLevelsP1', 'nCells       ' /), routine)
+call nc_add_attribute_to_variable(ncid, 'zgrid', 'long_name',        'grid zgrid',     routine)
+call nc_add_attribute_to_variable(ncid, 'zgrid', 'units',            'meters',         routine)
+call nc_add_attribute_to_variable(ncid, 'zgrid', 'positive',         'up',             routine)
+call nc_add_attribute_to_variable(ncid, 'zgrid', 'cartesian_axis',   'Z',              routine)
 
-   call nc_check(nf90_def_dim(ncid, name='VertexDegree', &
-          len = VertexDegree, dimid = VertexDegreeDimID),'nc_write_model_atts', &
-               'VertexDegree def_dim '//trim(filename))
+! Grid relationship information
+call   nc_define_integer_variable(ncid, 'nEdgesOnCell', 'nCells', routine)
+call nc_add_attribute_to_variable(ncid, 'nEdgesOnCell', 'long_name', 'grid nEdgesOnCell', routine)
 
-   !----------------------------------------------------------------------------
-   ! Create the (empty) Coordinate Variables and the Attributes
-   !----------------------------------------------------------------------------
-   ! Cell Longitudes
-   call nc_check(nf90_def_var(ncid,name='lonCell', xtype=nf90_double, &
-                 dimids=nCellsDimID, varid=VarID),&
-                 'nc_write_model_atts', 'lonCell def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'cell center longitudes'), &
-                 'nc_write_model_atts', 'lonCell long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'units', 'degrees_east'), &
-                 'nc_write_model_atts', 'lonCell units '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'valid_range', (/ 0.0_r8, 360.0_r8 /)), &
-                 'nc_write_model_atts', 'lonCell valid_range '//trim(filename))
+call   nc_define_integer_variable(ncid, 'cellsOnVertex', (/ 'VertexDegree', 'nVertices   ' /), routine)
+call nc_add_attribute_to_variable(ncid, 'cellsOnVertex', 'long_name', 'grid cellsOnVertex', routine)
 
-   ! Cell Latitudes
-   call nc_check(nf90_def_var(ncid,name='latCell', xtype=nf90_double, &
-                 dimids=nCellsDimID, varid=VarID),&
-                 'nc_write_model_atts', 'latCell def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'cell center latitudes'), &
-                 'nc_write_model_atts', 'latCell long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'units', 'degrees_north'),  &
-                 'nc_write_model_atts', 'latCell units '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID,'valid_range',(/ -90.0_r8, 90.0_r8 /)), &
-                 'nc_write_model_atts', 'latCell valid_range '//trim(filename))
+call   nc_define_integer_variable(ncid, 'verticesOnCell', (/ 'maxEdges', 'nCells  ' /), routine)
+call nc_add_attribute_to_variable(ncid, 'verticesOnCell', 'long_name', 'grid verticesOnCell', routine)
 
-   call nc_check(nf90_def_var(ncid,name='xCell', xtype=nf90_double, &
-                 dimids=nCellsDimID, varid=VarID),&
-                 'nc_write_model_atts', 'xCell def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'cell center x cartesian coordinates'), &
-                 'nc_write_model_atts', 'xCell long_name '//trim(filename))
+! Cartesian coordinates for the same cells
+call      nc_define_real_variable(ncid, 'xCell', 'nCells', routine)
+call nc_add_attribute_to_variable(ncid, 'xCell', 'long_name', 'cell center x cartesian coordinates',   routine)
 
-   call nc_check(nf90_def_var(ncid,name='yCell', xtype=nf90_double, &
-                 dimids=nCellsDimID, varid=VarID),&
-                 'nc_write_model_atts', 'yCell def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'cell center y cartesian coordinates'), &
-                 'nc_write_model_atts', 'yCell long_name '//trim(filename))
+call      nc_define_real_variable(ncid, 'yCell', 'nCells', routine)
+call nc_add_attribute_to_variable(ncid, 'yCell', 'long_name', 'cell center y cartesian coordinates',   routine)
 
-   call nc_check(nf90_def_var(ncid,name='zCell', xtype=nf90_double, &
-                 dimids=nCellsDimID, varid=VarID),&
-                 'nc_write_model_atts', 'zCell def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'cell center z cartesian coordinates'), &
-                 'nc_write_model_atts', 'zCell long_name '//trim(filename))
+call      nc_define_real_variable(ncid, 'zCell', 'nCells', routine)
+call nc_add_attribute_to_variable(ncid, 'zCell', 'long_name', 'cell center z cartesian coordinates',   routine)
 
-   ! Grid vertical information
-   call nc_check(nf90_def_var(ncid,name='zgrid',xtype=nf90_double, &
-                 dimids=(/ nVertLevelsP1DimID, nCellsDimID /) ,varid=VarID), &
-                 'nc_write_model_atts', 'zgrid def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'grid zgrid'), &
-                 'nc_write_model_atts', 'zgrid long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'units', 'meters'),  &
-                 'nc_write_model_atts', 'zgrid units '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'positive', 'up'),  &
-                 'nc_write_model_atts', 'zgrid units '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'cartesian_axis', 'Z'),   &
-                 'nc_write_model_atts', 'zgrid cartesian_axis '//trim(filename))
+! Vertex Longitudes and latitudes
+call      nc_define_real_variable(ncid, 'lonVertex', 'nVertices', routine)
+call nc_add_attribute_to_variable(ncid, 'lonVertex', 'long_name', 'vertex longitudes', routine)
 
-   ! Vertex Longitudes
-   call nc_check(nf90_def_var(ncid,name='lonVertex', xtype=nf90_double, &
-                 dimids=nVerticesDimID, varid=VarID),&
-                 'nc_write_model_atts', 'lonVertex def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'vertex longitudes'), &
-                 'nc_write_model_atts', 'lonVertex long_name '//trim(filename))
+call      nc_define_real_variable(ncid, 'latVertex', 'nVertices', routine)
+call nc_add_attribute_to_variable(ncid, 'latVertex', 'long_name', 'vertex latitudes', routine)
 
-   ! Vertex Latitudes
-   call nc_check(nf90_def_var(ncid,name='latVertex', xtype=nf90_double, &
-                 dimids=nVerticesDimID, varid=VarID),&
-                 'nc_write_model_atts', 'latVertex def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'vertex latitudes'), &
-                 'nc_write_model_atts', 'latVertex long_name '//trim(filename))
+! Edge Longitudes and latitudes
+if(data_on_edges) then
+   call      nc_define_real_variable(ncid, 'lonEdge', 'nEdges', routine)
+   call nc_add_attribute_to_variable(ncid, 'lonEdge', 'long_name', 'edge longitudes', routine)
 
-   if(data_on_edges) then
-      ! Edge Longitudes
-      call nc_check(nf90_def_var(ncid,name='lonEdge', xtype=nf90_double, &
-                    dimids=nEdgesDimID, varid=VarID),&
-                    'nc_write_model_atts', 'lonEdge def_var '//trim(filename))
-      call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'edge longitudes'), &
-                    'nc_write_model_atts', 'lonEdge long_name '//trim(filename))
+   call      nc_define_real_variable(ncid, 'latEdge', 'nEdges', routine)
+   call nc_add_attribute_to_variable(ncid, 'latEdge', 'long_name', 'edge latitudes', routine)
+endif
 
-      ! Edge Latitudes
-      call nc_check(nf90_def_var(ncid,name='latEdge', xtype=nf90_double, &
-                    dimids=nEdgesDimID, varid=VarID),&
-                    'nc_write_model_atts', 'latEdge def_var '//trim(filename))
-      call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'edge latitudes'), &
-                    'nc_write_model_atts', 'latEdge long_name '//trim(filename))
-   endif
-
-   ! Grid relationship information
-   call nc_check(nf90_def_var(ncid,name='nEdgesOnCell',xtype=nf90_int, &
-                 dimids=nCellsDimID ,varid=VarID), &
-                 'nc_write_model_atts', 'nEdgesOnCell def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'grid nEdgesOnCell'), &
-                 'nc_write_model_atts', 'nEdgesOnCell long_name '//trim(filename))
-
-   call nc_check(nf90_def_var(ncid,name='cellsOnVertex',xtype=nf90_int, &
-                 dimids=(/ VertexDegreeDimID, nVerticesDimID /) ,varid=VarID), &
-                 'nc_write_model_atts', 'cellsOnVertex def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'grid cellsOnVertex'), &
-                 'nc_write_model_atts', 'cellsOnVertex long_name '//trim(filename))
-
-   call nc_check(nf90_def_var(ncid,name='verticesOnCell',xtype=nf90_int, &
-                 dimids=(/ maxEdgesDimID, nCellsDimID /) ,varid=VarID), &
-                 'nc_write_model_atts', 'verticesOnCell def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'grid verticesOnCell'), &
-                 'nc_write_model_atts', 'verticesOnCell long_name '//trim(filename))
-
-   call nc_check(nf90_def_var(ncid,name='areaCell', xtype=nf90_double, &
-                 dimids=nCellsDimID, varid=VarID),&
-                 'nc_write_model_atts', 'areaCell def_var '//trim(filename))
-
-endif ! add_static_data_to_diags
+call nc_define_real_variable(ncid, 'areaCell', 'nCells', routine)
 
 !----------------------------------------------------------------------------
 ! Finished with dimension/variable definitions, must end 'define' mode to fill.
@@ -1473,123 +1564,58 @@ endif ! add_static_data_to_diags
 
 call nc_end_define_mode(ncid)
 
-if (add_static_data_to_diags) then
-   !----------------------------------------------------------------------------
-   ! Fill the coordinate variables that DART needs and has locally
-   !----------------------------------------------------------------------------
+!----------------------------------------------------------------------------
+! Fill the coordinate variables
+!----------------------------------------------------------------------------
 
-   call nc_check(NF90_inq_varid(ncid, 'lonCell', VarID), &
-                 'nc_write_model_atts', 'lonCell inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, lonCell ), &
-                'nc_write_model_atts', 'lonCell put_var '//trim(filename))
+call nc_put_variable(ncid, 'lonCell', lonCell, routine)
+call nc_put_variable(ncid, 'latCell', latCell, routine)
 
-   call nc_check(NF90_inq_varid(ncid, 'latCell', VarID), &
-                 'nc_write_model_atts', 'latCell inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, latCell ), &
-                'nc_write_model_atts', 'latCell put_var '//trim(filename))
+call nc_put_variable(ncid, 'zgrid', zGridFace, routine)
 
-   if(data_on_edges) then
-      call nc_check(NF90_inq_varid(ncid, 'lonEdge', VarID), &
-                    'nc_write_model_atts', 'lonEdge inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncid, VarID, lonEdge ), &
-                   'nc_write_model_atts', 'lonEdge put_var '//trim(filename))
+if(data_on_edges) then
+   call nc_put_variable(ncid, 'lonEdge', lonEdge, routine)
+   call nc_put_variable(ncid, 'latEdge', latEdge, routine)
+endif
 
-      call nc_check(NF90_inq_varid(ncid, 'latEdge', VarID), &
-                    'nc_write_model_atts', 'latEdge inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncid, VarID, latEdge ), &
-                   'nc_write_model_atts', 'latEdge put_var '//trim(filename))
-   endif
+call nc_put_variable(ncid, 'nEdgesOnCell', nEdgesOnCell, routine)
+call nc_put_variable(ncid, 'verticesOnCell', verticesOnCell, routine)
+call nc_put_variable(ncid, 'cellsOnVertex', cellsOnVertex, routine)
 
-   call nc_check(NF90_inq_varid(ncid, 'zgrid', VarID), &
-                 'nc_write_model_atts', 'zgrid inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, zGridFace ), &
-                'nc_write_model_atts', 'zgrid put_var '//trim(filename))
+!----------------------------------------------------------------------------
+! DART has not read these in, so we have to read them from the input file
+! and copy them to the DART output file.
+!----------------------------------------------------------------------------
 
-   call nc_check(NF90_inq_varid(ncid, 'nEdgesOnCell', VarID), &
-                 'nc_write_model_atts', 'nEdgesOnCell inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, nEdgesOnCell ), &
-                'nc_write_model_atts', 'nEdgesOnCell put_var '//trim(filename))
+ncid2 = nc_open_file_readonly(init_template_filename, routine)
 
-   call nc_check(NF90_inq_varid(ncid, 'verticesOnCell', VarID), &
-                 'nc_write_model_atts', 'verticesOnCell inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, verticesOnCell ), &
-                'nc_write_model_atts', 'verticesOnCell put_var '//trim(filename))
+allocate(data1d(nCells))
 
-   call nc_check(NF90_inq_varid(ncid, 'cellsOnVertex', VarID), &
-                 'nc_write_model_atts', 'cellsOnVertex inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, cellsOnVertex ), &
-                'nc_write_model_atts', 'cellsOnVertex put_var '//trim(filename))
+call nc_get_variable(ncid2, 'xCell', data1d, routine)
+call nc_put_variable(ncid,  'xCell', data1d, routine)
 
-   !----------------------------------------------------------------------------
-   ! Fill the coordinate variables needed for plotting only.
-   ! DART has not read these in, so we have to read them from the input file
-   ! and parrot them to the DART output file.
-   !----------------------------------------------------------------------------
+call nc_get_variable(ncid2, 'yCell', data1d, routine)
+call nc_put_variable(ncid,  'yCell', data1d, routine)
 
-   call nc_check(nf90_open(trim(grid_definition_filename), NF90_NOWRITE, mpasFileID), &
-                 'nc_write_model_atts','open '//trim(grid_definition_filename))
+call nc_get_variable(ncid2, 'zCell', data1d, routine)
+call nc_put_variable(ncid,  'zCell', data1d, routine)
 
-   allocate(data1d(nCells))
-   call nc_check(nf90_inq_varid(mpasFileID, 'xCell', VarID), &
-                 'nc_write_model_atts',     'xCell inq_varid ')
-   call nc_check(nf90_get_var(mpasFileID, VarID, data1d ), &
-                 'nc_write_model_atts',     'xCell get_var ')
-   call nc_check(nf90_inq_varid(ncid,   'xCell', VarID), &
-                 'nc_write_model_atts',     'xCell inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, data1d ), &
-                 'nc_write_model_atts',     'xCell put_var '//trim(filename))
+call nc_get_variable(ncid2, 'areaCell', data1d, routine)
+call nc_put_variable(ncid,  'areaCell', data1d, routine)
 
-   call nc_check(nf90_inq_varid(mpasFileID, 'yCell', VarID), &
-                 'nc_write_model_atts',     'yCell inq_varid ')
-   call nc_check(nf90_get_var(mpasFileID, VarID, data1d ), &
-                 'nc_write_model_atts',     'yCell get_var ')
-   call nc_check(nf90_inq_varid(ncid,   'yCell', VarID), &
-                 'nc_write_model_atts',     'yCell inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, data1d ), &
-                 'nc_write_model_atts',     'yCell put_var '//trim(filename))
+deallocate(data1d)
 
-   call nc_check(nf90_inq_varid(mpasFileID, 'zCell', VarID), &
-                 'nc_write_model_atts',     'zCell inq_varid ')
-   call nc_check(nf90_get_var(mpasFileID, VarID, data1d ), &
-                 'nc_write_model_atts',     'zCell get_var ')
-   call nc_check(nf90_inq_varid(ncid,   'zCell', VarID), &
-                 'nc_write_model_atts',     'zCell inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, data1d ), &
-                 'nc_write_model_atts',     'zCell put_var '//trim(filename))
+allocate(data1d(nVertices))
 
-   call nc_check(nf90_inq_varid(mpasFileID, 'areaCell', VarID), &
-                 'nc_write_model_atts',     'areaCell inq_varid ')
-   call nc_check(nf90_get_var(mpasFileID, VarID, data1d ), &
-                 'nc_write_model_atts',     'areaCell get_var ')
-   call nc_check(nf90_inq_varid(ncid,   'areaCell', VarID), &
-                 'nc_write_model_atts',     'areaCell inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, data1d ), &
-                 'nc_write_model_atts',     'areaCell put_var '//trim(filename))
-   deallocate(data1d)
+call nc_get_variable(ncid2, 'lonVertex', data1d, routine)
+call nc_put_variable(ncid,  'lonVertex', data1d, routine)
 
-   allocate(data1d(nVertices))
-   call nc_check(nf90_inq_varid(mpasFileID, 'lonVertex', VarID), &
-                 'nc_write_model_atts',     'lonVertex inq_varid ')
-   call nc_check(nf90_get_var(mpasFileID, VarID, data1d ), &
-                 'nc_write_model_atts',     'lonVertex get_var ')
-   call nc_check(nf90_inq_varid(ncid,   'lonVertex', VarID), &
-                 'nc_write_model_atts',     'lonVertex inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, data1d ), &
-                 'nc_write_model_atts',     'lonVertex put_var '//trim(filename))
+call nc_get_variable(ncid2, 'latVertex', data1d, routine)
+call nc_put_variable(ncid,  'latVertex', data1d, routine)
 
-   call nc_check(nf90_inq_varid(mpasFileID, 'latVertex', VarID), &
-                 'nc_write_model_atts',     'latVertex inq_varid ')
-   call nc_check(nf90_get_var(mpasFileID, VarID, data1d ), &
-                 'nc_write_model_atts',     'latVertex get_var ')
-   call nc_check(nf90_inq_varid(ncid,   'latVertex', VarID), &
-                 'nc_write_model_atts',     'latVertex inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncid, VarID, data1d ), &
-                 'nc_write_model_atts',     'latVertex put_var '//trim(filename))
-   deallocate(data1d)
+deallocate(data1d)
 
-   call nc_check(nf90_close(mpasFileID),'nc_write_model_atts','close '//trim(grid_definition_filename))
-
-endif ! add_static_data_to_diags
+call nc_close_file(ncid2)
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
@@ -1609,6 +1635,7 @@ integer(i8) :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model
 
+!print *, 'model_size = ', model_size
 get_model_size = model_size
 
 end function get_model_size
@@ -1651,8 +1678,12 @@ if (allocated(latCell))        deallocate(latCell)
 if (allocated(lonCell))        deallocate(lonCell)
 if (allocated(zGridFace))      deallocate(zGridFace)
 if (allocated(zGridCenter))    deallocate(zGridCenter)
+if (allocated(dcEdge))         deallocate(dcEdge)
 if (allocated(cellsOnVertex))  deallocate(cellsOnVertex)
 if (allocated(xland))          deallocate(xland)
+if (allocated(seaice))         deallocate(seaice)
+if (allocated(skintemp))       deallocate(skintemp)
+if (allocated(surftype))       deallocate(surftype)
 if (allocated(nEdgesOnCell))   deallocate(nEdgesOnCell)
 if (allocated(edgesOnCell))    deallocate(edgesOnCell)
 if (allocated(cellsOnEdge))    deallocate(cellsOnEdge)
@@ -1667,9 +1698,6 @@ if (allocated(yEdge))          deallocate(yEdge)
 if (allocated(zEdge))          deallocate(zEdge)
 if (allocated(latEdge))        deallocate(latEdge)
 if (allocated(lonEdge))        deallocate(lonEdge)
-
-!>@todo cheating for now
-!call finalize_closest_center()
 
 end subroutine end_model
 
@@ -1710,7 +1738,7 @@ interf_provided = .true.
 !>all domains for the min/max part, and then loop over only
 !>the number of variables in each domain in the second part.
 
-num_variables = get_num_variables(domid)
+num_variables = get_num_variables(anl_domid)
 
 ! Get min and max of each variable in each domain
 allocate(var_list(get_my_num_vars(ens_handle)))
@@ -1719,10 +1747,10 @@ call get_my_vars(ens_handle, var_list)
 allocate(min_var(num_variables), max_var(num_variables))
 allocate(within_range(ens_handle%my_num_vars))
 
-do i = 1, get_num_variables(domid)
+do i = 1, get_num_variables(anl_domid)
 
-   start_ind = get_index_start(domid, i)
-   end_ind = get_index_end(domid, i)
+   start_ind = get_index_start(anl_domid, i)
+   end_ind = get_index_end(anl_domid, i)
 
    within_range = (var_list >= start_ind .and. var_list <= end_ind)
    min_var(i) = minval(ens_handle%copies(1,:), MASK=within_range)
@@ -1738,8 +1766,8 @@ call init_random_seq(random_seq, my_task_id()+1)
 
 do i = 1, num_variables
 
-   start_ind = get_index_start(domid, i)
-   end_ind = get_index_end(domid, i)
+   start_ind = get_index_start(anl_domid, i)
+   end_ind = get_index_end(anl_domid, i)
 
    ! make the perturbation amplitude a fraction of the
    ! entire variable range.
@@ -1782,10 +1810,12 @@ type(ensemble_type), optional, intent(in)  :: state_handle
 
 
 integer                :: ztypeout
-integer                :: t_ind, istatus1, istatus2, k
-integer                :: base_which, local_obs_which
+integer                :: t_ind, istatus1, istatus2, k, istat_arr(1)
+integer                :: base_which, local_obs_which, base_qty
 real(r8), dimension(3) :: base_llv, local_obs_llv   ! lon/lat/vert
-type(location_type)    :: local_obs_loc
+type(location_type)    :: local_obs_loc, location_arr(1)
+! timing
+real(digits12) :: t_base, t_base2, interval
 
 real(r8) ::  hor_dist
 hor_dist = 1.0e9_r8
@@ -1808,9 +1838,13 @@ ztypeout = vert_localization_coord
 if (vertical_localization_on()) then
   if (base_llv(3) == MISSING_R8) then
      istatus1 = 1
-  else if (base_which /= vert_localization_coord) then
-      call vert_convert(state_handle, base_loc, base_type, istatus1)
-      if(debug > 5) then
+  else if (base_which /= vert_localization_coord .and. base_which /= VERTISUNDEF) then
+      base_qty = get_quantity_for_type_of_obs(base_type)
+      location_arr(1) = base_loc
+      call convert_vert_distrib(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
+      istatus1 = istat_arr(1)
+      base_loc = location_arr(1)
+      if(debug > 5 .and. do_output()) then
          call write_location(0,base_loc,charstring=string1)
          call error_handler(E_MSG, 'get_close_obs: base_loc',string1,source, revision, revdate)
      endif
@@ -1836,9 +1870,11 @@ if (istatus1 == 0) then
       ! This should only be necessary for obs priors, as state location information already
       ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
       if (vertical_localization_on()) then
-          if (local_obs_which /= vert_localization_coord) then
-              call vert_convert(state_handle, local_obs_loc, loc_qtys(t_ind), istatus2)
-              locs(t_ind) = local_obs_loc
+          if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
+              location_arr(1) = local_obs_loc
+              call convert_vert_distrib(state_handle, 1, location_arr, loc_qtys(t_ind), vert_localization_coord, istat_arr)
+              istatus2 = istat_arr(1)
+              locs(t_ind) = location_arr(1)
           else
               istatus2 = 0
           endif
@@ -1852,16 +1888,7 @@ if (istatus1 == 0) then
               (local_obs_llv(3) == MISSING_R8)) .or. (istatus2 /= 0) ) then
                dist(k) = 1.0e9_r8
          else
-               dist(k) = get_dist(base_loc, local_obs_loc, base_type, loc_qtys(t_ind))
-         ! if ((debug > 4) .and. (k < 100) .and. do_output()) then
-         !     print *, 'calling get_dist'
-         !     call write_location(0,base_loc,charstring=string2)
-         !     call error_handler(E_MSG, 'get_close_obs: base_loc',string2,source, revision, revdate)
-         !     call write_location(0,local_obs_loc,charstring=string2)
-         !     call error_handler(E_MSG, 'get_close_obs: local_obs_loc',string2,source, revision, revdate)
-         !     hor_dist = get_dist(base_loc, local_obs_loc, base_type, loc_qtys(t_ind), no_vert=.true.)
-         !     print *, 'hor/3d_dist for k =', k, ' is ', hor_dist,dist(k)
-         ! endif
+               dist(k) = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
          endif
       endif
 
@@ -1897,10 +1924,13 @@ type(ensemble_type), optional, intent(in)  :: state_handle
 
 
 integer                :: ztypeout
-integer                :: t_ind, istatus1, istatus2, k
-integer                :: base_which, local_obs_which
+integer                :: t_ind, istatus1, istatus2, k, istat_arr(1)
+integer                :: base_which, local_obs_which, base_qty
 real(r8), dimension(3) :: base_llv, local_obs_llv   ! lon/lat/vert
-type(location_type)    :: local_obs_loc
+type(location_type)    :: local_obs_loc, location_arr(1)
+! timing
+real(digits12) :: t_base, t_base2, interval
+
 
 real(r8) ::  hor_dist
 hor_dist = 1.0e9_r8
@@ -1923,9 +1953,13 @@ ztypeout = vert_localization_coord
 if (vertical_localization_on()) then
   if (base_llv(3) == MISSING_R8) then
      istatus1 = 1
-  else if (base_which /= vert_localization_coord) then
-      call vert_convert(state_handle, base_loc, base_type, istatus1)
-      if(debug > 5) then
+  else if (base_which /= vert_localization_coord .and. base_which /= VERTISUNDEF) then
+      base_qty = get_quantity_for_type_of_obs(base_type)
+      location_arr(1) = base_loc
+      call convert_vert_distrib(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
+      istatus1 = istat_arr(1)
+      base_loc = location_arr(1)
+      if(debug > 10 .and. do_output()) then
          call write_location(0,base_loc,charstring=string1)
          call error_handler(E_MSG, 'get_close_state: base_loc',string1,source, revision, revdate)
      endif
@@ -1951,9 +1985,12 @@ if (istatus1 == 0) then
       ! This should only be necessary for obs priors, as state location information already
       ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
       if (vertical_localization_on()) then
-          if (local_obs_which /= vert_localization_coord) then
-              call vert_convert(state_handle, local_obs_loc, loc_qtys(t_ind), istatus2)
-              locs(t_ind) = local_obs_loc
+          if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
+              location_arr(1) = local_obs_loc
+              call convert_vert_distrib_state(state_handle, 1, location_arr, loc_qtys(t_ind), &
+                                              loc_indx(t_ind), vert_localization_coord, istat_arr)
+              istatus2 = istat_arr(1)
+              locs(t_ind) = location_arr(1)
           else
               istatus2 = 0
           endif
@@ -1967,16 +2004,7 @@ if (istatus1 == 0) then
               (local_obs_llv(3) == MISSING_R8)) .or. (istatus2 /= 0) ) then
                dist(k) = 1.0e9_r8
          else
-               dist(k) = get_dist(base_loc, local_obs_loc, base_type, loc_qtys(t_ind))
-         ! if ((debug > 4) .and. (k < 100) .and. do_output()) then
-         !     print *, 'calling get_dist'
-         !     call write_location(0,base_loc,charstring=string2)
-         !     call error_handler(E_MSG, 'get_close_state: base_loc',string2,source, revision, revdate)
-         !     call write_location(0,local_obs_loc,charstring=string2)
-         !     call error_handler(E_MSG, 'get_close_state: local_obs_loc',string2,source, revision, revdate)
-         !     hor_dist = get_dist(base_loc, local_obs_loc, base_type, loc_qtys(t_ind), no_vert=.true.)
-         !     print *, 'hor/3d_dist for k =', k, ' is ', hor_dist,dist(k)
-         ! endif
+               dist(k) = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
          endif
       endif
 
@@ -1996,38 +2024,79 @@ end subroutine get_close_state
 !  (these are not required by dart but are used by other programs)
 !==================================================================
 
+subroutine get_init_template_filename( filename )
 
-subroutine get_model_analysis_filename( filename )
-
-! return the name of the analysis filename that was set
-! in the model_nml namelist
+! return the name of the template filename that was set
+! in the model_nml namelist (ex. init.nc)
 
 character(len=*), intent(OUT) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
-filename = trim(model_analysis_filename)
+filename = trim(init_template_filename)
 
-end subroutine get_model_analysis_filename
+end subroutine get_init_template_filename
+
+
+!-------------------------------------------------------------------
+! modify what static_init_model does.  this *must* be called before
+! calling static_init_model().
+! the boundary file variables are fixed by the model and so we
+! don't allow the user to set them via namelist
+
+subroutine set_lbc_variables(template_filename)
+
+character(len=*), intent(in) :: template_filename
+
+integer :: ncid
+
+bdy_template_filename = template_filename
+
+! this initial list always exists.  hardcode them for now,
+! and query to see if the reconstructed winds are there or not.
+
+lbc_variables(1) = 'lbc_qc'
+lbc_variables(2) = 'lbc_qr'
+lbc_variables(3) = 'lbc_qv'
+lbc_variables(4) = 'lbc_rho'
+lbc_variables(5) = 'lbc_theta'
+lbc_variables(6) = 'lbc_u'
+lbc_variables(7) = 'lbc_w'
+
+ncid = nc_open_file_readonly(template_filename, 'set_lbc_variables')
+if (nc_variable_exists(ncid, 'lbc_ur')) then
+   lbc_variables(8) = 'lbc_ur'  
+   lbc_variables(9) = 'lbc_vr' 
+   lbc_file_has_reconstructed_winds = .true.
+endif
+call nc_close_file(ncid)
+
+end subroutine set_lbc_variables
+
+
+!-------------------------------------------------------------------
+! modify what static_init_model does.  this *must* be called before
+! calling static_init_model().
+! set a logical add_u_to_state_list that forces u to be in state
+
+subroutine force_u_into_state()
+
+add_u_to_state_list = .true.
+
+end subroutine force_u_into_state
 
 
 !-------------------------------------------------------------------
 
-subroutine get_grid_definition_filename( filename )
-
-! return the name of the grid_definition filename that was set
-! in the model_nml namelist
-
-character(len=*), intent(out) :: filename
-
-if ( .not. module_initialized ) call static_init_model
-
-filename = trim(grid_definition_filename)
-
-end subroutine get_grid_definition_filename
-
-
-!-------------------------------------------------------------------
+!>@todo FIXME: 
+!>  i believe no one is calling this routine anymore.  we should remove
+!>  it from the public list and see what breaks.  if nothing, remove it.
+!>
+!> these need to be replaced by calls to the state structure.
+!> at the moment they are only used by the postprocessing program that
+!> moves the wind increments from cell centers to edges - it's not needed
+!> by anything in filter.  it's a holdover from code before the state structure
+!> was a general facility.
 
 subroutine analysis_file_to_statevector(filename, state_vector, model_time)
 
@@ -2039,7 +2108,6 @@ real(r8),         intent(inout) :: state_vector(:)
 type(time_type),  intent(out)   :: model_time
 
 ! temp space to hold data while we are reading it
-integer  :: ndim1, ndim2, ndim3
 integer  :: i, ivar
 real(r8), allocatable, dimension(:)         :: data_1d_array
 real(r8), allocatable, dimension(:,:)       :: data_2d_array
@@ -2050,6 +2118,7 @@ character(len=NF90_MAX_NAME) :: varname
 integer :: VarID, ncNdims, dimlen
 integer :: ncid, TimeDimID, TimeDimLength
 character(len=256) :: myerrorstring
+character(len=*), parameter :: routine = 'analysis_file_to_statevector'
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2062,16 +2131,9 @@ if ( .not. file_exist(filename) ) then
    call error_handler(E_ERR,'analysis_file_to_statevector',string1,source,revision,revdate)
 endif
 
-call nc_check(nf90_open(trim(filename), NF90_NOWRITE, ncid), &
-             'analysis_file_to_statevector','open '//trim(filename))
+ncid = nc_open_file_readonly(filename, routine)
 
 model_time = get_analysis_time(ncid, filename)
-
-! let the calling program print out the time information it wants.
-!if (do_output()) &
-!    call print_time(model_time,'time in restart file '//trim(filename))
-!if (do_output()) &
-!    call print_date(model_time,'date in restart file '//trim(filename))
 
 ! Start counting and filling the state vector one item at a time,
 ! repacking the Nd arrays into a single 1d list of numbers.
@@ -2093,7 +2155,7 @@ endif
 
 do ivar=1, nfields
 
-   varname = trim(progvar(ivar)%varname)
+   varname = progvar(ivar)%varname
    myerrorstring = trim(filename)//' '//trim(varname)
 
    ! determine the shape of the netCDF variable
@@ -2114,11 +2176,6 @@ do ivar=1, nfields
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
             'analysis_file_to_statevector', string1)
 
-      if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(myerrorstring),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
-         call error_handler(E_ERR,'analysis_file_to_statevector',string1,source,revision,revdate)
-      endif
-
       mycount(i) = dimlen
 
    enddo DimCheck
@@ -2135,8 +2192,7 @@ do ivar=1, nfields
 
       ! If the single dimension is TIME, we only need a scalar.
       ! Pretty sure this cannot happen ...
-      ndim1 = mycount(1)
-      allocate(data_1d_array(ndim1))
+      allocate(data_1d_array(mycount(1)))
       call nc_check(nf90_get_var(ncid, VarID, data_1d_array, &
         start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'analysis_file_to_statevector', 'get_var '//trim(varname))
@@ -2146,9 +2202,7 @@ do ivar=1, nfields
 
    elseif (ncNdims == 2) then
 
-      ndim1 = mycount(1)
-      ndim2 = mycount(2)
-      allocate(data_2d_array(ndim1, ndim2))
+      allocate(data_2d_array(mycount(1), mycount(2)))
       call nc_check(nf90_get_var(ncid, VarID, data_2d_array, &
         start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'analysis_file_to_statevector', 'get_var '//trim(varname))
@@ -2158,10 +2212,7 @@ do ivar=1, nfields
 
    elseif (ncNdims == 3) then
 
-      ndim1 = mycount(1)
-      ndim2 = mycount(2)
-      ndim3 = mycount(3)
-      allocate(data_3d_array(ndim1, ndim2, ndim3))
+      allocate(data_3d_array(mycount(1), mycount(2), mycount(3)))
       call nc_check(nf90_get_var(ncid, VarID, data_3d_array, &
         start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'analysis_file_to_statevector', 'get_var '//trim(varname))
@@ -2177,22 +2228,40 @@ do ivar=1, nfields
 
 enddo
 
-call nc_check(nf90_close(ncid), &
-             'analysis_file_to_statevector','close '//trim(filename))
+call nc_close_file(ncid, routine)
 
 end subroutine analysis_file_to_statevector
 
 
 !-------------------------------------------------------------------
 
-subroutine statevector_to_analysis_file(state_vector, filename, statetime)
+!> @todo FIXME  this routine is a holdover from the days before
+!> we had a state structure module.  it should be replaced by
+!> something like write_state and other calls to the state structure
+!> module.
+!>
+!> but there is one twist here.  this code is only being called
+!> by update_mpas_states, which does a simple ncks copy from the
+!> output of filter (netcdf with only the state vector fields in it)
+!> to a full mpas restart file with grid info, other fields, etc.
+!> 
+!> however it also averages the cell center winds and projects them
+!> onto the cell edges and updates 'u' - which is usually not in the
+!> model state, so it isn't in the input file, only the output file.
+!>
+!> the normal i/o routines wouldn't write it.  they would write 
+!> everything else, so read_state()/write_state() plus one additional
+!> 'fix_u' routine would seem to suffice.  TBD.
+!>
+
+subroutine statevector_to_analysis_file(state_vector, ncid, filename)
 
 ! Writes the current time and state variables from a dart state
 ! vector (1d array) into a mpas netcdf analysis file.
 
 real(r8),         intent(in) :: state_vector(:)
+integer,          intent(in) :: ncid
 character(len=*), intent(in) :: filename
-type(time_type),  intent(in) :: statetime
 
 ! temp space to hold data while we are writing it
 integer :: i, ivar
@@ -2203,49 +2272,11 @@ real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
 character(len=NF90_MAX_NAME) :: varname
 integer :: VarID, ncNdims, dimlen
-integer :: ncid, TimeDimID, TimeDimLength
+integer :: TimeDimID, TimeDimLength
 logical :: done_winds
 type(time_type) :: model_time
 
 if ( .not. module_initialized ) call static_init_model
-
-! Check that the output file exists ...
-
-if ( .not. file_exist(filename) ) then
-   write(string1,*) 'cannot open file ', trim(filename),' for writing.'
-   call error_handler(E_ERR,'statevector_to_analysis_file',string1,source,revision,revdate)
-endif
-
-call nc_check(nf90_open(trim(filename), NF90_WRITE, ncid), &
-             'statevector_to_analysis_file','open '//trim(filename))
-
-! make sure the time in the file is the same as the time on the data
-! we are trying to insert.  we are only updating part of the contents
-! of the mpas analysis file, and state vector contents from a different
-! time won't be consistent with the rest of the file.
-
-model_time = get_analysis_time(ncid, filename)
-
-if ( model_time /= statetime ) then
-   call print_time( statetime,'DART current time',logfileunit)
-   call print_time(model_time,'mpas current time',logfileunit)
-   call print_time( statetime,'DART current time')
-   call print_time(model_time,'mpas current time')
-   write(string1,*)trim(filename),' current time must equal model time'
-   call error_handler(E_ERR,'statevector_to_analysis_file',string1,source,revision,revdate)
-endif
-
-! let the calling program print out the time information it wants.
-!if (do_output()) &
-!    call print_time(statetime,'time of DART file '//trim(filename))
-!if (do_output()) &
-!    call print_date(statetime,'date of DART file '//trim(filename))
-
-! The DART prognostic variables are only defined for a single time.
-! We already checked the assumption that variables are xy2d or xyz3d ...
-! IF the netCDF variable has a TIME dimension, it must be the last dimension,
-! and we need to read the LAST timestep and effectively squeeze out the
-! singleton dimension when we stuff it into the DART state vector.
 
 TimeDimID = FindTimeDimension( ncid )
 
@@ -2259,7 +2290,7 @@ endif
 done_winds = .false.
 PROGVARLOOP : do ivar=1, nfields
 
-   varname = trim(progvar(ivar)%varname)
+   varname = progvar(ivar)%varname
    string2 = trim(filename)//' '//trim(varname)
 
    if (( varname == 'uReconstructZonal' .or. &
@@ -2268,7 +2299,7 @@ PROGVARLOOP : do ivar=1, nfields
 
       ! this routine updates the edge winds from both the zonal and meridional
       ! fields, so only call it once.
-      call update_wind_components(ncid, state_vector, use_increments_for_u_update)
+      call update_wind_components(ncid, filename, state_vector, use_increments_for_u_update)
       done_winds = .true.
       cycle PROGVARLOOP
    endif
@@ -2298,13 +2329,6 @@ PROGVARLOOP : do ivar=1, nfields
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
             'statevector_to_analysis_file', string1)
 
-      if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
-         write(string2,*)' but it should be.'
-         call error_handler(E_ERR, 'statevector_to_analysis_file', string1, &
-                         source, revision, revdate, text2=string2)
-      endif
-
       mycount(i) = dimlen
 
    enddo DimCheck
@@ -2318,6 +2342,10 @@ PROGVARLOOP : do ivar=1, nfields
       write(*,*)'statevector_to_analysis_file '//trim(varname)//' count is ',mycount(1:ncNdims)
    endif
 
+!> @todo FIXME the clamping can be done on the 1d array by getting
+!> the start/end index from the state vector.  you can also call nf90_put_var() 
+!> with a 1d conformable array without allocating, copying, writing, and freeing
+!> extra space.   or call write_state() which does all this for us.
 
    if (progvar(ivar)%numdims == 1) then
       allocate(data_1d_array(mycount(1)))
@@ -2380,11 +2408,296 @@ PROGVARLOOP : do ivar=1, nfields
 
 enddo PROGVARLOOP
 
-call nc_check(nf90_close(ncid), &
-             'statevector_to_analysis_file','close '//trim(filename))
 
 end subroutine statevector_to_analysis_file
 
+!------------------------------------------------------------------
+
+!> regional mpas only:
+!> update the boundary fields based on the analysis file values
+!> in the boundary region, which were updated by blending the analysis
+!> and the original (e.g., prior) boundary values.
+!> There are options to update edge winds directly (by blending 'u'),
+!> or to update reconstructed winds at cell centers first then project them onto edges.
+!> When the edge wind is updated, it can be replaced by the blended value,
+!> or modified with the increments (from cell-center winds).
+!> state_vector - read from both ncid_a and ncid_b.
+!> ncid_b = lbc to be overwritten with blended fields in the boundary zone.
+!> ncid_a = analysis - either init or restart.
+
+subroutine statevector_to_boundary_file(state_vector, ncid_b, ncid_a, &
+    lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments, idebug)
+
+real(r8), intent(inout) :: state_vector(:)
+integer,  intent(in)    :: ncid_b, ncid_a
+logical,  intent(in)    :: lbc_update_from_reconstructed_winds
+logical,  intent(in)    :: lbc_update_winds_from_increments
+integer,  intent(in)    :: idebug
+
+integer :: i, a_ivar, b_ivar, ivar, ivar_u, avar_u
+integer(i8) :: a_index, b_index, l, sb_index, eb_index
+integer :: cellid, vert_level, ndims, nvars, dims(3), col
+integer :: adims, dima(3), iup   ! HA
+integer :: edgeid
+real(r8) :: weight
+real(r8), allocatable :: lbc_u(:,:), lbc_ucell(:,:), lbc_vcell(:,:)
+real(r8), allocatable :: delta_u(:,:), old_lbc_ucell(:,:), old_lbc_vcell(:,:)
+real(r8), allocatable :: inc_lbc_ucell(:,:), inc_lbc_vcell(:,:)
+
+character(len=NF90_MAX_NAME) :: avarname, bvarname
+character(len=*), parameter :: routine = 'statevector_to_boundary_file'
+
+nvars = get_num_variables(lbc_domid)
+
+write(string1, *) 'lbc_update_from_reconstructed_winds = ', lbc_update_from_reconstructed_winds
+write(string2, *) 'lbc_update_winds_from_increments = ',lbc_update_winds_from_increments
+call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
+                         source,revision,revdate, text2=string2)
+
+! save a copy of the reconstructed cell winds in separate arrays
+! if we are doing an incremental update of the edge normal winds.
+if (lbc_update_winds_from_increments) then
+   if (.not. lbc_file_has_reconstructed_winds) then
+      write(string1, *) 'Cannot update edge winds from increments because the boundary file does not contain the reconstructed winds (lbc_ur, lbc_vr)'
+      write(string2, *) 'lbc_update_winds_from_increments should be .false.'
+      call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
+                         source,revision,revdate, text2=string2)
+   endif
+
+   allocate(old_lbc_ucell(nVertLevels, nCells))
+   allocate(old_lbc_vcell(nVertLevels, nCells))
+   allocate(      delta_u(nVertLevels, nEdges))
+
+   ivar = get_varid_from_varname(lbc_domid, 'lbc_ur')
+   call bdy_vector_to_prog_var(state_vector, ivar, old_lbc_ucell)
+
+   ivar = get_varid_from_varname(lbc_domid, 'lbc_vr')
+   call bdy_vector_to_prog_var(state_vector, ivar, old_lbc_vcell)
+endif
+
+! for each cell in the grid, find the analysis in the
+! boundary region and blend them with prior lbc values.
+CELLS: do cellid = 1, nCells
+
+   ! Soyoung: We blend the analysis in the boundary zone only.
+   if (.not. on_boundary_cell(cellid)) cycle CELLS
+
+   ! 1.0 is interior, 0.0 is exterior boundary
+   weight = get_analysis_weight(cellid)
+
+   ! do all variables associated with this cellid.
+   
+   VARLOOP: do b_ivar = 1, nvars
+
+      bvarname = get_variable_name(lbc_domid, b_ivar)
+      if (bvarname(1:4) /= 'lbc_') then
+         write(string1, *) 'skipping update of boundary variable ', trim(bvarname)
+         write(string2, *) 'because the name does not start with "lbc"'
+         call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
+                            source,revision,revdate, text2=string2)
+         cycle VARLOOP
+      endif
+
+      ! skip edge normal 'U' winds here - they will
+      ! be handled in a separate code section below.
+      if (bvarname == 'lbc_u') cycle VARLOOP
+
+      ! get corresponding field in analysis domain
+      avarname = trim(bvarname(5:))
+
+      ! reconstructed cell-center winds have different names in the lbc file.
+      if (bvarname == 'lbc_ur') avarname = 'uReconstructZonal'
+      if (bvarname == 'lbc_vr') avarname = 'uReconstructMeridional'
+
+      a_ivar = get_varid_from_varname(anl_domid, avarname)
+
+      !if(do_output().and.idebug > 4) print*, 'statevector_to_boundary_file: ', &
+      !                trim(bvarname), b_ivar, trim(avarname), a_ivar
+
+      call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
+
+      ! HA: double-check if dimensions are the same between lbc_domid and anl_domid.
+      call find_mpas_dims(anl_domid, a_ivar, adims, dima)
+      if(dims(1) /= dima(1) .or. dims(2) /= dima(2)) then
+         write(string1, *) 'Dimension mismatches:',dims,' vs.',dima
+         call error_handler(E_ERR,'statevector_to_boundary_file',string1,&
+                            source,revision,revdate)
+         exit
+      endif
+
+      ! loop over vert_levels.
+      THISCOL: do col=1, dims(1)
+         a_index = get_dart_vector_index(col, cellid, 1, anl_domid, a_ivar)
+         b_index = get_dart_vector_index(col, cellid, 1, lbc_domid, b_ivar)
+   
+         ! compute (1-w)*x_lbc + w*x_anl
+         state_vector(a_index) = (1.0_r8 - weight) * state_vector(b_index) + &
+                                           weight  * state_vector(a_index)
+
+      enddo THISCOL
+
+   enddo VARLOOP
+
+enddo CELLS
+
+!> here is where we fix up the U edge normal winds
+!> two options - do them directly, or compute increments from the
+!> reconstructed winds and update from them.
+
+if (.not. lbc_update_from_reconstructed_winds) then
+
+   ! this is the prior u, not updated yet
+   a_ivar = get_varid_from_varname(anl_domid, 'u')       ! analysis edge winds
+   b_ivar = get_varid_from_varname(lbc_domid, 'lbc_u')   ! prior edge winds in the lbc file
+
+   call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
+
+   ! for each edge in the grid, find the ones which are in the
+   ! boundary region and blend their values.
+   EDGES: do edgeid = 1, nEdges
+   
+      if (.not. on_boundary_edge(edgeid)) cycle EDGES
+   
+      ! 1.0 is interior, 0.0 is exterior boundary
+      weight = get_analysis_weight(edgeid,.false.)
+   
+      ! loop over vert_levels.
+      THATCOL: do col=1, dims(1)
+            a_index = get_dart_vector_index(col, edgeid, 1, anl_domid, a_ivar)
+            b_index = get_dart_vector_index(col, edgeid, 1, lbc_domid, b_ivar)
+      
+            ! compute (1-w)*x_lbc + w*x_anl
+            state_vector(a_index) = (1.0_r8 - weight) * state_vector(b_index) + &
+                                              weight  * state_vector(a_index)
+      enddo THATCOL
+   
+   enddo EDGES
+
+else  ! do the increment process
+
+   ! We only blended cell-center fields (e.g. looping over all the variables in the CELLS loop above, but not over 'u' in nEdges).
+   ! Now we compute diffs (or increments) between the blended ur (vr) and the prior lbc_ur (vr).
+   
+   allocate(        lbc_u(nVertLevels, nEdges))
+   allocate(    lbc_ucell(nVertLevels, nCells))
+   allocate(    lbc_vcell(nVertLevels, nCells))
+   
+   ! these analyses have been blended in the boundary zone already.
+   ivar = get_varid_from_varname(anl_domid, 'uReconstructZonal')
+   call vector_to_prog_var(state_vector, ivar, lbc_ucell)
+   
+   ivar = get_varid_from_varname(anl_domid, 'uReconstructMeridional')
+   call vector_to_prog_var(state_vector, ivar, lbc_vcell)
+   
+   ! this is the analysis u, not blended in the boundary zone yet.
+   avar_u = get_varid_from_varname(anl_domid, 'u')
+   call vector_to_prog_var(state_vector, avar_u, lbc_u)
+
+   if (idebug > 4 .and. do_output()) print *, 'MIN/MAX lbc_u before update:',MINVAL(lbc_u),MAXVAL(lbc_u)
+   
+   if (lbc_update_winds_from_increments) then
+   
+      ! project analysis increments at cell centers onto the edges.
+   
+      allocate(inc_lbc_ucell(nVertLevels, nCells))
+      allocate(inc_lbc_vcell(nVertLevels, nCells))
+   
+      inc_lbc_ucell = lbc_ucell - old_lbc_ucell 
+      inc_lbc_vcell = lbc_vcell - old_lbc_vcell 
+   
+      call uv_cell_to_edges(inc_lbc_ucell, inc_lbc_vcell, delta_u)
+   
+      ! Soyoung: Add the blended u increments back to lbc_u in the boundary zone.
+      !          We should not change the analysis u in the interior domain, but
+      !          We should also check bdyMaskCell for the two adjacent cells as
+      !          bdyMaskEdge is assigned with the lower mask value between the two
+      !          cells.
+      ! Ex) An edge between cell1 (w/ bdyMaskCell = 0) and cell2 (w/ bdyMaskCell = 1)
+      ! has bdyMaskEdge = 0. In this case, even if bdyMaskEdge of the edge is zero,
+      ! cell2 has been updated in the CELLS loop above, so the edge has to be updated.
+
+      iup = 0
+      IEDGE: do edgeid = 1, nEdges
+
+      if (.not. on_boundary_edge(edgeid) .and. &
+          .not. on_boundary_cell(cellsOnEdge(1,edgeid)) .and. &
+          .not. on_boundary_cell(cellsOnEdge(2,edgeid)) ) cycle IEDGE
+   
+           lbc_u(:,edgeid) = lbc_u(:,edgeid) + delta_u(:,edgeid)
+
+           if (idebug > 9 .and. .not.on_boundary_edge(edgeid)) &
+               print*, iup, edgeid, delta_u(1,edgeid)
+
+      enddo IEDGE
+
+      if (idebug > 4 .and. do_output()) print*, 'MIN/MAX delta_u:            ',MINVAL(delta_u),MAXVAL(delta_u)
+
+      deallocate(old_lbc_ucell, old_lbc_vcell, delta_u)
+
+   else
+   
+      ! just replace, no increments
+      ! project the diffs (or increments) onto the edges by calling uv_cell_to_edges.
+      call uv_cell_to_edges(lbc_ucell, lbc_vcell, lbc_u, .true.)
+      
+   endif
+   if (idebug > 4 .and. do_output()) print *, 'MIN/MAX lbc_u  after update:',MINVAL(lbc_u),MAXVAL(lbc_u)
+   
+   ! put lbc_u array data back into the state_vector
+   
+   sb_index = get_index_start(anl_domid, avar_u)
+   eb_index = get_index_end  (anl_domid, avar_u)
+   state_vector(sb_index:eb_index) = reshape(lbc_u, (/eb_index-sb_index+1/) )
+      
+   deallocate(lbc_u, lbc_ucell, lbc_vcell)
+
+endif   ! U updates
+   
+
+! for each boundary variable, write it to the output file.
+VARLOOP2: do b_ivar = 1, nvars
+
+   bvarname = get_variable_name(lbc_domid, b_ivar)
+   if (bvarname(1:4) /= 'lbc_') then
+      write(string1, *) 'skipping update of boundary variable ', trim(bvarname)
+      write(string2, *) 'because the name does not start with "lbc"'
+      call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
+                         source,revision,revdate, text2=string2)
+      cycle VARLOOP2
+   endif
+
+   ! by default strip off 'lbc_' from boundary file name
+   ! and update that field name for the analysis file,
+   ! unless it doesn't follow the pattern
+   avarname = trim(bvarname(5:))
+
+   if (bvarname == 'lbc_ur') avarname = 'uReconstructZonal'
+   if (bvarname == 'lbc_vr') avarname = 'uReconstructMeridional'
+
+   ! Soyoung - we blended the analysis vector in the boundary zone.
+   a_ivar = get_varid_from_varname(anl_domid, avarname)
+
+   ! nsc - it's possible we could remove this line and the
+   !       reshape()s from put_variable lines below.
+   call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
+
+   sb_index = get_index_start(anl_domid, a_ivar)
+   eb_index = get_index_end  (anl_domid, a_ivar)
+
+   if (idebug > 4 .and. do_output()) print *, 'updating ', trim(bvarname), ' min, max:',&
+       minval(state_vector(sb_index:eb_index)), maxval(state_vector(sb_index:eb_index))
+       !, ' with length ', eb_index - sb_index + 1
+
+   ! Soyoung - Now, the lbc file has the analysis in the interior and the blended values
+   !           in the boundary zone. In other words, the lbc file is updated not only in
+   !           the boundary, but over the entire domain (although it is used only for the
+   !           boundary zone).
+   call nc_put_variable(ncid_b, bvarname, reshape(state_vector(sb_index:eb_index), dims), routine)
+!   call nc_put_variable(ncid_a, avarname, reshape(state_vector(sb_index:eb_index), dims), routine)
+
+enddo VARLOOP2
+
+end subroutine statevector_to_boundary_file
 
 !------------------------------------------------------------------
 
@@ -2616,9 +2929,6 @@ end function get_analysis_time_ncid
 
 function get_analysis_time_fname(filename)
 
-! HK I don't understand this comment, it is identical to the comment 
-! in get_analysis_time_ncid, but here there is no netcdf stuff?
-
 ! The analysis netcdf files have the start time of the experiment.
 ! The time array contains the time trajectory since then.
 ! This routine returns the start time of the experiment.
@@ -2631,19 +2941,21 @@ integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
+! why do we care?  we aren't opening this file, just taking the time
+! string from the filename itself.
 if ( .not. file_exist(filename) ) then
-   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
+   write(string1,*) 'file ', trim(filename),' does not exist.' 
    call error_handler(E_ERR,'get_analysis_time',string1,source,revision,revdate)
 endif
 
-! find the first number and use that as the start of the string conversion
+! find the first digit and use that as the start of the string conversion
 i = scan(filename, "0123456789")
 if (i <= 0) then
    write(string1,*) 'cannot find time string in name ', trim(filename)
    call error_handler(E_ERR,'get_analysis_time',string1,source,revision,revdate)
 endif
 
-get_analysis_time_fname = string_to_time(filename(i:i+19))
+get_analysis_time_fname = string_to_time(filename(i:i+TIMELEN-1))
 
 end function get_analysis_time_fname
 
@@ -2656,7 +2968,7 @@ subroutine write_model_time_file(time_filename, model_time, adv_to_time)
  type(time_type),  intent(in), optional :: adv_to_time
 
 integer :: iunit
-character(len=19) :: timestring
+character(len=TIMELEN) :: timestring
 type(time_type)   :: deltatime
 
 iunit = open_file(time_filename, action='write')
@@ -2683,7 +2995,35 @@ subroutine write_model_time_restart(ncid, dart_time)
 integer,             intent(in) :: ncid !< netcdf file handle
 type(time_type),     intent(in) :: dart_time
 
-call error_handler(E_MSG, 'write_model_time', 'no routine for mpas_atm write model time')
+integer :: year, month, day, hour, minute, second
+character(len=64) :: timestring
+character(len=*), parameter :: routine = 'write_model_time_restart'
+
+call get_date(dart_time, year, month, day, hour, minute, second)
+call set_wrf_date(timestring, year, month, day, hour, minute, second)
+
+! Define xtime variable if it does not already exist
+if (.not. nc_variable_exists(ncid, 'xtime')) then
+
+   call nc_begin_define_mode(ncid)
+
+   ! check to see if there are Time and date_string_length dimensions
+   if (.not. nc_dimension_exists(ncid, 'Time')) &
+      call nc_define_unlimited_dimension(ncid, 'Time', routine)
+
+   if (.not. nc_dimension_exists(ncid, 'StrLen')) &
+      call nc_define_dimension(ncid, 'StrLen', len(timestring), routine)
+
+   ! make xtime(Time, StrLen)
+   call nc_define_character_variable(ncid, 'xtime', (/ 'StrLen', 'Time  ' /), routine)
+   call nc_add_attribute_to_variable(ncid, 'xtime', 'units', "YYYY-MM-DD_hh:mm:ss", routine)
+   call nc_add_attribute_to_variable(ncid, 'xtime', 'long_name', 'Model valid time', routine)
+
+call nc_end_define_mode(ncid)
+
+endif
+
+call nc_put_variable(ncid, 'xtime', timestring, routine)
 
 end subroutine write_model_time_restart
 
@@ -2722,7 +3062,7 @@ subroutine get_xland(Cells,LandOrNot)
 integer,  intent(in)  :: Cells
 real(r8), allocatable, intent(out) :: LandOrNot(:)
 
-if ( .not. module_initialized ) call static_init_model
+if ( .not. module_initialized ) call static_init_model()
 
 allocate(LandOrNot(Cells))
 
@@ -2730,34 +3070,87 @@ LandOrNot  = xland
 
 end subroutine get_xland
 
+!------------------------------------------------------------------
+
+subroutine get_surftype(Cells,surface_type)
+
+! public routine for returning surface type (for rttov)
+! As defined in atmos_profile_type in obs_def_rttov_mod.f90
+! surface type (land=0, water=1, seaice = 2)
+
+integer,  intent(in)  :: Cells
+integer,  allocatable, intent(out) :: surface_type(:)
+
+if ( .not. module_initialized ) call static_init_model()
+
+allocate(surface_type(Cells))
+
+! xland(:)   ! land-ocean mask (1=land including sea-ice ; 2=ocean)  
+! seaice(:)  ! sea-ice flag (0=no seaice; =1 seaice) - for rttov
+
+surface_type = 0                          ! land
+where (seaice == 1.0_r8) surface_type  = 2     ! seaice
+where ( xland == 2.0_r8) surface_type  = 1     ! ocean
+
+end subroutine get_surftype
+
+!------------------------------------------------------------------
+
+subroutine get_cell_center_coords(Cells,Lats,Lons)
+
+! public routine for returning cell center coordinates
+
+integer,  intent(in)  :: Cells
+real(r8), allocatable, intent(out) :: Lats(:), Lons(:)
+
+if ( .not. module_initialized ) call static_init_model()
+
+allocate(Lats(Cells), Lons(Cells))
+
+Lats = latCell
+Lons = lonCell
+
+end subroutine get_cell_center_coords
+
+!------------------------------------------------------------------
+
+subroutine get_bdy_mask(Cells,Mask)
+
+! public routine for returning mask for boundary cells
+
+integer, intent(in)  :: Cells
+integer, allocatable, intent(out) :: Mask(:)
+
+if ( .not. module_initialized ) call static_init_model()
+
+allocate(Mask(Cells))
+
+Mask = bdyMaskCell
+
+end subroutine get_bdy_mask
+
+
 !==================================================================
 ! The (model-specific) private interfaces come last
 !==================================================================
 
 
 !------------------------------------------------------------------
+!> convert time type into a character string with the
+!> format of YYYY-MM-DD_hh:mm:ss
 
 function time_to_string(t, interval)
 
-! convert time type into a character string with the
-! format of YYYY-MM-DD_hh:mm:ss
-
-! passed variables
- character(len=19) :: time_to_string
  type(time_type), intent(in) :: t
  logical, intent(in), optional :: interval
-
-! local variables
+character(len=TIMELEN) :: time_to_string
 
 integer :: iyear, imonth, iday, ihour, imin, isec
 integer :: ndays, nsecs
 logical :: dointerval
 
-if (present(interval)) then
-   dointerval = interval
-else
    dointerval = .false.
-endif
+if (present(interval)) dointerval = interval
 
 ! for interval output, output the number of days, then hours, mins, secs
 ! for date output, use the calendar routine to get the year/month/day hour:min:sec
@@ -2814,89 +3207,28 @@ type(time_type) :: set_model_time_step
 if ( .not. module_initialized ) call static_init_model
 
 ! these are from the namelist
-!FIXME: sanity check these for valid ranges?
 set_model_time_step = set_time(assimilation_period_seconds, assimilation_period_days)
 
 end function set_model_time_step
 
 
 !------------------------------------------------------------------
+!> Read the grid dimensions from the MPAS netcdf file.
+!>
 
-subroutine read_grid_dims()
+subroutine read_grid_dims(ncid)
+integer, intent(in) :: ncid
 
-! Read the grid dimensions from the MPAS netcdf file.
-!
-! The file name comes from module storage ... namelist.
+character(len=*), parameter :: routine = 'read_grid_dims'
 
-integer :: grid_id, dimid
-
-if ( .not. module_initialized ) call static_init_model
-
-! get the ball rolling ...
-
-call nc_check( nf90_open(trim(grid_definition_filename), NF90_NOWRITE, grid_id), &
-              'read_grid_dims', 'open '//trim(grid_definition_filename))
-
-! nCells : get dimid for 'nCells' and then get value
-
-call nc_check(nf90_inq_dimid(grid_id, 'nCells', dimid), &
-              'read_grid_dims','inq_dimid nCells '//trim(grid_definition_filename))
-call nc_check(nf90_inquire_dimension(grid_id, dimid, len=nCells), &
-            'read_grid_dims','inquire_dimension nCells '//trim(grid_definition_filename))
-
-! nVertices : get dimid for 'nVertices' and then get value
-
-call nc_check(nf90_inq_dimid(grid_id, 'nVertices', dimid), &
-              'read_grid_dims','inq_dimid nVertices '//trim(grid_definition_filename))
-call nc_check(nf90_inquire_dimension(grid_id, dimid, len=nVertices), &
-            'read_grid_dims','inquire_dimension nVertices '//trim(grid_definition_filename))
-
-! nEdges : get dimid for 'nEdges' and then get value
-
-call nc_check(nf90_inq_dimid(grid_id, 'nEdges', dimid), &
-              'read_grid_dims','inq_dimid nEdges '//trim(grid_definition_filename))
-call nc_check(nf90_inquire_dimension(grid_id, dimid, len=nEdges), &
-            'read_grid_dims','inquire_dimension nEdges '//trim(grid_definition_filename))
-
-! maxEdges : get dimid for 'maxEdges' and then get value
-
-call nc_check(nf90_inq_dimid(grid_id, 'maxEdges', dimid), &
-              'read_grid_dims','inq_dimid maxEdges '//trim(grid_definition_filename))
-call nc_check(nf90_inquire_dimension(grid_id, dimid, len=maxEdges), &
-            'read_grid_dims','inquire_dimension maxEdges '//trim(grid_definition_filename))
-
-! nVertLevels : get dimid for 'nVertLevels' and then get value
-
-call nc_check(nf90_inq_dimid(grid_id, 'nVertLevels', dimid), &
-              'read_grid_dims','inq_dimid nVertLevels '//trim(grid_definition_filename))
-call nc_check(nf90_inquire_dimension(grid_id, dimid, len=nVertLevels), &
-            'read_grid_dims','inquire_dimension nVertLevels '//trim(grid_definition_filename))
-
-! nVertLevelsP1 : get dimid for 'nVertLevelsP1' and then get value
-
-call nc_check(nf90_inq_dimid(grid_id, 'nVertLevelsP1', dimid), &
-              'read_grid_dims','inq_dimid nVertLevelsP1 '//trim(grid_definition_filename))
-call nc_check(nf90_inquire_dimension(grid_id, dimid, len=nVertLevelsP1), &
-            'read_grid_dims','inquire_dimension nVertLevelsP1 '//trim(grid_definition_filename))
-
-! vertexDegree : get dimid for 'vertexDegree' and then get value
-
-call nc_check(nf90_inq_dimid(grid_id, 'vertexDegree', dimid), &
-              'read_grid_dims','inq_dimid vertexDegree '//trim(grid_definition_filename))
-call nc_check(nf90_inquire_dimension(grid_id, dimid, len=vertexDegree), &
-            'read_grid_dims','inquire_dimension vertexDegree '//trim(grid_definition_filename))
-
-! nSoilLevels : get dimid for 'nSoilLevels' and then get value
-
-call nc_check(nf90_inq_dimid(grid_id, 'nSoilLevels', dimid), &
-              'read_grid_dims','inq_dimid nSoilLevels '//trim(grid_definition_filename))
-call nc_check(nf90_inquire_dimension(grid_id, dimid, len=nSoilLevels), &
-            'read_grid_dims','inquire_dimension nSoilLevels '//trim(grid_definition_filename))
-
-! tidy up
-
-call nc_check(nf90_close(grid_id), &
-         'read_grid_dims','close '//trim(grid_definition_filename) )
+nCells        = nc_get_dimension_size(ncid, 'nCells',         routine)
+nVertices     = nc_get_dimension_size(ncid, 'nVertices',      routine)
+nEdges        = nc_get_dimension_size(ncid, 'nEdges',         routine)
+maxEdges      = nc_get_dimension_size(ncid, 'maxEdges',       routine)
+nVertLevels   = nc_get_dimension_size(ncid, 'nVertLevels',    routine)
+nVertLevelsP1 = nc_get_dimension_size(ncid, 'nVertLevelsP1',  routine)
+vertexDegree  = nc_get_dimension_size(ncid, 'vertexDegree',   routine)
+nSoilLevels   = nc_get_dimension_size(ncid, 'nSoilLevels',    routine)
 
 if (debug > 4 .and. do_output()) then
    write(*,*)
@@ -2914,154 +3246,65 @@ end subroutine read_grid_dims
 
 
 !------------------------------------------------------------------
+!> Read the grid values in from the MPAS netcdf file.
+!>
 
-subroutine get_grid()
+subroutine get_grid(ncid)
+integer, intent(in) :: ncid
 
-! Read the actual grid values in from the MPAS netcdf file.
-!
-! The file name comes from module storage ... namelist.
-! This reads in the following arrays:
-!   latCell, lonCell, zGridFace, cellsOnVertex (all in module global storage)
+character(len=*), parameter :: routine = 'get_grid'
 
 
-integer  :: ncid, VarID
+call nc_get_variable(ncid, 'lonCell',       lonCell,       routine)
+call nc_get_variable(ncid, 'latCell',       latCell,       routine)
 
-! Read the netcdf file data
-
-call nc_check(nf90_open(trim(grid_definition_filename), nf90_nowrite, ncid), 'get_grid', 'open '//trim(grid_definition_filename))
-
-! Read the variables
-
-call nc_check(nf90_inq_varid(ncid, 'latCell', VarID), &
-      'get_grid', 'inq_varid latCell '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, latCell), &
-      'get_grid', 'get_var latCell '//trim(grid_definition_filename))
-
-call nc_check(nf90_inq_varid(ncid, 'lonCell', VarID), &
-      'get_grid', 'inq_varid lonCell '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, lonCell), &
-      'get_grid', 'get_var lonCell '//trim(grid_definition_filename))
-
-call nc_check(nf90_inq_varid(ncid, 'zgrid', VarID), &
-      'get_grid', 'inq_varid zgrid '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, zGridFace), &
-      'get_grid', 'get_var zgrid '//trim(grid_definition_filename))
-
-call nc_check(nf90_inq_varid(ncid, 'cellsOnVertex', VarID), &
-      'get_grid', 'inq_varid cellsOnVertex '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, cellsOnVertex), &
-      'get_grid', 'get_var cellsOnVertex '//trim(grid_definition_filename))
-
-call nc_check(nf90_inq_varid(ncid, 'xland', VarID), &
-      'get_grid', 'inq_varid xland '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, xland), &
-      'get_grid', 'get_var xland '//trim(grid_definition_filename))
-
-! MPAS analysis files are in radians - at this point DART needs degrees.
+! MPAS locations are in radians - at this point DART needs degrees.
+! watch out for tiny rounding errors and clamp to exactly +/- 90
 
 latCell = latCell * rad2deg
 lonCell = lonCell * rad2deg
 where (latCell >  90.0_r8) latCell = 90.0_r8
 where (latCell < -90.0_r8) latCell = -90.0_r8
 
-! Read the variables
+call nc_get_variable(ncid, 'dcEdge',        dcEdge,        routine)
+call nc_get_variable(ncid, 'zgrid',         zGridFace,     routine)
+call nc_get_variable(ncid, 'cellsOnVertex', cellsOnVertex, routine)
+call nc_get_variable(ncid, 'xland',         xland,         routine)
+call nc_get_variable(ncid, 'seaice',        seaice,        routine)  ! Ha: added for rttov
+call nc_get_variable(ncid, 'skintemp',      skintemp,      routine)  ! Ha: added for rttov
 
-call nc_check(nf90_inq_varid(ncid, 'edgeNormalVectors', VarID), &
-      'get_grid', 'inq_varid edgeNormalVectors '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, edgeNormalVectors), &
-      'get_grid', 'get_var edgeNormalVectors '//trim(grid_definition_filename))
+dxmax = maxval(dcEdge)  ! max grid resolution in meters
 
-call nc_check(nf90_inq_varid(ncid, 'nEdgesOnCell', VarID), &
-      'get_grid', 'inq_varid nEdgesOnCell '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, nEdgesOnCell), &
-      'get_grid', 'get_var nEdgesOnCell '//trim(grid_definition_filename))
-
-call nc_check(nf90_inq_varid(ncid, 'edgesOnCell', VarID), &
-      'get_grid', 'inq_varid edgesOnCell '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, edgesOnCell), &
-      'get_grid', 'get_var edgesOnCell '//trim(grid_definition_filename))
-
-call nc_check(nf90_inq_varid(ncid, 'cellsOnEdge', VarID), &
-      'get_grid', 'inq_varid cellsOnEdge '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, cellsOnEdge), &
-      'get_grid', 'get_var cellsOnEdge '//trim(grid_definition_filename))
+call nc_get_variable(ncid, 'edgeNormalVectors', edgeNormalVectors, routine)
+call nc_get_variable(ncid, 'nEdgesOnCell',      nEdgesOnCell,      routine)
+call nc_get_variable(ncid, 'edgesOnCell',       edgesOnCell,       routine)
+call nc_get_variable(ncid, 'cellsOnEdge',       cellsOnEdge,       routine)
+call nc_get_variable(ncid, 'verticesOnCell',    verticesOnCell,    routine)
 
 if(data_on_edges) then
-   call nc_check(nf90_inq_varid(ncid, 'latEdge', VarID), &
-         'get_grid', 'inq_varid latEdge '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, latEdge), &
-         'get_grid', 'get_var latEdge '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'lonEdge', VarID), &
-         'get_grid', 'inq_varid lonEdge '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, lonEdge), &
-         'get_grid', 'get_var lonEdge '//trim(grid_definition_filename))
+   call nc_get_variable(ncid, 'lonEdge', lonEdge, routine)
+   call nc_get_variable(ncid, 'latEdge', latEdge, routine)
 
    latEdge = latEdge * rad2deg
    lonEdge = lonEdge * rad2deg
+   where (latEdge >  90.0_r8) latEdge =  90.0_r8
+   where (latEdge < -90.0_r8) latEdge = -90.0_r8
 
-   call nc_check(nf90_inq_varid(ncid, 'xEdge', VarID), &
-         'get_grid', 'inq_varid xEdge '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, xEdge), &
-         'get_grid', 'get_var xEdge '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'yEdge', VarID), &
-         'get_grid', 'inq_varid yEdge '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, yEdge), &
-         'get_grid', 'get_var yEdge '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'zEdge', VarID), &
-         'get_grid', 'inq_varid zEdge '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, zEdge), &
-         'get_grid', 'get_var zEdge '//trim(grid_definition_filename))
+   call nc_get_variable(ncid, 'xEdge', xEdge, routine)
+   call nc_get_variable(ncid, 'yEdge', yEdge, routine)
+   call nc_get_variable(ncid, 'zEdge', zEdge, routine)
 endif
 
-call nc_check(nf90_inq_varid(ncid, 'xVertex', VarID), &
-      'get_grid', 'inq_varid xVertex '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, xVertex), &
-      'get_grid', 'get_var xVertex '//trim(grid_definition_filename))
+call nc_get_variable(ncid, 'xVertex', xVertex, routine)
+call nc_get_variable(ncid, 'yVertex', yVertex, routine)
+call nc_get_variable(ncid, 'zVertex', zVertex, routine)
 
-call nc_check(nf90_inq_varid(ncid, 'yVertex', VarID), &
-      'get_grid', 'inq_varid yVertex '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, yVertex), &
-      'get_grid', 'get_var yVertex '//trim(grid_definition_filename))
-
-call nc_check(nf90_inq_varid(ncid, 'zVertex', VarID), &
-      'get_grid', 'inq_varid zVertex '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, zVertex), &
-      'get_grid', 'get_var zVertex '//trim(grid_definition_filename))
-
-call nc_check(nf90_inq_varid(ncid, 'verticesOnCell', VarID), &
-      'get_grid', 'inq_varid verticesOnCell '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, verticesOnCell), &
-      'get_grid', 'get_var verticesOnCell '//trim(grid_definition_filename))
-
-! Get the boundary information if available.
-! Assuming the existence of this variable is sufficient to determine if
-! the grid is defined everywhere or not.
-
-if ( nf90_inq_varid(ncid, 'boundaryEdge', VarID) == NF90_NOERR ) then
-   allocate(boundaryEdge(nVertLevels,nEdges))
-   call nc_check(nf90_get_var( ncid, VarID, boundaryEdge), &
-      'get_grid', 'get_var boundaryEdge '//trim(grid_definition_filename))
-   global_grid = .false.
-endif
-
-if ( nf90_inq_varid(ncid, 'boundaryVertex', VarID) == NF90_NOERR ) then
-   allocate(boundaryVertex(nVertLevels,nVertices))
-   call nc_check(nf90_get_var( ncid, VarID, boundaryVertex), &
-      'get_grid', 'get_var boundaryVertex '//trim(grid_definition_filename))
-   global_grid = .false.
-endif
-
-if ( nf90_inq_varid(ncid, 'maxLevelCell', VarID) == NF90_NOERR ) then
+if (nc_variable_exists(ncid, 'maxLevelCell')) then
    allocate(maxLevelCell(nCells))
-   call nc_check(nf90_get_var( ncid, VarID, maxLevelCell), &
-      'get_grid', 'get_var maxLevelCell '//trim(grid_definition_filename))
+   call nc_get_variable(ncid, 'maxLevelCell', maxlevelCell, routine)
    all_levels_exist_everywhere = .false.
 endif
 
-call nc_check(nf90_close(ncid), 'get_grid','close '//trim(grid_definition_filename) )
 
 ! A little sanity check
 
@@ -3077,6 +3320,8 @@ if ( debug > 9 .and. do_output() ) then
    write(*,*)'EdgesOnCell       range ',minval(EdgesOnCell),       maxval(EdgesOnCell)
    write(*,*)'cellsOnEdge       range ',minval(cellsOnEdge),       maxval(cellsOnEdge)
    write(*,*)'xland             range ',minval(xland),             maxval(xland)
+   write(*,*)'seaice            range ',minval(seaice),            maxval(seaice)       ! for rttov
+   write(*,*)'skintemp          range ',minval(skintemp),          maxval(skintemp)     ! for rttov
    if(data_on_edges) then
       write(*,*)'latEdge        range ',minval(latEdge),           maxval(latEdge)
       write(*,*)'lonEdge        range ',minval(lonEdge),           maxval(lonEdge)
@@ -3088,10 +3333,10 @@ if ( debug > 9 .and. do_output() ) then
    write(*,*)'yVertex           range ',minval(yVertex),           maxval(yVertex)
    write(*,*)'zVertex           range ',minval(zVertex),           maxval(zVertex)
    write(*,*)'verticesOnCell    range ',minval(verticesOnCell),    maxval(verticesOnCell)
-   if (allocated(boundaryEdge)) &
-   write(*,*)'boundaryEdge      range ',minval(boundaryEdge),      maxval(boundaryEdge)
-   if (allocated(boundaryVertex)) &
-   write(*,*)'boundaryVertex    range ',minval(boundaryVertex),    maxval(boundaryVertex)
+   if (allocated(bdyMaskCell)) &
+   write(*,*)'bdyMaskCell       range ',minval(bdyMaskCell),       maxval(bdyMaskCell)
+   if (allocated(bdyMaskEdge)) &
+   write(*,*)'bdyMaskEdge       range ',minval(bdyMaskEdge),       maxval(bdyMaskEdge)
    if (allocated(maxLevelCell)) &
    write(*,*)'maxLevelCell      range ',minval(maxLevelCell),      maxval(maxLevelCell)
 
@@ -3102,9 +3347,10 @@ end subroutine get_grid
 
 !------------------------------------------------------------------
 
-subroutine update_wind_components(ncid, state_vector, use_increments_for_u_update)
+subroutine update_wind_components(ncid, filename, state_vector, use_increments_for_u_update)
 
- integer,  intent(in)  :: ncid                  ! netCDF handle for model_analysis_filename
+ integer,  intent(in)  :: ncid
+ character(len=*), intent(in) :: filename
  real(r8), intent(in)  :: state_vector(:)
  logical,  intent(in)  :: use_increments_for_u_update
 
@@ -3169,9 +3415,9 @@ allocate(vcell(nVertLevels, nCells))
 ! and uReconstructMeridional fields from the mpas analysis netcdf file.
 
 if (use_increments_for_u_update) then
-   call read_2d_from_nc_file(ncid, 'u', u)
-   call read_2d_from_nc_file(ncid, 'uReconstructZonal', ucell)
-   call read_2d_from_nc_file(ncid, 'uReconstructMeridional', vcell)
+   call read_2d_from_nc_file(ncid, filename, 'u', u)
+   call read_2d_from_nc_file(ncid, filename, 'uReconstructZonal', ucell)
+   call read_2d_from_nc_file(ncid, filename, 'uReconstructMeridional', vcell)
 
    if ((debug > 8) .and. do_output()) then
       write(*,*)
@@ -3184,9 +3430,13 @@ if (use_increments_for_u_update) then
 
    allocate(data_2d_array(nVertLevels, nCells))
 
+   ! write updated reconstructed winds to restart file for later use.
    call vector_to_prog_var(state_vector, zonal, data_2d_array)
+   call put_u(ncid, filename, data_2d_array, 'uReconstructZonal')
    ucell = data_2d_array - ucell
+
    call vector_to_prog_var(state_vector, meridional, data_2d_array)
+   call put_u(ncid, filename, data_2d_array, 'uReconstructMeridional')
    vcell = data_2d_array - vcell
 
    deallocate(data_2d_array)
@@ -3211,7 +3461,7 @@ else
    call vector_to_prog_var(state_vector, zonal, ucell)
    call vector_to_prog_var(state_vector, meridional, vcell)
 
-   call uv_cell_to_edges(ucell, vcell, u)
+   call uv_cell_to_edges(ucell, vcell, u, .true.)
 
    if ((debug > 8) .and. do_output()) then
       write(*,*)
@@ -3219,6 +3469,8 @@ else
       write(*,*)'update_winds: v values    range ',minval(vcell), maxval(vcell)
    endif
 
+   call put_u(ncid, filename, ucell, 'uReconstructZonal')
+   call put_u(ncid, filename, vcell, 'uReconstructMeridional')
 endif
 
 if ((debug > 8) .and. do_output()) then
@@ -3228,7 +3480,7 @@ endif
 
 ! Write back to the mpas analysis file.
 
-call put_u(ncid, u)
+call put_u(ncid, filename, u, 'u')
 
 deallocate(ucell, vcell, u)
 
@@ -3237,8 +3489,9 @@ end subroutine update_wind_components
 
 !------------------------------------------------------------------
 
-subroutine read_2d_from_nc_file(ncid, varname, data)
+subroutine read_2d_from_nc_file(ncid, filename, varname, data)
  integer,          intent(in)  :: ncid
+ character(len=*), intent(in)  :: filename
  character(len=*), intent(in)  :: varname
  real(r8),         intent(out) :: data(:,:)
 
@@ -3253,17 +3506,17 @@ integer :: VarID, numdims, dimlen, i
 
 call nc_check(nf90_inq_varid(ncid, varname, VarID), &
               'read_from_nc_file', &
-              'inq_varid '//trim(varname)//' '//trim(model_analysis_filename))
+              'inq_varid '//trim(varname)//' '//trim(filename))
 
 call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=numdims), &
               'read_from_nc_file', &
-              'inquire '//trim(varname)//' '//trim(model_analysis_filename))
+              'inquire '//trim(varname)//' '//trim(filename))
 
 do i=1, numdims
    write(string1,*)'inquire length for dimension ',i
    call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen, name=dimname), &
                  'read_2d_from_nc_file', &
-                  trim(string1)//' '//trim(model_analysis_filename))
+                  trim(string1)//' '//trim(filename))
    if (trim(dimname) == 'Time') then
       mystart(i)       = dimlen
       mycount(numdims) = 1
@@ -3276,15 +3529,17 @@ enddo
 call nc_check( nf90_get_var(ncid, VarID, data, &
                start=mystart(1:numdims), count=mycount(1:numdims)), &
               'read_2d_from_nc_file', &
-              'get_var u '//trim(model_analysis_filename))
+              'get_var u '//trim(filename))
 
 end subroutine read_2d_from_nc_file
 
 
 !------------------------------------------------------------------
 
-subroutine put_u(ncid, u)
+subroutine put_u(ncid, filename, u, vchar)
+ character(len=*) :: vchar
  integer,  intent(in) :: ncid
+ character(len=*), intent(in) :: filename
  real(r8), intent(in) :: u(:,:)       ! u(nVertLevels, nEdges)
 
 ! Put the newly updated 'u' field back into the netcdf file.
@@ -3295,22 +3550,24 @@ integer :: ntimes, i
 
 if ( .not. module_initialized ) call static_init_model
 
+string2 = trim(filename)//' '//trim(vchar)
 
 call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimID), &
-              'put_u', 'inquire '//trim(model_analysis_filename))
+              'put_u', 'inquire '//trim(filename))
 
 call nc_check(nf90_inquire_dimension(ncid, unlimitedDimID, len=ntimes), &
-              'put_u', 'inquire time dimension length '//trim(model_analysis_filename))
+              'put_u', 'inquire time dimension length '//trim(filename))
 
-call nc_check(nf90_inq_varid(ncid, 'u', VarID), &
-              'put_u', 'inq_varid u '//trim(model_analysis_filename))
+call nc_check(nf90_inq_varid(ncid, trim(vchar), VarID), &
+              'put_u', 'inq_varid '//trim(string2))
 
 call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=numdims), &
-              'put_u', 'inquire u '//trim(model_analysis_filename))
+              'put_u', 'inquire '//trim(string2))
 
 do i=1, numdims
+   write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
    call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=numu(i)), &
-                 'put_u', 'inquire U dimension length '//trim(model_analysis_filename))
+                 'put_u', string1)
 enddo
 
 ! for all but the time dimension, read all the values.
@@ -3321,7 +3578,7 @@ mycount = numu
 mycount(numdims) = 1
 
 call nc_check(nf90_put_var(ncid, VarID, u, start=mystart, count=mycount), &
-              'put_u', 'put_var u '//trim(model_analysis_filename))
+              'put_u', 'put_var '//trim(string2))
 
 
 ! A little sanity check
@@ -3329,7 +3586,7 @@ call nc_check(nf90_put_var(ncid, VarID, u, start=mystart, count=mycount), &
 if ((debug > 9) .and. do_output()) then
 
    write(*,*)
-   write(*,*)'u       range ',minval(u),     maxval(u)
+   write(*,*) trim(vchar),'       range ',minval(u),     maxval(u)
 
 endif
 
@@ -3347,24 +3604,12 @@ real(r8), dimension(:),   intent(in)  :: x
 integer,                  intent(in)  :: ivar
 real(r8), dimension(:),   intent(out) :: data_1d_array
 
-integer :: idim1,ii
+integer :: start_offset, end_offset
 
-if ( .not. module_initialized ) call static_init_model
+start_offset = progvar(ivar)%index1
+end_offset   = start_offset + size(data_1d_array) - 1
 
-ii = progvar(ivar)%index1
-
-do idim1 = 1, size(data_1d_array, 1)
-   data_1d_array(idim1) = x(ii)
-   ii = ii + 1
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_1d_prog_var', string1, &
-                    source, revision, revdate, text2=string2)
-endif
+data_1d_array = x(start_offset:end_offset)
 
 end subroutine vector_to_1d_prog_var
 
@@ -3380,28 +3625,35 @@ real(r8), dimension(:),   intent(in)  :: x
 integer,                  intent(in)  :: ivar
 real(r8), dimension(:,:), intent(out) :: data_2d_array
 
-integer :: idim1,idim2,ii
+integer :: start_offset, end_offset
 
-if ( .not. module_initialized ) call static_init_model
+start_offset = get_index_start(anl_domid, ivar)
+end_offset   = get_index_end(anl_domid, ivar)
 
-ii = progvar(ivar)%index1
-
-do idim2 = 1,size(data_2d_array, 2)
-   do idim1 = 1,size(data_2d_array, 1)
-      data_2d_array(idim1,idim2) = x(ii)
-      ii = ii + 1
-   enddo
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_2d_prog_var', string1, &
-                    source, revision, revdate, text2=string2)
-endif
+data_2d_array = reshape(x(start_offset:end_offset), shape(data_2d_array))
 
 end subroutine vector_to_2d_prog_var
+
+
+!------------------------------------------------------------------
+
+subroutine bdy_vector_to_prog_var(x, ivar, data_2d_array)
+
+! convert the values from a 1d array, starting at an offset,
+! into a 2d array.
+
+real(r8), dimension(:),   intent(in)  :: x
+integer,                  intent(in)  :: ivar
+real(r8), dimension(:,:), intent(out) :: data_2d_array
+
+integer :: start_offset, end_offset
+
+start_offset = get_index_start(lbc_domid, ivar)
+end_offset   = get_index_end(lbc_domid, ivar)
+
+data_2d_array = reshape(x(start_offset:end_offset), shape(data_2d_array))
+
+end subroutine bdy_vector_to_prog_var
 
 
 !------------------------------------------------------------------
@@ -3415,28 +3667,12 @@ real(r8), dimension(:),     intent(in)  :: x
 integer,                    intent(in)  :: ivar
 real(r8), dimension(:,:,:), intent(out) :: data_3d_array
 
-integer :: idim1,idim2,idim3,ii
+integer :: start_offset, end_offset
 
-if ( .not. module_initialized ) call static_init_model
+start_offset = progvar(ivar)%index1
+end_offset   = start_offset + size(data_3d_array) - 1
 
-ii = progvar(ivar)%index1
-
-do idim3 = 1,size(data_3d_array, 3)
-   do idim2 = 1,size(data_3d_array, 2)
-      do idim1 = 1,size(data_3d_array, 1)
-         data_3d_array(idim1,idim2,idim3) = x(ii)
-         ii = ii + 1
-      enddo
-   enddo
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_3d_prog_var', string1, &
-                    source, revision, revdate, text2=string2)
-endif
+data_3d_array = reshape(x(start_offset:end_offset), shape(data_3d_array))
 
 end subroutine vector_to_3d_prog_var
 
@@ -3452,24 +3688,12 @@ real(r8), dimension(:),   intent(in)    :: data_1d_array
 real(r8), dimension(:),   intent(inout) :: x
 integer,                  intent(in)    :: ivar
 
-integer :: idim1,ii
+integer :: start_offset, end_offset
 
-if ( .not. module_initialized ) call static_init_model
+start_offset = progvar(ivar)%index1
+end_offset   = start_offset + size(data_1d_array) - 1
 
-ii = progvar(ivar)%index1
-
-do idim1 = 1, size(data_1d_array, 1)
-   x(ii) = data_1d_array(idim1)
-   ii = ii + 1
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'prog_var_1d_to_vector', string1, &
-                    source, revision, revdate, text2=string2)
-endif
+x(start_offset:end_offset) = data_1d_array
 
 end subroutine prog_var_1d_to_vector
 
@@ -3485,26 +3709,12 @@ real(r8), dimension(:,:), intent(in)    :: data_2d_array
 real(r8), dimension(:),   intent(inout) :: x
 integer,                  intent(in)    :: ivar
 
-integer :: idim1,idim2,ii
+integer :: start_offset, end_offset
 
-if ( .not. module_initialized ) call static_init_model
+start_offset = progvar(ivar)%index1
+end_offset   = start_offset + size(data_2d_array) - 1
 
-ii = progvar(ivar)%index1
-
-do idim2 = 1,size(data_2d_array, 2)
-   do idim1 = 1,size(data_2d_array, 1)
-      x(ii) = data_2d_array(idim1,idim2)
-      ii = ii + 1
-   enddo
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'prog_var_2d_to_vector', string1, &
-                    source, revision, revdate, text2=string2)
-endif
+x(start_offset:end_offset) = reshape(data_2d_array, (/ size(data_2d_array) /) )
 
 end subroutine prog_var_2d_to_vector
 
@@ -3520,33 +3730,19 @@ real(r8), dimension(:,:,:), intent(in)    :: data_3d_array
 real(r8), dimension(:),     intent(inout) :: x
 integer,                    intent(in)    :: ivar
 
-integer :: idim1,idim2,idim3,ii
+integer :: start_offset, end_offset
 
-if ( .not. module_initialized ) call static_init_model
+start_offset = progvar(ivar)%index1
+end_offset   = start_offset + size(data_3d_array) - 1
 
-ii = progvar(ivar)%index1
-
-do idim3 = 1,size(data_3d_array, 3)
-   do idim2 = 1,size(data_3d_array, 2)
-      do idim1 = 1,size(data_3d_array, 1)
-         x(ii) = data_3d_array(idim1,idim2,idim3)
-         ii = ii + 1
-      enddo
-   enddo
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'prog_var_3d_to_vector', string1, &
-                    source, revision, revdate, text2=string2)
-endif
+x(start_offset:end_offset) = reshape(data_3d_array, (/ size(data_3d_array) /))
 
 end subroutine prog_var_3d_to_vector
 
 
 !------------------------------------------------------------------
+
+!>@todo fill in the inputs we need for the add_domain() routine
 
 subroutine verify_state_variables( state_variables, ncid, filename, ngood, table )
 
@@ -3561,11 +3757,13 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname, dimname
 character(len=NF90_MAX_NAME) :: dartstr
 integer :: dimlen, numdims
+logical :: u_already_in_list
 logical :: failure
 
 if ( .not. module_initialized ) call static_init_model
 
 failure = .FALSE. ! perhaps all with go well
+u_already_in_list = .FALSE.
 
 nrows = size(table,1)
 ncols = size(table,2)
@@ -3643,6 +3841,9 @@ MyLoop : do i = 1, nrows
       write(     *     ,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
    endif
 
+   ! Keep track of whether U (edge normal winds) is part of the user-specified field list
+   if ((table(i, 1) == 'u') .or. (table(i, 1) == 'U')) u_already_in_list = .true.
+
    ngood = ngood + 1
 enddo MyLoop
 
@@ -3652,45 +3853,60 @@ if (ngood == nrows) then
    call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate,text2=string2)
 endif
 
-! TJH FIXME need to add check so they cannot have both normal winds and reconstructed winds in
-! DART state vector.   nsc - not sure that should be illegal.  which one is
-! updated in the restart file is controlled by namelist and both could be in
-! state vector for testing.
+! if this flag is true and the user hasn't said U should be in the state,
+! add it to the list.
+if (add_u_to_state_list .and. .not. u_already_in_list) then
+   ngood = ngood + 1
+   table(ngood,1) = "u"
+   table(ngood,2) = "QTY_EDGE_NORMAL_SPEED"
+endif
 
 end subroutine verify_state_variables
 
 
 !------------------------------------------------------------------
 
-function is_edgedata_in_state_vector(state_variables)
-  character(len=*), dimension(:),   intent(in)  :: state_variables
+!> @todo FIXME if you can call this *after* add_domain() has been
+!> called, then we could use state structure calls for this.
+!>
+!> but right now, it's called first.  so pass in the namelist 
+!> and boundary lists and base the decision on those.
+!>
+!> this routine can only be called after the namelist is read.  
+!> also, it's called BY static_init_model() so it can't call
+!> back into it.
+!>
+
+function is_edgedata_in_state_vector(state_list, bdy_list)
+  character(len=*), intent(in) :: state_list(max_state_variables, num_state_table_columns)
+  character(len=*), intent(in) :: bdy_list(max_state_variables)
   logical :: is_edgedata_in_state_vector
 
-! before we actually read and parse the input table,
-! do a quick check to see if 'u' is one of the state variable names.
-! add any other fields here if their data values are based on edges
-! and not cell centers.
+integer :: i
 
-integer :: nrows, ncols, i
-character(len=NF90_MAX_NAME) :: mpasname
+StateLoop : do i = 1, max_state_variables
 
-if ( .not. module_initialized ) call static_init_model
+   if (state_list(i, 1) == ' ') exit StateLoop ! Found end of list.
 
-nrows = max_state_variables
-ncols = num_state_table_columns
-
-MyLoop : do i = 1, nrows
-
-   mpasname = trim(state_variables(ncols*i - 1))
-
-   if (mpasname == ' ') exit MyLoop ! Found end of list.
-
-   if (mpasname == 'u') then
+   if (state_list(i, 1) == 'u') then
       is_edgedata_in_state_vector = .true.
       return
    endif
 
-enddo MyLoop
+enddo StateLoop
+
+! if U is not in the state, does it matter if U is
+! in the boundary file?  yes, return true if so.
+BdyLoop : do i = 1, max_state_variables
+
+   if (bdy_list(i) == ' ') exit BdyLoop ! Found end of list.
+
+   if (bdy_list(i) == 'lbc_u') then
+      is_edgedata_in_state_vector = .true.
+      return
+   endif
+
+enddo BdyLoop
 
 is_edgedata_in_state_vector = .false.
 
@@ -3709,8 +3925,6 @@ integer,  intent(in)           :: ivar
 !%! type progvartype
 !%!    private
 !%!    character(len=NF90_MAX_NAME) :: varname
-!%!    character(len=NF90_MAX_NAME) :: long_name
-!%!    character(len=NF90_MAX_NAME) :: units
 !%!    integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
 !%!    integer :: xtype         ! netCDF variable type (NF90_double, etc.)
 !%!    integer :: numdims       ! number of dims - excluding TIME
@@ -3737,10 +3951,6 @@ write(logfileunit,*)
 write(     *     ,*)
 write(logfileunit,*) 'variable number ',ivar,' is ',trim(progvar(ivar)%varname)
 write(     *     ,*) 'variable number ',ivar,' is ',trim(progvar(ivar)%varname)
-write(logfileunit,*) '  long_name   ',trim(progvar(ivar)%long_name)
-write(     *     ,*) '  long_name   ',trim(progvar(ivar)%long_name)
-write(logfileunit,*) '  units       ',trim(progvar(ivar)%units)
-write(     *     ,*) '  units       ',trim(progvar(ivar)%units)
 write(logfileunit,*) '  xtype       ',progvar(ivar)%xtype
 write(     *     ,*) '  xtype       ',progvar(ivar)%xtype
 write(logfileunit,*) '  dimlens     ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
@@ -3767,10 +3977,10 @@ write(logfileunit,*) '  kind_string ',progvar(ivar)%kind_string
 write(     *     ,*) '  kind_string ',progvar(ivar)%kind_string
 write(logfileunit,*) '  clamping    ',progvar(ivar)%clamping
 write(     *     ,*) '  clamping    ',progvar(ivar)%clamping
-write(logfileunit,*) '  clmp range  ',progvar(ivar)%range
-write(     *     ,*) '  clmp range  ',progvar(ivar)%range
-write(logfileunit,*) '  clmp fail   ',progvar(ivar)%out_of_range_fail
-write(     *     ,*) '  clmp fail   ',progvar(ivar)%out_of_range_fail
+write(logfileunit,*) '  clamp range  ',progvar(ivar)%range
+write(     *     ,*) '  clamp range  ',progvar(ivar)%range
+write(logfileunit,*) '  clamp fail   ',progvar(ivar)%out_of_range_fail
+write(     *     ,*) '  clamp fail   ',progvar(ivar)%out_of_range_fail
 do i = 1,progvar(ivar)%numdims
    write(logfileunit,*) '  dimension/length/name ',i,progvar(ivar)%dimlens(i),trim(progvar(ivar)%dimname(i))
    write(     *     ,*) '  dimension/length/name ',i,progvar(ivar)%dimlens(i),trim(progvar(ivar)%dimname(i))
@@ -3848,8 +4058,8 @@ logical, intent(out) :: both
 ! if both are there, return the ivar indices for each
 ! if only one is there, it's an error.
 
-zonal      = get_index_from_varname('uReconstructZonal')
-meridional = get_index_from_varname('uReconstructMeridional')
+zonal      = get_varid_from_varname(anl_domid, 'uReconstructZonal')
+meridional = get_varid_from_varname(anl_domid, 'uReconstructMeridional')
 
 if (zonal > 0 .and. meridional > 0) then
   both = .true.
@@ -3956,45 +4166,6 @@ progvar(ivar)%out_of_range_fail = .false.  ! should be unused so setting shouldn
 return
 
 end subroutine get_variable_bounds
-
-!------------------------------------------------------------
-
-subroutine define_var_dims(ncid,ivar, memberdimid, unlimiteddimid, ndims, dimids)
-
-! set the dimids array needed to augment the natural shape of the variable
-! with the two additional dimids needed by the DART diagnostic output.
-integer,               intent(in)  :: ncid
-integer,               intent(in)  :: ivar
-integer,               intent(in)  :: memberdimid, unlimiteddimid
-integer,               intent(out) :: ndims
-integer, dimension(:), intent(out) :: dimids
-
-integer :: i,mydimid
-
-ndims  = 0
-dimids = 0
-
-do i = 1,progvar(ivar)%numdims
-
-   ! Each of these dimension names (originally from the MPAS analysis file)
-   ! must exist in the DART diagnostic netcdf files.
-
-   call nc_check(nf90_inq_dimid(ncid, trim(progvar(ivar)%dimname(i)), mydimid), &
-              'define_var_dims','inq_dimid '//trim(progvar(ivar)%dimname(i)))
-
-   ndims = ndims + 1
-
-   dimids(ndims) = mydimid
-
-enddo
-
-ndims         = ndims + 1
-dimids(ndims) = memberdimid
-ndims         = ndims + 1
-dimids(ndims) = unlimiteddimid
-
-end subroutine define_var_dims
-
 
 !------------------------------------------------------------
 
@@ -4117,8 +4288,14 @@ real(r8),            intent(out) :: ploc(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
 ! convert the vertical coordinate at the given location
-! to a pressure.  if the vertical is undefined
-! return a fixed 1000 mb.
+! to a pressure.  if the vertical type is "undefined" then
+! return 2001 mb.  this routine is currently only used to
+! test for and reject obs which are above the upper limit
+! (and for a 'VERTISUNDEF' obs it needs to return a large
+! value with no error code).  it's also used if the 
+! interpolation type is QTY_PRESSURE.  we don't explicitly
+! prevent someone from creating a synthetic obs that has
+! a VERTISUNDEF type, but it doesn't make sense in that case.
 
 real(r8), dimension(3) :: llv, llv_new      ! lon/lat/vert
 real(r8), dimension(3, ens_size) :: values
@@ -4129,19 +4306,19 @@ integer :: e ! loop index
 
 ! default is failure
 ploc = MISSING_R8
+istatus = 99
 
 ! base location
 llv = get_location(location)
 
 if(is_vertical(location, "PRESSURE")) then
-   do e = 1, ens_size
-      ploc(e) = llv(3)
-   enddo
+   ploc(:) = llv(3)
+   istatus(:) = 0
 
 else if(is_vertical(location, "HEIGHT") .or. is_vertical(location, "LEVEL")) then
    new_location = location
 
-   ! FIXME: pick a hardcoded obs_kind for this call.
+   ! the quantity doesn't matter for this call but we have to pass in something.
    call convert_vert_distrib(state_handle, ens_size, new_location, QTY_TEMPERATURE, VERTISPRESSURE, istatus)
 
    do e = 1, ens_size
@@ -4154,49 +4331,54 @@ else if(is_vertical(location, "HEIGHT") .or. is_vertical(location, "LEVEL")) the
 else if(is_vertical(location, "SURFACE")) then
 
    ivars(1) = get_progvar_index_from_kind(QTY_SURFACE_PRESSURE)
-
    if ( ivars(1) >= 0 ) then
 
      call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, ivars, values, istatus)
-     if ( all(istatus/= 0) ) return
-     do e = 1, ens_size
-       ploc(e) = values(1,e)
-     enddo
+     where (istatus == 0) ploc(:) = values(1,:)
 
    else
+     istatus = 88    ! required quantity not in state vector
+     return
 
-     new_location(1) = set_location(llv(1), llv(2), 1.0_r8, VERTISLEVEL)
-
-     ! Need to get base offsets for the potential temperature, density, and water
-     ! vapor mixing fields in the state vector
-     ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-     ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-     ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
-
-     call compute_scalar_with_barycentric (state_handle, ens_size, new_location(1), 3, ivars, values, istatus)
-     if ( all(istatus/= 0) ) return
-
-     ! Convert surface theta, rho, qv into pressure
-     call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), ploc(:), tk(:), istatus(:) )
+!%!     !>original code:
+!%!     !>@todo FIXME: do we really want to do this if the vert is surface and
+!%!     !> the surface pressure field is not in the state?  this is going to return
+!%!     !> the pressure at the midpoint of the first level, is it not?
+!%!
+!%!     new_location(1) = set_location(llv(1), llv(2), 1.0_r8, VERTISLEVEL)
+!%!
+!%!     ! Need to get base offsets for the potential temperature, density, and water
+!%!     ! vapor mixing fields in the state vector
+!%!     ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+!%!     ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+!%!     ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+!%!
+!%!     call compute_scalar_with_barycentric (state_handle, ens_size, new_location(1), 3, ivars, values, istatus)
+!%!     if ( all(istatus /= 0) ) return
+!%!
+!%!     ! Convert surface theta, rho, qv into pressure
+!%!     call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), ploc(:), tk(:), istatus(:) )
 
    endif
 
 else if(is_vertical(location, "UNDEFINED")) then    ! not error, but no exact vert loc either
    ploc(:) = 200100.0_r8    ! this is an unrealistic pressure value to indicate no known pressure.
+   istatus(:) = 0           ! see comment at top of this routine for why this is ok.
 
 else
    call error_handler(E_ERR, 'compute_pressure:', 'internal error: unknown type of vertical', &
         source, revision, revdate)
 endif
 
-if(debug > 10) then
+if(debug > 10 .and. do_output()) then
    print *, 'compute_pressure_at_loc: base location ',llv(1:3)
-   print *, 'compute_pressure_at_loc: istatus, pressure ', istatus, ploc
+   print *, 'compute_pressure_at_loc: istatus, pressure ', istatus(1), ploc(1)
 endif
 
 end subroutine compute_pressure_at_loc
 
 !------------------------------------------------------------------
+!> convert the vertical type for one or more observation locations.
 
 subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, status)
@@ -4217,6 +4399,7 @@ enddo
 end subroutine convert_vertical_obs
 
 !--------------------------------------------------------------------
+!> convert the vertical type for one or more state locations.
 
 subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
@@ -4231,12 +4414,19 @@ integer,             intent(out)   :: istatus
 
 integer :: i, status(1)
 
+!> we are using code from get_state_meta_data to get
+!> the indices for cell id and vert level.  this calls a
+!> modified convert_vert_distrib() routine that doesn't
+!> have to search for the cell centers. 
+
+istatus = 0
+
 do i=1, num
-   call convert_vert_distrib(state_handle, 1, locs(i:i), loc_qtys(i), which_vert, status)
-   if (status(1) /= 0) then
-      istatus = status(1)
-      return
-   endif
+   call convert_vert_distrib_state(state_handle, 1, locs(i:i), loc_qtys(i), &
+                                   loc_indx(i), which_vert, status)
+
+   ! save the first error we see - but continue to convert the rest
+   if (istatus == 0 .and. status(1) /= 0) istatus = status(1)
 enddo
 
 
@@ -4244,10 +4434,11 @@ end subroutine convert_vertical_state
 
 
 !------------------------------------------------------------------
+!> code to convert an observation location's vertical coordinate type.
 
 subroutine convert_vert_distrib(state_handle, ens_size, location, obs_kind, ztypeout, istatus)
 
-! This subroutine converts a given ob/state vertical coordinate to
+! This subroutine converts a given obs vertical coordinate to
 ! the vertical localization coordinate type requested through the
 ! model_mod namelist.
 !
@@ -4258,20 +4449,20 @@ subroutine convert_vert_distrib(state_handle, ens_size, location, obs_kind, ztyp
 !            their DART location information from get_state_meta_data
 !            which is called by filter_assim during the assimilation
 !            process.
-!        (3) x is the relevant DART state vector for carrying out
+!        (3) state_handle is the relevant DART state vector for carrying out
 !            computations necessary for the vertical coordinate
 !            transformations. As the vertical coordinate is only used
 !            in distance computations, this is actually the "expected"
 !            vertical coordinate, so that computed distance is the
 !            "expected" distance. Thus, under normal circumstances,
-!            x that is supplied to vert_convert should be the
+!            the state that is supplied to convert_vert_distrib should be the
 !            ensemble mean. Nevertheless, the subroutine has the
 !            functionality to operate on any DART state vector that
 !            is supplied to it.
 
 type(ensemble_type),    intent(in)    :: state_handle
 integer,                intent(in)    :: ens_size
-type(location_type),    intent(inout) :: location(ens_size)  ! so you can do ens_size. This sucks
+type(location_type),    intent(inout) :: location(ens_size)  ! because the verticals may differ
 integer,                intent(in)    :: obs_kind
 integer,                intent(in)    :: ztypeout
 integer,                intent(out)   :: istatus(ens_size)
@@ -4284,6 +4475,7 @@ real(r8), dimension(3,ens_size)  :: zk_mid, values, fract, fdata
 integer,  dimension(3,ens_size)  :: k_low, k_up
 real(r8), dimension(ens_size)    :: zin, zout
 real(r8), dimension(ens_size)    :: tk, fullp, surfp
+logical :: at_surf, do_norm
 type(location_type), dimension(ens_size) :: surfloc
 
 real(r8) :: weights(3)
@@ -4299,12 +4491,10 @@ k_up = 0.0_r8
 weights = 0.0_r8
 
 ! first off, check if ob is identity ob.  if so get_state_meta_data() will
-! have returned location information already in the requested vertical type.
+! return the location.
 if (obs_kind < 0) then
-   call get_state_meta_data(int(obs_kind,i8),location(1)) ! will be the same across the ensemble
+   call get_state_meta_data(-int(obs_kind,i8),location(1)) ! will be the same across the ensemble
    location(:) = location(1)
-   istatus(:) = 0
-   return
 endif
 
 ! if the existing coord is already in the requested vertical units
@@ -4315,7 +4505,7 @@ if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
    istatus = 0
    return
 else
-   if (debug > 9) then
+   if (debug > 9 .and. do_output()) then
       write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
       call error_handler(E_MSG, 'convert_vert_distrib',string1,source, revision, revdate)
    endif
@@ -4365,8 +4555,16 @@ select case (ztypeout)
    ! and the fraction (fract) for vertical interpolation.
 
    call find_triangle (location(1), n, c, weights, istatus(1))
+   if(istatus(1) /= 0) then
+      istatus(:) = istatus(1)
+      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+      return
+   endif
    call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
-   if( all(istatus /= 0) ) return
+   if( all(istatus /= 0) ) then
+      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+      return
+   endif
 
    zk_mid = k_low + fract
    do e = 1, ens_size
@@ -4375,7 +4573,7 @@ select case (ztypeout)
       endif
    enddo
 
-   if (debug > 11) then
+   if (debug > 11 .and. do_output()) then
       write(string2,'("Zk for member 1:", 3F8.2," => ",F8.2)') zk_mid(:,1),zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
@@ -4398,12 +4596,15 @@ select case (ztypeout)
 
    ! Get theta, rho, qv at the interpolated location
    call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
-   if( all(istatus /= 0) ) return
+   if( all(istatus /= 0) ) then
+      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+      return
+   endif
 
    ! Convert theta, rho, qv into pressure
    call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), zout(:), tk(:), istatus(:))
-   if (debug > 10) then
-      write(string2,'("zout_in_p, theta, rho, qv, ier:",3F10.2,F18.8,I3)') zout(1), values(1:3,1),istatus(1)
+   if (debug > 10 .and. do_output()) then
+      write(string2,'("zout [Pa], theta, rho, qv, ier:",3F10.2,F18.8,I3)') zout(1), values(1:3,1),istatus(1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
 
@@ -4413,8 +4614,16 @@ select case (ztypeout)
    case (VERTISHEIGHT)
 
    call find_triangle (location(1), n, c, weights, istatus(1))
+   if(istatus(1) /= 0) then
+      istatus(:) = istatus(1)
+      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+      return
+   endif
    call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
-   if( all(istatus /= 0) ) return
+   if( all(istatus /= 0) ) then
+      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+      return
+   endif
 
    fdata = 0.0_r8
    do i = 1, n
@@ -4434,9 +4643,9 @@ select case (ztypeout)
       endif
    enddo
 
-   if (debug > 9) then
-      write(string2,'("zout_in_height:",F10.2)') zout
-      call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
+   if (debug > 9 .and. do_output()) then
+      write(string2,'("zout_in_height [m]:",F10.2)') zout
+      call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
 
 
@@ -4445,56 +4654,97 @@ select case (ztypeout)
    ! ------------------------------------------------------------
    case (VERTISSCALEHEIGHT)
 
-     if ( ztypein /= VERTISSURFACE ) then
+     ! Scale Height is defined as:  log(pressure) 
+     ! if namelist item:  no_normalization_of_scale_heights = .true. 
+     ! otherwise it is defined as: -log(pressure / surface_pressure)
 
-       ! Scale Height is defined here as: -log(pressure / surface_pressure)
+     ! set logicals here so we can do the minimum amount of work.
+     ! finding gridcells and computing pressure is expensive in this model.
+     ! logic table is:
+     !  surf T, norm T:  return 0.0 by definition
+     !  surf T, norm F:  need surfp only
+     !  surf F, norm F:  need fullp only
+     !  surf F, norm T:  need both surfp and fullp
 
-       ! Need to get base offsets for the potential temperature, density, and water
-       ! vapor mixing fields in the state vector
+     at_surf = (ztypein == VERTISSURFACE)
+     do_norm = .not. no_normalization_of_scale_heights
+
+     ! if normalizing pressure and we're on the surface, by definition scale height 
+     ! is log(1.0) so skip the rest of these computations.
+     if (at_surf .and. do_norm) then
+        zout = 0.0_r8  
+        istatus(:) = 0
+        goto 101
+     endif
+
+     ! Base offsets for the potential temperature, density, and water
+     ! vapor mixing fields in the state vector.
        ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
        ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
        ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
-       ! Get theta, rho, qv at the interpolated location
-       call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
-       !if (istatus /= 0) return
-
-       ! Convert theta, rho, qv into pressure
-       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
-       if (debug > 9) then
-         write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
-         call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
-       endif
+     if (at_surf .or. do_norm) then  ! we will need surface pressure
 
        ! Get theta, rho, qv at the surface corresponding to the interpolated location
        surfloc(1) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
        call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus)
-       if( all(istatus /= 0) ) return
+       if( all(istatus /= 0) ) then
+           location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+           return
+       endif
 
        ! Convert surface theta, rho, qv into pressure
        call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
-       if (debug > 9) then
+       if (debug > 9 .and. do_output()) then
          write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F18.8)') surfp, values(1:3,1)
          call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
        endif
 
-       ! and finally, convert into scale height
-       where (surfp /= 0.0_r8 .and. fullp /= MISSING_R8)
-         zout = -log(fullp / surfp)
+     endif
+
+     if (.not. at_surf) then   ! we will need full pressure
+
+       ! Get theta, rho, qv at the interpolated location
+       call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
+
+       ! Convert theta, rho, qv into pressure
+       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
+       if (debug > 9 .and. do_output()) then
+         write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
+         call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+       endif
+     endif
+
+     ! we have what we need now.  figure out the case and set zout to the right values.
+     ! we've already taken care of the (at_surf .and. do_norm) case, so that simplifies
+     ! the tests here.
+     if (at_surf) then
+        where (surfp /= MISSING_R8)
+           zout = log(surfp)
        else where
          zout = MISSING_R8
        end where
 
-     else
+     else if (.not. do_norm) then
+        where (fullp /= MISSING_R8)
+           zout = log(fullp)
+        else where
+           zout = MISSING_R8
+        end where
 
-       zout = -log(1.0_r8)
-       istatus(:) = 0
-
+     else  ! not at surface, and normalizing by surface pressure
+        where (surfp /= MISSING_R8 .and. surfp > 0.0_r8 .and. fullp /= MISSING_R8)   
+           zout = -log(fullp / surfp)
+        else where
+           zout = MISSING_R8
+        end where
      endif
 
-     if (debug > 9) then
+101 continue
+
+     if (debug > 9 .and. do_output()) then
        write(string2,'("zout_in_scaleheight:",F10.2)') zout
-       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
+       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
      endif
 
    ! -------------------------------------------------------
@@ -4511,7 +4761,6 @@ end select   ! outgoing vert type
 do e = 1, ens_size
    if(istatus(e) == 0) then
       location(e) = set_location(llv_loc(1, e),llv_loc(2, e),zout(e),ztypeout)
-      ! Set successful return code only if zout has good value - I think istatus is set already
    else
       location(e) = set_location(llv_loc(1, e),llv_loc(2, e),missing_r8,ztypeout)
    endif
@@ -4520,51 +4769,316 @@ enddo
 
 end subroutine convert_vert_distrib
 
-!-------------------------------------------------------------------
+!------------------------------------------------------------------
+!> code to convert an state location's vertical coordinate type.
 
-subroutine vert_convert(state_handle, location, obs_kind, ierr)
+subroutine convert_vert_distrib_state(state_handle, ens_size, location, quantity, state_indx, ztypeout, istatus)
 
-! This subroutine converts a given ob/state vertical coordinate to
+! This subroutine converts a given state vertical coordinate to
 ! the vertical localization coordinate type requested through the
 ! model_mod namelist.
 !
-! Notes: (1) obs_kind is only necessary to check whether the ob
-!            is an identity ob.
-!        (2) This subroutine can convert both obs' and state points'
-!            vertical coordinates. Remember that state points get
-!            their DART location information from get_state_meta_data
-!            which is called by filter_assim during the assimilation
-!            process.
-!        (3) x is the relevant DART state vector for carrying out
+!        (3) state_handle is the relevant DART state vector for carrying out
 !            computations necessary for the vertical coordinate
 !            transformations. As the vertical coordinate is only used
 !            in distance computations, this is actually the "expected"
 !            vertical coordinate, so that computed distance is the
 !            "expected" distance. Thus, under normal circumstances,
-!            x that is supplied to vert_convert should be the
+!            state_handle that is supplied to convert_vert_distrib should be the
 !            ensemble mean. Nevertheless, the subroutine has the
 !            functionality to operate on any DART state vector that
 !            is supplied to it.
 
 type(ensemble_type),    intent(in)    :: state_handle
-type(location_type),    intent(inout) :: location
-integer,                intent(in)    :: obs_kind
-integer,                intent(out)   :: ierr
+integer,                intent(in)    :: ens_size
+type(location_type),    intent(inout) :: location(ens_size)  ! because the verticals may differ
+integer,                intent(in)    :: quantity
+integer(i8),            intent(in)    :: state_indx
+integer,                intent(in)    :: ztypeout
+integer,                intent(out)   :: istatus(ens_size)
 
-integer :: istatus(1)
-integer :: ztype
-type(location_type) :: new_location(1)
-integer :: ens_size = 1 ! just mean
+! zin and zout are the vert values coming in and going out.
+! ztype{in,out} are the vert types as defined by the 3d sphere
+! locations mod (location/threed_sphere/location_mod.f90)
+real(r8), dimension(3, ens_size) :: llv_loc
+real(r8), dimension(3,ens_size)  :: zk_mid, values, fract, fdata
+integer,  dimension(3,ens_size)  :: k_low, k_up
+real(r8), dimension(ens_size)    :: zin, zout
+real(r8), dimension(ens_size)    :: tk, fullp, surfp
+logical :: at_surf, do_norm, on_bound
+type(location_type), dimension(ens_size) :: surfloc
 
-ztype = query_vert_localization_coord()
-new_location(1) = location
+real(r8) :: weights(3)
+integer  :: ztypein, i, e, n, ndim
+integer  :: c(3), ivars(3), vert_level
+integer  :: cellid              !SYHA
 
-call convert_vert_distrib(state_handle, ens_size, new_location, obs_kind, ztype, istatus)
+! assume failure.
+istatus = 1
 
-ierr = istatus(1)
-location = new_location(1)
+! initialization
+k_low = 0.0_r8
+k_up = 0.0_r8
+weights = 0.0_r8
 
-end subroutine vert_convert
+
+! if the existing coord is already in the requested vertical units
+! or if the vert is 'undef' which means no specifically defined
+! vertical coordinate, return now.
+ztypein  = nint(query_location(location(1), 'which_vert'))
+if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
+   istatus = 0
+   return
+else
+   if (debug > 9 .and. do_output()) then
+      write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
+      call error_handler(E_MSG, 'convert_vert_distrib_state',string1,source, revision, revdate)
+   endif
+endif
+
+!> assume that all locations have the same incoming lat/lon and level.
+!> depending on the output vert type each member might have a different
+!> vertical value.
+
+! unpack the incoming location(s)
+do e = 1, ens_size
+   llv_loc(:, e) = get_location(location(e))
+enddo
+
+!> state_indx is i8, intent(in).  
+!> cellid and vert_level are integer, intent(out)
+call find_mpas_indices(state_indx, cellid, vert_level, ndim)
+if (debug > 11 .and. do_output()) print*,'convert_vert_distrib_state: ndim=', ndim
+
+! the routines below will use zin as the incoming vertical value
+! and zout as the new outgoing one.  start out assuming failure
+! (zout = missing) and wait to be pleasantly surprised when it works.
+zin(:)     = vert_level
+ztypein    = VERTISLEVEL
+zout(:)    = missing_r8
+
+! if the vertical is missing to start with, return it the same way
+! with the requested type as out.
+do e = 1, ens_size
+   if (zin(e) == missing_r8) then 
+      location(e) = set_location(llv_loc(1, e),llv_loc(2, e),missing_r8,ztypeout)
+   endif
+enddo
+! if the entire ensemble has missing vertical values we can return now.
+! otherwise we need to continue to convert the members with good vertical values.
+! boundary cells will be updated by the assimilation.
+! if all the vertical localization coord values are missing, 
+! we don't call this routine again, and return.
+if (all(zin == missing_r8)) then ! .or. on_bound) then
+   istatus(:) = 0
+   return
+endif
+
+! Convert the incoming vertical type (ztypein) into the vertical
+! localization coordinate given in the namelist (ztypeout).
+! Because this is only for state vector locations, we have already
+! computed the vertical level, so all these conversions are from
+! model level to something.
+
+! convert into:
+select case (ztypeout)
+
+   ! ------------------------------------------------------------
+   ! outgoing vertical coordinate should be 'model level number'
+   ! ------------------------------------------------------------
+   case (VERTISLEVEL)
+
+   ! we have the vert_level and cellid - no need to call find_triangle or find_vert_indices
+
+   zout(:) = vert_level
+
+   if (debug > 9 .and. do_output()) then
+      write(string2,'("zout_in_level:",F10.2)') zout
+      call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+   endif
+
+   ! ------------------------------------------------------------
+   ! outgoing vertical coordinate should be 'pressure' in Pa
+   ! ------------------------------------------------------------
+   case (VERTISPRESSURE)
+
+   !>@todo FIXME - this is the original code from the
+   !> observation version which does horizontal interpolation.
+   !> in this code we know we are on a state vector location
+   !> so no interp is needed.  we should be able to make this
+   !> more computationally efficient.
+
+   ! Need to get base offsets for the potential temperature, density, and water
+   ! vapor mixing fields in the state vector
+   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+
+   if (any(ivars(1:3) < 0)) then
+      write(string1,*) 'Internal error, cannot find one or more of: theta, rho, qv'
+      call error_handler(E_ERR, 'convert_vert_distrib_state',string1,source, revision, revdate)
+   endif
+
+   ! Get theta, rho, qv at the interpolated location - pass in cellid we have already located 
+   ! to save the search time.
+   call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus, cellid)
+   if( all(istatus /= 0) ) then
+      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+      return
+   endif
+
+   ! Convert theta, rho, qv into pressure
+   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), zout(:), tk(:), istatus(:))
+   if (debug > 10 .and. do_output()) then
+      write(string2,'("zout_in_p, theta, rho, qv, ier:",3F10.2,F18.8,I3)') zout(1), values(1:3,1),istatus(1)
+      call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+   endif
+
+   ! ------------------------------------------------------------
+   ! outgoing vertical coordinate should be 'height' in meters
+   ! ------------------------------------------------------------
+   case (VERTISHEIGHT)
+
+   ! surface obs should use the lower face of the first level.  the rest
+   ! of the quantities should use the level centers.
+   if ( ndim == 1 )  then
+      zout(:) = zGridFace(1, cellid)
+   else
+      zout(:) = zGridCenter(vert_level, cellid)
+      if ( quantity == QTY_VERTICAL_VELOCITY ) zout(:) = zGridFace(vert_level, cellid)
+      if ( quantity == QTY_EDGE_NORMAL_SPEED ) zout(:) = zGridEdge(vert_level, cellid)
+   endif
+
+   if (debug > 9 .and. do_output()) then
+      write(string2,'("zout_in_height:",F10.2)') zout
+      call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+   endif
+
+
+   ! ------------------------------------------------------------
+   ! outgoing vertical coordinate should be 'scale height' (a ratio)
+   ! ------------------------------------------------------------
+   case (VERTISSCALEHEIGHT)
+
+   !>@todo FIXME
+   !> whatever we do for pressure, something similar here
+
+     ! Scale Height is defined as:  log(pressure) 
+     ! if namelist item:  no_normalization_of_scale_heights = .true. 
+     ! otherwise it is defined as: -log(pressure / surface_pressure)
+
+     ! set logicals here so we can do the minimum amount of work.
+     ! finding gridcells and computing pressure is expensive in this model.
+     ! logic table is:
+     !  surf T, norm T:  return 0.0 by definition
+     !  surf T, norm F:  need surfp only
+     !  surf F, norm F:  need fullp only
+     !  surf F, norm T:  need both surfp and fullp
+
+     at_surf = (ztypein == VERTISSURFACE)
+     do_norm = .not. no_normalization_of_scale_heights
+
+     ! if normalizing pressure and we're on the surface, by definition scale height 
+     ! is log(1.0) so skip the rest of these computations.
+     if (at_surf .and. do_norm) then
+        zout = 0.0_r8  
+        istatus(:) = 0
+        goto 101
+     endif
+
+     ! Base offsets for the potential temperature, density, and water
+     ! vapor mixing fields in the state vector.
+       ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+       ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+       ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+
+     if (at_surf .or. do_norm) then  ! we will need surface pressure
+
+       ! Get theta, rho, qv at the surface corresponding to the interpolated location
+       surfloc(1) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
+       call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus, cellid)
+       if( all(istatus /= 0) ) then
+           location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+           return
+       endif
+
+       ! Convert surface theta, rho, qv into pressure
+       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
+       if (debug > 9 .and. do_output()) then
+         write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F18.8)') surfp, values(1:3,1)
+         call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+       endif
+
+     endif
+
+     if (.not. at_surf) then   ! we will need full pressure
+
+        ! Get theta, rho, qv at the interpolated location
+        call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
+
+        ! Convert theta, rho, qv into pressure
+        call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
+        if (debug > 9 .and. do_output()) then
+          write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
+          call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+        endif
+     endif
+
+     ! we have what we need now.  figure out the case and set zout to the right values.
+     ! we've already taken care of the (at_surf .and. do_norm) case, so that simplifies
+     ! the tests here.
+     if (at_surf) then
+        where (surfp /= MISSING_R8)
+           zout = log(surfp)
+        else where
+           zout = MISSING_R8
+        end where
+
+     else if (.not. do_norm) then
+        where (fullp /= MISSING_R8)
+           zout = log(fullp)
+        else where
+           zout = MISSING_R8
+        end where
+
+     else  ! not at surface, and normalizing by surface pressure
+        where (surfp /= MISSING_R8 .and. surfp > 0.0_r8 .and. fullp /= MISSING_R8)   
+           zout = -log(fullp / surfp)
+        else where
+           zout = MISSING_R8
+        end where
+     endif
+
+101 continue
+
+     if (debug > 9 .and. do_output()) then
+        write(string2,'("zout_in_scaleheight:",F10.2)') zout
+        call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+     endif
+
+   ! -------------------------------------------------------
+   ! outgoing vertical coordinate is unrecognized
+   ! -------------------------------------------------------
+   case default
+      write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
+      call error_handler(E_ERR,'convert_vert_distrib_state', string1, &
+                         source, revision, revdate)
+
+end select   ! outgoing vert type
+
+! Returned location
+do e = 1, ens_size
+   if(istatus(e) == 0) then
+      location(e) = set_location(llv_loc(1, e),llv_loc(2, e),zout(e),ztypeout)
+   else
+      location(e) = set_location(llv_loc(1, e),llv_loc(2, e),missing_r8,ztypeout)
+   endif
+enddo
+
+
+end subroutine convert_vert_distrib_state
+
+!-------------------------------------------------------------------
 
 
 !==================================================================
@@ -4573,53 +5087,12 @@ end subroutine vert_convert
 
 
 !------------------------------------------------------------------
-!> HK where is this used?
-subroutine vert_interp(x, base_offset, cellid, nlevs, lower, fract, val, ier)
+!> Finds position of a given height in an array of height grid points and returns
+!> the index of the lower and upper bounds and the fractional offset.  ier
+!> returns 0 unless there is an error. Could be replaced with a more efficient
+!> search if there are many vertical levels.
 
-! Interpolates in vertical in column indexed by tri_index for a field
-! with base_offset.  Vertical index is varying fastest here. Returns ier=0
-! unless missing value is encounterd.
-
-real(r8), intent(in)  :: x(:)
-integer,  intent(in)  :: base_offset
-integer,  intent(in)  :: cellid
-integer,  intent(in)  :: nlevs
-integer,  intent(in)  :: lower
-real(r8), intent(in)  :: fract
-real(r8), intent(out) :: val
-integer,  intent(out) :: ier
-
-integer  :: offset
-real(r8) :: lx, ux
-
-! Default return is good
-ier = 0
-
-! Get the value at the lower and upper points
-offset = base_offset + (cellid - 1) * nlevs + lower - 1
-lx = x(offset)
-ux = x(offset + 1)
-
-! Check for missing value
-if(lx == MISSING_R8 .or. ux == MISSING_R8) then
-   ier = 2
-   return
-endif
-
-! Interpolate
-val = (1.0_r8 - fract)*lx + fract*ux
-
-end subroutine vert_interp
-
-
-!------------------------------------------------------------------
-!>@todo  is this correct for RMA?
 subroutine find_height_bounds(height, nbounds, bounds, lower, upper, fract, ier)
-
-! Finds position of a given height in an array of height grid points and returns
-! the index of the lower and upper bounds and the fractional offset.  ier
-! returns 0 unless there is an error. Could be replaced with a more efficient
-! search if there are many vertical levels.
 
 real(r8), intent(in)  :: height
 integer,  intent(in)  :: nbounds
@@ -4706,16 +5179,19 @@ ier = 3
 
 end subroutine find_height_bounds
 
+
 !------------------------------------------------------------------
+!> given a location and 3 cell ids, return three sets of:
+!> the two level numbers that enclose the given vertical value
+!> plus the fraction between them for each of the 3 cell centers.
+!> If the requested location uses a vertical coordinate that only
+!> has one level, both level numbers are identical ... 1 and the
+!> fractions are identical ... 0.0
 
 subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, oncenters, lower, upper, fract, ier)
 
-! given a location and 3 cell ids, return three sets of:
-!  the two level numbers that enclose the given vertical
-!  value plus the fraction between them for each of the 3 cell centers.
-
-! FIXME:  this handles data at cell centers, at edges, but not
-! data on faces.
+! note that this code handles data at cell centers, at edges, but not
+! data on faces.  so far we don't have any on faces.
 
 ! loc is an intrisic funtion
 type(ensemble_type), intent(in)  :: state_handle
@@ -4728,8 +5204,8 @@ real(r8),            intent(out) :: fract(:, :)
 integer,             intent(out) :: ier(:)
 
 real(r8) :: lat, lon, vert, llv(3)
-real(r8), allocatable :: vert_array(:)
-integer, allocatable  :: track_ier(:)
+real(r8) :: vert_array(ens_size)
+integer  :: track_ier(ens_size)
 integer(i8) :: pt_base_offset, density_base_offset, qv_base_offset
 integer     :: verttype, i
 integer     :: e
@@ -4763,23 +5239,14 @@ vert = llv(3)
 verttype = nint(query_location(loc))
 
 ! these first 3 types need no cell/edge location information.
-if ((debug > 11) .and. do_output()) then
+if ((debug > 10) .and. do_output()) then
    write(string2,'("vert, which_vert:",3F20.12,I5)') lon,lat,vert,verttype
    call error_handler(E_MSG, 'find_vert_level',string2,source, revision, revdate)
 endif
 
-! no defined vertical location (e.g. vertically integrated vals)
-if (verttype == VERTISUNDEF) then
-   ier = 12
-   return
-endif
-
-! vertical is defined to be on the surface (level 1 here).
-! for 2d fields there is no level 2, so since we are not
-! computing the fraction but setting it here and returning
-! we can set upper to be 1 as well and avoid a reference to
-! a non-existent level 1 for 2d fields in the calling code.
-if(verttype == VERTISSURFACE) then  ! same across the ensemble
+! VERTISSURFACE describes variables on A surface (not necessarily THE surface)
+! VERTISUNDEF describes no defined vertical location (e.g. vertically integrated vals)
+if(verttype == VERTISSURFACE .or. verttype == VERTISUNDEF) then  ! same across the ensemble
    lower(1:nc, :) = 1
    upper(1:nc, :) = 1
    fract(1:nc, :) = 0.0_r8 
@@ -4790,9 +5257,8 @@ endif
 ! model level numbers (supports fractional levels)
 if(verttype == VERTISLEVEL) then
    ! FIXME: if this is W, the top is nVertLevels+1
-   !>@todo Is this the same across the ensemble?
-   if (vert > nVertLevels) then
-      ier(:) = 12
+   if (vert > nVertLevels) then 
+      ier(:) = 81
       return
    endif
 
@@ -4821,7 +5287,6 @@ endif
 ! Vertical interpolation for pressure coordinates
 if(verttype == VERTISPRESSURE ) then
 
-   allocate(vert_array(ens_size), track_ier(ens_size))
    track_ier = 0
    vert_array = vert
 
@@ -4835,6 +5300,7 @@ if(verttype == VERTISPRESSURE ) then
       call find_pressure_bounds(state_handle, ens_size, vert_array, ids(i), nVertLevels, &
             pt_base_offset, density_base_offset, qv_base_offset,  &
             lower(i, :), upper(i, :), fract(i, :), ier)
+
       !if(debug > 9) print '(A,5I5,F10.4)', &
       !   '    after find_pressure_bounds: ier, i, cellid, lower, upper, fract = ', &
       !      ier, i, ids(i), lower(i, :), upper(i, :), fract(i, :)
@@ -4842,14 +5308,14 @@ if(verttype == VERTISPRESSURE ) then
       !'fail in find_pressure_bounds: ier, nc, i, id, vert, lower, fract: ', &
       !   ier, nc, i, ids(i), vert_array, lower(i, :), fract(i, :)
 
-      do e = 1, ens_size
-         if(ier(e) /= 0) track_ier(e) = ier(e)
-      enddo
-      !if (ier /= 0) return ! These are annoying
+      ! we are inside a loop over each corner. consolidate error codes
+      ! so that we return an error for that ensemble member if any
+      ! of the corners fails the pressure bounds test.
+      where (ier /= 0 .and. track_ier == 0) track_ier = ier
+
    enddo
 
    ier = track_ier
-   deallocate(vert_array, track_ier)
    return
 endif
 
@@ -4861,7 +5327,6 @@ endif
 if(verttype == VERTISHEIGHT) then
    ! For height, can do simple vertical search for interpolation for now
    ! Get the lower and upper bounds and fraction for each column
-   allocate(track_ier(ens_size))
    track_ier = 0
 
    do i=1, nc
@@ -4879,21 +5344,17 @@ if(verttype == VERTISHEIGHT) then
                                  lower(i, :), upper(i, :), fract(i, :), ier)
       endif
 
-      do e = 1, ens_size
-         if(ier(e) /= 0) track_ier(e) = ier(e)
-      enddo
-      !if (ier /= 0) return ! These are annoying
+      ! we are inside a loop over each corner. consolidate error codes
+      ! so that we return an error for that ensemble member if any
+      ! of the corners fails the pressure bounds test.
+      where (ier /= 0 .and. track_ier == 0) track_ier = ier
 
    enddo
+
    ier = track_ier
-   deallocate(track_ier)
    return
 
 endif
-
-! If we get here, the vertical type is not understood.  Should not
-! happen. Not true anymore
-!ier = 3
 
 end subroutine find_vert_level
 
@@ -4932,111 +5393,101 @@ fract = -1.0_r8
 lower = -1
 upper = -1
 
+! this must start out success (0) and then as ensemble members fail
+! we will record the first encountered error code.
 ier = 0
 
 ! Find the lowest pressure
 call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, 1, nbounds, pressure(1, :), temp_ier)
-if(debug > 11) print *, 'find_pressure_bounds: find the lowest p, ier at k=1 ', pressure(1,:), ier
+if(debug > 10 .and. do_output()) &
+   print *, 'find_pressure_bounds k=1: p, temp_ier, ier', 1, pressure(1,:), temp_ier, ier
 
-do e = 1, ens_size
-   if(temp_ier(e) /= 0) ier(e) = temp_ier(e)
-enddo
+where(ier(:) == 0) ier(:) = temp_ier(:)
 
 ! Get the highest pressure level
 call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, nbounds, nbounds, pressure(nbounds, :), temp_ier)
+if(debug > 10 .and. do_output()) &
+   print *, 'find_pressure_bounds k=N: p, temp_ier, ier', nbounds, pressure(nbounds,:), temp_ier, ier
 
-if(debug > 11) print *, 'find_pressure_bounds: find the highest p, ier at k= ', nbounds, pressure(nbounds,:), ier
-!if(ier /= 0) return
-do e = 1, ens_size
-   if(temp_ier(e) /= 0) ier(e) = temp_ier(e)
-enddo
+where(ier(:) == 0) ier(:) = temp_ier(:)
 
 ! Check for out of the column range
-do e = 1, ens_size
-      if(p(e) > pressure(1, e)) ier(e) = 88
-      if(p(e) < pressure(nbounds, e)) ier(e) = 888
-enddo
-if(any(ier /= 0)) return
+where(p(:) < pressure(nbounds, :)) ier(:) = 81
+!where(p(:) > pressure(      1, :)) ier(:) = 80
 
-! Loop through the rest of the column from the bottom up
+if(all(ier /= 0)) return
+
 found_level(:) = .false.
 
-do i = 2, nbounds ! You have already done nbounds?
-   call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
-      qv_base_offset, cellid, i, nbounds, pressure(i, :), temp_ier)
-   do e = 1, ens_size
-      if(temp_ier(e) /= 0) ier(e) = temp_ier(e)
-   enddo
+! Check if the obs is located below the lowest model level in each member.
+do e = 1, ens_size
+   if(p(e) >= pressure(1, e)) then
+      found_level(e) = .true.
+            fract(e) = 0.0_r8
+            lower(e) = 1
+            upper(e) = 1
+   endif
+enddo !e = 1, ens_size
+if(all(found_level)) return
 
-if(debug > 11) print *, 'find_pressure_bounds: find p, ier at k= ', i, pressure(i,:), ier
-   !if (ier /= 0) return
-   do e = 1, ens_size
-      ! Check if pressure at lower level is higher than at upper level.
-      !if (ier(e) /= 0) return
-      if(pressure(i, e) > pressure(i-1, e)) then
-         if ((debug > 0) .and. do_output()) then
-            write(string1, *) 'lower pressure larger than upper pressure at cellid',  cellid
-            write(string2, *) 'level nums, pressures: ', i-1,i,pressure(i-1, e),pressure(i, e)
-            write(*,*) 'find_pressure_bounds: ', trim(string1), trim(string2)
-         endif
-            !if ((debug > 5) .and. do_output())  then
-               !do j = 1, nbounds
-               !   call get_interp_pressure(x, pt_base_offset, density_base_offset, &
-               !      qv_base_offset, cellid, j, nbounds, pr, ier2, .true.)
-               !enddo
-            !endif
+! Loop through the rest of the column from the bottom up
+do i = 2, nbounds
+   ! we've already done this call for level == nbounds
+   if (i /= nbounds) then
+      call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
+         qv_base_offset, cellid, i, nbounds, pressure(i, :), temp_ier)
+      if(debug > 11 .and. do_output()) &
+         print *, 'find_pressure_bounds k=?: p, temp_ier, ier ', i, pressure(i,:), temp_ier, ier
 
-         ier(e) = 988
-            !return
-
-            !call error_handler(E_ERR, "find_pressure_bounds", string1, &
-            !   source, revision, revdate, text2=string2)
+      where (ier(:) == 0) ier(:) = temp_ier(:)
+   endif
+   
+   ! Check if pressure is not monotonically descreased with level.
+   if(any(pressure(i, :) > pressure(i-1, :))) then
+      if (debug > 0 .and. do_output()) then
+         write(*, *) 'pressure at the level is larger than the level below at cellid',  cellid
+         do e=1, ens_size
+            write(*, '(A,3I4,F9.2,A,F9.2)') &
+               'ens#, level, level-1, p(level), p(level-1) ', e,i,i-1,pressure(i,e),' ?>? ',pressure(i-1,e)
+         enddo
       endif
+     where(pressure(i, :) > pressure(i-1, :)) ier(:) = 988
+   endif
 
-      ! Is pressure between i-1 and i level?
-      if (found_level(e) .eqv. .false. .and. ier(e) == 0) then
-         if(p(e) > pressure(i, e)) then
-            found_level(e) = .true.
-            lower(e) = i - 1
-            upper(e) = i
-            if (pressure(i, e) == pressure(i-1, e)) then
-               fract(e) = 0.0_r8
-            else if (log_p_vert_interp) then
-               fract(e) = (log(p(e)) - log(pressure(i-1,e))) / &
-                     (log(pressure(i, e)) - log(pressure(i-1, e)))
-            else
-               fract(e) = (p(e) - pressure(i-1,e)) / (pressure(i,e) - pressure(i-1,e))
-            endif
+   ! each ensemble member could have a vertical between different levels,
+   ! and more likely a different fract across a level.
+   do e = 1, ens_size
 
-            ! shouldn't happen but with roundoff i suppose could be one
-            ! least-significant-bit out of range. so don't print unless some
-            ! level of debugging is enabled.
-            ! JH : Note fract needs to be a scalar not a vector
-            ! if ((fract < 0.0_r8 .or. fract > 1.0_r8) .and. debug > 0) then
-            if ((fract(e) < 0.0_r8 .or. fract(e) > 1.0_r8) .and. debug > 0) then
-               print '(A,3F26.18,2I4,F22.18)', &
-               "find_pressure_bounds: bad fract!  p_in, pr(i-1), pr(i), lower, upper, fract = ", &
-               p(e), pressure(i-1, e), pressure(i, e), lower(e), upper(e), fract(e)
-            endif
+      ! if we've already run into an error, or we've already found the
+      ! level for this ensemble member, skip the rest of this loop.
+      if (ier(e) /= 0)    cycle
+      if (found_level(e)) cycle
 
-            if ((debug > 9) .and. do_output()) print '(A,3F26.18,2I4,F22.18)', &
-               "find_pressure_bounds: p_in, pr(i-1), pr(i), lower, upper, fract = ", &
-               p(e), pressure(i-1,e), pressure(i,e), lower(e), upper(e), fract(e)
-
-            !return
+      ! Is pressure between levels i-1 and i?  
+      ! if so, set the lower and upper level numbers and fraction across.
+      ! fraction is 0 at level (i-1) and 1 at level(i).
+      if(p(e) >= pressure(i, e)) then
+         found_level(e) = .true.
+         lower(e) = i - 1
+         upper(e) = i
+         if (pressure(i, e) == pressure(i-1, e)) then
+            fract(e) = 0.0_r8
+         else if (log_p_vert_interp) then
+            fract(e) = (log(p(e))          - log(pressure(i-1,e))) / &
+                       (log(pressure(i,e)) - log(pressure(i-1,e)))
+         else
+            fract(e) = (p(e) - pressure(i-1,e)) / (pressure(i,e) - pressure(i-1,e))
          endif
+
+         if ((debug > 9) .and. do_output()) print '(A,3F10.2,2I4,F10.2)', &
+            "find_pressure_bounds: p_in, pr(i-1), pr(i), lower, upper, fract = ", &
+            p(e), pressure(i-1,e), pressure(i,e), lower(e), upper(e), fract(e)
+
       endif
    enddo
 enddo
-
-
-! The following is no longer true with the ensemble version:
-! should never get here because pressures above and below the column
-! were tested for at the start of this routine.  if you get here
-! there is a coding error.
-!ier = 3
 
 end subroutine find_pressure_bounds
 
@@ -5059,19 +5510,13 @@ integer  :: offset
 real(r8) :: pt(ens_size), density(ens_size), qv(ens_size), tk(ens_size)
 integer :: e
 
-if(debug > 11) print*, 'get_interp_pressure for k = ',lev
+if(debug > 11 .and. do_output()) print*, 'get_interp_pressure for k = ',lev
 
 ! Get the values of potential temperature, density, and vapor
 offset = (cellid - 1) * nlevs + lev - 1
-if (ens_size == 1) then
-   pt(1)      =  scalar(get_state(pt_offset      + offset, state_handle))!pt = x(pt_offset + offset)
-   density(1) =  scalar(get_state(density_offset + offset, state_handle))!density = x(density_offset + offset)
-   qv(1)      =  scalar(get_state(qv_offset      + offset, state_handle))!qv = x(qv_offset + offset)
-else
-   pt      =  get_state(pt_offset      + offset, state_handle)!pt = x(pt_offset + offset)
-   density =  get_state(density_offset + offset, state_handle)!density = x(density_offset + offset)
-   qv      =  get_state(qv_offset      + offset, state_handle)!qv = x(qv_offset + offset)
-endif
+pt      =  get_state(pt_offset      + offset, state_handle)
+density =  get_state(density_offset + offset, state_handle)
+qv      =  get_state(qv_offset      + offset, state_handle)
 
 ! Initialization
 ier = 0
@@ -5179,22 +5624,23 @@ weights(2) = ((cys(3) - cys(1)) * (x - cxs(3)) + &
 
 weights(3) = 1.0_r8 - weights(1) - weights(2)
 
-! FIXME: i want to remove this code.  does it affect the answers?
 if (any(abs(weights) < roundoff)) then
-   !print *, 'get_barycentric_weights due to roundoff errors: ', weights
    where (abs(weights) < roundoff) weights = 0.0_r8
    where (abs(1.0_r8 - abs(weights)) < roundoff) weights = 1.0_r8
 endif
-!if(abs(sum(weights)-1.0_r8) > roundoff) &
-!   print *, 'fail in get_barycentric_weights: sum(weights) = ',sum(weights)
-!end FIXME section
 
 end subroutine get_barycentric_weights
 
 
 !------------------------------------------------------------
+!> this routine computes 1 or more values at a single location,
+!> for each ensemble member.  "n" is the number of different
+!> quantities to compute, ival is an array of 'n' progval() indices
+!> to indicate which quantities to compute.
+!> dval(n, ens_size) are the output values, and ier(ens_size) are 
+!> the success/error returns for each ensemble member.
 
-subroutine compute_scalar_with_barycentric(state_handle, ens_size, loc, n, ival, dval, ier)
+subroutine compute_scalar_with_barycentric(state_handle, ens_size, loc, n, ival, dval, ier, this_cellid)
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
@@ -5203,52 +5649,92 @@ integer,             intent(in)  :: n
 integer,             intent(in)  :: ival(n)
 real(r8),            intent(out) :: dval(:, :)
 integer,             intent(out) :: ier(ens_size)
+integer, optional,   intent(in)  :: this_cellid
 
 real(r8), dimension(3, ens_size) :: fract, lowval, uppval, fdata
 real(r8)    :: weights(3)
 integer     :: c(3), nvert, k, i, nc
-integer(i8) :: index1
+integer(i8) :: index1, low_offset, upp_offset
 integer     :: lower(3, ens_size), upper(3,ens_size)
-integer     :: e
+integer     :: e, e2, thislower, thisupper
+logical     :: did_member(ens_size)
 
 ! assume failure
 dval = MISSING_R8
+ier = 88   ! field not in state vector
 
-call find_triangle (loc, nc, c, weights, ier(1))
-if(ier(1) /= 0) return
+! make sure we have all good field indices first
+if (any(ival < 0)) return
 
+call find_triangle (loc, nc, c, weights, ier(1), this_cellid)
+if(ier(1) /= 0) then
+   ier(:) = ier(1)
+   return
+endif
+
+! If the field is on a single level, lower and upper are both 1
 call find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
 if(all(ier /= 0)) return
 
+! for each field to compute at this location:
 do k=1, n
    ! get the starting index in the state vector
    index1 = progvar(ival(k))%index1
    nvert  = progvar(ival(k))%numvertical
 
-   ! go around triangle and interpolate in the vertical
-   ! t1, t2, t3 are the xyz of the cell centers
-   ! c(3) are the cell ids
-   !>@todo Do you really need to loop around ens_size?
+   ! for each corner: could be 1 if location is directly at a vertex, but
+   ! normally is 3 for the enclosing triangle made up of cell centers.
+   do i = 1, nc
+      ! go around triangle and interpolate in the vertical
+      ! c(3) are the cell ids
+
+      low_offset = (c(i)-1) * nvert
+      upp_offset = (c(i)-1) * nvert
+
+      if( nvert == 1 ) then         ! fields on a surface (1-D, one level, ...)
+
+          ! Because 'lower(i,1)-1' evaluates to zero for 1-D, no need to add it
+          fdata(i,:) = get_state(index1 + low_offset, state_handle)
+
+      else                          ! 2-D fields
+
+         did_member(:) = .false.
+
+         do e = 1, ens_size
+
+            if (did_member(e)) cycle
+
+            !> minimize the number of times we call get_state() by
+            !> doing all the ensemble members which are between the same
+            !> two vertical levels.  this is true most of the time. 
+            !> in some cases it could be 2 or 3 different pairs of levels because 
+            !> of differences in vertical conversion that depends on per-member fields.
+
+            lowval(i,:) = get_state(index1 + low_offset + lower(i,e)-1, state_handle)
+            uppval(i,:) = get_state(index1 + upp_offset + upper(i,e)-1, state_handle)
+
+            thislower = lower(i, e)
+            thisupper = upper(i, e)
+
+            ! for all remaining ensemble members, use these values if the lower and
+            ! upper level numbers are the same.  fract() will vary with member.
+            do e2=e, ens_size
+               if (thislower == lower(i, e2) .and. thisupper == upper(i, e2)) then
+                  fdata(i, e2) = lowval(i, e2)*(1.0_r8 - fract(i, e2)) + uppval(i, e2)*fract(i, e2)
+                  did_member(e2) = .true.
+               endif
+            enddo
+         enddo  ! end ens_size
+
+      endif                         ! 2-D fields
+
+   enddo  ! corners
+
+   ! now have vertically interpolated values at cell centers.
+   ! use weights to compute value at interp point.
    do e = 1, ens_size
-
-      do i = 1, nc
-!        lowval(i) = x(index1 + (c(i)-1) * nvert + lower(i)-1)
-         lowval(i,:) =  (get_state(index1 + (c(i)-1)*nvert + lower(i, e)-1, state_handle))
-
-!        uppval(i) = x(index1 + (c(i)-1) * nvert + upper(i)-1)
-         uppval(i,:) =  (get_state(index1 + (c(i)-1) * nvert + upper(i, e)-1, state_handle))
-
-         fdata(i, e) = lowval(i, e)*(1.0_r8 - fract(i, e)) + uppval(i, e)*fract(i, e)
-!        if((debug > 9) .and. do_output()) &
-!        print '(A,I2,A,I2,5f12.5)','compute_scalar_with_barycentric: nv=',k,' ic =',i, &
-!                                  lowval(i),uppval(i),fdata(i),fract(i),weights(i)
-      enddo
-
-      ! now have vertically interpolated values at cell centers.
-      ! use weights to compute value at interp point.
+      if (ier(e) /= 0) cycle
       dval(k, e) = sum(weights(1:nc) * fdata(1:nc, e))
-      !if(debug > 11) print *, 'compute_scalar_with_barycentric: k, e, dval(k,e) = ', k, e, dval(k,e)
-
    enddo
 
 enddo
@@ -5256,12 +5742,16 @@ enddo
 end subroutine compute_scalar_with_barycentric
 
 !------------------------------------------------------------
+!> Interpolates metadata variables to an arbitrary location.
+!> This routine can only be used with variables in module storage.
 
-subroutine compute_elevation_with_barycentric(loc, dval, ier)
+subroutine compute_surface_data_with_barycentric(var1d, loc, dval, ier, this_cellid)
 
 type(location_type), intent(in)  :: loc
+real(r8),            intent(in)  :: var1d(:)
 real(r8),            intent(out) :: dval
 integer,             intent(out) :: ier
+integer, optional,   intent(in)  :: this_cellid
 
 real(r8)    :: weights(3), fdata(3)
 integer     :: c(3), i, nc
@@ -5269,30 +5759,32 @@ integer     :: c(3), i, nc
 ! assume failure
 dval = MISSING_R8
 
-call find_triangle (loc, nc, c, weights, ier)
+call find_triangle (loc, nc, c, weights, ier, this_cellid)
 if(ier /= 0) return
 
 do i = 1, nc
-   fdata(i) = zGridFace(1, c(i))    ! level 1, selected cell number
+   fdata(i) = var1d(c(i))    ! selected cell ID number
 enddo
 
 ! use weights to compute value at interp point.
 dval = sum(weights(1:nc) * fdata(1:nc))
 
 if(debug > 9 .and. do_output()) &
-   print '(A,7f12.5)','compute_elevation_with_barycentric: corner vals, weights, result: ',fdata(:),weights(:),dval
+   print '(A,7f12.5)','compute_surface_data_with_barycentric: corner vals, weights, result: ',&
+                      fdata(:),weights(:),dval
 
-end subroutine compute_elevation_with_barycentric
+end subroutine compute_surface_data_with_barycentric
 
 !------------------------------------------------------------
 
-subroutine find_triangle(loc, nc, c, weights, ier)
+subroutine find_triangle(loc, nc, c, weights, ier, this_cellid)
 
 type(location_type), intent(in)  :: loc 
 integer,             intent(out) :: nc
 integer,             intent(out) :: c(:) ! single value - cell id
 real(r8),            intent(out) :: weights(:)
 integer,             intent(out) :: ier
+integer, optional,   intent(in)  :: this_cellid
 
 ! compute the values at the correct vertical level for each
 ! of the 3 cell centers defining a triangle that encloses the
@@ -5309,45 +5801,41 @@ integer  :: verttype, vindex, v, vp1
 logical  :: inside, foundit
 
 ! initialization
-      c = MISSING_R8
+      c = MISSING_I
 weights = 0.0_r8
     ier = 0
      nc = 1
 
-! unpack the location into local vars - I think you can do this with the first ensemble member? 
-! Because they are the same horizontally?
-
+! unpack the location into local vars
 llv = get_location(loc)
 lon  = llv(1)
 lat  = llv(2)
 vert = llv(3)
 verttype = nint(query_location(loc))
 
-cellid = find_closest_cell_center(lat, lon)
-if ((xyzdebug > 5) .and. do_output()) &
-   print *, 'closest cell center for lon/lat: ', lon, lat, cellid
+! if we already know the closest cell center, pass it in instead
+! of searching for it again.
+if (present(this_cellid)) then
+   cellid = this_cellid
+else
+   cellid = find_closest_cell_center(lat, lon)
+endif
+
+if ((xyzdebug > 1) .and. do_output()) &
+   print *, 'ft: closest cell center for lon/lat: ', lon, lat, cellid
+
 if (cellid < 1) then
-   if(xyzdebug > 0) print *, 'closest cell center for lon/lat: ', lon, lat, cellid
+   if(xyzdebug > 0) print *, 'ft: closest cell center for lon/lat: ', lon, lat, cellid
    ier = 11
    return
 endif
 
 c(1) = cellid
 
-if (on_boundary(cellid)) then
-   ier = 12
-   return
-endif
-
-if (.not. inside_cell(cellid, lat, lon)) then
-   ier = 13
-   return
-endif
-
 ! closest vertex to given point.
 closest_vert = closest_vertex_ll(cellid, lat, lon)
 if ((xyzdebug > 5) .and. do_output()) &
-   print *, 'closest vertex for lon/lat: ', lon, lat, closest_vert
+   print *, 'ft: closest vertex for lon/lat: ', lon, lat, closest_vert
 
 ! collect the neighboring cell ids and vertex numbers
 ! this 2-step process avoids us having to read in the
@@ -5359,13 +5847,21 @@ if ((xyzdebug > 5) .and. do_output()) &
 vindex = 1
 nedges = nEdgesOnCell(cellid)
 do i=1, nedges
+!print *, 'ft: i: ', i
    edgeid = edgesOnCell(i, cellid)
+!print *, 'ft: edgeid: ', edgeid
+   if (.not. global_grid .and. &
+      (cellsOnEdge(1, edgeid) <= 0 .or. cellsOnEdge(2, edgeid) <= 0)) then
+      ier = 14
+      return
+   endif
    if (cellsOnEdge(1, edgeid) /= cellid) then
       neighborcells(i) = cellsOnEdge(1, edgeid)
    else
       neighborcells(i) = cellsOnEdge(2, edgeid)
    endif
    verts(i) = verticesOnCell(i, cellid)
+!print *, 'ft: verts: ', verts(i), closest_vert
    if (verts(i) == closest_vert) vindex = i
    call latlon_to_xyz(latCell(neighborcells(i)), lonCell(neighborcells(i)), &
       xdata(i), ydata(i), zdata(i))
@@ -5377,6 +5873,7 @@ call latlon_to_xyz(latCell(cellid), lonCell(cellid), t1(1), t1(2), t1(3))
 
 ! and the observation point
 call latlon_to_xyz(lat, lon, r(1), r(2), r(3))
+!print *, 'ft: lat/lon: ', lat, lon
 
 if (all(abs(t1-r) < roundoff)) then   ! Located at a grid point (counting roundoff errors)
 
@@ -5388,48 +5885,40 @@ if (all(abs(t1-r) < roundoff)) then   ! Located at a grid point (counting roundo
 
 else                       ! an arbitrary point
 
-! find the cell-center-tri that encloses the obs point
-! figure out which way vertices go around cell?
-foundit = .false.
-findtri: do i=vindex, vindex+nedges
-   v = mod(i-1, nedges) + 1
-   vp1 = mod(i, nedges) + 1
-   t2(1) = xdata(v)
-   t2(2) = ydata(v)
-   t2(3) = zdata(v)
-   t3(1) = xdata(vp1)
-   t3(2) = ydata(vp1)
-   t3(3) = zdata(vp1)
-   call inside_triangle(t1, t2, t3, r, lat, lon, inside, weights)
-   if (inside) then
-      ! weights are the barycentric weights for the point r
-      ! in the triangle formed by t1, t2, t3.
-      ! v and vp1 are vert indices which are same indices
-      ! for cell centers
-! FIXME: i want to remove this code.  does it affect the answers?
-      if(any(weights == 1.0_r8)) then
-         nc = 1
-      else
-!end FIXME section
+   ! find the cell-center-tri that encloses the obs point
+   ! figure out which way vertices go around cell?
+   foundit = .false.
+   findtri: do i=vindex, vindex+nedges
+      v = mod(i-1, nedges) + 1
+      vp1 = mod(i, nedges) + 1
+      t2(1) = xdata(v)
+      t2(2) = ydata(v)
+      t2(3) = zdata(v)
+      t3(1) = xdata(vp1)
+      t3(2) = ydata(vp1)
+      t3(3) = zdata(vp1)
+      call inside_triangle(t1, t2, t3, r, lat, lon, inside, weights)
+      if (inside) then
+         ! weights are the barycentric weights for the point r
+         ! in the triangle formed by t1, t2, t3.
+         ! v and vp1 are vert indices which are same indices
+         ! for cell centers
          nc = 3
          c(2) = neighborcells(v)
          c(3) = neighborcells(vp1)
-! FIXME: i want to remove this code.  does it affect the answers?
+         foundit = .true.
+         exit findtri
       endif
-!end FIXME section
-      foundit = .true.
-      exit findtri
+   enddo findtri
+   if (.not. foundit) then
+      ier = 14     ! 11?
+      return
    endif
-enddo findtri
-if (.not. foundit) then
-   ier = 14     ! 11
-   return
-endif
 
 endif     ! horizontal index search is done now.
 if (ier /= 0) return
 
-if (debug > 11) then
+if (debug > 12 .and. do_output()) then
    write(string3,*) 'ier = ',ier, ' triangle = ',c(1:nc), ' weights = ',weights(1:nc)
    call error_handler(E_MSG, 'find_triangle', string3, source, revision, revdate)
 endif
@@ -5437,14 +5926,17 @@ endif
 end subroutine find_triangle
 
 !------------------------------------------------------------
+!> This routine adds some error checking because find_vert_level
+!> has some early return statements that prevent having the debugging
+!> information in it.
 
 subroutine find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
 
 type(ensemble_type), intent(in)  :: state_handle
 type(location_type), intent(in)  :: loc
 integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: c(:)
 integer,             intent(in)  :: nc
+integer,             intent(in)  :: c(:)
 integer,             intent(out) :: lower(:, :), upper(:, :) ! ens_size
 real(r8),            intent(out) :: fract(:, :) ! ens_size
 integer,             intent(out) :: ier(:) ! ens_size
@@ -5452,20 +5944,20 @@ integer,             intent(out) :: ier(:) ! ens_size
 integer :: e
 
 ! initialization
-  lower = MISSING_R8
-  upper = MISSING_R8
-  fract = 0.0_r8
+lower = MISSING_I
+upper = MISSING_I
+fract = 0.0_r8
 
 ! need vert index for the vertical level
 call find_vert_level(state_handle, ens_size, loc, nc, c, .true., lower, upper, fract, ier)
 
-if (debug > 11) then
-   write(string3,*) 'ier = ',ier (1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
+if (debug > 10 .and. do_output()) then
+   write(string3,'(A,I5,A,3I10,A,3F7.2)') 'ier = ',ier(1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
    call error_handler(E_MSG, 'find_vert_indices', string3, source, revision, revdate)
 endif
 
-if (debug > 11) then
-   do e = 1, ens_size
+if (debug > 11 .and. do_output()) then
+  do e = 1, ens_size
    if(ier(e) /= 0) then   
       print *, 'find_vert_indices: e = ', e, ' nc = ', nc, ' ier = ', ier(e)
       print *, 'find_vert_indices: c = ', c
@@ -5473,10 +5965,8 @@ if (debug > 11) then
       print *, 'find_vert_indices: upper = ', upper(1:nc, e)
       print *, 'find_vert_indices: fract = ', fract(1:nc, e)
    endif
-   enddo
+  enddo
 endif
-
-if (all(ier /= 0)) return
 
 end subroutine find_vert_indices
 
@@ -5514,9 +6004,12 @@ integer :: e ! loop index
 ier  = 0
 uval = MISSING_R8
 
-! FIXME: make this cache the last value and if the location is
-! the same as before and it's asking for V now instead of U,
-! skip the expensive computation.
+! FIXME: it would be great to make this cache the last value and 
+! if the location is the same as before and it's asking for V now 
+! instead of U, skip the expensive computation.  however, given
+! how we currently distribute observations the V wind obs will
+! almost certainly be given to a different task.  if that changes
+! in some future version of dart, revisit this code as well.
 
 progindex = get_index_from_varname('u')
 if (progindex < 0 .or. .not. data_on_edges) then
@@ -5551,7 +6044,7 @@ if (verttype == VERTISPRESSURE) then
    call find_vert_level(state_handle, ens_size, loc, ncells, celllist, .true., &
                         lower, upper, fract, ier)
 
-   !if (ier /= 0) return
+   if (all(ier /= 0)) return
 
    ! now have pressure at all cell centers - need to interp to get pressure
    ! at edge centers.
@@ -5563,7 +6056,7 @@ else
    ! need vert index for the vertical level
    call find_vert_level(state_handle, ens_size, loc, nedges, edgelist, .false., &
                         lower, upper, fract, ier)
-   !if (ier /= 0) return ! could be different ier across the ensemble
+   if (all(ier /= 0)) return
 endif
 
 ! the rbf code needs (their names == our names):
@@ -5627,9 +6120,6 @@ do e = 1, ens_size
                ureconstructx, ureconstructy, ureconstructz, &
                ureconstructzonal, ureconstructmeridional)
 
-   !>@todo in the distributed version especially:
-   ! FIXME: it would be nice to return both and not have to call this
-   ! code twice.  crap.
    if (zonal) then
       uval = ureconstructzonal
    else
@@ -5659,12 +6149,6 @@ integer :: ncells, cell_list(150), nedgec, edgeid, nverts
 ! to the given point.
 cellid = find_closest_cell_center(lat, lon)
 if (cellid < 1) then
-   nedges = 0
-   edge_list(:) = -1
-   return
-endif
-
-if (.not. inside_cell(cellid, lat, lon)) then
    nedges = 0
    edge_list(:) = -1
    return
@@ -5751,6 +6235,16 @@ select case (use_rbf_option)
                          source, revision, revdate)
 end select
 
+! Ha: Check if any of edges are located in the boundary zone.
+! (We will skip the obs if any edges are located there.)
+if (on_boundary_edgelist(edge_list)) then
+   nedges = -1
+   edge_list(:) = -1
+   if(debug > 0 .and. do_output()) call error_handler(E_MSG, 'find_surrounding_edges', 'edges in the boundary', &
+                      source, revision, revdate)
+   return
+endif
+
 end subroutine find_surrounding_edges
 
 !------------------------------------------------------------
@@ -5770,17 +6264,21 @@ do i=1, nCells
    cell_locs(i) = xyz_set_location(lonCell(i), latCell(i), 0.0_r8, radius)
 enddo
 
-! get 2nd arg from max dcEdge or a namelist item where it's precomputed
-call xyz_get_close_init(cc_gc, 33000.0_r8, nCells, cell_locs)
+! get 2nd arg from max dcEdge.
+call xyz_get_close_init(cc_gc, dxmax, nCells, cell_locs)
+
+if (.not. global_grid) &
+   call xyz_use_great_circle_dist(radius)
 
 end subroutine init_closest_center
 
 !------------------------------------------------------------
+!> Determine the cell index for the closest center to the given point
+!> 2D calculation only.   If the closest cell is on the boundary for
+!> the regional case, the location is considered outside the region.
+!> for the global case this can't happen.
 
 function find_closest_cell_center(lat, lon)
-
-! Determine the cell index for the closest center to the given point
-! 2D calculation only.
 
 real(r8), intent(in)  :: lat, lon
 integer               :: find_closest_cell_center
@@ -5797,16 +6295,25 @@ endif
 pointloc = xyz_set_location(lon, lat, 0.0_r8, radius)
 
 call xyz_find_nearest(cc_gc, pointloc, cell_locs, closest_cell, rc)
+!if(debug > 0) print *, 'find_closest_cell_center: rc, closest_cell ', rc, closest_cell   ! SYHA
 
-! decide what to do if we don't find anything.
+!> updated xyz_find_nearest to return -1 if outside the volume.
+!> this is a code change so allow -1 returns here.  make sure
+!> calling code is ready to handle a -1 cellid.  should only
+!> happen in the regional case.
+
 if (rc /= 0 .or. closest_cell < 0) then
-   if (debug > 8) &
+   if (debug > 8 .or. global_grid) then
        print *, 'cannot find nearest cell to lon, lat: ', lon, lat
+   endif
    find_closest_cell_center = -1
    return
 endif
 
-! this is the cell index for the closest center
+if (debug > 11 .and. do_output()) print *, 'find_closest_cell_center: lat/lon closest to cellid, with lat/lonCell: ', &
+                          lat, lon, closest_cell, latCell(closest_cell), lonCell(closest_cell)
+
+! do allow boundary cells to be returned.
 find_closest_cell_center = closest_cell
 
 end function find_closest_cell_center
@@ -5823,116 +6330,246 @@ if (search_initialized) call xyz_get_close_destroy(cc_gc)
 end subroutine finalize_closest_center
 
 !------------------------------------------------------------
+!> we determine whether this is a local or global grid by
+!> whether the 'bdyMaskXXX' arrays have values > 0 in them.
+!> unfortunately both global and regional grids have these
+!> arrays so we have to read them in and check the values
+!> before knowing whether this is a global or regional case.
+!> if regional, keep these arrays in memory. 
+!> if global, discard them.
 
-function on_boundary(cellid)
+subroutine set_global_grid(ncid)
+integer, intent(in) :: ncid
 
-! use the surface (level 1) to determine if any edges (or vertices?)
-! are on the boundary, and return true if so.   if the global flag
-! is set, skip all code and return false immediately.
+character(len=*), parameter :: routine = 'set_global_grid'
 
-integer,  intent(in)  :: cellid
-logical               :: on_boundary
+global_grid = .true.
 
-! do this completely with topology of the grid.  if any of
-! the cell edges are marked as boundary edges, return no.
-! otherwise return yes.
+if (nc_variable_exists(ncid, 'bdyMaskCell')) then
+   allocate(bdyMaskCell(nCells))
+   call nc_get_variable(ncid, 'bdyMaskCell', bdyMaskCell, routine)
+   if(maxval(bdyMaskCell) > 0) then
+      global_grid = .false.
+   else
+     deallocate(bdyMaskCell)
+   endif
+endif
 
-integer :: nedges, i, edgeid, vertical
+if (nc_variable_exists(ncid, 'bdyMaskEdge')) then
+   allocate(bdyMaskEdge(nEdges))
+   call nc_get_variable(ncid, 'bdyMaskEdge', bdyMaskEdge, routine)
+   if(maxval(bdyMaskEdge) > 0) then
+      global_grid = .false.
+   else
+      deallocate(bdyMaskEdge)
+   endif
+endif
 
 if (global_grid) then
-   on_boundary = .false.
+   string1 = 'MPAS running in global mode'
+else
+   string1 = 'MPAS running in regional (limited-area) mode'
+endif
+call error_handler(E_MSG,'set_global_grid',string1,source,revision,revdate)
+
+end subroutine set_global_grid
+
+!------------------------------------------------------------
+!> accessor function for global_grid module variable
+
+function is_global_grid()
+logical :: is_global_grid
+
+is_global_grid = global_grid 
+
+end function is_global_grid
+
+!------------------------------------------------------------
+!> find the closest cell center.  if global grid, return it.
+!> if regional grid, continue to be sure that all three corners
+!> of the enclosing triangle are also inside the main part of
+!> the regional grid (none are in the boundary layers)
+!> return -1 if not ok.
+
+function cell_ok_to_interpolate(location)
+
+type(location_type), intent(in)  :: location
+integer :: cell_ok_to_interpolate
+
+integer :: cellid, nc, c(3), istatus, i
+real(r8) :: llv(3), lat, lon
+real(r8) :: weights(3)
+
+llv = get_location(location)
+lat = llv(2)
+lon = llv(1)
+
+! if outside a regional grid or the grid is
+! global, return here.
+cellid = find_closest_cell_center(lat, lon)
+if (cellid < 1 .or. global_grid) then
+   cell_ok_to_interpolate = cellid
    return
 endif
 
-! how many edges (same # for verts) to check
-nedges = nEdgesOnCell(cellid)
-
-! go around the edges and check the boundary array.
-! if any are boundaries, return true.  else, false.
-
-do i=1, nedges
-   edgeid = edgesOnCell(i, cellid)
-
-   vertical = 1
-
-   ! FIXME: this is an int array.  is it 0=false,1=true?
-   if (boundaryEdge(edgeid, vertical) > 0) then
-      on_boundary = .true.
-      return
-   endif
-
-enddo
-
-on_boundary = .false.
-
-end function on_boundary
-
-!------------------------------------------------------------
-
-function inside_cell(cellid, lat, lon)
-
-! this function no longer really determines if we are inside
-! the cell or not.  what it does do is determine if the nearest
-! cell is on the grid boundary in any way and says no if it is
-! a boundary.  if we have a flag saying this a global grid, we
-! can avoid doing any work and immediately return true.  for a
-! global atmosphere this is always so; for a regional atmosphere
-! and for the ocean (which does not have cells on land) this is
-! necessary test.
-
-integer,  intent(in)  :: cellid
-real(r8), intent(in)  :: lat, lon
-logical               :: inside_cell
-
-! do this completely with topology of the grid.  if any of
-! the cell edges are marked as boundary edges, return no.
-! otherwise return yes.
-
-integer :: nedges, i, edgeid, vert
-
-! if we're on a global grid, skip all this code
-if (global_grid) then
-   inside_cell = .true.
+! quick check to see if the current cell is
+! a regional boundary cell
+if (on_boundary_cell(cellid)) then
+   cell_ok_to_interpolate = -1
    return
 endif
 
-nedges = nEdgesOnCell(cellid)
+! for regional, continue on and find the other 2 cell centers
+! that create a triangle enclosing this location.  verify the
+! other vertices are also fully inside the grid and not in the
+! boundary layers.
 
-! go around the edges and check the boundary array.
-! if any are true, return false.  even if we are inside
-! this cell, we aren't going to be able to interpolate it
-! so shorten the code path.
+call find_triangle(location, nc, c, weights, istatus, cellid)
+if (istatus /= 0) then
+   cell_ok_to_interpolate = -1
+   return
+endif
 
-! FIXME: at some point we can be more selective and try to
-! interpolate iff the edges of the three cells which are
-! going to contribute edges to the RBF exist, even if some
-! of the other cell edges are on the boundary.  so this
-! decision means we won't be interpolating some obs that in
-! theory we have enough information to interpolate.  but it
-! is conservative for now - we certainly won't try to interpolate
-! outside the existing grid.
-
-do i=1, nedges
-   edgeid = edgesOnCell(i, cellid)
-
-   ! FIXME: this is an int array.  is it 0=false,1=true?
-   ! BOTHER - we need the vert for this and we don't have it
-   ! and in fact can't compute it if the interpolation point
-   ! has pressure or height as its vertical coordinate.
-   vert = 1
-
-   if (boundaryEdge(edgeid, vert) > 0) then
-      inside_cell = .false.
+do i=1, nc
+   if (on_boundary_cell(c(i))) then
+      cell_ok_to_interpolate = -1
       return
    endif
-
 enddo
 
-inside_cell = .true.
+cell_ok_to_interpolate = cellid
 
-end function inside_cell
+end function cell_ok_to_interpolate
 
 !------------------------------------------------------------
+!> Determine if this cell is on the boundary, and return true if so.   
+!> if the global flag is set, skip all code and return false immediately.
+!> Unlike the previous version of on_boundary, we do not return true
+!> if any surrounding edges belong to the boundary zone. We will take care
+!> of those edges either in uv_cell_to_edges or in find_surrounding_edges
+!> individually.
+
+function on_boundary_cell(cellid)
+
+integer,  intent(in)  :: cellid
+logical               :: on_boundary_cell
+
+on_boundary_cell = .false.
+
+if (global_grid .or. .not. allocated(bdyMaskCell)) return
+
+if (bdyMaskCell(cellid) > 0) on_boundary_cell = .true.
+
+end function on_boundary_cell
+
+!------------------------------------------------------------
+!> Determine if this edge is on the boundary
+
+function on_boundary_edge(edgeid)
+
+integer,  intent(in)  :: edgeid
+logical               :: on_boundary_edge
+
+on_boundary_edge = .false.
+
+if (global_grid .or. .not. allocated(bdyMaskEdge)) return
+
+if (bdyMaskEdge(edgeid) > 0) on_boundary_edge = .true.
+
+end function on_boundary_edge
+
+!------------------------------------------------------------
+!> Determine if this edge is the outermost edge (bdyMaskEdge = 7)
+
+function on_outermost_edge(edgeid)
+
+integer,  intent(in)  :: edgeid
+logical               :: on_outermost_edge
+
+on_outermost_edge = .false.
+
+if (global_grid .or. .not. allocated(bdyMaskEdge)) return
+
+if (bdyMaskEdge(edgeid) > 6) on_outermost_edge = .true.
+
+end function on_outermost_edge
+
+!------------------------------------------------------------
+!> Determine if this cell is the outermost cell (bdyMaskCell = 7)
+
+function on_outermost_cell(cellid)
+
+integer,  intent(in)  :: cellid
+logical               :: on_outermost_cell
+
+on_outermost_cell = .false.
+
+if (global_grid .or. .not. allocated(bdyMaskCell)) return
+
+if (bdyMaskCell(cellid) > 6) on_outermost_cell = .true.
+
+end function on_outermost_cell
+
+!------------------------------------------------------------
+!> Determine if any of these edges are on the boundary
+
+function on_boundary_edgelist(edgeids)
+
+integer,  intent(in)  :: edgeids(:)
+logical               :: on_boundary_edgelist
+
+on_boundary_edgelist = .false.
+
+if (global_grid .or. .not. allocated(bdyMaskEdge)) return
+
+if (any(bdyMaskEdge(edgeids) > 0)) on_boundary_edgelist = .true.
+
+end function on_boundary_edgelist
+
+!------------------------------------------------------------
+
+!> based on boundary cell mask value, return the weight
+!> given to the analysis values.  interior values are 1.0
+!> (full analysis); exterior values are 0.0 (full boundary)
+
+function get_analysis_weight(cellid, is_it_cell)
+integer, intent(in) :: cellid
+real(r8)            :: get_analysis_weight
+
+logical, optional, intent(in) :: is_it_cell
+
+! Adopted from MPAS/src/core_init_atmosphere/mpas_init_atm_cases.F
+integer, parameter  :: nBdyLayers = 7   ! The number of relaxation layers plus the number of specified layers
+integer, parameter  :: nSpecLayers = 2  ! The number of specified layers
+
+! local variables
+integer :: imask
+logical :: if_cell
+
+if_cell = .true.    ! default is cells, not edges.
+imask   = bdyMaskCell(cellid)
+
+if (present(is_it_cell)) if_cell = is_it_cell
+
+if (global_grid) then
+    get_analysis_weight = 1.0_r8
+    return
+endif
+
+if(.not. if_cell) then
+   imask = bdyMaskEdge(cellid)
+endif
+
+if (imask > (nBdyLayers - nSpecLayers)) then  ! Specified Zone (6,7)
+    get_analysis_weight = 0.0_r8
+else        ! Relexation Zone (1-5)
+    get_analysis_weight = 1.0_r8 - real(imask,kind=r8)/real(nBdyLayers - nSpecLayers,kind=r8)
+end if
+
+end function get_analysis_weight
+
+!------------------------------------------------------------
+
 
 function closest_vertex_ll(cellid, lat, lon)
 
@@ -6033,27 +6670,11 @@ enddo
 ! new edge is added.  check arrays for enough length before
 ! starting to work.
 
-
-! FIXME: the ocean files have:
-!  integer boundaryEdge(nVertLevels, nEdges)
-!  integer boundaryVertex(nVertLevels, nVertices)
-! as a first pass, if ANY of the edges or vertices are on
-! the boundary, punt and return 0 as the edge count.  later
-! once this is working, decide if a single boundary vertex or
-! edge is ok if it's the exterior of the edges we are including
-! and if it has good data values.
-
 listlen = 0
 do c=1, ncells
    edgecount = nEdgesOnCell(cellid_list(c))
    do e=1, edgecount
       nextedge = edgesOnCell(e, cellid_list(c))
-      ! FIXME:
-      ! if (boundaryEdge(nextedge, vert)) then
-      !    nedges = 0
-      !    edge_list(:) = -1
-      !    return
-      ! endif
       found = .false.
       addloop: do l=1, listlen
          if (edge_list(l) == nextedge) then
@@ -6076,9 +6697,6 @@ end subroutine make_edge_list_from_verts
 
 subroutine make_edge_list_from_cells(ncells, cellids, nedges, edge_list)
 
-! FIXME: will need a vertical level number input arg here to detect
-! the boundary edges/vertices correctly.
-
 ! given a list of cellids, return a unique list of edges
 ! the edge_list output should be at least ncells * maxedges long
 
@@ -6094,27 +6712,11 @@ logical :: found
 ! new edge is added.  check arrays for enough length before
 ! starting to work.
 
-
-! FIXME: the ocean files have:
-!  integer boundaryEdge(nVertLevels, nEdges)
-!  integer boundaryVertex(nVertLevels, nVertices)
-! as a first pass, if ANY of the edges or vertices are on
-! the boundary, punt and return 0 as the edge count.  later
-! once this is working, decide if a single boundary vertex or
-! edge is ok if it's the exterior of the edges we are including
-! and if it has good data values.
-
 listlen = 0
 do c=1, ncells
    edgecount = nEdgesOnCell(cellids(c))
    do e=1, edgecount
       nextedge = edgesOnCell(e, cellids(c))
-      ! FIXME:
-      ! if (boundaryEdge(nextedge, vert)) then
-      !    nedges = 0
-      !    edge_list(:) = -1
-      !    return
-      ! endif
       found = .false.
       addloop: do l=1, listlen
          if (edge_list(l) == nextedge) then
@@ -6207,27 +6809,11 @@ cell_list(3) = cellsOnVertex(3, vertexid)
 ncells = 3
 if (degree == 1) return
 
-
-! FIXME: the ocean files have:
-!  integer boundaryEdge(nVertLevels, nEdges)
-!  integer boundaryVertex(nVertLevels, nVertices)
-! as a first pass, if ANY of the edges or vertices are on
-! the boundary, punt and return 0 as the edge count.  later
-! once this is working, decide if a single boundary vertex or
-! edge is ok if it's the exterior of the edges we are including
-! and if it has good data values.
-
 listlen = ncells
 do c=1, ncells
    vertcount = nEdgesOnCell(cell_list(c))
    do v=1, vertcount
       nextvert = verticesOnCell(v, cell_list(c))
-      ! FIXME:
-      ! if (boundaryVertex(nextvert, vert)) then
-      !    ncells = 0
-      !    cell_list(:) = -1
-      !    return
-      ! endif
       do c2=1, 3
          nextcell = cellsOnVertex(c2, nextvert)
          found = .false.
@@ -6254,12 +6840,6 @@ do c=1, ncells
    vertcount = nEdgesOnCell(cell_list(c))
    do v=1, vertcount
       nextvert = verticesOnCell(v, cell_list(c))
-      ! FIXME:
-      ! if (boundaryVertex(nextvert, vert)) then
-      !    ncells = 0
-      !    cell_list(:) = -1
-      !    return
-      ! endif
       do c2=1, 3
          nextcell = cellsOnVertex(c2, nextvert)
          found = .false.
@@ -6290,8 +6870,6 @@ subroutine move_pressure_to_edges(ncells, celllist, lower, upper, fract, nedges,
 ! fract values.  the lower, upper and fract lists match the cells on the
 ! way in, they match the edges on the way out.
 
-!>@todo HK Same across the ensemble? I don't know
-
 integer,  intent(in)    :: ncells, celllist(:)
 integer,  intent(inout) :: lower(:, :), upper(:, :) ! ens_size
 real(r8), intent(inout) :: fract(:, :) ! ens_size
@@ -6299,8 +6877,7 @@ integer,  intent(in)    :: nedges, edgelist(:)
 integer,  intent(out)   :: ier(:)
 
 !>@todo this is set in different places to different values
-integer, parameter :: listsize = 30
-
+integer, parameter :: listsize = 30 
 !real(r8) :: o_lower(listsize), o_fract(listsize)
 real(r8), allocatable :: o_lower(:,:), o_fract(:,:)
 real(r8) :: x1, x2, x
@@ -6383,7 +6960,7 @@ else
                       source, revision, revdate, text2=string1)
 endif
 
-if (debug > 1) print *, 'extrapolate: ', h, lb, ub, extrapolate_level
+if (debug > 1 .and. do_output()) print *, 'extrapolate: ', h, lb, ub, extrapolate_level
 end function extrapolate_level
 
 !------------------------------------------------------------
@@ -6647,36 +7224,38 @@ end subroutine invert3
 
 !------------------------------------------------------------
 
-!==================================================================
-! The following (private) routines were borrowed from the MPAS code
-!==================================================================
+subroutine uv_cell_to_edges(zonal_wind, meridional_wind, uedge, full_u)
 
-!------------------------------------------------------------------
-
-subroutine uv_cell_to_edges(zonal_wind, meridional_wind, du)
-
-! Project u, v wind increments at cell centers onto the edges.
+! Project u, v wind (increments) at cell centers onto the edges.
 ! FIXME:
 !        we can hard-code R3 here since it comes from the (3d) x/y/z cartesian coordinate.
-!        We define nEdgesOnCell in get_grid_dims, and read edgesOnCell in get_grid.
-!        We read edgeNormalVectors in get_grid to use this subroutine.
-!        Here "U" is the prognostic variable in MPAS, and we update it with the wind
-!        increments at cell centers.
+!        We read cellsOnEdge and edgeNormalVectors in get_grid.
+!        Here "uedge" is an edge normal wind which can be either a full field or an increment
+!        depending on the optional input (full_u).
+!        if full_u = .true., then the edge wind is replaced by averaging zonal and meridional 
+!        winds at cell centers.
+!        if full_u does not exist, uedge is the analysis increment from the updated cell-center winds.
+!        We do not update/compute uedge in the outermost edge in the regional MPAS.
+! This routine followed the updating part in tend_toEdges in 
+! MPAS/src/core_atmosphere/physics/mpas_atmphys_todynamics.F.
 
 real(r8), intent(in) :: zonal_wind(:,:)             ! u wind updated from filter
 real(r8), intent(in) :: meridional_wind(:,:)        ! v wind updated from filter
-real(r8), intent(out):: du(:,:)                     ! normal velocity increment on the edges
+real(r8), intent(inout):: uedge(:,:)                ! normal velocity (increment) on the edges
+logical,  intent(in), optional :: full_u            ! compute a full field, not an increment
 
 ! Local variables
 integer, parameter :: R3 = 3
 real(r8) :: east(R3,nCells), north(R3,nCells)
 real(r8) :: lonCell_rad(nCells), latCell_rad(nCells)
-integer  :: iCell, iEdge, jEdge, k
+integer  :: iCell, iEdge, cell1, cell2
 
 if ( .not. module_initialized ) call static_init_model
 
-! Initialization
-du(:,:) = 0.0_r8
+! Initialization for increments
+if ( .not. present(full_u)) then
+   uedge(:,:) = 0.0_r8
+endif
 
 ! Back to radians (locally)
 lonCell_rad = lonCell*deg2rad
@@ -6697,25 +7276,36 @@ do iCell = 1, nCells
 
 enddo
 
-! Project analysis increments from the cell centers to the edges
-do iCell = 1, nCells
-   do jEdge = 1, nEdgesOnCell(iCell)
-      iEdge = edgesOnCell(jEdge, iCell)
-      do k = 1, nVertLevels
-         du(k,iEdge) = du(k,iEdge) + 0.5_r8 * zonal_wind(k,iCell)   &
-                     * (edgeNormalVectors(1,iEdge) * east(1,iCell)  &
-                     +  edgeNormalVectors(2,iEdge) * east(2,iCell)  &
-                     +  edgeNormalVectors(3,iEdge) * east(3,iCell)) &
-                     + 0.5_r8 * meridional_wind(k,iCell)            &
-                     * (edgeNormalVectors(1,iEdge) * north(1,iCell) &
-                     +  edgeNormalVectors(2,iEdge) * north(2,iCell) &
-                     +  edgeNormalVectors(3,iEdge) * north(3,iCell))
-      enddo
-   enddo
-enddo
+! Project reconstructed winds from the cell centers to the edges
+do iEdge = 1, nEdges
+   if(.not.on_outermost_edge(iEdge)) then ! we do not update the outermost edge
+      cell1 = cellsOnEdge(1,iEdge)
+      cell2 = cellsOnEdge(2,iEdge)
+      if((.not.on_outermost_cell(cell1)) .and. (.not.on_outermost_cell(cell2))) then 
+      uedge(:,iEdge) = zonal_wind(:,cell1)      * 0.5 * (edgeNormalVectors(1,iEdge) * east(1,cell1)   &
+                                                      +  edgeNormalVectors(2,iEdge) * east(2,cell1)   &
+                                                      +  edgeNormalVectors(3,iEdge) * east(3,cell1))  &
+                     + meridional_wind(:,cell1) * 0.5 * (edgeNormalVectors(1,iEdge) * north(1,cell1)   &
+                                                      +  edgeNormalVectors(2,iEdge) * north(2,cell1)   &
+                                                      +  edgeNormalVectors(3,iEdge) * north(3,cell1))  &
+                     + zonal_wind(:,cell2)      * 0.5 * (edgeNormalVectors(1,iEdge) * east(1,cell2)   &
+                                                      +  edgeNormalVectors(2,iEdge) * east(2,cell2)   &
+                                                      +  edgeNormalVectors(3,iEdge) * east(3,cell2))  &
+                     + meridional_wind(:,cell2) * 0.5 * (edgeNormalVectors(1,iEdge) * north(1,cell2)   &
+                                                      +  edgeNormalVectors(2,iEdge) * north(2,cell2)   &
+                                                      +  edgeNormalVectors(3,iEdge) * north(3,cell2))
+      endif ! if((.not.on_outermost_cell(cell1)) .and. (.not.on_outermost_cell(cell2)))
+   endif    ! if(.not.on_outermost_edge(iEdge)) then
+enddo       ! do iEdge = 1, nEdges
 
 end subroutine uv_cell_to_edges
 
+
+!------------------------------------------------------------------
+
+!==================================================================
+! The following (private) routines were borrowed from the MPAS code
+!==================================================================
 
 !------------------------------------------------------------------
 
@@ -6798,7 +7388,7 @@ tk = theta_to_tk(ens_size, theta, rho, qv_nonzero, istatus_in)
 where (istatus_in == 0)
    pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv_nonzero)
 end where
-!if ((debug > 9) .and. do_output()) print *, 't,r,q,p,tk =', theta, rho, qv, pressure, tk
+if ((debug > 12) .and. do_output()) print *, 't,r,q,p,tk =', theta, rho, qv, pressure, tk
 
 end subroutine compute_full_pressure
 
@@ -6834,13 +7424,44 @@ call nc_check(ret, 'closing', filename)
 
 end function read_model_time
 
+!----------------------------------------------------------------------
+! Returns integers taken from tstring
+! It is assumed that the tstring char array is as YYYY-MM-DD_hh:mm:ss
+
+subroutine set_wrf_date (tstring, year, month, day, hour, minute, second)
+
+integer,           intent(in) :: year, month, day, hour, minute, second
+character(len=TIMELEN), intent(out)  :: tstring
+
+character(len=4)  :: ch_year
+character(len=2)  :: ch_month, ch_day, ch_hour, ch_minute, ch_second
+
+write(ch_year,'(i4)') year
+write(ch_month,'(i2)') month
+if (ch_month(1:1) == " ") ch_month(1:1) = "0"
+write(ch_day,'(i2)') day
+if (ch_day(1:1) == " ") ch_day(1:1) = "0"
+write(ch_hour,'(i2)') hour
+if (ch_hour(1:1) == " ") ch_hour(1:1) = "0"
+write(ch_minute,'(i2)') minute
+if (ch_minute(1:1) == " ") ch_minute(1:1) = "0"
+write(ch_second,'(i2)') second
+if (ch_second(1:1) == " ") ch_second(1:1) = "0"
+tstring(1:4)   = ch_year
+tstring(5:5)   = "-"
+tstring(6:7)   = ch_month
+tstring(8:8)   = "-"
+tstring(9:10)  = ch_day
+tstring(11:11) = "_"
+tstring(12:13) = ch_hour
+tstring(14:14) = ":"
+tstring(15:16) = ch_minute
+tstring(17:17) = ":"
+tstring(18:19) = ch_second
+
+end subroutine set_wrf_date
+
 !===================================================================
 ! End of model_mod
 !===================================================================
 end module model_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

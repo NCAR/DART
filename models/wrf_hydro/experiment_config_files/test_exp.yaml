@@ -1,0 +1,234 @@
+# Example HydroDart Experiment Config file.
+#
+# Purpose: collect ALL relevant information to a HydroDart experiment.
+#
+# There are top-level keys for differen phases of the experiment setup
+# and run.
+# Build Phase: dart and wrf_hydro.
+# Experiment setup phase: experiment.
+# Ensemble construction phase: ensemble.
+# Run Phase: run.
+
+# TJH instructions ....   :1,$ s/bob/bill/g
+# TJH instructions ....   :1,$ s#bob/bill#tim/tom#g
+
+
+modules: ## !!!  NOT currently in use: make sure your modules match
+         ##      your mkmf_template and your compiler choices below.
+  # TODO (JLM): The compiler specs for wrf-hydro and dart could be solved from the
+  # modules at some later date. 
+
+  
+dart:
+  use_existing_build: True
+  # Absolute path required
+  dart_src: /glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/
+  fork: ## !!! NOT currently in usese
+  commit: ## !!! NOT currently in use
+  mkmf_template: mkmf.template.gfortran #_5.4.0_docker
+  mpi: True
+  build_dir: dart_build
+  work_dirs: ['models/wrf_hydro/work', 'observations/obs_converters/USGS/work/']
+
+
+wrf_hydro:
+  use_existing_build: True
+  # Absolute path required:
+  wrf_hydro_src: /glade/u/home/jamesmcc/wrf_hydro_nwm_public_for_dart
+  fork:   ## !!! NOT currently in use
+  commit: ## !!! NOT currently in use
+  model_config: NWM_channel-only
+  compiler: gfort
+  compile_options: {'WRF_HYDRO_NUDGING': 0}
+  build_dir: wrf_hydro_build
+  # Absolute path required: 
+  domain_src: /glade/work/jamesmcc/domains/public/sixmile
+  domain_version: v1.2.1
+  
+
+experiment:
+  tag: sixmile_test
+  # Location where the experiment is established (small storage, not scratched)
+  # Absolute path required
+  experiment_dir: /glade/work/${USER}/wrfhydro_dart/sixmile/experiments/test_no_params
+  experiment_dir_mode: 'w'   ## !!! May NOT be in use
+  # Location of where filter and the ensemble are run. (large storage, potentially scratched)
+  # Absolute path required
+  run_dir: /glade/scratch/${USER}/wrfhydro_dart/sixmile/runs/test_no_params
+  run_dir_mode: 'w'  ## !!! May NOT be in use
+  # TODO(JLM): The initial ensemble size controls the number of members?? or not?
+  # TODO(JLM): what are the format requirements here?
+  # Absolute path required
+
+
+# ensemble_construction
+ensemble:
+  # Should the size be taken from the initial_ens or is this allowed
+  # as a double check?
+  size: 10
+  # A python script which constructs the ensemble from a single member
+  # specified in the wrf_hydro options.
+  constructor: ens_setup_files/ens_setup_NWM_channel-only.py
+
+
+# How is the initial ensemble created?  
+initial_ens:
+  path: /glade/work/${USER}/wrfhydro_dart/sixmile/initial_ens/test_no_params
+  param_restart_file:  ## !! Currently depends on from_filter to run TODO(JLM)
+    # TODO(JLM): change this to use_existing for consistency
+    create: False
+    # If mode 'r' will create if does not exist. If mode 'w' will overwrite.
+    mode: 'r'   ## !!! May NOT be in use
+    out_file: /glade/work/${USER}/wrfhydro_dart/sixmile/initial_ens/test_no_params/parameters_init.nc
+    # The following default to the restart files provided in the domain.
+    hydro_rst: 
+    restart:
+    existing_variables: [qlink1,  qlink1]
+    new_variables: [qBucketMult,  qSfcLatRunoffMult]
+    values: [1, 1]
+  from_filter:
+    # Optionally create the inital ensemble from filter perturbation + advance.
+    # This will use the same ensemble constructed by set
+    # TODO(JLM): change this to use_existing for consistency
+    create: False
+    # If use is True, then consistency checks between the initial
+    # ensemble and the experiment are performed.
+    use: True
+    mode: 'r'   ## !!! May NOT be in use
+    input_nml:
+      filter_nml:
+        inf_flavor: [2, 0]
+        inf_initial: [1.0, 1.0]
+        inf_sd_initial: [0.6, 0.6]
+        inf_sd_lower_bound: [0.6, 0.6]
+        inf_damping: [0.9, 0.9]
+        inf_initial_from_restart: [false, false]
+        inf_sd_initial_from_restart: [false, false]
+        input_state_file_list:
+          # Here, only specify the /path/to/restart file for each. The list file is
+          # handled internally.
+          restart_file_list.txt:
+          # If blank: the restarts in the wrf_hydro config/domain are used.
+          hydro_file_list.txt:
+          # The default is None and to use no parameter file. If param files are used,
+          # this will generally need to match above param_restart_file:out_file
+          param_file_list.txt: 
+          # The output files are in path/member_iii/.
+          # output_state_file_list: 'hydro_file_list.txt','param_file_list.txt'
+          # perturb_from_single_instance: <forcibly true>
+          # num_output_state_members: <should be the ensemble size>
+      model_nml:
+        model_perturbation_amplitude: 0.1
+        perturb_distribution: 'lognormal'
+        # Do not specify input_state_file_list, domain_order, or domain_shapefiles.
+        # These are handled by
+  advance:
+    end_time:
+      
+
+# The fields under the top level must be listed in dart:observations: above.
+observation_preparation:
+  all_obs_dir: /glade/work/${USER}/wrfhydro_dart/sixmile/obs_seqs/test_no_params
+  USGS_daily:
+    prepare: False
+    identity_obs: True
+    input_dir: /glade/work/jamesmcc/domains/public/sixmile/NWM/nudgingTimeSliceObs/
+    output_dir: /glade/work/${USER}/wrfhydro_dart/sixmile/obs_seqs/test_no_params/USGS
+    # Date range in YYYY-mm-dd format
+    start_date: 2013-06-01
+    end_date:   2013-09-30
+    # A list of gages can be given in the following which will be written to the file.
+    # If a string is given, that indicates a file to use which will be symlinked into
+    # place for reference.
+    wanted_gages: ['04233286', '04233300', '04234000']   
+    input_nml_patches:
+      create_identity_streamflow_obs_nml:
+        # input_files: handled internally using input_dir and start and end dates above.
+        # location_file: handled internally.
+        # gages_list_file: handled by wanted gages above.
+        # The following patches are applied directly.
+        obs_fraction_for_error: 0.17
+        debug: 1
+    scheduler:
+      # ppn is the number of processors per node. This is required to be correct.
+      ppn: 36
+      account: 'NRALxxxx'
+      walltime: '00:10'
+      job_name: '6mile_obs_prep' #_{model_start_time_str}'
+      queue: 'regular'
+      email_when: "a"
+      email_who: ${USER}@ucar.edu    
+
+          
+##################################
+    
+run_experiment: 
+  
+  time:
+    end_time: 2013-06-01_03:00 ## Format: %Y-%m%d_%H:%M
+    advance_model_hours: 1  ## TODO (JLM): check for next ob when actually setting this.
+    assim_window:
+      use_input_nml: False
+      assim_window_size_hours: 1
+    submit_all_jobs: False  ## not currently used.
+    
+  wrf_hydro_ens_advance:
+    # With filter means that the model advance happens with the filter under
+    # a single scheduled job. This is meant for models of small-med size. In
+    # that case only nproc is used below and floor((ppn_max-1)/nproc) members
+    # are advanced simultaneously
+    with_filter: True
+    # The number of mpi processes for each model advance
+    nproc: 1
+    nnodes: 1
+    account: NRALxxxx
+    walltime: '00:01'
+    job_name: 6mile_ens_adv
+    queue: regular
+    email_when: a
+    email_who: ${USER}@ucar.edu
+    
+  perturb_forcing:
+    perturb: True
+    # Absolute path required
+    noise_function_files: [/glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro/python/perturb_channel_only_forcing.py,
+    /glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro/python/noise_qBucket_additive.py,
+    /glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro/python/noise_qSfcLatRunoff_additive.py]
+    noise_cmd: 'python perturb_channel_only_forcing.py --perturb_forcing_dir FORCING_perturbed --qsfclat_perturb_func noise_qSfcLatRunoff_additive.py --qbucket_perturb_func noise_qBucket_additive.py'
+
+  dart:
+    # incliuding obs_sequence_tool in exes will subset the obs_seq files.
+    exes: ['filter','obs_sequence_tool']
+    scheduler: 
+      nproc: 2
+      nnodes: 1
+      ppn_max: 36
+      account: NRALxxxx
+      walltime: '00:10'
+      job_name: 6mile_filter #_{model_start_time_str}'
+      queue: premium
+      email_when: a
+      email_who: ${USER}@ucar.edu    
+
+    input_nml_patches:
+      filter_nml:
+        inf_flavor: [2, 0]
+        inf_initial: [1.0, 1.0]
+        inf_lower_bound: [0.0, 0.0]
+        inf_sd_initial: [0.6, 0.6]
+        inf_sd_lower_bound: [0.6, 0.6]
+        inf_damping: [0.9, 0.9]
+        inf_sd_max_change: [1.05, 1.05]
+        inf_initial_from_restart: [true, false]
+        inf_sd_initial_from_restart: [true, false]
+        input_state_file_list: 'hydro_file_list.txt'
+        output_state_file_list: 'hydro_file_list.txt' 
+        inf_initial_from_restart: [false, false]
+        inf_sd_initial_from_restart: [false, false]
+      model_nml: 
+        max_link_distance: 4000.0
+        # domain_order and domain_shapefiles are made consistent with the initial ensemble
+        # when initial_ens: from_filter: use is True.
+        
+      assim_tools_nml:
+        cutoff: 0.0003139  # 0.5*the max. reach length specified in model_nml

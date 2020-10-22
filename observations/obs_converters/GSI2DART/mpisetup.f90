@@ -51,12 +51,15 @@ call mpi_comm_size(mpi_comm_world,numproc,ierr)
 if (nproc == 0) print *,'running on ',numproc,' processors ...'
 if (r_kind == r_single) then
    mpi_realkind = mpi_real4
+   if (nproc == 0) print *,'mpi_realkind set to mpi_real4',mpi_real4
 else if (r_kind == r_double) then
    mpi_realkind = mpi_real8
+   if (nproc == 0) print *,'mpi_realkind set to mpi_real8',mpi_real8
 else
-   print *,'illegal r_kind (must be single or double)'
+   print *,'ERROR: illegal r_kind (must be single or double)'
    call mpi_cleanup()
 endif
+
 end subroutine mpi_initialize
 
 subroutine mpi_cleanup()

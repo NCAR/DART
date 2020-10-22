@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # This is an example script for how to stage the files in CENTRALDIR
 # in preparation for a 'perfect model' or OSSE.
 #
@@ -59,8 +57,6 @@ ${COPY} ${DARTDIR}/ensemble_source/RESTART.2009010200_DOMAIN1.0001.nc  .  || exi
 ln -sv RESTART.2009010200_DOMAIN1.0001.nc  restart.nc      || exit 5
 ln -sv RESTART.2009010200_DOMAIN1.0001.nc  restart.0001.nc || exit 5
 
-./noah_to_dart                    || exit 6
-${MOVE} dart_ics perfect_ics      || exit 7
 
 echo
 echo "CENTRALDIR is ${CENTRALDIR}"
@@ -72,8 +68,4 @@ echo
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

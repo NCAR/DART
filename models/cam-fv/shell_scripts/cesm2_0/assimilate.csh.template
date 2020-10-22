@@ -50,6 +50,8 @@ cd $RUNDIR
 
 # A switch to save all the inflation files
 setenv save_all_inf TRUE
+if (! -d $archive/esp/hist) mkdir -p $archive/esp/hist
+
 # A switch to signal how often to save the stages' ensemble members: NONE, RESTART_TIMES, ALL
 # Mean and sd will always be saved.
 setenv save_stages_freq RESTART_TIMES
@@ -94,7 +96,7 @@ switch ($HOSTNAME)
    case ch*:
       # Kluge to make batch environment consistent with the login invironment,
       # where DART executables were built.  Not fixed as of 2018-1-25.
-      module switch mpt mpt/2.15
+      module switch mpt mpt/2.15f
       # PBS_NUM_PPN unavailable for some reason, so set manually.  
       # set TASKS_PER_NODE = $PBS_NUM_PPN 
       set TASKS_PER_NODE = 36
@@ -264,7 +266,7 @@ if ($#log_list >= 3) then
 
       # Remove intermediate member restarts,
       # but not DART means, sd, obs_seq, inflation restarts output.
-      # Note that *cpl.ha.* is retained, and any h#, #>0.
+      # Note that *cpl.h[ar]* are retained, and any h#, #>0.
       #          CASE                         DD-SSSSS
       $REMOVE  ${CASE}*.{r,rs,rs1,rh0,h0}.*${day_time}* &
       # Handle .i. separately to avoid sweeping up .{in,out}put_{mean,sd,...} files.
@@ -280,7 +282,7 @@ if ($#log_list >= 3) then
    else
       # Optionally COPY inflation restarts to the same place as the other inflation restarts.
       if ($save_all_inf =~ TRUE) then
-         if ($COPY == "FALSE") \
+         if ($COPYV == "FALSE") \
             echo 'Copying ${CASE}*inf*${day_time}*  ${archive}/esp/hist '
          $COPY            ${CASE}*inf*${day_time}*  ${archive}/esp/hist
       endif

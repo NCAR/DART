@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # This version of the script is intended for machines where the script
 # runs on a different node than any of the MPI tasks.  Normally we use
 # pipes to synchronize between the filter program and the script, but
@@ -242,8 +240,4 @@ endif
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 
