@@ -13,11 +13,20 @@ Contents
 Overview
 ========
 
-The Lorenz 96 model was first described by Edward Lorenz during a seminar at the European Centre for Medium-Range Weather Forecasts in the Autumn of 1995, the proceedings of which were published as Lorenz (1996) [1]_ the following year, hence the model is commonly referred to as Lorenz 96.
+The Lorenz 96 model was first described by Edward Lorenz during a seminar at
+the European Centre for Medium-Range Weather Forecasts in the Autumn of 1995,
+the proceedings of which were published as Lorenz (1996) [1]_ the following
+year, hence the model is commonly referred to as Lorenz 96.
 
 Lorenz and Emmanuel (1998) [2]_ describe the model as:
 
-  ... consisting of 40 ordinary differential equations, with the dependent variables representing values of some atmospheric quantity at 40 sites spaced equally about a latitude circle. The equations contain quadratic, linear, and constant terms representing advection, dissipation, and external forcing. Numerical integration indicates that small errors (differences between solutions) tend to double in about 2 days. Localized errors tend to spread eastward as they grow, encircling the globe after about 14 days.
+  ... consisting of 40 ordinary differential equations, with the dependent
+  variables representing values of some atmospheric quantity at 40 sites spaced
+  equally about a latitude circle. The equations contain quadratic, linear, and
+  constant terms representing advection, dissipation, and external forcing.
+  Numerical integration indicates that small errors (differences between
+  solutions) tend to double in about 2 days. Localized errors tend to spread
+  eastward as they grow, encircling the globe after about 14 days.
 
   We have chosen a model with *J* variables, denoted by:
 
@@ -43,14 +52,22 @@ Lorenz and Emmanuel (1998) [2]_ describe the model as:
 
   .. X_{-1}=X_{J-1}, X_0=X_J, \& X_{J+1}=X_1,
 
-  so that the variables form a cyclic chain, and may be looked at as values of some unspecified scalar meteorological quantity, perhaps vorticity or temperature, at *J* equally spaced sites extending around a latitude circle. Nothing will simulate the atmosphere's latitudinal or vertical extent.
+  so that the variables form a cyclic chain, and may be looked at as values of
+  some unspecified scalar meteorological quantity, perhaps vorticity or
+  temperature, at *J* equally spaced sites extending around a latitude circle.
+  Nothing will simulate the atmosphere's latitudinal or vertical extent.
 
-For Lorenz 96, DART advances the model, gets the model state and metadata describing this state, finds state variables that are close to a given location, and does spatial interpolation for model state variables.
+For Lorenz 96, DART advances the model, gets the model state and metadata
+describing this state, finds state variables that are close to a given
+location, and does spatial interpolation for model state variables.
 
 Namelist
 ========
 
-The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists start with an ampersand ``&`` and terminate with a slash ``/``. Character strings that contain a ``/`` must be enclosed in quotes to prevent them from prematurely terminating the namelist.
+The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
+start with an ampersand ``&`` and terminate with a slash ``/``. Character
+strings that contain a ``/`` must be enclosed in quotes to prevent them from
+prematurely terminating the namelist.
 
 .. code-block:: fortran
 
@@ -89,16 +106,25 @@ Terms of Use
 
 |Copyright| University Corporation for Atmospheric Research
 
-Licensed under the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable law or agreed to in writing, software distributed under this license is distributed on an "as is" basis, without warranties or conditions of any kind, either express or implied.
+Licensed under the `Apache License, Version 2.0
+<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
+law or agreed to in writing, software distributed under this license is
+distributed on an "as is" basis, without warranties or conditions of any kind,
+either express or implied.
 
 .. |Copyright| unicode:: 0xA9 .. copyright sign
 
 References
 ==========
 
-.. [1] Lorenz, Edward N., 1996: Predictability: A Problem Partly Solved. *Seminar on Predictability.* **1**, ECMWF, Reading, Berkshire, UK, 1-18.
+.. [1] Lorenz, Edward N., 1996: Predictability: A Problem Partly Solved.
+       *Seminar on Predictability.* **1**, ECMWF, Reading, Berkshire, UK, 1-18.
 
-.. [2] Lorenz, Edward N., and Kerry A. Emanuel, 1998: Optimal Sites for Supplementary Weather Observations: Simulations with a Small Model. *Journal of the Atmospheric Sciences*, **55**, 399-414.
+.. [2] Lorenz, Edward N., and Kerry A. Emanuel, 1998: Optimal Sites for
+       Supplementary Weather Observations: Simulations with a Small Model.
+       *Journal of the Atmospheric Sciences*, **55**, 399-414,
+       `doi:10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2
+       <https://doi.org/10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2>`__
 
 .. |Lorenz 96 cyclic chain| image:: ./images/lorenz_96_cyclic_chain.svg
 
