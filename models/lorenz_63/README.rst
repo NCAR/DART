@@ -13,11 +13,20 @@ Contents
 Overview
 ========
 
-This 3-variable model was described in Lorenz (1963). [1]_ In Lorenz 63, DART advances the model, gets the model state and metadata describing this state, finds state variables that are close to a given location, and does spatial interpolation for model state variables. The distinctive part of the model interface is the `namelist`_.
+This 3-variable model was described in Lorenz (1963). [1]_ In Lorenz 63, DART
+advances the model, gets the model state and metadata describing this state,
+finds state variables that are close to a given location, and does spatial
+interpolation for model state variables. The distinctive part of the model
+interface is the `namelist`_.
 
-Lorenz 63 was developed as a simplified model to study convection rolls in the atmosphere. It is a deceptively simple model -- its formulation is simpler than Lorenz's earlier atmospheric models -- yet it demonstrates chaotic behavior. It has thus become a widely studied model.
+Lorenz 63 was developed as a simplified model to study convection rolls in the
+atmosphere. It is a deceptively simple model -- its formulation is simpler than
+Lorenz's earlier atmospheric models -- yet it demonstrates chaotic behavior. It
+has thus become a widely studied model.
 
-Plotting the location of the *x*, *y*, *z* values as they progress through time traces out the classic 'butterfly' attractor plot which has become an iconic image of chaotic systems:
+Plotting the location of the *x*, *y*, *z* values as they progress through time
+traces out the classic 'butterfly' attractor plot which has become an iconic
+image of chaotic systems:
 
 |Plot of Lorenz 63 attractor|
 
@@ -35,14 +44,21 @@ and, within DART, the constants have default values of:
 
 .. \sigma=10, r=28, b=8/3
 
-that can be altered by editing the ``&model_nml`` `namelist`_ in the ``input.nml`` file.
+that can be altered by editing the ``&model_nml`` `namelist`_ in the
+``input.nml`` file.
 
-This model is an interesting data assimilation test in that different ensemble members may bifurcate over to the other lobe of the attractor on different cycles. Also, as they diverge from each other they do not spread out uniformly in 3D space, but spread along the linear attractor lines.
+This model is an interesting data assimilation test in that different ensemble
+members may bifurcate over to the other lobe of the attractor on different
+cycles. Also, as they diverge from each other they do not spread out uniformly
+in 3D space, but spread along the linear attractor lines.
 
 Namelist
 ========
 
-The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists start with an ampersand ``&`` and terminate with a slash ``/``. Character strings that contain a ``/`` must be enclosed in quotes to prevent them from prematurely terminating the namelist.
+The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
+start with an ampersand ``&`` and terminate with a slash ``/``. Character
+strings that contain a ``/`` must be enclosed in quotes to prevent them from
+prematurely terminating the namelist.
 
 .. code-block:: fortran
 
@@ -95,14 +111,21 @@ Terms of Use
 
 |Copyright| University Corporation for Atmospheric Research
 
-Licensed under the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable law or agreed to in writing, software distributed under this license is distributed on an "as is" basis, without warranties or conditions of any kind, either express or implied.
+Licensed under the `Apache License, Version 2.0
+<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
+law or agreed to in writing, software distributed under this license is
+distributed on an "as is" basis, without warranties or conditions of any kind,
+either express or implied.
 
 .. |Copyright| unicode:: 0xA9 .. copyright sign
 
 References
 ==========
 
-.. [1] Lorenz, Edward N., 1963: Deterministic Nonperiodic Flow. *Journal of the Atmospheric Sciences*, **20**, 130-141.
+.. [1] Lorenz, Edward N., 1963: Deterministic Nonperiodic Flow. *Journal of the
+       Atmospheric Sciences*, **20**, 130-141,
+       `doi:0.1175/1520-0469(1963)020\<0130:DNF\>2.0.CO;2
+       <https://doi.org/10.1175/1520-0469(1963)020\<0130:DNF\>2.0.CO;2>`__
 
 .. |Plot of Lorenz 63 attractor| image:: ./images/lorenz_63_thumb.png
 
