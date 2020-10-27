@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # README: you must denote all observations as 'evaluate only' and turn OFF any/all inflation.
 # To get identical values (to the existing ascii restarts), I had to change the 
 # trunk/models/brid_solo/model_mod.f90 to create the diagnostic variables as nf90_double values 
@@ -158,7 +156,3 @@ mv members.$$.nc filter_input.nc
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

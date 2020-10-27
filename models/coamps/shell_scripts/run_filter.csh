@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # N.B. I have adjusted this to use the advance_wrapper script instead
 #      of the advance_model script as was originally done.  Otherwise,
 #      I haven't messed with anything here.
@@ -132,8 +130,4 @@ endif
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

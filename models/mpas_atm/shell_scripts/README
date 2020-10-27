@@ -1,0 +1,45 @@
+# How to create an initial mpas ensemble
+
+1) If you have access to an ensemble of grib files, then in the
+models/mpas_atm/shell_scripts directory are:
+
+driver_initial_ens.csh
+init_mpas_grib.csh
+
+which will convert an ensemble of grib files to an ensemble
+of mpas files.
+
+2) If you do not have an ensemble of grib files but do have a single
+mpas file (either an initial or a restart file in netcdf), you can 
+create an ensemble with features built into the filter program itself.
+
+Set these parameters in input.nml.
+
+&filter_nml
+perturb_from_single_instance = .true.
+
+&model_nml
+model_perturbation_amplitude = 0.0001  	# set a small but non-zero value
+
+And make sure these parameters in &filter_nml:
+
+input_state_file_list    = 'filter_in.txt'
+output_state_file_list   = 'filter_out.txt'
+
+have your single mpas filename in the filter_in.txt file,
+and have N filenames in the filter_out.txt file, one per
+line for each ensemble member. 
+
+(You can check models/mpas_atm/README for an example.)
+
+A single observation or a small set of observations in the obs sequence
+format can be set up in &filter_nml:
+
+obs_sequence_in_name = 'obs_seq.1obs'
+
+Here the observation time in the obs sequence file should be matched with the 
+model time in the mpas file in 'filter_in.txt'.
+
+Run filter, which will perturb your single mpas file in filter_in.txt for 
+all the states listed as mpas_state_variables in &mpas_vars_nml in your input.nml,
+then write out N ensemble members as listed in filter_out.txt.  
