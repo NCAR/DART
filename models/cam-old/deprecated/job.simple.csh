@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # Top level script to run a single assimilation experiment.
 #
 # Unlike the more complex job.csh, this script only processes a single 
@@ -366,8 +364,4 @@ ls -lrt
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

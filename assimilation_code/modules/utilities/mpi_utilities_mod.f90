@@ -8,11 +8,27 @@
 !> A collection of interfaces to the MPI (Message Passing Interface)
 !> multi-processor communication library routines.
 !>
+!> This file and its companion file, null_mpi_utilities_mod.f90, 
+!> are the only modules in the DART system that should be calling
+!> the MPI library routines directly.  This isolates the MPI calls
+!> and allows programs to swap in the null version to compile the
+!> same source files into a serial program.
+!>
+!> The names of these routines were intentionally picked to be
+!> more descriptive to someone who doesn't the MPI interfaces.
+!> e.g. MPI_AllReduce() may not immediately tell a user what
+!> it does, but broadcast_minmax() is hopefully more helpful.
+!>
+!> If you add any routines or change any arguments in this file
+!> you must make the same changes in the null version.  These two
+!> modules have the same module name and must have identical
+!> public routines and calling formats.
+!>
 !> All MPI routines are called from here.  There is a companion
 !> file which has the same module name and entry points but all
 !> routines are stubs.  This allows a single-task version of the
 !> code to be compiled without the MPI libraries.
-!>
+
 
 module mpi_utilities_mod
 

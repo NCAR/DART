@@ -4,9 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: mkmf_file_utils_test 11289 2017-03-10 21:56:06Z hendric@ucar.edu $
-
-#
 # usage: mkmf_file_utils_test [ -mpi | -nompi ]
 #
 # without any args, builds file_utils_test without mpi libraries, and it will run
@@ -54,13 +51,9 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f path_names_file_utils_test.back
 
-../../../build_templates/mkmf -p file_utils_test -t ../../../build_templates/mkmf.template   \
-        -a "../../.." ${wrapper_arg} path_names_file_utils_test
+      ../../../build_templates/mkmf -p file_utils_test \
+  -t  ../../../build_templates/mkmf.template \
+  -a "../../.." ${wrapper_arg} path_names_file_utils_test
 
 exit $status
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/developer_tests/utilities/work/mkmf_file_utils_test $
-# $Revision: 11289 $
-# $Date: 2017-03-10 14:56:06 -0700 (Fri, 10 Mar 2017) $
 

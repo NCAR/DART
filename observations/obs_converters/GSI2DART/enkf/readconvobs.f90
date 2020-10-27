@@ -16,13 +16,17 @@ module readconvobs
 !
 ! program history log:
 !   2009-02-23  Initial version.
+!   2020-08-26  A little more error handling. Using open_file()
 !
 ! attributes:
 !   language: f95
 !
 !$$$
+
 use kinds, only: r_kind,i_kind,r_single
 use constants, only: one,zero
+use utilities_mod, only: open_file
+
 implicit none
 
 private
@@ -69,8 +73,8 @@ subroutine get_num_convobs(obspath,datestring,num_obs_tot,id)
     if (.not. fexist .or. datestring .eq. '0000000000') then
     obsfile = trim(adjustl(obspath))//"diag_conv_ges."//trim(adjustl(id))
     endif
-    !print *,obsfile
-    open(iunit,form="unformatted",file=obsfile,iostat=ios)
+    !print *,'readconvobs: opening "'//trim(obsfile)//'"'
+    iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
     read(iunit) idate
     !print *,idate
 10  continue
@@ -224,8 +228,8 @@ subroutine get_convobs_data(obspath, datestring, nobs_max, h_x_ensmean, h_xnobc,
   if (.not. fexist .or. datestring .eq. '0000000000') then
   obsfile = trim(adjustl(obspath))//"diag_conv_ges."//trim(adjustl(id))
   endif
-  !print *,obsfile
-  open(iunit,form="unformatted",file=obsfile,iostat=ios)
+  !print *,'readconvobs: opening "'//trim(obsfile)//'"'
+  iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
   read(iunit) idate
   !print *,idate
   if(twofiles) then
@@ -234,7 +238,8 @@ subroutine get_convobs_data(obspath, datestring, nobs_max, h_x_ensmean, h_xnobc,
     if (.not. fexist .or. datestring .eq. '0000000000') then
     obsfile2 = trim(adjustl(obspath))//"diag_conv_ges."//trim(adjustl(id2))
     endif
-    open(iunit2,form="unformatted",file=obsfile2,iostat=ios)
+    !print *,'readconvobs: opening "'//trim(obsfile2)//'"'
+    iunit2 = open_file(obsfile2,form='unformatted',action='read',convert='BIG_ENDIAN')
     read(iunit2) idate
    end if
 10 continue
@@ -452,9 +457,9 @@ subroutine get_convobs_data(obspath, datestring, nobs_max, h_x_ensmean, h_xnobc,
           ! ob minus un-bias-corrected background (individ members)
           h_xnobc(nob) = rdiagbuf(17,n)-rdiagbuf2(19,n)
          !h_xnobc(nob) = rdiagbuf(17,n)-rdiagbuf2(19,n) ! - ( rdiagbuf(18,n) - rdiagbuf(19,n)) ! CSS added last term in parentheses to give mean bias correction to member
-          write(6,*) 'CSS B1 = ',h_x_ensmean(nob) - ( rdiagbuf(17,n)-rdiagbuf(19,n) ) ! CSS
-          write(6,*) 'CSS B2 = ',h_x_ensmean(nob) / ( rdiagbuf(17,n)-rdiagbuf(19,n) ) ! CSS
-          write(6,*) 'CSS mean no BC  = ',rdiagbuf(19,n)
+!         write(6,*) 'CSS B1 = ',h_x_ensmean(nob) - ( rdiagbuf(17,n)-rdiagbuf(19,n) ) ! CSS
+!         write(6,*) 'CSS B2 = ',h_x_ensmean(nob) / ( rdiagbuf(17,n)-rdiagbuf(19,n) ) ! CSS
+!         write(6,*) 'CSS mean no BC  = ',rdiagbuf(19,n)
        enddo
        deallocate(cdiagbuf,rdiagbuf,rdiagbuf2)
        if(twofiles)deallocate(cdiagbuf2)

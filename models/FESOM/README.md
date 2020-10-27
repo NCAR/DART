@@ -1,3 +1,8 @@
+
+<span id="TOP" class="anchor"></span>
+
+![DARTlogo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
+
 ## **Finite Element Sea-ice Ocean Model (FESOM)**
 
 FESOM is an unstructured mesh global ocean model using finite element methods to solve the

@@ -1,0 +1,252 @@
+# Example HydroDart Experiment Config file.
+#
+# Purpose: collect ALL relevant information to a HydroDart experiment.
+#
+# There are top-level keys for differen phases of the experiment setup
+# and run.
+# Build Phase: dart and wrf_hydro.
+# Experiment setup phase: experiment.
+# Ensemble construction phase: ensemble.
+# Run Phase: run.
+
+modules: ## !!!  NOT currently in use: make sure your modules match
+         ##      your mkmf_template and your compiler choices below.
+  # TODO (JLM): The compiler specs for wrf-hydro and dart could be solved from the
+  # modules at some later date. 
+
+  
+dart:
+  use_existing_build: True
+  # Absolute path required
+  dart_src: /home/docker/wrf_hydro_dart
+  fork: ## !!! NOT currently in use
+  commit: ## !!! NOT currently in use
+  mkmf_template: mkmf.template.gfortran #_5.4.0_docker
+  mpi: True
+  build_dir: dart_build
+  work_dirs: ['models/wrf_hydro/work', 'observations/obs_converters/USGS/work/']
+
+
+wrf_hydro:
+  use_existing_build: True
+  # Absolute path required:
+  wrf_hydro_src: /home/docker/wrf_hydro_nwm_public_copy
+  fork:   ## !!! NOT currently in use
+  commit: ## !!! NOT currently in use
+  model_config: nwm_channel-only
+  compiler: gfort
+  compile_options: {'WRF_HYDRO_NUDGING': 0}
+  build_dir: wrf_hydro_build
+  # Absolute path required: 
+  domain_src: /home/docker/sixmile
+  domain_version: v1.2.1
+  
+
+experiment:
+  tag: sixmile_test
+  # Location where the experiment is established (small storage, not scratched)
+  # Absolute path required
+  experiment_dir: /home/docker/wrfhydro_dart/sixmile/experiments/test_d
+  experiment_dir_mode: 'w'   ## !!! May NOT be in use
+  # Location of where filter and the ensemble are run. (large storage, potentially scratched)
+  # Absolute path required
+  run_dir: /home/docker/wrfhydro_dart/sixmile/runs/test_d
+  run_dir_mode: 'w'  ## !!! May NOT be in use
+  # TODO(JLM): The initial ensemble size controls the number of members?? or not?
+  # TODO(JLM): what are the format requirements here?
+  # Absolute path required
+
+
+# ensemble_construction
+ensemble:
+  # Number of cores to use when constructing the ensemble.
+  ncores_setup: 4
+  # Should the size be taken from the initial_ens or is this allowed
+  # as a double check?
+  size: 8
+  # A python script which constructs the ensemble from a single member
+  # specified in the wrf_hydro options.
+  constructor: ens_setup_files/ens_setup_NWM_channel-only.py
+
+
+# How is the initial ensemble created?  
+initial_ens:
+  path: /home/docker/wrfhydro_dart/sixmile/initial_ens/test_d
+  param_restart_file:
+    # TODO(JLM): change this to use_existing for consistency
+    create: False
+    # If mode 'r' will create if does not exist. If mode 'w' will overwrite.
+    mode: 'r'   ## !!! May NOT be in use
+    # The following default to the restart files provided in the domain.
+    hydro_rst: 
+    restart:
+    existing_variables: [qlink1,  qlink1]
+    new_variables: [qBucketMult,  qSfcLatRunoffMult]
+    values: [1, 1]
+  from_filter:
+    # Optionally create the inital ensemble from filter perturbation + advance.
+    # This will use the same ensemble constructed by set
+    # If there is an from_filter/ dir in inital_ens:path: then inflation files are added to
+    # the run_dir.
+    # TODO(JLM): change this to use_existing for consistency
+    create: False
+    # If use is True, then consistency checks between the initial
+    # ensemble and the experiment are performed.
+    # TODO(JLM): rename use to "use_domain_order_shp" or something ?
+    use: True
+    mode: 'r'   ## !!! May NOT be in use
+    input_nml:
+      filter_nml:
+        perturb_from_single_instance: [true]
+        inf_flavor: [5, 0]
+        inf_initial: [1.0, 1.0]
+        inf_sd_initial: [0.6, 0.6]
+        inf_sd_lower_bound: [0.6, 0.6]
+        inf_damping: [0.9, 0.9]
+        inf_initial_from_restart: [false, false]
+        inf_sd_initial_from_restart: [false, false]
+        # In input_state_file_list, the fields are NOT simply patched:
+        input_state_file_list:
+          # The fields here are the files to be spcified in a this list (for each domain,
+          # in domain order). The values to each specifies the CONTENTS of the text files,
+          # which are the full paths to the appropriate domains' restart files, the files
+          # are created during the setup process.
+          # If blank: the restarts in the wrf_hydro config/domain are used (unless channel-only).
+          restart_file_list.txt:
+          # If blank: the restarts in the wrf_hydro config/domain are used.
+          hydro_file_list.txt:
+          # If param_restart_file:create is True, then the created parameter file is used here.
+          # If you specify one here, do not also create one above.
+          param_file_list.txt: 
+          # The resulting output files are in intial_ens:path/member_iii/.
+          # The following input.nml namelist fields should not be edited...
+          # Depending on domain order and incluusion, something like the following:
+          # output_state_file_list:'restarf_file_list.txt', 'hydro_file_list.txt', 'param_file_list.txt'
+          # perturb_from_single_instance: <forcibly true>
+          # num_output_state_members: <should be the ensemble size>
+      model_nml:
+        model_perturbation_amplitude: 0.1
+        perturb_distribution: 'lognormal'
+        # Do not specify input_state_file_list, domain_order, or domain_shapefiles.
+        # These are handled by the values passed to input_nml:filter_nml:input_state_file_list
+  advance:
+    end_time:
+      
+
+# The fields under the top level must be listed in dart:observations: above.
+observation_preparation:
+  all_obs_dir: /home/docker/wrfhydro_dart/sixmile/obs_seqs/test_d
+  USGS_daily:
+    prepare: False
+    identity_obs: True
+    input_dir: /home/docker/sixmile/NWM/nudgingTimeSliceObs/
+    output_dir: /home/docker/wrfhydro_dart/sixmile/obs_seqs/test_d/USGS
+    # Date range in YYYY-mm-dd format
+    start_date: 2013-06-01
+    end_date:   2013-07-01
+    # A list of gages can be given in the following which will be written to the file.
+    # If a string is given, that indicates a file to use which will be symlinked into
+    # place for reference.
+    wanted_gages: ['04233286', '04233300', '04234000']   
+    input_nml_patches:
+      create_identity_streamflow_obs_nml:
+        # input_files: handled internally using input_dir and start and end dates above.
+        # location_file: handled internally.
+        # gages_list_file: handled by wanted gages above.
+        # The following patches are applied directly.
+        obs_fraction_for_error: 0.17
+        debug: 1
+    scheduler:
+      # ppn is the number of processors per node. This is required to be correct.
+      ppn: 4
+      account: 'NRALxxxx'
+      walltime: '00:10'
+      job_name: '6mile_obs_prep' #_{model_start_time_str}'
+      queue: 'regular'
+      email_when: 'abe'
+      email_who: ${USER}@ucar.edu    
+
+          
+##################################
+    
+run_experiment: 
+  
+  time:
+    end_time: 2013-10-01_00:00 ## Format: %Y-%m%d_%H:%M
+    advance_model_hours: 1  ## TODO (JLM): check for next ob when actually setting this.
+    assim_window:
+      use_input_nml: False
+      assim_window_size_hours: 1
+    submit_all_jobs: False  ## not currently used.
+    
+  wrf_hydro_ens_advance:
+    # With filter means that the model advance happens with the filter under
+    # a single scheduled job. This is meant for models of small-med size. In
+    # that case only nproc is used below and floor((ppn_max-1)/nproc) members
+    # are advanced simultaneously where ppn_max is set in run_experiment:dart:scheduler.
+    # These fields (of dart:scheduler:) are used for the scheduling.
+    with_filter: True
+    # The mpi command for the model. can use {nproc} and {exe_name} to use those
+    # internal variables.
+    exe_cmd: 'mpirun -np {nproc} ./{exe_name}'
+    # On cheyenne often need:
+    # exe_cmd: 'mpirun `hostname` -np {nproc} ./{exe_name}'
+    # The number of mpi processes for each model advance
+    nproc: 1
+    nnodes: 1
+    account: NRALxxxx
+    walltime: '00:01'
+    # TODO(JLM) Currently this is hard-coded:
+    job_name: ens_adv
+    queue: regular
+    email_when: abe
+    email_who: ${USER}@ucar.edu
+    
+  perturb_forcing:
+    perturb: True
+    # Absolute path required
+    noise_function_files: [
+    '/home/docker/wrf_hydro_dart/models/wrf_hydro/python/perturb_channel_only_forcing.py',
+    '/home/docker/wrf_hydro_dart/models/wrf_hydro/python/noise_qBucket_additive.py',
+    '/home/docker/wrf_hydro_dart/models/wrf_hydro/python/noise_qSfcLatRunoff_additive.py']
+    noise_cmd: 'python perturb_channel_only_forcing.py --source_forcing_dir FORCING_channel-only --perturb_forcing_dir FORCING_perturbed --qsfclat_perturb_func noise_qSfcLatRunoff_additive.py --qbucket_perturb_func noise_qBucket_additive.py'
+
+  dart:
+    # incliuding obs_sequence_tool in exes will subset the obs_seq files.
+    exes: ['filter','obs_sequence_tool']
+    scheduler: 
+      nproc: 2
+      nnodes: 1
+      ppn_max: 4
+      account: NRALxxxx
+      walltime: '11:51'
+      job_name: 6mile_filter #_{model_start_time_str}'
+      queue: premium
+      email_when: "abe"
+      email_who: ${USER}@ucar.edu
+    input_nml_patches:
+      filter_nml:
+        inf_flavor: [5, 0]
+        inf_initial: [1.0, 1.0]
+        inf_lower_bound: [0.0, 0.0]
+        inf_sd_initial: [0.6, 0.6]
+        inf_sd_lower_bound: [0.6, 0.6]
+        inf_damping: [0.9, 0.9]
+        inf_sd_max_change: [1.05, 1.05]
+        inf_initial_from_restart: [true, false]
+        inf_sd_initial_from_restart: [true, false]
+        #input_state_file_list: 'hydro_file_list.txt'
+        #output_state_file_list: 'hydro_file_list.txt' 
+      model_nml:
+        max_link_distance: 4000.0
+        # domain_order and domain_shapefiles are made consistent with the initial ensemble
+        # when initial_ens: from_filter: use is True.
+        # domain_order: 'hydro'
+        # domain_shapefiles: 'restart.hydro.nc'
+        # input_state_file_list and output_state_file_list conventions in
+        # are used in run_filter_experiment:
+        #Note the name and order convention for the state file lists:
+        # 1) hydro_file_list.txt  2) lsm_file_list.txt  3) param_file_list.txt
+
+      assim_tools_nml:
+        cutoff: 0.0003139  # 0.5*the max. reach length specified in model_nml 

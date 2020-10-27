@@ -1,0 +1,77 @@
+
+dart:
+  dart_src: /glade/u/home/${USER}/WRF_Hydro/wrf_hydro_dart/
+  build_dir: dart_build
+
+
+wrf_hydro:
+  model_config: dart_nwm_channel-only
+  domain_src: /glade/work/jamesmcc/domains/private/florence
+
+
+experiment:
+  experiment_dir: /glade/work/${USER}/wrfhydro_dart/florence/experiments/test1
+  run_dir: /glade/scratch/${USER}/wrfhydro_dart/florence/runs/test1
+
+
+observation_preparation:
+  all_obs_dir: /glade/work/${USER}/wrfhydro_dart/florence/obs_seqs/test1
+  USGS_daily:
+    prepare: True
+    identity_obs: True
+    input_dir: /glade/work/jamesmcc/domains/private/florence/NWM/nudgingTimeSliceObs/
+    output_dir: /glade/work/${USER}/wrfhydro_dart/florence/obs_seqs/test1_more/USGS
+    # Date range in YYYY-mm-dd format
+    start_date: 2018-09-27
+    end_date:   2018-10-30
+    # A list of gages can be given in the following which will be written to the file.
+    # If a string is given, that indicates a file to use which will be symlinked into
+    # place for reference.
+    wanted_gages: [
+        "0208732534", "0208735012", "02093877", "02102908", 
+        "02101800", "02094659", "02094775", "02096846", "02124692", "02071530", 
+        "0208524090", "0208675010", "0210166029", "02095181", "0209722970", 
+        "02097464", "0208732885", "02097280", "0209782609", "0209399200", 
+        "02077200", "02099000", "02095271", "0209734440", "02093800", 
+        "02084160", "02087580", "02094770", "02069700", "02086849", "02114450", 
+        "02079640", "02095500", "02097517", "02070000", "02053500", "0208925200", 
+        "0208758850", "02102192", "02095000", "02093000", "02077670", 
+        "0208521324", "02085000", "02070500", "02087359", "02068500", 
+        "02086624", "02104220", "0208111310", "02101726", "0209553650", 
+        "0212433550", "02072000", "0208524975", "02132320", "02130840", 
+        "02077303", "02121500", "02082950", "02091000", "02088383", "02072500", 
+        "02085500", "0209741955", "02128000", "02074500", "02092500", 
+        "0208726005", "02053200", "02081500", "02086500", "02130900", 
+        "02085070", "02087275", "02051190", "0208773375", "02088000", 
+        "02087324", "02094500", "02133500", "02090380", "02073000", "02130910", 
+        "02134480", "02126000", "02081747", "02109500", "02077000", "02088500", 
+        "02069000", "02051500", "02103000", "02083000", "02097314", "02074000", 
+        "02096500", "02082770", "02133624", "02087183", "02110500", "02100500", 
+        "02131500", "02071000", "02130980", "02052000", "02081942", "02049500", 
+        "02110550", "02108000", "02052090", "02134170", "02091500", "0208250410", 
+        "02050000", "02087500", "02047000", "02082585", "02115360", "02075045", 
+        "02083500", "02134500", "02132000", "02096960", "02106500", "02047370", 
+        "02136000", "02116500", "02098206", "02089000", "02102000", "02075500", 
+        "02076000", "02089500", "0212378405", "02102500", "02129000", 
+        "02135000", "02105500", "02080500", "02130561", "02105769", "02131000", 
+        "02131010"
+    ]
+    input_nml_patches:
+      create_identity_streamflow_obs_nml:
+        # input_files: handled internally using input_dir and start and end dates above.
+        # location_file: handled internally.
+        # gages_list_file: handled by wanted gages above.
+        # The following patches are applied directly.
+        obs_fraction_for_error: 0.17
+        debug: 1
+    # The converters are not compiled with MPI.
+    exe_cmd: '{cmd} >& converter.stdeo'
+    scheduler:
+      ncpus: 36
+      mpiprocs: 36
+      account: 'NRALxxxx'
+      walltime: '00:40'
+      job_name: 'florence_obs_prep' #_{model_start_time_str}'
+      queue: 'premium'
+      email_when: "abe"
+      email_who: ${USER}@ucar.edu    

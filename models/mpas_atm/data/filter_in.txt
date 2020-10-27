@@ -1,0 +1,2 @@
+member1/init.nc
+member2/init.nc

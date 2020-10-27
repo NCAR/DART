@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # test_dart.csh can be run from the command line or a batch system.
 #               This compiles many of the programs (but not all) and
 #               runs a limited number of tests.
@@ -45,6 +43,7 @@
 #PBS -l walltime=03:00:00
 #PBS -A P86850054 
 #PBS -j oe
+#PBS -k eod
 #PBS -m ae
 #
 # for mpi tests:
@@ -115,6 +114,11 @@ echo "The top-level DART directory is $DARTHOME"
 
 git status -uno
 
+# maybe report on the environment 
+which module
+if ($status == 0) then
+   module list
+endif
 
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
@@ -170,7 +174,7 @@ echo "are not fatal."
 
 cd ${DARTHOME}/observations/obs_converters
 
-./run_tests.csh
+./run_tests.csh $MPIFLAG -mpicmd "$MPICMD"
 
 echo
 echo
@@ -237,9 +241,4 @@ echo
 echo
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

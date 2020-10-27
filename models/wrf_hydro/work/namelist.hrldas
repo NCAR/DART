@@ -1,0 +1,73 @@
+&NOAHLSM_OFFLINE
+
+ HRLDAS_CONSTANTS_FILE = "./DOMAIN/wrfinput_d01_1km"
+ INDIR = "../FORCING/"
+ ! OUTDIR = 
+
+ !MMF_RUNOFF_FILE = "/raid/weiyu/HRLDAS_V3.5_wrk/data/wrfleafxyz_d01.nc"
+
+ START_YEAR  = 2012
+! START_YEAR  = 2012
+ START_MONTH = 07
+ START_DAY   = 03
+ START_HOUR  = 00
+ START_MIN   = 00
+
+ RESTART_FILENAME_REQUESTED  = 'restart.nc'
+
+! KDAY = 183
+! KDAY = 1
+! KDAY = 1
+  KHOUR = 1
+
+ DYNAMIC_VEG_OPTION                = 4
+ CANOPY_STOMATAL_RESISTANCE_OPTION = 1
+ BTR_OPTION                        = 4
+ RUNOFF_OPTION                     = 3
+ SURFACE_DRAG_OPTION               = 1
+ FROZEN_SOIL_OPTION                = 1
+ SUPERCOOLED_WATER_OPTION          = 1
+ RADIATIVE_TRANSFER_OPTION         = 3
+ SNOW_ALBEDO_OPTION                = 2
+ PCP_PARTITION_OPTION              = 1
+ TBOT_OPTION                       = 1
+ TEMP_TIME_SCHEME_OPTION           = 1
+
+ FORCING_TIMESTEP    = 3600
+ NOAH_TIMESTEP       =  3600
+ !!- 12hr*3600sec/hr = 3600
+ OUTPUT_TIMESTEP     = 3600
+
+ RESTART_FREQUENCY_HOURS = 1
+ ! Split output after split_output_count output times.
+ SPLIT_OUTPUT_COUNT = 1
+
+
+ NSOIL=4
+ soil_thick_input(1) = 0.10
+ soil_thick_input(2) = 0.30
+ soil_thick_input(3) = 0.60
+ soil_thick_input(4) = 1.00
+
+ ZLVL = 15.0
+! ZLVL = 30.0
+
+!Specification of forcing data:  1=HRLDAS-hr format, 2=HRLDAS-min format, 3=WRF, 
+!4=Idealized, 5=Ideal w/ Spec.Precip., 6=HRLDAS-hrl y format w/ Spec. Precip ,
+!7=WRF w/Spec. Precip
+ FORC_TYP = 1
+
+! for extract greenfrac
+ GEO_STATIC_FLNM = "../DOMAIN/geo_em.d01.nc.4mile_1km.nc"
+
+!HRLDAS_ini_typ 1: initial and parameters from frocing; 0: from wrfinput.
+ HRLDAS_ini_typ = 1
+
+ SNOW_assim = 0
+
+/
+
+&URBAN_OFFLINE
+ UCMCALL = 0
+ ZLVL_URBAN = 15.0
+/

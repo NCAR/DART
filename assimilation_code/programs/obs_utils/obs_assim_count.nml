@@ -1,4 +1,10 @@
 &obs_assim_count_nml
-   filename_in = ''
-   calendar = 'GREGORIAN'
-/
+   obs_sequence_name = 'obs_seq.final', 
+   obs_sequence_list = '', 
+   calendar = 'Gregorian'
+   stats_by_obs_type = .false.
+   counts_only = .false.
+   output_file = ''
+   print_metadata = .false.
+   print_time_info = .true.
+   /
