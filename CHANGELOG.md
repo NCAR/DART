@@ -15,8 +15,8 @@ to inform people what features are now available or have been removed.
 Detailed changes are always available through the version control framework.
 
 DART now uses Git for version control but has preserved the revision history
-from when subversion (and CVS before that). The previous revision numbers can 
-be related to git hashes by searching the output of `git log`
+from when subversion (and CVS before that) was used. The previous revision numbers
+can be related to git hashes by searching the output of `git log`
 
 ```
 0[1011] machine:dartGIT % git log > full_git_log.txt
