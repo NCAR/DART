@@ -30,7 +30,9 @@ The Revision numbers can be related to git hashes by searching the output of
     - WRF, MPAS, and CAM-FV model interfaces now support radiance assimilation.
     - Added GOES 16-19 ABI converter
 
-- *NOTE* The `build_templates/mkmf.template` file has been removed from version control. You must now explicitly copy the best example `mkmf.template` into place before compiling. If there is no `mkmf.template` when you try to build, an error message is displayed.
+- *_NOTE_*: The `build_templates/mkmf.template` file has been removed from version control. You must now explicitly copy the best example `mkmf.template` into place before compiling. If there is no `mkmf.template` when you try to build, an error message is displayed.
+
+- MPAS regional configurations now supported.
 
 - Converted CHANGELOG to a markdown document, put newest content at top.
 
@@ -56,13 +58,13 @@ The Revision numbers can be related to git hashes by searching the output of
 - `obs_def_tower_mod.f90` was refactored into `obs_def_tower_mod.f90` and `obs_def_land_mod.f90`.
 
 - WRF-Chem/DART documentation and datasets have been updated for Manhattan.
-  [WRF-Chem contact information](https://dart.ucar.edu/pages/Models.html#wrf-chem)
+  [WRF-Chem contact information.](https://dart.ucar.edu/pages/Models.html#wrf-chem)
 
 - Fixed bug in `obs_seq_to_netcdf` to correctly append to existing netCDF files.
     
 - Support absolute humidity observations - thanks to Michael Ying.
 
-- QTY_2M_VAPOR_MIXING_RATIO is added in DEFAULT_obs_kind_mod.F90 and shell-scripts are cleaned up.
+- `DEFAULT_obs_kind_mod.F90` has many added quantities.
 
 - new observation converters including (but not limited to):
    - absolute humidity
@@ -70,6 +72,22 @@ The Revision numbers can be related to git hashes by searching the output of
    - streamflow observations from the USGS
    - total water storage observations from GRACE
    - radiance observations from GOES
+
+- the following forward operator modules are either new or modified:
+   - (M) `observations/forward_operators/DEFAULT_obs_def_mod.F90`
+   - (M) `observations/forward_operators/obs_def_GRACE_mod.f90`
+   - (A) `observations/forward_operators/obs_def_abs_humidity_mod.f90`
+   - (M) `observations/forward_operators/obs_def_altimeter_mod.f90`
+   - (A) `observations/forward_operators/obs_def_land_mod.f90`
+   - (A) `observations/forward_operators/obs_def_mesonet_mod.f90`
+   - (M) `observations/forward_operators/obs_def_oxygen_ion_density_mod.f90`
+   - (M) `observations/forward_operators/obs_def_reanalysis_bufr_mod.f90`
+   - (M) `observations/forward_operators/obs_def_rel_humidity_mod.f90`
+   - (A) `observations/forward_operators/obs_def_rttov_mod.f90`
+   - (A) `observations/forward_operators/obs_def_streamflow_mod.f90`
+   - (M) `observations/forward_operators/obs_def_tower_mod.f90`
+   - (M) `observations/forward_operators/obs_def_upper_atm_mod.f90`
+   - (A) `observations/forward_operators/rttov_sensor_db.csv`
 
 - `fill_inflation_restart` now correctly creates inflation values for all variables in the DART state, regardless of the setting of the `no update` metadata.
     
