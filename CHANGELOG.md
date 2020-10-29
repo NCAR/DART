@@ -23,6 +23,66 @@ The Revision numbers can be related to git hashes by searching the output of
 ## The changes are now listed with the most recent at the top.
 
 ------------------------------------------------------------------------------
+## Oct 29 2020 :: radiance support, MPAS, obs converters           Tag: v9.9.0
+
+- Use RTTOV (Radiative Transfer for TOVS) routines to support radiance assimilation.
+    - [Introduction to DART support for RTTOV](https://dart.ucar.edu/pages/Radiance_support.html)
+    - WRF, MPAS, and CAM-FV model interfaces now support radiance assimilation.
+    - Added GOES 16-19 ABI converter
+
+- *NOTE* The `build_templates/mkmf.template` file has been removed from version control. You must now explicitly copy the best example `mkmf.template` into place before compiling. If there is no `mkmf.template` when you try to build, an error message is displayed.
+
+- Converted CHANGELOG to a markdown document, put newest content at top.
+
+- Converted many HTML documents to markdown
+   - renamed `observations/obs_converters/observations.html` to `observations/obs_converters/README.md` for example.
+
+- [Updated Publications](https://dart.ucar.edu/pages/Publications.html)
+
+- declare hexadecimal constants according to the Fortran standard.
+
+- GSI2DART converter updated - thanks to Craig Schwartz & Jamie Bresch.
+    
+- The WRF-DART tutorial has been rewritten as `models/wrf/tutorial/README.md`
+
+- Hydro-DART (AKA wrf-hydro/DART) has been updated to be Manhattan-compliant.
+    - also support masked bucket
+    - added perturbed forcing capability
+
+- The support for POP and CESM2 has been implemented and documented.
+
+- `obs_diag` now correctly handles the special case when the observation is properly assimilated or evaluated but the posterior forward operator fails. The posterior DART QC in the `obs_diag_output.nc` should be a '2', not a '4'. The prior DART QC value in obs_diag_output.nc can still be a 7 if need be.
+
+- `obs_def_tower_mod.f90` was refactored into `obs_def_tower_mod.f90` and `obs_def_land_mod.f90`.
+
+- WRF-Chem/DART documentation and datasets have been updated for Manhattan.
+  [WRF-Chem contact information](https://dart.ucar.edu/pages/Models.html#wrf-chem)
+
+- Fixed bug in `obs_seq_to_netcdf` to correctly append to existing netCDF files.
+    
+- Support absolute humidity observations - thanks to Michael Ying.
+
+- QTY_2M_VAPOR_MIXING_RATIO is added in DEFAULT_obs_kind_mod.F90 and shell-scripts are cleaned up.
+
+- new observation converters including (but not limited to):
+   - absolute humidity
+   - streamflow observations from the Mexican water agency
+   - streamflow observations from the USGS
+   - total water storage observations from GRACE
+   - radiance observations from GOES
+
+- `fill_inflation_restart` now correctly creates inflation values for all variables in the DART state, regardless of the setting of the `no update` metadata.
+    
+- GITM is now fully Manhattan compliant.
+
+- fix bug in madis rawin converter
+
+- avoid computing posterior inflation if using the 'relaxation to prior spread' inflation option 
+
+- add additional reporting options to the `obs_assim_count` utility
+
+
+------------------------------------------------------------------------------
 ## Nov 20 2019 :: FESOM,NOAH-MP model support, better testing       Tag: v9.8.0
 
 - first release entirely from GIT

@@ -51,6 +51,7 @@ observations of these systems. Or at least, we like to think so ...
    [FESOM](#fesom)
    [NOAH-MP](#noah-mp)
    [WRF-Hydro](#wrf-hydro) 
+   [wrf-chem](#wrf-chem)
    [gitm](#gitm)
    [null](#null) 
 
@@ -72,7 +73,6 @@ observations of these systems. Or at least, we like to think so ...
    [parflow](#parflow)
    [sqg](#sqg) 
    [tiegcm](#tiegcm)
-   [wrf-chem](#wrf-chem)
 
 ### Models that were used a long time ago (these may not take that much work to revive):
    [ECHAM](#ECHAM)
@@ -365,17 +365,21 @@ for key land-atmosphere interaction processes
 
 ### WRF-HYDRO
 
-The WRF-Hydro assimilation support has its own (private) GitHub repository
-[NCAR/wrf_hydro_dart](https://github.com/NCAR/wrf_hydro_dart) that supports
+The WRF-Hydro assimilation has been fully integrated. 
+DART support for WRF-Hydro is extensively used for
 the channel-only configuration of WRF-Hydro. Originally, this was almost
 entirely the work of **James McCreight** of NCAR's Research Applications
 Laboratory (RAL). The DAReS team has been working with RAL to incorporate new
 features such as localization restricted to watersheds, new inflation algorithms
 and variable transformations that provide much better results when assimilating
 non-gaussian quantities such as streamflow.
-The private wrf_hydro_dart repository
-is expected to be released in a public version very soon.
 
+<span id="wrf-chem" class="anchor"></span>
+
+### WRF-CHEM
+
+Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
+If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
 <span id="gitm" class="anchor"></span>
 
 ### GITM
@@ -569,13 +573,6 @@ DART/TIEGCM has been used to assimilate neutral mass density retrieved from
 satellite-borne accelerometers and electon density obtained from ground-based
 and space-based GNSS signals. TIEGCM2 is not yet supported, and the existing
 interfaces need to be updated to work under the Manhattan release.
-
-<span id="wrf-chem" class="anchor"></span>
-
-### WRF-CHEM
-
-Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
-If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
 
 \[[top](#)\]
 
