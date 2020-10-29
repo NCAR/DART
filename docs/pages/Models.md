@@ -403,7 +403,7 @@ random draw from a Gaussian, or combinations of the two.
 
 <span id="models_in_progress" class="anchor"></span>  
 
-## Models that are supported by DART Classic (*Lanai*) and could be ported to the Manhattan release if needed.
+## Models that are supported by DART Lanai (or Classic) and could be ported to the Manhattan release if needed.
 
 <span id="GCCOM" class="anchor"></span>
 

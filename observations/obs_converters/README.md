@@ -54,7 +54,7 @@ entire *obs\_seq* file in the correct format.
 The DART system comes with several types of location modules for
 computing distances appropriately. Two of the ones most commonly used
 are for data in a 1D system and for data in a 3D spherical coordinate
-system. All the programs here assume the
+system. Most of the programs here assume the
 *location/threed\_sphere/location\_mod.f90* 3D sphere location module is
 being used.
 

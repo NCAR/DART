@@ -975,6 +975,14 @@ Also see
   to be exercised with the new naming conventions.
 
 ------------------------------------------------------------------------------
-## MMM DD YYYY :: summary of changes in next update       Tag: vX.Y.Z
+## ancient history 
+
+To see previous history, it is probably best to use 
+
+- `git log --follow` 
+- `git diff --name-status XXXX YYYY` where XXXX and YYYY are commits, branches, ...
+
+or something along those lines.
+
 
 
