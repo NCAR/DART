@@ -972,9 +972,4 @@ Also see
 ------------------------------------------------------------------------------
 ## MMM DD YYYY :: summary of changes in next update       Tag: vX.Y.Z
 
-- 
-
-- Converted CHANGELOG to a markdown document.
-
-- Converted `observations/obs_converters/observations.html` to `observations/obs_converters/README.md`
 
