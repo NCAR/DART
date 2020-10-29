@@ -14,11 +14,16 @@ It is not intended to document every change, but instead is intended
 to inform people what features are now available or have been removed.
 Detailed changes are always available through the version control framework.
 
-The Revision numbers can be related to git hashes by searching the output of
-`git log`
+DART now uses Git for version control but has preserved the revision history
+from when subversion (and CVS before that). The previous revision numbers can 
+be related to git hashes by searching the output of `git log`
+
 ```
 0[1011] machine:dartGIT % git log > full_git_log.txt
 ```
+
+A reminder that since many files were moved or renamed, the best way to get the complete
+log is to use `git log --follow` for information on individual files.
 
 ## The changes are now listed with the most recent at the top.
 
