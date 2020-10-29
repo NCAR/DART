@@ -403,7 +403,7 @@ random draw from a Gaussian, or combinations of the two.
 
 <span id="models_in_progress" class="anchor"></span>  
 
-## Models that are supported by DART Classic and could be ported to the Manhattan release if needed.
+## Models that are supported by DART Classic (*Lanai*) and could be ported to the Manhattan release if needed.
 
 <span id="GCCOM" class="anchor"></span>
 
@@ -428,7 +428,6 @@ From the LMDZ homepage:
 > includes various variants for the Earth and other planets (Mars,
 > Titan, Venus, Exoplanets). The 'Z' in LMDZ stands for "zoom"
 > (and the 'LMD' is for  'Laboratoire de Météorologie Dynamique").
-
 
 <span id="MITgcm_ocean" class="anchor"></span>
 
@@ -466,7 +465,6 @@ water and carbon between the land surface and the atmosphere and to
 model the major biogeochemical cycles of the land ecosystem. The DART
 interfaces for the standalone version of CABLE have preliminary support
 and needs to be updated to be consistent with the Manhattan release.
-
 
 <span id="cam-se" class="anchor"></span>
 
