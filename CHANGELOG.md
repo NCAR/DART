@@ -48,7 +48,7 @@ log is to use `git log --follow` for information on individual files.
 
 - declare hexadecimal constants according to the Fortran standard.
 
-- GSI2DART converter updated - thanks to Craig Schwartz & Jamie Bresch.
+- GSI2DART converter updated - Thanks to **Craig Schwartz** & **Jamie Bresch**.
     
 - The WRF-DART tutorial has been rewritten as `models/wrf/tutorial/README.md`
 
@@ -67,7 +67,7 @@ log is to use `git log --follow` for information on individual files.
 
 - Fixed bug in `obs_seq_to_netcdf` to correctly append to existing netCDF files.
     
-- Support absolute humidity observations - thanks to Michael Ying.
+- Support absolute humidity observations - Thanks to **Michael Ying**.
 
 - `DEFAULT_obs_kind_mod.F90` has many added quantities.
 
@@ -100,7 +100,7 @@ log is to use `git log --follow` for information on individual files.
 
 - fix bug in madis rawin converter
 
-- avoid computing posterior inflation if using the 'relaxation to prior spread' inflation option 
+- avoid computing posterior inflation if using the 'relaxation to prior spread' inflation option -- Thanks to **Craig Schwartz**.
 
 - add additional reporting options to the `obs_assim_count` utility
 
@@ -158,7 +158,7 @@ log is to use `git log --follow` for information on individual files.
   archiving and compression
 
 - fix for WRF's wind direction vectors when using the Polar Stereographic
-  map projection.  Thanks to *Kevin Manning* for the fix.
+  map projection.  Thanks to **Kevin Manning** for the fix.
 
 - Add filter namelist option to avoid calling the posterior forward operators
   and to not create those copies in the `obs_seq.final` file.
@@ -536,7 +536,7 @@ longitude interpolation in grids that cross the 360/0 line.
 ## July 7th 2017 :: cam-fv, mpas_atm scripts, single file i/o.  Revision: 11807
 
 - **mpas_atm**: scripts completely revised for the Manhattan release.
-  Many thanks to *Soyoung Ha* and *Ryan Torn* for the contributed code.
+  Many thanks to **Soyoung Ha** and **Ryan Torn** for the contributed code.
 
 - **cam-fv**:  scripts and `model_mod.f90` updated for cesm2_0_beta05.
 
