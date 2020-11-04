@@ -16,9 +16,9 @@ modules: ## !!!  NOT currently in use: make sure your modules match
 
   
 dart:
-  use_existing_build: True
+  use_existing_build: False
   # Absolute path required
-  dart_src: /glade/u/home/${USER}/WRF_Hydro/wrf_hydro_dart/
+  dart_src: /glade/u/home/${USER}/dart/DART/
   fork: ## !!! NOT currently in use
   commit: ## !!! NOT currently in use
   # TODO(JLM): Standard dart practice is to ONLY use mkmf.template
@@ -30,7 +30,7 @@ dart:
 
 
 wrf_hydro:
-  use_existing_build: True
+  use_existing_build: False
   # Absolute path required:
   wrf_hydro_src: /glade/u/home/${USER}/WRF_Hydro/wrf_hydro_nwm_public
   fork:   ## !!! NOT currently in use
@@ -53,11 +53,11 @@ experiment:
   tag: flo_cut_test
   # Location where the experiment is established (small storage, not scratched)
   # Absolute path required
-  experiment_dir: /glade/work/${USER}/wrfhydro_dart/flo_cut/experiments/bucket1
+  experiment_dir: /glade/work/${USER}/wrfhydro_dart/flo_cut/experiments/bucket_test
   experiment_dir_mode: 'w'   ## !!! May NOT be in use
   # Location of where filter and the ensemble are run. (large storage, potentially scratched)
   # Absolute path required
-  run_dir: /glade/scratch/${USER}/wrfhydro_dart/flo_cut/runs/bucket1
+  run_dir: /glade/scratch/${USER}/wrfhydro_dart/flo_cut/runs/bucket_test
   run_dir_mode: 'w'  ## !!! May NOT be in use
   # TODO(JLM): The initial ensemble size controls the number of members?? or not?
   # TODO(JLM): what are the format requirements here?
@@ -80,7 +80,7 @@ ensemble:
 
 # How is the initial ensemble created?  
 initial_ens:
-  path: /glade/work/${USER}/wrfhydro_dart/flo_cut/initial_ens/bucket1
+  path: /glade/work/${USER}/wrfhydro_dart/flo_cut/initial_ens/bucket_test
   param_restart_file:
     # TODO(JLM): change this to use_existing for consistency
     create: False
@@ -98,7 +98,7 @@ initial_ens:
     # If there is an from_filter/ dir in inital_ens:path: then inflation files are added to
     # the run_dir.
     # TODO(JLM): change this to use_existing for consistency
-    create: False
+    create: True
     # Note that this command is part of the setup.
     # OpenMPI
     cmd: 'mpirun -np 4 ./filter'
@@ -154,12 +154,12 @@ initial_ens:
 
 # The fields under the top level must be listed in dart:observations: above.
 observation_preparation:
-  all_obs_dir: /glade/work/${USER}/wrfhydro_dart/flo_cut/obs_seqs/bucket1
+  all_obs_dir: /glade/work/${USER}/wrfhydro_dart/flo_cut/obs_seqs/bucket_test
   USGS_daily:
-    prepare: False
+    prepare: True
     identity_obs: True
     input_dir: /glade/work/jamesmcc/domains/private/florence/NWM/nudgingTimeSliceObs/
-    output_dir: /glade/work/${USER}/wrfhydro_dart/flo_cut/obs_seqs/bucket1/USGS
+    output_dir: /glade/work/${USER}/wrfhydro_dart/flo_cut/obs_seqs/bucket_test/USGS
     # Date range in YYYY-mm-dd format
     start_date: 2018-08-01
     end_date:   2018-09-26
@@ -213,9 +213,9 @@ run_experiment:
     src_dir:
     src_copy:
     noise_function_files: [
-    '/glade/u/home/${USER}/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro/python/perturb/perturb_channel_bucket_only_forcing.py',
-    '/glade/u/home/${USER}/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro/python/perturb/noise_qBtmVertRunoff_additive_fraction.py',
-    '/glade/u/home/${USER}/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro/python/perturb/noise_qSfcLatRunoff_additive_fraction.py'
+    '/glade/u/home/${USER}/dart/DART/models/wrf_hydro/python/perturb/perturb_channel_bucket_only_forcing.py',
+    '/glade/u/home/${USER}/dart/DART/models/wrf_hydro/python/perturb/noise_qBtmVertRunoff_additive_fraction.py',
+    '/glade/u/home/${USER}/dart/DART/models/wrf_hydro/python/perturb/noise_qSfcLatRunoff_additive_fraction.py'
     ]
     noise_cmd: 'python perturb_channel_bucket_only_forcing.py --source_forcing_dir FORCING_AnA_channel-only --perturb_forcing_dir FORCING_perturbed --qsfclat_perturb_func noise_qSfcLatRunoff_additive_fraction.py --qbtmvert_perturb_func noise_qBtmVertRunoff_additive_fraction.py'
 
