@@ -26,7 +26,12 @@ def setup_dart(config):
             work_dirs=config['dart']['work_dirs']
         )
 
-        dart_model = dart_compile.models__wrf_hydro__work
+        dart_comp_keys = dart_compile.__dict__.keys()
+        models_list = [
+            oo for oo in list(dart_compile.__dict__.keys()) if 'model' in oo]
+        if len(models_list) != 1:
+            raise ValueError("Currently only supporting individual models")
+        dart_model = dart_compile.__dict__[models_list[0]]
         dart_model.input_nml['filter_nml']['ens_size'] = config['ensemble']['size']
         dart_model.input_nml['filter_nml']['num_output_state_members']  = config['ensemble']['size']
         dart_model.input_nml['filter_nml']['num_output_obs_members']  = config['ensemble']['size']
