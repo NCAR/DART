@@ -4,8 +4,6 @@ function hpol = polar_dares(THETA, RHO, SPEC)
 % DART tutorial is faster. 
 %       - The X- and Y- labels are turned off. 
 %       - The function allows for zooming 
-%
-% DART $Id$
 
     if nargin > 2
         varargin{1} = THETA;
@@ -142,16 +140,11 @@ function hpol = polar_dares(THETA, RHO, SPEC)
                 'HandleVisibility', 'off', 'Parent', cax);
         end
         
-        % draw radial circles (remove annotation; not useful here!)
-%         c82 = cos(82 * pi / 180);
-%         s82 = sin(82 * pi / 180);
+        % draw radial circles for looks, no need to annotate
         rinc = (rmax - rmin) / rticks;
         for i = (rmin + rinc) : rinc : rmax - 1
             hhh = line(xunit * i, yunit * i, 'LineStyle', ls, 'Color', tc, 'LineWidth', 1, ...
                 'HandleVisibility', 'off', 'Parent', cax);
-%             text((i + rinc / 20) * c82, (i + rinc / 20) * s82, ...
-%                 ['  ' num2str(i)], 'VerticalAlignment', 'bottom', ...
-%                 'HandleVisibility', 'off', 'Parent', cax);
         end
         set(hhh, 'LineStyle', '-'); % Make outer circle solid
         
@@ -169,10 +162,11 @@ function hpol = polar_dares(THETA, RHO, SPEC)
         grid1 = [ 5, 10, 15, 20];  
         grid2 = [25, 30, 35, 40];
         for i = 1 : length(th)
-            text(rt * cst(i), rt * snt(i), int2str(grid1(i)),...
+            text( rt * cst(i),  rt * snt(i), int2str(grid1(i)), ...
                 'HorizontalAlignment', 'center', ...
                 'HandleVisibility', 'off', 'Parent', cax, 'FontSize', 14); 
-            text(-rt * cst(i), -rt * snt(i), int2str(grid2(i)), 'HorizontalAlignment', 'center', ...
+            text(-rt * cst(i), -rt * snt(i), int2str(grid2(i)), ...
+                'HorizontalAlignment', 'center', ...
                 'HandleVisibility', 'off', 'Parent', cax, 'FontSize', 14); 
         end
         
@@ -221,7 +215,3 @@ function hpol = polar_dares(THETA, RHO, SPEC)
     end
 end
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$
