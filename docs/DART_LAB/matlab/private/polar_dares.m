@@ -6,6 +6,7 @@ function hpol = polar_dares(THETA, RHO, SPEC)
 %       - The function allows for zooming 
 %
 % DART $Id$
+global MEAN_DIST
 
     if nargin > 2
         varargin{1} = THETA;
@@ -143,15 +144,15 @@ function hpol = polar_dares(THETA, RHO, SPEC)
         end
         
         % draw radial circles (remove annotation; not useful here!)
-%         c82 = cos(82 * pi / 180);
-%         s82 = sin(82 * pi / 180);
+        c82 = cos(80 * pi / 180);
+        s82 = sin(80 * pi / 180);
         rinc = (rmax - rmin) / rticks;
         for i = (rmin + rinc) : rinc : rmax - 1
             hhh = line(xunit * i, yunit * i, 'LineStyle', ls, 'Color', tc, 'LineWidth', 1, ...
                 'HandleVisibility', 'off', 'Parent', cax);
-%             text((i + rinc / 20) * c82, (i + rinc / 20) * s82, ...
-%                 ['  ' num2str(i)], 'VerticalAlignment', 'bottom', ...
-%                 'HandleVisibility', 'off', 'Parent', cax);
+            text((i - 2 + rinc / 20) * c82, (i - 2 + rinc / 20) * s82, ...
+                ['  ' num2str(i-MEAN_DIST)], 'VerticalAlignment', 'bottom', ...
+                'HandleVisibility', 'off', 'Parent', cax, 'FontSize', 10);
         end
         set(hhh, 'LineStyle', '-'); % Make outer circle solid
         
