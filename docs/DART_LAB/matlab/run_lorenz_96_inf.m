@@ -26,8 +26,6 @@ function run_lorenz_96_inf
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id$
 
 help run_lorenz_96_inf
 
@@ -39,10 +37,11 @@ help run_lorenz_96_inf
 % that variable, in any function, is visible to all the functions that declare
 % it as global.
 
-global TRUE_FORCING;
-global FORCING;
-global MODEL_SIZE;
-global DELTA_T;
+global TRUE_FORCING
+global FORCING
+global MODEL_SIZE
+global DELTA_T
+global MEAN_DIST
 
 LOG_FILE = strcat(mfilename, '.log');
 
@@ -50,7 +49,7 @@ first_call_to_reset = true;
 
 atts = stylesheet; % get the default fonts and colors
 
-figWidth  = 1000;    % in pixels
+figWidth  = 1024;    % in pixels
 figHeight = 990;    % in pixels
 
 %% Create figure Layout
@@ -163,9 +162,8 @@ handles.ui_radio_RHF = uicontrol(handles.ui_button_group_assimilation, ...
 
 % Make the uibuttongroup visible after creating child objects.
 set(handles.ui_button_group_assimilation, 'Visible','On');
-% Set the filter type string to No Assimilation to Start
-handles.filter_type_string = 'No Assimilation';
 
+handles.filter_type_string = 'No Assimilation';
 
 %% Create a label for the obs Radio Group
 handles.ui_text_group_label = uicontrol('Style', 'text', ...
@@ -180,7 +178,6 @@ handles.ui_text_group_label = uicontrol('Style', 'text', ...
     'FontSize'              , 0.8);
 
 %% Create a Radio Button with choices for the observation network
-
 handles.ui_button_group_obsnetwork = uibuttongroup('Visible','off', ...
     'Position'          ,[0.63 0.60 0.35 0.08], ...
     'BorderType', 'none', ...
@@ -194,10 +191,10 @@ handles.ui_radio_full = uicontrol(handles.ui_button_group_obsnetwork, ...
     'Units'             , 'Normalized', ...
     'Position'          , [0.12 0.6 0.4 0.4], ...
     'BackgroundColor'   , atts.background, ...
-    'String'            , 'Full', ...
+    'String'            , '1:40:1', ...
     'FontName'          , atts.fontname, ...
     'FontUnits'         , 'Normalized' , ...
-    'FontSize'          , 0.8, ...
+    'FontSize'          , 0.75, ...
     'HandleVisibility'  ,'off');
 
 handles.ui_radio_half = uicontrol(handles.ui_button_group_obsnetwork, ...
@@ -205,10 +202,10 @@ handles.ui_radio_half = uicontrol(handles.ui_button_group_obsnetwork, ...
     'Units'             , 'Normalized', ...
     'Position'          , [0.38 0.6 0.4 0.4], ...
     'BackgroundColor'   , atts.background, ...
-    'String'            , 'Half', ...
+    'String'            , '1:40:2', ...
     'FontName'          , atts.fontname, ...
     'FontUnits'         , 'Normalized' , ...
-    'FontSize'          , 0.8, ...
+    'FontSize'          , 0.75, ...
     'HandleVisibility'  ,'off');
 
 handles.ui_radio_quarter = uicontrol(handles.ui_button_group_obsnetwork, ...
@@ -216,10 +213,10 @@ handles.ui_radio_quarter = uicontrol(handles.ui_button_group_obsnetwork, ...
     'Units'             , 'Normalized', ...
     'Position'          , [0.67 0.6 0.4 0.4], ...
     'BackgroundColor'   , atts.background, ...
-    'String'            , 'Quarter', ...
+    'String'            , '1:40:4', ...
     'FontName'          , atts.fontname, ...
     'FontUnits'         , 'Normalized' , ...
-    'FontSize'          , 0.8, ...
+    'FontSize'          , 0.75, ...
     'HandleVisibility'  ,'off');
 
 handles.ui_radio_first20 = uicontrol(handles.ui_button_group_obsnetwork, ...
@@ -230,7 +227,7 @@ handles.ui_radio_first20 = uicontrol(handles.ui_button_group_obsnetwork, ...
     'String'            , '1:20', ...
     'FontName'          , atts.fontname, ...
     'FontUnits'         , 'Normalized' , ...
-    'FontSize'          , 0.8, ...
+    'FontSize'          , 0.75, ...
     'HandleVisibility'  ,'off');
 
 handles.ui_radio_mid20 = uicontrol(handles.ui_button_group_obsnetwork, ...
@@ -241,7 +238,7 @@ handles.ui_radio_mid20 = uicontrol(handles.ui_button_group_obsnetwork, ...
     'String'            , '10:30', ...
     'FontName'          , atts.fontname, ...
     'FontUnits'         , 'Normalized' , ...
-    'FontSize'          , 0.8, ...
+    'FontSize'          , 0.75, ...
     'HandleVisibility'  ,'off');
 
 handles.ui_radio_firstlast10 = uicontrol(handles.ui_button_group_obsnetwork, ...
@@ -257,9 +254,8 @@ handles.ui_radio_firstlast10 = uicontrol(handles.ui_button_group_obsnetwork, ...
 
 % Make the uibuttongroup visible after creating child objects.
 set(handles.ui_button_group_obsnetwork, 'Visible','On');
-% Set the filter type string to No Assimilation to Start
-handles.obs_network_string = 'Full';
 
+handles.obs_network_string = '1:40:1';
 
 %% Create a Text Box in above the slider that defines the true model state value
 handles.ui_text_slider_caption = uicontrol('style', 'text', ...
@@ -273,6 +269,9 @@ handles.ui_text_slider_caption = uicontrol('style', 'text', ...
     'FontSize', 0.35);
 
 %% Create a Slider for Model Forcing/Error
+% Sliderstep: 8 values from 4-12.
+%    1/8 forces slider to move 1 value (1/8 of 8) when arrow is clicked.
+%    1/2 forces slider to move 4 values when the actual slider is pressed
 handles.ui_slider_error = uicontrol('style', 'slider', ...
     'Units', 'Normalized', ...
     'Position', [0.43 0.750 0.222 0.062], ...
@@ -281,7 +280,7 @@ handles.ui_slider_error = uicontrol('style', 'slider', ...
     'Min', 4, ...
     'Max' ,12, ...
     'Value', 8 , ...
-    'Sliderstep',[1/8 1/2], ... %8 values from 4-12. 1/8 forces the slider to move 1 value (1/8 of 8) when arrow is clicked. 1/2 forces slider to move  4 values when the actual slider is pressed
+    'Sliderstep',[1/8 1/2], ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
     'FontSize', 0.4, ...
@@ -452,7 +451,6 @@ handles.ui_edit_inflation_Min = uicontrol(handles.InfPanel, ...
     'FontSize', 0.7, ...
     'Callback', @edit_inflation_Min_Callback);
 
-
 %% Reset button - clear the whole thing
 
 handles.ResetButton = uicontrol('Style', 'pushbutton', ...
@@ -553,9 +551,9 @@ handles.ui_text_inf_min_err_print = uicontrol('Style', 'text', ...
 % the call to reset_Callback()
 
 positions = [ ...
-     50/figWidth 560/figHeight 380/figWidth 150/figHeight; ...
-     50/figWidth 340/figHeight 380/figWidth 150/figHeight; ...
-     50/figWidth  80/figHeight 185/figWidth 170/figHeight; ...
+    50/figWidth 560/figHeight 380/figWidth 150/figHeight; ...
+    50/figWidth 340/figHeight 380/figWidth 150/figHeight; ...
+    50/figWidth  80/figHeight 185/figWidth 170/figHeight; ...
     245/figWidth  80/figHeight 185/figWidth 170/figHeight; ...
     510/figWidth 100/figHeight 400/figWidth 400/figHeight];
 
@@ -578,13 +576,18 @@ reset_Callback();
 subplot(handles.timeseries);
 set(handles.timeseries, 'FontSize', atts.fontsize);
 
-h_prior_rms        = plot(handles.prior_rms       , '-' , 'LineWidth',2.0, 'Color', atts.green); hold on
-h_posterior_rms    = plot(handles.posterior_rms   , '-' , 'LineWidth',2.0, 'Color', atts.blue );
-h_prior_spread     = plot(handles.prior_spread    , '-.', 'LineWidth',2.0, 'Color', atts.green);
-h_posterior_spread = plot(handles.posterior_spread, '-.', 'LineWidth',2.0, 'Color', atts.blue );
+h_prior_rms        = plot(handles.prior_rms       , '-' , 'LineWidth',2.0, ...
+    'Color', atts.green); hold on
+h_posterior_rms    = plot(handles.posterior_rms   , '-' , 'LineWidth',2.0, ...
+    'Color', atts.blue );
+h_prior_spread     = plot(handles.prior_spread    , '-.', 'LineWidth',2.0, ...
+    'Color', atts.green);
+h_posterior_spread = plot(handles.posterior_spread, '-.', 'LineWidth',2.0, ...
+    'Color', atts.blue );
 
+% Sadly, these dont seem to scale - even when normalized.
 h = legend('Prior RMSE', 'Posterior RMSE', 'Prior Spread', 'Posterior Spread');
-set(h, 'FontSize', atts.fontsize, 'Position',[0.46 0.62 0.118 0.148], 'EdgeColor', 'w'); % Sadly, these dont seem to scale - even when normalized.
+set(h, 'FontSize', atts.fontsize, 'Position',[0.46 0.62 0.118 0.148], 'EdgeColor', 'w');
 
 if verLessThan('matlab','R2017a')
     % Convince Matlab to not autoupdate the legend with each new line.
@@ -604,11 +607,11 @@ set(h_posterior_rms,    'Visible', 'on')
 set(h_prior_spread,     'Visible', 'on')
 set(h_posterior_spread, 'Visible', 'on')
 
-%%%% -----
 subplot(handles.infseries);
 set(handles.infseries, 'FontSize', atts.fontsize);
 
-h_inflation = plot(handles.inflate, '-x', 'Color', atts.blue, 'MarkerFaceColor', atts.red);
+h_inflation = plot(handles.inflate, '-x', 'Color', atts.blue, ...
+    'MarkerFaceColor', atts.red);
 set(gca, 'XLim', [1, MODEL_SIZE], 'XTick', 5:5:MODEL_SIZE ); box on
 
 ylabel('Inflation | Deflation', 'FontSize', atts.fontsize);
@@ -616,7 +619,6 @@ xlabel('Location', 'FontSize', atts.fontsize);
 
 set(h_inflation, 'Visible', 'off')
 
-%%%% ----
 subplot(handles.prior_rank_histogram);
 set(handles.prior_rank_histogram, 'FontSize', atts.fontsize);
 ylabel('Frequency');
@@ -631,7 +633,6 @@ xlabel('Rank');
 title ('Posterior Rank Histogram', 'FontSize', atts.fontsize);
 hold on
 
-%%%% ----
 subplot(handles.polar_plot);
 polar_y = (0:MODEL_SIZE) / MODEL_SIZE * 2 * pi;
 
@@ -639,9 +640,9 @@ polar_y = (0:MODEL_SIZE) / MODEL_SIZE * 2 * pi;
 % Unclear if these can be set more cleanly with polar
 % This also gets the observations into the legend
 
-h_obs   = plot_polar([0, 2*pi], 14.9, handles.mean_dist, 'r*', 1); hold on
-handles.h_ens   = plot_polar([0, 2*pi], 1000, handles.mean_dist, '-g', 1);
-handles.h_truth = plot_polar([0, 2*pi], 1000, handles.mean_dist, '-k', 1);
+h_obs   = plot_polar([0, 2*pi], 14.9, MEAN_DIST, 'r*', 1); hold on
+handles.h_ens   = plot_polar([0, 2*pi], 1000, MEAN_DIST, '-g', 1);
+handles.h_truth = plot_polar([0, 2*pi], 1000, MEAN_DIST, '-k', 1);
 
 set(handles.h_truth, 'linewidth', 3);
 set(handles.h_ens  , 'linewidth', 1, 'Color', atts.green);
@@ -670,10 +671,10 @@ if exist(LOG_FILE, 'file') == 2
     logfileid = fopen(LOG_FILE, 'a');
 else
     logfileid = fopen(LOG_FILE, 'w');
-    fprintf(logfileid, '---------------------------------------------------------------\n');
-    fprintf(logfileid, '-------------------------- DART_LAB ---------------------------\n');
-    fprintf(logfileid, '---------------------------------------------------------------\n\n');
-    fprintf(logfileid, '*********************** %s ************************\n\n', mfilename);
+    fprintf(logfileid, '-----------------------------------------------------------\n');
+    fprintf(logfileid, '------------------------ DART_LAB -------------------------\n');
+    fprintf(logfileid, '-----------------------------------------------------------\n\n');
+    fprintf(logfileid, '********************* %s **********************\n\n', mfilename);
 end
 
 fprintf(logfileid, '\n\nNEW RUN: Starting date and time %s\n', datestr(datetime));
@@ -685,11 +686,16 @@ fprintf(logfileid, '  - Assimilation type is `%s`\n', handles.filter_type_string
 fprintf(logfileid, '  - Observation Network is `%s`\n', handles.obs_network_string);
 fprintf(logfileid, '  - Ensemble size = %d\n', handles.ens_size);
 fprintf(logfileid, '  - Localization = %.2f\n', handles.localization);
-fprintf(logfileid, '  - Adaptive inflation lower bound = %.2f\n', handles.inf_lower_bound);
-fprintf(logfileid, '  - Adaptive inflation upper bound = %.2f\n', handles.inf_upper_bound);
-fprintf(logfileid, '  - Adaptive inflation damping factor = %.2f\n', handles.inf_damping);
-fprintf(logfileid, '  - Adaptive inflation standard deviation = %.2f\n', handles.inflate_sd);
-fprintf(logfileid, '  - Adaptive inflation standard deviation lower bound = %.2f\n\n', handles.inf_sd_lower_bound);
+fprintf(logfileid, '  - Adaptive inflation lower bound = %.2f\n', ...
+    handles.inf_lower_bound);
+fprintf(logfileid, '  - Adaptive inflation upper bound = %.2f\n', ...
+    handles.inf_upper_bound);
+fprintf(logfileid, '  - Adaptive inflation damping factor = %.2f\n', ...
+    handles.inf_damping);
+fprintf(logfileid, '  - Adaptive inflation standard deviation = %.2f\n', ...
+    handles.inflate_sd);
+fprintf(logfileid, '  - Adaptive inflation standard deviation lower bound = %.2f\n\n', ...
+    handles.inf_sd_lower_bound);
 
 fclose(logfileid);
 
@@ -775,9 +781,8 @@ fclose(logfileid);
         set(handles.ui_slider_error, 'Value' , FORCING);
         set(handles.ui_edit_forcing, 'String' , sprintf('%d',FORCING));
         
-        % Update log file
-        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
-            'Forcing (F)', old_forcing, FORCING);
+        Update_log_file(rms_time, handles.time, handles.prior_rms, ...
+            handles.prior_spread, 'Forcing (F)', old_forcing, FORCING);
     end
 
 %% ----------------------------------------------------------------------
@@ -797,7 +802,8 @@ fclose(logfileid);
             turn_off_controls();
             set(handles.ui_edit_inflation_Std, 'Enable', 'On');
             
-            set(handles.ui_edit_inflation_Std, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red);
+            set(handles.ui_edit_inflation_Std, 'String', '?', ...
+                'FontWeight','Bold','BackgroundColor', atts.red);
             set(handles.ui_text_inf_std_err_print, 'Visible','On')
             
             fprintf('ERROR: inflation std must be greater than 0.\n')
@@ -806,13 +812,13 @@ fclose(logfileid);
             return
         end
         
-        % Update log file
-        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
-            'Inflation Std', old_inflate_sd, handles.inflate_sd);
+        Update_log_file(rms_time, handles.time, handles.prior_rms, ...
+            handles.prior_spread, 'Inflation Std', old_inflate_sd, handles.inflate_sd);
         
         % Enable all controls
         turn_on_controls();
-        set(handles.ui_edit_inflation_Std, 'BackgroundColor', 'White','FontWeight','Normal');
+        set(handles.ui_edit_inflation_Std, 'BackgroundColor', 'White', ...
+            'FontWeight', 'Normal');
     end
 
 %% ----------------------------------------------------------------------
@@ -833,7 +839,8 @@ fclose(logfileid);
             turn_off_controls();
             set(handles.ui_edit_inflation_Damp, 'Enable', 'On');
             
-            set(handles.ui_edit_inflation_Damp, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red);
+            set(handles.ui_edit_inflation_Damp, 'String', '?', ...
+                'FontWeight', 'Bold', 'BackgroundColor', atts.red);
             set(handles.ui_text_inf_damp_err_print, 'Visible','On')
             
             fprintf('ERROR: inflation damping must be between 0.1 and 1.\n')
@@ -843,13 +850,13 @@ fclose(logfileid);
             
         end
         
-        % Update log file
-        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
-            'Inflation Damping', old_damping, handles.inf_damping);
+        Update_log_file(rms_time, handles.time, handles.prior_rms, ...
+            handles.prior_spread, 'Inflation Damping', old_damping, handles.inf_damping);
         
         % Enable all controls
         turn_on_controls();
-        set(handles.ui_edit_inflation_Damp, 'BackgroundColor', 'White','FontWeight','Normal');
+        set(handles.ui_edit_inflation_Damp, 'BackgroundColor', 'White', ...
+            'FontWeight','Normal');
     end
 
 %% ----------------------------------------------------------------------
@@ -868,7 +875,8 @@ fclose(logfileid);
             turn_off_controls();
             set(handles.ui_edit_inflation_Min, 'Enable', 'On');
             
-            set(handles.ui_edit_inflation_Min, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red);
+            set(handles.ui_edit_inflation_Min, 'String', '?', ...
+                'FontWeight', 'Bold', 'BackgroundColor', atts.red);
             set(handles.ui_text_inf_min_err_print, 'Visible','On')
             
             fprintf('ERROR: inflation lower bound must be greater than or equal 0.\n')
@@ -877,13 +885,13 @@ fclose(logfileid);
             return
         end
         
-        % Update log file
-        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
-            'Inflation Min', old_inf_min, handles.inf_lower_bound);
+        Update_log_file(rms_time, handles.time, handles.prior_rms, ...
+            handles.prior_spread, 'Inflation Min', old_inf_min, handles.inf_lower_bound);
         
         % Enable all controls
         turn_on_controls();
-        set(handles.ui_edit_inflation_Min, 'BackgroundColor', 'White','FontWeight','Normal');
+        set(handles.ui_edit_inflation_Min, 'BackgroundColor', 'White', ...
+            'FontWeight','Normal');
     end
 
 %% ----------------------------------------------------------------------
@@ -902,7 +910,8 @@ fclose(logfileid);
             % After this, only this edit box will work
             turn_off_controls();
             set(handles.ui_edit_localization, 'Enable', 'On');
-            set(handles.ui_edit_localization, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red );
+            set(handles.ui_edit_localization, 'String', '?', ...
+                'FontWeight', 'Bold', 'BackgroundColor', atts.red );
             set(handles.ui_text_localization_err_print, 'Visible','On')
             
             fprintf('\nERROR: localization must be greater than 0.\n')
@@ -911,13 +920,13 @@ fclose(logfileid);
             return
         end
         
-        % Update log file
-        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
-            'Localization', old_localization, handles.localization);
+        Update_log_file(rms_time, handles.time, handles.prior_rms, ...
+            handles.prior_spread, 'Localization', old_localization, handles.localization);
         
         % Enable all controls
         turn_on_controls();
-        set(handles.ui_edit_localization, 'BackgroundColor', 'White','FontWeight','Normal');
+        set(handles.ui_edit_localization, 'BackgroundColor', 'White', ...
+            'FontWeight','Normal');
         set(handles.ui_text_localization_err_print, 'Visible','Off')
         
         % Update the localization plot
@@ -939,7 +948,9 @@ fclose(logfileid);
             turn_off_controls();
             set(handles.ui_edit_ens_size, 'Enable', 'On');
             
-            set(handles.ui_edit_ens_size, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red );
+            set(handles.ui_edit_ens_size, 'String', '?', ...
+                'FontWeight', 'Bold', ...
+                'BackgroundColor', atts.red );
             set(handles.ui_text_ens_size_err_print, 'Visible','On')
             
             fprintf('\nERROR: Must input an integer Ens. Size greater than 1 and less than 40\n');
@@ -959,14 +970,13 @@ fclose(logfileid);
         cla(handles.prior_rank_histogram)
         cla(handles.post_rank_histogram)
         
-        set(handles.ui_edit_ens_size, 'BackgroundColor', 'White','FontWeight','Normal');
+        set(handles.ui_edit_ens_size, 'BackgroundColor', 'White', 'FontWeight', 'Normal');
         
         % Set the ensemble size global value to the update
         handles.ens_size = new_ens_size;
         
-        % Update log file
-        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
-            'Ensemble size', old_ens_size, handles.ens_size);
+        Update_log_file(rms_time, handles.time, handles.prior_rms, ...
+            handles.prior_spread, 'Ensemble size', old_ens_size, handles.ens_size);
         
         % Need to reset the ensemble and the time
         clear handles.true_state
@@ -1029,22 +1039,23 @@ fclose(logfileid);
         set(handles.ui_edit_inflation_Damp , 'String', '0.9');
         set(handles.ui_edit_inflation_Min  , 'String', '1.0');
         
-        set(handles.ui_button_group_assimilation,'SelectedObject',handles.ui_radio_noAssimilation);
+        set(handles.ui_button_group_assimilation, ...
+            'SelectedObject', handles.ui_radio_noAssimilation);
         handles.filter_type_string = 'No Assimilation';
         set(handles.ui_button_Single_Step, 'String' , 'Advance Model');
         
-        handles.obs_network_string = 'Full';
+        set(handles.ui_button_group_obsnetwork,'SelectedObject',handles.ui_radio_full);
+        handles.obs_network_string = '1:40:1';
         
         set(handles.ui_slider_error       , 'Value' , 10);
         set(handles.ui_edit_forcing       , 'String', 10);
         
-        handles.localization = str2double(get(handles.ui_edit_localization, 'String'));
-        handles.ens_size     = str2double(get(handles.ui_edit_ens_size,     'String'));
-        
-        handles.inflate_sd     = str2double(get(handles.ui_edit_inflation_Std,  'String'));
-        handles.inf_damping    = str2double(get(handles.ui_edit_inflation_Damp, 'String'));
-        handles.inf_lower_bound     = str2double(get(handles.ui_edit_inflation_Min,  'String'));
-        handles.inf_upper_bound     = 5;
+        handles.localization = str2double(get(handles.ui_edit_localization,   'String'));
+        handles.ens_size     = str2double(get(handles.ui_edit_ens_size,       'String'));
+        handles.inflate_sd   = str2double(get(handles.ui_edit_inflation_Std,  'String'));
+        handles.inf_damping  = str2double(get(handles.ui_edit_inflation_Damp, 'String'));
+        handles.inf_lower_bound = str2double(get(handles.ui_edit_inflation_Min,'String'));
+        handles.inf_upper_bound    = 5;
         handles.inf_sd_lower_bound = handles.inflate_sd;
         
         clear handles.true_state
@@ -1061,13 +1072,10 @@ fclose(logfileid);
         handles.posterior_rms               = 0;
         handles.posterior_spread            = 0;
         
-        %str = get(handles.menu_assimilation,'String');
-        %handles.filter_type_string = str{get(handles.menu_assimilation,'Value')};
-        
         set(handles.ui_text_time,'String', sprintf('Time = %d',handles.time))
         
         % Used to normalize the polar plotting
-        handles.mean_dist = 35;
+        MEAN_DIST = 35;
         
         handles.h_ens   = [];
         handles.h_truth = [];
@@ -1103,13 +1111,13 @@ fclose(logfileid);
             plot_localization;
         end
         
-        % Reset the RMS avaregaing:
+        % Reset the RMS averaging:
         rms_time = 1;
         subplot(handles.timeseries); title( ' ' );
         
-        % Update log file
         if handles.time > 1
-            Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, 'RESET');
+            Update_log_file(rms_time, handles.time, handles.prior_rms, ...
+                handles.prior_spread, 'RESET');
         end
     end
 
@@ -1118,7 +1126,8 @@ fclose(logfileid);
     function ClearStats_Callback(~, ~)
         
         % Update log file
-        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, 'Statistics cleared');
+        Update_log_file(rms_time, handles.time, handles.prior_rms, ...
+            handles.prior_spread, 'Statistics cleared');
         
         % Reset to current time step
         rms_time = handles.time;
@@ -1201,13 +1210,15 @@ fclose(logfileid);
             
             % Code for advancing model comes next
             time = handles.time;
-            [new_truth, new_time] = lorenz_96_adv_1step(handles.true_state(time, :), time, TRUE_FORCING);
+            [new_truth, new_time] = lorenz_96_adv_1step(handles.true_state(time, :), ...
+                time, TRUE_FORCING);
             handles.time = new_time;
             handles.true_state(new_time, :) = new_truth;
             
             %  Advance the ensemble members; posterior -> new prior
             for imem = 1:handles.ens_size
-                [new_ens, new_time] = lorenz_96_adv_1step(handles.posterior(time, :, imem), time, FORCING);
+                [new_ens, new_time] = lorenz_96_adv_1step(handles.posterior(time, :, imem), ...
+                    time, FORCING);
                 handles.prior(new_time, :, imem) = new_ens;
             end
             
@@ -1228,20 +1239,21 @@ fclose(logfileid);
             % Plot a single invisible point to wipe out the previous plot
             % and maintain axis limits of polar plot.
             axes(handles.polar_plot); cla;
-            h_obs = plot_polar([0, 2*pi], 14.9, handles.mean_dist, 'r*', 1);
+            h_obs = plot_polar([0, 2*pi], 14.9, MEAN_DIST, 'r*', 1);
             set(h_obs, 'Visible', 'Off', 'Color', atts.red)
             
             % Plot the ensemble members (green) and the truth (black)
             for imem = 1:handles.ens_size
                 handles.h_ens = plot_polar(polar_y, handles.prior(new_time, :, imem), ...
-                    handles.mean_dist, 'g', MODEL_SIZE);
+                    MEAN_DIST, 'g', MODEL_SIZE);
                 set(handles.h_ens,'Color',atts.green)
             end
-            handles.h_truth = plot_polar(polar_y, new_truth, handles.mean_dist, 'k', MODEL_SIZE);
+            handles.h_truth = plot_polar(polar_y, new_truth, MEAN_DIST, 'k', MODEL_SIZE);
             % Make truth wider so it is easier to distinguish
             set(handles.h_truth, 'linewidth', 3);
             
-            % Plot a graphical indication of the localization halfwidth; Is expense of this a problem.
+            % Plot a graphical indication of the localization halfwidth;
+            % Is expense of this a problem.
             plot_localization;
             
             % Update the time label
@@ -1257,7 +1269,8 @@ fclose(logfileid);
             
             % Compute the prior rank histograms
             for i = 1:handles.ens_size
-                ens_rank = get_ens_rank(squeeze(handles.prior(new_time, i, :)), squeeze(new_truth(i)));
+                ens_rank = get_ens_rank(squeeze(handles.prior(new_time, i, :)), ...
+                    squeeze(new_truth(i)));
                 handles.prior_rank(ens_rank) = handles.prior_rank(ens_rank) + 1;
                 temp_rank(ens_rank, 2) = temp_rank(ens_rank, 2) + 1;
             end
@@ -1271,7 +1284,8 @@ fclose(logfileid);
             set (handles.timeseries,'YGrid','on')
             
             % Display average RMS of previous run!
-            show_rms_on_plot(handles.prior_rms, handles.prior_spread, [ rms_time, handles.time ]);
+            show_rms_on_plot(handles.prior_rms, handles.prior_spread, ...
+                [ rms_time, handles.time ]);
             
             % Plot inflation
             subplot(handles.infseries)
@@ -1279,7 +1293,8 @@ fclose(logfileid);
             set(handles.infseries, 'YGrid', 'on', 'YLim', [0, 3], 'YTick', [1, 2])
             ylabel('Inflation | Deflation', 'FontSize', atts.fontsize);
             xlabel('Location', 'FontSize', atts.fontsize);
-            title( [ 'Overall mean = ' sprintf( '%.4f', mean(handles.inflate) ) ], 'FontSize', 16);
+            title( [ 'Overall mean = ' sprintf( '%.4f', mean(handles.inflate) ) ], ...
+                'FontSize', 16);
             hold off
             
             % Plot the rank histogram for the prior
@@ -1336,7 +1351,8 @@ fclose(logfileid);
                 % Regress the increments onto each of the state variables +
                 % update inflation values
                 for j = 1:MODEL_SIZE
-                    [state_incs, r_xy]  = get_state_increments(temp_ens(j, :), obs_prior, obs_increments);
+                    [state_incs, r_xy]  = get_state_increments(temp_ens(j, :), ...
+                        obs_prior, obs_increments);
                     
                     % Compute distance between obs and state for localization
                     dist = abs(i - j) / MODEL_SIZE;
@@ -1355,22 +1371,31 @@ fclose(logfileid);
                     ens_obs_mean = mean(obs_prior);
                     ens_obs_var  = var(obs_prior);
                     
-                    handles.inflate(j) = update_inflate(ens_obs_mean, ens_obs_var, obs(i), obs_error_var, ...
-                        ss_inflate_base(j), handles.inflate(j), handles.inflate_sd, handles.inf_lower_bound, handles.inf_upper_bound, ...
-                        gamma, handles.inf_sd_lower_bound);
+                    handles.inflate(j) = update_inflate(ens_obs_mean, ...
+                        ens_obs_var, ...
+                        obs(i), ...
+                        obs_error_var, ...
+                        ss_inflate_base(j), ...
+                        handles.inflate(j), ...
+                        handles.inflate_sd, ...
+                        handles.inf_lower_bound, ...
+                        handles.inf_upper_bound, ...
+                        gamma, ...
+                        handles.inf_sd_lower_bound);
                 end
             end
             
             % Plot the observations
             subplot(handles.polar_plot)
-            h_obs = plot_polar(polar_y, obs, handles.mean_dist, 'r*', MODEL_SIZE);
+            h_obs = plot_polar(polar_y, obs, MEAN_DIST, 'r*', MODEL_SIZE);
             set(h_obs, 'Color', atts.red, 'MarkerSize', 8)
             
             % Update the posterior
             handles.posterior(time, :, :) = temp_ens;
             
             % Compute the posterior rms, spread
-            handles.posterior_rms(time) = rms_error(handles.true_state(time, :), handles.posterior(time, :, :));
+            handles.posterior_rms(time) = rms_error(handles.true_state(time, :), ...
+                handles.posterior(time, :, :));
             handles.posterior_spread(time) = ens_spread(handles.posterior(time, :, :));
             
             % Save the information about the histograms from before
@@ -1532,7 +1557,6 @@ fclose(logfileid);
         
         handles.filter_type_string = filter_new;
         
-        % Update log file
         Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
             'Assimilation Type', old_filter, handles.filter_type_string);
     end
@@ -1549,7 +1573,6 @@ fclose(logfileid);
         
         handles.obs_network_string = network_new;
         
-        % Update log file
         Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
             'Observation Network', old_network, handles.obs_network_string);
     end
@@ -1559,13 +1582,13 @@ fclose(logfileid);
     function [Ny, obs_loc] = get_obs_network(user_defined_network)
         
         switch user_defined_network
-            case 'Full' 
-                obs_loc = 1:MODEL_SIZE;   
+            case '1:40:1'
+                obs_loc = 1:MODEL_SIZE;
                 
-            case 'Half'
+            case '1:40:2'
                 obs_loc = 2:2:MODEL_SIZE;
                 
-            case 'Quarter'
+            case '1:40:4'
                 obs_loc = 2:4:MODEL_SIZE;
                 
             case '1:20'
@@ -1577,7 +1600,7 @@ fclose(logfileid);
             case '1:10; 30:40'
                 obs_loc = [1:11, 31:MODEL_SIZE];
                 
-        end        
+        end
         Ny = length(obs_loc);
         
     end
@@ -1670,12 +1693,11 @@ fclose(logfileid);
         set(h_loc_text, 'color', 'k', 'fontsize', 15, 'fontweight', 'bold');
         
         % Plot an observation asterisk
-        plot(dist, 0, '*', 'MarkerSize', 12, 'MarkerFaceColor', atts.red, 'MarkerEdgeColor', atts.red);
+        plot(dist, 0, '*', ...
+            'MarkerSize', 12, ...
+            'MarkerFaceColor', atts.red, ...
+            'MarkerEdgeColor', atts.red);
     end
 
 end
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$

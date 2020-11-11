@@ -5,6 +5,8 @@ function hpol = polar_dares(THETA, RHO, SPEC)
 %       - The X- and Y- labels are turned off. 
 %       - The function allows for zooming 
 
+global MEAN_DIST
+
     if nargin > 2
         varargin{1} = THETA;
         varargin{2} = RHO;
@@ -86,6 +88,8 @@ function hpol = polar_dares(THETA, RHO, SPEC)
     tc = axGridColor;
     ls = get(cax, 'GridLineStyle');
     
+    tc = [0.7 0.7 0.7]; % TJH test
+    
     % Hold on to current Text defaults, reset them to the
     % Axes' font attributes so tick marks use them.
     fAngle = get(cax, 'DefaultTextFontAngle');
@@ -108,7 +112,8 @@ function hpol = polar_dares(THETA, RHO, SPEC)
         % ensure that Inf values don't enter into the limit calculation.
         arho = abs(rho(:));
         maxrho = max(arho(arho ~= Inf));
-        hhh = line([-maxrho, -maxrho, maxrho, maxrho], [-maxrho, maxrho, maxrho, -maxrho], 'Parent', cax);
+        hhh = line([-maxrho, -maxrho, maxrho,  maxrho], ...
+                   [-maxrho,  maxrho, maxrho, -maxrho], 'Parent', cax);
         set(cax, 'DataAspectRatio', [1, 1, 1], 'PlotBoxAspectRatioMode', 'auto');
         v = [get(cax, 'XLim') get(cax, 'YLim')];
         ticks = sum(get(cax, 'YTick') >= 0);
@@ -140,11 +145,16 @@ function hpol = polar_dares(THETA, RHO, SPEC)
                 'HandleVisibility', 'off', 'Parent', cax);
         end
         
-        % draw radial circles for looks, no need to annotate
+        % draw radial circles (remove annotation; not useful here!)
+        c82 = cos(80 * pi / 180);
+        s82 = sin(80 * pi / 180);
         rinc = (rmax - rmin) / rticks;
         for i = (rmin + rinc) : rinc : rmax - 1
-            hhh = line(xunit * i, yunit * i, 'LineStyle', ls, 'Color', tc, 'LineWidth', 1, ...
-                'HandleVisibility', 'off', 'Parent', cax);
+            hhh = line(xunit * i, yunit * i, 'LineStyle', ls, 'Color', tc, ...
+                'LineWidth', 1, 'HandleVisibility', 'off', 'Parent', cax);
+            text((i - 2 + rinc / 20) * c82, (i - 2 + rinc / 20) * s82, ...
+                ['  ' num2str(i-MEAN_DIST)], 'VerticalAlignment', 'bottom', ...
+                'HandleVisibility', 'off', 'Parent', cax, 'FontSize', 10);
         end
         set(hhh, 'LineStyle', '-'); % Make outer circle solid
         
