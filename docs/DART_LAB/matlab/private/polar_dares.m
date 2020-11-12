@@ -80,13 +80,11 @@ global MEAN_DIST
         error(message('MATLAB:polar:PolarAxes'));
     end
     
-    % get x-axis text color so grid is in same color
-    % get the axis gridColor
-    tc = [.7, .7, .7]; 
+    % make the concentric circles a bit darker gray
+    % get x-axis text properties
+    tc = [0.7, 0.7, 0.7]; 
     ls = get(cax, 'GridLineStyle');
-    
-    tc = [0.7 0.7 0.7]; % TJH test
-    
+
     % Hold on to current Text defaults, reset them to the
     % Axes' font attributes so tick marks use them.
     fAngle = get(cax, 'DefaultTextFontAngle');
