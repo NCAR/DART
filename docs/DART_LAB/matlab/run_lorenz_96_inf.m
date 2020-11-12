@@ -51,7 +51,7 @@ first_call_to_reset = true;
 
 atts = stylesheet; % get the default fonts and colors
 
-figWidth  = 1000;    % in pixels
+figWidth  = 1024;    % in pixels
 figHeight = 990;    % in pixels
 
 %% Create figure Layout

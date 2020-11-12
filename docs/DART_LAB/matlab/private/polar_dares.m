@@ -83,10 +83,7 @@ global MEAN_DIST
     
     % get x-axis text color so grid is in same color
     % get the axis gridColor
-    axColor = get(cax, 'Color');
-    gridAlpha = get(cax, 'GridAlpha');
-    axGridColor = get(cax,'GridColor').*gridAlpha + axColor.*(1-gridAlpha);
-    tc = axGridColor;
+    tc = [.7, .7, .7]; 
     ls = get(cax, 'GridLineStyle');
     
     % Hold on to current Text defaults, reset them to the
