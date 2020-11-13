@@ -1,5 +1,5 @@
-function [new_cov_inflate, new_cov_inflate_sd] = update_inflate(x, sigma_p_2, obs, sigma_o_2, inflate_prior_val, lambda_mean, ...
-                                                    lambda_mean_LB, lambda_mean_UB, gamma, lambda_sd, lambda_sd_LB)
+function [new_cov_inflate, new_cov_inflate_sd] = update_inflate(x_p, r_var, y_o, sigma_o_2, ss_inflate_base, lambda_mean, lambda_sd, ...
+                                                    inf_lower_bound, inf_upper_bound, gamma_corr, sd_lower_bound_in)
 % Adaptive scheme to update the inflation both in space and time. 
 % Based on the algorithm in the following article:
 % Anderson, J. L., 2009: Spatially and temporally varying adaptive covariance 
@@ -16,27 +16,27 @@ function [new_cov_inflate, new_cov_inflate_sd] = update_inflate(x, sigma_p_2, ob
 
 % Get the "non-inflated" variance of the sample
 % lambda here, is the prior value before the update.
-sigma_p_2 = sigma_p_2 / ( 1 + gamma*(sqrt(inflate_prior_val) - 1) )^2;
+sigma_p_2 = r_var / ( 1 + gamma_corr*(sqrt(ss_inflate_base) - 1) )^2;
 
 % Squared-innovation
-dist_2 = (x - obs)^2;
+dist_2 = (x_p - y_o)^2;
 
 % d (distance between obs and ens) is drawn from Gaussian with 0 mean and
 % variance: E(d^2) = \lambda^o*\sigma_p^2 + \sigma_o^2
-theta_bar_2  = ( 1 + gamma * (sqrt(lambda_mean) - 1) )^2 * sigma_p_2 + sigma_o_2;
+theta_bar_2  = ( 1 + gamma_corr * (sqrt(lambda_mean) - 1) )^2 * sigma_p_2 + sigma_o_2;
 theta_bar    = sqrt(theta_bar_2);
 u_bar        = 1 / (sqrt(2 * pi) * theta_bar);
 like_exp_bar = - 0.5 * dist_2 / theta_bar_2;
 v_bar        = exp(like_exp_bar);
 
-gamma_terms  = 1 - gamma + gamma*sqrt(lambda_mean);
-dtheta_dinf  = 0.5 * sigma_p_2 * gamma * gamma_terms / (theta_bar * sqrt(lambda_mean));              
+gamma_terms  = 1 - gamma_corr + gamma_corr*sqrt(lambda_mean);
+dtheta_dlambda  = 0.5 * sigma_p_2 * gamma_corr * gamma_terms / (theta_bar * sqrt(lambda_mean));              
 
 % The likelihood: p(d/lambda)
 like_bar     = u_bar * v_bar;
 
 % Derivative of the likelihood; evaluated at the current inflation mean
-like_prime   = (like_bar * dtheta_dinf / theta_bar) * (dist_2 / theta_bar_2 - 1);
+like_prime   = (like_bar * dtheta_dlambda / theta_bar) * (dist_2 / theta_bar_2 - 1);
 like_ratio   = like_bar / like_prime;
 
 % Solve a quadratic equation
@@ -65,23 +65,23 @@ else
 end
 
 % Make sure the update is not smaller than the lower bound
-if new_cov_inflate < lambda_mean_LB || new_cov_inflate > lambda_mean_UB || isnan(new_cov_inflate)
-    new_cov_inflate = lambda_mean_LB; 
-    new_cov_inflate_sd = lambda_sd;
+if new_cov_inflate < inf_lower_bound || new_cov_inflate > inf_upper_bound || isnan(new_cov_inflate)
+    new_cov_inflate     = inf_lower_bound; 
+    new_cov_inflate_sd  = lambda_sd;
     return
 end
 
 
 %% Now, update the inflation variance
-if lambda_sd <= lambda_sd_LB 
+if lambda_sd <= sd_lower_bound_in 
     new_cov_inflate_sd = lambda_sd;
     return
 else
     % First compute the new_max value for normalization purposes
-    new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, new_cov_inflate);
+    new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma_corr, new_cov_inflate);
 
     % Find value at a point one OLD sd above new mean value
-    new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, new_cov_inflate + lambda_sd);
+    new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma_corr, new_cov_inflate + lambda_sd);
 
     ratio = new_1_sd / new_max;
 
@@ -90,7 +90,7 @@ else
     new_cov_inflate_sd = sqrt( - 0.5 * lambda_sd^2 / log(ratio) );
 
     % Prevent an increase in the sd of lambda
-    if new_cov_inflate_sd > lambda_sd, new_cov_inflate_sd = lambda_sd; end
-    if new_cov_inflate_sd < lambda_sd_LB, new_cov_inflate_sd = lambda_sd_LB; end
+    if new_cov_inflate_sd > lambda_sd,          new_cov_inflate_sd = lambda_sd;         end
+    if new_cov_inflate_sd < sd_lower_bound_in,  new_cov_inflate_sd = sd_lower_bound_in; end
 end
 
