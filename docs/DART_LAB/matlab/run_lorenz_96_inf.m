@@ -662,7 +662,7 @@ else
 end
 
 % Plot the localization width
-plot_localization;
+h_loc = plot_localization;
 
 
 %% -----------------------------------------------------------------------------
@@ -922,8 +922,8 @@ fclose(logfileid);
         set(handles.ui_text_localization_err_print, 'Visible','Off')
         
         % Update the localization plot
-        cla(handles.polar_plot);
-        plot_localization;
+        delete(h_loc)
+        h_loc = plot_localization;
     end
 
 %% ----------------------------------------------------------------------
@@ -1102,7 +1102,7 @@ fclose(logfileid);
         if(first_call_to_reset)
             first_call_to_reset = false;
         else
-            plot_localization;
+            h_loc = plot_localization;
         end
         
         % Reset the RMS avaregaing:
@@ -1244,7 +1244,7 @@ fclose(logfileid);
             set(handles.h_truth, 'linewidth', 3);
             
             % Plot a graphical indication of the localization halfwidth; Is expense of this a problem.
-            plot_localization;
+            h_loc = plot_localization;
             
             % Update the time label
             set(handles.ui_text_time, 'String', sprintf('Time = %d', handles.time));
@@ -1661,10 +1661,15 @@ fclose(logfileid);
             ymin = -ymax;
             % Use 40 points for each range
             y = ymin:ymax/20:ymax;
-            my_h_loc = polar_dares(y, dist*ones(size(y)));
+            
+            % index the plots, so when you delete it (you delete all
+            % localization lines) not only the last one!
+            my_h_loc(ipl) = polar_dares(y, dist*ones(size(y)));     
+            
             hold on
+            
             % Lines get wider for larger localization
-            set(my_h_loc, 'linewidth', 2*ipl, 'Color', my_col_loc(ipl, :));
+            set(my_h_loc(ipl), 'linewidth', 2*ipl, 'Color', my_col_loc(ipl, :));
         end
         
         % Plot a label for the localization graphic
