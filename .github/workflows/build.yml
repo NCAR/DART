@@ -25,6 +25,6 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/models/lorenz_96/work
           ls
-          ./quickbuild.csh -mpi
+          cat ./quickbuild.csh
           # mpirun -mca plm_rsh_agent ssh --allow-run-as-root -n 4 ./hello
 
