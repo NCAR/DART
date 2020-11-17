@@ -1,0 +1,29 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the Manhattan branch
+on:
+  push:
+    branches: [ Manhattan ]
+  pull_request:
+    branches: [ Manhattan ]
+
+jobs:
+  # compile
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    container: docker://hkershaw/hello-test:2.0
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      - name: docker test
+        run: |
+          cd models/lorenz96/work
+          ./quickbuild.csh -mpi
+          # mpirun -mca plm_rsh_agent ssh --allow-run-as-root -n 4 ./hello
+
