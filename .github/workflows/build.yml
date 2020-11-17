@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: docker test
         run: |
-          cd DART/models/lorenz96/work
+          cd $GITHUB_WORKSPACE/DART/models/lorenz96/work
           ./quickbuild.csh -mpi
           # mpirun -mca plm_rsh_agent ssh --allow-run-as-root -n 4 ./hello
 
