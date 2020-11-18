@@ -33,7 +33,7 @@ The Data Assimilation Research Testbed: A Community Facility.
  ![](http://www.image.ucar.edu/images/pin4.gif) **Castruccio, F. S., A. Karspeck, G.
    Danabasoglu, J. Hendricks, T. J. Hoar, N. S. Collins, J. L. Anderson** 2020  
      An EnOI‐based Data Assimilation System with DART for a High‐Resolution
-     Version of the CESM2 Ocean Component
+     Version of the CESM2 Ocean Component.  
      *Journal of Advances in Modeling Earth Systems*, **12**,
      [doi:10.1029/2020MS002176](https://doi.org/10.1029/2020MS002176)
 
@@ -41,7 +41,7 @@ The Data Assimilation Research Testbed: A Community Facility.
  ![](http://www.image.ucar.edu/images/pin4.gif) **Moore, A., J. Zavala-Garay,
    H. G. Arango, C. A. Edwards, J. L. Anderson, T. J. Hoar** 2020  
      Regional and basin scale applications of ensemble adjustment Kalman filter
-     and 4D-Var ocean data assimilation systems.
+     and 4D-Var ocean data assimilation systems.  
      *Progress in Oceanography*, **189**, 102450,
      [doi:0.1016/j.pocean.2020.102450](https://doi.org/10.1016/j.pocean.2020.102450)
 
@@ -52,7 +52,7 @@ The Data Assimilation Research Testbed: A Community Facility.
  ![](http://www.image.ucar.edu/images/pin4.gif) **Gopalakrishnan, G., I. Hoteit,
    B. Cornuelle, and D. Rudnick** 2019  
      Comparison of 4DVAR and EnKF states estimates and forecasts in the Gulf of
-     Mexico.
+     Mexico.  
      *Quarterly Journal of the Royal Meteorological Society*, **145**, 1354-1376,
      [doi:10.1002/qj.3493](https://doi.org/10.1002/qj.3493)
 
@@ -75,9 +75,9 @@ The Data Assimilation Research Testbed: A Community Facility.
 
 
  ![](http://www.image.ucar.edu/images/pin4.gif) **Fox, A. M., Hoar, T. J., 
-   Anderson, J. L., Arellano, A. F., Smith, W. K., Litvak, M. E., et al.** 2018
-     Evaluation of a data assimilation system for land surface models using CLM4.5.
-     *Journal of Advances in Modeling Earth Systems*, **10**, 2471–2494
+   Anderson, J. L., Arellano, A. F., Smith, W. K., Litvak, M. E., et al.** 2018  
+     Evaluation of a data assimilation system for land surface models using CLM4.5. 
+     *Journal of Advances in Modeling Earth Systems*, **10**, 2471–2494,
      [doi.org/10.1002/2018MS001362](https://doi.org/10.1002/2018MS001362)
 
 
@@ -85,8 +85,8 @@ The Data Assimilation Research Testbed: A Community Facility.
    J. L. Anderson, S. Karol, N. Collins, M. Vertenstein, K. Raeder, T. Hoar,
    R. Neale, J. Edwards and A. Craig**, 2018  
      A global coupled ensemble data assimilation system using the Community
-     Earth System Model and the Data Assimilation Research Testbed.  
-     *Quarterly Journal of the Royal Meteorological Society*  
+     Earth System Model and the Data Assimilation Research Testbed. 
+     *Quarterly Journal of the Royal Meteorological Society*,
      [doi:10.1002/qj.3308](http://dx.doi.org/doi:10.1002/qj.3308)
 
 
@@ -928,7 +928,7 @@ The Data Assimilation Research Testbed: A Community Facility.
 
  ![](http://www.image.ucar.edu/images/pin4.gif) **Karspeck, A. and J. L. Anderson**, 2007  
      Experimental implementation of an ensemble adjustment filter
-     for an intermediate ENSO model.  
+     for an intermediate ENSO model.
      *Journal of Climate*, **20** 4638-4658,
      [doi:10.1175/JCLI4245.1](http://dx.doi.org/DOI:10.1175/JCLI4245.1)
 
