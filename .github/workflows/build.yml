@@ -22,8 +22,9 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       - name: docker test
-        run: |         
+      - run: |         
           cp $GITHUB_WORKSPACE/build_templates/mkmf.template.gfortran $GITHUB_WORKSPACE/build_templates/mkmf.template
           cd $GITHUB_WORKSPACE/models/lorenz_96/work
           csh quickbuild.csh
+      - run: csh quickbuild.sh -mpi      
           # mpirun -mca plm_rsh_agent ssh --allow-run-as-root -n 4 ./hello
