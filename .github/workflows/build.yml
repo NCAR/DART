@@ -30,6 +30,5 @@ jobs:
       
       - name: mpi build
         run: |
-          cd $GITHUB_WORKSPACE/models/lorenz_96/work
-          csh quickbuild.sh -mpi      
+          csh quickbuild.csh -mpi      
           # mpirun -mca plm_rsh_agent ssh --allow-run-as-root -n 4 ./hello
