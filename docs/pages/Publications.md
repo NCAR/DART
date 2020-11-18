@@ -78,7 +78,7 @@ The Data Assimilation Research Testbed: A Community Facility.
    Anderson, J. L., Arellano, A. F., Smith, W. K., Litvak, M. E., et al.**, 2018  
      Evaluation of a data assimilation system for land surface models using CLM4.5.  
      *Journal of Advances in Modeling Earth Systems*, **10**, 2471–2494,
-     [doi.org/10.1002/2018MS001362](https://doi.org/10.1002/2018MS001362)
+     [doi.org/10.1029/2018MS001362](https://doi.org/10.1029/2018MS001362)
 
 
  ![](http://www.image.ucar.edu/images/pin4.gif) **Karspeck, A. R., G. Danabasoglu,
