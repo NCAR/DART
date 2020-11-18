@@ -24,6 +24,7 @@ jobs:
       - name: docker test
         run: |
           cd $GITHUB_WORKSPACE/models/lorenz_96/work
-          cp $GITHUB_WORKSPACE/build_templates/mkmf.template.gfortran mkmf.template
+          cp ../../../mkmf.template.gfortran mkmf.template
+          ls
           csh quickbuild.csh
           # mpirun -mca plm_rsh_agent ssh --allow-run-as-root -n 4 ./hello
