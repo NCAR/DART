@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: docker test
         run: |         
-          cp $GITHUB_WORKSPACE/build_templates/mkmf.template.gfortran GITHUB_WORKSPACE/build_templates/mkmf.template
+          cp $GITHUB_WORKSPACE/build_templates/mkmf.template.gfortran $GITHUB_WORKSPACE/build_templates/mkmf.template
           cd $GITHUB_WORKSPACE/models/lorenz_96/work
           csh quickbuild.csh
           # mpirun -mca plm_rsh_agent ssh --allow-run-as-root -n 4 ./hello
