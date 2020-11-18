@@ -15,7 +15,7 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    container: docker://hkershaw/hello-test:3.0
+    container: docker://hkershaw/hello-test:4.0
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -26,4 +26,3 @@ jobs:
           cd $GITHUB_WORKSPACE/models/lorenz_96/work
           csh quickbuild.csh
           # mpirun -mca plm_rsh_agent ssh --allow-run-as-root -n 4 ./hello
-
