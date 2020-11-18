@@ -44,15 +44,15 @@ via 'types_mod.f90' is not supported.
 
     2.1. *ensemble.sh*
     
-    2.1.1. *initialize.template* (first cycle only)
+    2.2. *initialize.template* (first cycle only)
 
-    2.1.2. *advance_model.template* (job array to advance the ensemble)
+    2.3. *advance_model.template* (job array to advance the ensemble)
 
-    2.1.3. *check_ensemble.sh* (if all goes well, assimilate)
+    2.4. *check_ensemble.sh* (if all goes well, assimilate)
 
-    2.1.3.1. *filter.template* (assimilate)
+    2.5. *filter.template* (assimilate)
 
-    2.1.3.2. *finalize.sh*  if all goes well and experiment is not finished ... continue to 2.1
+    2.6. *finalize.sh*  if all goes well and experiment is not finished ... continue to 2.1
              
 ### Shell scripts
 

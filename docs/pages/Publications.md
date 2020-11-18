@@ -74,6 +74,13 @@ The Data Assimilation Research Testbed: A Community Facility.
      [doi:10.1175/MWR-D-17-0187.1](http://dx.doi.org/doi:10.1175/MWR-D-17-0187.1)
 
 
+ ![](http://www.image.ucar.edu/images/pin4.gif) **Fox, A. M., Hoar, T. J., 
+   Anderson, J. L., Arellano, A. F., Smith, W. K., Litvak, M. E., et al.** 2018
+     Evaluation of a data assimilation system for land surface models using CLM4.5.
+     *Journal of Advances in Modeling Earth Systems*, **10**, 2471–2494
+     [doi.org/10.1002/2018MS001362](https://doi.org/10.1002/2018MS001362)
+
+
  ![](http://www.image.ucar.edu/images/pin4.gif) **Karspeck, A. R., G. Danabasoglu,
    J. L. Anderson, S. Karol, N. Collins, M. Vertenstein, K. Raeder, T. Hoar,
    R. Neale, J. Edwards and A. Craig**, 2018  
@@ -491,6 +498,12 @@ The Data Assimilation Research Testbed: A Community Facility.
 ---
 ## 2012
 ---
+
+ ![](http://www.image.ucar.edu/images/pin4.gif) **Anderson, J. L.**, 2012
+     Localization and Sampling Error Correction in Ensemble Kalman Filter Data Assimilation.
+     *Monthly Weather Review*, **140**, 2359–2371,
+     [doi.org/10.1175/MWR-D-11-00013.1](https://doi.org/10.1175/MWR-D-11-00013.1)
+
 
  ![](http://www.image.ucar.edu/images/pin4.gif) **Raeder, K, J. L., Anderson,
    N. Collins, T. J. Hoar, J. E. Kay, P. H., Lauritzen and R. Pincus**, 2012  
