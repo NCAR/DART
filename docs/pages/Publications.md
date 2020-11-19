@@ -499,7 +499,7 @@ The Data Assimilation Research Testbed: A Community Facility.
 ## 2012
 ---
 
- ![](http://www.image.ucar.edu/images/pin4.gif) **Anderson, J. L.**, 2012
+ ![](http://www.image.ucar.edu/images/pin4.gif) **Anderson, J. L.**, 2012  
      Localization and Sampling Error Correction in Ensemble Kalman Filter Data Assimilation.  
      *Monthly Weather Review*, **140**, 2359–2371,
      [doi.org/10.1175/MWR-D-11-00013.1](https://doi.org/10.1175/MWR-D-11-00013.1)
@@ -520,7 +520,7 @@ The Data Assimilation Research Testbed: A Community Facility.
 
 
  ![](http://www.image.ucar.edu/images/pin4.gif) **Lee, I-Te, T. Matsuo, A. D. Richmond,
-   J. Y. Liu, Wenbin Wang, C. H. Lin, J. L. Anderson a nd M. Q. Chen**, 2012  
+   J. Y. Liu, Wenbin Wang, C. H. Lin, J. L. Anderson and M. Q. Chen**, 2012  
      Assimilation of FORMOSAT‐3/COSMIC electron density profiles into a coupled
      thermosphere/ionosphere model using ensemble Kalman filtering.  
      *Journal of Geophysical Research: Space Physics*, **117** A10,
