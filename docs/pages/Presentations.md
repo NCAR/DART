@@ -5,6 +5,11 @@
 ## 2020
 ----
 
+![](http://www.image.ucar.edu/images/pin4.gif) **Moha Gharamti** Nov 2020 :
+    Presented to the UCAR Executive Committee of the Board of Trustees<br />
+    Improving Earth System Model Predictions using Data Assimilation: Research and Applications
+    [\[presentation - pdf\]](http://www.image.ucar.edu/pub/DART/2020/2020_MEG_ExecComm.pdf)
+
 ![](http://www.image.ucar.edu/images/pin4.gif) **Brett Raczka** Aug 2020 :
     Presented at the
     [2020 ESA Annual Meeting](https://eco.confex.com/eco/2020/meetingapp.cgi/Home/0)
