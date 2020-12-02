@@ -14,7 +14,7 @@ def setup_wrf_hydro_ens_job(config, wrf_hydro_ens_sim):
     # tracked, could bring it in.
     hostname = subprocess.run('hostname', stdout=subprocess.PIPE).stdout.rstrip().decode('utf-8')
     fmt_dict = {
-        **{'cmd': 'wrf_hydro.exe',
+        **{'cmd': './wrf_hydro.exe',
            'hostname': hostname,
            'nproc': config_job_exe['wrf_hydro']['nproc']
         }

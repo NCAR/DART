@@ -44,6 +44,17 @@ def visit_abs_paths(path, key, value):
         return True
 
 
+def visit_abs_paths_to_str(path, key, value):
+    if value is None:
+        return True
+    # Making a bet that the same keys at different hierarchical levels
+    # will both be desired as pathlib.PosixPath objects.
+    if key in config_abs_paths_list and type(value) is not dict:
+        return key, str(value)
+    else:
+        return True
+
+
 # ######################################################
 # Generic spec establishment = YAML + remap_spec
 
