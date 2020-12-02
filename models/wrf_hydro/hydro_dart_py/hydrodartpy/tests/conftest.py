@@ -56,15 +56,20 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture(scope="session")
-def answer_file(request):
-    exp_anwer_file = pathlib.Path(
-        request.config.getoption("--exp_answer_file")[0])
-    return exp_anwer_file
+def test_dir():
+    return pathlib.Path(os.getcwd()).resolve()
 
 
 @pytest.fixture(scope="session")
-def config_file(request):
-    exp_yaml = pathlib.Path(
+def answer_file(request, test_dir):
+    exp_answer_file = test_dir / (
+        request.config.getoption("--exp_answer_file")[0])
+    return exp_answer_file
+
+
+@pytest.fixture(scope="session")
+def config_file(request, test_dir):
+    exp_yaml = test_dir / (
         request.config.getoption("--exp_yaml")[0])
     scratch_dir = request.config.getoption("--scratch_dir")[0]
     use_existing_build = request.config.getoption("--use_existing_build")
@@ -149,8 +154,8 @@ def config_file(request):
 
     strify = hdp_tools.visit_abs_paths_to_str
     exp_config_out = remap(exp_config, strify)
-    with open(test_yaml, 'w') as file:
-        _ = yaml.dump(exp_config_out, file)
+    with open(test_yaml, 'w') as out_file:
+        _ = yaml.dump(exp_config_out, out_file)
 
     return test_yaml
 

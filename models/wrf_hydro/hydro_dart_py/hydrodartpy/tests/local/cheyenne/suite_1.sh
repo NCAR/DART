@@ -7,7 +7,7 @@ test_dir=../../
 # this is relative to the test dir
 test_domain_dir=experiment_test_files/$domain_tag
 yaml_file=$test_domain_dir/${locality}.yaml
-answer_file=$test_domain_dir/answers/suite_1.yaml
+answer_file=$test_domain_dir/answers.yaml
 
 cd $test_dir
 

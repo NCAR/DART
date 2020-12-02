@@ -8,7 +8,7 @@ array=( \
         ../../assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
         ../noah/work/path_names_filter
         ../noah/work/path_names_model_mod_check
-        ../noah/work/path_names_perfect_model_obs)
+        ../noah/work/path_names_perfect_model_obs )
 
 for ff in ${array[@]}; do
     echo $ff
