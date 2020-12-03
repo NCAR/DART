@@ -40,29 +40,6 @@ exit
 ## https://opensource.gsfc.nasa.gov/projects/HDF-EOS2/index.php
 ##
 ## https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads  has a link to hdf-eos v2.20
-##
-## It has been very difficult to find the download site for _any_ of the HDF-EOS5 
-## versions. One dogged individual found that if you _knew_ the full URL, you could
-## download it:
-## https://observer.gsfc.nasa.gov/ftp/edhs/hdfeos5/latest_release/HDF-EOS5.1.16.tar.Z 
-##
-## All attempts to use ftp met with failure (some information has been obfuscated):
-##
-##    0[405] cheyenne2:~/src > ftp edhs1.gsfc.nasa.gov
-##    Wrapper for lftp to simulate compatibility with lukemftp
-##    Name (xxxxx): anonymous
-##    Password:                                   
-##    lftp anonymous@edhs1.gsfc.nasa.gov:~> cd /edhs/hdfeos/latest_release
-##    ---- Connecting to edhs1.gsfc.nasa.gov (xxxx:xxx:xxx:xxx::xxx) port xx
-##    **** connect(control_sock): Network is unreachable
-##    cd: Fatal error: max-retries exceeded (Network is unreachable)
-##    lftp anonymous@edhs1.gsfc.nasa.gov:~> mget /edhs/hdfeos/latest_release/HDF-EOS5.1.16.tar.Z 
-##    ---- Connecting to edhs1.gsfc.nasa.gov (xxx.xxx.xxx.xx) port xx
-##    `/edhs/hdfeos/latest_release/HDF-EOS5.1.16.tar.Z' at 0 [Connecting...]
-##    **** Timeout - reconnecting                                             
-##    mget: /edhs/hdfeos/latest_release/HDF-EOS5.1.16.tar.Z: Fatal error: max-retries exceeded
-##
-# ------------------------------------------------------------------------------
 
 # nsc 11 mar 2013
 # updated 16 jul 2018
@@ -74,16 +51,8 @@ exit
 if ( `false` ); then
   # get the files.  i got this by:
    
-  # ftp edhs1.gsfc.nasa.gov
-  # # (log in as 'anonymous' and your email as the password)
-  # cd /edhs/hdfeos/latest_release
-  # mget * # select a for all
-  # quit
-   
-  # mar 2013, the dir contents:
-  # 
-  # jpegsrc.v9b.tar.gz
   # zlib-1.2.11.tar.gz
+  # jpegsrc.v9b.tar.gz
   # hdf-4.2.13.tar.gz
   # HDF-EOS2.20v1.00.tar.Z
   # HDF-EOS2.20v1.00_TestDriver.tar.Z
@@ -104,15 +73,12 @@ fi
 # ------------------------------------------------------------------------------
 
 # set the installation location of the final libraries
-H4_PREFIX=/glade/work/${USER}/hdf-eos
-H5_PREFIX=/glade/work/${USER}/hdf-eos5
+H4_PREFIX=/glade/work/${USER}/local/hdf-eos
+H5_PREFIX=/glade/work/${USER}/local/hdf-eos5
 
 # make the target install dirs
 mkdir -p ${H4_PREFIX}/{lib,bin,include,man,man/man1,share} 
 mkdir -p ${H5_PREFIX}/{lib,bin,include,man,man/man1,share} 
-
-CFLAGS='-fPIC'
-FFLAGS='-fPIC'
 
 # record the build script and environment
 echo                         >  ${H4_PREFIX}/build_environment_log.txt
@@ -131,6 +97,9 @@ echo '======================================================================'
 if [ -f ${H4_PREFIX}/lib/libz.a ]; then
    echo 'zlib already exists - no need to build.'
 else
+
+   export CFLAGS='-fPIC'
+   export FFLAGS='-fPIC'
 
    echo 'building zlib at '`date`
    cd zlib-1.2.11 || exit 1
@@ -153,7 +122,8 @@ if [ -f ${H4_PREFIX}/libjpeg.a ]; then
 else
    echo 'buiding jpeg at '`date`
    cd jpeg-9b        || exit 2
-   ./configure --prefix=${H4_PREFIX} --libdir=${H4_PREFIX} || exit 2
+   ./configure CC='icc -Df2cFortran' CFLAGS='-fPIC' FFLAGS='-fPIC' \
+               --prefix=${H4_PREFIX} --libdir=${H4_PREFIX} || exit 2
    make clean        || exit 2
    make              || exit 2
    make test         || exit 2
@@ -170,7 +140,8 @@ else
    # (apparently there is no 'make test')
    
    cd hdf-4.2.13 || exit 3
-   ./configure --prefix=${H4_PREFIX} \
+   ./configure CC='icc -Df2cFortran' CFLAGS='-fPIC' FFLAGS='-fPIC' \
+               --prefix=${H4_PREFIX} \
                --disable-netcdf \
                --with-zlib=${H4_PREFIX} \
                --with-jpeg=${H4_PREFIX} || exit 3
@@ -185,10 +156,12 @@ echo '======================================================================'
 if [ -f ${H4_PREFIX}/lib/libhdfeos.a ]; then
    echo 'hdf-eos already exists - no need to build.'
 else
-   echo 'building hdf-eos at '`date`
+   echo 'building HDF-EOS2.20v1.00 at '`date`
+   echo 'after expanding the .tar.gz file, the source is in "hdfeos"'
    cd hdfeos    || exit 4
    # (the CC options are crucial to provide Fortran interoperability)
-   ./configure CC='icc -Df2cFortran' --prefix=${H4_PREFIX} \
+   ./configure CC='icc -Df2cFortran' CFLAGS='-fPIC' FFLAGS='-fPIC' \
+               --prefix=${H4_PREFIX} \
                --enable-install-include \
                --with-zlib=${H4_PREFIX} \
                --with-jpeg=${H4_PREFIX} \
@@ -220,7 +193,8 @@ else
    # (there is apparently no 'make test')
    
    cd hdf5-1.8.19 || exit 3
-   ./configure --prefix=${H5_PREFIX} \
+   ./configure CC='icc -Df2cFortran' CFLAGS='-fPIC' FFLAGS='-fPIC' \
+               --prefix=${H5_PREFIX} \
                --enable-fortran \
                --enable-fortran2003 \
                --enable-production \
@@ -241,7 +215,8 @@ else
    echo 'building hdf-eos5 at '`date`
    cd hdf-eos5-5.1.16    || exit 4
    # (the CC options are crucial to provide Fortran interoperability)
-   ./configure CC='icc -Df2cFortran' --prefix=${H5_PREFIX} \
+   ./configure CC='icc -Df2cFortran' CFLAGS='-fPIC' FFLAGS='-fPIC' \
+               --prefix=${H5_PREFIX} \
                --enable-install-include \
                --with-zlib=${H4_PREFIX} \
                --with-hdf5=${H5_PREFIX} || exit 4

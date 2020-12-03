@@ -13,6 +13,7 @@ use netcdf_utilities_mod, only : nc_define_dimension, &
                                  nc_define_unlimited_dimension, &
                                  nc_define_double_variable, &
                                  nc_define_real_variable, &
+                                 nc_define_integer_variable, &
                                  nc_add_attribute_to_variable, &
                                  nc_put_variable, &
                                  nc_end_define_mode, &
@@ -1124,8 +1125,12 @@ end subroutine define_amsua_dimensions
 
 
 !-------------------------------------------------------------------------------
-! I suspect there are hdf-eos 'swxxxx' routines to query variable dimensions,
-! names, attributes ... 
+! There are hdf-eos 'swxxxx' routines to query variable names, dimensions, atts ...
+!
+! The attributes I am using come from :
+! https://docserver.gesdisc.eosdis.nasa.gov/repository/Mission/AIRS/\
+! 3.3_ScienceDataProductDocumentation/3.3.4_ProductGenerationAlgorithms/\
+! README.AIRABRAD.pdf
 
 subroutine define_amsua_variables(granule, ncid, context)
 type(amsua_bt_granule),     intent(in) :: granule
@@ -1133,6 +1138,11 @@ integer,                    intent(in) :: ncid
 character(len=*), optional, intent(in) :: context
 
 character(len=NF90_MAX_NAME) :: dimnames(NF90_MAX_VAR_DIMS)
+character(len=128) :: string1, string2
+
+! There are 240 granules per day
+
+call nc_define_integer_variable(ncid,'granule_number','granule_number',context)
 
 ! The declarations happen in reverse order from the Fortran.
 ! The old 'column major' vs. 'row major' argument.
@@ -1146,9 +1156,27 @@ call nc_define_double_variable(ncid,'Latitude' ,dimnames(1:3),context)
 call nc_define_double_variable(ncid,'Longitude',dimnames(1:3),context)
 call nc_define_double_variable(ncid,'Time'     ,dimnames(1:3),context)
 
-call nc_add_attribute_to_variable(ncid,'Latitude' ,'_FillValue',-9999.0_digits12,context)
+write(string1,*)'AIRS spot boresight geodetic latitude'
+write(string2,*)'degrees North'
+call nc_add_attribute_to_variable(ncid,'Latitude','long_name',string1,context)
+call nc_add_attribute_to_variable(ncid,'Latitude','units'    ,string2,context)
+call nc_add_attribute_to_variable(ncid,'Latitude','_FillValue',-9999.0_digits12,context)
+call nc_add_attribute_to_variable(ncid,'Latitude','valid_range', &
+          (/ -90.0_digits12, 90.0_digits12 /),context)
+
+write(string1,*)'AIRS spot boresight geodetic longitude'
+write(string2,*)'degrees East'
+call nc_add_attribute_to_variable(ncid,'Longitude','long_name',string1,context)
+call nc_add_attribute_to_variable(ncid,'Longitude','units'    ,string2,context)
 call nc_add_attribute_to_variable(ncid,'Longitude','_FillValue',-9999.0_digits12,context)
-call nc_add_attribute_to_variable(ncid,'Time'     ,'_FillValue',-9999.0_digits12,context)
+call nc_add_attribute_to_variable(ncid,'Longitude' ,'valid_range', &
+          (/ -180.0_digits12, 180.0_digits12 /),context)
+
+write(string1,*)'Footprint (shutter) TAI Time'
+write(string2,*)'seconds since 1993-01-01 00:00:00'
+call nc_add_attribute_to_variable(ncid,'Time','long_name',string1,context)
+call nc_add_attribute_to_variable(ncid,'Time','units'    ,string2,context)
+call nc_add_attribute_to_variable(ncid,'Time','_FillValue',-9999.0_digits12,context)
 
 dimnames(1) = 'AMSUA_BT_CHANNEL'
 dimnames(2) = 'AMSUA_BT_GEOXTRACK' 
