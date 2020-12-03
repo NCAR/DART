@@ -2031,10 +2031,10 @@ DO imem = 1, ens_size
 
    ! check that the pressure is monotonically increasing from TOA down
    do ilvl = 1, nlevels-1
-      if (atmos % pressure(imem,lvlidx(ilvl)) => atmos % pressure(imem,lvlidx(ilvl+1))) then
+      if (atmos % pressure(imem,lvlidx(ilvl)) >= atmos % pressure(imem,lvlidx(ilvl+1))) then
          if (debug) then
             write(string1,*) 'For ens #',imem,', pressure ',lvlidx(ilvl),' was greater than or equal to pressure ',&
-                lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' > ',atmos%pressure(imem,lvlidx(ilvl+1))
+                lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' >= ',atmos%pressure(imem,lvlidx(ilvl+1))
             call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
          end if
 
