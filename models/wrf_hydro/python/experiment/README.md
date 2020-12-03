@@ -8,19 +8,40 @@ James (jamesmcc-at-ucar-dot-edu)
 ### Python 3.6+
 
 #### Cheyenne
-Please configure your python virtual environment using the following script (adapted from https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne/software/python). This is known to not work, that is why there is a test section. If it does not work, please report this issue to cisl@ucar.edu or to us.
+Please configure your python virtual environment using the following script (adapted from https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne/software/python):
 
 ```
-#!/bin/bash
+# Cheynne python virtual environments
+# James McCreight
 
-# This script installs and activates a new python virtual environment
-# from the latest, stock cisl one. 
-# Configure two variables here:
-env_tag=cisl_test # This will be wrapped in () in your PS1/prompt.
-clone_dir=/glade/work/$USER/python_envs/$env_tag
+# This script installs and activates a new python virtual environment (venv)
+# from the latest, stock cisl one.
+
+# -----------------------------------------------------------------------------
+# CONFIGURATION SECTION
+
+# First determined the version to be installed
+# Run:  module purge; module load ncarenv python/3.x.x; ncar_pylib -l
+# Then copy the path to the desired version here.... (unfortunately, this has
+# become unparseable and has changed a few times)
+py_lib_path=/glade/u/apps/ch/opt/python/3.7.5/gnu/8.3.0/pkg-library/20200417
+# The name or tag for the environment that you copy.
+# The name will appear in () in your shell (PS1) prompt and the name
+# will be used within the directory you use to keep all your different
+# virtual environments. 
+env_tag=hdp
+
+# This is the dir where you will save different, named/tagged venvs
+python_venv_dir=/glade/work/$USER/python_envs
+
+# END CONFIGURATION SECTION
+# -----------------------------------------------------------------------------
+
+
+clone_dir=$python_venv_dir/$env_tag
 
 # -------------------------------------------------------
-# Make sure the script is being sourced
+# Make sure this script is being sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "This script is to be sourced (not run in a sub shell)."
     exit 1
@@ -30,15 +51,12 @@ fi
 # Install and config
 deactivate 2&>1 > /dev/null
 rm -rf $clone_dir
-module load python/3.6.4
-ncar_pylib -c `ncar_pylib -l | tail -n1` $clone_dir
+ncar_pylib -c $py_lib_path $clone_dir
+# The above prints the requsite modules for that env
 
 if [ ! -z $env_tag ]; then
     sed -i "s/(NPL)/(${env_tag})/" ${clone_dir}/bin/activate
 fi
-
-# -------------------------------------------------------
-# Activate
 source ${clone_dir}/bin/activate || return 1
 
 # -------------------------------------------------------
@@ -47,7 +65,10 @@ pip uninstall -y seaborn || return 1
 pip install seaborn || return 1
 
 # -------------------------------------------------------
-# Bashrc
+# User actions
+echo "You may want to note the modules listed when this virtual"
+echo "env was installed and you may want to do something like:"
+echo "module purge; module load <<list of modules printed above>>; module save $env_tag"
 echo
 echo "To activate this environment on login, put this at the"
 echo "bottom of your bashrc:"
@@ -57,46 +78,35 @@ echo
 return 0
 ```
 
-
-
-### Python package dependencies
-#### pip
-The dependencies can be installed via: 
-```
-pip install -r requirement.txt
-```
-Where the `requirements.txt` is under version control in this dir. It is possible that it is out of date if it does not provide all the requirements. 
-#### Conda: 
-.... todo
-
-### wrf\_hydro\_dart
-[https://github.com/NCAR/wrf\_hydro\_dart](https://github.com/NCAR/wrf\_hydro\_dart) is this repo.
-The current DART code (RMA) is now used on the master branch. Please make a fork of this and use
-the standard "pull from" and "pull-request to" workflow with NCAR/upstream. 
-
-### hydro\_dart\_py
-Inside wrf\_hydro\_dart lives the `hydro_dart_py` python package. This package is not available
-outside the repo and must be installed by:
-```
-cd wrf_hydro_dart/hydro_dart_py
-python setup.py develop
-```
-The above will pickup changes whenever the underlying `hydro_dart_py` repository is changed and does 
-not need to be run again.
-
 ### wrf\_hydro\_nwm\_public
 [https://github.com/NCAR/wrf\_hydro\_nwm\_public](https://github.com/NCAR/wrf\_hydro\_nwm\_public)
 The WRF-Hydro model code. The aim is to keep wrf\_hydro\_dart synched with master on this repo.
 
 ### wrf_hydro_py
-[https://github.com/NCAR/wrf\_hydro\_py](https://github.com/NCAR/wrf\_hydro\_py)
-..Python API and tools for managing and running WRF-Hydro and its inputs and outputs (including
-..ensembles. 
+This should boe handled by the install of `hydrodartpy` below. Come here if not or if you need a development install of `wrfhydropy`.
+
+[https://github.com/NCAR/wrf\_hydro\_py](https://github.com/NCAR/wrf\_hydro\_py) Python API and tools for managing and running WRF-Hydro and its inputs and outputs, including ensembles. 
 ```
 cd wrf_hydro_py
 python setup.py develop
 ```
 As above, this only is run once and updates are obtained by updating the repository.
+
+
+### Install and test hydrodartpy
+```
+cd /your/path/to/DART/models/wrf_hydro/hydro_dart_py
+python setup.py install
+
+# This is not ideal currently...
+cd hydrodartpy/tests/data 
+ln -s /your/path/to/wrf_hydro_nwm_public
+
+cd ../local/cheyenne
+./suite_1.sh
+```
+or use `develop` in lieu of `install` if you are editing the package source.
+
 
 ###  WRF-Hydro Domain files in the proper convention 
 Currently these can be obtained via
