@@ -3451,6 +3451,7 @@ type(location_type) :: loc
 integer :: maxlevels, numlevels
 
 type(location_type) :: loc_undef        ! surface location
+type(location_type) :: loc_sea          ! surface location
 type(location_type) :: loc_sfc          ! surface location
 type(location_type) :: loc_2m           ! surface location
 type(location_type) :: loc_10m          ! surface location
@@ -3788,18 +3789,21 @@ GETLEVELDATA : do i = 1,numlevels
 
 end do GETLEVELDATA
 
-loc_undef = set_location(loc_lon, loc_lat, 1.0_r8, VERTISUNDEF )
-loc_sfc = set_location(loc_lon, loc_lat, 0.0_r8, VERTISSURFACE )
-loc_2m  = set_location(loc_lon, loc_lat, 2.0_r8, VERTISSURFACE )
-loc_10m = set_location(loc_lon, loc_lat, 10.0_r8, VERTISSURFACE )
 
 ! set the surface fields
-call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
-call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
+! start with elevation so the other locations can have appropriate vert values
+loc_sea = set_location(loc_lon, loc_lat, 0.0_r8, VERTISSURFACE )
+call interpolate(state_handle, ens_size, loc_sea, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
+call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc_sea, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
-call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
-call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
+loc_undef = set_location(loc_lon, loc_lat,                MISSING_R8, VERTISUNDEF )
+loc_sfc   = set_location(loc_lon, loc_lat,  0.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
+loc_2m    = set_location(loc_lon, loc_lat,  2.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
+loc_10m   = set_location(loc_lon, loc_lat, 10.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
+
+call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
+call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
 call interpolate(state_handle, ens_size, loc_2m, QTY_2M_TEMPERATURE, atmos%s2m_t(:), this_istatus)
