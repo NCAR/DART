@@ -310,7 +310,7 @@ module obs_def_rttov_mod
 
 use        types_mod, only : r8, MISSING_R8, MISSING_I, obstypelength
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, E_ALLMSG, &
                              ascii_file_format, nmlfileunit, do_nml_file, &
                              do_nml_term, check_namelist_read, find_namelist_in_file, &
                              interactive_r, interactive_i, open_file, file_exist
@@ -2035,7 +2035,7 @@ DO imem = 1, ens_size
          if (debug) then
             write(string1,*) 'For ens #',imem,', pressure ',lvlidx(ilvl),' was greater than or equal to pressure ',&
                 lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' > ',atmos%pressure(imem,lvlidx(ilvl+1))
-            call error_handler(E_MSG,routine,string1,source,revision,revdate)
+            call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
          end if
 
          radiances(:) = MISSING_R8
@@ -3519,7 +3519,7 @@ if ( .not. arrays_prealloced) then
       write(string1,'(A,I0)') 'FAILED to determine number of levels in model:', &
          numlevels
          
-      if (debug) call error_handler(E_MSG,routine,string1,source,revision,revdate)
+      if (debug) call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
       istatus = 1
       val     = MISSING_R8
       return
@@ -4001,7 +4001,7 @@ if (is_visir) then
       ! News. Tell the user we are increasing storage.
       write(string1, *) 'Warning: key (',key,') exceeds visir_obs_metadata length (',orglength,')'
       write(string2, *) 'Increasing visir_obs_metadata to length ',newlength
-      call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+      call error_handler(E_ALLMSG,routine,string1,source,revision,revdate,text2=string2)
 
       allocate(safe_visir_metadata(orglength))
       safe_visir_metadata(:) = visir_obs_metadata(:)
@@ -4028,7 +4028,7 @@ else
       ! News. Tell the user we are increasing storage.
       write(string1, *) 'Warning: key (',key,') exceeds mw_obs_metadata length (',orglength,')'
       write(string2, *) 'Increasing mw_obs_metadata to length ',newlength
-      call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+      call error_handler(E_ALLMSG,routine,string1,source,revision,revdate,text2=string2)
 
       allocate(safe_mw_metadata(orglength))
       safe_mw_metadata(:) = mw_obs_metadata(:)
@@ -4101,7 +4101,7 @@ if (return_now) then
    else if (debug) then
       write(string1,*) 'Could not find requested field ' // trim(field_name), ' istatus:',istatus,&
          'location:',locv(1),'/',locv(2),'/',locv(3)
-      call error_handler(E_MSG,routine,string1,source,revision,revdate)
+      call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
    end if
 end if
 
