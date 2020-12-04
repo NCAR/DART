@@ -1329,8 +1329,7 @@ else if (obs_kind == QTY_TEMPERATURE) then
    if (all(istatus /= 0)) goto 100
 
    ! convert pot_temp, density, vapor mixing ratio into sensible temperature
-   expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus, ierror)
-   istatus = ierror    ! update the status with the error from theta_to_tk: Ha
+   expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus) 
 
    if (debug > 9 .and. do_output()) &
       print *, 'model_interpolate: TEMPERATURE ', istatus(1), expected_obs(1), trim(locstring)
@@ -5754,10 +5753,11 @@ real(r8),            intent(out) :: dval(n, ens_size)
 integer,             intent(out) :: ier(ens_size)
 integer, optional,   intent(in)  :: this_cellid
 
-real(r8), dimension(3, ens_size) :: fract, lowval, uppval, fdata
+real(r8), dimension(3, ens_size) :: fract, fdata
+real(r8), dimension(ens_size) :: lowval, uppval
 real(r8)    :: weights(3)
 integer     :: c(3), nvert, k, i, nc
-integer(i8) :: index1, low_offset, upp_offset
+integer(i8) :: index1, low_offset, upp_offset, low_state_indx, upp_state_indx
 integer     :: lower(3, ens_size), upper(3,ens_size)
 integer     :: e, e2, thislower, thisupper
 logical     :: did_member(ens_size)
@@ -5825,11 +5825,10 @@ do k=1, n
             do e2=e, ens_size
                if (thislower == lower(i, e2) .and. thisupper == upper(i, e2)) then
                   fdata(i, e2) = lowval(e2)*(1.0_r8 - fract(i, e2)) + uppval(e2)*fract(i, e2)
-!write(*,"(3(A,I3),2(A,F12.4))") 'comp: fld ', k, ', crnr ', i, ', mem ', e2, ', frac ', fract(i, e2), ', data ', fdata(i, e2)
                   did_member(e2) = .true.
                endif
             enddo
-         enddo  ! end ens_size
+         enddo members
 
       endif                         ! 2-D fields
 
@@ -7431,7 +7430,7 @@ end subroutine r3_normalize
 
 !------------------------------------------------------------------
 
-function theta_to_tk (ens_size, theta, rho, qv, istatus) !  _in, istatus_out)  NSC
+function theta_to_tk (ens_size, theta, rho, qv, istatus) 
 
 ! Compute sensible temperature [K] from potential temperature [K].
 ! code matches computation done in MPAS model
@@ -7440,8 +7439,6 @@ integer,                       intent(in)  :: ens_size
 real(r8), dimension(ens_size), intent(in)  :: theta    ! potential temperature [K]
 real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
 real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
-!integer,  dimension(ens_size), intent(in)  :: istatus_in
-!integer,  dimension(ens_size), intent(out) :: istatus_out
 integer,  dimension(ens_size), intent(inout) :: istatus
 real(r8), dimension(ens_size) :: theta_to_tk          ! sensible temperature [K]
 
