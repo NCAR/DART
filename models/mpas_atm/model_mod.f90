@@ -7451,6 +7451,15 @@ integer :: e
 qv_nonzero = max(qv,0.0_r8)
 theta_to_tk = missing_r8
 
+if (any(istatus /= 0)) then
+   print *, 'theta_to_tk - nonzero istatus coming in'
+   do e = 1, ens_size
+    if (istatus(e) /= 0) then
+        write(string2, *) 'member ', e, ' incoming istatus = ', istatus(e)
+        call error_handler(E_ALLMSG, 'theta_to_tk',string2,source, revision, revdate)
+    endif  !(istatus(e) /= 0) then
+   enddo   ! ens_size
+endif
 where (istatus == 0)
 
    theta_m = (1.0_r8 + 1.61_r8 * qv_nonzero)*theta
