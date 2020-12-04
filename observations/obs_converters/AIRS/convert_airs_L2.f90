@@ -4,20 +4,22 @@
 
 program convert_airs_L2
 
-! Program to read the AIRS retrievals for temperature
-! and humidity. 
+! Program to read the AIRS retrievals for temperature and humidity. 
 
-use types_mod,        only : r8, deg2rad, PI
+use        types_mod, only : r8, deg2rad, PI
+
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence
-use     airs_JPL_mod, only : airs_granule_type, airs_ret_rdr
+
 use    utilities_mod, only : initialize_utilities, register_module, &
                              error_handler, finalize_utilities, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, set_filename_list, &
                              logfileunit, nmlfileunit, get_next_filename
 
-use airs_obs_mod,     only : make_obs_sequence, initialize_obs_sequence, &
+use     airs_JPL_mod, only : airs_granule_type, airs_ret_rdr
+
+use     airs_obs_mod, only : make_obs_sequence, initialize_obs_sequence, &
                              compute_thin_factor
 
 implicit none

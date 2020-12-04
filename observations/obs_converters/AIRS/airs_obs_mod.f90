@@ -247,7 +247,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
          endif
          obs_var = obs_var * obs_var
 
-	 if (DEBUG) print *, 'obs value, var = ', obs_value, obs_var
+         if (DEBUG) print *, 'obs value, var = ', obs_value, obs_var
 
          call create_3d_obs(olat, olon, vloc, which_vert, obs_value, AIRS_TEMPERATURE, obs_var, &
                             days, seconds, tqc, obs)
