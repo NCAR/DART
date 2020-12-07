@@ -1358,7 +1358,7 @@ else if (obs_kind == QTY_VAPOR_MIXING_RATIO      .or. obs_kind == QTY_2M_SPECIFI
          obs_kind == QTY_ICE_MIXING_RATIO        .or. obs_kind == QTY_SNOW_MIXING_RATIO      .or. &
          obs_kind == QTY_GRAUPEL_MIXING_RATIO    .or. obs_kind == QTY_CLOUD_FRACTION       ) then
    tvars(1) = get_progvar_index_from_kind(obs_kind)
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), values(1,:), istatus)
    expected_obs = values(1, :)
 
    ! Don't accept negative hydrometeors
@@ -1377,7 +1377,7 @@ else if (obs_kind == QTY_VAPOR_MIXING_RATIO      .or. obs_kind == QTY_2M_SPECIFI
 
 else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
    tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), values(1,:), istatus)
    expected_obs = values(1, :)
 
    ! compute vapor pressure, then: sh = vp / (1.0 + vp)
@@ -1426,7 +1426,7 @@ else
    ! direct interpolation: kind is in the state vector and no clamping or other conversions needed
 
    tvars(1) = ivar
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), values(1,:), istatus)
    expected_obs = values(1, :)
 
    if (debug > 9 .and. do_output()) &
@@ -4396,7 +4396,7 @@ else if(is_vertical(location, "SURFACE")) then
    ivars(1) = get_progvar_index_from_kind(QTY_SURFACE_PRESSURE)
    if ( ivars(1) >= 0 ) then
 
-     call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, ivars, values, istatus)
+     call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, ivars(1), values(1,:), istatus)
      where (istatus == 0) ploc(:) = values(1,:)
 
    else
@@ -5791,7 +5791,7 @@ do k=1, n
       ! go around triangle and interpolate in the vertical
       ! c(3) are the cell ids
 
-      low_offset = (c(i)-1) * nvert
+      low_offset = (c(i)-1) * nvert !HK low_offset and upp_offset are the same?
       upp_offset = (c(i)-1) * nvert
 
       if( nvert == 1 ) then         ! fields on a surface (1-D, one level, ...)
