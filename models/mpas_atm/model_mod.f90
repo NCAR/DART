@@ -1156,7 +1156,6 @@ logical  :: goodkind, surface_obs
 real(r8) :: lpres(ens_size), values(3, ens_size)
 real(r8) :: llv(3)    ! lon/lat/vert
 integer  :: e, verttype
-integer  :: ierror(ens_size)   ! Ha
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1901,7 +1900,7 @@ if (vertical_localization_on()) then
       call convert_vert_distrib(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
       istatus1 = istat_arr(1)
       base_loc = location_arr(1)
-      if(debug > 5 .and. do_output()) then
+      if(debug > 4 .and. do_output()) then
          call write_location(0,base_loc,charstring=string1)
          call error_handler(E_ALLMSG, 'get_close_obs: base_loc',string1,source, revision, revdate)
      endif
