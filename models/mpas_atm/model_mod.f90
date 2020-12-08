@@ -7451,7 +7451,7 @@ qv_nonzero = max(qv,0.0_r8)
 theta_to_tk = missing_r8
 
 if (any(istatus /= 0)) then
-   print *, 'theta_to_tk - nonzero istatus coming in'
+   if ( debug > 0 .and. do_output()) print *, 'theta_to_tk - nonzero istatus coming in'
    do e = 1, ens_size
     if (istatus(e) /= 0) then
         write(string2, *) 'member ', e, ' incoming istatus = ', istatus(e)
