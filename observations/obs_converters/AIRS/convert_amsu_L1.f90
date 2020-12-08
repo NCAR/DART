@@ -4,16 +4,26 @@
 
 program convert_amsu_L1
 
-! Program to read the AMSU/A brightness temperatures.
-! Flown on the AIRS platform.
+! Program to convert the AMSU/A 'AIRABRAD' brightness temperatures 
+! from netCDF to a DART observation sequence file.
+!
+! See the REAMDE.md in this directory for more informaiton, but the
+! data citation information for the dataset is 
+!
+! Title: AIRS/Aqua L1B AMSU (A1/A2) geolocated and calibrated brightness temperatures V005
+! Version: 005
+! Creator: AIRS project
+! Publisher: Goddard Earth Sciences Data and Information Services Center (GES DISC)
+! Release Date: 2007-07-26T00:00:00.000Z
+! Linkage: https://disc.gsfc.nasa.gov/datacollection/AIRABRAD_005.html
+!
+! The data are originally distributed in HDF-EOS format and can be converted to netCDF
+! by the h4tonccf_nc4 program available from http://hdfeos.org/software/h4cflib.php
 
 use         types_mod, only : r8, deg2rad, PI
 
 use  obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                               static_init_obs_sequence, destroy_obs_sequence
-
-use amsua_support_mod, only : amsua_bt_gran_type, AMSUA_BT_CHANNEL, &
-                              read_amsua_bt_granule, make_obs_sequence
 
 use    utilities_mod, only : initialize_utilities, register_module, &
                              error_handler, finalize_utilities, E_ERR, E_MSG, &
@@ -21,6 +31,12 @@ use    utilities_mod, only : initialize_utilities, register_module, &
                              do_nml_file, do_nml_term, set_filename_list, &
                              logfileunit, nmlfileunit, get_next_filename
 
+use     amsua_bt_mod, only : amsua_bt_granule
+
+use amsua_netCDF_support_mod, only : initialize_amsua_netcdf, &
+                                     channel_list_to_indices, &
+                                     read_amsua_bt_netCDF_granule, &
+                                     make_obs_sequence
 
 implicit none
 
@@ -29,6 +45,7 @@ implicit none
 ! ----------------------------------------------------------------------
         
 integer, parameter :: MAXFILES = 512
+integer, parameter :: AMSUA_BT_CHANNEL = 15
 
 character(len=256) :: l1_files(MAXFILES) = ''
 character(len=256) :: l1_file_list       = ''
@@ -39,7 +56,7 @@ real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lat1 = -90.0_r8,  &   !  lower latitude bound
             lat2 =  90.0_r8       !  upper latitude bound
 
-integer  :: channel_list(AMSUA_BT_CHANNEL) = -1
+character(len=8) :: channel_list(AMSUA_BT_CHANNEL) = 'null'
 integer  :: cross_track_thin = 0
 integer  :: along_track_thin = 0
 
@@ -56,10 +73,9 @@ namelist /convert_amsu_L1_nml/ l1_files, l1_file_list, &
 
 integer                  :: io, iunit, ifile
 integer                  :: thin_factor, filecount
-type(amsua_bt_gran_type) :: granule
+type(amsua_bt_granule)   :: granule
 type(obs_sequence_type)  :: seq
 logical                  :: use_channels(AMSUA_BT_CHANNEL) = .false.
-integer :: nchans, ichannel
 
 character(len=512) :: string1
 
@@ -92,29 +108,18 @@ if (do_nml_term()) write(    *      , nml=convert_amsu_L1_nml)
 ! all the filenames, regardless of which way they were specified.
 filecount = set_filename_list(l1_files, l1_file_list, "convert_amsu_L1")
 
-nchans = 0
-do while (channel_list(nchans+1) > 0 .and. nchans < AMSUA_BT_CHANNEL)
-   nchans = nchans + 1
-enddo
+! use the first file to initialize the module
+call initialize_amsua_netcdf(l1_files(1))
 
-if (nchans > 1) then
-   use_channels(:) = .false.
-
-   do ichannel=1,nchans
-      use_channels(channel_list(ichannel)) = .true.
-   end do
-else
-   use_channels(:) = .true.
-end if
-
-print *,'TJH channel_list ',channel_list
-print *,'TJH use_channels ',use_channels
+! FIXME ... maybe ... are all the files guaranteed to have the
+! same channels - I think so.
+call channel_list_to_indices(channel_list, use_channels)
 
 ! for each input file
 do ifile = 1,filecount
 
    ! read from HDF file into a derived type that holds all the information
-   call read_amsua_bt_granule(l1_files(ifile), granule)   
+   call read_amsua_bt_netCDF_granule(l1_files(ifile), granule)   
 
    ! convert derived type information to DART sequence
    call make_obs_sequence(seq, granule, lon1, lon2, lat1, lat2, &

@@ -28,17 +28,27 @@
   /
 
 
-# channel
-# A2-1, A2-2, A1-1, A1-2, A1-3,   A1-4, A1-5 ...
-# 23.8, 31.4, 50.3, 52.8, 53.596, 54.4, 54.940
-# 
+
+# AMSU-A channel information from the documentation
+# A2-1, A2-2 | A1-1, A1-2, A1-3,   A1-4, A1-5    A1-6, A1-7 ...   A1-13
+# 23.8, 31.4 | 50.3, 52.8, 53.596, 54.4, 54.940, 55.5, 57.290345, 89 
+#
+# AMSU-A channel information from the data
+# center_freq = 23.8,     31.4,     50.3,     52.8,     53.596, ...
+#               54.4,     54.94,    55.5,     57.29034, 57.29034, ...
+#               57.29034, 57.29034, 57.29034, 57.29034, 89 ;
+#
+# All these are identical:
+# channel_list       = 3,15
+# channel_list       = 'A1-1','A1-13'
+# channel_list       = 50.3,89
 
 &convert_amsu_L1_nml
-   l1_files           = '../data/AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf',
-                        '../data/AIRS.2019.06.22.237.L1B.AMSU_Rad.v5.0.0.0.G19174110446.hdf'
+   l1_files           = '../data/AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.nc',
+                        '../data/AIRS.2019.06.22.237.L1B.AMSU_Rad.v5.0.0.0.G19174110446.nc'
    l1_file_list       = ''
    outputfile         = 'obs_seq.amsua'
-   channel_list       = 1,5
+   channel_list       = 3,15
    along_track_thin   = 0
    cross_track_thin   = 0
    lon1               =   0.0
@@ -47,6 +57,7 @@
    lat2               =  90.0
   /
 
+# The 'L1_AMSUA_to_netcdf.f90' program is not working yet.
 &L1_AMSUA_to_netcdf_nml
    file_name  = '../data/AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf'
    outputfile = 'amsua_bt.nc'
@@ -109,7 +120,7 @@
   /
 
 &obs_def_rttov_nml
-   rttov_sensor_db_file   = '../../../../observations/forward_operators/rttov_sensor_db.csv'
+   rttov_sensor_db_file   = '../../../forward_operators/rttov_sensor_db.csv'
    first_lvl_is_sfc       = .true.
    mw_clear_sky_only      = .false.
    interp_mode            = 1
@@ -127,7 +138,7 @@
    addrefrac              = .false.
    plane_parallel         = .false.
    use_salinity           = .false.
-   use_specularity        = .false.
+   do_lambertian          = .false.
    apply_band_correction  = .true.
    cfrac_data             = .true.
    clw_data               = .true.

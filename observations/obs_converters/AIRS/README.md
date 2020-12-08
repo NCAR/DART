@@ -33,8 +33,7 @@ and ozone burden in the atmosphere.
 
 ## AIRS DATA SOURCES
 
-Access to the web pages where the
-AIRS data are stored is available by
+Access to the web pages where the AIRS data are stored is available by
 [registering](https://airs.jpl.nasa.gov/data/registration)
 as a data user.
 
@@ -75,8 +74,20 @@ Specific information on the AIRS support in DART is further explained in `AIRS.h
 <a name="AMSU-A L1B"></a>
 # L1B AMSU-A Brightness Temperatures
 
-This directory also contains the code to convert the L1B AMSU-A Brightness Temperatures
-in HDF-EOS format to the DART observation sequence file format.
+This directory contains the code to convert the L1B AMSU-A Brightness Temperatures
+in HDF-EOS2 format to the DART observation sequence file format.
+
+There is a little bit of confusing history to be aware of for AMSU/A:
+
+https://en.wikipedia.org/wiki/Advanced_microwave_sounding_unit#History
+
+AMSU/A was flown on NOAA 15-17. It is also on the Aqua satellite
+(that also houses AIRS) as well as the European MetOp.
+It has been replaced by ATMS on NOAA-20.
+
+As you can imagine, you need to download each satellite's data in a different way.
+Also, just for your information, AMSU/B has been replaced on newer satellites
+by MHS and HSB, but especially MHS is almost identical.
 
 ## Instructions to download the AIRABRAD dataset
 
@@ -142,7 +153,9 @@ and then the netCDF files can be converted to DART radiance observation format -
 which is the part that requires `obs_def_rttov_mod.f90`, which is the part that
 requires HDF5.
 
-At press time, the following packages were required to build HDF-EOS Release v2.20:
+The NASA Earthdata Data Access Services website is the 
+[download site](https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads),
+at press time, the following packages were required to build HDF-EOS Release v2.20:
 
  - hdf-4.2.13.tar.gz
  - HDF-EOS2.20v1.00.tar.Z
@@ -221,43 +234,7 @@ ncatted -a coremetadata,global,d,,, -a StructMetadata_0,global,d,,, bob.nc bill.
 ### The DART `L1_AMSUA_to_netcdf.f90` program
 
 Before I became aware of `h4tonccf_nc4`, I was in the process of writing my 
-own converter `L1_AMSUA_to_netcdf.f90`.  It is not finished.
+own converter `L1_AMSUA_to_netcdf.f90`.  _It is not finished._
 Furthermore, at this stage, I don't know which variables are needed to be a viable
 DART observation sequence file, and I don't see the point in converting EVERYTHING.
-
-
-## Failed attempts at trying to convert directly from HDF4-EOS to a DART observation sequence file.
-
-Downloading and building the individual libraries needed and then linking to the 
-interface layer is just atrocious. 
-
-NOTE TO SELF: see the GMI readme for more content - this file is not done!
-
-https://wiki.earthdata.nasa.gov/display/DAS/HDF-EOS2+to+HDF-EOS5+Conversion+Tool
-https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads
-I downloaded 
-* hdf-4.2.13.tar.gz
-* HDF-EOS2.20v1.00.tar.Z
-* HDF-EOS2.20v1.00_TestDriver.tar.Z
-* HDF-EOS_REF.pdf
-* HDF-EOS_UG.pdf
-* jpegsrc.v9b.tar.gz
-* zlib-1.2.11.tar.gz
-
-
-The HDF Support portal is https://portal.hdfgroup.org/display/support
-and has links for documentation, downloads, HDF-EOS, etc...
-There is a download for the 'H4H5Tools 2.2.5' that I will be using to
-create a standalone converter so that the AIRS c
-
-
-
-https://hdfeos.org/software/library.php#HDF-EOS2
-
-Compatibility Library download location:
-https://opensource.gsfc.nasa.gov/projects/HDF-EOS2/index.php
-he2he5_lib.zip
-he2to5.zip
-
-https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads  has a link to hdf-eos v2.20
 

@@ -281,12 +281,13 @@ observations into the format required by DART.
 
 The current list of converters include:
 
--   [AIRS](AIRS/AIRS.html)
+-   [AIRS](AIRS/README.md) [atmospheric variables](AIRS/AIRS.html) and [AMSUA radiances](AIRS.README.md)
 -   [Aviso+/CMEMS](AVISO/AVISO.html)
 -   [Ameriflux](Ameriflux/level4_to_obs.html)
 -   [COSMOS](COSMOS/COSMOS_to_obs.html)
 -   [DWL](DWL/dwl_to_obs.html)
 -   [GOES](GOES/README.md)
+-   [GMI](GMI/README.md)
 -   [GPSPW](GPSPW/README)
 -   [GSI2DART](GSI2DART/README)
 -   [GTSPP](GTSPP/GTSPP.html)

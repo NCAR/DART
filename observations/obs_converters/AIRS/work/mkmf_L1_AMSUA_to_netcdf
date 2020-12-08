@@ -4,25 +4,25 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# if you are building this on cheyenne.ucar.edu (ncar supercomputer)
-# you must have the hdf (-eos4) module loaded, which defines the
-# following environment variables:
-#
-# NCAR_INC_HDF
-# NCAR_LDFLAGS_HDF
-# NCAR_LIBS_HDF
-#
-#set MYINCDIR = "-I$NCAR_INC_HDF"
-#set MYLIBDIR = "-L$NCAR_LDFLAGS_HDF"
-#set MYLIBS   = "$NCAR_LIBS_HDF"
+if ( $?NCAR_INC_HDFEOS ) then
+   set HDFEOS_INCLUDE = $NCAR_INC_HDFEOS
+   set HDFEOS_LIBROOT = $NCAR_LDFLAGS_HDFEOS
+   set HDFEOS_LIBRARIES = $NCAR_LIBS_HDFEOS
 
-set MYINCDIR = "-I/glade/work/thoar/hdf-eos/include"
-set MYLIBDIR = "-L/glade/work/thoar/hdf-eos/lib"
-set MYLIBS   = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
+else if ( -e /glade/work/thoar/hdf-eos/lib/libhdfeos.a ) then
+   set HDFEOS_INCLUDE = "/glade/work/thoar/hdf-eos/include"
+   set HDFEOS_LIBROOT = "/glade/work/thoar/hdf-eos/lib"
+   set HDFEOS_LIBRARIES = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
+
+else
+   set HDFEOS_INCLUDE = "/Users/thoar/gnu/gnu_9.2.0/hdf-eos/include"
+   set HDFEOS_LIBROOT = "/Users/thoar/gnu/gnu_9.2.0/hdf-eos/lib"
+   set HDFEOS_LIBRARIES = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
+endif
 
      ../../../../build_templates/mkmf -p L1_AMSUA_to_netcdf \
   -t ../../../../build_templates/mkmf.template \
-  -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
+  -l "-I${HDFEOS_INCLUDE} -L${HDFEOS_LIBROOT} ${HDFEOS_LIBRARIES}" \
  -a "../../../.." path_names_L1_AMSUA_to_netcdf
 
 exit $status

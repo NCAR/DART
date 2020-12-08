@@ -22,7 +22,10 @@ use netcdf_utilities_mod, only : nc_define_dimension, &
 implicit none
 private
 
-public :: amsua_bt_granule, AMSUA_BT_CHANNEL, amsua_bt_rdr
+public :: amsua_bt_granule, &
+          AMSUA_BT_GEOXTRACK,  AMSUA_BT_GEOTRACK,    AMSUA_BT_CHANNEL, &
+          AMSUA_BT_CALXTRACK,  AMSUA_BT_SPACEXTRACK, AMSUA_BT_BBXTRACK, &
+          AMSUA_BT_WARMPRTA11, AMSUA_BT_WARMPRTA12,  AMSUA_BT_WARMPRTA2
 
 public :: define_amsua_dimensions, &
           define_amsua_variables, &
@@ -123,6 +126,7 @@ END TYPE
 ! Record holds an entire granule of amsua_bt
 TYPE  amsua_bt_granule
 
+   ! Attributes
   character(len=256) :: processing_level
   character(len=256) :: instrument
   character(len=256) :: DayNightFlag
@@ -193,11 +197,16 @@ TYPE  amsua_bt_granule
   character(len=256) :: granules_present
 
   ! Geolocation fields
-  real(digits12) :: Latitude( AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
-  real(digits12) :: Longitude(AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
+  ! Latitude ... geodetic latitude, degrees N [-90,90]
+  ! Longitude .. geodetic longitude, degrees E [-180,180]
+  ! Time     ... 'shutter' TAI Time, floating point elapsed seconds since 1 Jan 1993
+
+  real(digits12) :: latitude( AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
+  real(digits12) :: longitude(AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
   real(digits12) :: Time(     AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
 
   ! Data Fields
+
   real(r4)       :: scanang(            AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
   real(r4)       :: satheight(          AMSUA_BT_GEOTRACK)
   real(r4)       :: satroll(            AMSUA_BT_GEOTRACK)
@@ -227,18 +236,18 @@ TYPE  amsua_bt_granule
   real(r4)       :: antenna_temp(        AMSUA_BT_CHANNEL, AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
   real(r4)       :: brightness_temp(     AMSUA_BT_CHANNEL, AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
   real(r4)       :: brightness_temp_err( AMSUA_BT_CHANNEL, AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
-  real(r4)       :: center_freq(                   AMSUA_BT_CHANNEL)
-  real(r4)       :: IF_offset_1(                   AMSUA_BT_CHANNEL)
-  real(r4)       :: IF_offset_2(                   AMSUA_BT_CHANNEL)
-  real(r4)       :: bandwidth(                     AMSUA_BT_CHANNEL)
+
+  real(r4)       :: center_freq(                   AMSUA_BT_CHANNEL) ! center channel frequency (GHz)
+  real(r4)       :: IF_offset_1(                   AMSUA_BT_CHANNEL) ! offset of first intermediate frequency (MHz)
+  real(r4)       :: IF_offset_2(                   AMSUA_BT_CHANNEL) ! offset of second    ..       frequency (MHz)
+  real(r4)       :: bandwidth(                     AMSUA_BT_CHANNEL) ! bandwith of sum of 1,3, or 4 channels (MHz)
   integer        :: num_calibrated_scanlines(      AMSUA_BT_CHANNEL)
   integer        :: num_scanlines_ch_cal_problems( AMSUA_BT_CHANNEL)
+  real(r4)       :: NeDT(AMSUA_BT_CHANNEL) ! instrument noise level estimated from warm count scatter
 
   TYPE(amsua_bt_bb_signals)    :: bb_signals
   TYPE(amsua_bt_space_signals) :: space_signals
   TYPE(amsua_bt_stats)         :: gain_stats
-
-  real(r4)                     :: NeDT(AMSUA_BT_CHANNEL)
   TYPE(amsua_bt_scene_count)   :: QA_unfiltered_scene_count
   TYPE(amsua_bt_bb_signals)    :: QA_unfiltered_BB_count
   TYPE(amsua_bt_space_signals) :: QA_unfiltered_space_count
