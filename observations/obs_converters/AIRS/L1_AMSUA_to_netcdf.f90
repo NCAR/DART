@@ -10,13 +10,10 @@ use    utilities_mod, only : initialize_utilities, register_module, &
                              do_nml_file, do_nml_term, set_filename_list, &
                              logfileunit, nmlfileunit, get_next_filename
 
-use amsua_bt_mod, only : amsua_bt_granule, AMSUA_BT_CHANNEL, amsua_bt_rdr, &
-                         define_amsua_dimensions, &
-                         define_amsua_variables, &
-                         fill_amsua_variables
-
 use netcdf_utilities_mod, only : nc_create_file, nc_begin_define_mode, &
                                  nc_end_define_mode, nc_close_file
+
+use amsua_netCDF_support_mod
 
 implicit none
 
@@ -52,6 +49,9 @@ namelist /L1_AMSUA_to_netcdf_nml/ file_name, outputfile, &
 
 call initialize_utilities('L1_AMSUA_to_netcdf')
 call register_module(source,revision,revdate)
+
+call error_handler(E_ERR,source,'ROUTINE NOT USABLE', &
+          text2='Complications with simultaneous HDF4, netCDF, and HDF5')
 
 !----------------------------------------------------------------------
 ! Read the namelist
