@@ -11,9 +11,12 @@
    write_FO_for_these_obs_types = ' '
    write_prior_copies           = .false.
    exclude_these_obs_types      = ' '
+   obs_seq_out_filename         = ' '
    output_option                = 1
-   obs_seq_out_filename         = obs_seq.out
+   debug                        = .false.
    lie_about_ob_times           = .false.
    recenter_about_mean_prior    = .true.
-   /
+   variance_coef                = 1000.0
+   modify_dart_qc_flag_for_big_ob_error = .false.
+  /
 

@@ -30,10 +30,9 @@ public :: random_seq_type, &
           random_exponential
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=256), parameter :: source   = "random_seq_mod.f90"
+character(len=32 ), parameter :: revision = ""
+character(len=128), parameter :: revdate  = ""
 
 ! Gives ability to generate unique repeatable sequences of random numbers
 ! using random congruential package. Needed to allow different assim algorithms
@@ -53,12 +52,12 @@ integer, parameter :: N = 624   ! period parameters
 integer, parameter :: M = 397
 
 ! hexadecimal constants
-integer(i8), parameter :: UPPER_MASK  = z'0000000080000000'
-integer(i8), parameter :: LOWER_MASK  = z'000000007FFFFFFF'
-integer(i8), parameter :: FULL32_MASK = z'00000000FFFFFFFF'
-integer(i8), parameter :: magic       = z'000000009908B0DF'
-integer(i8), parameter :: C1          = z'000000009D2C5680'
-integer(i8), parameter :: C2          = z'00000000EFC60000'
+integer(i8), parameter :: UPPER_MASK  = int(z'0000000080000000', i8)
+integer(i8), parameter :: LOWER_MASK  = int(z'000000007FFFFFFF', i8)
+integer(i8), parameter :: FULL32_MASK = int(z'00000000FFFFFFFF', i8)
+integer(i8), parameter :: magic       = int(z'000000009908B0DF', i8)
+integer(i8), parameter :: C1          = int(z'000000009D2C5680', i8)
+integer(i8), parameter :: C2          = int(z'00000000EFC60000', i8)
 
 type random_seq_type
    private
