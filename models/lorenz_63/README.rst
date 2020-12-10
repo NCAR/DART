@@ -52,14 +52,18 @@ members may bifurcate over to the other lobe of the attractor on different
 cycles. Also, as they diverge from each other they do not spread out uniformly
 in 3D space, but spread along the linear attractor lines.
 
-Lorenz 63 has a ``work/workshop_setup.csh`` script that compiles and runs an example.
-This example is referenced at various points in the 
+The Lorenz 63 model has a ``work/workshop_setup.csh`` script that compiles and 
+runs an example.  This example is referenced at various points in the 
 `DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__  
 and is intended to provide insight into model/assimilation behavior. 
 The example **may or may not** result in good (*or even decent!*) results!
 The script requires the use of the 
-`netCDF Operator<https://sourceforge.net/projects/nco/>`__
+`netCDF Operator <https://sourceforge.net/projects/nco/>`__
 function ``ncgen`` to create the input netCDF files used for the experiment.
+
+``run_lorenz_63.m`` is an excellent Matlab tool to explore the behavior of the
+Lorenz 63 model. It is part of the 
+`DART_LAB Tutorial. <https://dart.ucar.edu/pages/dart_lab.html>`__
 
 
 Namelist

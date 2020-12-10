@@ -36,6 +36,16 @@ and, within DART, the model parameters have default values of:
 that can be altered by editing the ``&model_nml`` `namelist`_ in the
 ``input.nml`` file.
 
+The Lorenz 84 model has a ``work/workshop_setup.csh`` script that compiles and runs 
+an example.  This example is referenced at various points in the
+`DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__
+and is intended to provide insight into model/assimilation behavior.
+The example **may or may not** result in good (*or even decent!*) results!
+The script requires the use of the
+`netCDF Operator <https://sourceforge.net/projects/nco/>`__
+function ``ncgen`` to create the input netCDF files used for the experiment.
+
+
 Namelist
 ========
 
