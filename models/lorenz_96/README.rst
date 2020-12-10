@@ -71,6 +71,7 @@ The script requires the use of the
 function ``ncgen`` to create the input netCDF files used for the experiment.
 Be aware that the ``input.nml`` file is modified by the ``workshop_setup.csh``
 script.
+
 There are also some excellent Matlab tools to explore the behavior of the 
 Lorenz 96 model, namely ``run_lorenz_96.m`` and ``run_lorenz_96_inf.m``, both of 
 which are part of the `DART_LAB Tutorial. <https://dart.ucar.edu/pages/dart_lab.html>`__
