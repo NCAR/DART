@@ -600,7 +600,7 @@ type(mw_metadata_type)                 :: missing_mw_metadata
 character(len=5), parameter :: VISIR_STRING = 'visir'
 character(len=5), parameter :: MW_STRING    = 'mw   '
 
-logical :: debug = .false.
+logical :: debug = .true.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
 integer ::    visirnum = 0
