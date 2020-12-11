@@ -416,6 +416,9 @@ public ::     atmos_profile_type, &
                 get_rttov_sensor, &
                 do_forward_model
 
+public :: test_set_visir_metadata
+
+
 ! Metadata for rttov observations.
 
 type visir_metadata_type
@@ -4290,6 +4293,43 @@ end function get_channel
 
 
 !-----------------------------------------------------------------------
+! Test functions below this point
+!-----------------------------------------------------------------------
+subroutine test_set_visir_metadata
+
+! test of set_visir_metadata
+
+integer  :: key 
+real(r8) :: sat_az, sat_ze, sun_az, sun_ze
+integer  :: platform_id, sat_id, sensor_id, channel
+real(r8) :: specularity 
+
+integer :: ii
+
+! set MAXrttovkey = 1 
+MAXrttovkey = 1
+
+if ( .not. module_initialized ) call initialize_module
+print*, 'size(obstype_metadata)', size(obstype_metadata)
+print*, 'size(obstype_subkey)', size(obstype_subkey)
+print*, 'size(visir_obs_metadata)', size(visir_obs_metadata)
+
+print*, 'rttovkey', rttovkey
+print*, 'visirnum', visirnum
+
+! calling in a loop to have a look at how grow_metadata works
+do ii = 1, 10
+  call set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
+        platform_id, sat_id, sensor_id, channel, specularity)
+
+  print*, 'rttovkey', rttovkey
+  print*, 'visirnum', visirnum
+  !print*, 'visir_obs_metadata', visir_obs_metadata
+  print*, 'obstype_metadata', obstype_metadata
+enddo
+
+
+end subroutine test_set_visir_metadata
 
 
 end module obs_def_rttov_mod
