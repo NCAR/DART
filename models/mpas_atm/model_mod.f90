@@ -1242,7 +1242,7 @@ else
          goodkind = .true.
       case (QTY_PRESSURE)   ! surface pressure should be in the state
          goodkind = .true.
-      case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE, QTY_CLOUD_FRACTION)   ! Ha: added for rttov
+      case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE, QTY_CLOUD_FRACTION)   
          goodkind = .true.
       case (QTY_SPECIFIC_HUMIDITY, QTY_2M_SPECIFIC_HUMIDITY)
          goodkind = .true.
@@ -1349,7 +1349,6 @@ else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
      if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
    enddo
 
-   print *, 'model_interpolate: GEOPOTENTIAL_HEIGHT ', istatus(1), expected_obs(1), trim(locstring)
    if ( all(istatus /= 0 ) ) goto 100
 
 else if (obs_kind == QTY_VAPOR_MIXING_RATIO      .or. obs_kind == QTY_2M_SPECIFIC_HUMIDITY   .or. &
@@ -1395,7 +1394,7 @@ else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
       print *, 'model_interpolate: ', trim(get_name_for_quantity(obs_kind)), istatus(1), &
                                       expected_obs(1), trim(locstring)
 
-! Ha: Only for the variables NOT included in the dart state vector.
+! Only for the variables NOT included in the dart state vector.
 ! Anything included in the state_handle should not go into the case right down here.
 ! ex. QTY_SURFACE_PRESSURE will be taken care of in the else statement (one further down)
 ! as a generic interpolation case thru compute_scalar_with_barycentric
@@ -1461,12 +1460,11 @@ do e = 1, ens_size
          write(string1,*) 'interp routine returned a negative status which is an illegal value'
       else if (istatus(e) /= 0 .and. expected_obs(e) /= MISSING_R8) then
          write(string1,*) 'interp routine returned a bad status but not a MISSING_R8 value'
-         expected_obs(e) = MISSING_R8  ! Ha
+         expected_obs(e) = MISSING_R8  
       else
          write(string1,*) 'interp routine returned a good status but set value to MISSING_R8'
       endif
 
-      !call error_handler(E_ERR,'model_interpolate', string1, source,revision,revdate, &
       call error_handler(E_ALLMSG,'model_interpolate', string1, source,revision,revdate, &
                          text2=string2, text3=string3)
    endif
@@ -3332,8 +3330,8 @@ call nc_get_variable(ncid, 'dcEdge',        dcEdge,        routine)
 call nc_get_variable(ncid, 'zgrid',         zGridFace,     routine)
 call nc_get_variable(ncid, 'cellsOnVertex', cellsOnVertex, routine)
 call nc_get_variable(ncid, 'xland',         xland,         routine)
-call nc_get_variable(ncid, 'seaice',        seaice,        routine)  ! Ha: added for rttov
-call nc_get_variable(ncid, 'skintemp',      skintemp,      routine)  ! Ha: added for rttov
+call nc_get_variable(ncid, 'seaice',        seaice,        routine)
+call nc_get_variable(ncid, 'skintemp',      skintemp,      routine)
 
 dxmax = maxval(dcEdge)  ! max grid resolution in meters
 
@@ -6056,7 +6054,6 @@ call find_vert_level(state_handle, ens_size, loc, nc, c, .true., lower, upper, f
 
 if (debug > 9 .and. do_output()) then
    write(string3,*) 'ier = ',ier(1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1), ' nc = ', nc
-!   write(string3,'(A,I5,A,3I10,A,3F7.2)') 'ier = ',ier(1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
    call error_handler(E_MSG, 'find_vert_indices', string3, source, revision, revdate)
 endif
 
@@ -6339,7 +6336,7 @@ select case (use_rbf_option)
                          source, revision, revdate)
 end select
 
-! Ha: Check if any of edges are located in the boundary zone.
+! Check if any of edges are located in the boundary zone.
 ! (We will skip the obs if any edges are located there.)
 if (on_boundary_edgelist(edge_list)) then
    nedges = -1
@@ -7465,7 +7462,7 @@ where (istatus == 0)
 
    theta_m = (1.0_r8 + 1.61_r8 * qv_nonzero)*theta
    
-   where (theta_m > 0.0_r8 .and. rho > 0.0_r8)  ! Check if all the input are positive: Ha
+   where (theta_m > 0.0_r8 .and. rho > 0.0_r8)  ! Check if all the input are positive
 
       exner = ( (rgas/p0) * (rho*theta_m) )**rcv
    
@@ -7504,7 +7501,6 @@ integer,  dimension(ens_size), intent(inout):: istatus
 
 ! Local variables
 real(r8), dimension(ens_size) :: qv_nonzero
-!integer,  dimension(ens_size) :: ierr   ! Ha
 integer   :: e
 
 pressure = missing_r8
@@ -7512,12 +7508,12 @@ qv_nonzero = max(qv,0.0_r8)
 
 tk = theta_to_tk(ens_size, theta, rho, qv_nonzero, istatus)
 
-where (istatus == 0)       ! We only take non-missing tk here: Ha
+where (istatus == 0)       ! We only take non-missing tk here
    pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv_nonzero)
 end where
 
 if ( debug > 1 ) then
-   if( any(istatus /= 0) ) then   ! Ha
+   if( any(istatus /= 0) ) then   
       do e = 1, ens_size
        if (istatus(e) /= 0) then
            write(string2,'("Failed in member,istatus,P[Pa],tk,theta,rho,qv:",2I4,4F12.2,F15.6)') &
