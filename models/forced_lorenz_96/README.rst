@@ -33,8 +33,12 @@ DART state vector composition:
   **forcing terms** - *"extended" state*
   indices 41 - 80
 
-The DART tutorial Section 20 explores parameter estimation using the
-*forced_lorenz_96* model.
+The *forced_lorenz_96* model has a ``work/workshop_setup.csh`` script that 
+compiles and runs an example.  This example is referenced in Section 20 of the
+`DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__ 
+and is intended to provide insight into parameter estimation and model/assimilation 
+behavior. 
+Be aware that the ``input.nml`` file is modified by the ``workshop_setup.csh`` script.
 
 Quick Start
 ===========

@@ -66,9 +66,6 @@ runs an example.  This example is referenced at various points in the
 `DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__
 and is intended to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
-The script requires the use of the
-`netCDF Operator <https://sourceforge.net/projects/nco/>`__
-function ``ncgen`` to create the input netCDF files used for the experiment.
 Be aware that the ``input.nml`` file is modified by the ``workshop_setup.csh``
 script.
 

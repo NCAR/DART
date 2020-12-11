@@ -53,13 +53,10 @@ and metadata describing this state, finds state variables that are close to a
 given location, and does spatial interpolation for model state variables.
 
 The simple advection model has a ``work/workshop_setup.csh`` script that compiles 
-and runs an example.  This example is referenced at various points in the
+and runs an example.  This example is referenced in Section 25 of the
 `DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__
 and is intended to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
-The script requires the use of the
-`netCDF Operator <https://sourceforge.net/projects/nco/>`__
-function ``ncgen`` to create the input netCDF files used for the experiment.
 
 
 Namelist

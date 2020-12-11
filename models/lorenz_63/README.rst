@@ -57,9 +57,6 @@ runs an example.  This example is referenced at various points in the
 `DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__  
 and is intended to provide insight into model/assimilation behavior. 
 The example **may or may not** result in good (*or even decent!*) results!
-The script requires the use of the 
-`netCDF Operator <https://sourceforge.net/projects/nco/>`__
-function ``ncgen`` to create the input netCDF files used for the experiment.
 
 ``run_lorenz_63.m`` is an excellent Matlab tool to explore the behavior of the
 Lorenz 63 model. It is part of the 
