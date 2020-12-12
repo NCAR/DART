@@ -3133,7 +3133,7 @@ mwnum = obstype_subkey(key)
 
 if (mwnum < 0 .or. mwnum > size(mw_obs_metadata)) then
    write(string1,*)'The mw-specific key ',mwnum,'is invalid.'
-   write(string2,*)'Size of visir_obs_metadata:',&
+   write(string2,*)'Size of mw_obs_metadata:',&  !HK
       size(mw_obs_metadata)
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate, text2=string2)
@@ -4304,6 +4304,9 @@ real(r8) :: sat_az, sat_ze, sun_az, sun_ze
 integer  :: platform_id, sat_id, sensor_id, channel
 real(r8) :: specularity 
 
+real(r8) ::  mag_field, cosbk     
+real(r8) :: fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5 
+
 integer :: ii
 
 ! set MAXrttovkey = 1 
@@ -4313,6 +4316,7 @@ if ( .not. module_initialized ) call initialize_module
 print*, 'size(obstype_metadata)', size(obstype_metadata)
 print*, 'size(obstype_subkey)', size(obstype_subkey)
 print*, 'size(visir_obs_metadata)', size(visir_obs_metadata)
+print*, 'size(obstype_subkey)', size(obstype_subkey)
 
 print*, 'rttovkey', rttovkey
 print*, 'visirnum', visirnum
@@ -4326,8 +4330,22 @@ do ii = 1, 10
   print*, 'visirnum', visirnum
   !print*, 'visir_obs_metadata', visir_obs_metadata
   print*, 'obstype_metadata', obstype_metadata
+  write(*,'(A,40I3)') 'obstype_subkey', obstype_subkey
 enddo
 
+print*, 'mwnum', mwnum
+
+! calling in a loop to have a look at how grow_metadata works
+do ii = 1, 10
+  call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
+     channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,         &
+     fastem_p4, fastem_p5)
+  print*, 'rttovkey', rttovkey
+  print*, 'mwnum', mwnum
+  !print*, 'visir_obs_metadata', visir_obs_metadata
+  print*, 'obstype_metadata', obstype_metadata
+  write(*,'(A,40I3)') 'obstype_subkey', obstype_subkey
+enddo
 
 end subroutine test_set_visir_metadata
 
