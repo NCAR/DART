@@ -1254,7 +1254,7 @@ else
    end select
 endif
 
-if (debug > 1 .and. do_output()) &
+if (debug > 10 .and. do_output()) &
    print *, 'model_interpolate: ivar, goodkind? ', ivar, goodkind,' ',&
              trim(get_name_for_quantity(obs_kind)),' at ',trim(locstring)
 
@@ -1262,7 +1262,7 @@ if (debug > 1 .and. do_output()) &
 ! that we know how to handle.
 if (.not. goodkind) then
    istatus(:) = 88
-   if (debug > 1 .and. do_output()) print *, 'model_interpolate: kind rejected', obs_kind
+   if (debug > 4 .and. do_output()) print *, 'model_interpolate: kind rejected', obs_kind
    goto 100
 endif
 
