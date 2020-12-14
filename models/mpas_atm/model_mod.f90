@@ -1105,7 +1105,6 @@ end subroutine find_mpas_dims
 !>       ISTATUS = 99:  general error in case something terrible goes wrong...
 !>       ISTATUS = 81:  Vertical location too high
 !>       ISTATUS = 80:  Vertical location too low
-!>       ISTATUS = 82:  Vertical location is missing
 !>       ISTATUS = 88:  this kind is not in the state vector
 !>       ISTATUS = 89:  tk cannot be computed.
 !>       ISTATUS = 11:  Could not find the closest cell center that contains this lat/lon
@@ -4593,7 +4592,7 @@ enddo
 ! if the entire ensemble has missing vertical values we can return now.
 ! otherwise we need to continue to convert the members with good vertical values.
 if (all(zin == missing_r8)) then
-   istatus(:) = 0 ! vertisundef might come here - nsc  82    ! FIXME: Ha - Why should this be zero? I created 82 if all zin are missing.
+   istatus(:) = 0 
    return
 endif
 
@@ -4937,7 +4936,7 @@ enddo
 ! if all the vertical localization coord values are missing, 
 ! we don't call this routine again, and return.
 if (all(zin == missing_r8)) then ! .or. on_bound) then
-   istatus(:) = 82    ! FIXME: Ha - Why should this be zero? I created 82 if all zin are missing.
+   istatus(:) = 0
    return
 endif
 
