@@ -420,7 +420,7 @@ public :: test_set_visir_metadata
 
 
 ! Metadata for rttov observations.
-
+!HK are these the only two types of observations?
 type visir_metadata_type
    real(jprb)    :: sat_az      ! azimuth of satellite position (degrees)
    real(jprb)    :: sat_ze      ! zenith of satellite position (degrees)
@@ -2461,6 +2461,10 @@ if (debug) then
    end if
 end if
 
+
+!HK is 
+!  rttov_direct  for visir
+!  rttov_scatt   for mw    ?
 if (is_visir .or. mw_clear_sky_only) then
    ! Call RTTOV forward model
    call rttov_direct (                         &
@@ -4330,7 +4334,7 @@ do ii = 1, 10
   print*, 'visirnum', visirnum
   !print*, 'visir_obs_metadata', visir_obs_metadata
   print*, 'obstype_metadata', obstype_metadata
-  write(*,'(A,40I3)') 'obstype_subkey', obstype_subkey
+  print "(A,40I3)", 'obstype_subkey', obstype_subkey
 enddo
 
 print*, 'mwnum', mwnum
@@ -4342,9 +4346,8 @@ do ii = 1, 10
      fastem_p4, fastem_p5)
   print*, 'rttovkey', rttovkey
   print*, 'mwnum', mwnum
-  !print*, 'visir_obs_metadata', visir_obs_metadata
   print*, 'obstype_metadata', obstype_metadata
-  write(*,'(A,40I3)') 'obstype_subkey', obstype_subkey
+  print "(A,80I3)", 'obstype_subkey', obstype_subkey
 enddo
 
 end subroutine test_set_visir_metadata
