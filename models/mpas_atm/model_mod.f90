@@ -4705,7 +4705,7 @@ select case (ztypeout)
    enddo
 
    if (debug > 9 .and. do_output()) then
-      write(string2,'("zout_in_height [m]:",F10.2)') zout(1)
+      write(string2,'("zout_in_height [m] for member 1:",F10.2)') zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
 
@@ -4809,7 +4809,7 @@ select case (ztypeout)
 101 continue
 
      if (debug > 9 .and. do_output()) then
-       write(string2,'("zout_in_scaleheight:",F10.2)') zout(1)
+       write(string2,'("zout_in_scaleheight for member 1:",F10.2)') zout(1)
        call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
      endif
 
@@ -4959,7 +4959,7 @@ select case (ztypeout)
    zout(:) = vert_level
 
    if (debug > 9 .and. do_output()) then
-      write(string2,'("zout_in_level:",F10.2)') zout(1)
+      write(string2,'("zout_in_level for member 1:",F10.2)') zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
    endif
 
@@ -5002,7 +5002,7 @@ select case (ztypeout)
        endif
    else
        if (debug > 9 .and. do_output()) then
-           write(string2,'("zout[Pa],theta,rho,qv,ier:",3F10.2,F12.8,I5)') zout(1),values(1:3,1),istatus(1)
+           write(string2,'("zout[Pa] for member 1,theta,rho,qv,ier:",3F10.2,F12.8,I5)') zout(1),values(1:3,1),istatus(1)
            call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
        endif
    endif      ! istatus
@@ -5140,7 +5140,7 @@ select case (ztypeout)
 101 continue
 
      if (debug > 9 .and. do_output()) then
-        write(string2,'("zout_in_scaleheight:",F10.2)') zout(1)
+        write(string2,'("zout_in_scaleheight for member 1:",F10.2)') zout(1)
         call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
      endif
 
