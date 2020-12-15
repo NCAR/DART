@@ -4350,8 +4350,22 @@ do ii = 1, 10
   print "(A,80I3)", 'obstype_subkey', obstype_subkey
 enddo
 
-end subroutine test_set_visir_metadata
+! use get to retrive metadata
 
+! 1:10 is visir
+! 11:20 is mw
+
+print*, 'size of obstype_metadata, visir_obs_metadata, mw_obs_metadata', size(obstype_metadata), size(visir_obs_metadata), size(mw_obs_metadata)
+
+!do ii = 1, size(obstype_subkey)
+!  call get_visir_metadata(ii, sat_az, sat_ze, sun_az, sun_ze, &
+!        platform_id, sat_id, sensor_id, channel, specularity)
+!enddo
+
+  call get_visir_metadata(16, sat_az, sat_ze, sun_az, sun_ze, &
+        platform_id, sat_id, sensor_id, channel, specularity)
+
+end subroutine test_set_visir_metadata
 
 end module obs_def_rttov_mod
 
