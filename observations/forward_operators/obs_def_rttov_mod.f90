@@ -416,8 +416,8 @@ public ::     atmos_profile_type, &
                 get_rttov_sensor, &
                 do_forward_model
 
-public :: test_set_visir_metadata
-
+public :: test_set_visir_metadata, &
+          test_initializations
 
 ! Metadata for rttov observations.
 !HK are these the only two types of observations?
@@ -603,7 +603,7 @@ type(mw_metadata_type)                 :: missing_mw_metadata
 character(len=5), parameter :: VISIR_STRING = 'visir'
 character(len=5), parameter :: MW_STRING    = 'mw   '
 
-logical :: debug = .false.
+logical :: debug = .true.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
 integer ::    visirnum = 0
@@ -4301,7 +4301,7 @@ end function get_channel
 !-----------------------------------------------------------------------
 subroutine test_set_visir_metadata
 
-! test of set_visir_metadata
+! test of set_visir_metadata - what are you testing here?
 
 integer  :: key 
 real(r8) :: sat_az, sat_ze, sun_az, sun_ze
@@ -4362,10 +4362,28 @@ print*, 'size of obstype_metadata, visir_obs_metadata, mw_obs_metadata', size(ob
 !        platform_id, sat_id, sensor_id, channel, specularity)
 !enddo
 
-  call get_visir_metadata(16, sat_az, sat_ze, sun_az, sun_ze, &
-        platform_id, sat_id, sensor_id, channel, specularity)
+
+!  call get_visir_metadata(16, sat_az, sat_ze, sun_az, sun_ze, &
+!        platform_id, sat_id, sensor_id, channel, specularity)
 
 end subroutine test_set_visir_metadata
+!-----------------------------------------------------------------------
+
+subroutine test_initializations
+
+integer ens_size, numlevels
+type(rttov_sensor_type),    pointer :: sensor
+
+ens_size = 4
+numlevels = 11
+allocate(sensor)
+
+! double call
+call initialize_rttov_sensor_runtime(sensor,ens_size,numlevels)
+
+call initialize_rttov_sensor_runtime(sensor,ens_size,numlevels)
+
+end subroutine test_initializations
 
 end module obs_def_rttov_mod
 
