@@ -1188,6 +1188,7 @@ if (debug > 1 .and. do_output()) &
    print *, 'model_interpolate for obs_kind:',&
              trim(get_name_for_quantity(obs_kind)),' at ',trim(locstring),' cellid:',cellid
 
+! FIXME see issue #96 - remove all but surface elevation
 ! pass surface variables for rttov - it should be ok as these are diagnostic (except for surface elevation).
 if((obs_kind == QTY_SURFACE_PRESSURE) .or. (obs_kind == QTY_SURFACE_ELEVATION)    .or. &
    (obs_kind == QTY_2M_TEMPERATURE)   .or. (obs_kind == QTY_2M_SPECIFIC_HUMIDITY) .or. &
@@ -5023,7 +5024,7 @@ select case (ztypeout)
    endif
 
    if (debug > 9 .and. do_output()) then
-      write(string2,'("zout[m]:",F10.2)') zout(1)
+      write(string2,'("zout[m] for member 1:",F10.2)') zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
    endif
 
@@ -5105,7 +5106,7 @@ select case (ztypeout)
            endif
         else
            if (debug > 9 .and. do_output()) then
-           write(string2,'("zout [Pa],theta,rho,qv:",3F10.2,F12.8)') fullp(1), values(1:3,1)
+           write(string2,'("zout [Pa] for member 1,theta,rho,qv:",3F10.2,F12.8)') fullp(1), values(1:3,1)
            call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
            endif
         endif      ! istatus
@@ -5626,7 +5627,7 @@ call compute_full_pressure(ens_size, pt(:), density(:), qv(:), pressure(:), tk(:
 if( all(ier/= 0) ) then
     if (debug > 1 .and. do_output()) then
         write(string2,'("Failed in compute_full_pressure")')
-        call error_handler(E_MSG, 'get_interp_pressure',string2,source, revision, revdate)
+        call error_handler(E_ALLMSG, 'get_interp_pressure',string2,source, revision, revdate)
     endif
 else
     if((debug > 11) .and. do_output()) then
@@ -5787,7 +5788,7 @@ do k=1, n
       ! go around triangle and interpolate in the vertical
       ! c(3) are the cell ids
 
-      low_offset = (c(i)-1) * nvert !HK low_offset and upp_offset are the same?
+      low_offset = (c(i)-1) * nvert !FIXME low_offset and upp_offset are the same?
       upp_offset = (c(i)-1) * nvert
 
       if( nvert == 1 ) then         ! fields on a surface (1-D, one level, ...)
@@ -7446,8 +7447,9 @@ integer :: e
 qv_nonzero = max(qv,0.0_r8)
 theta_to_tk = missing_r8
 
-if (any(istatus /= 0)) then
-   if ( debug > 0 .and. do_output()) then 
+
+if ( debug > 0 .and. do_output()) then
+   if (any(istatus /= 0)) then
      print *, 'theta_to_tk - nonzero istatus coming in'
      do e = 1, ens_size
       if (istatus(e) /= 0) then
