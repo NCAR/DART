@@ -86,86 +86,52 @@ Shell scripts are written in bash for LSF queuing system. They should be
 modified to work with others such as SLURM. FESOM executables are called
 externally detached from DART therefore no need for an advance model.
 
-+---------------------------------------+---------+---------------------+
-| Script                                | Queue   | Definition          |
-+=======================================+=========+=====================+
-| **environment.load**                  | serial  | Includes            |
-|                                       |         | environment         |
-|                                       |         | variables,          |
-|                                       |         | relevant            |
-|                                       |         | directories,        |
-|                                       |         | experiment          |
-|                                       |         | specifications.     |
-|                                       |         | This file is        |
-|                                       |         | sourced by every    |
-|                                       |         | other script        |
-|                                       |         | below.              |
-+---------------------------------------+---------+---------------------+
-| **experiment.launch**                 | serial  | Main script which   |
-|                                       |         | modifies            |
-|                                       |         | ``ensemble.sh``     |
-|                                       |         | and calls           |
-|                                       |         | ``ensembl           |
-|                                       |         | e.${EXPINFO}.sh``.  |
-|                                       |         | An                  |
-|                                       |         | e                   |
-|                                       |         | xperiment-specific  |
-|                                       |         | summary which       |
-|                                       |         | should be modified  |
-|                                       |         | before launching    |
-|                                       |         | the scripts.        |
-+---------------------------------------+---------+---------------------+
-| **ensemble.sh**                       | serial  | Calls and submits   |
-|                                       |         | ``init              |
-|                                       |         | ialize.template``,  |
-|                                       |         | ``advanc            |
-|                                       |         | e_model.template``  |
-|                                       |         | ``c                 |
-|                                       |         | heck_ensemble.sh``  |
-|                                       |         | one after the       |
-|                                       |         | other.              |
-+---------------------------------------+---------+---------------------+
-| **initialize.template**               | serial  | Called only once    |
-|                                       |         | at the beginning    |
-|                                       |         | of the experiment.  |
-|                                       |         | Sets the            |
-|                                       |         | experiment          |
-|                                       |         | directory, copies   |
-|                                       |         | initial ensemble,   |
-|                                       |         | namelists.          |
-+---------------------------------------+---------+---------------------+
-| **advance_model.template**            | p       | Submits a job       |
-|                                       | arallel | array for all       |
-|                                       |         | ensemble members.   |
-+---------------------------------------+---------+---------------------+
-| **check_ensemble.sh**                 | serial  | Checks if the       |
-|                                       |         | forwarding for all  |
-|                                       |         | members is          |
-|                                       |         | finished. If so,    |
-|                                       |         | first calls         |
-|                                       |         | ``filter.template`` |
-|                                       |         | and then calls      |
-|                                       |         | ``finalize.sh`` to  |
-|                                       |         | conclude current    |
-|                                       |         | assimilation        |
-|                                       |         | cycle.              |
-+---------------------------------------+---------+---------------------+
-| **filter.template**                   | p       | Runs the filter to  |
-|                                       | arallel | perform the         |
-|                                       |         | assimilation.       |
-+---------------------------------------+---------+---------------------+
-| **finalize.sh**                       | serial  | Checks if the       |
-|                                       |         | whole experiment    |
-|                                       |         | is finished. If     |
-|                                       |         | so, stops.          |
-|                                       |         | Otherwise,          |
-|                                       |         | resubmits           |
-|                                       |         | ``ensemb            |
-|                                       |         | le.${EXPINFO}.sh``  |
-|                                       |         | for the next        |
-|                                       |         | assimilation        |
-|                                       |         | cycle.              |
-+---------------------------------------+---------+---------------------+
++------------------------------------------------------------------+---------------+-----------------------------------+
+| Script                                                           | Queue         | Definition                        |
++==================================================================+===============+===================================+
+| **environment.load**                                             | serial        | Includes environment variables,   |
+|                                                                  |               | relevant directories, experiment  |
+|                                                                  |               | specifications. This file is      |
+|                                                                  |               | sourced by every other script     |
+|                                                                  |               | below.                            |
++------------------------------------------------------------------+---------------+-----------------------------------+
+| **experiment.launch**                                            | serial        | Main script which modifies        |
+|                                                                  |               | ``ensemble.sh`` and calls         |
+|                                                                  |               | ``ensemble.${EXPINFO}.sh``. An    |
+|                                                                  |               | experiment-specific summary which |
+|                                                                  |               | should be modified before         |
+|                                                                  |               | launching the scripts.            |
++------------------------------------------------------------------+---------------+-----------------------------------+
+| **ensemble.sh**                                                  | serial        | Calls and submits                 |
+|                                                                  |               | ``initialize.template``,          |
+|                                                                  |               | ``advance_model.template``        |
+|                                                                  |               | ``check_ensemble.sh`` one after   |
+|                                                                  |               | the other.                        |
++------------------------------------------------------------------+---------------+-----------------------------------+
+| **initialize.template**                                          | serial        | Called only once at the beginning |
+|                                                                  |               | of the experiment. Sets the       |
+|                                                                  |               | experiment directory, copies      |
+|                                                                  |               | initial ensemble, namelists.      |
++------------------------------------------------------------------+---------------+-----------------------------------+
+| **advance_model.template**                                       | parallel      | Submits a job array for all       |
+|                                                                  |               | ensemble members.                 |
++------------------------------------------------------------------+---------------+-----------------------------------+
+| **check_ensemble.sh**                                            | serial        | Checks if the forwarding for all  |
+|                                                                  |               | members is finished. If so, first |
+|                                                                  |               | calls ``filter.template`` and     |
+|                                                                  |               | then calls ``finalize.sh`` to     |
+|                                                                  |               | conclude current assimilation     |
+|                                                                  |               | cycle.                            |
++------------------------------------------------------------------+---------------+-----------------------------------+
+| **filter.template**                                              | parallel      | Runs the filter to perform the    |
+|                                                                  |               | assimilation.                     |
++------------------------------------------------------------------+---------------+-----------------------------------+
+| **finalize.sh**                                                  | serial        | Checks if the whole experiment is |
+|                                                                  |               | finished. If so, stops.           |
+|                                                                  |               | Otherwise, resubmits              |
+|                                                                  |               | ``ensemble.${EXPINFO}.sh`` for    |
+|                                                                  |               | the next assimilation cycle.      |
++------------------------------------------------------------------+---------------+-----------------------------------+
 
 Diagnostics
 -----------
@@ -179,175 +145,45 @@ post-processed netCDF outputs are visualized using `FERRET
 <https://ferretop.pmel.noaa.gov/Ferret/>`__. Please see the expanded
 description inside each source file.
 
-+-------------+--------------------------------------+------------------+
-| Directory   | code file                            | description      |
-+=============+======================================+==================+
-| src/        |                                      |                  |
-+-------------+--------------------------------------+------------------+
-|             | fesom_post_main.F90                  | main fortran     |
-|             |                                      | routine calling  |
-|             |                                      | each tool        |
-|             |                                      | selected in the  |
-|             |                                      | namelist         |
-+-------------+--------------------------------------+------------------+
-|             | fesom_ocean_mod.F90                  | ocean            |
-|             |                                      | diagnostic       |
-|             |                                      | routines         |
-+-------------+--------------------------------------+------------------+
-|             | fesom_dart_mod.F90                   | DART diagnostic  |
-|             |                                      | output routines  |
-+-------------+--------------------------------------+------------------+
-|             | fesom_forcing_mod.F90                | forcing          |
-|             |                                      | diagnostic       |
-|             |                                      | routines         |
-+-------------+--------------------------------------+------------------+
-|             | fesom_observation_mod.F90            | observation      |
-|             |                                      | diagnostic       |
-|             |                                      | routines         |
-+-------------+--------------------------------------+------------------+
-|             | gen_input.F90                        | routines for     |
-|             |                                      | I/O (adapted     |
-|             |                                      | from FESOM)      |
-+-------------+--------------------------------------+------------------+
-|             | gen_modules_clock.F90                | routines for     |
-|             |                                      | timing (adapted  |
-|             |                                      | from FESOM)      |
-+-------------+--------------------------------------+------------------+
-|             | gen_modules_config.F90               | routines for     |
-|             |                                      | configuration    |
-|             |                                      | (adapted from    |
-|             |                                      | FESOM)           |
-+-------------+--------------------------------------+------------------+
-|             | mesh_read.F90                        | routines for     |
-|             |                                      | reading the      |
-|             |                                      | mesh (adapted    |
-|             |                                      | from FESOM)      |
-+-------------+--------------------------------------+------------------+
-|             | Makefile                             | Makefile         |
-|             |                                      | (adapted from    |
-|             |                                      | FESOM) but       |
-|             |                                      | reads DART       |
-|             |                                      | environment      |
-+-------------+--------------------------------------+------------------+
-|             | oce_dens_press.F90                   | routines to      |
-|             |                                      | compute density  |
-|             |                                      | and              |
-|             |                                      | p                |
-|             |                                      | ressure(adapted  |
-|             |                                      | from FESOM)      |
-+-------------+--------------------------------------+------------------+
-|             | oce_mesh_setup.F90                   | routines for     |
-|             |                                      | mesh setup       |
-|             |                                      | (adapted from    |
-|             |                                      | FESOM)           |
-+-------------+--------------------------------------+------------------+
-|             | oce_modules.F90                      | routines for     |
-|             |                                      | ocean modules    |
-|             |                                      | (adapted from    |
-|             |                                      | FESOM)           |
-+-------------+--------------------------------------+------------------+
-|             | random_perturbation.F90              | random           |
-|             |                                      | perturbation to  |
-|             |                                      | observation      |
-|             |                                      | sampling         |
-+-------------+--------------------------------------+------------------+
-|             | utilities.F90                        | various          |
-|             |                                      | utilities        |
-+-------------+--------------------------------------+------------------+
-| script/     |                                      |                  |
-+-------------+--------------------------------------+------------------+
-|             | compute_ensemble_mean                | computes         |
-|             |                                      | ensemble mean    |
-|             |                                      | and extracts a   |
-|             |                                      | transect or      |
-|             |                                      | level            |
-+-------------+--------------------------------------+------------------+
-|             | compute_increment                    | computes         |
-|             |                                      | increment using  |
-|             |                                      | DART diagnostic  |
-|             |                                      | output           |
-+-------------+--------------------------------------+------------------+
-|             | compute_NR_diff                      | computes the     |
-|             |                                      | difference       |
-|             |                                      | between a        |
-|             |                                      | nature run and   |
-|             |                                      | the ensemble     |
-|             |                                      | prior mean       |
-+-------------+--------------------------------------+------------------+
-|             | dart_obs_seq_diag                    | DART             |
-|             |                                      | ob               |
-|             |                                      | servation-space  |
-|             |                                      | statistics from  |
-|             |                                      | ``obs_epoch.nc`` |
-|             |                                      | and              |
-|             |                                      | ``obs_diag.nc``  |
-+-------------+--------------------------------------+------------------+
-|             | dart.postproc.env                    | DART             |
-|             |                                      | environment      |
-|             |                                      | variables        |
-+-------------+--------------------------------------+------------------+
-|             | fesom.postproc.env                   | FESOM            |
-|             |                                      | environment      |
-|             |                                      | variables        |
-+-------------+--------------------------------------+------------------+
-|             | observe_nature_run                   | creates          |
-|             |                                      | synthetic        |
-|             |                                      | observations     |
-|             |                                      | from a nature    |
-|             |                                      | run              |
-+-------------+--------------------------------------+------------------+
-|             | transect_daily_mean                  | extracts and     |
-|             |                                      | plots a          |
-|             |                                      | transect of an   |
-|             |                                      | individual       |
-|             |                                      | ensemble member  |
-+-------------+--------------------------------------+------------------+
-|             | zlevel_daily_mean                    | extracts and     |
-|             |                                      | plots a level    |
-|             |                                      | of an            |
-|             |                                      | individual       |
-|             |                                      | ensemble member  |
-+-------------+--------------------------------------+------------------+
-| gmt/        |                                      |                  |
-+-------------+--------------------------------------+------------------+
-|             | plot_ensemble_mean.gmt               | plots ensemble   |
-|             |                                      | mean created by  |
-|             |                                      | ``compute_       |
-|             |                                      | ensemble_mean``  |
-+-------------+--------------------------------------+------------------+
-|             | plot_increment.gmt                   | plots increment  |
-|             |                                      | created by       |
-|             |                                      | ``comp           |
-|             |                                      | ute_increment``  |
-+-------------+--------------------------------------+------------------+
-|             | plot_NR_diff.gmt                     | plots            |
-|             |                                      | difference       |
-|             |                                      | created by       |
-|             |                                      | ``co             |
-|             |                                      | mpute_NR_diff``  |
-+-------------+--------------------------------------+------------------+
-|             | transect_daily_mean.gmt              | plots transects  |
-|             |                                      | created by       |
-|             |                                      | ``transe         |
-|             |                                      | ct_daily_mean``  |
-+-------------+--------------------------------------+------------------+
-|             | zlevel_yearly_mean.gmt               | plots levels     |
-|             |                                      | created by       |
-|             |                                      | ``zlev           |
-|             |                                      | el_daily_mean``  |
-+-------------+--------------------------------------+------------------+
-| ferret/     |                                      |                  |
-+-------------+--------------------------------------+------------------+
-|             | frt.obs_diag_TeMPLaTe.jnl            | plot DART diags  |
-|             |                                      | created by       |
-|             |                                      | ``dart           |
-|             |                                      | _obs_seq_diag``  |
-+-------------+--------------------------------------+------------------+
-|             | frt.obs_epoch_TeMPLaTe.jnl           | plot DART diags  |
-|             |                                      | created by       |
-|             |                                      | ``dart           |
-|             |                                      | _obs_seq_diag``  |
-+-------------+--------------------------------------+------------------+
+========= ========================== ===========================================================================
+Directory code file                  description
+========= ========================== ===========================================================================
+src/                                 
+\         fesom_post_main.F90        main fortran routine calling each tool selected in the namelist
+\         fesom_ocean_mod.F90        ocean diagnostic routines
+\         fesom_dart_mod.F90         DART diagnostic output routines
+\         fesom_forcing_mod.F90      forcing diagnostic routines
+\         fesom_observation_mod.F90  observation diagnostic routines
+\         gen_input.F90              routines for I/O (adapted from FESOM)
+\         gen_modules_clock.F90      routines for timing (adapted from FESOM)
+\         gen_modules_config.F90     routines for configuration (adapted from FESOM)
+\         mesh_read.F90              routines for reading the mesh (adapted from FESOM)
+\         Makefile                   Makefile (adapted from FESOM) but reads DART environment
+\         oce_dens_press.F90         routines to compute density and pressure (adapted from FESOM)
+\         oce_mesh_setup.F90         routines for mesh setup (adapted from FESOM)
+\         oce_modules.F90            routines for ocean modules (adapted from FESOM)
+\         random_perturbation.F90    random perturbation to observation sampling
+\         utilities.F90              various utilities
+script/                              
+\         compute_ensemble_mean      computes ensemble mean and extracts a transect or level
+\         compute_increment          computes increment using DART diagnostic output
+\         compute_NR_diff            computes the difference between a nature run and the ensemble prior mean
+\         dart_obs_seq_diag          DART observation-space statistics from ``obs_epoch.nc`` and ``obs_diag.nc``
+\         dart.postproc.env          DART environment variables
+\         fesom.postproc.env         FESOM environment variables
+\         observe_nature_run         creates synthetic observations from a nature run
+\         transect_daily_mean        extracts and plots a transect of an individual ensemble member
+\         zlevel_daily_mean          extracts and plots a level of an individual ensemble member
+gmt/                                 
+\         plot_ensemble_mean.gmt     plots ensemble mean created by ``compute_ensemble_mean``
+\         plot_increment.gmt         plots increment created by ``compute_increment``
+\         plot_NR_diff.gmt           plots difference created by ``compute_NR_diff``
+\         transect_daily_mean.gmt    plots transects created by ``transect_daily_mean``
+\         zlevel_yearly_mean.gmt     plots levels created by ``zlevel_daily_mean``
+ferret/                              
+\         frt.obs_diag_TeMPLaTe.jnl  plot DART diags created by ``dart_obs_seq_diag``
+\         frt.obs_epoch_TeMPLaTe.jnl plot DART diags created by ``dart_obs_seq_diag``
+========= ========================== ===========================================================================
 
 References
 ==========
