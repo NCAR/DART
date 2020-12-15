@@ -1,6 +1,6 @@
 module params
 
-use kinds, only : i_kind, r_single
+use kinds, only : i_kind, r_single, r_kind
 
 implicit none
 
@@ -36,6 +36,8 @@ integer            :: ens_size                  = 1
 integer            :: output_option             = 1
 logical            :: lie_about_ob_times        = .false.
 logical            :: recenter_about_mean_prior = .true.
+logical            :: modify_dart_qc_flag_for_big_ob_error = .false. ! default behavior is to not modify QC and let DART assimilate anything that gets through mpi_readobs
+real(r_kind)       :: variance_coef = 1000.0  ! only used if modify_dart_qc_flag_for_big_ob_error = true. the coefficient. change qc if obserr > variance_coef * prior_spread
 
 ! observation arrays filled by EnKF routines
 real(r_single),    allocatable, dimension(:)   :: obsprd_prior
