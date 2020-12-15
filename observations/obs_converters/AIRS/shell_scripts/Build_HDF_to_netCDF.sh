@@ -17,16 +17,18 @@
 #
 # My habit is to install software for my personal use in my $HOME/local directory.
 
+export MYHOME=/glade/work/thoar
+
 ./configure \
-            --prefix=$HOME/local/h4cf_1.3 \
-         --with-hdf4=$HOME/local/eos \
-         --with-jpeg=$HOME/local/eos \
-         --with-zlib=$HOME/local/eos \
-      --with-hdfeos2=$HOME/local/eos \
+            --prefix=${MYHOME}/local/h4cf_1.3 \
+         --with-hdf4=${MYHOME}/local/hdf-eos \
+         --with-jpeg=${MYHOME}/local/hdf-eos \
+         --with-zlib=${MYHOME}/local/hdf-eos \
+      --with-hdfeos2=${MYHOME}/local/hdf-eos \
        --with-netcdf=$NETCDF \
         --with-szlib=/usr/local/szip \
-            CPPFLAGS=-I$HOME/local/eos/include  \
-             LDFLAGS=-L$HOME/local/eos/lib || exit 1
+            CPPFLAGS=-I${MYHOME}/local/hdf-eos/include  \
+             LDFLAGS=-L${MYHOME}/local/hdf-eos/lib || exit 1
 
 make          || exit 2
 make check    || exit 3

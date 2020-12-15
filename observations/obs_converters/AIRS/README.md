@@ -89,6 +89,11 @@ As you can imagine, you need to download each satellite's data in a different wa
 Also, just for your information, AMSU/B has been replaced on newer satellites
 by MHS and HSB, but especially MHS is almost identical.
 
+Be aware that if the RTTOV namelist option `use_zeeman = .true.` certain metadata must
+be available in the observation. This is not fully implemented in the AMSU-A
+observation converter. For more information, please see GitHub Issue 99 
+"[AIRS AMSUA observation converter ... Zeeman coefficients and channels](https://github.com/NCAR/DART/issues/99)"
+
 ## Instructions to download the AIRABRAD dataset
 
 The datset of interest is: "AIRS/Aqua L1B AMSU (A1/A2) geolocated and 

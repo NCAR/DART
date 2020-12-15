@@ -65,7 +65,7 @@ character(len=*), parameter :: revdate  = ''
 
 logical, save :: module_initialized = .false.
 
-character(len=512) :: string1
+character(len=512) :: string1, string2, string3
 
 
 contains
@@ -233,10 +233,8 @@ TYPE(amsua_bt_granule), intent(out) :: granule
 character(len=*), parameter :: context = 'read_amsua_bt_netCDF_granule'
 character(len=*), parameter :: SWATHNAME = 'L1B_AMSU'
 
-integer :: statn                ! HDF-EOS status. 0 for success
-integer :: fid                  ! HDF-EOS file ID
-integer :: swid                 ! HDF-EOS swath ID
-integer :: nchar                ! Number of characters
+integer :: swid                   ! netCDF file identifier
+integer :: nchar
 character(len=256) :: swath_title ! Name of swath
 
 if ( .not. module_initialized ) call initialize_module
@@ -250,11 +248,12 @@ call nc_get_global_attribute(swid, 'SWATH_TITLE__', swath_title, context)
 
 nchar = len_trim(SWATHNAME)
 
-if (swathname(1:nchar) .ne. 'L1B_AMSU') then
-   print *, 'Error: bad SWATH_TITLE__ global attribute in file "'//trim(file_name)//'"'
-   print *, 'Expected "L1B_AMSU"'
-   print *, 'got      "'//swathname(1:nchar)//'"'
-   stop
+if (swath_title(1:nchar) .ne. SWATHNAME) then
+   write(string1,*) 'ERROR: bad SWATH_TITLE__ global attribute in file "'//trim(file_name)//'"'
+   write(string2,*) 'Expected "'//SWATHNAME//'"'
+   write(string3,*) 'got      "'//swath_title(1:nchar)//'"'
+   call error_handler(E_ERR, context, string1, &
+              source, revision, revdate, text2=string2, text3=string3)
 end if
 
 ! FIXME ... unsupported types are commented out for now.
@@ -765,26 +764,29 @@ endif
 ! brightness_temp(AMSUA_BT_CHANNEL, AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
 ! rows are along-track, stepping in the direction the satellite is moving
 
-scanloop:  do iscan=1,size(swath%Latitude,2)
+scanloop:  do iscan=1,size(swath%Latitude,2) ! AKA GEOTRACK
 
    ! if we're going to subset rows, we will cycle here
    if (scan_thin > 0) then
       if (modulo(iscan, scan_thin) /= 0) cycle scanloop
    endif
 
+   ! Reject bad scans here, if desired.
+   ! "Bit field for each scanline (bit 0 set if sun glint in scanline; 
+   ! bit 1 set if costal crossing in scanline, bit 2 set if some 
+   ! channels had excessive NeDT estimated), dimension (45)"
+
+   rqc = swath%qa_scanline(iscan)
+   ! if (rqc /= 0) cycle scanloop ! REJECT IF DESIRED
+
    ! columns are across-track, varying faster than rows.
-   pixloop:  do ipix=1,size(swath%Latitude,1)
+   pixloop:  do ipix=1,size(swath%Latitude,1) ! AKA GEOXTRACK
 
       ! if we're going to subset columns, ditto
       if (xtrack_thin > 0) then
          if (modulo(ipix, xtrack_thin) /= 0) cycle pixloop
       endif
 
-      ! FIXME check channel quality control
-      ! reject bad scans here by cycling pixloop
-
-      ! rqc = swath%Quality(ipix, iscan)
-      ! if (rqc /= 0) cycle pixloop
 
       ! observation lat, lon:
       olat  = swath%Latitude (ipix,iscan) ! valid range [ -90.00,  90.00]
@@ -805,17 +807,17 @@ scanloop:  do iscan=1,size(swath%Latitude,2)
          (.not. is_longitude_between(olon, lon1, lon2))) cycle pixloop
 
       ! set the zenith angle (aka earth incidence angle)
-! HELP      sat_ze = swath%incidenceAngle(1,ipix,iscan)
+      sat_ze = swath%satzen(ipix,iscan)
 
       lam1 = deg2rad*swath%longitude(ipix,iscan)
-! HELP      lam2 = deg2rad*swath%SClongitude(iscan)
+      lam2 = deg2rad*swath%sat_lon(iscan)
       phi1 = deg2rad*swath%latitude(ipix,iscan)
-! HELP      phi2 = deg2rad*swath%SClatitude(iscan)
+      phi2 = deg2rad*swath%sat_lat(iscan)
 
       ! calculate the bearing between the obs lat/lon and the SClat/lon
       y = sin(lam2-lam1)*cos(phi2)
       x = cos(phi1)*sin(phi2)-sin(phi1)*cos(phi2)*cos(lam2-lam1)
-! HELP      sat_az = rad2deg*atan2(y,x)
+      sat_az = rad2deg*atan2(y,x)
 
       ! convert observation time to DART format 
       obs_time = time_base + set_time(int(time_offset(ipix,iscan)), 0)
@@ -830,8 +832,6 @@ scanloop:  do iscan=1,size(swath%Latitude,2)
          ! apparently -9999 is missing data, outside of qc mechanism
          ! FIXME ... there is a '_FillValue' 
          obs_value = swath%brightness_temp(ichan,ipix,iscan)
-
-!TJH         write(*,*)'TJH', iscan,ipix,ichan,' obs_value ',obs_value
          if (obs_value < 0.0_r8) cycle channel_loop
 
          obs_err = swath%brightness_temp_err(ichan,ipix,iscan)
@@ -839,11 +839,35 @@ scanloop:  do iscan=1,size(swath%Latitude,2)
          ! column integrated value, so no vertical location
          vloc = 0.0_r8
 
-! HELP ... is this true? does AMSUA have specularity data (they seem to have a thousand things)
-         ! We don't yet have specularity data to add to the observations.
          if (get_rttov_option_logical('use_zeeman')) then
-            write(string1,*) 'AMSUA observations do not yet support the Zeeman effect'
-            call error_handler(E_ERR,routine,string1,source,revision,revdate)
+
+            ! From RTTOV v12 Users Guide Section 8.12: "For microwave sensors 
+            ! that have high peaking weighting functions in the mesosphere ..., 
+            ! channels close to lines of molecular oxygen may be significantly 
+            ! affected by the redistribution of line intensity through Zeeman 
+            ! splitting as described in the RTTOV v10 Science and Validation Report. 
+            ! The absorption for the affected channels will depend on the strength 
+            ! and orientation of the magnetic field. You must specify two input 
+            ! variables for the geomagnetic field in the rttov_profiles structure, 
+            ! these being the magnitude, Be, of the field and the cosine, cosbk, 
+            ! of the angle between the field vector and the viewing path considered. 
+            ! ...
+            ! For AMSU-A, only channel 14 is affected. This channel ... impact is 
+            ! therefore much smaller (~0.5K). If a Zeeman coefficient file is used,
+            ! then a small set of additional predictors will be included. These will 
+            ! contribute for channel 14 but will be nullified for the other channels 
+            ! by zero coefficients."
+            !
+            ! From RTTOV v12 Users Guide Table 12 (p 46):
+            ! profiles(i)%Be    is the Earth magnetic field strength in Gauss
+            ! profiles(i)%cosbk is the cosine of the angle between the Earth magnetic
+            !                   field and wave propagation direction
+
+            write(string1,*) 'Compensating for the Zeeman effect is not supported for AMSU-A observations.'
+            write(string2,*) 'See https://github.com/NCAR/DART/issues/99#'
+            write(string3,*) 'Also Section 8.12 of the RTTOV v12 user guide.'
+            call error_handler(E_ERR, routine, string1, &
+                       source, revision, revdate, text2=string2, text3=string3)
          else
             mag_field = MISSING_R8
             cosbk = MISSING_R8
@@ -877,13 +901,6 @@ scanloop:  do iscan=1,size(swath%Latitude,2)
          fastem_p4 = 0.1d0
          fastem_p5 = 0.3d0
 
-! HELP ... do not understand the swath%offset ... (from GMI?)
-
-         ! add additional metadata for this obs type.  returns key to use in create call
-! HELP         call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, & 
-! HELP            ichan+swath%offset, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3, &
-! HELP            fastem_p4, fastem_p5)
-
          call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, & 
                               ichan, mag_field, cosbk, &
                               fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5)
@@ -913,65 +930,65 @@ end subroutine add_granule_observations
 subroutine dump_attributes(granule)
 type (amsua_bt_granule), intent(in) :: granule
 
-print *,' AutomaticQAFlag ', granule%AutomaticQAFlag
-print *,' DayNightFlag ', granule%DayNightFlag
-print *,' LatGranuleCen ', granule%LatGranuleCen
-print *,' LocTimeGranuleCen ', granule%LocTimeGranuleCen
-print *,' LonGranuleCen ', granule%LonGranuleCen
-print *,' MoonInViewMWCount ', granule%MoonInViewMWCount
-print *,' NumBadData ', granule%NumBadData
-print *,' NumLandSurface ', granule%NumLandSurface
-print *,' NumMissingData ', granule%NumMissingData
-print *,' NumOceanSurface ', granule%NumOceanSurface
-print *,' NumProcessData ', granule%NumProcessData
-print *,' NumSpecialData ', granule%NumSpecialData
-print *,' NumTotalData ', granule%NumTotalData
-print *,' eq_x_longitude ', granule%eq_x_longitude
-print *,' eq_x_tai ', granule%eq_x_tai
-print *,' granule_number', granule%granule_number
-print *,' instrument ', granule%instrument
-print *,' node_type ', granule%node_type
-print *,' num_data_gaps_a1 ', granule%num_data_gaps_a1
-print *,' num_data_gaps_a2 ', granule%num_data_gaps_a2
-print *,' num_demgeoqa ', granule%num_demgeoqa
-print *,' num_fpe ', granule%num_fpe
-print *,' num_ftptgeoqa ', granule%num_ftptgeoqa
-print *,' num_glintgeoqa ', granule%num_glintgeoqa
-print *,' num_instr_mode_changes_a1 ', granule%num_instr_mode_changes_a1
-print *,' num_instr_mode_changes_a2 ', granule%num_instr_mode_changes_a2
-print *,' num_missing_scanlines_a1 ', granule%num_missing_scanlines_a1
-print *,' num_missing_scanlines_a2 ', granule%num_missing_scanlines_a2
-print *,' num_moongeoqa ', granule%num_moongeoqa
-print *,' num_satgeoqa ', granule%num_satgeoqa
-print *,' num_scanlines ', granule%num_scanlines
+print *,' AutomaticQAFlag               "'//trim(granule%AutomaticQAFlag)//'"'
+print *,' DayNightFlag                  "'//trim(granule%DayNightFlag)//'"'
+print *,' LatGranuleCen                  ', granule%LatGranuleCen
+print *,' LocTimeGranuleCen              ', granule%LocTimeGranuleCen
+print *,' LonGranuleCen                  ', granule%LonGranuleCen
+print *,' MoonInViewMWCount              ', granule%MoonInViewMWCount
+print *,' NumBadData                     ', granule%NumBadData
+print *,' NumLandSurface                 ', granule%NumLandSurface
+print *,' NumMissingData                 ', granule%NumMissingData
+print *,' NumOceanSurface                ', granule%NumOceanSurface
+print *,' NumProcessData                 ', granule%NumProcessData
+print *,' NumSpecialData                 ', granule%NumSpecialData
+print *,' NumTotalData                   ', granule%NumTotalData
+print *,' eq_x_longitude                 ', granule%eq_x_longitude
+print *,' eq_x_tai                       ', granule%eq_x_tai
+print *,' granule_number                 ', granule%granule_number
+print *,' instrument                    "'//trim(granule%instrument)//'"'
+print *,' node_type                     "'//trim(granule%node_type)//'"'
+print *,' num_data_gaps_a1               ', granule%num_data_gaps_a1
+print *,' num_data_gaps_a2               ', granule%num_data_gaps_a2
+print *,' num_demgeoqa                   ', granule%num_demgeoqa
+print *,' num_fpe                        ', granule%num_fpe
+print *,' num_ftptgeoqa                  ', granule%num_ftptgeoqa
+print *,' num_glintgeoqa                 ', granule%num_glintgeoqa
+print *,' num_instr_mode_changes_a1      ', granule%num_instr_mode_changes_a1
+print *,' num_instr_mode_changes_a2      ', granule%num_instr_mode_changes_a2
+print *,' num_missing_scanlines_a1       ', granule%num_missing_scanlines_a1
+print *,' num_missing_scanlines_a2       ', granule%num_missing_scanlines_a2
+print *,' num_moongeoqa                  ', granule%num_moongeoqa
+print *,' num_satgeoqa                   ', granule%num_satgeoqa
+print *,' num_scanlines                  ', granule%num_scanlines
 print *,' num_scanlines_not_norm_mode_a1 ', granule%num_scanlines_not_norm_mode_a1
 print *,' num_scanlines_not_norm_mode_a2 ', granule%num_scanlines_not_norm_mode_a2
 print *,' num_scanlines_rec_cal_prob_a11 ', granule%num_scanlines_rec_cal_prob_a11
 print *,' num_scanlines_rec_cal_prob_a12 ', granule%num_scanlines_rec_cal_prob_a12
-print *,' num_scanlines_rec_cal_prob_a2 ', granule%num_scanlines_rec_cal_prob_a2
-print *,' num_scanlines_sig_coast_xing ', granule%num_scanlines_sig_coast_xing
-print *,' num_scanlines_sig_sun_glint ', granule%num_scanlines_sig_sun_glint
-print *,' num_scansets ', granule%num_scansets
-print *,' num_zengeoqa ', granule%num_zengeoqa
-print *,' orbit_path ', granule%orbit_path
-print *,' orbitgeoqa ', granule%orbitgeoqa
-print *,' processing_level ', granule%processing_level
-print *,' start_Latitude ', granule%start_Latitude
-print *,' end_Latitude ', granule%end_Latitude
-print *,' start_Longitude ', granule%start_Longitude
-print *,' end_Longitude ', granule%end_Longitude
-print *,' start_Time ', granule%start_Time
-print *,' end_Time ', granule%end_Time
-print *,' start_year ', granule%start_year
-print *,' start_month ', granule%start_month
-print *,' start_day ', granule%start_day
-print *,' start_hour ', granule%start_hour
-print *,' start_minute ', granule%start_minute
-print *,' start_sec ', granule%start_sec
-print *,' start_orbit ', granule%start_orbit
-print *,' end_orbit ', granule%end_orbit
-print *,' start_orbit_row ', granule%start_orbit_row
-print *,' end_orbit_row ', granule%end_orbit_row
+print *,' num_scanlines_rec_cal_prob_a2  ', granule%num_scanlines_rec_cal_prob_a2
+print *,' num_scanlines_sig_coast_xing   ', granule%num_scanlines_sig_coast_xing
+print *,' num_scanlines_sig_sun_glint    ', granule%num_scanlines_sig_sun_glint
+print *,' num_scansets                   ', granule%num_scansets
+print *,' num_zengeoqa                   ', granule%num_zengeoqa
+print *,' orbit_path                     ', granule%orbit_path
+print *,' orbitgeoqa                     ', granule%orbitgeoqa
+print *,' processing_level              "'//trim(granule%processing_level)//'"'
+print *,' start_Latitude                 ', granule%start_Latitude
+print *,' end_Latitude                   ', granule%end_Latitude
+print *,' start_Longitude                ', granule%start_Longitude
+print *,' end_Longitude                  ', granule%end_Longitude
+print *,' start_Time                     ', granule%start_Time
+print *,' end_Time                       ', granule%end_Time
+print *,' start_year                     ', granule%start_year
+print *,' start_month                    ', granule%start_month
+print *,' start_day                      ', granule%start_day
+print *,' start_hour                     ', granule%start_hour
+print *,' start_minute                   ', granule%start_minute
+print *,' start_sec                      ', granule%start_sec
+print *,' start_orbit                    ', granule%start_orbit
+print *,' end_orbit                      ', granule%end_orbit
+print *,' start_orbit_row                ', granule%start_orbit_row
+print *,' end_orbit_row                  ', granule%end_orbit_row
 
 end subroutine dump_attributes
 

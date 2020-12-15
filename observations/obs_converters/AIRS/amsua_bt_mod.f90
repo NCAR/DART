@@ -9,6 +9,8 @@ module amsua_bt_mod
 
 use types_mod, only : i2, r4, digits12
 
+use    utilities_mod, only : error_handler, E_ERR
+
 use netcdf_utilities_mod, only : nc_define_dimension, &
                                  nc_define_unlimited_dimension, &
                                  nc_define_double_variable, &
@@ -22,14 +24,21 @@ use netcdf_utilities_mod, only : nc_define_dimension, &
 implicit none
 private
 
-public :: amsua_bt_granule, &
+public :: amsua_bt_granule, amsua_bt_rdr, &
           AMSUA_BT_GEOXTRACK,  AMSUA_BT_GEOTRACK,    AMSUA_BT_CHANNEL, &
           AMSUA_BT_CALXTRACK,  AMSUA_BT_SPACEXTRACK, AMSUA_BT_BBXTRACK, &
           AMSUA_BT_WARMPRTA11, AMSUA_BT_WARMPRTA12,  AMSUA_BT_WARMPRTA2
 
+!@>todo FIXME  These should be put in the amsua_netCDF_support_mod.f90
+!              That might mean no dependence on the netcdf_utilities_mod.f90
 public :: define_amsua_dimensions, &
           define_amsua_variables, &
           fill_amsua_variables
+
+! version controlled file description for error handling, do not edit
+character(len=*), parameter :: source   = 'amsua_bt_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !-------------------------------------------------------------------------------
 ! start of amsua_bt_typ.inc
@@ -1113,21 +1122,16 @@ end subroutine amsua_bt_rdr
 !-------------------------------------------------------------------------------
 !> 
 
-subroutine define_amsua_dimensions(granule, ncid, context)
-type(amsua_bt_granule),     intent(in) :: granule
+subroutine define_amsua_dimensions(ncid, context)
 integer,                    intent(in) :: ncid
 character(len=*), optional, intent(in) :: context
 
-integer, parameter :: AMSUA_BT_CALXTRACK    =  4
-integer, parameter :: AMSUA_BT_SPACEXTRACK  =  2
-integer, parameter :: AMSUA_BT_BBXTRACK     =  2
-integer, parameter :: AMSUA_BT_WARMPRTA11   =  5
-integer, parameter :: AMSUA_BT_WARMPRTA12   =  5
-integer, parameter :: AMSUA_BT_WARMPRTA2    =  7
+call error_handler(E_ERR,'define_amsua_dimensions','routine not verified',source)
 
-call nc_define_dimension(ncid, "AMSUA_BT_GEOXTRACK", AMSUA_BT_GEOXTRACK, context)
-call nc_define_dimension(ncid, "AMSUA_BT_GEOTRACK",  AMSUA_BT_GEOTRACK, context)
-call nc_define_dimension(ncid, "AMSUA_BT_CHANNEL",   AMSUA_BT_CHANNEL, context)
+! These names are chosen to match the output of h4tonccf_nc4
+call nc_define_dimension(ncid, "GeoXTrack", AMSUA_BT_GEOXTRACK, context)
+call nc_define_dimension(ncid, "GeoTrack",  AMSUA_BT_GEOTRACK, context)
+call nc_define_dimension(ncid, "Channel",   AMSUA_BT_CHANNEL, context)
 call nc_define_unlimited_dimension(ncid, "granule_number", context)
 
 end subroutine define_amsua_dimensions
@@ -1147,7 +1151,9 @@ integer,                    intent(in) :: ncid
 character(len=*), optional, intent(in) :: context
 
 character(len=NF90_MAX_NAME) :: dimnames(NF90_MAX_VAR_DIMS)
-character(len=128) :: string1, string2
+character(len=512) :: string1, string2
+
+call error_handler(E_ERR,'define_amsua_variables','routine not finished',source)
 
 ! There are 240 granules per day
 
@@ -1157,8 +1163,8 @@ call nc_define_integer_variable(ncid,'granule_number','granule_number',context)
 ! The old 'column major' vs. 'row major' argument.
 ! Fortran slowest is on left, C (and the netCDF libs), slowest on right.
 
-dimnames(1) = 'AMSUA_BT_GEOXTRACK' 
-dimnames(2) = 'AMSUA_BT_GEOTRACK'
+dimnames(1) = 'GeoXTrack' 
+dimnames(2) = 'GeoTrack'
 dimnames(3) = 'granule_number'
 
 call nc_define_double_variable(ncid,'Latitude' ,dimnames(1:3),context)
@@ -1205,6 +1211,8 @@ subroutine fill_amsua_variables(granule, ncid, context)
 type(amsua_bt_granule),     intent(in) :: granule
 integer,                    intent(in) :: ncid
 character(len=*), optional, intent(in) :: context
+
+call error_handler(E_ERR,'fill_amsua_variables','routine not finished',source)
 
 call nc_put_variable(ncid, 'Latitude',        granule%Latitude,        context)
 call nc_put_variable(ncid, 'Longitude',       granule%Longitude,       context)
