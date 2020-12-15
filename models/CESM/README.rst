@@ -1,41 +1,46 @@
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
+###########
+CESM README
+###########
 
-2 April 2013 
+Contents
+========
+
+#. `Overview`_
+#. `Terms of Use`_
+
+Overview
+========
 
 This is the start of an interface for assimilating observations
 into the fully-coupled CESM whole-system model.  It makes use
 of the existing POP (ocean), CLM (land), and CAM (atmosphere) 
 model_mod codes.
 
-Mon Nov  9 13:44:50 MST 2015
-Modified/updated 
-Mar 10 2017
-> > > See ./doc/setup_guidelines.html for much more information. < < < 
+.. note::
+
+   See ./doc/setup_guidelines.html for much more information.
 
 We have adopted some terminology to help us keep things straight.
-1) CESM already uses the term 'fully-coupled', so we use that in
+
+#. CESM already uses the term 'fully-coupled', so we use that in
    reference to CESM components only.  It means that CESM has
    an active atmosphere and ocean, ignoring other components.  
    In CESM an active atmosphere almost always implies 
    an active land, but that is not necessary for it 
    to be called 'fully coupled', and, by itself, is not 'fully coupled'.
-2) We use the term 'single-component' to denote the
+#. We use the term 'single-component' to denote the
    situation in which the assimilations are performed for
    ONE active model component. Atmospheric obs directly impact 
    the atmosphere, OR land obs directly impact the land, etc..
    Any impact from the atmosphere to the land
    happens through interaction with the CESM coupler.
-3) We use the term 'multi-component' to denote the
+#. We use the term 'multi-component' to denote the
    situation in which the assimilations are performed separately for
    more than one active model component. Atmospheric obs directly impact 
    the atmosphere AND ocean obs directly impact the ocean, etc..
    Any impact from the atmosphere to the ocean
    happens through interaction with the CESM coupler.
-4) 'cross-component' is used to specify the case
+#. 'cross-component' is used to specify the case
    when observations of one component can directly impact any/all of
    the other active components without going through the coupler.
 
@@ -53,7 +58,15 @@ The models/CESM/work directory has nothing of use in it, since there
 are no programs to interact with a cross-component DART state vector
 (a DART state that consists of atmosphere and/or ocean and/or land).
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+Terms of Use
+============
+
+|Copyright| University Corporation for Atmospheric Research
+
+Licensed under the `Apache License, Version 2.0
+<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
+law or agreed to in writing, software distributed under this license is
+distributed on an "as is" basis, without warranties or conditions of any kind,
+either express or implied.
+
+.. |Copyright| unicode:: 0xA9 .. copyright sign
