@@ -436,7 +436,8 @@ integer, intent(in) :: domain_id
 integer :: i, xs, xe, ys, ye
 integer(i8) :: indx
 type(location_type) :: lctn
-real(r8) :: loc
+
+real(r8), allocatable :: xloc(:),yloc(:)
 
 call nc_begin_define_mode(ncid)
 
@@ -475,22 +476,25 @@ xe = l96%x_size
 ys = xe + 1
 ye = xe + l96%y_size
 
-! Fill the location variables
+allocate(xloc(l96%x_size), yloc(l96%y_size))
+
+! Fill the location variables.
+
 do i = xs, xe
-   indx = i
-   call get_state_meta_data(indx,lctn)
-   loc = get_location(lctn)
-   call nc_put_variable(ncid, "Xlocation", i, loc)
+   call get_state_meta_data(i,lctn)
+   xloc(i) = get_location(lctn)
 enddo
 
 do i = ys, ye
-   indx = i
-   call get_state_meta_data(indx,lctn)
-   loc = get_location(lctn)
-   call nc_put_variable(ncid, "Ylocation", i - ys + 1, loc)
+   call get_state_meta_data(i,lctn)
+   yloc(i-ys+1) = get_location(lctn)
 enddo
 
+call nc_put_variable(ncid, "Xlocation", xloc, "nc_write_model_atts")
+call nc_put_variable(ncid, "Ylocation", yloc, "nc_write_model_atts")
 call nc_synchronize_file(ncid)
+
+deallocate(xloc, yloc)
 
 end subroutine nc_write_model_atts
 

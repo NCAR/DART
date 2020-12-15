@@ -15,7 +15,7 @@ use netcdf_utilities_mod, only : nc_create_file, nc_begin_define_mode, &
 
 use amsua_netCDF_support_mod
 
-use amsua_bt_mod, only : amsua_bt_granule, amsua_br_rdr, &
+use amsua_bt_mod, only : amsua_bt_granule, amsua_bt_rdr, &
                          AMSUA_BT_GEOXTRACK,  AMSUA_BT_GEOTRACK,    AMSUA_BT_CHANNEL, &
                          AMSUA_BT_CALXTRACK,  AMSUA_BT_SPACEXTRACK, AMSUA_BT_BBXTRACK, &
                          AMSUA_BT_WARMPRTA11, AMSUA_BT_WARMPRTA12,  AMSUA_BT_WARMPRTA2
@@ -62,7 +62,7 @@ call initialize_utilities('L1_AMSUA_to_netcdf')
 call register_module(source,revision,revdate)
 
 call error_handler(E_ERR,source,'ROUTINE NOT USABLE.', &
-          text2='Routine barely started. Needs a lot of work and expect',
+          text2='Routine barely started. Needs a lot of work and expect', &
           text3='complications with simultaneous HDF4, netCDF, and HDF5.')
 
 !----------------------------------------------------------------------
