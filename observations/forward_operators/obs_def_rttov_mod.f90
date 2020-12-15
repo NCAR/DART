@@ -3791,6 +3791,7 @@ end do GETLEVELDATA
 
 
 ! set the surface fields
+! CHECKME rttov elavation vs model evavation 
 ! start with elevation so the other locations can have appropriate vert values
 loc_sea = set_location(loc_lon, loc_lat, 0.0_r8, VERTISSURFACE )
 call interpolate(state_handle, ens_size, loc_sea, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
@@ -4005,7 +4006,7 @@ if (is_visir) then
       ! News. Tell the user we are increasing storage.
       write(string1, *) 'Warning: key (',key,') exceeds visir_obs_metadata length (',orglength,')'
       write(string2, *) 'Increasing visir_obs_metadata to length ',newlength
-      call error_handler(E_ALLMSG,routine,string1,source,revision,revdate,text2=string2)
+      call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 
       allocate(safe_visir_metadata(orglength))
       safe_visir_metadata(:) = visir_obs_metadata(:)
@@ -4032,7 +4033,7 @@ else
       ! News. Tell the user we are increasing storage.
       write(string1, *) 'Warning: key (',key,') exceeds mw_obs_metadata length (',orglength,')'
       write(string2, *) 'Increasing mw_obs_metadata to length ',newlength
-      call error_handler(E_ALLMSG,routine,string1,source,revision,revdate,text2=string2)
+      call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 
       allocate(safe_mw_metadata(orglength))
       safe_mw_metadata(:) = mw_obs_metadata(:)
