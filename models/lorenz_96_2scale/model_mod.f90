@@ -481,12 +481,14 @@ allocate(xloc(l96%x_size), yloc(l96%y_size))
 ! Fill the location variables.
 
 do i = xs, xe
-   call get_state_meta_data(i,lctn)
+   indx = i ! convert to an i8
+   call get_state_meta_data(indx,lctn)
    xloc(i) = get_location(lctn)
 enddo
 
 do i = ys, ye
-   call get_state_meta_data(i,lctn)
+   indx = i ! convert to an i8
+   call get_state_meta_data(indx,lctn)
    yloc(i-ys+1) = get_location(lctn)
 enddo
 
