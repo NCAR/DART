@@ -13,18 +13,14 @@ use    utilities_mod, only : initialize_utilities, register_module, &
 use netcdf_utilities_mod, only : nc_create_file, nc_begin_define_mode, &
                                  nc_end_define_mode, nc_close_file
 
-use amsua_netCDF_support_mod
+use amsua_netCDF_support_mod, only : define_amsua_dimensions, &
+                                     define_amsua_variables, &
+                                     fill_amsua_variables
 
 use amsua_bt_mod, only : amsua_bt_granule, amsua_bt_rdr, &
                          AMSUA_BT_GEOXTRACK,  AMSUA_BT_GEOTRACK,    AMSUA_BT_CHANNEL, &
                          AMSUA_BT_CALXTRACK,  AMSUA_BT_SPACEXTRACK, AMSUA_BT_BBXTRACK, &
                          AMSUA_BT_WARMPRTA11, AMSUA_BT_WARMPRTA12,  AMSUA_BT_WARMPRTA2
-
-!@>todo FIXME these routines should be in the amsua_netCDF_support_mod
-!             (when they are working)
-use amsua_bt_mod, only : define_amsua_dimensions, &
-                         define_amsua_variables, &
-                         fill_amsua_variables
 
 implicit none
 

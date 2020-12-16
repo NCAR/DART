@@ -5,21 +5,8 @@ module amsua_bt_mod
 !    amsua_bt_typ.inc
 !    amsua_bt_struct.inc
 ! modified to use fortran 90, removed redundant type declarations
-! extended to provide some netCDF support
 
 use types_mod, only : i2, r4, digits12
-
-use    utilities_mod, only : error_handler, E_ERR
-
-use netcdf_utilities_mod, only : nc_define_dimension, &
-                                 nc_define_unlimited_dimension, &
-                                 nc_define_double_variable, &
-                                 nc_define_real_variable, &
-                                 nc_define_integer_variable, &
-                                 nc_add_attribute_to_variable, &
-                                 nc_put_variable, &
-                                 nc_end_define_mode, &
-                                 NF90_MAX_NAME, NF90_MAX_VAR_DIMS
 
 implicit none
 private
@@ -28,17 +15,6 @@ public :: amsua_bt_granule, amsua_bt_rdr, &
           AMSUA_BT_GEOXTRACK,  AMSUA_BT_GEOTRACK,    AMSUA_BT_CHANNEL, &
           AMSUA_BT_CALXTRACK,  AMSUA_BT_SPACEXTRACK, AMSUA_BT_BBXTRACK, &
           AMSUA_BT_WARMPRTA11, AMSUA_BT_WARMPRTA12,  AMSUA_BT_WARMPRTA2
-
-!@>todo FIXME  These should be put in the amsua_netCDF_support_mod.f90
-!              That might mean no dependence on the netcdf_utilities_mod.f90
-public :: define_amsua_dimensions, &
-          define_amsua_variables, &
-          fill_amsua_variables
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'amsua_bt_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
 !-------------------------------------------------------------------------------
 ! start of amsua_bt_typ.inc
@@ -1119,106 +1095,6 @@ statn = swclose(fid)
 return
 end subroutine amsua_bt_rdr
 
-!-------------------------------------------------------------------------------
-!> 
 
-subroutine define_amsua_dimensions(ncid, context)
-integer,                    intent(in) :: ncid
-character(len=*), optional, intent(in) :: context
-
-call error_handler(E_ERR,'define_amsua_dimensions','routine not verified',source)
-
-! These names are chosen to match the output of h4tonccf_nc4
-call nc_define_dimension(ncid, "GeoXTrack", AMSUA_BT_GEOXTRACK, context)
-call nc_define_dimension(ncid, "GeoTrack",  AMSUA_BT_GEOTRACK, context)
-call nc_define_dimension(ncid, "Channel",   AMSUA_BT_CHANNEL, context)
-call nc_define_unlimited_dimension(ncid, "granule_number", context)
-
-end subroutine define_amsua_dimensions
-
-
-!-------------------------------------------------------------------------------
-! There are hdf-eos 'swxxxx' routines to query variable names, dimensions, atts ...
-!
-! The attributes I am using come from :
-! https://docserver.gesdisc.eosdis.nasa.gov/repository/Mission/AIRS/\
-! 3.3_ScienceDataProductDocumentation/3.3.4_ProductGenerationAlgorithms/\
-! README.AIRABRAD.pdf
-
-subroutine define_amsua_variables(granule, ncid, context)
-type(amsua_bt_granule),     intent(in) :: granule
-integer,                    intent(in) :: ncid
-character(len=*), optional, intent(in) :: context
-
-character(len=NF90_MAX_NAME) :: dimnames(NF90_MAX_VAR_DIMS)
-character(len=512) :: string1, string2
-
-call error_handler(E_ERR,'define_amsua_variables','routine not finished',source)
-
-! There are 240 granules per day
-
-call nc_define_integer_variable(ncid,'granule_number','granule_number',context)
-
-! The declarations happen in reverse order from the Fortran.
-! The old 'column major' vs. 'row major' argument.
-! Fortran slowest is on left, C (and the netCDF libs), slowest on right.
-
-dimnames(1) = 'GeoXTrack' 
-dimnames(2) = 'GeoTrack'
-dimnames(3) = 'granule_number'
-
-call nc_define_double_variable(ncid,'Latitude' ,dimnames(1:3),context)
-call nc_define_double_variable(ncid,'Longitude',dimnames(1:3),context)
-call nc_define_double_variable(ncid,'Time'     ,dimnames(1:3),context)
-
-write(string1,*)'AIRS spot boresight geodetic latitude'
-write(string2,*)'degrees North'
-call nc_add_attribute_to_variable(ncid,'Latitude','long_name',string1,context)
-call nc_add_attribute_to_variable(ncid,'Latitude','units'    ,string2,context)
-call nc_add_attribute_to_variable(ncid,'Latitude','_FillValue',-9999.0_digits12,context)
-call nc_add_attribute_to_variable(ncid,'Latitude','valid_range', &
-          (/ -90.0_digits12, 90.0_digits12 /),context)
-
-write(string1,*)'AIRS spot boresight geodetic longitude'
-write(string2,*)'degrees East'
-call nc_add_attribute_to_variable(ncid,'Longitude','long_name',string1,context)
-call nc_add_attribute_to_variable(ncid,'Longitude','units'    ,string2,context)
-call nc_add_attribute_to_variable(ncid,'Longitude','_FillValue',-9999.0_digits12,context)
-call nc_add_attribute_to_variable(ncid,'Longitude' ,'valid_range', &
-          (/ -180.0_digits12, 180.0_digits12 /),context)
-
-write(string1,*)'Footprint (shutter) TAI Time'
-write(string2,*)'seconds since 1993-01-01 00:00:00'
-call nc_add_attribute_to_variable(ncid,'Time','long_name',string1,context)
-call nc_add_attribute_to_variable(ncid,'Time','units'    ,string2,context)
-call nc_add_attribute_to_variable(ncid,'Time','_FillValue',-9999.0_digits12,context)
-
-dimnames(1) = 'AMSUA_BT_CHANNEL'
-dimnames(2) = 'AMSUA_BT_GEOXTRACK' 
-dimnames(3) = 'AMSUA_BT_GEOTRACK'
-dimnames(4) = 'granule_number'
-
-call nc_define_real_variable(     ncid,'brightness_temp', dimnames(1:4), context)
-call nc_add_attribute_to_variable(ncid,'brightness_temp','units','degrees Kelvin',context)
-call nc_add_attribute_to_variable(ncid,'brightness_temp','_FillValue',-9999.0_r4,context)
-
-end subroutine define_amsua_variables
-
-!-------------------------------------------------------------------------------
-!> 
-
-subroutine fill_amsua_variables(granule, ncid, context)
-type(amsua_bt_granule),     intent(in) :: granule
-integer,                    intent(in) :: ncid
-character(len=*), optional, intent(in) :: context
-
-call error_handler(E_ERR,'fill_amsua_variables','routine not finished',source)
-
-call nc_put_variable(ncid, 'Latitude',        granule%Latitude,        context)
-call nc_put_variable(ncid, 'Longitude',       granule%Longitude,       context)
-call nc_put_variable(ncid, 'Time',            granule%Time,            context)
-call nc_put_variable(ncid, 'brightness_temp', granule%brightness_temp, context)
-
-end subroutine fill_amsua_variables
 
 end module amsua_bt_mod
