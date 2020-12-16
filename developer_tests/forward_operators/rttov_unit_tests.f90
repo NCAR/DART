@@ -12,7 +12,7 @@ call initialize_utilities('rttov_unit_tests')
 
 call test_set_visir_metadata
 
-call test_initializations
+!call test_initializations
 
 
 end program rttov_unit_tests

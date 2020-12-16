@@ -4313,7 +4313,16 @@ real(r8) :: fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5
 
 integer :: ii
 
-! set MAXrttovkey = 1 
+! for get_expected_radiance
+!integer            :: obs_kind_ind ! hard code 1
+type(ensemble_type) :: state_handle
+!integer            :: ens_size ! hard code 4
+type(location_type) :: location          ! location of obs
+!integer            :: flavor  ! hard code 1          ! flavor of obs
+real(r8)           :: val(4)     ! value of obs
+integer            :: istatus(4) ! status of the calculation
+
+! start at 1 to watch the metadata grow = 1 
 MAXrttovkey = 1
 
 if ( .not. module_initialized ) call initialize_module
@@ -4365,6 +4374,13 @@ print*, 'size of obstype_metadata, visir_obs_metadata, mw_obs_metadata', size(ob
 
 !  call get_visir_metadata(16, sat_az, sat_ze, sun_az, sun_ze, &
 !        platform_id, sat_id, sensor_id, channel, specularity)
+
+
+
+!call  get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, key, flavor, val, istatus)
+key = 21
+call  get_expected_radiance(1, state_handle, 4, location, key, 1, val, istatus)
+
 
 end subroutine test_set_visir_metadata
 !-----------------------------------------------------------------------
