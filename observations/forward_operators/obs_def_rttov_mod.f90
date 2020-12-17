@@ -417,7 +417,8 @@ public ::     atmos_profile_type, &
                 do_forward_model
 
 public :: test_set_visir_metadata, &
-          test_initializations
+          test_initializations, &
+          test_key_get_expected
 
 ! Metadata for rttov observations.
 !HK are these the only two types of observations?
@@ -4376,15 +4377,29 @@ print*, 'size of obstype_metadata, visir_obs_metadata, mw_obs_metadata', size(ob
 !        platform_id, sat_id, sensor_id, channel, specularity)
 
 
-
-!call  get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, key, flavor, val, istatus)
-key = 21
-call  get_expected_radiance(1, state_handle, 4, location, key, 1, val, istatus)
-
-
 end subroutine test_set_visir_metadata
 !-----------------------------------------------------------------------
 
+subroutine test_key_get_expected
+
+
+! for get_expected_radiance
+!integer            :: obs_kind_ind ! hard code 1
+type(ensemble_type) :: state_handle
+!integer            :: ens_size ! hard code 4
+type(location_type) :: location          ! location of obs
+!integer            :: flavor  ! hard code 1          ! flavor of obs
+real(r8)           :: val(4)     ! value of obs
+integer            :: istatus(4) ! status of the calculation
+integer  :: key
+
+!call  get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, key, flavor, val, istatus)
+key = 22  ! only 20 obs
+call  get_expected_radiance(1, state_handle, 4, location, key, 1, val, istatus)
+
+end subroutine test_key_get_expected
+
+!-----------------------------------------------------------------------
 subroutine test_initializations
 
 integer ens_size, numlevels
