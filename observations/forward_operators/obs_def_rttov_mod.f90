@@ -3789,15 +3789,22 @@ GETLEVELDATA : do i = 1,numlevels
 
 end do GETLEVELDATA
 
+! Set the surface fields
+! Some models check that the difference between 'surface' locations and 
+! the surface of the model is within some namelist-specified tolerance.
+! To ensure that these interpolations return useful values, get the model
+! definiiton of the surface and add the appropriate height, if any.
 
-! set the surface fields
-! CHECKME rttov elavation vs model evavation 
-! start with elevation so the other locations can have appropriate vert values
+! Simply check if we can get the model surface elevation (loc_sea is not used)
 loc_sea = set_location(loc_lon, loc_lat, 0.0_r8, VERTISSURFACE )
 call interpolate(state_handle, ens_size, loc_sea, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
 call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc_sea, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
+!>@todo FIXME If the model does not check for surface consistency,
+!>            should we continue ...
+
+! These are the locations of interest. 
 loc_undef = set_location(loc_lon, loc_lat,                MISSING_R8, VERTISUNDEF )
 loc_sfc   = set_location(loc_lon, loc_lat,  0.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
 loc_2m    = set_location(loc_lon, loc_lat,  2.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
