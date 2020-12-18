@@ -20,7 +20,7 @@ The Weather Research and Forecasting Hydrologic Model
 is a community modeling system and framework for hydrologic modeling and model
 coupling. WRF-Hydro is configured to use the Noah-MP Land Surface Model to 
 simulate land surface processes. Combined with DART, the facility is called
- _HydroDART_.
+*HydroDART*.
 
 The development of HydroDART was a collaboration between **James McCreight**
 of the Research Applications Laboratory of NCAR and **Moha Gharamti** of
@@ -194,7 +194,7 @@ model dynamical timestep.
 |                                     |                                   | DART QUANTITY. [see example below]       |
 +-------------------------------------+-----------------------------------+------------------------------------------+
 | parameters                          | character(len=32)::               | The list of variable names in the        |
-|                                     | dimension(2,40)                   | parameter file to use to create the DART |
+|                                     | dimension(5,40)                   | parameter file to use to create the DART |
 |                                     |                                   | state vector and their corresponding     |
 |                                     |                                   | DART QUANTITY. [see example below]       |
 +-------------------------------------+-----------------------------------+------------------------------------------+
