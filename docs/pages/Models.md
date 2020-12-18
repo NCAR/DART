@@ -57,11 +57,10 @@ observations of these systems.
    [FESOM](#fesom)
    [NOAH-MP](#noah-mp)
    [WRF-Hydro](#wrf-hydro) 
-   [wrf-chem](#wrf-chem)
+   [WRF-CHEM](#wrf-chem)
    [gitm](#gitm)
    [null](#null) 
    [MITgcm_ocean](#MITgcm_ocean)
-   [wrf-chem](#wrf-chem)
 
 ### Models supported in Lanai (contact us if you want to update them):
    [GCCOM](#GCCOM)
@@ -436,6 +435,7 @@ non-gaussian quantities such as streamflow.
 Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
 If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
 
+
 <span id="gitm" class="anchor"></span>
 
 ### GITM
@@ -465,14 +465,6 @@ by **Ibrahim Hoteit** (then of Scripps) to accomodate the interfaces
 needed by DART. *Status:* supported for Lanai, Manhattan version has been
 contributed and is being tested before being released. Please contact
 the DART group to be a friendly beta tester.
-
-
-<span id="wrf-chem" class="anchor"></span>
-
-### WRF-CHEM
-
-Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
-If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
 
 
 \[[top](#)\]
