@@ -2,16 +2,11 @@
    rttov_sensor_db_file = 'rttov_test_me.csv'
 /
 
-&utilities_nml
+&utilities_nml 
    module_details = .false.,
    write_nml = 'none'
 /
 
-&error_handler_test_nml
-  test1 = 1  
-  test2 = .false. 
-  test3 = 2.0 
-/
 
 # pick a random set of inputs
 &preprocess_nml
@@ -34,17 +29,9 @@
    /
 
 
-&obs_impact_tool_nml
-  input_filename         = 'crosstest'
-  output_filename        = 'control_impact_runtime.txt'
-  debug                  = .false.
-  /
-
 &obs_kind_nml
   /
 
-&file_utils_test_nml
-  /
 
 &location_nml
    horiz_dist_only                 = .false.
