@@ -310,7 +310,7 @@ module obs_def_rttov_mod
 
 use        types_mod, only : r8, MISSING_R8, MISSING_I, obstypelength
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, E_ALLMSG, &
                              ascii_file_format, nmlfileunit, do_nml_file, &
                              do_nml_term, check_namelist_read, find_namelist_in_file, &
                              interactive_r, interactive_i, open_file, file_exist
@@ -2031,11 +2031,11 @@ DO imem = 1, ens_size
 
    ! check that the pressure is monotonically increasing from TOA down
    do ilvl = 1, nlevels-1
-      if (atmos % pressure(imem,lvlidx(ilvl)) > atmos % pressure(imem,lvlidx(ilvl+1))) then
+      if (atmos % pressure(imem,lvlidx(ilvl)) >= atmos % pressure(imem,lvlidx(ilvl+1))) then
          if (debug) then
-            write(string1,*) 'For ens #',imem,', pressure ',lvlidx(ilvl),' was greater than pressure ',&
-                lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' > ',atmos%pressure(imem,lvlidx(ilvl+1))
-            call error_handler(E_MSG,routine,string1,source,revision,revdate)
+            write(string1,*) 'For ens #',imem,', pressure ',lvlidx(ilvl),' was greater than or equal to pressure ',&
+                lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' >= ',atmos%pressure(imem,lvlidx(ilvl+1))
+            call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
          end if
 
          radiances(:) = MISSING_R8
@@ -3451,6 +3451,7 @@ type(location_type) :: loc
 integer :: maxlevels, numlevels
 
 type(location_type) :: loc_undef        ! surface location
+type(location_type) :: loc_sea          ! surface location
 type(location_type) :: loc_sfc          ! surface location
 type(location_type) :: loc_2m           ! surface location
 type(location_type) :: loc_10m          ! surface location
@@ -3519,7 +3520,7 @@ if ( .not. arrays_prealloced) then
       write(string1,'(A,I0)') 'FAILED to determine number of levels in model:', &
          numlevels
          
-      if (debug) call error_handler(E_MSG,routine,string1,source,revision,revdate)
+      if (debug) call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
       istatus = 1
       val     = MISSING_R8
       return
@@ -3788,18 +3789,29 @@ GETLEVELDATA : do i = 1,numlevels
 
 end do GETLEVELDATA
 
-loc_undef = set_location(loc_lon, loc_lat, 1.0_r8, VERTISUNDEF )
-loc_sfc = set_location(loc_lon, loc_lat, 0.0_r8, VERTISSURFACE )
-loc_2m  = set_location(loc_lon, loc_lat, 2.0_r8, VERTISSURFACE )
-loc_10m = set_location(loc_lon, loc_lat, 10.0_r8, VERTISSURFACE )
+! Set the surface fields
+! Some models check that the difference between 'surface' locations and 
+! the surface of the model is within some namelist-specified tolerance.
+! To ensure that these interpolations return useful values, get the model
+! definiiton of the surface and add the appropriate height, if any.
 
-! set the surface fields
-call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
-call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
+! Simply check if we can get the model surface elevation (loc_sea is not used)
+loc_sea = set_location(loc_lon, loc_lat, 0.0_r8, VERTISSURFACE )
+call interpolate(state_handle, ens_size, loc_sea, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
+call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc_sea, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
-call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
-call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
+!>@todo FIXME If the model does not check for surface consistency,
+!>            should we continue ...
+
+! These are the locations of interest. 
+loc_undef = set_location(loc_lon, loc_lat,                MISSING_R8, VERTISUNDEF )
+loc_sfc   = set_location(loc_lon, loc_lat,  0.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
+loc_2m    = set_location(loc_lon, loc_lat,  2.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
+loc_10m   = set_location(loc_lon, loc_lat, 10.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
+
+call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
+call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
 call interpolate(state_handle, ens_size, loc_2m, QTY_2M_TEMPERATURE, atmos%s2m_t(:), this_istatus)
@@ -4101,7 +4113,7 @@ if (return_now) then
    else if (debug) then
       write(string1,*) 'Could not find requested field ' // trim(field_name), ' istatus:',istatus,&
          'location:',locv(1),'/',locv(2),'/',locv(3)
-      call error_handler(E_MSG,routine,string1,source,revision,revdate)
+      call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
    end if
 end if
 
