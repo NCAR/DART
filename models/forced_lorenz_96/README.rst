@@ -15,125 +15,122 @@ Overview
 ========
 
 The *forced_lorenz_96* model implements the standard Lorenz (1996) [1]_
-equations except that the forcing term, F, is added to the state vector and is
-assigned an independent value at each gridpoint. The result is a model
-that is twice as big as the standard L96 model. The forcing can be
-allowed to vary in time or can be held fixed so that the model looks
-like the standard L96 but with a state vector that includes the constant
-forcing term. An option is also included to add random noise to the
-forcing terms as part of the time tendency computation which can help in
-assimilation performance. If the random noise option is turned off (see
-namelist) the time tendency of the forcing terms is 0.
+equations except that the forcing term, ``F``, is added to the state vector and
+is assigned an independent value at each gridpoint. The result is a model that
+is twice as big as the standard L96 model. The forcing can be allowed to vary in
+time or can be held fixed so that the model looks like the standard L96 but with
+a state vector that includes the constant forcing term. An option is also
+included to add random noise to the forcing terms as part of the time tendency
+computation which can help in assimilation performance. If the random noise
+option is turned off (see namelist) the time tendency of the forcing terms is 0.
 
 DART state vector composition:
 
-  **state variables** - *traditional Lorenz_96 state*
-  indices 1 - 40
-
-  **forcing terms** - *"extended" state*
-  indices 41 - 80
++----------------------------------------+----------------------------------------+
+| **state variables**                    |  **forcing terms**                     |
++========================================+========================================+
+| *traditional Lorenz_96 state*          | *"extended" state*                     |
++----------------------------------------+----------------------------------------+
+| ``indices 1 - 40``                     | ``indices 41 - 80``                    |
++----------------------------------------+----------------------------------------+
 
 The DART tutorial Section 20 explores parameter estimation using the
-*forced_lorenz_96* model.
+``forced_lorenz_96`` model.
 
 Quick Start
 ===========
 
 To become familiar with the model, try this quick experiment.
 
-#. compile everything in the *model/forced_lorenz_96/work* directory.
+#. compile everything in the ``model/forced_lorenz_96/work`` directory.
 
-   .. container:: unix
-
-      cd models/forced_lorenz_96/work
+   .. code-block::
+   
+      cd $DARTROOT/models/forced_lorenz_96/work
       ./quickbuild.csh
 
-#. make sure the *input.nml* looks like the following (there is a lot
+#. make sure the ``input.nml`` looks like the following (there is a lot
    that has been left out for clarity, these are the settings of
    interest for this example):
 
-   .. container:: routine
+   .. code-block:: fortran
 
-      ::
+      &perfect_model_obs_nml
+         start_from_restart    = .true.,
+         output_restart        = .true.,
+         async                 = 0,
+         restart_in_file_name  = "perfect_ics",
+         obs_seq_in_file_name  = "obs_seq.in",
+         obs_seq_out_file_name = "obs_seq.out",
+         ...
+      /
 
-         &perfect_model_obs_nml
-            start_from_restart    = .true.,
-            output_restart        = .true.,
-            async                 = 0,
-            restart_in_file_name  = "perfect_ics",
-            obs_seq_in_file_name  = "obs_seq.in",
-            obs_seq_out_file_name = "obs_seq.out",
-            ...
+      &filter_nml
+         async                    = 0,
+         ens_size                 = 80,
+         start_from_restart       = .true.,
+         output_restart           = .true.,
+         obs_sequence_in_name     = "obs_seq.out",
+         obs_sequence_out_name    = "obs_seq.final",
+         restart_in_file_name     = "filter_ics",
+         restart_out_file_name    = "filter_restart",
+         num_output_state_members = 80,
+         num_output_obs_members   = 80,
+         ...
+      /
 
-         &filter_nml
-            async                    = 0,
-            ens_size                 = 80,
-            start_from_restart       = .true.,
-            output_restart           = .true.,
-            obs_sequence_in_name     = "obs_seq.out",
-            obs_sequence_out_name    = "obs_seq.final",
-            restart_in_file_name     = "filter_ics",
-            restart_out_file_name    = "filter_restart",
-            num_output_state_members = 80,
-            num_output_obs_members   = 80,
-            ...
+      &model_nml
+         num_state_vars    = 40,
+         forcing           = 8.00,
+         delta_t           = 0.05,
+         time_step_days    = 0,
+         time_step_seconds = 3600,
+         reset_forcing     = .false.,
+         random_forcing_amplitude = 0.10
+      /
 
-         &model_nml
-            num_state_vars    = 40,
-            forcing           = 8.00,
-            delta_t           = 0.05,
-            time_step_days    = 0,
-            time_step_seconds = 3600,
-            reset_forcing     = .false.,
-            random_forcing_amplitude = 0.10
-            /
-
-#. Run *perfect_model_obs* to generate *true_state.nc* and
-   *obs_seq.out*. The default *obs_seq.in* will cause the model to
+#. Run ``perfect_model_obs`` to generate ``true_state.nc`` and
+   ``obs_seq.out``. The default ``obs_seq.in`` will cause the model to
    advance for 1000 time steps.
 
-   .. container:: unix
+   .. code-block::
 
       ./perfect_model_obs
 
-#. If you have *ncview*, explore the *true_state.nc*. Notice that the
+#. If you have *ncview*, explore the ``true_state.nc``. Notice that the
    State Variable indices from 1-40 are the dynamical part of the model
    and 41-80 are the Forcing variables.
 
-   .. container:: unix
-
+   .. code-block::
+   
       ncview true_state.nc
 
-#. Run *filter* to generate *preassim.nc*, *analysis.nc* and
-   *obs_seq.final*.
+#. Run ``filter`` to generate ``preassim.nc``, ``analysis.nc`` and
+   ``obs_seq.final``.
 
-   .. container:: unix
+   .. code-block::
 
       ./filter
 
-#. | Launch Matlab and run *plot_ens_time_series*.
+#. Launch Matlab and run ``plot_ens_time_series``.
 
-   .. container:: unix
+   .. code-block::
 
       >> plot_ens_time_series
-      Input name of prior or posterior diagnostics file:
-      for preassim.nc
-      *preassim.nc*
+      Input name of prior or posterior diagnostics file for preassim.nc:
+      preassim.nc
       OPTIONAL: if you have the true state and want it superimposed,
-      provide
-      : the name of the input file. If not, enter a dummy filename.
-      : Input name of True State file:
-      for true_state.nc
-      *true_state.nc*
+      provide the name of the input file. If not, enter a dummy filename.
+      Input name of True State file for true_state.nc:
+      true_state.nc
       Using state state variable IDs 1 13 27
       If these are OK, ;
       If not, please enter array of state variable ID's
       To choose from entire state enter A 25 50 75 (between 1 and 80)
-      To choose traditional model state enter S 1 23 40 (between 1 and
-      40)
+      To choose traditional model state enter S 1 23 40 (between 1 and 40)
       To choose forcing estimates enter F 2 12 22 (between 1 and 40)
       (no intervening syntax required)
-      *A 20 30 40 60 70 80*
+      A 20 30 40 60 70 80
 
    Indices 20, 30, and 40 will be from the dynamical part of the
    lorenz_96 attractor, indices 60, 70, and 80 will be the corresponding
@@ -158,15 +155,15 @@ prematurely terminating the namelist.
 
 .. code-block:: fortran
 
-  &model_nml
-     num_state_vars    = 40,
-     forcing           = 8.00,
-     delta_t           = 0.05,
-     time_step_days    = 0,
-     time_step_seconds = 3600,
-     reset_forcing     = .false.,
-     random_forcing_amplitude = 0.10  
-  /
+   &model_nml
+      num_state_vars    = 40,
+      forcing           = 8.00,
+      delta_t           = 0.05,
+      time_step_days    = 0,
+      time_step_seconds = 3600,
+      reset_forcing     = .false.,
+      random_forcing_amplitude = 0.10  
+   /
 
 Description of each namelist entry
 ----------------------------------
