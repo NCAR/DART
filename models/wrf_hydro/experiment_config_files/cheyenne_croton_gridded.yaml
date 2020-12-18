@@ -159,7 +159,7 @@ observation_preparation:
     scheduler:
       # ppn is the number of processors per node. This is required to be correct.
       ppn: 36
-      account: 'NRAL0017'
+      account: 'NRALxxxx'
       walltime: '00:10'
       job_name: '6mile_obs_prep' #_{model_start_time_str}'
       queue: 'regular'
@@ -232,7 +232,7 @@ run_experiment:
     scheduler:
       nnodes: 1
       ppn_use: 35
-      account: NRAL0017
+      account: NRALxxxx
       walltime: '00:09'
       job_name: ens_adv
       queue: premium

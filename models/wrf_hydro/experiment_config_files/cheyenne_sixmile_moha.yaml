@@ -157,7 +157,7 @@ observation_preparation:
     scheduler:
       # ppn is the number of processors per node. This is required to be correct.
       ppn: 36
-      account: 'NRAL0017'
+      account: 'NRALxxxx'
       walltime: '00:10'
       job_name: '6mile_obs_prep' #_{model_start_time_str}'
       queue: 'regular'
@@ -190,7 +190,7 @@ run_experiment:
     # The number of mpi processes for each model advance
     nproc: 1
     nnodes: 1
-    account: NRAL0017
+    account: NRALxxxx
     walltime: '00:01'
     job_name: ens_adv
     queue: regular
@@ -213,7 +213,7 @@ run_experiment:
       nproc: 36
       nnodes: 1
       ppn_max: 36
-      account: NRAL0017
+      account: NRALxxxx
       walltime: '12:00'
       job_name: 6mile_filter #_{model_start_time_str}'
       queue: premium

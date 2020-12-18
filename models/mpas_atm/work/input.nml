@@ -1,7 +1,7 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    single_file_in             = .false.
-   input_state_files          = 'mpas_init.nc'
+   input_state_files          = 'init.nc'
    init_time_days             = -1
    init_time_seconds          = -1
 
@@ -213,7 +213,6 @@
                           'qv',                    'QTY_VAPOR_MIXING_RATIO',
                           'surface_pressure',      'QTY_SURFACE_PRESSURE',
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
-                          'rho','0.01','NULL','CLAMP',
   /
 
 &update_mpas_states_nml
@@ -367,7 +366,7 @@
    quantity_of_interest = 'QTY_VAPOR_MIXING_RATIO'
 
 &model_mod_check_nml
-   input_state_files     = 'mpas_init.nc'
+   input_state_files     = 'init.nc'
    output_state_files    = 'check_me.nc'
    test1thru             = 0
    run_tests             = 1,2,3,4,5,7

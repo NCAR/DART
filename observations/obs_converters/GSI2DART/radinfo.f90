@@ -1,7 +1,8 @@
 module radinfo
 ! adapted from GSI/src/main/radinfo.f90 to include only minimum code for reading channel info
 
-use kinds, only: i_kind
+use         kinds, only : i_kind
+use utilities_mod, only : open_file
 
 implicit none
 
@@ -14,7 +15,7 @@ integer(i_kind) :: jpch_rad ! number of channels*sat
 integer(i_kind),allocatable,dimension(:):: nuchan ! satellite channel
 
 ! namelist variables
-integer(i_kind) :: npred = 7        ! number of radiance biases predictors
+integer(i_kind) :: npred = 12       ! number of radiance biases predictors
 logical :: adp_anglebc   = .false.  ! logical to turn off or on the variational radiance angle bias correction
 logical :: emiss_bc      = .false.  ! logical to turn off or on the emissivity predictor
 
@@ -34,14 +35,15 @@ contains
 !============================================================================
 
 !   Determine number of entries in satellite information file
-    open(lunin,file='satinfo',form='formatted')
+    lunin = open_file('satinfo',form='formatted',action='read')
+
     j=0
     nlines=0
     read1:  do
        read(lunin,100,iostat=istat) cflg,crecord
-       if (istat /= 0) exit
+       if (istat /= 0) exit read1
        nlines=nlines+1
-       if (cflg == '!') cycle
+       if (cflg == '!') cycle read1
        j=j+1
     end do read1
     if (istat>0) then
@@ -53,6 +55,8 @@ contains
     jpch_rad = j
     if(jpch_rad == 0)then
       close(lunin)
+       write(6,*)'RADINFO_READ:  no channels from satinfo'
+       write(6,*)'RADINFO_READ:  no channels from satinfo'
       return
     end if
 

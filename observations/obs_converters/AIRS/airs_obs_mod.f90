@@ -27,11 +27,9 @@ use     obs_kind_mod, only : get_index_for_type_of_obs,                        &
 
 use obs_sequence_mod, only : init_obs_sequence, init_obs, obs_sequence_type,   &
                              obs_type, set_copy_meta_data,                     &
-                             set_qc_meta_data
+                             set_qc_meta_data, print_obs_seq_summary
 
 use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
-
-use obs_seq_utilities_mod, only : print_obs_seq
 
 use      obs_err_mod, only : rawin_temp_error
 
@@ -323,7 +321,7 @@ enddo rowloop
 write(msgstring,*) 'obs used = ', obs_num
 call error_handler(E_MSG, ' ', msgstring)
 
-call print_obs_seq(seq, '')
+call print_obs_seq_summary(seq)
 
 end subroutine make_obs_sequence
 

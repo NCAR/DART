@@ -107,10 +107,11 @@ character(len=100) :: init_ts_file ! length consistent with POP
 character(len=100) :: init_ts_outfile
 character(len= 64) :: init_ts_option, init_ts_suboption
 character(len= 64) :: init_ts_file_fmt, init_ts_outfile_fmt
-
+real(r8) :: init_ts_perturb
 namelist /init_ts_nml/ init_ts_option, init_ts_suboption, &
                        init_ts_file, init_ts_file_fmt, &
-                       init_ts_outfile, init_ts_outfile_fmt
+                       init_ts_outfile, init_ts_outfile_fmt, &
+                       init_ts_perturb
 
 !------------------------------------------------------------------
 ! The POP domain namelist
@@ -216,27 +217,6 @@ call check_namelist_read(iunit, io, 'io_nml')
 call find_namelist_in_file('pop_in', 'init_ts_nml', iunit)
 read(iunit, nml = init_ts_nml, iostat = io)
 call check_namelist_read(iunit, io, 'init_ts_nml')
-
-! Is it a pointer file or not ...
-!if ( luse_pointer_files ) then
-!
-!   restart_filename = trim(pointer_filename)//'.restart'
-!
-!   if ( .not. file_exist(restart_filename) ) then
-!      string1 = 'pop_in:pointer file '//trim(restart_filename)//' not found'
-!      call error_handler(E_ERR,'initialize_module', &
-!             string1, source, revision, revdate)
-!   endif
-!
-!   iunit = open_file(restart_filename,'formatted')
-!   read(iunit,'(A)')ic_filename
-!
-!   restart_filename = ' '
-!   write(*,*)'DEBUG ... pointer filename dereferenced to ',trim(ic_filename )
-!
-!else
-!   ic_filename = trim(init_ts_file)//'.'//trim(init_ts_file_fmt)
-!endif
 
 ! Make sure we have a pop restart file (for grid dims)
 if ( .not. file_exist(ic_filename) ) then

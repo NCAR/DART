@@ -35,7 +35,6 @@
 &obs_sequence_tool_nml
    filename_seq         = 'obs_seq.gpspw.conus.20120601',     
    filename_out         = 'obs_seq.gpspw.globe.2012060100',
-   num_input_files      = 1,
    first_obs_days       = 150266,
    first_obs_seconds    = 0,
    last_obs_days        = 150266,

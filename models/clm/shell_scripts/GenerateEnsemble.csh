@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # This script may be used to insert the DART restart conditions into
 # a set of CLM history and restart files. All it takes is a single
 # CLM history and restart file and 'dart_to_clm' will update the
@@ -48,8 +46,4 @@ echo "Finished at "`date`
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

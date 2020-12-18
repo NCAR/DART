@@ -54,7 +54,7 @@ entire *obs\_seq* file in the correct format.
 The DART system comes with several types of location modules for
 computing distances appropriately. Two of the ones most commonly used
 are for data in a 1D system and for data in a 3D spherical coordinate
-system. All the programs here assume the
+system. Most of the programs here assume the
 *location/threed\_sphere/location\_mod.f90* 3D sphere location module is
 being used.
 
@@ -279,14 +279,21 @@ The *DART/observations/obs\_converters* directory contains a variety of
 converter programs to read various external formats and convert the
 observations into the format required by DART.
 
-The current list of converters include:
+The current list of converters (some directories contain multiple converters) include:
 
 -   [AIRS](AIRS/AIRS.html)
+-   AURA (uses a combination of IDL and Fortran)
 -   [Aviso+/CMEMS](AVISO/AVISO.html)
 -   [Ameriflux](Ameriflux/level4_to_obs.html)
+-   [CHAMP](CHAMP/work/README)
+-   CNOFS
+-   [CONAGUA](README)
 -   [COSMOS](COSMOS/COSMOS_to_obs.html)
 -   [DWL](DWL/dwl_to_obs.html)
+-   [GMI](GMI/README.md)
+-   [GOES](GOES/README.md)
 -   [GPSPW](GPSPW/README)
+-   GRACE
 -   [GSI2DART](GSI2DART/README)
 -   [GTSPP](GTSPP/GTSPP.html)
 -   [MADIS](MADIS/MADIS.html)
@@ -308,6 +315,7 @@ The current list of converters include:
 -   [Radar](radar/radar.html)
 -   [snow](snow/snow_to_obs.html)
 -   [Text](text/text_to_obs.html)
+-   text_GITM
 -   [tpw](tpw/tpw.html)
 -   [Tropical Cyclones](tropical_cyclone/tc_to_obs.html)
 -   [Var (little-r)](var/littler_tf_dart.html)

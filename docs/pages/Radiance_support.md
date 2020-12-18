@@ -1,11 +1,14 @@
-This document is a mini-README for DART's support for satellite radiance
+
+## Introduction to DART's support for RTTOV
+
+This document serves as an orientation for DART's support for satellite radiance
 assimilation. At the current time, only ECMWF's RTTOV radiative transfer
 model is supported.
 
-1. Introduction to DART's support for RTTOV
-
-DART now includes the ability to use the RTTOV forward operators for satellite
-radiance assimilation.
+DART now includes the ability to use the RTTOV forward operators for 
+satellite radiance assimilation. This is a new capability for DART, 
+please submit issues with the 
+[DART Issues](https://github.com/NCAR/DART/issues) facility.
 
 Note that DART support for RTTOV does not mean that all issues regarding satellite
 data assimilation with an ensemble system have been solved. Rather, the DART team
@@ -23,14 +26,16 @@ functions depending on the model and model setup. In some cases RTTOV default
 climatologies can be used, but at a minimum the following quantities must be supplied by the
 model_mod interpolate:
 
-**QTY_PRESSURE**           - atmospheric pressure in hPa at the model levels
-**QTY_TEMPERATURE**        - atmospheric temperature in K at the model levels
-**QTY_VAPOR_MIXING_RATIO** - atmospheric humidity mixing ratio in kg/kg at the model levels
-**QTY_SURFACE_PRESSURE**   - the surface pressure in hPa
-**QTY_SURFACE_ELEVATION**  - the surface elevation in km
-**QTY_2M_TEMPERATURE**     - the atmospheric temperature in K at 2 m above the surface
-**QTY_SKIN_TEMPERATURE**   - the surface (skin) temperature in K
-**QTY_SURFACE_TYPE**       - 0 = land, 1 = water, 2 = sea ice
+| Quantity | Description |
+| -------- | ----------- | 
+| **QTY_PRESSURE**           | atmospheric pressure in hPa at the model levels |
+| **QTY_TEMPERATURE**        | atmospheric temperature in K at the model levels |
+| **QTY_VAPOR_MIXING_RATIO** | atmospheric humidity mixing ratio in kg/kg at the model levels |
+| **QTY_SURFACE_PRESSURE**   | the surface pressure in hPa |
+| **QTY_SURFACE_ELEVATION**  | the surface elevation in km |
+| **QTY_2M_TEMPERATURE**     | the atmospheric temperature in K at 2 m above the surface | 
+| **QTY_SKIN_TEMPERATURE**   | the surface (skin) temperature in K |
+| **QTY_SURFACE_TYPE**       | 0 = land, 1 = water, 2 = sea ice | 
 
 If a DART model_mod cannot provide these required quantities, the RTTOV forward operator 
 will fail and cannot be used. It may be possible to look up surface elevation or surface 
@@ -42,7 +47,7 @@ Beyond these fields, there are many other optional fields (such as clouds, trace
 aerosols) that can be specified. See the obs_def_rttov_mod.html page in the
 observations/forward_operators directory for a complete list of values.
 
-2. Setting up DART+RTTOV
+### Setting up DART+RTTOV
 
 The RTTOV code and coefficients can be downloaded from this page:
 
@@ -53,6 +58,10 @@ You will need to register for a free account before downloading the code.
 You should read the RTTOV user guide carefully as DART primarily acts as a
 pass through. Refer to the setup instructions included with the RTTOV
 documentation.
+
+It may also be useful to refer to:
+
+https://github.com/NCAR/DART/wiki/Getting-Started-with-DART-RTTOV
 
 Once you have successfully installed RTTOV, you should customize the
 mkmf.template.rttov.gfortran file to your own build system, possibly referring
@@ -70,33 +79,32 @@ To get RTTOV to work with your model, you will need to follow these steps:
 3. Go into the models/<model of choice>/work directory for your model of choice
 4. Add your observation types (which are listed in obs_def_rttov_mod.html/f90) to the input.nml namelist (assimilate_ / evaluate_these_obs_types)
 5. Include observations/forward_operators/obs_def_rttov_mod.f90 in the input_files section under &preprocess
-6. Add observations/forward_operators/rttov_interface_mod.F90 to all of the path_name files that use obs_def_mod.f90
-7. In your model of choice, run ./quickbuild.csh and ensure the RTTOV libraries are built
-8. For OSSE runs with perfect_model_obs:
+6. In your model of choice, run ./quickbuild.csh and ensure the RTTOV libraries are built
+7. For OSSE runs with perfect_model_obs:
    - Create an observation sequence file using ./create_obs_sequence and ./create_fixed_network_seq as
      detailed in the DART Getting_Started documentation
    - Run perfect_model_obs
    - Setup your ensemble as appropriate
    - Run filter and analyze the results in the usual way
-9. For OSE runs:
+8. For OSE runs:
    - Run the observation converter for your desired observations
    - Setup your ensemble as appropriate
    - Run filter and analyze the results in the usual way
 
-Note that currently obervation converters are only provided for AIRS, AMSU/A,
+Note that currently obervation converters are only provided for AIRS, AMSU/A, GOES,
 and GMI. These converters can be found in the observations/obs_converters
 directories. The L1 converters are the appropriate converters for the radiance
 or brightness temperatures (rather than retrievals). If you need real L1 data
 for another satellite (as opposed to running an OSSE with perfect_model_obs
 where you can generate your own data), you may be able to use one of these
 converters to get you started. We welcome your contributions back to the DART
-public repository.
+public repository. Please issue a pull request to https://github.com/NCAR/DART.
 
-Note that the observation converters will require the HDF-EOS libraries.
+Note that some of the observation converters may require the HDF-EOS libraries.
 See the BUILDME script in each directory for help in building these
 observation converters.
 
-3. Current list of known issues
+### Current list of known issues
 
 DART support for satellite radiances cannot be considered 100% complete. The following
 details the known issues that are being considered with DART's support for

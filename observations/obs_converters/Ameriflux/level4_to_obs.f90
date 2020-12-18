@@ -780,7 +780,7 @@ end program level4_to_obs
 ! - Rg_fqc         : global radiation quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - Ta_f           : air temperature filled [°C]
+! - Ta_f           : air temperature filled [deg C]
 ! - Ta_fqc         : air temperature quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
@@ -788,7 +788,7 @@ end program level4_to_obs
 ! - VPD_fqc        : vapour pressure deficit quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - Ts_f           : soil temperature filled [°C]
+! - Ts_f           : soil temperature filled [deg C]
 ! - Ts_fqc         : soil temperature quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
