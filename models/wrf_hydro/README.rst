@@ -19,10 +19,6 @@ Contents
 Overview
 ========
 
-
-
-
-
 The `NOAH <http://www.ral.ucar.edu/research/land/technology/lsm.php>`_ **Land
 Surface Model** and **Data Assimilation Research Testbed (DART)** may now be
 used for assimilation experiments.
@@ -323,7 +319,8 @@ force each of the N instances with different atmospheric conditions for 'a
 long time'.
 
 By The Way
-~~~~~~~~~
+----------
+
 Experience has shown that having a paired (unique) atmospheric forcing maintains
 the ensemble spread during an assimilation better than simply forcing all the
 ensemble members with one single atmospheric state.
@@ -348,7 +345,7 @@ observations that are intended to be supported must be preprocessed (see
 ``obs_kind_mod.f90`` in the standard DART way.
 
 Exploring the Output
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 There are Matlab® scripts for exploring the performance of the assimilation in
 observation-space (after running ``obs_diag``). See ``$DARTROOT/diagnostics/threed_sphere/obs_diag.html``
@@ -582,7 +579,7 @@ All other namelist variables are ignored by DART - but mean something to NOAH.
 +-------------------------------------+-----------------------------------+------------------------------------------+
 
 Example
-~~~~~~~
+-------
 
 Note: the ``FORCING_FILE_DIRECTORY`` line is not required by NOAH but IS required
 by DART - specifically in the *advance_model.csh* script.

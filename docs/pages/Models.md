@@ -57,6 +57,7 @@ observations of these systems.
    [FESOM](#fesom)
    [NOAH-MP](#noah-mp)
    [WRF-Hydro](#wrf-hydro) 
+   [wrf-chem](#wrf-chem)
    [gitm](#gitm)
    [null](#null) 
    [MITgcm_ocean](#MITgcm_ocean)
@@ -87,6 +88,7 @@ observations of these systems.
    [ROSE](#rose) 
    [CABLE](#cable) 
 
+
 <span id="models" class="anchor"></span>  
 
 \[[top](#)\]
@@ -94,6 +96,7 @@ observations of these systems.
 -----
 
 ## The 'Manhattan-ready' models in DART.
+
 
 <span id="lorenz_63" class="anchor"></span>
 
@@ -109,6 +112,7 @@ X' = -sigma*X + sigma*Y
 Y' = -XZ + rX - Y
 Z' =  XY -bZ
 ~~~
+
 
 <span id="lorenz_84" class="anchor"></span>
 
@@ -126,12 +130,14 @@ Z' = bXY  +  XZ  - Z
 
 Where a, b, F, and G are the model parameters.
 
+
 <span id="NINEvar" class="anchor"></span>
 
 ### 9var
 
 This model provides interesting off-attractor transients that behave
 something like gravity waves.
+
 
 <span id="lorenz_96" class="anchor"></span>
 
@@ -173,6 +179,7 @@ Quoting from the **Lorenz 1998** paper:
 > circle. Nothing will simulate the atmosphere's latitudinal or vertical
 > extent.
 
+
 <span id="lorenz_96_2scale" class="anchor"></span>
 
 ### lorenz_96_2scale
@@ -185,6 +192,7 @@ X are all specified in the namelist. Defaults are chosen depending on
 whether the Lorenz or Smith option is specified in the namelist. Lorenz
 is the default model. Interface written by **Josh Hacker**. Thanks
 Josh\!
+
 
 <span id="forced_lorenz_96" class="anchor"></span>
 
@@ -200,6 +208,7 @@ forcing term. An option is also included to add random noise to the
 forcing terms as part of the time tendency computation which can help in
 assimilation performance. If the random noise option is turned off (see
 namelist) the time tendency of the forcing terms is 0.
+
 
 <span id="lorenz_04" class="anchor"></span>
 
@@ -218,6 +227,7 @@ form of model III. The basic equations are documented in Lorenz (2005)
 and also in the model_mod.f90 code. The user is free to choose model II
 or III with a Namelist variable.
 
+
 <span id="simple_advection" class="anchor"></span>
 
 ### simple_advection
@@ -232,6 +242,7 @@ differencing is both numerically unstable and subject to shock
 formation. However, it can sometimes be made stable in assimilation mode
 (see recent work by Majda and collaborators).
 
+
 <span id="bgrid_solo" class="anchor"></span>
 
 ### bgrid_solo
@@ -239,6 +250,7 @@ formation. However, it can sometimes be made stable in assimilation mode
 This is a dynamical core for B-grid dynamics using the Held-Suarez
 forcing. The resolution is configurable, and the entire model can be run
 as a subroutine. *Status:* supported.
+
 
 <span id="wrf" class="anchor"></span>
 
@@ -251,6 +263,7 @@ forecasting and atmospheric research needs. More people are using DART
 with WRF than any other model. Note: The actual WRF code is not
 distributed with DART. *Status:* supported.
 
+
 <span id="mpas_atm" class="anchor"></span>
 
 ### MPAS ATM
@@ -258,11 +271,13 @@ distributed with DART. *Status:* supported.
 [Model Prediction Across Scales -
 atmosphere](https://mpas-dev.github.io/) *Status:* active
 
+
 <span id="ROMS" class="anchor"></span>
 
 ### ROMS
 
 [Regional Ocean Modelling System](https://www.myroms.org/) *Status:* active
+
 
 <span id="CESM" class="anchor"></span>
 
@@ -283,6 +298,7 @@ plus any earlier versions of the component models. For example, CESM2.0
 can build CAM-FV version 6, 5, 4, ... while CESM1.2.1 can build CAM-FV
 5, 4, ..., but not 6. Note: the source code for CESM component models is
 not distributed with DART.
+
 
 <span id="cam-fv" class="anchor"></span>
 <span id="WACCM" class="anchor"></span>
@@ -305,6 +321,7 @@ available in
 [DART/CAM datasets](http://www.image.ucar.edu/pub/DART/CAM/) *Status:* available
 for community use.
 
+
 <span id="cam-se" class="anchor"></span>
 
 ### CAM-SE
@@ -314,6 +331,7 @@ support for CAM-SE is ready for friendly testing. Please contact the DART
 group for more details.
 
 The support for the CAM-SE core is on a separate branch: `jlaucar/DART:CAM_SE`
+
 
 <span id="CICE" class="anchor"></span>
 
@@ -325,6 +343,7 @@ See CESM, above. The sea-ice component of
 through CESM1.5. **Cecilia Bitz** and **Yongfei Zhang** created the
 interfaces for DART.  *Status:* throroughly
 beta-tested, full support awaiting the CESM2.0 release.
+
 
 <span id="CLM" class="anchor"></span>
 
@@ -342,6 +361,7 @@ she was at the University of Texas at Austin.
 
 Manhattan support for CLM is available upon request.
 
+
 <span id="POP" class="anchor"></span>
 
 ### POP
@@ -355,6 +375,7 @@ modifications are necessary for data assimilation and center around the need to
 perform an adjustment upon restart to account for the fact that the input ocean
 state has been modified by the assimilation. There are interfaces for CESM1.1.1
 and CESM1.2.1. *Status:* available for community use.
+
 
 <span id="CM1" class="anchor"></span>
 
@@ -370,6 +391,7 @@ Atmospheric Research (NCAR) Mesoscale and Microscale Meteorology Laboratory
 outside of DART.
 This model interface and scripting support were created by **Luke Madaus**.
 
+
 <span id="fesom" class="anchor"></span>
 
 ### FESOM
@@ -382,6 +404,7 @@ scripting support and some diagnostic routines were
 contributed by **Ali Aydoğdu**.
 *Status:* available for community use.
 
+
 <span id="noah-mp" class="anchor"></span>
 
 ### NOAH-MP
@@ -391,20 +414,27 @@ Noah-MP is a land surface model (LSM) using multiple options
 for key land-atmosphere interaction processes
 [Niu et al., 2011](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2010JD015139)
 
+
 <span id="wrf-hydro" class="anchor"></span>
 
 ### WRF-HYDRO
 
-The WRF-Hydro assimilation support has its own (private) GitHub repository
-[NCAR/wrf_hydro_dart](https://github.com/NCAR/wrf_hydro_dart) that supports
+The WRF-Hydro assimilation has been fully integrated. 
+DART support for WRF-Hydro is extensively used for
 the channel-only configuration of WRF-Hydro. Originally, this was almost
 entirely the work of **James McCreight** of NCAR's Research Applications
 Laboratory (RAL). The DAReS team has been working with RAL to incorporate new
 features such as localization restricted to watersheds, new inflation algorithms
 and variable transformations that provide much better results when assimilating
 non-gaussian quantities such as streamflow.
-The private wrf_hydro_dart repository
-is expected to be released in a public version very soon.
+
+
+<span id="wrf-chem" class="anchor"></span>
+
+### WRF-CHEM
+
+Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
+If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
 
 <span id="gitm" class="anchor"></span>
 
@@ -414,6 +444,7 @@ The Global Ionosphere Thermosphere Model
 [(GITM)](https://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM)
 is a 3-dimensional spherical code that models the Earth's thermosphere
 and ionosphere system using a stretched grid in latitude and altitude.
+
 
 <span id="null" class="anchor"></span>
 
@@ -450,7 +481,7 @@ If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.e
 
 <span id="models_in_progress" class="anchor"></span>  
 
-## Models that are supported by DART Classic and could be ported to the Manhattan release if needed. Please contact us - we want to help!
+## Models that are supported by DART Lanai (or Classic) and could be ported to the Manhattan release if needed. Please contact us - we want to help!
 
 <span id="GCCOM" class="anchor"></span>
 
@@ -477,6 +508,7 @@ From the LMDZ homepage:
 > includes various variants for the Earth and other planets (Mars,
 > Titan, Venus, Exoplanets). The 'Z' in LMDZ stands for "zoom"
 > (and the 'LMD' is for  'Laboratoire de Météorologie Dynamique").
+
 <span id="NAAPS" class="anchor"></span>
 
 ### NAAPS
@@ -504,6 +536,8 @@ water and carbon between the land surface and the atmosphere and to
 model the major biogeochemical cycles of the land ecosystem. The DART
 interfaces for the standalone version of CABLE have preliminary support
 and needs to be updated to be consistent with the Manhattan release.
+
+
 
 <span id="COAMPS" class="anchor"></span>
 
@@ -595,6 +629,8 @@ DART/TIEGCM has been used to assimilate neutral mass density retrieved from
 satellite-borne accelerometers and electon density obtained from ground-based
 and space-based GNSS signals. TIEGCM2 is not yet supported, and the existing
 interfaces need to be updated to work under the Manhattan release.
+
+
 \[[top](#)\]
 
 -----

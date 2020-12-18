@@ -6,6 +6,7 @@ Contents
 ========
 
 #. `Overview`_
+#. `WRF+DART Tutorial`_
 #. `Namelist`_
 #. `Files`_
 #. `Terms of Use`_
@@ -16,8 +17,14 @@ Overview
 
 DART interface module for the WRF model. This page documents the details of the
 module compiled into DART that interfaces with the WRF data in the state vector.
-There is additional overview and tutorial documentation for running a WRF/DART
-assimilation in ``./tutorial/README.md``.
+
+WRF+DART Tutorial
+=================
+
+**There is additional overview and tutorial documentation for running a WRF/DART
+assimilation in** ``./tutorial/README.md`` **.**
+
+Please work through the tutorial in order to learn how to run WRF and DART.
 
 Items of Note
 -------------
