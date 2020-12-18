@@ -150,10 +150,11 @@ interface nc_put_variable
 end interface
 
 interface nc_get_variable
+   module procedure nc_get_short_0d
    module procedure nc_get_short_1d
    module procedure nc_get_short_2d
    module procedure nc_get_short_3d
-   module procedure nc_get_short_0d
+   module procedure nc_get_int_0d
    module procedure nc_get_int_1d
    module procedure nc_get_int_2d
    module procedure nc_get_int_3d
@@ -1631,7 +1632,7 @@ subroutine nc_get_short_0d(ncid, varname, varval, context, filename)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
-integer,          intent(out) :: varval
+integer(i2),      intent(out) :: varval
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
 
@@ -1677,6 +1678,30 @@ ret = nf90_get_var(ncid, varid, varvals, nc_start, nc_count, nc_stride, nc_map)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_short_1d
+
+!--------------------------------------------------------------------
+
+subroutine nc_get_int_0d(ncid, varname, varval, context, filename)
+
+integer,          intent(in)  :: ncid
+character(len=*), intent(in)  :: varname
+integer,          intent(out) :: varval
+character(len=*), intent(in), optional :: context
+character(len=*), intent(in), optional :: filename
+
+character(len=*), parameter :: routine = 'nc_get_int_0d'
+integer :: ret, varid
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
+
+! don't support variables which are supposed to have the values multiplied and shifted.
+if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
+
+ret = nf90_get_var(ncid, varid, varval)
+call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
+
+end subroutine nc_get_int_0d
 
 !--------------------------------------------------------------------
 
