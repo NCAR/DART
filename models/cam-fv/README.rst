@@ -1,5 +1,5 @@
 ##########
-CAM README
+CAM-FV README
 ##########
 
 Contents
@@ -93,7 +93,7 @@ observations are the most widely used.
 **Reanalyses**
 
 There have been two large-scale reanalysis efforts using CAM and DART. 
-The NCAR Research Archive dataset  
+The NCAR Research Archive dataset **"CAM6 Data Assimilation Research Testbed (DART) Reanalysis"**
 `DS345.0 <https://rda.ucar.edu/datasets/ds345.0/#!description>`__ contains
 just under 120Tb (yes Tb) of data:
 
@@ -108,9 +108,9 @@ just under 120Tb (yes Tb) of data:
    6 hourly frequency. Each ensemble member is an equally likely 
    description of the atmosphere, and is also consistent with 
    dynamics and physics of CAM6.
-
-The NCAR Research Archive dataset  
-   **An Ensemble of Atmospheric Forcing Files from a CAM Reanalysis** 
+   
+   
+The NCAR Research Archive dataset **"An Ensemble of Atmospheric Forcing Files from a CAM Reanalysis"**
 `DS199.1 <https://rda.ucar.edu/datasets/ds199.1/#!description>`__ contains
 about 1.5Tb of data:
 
