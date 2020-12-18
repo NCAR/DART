@@ -20,8 +20,8 @@ NOAH-MP V3.6 and was largely updated in support of the data assimilation
 efforts with **wrf_hydro**. Experiments to perform data assimilation strictly
 with the NOAH-MP model have been run at the University of Texas at Austin by
 **Jingjing Liang**. We know other people are using DART and NOAH-MP.
-_**However, we have not had the chance to update the documentation for the 
-Manhattan release.**_ Consequently, we readily welcome any advice on how to
+*however, we have not had the chance to update the documentation for the 
+Manhattan release.* Consequently, we readily welcome any advice on how to
 improve the documentation and heartily encourage participation.
 
 
@@ -171,7 +171,6 @@ prematurely terminating the namelist. The standard values are shown below:
 
 .. code-block:: fortran
 
-
    &model_nml
       lsm_model_choice             = 'noahMP_36'
       domain_shapefiles            = 'RESTART.2003051600_DOMAIN1_01'
@@ -205,7 +204,7 @@ model dynamical timestep.
 +-------------------------------------+-----------------------------------+------------------------------------------+
 | domain_shapefiles                   | an array of character(len=256)    | The name of the NOAH RESTART files to    |
 |                                     |                                   | use to specify the shape of the variables|
-|                                     |                                   | and geographic metadata. One per domain. !
+|                                     |                                   | and geographic metadata. One per domain. |
 +-------------------------------------+-----------------------------------+------------------------------------------+
 | assimilation_period_days            | integer                           | The number of days to advance the model  |
 |                                     |                                   | for each assimilation.                   |
@@ -233,10 +232,10 @@ model dynamical timestep.
 |                                     |                                   | ``lognormal`` or ``gaussian``            |
 +-------------------------------------+-----------------------------------+------------------------------------------+
 | periodic_x                          | logical                           | Switch to determine if the configuration |
-|                                     |                                   | has periodicity in the X direction.
+|                                     |                                   | has periodicity in the X direction.      |
 +-------------------------------------+-----------------------------------+------------------------------------------+
 | periodic_y                          | logical                           | Switch to determine if the configuration |
-|                                     |                                   | has periodicity in the Y direction.
+|                                     |                                   | has periodicity in the Y direction.      |
 +-------------------------------------+-----------------------------------+------------------------------------------+
 | lsm_variables                       | character(len=32)::               | The list of variable names in the NOAH   |
 |                                     | dimension(5,40)                   | restart file to use to create the DART   |
