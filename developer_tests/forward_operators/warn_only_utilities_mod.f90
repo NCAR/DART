@@ -739,7 +739,7 @@ select case(level)
 end select
 
 ! TERMLEVEL gets set in the namelist
-if( level >= TERMLEVEL ) call exit_all( 99 ) 
+!if( level >= TERMLEVEL ) call exit_all( 99 ) 
 
 end subroutine error_handler
 

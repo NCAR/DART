@@ -12,7 +12,6 @@ assimilation_code/modules/utilities/random_seq_mod.f90
 assimilation_code/modules/utilities/sort_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
-assimilation_code/modules/utilities/utilities_mod.f90
 developer_tests/forward_operators/rttov_unit_tests.f90
 developer_tests/forward_operators/warn_only_utilities_mod.f90
 models/template/model_mod.f90

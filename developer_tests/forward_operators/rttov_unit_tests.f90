@@ -22,7 +22,7 @@ call test_set_metadata
 
 call test_key_get_expected
 
-!call test_initializations
+call test_initializations
 
 
 end program rttov_unit_tests
