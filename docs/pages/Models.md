@@ -10,6 +10,10 @@ DART. We're a small group, but we are willing to listen and will make
 every effort to incorporate improvements to the code. Email us at
 <dart@ucar.edu>.
 
+We are interested in updating model interfaces to be useful with the 
+most recent version of DART. If the model you are interested in is
+not Manhattan-ready, and you would like it to be - we are here to help
+and would like to participate. Please contact us.
 
 ## Links to major sections of this document:
 - [Downloadable datasets for DART.](#datasets)
@@ -25,7 +29,7 @@ There are two broad classes of models supported by DART. Some are
 'low-order' models, generally single-threaded, subroutine-callable, and
 idealized: there are no **real** observations of these systems. The
 other class of models are 'high-order' models. There **are** real
-observations of these systems. Or at least, we like to think so ...
+observations of these systems.
 
 ### Models that are ready to use with Manhattan:
    [lorenz_63](#lorenz_63)
@@ -42,10 +46,12 @@ observations of these systems. Or at least, we like to think so ...
    [ROMS](#ROMS)
    [CESM](#CESM)
    [CAM-FV](#cam-fv)
+   [CAM-SE](#cam-se)
    [CAM-CHEM](#cam-chem)
    [WACCM](#WACCM) 
    [WACCM-X](#WACCM-X)
    [CICE](#CICE)
+   [CLM](#CLM) 
    [POP](#POP)
    [CM1](#CM1)
    [FESOM](#fesom)
@@ -53,15 +59,14 @@ observations of these systems. Or at least, we like to think so ...
    [WRF-Hydro](#wrf-hydro) 
    [gitm](#gitm)
    [null](#null) 
+   [MITgcm_ocean](#MITgcm_ocean)
+   [wrf-chem](#wrf-chem)
 
-### Models supported in Lanai:
+### Models supported in Lanai (contact us if you want to update them):
    [GCCOM](#GCCOM)
    [LMDZ](#LMDZ) 
-   [MITgcm_ocean](#MITgcm_ocean)
    [NAAPS](#NAAPS)
    [AM2](#AM2)
-   [CAM-SE](#cam-se)
-   [CLM](#CLM) 
    [COAMPS](#COAMPS)
    [COSMO](#COSMO)
    [dynamo](#dynamo) 
@@ -72,7 +77,6 @@ observations of these systems. Or at least, we like to think so ...
    [parflow](#parflow)
    [sqg](#sqg) 
    [tiegcm](#tiegcm)
-   [wrf-chem](#wrf-chem)
 
 ### Models that were used a long time ago (these may not take that much work to revive):
    [ECHAM](#ECHAM)
@@ -301,6 +305,16 @@ available in
 [DART/CAM datasets](http://www.image.ucar.edu/pub/DART/CAM/) *Status:* available
 for community use.
 
+<span id="cam-se" class="anchor"></span>
+
+### CAM-SE
+
+The Spectral Element core for CAM was supported under Lanai and the Manhattan
+support for CAM-SE is ready for friendly testing. Please contact the DART
+group for more details.
+
+The support for the CAM-SE core is on a separate branch: `jlaucar/DART:CAM_SE`
+
 <span id="CICE" class="anchor"></span>
 
 ### CICE (pronounced 'sea ice')
@@ -311,6 +325,22 @@ See CESM, above. The sea-ice component of
 through CESM1.5. **Cecilia Bitz** and **Yongfei Zhang** created the
 interfaces for DART.  *Status:* throroughly
 beta-tested, full support awaiting the CESM2.0 release.
+
+<span id="CLM" class="anchor"></span>
+
+### CLM
+
+Assimilation with the [Community Land Model](http://www.cesm.ucar.edu/models/clm/)
+is well supported and the system has been used for many research interests, from
+biogeochemistry to snow, ice, soil moisture and more. DART/CLM has many research
+branches and guidance for which branch is most appropriate is provided upon request.
+There is support for CLM under the Lanai release and several development branches
+that are consistent with the Manhattan release. The version distributed with the
+Manhattan release is not as fully functional as the development branches.
+Much of the original DART/CLM support was written by **Yongfei Zhang** while
+she was at the University of Texas at Austin.
+
+Manhattan support for CLM is available upon request.
 
 <span id="POP" class="anchor"></span>
 
@@ -393,13 +423,34 @@ This model provides very simple models for evaluating filtering
 algorithms. It can provide simple linear growth around a fixed point, a
 random draw from a Gaussian, or combinations of the two.
 
+
+<span id="MITgcm_ocean" class="anchor"></span>
+
+### MITgcm_ocean
+
+The [MIT ocean GCM](http://mitgcm.org/) version 'checkpoint59a' is the
+foundation of the DART Lanai implementation. It was modified 
+by **Ibrahim Hoteit** (then of Scripps) to accomodate the interfaces 
+needed by DART. *Status:* supported for Lanai, Manhattan version has been
+contributed and is being tested before being released. Please contact
+the DART group to be a friendly beta tester.
+
+
+<span id="wrf-chem" class="anchor"></span>
+
+### WRF-CHEM
+
+Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
+If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
+
+
 \[[top](#)\]
 
 -----
 
 <span id="models_in_progress" class="anchor"></span>  
 
-## Models that are supported by DART Classic and could be ported to the Manhattan release if needed.
+## Models that are supported by DART Classic and could be ported to the Manhattan release if needed. Please contact us - we want to help!
 
 <span id="GCCOM" class="anchor"></span>
 
@@ -411,6 +462,8 @@ general curvilinear coordinate system. Much of the work of supporting GCCOM in
 DART was by **Mariangel Garcia** while she was at San Diego State University.
 One article is
 ["Interfacing an ensemble Data Assimilation system with a 3D nonhydrostatic Coastal Ocean Model, an OSSE experiment"](https://ieeexplore.ieee.org/abstract/document/7760992)
+
+The GCCOM model support is on a separate branch: `classic_UCOAM_dev`
 
 <span id="LMDZ" class="anchor"></span>
 
@@ -424,17 +477,6 @@ From the LMDZ homepage:
 > includes various variants for the Earth and other planets (Mars,
 > Titan, Venus, Exoplanets). The 'Z' in LMDZ stands for "zoom"
 > (and the 'LMD' is for  'Laboratoire de Météorologie Dynamique").
-
-
-<span id="MITgcm_ocean" class="anchor"></span>
-
-### MITgcm_ocean
-
-The [MIT ocean GCM](http://mitgcm.org/) version 'checkpoint59a' is the
-foundation of this implementation. It was modified by **Ibrahim Hoteit**
-(then of Scripps) to accomodate the interfaces needed by DART. *Status:*
-supported, and currently being ported to Manhattan.
-
 <span id="NAAPS" class="anchor"></span>
 
 ### NAAPS
@@ -462,25 +504,6 @@ water and carbon between the land surface and the atmosphere and to
 model the major biogeochemical cycles of the land ecosystem. The DART
 interfaces for the standalone version of CABLE have preliminary support
 and needs to be updated to be consistent with the Manhattan release.
-
-
-<span id="cam-se" class="anchor"></span>
-
-### CAM-SE
-
-<span id="CLM" class="anchor"></span>
-
-### CLM
-
-Assimilation with the [Community Land Model](http://www.cesm.ucar.edu/models/clm/)
-is well supported and the system has been used for many research interests, from
-biogeochemistry to snow, ice, soil moisture and more. DART/CLM has many research
-branches and guidance for which branch is most appropriate is provided upon request.
-There is support for CLM under the Lanai release and several development branches
-that are consistent with the Manhattan release. The version distributed with the
-Manhattan release is not as fully functional as the development branches.
-Much of the original DART/CLM support was written by **Yongfei Zhang** while
-she was at the University of Texas at Austin.
 
 <span id="COAMPS" class="anchor"></span>
 
@@ -515,6 +538,9 @@ velocities to match given spatio-temporal observation of magnetic fields.
 
 ### ikeda
 
+**Converting the Ikeda model to be Manhattan-compliant would be a 
+relatively easy and quick learning experience for someone.**
+
 The Ikeda model is a 2D chaotic map useful for visualization data
 assimilation updating directly in state space. There are three
 parameters: a, b, and mu. The state is 2D, x = \[X Y\]. The equations
@@ -522,7 +548,7 @@ are:
 
 ~~~
 X(i+1) = 1 + mu * ( X(i) * cos( t ) - Y(i) * sin( t ) )
-Y(i+1) =     mu * ( X(i) * sin( t ) + Y(i) * cos( t ) ),
+Y(i+1) =     mu * ( X(i) * sin( t ) + Y(i) * cos( t ) )
 ~~~
 
 where
@@ -569,14 +595,6 @@ DART/TIEGCM has been used to assimilate neutral mass density retrieved from
 satellite-borne accelerometers and electon density obtained from ground-based
 and space-based GNSS signals. TIEGCM2 is not yet supported, and the existing
 interfaces need to be updated to work under the Manhattan release.
-
-<span id="wrf-chem" class="anchor"></span>
-
-### WRF-CHEM
-
-Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
-If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
-
 \[[top](#)\]
 
 -----

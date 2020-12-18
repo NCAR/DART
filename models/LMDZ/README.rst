@@ -18,7 +18,7 @@ atmospheric model developed by the Institut Pierre-Simon Laplace (IPSL) in
 France. It serves as the atmospheric component of the IPSL Integrated Climate
 Model.
 
-The DART interface to LMDZ was primarily developed by Tarkeshwar Singh while he
+The DART interface to LMDZ was primarily developed by **Tarkeshwar Singh** while he
 was at the Indian Institute of Technology at Delhi. He later moved to the
 Nansen Environmental and Remote Sensing Center in Bergen, Norway. A detailed
 description of the LMDZ DART implementation is published in Singh et al.
@@ -26,6 +26,10 @@ description of the LMDZ DART implementation is published in Singh et al.
 
 Please email `Tarkeshwar <tarkphysics87@gmail.com>`_ for documentation beyond
 what is contained within the repository.
+
+**Assimilation with LMDZ is supported in the Lanai release of DART.
+If you are interested in using LMDZ in the Manhattan version of DART, we
+encourage you to contact us. We would like to participate!**
 
 Terms of Use
 ============
