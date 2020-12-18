@@ -52,8 +52,11 @@ with two independent main characteristics. CESM labels these as:
    - The combinations of parameterizations and vertical grids are named: CAM3.5,
      CAM5, CAM#, ... WACCM, WACCM#, WACCM-X, CAM-Chem.
 
-`Setup Variations`_ describes the differences in the namelists, build scripts
-assimilation setup.
+There are minor characteristics choices within each of these, but only
+chemistry choices in WACCM and CAM-Chem have an impact on DART. As of April
+2015, all of these variants are handled by the same ``model_mod.f90``, namelist,
+and build scripts, with differences in the assimilation set up described in
+`Setup Variations`_.
 
 This DART+CAM interface has the following features.
 
@@ -62,8 +65,12 @@ This DART+CAM interface has the following features.
    observations into multiple CESM components. The ability to assimilate in the
    previous mode, where DART called 'stand-alone' CAMs when needed, is not being
    actively supported for these CESM versions.
--  Support for the finite-volume (FV) dynamical core.
--  Use any resolution of CAM.
+-  Use either the eulerian, finite-volume (FV), or spectral-element (SE)
+   dynamical core.
+-  Use any resolution of CAM, including refined mesh grids in CAM-SE. As of
+   April, 2015 this is limited by the ability of the memory of a node of your
+   hardware to contain the state vector of a single ensemble member. Work is
+   under way to relax this restriction.
 -  Assimilate a variety of observations; to date the observations successfully
    assimilated include the NCEP reanalysis BUFR obs (T,U,V,Q), Global
    Positioning System radio occultation obs, and MOPITT carbon monoxide (when a
@@ -89,44 +96,6 @@ diverge.
 Sample sets of observations, which can be used with CESM+DART assimilations, can
 be found at http://www.image.ucar.edu/pub/DART/Obs_sets/ of which the NCEP BUFR
 observations are the most widely used.
-
-**Reanalyses**
-
-There have been two large-scale reanalysis efforts using CAM and DART. 
-The NCAR Research Archive dataset  
-`DS345.0 <https://rda.ucar.edu/datasets/ds345.0/#!description>`__ contains
-just under 120Tb (yes Tb) of data:
-
-   These CAM6 Data Assimilation Research Testbed (DART) Reanalysis data 
-   products are designed to facilitate a broad variety of research using 
-   NCAR's CESM2 models, ranging from model evaluation to (ensemble) 
-   hindcasting, data assimilation experiments, and sensitivity studies. 
-   They come from an 80 member ensemble reanalysis of the global 
-   troposphere and stratosphere using DART and CAM6 from CESM2.1. 
-   The data products represent the actual states of the atmosphere 
-   during 2 recent decades at a 1 degree horizontal resolution and 
-   6 hourly frequency. Each ensemble member is an equally likely 
-   description of the atmosphere, and is also consistent with 
-   dynamics and physics of CAM6.
-
-The NCAR Research Archive dataset  
-   **An Ensemble of Atmospheric Forcing Files from a CAM Reanalysis** 
-`DS199.1 <https://rda.ucar.edu/datasets/ds199.1/#!description>`__ contains
-about 1.5Tb of data:
-
-   This dataset contains files that are an ensemble of 'coupler history' 
-   files from an 80-member reanalysis performed with the Data Assimilation 
-   Research Testbed (DART) using the Community Atmosphere Model Version 
-   4 with the finite volume core (CAM4 FV) at 1.9 degree by 2.5 degree 
-   resolution. The observations assimilated include all those used in 
-   the NCEP/NCAR reanalysis (temperature and wind components from 
-   radiosondes, aircraft, and satellite drift winds) plus radio 
-   occultation observations from the COSMIC satellites starting in late 
-   2006. These files are intended to be used as 'DATM stream files' 
-   for CESM component sets that require a data atmosphere. Some example 
-   stream text files are included to illustrate how to use these data.
-
-**Guidance**
 
 Experience on a variety of machines has shown that it is a very good idea to
 make sure your run-time environment has the following:
@@ -571,6 +540,47 @@ and:
       which_vert_2d       = -1,
       which_vert_3d       = 6*1,
       highest_state_pressure_Pa = 9400. or 10500. 
+
+CAM-SE
+------
+
+There's an existing ensemble, so see the `Continuing after the first cycle`_
+section to start from it instead of a single state. To set up a "1-degree"
+CAM-SE assimilation ``CESM1_2_1_setup_hybrid``:
+
+.. code-block::
+
+   setenv resolution  ne30_g16  
+   setenv refcase     SE30_Og16
+   setenv refyear     2005
+   setenv refmon      08
+   setenv refday      01
+
+``input.nml``:
+
+.. code-block:: fortran
+
+      approximate_distance = .FALSE.
+      vert_coord          = 'pressure'
+      state_num_1d        = 1,
+      state_num_2d        = 6,
+      state_num_3d        = 0,
+      state_names_1d      = 'PS'
+      state_names_2d      = 'T','U','V','Q','CLDLIQ','CLDICE'
+      state_names_3d      = ''
+      which_vert_1d       = -1,
+      which_vert_2d       = 6*1,
+      which_vert_3d       = 0,
+      highest_obs_pressure_Pa   = 1000.,
+      highest_state_pressure_Pa = 10500.,
+
+Variable resolution CAM-SE
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To set up a variable resolution CAM-SE assimilation (as of April 2015) there are
+many changes to both the CESM code tree and the DART setup scripts. This is for
+very advanced users, so please contact dart @ ucar dot edu or raeder @ ucar dot
+edu for scripts and guidance.
 
 WACCM
 -----
