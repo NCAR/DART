@@ -1,6 +1,9 @@
+! Runs the unit tests for rttov
+!
 program rttov_unit_tests
 
-use obs_def_rttov_mod, only : test_set_visir_metadata, &
+use obs_def_rttov_mod, only : test_unit_setup,         &
+                              test_set_metadata, &
                               test_initializations,    &
                               test_key_get_expected
 use         types_mod, only : r8
@@ -12,7 +15,10 @@ implicit none
 ! DART initialization
 call initialize_utilities('rttov_unit_tests')
 
-call test_set_visir_metadata
+! Unit test initialization
+call test_unit_setup
+
+call test_set_metadata
 
 call test_key_get_expected
 

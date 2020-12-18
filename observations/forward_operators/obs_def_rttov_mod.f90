@@ -416,7 +416,9 @@ public ::     atmos_profile_type, &
                 get_rttov_sensor, &
                 do_forward_model
 
-public :: test_set_visir_metadata, &
+! routines for unit testing
+public :: test_unit_setup,      &
+          test_set_metadata, &
           test_initializations, &
           test_key_get_expected
 
@@ -604,7 +606,7 @@ type(mw_metadata_type)                 :: missing_mw_metadata
 character(len=5), parameter :: VISIR_STRING = 'visir'
 character(len=5), parameter :: MW_STRING    = 'mw   '
 
-logical :: debug = .true.
+logical :: debug = .false.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
 integer ::    visirnum = 0
@@ -4300,9 +4302,20 @@ end function get_channel
 !-----------------------------------------------------------------------
 ! Test functions below this point
 !-----------------------------------------------------------------------
-subroutine test_set_visir_metadata
+subroutine test_unit_setup
 
-! test of set_visir_metadata - what are you testing here?
+! Overwrite module globals for testing
+! start at 1 to watch the metadata grow 
+MAXrttovkey = 1
+
+if ( .not. module_initialized ) call initialize_module
+
+endsubroutine test_unit_setup
+
+!-----------------------------------------------------------------------
+subroutine test_set_metadata
+
+! test of set_metadata - what are you testing here?
 
 integer  :: key 
 real(r8) :: sat_az, sat_ze, sun_az, sun_ze
@@ -4314,19 +4327,6 @@ real(r8) :: fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5
 
 integer :: ii
 
-! for get_expected_radiance
-!integer            :: obs_kind_ind ! hard code 1
-type(ensemble_type) :: state_handle
-!integer            :: ens_size ! hard code 4
-type(location_type) :: location          ! location of obs
-!integer            :: flavor  ! hard code 1          ! flavor of obs
-real(r8)           :: val(4)     ! value of obs
-integer            :: istatus(4) ! status of the calculation
-
-! start at 1 to watch the metadata grow = 1 
-MAXrttovkey = 1
-
-if ( .not. module_initialized ) call initialize_module
 print*, 'size(obstype_metadata)', size(obstype_metadata)
 print*, 'size(obstype_subkey)', size(obstype_subkey)
 print*, 'size(visir_obs_metadata)', size(visir_obs_metadata)
@@ -4367,21 +4367,21 @@ enddo
 
 print*, 'size of obstype_metadata, visir_obs_metadata, mw_obs_metadata', size(obstype_metadata), size(visir_obs_metadata), size(mw_obs_metadata)
 
-!do ii = 1, size(obstype_subkey)
-!  call get_visir_metadata(ii, sat_az, sat_ze, sun_az, sun_ze, &
-!        platform_id, sat_id, sensor_id, channel, specularity)
-!enddo
-
-
-!  call get_visir_metadata(16, sat_az, sat_ze, sun_az, sun_ze, &
-!        platform_id, sat_id, sensor_id, channel, specularity)
-
-
-end subroutine test_set_visir_metadata
+end subroutine test_set_metadata
 !-----------------------------------------------------------------------
+subroutine test_key_within_range
 
+
+
+
+
+
+
+end subroutine test_key_within_range
+
+!-----------------------------------------------------------------------
+! 
 subroutine test_key_get_expected
-
 
 ! for get_expected_radiance
 !integer            :: obs_kind_ind ! hard code 1
@@ -4395,7 +4395,7 @@ integer  :: key
 
 !call  get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, key, flavor, val, istatus)
 key = 22  ! only 20 obs
-call  get_expected_radiance(1, state_handle, 4, location, key, 1, val, istatus)
+call get_expected_radiance(1, state_handle, 4, location, key, 1, val, istatus)
 
 end subroutine test_key_get_expected
 
