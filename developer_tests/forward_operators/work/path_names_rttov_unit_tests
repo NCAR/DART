@@ -14,6 +14,7 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 developer_tests/forward_operators/rttov_unit_tests.f90
+developer_tests/forward_operators/warn_only_utilities_mod.f90
 models/template/model_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
