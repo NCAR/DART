@@ -18,7 +18,8 @@ The **Parallel Ocean Program (POP)** may be used with the **Data Assimilation
 Research Testbed (DART)**. Both main variants - `LANL POP
 <https://climatemodeling.science.energy.gov/projects/climate-ocean-and-sea-ice-modeling-cosim>`_
 and `CESM2.0 POP2 <https://www.cesm.ucar.edu/models/cesm2/ocean/>`_ have been
-tested.
+tested under the Lanai framework, only use with **CESM** is supported under the 
+Manhattan framework.
 
 We are assimilating salinity and temperature observations from either the World
 Ocean Database (2005) or (2009).

@@ -36,6 +36,11 @@ model time step to maintain stability for larger model grids. The model state
 variables are the gridded surface pressure, temperature, and u and v wind
 components.
 
+The ``bgrid_solo`` directory has a ``work/workshop_setup.csh`` script that compiles 
+and runs an example. This example is intended to demonstrate that the same
+process used for a low-order model may be used for a much more 
+complex model and generates output for state-space or observation-space diagnostics. 
+
 Some examples of ways in which this model can be configured and modified to test
 DART assimilation capabilities are documented in Anderson et al. (2005). [3]_
 
