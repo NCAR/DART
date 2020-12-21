@@ -10,6 +10,10 @@ DART. We're a small group, but we are willing to listen and will make
 every effort to incorporate improvements to the code. Email us at
 <dart@ucar.edu>.
 
+We are interested in updating model interfaces to be useful with the 
+most recent version of DART. If the model you are interested in is
+not Manhattan-ready, and you would like it to be - we are here to help
+and would like to participate. Please contact us.
 
 ## Links to major sections of this document:
 - [Downloadable datasets for DART.](#datasets)
@@ -25,7 +29,7 @@ There are two broad classes of models supported by DART. Some are
 'low-order' models, generally single-threaded, subroutine-callable, and
 idealized: there are no **real** observations of these systems. The
 other class of models are 'high-order' models. There **are** real
-observations of these systems. Or at least, we like to think so ...
+observations of these systems.
 
 ### Models that are ready to use with Manhattan:
    [lorenz_63](#lorenz_63)
@@ -42,27 +46,27 @@ observations of these systems. Or at least, we like to think so ...
    [ROMS](#ROMS)
    [CESM](#CESM)
    [CAM-FV](#cam-fv)
+   [CAM-SE](#cam-se)
    [CAM-CHEM](#cam-chem)
    [WACCM](#WACCM) 
    [WACCM-X](#WACCM-X)
    [CICE](#CICE)
+   [CLM](#CLM) 
    [POP](#POP)
    [CM1](#CM1)
    [FESOM](#fesom)
    [NOAH-MP](#noah-mp)
    [WRF-Hydro](#wrf-hydro) 
-   [wrf-chem](#wrf-chem)
+   [WRF-CHEM](#wrf-chem)
    [gitm](#gitm)
    [null](#null) 
+   [MITgcm_ocean](#MITgcm_ocean)
 
-### Models supported in Lanai:
+### Models supported in Lanai (contact us if you want to update them):
    [GCCOM](#GCCOM)
    [LMDZ](#LMDZ) 
-   [MITgcm_ocean](#MITgcm_ocean)
    [NAAPS](#NAAPS)
    [AM2](#AM2)
-   [CAM-SE](#cam-se)
-   [CLM](#CLM) 
    [COAMPS](#COAMPS)
    [COSMO](#COSMO)
    [dynamo](#dynamo) 
@@ -83,6 +87,7 @@ observations of these systems. Or at least, we like to think so ...
    [ROSE](#rose) 
    [CABLE](#cable) 
 
+
 <span id="models" class="anchor"></span>  
 
 \[[top](#)\]
@@ -90,6 +95,7 @@ observations of these systems. Or at least, we like to think so ...
 -----
 
 ## The 'Manhattan-ready' models in DART.
+
 
 <span id="lorenz_63" class="anchor"></span>
 
@@ -105,6 +111,7 @@ X' = -sigma*X + sigma*Y
 Y' = -XZ + rX - Y
 Z' =  XY -bZ
 ~~~
+
 
 <span id="lorenz_84" class="anchor"></span>
 
@@ -122,12 +129,14 @@ Z' = bXY  +  XZ  - Z
 
 Where a, b, F, and G are the model parameters.
 
+
 <span id="NINEvar" class="anchor"></span>
 
 ### 9var
 
 This model provides interesting off-attractor transients that behave
 something like gravity waves.
+
 
 <span id="lorenz_96" class="anchor"></span>
 
@@ -169,6 +178,7 @@ Quoting from the **Lorenz 1998** paper:
 > circle. Nothing will simulate the atmosphere's latitudinal or vertical
 > extent.
 
+
 <span id="lorenz_96_2scale" class="anchor"></span>
 
 ### lorenz_96_2scale
@@ -181,6 +191,7 @@ X are all specified in the namelist. Defaults are chosen depending on
 whether the Lorenz or Smith option is specified in the namelist. Lorenz
 is the default model. Interface written by **Josh Hacker**. Thanks
 Josh\!
+
 
 <span id="forced_lorenz_96" class="anchor"></span>
 
@@ -196,6 +207,7 @@ forcing term. An option is also included to add random noise to the
 forcing terms as part of the time tendency computation which can help in
 assimilation performance. If the random noise option is turned off (see
 namelist) the time tendency of the forcing terms is 0.
+
 
 <span id="lorenz_04" class="anchor"></span>
 
@@ -214,6 +226,7 @@ form of model III. The basic equations are documented in Lorenz (2005)
 and also in the model_mod.f90 code. The user is free to choose model II
 or III with a Namelist variable.
 
+
 <span id="simple_advection" class="anchor"></span>
 
 ### simple_advection
@@ -228,6 +241,7 @@ differencing is both numerically unstable and subject to shock
 formation. However, it can sometimes be made stable in assimilation mode
 (see recent work by Majda and collaborators).
 
+
 <span id="bgrid_solo" class="anchor"></span>
 
 ### bgrid_solo
@@ -235,6 +249,7 @@ formation. However, it can sometimes be made stable in assimilation mode
 This is a dynamical core for B-grid dynamics using the Held-Suarez
 forcing. The resolution is configurable, and the entire model can be run
 as a subroutine. *Status:* supported.
+
 
 <span id="wrf" class="anchor"></span>
 
@@ -247,6 +262,7 @@ forecasting and atmospheric research needs. More people are using DART
 with WRF than any other model. Note: The actual WRF code is not
 distributed with DART. *Status:* supported.
 
+
 <span id="mpas_atm" class="anchor"></span>
 
 ### MPAS ATM
@@ -254,11 +270,13 @@ distributed with DART. *Status:* supported.
 [Model Prediction Across Scales -
 atmosphere](https://mpas-dev.github.io/) *Status:* active
 
+
 <span id="ROMS" class="anchor"></span>
 
 ### ROMS
 
 [Regional Ocean Modelling System](https://www.myroms.org/) *Status:* active
+
 
 <span id="CESM" class="anchor"></span>
 
@@ -279,6 +297,7 @@ plus any earlier versions of the component models. For example, CESM2.0
 can build CAM-FV version 6, 5, 4, ... while CESM1.2.1 can build CAM-FV
 5, 4, ..., but not 6. Note: the source code for CESM component models is
 not distributed with DART.
+
 
 <span id="cam-fv" class="anchor"></span>
 <span id="WACCM" class="anchor"></span>
@@ -301,6 +320,18 @@ available in
 [DART/CAM datasets](http://www.image.ucar.edu/pub/DART/CAM/) *Status:* available
 for community use.
 
+
+<span id="cam-se" class="anchor"></span>
+
+### CAM-SE
+
+The Spectral Element core for CAM was supported under Lanai and the Manhattan
+support for CAM-SE is ready for friendly testing. Please contact the DART
+group for more details.
+
+The support for the CAM-SE core is on a separate branch: `jlaucar/DART:CAM_SE`
+
+
 <span id="CICE" class="anchor"></span>
 
 ### CICE (pronounced 'sea ice')
@@ -311,6 +342,24 @@ See CESM, above. The sea-ice component of
 through CESM1.5. **Cecilia Bitz** and **Yongfei Zhang** created the
 interfaces for DART.  *Status:* throroughly
 beta-tested, full support awaiting the CESM2.0 release.
+
+
+<span id="CLM" class="anchor"></span>
+
+### CLM
+
+Assimilation with the [Community Land Model](http://www.cesm.ucar.edu/models/clm/)
+is well supported and the system has been used for many research interests, from
+biogeochemistry to snow, ice, soil moisture and more. DART/CLM has many research
+branches and guidance for which branch is most appropriate is provided upon request.
+There is support for CLM under the Lanai release and several development branches
+that are consistent with the Manhattan release. The version distributed with the
+Manhattan release is not as fully functional as the development branches.
+Much of the original DART/CLM support was written by **Yongfei Zhang** while
+she was at the University of Texas at Austin.
+
+Manhattan support for CLM is available upon request.
+
 
 <span id="POP" class="anchor"></span>
 
@@ -326,6 +375,7 @@ perform an adjustment upon restart to account for the fact that the input ocean
 state has been modified by the assimilation. There are interfaces for CESM1.1.1
 and CESM1.2.1. *Status:* available for community use.
 
+
 <span id="CM1" class="anchor"></span>
 
 ### CM1
@@ -340,6 +390,7 @@ Atmospheric Research (NCAR) Mesoscale and Microscale Meteorology Laboratory
 outside of DART.
 This model interface and scripting support were created by **Luke Madaus**.
 
+
 <span id="fesom" class="anchor"></span>
 
 ### FESOM
@@ -352,6 +403,7 @@ scripting support and some diagnostic routines were
 contributed by **Ali Aydoğdu**.
 *Status:* available for community use.
 
+
 <span id="noah-mp" class="anchor"></span>
 
 ### NOAH-MP
@@ -360,6 +412,7 @@ NOAH-MultiParameterization land surface model [(NOAH-MP LSM)](https://ral.ucar.e
 Noah-MP is a land surface model (LSM) using multiple options
 for key land-atmosphere interaction processes
 [Niu et al., 2011](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2010JD015139)
+
 
 <span id="wrf-hydro" class="anchor"></span>
 
@@ -374,12 +427,15 @@ features such as localization restricted to watersheds, new inflation algorithms
 and variable transformations that provide much better results when assimilating
 non-gaussian quantities such as streamflow.
 
+
 <span id="wrf-chem" class="anchor"></span>
 
 ### WRF-CHEM
 
 Dr. Arthur Mizzi is the father of the WRF-Chem/DART project.
 If you'd like to use WRF-Chem/DART, please [email Dr. Mizzi](mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry).
+
+
 <span id="gitm" class="anchor"></span>
 
 ### GITM
@@ -389,6 +445,7 @@ The Global Ionosphere Thermosphere Model
 is a 3-dimensional spherical code that models the Earth's thermosphere
 and ionosphere system using a stretched grid in latitude and altitude.
 
+
 <span id="null" class="anchor"></span>
 
 ### null_model
@@ -397,13 +454,26 @@ This model provides very simple models for evaluating filtering
 algorithms. It can provide simple linear growth around a fixed point, a
 random draw from a Gaussian, or combinations of the two.
 
+
+<span id="MITgcm_ocean" class="anchor"></span>
+
+### MITgcm_ocean
+
+The [MIT ocean GCM](http://mitgcm.org/) version 'checkpoint59a' is the
+foundation of the DART Lanai implementation. It was modified 
+by **Ibrahim Hoteit** (then of Scripps) to accomodate the interfaces 
+needed by DART. *Status:* supported for Lanai, Manhattan version has been
+contributed and is being tested before being released. Please contact
+the DART group to be a friendly beta tester.
+
+
 \[[top](#)\]
 
 -----
 
 <span id="models_in_progress" class="anchor"></span>  
 
-## Models that are supported by DART Lanai (or Classic) and could be ported to the Manhattan release if needed.
+## Models that are supported by DART Lanai (or Classic) and could be ported to the Manhattan release if needed. Please contact us - we want to help!
 
 <span id="GCCOM" class="anchor"></span>
 
@@ -415,6 +485,8 @@ general curvilinear coordinate system. Much of the work of supporting GCCOM in
 DART was by **Mariangel Garcia** while she was at San Diego State University.
 One article is
 ["Interfacing an ensemble Data Assimilation system with a 3D nonhydrostatic Coastal Ocean Model, an OSSE experiment"](https://ieeexplore.ieee.org/abstract/document/7760992)
+
+The GCCOM model support is on a separate branch: `classic_UCOAM_dev`
 
 <span id="LMDZ" class="anchor"></span>
 
@@ -428,15 +500,6 @@ From the LMDZ homepage:
 > includes various variants for the Earth and other planets (Mars,
 > Titan, Venus, Exoplanets). The 'Z' in LMDZ stands for "zoom"
 > (and the 'LMD' is for  'Laboratoire de Météorologie Dynamique").
-
-<span id="MITgcm_ocean" class="anchor"></span>
-
-### MITgcm_ocean
-
-The [MIT ocean GCM](http://mitgcm.org/) version 'checkpoint59a' is the
-foundation of this implementation. It was modified by **Ibrahim Hoteit**
-(then of Scripps) to accomodate the interfaces needed by DART. *Status:*
-supported, and currently being ported to Manhattan.
 
 <span id="NAAPS" class="anchor"></span>
 
@@ -466,23 +529,7 @@ model the major biogeochemical cycles of the land ecosystem. The DART
 interfaces for the standalone version of CABLE have preliminary support
 and needs to be updated to be consistent with the Manhattan release.
 
-<span id="cam-se" class="anchor"></span>
 
-### CAM-SE
-
-<span id="CLM" class="anchor"></span>
-
-### CLM
-
-Assimilation with the [Community Land Model](http://www.cesm.ucar.edu/models/clm/)
-is well supported and the system has been used for many research interests, from
-biogeochemistry to snow, ice, soil moisture and more. DART/CLM has many research
-branches and guidance for which branch is most appropriate is provided upon request.
-There is support for CLM under the Lanai release and several development branches
-that are consistent with the Manhattan release. The version distributed with the
-Manhattan release is not as fully functional as the development branches.
-Much of the original DART/CLM support was written by **Yongfei Zhang** while
-she was at the University of Texas at Austin.
 
 <span id="COAMPS" class="anchor"></span>
 
@@ -517,6 +564,9 @@ velocities to match given spatio-temporal observation of magnetic fields.
 
 ### ikeda
 
+**Converting the Ikeda model to be Manhattan-compliant would be a 
+relatively easy and quick learning experience for someone.**
+
 The Ikeda model is a 2D chaotic map useful for visualization data
 assimilation updating directly in state space. There are three
 parameters: a, b, and mu. The state is 2D, x = \[X Y\]. The equations
@@ -524,7 +574,7 @@ are:
 
 ~~~
 X(i+1) = 1 + mu * ( X(i) * cos( t ) - Y(i) * sin( t ) )
-Y(i+1) =     mu * ( X(i) * sin( t ) + Y(i) * cos( t ) ),
+Y(i+1) =     mu * ( X(i) * sin( t ) + Y(i) * cos( t ) )
 ~~~
 
 where
@@ -571,6 +621,7 @@ DART/TIEGCM has been used to assimilate neutral mass density retrieved from
 satellite-borne accelerometers and electon density obtained from ground-based
 and space-based GNSS signals. TIEGCM2 is not yet supported, and the existing
 interfaces need to be updated to work under the Manhattan release.
+
 
 \[[top](#)\]
 
