@@ -4305,17 +4305,25 @@ end function get_channel
 subroutine test_unit_setup
 
 ! Overwrite module globals for testing
+
 ! start at 1 to watch the metadata grow 
 MAXrttovkey = 1
-
 if ( .not. module_initialized ) call initialize_module
 
 endsubroutine test_unit_setup
 
 !-----------------------------------------------------------------------
-subroutine test_set_metadata
+! inputs: n_ir : number of visir obs
+!         n_mw : number
+! outputs metadata_size[4] : size(obstype_metadata)
+!                            size(obstype_subkey)
+!                            size(visir_obs_metadata)
+!                            size(obstype_subkey)
+!  loop to have a look at how grow_metadata works
+function test_set_metadata(n_ir, n_mw) result(metadata_size)
 
-! test of set_metadata - what are you testing here?
+integer, intent(in)  :: n_ir, n_mw
+integer  :: metadata_size(4) 
 
 integer  :: key 
 real(r8) :: sat_az, sat_ze, sun_az, sun_ze
@@ -4327,47 +4335,23 @@ real(r8) :: fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5
 
 integer :: ii
 
-print*, 'size(obstype_metadata)', size(obstype_metadata)
-print*, 'size(obstype_subkey)', size(obstype_subkey)
-print*, 'size(visir_obs_metadata)', size(visir_obs_metadata)
-print*, 'size(obstype_subkey)', size(obstype_subkey)
-
-print*, 'rttovkey', rttovkey
-print*, 'visirnum', visirnum
-
-! calling in a loop to have a look at how grow_metadata works
-do ii = 1, 10
+do ii = 1, n_ir
   call set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
         platform_id, sat_id, sensor_id, channel, specularity)
-
-  print*, 'rttovkey', rttovkey
-  print*, 'visirnum', visirnum
-  !print*, 'visir_obs_metadata', visir_obs_metadata
-  print*, 'obstype_metadata', obstype_metadata
-  print "(A,40I3)", 'obstype_subkey', obstype_subkey
 enddo
 
-print*, 'mwnum', mwnum
-
-! calling in a loop to have a look at how grow_metadata works
-do ii = 1, 10
+do ii = 1, n_mw
   call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
      channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,         &
      fastem_p4, fastem_p5)
-  print*, 'rttovkey', rttovkey
-  print*, 'mwnum', mwnum
-  print*, 'obstype_metadata', obstype_metadata
-  print "(A,80I3)", 'obstype_subkey', obstype_subkey
 enddo
 
-! use get to retrive metadata
+metadata_size(1) = size(obstype_metadata)
+metadata_size(2) = size(visir_obs_metadata)
+metadata_size(3) = size(mw_obs_metadata)
+metadata_size(4) = size(obstype_subkey)
 
-! 1:10 is visir
-! 11:20 is mw
-
-print*, 'size of obstype_metadata, visir_obs_metadata, mw_obs_metadata', size(obstype_metadata), size(visir_obs_metadata), size(mw_obs_metadata)
-
-end subroutine test_set_metadata
+end function test_set_metadata
 !-----------------------------------------------------------------------
 subroutine test_key_within_range
 
