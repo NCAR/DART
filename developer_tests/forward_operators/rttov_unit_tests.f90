@@ -4,8 +4,6 @@ program rttov_unit_tests
 
 use obs_def_rttov_mod, only : test_unit_setup,         &
                               test_set_metadata, &
-                              test_initializations,    &
-                              test_key_get_expected,   &
                               test_unit_teardown
 use         types_mod, only : r8
 use     utilities_mod, only : initialize_utilities

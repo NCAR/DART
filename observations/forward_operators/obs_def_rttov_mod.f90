@@ -420,8 +420,6 @@ public ::     atmos_profile_type, &
 ! routines for unit testing
 public :: test_unit_setup,      &
           test_set_metadata, &
-          test_initializations, &
-          test_key_get_expected, &
           test_unit_teardown
 
 ! Metadata for rttov observations.
@@ -780,10 +778,6 @@ type(atmos_profile_type)     :: atmos
 type(trace_gas_profile_type) :: trace_gas
 type(aerosol_profile_type)   :: aerosols
 type(cloud_profile_type)     :: clouds
-
-integer               :: year
-integer               :: month
-integer               :: day
   
 ! include the interface files as per the RTTOV standard
 include "rttov_direct.interface"
@@ -3481,7 +3475,6 @@ character(len=*), parameter :: routine = 'get_expected_radiance'
 type(visir_metadata_type), pointer :: visir_md
 type(mw_metadata_type),    pointer :: mw_md
 
-logical :: is_visir
 logical :: return_now
 
 !=================================================================================
@@ -4125,8 +4118,7 @@ function get_rttov_option_logical(field_name) result(p)
    integer,          parameter   :: duc = ichar('A') - ichar('a')
    character(len=:), allocatable :: fname
    
-   character :: ch
-   integer   :: slen, i
+   integer   :: slen
 
 
    ! copy the string over to an appropriate size
@@ -4370,36 +4362,6 @@ metadata_size(2) = size(visir_obs_metadata)
 metadata_size(3) = size(mw_obs_metadata)
 
 end function test_set_metadata
-!-----------------------------------------------------------------------
-subroutine test_key_within_range
-
-
-
-
-
-
-
-end subroutine test_key_within_range
-
-!-----------------------------------------------------------------------
-! 
-subroutine test_key_get_expected
-
-! for get_expected_radiance
-!integer            :: obs_kind_ind ! hard code 1
-type(ensemble_type) :: state_handle
-!integer            :: ens_size ! hard code 4
-type(location_type) :: location          ! location of obs
-!integer            :: flavor  ! hard code 1          ! flavor of obs
-real(r8)           :: val(4)     ! value of obs
-integer            :: istatus(4) ! status of the calculation
-integer  :: key
-
-!call  get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, key, flavor, val, istatus)
-key = 22  ! only 20 obs
-call get_expected_radiance(1, state_handle, 4, location, key, 1, val, istatus)
-
-end subroutine test_key_get_expected
 
 end module obs_def_rttov_mod
 
