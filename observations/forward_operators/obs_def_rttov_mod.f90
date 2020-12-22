@@ -420,7 +420,8 @@ public ::     atmos_profile_type, &
 public :: test_unit_setup,      &
           test_set_metadata, &
           test_initializations, &
-          test_key_get_expected
+          test_key_get_expected, &
+          test_unit_teardown
 
 ! Metadata for rttov observations.
 !HK are these the only two types of observations?
