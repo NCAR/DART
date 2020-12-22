@@ -4324,7 +4324,7 @@ subroutine test_unit_teardown()
 
 module_initialized = .false.
 MAXrttovkey = 0
-rttovkey = 0       ! useful length of metadata arrays
+rttovkey = 0
 visirnum = 0
 mwnum = 0
 
