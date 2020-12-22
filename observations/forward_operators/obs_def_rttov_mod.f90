@@ -609,6 +609,10 @@ integer, parameter :: NO_OBS = -1
 integer, parameter :: VISIR = 1
 integer, parameter :: MW = 2
 
+! row in obstype_metadata(:,:)
+integer, parameter :: SUBTYPE = 1 
+integer, parameter :: SUBKEY = 2
+
 logical :: debug = .false.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
@@ -2985,8 +2989,8 @@ rttovkey = rttovkey + 1
 call grow_metadata(rttovkey,'set_visir_metadata', VISIR)
 
 key = rttovkey ! now that we know its legal
-obstype_metadata(1, key) = VISIR 
-obstype_metadata(2, key) = visirnum
+obstype_metadata(SUBTYPE, key) = VISIR 
+obstype_metadata(SUBKEY, key) = visirnum
 
 visir_obs_metadata(visirnum) % sat_az      = sat_az
 visir_obs_metadata(visirnum) % sat_ze      = sat_ze
@@ -3036,8 +3040,8 @@ rttovkey = rttovkey + 1
 call grow_metadata(rttovkey,'set_mw_metadata', MW)
 
 key = rttovkey ! now that we know its legal
-obstype_metadata(1, key) = MW    
-obstype_metadata(2, key) = mwnum
+obstype_metadata(SUBTYPE, key) = MW    
+obstype_metadata(SUBKEY, key) = mwnum
 
 
 mw_obs_metadata(mwnum) % sat_az       = sat_az
@@ -3078,13 +3082,13 @@ if ( .not. module_initialized ) call initialize_module
 ! Make sure the desired key is within the length of the metadata arrays.
 call key_within_range(key,routine)
 
-if (obstype_metadata(1,key) /= VISIR) then
+if (obstype_metadata(SUBTYPE,key) /= VISIR) then
    write(string1,*)'The obstype metadata for key ',key,'is not visir as expected'
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate)
 end if
 
-visirnum = obstype_metadata(2,key)
+visirnum = obstype_metadata(SUBKEY,key)
 
 !HK this is key within range for visir
 if (visirnum < 0 .or. visirnum > size(visir_obs_metadata)) then
@@ -3132,13 +3136,13 @@ if ( .not. module_initialized ) call initialize_module
 ! Make sure the desired key is within the length of the metadata arrays.
 call key_within_range(key,routine)
 
-if (obstype_metadata(2,key) /= MW) then
+if (obstype_metadata(SUBTYPE,key) /= MW) then
    write(string1,*)'The obstype metadata for key ',key,'is not MW as expected'
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate)
 end if
 
-mwnum = obstype_metadata(1, key)
+mwnum = obstype_metadata(SUBKEY, key)
 
 !Hk this is key within range for mw?
 if (mwnum < 0 .or. mwnum > size(mw_obs_metadata)) then
@@ -3306,7 +3310,7 @@ if ( .not. module_initialized ) call initialize_module
 
 is_asciifile = ascii_file_format(fform)
 
-select case (obstype_metadata(1,key))
+select case (obstype_metadata(SUBKEY,key))
 
    case (VISIR)
       call get_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
@@ -3487,10 +3491,10 @@ val = 0.0_r8 ! set return value early
 ! HK this doesn't really test much
 call key_within_range(key, routine)
 
-select case (obstype_metadata(1, key))
+select case (obstype_metadata(SUBTYPE, key))
 
 case (VISIR)
-   visir_md => visir_obs_metadata(obstype_metadata(2,key))
+   visir_md => visir_obs_metadata(obstype_metadata(SUBKEY,key))
    mw_md    => null()
 
    platform_id = visir_md % platform_id
@@ -3499,7 +3503,7 @@ case (VISIR)
    channel     = visir_md % channel
 case (MW)
    visir_md => null()
-   mw_md    => mw_obs_metadata(obstype_metadata(2,key))
+   mw_md    => mw_obs_metadata(obstype_metadata(SUBKEY,key))
 
    platform_id = mw_md % platform_id
    sat_id      = mw_md % sat_id
@@ -4234,7 +4238,6 @@ function get_rttov_option_logical(field_name) result(p)
    end select
 
 end function get_rttov_option_logical
-
 
 !-----------------------------------------------------------------------
 ! A function to return the key associated with a VISIR/MW metadata.
