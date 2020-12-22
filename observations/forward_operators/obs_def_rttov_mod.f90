@@ -418,9 +418,10 @@ public ::     atmos_profile_type, &
                 do_forward_model
 
 ! routines for unit testing
-public :: test_unit_setup,      &
-          test_set_metadata, &
-          test_unit_teardown
+public :: test_unit_setup,    &
+          test_set_metadata,  &
+          test_unit_teardown, &
+          test_metadata
 
 ! Metadata for rttov observations.
 !HK are these the only two types of observations?
@@ -4366,6 +4367,16 @@ metadata_size(3) = size(mw_obs_metadata)
 
 end function test_set_metadata
 
+!-----------------------------------------------------------------------
+! passes metadata out external test routine
+subroutine test_metadata(metadata)
+
+integer, intent(out) :: metadata(:,:)
+metadata = obstype_metadata
+
+end subroutine test_metadata
+
+!-----------------------------------------------------------------------
 end module obs_def_rttov_mod
 
 ! END DART PREPROCESS MODULE CODE
