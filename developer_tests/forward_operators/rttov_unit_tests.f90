@@ -12,25 +12,25 @@ use     assert_mod,    only : assert_equal
 
 implicit none
 
-integer :: metadata_size(4)
+integer :: metadata_size(3)
 
 ! DART initialization
 call initialize_utilities('rttov_unit_tests')
 
 ! Unit test initialization
-call test_unit_setup
+if ( test_unit_setup(1) ) then ! metadata start from 1 and grow
 
-! metadata start from 1 and grow
-
-  metadata_size = test_set_metadata(10,10)
-
-  call assert_equal(metadata_size(1),10, 'one')
-  call assert_equal(metadata_size(2),10, 'two')
-  call assert_equal(metadata_size(3),10, 'three') 
-  call assert_equal(metadata_size(4),10, 'four') 
-
-!call test_key_get_expected
-
-!call test_initializations
+   metadata_size = test_set_metadata(10,10)
+   
+   call assert_equal(metadata_size(1),32, 'obstype_metadata')
+   call assert_equal(metadata_size(2),16, 'visir_obs_metadata')
+   call assert_equal(metadata_size(3),16, 'mw_obs_metadata')
+   
+   !call test_key_get_expected
+   
+   !call test_initializations
+else  ! module is already initialized, unit tests are not reliable
+   print*, 'FAIL'
+endif
 
 end program rttov_unit_tests

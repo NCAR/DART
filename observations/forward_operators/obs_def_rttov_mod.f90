@@ -596,8 +596,7 @@ logical            :: module_initialized = .false.
 logical            :: arrays_prealloced  = .false.
 integer            :: iunit, rc
 
-logical,                   allocatable :: obstype_metadata(:)
-integer,                   allocatable :: obstype_subkey(:)
+integer,                   allocatable :: obstype_metadata(:,:) ! key & subkey
 type(visir_metadata_type), pointer     :: visir_obs_metadata(:)
 type(visir_metadata_type)              :: missing_visir_metadata
 type(mw_metadata_type),    pointer     :: mw_obs_metadata(:)
@@ -605,6 +604,10 @@ type(mw_metadata_type)                 :: missing_mw_metadata
 
 character(len=5), parameter :: VISIR_STRING = 'visir'
 character(len=5), parameter :: MW_STRING    = 'mw   '
+
+integer, parameter :: NO_OBS = -1
+integer, parameter :: VISIR = 1
+integer, parameter :: MW = 2
 
 logical :: debug = .false.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
@@ -2643,12 +2646,11 @@ missing_mw_metadata%fastem_p3 = MISSING_R8
 missing_mw_metadata%fastem_p4 = MISSING_R8
 missing_mw_metadata%fastem_p5 = MISSING_R8
 
-allocate(obstype_metadata(2*MAXrttovkey))
-allocate(obstype_subkey(2*MAXrttovkey))
+allocate(obstype_metadata(2, MAXrttovkey))
 allocate(visir_obs_metadata(MAXrttovkey))
 allocate(mw_obs_metadata(MAXrttovkey))
 
-obstype_subkey(:)    = -1
+obstype_metadata(:,:) = NO_OBS
 visir_obs_metadata(:) = missing_visir_metadata
 mw_obs_metadata(:)    = missing_mw_metadata
 
@@ -2980,13 +2982,13 @@ if ( .not. module_initialized ) call initialize_module
 
 visirnum = visirnum + 1  ! increase module storage used counters
 rttovkey = rttovkey + 1
-obstype_metadata(rttovkey) = .true. ! .true. for visir
-  obstype_subkey(rttovkey) = visirnum
 
 ! Make sure the new key is within the length of the metadata arrays.
-call grow_metadata(rttovkey,'set_visir_metadata', .true.)
+call grow_metadata(rttovkey,'set_visir_metadata', VISIR)
 
 key = rttovkey ! now that we know its legal
+obstype_metadata(1, key) = VISIR 
+obstype_metadata(2, key) = visirnum
 
 visir_obs_metadata(visirnum) % sat_az      = sat_az
 visir_obs_metadata(visirnum) % sat_ze      = sat_ze
@@ -3031,13 +3033,14 @@ if ( .not. module_initialized ) call initialize_module
 
 mwnum    = mwnum + 1    ! increase module storage used counters
 rttovkey = rttovkey + 1 
-obstype_metadata(rttovkey) = .false. ! .false. for MW 
-  obstype_subkey(rttovkey) = mwnum
 
 ! Make sure the new key is within the length of the metadata arrays.
-call grow_metadata(rttovkey,'set_mw_metadata', .false.)
+call grow_metadata(rttovkey,'set_mw_metadata', MW)
 
 key = rttovkey ! now that we know its legal
+obstype_metadata(1, key) = MW    
+obstype_metadata(2, key) = mwnum
+
 
 mw_obs_metadata(mwnum) % sat_az       = sat_az
 mw_obs_metadata(mwnum) % sat_ze       = sat_ze
@@ -3077,14 +3080,15 @@ if ( .not. module_initialized ) call initialize_module
 ! Make sure the desired key is within the length of the metadata arrays.
 call key_within_range(key,routine)
 
-if (.not. obstype_metadata(key)) then
+if (obstype_metadata(1,key) /= VISIR) then
    write(string1,*)'The obstype metadata for key ',key,'is not visir as expected'
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate)
 end if
 
-visirnum = obstype_subkey(key)
+visirnum = obstype_metadata(2,key)
 
+!HK this is key within range for visir
 if (visirnum < 0 .or. visirnum > size(visir_obs_metadata)) then
    write(string1,*)'The visir-specific key ',visirnum,'is invalid.'
    write(string2,*)'Size of visir_obs_metadata:',&
@@ -3130,14 +3134,15 @@ if ( .not. module_initialized ) call initialize_module
 ! Make sure the desired key is within the length of the metadata arrays.
 call key_within_range(key,routine)
 
-if (obstype_metadata(key)) then
+if (obstype_metadata(2,key) /= MW) then
    write(string1,*)'The obstype metadata for key ',key,'is not MW as expected'
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate)
 end if
 
-mwnum = obstype_subkey(key)
+mwnum = obstype_metadata(1, key)
 
+!Hk this is key within range for mw?
 if (mwnum < 0 .or. mwnum > size(mw_obs_metadata)) then
    write(string1,*)'The mw-specific key ',mwnum,'is invalid.'
    write(string2,*)'Size of mw_obs_metadata:',&  !HK
@@ -3294,10 +3299,7 @@ real(r8) :: fastem_p1, fastem_p2, fastem_p3, &
             fastem_p4, fastem_p5
 
 character(len=5)  :: header
-
-logical  :: is_visir
-
-is_visir = obstype_metadata(key)
+character(len=*), parameter :: routine = 'write_rttov_metadata'
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -3306,52 +3308,55 @@ if ( .not. module_initialized ) call initialize_module
 
 is_asciifile = ascii_file_format(fform)
 
-if (is_visir) then
-   call get_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
-      platform_id, sat_id, sensor_id, channel, specularity)
+select case (obstype_metadata(1,key))
 
-   header = VISIR_STRING
-
-   if (is_asciifile) then
-      write(ifile, *) header
-      write(ifile, *) sat_az, sat_ze, sun_az, sun_ze
-      write(ifile, *) platform_id, sat_id, sensor_id, channel
-      write(ifile, *) specularity
-      write(ifile, *) key
-   else
-      write(ifile   ) header
-      write(ifile   ) sat_az, sat_ze, sun_az, sun_ze
-      write(ifile   ) platform_id, sat_id, sensor_id, channel
-      write(ifile   ) specularity
-      write(ifile   ) key
-   endif
-else
-   call get_mw_metadata(key, sat_az, sat_ze,                  &
-      platform_id, sat_id, sensor_id, channel, mag_field, cosbk, &
-      fastem_p1, fastem_p2, fastem_p3, fastem_p4,    &
-      fastem_p5)
-
-   header = MW_STRING
-
-   if (is_asciifile) then
-      write(ifile, *) header
-      write(ifile, *) sat_az, sat_ze
-      write(ifile, *) platform_id, sat_id, sensor_id, channel
-      write(ifile, *) mag_field, cosbk
-      write(ifile, *) fastem_p1, fastem_p2, fastem_p3, &
-                      fastem_p4, fastem_p5 
-      write(ifile, *) key
-   else
-      write(ifile   ) header
-      write(ifile   ) sat_az, sat_ze
-      write(ifile   ) platform_id, sat_id, sensor_id, channel
-      write(ifile   ) mag_field, cosbk
-      write(ifile   ) fastem_p1, fastem_p2, fastem_p3, &
-                      fastem_p4, fastem_p5 
-      write(ifile   ) key
-   end if
-end if
-
+   case (VISIR)
+      call get_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
+         platform_id, sat_id, sensor_id, channel, specularity)
+   
+      header = VISIR_STRING
+   
+      if (is_asciifile) then
+         write(ifile, *) header
+         write(ifile, *) sat_az, sat_ze, sun_az, sun_ze
+         write(ifile, *) platform_id, sat_id, sensor_id, channel
+         write(ifile, *) specularity
+         write(ifile, *) key
+      else
+         write(ifile   ) header
+         write(ifile   ) sat_az, sat_ze, sun_az, sun_ze
+         write(ifile   ) platform_id, sat_id, sensor_id, channel
+         write(ifile   ) specularity
+         write(ifile   ) key
+      endif
+   case (MW)
+      call get_mw_metadata(key, sat_az, sat_ze,                  &
+         platform_id, sat_id, sensor_id, channel, mag_field, cosbk, &
+         fastem_p1, fastem_p2, fastem_p3, fastem_p4,    &
+         fastem_p5)
+   
+      header = MW_STRING
+   
+      if (is_asciifile) then
+         write(ifile, *) header
+         write(ifile, *) sat_az, sat_ze
+         write(ifile, *) platform_id, sat_id, sensor_id, channel
+         write(ifile, *) mag_field, cosbk
+         write(ifile, *) fastem_p1, fastem_p2, fastem_p3, &
+                         fastem_p4, fastem_p5 
+         write(ifile, *) key
+      else
+         write(ifile   ) header
+         write(ifile   ) sat_az, sat_ze
+         write(ifile   ) platform_id, sat_id, sensor_id, channel
+         write(ifile   ) mag_field, cosbk
+         write(ifile   ) fastem_p1, fastem_p2, fastem_p3, &
+                         fastem_p4, fastem_p5 
+         write(ifile   ) key
+      end if
+   case default
+      call error_handler(E_ERR, routine, 'unknown metadata type', source, revision, revdate)
+end select
 
 end subroutine write_rttov_metadata
 
@@ -3482,27 +3487,30 @@ if ( .not. module_initialized ) call initialize_module
 val = 0.0_r8 ! set return value early
 
 ! Make sure the desired key is within the length of the metadata arrays.
+! HK this doesn't really test much
 call key_within_range(key, routine)
 
-is_visir = obstype_metadata(key)
+select case (obstype_metadata(1, key))
 
-if (is_visir) then
-   visir_md => visir_obs_metadata(obstype_subkey(key))
+case (VISIR)
+   visir_md => visir_obs_metadata(obstype_metadata(2,key))
    mw_md    => null()
 
    platform_id = visir_md % platform_id
    sat_id      = visir_md % sat_id
    sensor_id   = visir_md % sensor_id
    channel     = visir_md % channel
-else
+case (MW)
    visir_md => null()
-   mw_md    => mw_obs_metadata(obstype_subkey(key))
+   mw_md    => mw_obs_metadata(obstype_metadata(2,key))
 
    platform_id = mw_md % platform_id
    sat_id      = mw_md % sat_id
    sensor_id   = mw_md % sensor_id
    channel     = mw_md % channel
-end if
+case default
+   call error_handler(E_ERR, routine, 'unknown metadata type', source, revision, revdate)
+end select
 
 !=================================================================================
 ! Determine the number of model levels 
@@ -3970,111 +3978,96 @@ end subroutine key_within_range
 !----------------------------------------------------------------------
 ! If the allocatable metadata arrays are not big enough ... try again
 
-subroutine grow_metadata(key, routine, is_visir)
+subroutine grow_metadata(key, routine, obstype)
 
 integer,          intent(in) :: key
 character(len=*), intent(in) :: routine
-logical,          intent(in) :: is_visir
+integer,          intent(in) :: obstype
 
 integer :: orglength, newlength
 type(visir_metadata_type), allocatable :: safe_visir_metadata(:)
 type(mw_metadata_type),    allocatable :: safe_mw_metadata(:)
-logical,                   allocatable :: safe_obstype_metadata(:)
-integer,                   allocatable :: safe_obstype_subkey(:)
-
-integer :: current_obstype_length
-integer :: new_obstype_length
-
-current_obstype_length = size(obstype_metadata)
-new_obstype_length      = current_obstype_length
+integer,                   allocatable :: safe_obstype_metadata(:,:)
 
 ! Check for some error conditions.
 if (key < 1) then
    write(string1, *) 'key (',key,') must be >= 1'
    call error_handler(E_ERR,routine,string1,source,revision,revdate)
-elseif (key >= 2*current_obstype_length) then
+elseif (key > 2*size(obstype_metadata(1,:))) then
    write(string1, *) 'key (',key,') really unexpected.'
    write(string2, *) 'doubling storage will not help.'
    call error_handler(E_ERR,routine,string1,source,revision,revdate, &
                       text2=string2)
 endif
 
-if (is_visir) then
-   if ((key > 0) .and. (key <= size(visir_obs_metadata))) then
-      ! we are still within limits
-      return
-   else
-      ! we need to grow visir_obs_metadata
-      orglength = size(visir_obs_metadata)
-      newlength = 2 * orglength
+select case (obstype)
+   case (VISIR)
+      if (visirnum > size(visir_obs_metadata)) then
+         ! we need to grow visir_obs_metadata
+         orglength = size(visir_obs_metadata)
+         newlength = 2 * orglength
+   
+         ! News. Tell the user we are increasing storage.
+         write(string1, *) 'Warning: subkey (',visirnum,') exceeds visir_obs_metadata length (',orglength,')'
+         write(string2, *) 'Increasing visir_obs_metadata to length ',newlength
+         call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+   
+         allocate(safe_visir_metadata(orglength))
+         safe_visir_metadata(:) = visir_obs_metadata(:)
+   
+         deallocate(visir_obs_metadata)
+         allocate(visir_obs_metadata(newlength))
+   
+         visir_obs_metadata = missing_visir_metadata
+         visir_obs_metadata(1:orglength) = safe_visir_metadata(:)
+         deallocate(safe_visir_metadata)
+     endif
+   case (MW)
+      ! duplicate the above since we can't use any object-oriented magic
+      if (mwnum > size(mw_obs_metadata)) then
+         ! we need to grow mw_obs_metadata
+         orglength = size(mw_obs_metadata)
+         newlength = 2 * orglength
+   
+         ! News. Tell the user we are increasing storage.
+         write(string1, *) 'Warning: subkey (',mwnum,') exceeds mw_obs_metadata length (',orglength,')'
+         write(string2, *) 'Increasing mw_obs_metadata to length ',newlength
+         call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+   
+         allocate(safe_mw_metadata(orglength))
+         safe_mw_metadata(:) = mw_obs_metadata(:)
+   
+         deallocate(mw_obs_metadata)
+         allocate(mw_obs_metadata(newlength))
+   
+         mw_obs_metadata = missing_mw_metadata
+         mw_obs_metadata(1:orglength) = safe_mw_metadata(:)
+         deallocate(safe_mw_metadata)
+      end if
+   case default
+      call error_handler(E_ERR, routine, 'unknown metadata type', source, revision, revdate)
+end select
 
-      ! News. Tell the user we are increasing storage.
-      write(string1, *) 'Warning: key (',key,') exceeds visir_obs_metadata length (',orglength,')'
-      write(string2, *) 'Increasing visir_obs_metadata to length ',newlength
-      call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 
-      allocate(safe_visir_metadata(orglength))
-      safe_visir_metadata(:) = visir_obs_metadata(:)
+if ( key > size(obstype_metadata(1,:)) ) then
+   ! we need to grow obstype_metadata
+   orglength = size(obstype_metadata(1,:))
+   newlength = 2 * orglength
 
-      deallocate(visir_obs_metadata)
-        allocate(visir_obs_metadata(newlength))
-
-      visir_obs_metadata(1:orglength)           = safe_visir_metadata(:)
-      visir_obs_metadata(orglength+1:newlength) = missing_visir_metadata
-
-      deallocate(safe_visir_metadata)
-      new_obstype_length = current_obstype_length + (newlength-orglength) 
-   end if
-else
-   ! duplicate the above since we can't use any object-oriented magic
-   if ((key > 0) .and. (key <= size(mw_obs_metadata))) then
-      ! we are still within limits
-      return
-   else
-      ! we need to grow mw_obs_metadata
-      orglength = size(mw_obs_metadata)
-      newlength = 2 * orglength
-
-      ! News. Tell the user we are increasing storage.
-      write(string1, *) 'Warning: key (',key,') exceeds mw_obs_metadata length (',orglength,')'
-      write(string2, *) 'Increasing mw_obs_metadata to length ',newlength
-      call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
-
-      allocate(safe_mw_metadata(orglength))
-      safe_mw_metadata(:) = mw_obs_metadata(:)
-
-      deallocate(mw_obs_metadata)
-        allocate(mw_obs_metadata(newlength))
-
-      mw_obs_metadata(1:orglength)           = safe_mw_metadata(:)
-      mw_obs_metadata(orglength+1:newlength) = missing_mw_metadata
-
-      deallocate(safe_mw_metadata)
-      new_obstype_length = current_obstype_length + (newlength-orglength) 
-   end if
-end if
-
-if (current_obstype_length /= new_obstype_length) then
-   ! expand the obstype metadata as well, copying over as above
-   allocate(safe_obstype_metadata(current_obstype_length))
-   safe_obstype_metadata(:) = obstype_metadata(:)
-
+   ! News. Tell the user we are increasing storage.
+   write(string1, *) 'Warning: key (',key,') exceeds obs_metadata length (',orglength,')'
+   write(string2, *) 'Increasing obs_metadata to length ',newlength
+   call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+  
+   allocate(safe_obstype_metadata(2,orglength))
+   safe_obstype_metadata(:,:) = obstype_metadata(:,:)
    deallocate(obstype_metadata)
-     allocate(obstype_metadata(new_obstype_length))
+   allocate(obstype_metadata(2, newlength)) 
 
-   obstype_metadata(1:current_obstype_length) = safe_obstype_metadata(:)
-   ! obstype_metadata(current_obstype_length+1:new_obstype_length) = -1
-   ! no default for obstype_metadata as it is a logical that is true for visir
-
-   allocate(safe_obstype_subkey(current_obstype_length))
-   safe_obstype_subkey(:) = obstype_subkey(:)
-
-   deallocate(obstype_subkey)
-     allocate(obstype_subkey(new_obstype_length))
-
-   obstype_subkey(1:current_obstype_length) = safe_obstype_subkey(:)
-   obstype_subkey(current_obstype_length+1:new_obstype_length) = -1
-end if
+   obstype_metadata(:,:) = NO_OBS
+   obstype_metadata(:,1:orglength) = safe_obstype_metadata(:,1:orglength) !HK check 2d copy
+   deallocate(safe_obstype_metadata) 
+endif
 
 end subroutine grow_metadata
 
@@ -4265,8 +4258,8 @@ function get_channel(flavor, key) result(channel)
    integer  :: platform_id, sat_id, sensor_id
    real(r8) :: mag_field, cosbk, specularity
    real(r8) :: fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5
-   integer  :: subkey
 
+   character(len=*), parameter :: routine = 'get_channel'
    channel = MISSING_R8
 
    ! If the observation is not supported by this module, there is no channel
@@ -4277,22 +4270,22 @@ function get_channel(flavor, key) result(channel)
    ! Retrieve channel from different metadata types
    ! All the other arguments are mandatory, but not needed here.
 
-   if ( obstype_metadata(key) ) then
-      ! FIXME ... should be local index ... subkey = obstype_subkey(key)
-      if (.false.) write(*,*)'get_channel_visir: key,subkey',key,subkey
+   select case (obstype_metadata(1,key))
+
+   case ( VISIR )
       call get_visir_metadata(key, &
                            sat_az, sat_ze, sun_az, sun_ze, &
                            platform_id, sat_id, sensor_id, channel, &
                            specularity)
-   else
-      ! FIXME ... should be local index ... subkey = obstype_subkey(key)
-      if (.false.) write(*,*)'get_channel_mw: key,subkey',key,subkey
+   case ( MW )
       call get_mw_metadata(key, &
                         sat_az, sat_ze, &
                         platform_id, sat_id, sensor_id, channel, &
                         mag_field, cosbk, &
                         fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5)
-   endif
+   case default
+      call error_handler(E_ERR, routine, 'unknown metadata type', source, revision, revdate)
+   end select
 
    if (debug) write(*,*)'get_channel: key,channel ',key,channel
 
@@ -4302,28 +4295,44 @@ end function get_channel
 !-----------------------------------------------------------------------
 ! Test functions below this point
 !-----------------------------------------------------------------------
-subroutine test_unit_setup
+function test_unit_setup(metadata_start)
+
+integer, intent(in) :: metadata_start
+logical :: test_unit_setup
+
+! Test requires module not initialized to start
+if ( module_initialized ) then
+  test_unit_setup = .false.
+else
+  test_unit_setup = .true.
+endif
 
 ! Overwrite module globals for testing
-
 ! start at 1 to watch the metadata grow 
-MAXrttovkey = 1
-if ( .not. module_initialized ) call initialize_module
+MAXrttovkey = metadata_start
+call initialize_module
 
-endsubroutine test_unit_setup
+end function test_unit_setup
+
+!-----------------------------------------------------------------------
+! Using a teardown for unit tests as there is no end_module
+subroutine test_unit_teardown()
+
+deallocate(obstype_metadata, visir_obs_metadata, mw_obs_metadata)
+
+end subroutine test_unit_teardown
 
 !-----------------------------------------------------------------------
 ! inputs: n_ir : number of visir obs
 !         n_mw : number
-! outputs metadata_size[4] : size(obstype_metadata)
-!                            size(obstype_subkey)
-!                            size(visir_obs_metadata)
-!                            size(obstype_subkey)
+! outputs metadata_size[43] : size(1,obstype_metadata)
+!                             size(visir_obs_metadata)
+!                             size(mw_obs_metadata)
 !  loop to have a look at how grow_metadata works
 function test_set_metadata(n_ir, n_mw) result(metadata_size)
 
 integer, intent(in)  :: n_ir, n_mw
-integer  :: metadata_size(4) 
+integer  :: metadata_size(3) 
 
 integer  :: key 
 real(r8) :: sat_az, sat_ze, sun_az, sun_ze
@@ -4346,10 +4355,9 @@ do ii = 1, n_mw
      fastem_p4, fastem_p5)
 enddo
 
-metadata_size(1) = size(obstype_metadata)
+metadata_size(1) = size(obstype_metadata,2)
 metadata_size(2) = size(visir_obs_metadata)
 metadata_size(3) = size(mw_obs_metadata)
-metadata_size(4) = size(obstype_subkey)
 
 end function test_set_metadata
 !-----------------------------------------------------------------------
