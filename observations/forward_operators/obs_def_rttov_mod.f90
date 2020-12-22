@@ -313,7 +313,8 @@ use        types_mod, only : r8, MISSING_R8, MISSING_I, obstypelength
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              ascii_file_format, nmlfileunit, do_nml_file, &
                              do_nml_term, check_namelist_read, find_namelist_in_file, &
-                             interactive_r, interactive_i, open_file, file_exist
+                             interactive_r, interactive_i, open_file, file_exist, &
+                             close_file
 
 use     location_mod, only : location_type, set_location, get_location, &
                              VERTISUNDEF, VERTISHEIGHT, VERTISLEVEL, VERTISSURFACE
@@ -1219,6 +1220,8 @@ lineloop: do
 
    deallocate(channels)
 end do lineloop
+
+call close_file(dbUnit)
 
 end subroutine read_sensor_db_file
 
@@ -4319,6 +4322,12 @@ end function test_unit_setup
 ! Using a teardown for unit tests as there is no end_module
 subroutine test_unit_teardown()
 
+module_initialized = .false.
+MAXrttovkey = 0
+rttovkey = 0       ! useful length of metadata arrays
+visirnum = 0
+mwnum = 0
+
 deallocate(obstype_metadata, visir_obs_metadata, mw_obs_metadata)
 
 end subroutine test_unit_teardown
@@ -4391,23 +4400,6 @@ key = 22  ! only 20 obs
 call get_expected_radiance(1, state_handle, 4, location, key, 1, val, istatus)
 
 end subroutine test_key_get_expected
-
-!-----------------------------------------------------------------------
-subroutine test_initializations
-
-integer ens_size, numlevels
-type(rttov_sensor_type),    pointer :: sensor
-
-ens_size = 4
-numlevels = 11
-allocate(sensor)
-
-! double call
-call initialize_rttov_sensor_runtime(sensor,ens_size,numlevels)
-
-call initialize_rttov_sensor_runtime(sensor,ens_size,numlevels)
-
-end subroutine test_initializations
 
 end module obs_def_rttov_mod
 

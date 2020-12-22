@@ -36,7 +36,7 @@ endif
 
 call test_unit_teardown()
 
-if (test_unit_setup(3) ) then 
+if ( test_unit_setup(3) ) then 
 
    metadata_size = test_set_metadata(2,7) ! visir, mw
    
@@ -44,6 +44,8 @@ if (test_unit_setup(3) ) then
    call assert_equal(metadata_size(2),3, 'visir_obs_metadata')
    call assert_equal(metadata_size(3),12, 'mw_obs_metadata')
 
+else  ! module is already initialized, unit tests are not reliable
+   print*, 'FAIL'
 endif
 
 
