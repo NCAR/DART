@@ -247,6 +247,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
       foreach TARGET ( mkmf_* )
          set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+         echo
          echo "Running $PROG"
    
          # for programs which read standard input, put what they need into a prog.in file
