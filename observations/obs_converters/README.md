@@ -292,7 +292,6 @@ The current list of converters (some directories contain multiple converters) in
 -   [DWL](DWL/dwl_to_obs.html)
 -   [GMI](GMI/README.md)
 -   [GOES](GOES/README.md)
--   [GMI](GMI/README.md)
 -   [GPSPW](GPSPW/README)
 -   GRACE
 -   [GSI2DART](GSI2DART/README)
