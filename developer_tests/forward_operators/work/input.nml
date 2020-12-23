@@ -1,5 +1,5 @@
 &obs_def_rttov_nml
-   rttov_sensor_db_file = 'rttov_test_me.csv'
+   rttov_sensor_db_file = 'rttov_unit_test.csv'
 /
 
 &utilities_nml 

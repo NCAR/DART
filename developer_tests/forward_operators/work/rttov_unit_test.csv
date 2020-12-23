@@ -1,0 +1,2 @@
+<DART Obs Type>,<Platform ID>,<Satellite ID>,<Sensor ID>,<Sensor type>,<Coef file name>,<Channels to use list (optional)>
+EOS_2_AMSUA_TB,9,2,3,mw,rtcoef_eos_2_amsua.dat
