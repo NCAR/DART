@@ -9,7 +9,6 @@
 ! the additional metadata in each observation includes:
 !
 !  OBS            X
-! rttov
 !    sat az/el
 !    sun az/el
 !    platform
@@ -418,10 +417,12 @@ public ::     atmos_profile_type, &
                 do_forward_model
 
 ! routines for unit testing
-public :: test_unit_setup,    &
-          test_set_metadata,  &
-          test_unit_teardown, &
-          test_metadata
+public :: test_unit_setup,       &
+          test_set_metadata,     &
+          test_unit_teardown,    &
+          test_metadata,         &
+          test_key_within_range, &
+          test_subkey_within_range
 
 ! Metadata for rttov observations.
 !HK are these the only two types of observations?
@@ -3074,7 +3075,7 @@ real(r8), intent(out) :: sat_az, sat_ze, sun_az, sun_ze
 integer,  intent(out) :: platform_id, sat_id, sensor_id, channel
 real(r8), intent(out) :: specularity
 
-integer :: visirnum
+integer :: mykey
 
 character(len=*), parameter :: routine = 'get_visir_metadata'
 
@@ -3089,26 +3090,24 @@ if (obstype_metadata(SUBTYPE,key) /= VISIR) then
       revision, revdate)
 end if
 
-visirnum = obstype_metadata(SUBKEY,key)
+mykey = obstype_metadata(SUBKEY,key)
 
-!HK this is key within range for visir
-if (visirnum < 0 .or. visirnum > size(visir_obs_metadata)) then
-   write(string1,*)'The visir-specific key ',visirnum,'is invalid.'
-   write(string2,*)'Size of visir_obs_metadata:',&
-      size(visir_obs_metadata)
+if (.not. is_valid_subkey(mykey, VISIR)) then
+   write(string1,*)'The visir-specific key ',mykey,'is invalid.'
+   write(string2,*)'Size of visir_obs_metadata:', visirnum
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate, text2=string2)
 end if
 
-sat_az      = visir_obs_metadata(visirnum) % sat_az
-sat_ze      = visir_obs_metadata(visirnum) % sat_ze
-sun_az      = visir_obs_metadata(visirnum) % sun_az
-sun_ze      = visir_obs_metadata(visirnum) % sun_ze
-platform_id = visir_obs_metadata(visirnum) % platform_id
-sat_id      = visir_obs_metadata(visirnum) % sat_id
-sensor_id   = visir_obs_metadata(visirnum) % sensor_id
-channel     = visir_obs_metadata(visirnum) % channel
-specularity = visir_obs_metadata(visirnum) % specularity
+sat_az      = visir_obs_metadata(mykey) % sat_az
+sat_ze      = visir_obs_metadata(mykey) % sat_ze
+sun_az      = visir_obs_metadata(mykey) % sun_az
+sun_ze      = visir_obs_metadata(mykey) % sun_ze
+platform_id = visir_obs_metadata(mykey) % platform_id
+sat_id      = visir_obs_metadata(mykey) % sat_id
+sensor_id   = visir_obs_metadata(mykey) % sensor_id
+channel     = visir_obs_metadata(mykey) % channel
+specularity = visir_obs_metadata(mykey) % specularity
 
 end subroutine get_visir_metadata
 
@@ -3130,7 +3129,7 @@ real(r8), intent(out) :: fastem_p1, fastem_p2, fastem_p3, &
 
 character(len=*), parameter :: routine = 'get_mw_metadata'
 
-integer :: mwnum
+integer :: mykey
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -3143,30 +3142,28 @@ if (obstype_metadata(SUBTYPE,key) /= MW) then
       revision, revdate)
 end if
 
-mwnum = obstype_metadata(SUBKEY, key)
+mykey = obstype_metadata(SUBKEY, key)
 
-!Hk this is key within range for mw?
-if (mwnum < 0 .or. mwnum > size(mw_obs_metadata)) then
-   write(string1,*)'The mw-specific key ',mwnum,'is invalid.'
-   write(string2,*)'Size of mw_obs_metadata:',&  !HK
-      size(mw_obs_metadata)
+if (.not. is_valid_subkey(mykey, MW)) then
+   write(string1,*)'The mw-specific key ',mykey,'is invalid.'
+   write(string2,*)'Size of mw_obs_metadata:',mwnum 
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate, text2=string2)
 end if
 
-sat_az       = mw_obs_metadata(mwnum) % sat_az
-sat_ze       = mw_obs_metadata(mwnum) % sat_ze
-platform_id  = mw_obs_metadata(mwnum) % platform_id
-sat_id       = mw_obs_metadata(mwnum) % sat_id
-sensor_id    = mw_obs_metadata(mwnum) % sensor_id
-channel      = mw_obs_metadata(mwnum) % channel
-mag_field    = mw_obs_metadata(mwnum) % mag_field
-cosbk        = mw_obs_metadata(mwnum) % cosbk
-fastem_p1    = mw_obs_metadata(mwnum) % fastem_p1
-fastem_p2    = mw_obs_metadata(mwnum) % fastem_p2
-fastem_p3    = mw_obs_metadata(mwnum) % fastem_p3
-fastem_p4    = mw_obs_metadata(mwnum) % fastem_p4
-fastem_p5    = mw_obs_metadata(mwnum) % fastem_p5
+sat_az       = mw_obs_metadata(mykey) % sat_az
+sat_ze       = mw_obs_metadata(mykey) % sat_ze
+platform_id  = mw_obs_metadata(mykey) % platform_id
+sat_id       = mw_obs_metadata(mykey) % sat_id
+sensor_id    = mw_obs_metadata(mykey) % sensor_id
+channel      = mw_obs_metadata(mykey) % channel
+mag_field    = mw_obs_metadata(mykey) % mag_field
+cosbk        = mw_obs_metadata(mykey) % cosbk
+fastem_p1    = mw_obs_metadata(mykey) % fastem_p1
+fastem_p2    = mw_obs_metadata(mykey) % fastem_p2
+fastem_p3    = mw_obs_metadata(mykey) % fastem_p3
+fastem_p4    = mw_obs_metadata(mykey) % fastem_p4
+fastem_p5    = mw_obs_metadata(mykey) % fastem_p5
 
 end subroutine get_mw_metadata
 
@@ -3962,21 +3959,51 @@ subroutine key_within_range(key, routine)
 integer,          intent(in) :: key
 character(len=*), intent(in) :: routine
 
-integer :: maxkey 
-
-maxkey = size(obstype_metadata)
-
-if ((key > 0) .and. (key <= maxkey)) then
+if (is_valid_key(key)) then
    ! we are still within limits
    return
 else
    ! Bad news. Tell the user.
-   write(string1, *) 'key (',key,') not within known range ( 1,', maxkey,')'
+   write(string1, *) 'key (',key,') not within known range ( 1,', rttovkey,')'
    call error_handler(E_ERR,routine,string1,source,revision,revdate) 
 end if
 
 end subroutine key_within_range
 
+!----------------------------------------------------------------------
+! Make sure the key is within the useful range of the metdata arrays
+function is_valid_key(key)
+
+integer, intent(in) :: key
+logical :: is_valid_key
+
+is_valid_key = (key >0 .and. key <= rttovkey)
+
+end function is_valid_key
+!-----------------------------------------------------------------------
+! Make sure the subkey is within the useful range of the metadata arrays
+function is_valid_subkey(skey, stype)
+
+integer, intent(in) :: skey  ! subkey 
+integer, intent(in) :: stype ! subype (visir or mw)
+logical :: is_valid_subkey
+
+if (skey <=0 ) then
+  is_valid_subkey = .false.
+  return
+endif
+
+select case (stype)
+case (VISIR)
+  is_valid_subkey = (skey <= visirnum)
+case (MW)
+  is_valid_subkey = (skey <= mwnum)
+case default
+  is_valid_subkey = .false.
+end select 
+
+end function is_valid_subkey
+ 
 !----------------------------------------------------------------------
 ! If the allocatable metadata arrays are not big enough ... try again
 
@@ -4067,7 +4094,7 @@ if ( key > size(obstype_metadata(1,:)) ) then
    allocate(obstype_metadata(2, newlength)) 
 
    obstype_metadata(:,:) = NO_OBS
-   obstype_metadata(:,1:orglength) = safe_obstype_metadata(:,1:orglength) !HK check 2d copy
+   obstype_metadata(:,1:orglength) = safe_obstype_metadata(:,1:orglength)
    deallocate(safe_obstype_metadata) 
 endif
 
@@ -4331,7 +4358,7 @@ end subroutine test_unit_teardown
 !-----------------------------------------------------------------------
 ! inputs: n_ir : number of visir obs
 !         n_mw : number
-! outputs metadata_size[3] : size(1,obstype_metadata)
+! outputs metadata_size[3] :  size(1,obstype_metadata)
 !                             size(visir_obs_metadata)
 !                             size(mw_obs_metadata)
 !  loop to have a look at how grow_metadata works
@@ -4368,7 +4395,7 @@ metadata_size(3) = size(mw_obs_metadata)
 end function test_set_metadata
 
 !-----------------------------------------------------------------------
-! passes metadata out external test routine
+! passes metadata out to external test routine
 subroutine test_metadata(metadata)
 
 integer, intent(out) :: metadata(:,:)
@@ -4376,6 +4403,36 @@ metadata = obstype_metadata
 
 end subroutine test_metadata
 
+!-----------------------------------------------------------------------
+! call is_valid_key for a bunch of values
+subroutine test_key_within_range(keysin,inrange)
+
+integer, intent(in)  :: keysin(:)
+logical, intent(out) :: inrange(:)
+
+integer :: ii, key
+
+do ii = 1, size(keysin)
+   key = keysin(ii)
+   inrange(ii) = is_valid_key(key)
+enddo
+
+end subroutine test_key_within_range
+!-----------------------------------------------------------------------
+subroutine test_subkey_within_range(subkeysin,stype,inrange)
+
+integer, intent(in)  :: subkeysin(:)
+integer, intent(in)  :: stype
+logical, intent(out) :: inrange(:)
+
+integer :: ii, key
+
+do ii = 1, size(subkeysin)
+   key = subkeysin(ii)
+   inrange(ii) = is_valid_subkey(key,stype)
+enddo
+
+end subroutine test_subkey_within_range
 !-----------------------------------------------------------------------
 end module obs_def_rttov_mod
 

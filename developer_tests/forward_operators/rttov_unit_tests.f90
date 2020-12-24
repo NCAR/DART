@@ -22,10 +22,12 @@
 !
 program rttov_unit_tests
 
-use obs_def_rttov_mod, only : test_unit_setup,    &
-                              test_set_metadata,  &
-                              test_unit_teardown, &
-                              test_metadata
+use obs_def_rttov_mod, only : test_unit_setup,       &
+                              test_set_metadata,     &
+                              test_unit_teardown,    &
+                              test_metadata,         &
+                              test_key_within_range, &
+                              test_subkey_within_range
 use         types_mod, only : r8
 use     utilities_mod, only : initialize_utilities
 use     assert_mod,    only : assert_equal 
@@ -48,6 +50,16 @@ integer :: m1(2,32)
 integer :: correct2_subtype(12) = (/1,1,2,2,2,2,2,2,2,-1,-1,-1/) 
 integer :: correct2_subkey(12) = (/1,2,1,2,3,4,5,6,7,-1,-1,-1/)
 integer :: m2(2,12)
+
+! key within range test
+integer :: inkeys1(5) = (/-1,100,101,6,2/)  
+logical :: correct_range1(5) = (/.false., .false., .false., .true., .true./)
+integer :: inkeys2(5) = (/-1,2,7,8,21/)  
+logical :: correct_range2_no_subkey(5) = (/.false., .false., .false., .false., .false./)
+logical :: correct_range2_visir(5) = (/.false., .true., .false., .false., .false./)
+logical :: correct_range2_mw(5) = (/.false., .true., .true., .false., .false./)
+logical :: in_range(5)
+ 
 ! -----------------------------------------------
 
 ! DART initialization
@@ -60,11 +72,13 @@ call initialize_utilities('rttov_unit_tests')
 if ( test_unit_setup(1) ) then ! MAXrttovkey starts from 1 and metadata grows
 
    metadata_size = test_set_metadata(10,10) ! visir, mw
-   
+
+   ! test sizes   
    call assert_equal(metadata_size(1),32, 'obstype_metadata')
    call assert_equal(metadata_size(2),16, 'visir_obs_metadata')
    call assert_equal(metadata_size(3),16, 'mw_obs_metadata')
 
+   ! test contents
    call test_metadata(m1)
    call assert_equal(m1(1,:), correct1_subtype, 'subtypes')
    call assert_equal(m1(2,:), correct1_subkey, 'subtypes')
@@ -90,6 +104,35 @@ if ( test_unit_setup(3) ) then
    call test_metadata(m2)
    call assert_equal(m2(1,:), correct2_subtype, 'subtypes')
    call assert_equal(m2(2,:), correct2_subkey, 'subtypes')
+
+else  ! module is already initialized, unit tests are not reliable
+   print*, 'FAIL: rrtov module is already initialized, unit tests are not reliable'
+   failme = .true.
+endif
+
+call test_unit_teardown()
+
+! -----------------------------------------------
+! key within range
+! -----------------------------------------------
+if ( test_unit_setup(100) ) then
+
+  metadata_size = test_set_metadata(2,7) ! visir, mw
+  call test_key_within_range(inkeys1, in_range) 
+  call assert_equal(in_range, correct_range1, 'valid keys')
+
+  ! NO SUBTYPE 
+  call test_subkey_within_range(inkeys2, 0, in_range)
+  call assert_equal(in_range, correct_range2_no_subkey, 'no subtype')
+
+  ! VISIR 
+  call test_subkey_within_range(inkeys2, 1, in_range)
+  call assert_equal(in_range, correct_range2_visir, 'valid visir keys')
+
+  ! MW
+  call test_subkey_within_range(inkeys2, 2, in_range)
+  call assert_equal(in_range, correct_range2_mw, 'valid mw keys')
+
 
 else  ! module is already initialized, unit tests are not reliable
    print*, 'FAIL: rrtov module is already initialized, unit tests are not reliable'
