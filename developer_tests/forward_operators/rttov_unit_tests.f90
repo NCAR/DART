@@ -1,3 +1,7 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
 ! Unit tests for rttov
 !
 ! These unit tests use warn_only_utilities_mod.f90 which 
