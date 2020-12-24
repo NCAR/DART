@@ -4,8 +4,6 @@
 
 !> test of rttov interfaces
 
-!HK what is this testing?
-
 program rttov_test
 
 use         types_mod, only : r8

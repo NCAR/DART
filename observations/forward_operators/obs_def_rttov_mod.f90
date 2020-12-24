@@ -425,7 +425,6 @@ public :: test_unit_setup,       &
           test_subkey_within_range
 
 ! Metadata for rttov observations.
-!HK are these the only two types of observations?
 type visir_metadata_type
    real(jprb)    :: sat_az      ! azimuth of satellite position (degrees)
    real(jprb)    :: sat_ze      ! zenith of satellite position (degrees)
@@ -2472,7 +2471,6 @@ if (debug) then
 end if
 
 
-!HK is 
 !  rttov_direct  for visir
 !  rttov_scatt   for mw    ?
 if (is_visir .or. mw_clear_sky_only) then
@@ -3486,7 +3484,6 @@ if ( .not. module_initialized ) call initialize_module
 val = 0.0_r8 ! set return value early
 
 ! Make sure the desired key is within the length of the metadata arrays.
-! HK this doesn't really test much
 call key_within_range(key, routine)
 
 select case (obstype_metadata(SUBTYPE, key))
