@@ -4331,7 +4331,7 @@ end subroutine test_unit_teardown
 !-----------------------------------------------------------------------
 ! inputs: n_ir : number of visir obs
 !         n_mw : number
-! outputs metadata_size[43] : size(1,obstype_metadata)
+! outputs metadata_size[3] : size(1,obstype_metadata)
 !                             size(visir_obs_metadata)
 !                             size(mw_obs_metadata)
 !  loop to have a look at how grow_metadata works
