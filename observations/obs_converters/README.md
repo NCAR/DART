@@ -281,7 +281,7 @@ observations into the format required by DART.
 
 The current list of converters (some directories contain multiple converters) include:
 
--   [AIRS](AIRS/README.md) [atmospheric variables](AIRS/AIRS.html) and [AMSUA radiances](AIRS.README.md)
+-   [AIRS](AIRS/README.md) [atmospheric variables](AIRS/AIRS.html) and [AMSUA radiances](AIRS/README.md)
 -   AURA (uses a combination of IDL and Fortran)
 -   [Aviso+/CMEMS](AVISO/AVISO.html)
 -   [Ameriflux](Ameriflux/level4_to_obs.html)
@@ -292,7 +292,6 @@ The current list of converters (some directories contain multiple converters) in
 -   [DWL](DWL/dwl_to_obs.html)
 -   [GMI](GMI/README.md)
 -   [GOES](GOES/README.md)
--   [GMI](GMI/README.md)
 -   [GPSPW](GPSPW/README)
 -   GRACE
 -   [GSI2DART](GSI2DART/README)

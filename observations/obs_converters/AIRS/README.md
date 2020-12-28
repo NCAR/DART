@@ -57,7 +57,7 @@ that work with hdf files.
 The specific library we use is the
 [HDF-EOS2](http://hdfeos.org/software/library.php#HDF-EOS2)
 The web page has a link to specific build
-instructions.  Also, see [Build](#build") on this page
+instructions.  Also, see [Build](#build) on this page
 for very specific instructions for getting the required software
 and building it.  If you find more recent instructions online, use those.
 But in the absence of anything else, it's someplace to start.
