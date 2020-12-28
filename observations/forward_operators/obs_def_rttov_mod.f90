@@ -9,6 +9,7 @@
 ! the additional metadata in each observation includes:
 !
 !  OBS            X
+! rttov
 !    sat az/el
 !    sun az/el
 !    platform
@@ -2471,8 +2472,6 @@ if (debug) then
 end if
 
 
-!  rttov_direct  for visir
-!  rttov_scatt   for mw    ?
 if (is_visir .or. mw_clear_sky_only) then
    ! Call RTTOV forward model
    call rttov_direct (                         &
@@ -3079,7 +3078,7 @@ character(len=*), parameter :: routine = 'get_visir_metadata'
 
 if ( .not. module_initialized ) call initialize_module
 
-! Make sure the desired key is within the length of the metadata arrays.
+! Make sure the desired key is within the useful length of the metadata arrays.
 call key_within_range(key,routine)
 
 if (obstype_metadata(SUBTYPE,key) /= VISIR) then
@@ -3131,7 +3130,7 @@ integer :: mykey
 
 if ( .not. module_initialized ) call initialize_module
 
-! Make sure the desired key is within the length of the metadata arrays.
+! Make sure the desired key is within the useful length of the metadata arrays.
 call key_within_range(key,routine)
 
 if (obstype_metadata(SUBTYPE,key) /= MW) then
@@ -3483,7 +3482,7 @@ if ( .not. module_initialized ) call initialize_module
 
 val = 0.0_r8 ! set return value early
 
-! Make sure the desired key is within the length of the metadata arrays.
+! Make sure the desired key is within the useful length of the metadata arrays.
 call key_within_range(key, routine)
 
 select case (obstype_metadata(SUBTYPE, key))
@@ -4294,7 +4293,7 @@ function get_channel(flavor, key) result(channel)
    ! Retrieve channel from different metadata types
    ! All the other arguments are mandatory, but not needed here.
 
-   select case (obstype_metadata(1,key))
+   select case (obstype_metadata(SUBTYPE,key))
 
    case ( VISIR )
       call get_visir_metadata(key, &
@@ -4354,11 +4353,12 @@ end subroutine test_unit_teardown
 
 !-----------------------------------------------------------------------
 ! inputs: n_ir : number of visir obs
-!         n_mw : number
+!         n_mw : number of microwave obs
 ! outputs metadata_size[3] :  size(1,obstype_metadata)
 !                             size(visir_obs_metadata)
 !                             size(mw_obs_metadata)
-!  loop to have a look at how grow_metadata works
+!  Loop to have a look at how grow_metadata works
+!  The actul data in the obs is junk
 function test_set_metadata(n_ir, n_mw) result(metadata_size)
 
 integer, intent(in)  :: n_ir, n_mw

@@ -55,16 +55,7 @@ end
 \rm -f *.o *.mod Makefile .cppdefs
 \rm -f input.nml*_default
 
-if ( $#argv == 1 && "$1" == "-mpi" ) then
-  echo "Success: All single task DART programs compiled."
-  echo "Script now compiling MPI parallel versions of the DART programs."
-  echo " NO MPI PROGRAMS"
-else if ( $#argv == 1 && "$1" == "-nompi" ) then
-  echo "Success: All single task DART programs compiled."
-  echo "Script is exiting without building the MPI version of the DART programs."
-  exit 0
-else
-  echo ""
-  echo "Success: All single task DART programs compiled."
-  exit 0
-endif
+echo ""
+echo "Success: All single task DART programs compiled."
+echo ""
+exit 0
