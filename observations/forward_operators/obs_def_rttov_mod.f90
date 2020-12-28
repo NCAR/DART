@@ -3305,7 +3305,7 @@ if ( .not. module_initialized ) call initialize_module
 
 is_asciifile = ascii_file_format(fform)
 
-select case (obstype_metadata(SUBKEY,key))
+select case (obstype_metadata(SUBTYPE,key))
 
    case (VISIR)
       call get_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
