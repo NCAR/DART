@@ -486,7 +486,7 @@ integer :: ret, varid
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
 
-ret = nf90_put_att(ncid, varid, attname, adjustl(val))
+ret = nf90_put_att(ncid, varid, attname, val)
 call nc_check(ret, routine, 'adding the attribute: '//trim(attname)//' to variable: '//trim(varname), context, filename, ncid)
 
 end subroutine nc_add_char_att_to_var

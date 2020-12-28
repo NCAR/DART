@@ -141,7 +141,9 @@ LD = ifort
 RTMOD = $(RTTOV)/mod
 RTINC = $(RTTOV)/include
 RTLIB = $(RTTOV)/lib
-RTLIBS = -lrttov12_wrapper -lrttov12_mw_scatt -lrttov12_brdf_atlas -lrttov12_emis_atlas -lrttov12_other -lrttov12_parallel -lrttov12_coef_io -lrttov12_hdf -lrttov12_main 
+RTLIBS = -lrttov12_wrapper    -lrttov12_mw_scatt -lrttov12_brdf_atlas \
+         -lrttov12_emis_atlas -lrttov12_other    -lrttov12_parallel \
+         -lrttov12_coef_io    -lrttov12_hdf      -lrttov12_main 
 
 RTINCS = -I$(RTINC) -I$(RTMOD)
 RTLIBDIRS = -L$(RTLIB) 
@@ -150,13 +152,13 @@ INCS = -I$(NETCDF)/include $(RTINCS)
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf \
        -L$(RTLIB)   $(RTLIBS) 
 
-# FFLAGS  = -O0 -assume buffered_io $(INCS)
+FFLAGS  = -O -assume buffered_io $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
- FFLAGS = -g -C -check noarg_temp_created -fpe0 \
-          -fp-model precise  -ftrapuv -traceback \
-          -warn declarations,uncalled,unused $(INCS)
+# FFLAGS = -g -C -check noarg_temp_created -fpe0 \
+#          -fp-model precise  -ftrapuv -traceback \
+#          -warn declarations,uncalled,unused $(INCS)
 
 # Some optimized (BLAS, LAPACK) libraries may be available with the Intel Math Kernel Libraries:
 # LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread

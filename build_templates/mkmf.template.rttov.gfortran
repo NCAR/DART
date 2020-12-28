@@ -75,25 +75,27 @@ LD = gfortran
 # installation in the same place as netCDF.
 
 # NETCDF = /usr/lib/x86_64-linux-gnu
-# HDFDIR = /usr/include/hdf5/serial
+# HDF5DIR = /usr/include/hdf5/serial
 # RTTOV = ~/research/satellite/rttov
 
 # You will likely not need to modify below this line
 
-HDFINC = $(HDFDIR)/include
-HDFLIB = $(HDFDIR)/lib
-HDFLIBS = -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
+HDF5INC = $(HDF5DIR)/include
+HDF5LIB = $(HDF5DIR)/lib
+HDF5LIBS = -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
 
 RTMOD = $(RTTOV)/mod
 RTINC = $(RTTOV)/include
 RTLIB = $(RTTOV)/lib
-RTLIBS = -lrttov12_wrapper -lrttov12_mw_scatt -lrttov12_brdf_atlas -lrttov12_emis_atlas -lrttov12_other -lrttov12_parallel -lrttov12_coef_io -lrttov12_hdf -lrttov12_main 
+RTLIBS = -lrttov12_wrapper    -lrttov12_mw_scatt -lrttov12_brdf_atlas \
+         -lrttov12_emis_atlas -lrttov12_other    -lrttov12_parallel \
+         -lrttov12_coef_io    -lrttov12_hdf      -lrttov12_main 
 
-RTINCS = -I$(RTINC) -I$(RTMOD) -I$(HDFINC)
-RTLIBDIRS = -L$(RTLIB) -L$(HDFLIB)
+RTINCS = -I$(RTINC) -I$(RTMOD) -I$(HDF5INC)
+RTLIBDIRS = -L$(RTLIB) -L$(HDF5LIB)
 
 INCS = -I$(NETCDF)/include $(RTINCS)
-LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf $(RTLIBDIRS) $(RTLIBS) $(HDFLIBS)
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf $(RTLIBDIRS) $(RTLIBS) $(HDF5LIBS)
 
 # If modifying for a different compiler, set INCS and LIBS and do not use the
 # next two lines - they are specific to gfortran
