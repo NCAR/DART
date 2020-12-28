@@ -8,12 +8,19 @@ use    utilities_mod, only : initialize_utilities, register_module, &
                              error_handler, finalize_utilities, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, set_filename_list, &
-                             logfileunit, nmlfileunit, get_next_filename
+                             nmlfileunit, get_next_filename
 
 use netcdf_utilities_mod, only : nc_create_file, nc_begin_define_mode, &
                                  nc_end_define_mode, nc_close_file
 
-use amsua_netCDF_support_mod
+use amsua_netCDF_support_mod, only : define_amsua_dimensions, &
+                                     define_amsua_variables, &
+                                     fill_amsua_variables
+
+use amsua_bt_mod, only : amsua_bt_granule, amsua_bt_rdr, &
+                         AMSUA_BT_GEOXTRACK,  AMSUA_BT_GEOTRACK,    AMSUA_BT_CHANNEL, &
+                         AMSUA_BT_CALXTRACK,  AMSUA_BT_SPACEXTRACK, AMSUA_BT_BBXTRACK, &
+                         AMSUA_BT_WARMPRTA11, AMSUA_BT_WARMPRTA12,  AMSUA_BT_WARMPRTA2
 
 implicit none
 
@@ -29,7 +36,7 @@ character(len=*), parameter :: revdate  = ''
 type(amsua_bt_granule) :: amsua_bt_gran
 
 integer :: iunit, io, ncid
-integer :: chan    !0-based channel index.
+integer :: chan
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -37,8 +44,8 @@ integer :: chan    !0-based channel index.
 
 character(len=256) :: file_name  = ''
 character(len=256) :: outputfile = 'amsua_bt_granule.nc'
-integer            :: track  = 1 ! 0-based index along track
-integer            :: xtrack = 0 ! 0-based index across-track
+integer            :: track  = 1 ! 1-based index along track
+integer            :: xtrack = 0 ! 1-based index across-track
 
 namelist /L1_AMSUA_to_netcdf_nml/ file_name, outputfile, &
                                track, xtrack
@@ -50,8 +57,9 @@ namelist /L1_AMSUA_to_netcdf_nml/ file_name, outputfile, &
 call initialize_utilities('L1_AMSUA_to_netcdf')
 call register_module(source,revision,revdate)
 
-call error_handler(E_ERR,source,'ROUTINE NOT USABLE', &
-          text2='Complications with simultaneous HDF4, netCDF, and HDF5')
+call error_handler(E_ERR,source,'ROUTINE NOT USABLE.', &
+          text2='Routine barely started. Needs a lot of work and expect', &
+          text3='complications with simultaneous HDF4, netCDF, and HDF5.')
 
 !----------------------------------------------------------------------
 ! Read the namelist
@@ -128,22 +136,21 @@ print *, "# AMSU Brightness Temperatures (Kelvins)"
 print *, "# Channels 1-15"
 print *, "# -9999 flags bad value"
 
-DO chan = 1, AMSUA_BT_CHANNEL 
-   WRITE(*, "(f8.2)") amsua_bt_gran%brightness_temp(chan,xtrack,track)
-ENDDO
+do chan = 1, AMSUA_BT_CHANNEL 
+   write(*, "(f8.2)") amsua_bt_gran%brightness_temp(chan,xtrack,track)
+enddo
 
 !-------------------------------------------------------------------------------
 ! convert the granule to netCDF
 !-------------------------------------------------------------------------------
 
 ncid = nc_create_file( outputfile, source)
-!call nc_begin_define_mode(   ncid, source)
-call define_amsua_dimensions(amsua_bt_gran, ncid, source)
+call nc_begin_define_mode(   ncid, source)
+call define_amsua_dimensions(ncid, source)
 call define_amsua_variables( amsua_bt_gran, ncid, source)
 call nc_end_define_mode(     ncid, source)
 call fill_amsua_variables(   amsua_bt_gran, ncid, source)
 call nc_close_file(          ncid, source)
-
 
 call finalize_utilities()
 

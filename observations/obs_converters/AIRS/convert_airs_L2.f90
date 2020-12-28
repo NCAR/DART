@@ -15,7 +15,7 @@ use    utilities_mod, only : initialize_utilities, register_module, &
                              error_handler, finalize_utilities, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, set_filename_list, &
-                             logfileunit, nmlfileunit, get_next_filename
+                             nmlfileunit, get_next_filename
 
 use     airs_JPL_mod, only : airs_granule_type, airs_ret_rdr
 
@@ -29,7 +29,6 @@ implicit none
 ! ----------------------------------------------------------------------
 
 integer                 :: thin_factor, filecount
-character(len=256)      :: datafile(1), output_name, dartfile, msgstring
 type(airs_granule_type) :: granule
 type(obs_sequence_type) :: seq
 
@@ -101,7 +100,7 @@ filecount = set_filename_list(l2_files, l2_file_list, "convert_airs_l2")
 thin_factor = compute_thin_factor(along_track_thin, cross_track_thin)
 
 ! initialize an empty obs_seq to start
-seq = initialize_obs_sequence(outputfile, filecount, thin_factor)
+seq = initialize_obs_sequence(filecount, thin_factor)
 
 ! for each input file
 do index=1, filecount

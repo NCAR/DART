@@ -29,7 +29,7 @@ use    utilities_mod, only : initialize_utilities, register_module, &
                              error_handler, finalize_utilities, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, set_filename_list, &
-                             logfileunit, nmlfileunit, get_next_filename
+                             nmlfileunit, get_next_filename
 
 use     amsua_bt_mod, only : amsua_bt_granule
 
@@ -72,12 +72,10 @@ namelist /convert_amsu_L1_nml/ l1_files, l1_file_list, &
 ! ----------------------------------------------------------------------
 
 integer                  :: io, iunit, ifile
-integer                  :: thin_factor, filecount
+integer                  :: filecount
 type(amsua_bt_granule)   :: granule
 type(obs_sequence_type)  :: seq
 logical                  :: use_channels(AMSUA_BT_CHANNEL) = .false.
-
-character(len=512) :: string1
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'convert_amsu_L1.f90'
