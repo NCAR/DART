@@ -34,7 +34,7 @@ use     assert_mod,    only : assert_equal
 
 implicit none
 
-logical :: failme = .true.
+logical :: failme = .false.
 
 
 integer :: metadata_size(3)
