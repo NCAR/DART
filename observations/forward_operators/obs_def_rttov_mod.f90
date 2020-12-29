@@ -3203,7 +3203,7 @@ if ( is_asciifile ) then
       read(ifile, *, iostat=ierr) platform_id, sat_id, sensor_id, channel
       call check_iostat(ierr,'read_rttov_metadata','platform/sat_id/sensor/channel',string2)
       read(ifile, *, iostat=ierr) specularity
-      call check_iostat(ierr,'read_rttov_metadata','platform/sat_id/sensor/channel',string2)
+      call check_iostat(ierr,'read_rttov_metadata','specularity',string2)
       read(ifile, *, iostat=ierr) oldkey
       call check_iostat(ierr,'read_rttov_metadata','oldkey',string2)
       is_visir = .true.
