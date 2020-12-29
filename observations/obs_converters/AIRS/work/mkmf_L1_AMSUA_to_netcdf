@@ -24,10 +24,10 @@ else
    set HDFEOS_LIBRARIES = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
 endif
 
-     ../../../../build_templates/mkmf -p convert_L2b \
- -t  ../../../../build_templates/mkmf.template \
- -l "-I${HDFEOS_INCLUDE} -L${HDFEOS_LIBROOT} ${HDFEOS_LIBRARIES}" \
- -a "../../../.." path_names_convert_L2b
+     ../../../../build_templates/mkmf -p L1_AMSUA_to_netcdf \
+  -t ../../../../build_templates/mkmf.template \
+  -l "-I${HDFEOS_INCLUDE} -L${HDFEOS_LIBROOT} ${HDFEOS_LIBRARIES}" \
+ -a "../../../.." path_names_L1_AMSUA_to_netcdf
 
 exit $status
 
