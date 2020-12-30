@@ -2101,19 +2101,17 @@ if (define) then
       call error_handler(E_MSG,routine,string1,source,revision,revdate)
    end if
 
-   call nc_define_double_variable(ncid, gitmvar(ivar)%varname, (/ LON_DIM_NAME, LAT_DIM_NAME, ALT_DIM_NAME /) )
    call nc_define_double_scalar(ncid,   gitmvar(ivar)%varname)
    call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'long_name',      gitmvar(ivar)%long_name)
    call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'units',          gitmvar(ivar)%units)
-   !call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'storder',        gitmvar(ivar)%storder)
    call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'gitm_varname',   gitmvar(ivar)%gitm_varname)
    call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'gitm_dim',       gitmvar(ivar)%gitm_dim)
    call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'gitm_index',     gitmvar(ivar)%gitm_index)
 
 else
 
-   call nc_put_variable(ncid, gitmvar(ivar)%varname, 1, data0d, &
-      context=routine)
+   call nc_put_variable(ncid, gitmvar(ivar)%varname, data0d, context=routine)
+
 end if
 
 end subroutine unpack_data0d

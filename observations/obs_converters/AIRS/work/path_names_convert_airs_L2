@@ -26,5 +26,5 @@ observations/forward_operators/obs_def_utilities_mod.f90
 observations/obs_converters/AIRS/airs_JPL_mod.f90
 observations/obs_converters/AIRS/airs_obs_mod.f90
 observations/obs_converters/AIRS/convert_airs_L2.f90
-observations/obs_converters/utilities/obs_utilities_mod.f90
 observations/obs_converters/obs_error/ncep_obs_err_mod.f90
+observations/obs_converters/utilities/obs_utilities_mod.f90
