@@ -116,6 +116,10 @@ setenv CASEROOT $1
 
 cd ${CASEROOT}
 
+# FIXME; variables in data_scripts.csh are redundant with the setenvs that follow.
+# Clean it up some day.
+source ./data_scripts.csh
+
 setenv scomp                     `./xmlquery COMP_ATM      --value`
 setenv CASE                      `./xmlquery CASE          --value`
 setenv ensemble_size             `./xmlquery NINST_ATM     --value`
@@ -467,7 +471,8 @@ if ($#log_list >= 3) then
       endif
    endif
 
-   # Remove log files: *YYMMDD-HHMMSS*.  Except not da.log files
+   # Remove log files: *YYMMDD-HHMMSS*, except not da.log files, after moves and copies are done.
+   wait
    ${REMOVE}  [^d]*${rm_log[$rm_slot]}*  &
 
    # I'd like to remove the CAM .r. files, since we always use the .i. files to do a hybrid start,
@@ -622,6 +627,8 @@ if ($USING_PRIOR_INFLATION == true) then
    else
       # Look for the output from the previous assimilation (or fill_inflation_restart)
       # If inflation files exists, use them as input for this assimilation
+      # TODO: This should probably look for a date, instead of relying on the files
+      #       we want being the youngest in the directory.
       echo "Gathering inflation names at " `date --rfc-3339=ns`
       (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
       (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null

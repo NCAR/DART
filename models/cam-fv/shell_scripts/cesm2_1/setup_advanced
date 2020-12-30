@@ -11,20 +11,20 @@
 # The job name should be the name of this script(file), 
 # or this file may not be archived in $caseroot causing DART_config to fail.
 #--------------------------------------------
-#BSUB  -J setup_advanced_Rean
+#BSUB  -J setup_advanced
 #BSUB  -n 1 
 #BSUB  -R "span[ptile=1]"
 #BSUB  -q shared_node_queue_for_this_setup_script
-#BSUB  -P NCIS0006
+#BSUB  -P YOUR_ACCOUNT
 #BSUB  -W 2:00
-#BSUB  -u raeder@ucar.edu
+#BSUB  -u YOUR@email.address
 #BSUB  -N  
 #BSUB  -a poe 
 #BSUB  -o Test0.bld1
 #BSUB  -e Test0.bld1
 #--------------------------------------------
 #PBS  -N setup_advanced
-#PBS  -A NCIS0006
+#PBS  -A YOUR_ACCOUNT
 #PBS  -q share
 #
 # Resources to specify:
@@ -34,7 +34,7 @@
 #PBS  -l select=1:ncpus=4:mpiprocs=4
 #PBS  -l walltime=01:00:00
 #PBS  -m ae
-#PBS  -M raeder@ucar.edu
+#PBS  -M YOUR@email.address
 # Send standard output and error to this file.
 # It's helpful to use the $casename here.
 #PBS  -o IMPI_not_MPT3.bld1
@@ -153,10 +153,7 @@
 # setenv case  f.e21.FHIST_BGC.f09_025.CAM6assim.011
 setenv case            IMPI_not_MPT3
 setenv compset         HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV
-# 2019-8-6
-# Hijack this to temporarily specify impi (Intel MPI) instead of the default MPT.
 setenv user_grid       ''
-# setenv user_grid       '--mpilib impi '
 #      alias: f09_f09_mg17 (only for compsets that are not _POP and no CISM)
 setenv resolution      f09_d025
 setenv cesmtag         cesm2_1_relsd_m5.6
@@ -348,10 +345,10 @@ setenv sst_year_end   $start_year
 # timewall   can be changed during a series by changing the case.run
 # ==============================================================================
 
-setenv PROJECT      NCIS0006
+setenv PROJECT      YOUR_ACCOUNT
 setenv queue        premium
 setenv timewall     1:00
-setenv email        raeder@ucar.edu
+setenv email        YOUR@email.address
 
 # ==============================================================================
 # standard commands:
@@ -805,12 +802,9 @@ setenv save_every_Mth_day_restart Monday
 # DART_config can be run at some later date if desired, but it must be run
 # from a caseroot directory.
 
->>> Add data for $data_scratch: ${cime_output}/${case}
-       Or get it from $EXEROOT in DART_config
->>> Add archiving locations; project and campaign
 if ( -e ${DART_CESM_scripts}/DART_config.template ) then
    sed -e "s#your_dart_path#${dartroot}#" \
-       -e "s#your_setup_script_dir#$DART_CESM_scripts:t#" \
+       -e "s#your_setup_script_dir#$DART_CESM_scripts#" \
        -e "s#your_observation_path#${baseobsdir}#" \
        -e "s#your_account#${PROJECT}#" \
        -e "s#your_email#${email}#" \
@@ -843,15 +837,15 @@ setenv  data_proj_space       $projdir
 setenv  data_DART_src         $dartroot
 setenv  data_CASEROOT         $caseroot
 setenv  data_CASE             $case
-setenv  data_scratch          ${cime_output}/${caseroot}
+setenv  data_scratch          ${cime_output}/${case}
 setenv  data_campaign         $campdir
-setenv  data_CESM_python      $CIME_ROOT/scripts/lib/CIME 
+setenv  data_CESM_python      $CIMEROOT/scripts/lib/CIME 
 setenv  data_DOUT_S_ROOT      $archdir
 
-setenv CONTINUE_RUN `./xlmquery CONTINUE_RUN --value`
+setenv CONTINUE_RUN \`./xmlquery CONTINUE_RUN --value\`
 if (\$CONTINUE_RUN == FALSE) then
-   set START_DATE = `./xlmquery RUN_START_DATE --value`
-   set parts = `echo \$START_DATE | sed -e "s#-# #"`
+   set START_DATE = \`./xmlquery RUN_START_DATE --value\`
+   set parts = \`echo \$START_DATE | sed -e "s#-# #"\`
    setenv data_year \$parts[1]
    setenv data_month \$parts[2]
 
@@ -862,11 +856,11 @@ else if (\$CONTINUE_RUN == TRUE) then
       echo "\${data_scratch}/run/rpointer.atm_0001 is missing.  Exiting"
       exit 19
    endif
-   set FILE = `head -n 1 \${data_scratch}/run/rpointer.atm_0001`
+   set FILE = \`head -n 1 \${data_scratch}/run/rpointer.atm_0001\`
    set ATM_DATE_EXT = \$FILE:e
-   set ATM_DATE     = `echo \$ATM_DATE_EXT | sed -e "s#-# #g"`
-   setenv data_year   `echo \$ATM_DATE[1] | bc`
-   setenv data_month  `echo \$ATM_DATE[2] | bc`
+   set ATM_DATE     = \`echo \$ATM_DATE_EXT | sed -e "s#-# #g"\`
+   setenv data_year   \`echo \$ATM_DATE[1] | bc\`
+   setenv data_month  \`echo \$ATM_DATE[2] | bc\`
 
 else
    echo "env_run.xml: CONTINUE_RUN must be FALSE or TRUE (case sensitive)"
@@ -1138,6 +1132,42 @@ while ($inst <= $num_instances)
    # ===========================================================================
    echo '  taxmode = "limit"'                                      >> ${fname}
 
+   # The 1/4 degree avhrr SSTICE files' metadata says that the times are
+   # relative to 1978-01-01 00:00:00, but that the data are valid at the
+   # "center of the day".  The times in the file are whole days, not day.5,
+   # so that's inconsistent.  Fix that by setting an offset in the docn stream text files.
+   # That can't be changed by xml variables or variabls in user_docn_in files.
+   # The data component website (http://esmci.github.io/cime/data_models/input-streams.html)
+   # says 
+   # "if a data set contains daily average data with timestamps for the data 
+   # at the end of the day, it might be appropriate to shift the time axis 
+   # by 12 hours so the data is taken to be at the middle of the day 
+   # instead of the end of the day. 
+   # Note that a positive offset advances the input data time axis forward 
+   # by that number of seconds."
+   # It seems that the avhrr data is defined at the beginnings of the days,
+   # so we want a negative offset to move the axis "left" and make 12 Z
+   # line up with the data.  A test will tell . . .
+   #
+   # Also note the warnings in esmci... about changing related values 
+   # in the env_xxx.xml files when there are user_docn.streams... files.
+   # Summary:
+   # 1) Make sure that preview_namelist has been run to propagate
+   #    the SSTICE pathname from env_run.xml to 
+   #    $CASEROOT/Casedocs/docn.streams.txt.prescribed_####
+   # 2) cp those files into $CASEROOT/user_{same_file_names}
+   # 3) modify them as needed (change offset from 0 to 43200).
+   # 4) If the SSTICE pathname needs to be changed, 
+   #    it must be changed in the user_docn.stream files
+   #    env_run.xml will be ignored for that variable.
+   #    (Or change env_run.xml and repeat 1) - 4)).
+   echo $sst_dataset | grep avhrr 
+   if ($status == 0) then
+      sed -e "s#      0#      43200#"                        \
+          CaseDocs/docn.streams.txt.prescribed${inst_string} \
+              user_docn.streams.txt.prescribed${inst_string}
+   endif
+
    @ inst ++
 
 end
@@ -1335,6 +1365,16 @@ else     # CONTINUE_RUN == FALSE
    echo "All files set to run the FIRST experiment step using (ref)time" $init_time
 
 endif
+
+ls *inf*${restart_time}* >& /dev/null
+if ($status != 0) then 
+   echo ""
+   echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+   echo "WARNING:  no inflation files were found for \$restart_time"
+   echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+   echo ""
+endif
+
 exit 0
 
 EndOfText
@@ -1406,16 +1446,22 @@ Time to check the case.
     DART can be turned off by
     ./xmlchange DATA_ASSIMILATION=FALSE
 
-5)  Submit the job (and get mail when it starts and stops):
+5) If this case needs to be under git control:
+   a) move the CASEROOT directory to temp_name,
+   b) on https://github.com/NCAR/DART_CASES make a branch named $CASE,
+   c) clone that branch into a new, git-controlled CASEROOT,
+   d) copy the contents of temp_name back into the git CASEROOT.
+
+6)  Submit the job (and get mail when it starts and stops):
     ./case.submit -M begin,end
 
-6)  After the job has run, check to make sure it worked.
+7)  After the job has run, check to make sure it worked.
 
-7)  If the first cycle generated an ensemble by perturbing a single state,
+8)  If the first cycle generated an ensemble by perturbing a single state,
     change input.nml as described in the instructions in it,
     to make cycles 2,...,N use the latest ensemble, unperturbed.
 
-8)  To extend the run in $stop_n '$stop_option' steps, use xmlchange to
+9)  To extend the run in $stop_n '$stop_option' steps, use xmlchange to
     change the CESM runtime variables:
 
     ./xmlchange DATA_ASSIMILATION_CYCLES= the value you want.

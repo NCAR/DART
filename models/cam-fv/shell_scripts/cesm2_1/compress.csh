@@ -75,6 +75,7 @@ echo "   (arg2) date       = $ymds"
 echo "   (arg3) sets       = $sets"
 echo "   (arg4) stages     = $stages"
 echo "   data_CASE     = $data_CASE"
+echo "   data_CASEROOT = $data_CASEROOT"
 echo "   ensemble_size = $data_NINST"
 
 # ------------------------------------------------------------------------------
@@ -120,9 +121,12 @@ switch ($comp)
             @ task++
             echo "$comp_cmd $file_name &> compress_${task}.eo " >> mycmdfile
          else if (-f ${file_name}.gz) then
-            # Kluge to get around situations where an earlier job compressed the file,
+            # Handle situations where an earlier job compressed the file,
             # but failed for some other reason, so it's being re-run.
             echo "$file_name already compressed"
+         else if (-f $file_name:r) then
+            # Handle situations where an earlier job decompressed the file,
+            echo "$file_name already decompressed"
          else
             echo 'ERROR: Could not find "'$file_name'" to compress.'
             exit 47
@@ -148,8 +152,10 @@ switch ($comp)
                   echo "$comp_cmd $file_name &> compress_${task}.eo" >> mycmdfile
             else if (-f ${file_name}.gz) then
                echo "$file_name already compressed"
+            else if (-f $file_name:r) then
+               echo "$file_name already decompressed"
             else
-               echo 'ERROR: Could not find "'$file_name'" to compress.'
+               echo 'ERROR: Could not find "'$file_name'" to (de)compress.'
                exit 57
             endif
 
@@ -210,10 +216,10 @@ $date
 
 if ($task > 0) then
    if ($?PBS_O_WORKDIR) then
-      mpiexec_mpt -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+      mpiexec_mpt -n $task ${data_CASEROOT}/launch_cf.sh ./mycmdfile
       set mpi_status = $status
    else if ($?SLURM_SUBMIT_DIR) then
-      mpirun      -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+      mpirun      -n $task ${data_CASEROOT}/launch_cf.sh ./mycmdfile
       set mpi_status = $status
    endif
 

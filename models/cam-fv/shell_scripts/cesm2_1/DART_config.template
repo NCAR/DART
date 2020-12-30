@@ -4,7 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
 
 # ---------------------
 # Purpose
@@ -70,7 +69,7 @@ echo "==================="
 # and the assimilate.csh which will run the assimilation.
 
 setenv DARTROOT               your_dart_path
-setenv DART_SCRIPTS_DIR       $DARTROOT/models/cam-fv/shell_scripts/your_setup_script_dir
+setenv DART_SCRIPTS_DIR       your_setup_script_dir
 echo "DART_SCRIPTS_DIR = $DART_SCRIPTS_DIR"
 
 setenv BASEOBSDIR             your_observation_path
@@ -190,6 +189,7 @@ chmod 755 assimilate.csh
 chmod 755 no_assimilate.csh
 # chmod 755 perfect_model.csh
 
+# The your_ words will be replaced by useful values by setup{_advanced}.
 foreach script (compress.csh           \
                 compress_hist.csh      \
                 diags_rean.csh         \
@@ -412,9 +412,3 @@ EndOfText
 cat DART_instructions.txt
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
-

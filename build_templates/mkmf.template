@@ -145,7 +145,7 @@ LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 
 # for speed on cheyenne (verify against a run with with -O and -fp-model precise
 #        that the numerical differences aren't too large to be acceptable):
-FFLAGS = -O2 -axavx -ipo -vec-report0 -assume buffered_io $(INCS)
+FFLAGS = -O2 -xHost -ipo -vec-report0 -assume buffered_io $(INCS)
 # FFLAGS = -O3 -axavx -ipo -vec-report0 -assume buffered_io $(INCS)
 
 # Some optimized (BLAS, LAPACK) libraries may be available with:

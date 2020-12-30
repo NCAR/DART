@@ -18,6 +18,8 @@
 # FIXME KEVIN - describe how this is supposed to be run/used.
 # >>> Run repack_st_arch.csh before running this script. <<<
 # >>> Log in to globus (see mv_to_campaign.csh for instructions).
+# >>> Purge extraneous files from $data_project_space/$data_CASE/esp/hist, 
+#     since (the new parts of) that whole directory will be archived.
 # >>> From a casper window (but not 'ssh'ed to data-access.ucar.edu)
 #     submit this script from the CESM CASEROOT directory. <<<
 
@@ -134,7 +136,7 @@ env | sort | grep SLURM
 
 echo "------------------------"
 if ($do_obs_space == true) then
-   cd ${data_proj_space}/esp/hist
+   cd ${data_proj_space}/${data_CASE}/esp/hist
    echo " "
    echo "Location for obs space is `pwd`"
 
@@ -145,12 +147,17 @@ if ($do_obs_space == true) then
    # but only the files which are newer than the CS versions will be transferred.
 
    ${data_CASEROOT}/mv_to_campaign.csh \
-      $data_year ${data_proj_space}/esp/hist/ \
+      $data_year ${data_proj_space}/${data_CASE}/esp/hist/ \
       ${data_campaign}/${data_CASE}/esp/hist
 
-   cd ${data_proj_space}
+   # If this is successful, it is safe to remove the original obs_seq_final files
+   # from $DOUT_S_ROOT/esp/hist, since there will be tarred versions on $project
+   # and CS.
+   # Do that here?  Or manually?
    
 endif
+
+cd ${data_proj_space}/${data_CASE}
 
 #--------------------------------------------
 
@@ -168,11 +175,13 @@ if ($do_history == true) then
          continue
       endif 
 
-      cd ${data_proj_space}/$components[$m]/hist
+      cd ${data_proj_space}/${data_CASE}/$components[$m]/hist
+
+      echo "============================"
+      echo "Location for history is `pwd`"
 
       if ($components[$m] == 'cpl') then
          set types = ( ha2x1d hr2x ha2x3h ha2x1h ha2x1hi )
-         echo "Location for history is `pwd`"
       else
          ls 0001/*h0* >& /dev/null
          if ($status != 0) then
@@ -181,8 +190,6 @@ if ($do_history == true) then
             continue
          endif
 
-         echo "Location for history is `pwd`"
-         
          set types = ()
          set n = 0
          while ($n < 10)
@@ -208,8 +215,8 @@ if ($do_history == true) then
             @ t++
             continue
          else
-            echo "----------------------"
-            echo "$models[$m] $types[$t]"
+            echo "   ----------------------"
+            echo "   Processing $models[$m] $types[$t]"
          endif
 
          # Make a cmd file to compress this year's history file(s) in $data_proj_space.
@@ -237,7 +244,7 @@ if ($do_history == true) then
             continue
          endif
 
-         echo "   history mpirun launch_cf.sh starts at "`date`
+         echo "   history mpirun launch_cf.sh of compression starts at "`date`
          mpirun -n $tasks ${data_CASEROOT}/launch_cf.sh ./cmdfile
          set mpi_status = $status
          echo "   history mpirun launch_cf.sh ends at "`date`
@@ -265,9 +272,12 @@ if ($do_history == true) then
          @ t++
       end
 
+      echo "   Calling mv_to_campaign.csh to copy compressed files"
       ${data_CASEROOT}/mv_to_campaign.csh \
-         $data_year ${data_proj_space}/$components[$m]/hist/  \
+         $data_year ${data_proj_space}/${data_CASE}/$components[$m]/hist/  \
          ${data_campaign}/${data_CASE}/$components[$m]/hist
+      echo "   Done with mv_to_campaign.csh"
+      echo " "
  
       cd ${data_proj_space}
 

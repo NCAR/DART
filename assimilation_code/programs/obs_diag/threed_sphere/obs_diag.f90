@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> The programs defines a series of epochs (periods of time) and geographic
 !> regions and accumulates statistics for these epochs and regions.
@@ -60,10 +58,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'threed_sphere/obs_diag.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !---------------------------------------------------------------------
 
@@ -647,7 +644,7 @@ ObsFileLoop : do ifile=1, num_input_files
          if ( dart_qc_index > 0 ) then
             qc_value = qc(dart_qc_index)
          else
-            ! If there is no dart_qc, this must be a case where we 
+            ! If there is no dart_qc, this must be a case where we
             ! are interested only in getting the location information.
             qc_value = 0
          endif
@@ -3283,12 +3280,12 @@ do iepoch = 1,Nepochs
    ! Normalize the priors
 
    if (  prior%Nused(      iepoch, ilev, iregion, ivar) == 0) then
-         prior%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
-         prior%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R4
-         prior%bias(       iepoch, ilev, iregion, ivar) = MISSING_R4
-         prior%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R4
-         prior%spread(     iepoch, ilev, iregion, ivar) = MISSING_R4
-         prior%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R4
+         prior%observation(iepoch, ilev, iregion, ivar) = MISSING_R8
+         prior%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R8
+         prior%bias(       iepoch, ilev, iregion, ivar) = MISSING_R8
+         prior%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R8
+         prior%spread(     iepoch, ilev, iregion, ivar) = MISSING_R8
+         prior%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R8
    else
          prior%observation(iepoch, ilev, iregion, ivar) = &
          prior%observation(iepoch, ilev, iregion, ivar) / &
@@ -3302,31 +3299,39 @@ do iepoch = 1,Nepochs
          prior%bias(       iepoch, ilev, iregion, ivar) / &
          prior%Nused(      iepoch, ilev, iregion, ivar)
 
-         prior%rmse(       iepoch, ilev, iregion, ivar) = &
-    sqrt(prior%rmse(       iepoch, ilev, iregion, ivar) / &
-         prior%Nused(      iepoch, ilev, iregion, ivar) )
+         if ( prior%Nused(      iepoch, ilev, iregion, ivar) > 1) then
 
-    ! convert the (pooled) variances back to standard deviations AKA 'spread'
-         prior%spread(     iepoch, ilev, iregion, ivar) = &
-    sqrt(prior%spread(     iepoch, ilev, iregion, ivar) / &
-         prior%Nused(      iepoch, ilev, iregion, ivar) )
+                 prior%rmse(       iepoch, ilev, iregion, ivar) = &
+            sqrt(prior%rmse(       iepoch, ilev, iregion, ivar) / &
+                (prior%Nused(      iepoch, ilev, iregion, ivar)-1) )
 
-    ! convert the (pooled) variances back to standard deviations AKA 'spread'
-         prior%totspread(  iepoch, ilev, iregion, ivar) = &
-    sqrt(prior%totspread(  iepoch, ilev, iregion, ivar) / &
-         prior%Nused(      iepoch, ilev, iregion, ivar) )
+                 ! convert the variances back to standard deviations AKA 'spread'
+                 prior%spread(     iepoch, ilev, iregion, ivar) = &
+            sqrt(prior%spread(     iepoch, ilev, iregion, ivar) / &
+                (prior%Nused(      iepoch, ilev, iregion, ivar)-1) )
+
+                 ! convert the (pooled) variances back to standard deviations AKA 'totalspread'
+                 prior%totspread(  iepoch, ilev, iregion, ivar) = &
+            sqrt(prior%totspread(  iepoch, ilev, iregion, ivar) / &
+                (prior%Nused(      iepoch, ilev, iregion, ivar)-1) )
+
+         else
+            prior%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R8
+            prior%spread(     iepoch, ilev, iregion, ivar) = MISSING_R8
+            prior%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R8
+         endif
 
    endif
 
    ! Same thing for the posteriors
 
    if (  poste%Nused(      iepoch, ilev, iregion, ivar) == 0) then
-         poste%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
-         poste%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R4
-         poste%bias(       iepoch, ilev, iregion, ivar) = MISSING_R4
-         poste%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R4
-         poste%spread(     iepoch, ilev, iregion, ivar) = MISSING_R4
-         poste%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R4
+         poste%observation(iepoch, ilev, iregion, ivar) = MISSING_R8
+         poste%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R8
+         poste%bias(       iepoch, ilev, iregion, ivar) = MISSING_R8
+         poste%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R8
+         poste%spread(     iepoch, ilev, iregion, ivar) = MISSING_R8
+         poste%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R8
    else
          poste%observation(iepoch, ilev, iregion, ivar) = &
          poste%observation(iepoch, ilev, iregion, ivar) / &
@@ -3340,19 +3345,27 @@ do iepoch = 1,Nepochs
          poste%bias(       iepoch, ilev, iregion, ivar) / &
          poste%Nused(      iepoch, ilev, iregion, ivar)
 
-         poste%rmse(       iepoch, ilev, iregion, ivar) = &
-    sqrt(poste%rmse(       iepoch, ilev, iregion, ivar) / &
-         poste%Nused(      iepoch, ilev, iregion, ivar) )
+         if ( poste%Nused(      iepoch, ilev, iregion, ivar) > 1) then
 
-    ! convert the (pooled) variances back to standard deviations AKA 'spread'
-         poste%spread(     iepoch, ilev, iregion, ivar) = &
-    sqrt(poste%spread(     iepoch, ilev, iregion, ivar) / &
-         poste%Nused(      iepoch, ilev, iregion, ivar) )
+                 poste%rmse(       iepoch, ilev, iregion, ivar) = &
+            sqrt(poste%rmse(       iepoch, ilev, iregion, ivar) / &
+                (poste%Nused(      iepoch, ilev, iregion, ivar)-1) )
 
-    ! convert the (pooled) variances back to standard deviations AKA 'spread'
-         poste%totspread(  iepoch, ilev, iregion, ivar) = &
-    sqrt(poste%totspread(  iepoch, ilev, iregion, ivar) / &
-         poste%Nused(      iepoch, ilev, iregion, ivar) )
+            ! convert the variances back to standard deviations AKA 'spread'
+                 poste%spread(     iepoch, ilev, iregion, ivar) = &
+            sqrt(poste%spread(     iepoch, ilev, iregion, ivar) / &
+                (poste%Nused(      iepoch, ilev, iregion, ivar)-1) )
+
+            ! convert the (pooled) variances back to standard deviations AKA 'totalspread'
+                 poste%totspread(  iepoch, ilev, iregion, ivar) = &
+            sqrt(poste%totspread(  iepoch, ilev, iregion, ivar) / &
+                (poste%Nused(      iepoch, ilev, iregion, ivar)-1) )
+
+         else
+            poste%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R8
+            poste%spread(     iepoch, ilev, iregion, ivar) = MISSING_R8
+            poste%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R8
+         endif
 
    endif
 enddo
@@ -3392,12 +3405,12 @@ do ilev=1, Nlevels
    ! Normalize the priors
 
    if (    priorAVG%Nused(      ilev, iregion, ivar) == 0) then
-           priorAVG%observation(ilev, iregion, ivar) = MISSING_R4
-           priorAVG%ens_mean(   ilev, iregion, ivar) = MISSING_R4
-           priorAVG%bias(       ilev, iregion, ivar) = MISSING_R4
-           priorAVG%rmse(       ilev, iregion, ivar) = MISSING_R4
-           priorAVG%spread(     ilev, iregion, ivar) = MISSING_R4
-           priorAVG%totspread(  ilev, iregion, ivar) = MISSING_R4
+           priorAVG%observation(ilev, iregion, ivar) = MISSING_R8
+           priorAVG%ens_mean(   ilev, iregion, ivar) = MISSING_R8
+           priorAVG%bias(       ilev, iregion, ivar) = MISSING_R8
+           priorAVG%rmse(       ilev, iregion, ivar) = MISSING_R8
+           priorAVG%spread(     ilev, iregion, ivar) = MISSING_R8
+           priorAVG%totspread(  ilev, iregion, ivar) = MISSING_R8
 
    else
            priorAVG%observation(ilev, iregion, ivar) = &
@@ -3412,30 +3425,37 @@ do ilev=1, Nlevels
            priorAVG%bias(       ilev, iregion, ivar) / &
            priorAVG%Nused(      ilev, iregion, ivar)
 
-           priorAVG%rmse(       ilev, iregion, ivar) = &
-      sqrt(priorAVG%rmse(       ilev, iregion, ivar) / &
-           priorAVG%Nused(      ilev, iregion, ivar) )
+           if (    priorAVG%Nused(      ilev, iregion, ivar) > 1) then
 
-    ! convert the (pooled) variances back to standard deviations AKA 'spread'
-           priorAVG%spread(     ilev, iregion, ivar) = &
-      sqrt(priorAVG%spread(     ilev, iregion, ivar) / &
-           priorAVG%Nused(      ilev, iregion, ivar) )
+                     priorAVG%rmse(       ilev, iregion, ivar) = &
+                sqrt(priorAVG%rmse(       ilev, iregion, ivar) / &
+                    (priorAVG%Nused(      ilev, iregion, ivar)-1) )
 
-           priorAVG%totspread(  ilev, iregion, ivar) = &
-      sqrt(priorAVG%totspread(  ilev, iregion, ivar) / &
-           priorAVG%Nused(      ilev, iregion, ivar) )
+                     priorAVG%spread(     ilev, iregion, ivar) = &
+                sqrt(priorAVG%spread(     ilev, iregion, ivar) / &
+                    (priorAVG%Nused(      ilev, iregion, ivar)-1) )
+
+                     priorAVG%totspread(  ilev, iregion, ivar) = &
+                sqrt(priorAVG%totspread(  ilev, iregion, ivar) / &
+                    (priorAVG%Nused(      ilev, iregion, ivar)-1) )
+
+           else
+                priorAVG%rmse(       ilev, iregion, ivar) = MISSING_R8
+                priorAVG%spread(     ilev, iregion, ivar) = MISSING_R8
+                priorAVG%totspread(  ilev, iregion, ivar) = MISSING_R8
+           endif
 
    endif
 
    ! Same thing for the posteriors
 
    if (    posteAVG%Nused(      ilev, iregion, ivar) == 0) then
-           posteAVG%observation(ilev, iregion, ivar) = MISSING_R4
-           posteAVG%ens_mean(   ilev, iregion, ivar) = MISSING_R4
-           posteAVG%bias(       ilev, iregion, ivar) = MISSING_R4
-           posteAVG%rmse(       ilev, iregion, ivar) = MISSING_R4
-           posteAVG%spread(     ilev, iregion, ivar) = MISSING_R4
-           posteAVG%totspread(  ilev, iregion, ivar) = MISSING_R4
+           posteAVG%observation(ilev, iregion, ivar) = MISSING_R8
+           posteAVG%ens_mean(   ilev, iregion, ivar) = MISSING_R8
+           posteAVG%bias(       ilev, iregion, ivar) = MISSING_R8
+           posteAVG%rmse(       ilev, iregion, ivar) = MISSING_R8
+           posteAVG%spread(     ilev, iregion, ivar) = MISSING_R8
+           posteAVG%totspread(  ilev, iregion, ivar) = MISSING_R8
 
    else
            posteAVG%observation(ilev, iregion, ivar) = &
@@ -3450,18 +3470,24 @@ do ilev=1, Nlevels
            posteAVG%bias(       ilev, iregion, ivar) / &
            posteAVG%Nused(      ilev, iregion, ivar)
 
-           posteAVG%rmse(       ilev, iregion, ivar) = &
-      sqrt(posteAVG%rmse(       ilev, iregion, ivar) / &
-           posteAVG%Nused(      ilev, iregion, ivar) )
+           if (    posteAVG%Nused(      ilev, iregion, ivar) > 1) then
+                     posteAVG%rmse(       ilev, iregion, ivar) = &
+                sqrt(posteAVG%rmse(       ilev, iregion, ivar) / &
+                    (posteAVG%Nused(      ilev, iregion, ivar)-1) )
 
-    ! convert the (pooled) variances back to standard deviations AKA 'spread'
-           posteAVG%spread(     ilev, iregion, ivar) = &
-      sqrt(posteAVG%spread(     ilev, iregion, ivar) / &
-           posteAVG%Nused(      ilev, iregion, ivar) )
+                ! convert the (pooled) variances back to standard deviations AKA 'spread'
+                     posteAVG%spread(     ilev, iregion, ivar) = &
+                sqrt(posteAVG%spread(     ilev, iregion, ivar) / &
+                    (posteAVG%Nused(      ilev, iregion, ivar)-1) )
 
-           posteAVG%totspread(  ilev, iregion, ivar) = &
-      sqrt(posteAVG%totspread(  ilev, iregion, ivar) / &
-           posteAVG%Nused(      ilev, iregion, ivar) )
+                     posteAVG%totspread(  ilev, iregion, ivar) = &
+                sqrt(posteAVG%totspread(  ilev, iregion, ivar) / &
+                    (posteAVG%Nused(      ilev, iregion, ivar)-1) )
+           else
+                posteAVG%rmse(       ilev, iregion, ivar) = MISSING_R8
+                posteAVG%spread(     ilev, iregion, ivar) = MISSING_R8
+                posteAVG%totspread(  ilev, iregion, ivar) = MISSING_R8
+           endif
 
    endif
 enddo
@@ -4353,9 +4379,9 @@ DEFINE : do ivar = 1,num_obs_types
    call nc_check(nf90_def_var(ncid, name=string1, xtype=nf90_real, &
           dimids=(/ RegionDimID, LevelDimID, CopyDimID, TimeDimID /), &
           varid=VarID), 'WriteTLRV', 'region:def_var '//trim(string1))
-   call nc_check(nf90_put_att(ncid, VarID, '_FillValue',    MISSING_R4), &
+   call nc_check(nf90_put_att(ncid, VarID, '_FillValue',    MISSING_R8), &
            'WriteTLRV','put_att:fillvalue '//trim(string1))
-   call nc_check(nf90_put_att(ncid, VarID, 'missing_value', MISSING_R4), &
+   call nc_check(nf90_put_att(ncid, VarID, 'missing_value', MISSING_R8), &
            'WriteTLRV','put_att:missing '//trim(string1))
 
    if ( is_observation_trusted(obs_type_strings(ivar)) ) then

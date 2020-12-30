@@ -6,7 +6,7 @@
 #
 # $Id$
 #
-# Display the destination files from repack_st_arch.csh.
+# Display the files resulting from repack_st_arch.csh.
 # This can't be rolled into repack_st_arch.csh
 # because that submits globus transfer jobs
 # that take an unknown amount of time to finish.
@@ -27,27 +27,30 @@ echo "data_campaign   = ${data_campaign}"
 
 set ym = `printf %s-%02d $data_year $data_month`
 
-cd $data_proj_space
+cd ${data_proj_space}/${data_CASE}
 
-echo "Coupler history (forcing) files:"
-ls -lt cpl/hist/00${data_NINST}/*${data_year}*
+echo "Coupler history (forcing) files in project space `pwd`:"
+ls -l cpl/hist/00${data_NINST}/*${data_year}*
 
-echo "\n Component history files:"
-ls -lt {lnd,atm,ice,rof}/hist/00${data_NINST}/*.{clm2,cam,cice,mosart}_*.h*${data_year}*[cz]
+echo "\n Component history files in project space `pwd`:"
+ls -l {lnd,atm,ice,rof}/hist/00${data_NINST}/*.{clm2,cam,cice,mosart}_*.h*${data_year}*[cz]
 
-echo "\n DART obs space diagnostic files:"
-ls -lt esp/hist/${ym}
+echo "\n DART obs space diagnostic files in project space `pwd`/esp/hist/${ym}:"
+ls -l esp/hist/${ym}
 
-echo "\n Restart files in ${data_campaign}/${data_CASE}/rest/${ym}:"
+echo "\n Restart files in Campaign Storage:"
 ls -l ${data_campaign}/${data_CASE}/rest/${ym}/*{00${data_NINST},inf}*
 
-echo "\n Ensemble means and inflation files in ${data_campaign}/${data_CASE}/esp/hist/${ym}:"
+echo "\n Ensemble means and inflation files in Campaign Storage:"
+echo "${data_campaign}/${data_CASE}/esp/hist/${ym}"
 ls -l ${data_campaign}/${data_CASE}/esp/hist/${ym}
 
-echo "\n CAM preassim ensembles in ${data_campaign}/${data_CASE}/atm/hist/${ym}:"
+echo "\n CAM forecast ensembles in Campaign Storage:"
+echo "${data_campaign}/${data_CASE}/atm/hist/${ym}"
 ls -l ${data_campaign}/${data_CASE}/atm/hist/${ym}
 
-echo "\n DART log files in ${data_campaign}/${data_CASE}/logs/${ym}:"
+echo "\n DART log files in Campaign Storage:"
+echo "${data_campaign}/${data_CASE}/logs/${ym}"
 ls -l ${data_campaign}/${data_CASE}/logs/${ym}
 
 # <next few lines under version control, do not edit>

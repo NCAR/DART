@@ -22,6 +22,9 @@
 # It's helpful to use the $casename here.
 #PBS  -o diags_rean.eo
 #PBS  -j oe 
+#PBS  -k eod 
+# #PBS  -W depend=afterok:3047237.chadmin1.ib0.cheyenne.ucar.edu
+
 #--------------------------------------------
 
 # obs_diag can now take a namelist argument that specifies a file
@@ -46,23 +49,38 @@ else
 #    endif
 endif
 
+# Comments to separate multiple job output that's sent to the same diags_rean.eo file.
+echo "==========================================="
+echo "Running obs_diag and tarring obs_seq.finals on `date`"
+
+if (! -f data_scripts.csh) then
+   echo "ERROR: no data_scripts.csh.  Submit from the CASEROOT directory"
+   exit
+endif
+
 # Get CASE environment variables from the central variables file.
-source YOUR_CASEROOT/data_scripts.csh
+source ./data_scripts.csh
+if ($status != 0) exit 57
+# Convert to numbers
+# @ num_month = `echo $data_month | bc`
+# @ num_year  = `echo $data_year  | bc`
 echo "data_month = $data_month"
 echo "data_year  = $data_year"
 echo "data_proj_space = ${data_proj_space}"
 echo "data_DART_src   = ${data_DART_src}"
+echo "data_DOUT_S_ROOT   = ${data_DOUT_S_ROOT}"
+echo "data_CASEROOT   = ${data_CASEROOT}"
+echo "data_CASE       = ${data_CASE}"
 
 # Use big endian obs_diag for output from IBM
 # set endian = '_big_endian'
 set endian = ' '
 
-set mm = `printf %02d $data_month`
-set yymm = ${data_year}-${mm}
+set yymm = `printf %4d-%02d $data_year $data_month`
 
-? Give this as an argument
-set diag_dir = 	Diags_NTrS_${year}-${mm}
-set proj_dir = ${data_proj_space}/esp/hist/$yymm
+# ? Give this as an argument
+set diag_dir = 	${data_DOUT_S_ROOT}/esp/hist/Diags_NTrS_${yymm}
+set proj_dir = ${data_proj_space}/${data_CASE}/esp/hist/${yymm}
 echo "diag_dir = $diag_dir"
 echo "proj_dir = $proj_dir"
 
@@ -129,16 +147,6 @@ if ($ostat != 0) then
    exit 40
 endif
 
-# Create the obs_seq_tar file name
-# Extract the case name from the first file name in the obs.list.
-# OR; set CASE = `./xmlquery CASE --value`
-# ${CASE}.dart.e.cam_obs_seq_final.YYYY-MM-DD-SSSSS
-set obs_seq = `head -n 1 obs.list` 
-# Extract the file name from the path (:t), then strip off 
-# everything after the $CASENAME (:r), and finally add the pieces
-# needed for the tar file name.
-set obs_seq_tar = $obs_seq:t:r:r:r:r.cam_obs_seq_final.${yymm}.tgz 
-
 # cd ../${obs_dir}
 if (! -d ${proj_dir}) then
    mkdir ${proj_dir}
@@ -148,6 +156,8 @@ else
    exit
 endif
 
+# Archive all the obs_seq_finals for this month in a tar file.
+set obs_seq_tar = ${data_CASE}.cam_obs_seq_final.${yymm}.tgz 
 tar -c -z -f ${proj_dir}/$obs_seq_tar ../*obs_seq*${yymm}*
 if ($status != 0) then
    echo "ERROR: tar of obs_seq_finals failed.  Exiting"
@@ -159,12 +169,7 @@ if (-f $obs_seq_tar) then
    echo "obs_seq tar file was about to be removed.  Exiting"
    exit 60
 endif
-rm *obs_seq*${yymm}*
+# rm *obs_seq*${yymm}*
 
 exit
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$

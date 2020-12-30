@@ -5,24 +5,97 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
 #==========================================================================
-# This script removes assimilation output from $DOUT_S_ROOT ($local_archive) after:
-# 1) it has been repackaged by repack_st_archive.csh,
-# 2) globus has finished moving files to data_campaign storage.,
-# 3) other output has been left behind by all of those processes (i.e in rundir).
-# >>> Check all final archive locations for complete sets of files
-#     before running this.  <<<
-#     This can be done by using ./pre_purge.csh, 
-#     or see "Look in" below.
-# Submit from $CASEROOT.
 
-#-----------------------------------------
+set MYNAME = $0:t
+
+set INSTRUCTIONS = $MYNAME.$$
+cat << ENDOFINSTRUCTIONS >! $INSTRUCTIONS
+
+$MYNAME removes output from \$DOUT_S_ROOT (\$local_archive) for a specified month.
+The default action is to simply list what would be purged. An optional argument
+triggers the actual removal of the files.
+
+$MYNAME must be run from \$CASEROOT
+
+Usage: 
+$MYNAME arg1 [arg2] 
+
+   arg1 may be '--help' , print this help file
+   arg1 may be a date in the form YYYY_MM to specify the month to be purged
+
+   If arg2 is specified and has the value 'remove', the files will be removed.
+
+CHECK ALL FINAL ARCHIVE LOCATIONS FOR COMPLETE SETS OF FILES
+BEFORE RUNNING $MYNAME
+
+$MYNAME will not allow the current month to be purged.
+
+Before running $MYNAME with the [remove] option ...
+ 1) Run repack_st_archive.csh
+ 2) Confirm all the output is where it belongs using pre_purge_check.csh
+ 3) Run $MYNAME with no arguments to generate a list of files that will
+    be removed.
+ 4) If necessary, edit $MYNAME to change the 
+    file types and model/components that will be purged
+
+Example: generate a list of files that would be removed, but do not remove anything
+$MYNAME 2014-04
+
+Example: remove files (you will be prompted to continue)
+$MYNAME 2014-04 remove
+
+Example: display usage notes
+$MYNAME --help
+
+ENDOFINSTRUCTIONS
+
+#==========================================================================
+
+if ($#argv == 1) then
+   if ($argv[1] == '--help') then
+      cat    $INSTRUCTIONS
+      \rm -f $INSTRUCTIONS
+      exit 0
+   else 
+      \rm -f $INSTRUCTIONS
+      set purge_date  = `echo $argv[1] | sed -e "s#-# #g"`
+      set purge_year  = `echo $purge_date[1] | bc` || exit 1
+      set purge_month = `echo $purge_date[2] | bc` || exit 2
+      set    SIMPLE_ACTION = 'ls' 
+      set RECURSIVE_ACTION = 'ls -R' 
+      echo "Performing a 'dry run' ... creating a list of what would be removed."
+   endif
+else if ($#argv == 2) then
+   \rm -f $INSTRUCTIONS
+   set purge_date  = `echo $argv[1] | sed -e "s#-# #g"`
+   set purge_year  = `echo $purge_date[1] | bc` || exit 1
+   set purge_month = `echo $purge_date[2] | bc` || exit 2
+   if ($argv[2] == 'remove') then
+      set SIMPLE_ACTION = 'rm -v' 
+      set RECURSIVE_ACTION = 'rm -rfv' 
+      # csh '$<' reads from the keyboard
+      echo "WARNING: Removing files for $argv[1]"
+      echo "WARNING: Hit any key to continue."
+      set go_ahead = $<
+   else
+      set    SIMPLE_ACTION = 'ls' 
+      set RECURSIVE_ACTION = 'ls -R' 
+      echo "Performing a 'dry run' ... creating a list of what would be removed."
+   endif
+else
+   cat    $INSTRUCTIONS
+   \rm -f $INSTRUCTIONS
+   exit 0
+endif
+
+#-----------------------------------------------------------------------
 
 if (! -f CaseStatus) then
-   echo "ERROR: this script must be run from the CESM CASEROOT directory"
+   echo "ERROR: $MYNAME must be run from the CESM CASEROOT directory"
    exit 1
 endif
 
-#--------------------------------------------
+#-----------------------------------------------------------------------
 # Default values of which file sets to purge.
 set do_forcing     = 'true'
 set do_restarts    = 'true'
@@ -35,147 +108,164 @@ set do_rundir      = 'true'
 set components     = (lnd  atm ice  rof)
 set models         = (clm2 cam cice mosart)
 
-
-if ($#argv != 0) then
-   # Request for help; any argument will do.
-   echo "Usage:  "
-   echo "Before running this script"
-   echo "    Run repack_st_archive.csh. "
-   echo "    Confirm that it put all the output where it belongs using pre_purge.csh. "
-   echo "    Edit the script to be sure that your desired "
-   
-   echo "    file types and model/components will be purged"
-   echo "Call by user or script:"
-   echo "   purge.csh data_proj_space_dir data_campaign_dir year mo [do_this=false] ... "
-   exit
-endif
-
 # Get CASE environment variables from the central variables file.
 source ./data_scripts.csh
 echo "data_CASE  = ${data_CASE}"
-echo "data_year  = ${data_year}"
-echo "data_month = ${data_month}"
 
-set yr_mo = `printf %4d-%02d ${data_year} ${data_month}`
-set local_arch     = `./xmlquery DOUT_S_ROOT --value`
+#-----------------------------------------------------------------------
+# Never purge the current RUNDIR month.
 
-#--------------------------------------------
+set RUNDIR   = `./xmlquery RUNDIR --value`
+set CPL_FILE = `cat ${RUNDIR}/rpointer.drv_0001`
+set CPL_DATE = `echo $CPL_FILE:r:e | sed -e "s#-# #g"`
+set CPL_YEAR  = `echo $CPL_DATE[1] | bc`
+set CPL_MONTH = `echo $CPL_DATE[2] | bc`
 
-set lists = logs/rm_${yr_mo}.lists
-if (-f ${lists}.gz) mv ${lists}.gz ${lists}.gz.$$
-pwd > $lists
+set model_yymm = `printf %4d-%02d   ${CPL_YEAR}   ${CPL_MONTH}`
+set purge_yymm = `printf %4d-%02d ${purge_year} ${purge_month}`
 
-#------------------------
-# Look in ${data_proj_space}/${CASE}/cpl/hist/$INST
-# e.g. ${pr}/${casename}/cpl/hist/0080
+if ( model_yymm == purge_yymm ) then
+   echo "ERROR: cannot purge active month ... $model_yymm"
+   echo "ERROR: can only purge previous months."
+   exit 2
+endif
+
+set yr_mo = $purge_yymm 
+
+#-----------------------------------------------------------------------
+
+set lists_file = ${data_DOUT_S_ROOT}/logs/rm_${yr_mo}.lists
+echo "FILE CONTAINING LIST OF FILES TO BE REMOVED:"
+echo "   $lists_file"
+echo ""
+
+# This will handle running the script in listing mode and then purging mode.
+# Both lists_files will be saved.
+cd $lists_file:h
+if (-f ${lists_file}.gz) mv ${lists_file}.gz ${lists_file}.gz.$$
+if (-f ${lists_file}) mv ${lists_file} ${lists_file}.$$
+
+#-----------------------------------------------------------------------
+# Record the script settings:
+
+echo "as called: $MYNAME $*"                   >  $lists_file
+echo "do_forcing       = ${do_forcing}"        >> $lists_file
+echo "do_restarts      = ${do_restarts}"       >> $lists_file
+echo "do_history       = ${do_history}"        >> $lists_file
+echo "do_state_space   = ${do_state_space}"    >> $lists_file
+echo "do_rundir        = ${do_rundir}"         >> $lists_file
+echo "components       = ${components}"        >> $lists_file
+echo "models           = ${models}"            >> $lists_file
+echo "data_CASE        = ${data_CASE}"         >> $lists_file
+echo "data_DOUT_S_ROOT = ${data_DOUT_S_ROOT}"  >> $lists_file
+echo "SIMPLE_ACTION    = ${SIMPLE_ACTION}"     >> $lists_file
+echo "RECURSIVE_ACTION = ${RECURSIVE_ACTION}"  >> $lists_file
+echo "running in :"                            >> $lists_file
+pwd                                            >> $lists_file
+
+cat $lists_file
+
+#-----------------------------------------------------------------------
+# Purge the "forcing" files (cpl history) that came from individual members at single times.
+# These have been appended to the yearly files for archiving.
 if ($do_forcing == true) then
-   cd ${local_arch}/cpl/hist
-   pwd >>& ${local_arch}/$lists
+   cd ${data_DOUT_S_ROOT}/cpl/hist
+   pwd >>& $lists_file
+   echo "Processing "`pwd`" at "`date`
 
    # The original cpl hist (forcing) files,
    # which have been repackaged into $data_proj_space.
    foreach type (ha2x3h ha2x1h ha2x1hi ha2x1d hr2x)
-      echo "Forcing $type" >>& ${local_arch}/$lists
-      ls ${data_CASE}.cpl_*.${type}.${yr_mo}-*.nc >>& ${local_arch}/$lists
-      rm ${data_CASE}.cpl_*.${type}.${yr_mo}-*.nc >>& ${local_arch}/$lists
+      echo "Forcing $type" >>& $lists_file
+      ${SIMPLE_ACTION} ${data_CASE}.cpl_*.${type}.${yr_mo}-*.nc >>& $lists_file
    end
 
-   echo "Forcing \*.eo" >>& ${local_arch}/$lists
-   ls *.eo >>& ${local_arch}/$lists
-   rm *.eo >>& ${local_arch}/$lists
+   echo "Forcing \*.eo"  >>& $lists_file
+   ${SIMPLE_ACTION} *.eo >>& $lists_file
 
-   cd ${local_arch}
+   cd ${data_DOUT_S_ROOT}
 endif
 
-#------------------------
-# Look in ${data_campaign}/${data_CASE}/rest/$yr_mo
-# E.g. ${data_campaign}/${data_CASE}/rest/2012-01
+#-----------------------------------------------------------------------
+# Purge the restart file sets which have been archived to Campaign Storage.
+# The original ${yr_mo}-DD-SSSSS directories were removed by repack_st_archive
+# when the tar (into "all types per member") succeeded.
+# The following ${yr_mo} directories have been archived to Campaign Storage.
 if ($do_restarts == true) then
-   echo "Restarts starts at "`date`
-   cd ${local_arch}/rest
-   pwd >>& ${local_arch}/$lists
+   cd ${data_DOUT_S_ROOT}/rest
+   pwd >>& $lists_file
+   echo "Processing "`pwd`" at "`date`
 
-   # The original ${yr_mo}-* were removed by repack_st_archive 
-   # when the tar (into "all types per member") succeeded.
-   # The following have been archived to Campaign Storage.
-   echo "Restarts ${yr_mo}\*" >>& ${local_arch}/$lists
-   ls -d ${yr_mo}* >>& ${local_arch}/$lists
-   rm -rf ${yr_mo}*
+   echo      "Restarts ${yr_mo}\*" >>& $lists_file
+   ${RECURSIVE_ACTION} ${yr_mo}*   >>& $lists_file
 
    # Remove other detritus
-   echo "Restarts tar\*.eo" >>& ${local_arch}/$lists
-   ls tar*.eo  >>& ${local_arch}/$lists
-   rm tar*.eo
+   echo "Restarts tar\*.eo" >>& $lists_file
+   ${SIMPLE_ACTION} tar*.eo >>& $lists_file
 
-   cd ${local_arch}
+   cd ${data_DOUT_S_ROOT}
 endif
 
-#------------------------
-# Look in 
-#    ${data_proj_space}/${data_CASE}/{lnd,atm,ice,rof}/hist/${data_NINST}/${data_CASE}.{clm2,cam,cice,mosart}_*.h[0-9].${year}.nc
-# for properly archived files.
-# $ ls -l {lnd,atm,ice,rof}/hist/0080/*.{clm2,cam,cice,mosart}_*.h*2012*[cz]
-# Or in the following for missed files;
-# $ ls {lnd,atm,ice,rof}/hist/*0001.h*00000.nc
+#-----------------------------------------------------------------------
+# Purge component history files (.h[0-9]), 
+# which have been tarred into monthly files for each member.
+# E.g. {lnd,atm,ice,rof}/hist/0080/*.{clm2,cam,cice,mosart}_*.h*[cz]
 
 if ($do_history == true) then
    set m = 1
    while ($m <= $#components)
-      cd ${local_arch}/$components[$m]/hist
-      pwd >>& ${local_arch}/$lists
+      cd ${data_DOUT_S_ROOT}/$components[$m]/hist
+      pwd >>& $lists_file
+      echo "Processing "`pwd`" at "`date`
       @ type = 0
       while ($type < 10)
-         echo "$components[$m] type $type" >>& ${local_arch}/$lists
+         echo "$components[$m] type $type" >>& $lists_file
          ls ${data_CASE}.$models[$m]_0001.h${type}.${yr_mo}-*.nc > /dev/null
          if ($status != 0) break
 
-         ls ${data_CASE}.$models[$m]_*.h${type}.${yr_mo}-*.nc >>& ${local_arch}/$lists
-         rm ${data_CASE}.$models[$m]_*.h${type}.${yr_mo}-*.nc >>& ${local_arch}/$lists
+         ${SIMPLE_ACTION} ${data_CASE}.$models[$m]_*.h${type}.${yr_mo}-*.nc >>& $lists_file
          @ type++
       end
    
-      cd ${local_arch}
       @ m++
    end
 endif
 
-
-#------------------------
-# Look in ${data_campaign}/${data_CASE}/esp/hist/$yr_mo
-# Look in ${data_campaign}/${data_CASE}/atm/hist/$yr_mo
-# Look in ${data_campaign}/${data_CASE}/logs/$yr_mo
+#-----------------------------------------------------------------------
+# Purge the directories in $DOUT_S_ROOT (scratch ...)
+# which have been archived to Campaign Storage.
 
 if ($do_state_space == true) then
-   cd ${local_arch}/esp/hist
-   pwd >>& ${local_arch}/$lists
-   ls -d  $yr_mo/* >>& ${local_arch}/$lists
-   rm -rf $yr_mo   >>& ${local_arch}/$lists
+   cd ${data_DOUT_S_ROOT}/esp/hist
+   echo "Processing "`pwd`" at "`date`
+   pwd                          >>& $lists_file
+   ${RECURSIVE_ACTION} $yr_mo   >>& $lists_file
 
-   cd ${local_arch}/atm/hist
-   pwd >>& ${local_arch}/$lists
-   ls -d  $yr_mo/* >>& ${local_arch}/$lists
-   rm -rf $yr_mo   >>& ${local_arch}/$lists
+   cd ${data_DOUT_S_ROOT}/atm/hist
+   echo "Processing "`pwd`" at "`date`
+   pwd                                 >>& $lists_file
+   ${RECURSIVE_ACTION} $yr_mo          >>& $lists_file
+   ${RECURSIVE_ACTION} *.h0.*$yr_mo*   >>& $lists_file
    
    # Archive DART log files (and others?)
 
-   cd ${local_arch}/logs
-   # This looks misdirected at first, but $lists has 'logs/' in it.
-   pwd >>& ${local_arch}/$lists
-   ls     $yr_mo >>& ${local_arch}/$lists
-   rm -rf $yr_mo >>& ${local_arch}/$lists
-   ls     {atm,cpl,ice,lnd,ocn,rof}_00[0-9][02-9].log.*
-   rm -rf {atm,cpl,ice,lnd,ocn,rof}_00[0-9][02-9].log.*
+   cd ${data_DOUT_S_ROOT}/logs
+   echo "Processing "`pwd`" at "`date`
+   # This looks misdirected at first, but $lists_file has 'logs/' in it.
+   pwd                        >>& $lists_file
+   ${RECURSIVE_ACTION} $yr_mo >>& $lists_file
+   ${RECURSIVE_ACTION} {atm,cpl,ice,lnd,ocn,rof}_00[0-9][02-9].log.* >>& $lists_file
    
-   cd ${local_arch}
-
-   # Or just the following, but it would give less info if one failed.
-#    rm -rf {esp,atm}/hist/$yr_mo logs/$yr_mo  &
+   cd ${data_DOUT_S_ROOT}
 
 endif
-#------------------------
+
+#-----------------------------------------------------------------------
+# Purge leftover junk in $RUNDIR (scratch ...)
 if ($do_rundir == true) then
-   cd ${local_arch}/../run
-   pwd >>& ${local_arch}/lists
+   cd ${data_DOUT_S_ROOT}/../run
+   pwd >>& $lists_file
+   echo "Processing "`pwd`" at "`date`
 
    # Remove old inflation restarts that were archived elsewhere
    # and were copied back into rundir by assimilate.csh.
@@ -185,31 +275,25 @@ if ($do_rundir == true) then
    set d = 2
    while ($d <= $#files)
       set date = $files[$d]:r:e
-      echo "${data_CASE}.dart.rh.cam*.${date}.*" >>& ${local_arch}/$lists
-      ls ${data_CASE}.dart.rh.cam*.${date}.* >>& ${local_arch}/$lists
-      rm ${data_CASE}.dart.rh.cam*.${date}.* >>& ${local_arch}/$lists
+      ${SIMPLE_ACTION} ${data_CASE}.dart.rh.cam*.${date}.* >>& $lists_file
       @ d++
    end
 
    # Remove less-than-useful cam_dart_log.${yr_mo}-*.out   
    set files = `ls -t cam_dart_log.${yr_mo}*.out`
-   ls $files[2-$#files] >>& ${local_arch}/$lists
-   rm $files[2-$#files] >>& ${local_arch}/$lists
+   ${SIMPLE_ACTION} $files[2-$#files] >>& $lists_file
 
    ls finidat_interp_dest_* >& /dev/null
    if ($status == 0) then
-      ls finidat_interp_dest_* >>& ${local_arch}/$lists
-      rm finidat_interp_dest_* >>& ${local_arch}/$lists
+      ${SIMPLE_ACTION} finidat_interp_dest_* >>& $lists_file
    endif
 
-   cd ${local_arch}
+   cd ${data_DOUT_S_ROOT}
 endif
-#------------------------
 
-cd archive
-gzip $lists
+#-----------------------------------------------------------------------
 
-# Wait for all the backrounded 'rm's to finish.
-wait
+cd ${data_DOUT_S_ROOT}/logs
+gzip $lists_file
 
 exit 0

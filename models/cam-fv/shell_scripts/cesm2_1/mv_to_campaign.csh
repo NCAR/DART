@@ -32,7 +32,10 @@
 #   https://www2.cisl.ucar.edu/sites/default/files/CISL_GlobusCLI_Nov2018.html
 
 # Get CASE environment variables from the central variables file.
+cd /glade/work/raeder/Exp/f.e21.FHIST_BGC.f09_025.CAM6assim.011
 source ./data_scripts.csh
+cd -
+
 echo "data_CASE       = ${data_CASE}"
 echo "data_proj_space = ${data_proj_space}"
 echo "data_campaign   = ${data_campaign}"
@@ -62,7 +65,7 @@ set CS_DIR   = $3
 # A-Z, a-z, 0-9, space, hyphen, underscore, and comma
 # No '.'; replace with ','
 # Max length is 128 chars.
-set clean_CASE = `echo $CASE | sed -e "s#\.#,#g"`  
+set clean_CASE = `echo $data_CASE | sed -e "s#\.#,#g"`  
 set LABEL = "copy of $clean_CASE dares project files for $TIME_STR" 
 
 set AN_DATE = $SRC_DIR:t
@@ -85,7 +88,8 @@ echo Copy $SRC_DIR to campaign storage $CS_DIR >>& $glog
 # For example 
 # > globus endpoint activate --help
 # will show obscura such as --myproxy (below).
-module load gnu python
+# module load gnu python
+module load gnu python/3.6.8
 
 # Enable the NCAR Python Library (NPL) virtual environment 
 # This command activates the 'globus' command
