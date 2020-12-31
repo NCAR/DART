@@ -81,8 +81,6 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id: plot_rmse_xxx_evolution.m 13143 2019-05-01 16:02:06Z thoar@ucar.edu $
 
 default_obsname    = 'none';
 default_verbosity  = true;
@@ -156,12 +154,6 @@ figuredata.MarkerSize = p.Results.MarkerSize;
 figuredata.DateForm   = p.Results.DateForm;
 verbose               = p.Results.verbose;
 
-% KDR Put the 3 figures in spread out positions, with optimal size.
-x1 = [1,485,960];
-dx = [484,474,474];
-y1 = [100,100,100];
-dy = [650,650,650];
-
 %%---------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
 %----------------------------------------------------------------------
@@ -186,7 +178,8 @@ for ivar = 1:plotdat.nvars
         psfname{iregion} = sprintf('%s_rmse_%s_evolution_region%d.ps', ...
             plotdat.varnames{ivar}, plotdat.copystring, iregion);
         if (exist(psfname{iregion},'file') == 2)
-            fprintf('Removing %s from the current directory.\n',psfname{iregion})
+% KDR Make the published pictures cleaner
+%            fprintf('Removing %s from the current directory.\n',psfname{iregion})
             system(sprintf('rm %s',psfname{iregion}));
         end
     end
@@ -195,7 +188,8 @@ for ivar = 1:plotdat.nvars
     
     lgfname = sprintf('%s_rmse_%s_obscount.txt',plotdat.varnames{ivar},plotdat.copystring);
     if (exist(lgfname,'file') == 2)
-        fprintf('Removing %s from the current directory.\n',lgfname)
+% KDR Make the published pictures cleaner
+%        fprintf('Removing %s from the current directory.\n',lgfname)
         system(sprintf('rm %s',lgfname));
     end
     logfid = fopen(lgfname,'wt');
@@ -218,24 +212,29 @@ for ivar = 1:plotdat.nvars
     [dimnames, ~] = nc_var_dims(fname, plotdat.guessvar);
     
     if ( plotdat.dimensionality == 1 ) % observations on a unit circle, no level
+        plotdat.varlevels   = 1;
         plotdat.level = 1;
         plotdat.level_units = [];
     elseif ( strfind(dimnames{2},'surface') > 0 )
+        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'surface';
     elseif ( strfind(dimnames{2},'undef') > 0 )
+        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'undefined';
     else
-        plotdat.level       = ncread(fname, dimnames{2});
+        plotdat.varlevels   = ncread(fname, dimnames{2});
         plotdat.level_units = nc_read_att(fname, dimnames{2}, 'units');
-        nlevels             = length(plotdat.level);
+        nlevels             = length(plotdat.varlevels);
         if (p.Results.level < 0 )
             % use all the levels
+            plotdat.level   = 1:nlevels;
         elseif (p.Results.level > 0 && p.Results.level < nlevels)
-            plotdat.level   = p.Results.level;
+            plotdat.level   = round(p.Results.level);
         else
-            error('%d is not a valid level for %s',p.Results.level,plotdat.guessvar)
+            str1 = sprintf('valid level values are 1 <= %d',nlevels);
+            error('%s\n%f is not a valid level for %s\n',str1,p.Results.level,plotdat.guessvar)
         end
     end
     
@@ -255,26 +254,25 @@ for ivar = 1:plotdat.nvars
     end
     
     for ilevel = 1:length(plotdat.level)
-        
         priorQCs = get_qc_values(fname, plotdat.guessvar, ...
-            'levelindex', ilevel, ...
+            'levelindex', plotdat.level(ilevel), ...
             'fatal', false, ...
             'verbose', verbose);
-        plotdat.mylevel   = ilevel;
+        plotdat.mylevel   = plotdat.level(ilevel);
         plotdat.ges_Neval = priorQCs.num_evaluated;
         plotdat.ges_Nposs = priorQCs.nposs;
         plotdat.ges_Nused = priorQCs.nused;
-        plotdat.ges_copy  = guess(:,ilevel,plotdat.copyindex,:);
-        plotdat.ges_rmse  = guess(:,ilevel,plotdat.rmseindex,:);
+        plotdat.ges_copy  = guess(:,plotdat.mylevel,plotdat.copyindex,:);
+        plotdat.ges_rmse  = guess(:,plotdat.mylevel,plotdat.rmseindex,:);
         
         if (has_posterior)
             posteQCs = get_qc_values(fname, plotdat.analyvar, ...
-                'levelindex', ilevel, ...
+                'levelindex', plotdat.mylevel, ...
                 'fatal', false, ...
                 'verbose', verbose);
             plotdat.anl_Nused = posteQCs.nused;
-            plotdat.anl_copy  = analy(:,ilevel,plotdat.copyindex,:);
-            plotdat.anl_rmse  = analy(:,ilevel,plotdat.rmseindex,:);
+            plotdat.anl_copy  = analy(:,plotdat.mylevel,plotdat.copyindex,:);
+            plotdat.anl_rmse  = analy(:,plotdat.mylevel,plotdat.rmseindex,:);
         else
             plotdat.anl_Nused = zeros(size(plotdat.ges_Nused));
             plotdat.anl_copy  = plotdat.ges_copy;  % needed for determining limits
@@ -292,14 +290,11 @@ for ivar = 1:plotdat.nvars
         % plot each region, each level to a separate figure
         
         for iregion = 1:plotdat.nregions
-% KDR
-% Tim's technique (lower left corner x,y,  x-dim, y-dim)
-            fig_h = figure(iregion);
-	    fig_h.Position = [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]; 
-            clf(iregion); orient(figuredata.orientation);
-% Orig
-%            figure(iregion); clf(iregion); orient(figuredata.orientation);
-            
+%             figure(iregion); clf(iregion); orient(figuredata.orientation);
+        figure('pos', [100, 100, 830, 470]) %figure(iregion);
+        %clf(iregion);
+        orient(figuredata.orientation);            
+
             plotdat.region   = iregion;
             plotdat.myregion = deblank(plotdat.region_names(iregion,:));
             if ( isempty(plotdat.level_units) )
@@ -308,33 +303,21 @@ for ivar = 1:plotdat.nvars
 % KDR added 'round' to prevent scientific notation from being used.
                 plotdat.title = sprintf('%s @ %d %s',    ...
                     plotdat.myvarname,     ...
-                    round(plotdat.level(ilevel)), ...
+                    round(plotdat.varlevels(plotdat.mylevel)), ...
                     plotdat.level_units);
             end
             
             myplot(plotdat);
             
             % create/append to the postscript file
-            if verLessThan('matlab','R2016a')
-                print(gcf, '-dpsc', '-append', psfname{iregion});
-            else
-                print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
-            end
-            
-            % KDR attempt to slow down the stream of pictures when there's something to see,
-            % without needing to hit a key to continue.
-            % any(plotdat.ges_copy(:,plotdat.copyindex,ilevel,plotdat.region))
-            %    any(plotdat.ges_rmse(:,plotdat.rmseindex,ilevel,plotdat.region));
-%            if any(plotdat.ges_Nused(:,plotdat.region))
-%               pause(1);
+% This is generating an error message (but still printing) in 2018a(?),
+% But we don't need these ps (and pdf) files because I'll generate them 
+% separately in the way I like to view them.
+%            if verLessThan('matlab','R2016a')
+%                print(gcf, '-dpsc', '-append', psfname{iregion});
+%            else
+%                print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
 %            end
-
-            % KDR attempt to slow down the stream of pictures when there's something to see.
-            % any(plotdat.ges_copy(:,plotdat.copyindex,ilevel,plotdat.region))
-            %    any(plotdat.ges_rmse(:,plotdat.rmseindex,ilevel,plotdat.region));
-            if any(plotdat.ges_Nused(:,plotdat.region))
-               pause(2);
-            end
             
             % block to go slow and look at each one ...
             if (p.Results.pause)
@@ -365,19 +348,17 @@ anl_Nused = squeeze(plotdat.anl_Nused(plotdat.region,:,:,:));
 ges_Neval = squeeze(plotdat.ges_Neval(plotdat.region,:,:,:));
 anl_Ngood = sum(anl_Nused);
 
-% KDR Pass in ges_Nused to calculate the mean over all obs,
-%     instead of over time slots.
-[hrmse,  legstr_rmse ] = plot_quantity(            'rmse', plotdat, ges_Nused);
-[hother, legstr_other] = plot_quantity(plotdat.copystring, plotdat, ges_Nused);
-% KDR end
+[hrmse,  legstr_rmse ] = plot_quantity(            'rmse', plotdat);
+[hother, legstr_other] = plot_quantity(plotdat.copystring, plotdat);
 
 h  = legend([hrmse,hother], legstr_rmse, legstr_other);
-set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize)
+set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize, ...
+    'TextColor','blue','Color','k')
 
 if verLessThan('matlab','R2017a')
     % Convince Matlab to not autoupdate the legend with each new line.
     % Before 2017a, this was the default behavior, so do nothing.
-    % We do not want to add the bias line to the legend, for example.
+    % We do not want to add the bias=0 line to the legend, for example.
 else
     h.AutoUpdate = 'off';
 end
@@ -388,6 +369,12 @@ if verbose
         sum(ges_Nposs), sum(ges_Nused), anl_Ngood)
     fprintf('%s; %s\n\n', legstr_rmse, legstr_other)
 end
+
+% reorder the legend so it is 'on top', which seems to give
+% it a bit more space too ... more legible.
+ax = get(gcf,'children');
+ind = find(isgraphics(ax,'Legend'));
+set(gcf,'children',ax([ind:end,1:ind-1]))
 
 % Attempt to make plotting robust in the face of 'empty' bins.
 % The bincenters variable has all the temporal bins specified,
@@ -475,7 +462,6 @@ else
     string1 = ['# of obs: o=possible; \ast=assimilated' plotdat.post_string];
 end
 set(get(ax2,'Ylabel'), 'String', string1, 'FontSize', figuredata.fontsize)
-
 
 %=====================================================================
 
@@ -624,93 +610,87 @@ end
 
 %=====================================================================
 
-function [h, legstr] = plot_quantity(quantity, plotdat, ges_Nused)
+function [h, legstr] = plot_quantity(quantity, plotdat)
 
 global figuredata
 
+ges_Nused = squeeze(plotdat.ges_Nused(plotdat.region,:,:,:));
+ges_Nposs = sum(ges_Nused);
 anl_Nused = squeeze(plotdat.anl_Nused(plotdat.region,:,:,:));
 % KDR seems like a misleading name.  How about anl_Nsum?
 anl_Nposs = sum(anl_Nused);
 
+grand_prior     = NaN;
+grand_posterior = NaN;
+
+% A long way to go to plot a summary statistic
+% reconstruct the 'grand' quantity from the timeseries as if
+% everything were pooled together from the beginning.
+
 switch lower(quantity)
     case 'rmse'
-        
-        prior     = squeeze(plotdat.ges_rmse(plotdat.region,:,:,:));
-        post      = squeeze(plotdat.anl_rmse(plotdat.region,:,:,:));
         
         color     = figuredata.rmse_color;
         marker    = figuredata.marker1;
         
-        % KDR Modified to write the true RMSE (of all the obs in this time span) to the legend,
-        % instead of the time average of the time series of RMSEs.
-        % Replace calls to 'mean' with calls to 'sum' and weight by the number of obs.
-        % For comparison with the original calculation, the average of the time series:
-        mean_prior = mean(prior(isfinite(prior)));
-        %mean_post  = mean( post(isfinite(post)));
-        fprintf('Time mean of prior rmse = %.5g .\n',mean_prior)
+        prior     = squeeze(plotdat.ges_rmse(plotdat.region,:,:,:));
+        posterior = squeeze(plotdat.anl_rmse(plotdat.region,:,:,:));
+        finite_inds_prior     = isfinite(prior);
+        finite_inds_posterior = isfinite(posterior);
 
-        % ?   Safe to use the same numbers for ges and anl?
-        tot_Nused = sum(ges_Nused);
-
-        % Use the rmse and the number of obs at each time to calculate 
-        % the squared error (already summed over obs at each time),
-        sq_err = prior(isfinite(prior)).^2 .* ges_Nused(isfinite(prior));
-        % sum them to yield the total squared error for this time *span*,
-        % then divide by tot_Nused to yield the total mean squared error.
-        % The square root finishes the process.
-        mean_prior = sqrt(sum(sq_err) ./ tot_Nused) ;
-        fprintf('Correct rmse of all obs = %.5g .\n',mean_prior)
-
-        if  anl_Nposs > 0
-           sq_err = prior(isfinite(post)).^2 .* ges_Nused(isfinite(post));
-           mean_post = sqrt(sum(sq_err) ./ tot_Nused) ;
+        % apply Bessel's correction to account for the fact we are estimating mean
+        if  ges_Nposs > 1 
+           squared_error_prior = (prior(finite_inds_prior).^2) .* (ges_Nused(finite_inds_prior)-1);
+           grand_prior = sqrt(sum(squared_error_prior)/(ges_Nposs-1));
         end
 
-        % KDR pass this back to the function that makes the whole legend
-        %     which displays the average rmse and (bias or totalspread).
-        legstr = 'obs avg';
-        
-    case {'bias','totalspread'}
-        prior     = squeeze(plotdat.ges_copy(plotdat.region, :,:,:));
-        post      = squeeze(plotdat.anl_copy(plotdat.region, :,:,:));
-        
+        if  anl_Nposs > 1 
+           squared_error_posterior = (posterior(finite_inds_posterior).^2) .* (anl_Nused(finite_inds_posterior)-1);
+           grand_posterior = sqrt(sum(squared_error_posterior)/(anl_Nposs-1));
+        end
+
+    case {'spread','totalspread'}
+       
         color     = figuredata.copy_color;
         marker    = figuredata.marker2;
-        
-        % The old, time average of the time series of biases.
-        % Only used for comparison with the correct, below.
-        mean_prior = mean(prior(isfinite(prior)));
-        fprintf('Time mean of prior %s = %.5g .\n',quantity,mean_prior)
 
-        % KDR Modified to write the true bias (of all the obs in this time span) to the legend,
-        % instead of the time average of the time series of average biases.
-        % ?   Safe to use the same numbers for ges and anl?
-        tot_Nused = sum(ges_Nused);
-        mean_prior = sum(prior(isfinite(prior)) .* ges_Nused(isfinite(prior))) ./ tot_Nused ;
-        fprintf('Correct %s of all obs = %.5g .\n',quantity,mean_prior)
+        prior     = squeeze(plotdat.ges_copy(plotdat.region,:,:,:));
+        posterior = squeeze(plotdat.anl_copy(plotdat.region,:,:,:));
+        finite_inds_prior     = isfinite(prior);
+        finite_inds_posterior = isfinite(posterior);
 
-        if  anl_Nposs > 0
-           mean_post = sum(post(isfinite(post)) .* ges_Nused(isfinite(post))) ./ tot_Nused ;
+        % apply Bessel's correction to account for the fact we are estimating mean
+        if  ges_Nposs > 1 
+           squared_error_prior = (prior(finite_inds_prior).^2) .* (ges_Nused(finite_inds_prior)-1);
+           grand_prior = sqrt(sum(squared_error_prior)/(ges_Nposs-1));
         end
-       
-        legstr = 'obs avg';
+        
+        if  anl_Nposs > 1 
+           squared_error_posterior = (posterior(finite_inds_posterior).^2) .* (anl_Nused(finite_inds_posterior)-1);
+           grand_posterior = sqrt(sum(squared_error_posterior)/(anl_Nposs-1));
+        end
         
     otherwise
         
-        prior     = squeeze(plotdat.ges_copy(plotdat.region, :,:,:));
-        post      = squeeze(plotdat.anl_copy(plotdat.region, :,:,:));
+        % simple weighted value
         
         color     = figuredata.copy_color;
         marker    = figuredata.marker2;
         
-        mean_prior = mean(prior(isfinite(prior)));
+        prior     = squeeze(plotdat.ges_copy(plotdat.region,:,:,:));
+        posterior = squeeze(plotdat.anl_copy(plotdat.region,:,:,:));
+        finite_inds_prior     = isfinite(prior);
+        finite_inds_posterior = isfinite(posterior);
 
-        if  anl_Nposs > 0
-           mean_post = mean(post(isfinite(post)));
+        if  ges_Nposs > 0 
+           prior_total = prior(finite_inds_prior) .* ges_Nused(finite_inds_prior);
+           grand_prior = sum(prior_total)/ges_Nposs;
         end
-
-        legstr = sprintf('time avg');
         
+        if  anl_Nposs > 0 
+           posterior_total = posterior(finite_inds_posterior) .* anl_Nused(finite_inds_posterior);
+           grand_posterior = sum(posterior_total)/anl_Nposs;
+        end
 end
 
 linestyle = figuredata.solid;
@@ -720,13 +700,13 @@ linewidth = figuredata.linewidth;
 % and create meaningful legend strings
 
 if  anl_Nposs > 0
-    data = reshape([prior              post              ]',2*plotdat.Nbins,1);
+    data = reshape([prior              posterior         ]',2*plotdat.Nbins,1);
     t    = reshape([plotdat.bincenters plotdat.bincenters]',2*plotdat.Nbins,1);
-    legstr = sprintf('%s %s pr = %.5g, po = %.5g ',legstr, quantity, mean_prior, mean_post);
+    legstr = sprintf('%s grand pr = %.5g, po = %.5g',quantity, grand_prior, grand_posterior);
 else
     data = prior;
     t    = plotdat.bincenters;
-    legstr = sprintf('%s %s pr = %.5g ',legstr, quantity, mean_prior);
+    legstr = sprintf('%s grand pr = %.5g',quantity, grand_prior);
 end
 
 h = line(t,data);
@@ -737,7 +717,3 @@ set(h, 'LineStyle',    linestyle, ...
     'MarkerFaceColor', color, ...
     'MarkerSize', figuredata.MarkerSize);
 
-% <next few lines under version control, do not edit>
-% $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/reanalysis/diagnostics/matlab/plot_rmse_xxx_evolution.m $
-% $Revision: 13143 $
-% $Date: 2019-05-01 10:02:06 -0600 (Wed, 01 May 2019) $

@@ -33,16 +33,21 @@ function plotdat = plot_rmse_xxx_profile(fname, copy, varargin)
 %            Each observation type will be plotted in a separate graphic.
 %            Default is to plot all available observation types.
 %
-%
-% range    : 'range' of the value being plotted. Default is to
-%                automatically determine range based on the data values.
+% range    : 'range' of the value being plotted.
+%            Default is to determine range based on the data values.
 %
 % verbose  : true/false to control amount of run-time output
+%            Default is to be verbose.
 %
-% MarkerSize  : integer controlling the size of the symbols
+% MarkerSize : integer controlling the size of the symbols
+%              Default is 12.
 %
-% pause  : true/false to conrol pausing after each figure is created.
+% pause  : true/false to control pausing after each figure is created.
 %          true will require hitting any key to continue to next plot
+%          Default is false - do not pause.
+%
+% method : 'web', 'norm', 'normweb', 'traditional'
+%          Default is 'traditional'
 %
 % OUTPUT: 'plotdat' is a structure containing what was plotted.
 %         A .pdf of each graphic is created. Each .pdf has a name that
@@ -64,8 +69,6 @@ function plotdat = plot_rmse_xxx_profile(fname, copy, varargin)
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id$
 
 %%--------------------------------------------------------------------
 % Decode,Parse,Check the input
@@ -76,6 +79,7 @@ default_verbosity  = true;
 default_markersize = 12;
 default_pause      = false;
 default_range      = [NaN NaN];
+default_method     = 'traditional';
 p = inputParser;
 
 addRequired(p,'fname',@ischar);
@@ -86,12 +90,14 @@ if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'MarkerSize', default_markersize, @isnumeric);
     addParameter(p,'pause',      default_pause,      @islogical);
     addParameter(p,'range',      default_range,      @isnumeric);
+    addParameter(p,'method',     default_method,     @ischar);
 else
     addParamValue(p,'obsname',   default_obsname,    @ischar);    %#ok<NVREPL>
     addParamValue(p,'verbose',   default_verbosity,  @islogical); %#ok<NVREPL>
     addParamValue(p,'MarkerSize',default_markersize, @isnumeric); %#ok<NVREPL>
     addParamValue(p,'pause',     default_pause,      @islogical); %#ok<NVREPL>
     addParamValue(p,'range',     default_range,      @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'method',    default_method,     @ischar);    %#ok<NVREPL>
 end
 p.parse(fname, copy, varargin{:});
 
@@ -120,7 +126,7 @@ end
 %---------------------------------------------------------------------
 
 plotdat = read_obsdiag_staticdata(fname,copy);
-plotdat.xlabel  = sprintf('rmse and %s',copy);
+xlabel_basic = sprintf('rmse and %s',copy);
 
 % Either use all the variables or just the one optionally specified.
 if (nvars == 0)
@@ -132,11 +138,37 @@ else
     plotdat.nvars       = nvars;
 end
 
-global figuredata verbose
+global figuredata verbose webmethod
 
 figuredata            = set_obsdiag_figure('tall');
 figuredata.MarkerSize = p.Results.MarkerSize;
 verbose               = p.Results.verbose;
+
+switch lower(p.Results.method)
+    case {'web','normweb'}
+        x1 = [100,100,100];
+        dx = [830,830,830];
+        y1 = [100,100,100];
+        % KDR stretch to make more room for BottomAnnotation?
+        % I changed private/set_obsdiag_figure.m slightly (2020-4-25).
+        dy = [800,800,800];
+        % dy = [760,760,760];
+        webmethod = true;
+
+        % Try to put these "off screen" instead.   Doesn't work.
+        % x1 = [1425,1425,1425];
+        % dx = [830,830,830];
+        % y1 = [100,100,100];
+        % dy = [470,470,470];
+        % I'd still like to do this, but haven't figured out how.
+    otherwise
+        % 3 figures in spread out positions, with optimal size.
+        x1 = [  1,475,950];
+        dx = [474,474,474];
+        y1 = [100,100,100];
+        dy = [650,650,650];
+        webmethod = false;
+end
 
 %%---------------------------------------------------------------------
 % Loop around (copy-level-region) observation types
@@ -223,8 +255,36 @@ for ivar = 1:plotdat.nvars
     plotdat.ges_Neval = priorQCs.num_evaluated;
     plotdat.ges_Nposs = priorQCs.nposs;
     plotdat.ges_Nused = priorQCs.nused;
+    
+    % Compute the values for the most common case,
+    % these will be recomputed only if normalization is wanted,
+    % and only for specific variables.
+    
     plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex);
     plotdat.ges_copy  = guess(:,:,plotdat.copyindex);
+    plotdat.ges_mean  = guess(:,:,plotdat.meanindex);
+    plotdat.xlabel    = xlabel_basic;
+    psbase = sprintf('%s_rmse_%s', plotdat.varnames{ivar}, plotdat.copystring);
+
+    switch lower(p.Results.method)
+        case{'norm','normweb'}
+            
+            switch plotdat.myvarname
+                case {'GPSRO_REFRACTIVITY', ...
+                        'AIRS_SPECIFIC_HUMIDITY', ...
+                        'RADIOSONDE_SPECIFIC_HUMIDITY'}
+                    plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex) ./ ...
+                        guess(:,:,plotdat.meanindex);
+                    plotdat.ges_copy  = guess(:,:,plotdat.copyindex) ./ ...
+                        guess(:,:,plotdat.meanindex);
+                    plotdat.xlabel    = sprintf('%s, normalized by layer mean',xlabel_basic);
+                    psfile            = sprintf('%s_norm_profile',psbase);
+                otherwise
+            end
+            
+        otherwise
+            psfile = sprintf('%s_profile', psbase);
+    end
     
     if ( sum(plotdat.ges_Nposs(:)) < 1 )
         fprintf('no obs for %s...  skipping\n', plotdat.varnames{ivar})
@@ -251,32 +311,60 @@ for ivar = 1:plotdat.nvars
     % plot by region - each in its own figure.
     
     for iregion = 1:plotdat.nregions
-        figure(iregion);
-        clf(iregion);
-        orient(figuredata.orientation);
         plotdat.region   = iregion;
         plotdat.myregion = deblank(plotdat.region_names(iregion,:));
+       
+        figure('pos', [x1(iregion),y1(iregion),dx(iregion),dy(iregion)]);
+        orient(figuredata.orientation);
+        clf(iregion);
         
         myplot(plotdat);
         
         BottomAnnotation(fname)
         
-        psfname = sprintf('%s_rmse_%s_profile_region%d', ...
-            plotdat.varnames{ivar}, plotdat.copystring, iregion);
+
+            
         
-        if verLessThan('matlab','R2016a')
-            print(gcf, '-dpdf', psfname);
-        else
-            print(gcf, '-dpdf', '-bestfit', psfname);
-        end
-        
-        % block to go slow and look at each one ...
+        % look at each one ... based on user input
         if (p.Results.pause)
             disp('Pausing, hit any key to continue ...')
             pause
         end
         
     end
+
+    % KDR Update the figure window to prevent (random) cropping the printed versions.
+    %     This replaces the snapnow in private/invoke.m
+    if webmethod
+       snapnow
+    else
+       drawnow
+    end
+
+    for iregion = 1:plotdat.nregions
+        psfname = sprintf('%s_region%d', psfile, iregion);
+        %figure(iregion);
+        if verLessThan('matlab','R2016a')
+            print(iregion, '-dpdf', psfname);
+        else
+            print(iregion, '-dpdf', '-bestfit', psfname);
+        end
+	
+	% KEVIN ... instead of pause being true/false ... 
+	%   if pause was 0 - no pause, 
+	%   negative is keystroke, 
+	%   positive is number of seconds ...
+        if ~ webmethod
+            if any(plotdat.ges_Nused(plotdat.region,:))
+                pause(5);
+            end
+        end
+    end
+
+    % KDR Need to close all figures before proceeding to the next obs type 
+    %     to prevent duplicate png files.
+    close all
+
 end
 
 %=====================================================================
@@ -286,30 +374,27 @@ end
 
 function myplot(plotdat)
 
-global figuredata
+global figuredata webmethod
 
 ges_copy = plotdat.ges_copy(plotdat.region,:);
 anl_copy = plotdat.anl_copy(plotdat.region,:);
 ges_rmse = plotdat.ges_rmse(plotdat.region,:);
 anl_rmse = plotdat.anl_rmse(plotdat.region,:);
 
+ges_Neval = plotdat.ges_Neval(plotdat.region,:);
 ges_Nposs = plotdat.ges_Nposs(plotdat.region,:);
 ges_Nused = plotdat.ges_Nused(plotdat.region,:);
 anl_Nused = plotdat.anl_Nused(plotdat.region,:);
 anl_Ngood = sum(anl_Nused);
 
-mean_pr_rmse = mean(ges_rmse(isfinite(ges_rmse)));
-mean_pr_copy = mean(ges_copy(isfinite(ges_copy)));
-str_pr_rmse  = sprintf('%s pr=%.5g','rmse',mean_pr_rmse);
-str_pr_copy  = sprintf('%s pr=%.5g',plotdat.copystring,mean_pr_copy);
+% Compute summary statistic
 
-% If the posterior is available, plot them too.
+str_pr_rmse = compute_grand(ges_rmse,ges_Nused,'rmse','pr');
+str_pr_copy = compute_grand(ges_copy,ges_Nused,plotdat.copystring,'pr');
 
 if anl_Ngood > 0
-    mean_po_rmse = mean(anl_rmse(isfinite(anl_rmse)));
-    mean_po_copy = mean(anl_copy(isfinite(anl_copy)));
-    str_po_rmse  = sprintf('%s po=%.5g','rmse',mean_po_rmse);
-    str_po_copy  = sprintf('%s po=%.5g',plotdat.copystring,mean_po_copy);
+    str_po_rmse = compute_grand(anl_rmse,anl_Nused,'rmse','po');
+    str_po_copy = compute_grand(anl_copy,anl_Nused,plotdat.copystring,'po');
 end
 
 % Plot the rmse and 'xxx' on the same (bottom) axis.
@@ -321,11 +406,32 @@ end
 ax1 = subplot('position',figuredata.position);
 orient(figuredata.orientation)
 
-% add type of vertical coordinate info for adjusting axes to accomodate legend
+switch upper(plotdat.myvarname)
+    case 'GPSRO_REFRACTIVITY'
+        set(ax1,'YScale','log')
+end
+
+% KDR Hide the figure windows.  
+% Deal with cropping of the printed versions using snapnow before the pdf print statements.
+if webmethod
+   set(gcf,'WindowState','minimized')
+end 
+
+% add type of vertical coordinate info for adjusting axes to accommodate legend
 
 Stripes(plotdat.Xrange, plotdat.level_edges, plotdat.level_units);
-set(ax1, 'YDir', plotdat.YDir, 'YTick', plotdat.YTick, 'Layer', 'top')
-set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
+set(ax1,'YDir', plotdat.YDir, ...
+    'YTick', plotdat.YTick, ...
+    'Layer', 'top', ...
+    'YAxisLocation','left', ...
+    'FontSize',figuredata.fontsize)
+
+% KDR (log scale was set here, but moved up to fix stripes)
+% It needs to be (re)set here too.
+switch upper(plotdat.myvarname)
+    case 'GPSRO_REFRACTIVITY'
+        set(ax1,'YScale','log')
+end
 
 % draw the result of the experiment
 
@@ -345,6 +451,8 @@ set(h2,'Color',       figuredata.copy_color, ...
     'LineWidth',      figuredata.linewidth, ...
     'MarkerSize',     figuredata.MarkerSize, ...
     'MarkerFaceColor',figuredata.copy_color)
+
+% add the posterior if it is available
 
 if anl_Ngood > 0
     h3 = line(anl_rmse,plotdat.levels);
@@ -371,7 +479,7 @@ else
     h = legend([h1,h2], str_pr_rmse, str_pr_copy);
 end
 
-set(h,'Interpreter','none','Box','off','Location','NorthWest')
+set(h,'Interpreter','none','Box','off','Location','NorthWest','TextColor','blue')
 
 if verLessThan('matlab','R2017a')
     % Convince Matlab to not autoupdate the legend with each new line.
@@ -411,6 +519,7 @@ ax2 = axes('position',get(ax1,'Position'), ...
     'YColor',get(ax1,'YColor'), ...
     'YLim',get(ax1,'YLim'), ...
     'YDir',get(ax1,'YDir'), ...
+    'YScale',get(ax1,'YScale'), ...
     'FontSize',get(ax1,'FontSize'));
 
 ax2h1 = line(ges_Nposs, plotdat.levels, 'Parent', ax2);
@@ -442,12 +551,17 @@ xscale = matchingXticks(ax1,ax2);
 
 set(get(ax1,'Ylabel'),'String',plotdat.level_units, ...
     'Interpreter','none','FontSize',figuredata.fontsize)
+% KDR timespan is the "DD-Mmm-YYY through "... at the bottom.
+%     xlabel is the 'rmse and "...
+% Did the timespan overlap the BottomAnn because it wrapped
+%    around the end of the line?
+% I added more space at the bottom for the 'tall' mode.
 set(get(ax1,'Xlabel'),'String',{plotdat.xlabel, plotdat.timespan}, ...
     'Interpreter','none','FontSize',figuredata.fontsize)
 
 % determine if the observation was flagged as 'evaluate' or 'assimilate'
 
-if sum(plotdat.ges_Neval(plotdat.region,:)) > 0
+if sum(ges_Neval) > 0
     string1 = sprintf('# of obs (o=possible; %s %s) x %d', ...
         '\ast=evaluated', plotdat.post_string, uint32(xscale));
 else
@@ -644,15 +758,16 @@ function h = Stripes(x,edges,units)
 
 h = plot([min(x) max(x)],[min(edges) max(edges)]);
 axlims          = axis;
-legend_fraction = 0.22;
 
 % partial fix to legend space; add in option for vert coord = height.
 
 switch lower(units)
     case 'hpa'
+        legend_fraction = 0.22;
         axlims(4) = max(edges);
         axlims(3) = min(edges) - legend_fraction*(axlims(4)-min(edges));
     case 'm'
+        legend_fraction = 0.42;
         axlims(3) = min(edges);
         axlims(4) = max(edges) + legend_fraction*(max(edges)-axlims(3));
     otherwise
@@ -679,8 +794,7 @@ set(h,'Visible','off') % make the dots invisible
 
 function value = local_ncread(fname,varname)
 %% If the variable exists in the file, return the contents of the variable.
-% if the variable does not exist, return empty value instead of error-ing
-% out.
+% if the variable does not exist, return empty value instead of error-ing out.
 
 [variable_present, ~] = nc_var_exists(fname,varname);
 if (variable_present)
@@ -690,7 +804,32 @@ else
 end
 
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$
+%=====================================================================
+
+
+function [legstr, grand] = compute_grand(data,Nused,copystring,phase)
+
+finite_inds = isfinite(data);
+totalN      = sum(Nused);
+
+switch lower(copystring)
+    case {'rmse','spread','totalspread'}
+        if totalN > 2
+            % apply Bessel's correction to account for the fact we are estimating mean
+            squared = (data(finite_inds).^2) .* (Nused(finite_inds)-1);
+            grand   = sqrt(sum(squared)/(totalN-1));
+        end
+    otherwise
+        if ( totalN > 1 )
+            % simple weighted value
+            partial_sum = data(finite_inds) .* Nused(finite_inds);
+            grand       = sum(partial_sum)/totalN;
+        end
+end
+
+if totalN > 1
+    legstr = sprintf('%s grand %s = %.5g',phase,copystring,grand);
+else
+    legstr = 'no data';
+end
+

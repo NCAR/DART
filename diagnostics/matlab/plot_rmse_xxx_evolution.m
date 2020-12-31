@@ -49,6 +49,9 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 % pause  : true/false to conrol pausing after each figure is created.
 %          true will require hitting any key to continue to next plot
 %
+% method : 'web', 'norm', 'normweb', 'traditional'
+%          Default is 'traditional'
+%
 % OUTPUT: 'plotdat' is a structure containing what was last plotted.
 %         A postscript file containing a page for each level - each region.
 %         The other file is a simple text file containing summary information
@@ -81,8 +84,6 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id$
 
 default_obsname    = 'none';
 default_verbosity  = true;
@@ -91,6 +92,7 @@ default_pause      = false;
 default_range      = [NaN NaN];
 default_level      = -1;
 default_dateform   = 'default';
+default_method     = 'traditional';
 p = inputParser;
 
 addRequired(p,'fname',@ischar);
@@ -103,6 +105,7 @@ if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'range',      default_range,      @isnumeric);
     addParameter(p,'level',      default_level,      @isnumeric);
     addParameter(p,'DateForm',   default_dateform,   @ischar);
+    addParameter(p,'method',     default_method,     @ischar);
 else
     addParamValue(p,'obsname',   default_obsname,    @ischar);    %#ok<NVREPL>
     addParamValue(p,'verbose',   default_verbosity,  @islogical); %#ok<NVREPL>
@@ -111,6 +114,7 @@ else
     addParamValue(p,'range',     default_range,      @isnumeric); %#ok<NVREPL>
     addParamValue(p,'level',     default_level,      @isnumeric); %#ok<NVREPL>
     addParamValue(p,'DateForm',  default_dateform,   @ischar);    %#ok<NVREPL>
+    addParamValue(p,'method',    default_method,     @ischar);    %#ok<NVREPL>
 end
 p.parse(fname, copy, varargin{:});
 
@@ -149,12 +153,39 @@ else
     plotdat.nvars       = nvars;
 end
 
-global figuredata verbose
+global figuredata verbose webmethod
 
 figuredata            = set_obsdiag_figure('landscape');
 figuredata.MarkerSize = p.Results.MarkerSize;
 figuredata.DateForm   = p.Results.DateForm;
 verbose               = p.Results.verbose;
+
+switch lower(p.Results.method)
+    case {'web','normweb'}
+        x1 = [100,100,100];
+        dx = [830,830,830];
+        y1 = [100,100,100];
+        dy = [470,470,470];
+        webmethod = true;
+        % This doesn't work; something forces the figure to stay on screen.
+        % x1 = [1425,1425,1425];
+        % dx = [830,830,830];
+        % y1 = [100,100,100];
+        % dy = [470,470,470];
+        % I'd still like to have the pictures appear (momentarily) mostly off screen
+    otherwise
+        % 3 figures in spread out positions, with optimal size for my Mac.
+        x1 = [  1,475,950];
+        dx = [474,474,474];
+        y1 = [100,100,100];
+        dy = [650,650,650];
+        % 3 figures stacked on top of each other
+        %x1 = [  20,  20,  20];
+        %dx = [1000,1000,1000];
+        %y1 = [  45, 450, 855];
+        %dy = [ 320, 320, 320];
+        webmethod = false;
+end
 
 %%---------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
@@ -173,24 +204,24 @@ for ivar = 1:plotdat.nvars
     plotdat.trusted   = nc_read_att(fname, plotdat.guessvar, 'TRUSTED');
     if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
     
-    % remove any existing postscript file - will simply append each
-    % level as another 'page' in the .ps file.
+    % remove existing postscript files if we are creating them.
+    % each figure will be appended, so we want a new file initially.
     
     for iregion = 1:plotdat.nregions
         psfname{iregion} = sprintf('%s_rmse_%s_evolution_region%d.ps', ...
             plotdat.varnames{ivar}, plotdat.copystring, iregion);
         if (exist(psfname{iregion},'file') == 2)
-            fprintf('Removing %s from the current directory.\n',psfname{iregion})
-            system(sprintf('rm %s',psfname{iregion}));
+            if (verbose), fprintf('Removing %s from the current directory.\n',psfname{iregion}); end
+            system(sprintf('rm %s >& /dev/null',psfname{iregion}));
         end
     end
     
-    % remove any existing log file -
+    % remove any existing log file - no matter what.
     
     lgfname = sprintf('%s_rmse_%s_obscount.txt',plotdat.varnames{ivar},plotdat.copystring);
     if (exist(lgfname,'file') == 2)
-        fprintf('Removing %s from the current directory.\n',lgfname)
-        system(sprintf('rm %s',lgfname));
+        if (verbose), fprintf('Removing %s from the current directory.\n',lgfname); end
+        system(sprintf('rm %s >& /dev/null',lgfname));
     end
     logfid = fopen(lgfname,'wt');
     fprintf(logfid,'%s\n',lgfname);
@@ -212,24 +243,29 @@ for ivar = 1:plotdat.nvars
     [dimnames, ~] = nc_var_dims(fname, plotdat.guessvar);
     
     if ( plotdat.dimensionality == 1 ) % observations on a unit circle, no level
-        plotdat.level = 1;
+        plotdat.varlevels   = 1;
+        plotdat.level       = 1;
         plotdat.level_units = [];
     elseif ( strfind(dimnames{2},'surface') > 0 )
+        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'surface';
     elseif ( strfind(dimnames{2},'undef') > 0 )
+        plotdat.varlevels   = 1;
         plotdat.level       = 1;
         plotdat.level_units = 'undefined';
     else
-        plotdat.level       = ncread(fname, dimnames{2});
+        plotdat.varlevels   = ncread(fname, dimnames{2});
         plotdat.level_units = nc_read_att(fname, dimnames{2}, 'units');
-        nlevels             = length(plotdat.level);
+        nlevels             = length(plotdat.varlevels);
         if (p.Results.level < 0 )
             % use all the levels
+            plotdat.level   = 1:nlevels;
         elseif (p.Results.level > 0 && p.Results.level < nlevels)
-            plotdat.level   = p.Results.level;
+            plotdat.level   = round(p.Results.level);
         else
-            error('%d is not a valid level for %s',p.Results.level,plotdat.guessvar)
+            str1 = sprintf('valid level values are 1 <= %d',nlevels);
+            error('%s\n%f is not a valid level for %s\n',str1,p.Results.level,plotdat.guessvar)
         end
     end
     
@@ -249,26 +285,25 @@ for ivar = 1:plotdat.nvars
     end
     
     for ilevel = 1:length(plotdat.level)
-        
         priorQCs = get_qc_values(fname, plotdat.guessvar, ...
-            'levelindex', ilevel, ...
+            'levelindex', plotdat.level(ilevel), ...
             'fatal', false, ...
             'verbose', verbose);
-        plotdat.mylevel   = ilevel;
+        plotdat.mylevel   = plotdat.level(ilevel);
         plotdat.ges_Neval = priorQCs.num_evaluated;
         plotdat.ges_Nposs = priorQCs.nposs;
         plotdat.ges_Nused = priorQCs.nused;
-        plotdat.ges_copy  = guess(:,ilevel,plotdat.copyindex,:);
-        plotdat.ges_rmse  = guess(:,ilevel,plotdat.rmseindex,:);
+        plotdat.ges_copy  = guess(:,plotdat.mylevel,plotdat.copyindex,:);
+        plotdat.ges_rmse  = guess(:,plotdat.mylevel,plotdat.rmseindex,:);
         
         if (has_posterior)
             posteQCs = get_qc_values(fname, plotdat.analyvar, ...
-                'levelindex', ilevel, ...
+                'levelindex', plotdat.mylevel, ...
                 'fatal', false, ...
                 'verbose', verbose);
             plotdat.anl_Nused = posteQCs.nused;
-            plotdat.anl_copy  = analy(:,ilevel,plotdat.copyindex,:);
-            plotdat.anl_rmse  = analy(:,ilevel,plotdat.rmseindex,:);
+            plotdat.anl_copy  = analy(:,plotdat.mylevel,plotdat.copyindex,:);
+            plotdat.anl_rmse  = analy(:,plotdat.mylevel,plotdat.rmseindex,:);
         else
             plotdat.anl_Nused = zeros(size(plotdat.ges_Nused));
             plotdat.anl_copy  = plotdat.ges_copy;  % needed for determining limits
@@ -286,29 +321,45 @@ for ivar = 1:plotdat.nvars
         % plot each region, each level to a separate figure
         
         for iregion = 1:plotdat.nregions
-            figure(iregion); clf(iregion); orient(figuredata.orientation);
-            
+            figure('pos',[x1(iregion) y1(iregion) dx(iregion), dy(iregion)]);
+            orient(figuredata.orientation);
             plotdat.region   = iregion;
-            plotdat.myregion = deblank(plotdat.region_names(iregion,:));
+            plotdat.myregion = toplabel(plotdat);
+
             if ( isempty(plotdat.level_units) )
                 plotdat.title = plotdat.myvarname;
             else
+                % print level as a whole number
                 plotdat.title = sprintf('%s @ %d %s',    ...
-                    plotdat.myvarname,     ...
-                    plotdat.level(ilevel), ...
+                    plotdat.myvarname,     ... 
+                    round(plotdat.varlevels(plotdat.mylevel)), ...
                     plotdat.level_units);
             end
             
             myplot(plotdat);
             
-            % create/append to the postscript file
+            if ~ webmethod
+               drawnow
+            end
+
             if verLessThan('matlab','R2016a')
                 print(gcf, '-dpsc', '-append', psfname{iregion});
             else
                 print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
             end
+                    
+            switch lower(p.Results.method)
+
+                case {'traditional', 'norm'}
+                    
+                    % slow down the stream of pictures when there is something to see,
+                    % without needing to hit a key to continue.
+                    if any(plotdat.ges_Nused(plotdat.region,:))
+                        pause(2);
+                    end
+            end
             
-            % block to go slow and look at each one ...
+            % look at each one ... based on user input
             if (p.Results.pause)
                 disp('Pausing, hit any key to continue ...')
                 pause
@@ -316,6 +367,17 @@ for ivar = 1:plotdat.nvars
             
         end
     end
+
+    % KDR Update the figures and check the system for any changes,
+    % so that ps files will not be cropped or otherwise distorted.
+    if webmethod
+       snapnow
+    end
+
+    % KDR Need to close all figures before proceeding to the next obs type 
+    %     to prevent duplicate png files.
+    close all
+
 end
 
 %=====================================================================
@@ -325,11 +387,16 @@ end
 
 function myplot(plotdat)
 
-global figuredata verbose
+global figuredata verbose webmethod
 
 ax1 = subplot('position',figuredata.position);
 set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
 orient(figuredata.orientation)
+
+% KDR Hide the windows.  Prevent cropping the printed versions by snapnow, below.
+if webmethod
+   set(gcf,'WindowState','minimized')
+end
 
 ges_Nposs = squeeze(plotdat.ges_Nposs(plotdat.region,:,:,:));
 ges_Nused = squeeze(plotdat.ges_Nused(plotdat.region,:,:,:));
@@ -337,16 +404,19 @@ anl_Nused = squeeze(plotdat.anl_Nused(plotdat.region,:,:,:));
 ges_Neval = squeeze(plotdat.ges_Neval(plotdat.region,:,:,:));
 anl_Ngood = sum(anl_Nused);
 
+% KDR If the legend comes after the other stuff, would it be in front of them?
+%     Not all of them.  It's associated with a particular axes(?).
 [hrmse,  legstr_rmse ] = plot_quantity(            'rmse', plotdat);
 [hother, legstr_other] = plot_quantity(plotdat.copystring, plotdat);
 
 h  = legend([hrmse,hother], legstr_rmse, legstr_other);
-set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize)
+set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize,'TextColor','[0 .3 1]')
+% This text color is a lighter shade than 'blue'; it shows up against black, 'copy' green, and white.
 
 if verLessThan('matlab','R2017a')
     % Convince Matlab to not autoupdate the legend with each new line.
     % Before 2017a, this was the default behavior, so do nothing.
-    % We do not want to add the bias line to the legend, for example.
+    % We do not want to add the bias=0 line to the legend, for example.
 else
     h.AutoUpdate = 'off';
 end
@@ -357,6 +427,12 @@ if verbose
         sum(ges_Nposs), sum(ges_Nused), anl_Ngood)
     fprintf('%s; %s\n\n', legstr_rmse, legstr_other)
 end
+
+% reorder the legend so it is 'on top', which seems to give
+% it a bit more space too ... more legible.
+ax = get(gcf,'children');
+ind = find(isgraphics(ax,'Legend'));
+set(gcf,'children',ax([ind:end,1:ind-1]))
 
 % Attempt to make plotting robust in the face of 'empty' bins.
 % The bincenters variable has all the temporal bins specified,
@@ -444,7 +520,6 @@ else
     string1 = ['# of obs: o=possible; \ast=assimilated' plotdat.post_string];
 end
 set(get(ax2,'Ylabel'), 'String', string1, 'FontSize', figuredata.fontsize)
-
 
 %=====================================================================
 
@@ -597,35 +672,86 @@ function [h, legstr] = plot_quantity(quantity, plotdat)
 
 global figuredata
 
+ges_Nused = squeeze(plotdat.ges_Nused(plotdat.region,:,:,:));
+ges_Nposs = sum(ges_Nused);
 anl_Nused = squeeze(plotdat.anl_Nused(plotdat.region,:,:,:));
 anl_Nposs = sum(anl_Nused);
 
+grand_prior     = NaN;
+grand_posterior = NaN;
+
+% A long way to go to plot a summary statistic
+% reconstruct the 'grand' quantity from the timeseries as if
+% everything were pooled together from the beginning.
+
 switch lower(quantity)
     case 'rmse'
-        
-        prior          = squeeze(plotdat.ges_rmse(plotdat.region,:,:,:));
-        posterior      = squeeze(plotdat.anl_rmse(plotdat.region,:,:,:));
-        mean_prior     = mean(    prior(isfinite(    prior)));
-        mean_posterior = mean(posterior(isfinite(posterior)));
-        
+       
         color     = figuredata.rmse_color;
         marker    = figuredata.marker1;
-        linestyle = figuredata.solid;
-        linewidth = figuredata.linewidth;
+
+        prior     = squeeze(plotdat.ges_rmse(plotdat.region,:,:,:));
+        posterior = squeeze(plotdat.anl_rmse(plotdat.region,:,:,:));
+        finite_inds_prior     = isfinite(prior);
+        finite_inds_posterior = isfinite(posterior);
+
+        % apply Bessel's correction to account for the fact we are estimating mean
+        if  ges_Nposs > 1 
+           squared_error_prior = (prior(finite_inds_prior).^2) .* (ges_Nused(finite_inds_prior)-1);
+           grand_prior = sqrt(sum(squared_error_prior)/(ges_Nposs-1));
+        end
         
+        if  anl_Nposs > 1 
+           squared_error_posterior = (posterior(finite_inds_posterior).^2) .* (anl_Nused(finite_inds_posterior)-1);
+           grand_posterior = sqrt(sum(squared_error_posterior)/(anl_Nposs-1));
+        end
+
+    case {'spread','totalspread'}
+       
+        color     = figuredata.copy_color;
+        marker    = figuredata.marker2;
+
+        prior     = squeeze(plotdat.ges_copy(plotdat.region,:,:,:));
+        posterior = squeeze(plotdat.anl_copy(plotdat.region,:,:,:));
+        finite_inds_prior     = isfinite(prior);
+        finite_inds_posterior = isfinite(posterior);
+
+        % apply Bessel's correction to account for the fact we are estimating mean
+        if  ges_Nposs > 1 
+           squared_error_prior = (prior(finite_inds_prior).^2) .* (ges_Nused(finite_inds_prior)-1);
+           grand_prior = sqrt(sum(squared_error_prior)/(ges_Nposs-1));
+        end
+        
+        if  anl_Nposs > 1 
+           squared_error_posterior = (posterior(finite_inds_posterior).^2) .* (anl_Nused(finite_inds_posterior)-1);
+           grand_posterior = sqrt(sum(squared_error_posterior)/(anl_Nposs-1));
+        end
+
     otherwise
-        
-        prior          = squeeze(plotdat.ges_copy(plotdat.region, :,:,:));
-        posterior      = squeeze(plotdat.anl_copy(plotdat.region, :,:,:));
-        mean_prior     = mean(    prior(isfinite(    prior)));
-        mean_posterior = mean(posterior(isfinite(posterior)));
+
+        % simple weighted value
         
         color     = figuredata.copy_color;
         marker    = figuredata.marker2;
-        linestyle = figuredata.solid;
-        linewidth = figuredata.linewidth;
+
+        prior     = squeeze(plotdat.ges_copy(plotdat.region,:,:,:));
+        posterior = squeeze(plotdat.anl_copy(plotdat.region,:,:,:));
+        finite_inds_prior     = isfinite(prior);
+        finite_inds_posterior = isfinite(posterior);
+
+        if  ges_Nposs > 0 
+           prior_total = prior(finite_inds_prior) .* ges_Nused(finite_inds_prior);
+           grand_prior = sum(prior_total)/ges_Nposs;
+        end
         
+        if  anl_Nposs > 0 
+           posterior_total = posterior(finite_inds_posterior) .* anl_Nused(finite_inds_posterior);
+           grand_posterior = sum(posterior_total)/anl_Nposs;
+        end
 end
+
+linestyle = figuredata.solid;
+linewidth = figuredata.linewidth;
 
 % If the posterior is available, interlace to make a sawtooth plot
 % and create meaningful legend strings
@@ -633,11 +759,11 @@ end
 if  anl_Nposs > 0
     data = reshape([prior              posterior         ]',2*plotdat.Nbins,1);
     t    = reshape([plotdat.bincenters plotdat.bincenters]',2*plotdat.Nbins,1);
-    legstr = sprintf('%s pr=%.5g, po=%.5g',quantity, mean_prior, mean_posterior);
+    legstr = sprintf('%s grand pr = %.5g, po = %.5g',quantity, grand_prior, grand_posterior);
 else
     data = prior;
     t    = plotdat.bincenters;
-    legstr = sprintf('%s pr=%.5g',quantity, mean_prior);
+    legstr = sprintf('%s grand pr = %.5g',quantity, grand_prior);
 end
 
 h = line(t,data);
@@ -648,7 +774,17 @@ set(h, 'LineStyle',    linestyle, ...
     'MarkerFaceColor', color, ...
     'MarkerSize', figuredata.MarkerSize);
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$
+
+%=====================================================================
+
+function topstring = toplabel(plotdat)
+
+% add information about the region, number of observations possible, the percentage etc. 
+% and use as the top line in the title.
+
+iregion = plotdat.region;
+region  = deblank(plotdat.region_names(iregion,:));
+Nposs   = sum(plotdat.ges_Nposs(   iregion,:,:,:));
+Nused   = sum(plotdat.ges_Nused(iregion,:,:,:));
+pcnt    = 100.0 * Nused/Nposs;
+topstring = sprintf('%s %d / %d = %0.3f%%',region, Nused, Nposs, pcnt);

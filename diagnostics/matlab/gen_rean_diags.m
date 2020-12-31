@@ -7,6 +7,9 @@
 
 % Requirement: 'obs_diag_output.nc' file
 
+% >>> Run  my matlab_norm.csh after this,
+%     so that my .pdf and .ps overwrite the ones generated here.
+
 clear
 close all
 clc
@@ -17,16 +20,19 @@ view_format             = 'html';
 dont_show_code          = false ;
 fig_format              = 'png' ;
 
-path.scripts_dir        = pwd;
+path.scripts_dir        = '/Users/raeder/DAI/reanalysis_git/diagnostics/matlab';
+path.diags_dir          = pwd;
 
+
+path.diags_dir
 % Figure which month are we doing:
-obs_file = 'obs_diag_output.nc';
-if exist(obs_file, 'file') ~= 2
+path.obs_space_diags = strcat (path.diags_dir, '/obs_diag_output.nc');
+if exist(path.obs_space_diags, 'file') ~= 2
     error('DART diagnostics file "obs_diag_output.nc" does not exit in this directory.')
 end
 
-Time                    = ncread(obs_file, 'time');
-unit_time               = ncreadatt(obs_file, 'time', 'units');
+Time                    = ncread(path.obs_space_diags, 'time');
+unit_time               = ncreadatt(path.obs_space_diags, 'time', 'units');
 
 origin                  = regexp(unit_time, '\d*', 'Match');
 origin                  = datenum(str2double(origin));
@@ -34,16 +40,8 @@ current                 = Time + origin;
 period                  = datestr(current, 'mmm-yyyy');
 
 reana_month             = period(ceil(length(period)/2), :);
-path.obs_space_dir      = strcat(path.scripts_dir, '/', 'Diags_', reana_month, '/');
-path.web_dir            = strcat(path.obs_space_dir, 'web_', reana_month);  
+path.web_dir            = strcat(path.diags_dir, '/web_', reana_month);  
 
-if ~ exist(path.obs_space_dir, 'dir')
-    mkdir(path.obs_space_dir)
-end
-
-system ([ 'cp obs_diag_output.nc ' path.obs_space_dir ]);
-
-path.obs_space_diags    = strcat(path.obs_space_dir, 'obs_diag_output.nc');
 path.inflation          = '';
 path.fireoff_script     = strcat(path.scripts_dir, '/results.m');
 
@@ -56,5 +54,3 @@ options = struct(   'format'        , view_format       , ...
                 
 publish(path.fireoff_script, options);
 
-system ([ 'mv *.ps *.pdf *.txt ' path.obs_space_dir ]);
-system ([ 'tar -zcvf ' path.web_dir '.tar.gz ' path.web_dir ]);

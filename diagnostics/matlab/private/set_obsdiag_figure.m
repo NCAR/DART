@@ -32,7 +32,10 @@ end
 
 if strncmpi(orientation,'tall',4)
     orientation = 'tall';
-    position = [0.15 0.12 0.7 0.75];
+    % KDR not enough room at the bottom for timespan and BottomAnnotate
+    %     when I'm using WindowState='minimize' and snapnow in plot_rmse_xxx_profile.m
+    %     position = [0.15 0.12 0.7 0.75];
+    position = [0.15 0.16 0.7 0.71];
     
     if (nexp > 1)   % to replicate the 'two_experiments' behaviour
         ybot        = 0.06 + nexp*0.035;  % room for dates/files
@@ -43,7 +46,13 @@ if strncmpi(orientation,'tall',4)
     
 else
     orientation = 'landscape';
-    position = [0.10 0.15 0.8 0.7];
+    % KDR obs axis numbers were being cropped
+    % position = [0.10 0.15 0.8 0.7];
+    position = [0.07 0.15 0.72 0.7];
+    % KDR then the rmse axis numbers were being cropped
+    % But pngs look OK; I need a drawnow in 'traditional' mode.
+    % to match the snapnow in webmethod.
+
     
     if (nexp > 1)   % to replicate the 'two_experiments' behaviour
         ybot        = 0.06 + nexp*0.075;  % room for dates/files
