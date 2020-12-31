@@ -1,5 +1,6 @@
 #!/bin/csh
 
+# Run this after gen_rean_diags creates the pictures.
 # -a, --archive               archive mode; 
 # -v, --verbose               increase verbosity (default is -q quiet)
 # -z, --compress              compress file data during the transfer

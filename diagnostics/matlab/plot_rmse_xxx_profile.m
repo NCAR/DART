@@ -255,6 +255,13 @@ for ivar = 1:plotdat.nvars
     plotdat.ges_Neval = priorQCs.num_evaluated;
     plotdat.ges_Nposs = priorQCs.nposs;
     plotdat.ges_Nused = priorQCs.nused;
+
+    if (plotdat.has_analysis)
+        posteQCs = get_qc_values(fname, plotdat.analyvar, ...
+            'fatal', false, ...
+            'verbose', verbose);
+        plotdat.anl_Nused = posteQCs.nused;
+    end
     
     % Compute the values for the most common case,
     % these will be recomputed only if normalization is wanted,
@@ -262,7 +269,25 @@ for ivar = 1:plotdat.nvars
     
     plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex);
     plotdat.ges_copy  = guess(:,:,plotdat.copyindex);
-    plotdat.ges_mean  = guess(:,:,plotdat.meanindex);
+% This could have been used in the normalization, but wasn't
+%    plotdat.ges_mean  = guess(:,:,plotdat.meanindex);
+
+    if (plotdat.has_analysis)
+        plotdat.anl_rmse  = analy(:,:,plotdat.rmseindex);
+        plotdat.anl_copy  = analy(:,:,plotdat.copyindex);
+    else
+        plotdat.anl_Nused = zeros(size(plotdat.ges_Nused));
+        plotdat.anl_rmse  = plotdat.ges_rmse;  % needed for determining limits
+        plotdat.anl_copy  = plotdat.ges_copy;  % needed for determining limits
+    end
+
+    % ges_copy needs to be defined in plotting routines, 
+    % so this test+skip follows its definition.
+    if ( sum(plotdat.ges_Nposs(:)) < 1 )
+        fprintf('no obs for %s...  skipping\n', plotdat.varnames{ivar})
+        continue
+    end
+    
     plotdat.xlabel    = xlabel_basic;
     psbase = sprintf('%s_rmse_%s', plotdat.varnames{ivar}, plotdat.copystring);
 
@@ -271,14 +296,20 @@ for ivar = 1:plotdat.nvars
             
             switch plotdat.myvarname
                 case {'GPSRO_REFRACTIVITY', ...
-                        'AIRS_SPECIFIC_HUMIDITY', ...
-                        'RADIOSONDE_SPECIFIC_HUMIDITY'}
+                      'AIRS_SPECIFIC_HUMIDITY', ...
+                      'RADIOSONDE_SPECIFIC_HUMIDITY'}
                     plotdat.ges_rmse  = guess(:,:,plotdat.rmseindex) ./ ...
-                        guess(:,:,plotdat.meanindex);
+                                        guess(:,:,plotdat.meanindex);
                     plotdat.ges_copy  = guess(:,:,plotdat.copyindex) ./ ...
-                        guess(:,:,plotdat.meanindex);
+                                        guess(:,:,plotdat.meanindex);
                     plotdat.xlabel    = sprintf('%s, normalized by layer mean',xlabel_basic);
                     psfile            = sprintf('%s_norm_profile',psbase);
+                    if (plotdat.has_analysis)
+                        plotdat.anl_rmse  = analy(:,:,plotdat.rmseindex) ./ ...
+                                            analy(:,:,plotdat.meanindex);
+                        plotdat.anl_copy  = analy(:,:,plotdat.copyindex) ./ ...
+                                            analy(:,:,plotdat.meanindex);
+                    end
                 otherwise
             end
             
@@ -286,23 +317,6 @@ for ivar = 1:plotdat.nvars
             psfile = sprintf('%s_profile', psbase);
     end
     
-    if ( sum(plotdat.ges_Nposs(:)) < 1 )
-        fprintf('no obs for %s...  skipping\n', plotdat.varnames{ivar})
-        continue
-    end
-    
-    if (plotdat.has_analysis)
-        posteQCs = get_qc_values(fname, plotdat.analyvar, ...
-            'fatal', false, ...
-            'verbose', verbose);
-        plotdat.anl_Nused = posteQCs.nused;
-        plotdat.anl_rmse  = analy(:,:,plotdat.rmseindex);
-        plotdat.anl_copy  = analy(:,:,plotdat.copyindex);
-    else
-        plotdat.anl_Nused = zeros(size(plotdat.ges_Nused));
-        plotdat.anl_rmse  = plotdat.ges_rmse;  % needed for determining limits
-        plotdat.anl_copy  = plotdat.ges_copy;  % needed for determining limits
-    end
     
     % call report_qc_values.m
     
