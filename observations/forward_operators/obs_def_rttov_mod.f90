@@ -59,7 +59,7 @@
 ! observations with the correct units.
 !----------------------------------------------------------------------
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS QUANTITY LIST
 ! NOAA_1_VTPR1_RADIANCE,        QTY_RADIANCE
 ! NOAA_2_VTPR1_RADIANCE,        QTY_RADIANCE
 ! NOAA_3_VTPR1_RADIANCE,        QTY_RADIANCE
@@ -271,7 +271,7 @@
 ! GF5_1_VIMS_RADIANCE,          QTY_RADIANCE
 ! HY2_1_MWRI_TB,                QTY_BRIGHTNESS_TEMPERATURE
 ! CLOUDSAT_1_CPR_TB,            QTY_BRIGHTNESS_TEMPERATURE 
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS QUANTITY LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_rttov_mod, only : read_rttov_metadata, &

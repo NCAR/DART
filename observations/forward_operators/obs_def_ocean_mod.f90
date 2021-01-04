@@ -70,7 +70,7 @@
 !HFRADAR_RADIAL_VELOCITY,       QTY_VELOCITY
 !FERRYBOX_SALINITY,             QTY_SALINITY,              COMMON_CODE
 !FERRYBOX_TEMPERATURE,          QTY_TEMPERATURE,           COMMON_CODE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS QUANTITY LIST
 
 ! From Ibrahim - 19 May 2009
 ! "Concerning the radar observations: we can use a format very similar to what we 
