@@ -32,6 +32,13 @@
 #    -Mfixed                 Assume fixed-format source
 #    -Mfree                  Assume free-format source
 #    -Mbyteswapio            turn big_endian to little_endian or vice-versa
+#    -Mchkfpstk          Check consistency of floating point stack at subprogram calls (32-bit only)
+#    -M[no]bounds        Generate code to check array bounds
+#    -Mchkptr            Check for NULL pointers
+#    -M[no]pgicoff       Generate additional symbolic information
+#    -M[no]dclchk        Check that all variables are declared
+#    -M[no]eh_frame      Add link flags to preserve exception-handling frame information
+#    -M[no]flushz        Set SSE to flush-to-zero mode
 #
 # NOTE: 'noieee' "... produces results that differ from the correctly rounded
 #                     result by no more than 3 units in the last place."
@@ -71,13 +78,22 @@ LD = pgf90
 #
 # NETCDF = /opt/local
 
+# same thing is true for your HDF5 environment variable.
+# Pick one that works with the netCDF installation you have.
+#
+# HDF5 = /auto/soft/hdf5/CentOS_6_pgi
+# INCS = -I$(NETCDF)/include -I$(HDF5)/include
+# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lhdf5hl_fortran -lhdf5_fortran
+
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 FFLAGS  = -O $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this for flags:
-#FFLAGS = -g -C -Ktrap=fp -pc 64 $(INCS)
+# FFLAGS = -g -gopt -Mbounds -Mchkfpstk -Mchkptr -Mchkstk -Mpgicoff  \
+#         -Mdclchk -Meh_frame -traceback -Minform=inform \
+#         -Mflushz -Ktrap=fp -pc 64 $(INCS)
 
 # <next few lines under version control, do not edit>
 # $URL$

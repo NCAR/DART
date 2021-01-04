@@ -6,7 +6,7 @@
 
 module dart_pop_mod
 
-use        types_mod, only : r4, r8, rad2deg, PI, SECPERDAY, MISSING_R8
+use        types_mod, only : r4, r8, rad2deg, PI, SECPERDAY, MISSING_R8, digits12
 use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
                              set_calendar_type, get_calendar_string, &
                              print_date, print_time, operator(==), operator(-)
@@ -31,10 +31,9 @@ public :: get_pop_calendar, set_model_time_step, &
           set_binary_file_conversion, read_mean_dynamic_topography
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 character(len=512) :: string1, string2, string3
 
@@ -108,10 +107,11 @@ character(len=100) :: init_ts_file ! length consistent with POP
 character(len=100) :: init_ts_outfile
 character(len= 64) :: init_ts_option, init_ts_suboption
 character(len= 64) :: init_ts_file_fmt, init_ts_outfile_fmt
-
+real(r8) :: init_ts_perturb
 namelist /init_ts_nml/ init_ts_option, init_ts_suboption, &
                        init_ts_file, init_ts_file_fmt, &
-                       init_ts_outfile, init_ts_outfile_fmt
+                       init_ts_outfile, init_ts_outfile_fmt, &
+                       init_ts_perturb
 
 !------------------------------------------------------------------
 ! The POP domain namelist
@@ -217,27 +217,6 @@ call check_namelist_read(iunit, io, 'io_nml')
 call find_namelist_in_file('pop_in', 'init_ts_nml', iunit)
 read(iunit, nml = init_ts_nml, iostat = io)
 call check_namelist_read(iunit, io, 'init_ts_nml')
-
-! Is it a pointer file or not ...
-!if ( luse_pointer_files ) then
-!
-!   restart_filename = trim(pointer_filename)//'.restart'
-!
-!   if ( .not. file_exist(restart_filename) ) then
-!      string1 = 'pop_in:pointer file '//trim(restart_filename)//' not found'
-!      call error_handler(E_ERR,'initialize_module', &
-!             string1, source, revision, revdate)
-!   endif
-!
-!   iunit = open_file(restart_filename,'formatted')
-!   read(iunit,'(A)')ic_filename
-!
-!   restart_filename = ' '
-!   write(*,*)'DEBUG ... pointer filename dereferenced to ',trim(ic_filename )
-!
-!else
-!   ic_filename = trim(init_ts_file)//'.'//trim(init_ts_file_fmt)
-!endif
 
 ! Make sure we have a pop restart file (for grid dims)
 if ( .not. file_exist(ic_filename) ) then
@@ -487,6 +466,7 @@ real(r8), dimension(nx,ny), intent(out) :: ULAT, ULON, TLAT, TLON
 !     ANGLE  ! angle
 
 integer :: grid_unit, reclength
+real(digits12), dimension(nx,ny) :: ULAT64, ULON64
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -502,18 +482,21 @@ endif
 ! Actually, we only need the first two, so I'm skipping the rest.
 
 grid_unit = get_unit()
-INQUIRE(iolength=reclength) ULAT
+INQUIRE(iolength=reclength) ULAT64
 
 open(grid_unit, file=trim(horiz_grid_file), form='unformatted', convert=conversion, &
             access='direct', recl=reclength, status='old', action='read' )
-read(grid_unit, rec=1) ULAT
-read(grid_unit, rec=2) ULON
+read(grid_unit, rec=1) ULAT64
+read(grid_unit, rec=2) ULON64
 !read(grid_unit, rec=3) HTN
 !read(grid_unit, rec=4) HTE
 !read(grid_unit, rec=5) HUS
 !read(grid_unit, rec=6) HUW
 !read(grid_unit, rec=7) ANGLE
 close(grid_unit)
+
+ULAT = ULAT64
+ULON = ULON64
 
 call calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
 
@@ -944,8 +927,3 @@ end subroutine set_binary_file_conversion
 
 end module dart_pop_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

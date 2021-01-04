@@ -4,7 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
 
 # makes multiple obs_seq files, each containing observations from
 # all the ionospheric observations (ionPrf) for a day
@@ -94,9 +93,4 @@ end
 echo 'Finished'
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

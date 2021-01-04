@@ -32,6 +32,25 @@
    observation_name    = 'TERRA_TOTAL_PRECIPITABLE_WATER'
  /
 
+&convert_gpspw_nml
+   start_year       = 2008
+   start_month      = 1
+   start_day        = 1
+   total_days       = 31
+   max_obs          = 150000
+   min_lon             =   0.0
+   max_lon             = 360.0
+   min_lat             = -90.0
+   max_lat             =  90.0
+   ObsBase          = '../data'
+   InfilePrefix     = 'SUOh_'
+   InfileSuffix     = '.PWV'
+   OutfilePrefix    = 'obs_seq.'
+   OutfileSuffix    = ''
+   observation_name = 'GPS_TOTAL_PRECIPITABLE_WATER'
+   StationFile      = '../data/Suominet_North_America_stations_LatLon.table.txt'
+  /
+
 &obs_kind_nml
  /
 
@@ -60,4 +79,14 @@
 &schedule_nml
    /
 
-    
+&obs_sequence_tool_nml
+   filename_seq       = 'obs_seq.20080901'
+   filename_seq_list  = ''
+   filename_out       = 'obs_seq.copy'
+   print_only         = .false.
+   gregorian_cal      = .true.
+   first_obs_days     = -1
+   first_obs_seconds  = -1
+   last_obs_days      = -1
+   last_obs_seconds   = -1
+  /

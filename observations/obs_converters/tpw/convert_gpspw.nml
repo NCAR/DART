@@ -1,0 +1,19 @@
+&convert_gpspw_nml
+   start_year       = 2008
+   start_month      = 1
+   start_day        = 1
+   total_days       = 31
+   max_obs          = 150000
+   min_lon          = -888888.0
+   max_lon          = -888888.0
+   min_lat          = -888888.0
+   max_lat          = -888888.0
+   ObsBase          = '../data'
+   InfilePrefix     = 'SUOh_'
+   InfileSuffix     = '.PWV'
+   OutfilePrefix    = 'obs_seq.'
+   OutfileSuffix    = ''
+   observation_name = 'GPS_TOTAL_PRECIPITABLE_WATER'
+   StationFile      = '../data/Suominet_North_America_stations_LatLon.table.txt'
+  /
+

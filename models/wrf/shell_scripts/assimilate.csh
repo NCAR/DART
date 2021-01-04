@@ -3,36 +3,41 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
+
+# datea and paramfile are command-line arguments - OR -
+# are set by a string editor (sed) command.
 
 set datea     = ${1}
-set paramfile = ${3}
+set paramfile = ${2}
 
 source $paramfile
 
 set start_time = `date +%s`
 echo "host is " `hostname`
 
-cd $RUN_DIR
+cd ${RUN_DIR}
 echo $start_time >& ${RUN_DIR}/filter_started
+
+# Make sure the previous results are not hanging around
+if ( -e ${RUN_DIR}/obs_seq.final )  ${REMOVE} ${RUN_DIR}/obs_seq.final
+if ( -e ${RUN_DIR}/filter_done   )  ${REMOVE} ${RUN_DIR}/filter_done
 
 #  run data assimilation system
 if ( $SUPER_PLATFORM == 'yellowstone' ) then
-## Yellowstone
- setenv TARGET_CPU_LIST -1
- setenv FORT_BUFFERED true
- mpirun.lsf ./filter
+
+   setenv TARGET_CPU_LIST -1
+   setenv FORT_BUFFERED true
+   mpirun.lsf ./filter || exit 1
+
 else if ( $SUPER_PLATFORM == 'cheyenne' ) then
-## Cheyenne
- setenv TMPDIR  /dev/shm
- setenv MPI_SHEPHERD true
- limit stacksize unlimited
- module load mpt
- mpiexec_mpt dplace -s 1 ./filter
-# module load openmpi
-# module load peak_memusage
-# mpirun ./filter
+
+# TJH MPI_SHEPHERD TRUE may be a very bad thing
+   setenv MPI_SHEPHERD FALSE
+
+   setenv TMPDIR  /dev/shm
+   limit stacksize unlimited
+   mpiexec_mpt dplace -s 1 ./filter || exit 1
+
 endif
 
 if ( -e ${RUN_DIR}/obs_seq.final )  touch ${RUN_DIR}/filter_done
@@ -43,7 +48,3 @@ echo "duration = $length_time"
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

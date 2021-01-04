@@ -1,5 +1,4 @@
 ! This code is not protected by the DART copyright agreement.
-! DART $Id$
 
 ! adapted from original JPL code, example AIRS readers
 !
@@ -151,9 +150,14 @@ contains
                                 ! 1 => use every element
       integer :: edge(10)       ! size of each dimension for swath I/O
                                 ! will be set for each individual read
-      integer :: swopen, swinqswath, swattach
-      integer :: swrdfld, swrdattr
-      integer :: swdetach, swclose
+      
+      integer :: swopen         ! open a swath file
+      integer :: swattach       ! attatch to a swath object
+      integer :: swinqswath     ! retieves number and names of swaths in file
+      integer :: swrdfld        ! read data from a data field
+      integer :: swrdattr       ! read swath attribute
+      integer :: swdetach       ! detatching from the swath object
+      integer :: swclose        ! closing the file
 
       fid = swopen(file_name, 1)
       if (fid .eq. -1) then
@@ -800,8 +804,3 @@ end subroutine
 
 end module
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

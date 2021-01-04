@@ -25,13 +25,14 @@ be coordinated with existing observational and modeling expertise.
 <center>
 <a href="../images/DAReS_circa_2017.jpg"><img src="../images/DAReS_circa_2017.jpg" height="300" alt="group photo" /></a>
 
-from left to right: [Kevin Raeder](http://staff.ucar.edu/users/raeder),
-[Glen Romine](http://staff.ucar.edu/users/romine),
-[Jeff Anderson](http://staff.ucar.edu/users/jla),
-[Nancy Collins](http://staff.ucar.edu/users/nancy),\
-[Tim Hoar](http://staff.ucar.edu/users/thoar),
+from left to right:
+<a href="http://staff.ucar.edu/users/raeder">Kevin Raeder</a>,
+<a href="http://staff.ucar.edu/users/romine">Glen Romine</a>,
+<a href="http://staff.ucar.edu/users/jla">Jeff Anderson</a>,\
+<a href="http://staff.ucar.edu/users/nancy">Nancy Collins</a>,
+<a href="http://staff.ucar.edu/users/thoar,">Tim Hoar</a>
 Jonathan Hendricks, and
-[Moha El Gharamti](http://staff.ucar.edu/users/gharamti).\
+<a href="http://staff.ucar.edu/users/gharamti">Moha El Gharamti</a>.\
 This is an old photo and does not show all of us\!
 </center>
 
@@ -78,7 +79,7 @@ DAReS Support (alphabetically)
 | postal address           | "overnight" deliveries   | electronic methods   |
 | :----------------------- | :----------------------- | :------------------- |
 | Lisa Larson              | Lisa Larson              | larsonl @ ucar . edu |
-| NCAR                     | NCAR                     | 303 497 185          |
+| NCAR                     | NCAR                     | 303 497 1858         |
 | P.O. Box 3000            | 1850 Table Mesa Dr.      | 303 497 2483 (FAX)   |
 | Boulder, CO 80307-3000   | Boulder, CO 80305        |                      |
 

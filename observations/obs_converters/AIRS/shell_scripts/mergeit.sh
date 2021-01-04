@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # merge the files into "daily" files which start at 03:01Z
 # and end at 03:00Z the following day.  (the name of the file
 # is the first day.)
@@ -97,9 +95,4 @@ while (( d <= totaldays)) ; do
 done
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

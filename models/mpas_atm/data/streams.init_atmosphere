@@ -1,0 +1,27 @@
+<streams>
+<immutable_stream name="input"
+                  type="input"
+                  filename_template="static.nc"
+                  input_interval="initial_only" />
+
+<immutable_stream name="output"
+                  type="output"
+                  filename_template="init.nc"
+                  packages="initial_conds"
+                  output_interval="initial_only" />
+
+<immutable_stream name="surface"
+                  type="output"
+                  filename_template="sfc_update.nc"
+                  filename_interval="none"
+                  packages="sfc_update"
+                  output_interval="86400" />
+
+<immutable_stream name="lbc"
+                  type="output"
+                  filename_template="lbc.$Y-$M-$D_$h.nc"
+                  filename_interval="output_interval"
+                  packages="lbcs"
+                  output_interval="6:00:00" />
+
+</streams>

@@ -16,6 +16,7 @@ module readozobs
 !
 ! program history log:
 !   2009-02-23  Initial version.
+!   2020-08-26  A little more error handling. Using open_file()
 !
 ! attributes:
 !   language: f95
@@ -24,6 +25,7 @@ module readozobs
 
 use kinds, only: r_single,i_kind,r_kind
 use params, only: nsats_oz,sattypes_oz
+use utilities_mod, only: open_file
   
 implicit none
 
@@ -64,8 +66,8 @@ subroutine get_num_ozobs(obspath,datestring,num_obs_tot,id)
         if (.not. fexist .or. datestring .eq. '0000000000') then
         obsfile = trim(adjustl(obspath))//"diag_"//trim(sattypes_oz(nsat))//"_ges."//trim(adjustl(id))
         endif
-        !print *,obsfile
-        open(iunit,form="unformatted",file=obsfile,iostat=ios)
+        !print *,'readozobs: opening "'//trim(obsfile)//'"'
+        iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
         read(iunit,err=20,end=30) isis,dplat,obstype,jiter,nlevs,idate,iint,ireal,iextra
         allocate(pob(nlevs),grs(nlevs),err(nlevs),iouse(nlevs))
         read(iunit,err=20,end=30) pob,grs,err,iouse
@@ -143,9 +145,9 @@ subroutine get_ozobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x_
       inquire(file=obsfile,exist=fexist)
       if (.not. fexist .or. datestring .eq. '0000000000') then
       obsfile = trim(adjustl(obspath))//"diag_"//trim(sattypes_oz(nsat))//"_ges."//trim(adjustl(id))
-      endif
-      !print *,obsfile
-      open(iunit,form="unformatted",file=obsfile,iostat=ios)
+      endif 
+      !print *,'readozobs: opening "'//trim(obsfile)//'"'
+      iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
       read(iunit,err=20,end=30) isis,dplat,obstype,jiter,nlevs,idate,iint,ireal,iextra
       allocate(pob(nlevs),grs(nlevs),err(nlevs),iouse(nlevs))
       read(iunit,err=20,end=30) pob,grs,err,iouse
@@ -155,8 +157,8 @@ subroutine get_ozobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x_
         if (.not. fexist .or. datestring .eq. '0000000000') then
         obsfile2 = trim(adjustl(obspath))//"diag_"//trim(sattypes_oz(nsat))//"_ges."//trim(adjustl(id2))
         endif
-        !print *,obsfile2
-        open(iunit2,form="unformatted",file=obsfile2,iostat=ios)
+        !print *,'readozobs: opening "'//trim(obsfile2)//'"'
+        iunit2 = open_file(obsfile2,form='unformatted',action='read',convert='BIG_ENDIAN')
         read(iunit2,err=20,end=30) isis2,dplat2,obstype2,jiter2,nlevs2,idate2,iint2,ireal2,iextra2
         if(isis /= isis2 .or. dplat /= dplat2 .or. obstype /= obstype2 .or. jiter /= jiter2 .or. &
            nlevs /= nlevs2 .or. idate /= idate2 .or. iint /= iint2 .or. ireal /= ireal2)then

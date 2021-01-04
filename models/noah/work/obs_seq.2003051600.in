@@ -1,0 +1,46 @@
+ obs_sequence
+obs_kind_definitions
+           4
+           2 SOIL_TEMPERATURE               
+           3 SOIL_MOISTURE                  
+           4 LAYER_LIQUID_WATER             
+           8 MODIS_SNOWCOVER_FRAC           
+  num_copies:            0  num_qc:            0
+  num_obs:            4  max_num_obs:            4
+  first:            1  last:            4
+ OBS            1
+          -1           2          -1
+obdef
+loc3d
+     4.632103834792950        0.6806784082777885        0.2500000000000000      3
+kind
+           2
+     0     146962
+  0.20000000000000001     
+ OBS            2
+           1           3          -1
+obdef
+loc3d
+     4.632103834792950        0.6806784082777885        0.5000000000000000      3
+kind
+           3
+     0     146962
+  0.50000000000000000     
+ OBS            3
+           2           4          -1
+obdef
+loc3d
+     4.632103834792950        0.6806784082777885         1.000000000000000      3
+kind
+           4
+     0     146962
+   1.0000000000000000     
+ OBS            4
+           3          -1          -1
+obdef
+loc3d
+     4.632103834792950        0.6806784082777885         0.000000000000000     -1
+kind
+           8
+     0     146962
+   1.0000000000000000E-002

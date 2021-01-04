@@ -3,8 +3,6 @@
 # This code may (or may not) be part of the COAMPS distribution,
 # So it is not protected by the DART copyright agreement.
 #
-# DART $Id$
-#
 ########################################################################
 #
 # SCRIPT:   advance_group.csh
@@ -182,8 +180,4 @@ if (-e ${GROUPLOCK}) then
     echo "Leaving advance_group.csh"
 endif
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

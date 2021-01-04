@@ -4,51 +4,30 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# This converter needs the HDF-EOS2 libraries which are built on the HDF4
+# libraries. If any of these libraries are not found during execution,
+# make sure your [DY]LD_LIBRARY_PATH contains $HDFEOS_LIBROOT
 
-# if you are building this on cheyenne.ucar.edu (ncar supercomputer)
-# i've been able to use these two methods to build this converter:
-#
-#  1) use the prebuild hdf-eos module on the system:
-#     a) unload the netcdf module, 
-#     b) load the hdf-eos module, then 
-#     c) reload netcdf
-#     d) uncomment the MYINCDIR, MYLIBDIR lines below that use the NCAR_... versions
-#
-#  2) use the older libs i have previously built:
-#     a) load the gnu compiler module
-#        (i get dup symbol errors with intel.)
-#     b) use the /glade/work/nancy versions of the dirs
+if ( $?NCAR_INC_HDFEOS ) then
+   set HDFEOS_INCLUDE = $NCAR_INC_HDFEOS
+   set HDFEOS_LIBROOT = $NCAR_LDFLAGS_HDFEOS
+   set HDFEOS_LIBRARIES = $NCAR_LIBS_HDFEOS
 
-# these env vars seem to be defined on cheyenne by loading the hdf-eos module:
-# NCAR_INC_HDFEOS
-# NCAR_LDFLAGS_HDFEOS
-# NCAR_LIBS_HDFEOS
+else if ( -e /glade/work/thoar/hdf-eos/lib/libhdfeos.a ) then
+   set HDFEOS_INCLUDE = "/glade/work/thoar/hdf-eos/include"
+   set HDFEOS_LIBROOT = "/glade/work/thoar/hdf-eos/lib"
+   set HDFEOS_LIBRARIES = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
 
-set MYINCDIR = "-I$NCAR_INC_HDFEOS"
-set MYLIBDIR = "-L$NCAR_LIBS_HDFEOS"
-set MYLIBS   = "$NCAR_LIBS_HDFEOS"
+else
+   set HDFEOS_INCLUDE = "/Users/thoar/gnu/gnu_9.2.0/hdf-eos/include"
+   set HDFEOS_LIBROOT = "/Users/thoar/gnu/gnu_9.2.0/hdf-eos/lib"
+   set HDFEOS_LIBRARIES = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
+endif
 
-# or
-#
-#set JPGDIR = /glade/work/nancy
-#set HDFDIR = /glade/work/nancy
-#set EOSDIR = /glade/work/nancy
-#
-#set MYINCDIR = "-I$EOSDIR/include -I$HDFDIR/include -I$JPGDIR/include"
-#set MYLIBDIR = "-L$EOSDIR/lib     -L$HDFDIR/lib     -L$JPGDIR/lib"
-#set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
-#
-
-
-../../../../build_templates/mkmf -p convert_airs_L2 -t ../../../../build_templates/mkmf.template \
- -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
+     ../../../../build_templates/mkmf -p convert_airs_L2 \
+  -t ../../../../build_templates/mkmf.template \
+  -l "-I${HDFEOS_INCLUDE} -L${HDFEOS_LIBROOT} ${HDFEOS_LIBRARIES}" \
  -a "../../../.." path_names_convert_airs_L2
 
 exit $status
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

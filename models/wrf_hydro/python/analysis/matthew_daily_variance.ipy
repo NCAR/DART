@@ -1,0 +1,93 @@
+import xarray as xa
+import numpy as np
+import pandas as pd
+import os as os
+from plotnine import *
+os.chdir('python')
+from get_nwm_chrtout_postgres import *
+
+#######################################################
+# Setup the structure of the result.
+# Goal: a data frame representing the upper triangular matrix
+#       with error correlation between all pairs of gages for
+#       each variable of interest.
+# columns: from, to, distance, streamflow_err_cor, qbucket_err_cor, qsfclatrunoff_err_cor
+
+## Get the gages and coordinates. from the RouteLink file
+rl_file='/Users/jamesmcc/Downloads/Matthew_DOMAIN/RouteLink.nc'
+rl_df=xa.open_dataset(rl_file).to_dataframe()
+rl=rl_df.loc[rl_df.gages != b'               ', ['gages','x','y']]
+rl['gages']=rl['gages'].str.decode("utf-8")
+
+site_nos_list=rl['gages'].tolist()
+
+#######################################################
+# NWM data section
+## Get the data.
+data=get_nwm_chrtout('v1_2_1', 'short_range', site_nos_list)
+
+data=data.loc[:,~data.columns.duplicated()]
+data['ymd'] = data.validtime.apply(lambda x: x.strftime("%Y-%m-%d"))
+
+## Calculate the gage-wise differences with the mean / anomalies
+result_mean = data.groupby(['ymd','feature_id'])['qsfclatrunoff','qbucket','streamflow_mod'].mean().reset_index()
+result_std = data.groupby(['ymd','feature_id'])['qsfclatrunoff','qbucket','streamflow_mod'].std().reset_index()
+result_mean=result_mean.rename(index=str, \
+                               columns={'qsfclatrunoff' :'m_qsfclatrunoff', \
+                                        'qbucket'       :'m_qbucket', \
+                                        'streamflow_mod':'m_streamflow_mod'})
+result_std=result_std.rename(index=str, \
+                             columns={'qsfclatrunoff' :'s_qsfclatrunoff', \
+                                      'qbucket'       :'s_qbucket', \
+                                      'streamflow_mod':'s_streamflow_mod'})
+                               
+std_results = pd.merge(result_mean, result_std, on=('ymd','feature_id'), how='inner')
+std_results['datetime']=pd.to_datetime(std_results.ymd.values)
+
+
+## Create a feature index for plotting purposes
+ind_dict={'feature_id':  std_results.feature_id.unique() , \
+         'location_index' : tuple(range(std_results.feature_id.unique().size))  }
+
+ind_frame= pd.DataFrame(data=ind_dict)
+std_results = pd.merge(std_results, ind_frame, on=('feature_id'), how='left')
+
+var_name_lookup = { 's_streamflow_mod': 'streamflow standard deviation', \
+                    's_qbucket' :      'bucket outflow standard deviation', \
+                    's_qsfclatrunoff': 'surface lateral flux standard deviation', \
+                    'm_streamflow_mod': 'streamflow mean', \
+                    'm_qbucket' :      'bucket outflow mean', \
+                    'm_qsfclatrunoff': 'surface lateral flux mean' }
+
+#######################################################
+## Plot up timeseries of standard deviations
+plot_filename_var = { 'matthew_streamflow_daily_std':'s_streamflow_mod', \
+                      'matthew_qbucket_daily_std':'s_qbucket', \
+                      'matthew_qsfclatrunoff_daily_std':'s_qsfclatrunoff'   }
+for pp in plot_filename_var:
+    print(plot_filename_var[pp])
+    plot = ggplot(std_results,
+                  aes(x='datetime',y=plot_filename_var[pp],
+                      group='feature_id', color='location_index')) + \
+           geom_line(alpha=.5) + \
+           theme_bw() + \
+           labs(x='', \
+                y=var_name_lookup[plot_filename_var[pp]], \
+                color='site index')
+    plot.save(pp+'.png','png', width=11, height=8)
+
+
+plot_filename_var = { 'matthew_streamflow_mean_v_std':'_streamflow_mod', \
+                      'matthew_qbucket_mean_v_std':'_qbucket', \
+                      'matthew_qsfclatrunoff_mean_v_std':'_qsfclatrunoff'   }
+for pp in plot_filename_var:
+    print(plot_filename_var[pp])
+    plot = ggplot(std_results,
+                  aes(x='m'+plot_filename_var[pp],y='s'+plot_filename_var[pp],
+                      group='feature_id', fill='location_index')) + \
+           geom_point(alpha=.3, color=None) + \
+           theme_bw() + \
+           labs(x=var_name_lookup['m'+plot_filename_var[pp]], \
+                y=var_name_lookup['s'+plot_filename_var[pp]], \
+                fill='site index')
+    plot.save(pp+'.png','png', width=11, height=8)

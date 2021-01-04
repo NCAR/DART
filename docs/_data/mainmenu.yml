@@ -1,61 +1,65 @@
 # For this data file to work on GitHub pages you need to include the name of the repository in the url
-# e.g. /<repo name>/pages/DART2_Starting.html
+# e.g. /<repo name>/pages/Getting_Started.html
 # excluding the repository name makes it easier to navigate when building locally
 menu:
   - title: Documentation
-    url: /DART_development/pages/Getting_Started.html
+    submenu:
+      - title: Models
+        url: /pages/Models.html
+      - title: Observations 
+        url: /pages/Observations.html
+      - title: Diagnostics
+        url: /pages/Diagnostics.html
+      - title: Radiance Support
+        url: /pages/Radiance_support.html
+  - title: Learning
     submenu:
       - title: Getting Started
-        url: /DART_development/pages/Getting_Started.html
-      - title: Models
-        url: /DART_development/pages/Models.html
-      - title: Observations 
-        url: /DART_development/pages/Observations.html
-      - title: Diagnostics
-        url: /DART_development/pages/Diagnostics.html
-  - title: Research
-    url: /DART_development/pages/Research.html
-    submenu:
+        url: /pages/Getting_Started.html
       - title: "DART_LAB: explore ensemble DA concepts with MATLAB"
-        url: /DART_development/pages/dart_lab.html
+        url: /pages/dart_lab.html
       - title: "Tutorial: learn how to use DART"
-        url: /DART_development/pages/Tutorial.html
+        url: /pages/Tutorial.html
+  - title: Research
+    url: /pages/Research.html
+    submenu:
       - title: Publications
-        url: /DART_development/pages/Publications.html
+        url: /pages/Publications.html
       - title: Presentations
-        url: /DART_development/pages/Presentations.html
+        url: /pages/Presentations.html
       - title: CESM and DART
-        url: /DART_development/pages/CESM_DART_guidelines.html
+        url: /pages/CESM_DART_guidelines.html
       - title: WRF and DART
-        url: /DART_development/pages/WRF_DART_guidelines.html
+        url: /pages/WRF_DART_guidelines.html
+      - title: Radiance Support
+        url: /pages/Radiance_support.html
   - title: About Us
-    url: /DART_development/pages/About_Us.html
+    url: /pages/About_Us.html
   - title: Support
-    url: /DART_development/pages/support.html
+    url: /pages/support.html
     submenu:
       - title: DART Parallelism
-        url: /DART_development/pages/dart_mpi.html
+        url: /pages/dart_mpi.html
       - title: Frequently Asked Questions
-        url: /DART_development/pages/DART2_Miscellany.html
+        url: /pages/Miscellany.html
   - title: Releases
-    url: /DART_development/pages/release.html
+    url: /pages/release.html
     submenu:
-      - title: Manhattan
-        url: /DART_development/api/v9.6.0/index.html
+      - title: Manhattan (newest)
+        url: https://github.com/NCAR/DART/releases/tag/v9.9.0
       - title: Lanai
-        url: /DART_development/api/v8.4.1/index.html
+        url: https://github.com/NCAR/DART/releases/tag/v8.4.1
       - title: Kodiak
-        url: /DART_development/api/v7.2.2/index.html
+        url: https://github.com/NCAR/DART/releases/tag/v7.2.2
       - title: Jamaica
-        url: /DART_development/api/v6.0.1/index.html
+        url: https://github.com/NCAR/DART/releases/tag/v6.0.1
       - title: Iceland
-        url: /DART_development/api/v5.1.0/index.html
+        url: https://github.com/NCAR/DART/releases/tag/v5.1.0
       - title: Hawaii
-        url: /DART_development/api/v4.1.0/index.html
+        url: https://github.com/NCAR/DART/releases/tag/v4.1.0
       - title: Guam
-        url: /DART_development/api/v3.0.0/index.html
+        url: https://github.com/NCAR/DART/releases/tag/v3.0.0
       - title: Fiji
-        url: /DART_development/api/v2.0.0/index.html
-      - title: Easter
-        url: /DART_development/api/v1.0.0/index.html
-
+        url: https://github.com/NCAR/DART/releases/tag/v2.0.0
+      - title: Easter (oldest)
+        url: https://github.com/NCAR/DART/releases/tag/v1.0.0 

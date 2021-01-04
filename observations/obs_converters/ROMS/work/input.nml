@@ -78,3 +78,37 @@
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  
  /
+
+&obs_sequence_tool_nml
+   filename_seq       = 'obs_seq.out'
+   filename_seq_list  = ''
+   filename_out       = 'obs_seq.copy'
+   print_only         = .false.
+   gregorian_cal      = .true.
+   first_obs_days     = -1
+   first_obs_seconds  = -1
+   last_obs_days      = -1
+   last_obs_seconds   = -1
+  /
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+   /
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.out'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+   /
