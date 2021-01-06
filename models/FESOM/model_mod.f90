@@ -60,17 +60,14 @@ use        utilities_mod, only : register_module, error_handler,                
 
 use         obs_kind_mod, only : get_index_for_quantity,     &
                                  get_name_for_quantity,      &
-                                 QTY_VERTICAL_VELOCITY,      &
                                  QTY_POTENTIAL_TEMPERATURE,  &
                                  QTY_TEMPERATURE,            &
                                  QTY_SALINITY,               &
                                  QTY_DRY_LAND,               &
-                                 QTY_EDGE_NORMAL_SPEED,      &
                                  QTY_U_CURRENT_COMPONENT,    &
                                  QTY_V_CURRENT_COMPONENT,    &
                                  QTY_SEA_SURFACE_HEIGHT,     &
-                                 QTY_SEA_SURFACE_PRESSURE,   &
-                                 QTY_TRACER_CONCENTRATION
+                                 QTY_SEA_SURFACE_PRESSURE
 
 use mpi_utilities_mod, only: my_task_id, broadcast_minmax, task_count
 
