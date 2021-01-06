@@ -125,6 +125,7 @@
    obs_type_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
                               '../../../observations/forward_operators/obs_def_radar_mod.f90',
                               '../../../observations/forward_operators/obs_def_metar_mod.f90',
+            quantity_files = '../../../assimilation_code/modules/observations/atmosphere_quantities.f90'
   /
 
    

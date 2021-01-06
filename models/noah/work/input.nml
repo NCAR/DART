@@ -162,6 +162,7 @@
    obs_type_files              = '../../../observations/forward_operators/obs_def_land_mod.f90',
                               '../../../observations/forward_operators/obs_def_COSMOS_mod.f90',
                               '../../../observations/forward_operators/obs_def_GRACE_mod.f90'
+            quantity_files = '../../../assimilation_code/modules/observations/land_quantities.f90'
   /
 
 

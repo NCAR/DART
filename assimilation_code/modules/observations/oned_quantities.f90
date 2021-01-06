@@ -16,6 +16,7 @@
 !  QTY_STATE_VAR_POWER     none      ! raising a state value to a power
 !  QTY_LARGE_SCALE_STATE   none      ! state varies with large time/space scale
 !  QTY_SMALL_SCALE_STATE   none      ! state varies with small time/space scale
+!  QTY_1D_PARAMETER        none   
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS
 

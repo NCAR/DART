@@ -248,10 +248,10 @@
                              '../../../observations/forward_operators/obs_def_upper_atm_mod.f90',
                              '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                             '../../../observations/forward_operators/obs_def_upper_atm_mod.f90'
   quantity_files           = '../../../assimilation_code/modules/observations/atmosphere_quantities.f90',
                              '../../../assimilation_code/modules/observations/space_quantities.f90',
                              '../../../assimilation_code/modules/observations/chemistry_quantities.f90',
-                             '../../../observations/forward_operators/obs_def_upper_atm_mod.f90'
    /
 
 ! Not usually assimilated.  No fundamental reason not to.

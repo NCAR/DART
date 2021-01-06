@@ -130,6 +130,7 @@
      input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
     output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
      obs_type_files = '../../../observations/forward_operators/obs_def_cice_mod.f90'
+            quantity_files = '../../../assimilation_code/modules/observations/seaice_quantities.f90'
    /
 
 
