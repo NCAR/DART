@@ -152,6 +152,40 @@
 !     QTY_SPECIFIC_DIFFERENTIAL_PHASE   "none"   MISSING_R8   MISSING_R8
 !     QTY_FLASH_RATE_2D                 "none"   MISSING_R8   MISSING_R8
 ! 
+! ! kinds for radiance 
+!     QTY_RADIANCE                      "none"   MISSING_R8   MISSING_R8   ! L1 radiance (mW/cm^-1/sr/m^2)
+!     QTY_BRIGHTNESS_TEMPERATURE        "none"   MISSING_R8   MISSING_R8   ! L1 brightness temperature (K)
+!     QTY_BI_DIRECTIONAL_REFLECTANCE    "none"   MISSING_R8   MISSING_R8   ! L1 bi-directional reflectance (BDRF, unitless)
+!     QTY_SURFACE_TYPE                  "none"   MISSING_R8   MISSING_R8   ! land = 0, sea = 1, seaice = 2
+!     QTY_WIND_FETCH                    "none"   MISSING_R8   MISSING_R8   ! Wind fetch, m
+!     QTY_WATER_TYPE                    "none"   MISSING_R8   MISSING_R8   ! fresh = 0, ocean = 1
+!     QTY_FOAM_FRAC                     "none"   MISSING_R8   MISSING_R8   ! Fraction of foam on ocean surface (0-1)
+!     QTY_INSOLUBLE_AER                 "none"   MISSING_R8   MISSING_R8   ! Insoluble aerosol OPAC aerosol (INSO)
+!     QTY_H2O_SOLUBLE_AER               "none"   MISSING_R8   MISSING_R8   ! Soluble aerosol OPAC aerosol (WASO)
+!     QTY_SOOT                          "none"   MISSING_R8   MISSING_R8   ! Soot aerosol OPAC aerosol (SOOT)
+!     QTY_SEASALT_ACCUM                 "none"   MISSING_R8   MISSING_R8   ! Sea salt (accumulation mode) OPAC aerosol (SSAM)
+!     QTY_SEASALT_COARSE                "none"   MISSING_R8   MISSING_R8   ! Sea salt (coarse) OPAC aerosol (SSCM)
+!     QTY_MINERAL_NUCLEUS               "none"   MISSING_R8   MISSING_R8   ! Mineral (nucleus) OPAC aerosol (MINM)
+!     QTY_MINERAL_ACCUM                 "none"   MISSING_R8   MISSING_R8   ! Mineral (accumulation mode) OPAC aerosol (MIAM)
+!     QTY_MINERAL_COARSE                "none"   MISSING_R8   MISSING_R8   ! Mineral (coarse mode) OPAC aerosol (MICM)
+!     QTY_MINERAL_TRANSPORTED           "none"   MISSING_R8   MISSING_R8   ! Mineral (transported mode) OPAC aerosol (MITR)
+!     QTY_SULPHATED_DROPS               "none"   MISSING_R8   MISSING_R8   ! Sulphated droplets OPAC aerosol (SUSO)
+!     QTY_VOLCANIC_ASH                  "none"   MISSING_R8   MISSING_R8   ! Volcanic ash OPAC aerosol (VOLA)
+!     QTY_NEW_VOLCANIC_ASH              "none"   MISSING_R8   MISSING_R8   ! New volcanic ash OPAC aerosol (VAPO)
+!     QTY_ASIAN_DUST                    "none"   MISSING_R8   MISSING_R8   ! Asian dust OPAC aerosol (ASDU)
+!     QTY_BLACK_CARBON                  "none"   MISSING_R8   MISSING_R8   ! Black carbon CAMS aerosol (BCAR)
+!     QTY_DUST_BIN1                     "none"   MISSING_R8   MISSING_R8   ! Dust bin 1 CAMS aerosol (DUS1)
+!     QTY_DUST_BIN2                     "none"   MISSING_R8   MISSING_R8   ! Dust bin 2 CAMS aerosol (DUS2)
+!     QTY_DUST_BIN3                     "none"   MISSING_R8   MISSING_R8   ! Dust bin 3 CAMS aerosol (DUS3)
+!     QTY_AMMONIUM_SULPHATE             "none"   MISSING_R8   MISSING_R8   ! Ammonium sulphate CAMS aerosol (SULP)
+!     QTY_SEA_SALT_BIN1                 "none"   MISSING_R8   MISSING_R8   ! Sea salt bin 1 CAMS aerosol (SSA1)
+!     QTY_SEA_SALT_BIN2                 "none"   MISSING_R8   MISSING_R8   ! Sea salt bin 2 CAMS aerosol (SSA2)
+!     QTY_SEA_SALT_BIN3                 "none"   MISSING_R8   MISSING_R8   ! Sea salt bin 3 CAMS aerosol (SSA3)
+!     QTY_HYDROPHILIC_ORGANIC_MATTER    "none"   MISSING_R8   MISSING_R8   ! Hydrophilic organic matter CAMS aerosol (OMAT)
+!     QTY_CLOUDWATER_DE                 "none"   MISSING_R8   MISSING_R8   ! Cloud liquid water effective diameter (microns)
+!     QTY_CLOUD_ICE_DE                  "none"   MISSING_R8   MISSING_R8   ! Cloud ice effective diameter (microns)
+!     QTY_COLUMN_CLOUD_FRAC             "none"   MISSING_R8   MISSING_R8   ! Simple cloud fraction (0-1)
+!     QTY_CLOUD_TOP_PRESSURE            "none"   MISSING_R8   MISSING_R8
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS
 

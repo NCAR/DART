@@ -181,6 +181,7 @@ character(len = 256) :: output_obs_def_mod_file = &
                         '../../../observations/forward_operators/obs_def_mod.f90'
 character(len = 256) :: input_obs_qty_mod_file = &
                         '../../../assimilation_code/modules/observations/DEFAULT_obs_qty_mod.F90'
+!HK this file does not exist
 character(len = 256) :: output_obs_qty_mod_file = &
                         '../../../assimilation_code/modules/observations/obs_qty_mod.f90'
 character(len = 256) :: obs_type_files(max_obs_type_files) = 'null'
