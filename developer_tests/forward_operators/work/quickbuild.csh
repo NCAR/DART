@@ -13,7 +13,7 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
+\rm -f preprocess *.o *.mod Makefile .cppdefs
 
 set MODEL = "forward operators test"
 

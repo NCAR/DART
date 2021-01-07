@@ -3,7 +3,8 @@
 /
 
 &utilities_nml 
-   module_details = .false.,
+   TERMLEVEL = 3
+   module_details = .false.
    write_nml = 'none'
 /
 

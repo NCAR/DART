@@ -4,9 +4,9 @@
 !
 ! Unit tests for rttov
 !
-! These unit tests use warn_only_utilities_mod.f90 which 
+! These unit tests are best run with a TERMLEVEL of 3, which
 ! will not die with a DART error.  This is to allow multiple
-! calls to module_initilize in obs_def_rttov_mod.  
+! calls to module_initialize in obs_def_rttov_mod.  
 !
 ! If any of the unit tests are unable to start, the error code from 
 ! rttov_unit_tests is 102.  This is to give an error for 
