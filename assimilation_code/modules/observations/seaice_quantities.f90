@@ -61,6 +61,7 @@
 !   QTY_SEAICE_AGREG_FY                 "none"
 !   QTY_SEAICE_AGREG_SURFACETEMP        "none"
 !   QTY_SEAICE_AGREG_FREEBOARD          "none" 
+!   QTY_SEAICE_CATEGORY                 "none"
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS
 
