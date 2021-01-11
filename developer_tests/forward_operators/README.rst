@@ -18,29 +18,31 @@ Overview
 The ``developer_tests/forward_operators`` directory contains the testing
 framework for three kinds of tests:
 
-- `rttov_test.f90` which tests basic functionality of the RTTOV radiance
-   forward operators for AMSUA and AIRS observations (MW and IR, respectively)
-   - reading the DART sensor database (`observations/forward_operators/rttov_sensor_db.csv`)
-   - check the IR instrument ID
-   - check the MW instrument ID
-   - exercise the IR (direct) forward operator
-   - exercise the MW (scatt) forward operator
-- `rttov_unit_tests.f90` performs a host of unit tests. If run with a TERMLEVEL of 3,
-   all tests will be completed even if previous tests are not successful.
-- `make_COS_input` and `make_assim_list` creates input for create_obs_sequence (COS)
-   and the appropriate namelist settings to test the forward operator code.
-   Different sets of observations are grouped into separate files based on certain
-   criterion - are they atmospheric observations, oceanic ... do they require special
-   metadata, etc. These files are intended to be supplied as input to `make_COS_input`
-   and will result in a text file that will generate an observation sequence
-   file when used as input to `create_obs_sequence` See the `make_COS_input`_ section.
-   - all_atm_obs_types
-   - all_commoncode_atm_obs_types
-   - all_f90s
-   - all_fwdop_atm_obs_types
-   - all_obs_types
-   - forward_op_code
-   - no_special_forward_op_code
+- `rttov_test.f90` which tests basic functionality of the RTTOV radiance forward operators for AMSUA and AIRS observations (MW and IR, respectively)
+
+  - create a dummy rttov_sensor_db_file to read
+  - check the IR instrument ID
+  - check the MW instrument ID
+  - exercise the IR (direct) forward operator
+  - exercise the MW (scatt) forward operator
+
+- `rttov_unit_tests.f90` performs a host of unit tests. 
+
+  - If run with a TERMLEVEL of 3, all tests will be completed even if previous tests are not successful.
+  
+- `make_COS_input` and `make_assim_list` creates input for create_obs_sequence (COS) and the appropriate namelist settings to test the forward operator code.  
+
+Different sets of observations are grouped into separate files based on certain criteria - are they atmospheric observations, oceanic ... do they require special metadata, etc. The following files are intended to be supplied as input to `make_COS_input` and will result in a text file that will generate an observation sequence file when used as input to `create_obs_sequence`. 
+
+- all_atm_obs_types
+- all_commoncode_atm_obs_types
+- all_f90s
+- all_fwdop_atm_obs_types
+- all_obs_types
+- forward_op_code
+- no_special_forward_op_code
+
+See the `make_COS_input`_ section for more detail. 
 
 rttov_test.f90
 ==============
@@ -63,18 +65,20 @@ continue past errors that would otherwise be fatal.
 If any of the unit tests are unable to start, the error code from
 *rttov_unit_tests* is 102.  This is to give an error for *test_dart.csh* to detect.
 
-Tests:
 
-   metadata
-   
-      PASS:
-         - metadata arrays grow correctly as observations are added
-         - metadata arrays contain correct data
-      
-      FAIL:
-         - incorrect metadata length
-         - incorrect data
+.. list-table::
 
+
+  * - **Test**
+    - **Pass** 
+    - **Fail** 
+  * - metadata growth
+    - metadata arrays grow correctly as observations are added
+    - incorrect metadata length
+  * - metadata content  
+    - metadata arrays contain correct data
+    - incorrect data
+  
 
 make_COS_input
 ==============
@@ -83,12 +87,12 @@ make_COS_input
 can be used as input for *create_obs_sequence*. The output text file has
 a name based on the input filename. For example:
 
-.. code-block:: unix
+.. code-block:: unixcode
 
   <prompt> ./make_COS_input forward_op_code
    ready to run create_obs_sequence < forward_op_code_COS.in
 
-Naturally, *create_obs_sequence* must be created with the `preprocess_nml`
+*create_obs_sequence* must be created with the `preprocess_nml`
 settings to support the observation definitions required by the input file.
 
 make_assim_list
