@@ -7,7 +7,7 @@ function [new_cov_inflate, new_cov_inflate_sd] = update_inflate(x_p, r_var, y_o,
 % Anderson, J. L., 2009: Spatially and temporally varying adaptive covariance 
 % inflation for ensemble filters. Tellus A, 61, 72-83. doi: 10.1111/j.1600-0870.2008.00361.x 
 %
-% [flavor: 5, Gamma inflation pdf] 
+% [flavor: 5, I-Gamma inflation pdf] 
 % El Gharamti, M., 2018: Enhanced Adaptive Inflation Algorithm for Ensemble Filters. 
 % Monthly Weather Review, 146, 623-640. doi: 10.1175/MWR-D-17-0187.1
 %
@@ -32,7 +32,7 @@ dist_2 = (x_p - y_o)^2;
 if strcmp(flavor, 'Gaussian')
     theta_bar_2  = ( 1 + gamma_corr * (sqrt(lambda_mean) - 1) )^2 * sigma_p_2 + sigma_o_2;
     
-elseif strcmp(flavor, 'Gamma')
+elseif strcmp(flavor, 'I-Gamma')
     fac1 = (1 + gamma_corr * (sqrt(lambda_mean) - 1))^2;
     fac2 = -1 / ens_size;
     
@@ -77,7 +77,7 @@ if strcmp(flavor, 'Gaussian')
     b = like_ratio - 2*lambda_mean;
     c = lambda_mean^2 - lambda_sd^2 - like_ratio*lambda_mean;
     
-elseif strcmp(flavor, 'Gamma')
+elseif strcmp(flavor, 'I-Gamma')
     % Switch from Gaussian prior to inverse-gamma
     beta = change_GA_IG(lambda_mean, lambda_sd^2);
     
@@ -149,7 +149,7 @@ else
         % Prevent an increase in the sd of lambda
         if new_cov_inflate_sd > lambda_sd,          new_cov_inflate_sd = lambda_sd;         end
         
-    elseif strcmp(flavor, 'Gamma')
+    elseif strcmp(flavor, 'I-Gamma')
         % Compute the shape parameter of the prior IG
         % This comes from the assumption that the mode of the IG is the mean/mode of the input Gaussian
         shape_old = beta / lambda_mean - 1;
