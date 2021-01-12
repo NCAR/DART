@@ -17,7 +17,7 @@ function run_lorenz_96_inf
 %      For prior adaptive inflation algorithm; there are 2 choices: 
 %      1- Inflation is assumed to follow a Gaussian pdf (from Anderson 2009)
 %      2- Inflation is assumed to follow an Inverse Gamma pdf (from El Gharamti 2018)
-
+%
 %      Changing the ensemble size resets the diagnostic displays. The figure window
 %      displays time sequences of the prior and posterior error and prior
 %      and posterior (if assimilation is on) rank histograms.
