@@ -54,7 +54,7 @@ The top level DART source code tree contains the following directories and files
 
 | Directory            | Purpose  |
 | :--------------      | :------- |
-| `assimilation_code/` | Low-level library and fonts required by NCAR Graphics and NCL |
+| `assimilation_code/` | assimilation tools and programs |
 | `build_templates/`   | Configuration files for installation |
 | `developer_tests/`   | regression testing |
 | `diagnostics/`       | routines to diagnose assimilation performance |
@@ -121,12 +121,12 @@ Go into `models/lorenz_63/work` and run *quickbuild.csh*.
 > cd models/lorenz_63/work  
 > ./quickbuild.csh  
 
-If it compiles, *:tada:*!  Run this series of commands to do a very basic test:
+If quickbuild finishes sucessfully, run this series of commands to do a very basic test:
 
 > ./perfect_model_obs  
 > ./filter  
 
-If that runs, *:tada:* again!  Finally, if you have Matlab installed on
+Finally, if you have Matlab installed on
 your system add '$DART/diagnostics/matlab' to your matlab search path 
 and run the 'plot_total_err' diagnostic script while in the 
 `models/lorenz_63/work` directory.  If the output plots and looks 

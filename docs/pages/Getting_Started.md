@@ -105,7 +105,7 @@ Go into the `build_templates` subdirectory and copy over the closest `mkmf.templ
 Edit `mkmf.template` to set the `NETCDF` directory location if not in
 `/usr/local` or comment it out and set `$NETCDF` in your environment.
 
-:warning: *WARNING*: Your netCDF library must have been compiled with the
+*WARNING*: Your netCDF library must have been compiled with the
 same compiler (including version) that you will use to compile DART and also
 must include the F90 interfaces. In practice this means that even if you have a
 netCDF distribution on your system, you may need to recompile netCDF in a
@@ -138,13 +138,13 @@ You are now ready to start building the DART code. Go into
 > cd models/lorenz_63/work  
 > ./quickbuild.csh  
 
-If it compiles, *:tada:*  If not, see the next section for more information.
-Run this series of commands to do a very basic test:
+If quickbuild does not finish successfully, follow the more detailed DART setup description.
+If quickbuild finishes successfully, run this series of commands to do a very basic test:
 
 > ./perfect_model_obs  
 > ./filter  
 
-If that runs, *:tada:* again!  Finally, if you have Matlab installed on
+Finally, if you have Matlab installed on
 your system add '$DARTHOME/diagnostics/matlab' to your matlab search path with
 the command
 
@@ -161,7 +161,7 @@ If you are planning to run one of the models that uses MPI and want to
 use the Lorenz 63 model as a test, run ```./quickbuild.csh -mpi```.
 It will build filter and any other MPI-capable executables with MPI.
 
-:warning: *WARNING*: The underlying compiler used by *mpif90* must match the
+*WARNING*: The underlying compiler used by *mpif90* must match the
 same compiler that you use for DART and netCDF.
 
 If any of these steps fail or you don't know how to do them, you can see
@@ -228,11 +228,11 @@ as in `filename`.
 The *names of executables* will be italicized (although note that italic
 will also be used for emphasis where there is no potential for confusion).
 
-:dart: *NOTE*: "pro-tip" information to note will be written like this.
+*NOTE*: "pro-tip" information to note will be written like this.
 
-:exclamation: *IMPORTANT*: important information will be written like this.
+*IMPORTANT*: important information will be written like this.
 
-:warning: *WARNING*: don't miss out on warnings which will be written like this.
+*WARNING*: don't miss out on warnings which will be written like this.
 
 ----
 <span id="system" class="anchor"></span> [](#system)
@@ -249,7 +249,7 @@ command-line tools, utilities, and applications &mdash; directly on Windows,
 unmodified, without the overhead of a virtual machine" (see
 <https://docs.microsoft.com/en-us/windows/wsl/about> for more details)
 
-:warning: *DISCLAIMER:* we have tried to make the DART code as portable as
+*DISCLAIMER:* we have tried to make the DART code as portable as
 possible, but we do not have access to all compilers on all platforms, so
 unfortunately we cannot guarantee that the code will work correctly on your
 particular system. We are genuinely interested in your experience building the
@@ -326,7 +326,7 @@ version, the `libnetcdff` library is also often required.
 If the netCDF library does not exist on your system, you must build it
 (as well as the F90 interface modules).
 
-:warning: *WARNING*: You must build netCDF
+*WARNING*: You must build netCDF
 with the same compiler (including version) you plan to use for compiling DART.
 In practice this means that even if you have a netCDF
 distribution on your system, you may need to recompile netCDF in a separate
@@ -335,13 +335,13 @@ instructions for building the library or installing from a package manager  may
 be found at the netCDF home page:
 <https://www.unidata.ucar.edu/software/netcdf/>
 
-:exclamation: *IMPORTANT*: the normal location for the netCDF Fortran modules
+*IMPORTANT*: the normal location for the netCDF Fortran modules
 and libraries would be in the `include` and `lib` subdirectories of the netCDF
 installation. However, different compilers or package managers sometimes
 place the modules and/or libraries into non-standard locations. It is required
 that both modules and the libraries be present.
 
-:dart: *NOTE:* The location of the netCDF library, `libnetcdf.a`, and the
+*NOTE:* The location of the netCDF library, `libnetcdf.a`, and the
 locations of both `netcdf.mod` and `typesizes.mod` will be needed later.
 Depending on the version of netCDF and the build options selected, the
 Fortran interface routines may be in a separate library named
@@ -491,7 +491,7 @@ their interactions. All DART programs are compiled the same way, and each model
 directory has a directory called `work` that has the components necessary to
 build the executables.
 
-:dart: *NOTE:* some higher-order models have many more than seven programs; for
+*NOTE:* some higher-order models have many more than seven programs; for
 example, the Weather Research and Forecasting (WRF) model, which is run
 operationally around the world to predict regional weather, has 28
 separate programs. Nonetheless, each of these programs are built the same way.
@@ -552,7 +552,7 @@ the lorenz_63 model:
 The result (hopefully) is that seven executables now reside in your work
 directory.
 
-:dart: *NOTE*: The most common problem is that the netCDF libraries and/or
+*NOTE*: The most common problem is that the netCDF libraries and/or
 include files were not found in the specified location(s). The second most
 common problem is that the netCDF libraries were built with a different
 compiler than the one used for DART. Find (or compile) a compatible netCDF
@@ -596,8 +596,8 @@ There should now be the following output files:
 | `true_state.nc`     | The model trajectory - the **truth**. |
 | `obs_seq.out`       | The observations that were harvested as the true model was advanced (and which will be assimilated). |
 | **from executable "filter"** |      |
-| `preassim.nc`       | The ensemble of model states just before assimilation. This is the **prior**.<br/> :dart: *NOTE*: this file is a time series of the prior model states at all times. |
-| `filter_output.nc`  | The ensemble of model states after assimilation. This is the **posterior**.<br/> :dart: *NOTE*: this file has only the final time step of the posterior model state. |
+| `preassim.nc`       | The ensemble of model states just before assimilation. This is the **prior**.<br/>  *NOTE*: this file is a time series of the prior model states at all times. |
+| `filter_output.nc`  | The ensemble of model states after assimilation. This is the **posterior**.<br/> *NOTE*: this file has only the final time step of the posterior model state. |
 | `analysis.nc`       | The model trajectory of the posterior.                    |
 | `obs_seq.final`     | The observations and ensemble estimates of the 'observations'. |
 | **from both**       |      |
@@ -744,7 +744,7 @@ about:
 * [How would I use DART for teaching students and/or myself?](#DartForEducation)
 * [How can I contribute to DART?](#ContributeToDart)
 
-:dart: *REQUEST:* In the case that the above instructions had one or more
+*REQUEST:* In the case that the above instructions had one or more
 issues that either did not work for you as intended or were confusing, please
 contact the DART software development team at dart @ ucar .edu . We value your
 input to make getting started as smooth as possible for new DART users!
@@ -808,7 +808,7 @@ include the 3D values of water vapor, temperature, wind speed, etc. for an
 atmospheric model. These values are expected to be advanced forward in time by
 a model, which is why they are called the "model state."
 
-:dart: *NOTE*: we view the "model state" as the minimum amount of information
+*NOTE*: we view the "model state" as the minimum amount of information
 necessary to restart the model for a new forecast.
 
 At any particular time step there may be *m* **observations** available. These
@@ -1029,7 +1029,7 @@ Note that the routine `comp_dt` does not explicitly depend on the time
 variable, only on the state variables (i.e. the Lorenz 63 model is time
 invariant).
 
-:dart: *NOTE*: By default, the `model_mod.f90` follows the Lorenz 63 paper to
+*NOTE*: By default, the `model_mod.f90` follows the Lorenz 63 paper to
 use the Runge-Kutta 2 scheme (otherwise known as RK2 or the midpoint scheme) to
 advance the model.
 
@@ -1110,9 +1110,9 @@ To change the time-step, change the `input.nml` file in `DARTHOME/models/lorenz_
    /
 ~~~
 
-:dart: *NOTE*: the changes are to `deltat` and `time_step_seconds`.
+*NOTE*: the changes are to `deltat` and `time_step_seconds`.
 
-:dart: *NOTE*: we do not need to recompile the DART code as the purpose of
+*NOTE*: we do not need to recompile the DART code as the purpose of
 namelist files is to pass run-time parameters to a Fortran program without
 recompilation.
 
@@ -1273,10 +1273,10 @@ Since we want to keep the ratio of six model steps per observation and run for
 50 days, we will need 2000 model observations (360 seconds &times; 6 &times;
   2000 = 50 days).
 
-:dart: *NOTE*: as we specified in `set_def.out`, there are 3 observations per
+*NOTE*: as we specified in `set_def.out`, there are 3 observations per
 time step, so a total of 6000 observations will be generated.
 
-:dart: *NOTE*: the Lorenz 63 model dimensional time-step is related to
+*NOTE*: the Lorenz 63 model dimensional time-step is related to
 the observational time *only* through this mechanism. In other words, `deltat`
 in the namelist could relate to virtually any dimensional time step
 `time_step_seconds` if the observation times were not considered. However, DART
@@ -1485,7 +1485,7 @@ values and any quality-control values. This stage also writes the
 which could be used to restart the experiment.
 
 DART has now successfully assimilated our updated observations with a 6 minute
-model time step and assimilation every 36 minutes. *:tada:*
+model time step and assimilation every 36 minutes.
 
 #### Verifying the nicer-looking results
 
@@ -1787,7 +1787,7 @@ finally if posterior inflation is applied, the final analysis can be written in
 `analysis.nc` . The model forecast will start from the analysis to advance the
 model in order to start the cycle over again.
 
-:dart: *NOTE*: the "forecast" will be the same as the "preassim"
+*NOTE*: the "forecast" will be the same as the "preassim"
 if prior inflation is not used, and the "postassim" will be the same
 as the "analysis" if posterior inflation is not used.
 The *stages_to_write* variable in the "&filter_nml"
@@ -1796,10 +1796,10 @@ For a multi-file case, the potential *stages_to_write* are "input, forecast,
 preassim, postassim, analysis, output" while for a single file the same stages
 are available with the exception of "input."
 
-:dart: *NOTE*: in the above cycling diagram, there will actually be one file per
+*NOTE*: in the above cycling diagram, there will actually be one file per
 member, which is not shown here in order to simplify the process.
 
-:exclamation: *IMPORTANT*: the decision to store ensemble members as separate
+*IMPORTANT*: the decision to store ensemble members as separate
 files and whether to run an OSSE or OSE are independent. An OSSE can be run
 with multiple files and an OSE can be run with all ensemble members stored in
 a single file.
@@ -2176,7 +2176,7 @@ The advice for the 8. **shortest_time_between_assimilations()** routine is
 similar to the advice for a simple model: read the value from the namelist or
 return a fixed time as appropriate.
 
-:dart: *NOTE*: since the model will not be advanced by DART, the value returned
+*NOTE*: since the model will not be advanced by DART, the value returned
 here is irrelevant except for user information purposes.
 
 For the remaining routines, we give the following implementation suggestions:
@@ -2385,10 +2385,10 @@ example, here is a real list without "COMMON_CODE" in the third column:
 ! END DART PREPROCESS KIND LIST
 ~~~
 
-:dart: *NOTE*: the difference between the simple obs_def case is the lack of
+*NOTE*: the difference between the simple obs_def case is the lack of
 COMMON_CODE in the third column.
 
-:dart: *NOTE*: if interested, you can reference the `obs_def_wind_speed_mod.f90`
+*NOTE*: if interested, you can reference the `obs_def_wind_speed_mod.f90`
 "get_expected_wind_speed()" function for an example of a non-COMMON_CODE
 observation type. The operator is in the `DARTHOME/observations/forward_operators`
 directory.
@@ -2599,7 +2599,7 @@ Unlike all the other sections, this comment pair is *optional,* and
 if used, the code must **not** be in comments; it will be copied verbatim over
 to the output file.
 
-:dart: *NOTE*: the "preprocess" here is for processing specific observations
+*NOTE*: the "preprocess" here is for processing specific observations
 and should not be confused with the *preprocess* program that generates the
 observation Fortran code.
 
@@ -2681,7 +2681,7 @@ native observation format into this DART-specific format. Ultimately, it is the
 user's responsibility to convert the observations, but there are many helper
 tools and utilities to make this process easier.
 
-:dart: *NOTE*: the observation sequence file can be written in either human-
+*NOTE*: the observation sequence file can be written in either human-
 readable ASCII or machine-readable binary. The binary representation will use
 approximately two times less disk space, but the ASCII representation makes
 manually inspecting the file contents much easier. For either representation,
@@ -2803,7 +2803,7 @@ https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes
 The user can then conduct their development on the private repository,
 adding additional team members as necessary.
 
-:dart: *NOTE*: only 3 collaborators are allowed on a free non-institutional
+*NOTE*: only 3 collaborators are allowed on a free non-institutional
 private repository. The DART team is happy to collaborate with you on your
 private repository, but keep the 3 collaborator limit in mind if you are a free
 GitHub.com user.
