@@ -23,8 +23,7 @@ models/template/model_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
-observations/obs_converters/AIRS/airs_JPL_mod.f90
-observations/obs_converters/AIRS/airs_obs_mod.f90
-observations/obs_converters/AIRS/convert_airs_L2.f90
-observations/obs_converters/obs_error/ncep_obs_err_mod.f90
+observations/obs_converters/AIRS/amsua_bt_mod.f90
+observations/obs_converters/AIRS/amsua_netCDF_support_mod.f90
+observations/obs_converters/AIRS/convert_amsu_L1.f90
 observations/obs_converters/utilities/obs_utilities_mod.f90

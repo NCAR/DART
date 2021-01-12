@@ -4130,8 +4130,7 @@ function get_rttov_option_logical(field_name) result(p)
    integer,          parameter   :: duc = ichar('A') - ichar('a')
    character(len=:), allocatable :: fname
    
-   character :: ch
-   integer   :: slen, i
+   integer   :: slen
 
 
    ! copy the string over to an appropriate size

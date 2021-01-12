@@ -45,7 +45,6 @@ private
 
 public :: make_obs_sequence, initialize_obs_sequence, compute_thin_factor
 
-
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'airs_obs_mod.f90'
 character(len=*), parameter :: revision = ''
@@ -72,7 +71,8 @@ real ::   Q_err(AIRS_RET_H2OPRESSURELAY, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
 
 contains
 
-!-------------------------------------------------
+!-------------------------------------------------------------------------------
+!>
 
 subroutine initialize_module
 
@@ -84,10 +84,10 @@ module_initialized = .true.
 
 end subroutine initialize_module
 
-!-------------------------------------------------
-!  extract the temperature and humidity observations from a granule
-!  and convert to DART observation format.  allow caller to specify
-!  a bounding box and only extract data within that region.
+!-------------------------------------------------------------------------------
+!> extract the temperature and humidity observations from a granule
+!> and convert to DART observation format.  allow caller to specify
+!> a bounding box and only extract data within that region.
 
 subroutine make_obs_sequence ( seq, granule, lon1, lon2, lat1, lat2, &
                              min_MMR_threshold, top_pressure_level, &
@@ -101,18 +101,16 @@ integer,  intent(in) :: row_thin, col_thin
 logical,  intent(in) :: use_NCEP_errs
 integer,  intent(in) :: version
 
-type(obs_def_type)      :: obs_def
 type(obs_type)          :: obs, prev_obs
-type(location_type)     :: obs_loc
 
-integer :: i, irow, icol, ivert, num_copies, num_qc, istart
+integer :: i, irow, icol, ivert, istart
 integer :: days, seconds
 integer :: obs_num, temperature_top_index, humidity_top_index
 integer :: which_vert, tobstype, qobstype
 
 real(r8) :: olon, olat, vloc
 real(r8) :: obs_value, obs_var
-real(r8) :: tqc, qqc, latlon(3)
+real(r8) :: tqc, qqc
 real(r8) :: midpres, log_lower, log_upper
 
 logical :: is_first_obs
@@ -247,7 +245,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
          endif
          obs_var = obs_var * obs_var
 
-	 if (DEBUG) print *, 'obs value, var = ', obs_value, obs_var
+         if (DEBUG) print *, 'obs value, var = ', obs_value, obs_var
 
          call create_3d_obs(olat, olon, vloc, which_vert, obs_value, AIRS_TEMPERATURE, obs_var, &
                             days, seconds, tqc, obs)
@@ -326,8 +324,11 @@ call print_obs_seq_summary(seq)
 end subroutine make_obs_sequence
 
 
-!------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
+!>
+
 function compute_thin_factor(along, across)
+
 integer, intent(in) :: along
 integer, intent(in) :: across
 integer :: compute_thin_factor
@@ -340,7 +341,12 @@ endif
 
 end function compute_thin_factor
 
+
+!-------------------------------------------------------------------------------
+!>
+
 subroutine check_size(size1, size2, varlabel, subrlabel)
+
 integer,          intent(in) :: size1, size2
 character(len=*), intent(in) :: varlabel, subrlabel
 
@@ -353,10 +359,11 @@ endif
 end subroutine check_size
 
 
-!-------------------------------------------------
-! create an obs sequence
-function initialize_obs_sequence(ofname, filecount, sample_factor)
-character(len=*), intent(in) :: ofname
+!-------------------------------------------------------------------------------
+!>
+
+function initialize_obs_sequence(filecount, sample_factor)
+
 integer,          intent(in) :: filecount
 integer,          intent(in) :: sample_factor
 type(obs_sequence_type) :: initialize_obs_sequence
@@ -383,11 +390,13 @@ initialize_obs_sequence = seq
 
 end function initialize_obs_sequence
 
-!-------------------------------------------------
-! bit of sanity checking - before we loop over these arrays, make sure
-! they are the size we expect them to be.
+
+!-------------------------------------------------------------------------------
+!> Check - before we loop over these arrays, make sure
+!> they are the size we expect them to be.
 
 subroutine debug_print_size_check(granule)
+
 type(airs_granule_type), intent(in) :: granule
 
 type(time_type) :: obs_time, base_time
@@ -470,6 +479,8 @@ if (DEBUG) print *, 'pressStd', granule%pressStd
 if (DEBUG) print *, 'pressH2O', granule%pressH2O
 
 end subroutine debug_print_size_check
+
+
 
 end module airs_obs_mod
 
