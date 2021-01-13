@@ -246,7 +246,7 @@ inflate_handle%sd_from_restart    = sd_from_restart
 !parameter, say alpha: 
 !RTPS: lambda = alpha * (sd_b - sd_a) / sd_a + 1
 !where; sd_b (sd_a): prior (posteriro) spread
-if(inf_flavor == 4 .or. inf_flavor == 6) inflate_handle%inflate = 1.0_r8
+if(inf_flavor == 4) inflate_handle%inflate = 1.0_r8
 
 ! Prior and posterior are intialized to false
 if (trim(label)=='Prior') inflate_handle%prior = .true.
