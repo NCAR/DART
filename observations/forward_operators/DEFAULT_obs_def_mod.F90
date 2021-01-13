@@ -168,8 +168,10 @@ end type obs_def_type
 logical, save :: module_initialized = .false.
 
 ! define a fixed integer code that specifies whether a record 
-! in a binary obs_sequence file is a precomputed FO rather than a time_type
-integer, parameter :: external_prior_code = -123
+! in a binary obs_sequence file is a precomputed FO rather than a time_type.
+! This value cannot be construed as the number of 'days'.
+
+integer, parameter :: EXTERNAL_PRIOR_CODE = -123
 
 contains
 
@@ -706,37 +708,52 @@ end select
 ! We need to see whether there is external prior metadata.
 ! If so, we need to read it in, but that doesn't necessarily mean
 ! the precomputed FO will acutally be used for that particular obs_type
+
 time_set = .false.
 obs_def%write_external_FO = .false.  ! Always false when actually running DART
+
 if (is_ascii) then
    read(ifile,fmt='(a)') string
    if (string(1:11) /= 'external_FO') then 
-      ! no metadata, we really just read the time.
+      ! no metadata, we really just read the time record
+
       backspace(ifile) ! go back to previous line to prepare to read time
       obs_def%has_external_FO = .false.
-   else ! we have a precomputed FO
+
+   else
+      ! we have a precomputed FO
+      ! While we are happy to read in the obs_def%external_FO_key, the value
+      ! is of no use outside the possiblity of being used in a debugging message.
+
       read(string, *) header_external_FO, obs_def%ens_size, obs_def%external_FO_key
-      ! FIXME: remove this if * works ok
-      !read(string, FMT='(a11, 2i8)') header_external_FO, obs_def%ens_size, obs_def%external_FO_key
       if ( .not. allocated(obs_def%external_FO)) allocate(obs_def%external_FO(obs_def%ens_size))
       read(ifile, *) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
       obs_def%has_external_FO = .true.
+
    endif
 else
+   ! Binary files do not have a character string identifier for precomputed
+   ! forward observations.  The presence of external forward operator values
+   ! is indicated by the value of the second item.
+
    read(ifile) secs, days
-   if ( days /= external_prior_code ) then
-      ! no metadata, we really just read the time
-      ! can't use backspace on a binary file.
+   if ( days /= EXTERNAL_PRIOR_CODE ) then ! we actually read the time
       obs_def%time = set_time(secs, days)
-      time_set = .true.
+      time_set                = .true.
       obs_def%has_external_FO = .false.
-   else ! we have a precomputed FO
-      counter = counter + 1
-      obs_def%ens_size = secs
+
+   else
+      ! we have a precomputed FO
+      ! The obs_def%external_FO_key is set to a counter that may be useful in
+      ! a debugging message, which would be more meaningful than the
+      ! EXTERNAL_PRIOR_CODE value.
+      counter                 = counter + 1
+      obs_def%ens_size        = secs
       obs_def%external_FO_key = counter
-      if ( .not. allocated(obs_def%external_FO)) allocate(obs_def%external_FO(obs_def%ens_size))
-      read(ifile)    (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
       obs_def%has_external_FO = .true.
+      if ( .not. allocated(obs_def%external_FO)) allocate(obs_def%external_FO(obs_def%ens_size))
+      read(ifile) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
+      !>@FIXME ... should this read (and the others) have status checks?
    endif
 endif
 
@@ -825,7 +842,7 @@ if ( obs_def%has_external_FO .and. obs_def%write_external_FO ) then
       write(ifile, 12) obs_def%ens_size, obs_def%external_FO_key
       write(ifile, *) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
    else
-      write(ifile)    obs_def%ens_size, external_prior_code
+      write(ifile)    obs_def%ens_size, EXTERNAL_PRIOR_CODE
       write(ifile)    (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
    endif
 12  format('external_FO', 2i8)
