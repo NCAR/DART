@@ -62,6 +62,10 @@ else
   exit -1
 endif
 
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
+set nonomatch
+
 if ( ! $?REMOVE) then
    setenv REMOVE 'rm -f'
 endif
@@ -122,7 +126,7 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     if ( $FAILURE ) then
       echo "------------------------------------------------------------------"
-      echo "ERROR - unsuccessful build in $TESTDIR"
+      echo "ERROR - unsuccessful build in $TESTDIR at "`date`
       echo "------------------------------------------------------------------"
       cd $TOPDIR
       continue
