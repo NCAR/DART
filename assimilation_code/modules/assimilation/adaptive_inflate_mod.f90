@@ -250,6 +250,15 @@ inflate_handle%allow_missing_in_clm = missing_ok
 inflate_handle%mean_from_restart    = mean_from_restart
 inflate_handle%sd_from_restart      = sd_from_restart
 
+!Overwriting the initial value of inflation with 1.0
+!as in other inflation flavors (usually start from 1). 
+!This is required for RTPS because inf_initial(2)
+!is not really the inflation factor but rather the weighting
+!parameter, say alpha: 
+!RTPS: lambda = alpha * (sd_b - sd_a) / sd_a + 1
+!where; sd_b (sd_a): prior (posteriro) spread
+if(inf_flavor == 4 .or. inf_flavor == 6) inflate_handle%inflate = 1.0_r8
+
 ! Prior and posterior are intialized to false
 if (trim(label)=='Prior') inflate_handle%prior = .true.
 if (trim(label)=='Posterior') inflate_handle%posterior = .true.
@@ -484,7 +493,8 @@ subroutine inflate_ens(inflate_handle, ens, mean, inflate, var_in, fsprd, asprd)
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(inout) :: ens(:)
-real(r8),                    intent(in)    :: mean, inflate
+real(r8),                    intent(in)    :: mean 
+real(r8),                    intent(inout) :: inflate
 real(r8), optional,          intent(in)    :: var_in
 real(r8), optional,          intent(in)    :: fsprd, asprd
 
@@ -506,7 +516,8 @@ if(inflate_handle%deterministic) then
       endif 
       ! only inflate if spreads are > 0
       if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) &
-          ens = mean + (ens-mean) * ( inflate*((fsprd-asprd)/asprd) + 1.0_r8 )
+          inflate = 1.0_r8 + inflate * ((fsprd-asprd) / asprd) 
+          ens     = mean + (ens-mean) * inflate 
    else 
 
       ! Spread the ensemble out linearly for deterministic
