@@ -29,6 +29,7 @@ remote_theme: ncar/koru-jekyll@1.0.33
 plugins:
   - jekyll-feed
   - jekyll-remote-theme
+  - jemoji
 collections:
   api:
     output: true
