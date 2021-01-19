@@ -214,10 +214,6 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
 
       switch ( $project )
    
-         case GSI2DART
-            echo " This build expected to fail on case-insensitive filesystems."
-         breaksw
-            
          case var
             echo " This build expected to fail unless you have the WRF code in-situ."
          breaksw
@@ -255,6 +251,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
 
          set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+         echo
          echo "Running $PROG"
 
          # for programs which read standard input, put what they need into a prog.in file
@@ -280,11 +277,42 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
          if ( $FAILURE ) then
 
             switch ( $PROG )
-               case gsi_to_dart
-                  echo "gsi_to_dart is expected to fail with MPI errors"
-                  echo "(because there are no input files)."
+
+               # These programs rely on the HDF-EOS libraries. Spcecifying them in
+               # the mkmf_* file allows them to compile, but unless your run-time
+               # environment matches ... the execution will fail.
+               case L1_AMSUA_to_netcdf
+                  echo
+                  echo "If $PROG fails due to 'error while loading shared libraries ...'"
+                  echo "make sure your [DY]LD_LIBRARY_PATH is consistent with the library"
+                  echo "paths in $TARGET. This may still fail for other reasons."
+                  echo
                breaksw
-                  
+            
+               case convert_airs_L2
+                  echo
+                  echo "If $PROG fails due to 'error while loading shared libraries ...'"
+                  echo "make sure your [DY]LD_LIBRARY_PATH is consistent with the library"
+                  echo "paths in $TARGET. This may still fail for other reasons."
+                  echo
+               breaksw
+            
+               case convert_amsu_L1
+                  echo
+                  echo "If $PROG fails due to 'error while loading shared libraries ...'"
+                  echo "make sure your [DY]LD_LIBRARY_PATH is consistent with the library"
+                  echo "paths in $TARGET. This may still fail for other reasons."
+                  echo
+               breaksw
+            
+               case convert_L2b
+                  echo
+                  echo "If $PROG fails due to 'error while loading shared libraries ...'"
+                  echo "make sure your [DY]LD_LIBRARY_PATH is consistent with the library"
+                  echo "paths in $TARGET. This may still fail for other reasons."
+                  echo
+               breaksw
+            
                default
                   echo "ERROR - unsuccessful run of $PROG at "`date`
                breaksw
@@ -298,18 +326,12 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
       skip:
       end
 
-      echo
-
    endif
 
    echo "Restoring original input.nml and obs_seq files"
    ${MOVE} ${SAVEDIR}/* .
    ${REMOVE_DIR} ${SAVEDIR}
 
-   echo "------------------------------------------------------------------"
-   echo
-   echo
-  
 end
 
 echo 

@@ -117,41 +117,37 @@ LD = ifort
 # for more information on installing RTTOV.
 
 # MODIFY THE FOLLOWING VARIABLES FOR YOUR SYSTEM:
-# If your NETCDF, HDFDIR, and RTTOV environment variables are not set,
+# If your NETCDF, HDFEOS5, or RTTOV environment variables are not set,
 # uncomment the following line and set value to where lib and include
 # are found for the netcdf files that match this compiler.
 # Since netCDF can be built with HDF5, many systems have the HDF5
 # installation in the same place as netCDF.
 #
 # NETCDF = /opt/local
-# HDFDIR = $(NETCDF)
+# HDFEOS5 = $(NETCDF)
 # RTTOV = ~/research/satellite/rttov
+
+HDFEOS5 = /glade/u/apps/ch/opt/hdf-eos5/5.1.16/intel/19.0.5
 
 # You will likely not need to modify below this line
 
-HDFINC = $(HDFDIR)/include
-HDFLIB = $(HDFDIR)/lib
-HDFLIBS = -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 
+RTLIBS = -lrttov12_wrapper    -lrttov12_mw_scatt -lrttov12_brdf_atlas \
+         -lrttov12_emis_atlas -lrttov12_other    -lrttov12_parallel \
+         -lrttov12_coef_io    -lrttov12_hdf      -lrttov12_main 
 
-RTMOD = $(RTTOV)/mod
-RTINC = $(RTTOV)/include
-RTLIB = $(RTTOV)/lib
-RTLIBS = -lrttov12_wrapper -lrttov12_mw_scatt -lrttov12_brdf_atlas -lrttov12_emis_atlas -lrttov12_other -lrttov12_parallel -lrttov12_coef_io -lrttov12_hdf -lrttov12_main 
+INCS = -I$(NETCDF)/include -I$(HDFEOS5)/include -I$(RTTOV)/include -I$(RTTOV)/mod
 
-RTINCS = -I$(RTINC) -I$(RTMOD) -I$(HDFINC)
-RTLIBDIRS = -L$(RTLIB) -L$(HDFLIB)
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf \
+       -L$(HDFEOS5)/lib -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 \
+       -L$(RTTOV)/lib  $(RTLIBS) 
 
-INCS = -I$(NETCDF)/include $(RTINCS)
-LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf $(RTLIBDIRS) $(RTLIBS) $(HDFLIBS)
-
-FFLAGS  = -O -assume buffered_io $(INCS)
+FFLAGS  = -O2 -assume buffered_io $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
 # FFLAGS = -g -C -check noarg_temp_created -fpe0 \
 #          -fp-model precise  -ftrapuv -traceback \
 #          -warn declarations,uncalled,unused $(INCS)
-#
-# Some optimized (BLAS, LAPACK) libraries may be available with the Intel Math Kernel Libraries:
-# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
 
+# Optimized (BLAS, LAPACK) libraries are available from the Intel Math Kernel Libraries:
+# -lmkl -lmkl_lapack -lguide -lpthread

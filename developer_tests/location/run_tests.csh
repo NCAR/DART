@@ -68,6 +68,10 @@ foreach i ( $LOCLIST )
    if ( $FAILURE ) then
      echo "ERROR - unsuccessful build of location module $i at "`date`
    else
+     echo "Build of location module $i complete"
+     echo
+     echo
+   else
 
      ( ./location_test < test.in > $LOGDIR/runlog.$i.out ) || set FAILURE = 1
 

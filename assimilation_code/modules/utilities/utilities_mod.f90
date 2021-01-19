@@ -17,7 +17,7 @@ private
 
 ! module local data
 
-integer, parameter :: E_DBG = -2, E_MSG = -1, E_ALLMSG = 0, E_WARN = 1, E_ERR = 2
+integer, parameter :: E_DBG = -2, E_MSG = -1, E_ALLMSG = 0, E_WARN = 1, E_ERR = 2, E_CONTINUE = 3
 integer, parameter :: NML_NONE = 0, NML_FILE = 1, NML_TERMINAL = 2, NML_BOTH = 3
 
 real(r8), parameter :: TWOPI = PI * 2.0_r8
@@ -578,7 +578,7 @@ integer, intent(in) :: level
 if (.not. module_initialized) call fatal_not_initialized('check_term_level')
 
 select case (level)
-  case (E_MSG, E_ALLMSG, E_WARN, E_ERR, E_DBG)
+  case (E_MSG, E_ALLMSG, E_WARN, E_ERR, E_DBG, E_CONTINUE)
     ! ok, do nothing
   case default
     write(msgstring1, *) 'bad integer value for "termlevel", must be one of'

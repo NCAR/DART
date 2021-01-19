@@ -1028,7 +1028,8 @@ AdvanceTime : do
    ! (it was applied earlier, this is computing the updated values for
    ! the next cycle.)
 
-   if(do_ss_inflate(post_inflate)) then
+   ! CSS added condition: Don't update posterior inflation if relaxing to prior spread
+   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) then
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.

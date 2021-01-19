@@ -80,7 +80,7 @@ else if ($?PBS_NODEFILE) then
   setenv MPICMD "mpiexec_mpt"
 else
   # other (no queue system, e.g. openmpi on laptop)
-  setenv MPICMD "mpirun -n 2"
+  setenv MPICMD "mpirun -n 4"
 endif
 
 # if your system supports different options or needs to

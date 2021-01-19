@@ -5,7 +5,7 @@
 
     They are available on spinning disk (compressed) on
     the NCAR supercomputers at:
-    /glade/collections/rda/data/ds345.0/cpl
+    /glade/collections/rda/data/ds345.0/cpl_unzipped
 </dataSource>
 <domainInfo>
     <variableNames>
@@ -16,10 +16,10 @@
         doma_mask     mask
     </variableNames>
     <filePath>
-        /glade/p/cisl/dares/johnsonb/CAM_DATM/Reanalysis
+        /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
     </filePath>
     <fileNames>
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2011.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2011.nc
     </fileNames>
 </domainInfo>
 <fieldInfo>
@@ -28,21 +28,21 @@
         a2x1h_Sa_v           v
     </variableNames>
     <filePath>
-        /glade/p/cisl/dares/johnsonb/CAM_DATM/Reanalysis
+        /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
     </filePath>
     <tInterpAlgo>
         linear
     </tInterpAlgo>
     <fileNames>
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2011.nc
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2012.nc
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2013.nc
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2014.nc
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2015.nc
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2016.nc
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2017.nc
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2018.nc
-        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cplNINST.ha2x1h.2019.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2011.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2012.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2013.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2014.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2015.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2016.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2017.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2018.nc
+        f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2019.nc
     </fileNames>
     <offset>
         -1800

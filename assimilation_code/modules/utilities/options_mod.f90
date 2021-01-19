@@ -2,13 +2,11 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
+! Sets whether or not you can have missing values in your state
+! vector.  This module is to avoid circular dependencies and can be
+! accessed directly by the model_mod.
 
 module options_mod
-
-! Aim: 
-! 
-! 
 
 use types_mod, only : r8
 
@@ -40,17 +38,4 @@ end function get_missing_ok_status
 
 !------------------------------------------------------------------------
 
-
-!-------------------------------------------------------
-!> Null version
-!> Check whether you need to error out, clamp, or
-!> do nothing depending on the variable bounds
-
 end module options_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-

@@ -62,6 +62,10 @@ else
   exit -1
 endif
 
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
+set nonomatch
+
 if ( ! $?REMOVE) then
    setenv REMOVE 'rm -f'
 endif

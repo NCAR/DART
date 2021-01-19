@@ -689,7 +689,7 @@ foreach FNAME (user*streams*)
    @ filename_index = $#name_parse - 1
    set streamname = $name_parse[$filename_index]
    set   instance = `echo $name_parse[$instance_index] | bc`
-   set   string_instance = `printf _%04d ${instance}`
+   set   string_instance = `printf %04d ${instance}`
 
    if (-e $DARTROOT/models/POP/shell_scripts/$cesmtagmajor/user_$streamname*template) then
 

@@ -690,7 +690,7 @@ foreach FNAME (user*streams*)
    if ( $SingleInstanceRefcase ) then
       set instance = ''
    else
-      set instance = `printf _%04d $TRUTHinstance`
+      set instance = `printf %04d $TRUTHinstance`
    endif
 
    if (-e $DARTROOT/models/POP/shell_scripts/$cesmtagmajor/user_$streamname*template) then
