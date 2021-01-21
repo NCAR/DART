@@ -44,7 +44,7 @@
 #PBS -A P86850054 
 #PBS -j oe
 #PBS -k eod
-#PBS -m abe
+#PBS -m ae
 #
 # for mpi tests:
 #PBS -q regular 
