@@ -30,7 +30,7 @@
 !     QTY_SEA_SURFACE_ANOMALY         units="m"
 ! 
 !
-! ! fixme - these ar hardcoded in obs_diag and shouldn't be
+! ! fixme - these are hardcoded in obs_diag and shouldn't be
 !     QTY_U_WIND_COMPONENT            units="m/s"
 !     QTY_V_WIND_COMPONENT            units="m/s"
 ! 

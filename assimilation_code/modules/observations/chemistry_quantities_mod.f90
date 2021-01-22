@@ -19,6 +19,7 @@
 !     QTY_CO                            units="none"
 !     QTY_NO                            units="none"
 !     QTY_NO2                           units="none"
+!     QTY_N2O 
 ! 
 !     QTY_CO01                          units="none"
 !     QTY_CO02                          units="none"
