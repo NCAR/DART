@@ -3162,7 +3162,7 @@ if ( .not. module_initialized ) call time_manager_init
 
 call get_time(timestamp, seconds, days)
 
-generate_seed = iand((secs_day * days) + seconds, int(z'00000000FFFFFFFF', i8))
+generate_seed = iand((secs_day * days) + seconds, int(z'00000000FFFFFFFF',i8))
 
 end function generate_seed
 
