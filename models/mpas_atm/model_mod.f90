@@ -92,7 +92,6 @@ use     obs_kind_mod, only : get_index_for_quantity,       &
                              QTY_PRESSURE,                 &
                              QTY_DENSITY,                  &
                              QTY_VAPOR_MIXING_RATIO,       &
-                             QTY_2M_VAPOR_MIXING_RATIO,    &
                              QTY_CLOUDWATER_MIXING_RATIO,  &
                              QTY_RAINWATER_MIXING_RATIO,   &
                              QTY_ICE_MIXING_RATIO,         &

@@ -25,6 +25,7 @@
 !     QTY_RAINWATER_MIXING_RATIO
 !     QTY_DEWPOINT
 !     QTY_DENSITY
+!     QTY_MEAN_SOURCE
 !     QTY_VELOCITY                      units="m/s"
 !     QTY_RADAR_REFLECTIVITY
 !     QTY_GRAUPEL_MIXING_RATIO
@@ -38,6 +39,7 @@
 !     QTY_GEOPOTENTIAL_HEIGHT           units="m"
 !     QTY_POTENTIAL_TEMPERATURE
 !     QTY_SOIL_MOISTURE
+!     QTY_SOURCE_PHASE
 !     QTY_SURFACE_ELEVATION             units="m"
 ! 
 ! ! kinds for Gravity Wave Drag (CAM - kevin)
@@ -106,7 +108,8 @@
 !     QTY_NADIR_RADIANCE
 !     QTY_TRACER_1_MIXING_RATIO
 !     QTY_TRACER_2_MIXING_RATIO
-!     ! this or QTY_TRACER_CONCENTRATION?
+!     QTY_TRACER_CONCENTRATION
+!     QTY_TRACER_SOURCE
 !     QTY_SOIL_TEMPERATURE              units="K"   desc="is soil temp really in K or C?"
 !     QTY_SOIL_LIQUID_WATER
 ! 
