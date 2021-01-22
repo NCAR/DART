@@ -16,15 +16,15 @@
 !
 ! ! ocean related quantities
 !
-!     QTY_SALINITY                    units="none"  minval=0.0
+!     QTY_SALINITY                                  minval=0.0
 !     QTY_TEMPERATURE                 units="C"     minval=0.0
-!     QTY_POTENTIAL_TEMPERATURE       units="none"  minval=0.0
-!     QTY_PRESSURE                    units="none"  minval=0.0
+!     QTY_POTENTIAL_TEMPERATURE                     minval=0.0
+!     QTY_PRESSURE                                  minval=0.0
 !     QTY_VELOCITY                    units="m/s"   minval=0.0
 !     QTY_U_CURRENT_COMPONENT         units="m/s"
 !     QTY_V_CURRENT_COMPONENT         units="m/s"
 !     QTY_W_CURRENT_COMPONENT         units="m/s"
-!     QTY_DRY_LAND                    units="none"  minval=0.0  maxval=1.0
+!     QTY_DRY_LAND                                  minval=0.0  maxval=1.0
 !     QTY_SEA_SURFACE_PRESSURE        units="mb"
 !     QTY_SEA_SURFACE_HEIGHT          units="m"
 !     QTY_SEA_SURFACE_ANOMALY         units="m"
