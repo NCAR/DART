@@ -57,7 +57,7 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
                                   adaptive_inflate_type, set_inflation_mean_copy ,            &
                                   log_inflation_info, set_inflation_sd_copy,                  &
                                   get_minmax_task_zero, do_rtps_inflate,                      &
-                                  validate_inflate_options
+                                  validate_inflate_options, NO_INFLATION, PRIOR, POSTERIOR 
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
@@ -231,11 +231,12 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
                       obs_sequence_out_name = "obs_seq.final",  &
                       adv_ens_command       = './advance_model.csh'
 
-!                  == './advance_model.csh'    -> advance ensemble using a script
+! The inflation flavors are defined in adaptive_inflate_mod.
+! There are accessor routines such that filter_mod should not need to know
+! the  integer values relating to the flavor. It is an open question
+! as to whether or not we should 'use' the integer parameters for PRIOR
+! and POSTERIOR from adaptive_inflate_mod.
 
-! Inflation namelist entries follow, first entry for prior, second for posterior
-! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space,
-! 4: rtps (relax to prior spread), 5: enhanced state space
 integer  :: inf_flavor(2)                  = 0
 logical  :: inf_initial_from_restart(2)    = .false.
 logical  :: inf_sd_initial_from_restart(2) = .false.
@@ -412,11 +413,11 @@ call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart
    allow_missing, 'Posterior')
 
 if (do_output()) then
-   if (inf_flavor(1) > 0 .and. inf_damping(1) < 1.0_r8) then
+   if (inf_flavor(1) > NO_INFLATION .and. inf_damping(1) < 1.0_r8) then
       write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', inf_damping(1), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
-   if (inf_flavor(2) > 0 .and. inf_damping(2) < 1.0_r8) then
+   if (inf_flavor(2) > NO_INFLATION .and. inf_damping(2) < 1.0_r8) then
       write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', inf_damping(2), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
@@ -2349,13 +2350,12 @@ endif
 CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
                        PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
 
-! CSS If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation (inf_flavor = 4)
-!  then we need an extra copy to hold (save) the prior ensemble spread
-!   ENS_SD_COPY will be overwritten with the posterior spread before
-!   applying the inflation algorithm; hence we must save the prior ensemble spread in a different copy
-if ( inf_flavor(2) == 4 ) then ! CSS
-   SPARE_PRIOR_SPREAD = next_copy_number(cnum)
-endif 
+! If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation (inf_flavor = 4)
+! then we need an extra copy to hold (save) the prior ensemble spread
+! ENS_SD_COPY will be overwritten with the posterior spread before
+! applying the inflation algorithm; hence we must save the prior ensemble spread in a different copy
+
+if (do_rtps_inflate(post_inflate)) SPARE_PRIOR_SPREAD = next_copy_number(cnum)
 
 num_copies = cnum
 
