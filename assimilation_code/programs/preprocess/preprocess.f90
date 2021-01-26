@@ -52,7 +52,7 @@ use parse_args_mod, only : get_args_from_string, get_name_val_pairs_from_string,
 implicit none
 
 ! Pick something ridiculously large and forget about it (lazy)
-integer, parameter   :: max_types = 5000, max_qtys = 5000
+integer, parameter   :: MAX_TYPES = 5000, MAX_QTYS = 5000
 
 ! max valid number of tokens per line.  allocate more
 ! to handle error conditions.
@@ -83,7 +83,7 @@ type qty_info_type
    character(len=256)          :: valpair(MAX_TOKENS)  = ''
 end type qty_info_type
 
-type(qty_info_type) :: qty_info(0:max_qtys)
+type(qty_info_type) :: qty_info(0:MAX_QTYS)
 
 
 type obs_info_type
@@ -93,21 +93,21 @@ type obs_info_type
 
 end type obs_info_type
 
-type(obs_info_type) :: obs_info(1:max_types)
+type(obs_info_type) :: obs_info(1:MAX_TYPES)
 
 ! specific marker strings
 !                                                                1         2         3         4         5         6
 !                                                       123456789012345678901234567890123456789012345678901234567890
-character(len=*),parameter :: typ_startdefn_string  = '! BEGIN DART PREPROCESS TYPE DEFINITIONS'
-character(len=*),parameter :: knd_startlist_string  = '! BEGIN DART PREPROCESS KIND LIST'
-character(len=*),parameter :: typ_enddefn_string    = '! END DART PREPROCESS TYPE DEFINITIONS'
-character(len=*),parameter :: knd_endlist_string    = '! END DART PREPROCESS KIND LIST'
-character(len=*),parameter :: qty_startdefn_string  = '! BEGIN DART PREPROCESS QUANTITY DEFINITIONS'
-character(len=*),parameter :: knd_startdefn_string  = '! BEGIN DART PREPROCESS KIND DEFINITIONS'
-character(len=*),parameter :: qty_enddefn_string    = '! END DART PREPROCESS QUANTITY DEFINITIONS'
-character(len=*),parameter :: knd_enddefn_string    = '! END DART PREPROCESS KIND DEFINITIONS'
-character(len=*),parameter :: insert_ints_string    = '! DART PREPROCESS INTEGER DECLARATIONS INSERTED HERE'
-character(len=*),parameter :: insert_init_string    = '! DART PREPROCESS DERIVED TYPE INITIALIZATIONS INSERTED HERE'
+character(len=*),parameter :: TYP_STARTDEFN_STRING  = '! BEGIN DART PREPROCESS TYPE DEFINITIONS'
+character(len=*),parameter :: KND_STARTLIST_STRING  = '! BEGIN DART PREPROCESS KIND LIST'
+character(len=*),parameter :: TYP_ENDDEFN_STRING    = '! END DART PREPROCESS TYPE DEFINITIONS'
+character(len=*),parameter :: KND_ENDLIST_STRING    = '! END DART PREPROCESS KIND LIST'
+character(len=*),parameter :: QTY_STARTDEFN_STRING  = '! BEGIN DART PREPROCESS QUANTITY DEFINITIONS'
+character(len=*),parameter :: KND_STARTDEFN_STRING  = '! BEGIN DART PREPROCESS KIND DEFINITIONS'
+character(len=*),parameter :: QTY_ENDDEFN_STRING    = '! END DART PREPROCESS QUANTITY DEFINITIONS'
+character(len=*),parameter :: KND_ENDDEFN_STRING    = '! END DART PREPROCESS KIND DEFINITIONS'
+character(len=*),parameter :: INSERT_INTS_STRING    = '! DART PREPROCESS INTEGER DECLARATIONS INSERTED HERE'
+character(len=*),parameter :: INSERT_INIT_STRING    = '! DART PREPROCESS DERIVED TYPE INITIALIZATIONS INSERTED HERE'
 
 ! output format decorations
 character(len = 78) :: separator_line = &
@@ -142,22 +142,22 @@ character(len = 29) :: preprocess_string(NUM_SECTIONS) = (/ &
 !      .true.,  &
 !      .true.  /)
 
-integer, parameter :: module_item = 1
-integer, parameter :: qty_item = 2
-integer, parameter :: use_item = 3
-integer, parameter :: get_expected_item = 4
-integer, parameter :: read_item = 5
-integer, parameter :: write_item = 6
-integer, parameter :: interactive_item = 7
+integer, parameter :: MODULE_ITEM = 1
+integer, parameter :: QTY_ITEM = 2
+integer, parameter :: USE_ITEM = 3
+integer, parameter :: GET_EXPECTED_ITEM = 4
+integer, parameter :: READ_ITEM = 5
+integer, parameter :: WRITE_ITEM = 6
+integer, parameter :: INTERACTIVE_ITEM = 7
 
 integer :: num_obs_type_files = 0
 integer :: num_quantity_files = 0
 integer :: obs_def_in_unit, obs_def_out_unit
 integer :: obs_qty_in_unit, obs_qty_out_unit, in_unit
 
-integer, parameter   :: max_obs_type_files = 1000
-integer, parameter   :: max_quantity_files = 1000
-logical :: file_has_usercode(max_obs_type_files) = .false.
+integer, parameter   :: MAX_OBS_TYPE_FILES = 1000
+integer, parameter   :: MAX_QUANTITY_FILES = 1000
+logical :: file_has_usercode(MAX_OBS_TYPE_FILES) = .false.
 
 
 integer, parameter :: NML_STRLEN = 256
@@ -176,7 +176,7 @@ character(len=NML_STRLEN) :: input_obs_kind_mod_file = &
                         '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
 character(len=NML_STRLEN) :: output_obs_kind_mod_file = &
                         '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
-character(len=NML_STRLEN) :: input_files(max_obs_type_files) = 'null'
+character(len=NML_STRLEN) :: input_files(MAX_OBS_TYPE_FILES) = 'null'
 logical                   :: overwrite_output = .true.
 
 ! jump through hoops to maintain backwards compatibility in namelist.
@@ -184,8 +184,8 @@ logical                   :: overwrite_output = .true.
 ! but if these have been changed from the defaults, they override the older values.
 character(len=NML_STRLEN) :: input_obs_qty_mod_file = 'was input_obs_kind_mod_file'
 character(len=NML_STRLEN) :: output_obs_qty_mod_file = 'was output_obs_kind_mod_file'
-character(len=NML_STRLEN) :: obs_type_files(max_obs_type_files) = 'was input_files'
-character(len=NML_STRLEN) :: quantity_files(max_quantity_files) = '_new_nml_item_'
+character(len=NML_STRLEN) :: obs_type_files(MAX_OBS_TYPE_FILES) = 'was input_files'
+character(len=NML_STRLEN) :: quantity_files(MAX_QUANTITY_FILES) = '_new_nml_item_'
 
 namelist /preprocess_nml/ input_obs_def_mod_file, output_obs_def_mod_file,   &
                           input_obs_qty_mod_file, output_obs_qty_mod_file,   &
@@ -227,7 +227,7 @@ call cannot_be_null(output_obs_qty_mod_file, 'output_obs_qty_mod_file')
 
 call log_it('INPUT obs_def files:')
 
-do i = 1, max_obs_type_files
+do i = 1, MAX_OBS_TYPE_FILES
    if(obs_type_files(i) == 'null') exit
    call log_it(obs_type_files(i))
    num_obs_type_files = i
@@ -235,7 +235,7 @@ enddo
 
 call log_it('INPUT quantity files:')
 
-do i = 1, max_quantity_files
+do i = 1, MAX_QUANTITY_FILES
    if(quantity_files(i) == 'null') exit
    call log_it(quantity_files(i))
    num_quantity_files = i
@@ -255,7 +255,7 @@ call open_file_for_write(output_obs_qty_mod_file, 'output file ', overwrite_outp
 
 ! Copy over lines from obs_qty_template file up to the next insertion point
 linenum1 = 0
-call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, insert_ints_string, linenum1, &
+call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, INSERT_INTS_STRING, linenum1, &
                 obs_qty_out_unit, output_obs_qty_mod_file, .false.)
 
 num_qtys_found = 0
@@ -278,18 +278,18 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
 
    ! Read until the ! BEGIN QUANTITY DEFINITION marker string is found
    linenum2 = 0
-   call read_until(in_unit, quantity_files(j), qty_startdefn_string, linenum2, knd_startdefn_string)
+   call read_until(in_unit, quantity_files(j), QTY_STARTDEFN_STRING, linenum2, KND_STARTDEFN_STRING)
 
    ! Subsequent lines can contain QTY_xxx lines or comments or
    ! the end string.
    DEFINE_QTYS: do
-      call get_next_line(in_unit, full_line_in, qty_enddefn_string, &
-                         quantity_files(j), linenum2, knd_enddefn_string)
+      call get_next_line(in_unit, full_line_in, QTY_ENDDEFN_STRING, &
+                         quantity_files(j), linenum2, KND_ENDDEFN_STRING)
 
       ! Look for the ! END QTY LIST in the current line
       test = adjustl(line)
-      if(test == qty_enddefn_string) exit DEFINE_QTYS
-      if(test == knd_enddefn_string) then
+      if(test == QTY_ENDDEFN_STRING) exit DEFINE_QTYS
+      if(test == KND_ENDDEFN_STRING) then
          ! @todo FIXME: after some adjustment time, here is 
          ! where you would print out a 'deprecated' warning
          ! if the alternate delimiter form is encountered.
@@ -371,18 +371,18 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
 
    ! Read until the ! BEGIN TYPE DEFINITIONS is found
    linenum2 = 0
-   call read_until(in_unit, obs_type_files(j), typ_startdefn_string, linenum2, knd_startlist_string)
+   call read_until(in_unit, obs_type_files(j), TYP_STARTDEFN_STRING, linenum2, KND_STARTLIST_STRING)
 
    ! Subsequent lines contain the type_identifier (same as type_string), and
    ! qty_string separated by commas, and optional usercode flag
    EXTRACT_TYPES: do
-      call get_next_line(in_unit, full_line_in, typ_enddefn_string, &
-                         obs_type_files(j), linenum2, knd_endlist_string)
+      call get_next_line(in_unit, full_line_in, TYP_ENDDEFN_STRING, &
+                         obs_type_files(j), linenum2, KND_ENDLIST_STRING)
 
       ! Look for the ! END TYPE DEFINITIONS in the current line
       test = adjustl(line)
-      if(test == typ_enddefn_string) exit EXTRACT_TYPES
-      if(test == knd_endlist_string) then
+      if(test == TYP_ENDDEFN_STRING) exit EXTRACT_TYPES
+      if(test == KND_ENDLIST_STRING) then
          ! FIXME: here is where you could print out a 'deprecated' warning
          ! if the alternate delimiter form is encountered.
          exit EXTRACT_TYPES
@@ -493,7 +493,7 @@ call write_blank_line(obs_qty_out_unit)
 !--
 
 call write_blank_line(obs_qty_out_unit)
-write(line, '(A,I5)') 'integer, parameter, public :: max_defined_quantities = ', &
+write(line, '(A,I5)') 'integer, parameter, public :: MAX_DEFINED_QUANTITIES = ', &
    num_qtys_found-1
 write(obs_qty_out_unit, '(A)') trim(line)
 call write_blank_line(obs_qty_out_unit)
@@ -516,14 +516,14 @@ call write_blank_line(obs_qty_out_unit)
 
 ! Write out the max num of obs_types, too
 call write_blank_line(obs_qty_out_unit)
-write(line, '(A,I5)') 'integer, parameter, public :: max_defined_types_of_obs = ', &
+write(line, '(A,I5)') 'integer, parameter, public :: MAX_DEFINED_TYPES_OF_OBS = ', &
    num_types_found
 write(obs_qty_out_unit, '(A)') trim(line)
 call write_blank_line(obs_qty_out_unit)
 call write_separator_line(obs_qty_out_unit)
 
 ! Copy over lines up to the next insertion point
-call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, insert_init_string, linenum1, &
+call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, INSERT_INIT_STRING, linenum1, &
                 obs_qty_out_unit, output_obs_qty_mod_file, .false.)
 
 !--
@@ -587,7 +587,7 @@ ITEMS: do i = 1, NUM_SECTIONS
 
    ! The 'USE FOR OBS_QTY_MOD' section is handled differently; lines are not
    ! copied, they are generated based on the list of types and qtys.
-   if(i == qty_item) then
+   if(i == QTY_ITEM) then
       ! Create use statements for both the QTY_ quantities and the individual
       ! observation type strings.
       call write_separator_line(obs_def_out_unit)
@@ -613,13 +613,13 @@ ITEMS: do i = 1, NUM_SECTIONS
    ! Insert the code for this ITEM from each requested obs_def 'modules'
    do j = 1, num_obs_type_files
       if (.not. file_has_usercode(j)) then
-         if (i == module_item) then
+         if (i == MODULE_ITEM) then
             call write_separator_line(obs_def_out_unit)
             write(obs_def_out_unit, '(2A)') &
                '!No module code needed for ', trim(obs_type_files(j))
             call write_separator_line(obs_def_out_unit)
          endif
-         !if (i == use_item) then
+         !if (i == USE_ITEM) then
          !   call write_separator_line(obs_def_out_unit)
          !   write(obs_def_out_unit, '(2A)') &
          !      '!No use statements needed for ', trim(obs_type_files(j))
@@ -639,7 +639,7 @@ ITEMS: do i = 1, NUM_SECTIONS
       call read_until(in_unit, obs_type_files(j), t_string, linenum3)
       
       ! decoration or visual separation, depending on your viewpoint
-      if (i == module_item) then
+      if (i == MODULE_ITEM) then
          call write_separator_line(obs_def_out_unit)
          write(obs_def_out_unit, '(2A)') '! Start of code inserted from ', &
             trim(obs_type_files(j))
@@ -651,11 +651,11 @@ ITEMS: do i = 1, NUM_SECTIONS
  
       t_string = '! END DART PREPROCESS ' // trim(preprocess_string(i))
       call copy_until(in_unit, obs_type_files(j), t_string, linenum3, &
-                      obs_def_out_unit, output_obs_def_mod_file, (i /= module_item))
+                      obs_def_out_unit, output_obs_def_mod_file, (i /= MODULE_ITEM))
          
 
       ! decoration or visual separation, depending on your viewpoint
-      if (i == module_item) then
+      if (i == MODULE_ITEM) then
          call write_blank_line(obs_def_out_unit)
          call write_separator_line(obs_def_out_unit)
          write(obs_def_out_unit, '(2A)') '! End of code inserted from ', &
@@ -673,11 +673,11 @@ ITEMS: do i = 1, NUM_SECTIONS
      if (obs_info(j)%has_usercode) cycle
 
      select case (i)
-     case (get_expected_item)
+     case (GET_EXPECTED_ITEM)
         write(obs_def_out_unit, '(A)')  '      case(' // trim(obs_info(j)%name) // ')'
         write(obs_def_out_unit, '(3A)') '         call interpolate(state_handle, ens_size, location, ', &
            trim(obs_info(j)%qty), ', expected_obs, istatus)'
-     case (read_item, write_item, interactive_item)
+     case (READ_ITEM, WRITE_ITEM, INTERACTIVE_ITEM)
         write(obs_def_out_unit, '(A)')  '   case(' // trim(obs_info(j)%name) // ')'
         write(obs_def_out_unit, '(A)')  '      continue'
      case default
@@ -1224,14 +1224,14 @@ if (output_obs_qty_mod_file == 'was output_obs_kind_mod_file') &
 ! to test and copy over all input_file entries which should set
 ! unused entries to null.
 if (obs_type_files(1) == 'was input_files') then
-   do i=1, max_obs_type_files
+   do i=1, MAX_OBS_TYPE_FILES
      obs_type_files(i) = input_files(i)
    enddo
 endif
 
 ! since we changed the defaults, fix up if caller did specify 
 ! one or more qty files.
-do i=1, max_obs_type_files
+do i=1, MAX_OBS_TYPE_FILES
    if (obs_type_files(i) == 'was input_files') obs_type_files(i) = 'null'
 enddo
 
@@ -1245,7 +1245,7 @@ endif
 
 ! since we changed the defaults, fix up if caller did specify 
 ! one or more qty files.
-do i=1, max_quantity_files
+do i=1, MAX_QUANTITY_FILES
    if (quantity_files(i) == '_new_nml_item_') quantity_files(i) = 'null'
 enddo
 
