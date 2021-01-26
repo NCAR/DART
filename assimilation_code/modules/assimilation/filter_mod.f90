@@ -1601,7 +1601,11 @@ do group = 1, num_groups
       if ( present(SPARE_PRIOR_SPREAD) .and. present(ENS_SD_COPY)) then 
          write(msgstring, *) ' doing RTPS inflation'
          call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source,revision,revdate)
-         do j = 1, ens_handle%my_num_vars 
+         do j = 1, ens_handle%my_num_vars
+
+            !Reset the RTPS factor to the given input.nml value
+            ens_handle%copies(inflate_copy, j) = inf_initial(2)
+ 
             call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
                ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
                ens_handle%copies(SPARE_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
