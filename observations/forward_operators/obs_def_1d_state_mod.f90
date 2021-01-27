@@ -14,7 +14,7 @@
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, &
 !                                     interactive_1d_integral, get_expected_1d_integral, &
-                                     write_power, read_power, interactive_power, get_expected_power
+!                                     write_power, read_power, interactive_power, get_expected_power
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
