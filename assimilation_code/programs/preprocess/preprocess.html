@@ -34,13 +34,6 @@
 Preprocess is a DART-supplied preprocessor program.  Preprocess is used to
 insert observation specific code into DART at compile time.
 
-The observation specific code consists of the following:
-<ol>
-<li> How to convert the observation to the DART observation sequence format. This
-  includes any metadata that is required for the observation.
-<li> How to calculate the forward operator for the observation.
-</ol>
-
 <p>
 In DART, forward operators are not specific to any one model. To achieve this
 separation between models and forward operators DART makes a distinction between
@@ -74,9 +67,9 @@ specific information. Prepreocess relies these comment lines being used <em>verb
 <p>
 There is no need to to alter <em class="file">DEFAULT_obs_def_mod.F90</em> or
 <em class="file">DEFAULT_obs_qty_mod.F90</em>. Detailed instructions for adding
-new observation types are in obs_def_mod.html. New quantities should be
-added to a quantity file, for example a new atmosphere quantity should be added
-to <em class="file">atmosphere_quantities_mod.f90</em>.
+new observation types are in <a href="obs_def_mod.html">obs_def_mod</a>. New
+quantities should be added to a quantity file, for example a new atmosphere quantity
+should be added to <em class="file">atmosphere_quantities_mod.f90</em>.
 <p>
 Every line in a quantity file between the start and end markers must be a
 comment or a quantity definition (QTY_string). Multiple name-value pairs can be
@@ -162,7 +155,7 @@ prematurely terminating the namelist.
 <TR><TD>input_obs_def_mod_file </TD>
     <TD>character(len=256)<BR>
     <TD> Path name of the template obs def module to be preprocessed.
-      The default is <em class="file">../../../observations/forward_operators/DEFAULT_obs_def_mod.F90</em>
+      The default is <em class="file">../../../observations/forward_operators/DEFAULT_obs_def_mod.F90</em>.
 This file must have the appropriate commented lines indicating where the different
 parts of the input special obs definition modules are to be inserted.
 </TD></TR>
@@ -170,21 +163,21 @@ parts of the input special obs definition modules are to be inserted.
 <TR><TD>output_obs_def_mod_file </TD>
     <TD>character(len=256)<BR>
     <TD> Path name of output obs def module to be created by preprocess.
-      The default the path name is <em class="file">../../../observations/forward_operators/obs_def_mod.f90</em>
+      The default the path name is <em class="file">../../../observations/forward_operators/obs_def_mod.f90</em>.
 </TD></TR>
 
 <TR><TD>input_obs_qty_mod_file </TD>
     <TD>character(len=256)<BR>
     <TD> Path name of input obs quantity file to be preprocessed. The default path name is
-<em class="file">../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90</em>.
+<em class="file">../../../assimilation_code/modules/observations/DEFAULT_obs_qty_mod.F90</em>.
 This file must have the appropriate commented lines indicating where the
-different parts of the input obs definition modules are to be inserted.
+different quantity modules are to be inserted.
 </TD></TR>
 
 <TR><TD>output_obs_qty_mod_file </TD>
     <TD>character(len=256)<BR>
     <TD> Path name of output obs quantity module to be created preprocess.
-      The default is <em class="file">../../../assimilation_code/modules/observations/obs_kind_mod.F90</em>
+      The default is <em class="file">../../../assimilation_code/modules/observations/obs_kind_mod.F90</em>.
 </TD></TR>
 
 <TR><TD>obs_type_files </TD>
@@ -192,7 +185,7 @@ different parts of the input obs definition modules are to be inserted.
     <TD> A list of files containing observation definitions for the type of
       observations you want to use with DART. The maximum number
       of files is limited to MAX_OBS_TYPE_FILES = 1000. The DART obs_def files are
-      in <em class="file">observations/forward_operators/obs_def_*.mod.f90</em>
+      in <em class="file">observations/forward_operators/obs_def_*.mod.f90</em>.
 </TD></TR>
 
 <TR><TD>overwrite_output </TD>
@@ -300,6 +293,14 @@ must be read from file <em class=file>input.nml</em>.
     <!-- message --><TD VALIGN=top>file _____ does NOT contain ! END DART PREPROCESS.</TD>
     <!-- comment --><TD VALIGN=top>Input special obs_def file must contain this comment string.</TD>
 </TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>'Incompatible duplicate entry detected'</TD>
+    <!-- comment --><TD VALIGN=top>A quantity has been defined more than once but with conflicting metadata in each definition.</TD>
+</TR>
+
+
+
 
 </TABLE>
 </div>
