@@ -43,7 +43,7 @@ to generate
 <em class="file">obs_kind_mod.f90</em>
 which are then compiled into
 <em class="unix">filter</em> and other DART programs.
-<em class=file>Obs_def_1d_state_mod.f90</em> is intended to provide a prototype for people
+One of the motivations behind creating <em class=file>obs_def_1d_state_mod.f90</em> was to provide a prototype for people
 developing more complicated specialized observation definition modules.
 
 <br /><br />
@@ -77,11 +77,10 @@ defined by the cov_cutoff module.
 The number of points are used to equally divide the range for
 computing the integral by quadrature.
 <br /><br />
-This module was partly motivated to provide a prototype for those
-developing more complicated specialized observation definition modules.
-Special observation modules like this contain Fortran 90 code <em>and</em> additional
+
+Special observation modules like <em class=file>obs_def_1d_state_mod.f90</em> contain Fortran 90 code <em>and</em> additional
 specially formatted commented code that is used to guide the preprocess program
-in constructing obs_def_mod.f90 and obs_kind_mod.f90. These specially
+in constructing obs_def_mod.f90 and obs_kind_mod.f90. The specially
 formatted comments are most conveniently placed at the beginning of the module
 and comprise seven sections, each beginning and ending with a special F90
 comment line that must be included <em>verbatim</em>.
