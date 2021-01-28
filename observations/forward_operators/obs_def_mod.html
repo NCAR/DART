@@ -91,10 +91,10 @@ observation-specific code for reading, writing, or initializing the
 observation, then the entire contents of the new file is:
 </P>
 <pre>
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! <em>type</em>, <em>quantity</em>, COMMON_CODE
 ! <em>(repeat lines for each type)</em>
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 </pre>
 <P>
 DART will automatically generate all interface code needed for these
@@ -102,13 +102,13 @@ new observation types.
 For example, here is a real list:
 </P>
 <pre>
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !VELOCITY,                     QTY_VELOCITY,              COMMON_CODE
 !TRACER_CONCENTRATION,         QTY_TRACER_CONCENTRATION,  COMMON_CODE
 !TRACER_SOURCE,                QTY_TRACER_SOURCE,         COMMON_CODE
 !MEAN_SOURCE,                  QTY_MEAN_SOURCE,           COMMON_CODE
 !SOURCE_PHASE,                 QTY_SOURCE_PHASE,          COMMON_CODE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 </pre>
 <P>
 The first column is the specific observation
