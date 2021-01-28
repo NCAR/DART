@@ -34,17 +34,17 @@
 <H4>Introduction</H4>
 <P>
 This module
-provides definitions of specific observation types and generic variable quantities, 
+provides definitions of specific observation types and generic variable quantities,
 routines for mapping between integer identifiers and string names,
 routines for reading and writing this information, and
-routines for determining whether and how to process observations 
+routines for determining whether and how to process observations
 from an observation sequence file.
 </P> <P>
 The distinction between quantities and types is this:
 <em class=unix>Quantities</em> apply both to observations and to state vector variables.
-Knowing the QTY_xxx of an observation must be sufficient 
-to compute the correct forward operator.   
-The quantities also must be able to identify the 
+Knowing the QTY_xxx of an observation must be sufficient
+to compute the correct forward operator.
+The quantities also must be able to identify the
 different variables in the state vector.
 <em class=unix>Types</em> only apply to observations, and are
 usually observation-platform dependent. Making distinctions
@@ -54,81 +54,96 @@ allows users to selectively assimilate, evaluate, or ignore them.
 <H4>Examples and Use</H4>
 <P>
 Generic quantities are associated with an observation type or with a model
-state variable. An example quantity is 
-<em class="unix">QTY_U_WIND_COMPONENT</em>. 
+state variable. An example quantity is
+<em class="unix">QTY_U_WIND_COMPONENT</em>.
 Multiple different specific observation
-types can be associated with this generic quantity, for instance 
+types can be associated with this generic quantity, for instance
 <em class="unix">RADIOSONDE_U_WIND_COMPONENT</em>,
 <em class="unix">ACARS_U_WIND_COMPONENT</em>, and
-<em class="unix">SAT_U_WIND_COMPONENT</em>. 
+<em class="unix">SAT_U_WIND_COMPONENT</em>.
 Generic quantities are
 defined via an integer parameter statement at the start of this module. As
 new generic quantities are needed they are added to this list. Generic quantity
-integer parameters are required to start with 
+integer parameters are required to start with
 <em class="unix">QTY_</em> and observation types
 are NOT allowed to start with <em class="unix">QTY_</em>.
 </P> <P>
-Typically quantities are used by 
+Typically quantities are used by
 model-interface files <em class="file">models/xx/model_mod.f90</em>,
 observation forward operator files <em class="file">observations/forward_operators/obs_def_xx_mod.f90</em>,
 and observation converter programs <em class="file">observations/obs_converters/xx/xx.f90</em>.
 </P> <P>
 The obs_kind module being described here is created by the program
-<em class="file">preprocess</em> from two categories of input files. 
-First, a DEFAULT obs_kind module (normally called 
+<em class="file">preprocess</em> from two categories of input files.
+First, a DEFAULT obs_kind module (normally called
 <em class="file">DEFAULT_obs_kind_mod.F90</em> and documented in this
 directory) is used as a template into which the preprocessor incorporates
 information from zero or more special obs_def modules (such as
-<em class="file">obs_def_1d_state_mod.f90</em> or 
+<em class="file">obs_def_1d_state_mod.f90</em> or
 <em class="file">obs_def_reanalysis_bufr_mod.f90</em>) which are
-documented in the obs_def directory. 
+documented in the obs_def directory.
 If no special obs_def files are included
-in the preprocessor namelist, a minimal 
+in the preprocessor namelist, a minimal
 <em class="file">obs_kind_mod.f90</em> is created which can
 only support identity forward observation operators.
 </P> <P>
-When making code changes
-remember to edit only the template file (normally
-<em class="file">DEFAULT_obs_kind_mod.F90</em>) and not
-the <em class="file">obs_kind_mod.f90</em> file directly.
 All of the build scripts in DART remove the existing
-obs_kind and obs_def modules and regenerate them using
-the <em class="file">preprocess</em> program and any
-direct changes will be lost.
+<em class="file">obs_kind_mod.f90</em> file and regenerates it using
+the <em class="unix">preprocess</em> program.  Do not add new quantities to
+<em class="file">obs_kind_mod.f90</em>, because these changes will not be kept
+when you run <em>quickbuild.csh</em>.
 </P>
 
 <H4>Adding Additional Quantities</H4>
 <P>
-To add an additional quantity, edit the
-<em class="file">assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90</em> file and
-add a unique number to the list of generic quantities at the top of the file.
-Then find the 
-<em class=unix>obs_kind_names</em> initializer statements
-in the <em class=unix>initialize_module()</em> subroutine,
-and add an entry with the same index to define the string 
-associated with the parameter.  The names must be identical.
-If the number is larger than the current maximum,
-increase the value of <em class=unix>max_defined_quantities</em>.
-Run the <em class="file">preprocess</em> program to generate the
-<em class="file">assimilation_code/modules/observations/obs_kind_mod.f90</em> file which will then be
-used by the rest of the DART system.
-</P> 
+
+New quantities should be added to a quantity file, for example a new ocean
+quantity should be added to <em class="file">ocean_quantities_mod.f90</em>. The quantity files are
+in <em class="file">assimilation_code/modules/observations/</em>.
+
+<p>
+Every line in a quantity file between the start and end markers must be a
+comment or a quantity definition (QTY_string). Multiple name-value pairs can be
+specified for a quantity but are not required. For example, temperature may be defined:
+<code> ! QTY_TEMPERATURE units="K" minval=0.0</code>. Comments are allowed between
+quantity definitions or on the same line as the definition.  The code snippet below
+shows acceptable formats for quantity definitions
+<p>
+<code>
+! BEGIN DART PREPROCESS QUANTITY DEFINITIONS <br>
+! <br>
+! Formats accepted:<br>
+!<br>
+! QTY_string<br>
+! QTY_string name=value<br>
+! QTY_string name=value name2=value2<br>
+!<br>
+! QTY_string ! comments<br>
+!<br>
+! ! comment<br>
+!<br>
+! END DART PREPROCESS QUANTITY DEFINITIONS<br>
+
+</code>
+<p>
+
+</P>
 <H4>Implementation Details</H4>
 <P>
 The obs_kind module contains an automatically-generated list
 of integer parameters, derived from the obs_def files, an
 integer parameter <em class=unix>max_defined_types_of_obs</em>, and
 an automatically-generated list of initializers for the
-<em class="unix">obs_type_type</em> derived type that 
-defines the details of each observation type that has been created by the 
+<em class="unix">obs_type_type</em> derived type that
+defines the details of each observation type that has been created by the
 preprocess program. Each entry contains the integer index of the
 observation type, the string name of the observation type
 (which is identical to the F90 identifier), the integer index of the
 associated generic quantities, and three logicals indicating whether this
 observation type is to be assimilated, evaluated only (forward operator is
 computed but not assimilated), assimilated but has externally computed
-forward operator values in the input obsesrvation sequence file, or ignored 
-entirely. The logicals initially default to .false. and are set to .true. via 
+forward operator values in the input obsesrvation sequence file, or ignored
+entirely. The logicals initially default to .false. and are set to .true. via
 the <em class="unix">&amp;obs_kind_nml</em> namelist.
 A second derived type
 <em class="unix">obs_kind_type</em> maps generic quantity
@@ -148,7 +163,7 @@ This namelist is read from the file <em class=file>input.nml</em>.
 Namelists start with an ampersand
 '&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
+enclosed in quotes to prevent them from
 prematurely terminating the namelist.
 </P>
 
@@ -156,7 +171,7 @@ prematurely terminating the namelist.
 <pre>
 &amp;obs_kind_nml
    assimilate_these_obs_types          = 'null',
-   evaluate_these_obs_types            = 'null'  
+   evaluate_these_obs_types            = 'null'
    use_precomputed_FOs_these_obs_types = 'null'
  /
 </pre>
@@ -205,7 +220,7 @@ the ensemble of forward operator values can be stored in the observation
 sequence file.  For any type listed here, the forward operator interpolation
 code will not be called and the values in the file will be used instead.</TD></TR>
 
-</TBODY> 
+</TBODY>
 </TABLE>
 </div>
 
@@ -215,7 +230,7 @@ code will not be called and the values in the file will be used instead.</TD></T
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT',
-   evaluate_these_obs_types   = 'RADIOSONDE_SURFACE_PRESSURE', 
+   evaluate_these_obs_types   = 'RADIOSONDE_SURFACE_PRESSURE',
   use_precomputed_FOs_these_obs_types = 'RADIANCE'
 /
 </pre>
@@ -297,7 +312,7 @@ This value is added by the preprocess program and depends on which
 e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY) and not the number
 of generic quantities.
 </P> <P>
-There is also a function interface which is an alternate method 
+There is also a function interface which is an alternate method
 to get this value.  In some cases the code
 requires a parameter value known at compile time (for declaring a
 fixed length array, for example).  For an array allocated
@@ -419,7 +434,7 @@ integer, intent(in)            :: <em class=code>obs_kind_ind</em>
 <!-- Description -->
 
 <P>
-Given an integer index return the string name of the corresponding 
+Given an integer index return the string name of the corresponding
 generic quantity (e.g. "QTY_TEMPERATURE", "QTY_SPECIFIC_HUMIDITY").
 This string is the same as the F90 identifier
 associated with the integer index.
@@ -463,7 +478,7 @@ as the name string.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>get_index_for_type_of_obs</em></TD>
-    <TD>Integer index into the obs_type_type table entry with name string 
+    <TD>Integer index into the obs_type_type table entry with name string
         corresponding to obs_kind_name.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind_name</em></TD>
     <TD>Name of specific observation type found in obs_type_type table.</TD></TR>
@@ -499,7 +514,7 @@ as the name string.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>get_index_for_quantity</em></TD>
-    <TD>Integer index into the obs_kind_type table entry with name string 
+    <TD>Integer index into the obs_kind_type table entry with name string
         corresponding to obs_kind_name.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind_name</em></TD>
     <TD>Name of generic kind found in obs_kind_type table.</TD></TR>
@@ -527,14 +542,14 @@ integer, intent(in)  :: <em class=code>obs_kind_ind</em>
 Given the integer index associated with a specific observation
 type (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY), return
 true if this observation type is to be assimilated, otherwise false.
-The parameter defined by this name is 
+The parameter defined by this name is
 used as an integer index into the obs_type_type table
 to return the status of this type.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>var</em></TD>
-    <TD>Returns true if this entry in the obs_type_type table is to be 
+    <TD>Returns true if this entry in the obs_type_type table is to be
           assimilated.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind_ind</em></TD>
     <TD>An integer index into the obs_type_type table.</TD></TR>
@@ -562,7 +577,7 @@ integer, intent(in)  :: <em class=code>obs_kind_ind</em>
 Given the integer index associated with a specific observation
 type (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY), return
 true if this observation type is to be evaluated only, otherwise false.
-The parameter defined by this name is 
+The parameter defined by this name is
 used as an integer index into the obs_type_type table
 to return the status of this type.
 </P>
@@ -570,7 +585,7 @@ to return the status of this type.
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>var</em></
 TD>
-    <TD>Returns true if this entry in the obs_type_type table 
+    <TD>Returns true if this entry in the obs_type_type table
         is to be evaluated.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind_ind</em></TD>
     <TD>An integer index into the obs_type_type table.</TD></TR>
@@ -599,7 +614,7 @@ Given the integer index associated with a specific observation
 type (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY), return
 the generic quantity associated with this type (e.g. QTY_TEMPERATURE,
 QTY_SPECIFIC_HUMIDITY).
-The parameter defined by this name is 
+The parameter defined by this name is
 used as an integer index into the obs_type_type table
 to return the generic quantity associated with this type.
 </P>
@@ -691,7 +706,7 @@ releases of DART.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>ifile</em></TD>
-    <TD>Unit number of output observation sequence file being 
+    <TD>Unit number of output observation sequence file being
         written.</TD></TR>
 <TR><TD valign=top><em class=code>pre_I_format</em></TD>
     <TD>True if the file being read has no obs type definition header
@@ -757,7 +772,7 @@ the current obs_kind_mod.
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>Index of this observation type in obs_type_type table.</TD></TR>
 <TR><TD valign=top><em class=code>obs_def_index</em></TD>
-    <TD>Index of observation type from input observation 
+    <TD>Index of observation type from input observation
         sequence file.</TD></TR>
 </TABLE>
 
@@ -778,10 +793,10 @@ the current obs_kind_mod.
 <P>
 The current Fortran standards define the maximum length of a Fortran
 parameter to be 32 chars long.  This named parameter can be used
-anyplace the string name length of a parameter is needed.  All the 
+anyplace the string name length of a parameter is needed.  All the
 specific types and generic quantities in DART are defined both
-as an integer parameter number for efficiency, and 
-as a string variable when a descriptive or human-readable name is needed.  
+as an integer parameter number for efficiency, and
+as a string variable when a descriptive or human-readable name is needed.
 The length of these names cannot exceed this parameter-name limit.
 </P>
 
@@ -865,13 +880,13 @@ in the obs_type_type table.
 
 <TR><!-- routine --><TD VALIGN=top>initialize_module</TD>
     <!-- message --><TD VALIGN=top>______ from obs_kind_nml is not a legal observation kind</TD>
-    <!-- comment --><TD VALIGN=top>An observation type  name that is not in the 
+    <!-- comment --><TD VALIGN=top>An observation type  name that is not in the
     obs_type_type table has been specified to be assimilated or evaluted.</TD>
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>initialize_module</TD>
     <!-- message --><TD VALIGN=top>Illegal to evaluate and assimilate the same kind ______</TD>
-    <!-- comment --><TD VALIGN=top>The same observation type name has been specified in 
+    <!-- comment --><TD VALIGN=top>The same observation type name has been specified in
                                  both namelist entries.</TD>
 </TR>
 
@@ -889,7 +904,7 @@ in the obs_type_type table.
 
 <TR><!-- routine --><TD VALIGN=top>read_type_of_obs_table</TD>
     <!-- message --><TD VALIGN=top>didnt find observation kind _____ in obs_kind_mod list</TD>
-    <!-- comment --><TD VALIGN=top> An observation type specified by name in an observation 
+    <!-- comment --><TD VALIGN=top> An observation type specified by name in an observation
                sequence file header was NOT found in the obs_type_type table. </TD>
 </TR>
 
@@ -908,22 +923,22 @@ in the obs_type_type table.
 The terminology has evolved since the initial version of this
 code was developed, but since the names are part of the public
 interfaces they have remained constant and are now confusing.
-The current system makes a definite distinction between 
+The current system makes a definite distinction between
 specific observation <em>types</em>
-versus generic state variable and observation <em>quantities</em>. 
+versus generic state variable and observation <em>quantities</em>.
 However, the interfaces to the code in this module
-are still using 'kind' where they should be using 'type'.  
+are still using 'kind' where they should be using 'type'.
 As a byproduct of the interface name confusion
-there is additional confusion inside other parts of the 
+there is additional confusion inside other parts of the
 DART code where 'kind' is used for local variable names
 where it really is a 'type'.
 </P> <P>
 As noted in the Overview,
 the real distinction is that knowing the QTY_xxx of an
-observation should be enough to compute the correct forward operator.   
-The kinds also should be sufficient to identify the 
+observation should be enough to compute the correct forward operator.
+The kinds also should be sufficient to identify the
 different variables in the state vector.
-The types are observation-platform dependent and allow users to 
+The types are observation-platform dependent and allow users to
 select to assimilate and evaluate these as they choose.
 </P>
 <br>
