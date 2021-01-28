@@ -159,8 +159,8 @@ ${LINK} pop_in_0001           pop_in
 #    namelist appropriately. This script will 'eat' the cookie file
 #    to prevent this from happening for subsequent executions. If the
 #    inflation file does not exist for them, and it needs to, this script
-#    should die. The CESM_DART_config script automatically creates a cookie
-#    file to support this option.
+#    should die. The CESM_DART_config.csh script automatically creates a
+#    cookie file to support this option.
 #
 # The strategy is to use the LATEST inflation file from the CESM 'rundir'.
 # After an assimilation, the new inflation values/files will be moved to
