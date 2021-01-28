@@ -26,14 +26,15 @@ def unzipNsave(old, new):
 # -----------------------------------------------------#
 
 USER = getpass.getuser()
-save_dir = 'POP_ensemble_dir'
-savepath = '/glade/scratch/' + USER + '/' + save_dir + '/'
-Path("savepath").mkdir(parents=True, exist_ok=True)
+
+case_name = 'g210.G_JRA.v14.gx1v7.01'
+stagedir = '/glade/scratch/' + USER + '/' + case_name + '/rest/2010-01-01-00000'
+
+Path("stagedir").mkdir(parents=True, exist_ok=True)
 
 #    First load from the directory of MONTHLY saves    #
 # -----------------------------------------------------#
 
-case_name = 'g210.G_JRA.v14.gx1v7.01'
 load_path = '/glade/campaign/cgd/oce/people/whokim/csm/' + case_name + '/rest'
 
 years = list(range(41, 202, 10))+list(range(209, 251))
@@ -41,7 +42,7 @@ years = list(range(41, 202, 10))+list(range(209, 251))
 # years = list(range(31,32))
 inds = list(range(1, len(years)+1))
 
-print('Copying from ' + load_path + ' to ' + savepath)
+print('Copying from ' + load_path + ' to ' + stagedir)
 
 for ii, year in enumerate(years):
 
@@ -62,11 +63,11 @@ for ii, year in enumerate(years):
     ciceold = yearpath + case_name + '.cice.r.' + zero_filled_year \
         + '-01-01-00000.nc'
 
-    popnew = savepath + case_name + '.pop_' + zero_filled_ii \
+    popnew = stagedir + case_name + '.pop_' + zero_filled_ii \
         + '.r.2010-01-01-00000.nc'
-    ovfnew = savepath + case_name + '.pop_' + zero_filled_ii \
+    ovfnew = stagedir + case_name + '.pop_' + zero_filled_ii \
         + '.ro.2010-01-01-00000'
-    cicenew = savepath + case_name + '.cice_' + zero_filled_ii \
+    cicenew = stagedir + case_name + '.cice_' + zero_filled_ii \
         + '.r.2010-01-01-00000.nc'
 
     # Copy over
@@ -89,7 +90,7 @@ years2 = list(range(251, 272))
 # Start from where we left off with the daily saves with inds
 inds = list(range(ly+1, ly+len(years2)+1))
 
-print('Copying from ' + load_path + ' to ' + savepath)
+print('Copying from ' + load_path + ' to ' + stagedir)
 
 for ii, year in enumerate(years2):
 
@@ -107,11 +108,11 @@ for ii, year in enumerate(years2):
     ciceold = glob.glob(yearpath + case_name + '.cice.r.' + zero_filled_year
                         + '-01-01-00000.nc*')[0]
 
-    popnew = savepath + case_name_out + '.pop_' + zero_filled_ii \
+    popnew = stagedir + case_name_out + '.pop_' + zero_filled_ii \
         + '.r.2010-01-01-00000.nc'
-    ovfnew = savepath + case_name_out + '.pop_' + zero_filled_ii \
+    ovfnew = stagedir + case_name_out + '.pop_' + zero_filled_ii \
         + '.ro.2010-01-01-00000'
-    cicenew = savepath + case_name_out + '.cice_' + zero_filled_ii \
+    cicenew = stagedir + case_name_out + '.cice_' + zero_filled_ii \
         + '.r.2010-01-01-00000.nc'
 
     # Copy over, decompressing as necessary
