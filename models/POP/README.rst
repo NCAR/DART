@@ -358,10 +358,10 @@ The variables and their default values are listed here:
       binary_grid_file_format      = 'big_endian'
       debug                        = 0,
       model_state_variables        = 'SALT_CUR ', 'QTY_SALINITY             ', 'UPDATE',
-                                       'TEMP_CUR ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
-                                       'UVEL_CUR ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE',
-                                       'VVEL_CUR ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE',
-                                       'PSURF_CUR', 'QTY_SEA_SURFACE_PRESSURE ', 'UPDATE'
+                                     'TEMP_CUR ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
+                                     'UVEL_CUR ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE',
+                                     'VVEL_CUR ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE',
+                                     'PSURF_CUR', 'QTY_SEA_SURFACE_PRESSURE ', 'UPDATE'
    /
 
 This namelist provides control over the assimilation period for the model. All
