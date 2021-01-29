@@ -387,7 +387,7 @@ ocean model dynamical timestep.
 | ``assimilation_period_seconds``     | integer           | In addition to ``assimilation_period_days``, the number    |
 |                                     |                   | of seconds to advance the model for each assimilation.     |
 |                                     |                   | Make sure you read the description of                      |
-|                                     |                   | ``assimilation_period_days*.                               |
+|                                     |                   | ``assimilation_period_days``.                               |
 +-------------------------------------+-------------------+------------------------------------------------------------+
 | ``model_perturbation_amplitude``    | real(r8)          | Reserved for future use.                                   |
 +-------------------------------------+-------------------+------------------------------------------------------------+
