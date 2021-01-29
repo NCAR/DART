@@ -470,6 +470,12 @@ The Data Assimilation Research Testbed: A Community Facility.
      *Weather Forecasting*, **28**, 29-54,
      [doi:10.1175/WAF-D-12-00043.1](http://dx.doi.org/doi:10.1175/WAF-D-12-00043.1)
 
+ ![](http://www.image.ucar.edu/images/pin4.gif) **Karspeck, A., S. Yeager,
+   G. Danabasoglu, T. J. Hoar, N. S. Collins, K. D. Raeder, J. L. Anderson,
+   J. Tribbia**, 2013  
+     An ensemble adjustment Kalman filter for the CCSM4 ocean component.  
+     *Journal Of Climate*, **26**, 7392-7413,
+     [doi:10.1175/JCLI-D-12-00402.1](https://doi.org/10.1175/JCLI-D-12-00402.1)
 
  ![](http://www.image.ucar.edu/images/pin4.gif) **Morozov, A. V., A. J. Ridley,
    D. S. Bernstein, N. Collins, T. J. Hoar and J. L. Anderson**, 2013  
