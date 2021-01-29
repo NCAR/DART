@@ -14,16 +14,16 @@
 !> standard F90 that may be required to implement forward observation operators 
 !> for DART. The sections are retrieved from the files by this program and 
 !> inserted into the appropriate blanks in the DEFAULT_obs_def_mod.F90 and 
-!> DEFAULT_obs_qty_mod.F90 templates. 
+!> DEFAULT_obs_kind_mod.F90 templates. 
 !>
-!> The final obs_def_mod.f90 and obs_qty_mod.f90 that are created contain
+!> The final obs_def_mod.f90 and obs_kind_mod.f90 that are created contain
 !> the default code plus all the code required from the selected observation
 !> type modules. Preprocess also inserts the required identifiers and strings
 !> for the corresponding observation quantities.
 !>
 !> @todo FIXME: the module name is set by whatever is in the DEFAULT_xxx file
 !> which is still obs_kind_mod instead of _qty_.  also i have changed the default
-!> filenames here to be _qty_ but in reality all the pathnames files for the
+!> filenames here to be _qty_(HK?) but in reality all the pathnames files for the
 !> build system expect _kind_ and the names are always specified in our input.nml
 !> namelist files, so we aren't depending on the defaults. (maybe we should?)
 !> and finally, this code generates module 'use' statements, and those, 
