@@ -51,9 +51,9 @@ foreach i ( $LOCLIST )
    echo
    echo
    if ( $FAILURE ) then
-     echo "------------------------------------------------------------------"
      echo "ERROR - unsuccessful build of location module $i at "`date`
-     echo "------------------------------------------------------------------"
+   else
+     echo "Build of location module $i complete"
      echo
      echo
    else

@@ -157,7 +157,7 @@ echo "------------------------------------------------------------------"
 echo "Build of NCEP BUFR libs ended at "`date`
 if ( $FAILURE ) then
       echo 
-      echo "ERROR - build was unsuccessful"
+      echo "ERROR - build was unsuccessful at "`date`
       echo 
 endif
 echo "------------------------------------------------------------------"
@@ -209,15 +209,11 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
    echo
 
    if ( $FAILURE ) then
-      echo "ERROR - unsuccessful build of $project"
+      echo "ERROR - unsuccessful build of $project at "`date`
       echo 
 
       switch ( $project )
    
-         case GSI2DART
-            echo " This build expected to fail on case-insensitive filesystems."
-         breaksw
-            
          case var
             echo " This build expected to fail unless you have the WRF code in-situ."
          breaksw
@@ -247,6 +243,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
       foreach TARGET ( mkmf_* )
          set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+         echo
          echo "Running $PROG"
    
          # for programs which read standard input, put what they need into a prog.in file
@@ -309,7 +306,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
                breaksw
             
                default
-                  echo "ERROR - unsuccessful run of $PROG"
+                  echo "ERROR - unsuccessful run of $PROG at "`date`
                breaksw
             endsw
 
@@ -319,15 +316,12 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
          endif
       end
 
-      echo
-
    endif
 
    echo "Restoring original input.nml and obs_seq files"
    ${MOVE} ${SAVEDIR}/* .
    ${REMOVE_DIR} ${SAVEDIR}
-   echo
-  
+
 end
 
 echo 

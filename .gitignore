@@ -62,6 +62,7 @@ preprocess
 restart_file_tool
 system_simulation
 rttov_test
+rttov_unit_tests
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables
