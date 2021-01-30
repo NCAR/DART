@@ -408,9 +408,10 @@ ocean model dynamical timestep.
 |                                     |                   | the grid information and perform a grid interpolation      |
 |                                     |                   | test.                                                      |
 +-------------------------------------+-------------------+------------------------------------------------------------+
-| ``model_state_variables``           | character(:,3)    | Strings that associate POP variables with a DART kind and  |
-|                                     |                   | whether or not to write the updated values to the restart  |
-|                                     |                   | files. These variables will be read from the POP restart   |
+| ``model_state_variables``           | character(:,3)    | Strings that associate POP variables with a DART quantity  |
+|                                     |                   | and whether or not to write the updated values to the      |
+|                                     |                   | restart files.                                             |
+|                                     |                   | These variables will be read from the POP restart          |
 |                                     |                   | file and modified by the assimilation. Some (perhaps all)  |
 |                                     |                   | will be used by the forward observation operators. If the  |
 |                                     |                   | 3rd column is 'UPDATE', the output files will have the     |
@@ -421,15 +422,7 @@ ocean model dynamical timestep.
 |                                     |                   | Diagnostic variables that are useful for the calculation   |
 |                                     |                   | of the forward observation operator but have no impact on  |
 |                                     |                   | the forecast trajectory of the model could have a value of |
-|                                     |                   | ``NO_COPY_BACK``. The DART kind must be one found in the   |
-|                                     |                   | ``obs_kind_mod.f90`` source code file kept in              |
-|                                     |                   | ``DART/assimilation_code/modules/observations/`` **AFTER** |
-|                                     |                   | it gets built by ``preprocess``. Most of the ocean         |
-|                                     |                   | observation kinds are specified within the                 |
-|                                     |                   | ``obs_def_ocean_mod.f90`` source code file kept in         |
-|                                     |                   | ``DART/observations/forward_operators/``, so it should be  |
-|                                     |                   | specified in the ``&preprocess_nml:input_files``           |
-|                                     |                   | variable.                                                  |
+|                                     |                   | ``NO_COPY_BACK``.                                          |
 +-------------------------------------+-------------------+------------------------------------------------------------+
 
 Terms of Use
