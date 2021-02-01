@@ -25,8 +25,8 @@
 !     QTY_3D_PARAMETER
 ! 
 ! ! kinds for CHAMP upper atmosphere computations
-!     QTY_ATOMIC_OXYGEN_MIXING_RATIO    units=none
-!     QTY_MOLEC_OXYGEN_MIXING_RATIO     units=none
+!     QTY_ATOMIC_OXYGEN_MIXING_RATIO    
+!     QTY_MOLEC_OXYGEN_MIXING_RATIO     
 ! 
 ! ! proposed new kinds for COSMIC GPS/RO obs
 ! ! (currently unused)

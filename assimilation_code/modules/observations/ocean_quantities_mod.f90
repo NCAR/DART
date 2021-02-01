@@ -18,9 +18,9 @@
 !
 !     QTY_SALINITY                                  minval=0.0
 !     QTY_TEMPERATURE                 units="K"     minval=0.0
-!     QTY_POTENTIAL_TEMPERATURE                     minval=0.0
+!     QTY_POTENTIAL_TEMPERATURE                     
 !     QTY_PRESSURE                                  minval=0.0
-!     QTY_VELOCITY                    units="m/s"   minval=0.0
+!     QTY_VELOCITY                    units="m/s" 
 !     QTY_U_CURRENT_COMPONENT         units="m/s"
 !     QTY_V_CURRENT_COMPONENT         units="m/s"
 !     QTY_W_CURRENT_COMPONENT         units="m/s"
