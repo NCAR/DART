@@ -3,7 +3,7 @@ function [new_cov_inflate, new_cov_inflate_sd] = update_inflate(x_p, r_var, y_o,
 % Adaptive scheme to update the inflation both in space and time. 
 % Based on the algorithm in the following articles:
 %
-% [falvor: 2, Gaussian inflation pdf] 
+% [flavor: 2, Gaussian inflation pdf] 
 % Anderson, J. L., 2009: Spatially and temporally varying adaptive covariance 
 % inflation for ensemble filters. Tellus A, 61, 72-83. doi: 10.1111/j.1600-0870.2008.00361.x 
 %
