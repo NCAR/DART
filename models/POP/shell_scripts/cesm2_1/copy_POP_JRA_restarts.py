@@ -25,11 +25,16 @@ def unzipNsave(old, new):
 #                Main body of the script               #
 # -----------------------------------------------------#
 
+#                    Get username                      #
+# -----------------------------------------------------#
+
 USER = getpass.getuser()
+
+#      Create stage directory if it doesn't exist      #
+# -----------------------------------------------------#
 
 case_name = 'g210.G_JRA.v14.gx1v7.01'
 stagedir = '/glade/scratch/' + USER + '/' + case_name + '/rest/2010-01-01-00000'
-
 Path("stagedir").mkdir(parents=True, exist_ok=True)
 
 #    First load from the directory of MONTHLY saves    #
@@ -80,9 +85,8 @@ for ii, year in enumerate(years):
 #      Some years (251-262) must be decompressed
 # -----------------------------------------------------#
 
-case_name = 'g210.G_JRA.v14.gx1v7.01.dr'
-case_name_out = 'g210.G_JRA.v14.gx1v7.01'
-load_path = '/glade/campaign/cgd/oce/people/whokim/csm/' + case_name + '/rest'
+case_name_dr = 'g210.G_JRA.v14.gx1v7.01.dr'
+load_path = '/glade/campaign/cgd/oce/people/whokim/csm/' + case_name_dr + '/rest'
 
 ly = len(years)
 years2 = list(range(251, 272))
@@ -101,18 +105,18 @@ for ii, year in enumerate(years2):
     yearpath = load_path + '/' + zero_filled_year + '-01-01-00000/'
 
     # Define file paths
-    popold = glob.glob(yearpath + case_name + '.pop.r.' + zero_filled_year
+    popold = glob.glob(yearpath + case_name_dr + '.pop.r.' + zero_filled_year
                        + '-01-01-00000.nc*')[0]
-    ovfold = glob.glob(yearpath + case_name + '.pop.ro.' + zero_filled_year
+    ovfold = glob.glob(yearpath + case_name_dr + '.pop.ro.' + zero_filled_year
                        + '-01-01-00000*')[0]
-    ciceold = glob.glob(yearpath + case_name + '.cice.r.' + zero_filled_year
+    ciceold = glob.glob(yearpath + case_name_dr + '.cice.r.' + zero_filled_year
                         + '-01-01-00000.nc*')[0]
 
-    popnew = stagedir + case_name_out + '.pop_' + zero_filled_ii \
+    popnew = stagedir + case_name + '.pop_' + zero_filled_ii \
         + '.r.2010-01-01-00000.nc'
-    ovfnew = stagedir + case_name_out + '.pop_' + zero_filled_ii \
+    ovfnew = stagedir + case_name + '.pop_' + zero_filled_ii \
         + '.ro.2010-01-01-00000'
-    cicenew = stagedir + case_name_out + '.cice_' + zero_filled_ii \
+    cicenew = stagedir + case_name + '.cice_' + zero_filled_ii \
         + '.r.2010-01-01-00000.nc'
 
     # Copy over, decompressing as necessary
