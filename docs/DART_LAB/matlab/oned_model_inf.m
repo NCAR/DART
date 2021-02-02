@@ -1386,7 +1386,7 @@ fclose(logfileid);
                     handles.inflation = str2double(get(handles.ui_edit_fixed_inflation,'String'));
                     
                 case 'Adaptive Inflation'
-                    % Here, only stick to one algorithm (Gaussian; falvor 2). Users may manually 
+                    % Here, only stick to one algorithm (Gaussian; flavor 2). Users may manually 
                     % switch between 'Gaussian' [Anderson 2009] and 'Gamma'
                     % [El Gharamti 2018]. The GUI option is only available
                     % in the Lorenz'96 section. 
