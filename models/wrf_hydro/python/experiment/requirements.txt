@@ -45,7 +45,7 @@ jupyter-core==4.4.0
 lazy-object-proxy==1.3.1
 MarkupSafe==1.0
 matlab-kernel==0.15.0
-matlabengineforpython===R2018a
+matlabengineforpython==R2018a
 matplotlib==2.1.2
 mccabe==0.6.1
 metakernel==0.20.14
@@ -58,7 +58,7 @@ nbconvert==5.3.1
 nbformat==4.4.0
 netCDF4==1.3.1
 nose==1.3.7
-notebook==6.1.3
+notebook==6.1.5
 numexpr==2.6.4
 numpy==1.14.0
 pandas==0.22.0
