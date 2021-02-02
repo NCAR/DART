@@ -174,11 +174,12 @@ you might need for an experiment with that model.
         ! integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! 8 byte reals
         integer, parameter :: r8 = r4                      ! alias r8 to r4
 
-3.  Copy the tutorial DART namelist from `$DART_DIR/models/wrf/template/input.nml.template`
+3.  Copy the tutorial DART namelist from 
+    `$DART_DIR/models/wrf/tutorial/template/input.nml.template`
     to `$DART_DIR/models/wrf/work/input.nml`.
 
         cd $DART_DIR/models/wrf
-        cp template/input.nml.template work/input.nml
+        cp tutorial/template/input.nml.template work/input.nml
 
 4.  Build the WRF/DART executables:
 
