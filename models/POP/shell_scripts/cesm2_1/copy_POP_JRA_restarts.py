@@ -34,13 +34,13 @@ USER = getpass.getuser()
 # -----------------------------------------------------#
 
 case_name = 'g210.G_JRA.v14.gx1v7.01'
-stagedir = '/glade/scratch/' + USER + '/' + case_name + '/rest/2010-01-01-00000'
+stagedir = '/glade/scratch/' + USER + '/' + case_name + '/rest/2010-01-01-00000/'
 Path("stagedir").mkdir(parents=True, exist_ok=True)
 
 #    First load from the directory of MONTHLY saves    #
 # -----------------------------------------------------#
 
-load_path = '/glade/campaign/cgd/oce/people/whokim/csm/' + case_name + '/rest'
+load_path = '/glade/campaign/cgd/oce/people/whokim/csm/' + case_name + '/rest/'
 
 years = list(range(41, 202, 10))+list(range(209, 251))
 # For debugging:
