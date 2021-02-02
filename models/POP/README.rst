@@ -101,6 +101,20 @@ observation sequence files or you'll need to copy these files from GLADE. If
 you want to copy these files from GLADE and don't have access, contact DAReS
 staff by emailing dart@ucar.edu for assistance.
 
+Summary
+-------
+
+To use DART and CESM POP2 on NCAR's supercomputer, you will need to complete
+the following steps.
+
+#. Configure the scripts for your specific experiment by editing
+   ``DART_params.csh``.
+#. Stage your initial ensemble using ``copy_POP_JRA_restarts.py``.
+#. Run the appropriate DART setup script to create and build the CESM case.
+
+If the DART setup script runs to completion, it will print instructions to the
+screen. Follow these instructions to submit your case.
+
 Shell scripts
 -------------
 
