@@ -1,5 +1,4 @@
 ! This code is not protected by the DART copyright agreement.
-! DART $Id$
 
      module WOD_read_routines_mod      
 
@@ -937,8 +936,3 @@ private
 
       end module WOD_read_routines_mod      
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
