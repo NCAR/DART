@@ -30,14 +30,6 @@
 !> to keep things working, are still outputing "use obs_kind_mod" instead 
 !> of "use obs_qty_mod".   this should change but i'm not sure when.
 !>
-!> @todo FIXME: this code now creates an obs_def_mod.f90 that contains
-!> a use line for all the known quantities, not just those referenced
-!> by the obs_def_xxx_mod.f90 file.  the obs_kind_mod.f90 has to define
-!> all of them, and the model_mod.f90 code should get quantities from
-!> the obs_kind_mod - so should this code go ahead and flag only the
-!> used quantities in a separate list and only output them in the
-!> final generated obs_def_mod.f90?
-!>
 
 program preprocess
 
