@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 program sst_to_obs
 
@@ -49,10 +47,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   '$URL$'
-character(len=*), parameter :: revision = '$Revision$'
-character(len=*), parameter :: revdate  = '$Date$'
+character(len=*), parameter :: source   = 'sst_to_obs.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
@@ -352,8 +349,3 @@ call finalize_utilities()
 
 end program sst_to_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
