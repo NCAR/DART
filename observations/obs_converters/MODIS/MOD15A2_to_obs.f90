@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program MOD15A2_to_obs
 
@@ -43,18 +41,17 @@ use      obs_kind_mod, only : MODIS_LEAF_AREA_INDEX, &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'MOD15A2_to_obs.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !-----------------------------------------------------------------------
 ! Namelist with default values
 !-----------------------------------------------------------------------
 
-character(len=128) :: text_input_file = 'MOD15A2.fn_usbouldr.txt'
-character(len=128) :: metadata_file   = 'MOD15A2_site_metadata.txt'
-character(len=128) :: obs_out_file    = 'obs_seq.out'
+character(len=256) :: text_input_file = 'MOD15A2.fn_usbouldr.txt'
+character(len=256) :: metadata_file   = 'MOD15A2_site_metadata.txt'
+character(len=256) :: obs_out_file    = 'obs_seq.out'
 real(r8)           :: maxgoodqc       = 10
 logical            :: verbose         = .false.
 
@@ -954,8 +951,3 @@ end subroutine SetWordPositions
 
 end program MOD15A2_to_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
