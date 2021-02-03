@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 program gnd_gps_vtec_text_to_obs
 
@@ -41,8 +39,8 @@ implicit none
 
 ! things which can/should be in the gnd_gps_vtec_text_to_obs_nml
 
-character(len=64)  :: text_input_file = 'Density_3deg_02_335_2p2.ascii'
-character(len=64)  :: obs_out_file    = 'obs_seq.out'
+character(len=256) :: text_input_file = 'Density_3deg_02_335_2p2.ascii'
+character(len=256) :: obs_out_file    = 'obs_seq.out'
 logical            :: debug = .true.  ! set to .true. to print info
 
 namelist /gnd_gps_vtec_text_to_obs_nml/  &
@@ -214,8 +212,3 @@ call finalize_utilities()
 
 end program gnd_gps_vtec_text_to_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
