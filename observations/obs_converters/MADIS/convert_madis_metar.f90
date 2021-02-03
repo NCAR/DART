@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program convert_madis_metar
 
@@ -62,9 +60,9 @@ implicit none
 ! COMPILE TIME OPTION:  by default this converter only processes hourly
 ! observations.  if exclude_special is set to .false., then special obs
 ! will be converted as well as the normal obs.  but this is not on by default.
-character(len=16),  parameter :: surface_netcdf_file = 'metar_input.nc'
-character(len=129), parameter :: surface_out_file    = 'obs_seq.metar'
-logical,            parameter :: exclude_special     = .true.
+character(len=*), parameter :: surface_netcdf_file = 'metar_input.nc'
+character(len=*), parameter :: surface_out_file    = 'obs_seq.metar'
+logical,          parameter :: exclude_special     = .true.
 
 ! the following logical parameters control which water-vapor variables appear in the output file,
 ! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
@@ -396,8 +394,3 @@ end subroutine getvar_char
 
 end program convert_madis_metar
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

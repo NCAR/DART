@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program convert_madis_marine
 
@@ -59,8 +57,8 @@ use     obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
 
 implicit none
 
-character(len=15),  parameter :: marine_netcdf_file = 'marine_input.nc'
-character(len=129), parameter :: marine_out_file    = 'obs_seq.marine'
+character(len=*), parameter :: marine_netcdf_file = 'marine_input.nc'
+character(len=*), parameter :: marine_out_file    = 'obs_seq.marine'
 
 ! the following logical parameters control which water-vapor variables appear in the output file,
 ! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
@@ -403,8 +401,3 @@ call finalize_utilities()
 
 end program convert_madis_marine
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program convert_madis_profiler
 
@@ -49,8 +47,8 @@ use           netcdf
 
 implicit none
 
-character(len=20),  parameter :: profiler_netcdf_file = 'profiler_input.nc'
-character(len=129), parameter :: profiler_out_file    = 'obs_seq.profiler'
+character(len=*), parameter :: profiler_netcdf_file = 'profiler_input.nc'
+character(len=*), parameter :: profiler_out_file    = 'obs_seq.profiler'
 
 logical, parameter :: use_input_qc              = .true. 
 
@@ -248,8 +246,3 @@ call finalize_utilities()
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

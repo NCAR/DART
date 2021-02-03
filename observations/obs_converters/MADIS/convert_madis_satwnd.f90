@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program convert_madis_satwnd
 
@@ -54,9 +52,9 @@ use           netcdf
 
 implicit none
 
-character(len=16),  parameter :: satwnd_netcdf_file = 'satwnd_input.nc'
-character(len=129), parameter :: satwnd_out_file    = 'obs_seq.satwnd'
-logical,            parameter :: exclude_special     = .true.
+character(len=*), parameter :: satwnd_netcdf_file = 'satwnd_input.nc'
+character(len=*), parameter :: satwnd_out_file    = 'obs_seq.satwnd'
+logical,          parameter :: exclude_special    = .true.
 
 logical, parameter :: use_input_qc              = .true. 
 
@@ -253,8 +251,3 @@ call finalize_utilities()
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
