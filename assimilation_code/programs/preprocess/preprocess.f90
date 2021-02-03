@@ -63,10 +63,10 @@ character(len=256)   :: valtokens(MAX_TOKENS)
 
 
 character(len = 256) :: line, test, t_string
-integer              :: iunit, io, i, j, k, l
+integer              :: iunit, io, i, j, k
 integer              :: linenum1, linenum2, linenum3, linenum4
 integer              :: num_types_found, num_qtys_found
-logical              :: duplicate, qty_found, temp_user, is_more, match
+logical              :: duplicate, qty_found, temp_user, is_more
 character(len = 512) :: err_string, err_string2, err_string3
 character(len = 6)   :: full_line_in  = '(A256)'
 character(len = 3)   :: full_line_out = '(A)'
@@ -1061,12 +1061,13 @@ end subroutine parse_line
 ! wants to change the behavior, add printed warnings, etc.
 
 subroutine resolve_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
- integer, intent(in) :: qty_indx
- integer, intent(in) :: ntokens
- character(len=*), intent(in) :: tname(MAX_TOKENS)
- character(len=*), intent(in) :: tval(MAX_TOKENS)
- character(len=*), intent(in) :: infile
- integer, intent(in) :: linenum
+
+integer, intent(in) :: qty_indx
+integer, intent(in) :: ntokens
+character(len=*), intent(in) :: tname(MAX_TOKENS)
+character(len=*), intent(in) :: tval(MAX_TOKENS)
+character(len=*), intent(in) :: infile
+integer, intent(in) :: linenum
  
 integer :: k, l, first_t, last_t
 logical :: match(MAX_TOKENS)
@@ -1145,14 +1146,15 @@ end subroutine resolve_duplicates
 ! this routine currently errors out with a fatal error, so does not return.
 
 subroutine incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
- integer, intent(in) :: qty_indx
- integer, intent(in) :: ntokens
- character(len=*), intent(in) :: tname(MAX_TOKENS)
- character(len=*), intent(in) :: tval(MAX_TOKENS)
- character(len=*), intent(in) :: infile
- integer, intent(in) :: linenum
 
-integer :: i, j
+integer, intent(in) :: qty_indx
+integer, intent(in) :: ntokens
+character(len=*), intent(in) :: tname(MAX_TOKENS)
+character(len=*), intent(in) :: tval(MAX_TOKENS)
+character(len=*), intent(in) :: infile
+integer, intent(in) :: linenum
+
+integer :: i
 character(len=*), parameter :: routine = 'incompatible_duplicates'
 character(len=1) :: empty = ''
 

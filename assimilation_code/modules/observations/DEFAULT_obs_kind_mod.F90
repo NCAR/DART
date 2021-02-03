@@ -504,7 +504,6 @@ function get_num_items_for_quantity(obs_qty_ind)
 integer, intent(in) :: obs_qty_ind
 integer :: get_num_items_for_quantity
 
-integer :: i
 character(len=*), parameter :: routine = 'get_num_items_for_quantity'
 
 if (.not. module_initialized) call initialize_module
@@ -528,7 +527,6 @@ integer, intent(in) :: obs_qty_ind
 integer, intent(in) :: item_index
 character(len=namelen) :: get_itemname_for_quantity
 
-integer :: i
 character(len=*), parameter :: routine = 'get_itemname_for_quantity'
 
 if (.not. module_initialized) call initialize_module
