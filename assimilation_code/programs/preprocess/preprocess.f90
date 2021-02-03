@@ -190,6 +190,7 @@ namelist /preprocess_nml/ input_obs_def_mod_file, output_obs_def_mod_file,   &
 
 !Begin by reading the namelist
 call initialize_utilities('preprocess')
+call register_module(source, revision, revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "preprocess_nml", iunit)
