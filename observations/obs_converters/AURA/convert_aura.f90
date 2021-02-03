@@ -1,5 +1,4 @@
 ! This code is not protected by the DART copyright agreement.
-! DART $Id$
 
 !     Nick Pedatella
 !     Program to convert Aura Temperature data to DART Observation
@@ -28,17 +27,16 @@ use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of
                              set_obs_def_error_variance, set_obs_def_location, &
                              set_obs_def_key
 use obs_utilities_mod, only : create_3d_obs,add_obs_to_seq
-use     obs_kind_mod, only : AURAMLS_TEMPERATURE
+use      obs_kind_mod, only : AURAMLS_TEMPERATURE
 
 use           netcdf
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'convert_aura.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
@@ -63,9 +61,9 @@ type(time_type)         :: time_obs, time_anal, prev_time
 
 
 ! namelist parameters
-character(len=128) :: aura_netcdf_file     = 'aura_input.nc'
-character(len=128) :: aura_netcdf_filelist = 'aura_input_list'
-character(len=128) :: aura_outfile        = 'obs_seq.aura'
+character(len=256) :: aura_netcdf_file     = 'aura_input.nc'
+character(len=256) :: aura_netcdf_filelist = 'aura_input_list'
+character(len=256) :: aura_outfile        = 'obs_seq.aura'
 integer :: aura_yr=2011,aura_doy = 1
 
 namelist /convert_aura_nml/ aura_netcdf_file, aura_netcdf_filelist, &
@@ -332,8 +330,3 @@ end subroutine
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
