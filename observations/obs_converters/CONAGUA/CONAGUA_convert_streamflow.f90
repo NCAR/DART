@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program CONAGUA_convert_streamflow
 
@@ -50,8 +48,8 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'CONAGUA_convert_streamflow.f90'
-character(len=*), parameter :: revision = '$Revision$'
-character(len=*), parameter :: revdate  = '$Date$'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
