@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program dwl_to_obs
 
@@ -41,8 +39,8 @@ implicit none
 ! the max possible number of obs needs to be specified but it will only 
 ! write out the actual number created.
 
-character(len=128)  :: text_input_file = 'dwldata.input'  ! default input name
-character(len=128)  :: obs_out_file    = 'obs_seq.out'    ! default output name
+character(len=256)  :: text_input_file = 'dwldata.input'  ! default input name
+character(len=256)  :: obs_out_file    = 'obs_seq.out'    ! default output name
 integer             :: max_obs         = 100000   !  max number of obs in one file
 logical             :: add_obs_data    = .true.   ! .false. makes empty observations
 logical             :: debug           = .false.  ! .true. prints more info
@@ -337,8 +335,3 @@ end subroutine add_obs_to_seq
 
 end program dwl_to_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
