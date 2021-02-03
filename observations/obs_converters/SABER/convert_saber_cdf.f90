@@ -1,11 +1,11 @@
 ! This code is not protected by the DART copyright agreement.
-! DART $Id$
 
 !     Nick Pedatella
 !     Program to convert SABER Temperature data to DART Observation
 !     sequence files. 
 
 program convert_saber_cdf
+
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
                              increment_time, get_time, set_date, operator(-),  &
@@ -34,16 +34,16 @@ use           netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'convert_saber_cdf.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
 ! variables
-character (len=130) :: msgstring, next_infile
+character (len=512) :: msgstring
+character (len=256) :: next_infile
 character (len=80) :: name
 
 integer :: iyear,iday,imonth,idoy,ihr,imin,isec,nalt,nevent,ialt,ievent, &
@@ -62,9 +62,9 @@ type(time_type)         :: time_obs, time_anal, prev_time
 
 
 ! namelist parameters
-character(len=128) :: saber_netcdf_file     = 'saber_input.nc'
-character(len=128) :: saber_netcdf_filelist = 'saber_input_list'
-character(len=128) :: saber_outfile        = 'obs_seq.saber'
+character(len=256) :: saber_netcdf_file     = 'saber_input.nc'
+character(len=256) :: saber_netcdf_filelist = 'saber_input_list'
+character(len=256) :: saber_outfile        = 'obs_seq.saber'
 integer :: saber_yr=2008,saber_mon = 1,saber_day = 1
 
 namelist /convert_saber_nml/ saber_netcdf_file, saber_netcdf_filelist, &
@@ -320,8 +320,3 @@ end subroutine
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
