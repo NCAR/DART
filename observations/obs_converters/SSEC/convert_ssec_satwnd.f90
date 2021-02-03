@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program convert_ssec_satwnd
 
@@ -32,8 +30,8 @@ use  obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
 
 implicit none
 
-character(len=16),  parameter :: ssec_sat_file = 'satwnd_input.txt'
-character(len=129), parameter :: sat_wind_file = 'obs_seq.satwnd'
+character(len=*), parameter :: ssec_sat_file = 'satwnd_input.txt'
+character(len=*), parameter :: sat_wind_file = 'obs_seq.satwnd'
 
 integer, parameter :: nmaxwnd = 50000,  &  ! maximum number of vectors
                       num_copies = 1,   &  ! number of copies in sequence
@@ -198,8 +196,3 @@ if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, sat_wind_file)
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
