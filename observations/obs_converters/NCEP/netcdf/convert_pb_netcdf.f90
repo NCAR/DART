@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 
 !! THIS PROGRAM IS NOT FINISHED!  there are observations available in
@@ -52,8 +50,8 @@ use netcdf
 
 implicit none
 
-character(len=128), parameter :: pb_netcdf_file = 'prep_bufr_input.nc'
-character(len=128), parameter :: pb_out_file    = 'obs_seq.prep_bufr'
+character(len=*), parameter :: pb_netcdf_file = 'prep_bufr_input.nc'
+character(len=*), parameter :: pb_out_file    = 'obs_seq.prep_bufr'
 
 ! the following logical parameters control which water-vapor variables appear in the output file,
 ! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
@@ -456,8 +454,3 @@ end subroutine look_up_obs_type
 
 end program convert_pb_netcdf
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
