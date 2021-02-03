@@ -4,7 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
 
 ../../../build_templates/mkmf -p preprocess -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_preprocess
