@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 program convert_daily_grace
 
@@ -52,10 +50,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'convert_daily_grace.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 character(len=*), parameter :: routine  = 'convert_daily_grace'
 
 character(len=512) :: string1,string2,string3
@@ -307,9 +304,4 @@ end subroutine get_yyyymmdd
   
  
 end program convert_daily_grace 
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Revision$
-! $Date$
 
