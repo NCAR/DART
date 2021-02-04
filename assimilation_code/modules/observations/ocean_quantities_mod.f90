@@ -14,6 +14,7 @@
 !
 ! ! ocean related quantities
 !
+!   QTY_SALINITY
 !   QTY_TEMPERATURE
 !   QTY_POTENTIAL_TEMPERATURE
 !   QTY_PRESSURE
@@ -24,6 +25,7 @@
 !   QTY_DRY_LAND
 !   QTY_SEA_SURFACE_PRESSURE
 !   QTY_SEA_SURFACE_HEIGHT
+!   QTY_SEA_SURFACE_ANOMALY
 !
 ! ! fixme - these units are hardcoded in obs_diag and shouldn't be
 !   QTY_U_WIND_COMPONENT
