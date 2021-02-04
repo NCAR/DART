@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 PROGRAM littler_tf_dart
 
@@ -36,10 +34,9 @@ use time_manager_mod, only : time_type, get_time, set_calendar_type, GREGORIAN, 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'littler_tf_dart.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(obs_sequence_type) :: dart_seq
 type(obs_type)          :: obs, prev_obs
@@ -58,13 +55,13 @@ integer           :: is, ie, iobs, k
 integer           :: num_obs, num_copies, num_qc, max_num_obs, dart_seq_num_obs, num_obs_in_set
 integer, allocatable :: keys(:)
 
-character(len = 32)  :: obs_name, obs_no_support(max_defined_types_of_obs)
-character(len = 129) :: msgstring
+character(len=32)  :: obs_name, obs_no_support(max_defined_types_of_obs)
+character(len=512) :: msgstring
 
 integer              :: n_no_support
 
-character(len = 129) :: dart_file_name     = 'obs_seq.out', &
-                        littler_file_name = 'little-r.dat'
+character(len=256) :: dart_file_name    = 'obs_seq.out', &
+                      littler_file_name = 'little-r.dat'
 
 integer              :: calendar_type      = GREGORIAN
 
@@ -1188,8 +1185,3 @@ END FUNCTION LOCATE
 
 END PROGRAM littler_tf_dart
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
