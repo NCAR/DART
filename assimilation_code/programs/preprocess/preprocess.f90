@@ -43,6 +43,11 @@ use parse_args_mod, only : get_args_from_string, get_name_val_pairs_from_string,
 
 implicit none
 
+! version controlled file description for error handling, do not edit
+character(len=*), parameter :: source   = 'preprocess.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
+
 ! Pick something ridiculously large and forget about it (lazy)
 integer, parameter   :: MAX_TYPES = 5000, MAX_QTYS = 5000
 
@@ -696,12 +701,13 @@ contains
 !> (which is a fatal error) or until the requested line contents
 !> is found.  update the linenum so reasonable error messages
 !> can be provided.
+
 subroutine read_until(iunit, iname, stop_string, linenum, alt_stop_string)
 
-integer, intent(in) :: iunit
+integer,          intent(in) :: iunit
 character(len=*), intent(in) :: iname
 character(len=*), intent(in) :: stop_string
-integer, intent(inout) :: linenum
+integer,          intent(inout) :: linenum
 character(len=*), intent(in), optional :: alt_stop_string
 
 call do_until(iunit, iname, stop_string, linenum, .false., 0, '', .false., alt_stop_string)
@@ -712,13 +718,13 @@ end subroutine read_until
 
 subroutine copy_until(iunit, iname, stop_string, linenum, ounit, oname, trimfirst, alt_stop_string)
 
-integer, intent(in) :: iunit
+integer,          intent(in) :: iunit
 character(len=*), intent(in) :: iname
 character(len=*), intent(in) :: stop_string
-integer, intent(inout) :: linenum
-integer, intent(in) :: ounit
+integer,          intent(inout) :: linenum
+integer,          intent(in) :: ounit
 character(len=*), intent(in) :: oname
-logical, intent(in) :: trimfirst
+logical,          intent(in) :: trimfirst
 character(len=*), intent(in), optional :: alt_stop_string
 
 call do_until(iunit, iname, stop_string, linenum, .true., ounit, oname, trimfirst, alt_stop_string)
@@ -729,14 +735,14 @@ end subroutine copy_until
 
 subroutine do_until(iunit, iname, stop_string, linenum, docopy, ounit, oname, trimfirst, alt_stop_string)
 
-integer, intent(in) :: iunit
+integer,          intent(in) :: iunit
 character(len=*), intent(in) :: iname
 character(len=*), intent(in) :: stop_string
-integer, intent(inout) :: linenum
-logical, intent(in) :: docopy
-integer, intent(in) :: ounit
+integer,          intent(inout) :: linenum
+logical,          intent(in) :: docopy
+integer,          intent(in) :: ounit
 character(len=*), intent(in) :: oname
-logical, intent(in) :: trimfirst
+logical,          intent(in) :: trimfirst
 character(len=*), intent(in), optional :: alt_stop_string
 
 integer :: ierr
@@ -751,7 +757,7 @@ FIND_NEXT: do
    if(ierr /= 0) then
       write(err_string,  *) 'Did not find required line containing ', trim(stop_string)
       write(err_string2, *) 'reading file ', trim(iname)
-      call error_handler(E_ERR, 'preprocess', err_string, text2=err_string2)
+      call error_handler(E_ERR, 'do_until', err_string, source, text2=err_string2)
    endif
    linenum = linenum + 1
 
@@ -773,7 +779,7 @@ FIND_NEXT: do
        if(ierr /= 0) then
           write(err_string,  *) 'Write error, returned code = ', ierr
           write(err_string2, *) 'writing file ', trim(oname)
-          call error_handler(E_ERR, 'preprocess', err_string, text2=err_string2)
+          call error_handler(E_ERR, 'do_until', err_string, source, text2=err_string2)
        endif
    endif
 
@@ -804,54 +810,45 @@ end subroutine copy_until_end
 
 !------------------------------------------------------------------------------
 
-subroutine typeqty_error(errtext, line, file, linenum)
- character(len=*), intent(in) :: errtext, line, file
- integer, intent(in) :: linenum
+subroutine typeqty_error(errtext, line, filename, linenum)
 
-call error_handler(E_MSG, 'preprocess error:', &
-   'obs_def file has bad Obs Type/Qty line')
-call error_handler(E_MSG, 'preprocess error:', errtext)
-call error_handler(E_MSG, 'expected input:', &
-   '! UniqueObsType, Quantity   or  ! UniqueObsType, Quantity, COMMON_CODE')
-write(err_string, '(2A,I5)') trim(file), ", line number", linenum
-call error_handler(E_MSG, 'bad file:', err_string)
-call error_handler(E_MSG, 'bad line contents:', line)
-write(err_string, *) 'See msg lines above for error details'
-call error_handler(E_ERR, 'preprocess', err_string)
+character(len=*), intent(in) :: errtext, line, filename
+integer,          intent(in) :: linenum
+
+write(err_string2,'(A,I5,A)') '"'//trim(filename)//'", line ', linenum, &
+                              ', contents: "'//trim(line)//'"'
+write(err_string3,   '(A,A)') 'expected:  ! UniqueObsType, Quantity  ',&
+                              ' or  ! UniqueObsType, Quantity, COMMON_CODE'
+call error_handler(E_ERR, 'typeqty_error', errtext, source, &
+                   text2=err_string2, text3=err_string3)
 
 end subroutine typeqty_error
 
 !------------------------------------------------------------------------------
 
-subroutine quantity_error(errtext, line, file, linenum)
- character(len=*), intent(in) :: errtext, line, file
- integer, intent(in) :: linenum
+subroutine quantity_error(errtext, line, filename, linenum)
 
-call error_handler(E_MSG, 'preprocess error:', &
-   'obs_qty file has bad Quantity line')
-call error_handler(E_MSG, 'preprocess error:', errtext)
-call error_handler(E_MSG, 'expected input:', &
-   '! QTY_xxx   or  ! comment line ')
-call error_handler(E_MSG, 'or:', &
-   '! QTY_xxx name=value ... ')
-write(err_string, '(2A,I5)') trim(file), ", line number", linenum
-call error_handler(E_MSG, 'bad file:', err_string)
-call error_handler(E_MSG, 'bad line contents:', line)
-write(err_string, *) 'See msg lines above for error details'
-call error_handler(E_ERR, 'preprocess', err_string)
+character(len=*), intent(in) :: errtext, line, filename
+integer,          intent(in) :: linenum
+
+write(err_string2, '(A,I5,A)')'"'//trim(filename)//'", has bad line (', linenum,')'
+write(err_string3,      '(A)')'bad line contents: ['//trim(line)//']'
+call error_handler(E_ERR, 'quantity_error', errtext, source, &
+                   text2=err_string2, text3=err_string3)
 
 end subroutine quantity_error
 
-!------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 
 ! get the next line from the input file, and bump up the line count
 ! it is an error if you get to the end of the file.
 
 subroutine get_next_line(iunit, format, end_string, filename, linenum, alt_end_string)
- integer, intent(in) :: iunit
- character(len=*), intent(in) :: format, end_string, filename
- integer, intent(inout) :: linenum
- character(len=*), intent(in), optional :: alt_end_string
+
+integer,          intent(in) :: iunit
+character(len=*), intent(in) :: format, end_string, filename
+integer,          intent(inout) :: linenum
+character(len=*), intent(in), optional :: alt_end_string
 
 integer :: ierr
 
@@ -862,9 +859,9 @@ if (ierr == 0) then
 endif
 
 ! If end of file, input file is incomplete or weird stuff happened
-write(err_string, *) 'file ', trim(filename), &
-                  ' does NOT contain ', trim(end_string), ' or ', trim(alt_end_string)
-call error_handler(E_ERR, 'preprocess', err_string)
+write(err_string, *) 'file "', trim(filename), &
+                  '" does NOT contain ', trim(end_string), ' or ', trim(alt_end_string)
+call error_handler(E_ERR, 'get_next_line', err_string, source)
 
 end subroutine get_next_line
 
@@ -883,9 +880,9 @@ if(file_exist(filename)) then
 endif
 
 ! If file does not exist it is an error
-write(err_string, *) trim(label) // ' ' // trim(filename), & 
-                     ' does NOT exist (and must).'
-call error_handler(E_ERR, 'preprocess', err_string)
+write(err_string, *) trim(label) // ' "' // trim(filename), & 
+                     '" does NOT exist (and must).'
+call error_handler(E_ERR, 'open_file_for_read', err_string, source)
 
 end subroutine open_file_for_read
 
@@ -896,9 +893,10 @@ end subroutine open_file_for_read
 ! otherwise it is an error.
 
 subroutine open_file_for_write(filename, label, overwrite, fileunit)
- character(len=*), intent(in) :: filename, label
- logical, intent(in) :: overwrite
- integer, intent(out) :: fileunit
+
+character(len=*), intent(in)  :: filename, label
+logical,          intent(in)  :: overwrite
+integer,          intent(out) :: fileunit
 
 if((.not. file_exist(filename)) .or. overwrite) then
    fileunit = open_file(filename, action='write')
@@ -906,28 +904,30 @@ if((.not. file_exist(filename)) .or. overwrite) then
 endif
 
 ! If file *does* exist and we haven't said ok to overwrite, error
-write(err_string, *) trim(label) // ' ' // trim(filename), &
-                     ' exists and will not be overwritten: Please remove or rename'
-call error_handler(E_ERR, 'preprocess', err_string)
+write(err_string, *) trim(label) // ' "' // trim(filename), &
+                     '" exists and will not be overwritten: Please remove or rename'
+call error_handler(E_ERR, 'open_file_for_write', err_string, source)
 
 end subroutine open_file_for_write
 
 !------------------------------------------------------------------------------
 
 subroutine cannot_be_null(varvalue, varname)
- character(len=*), intent(in) :: varvalue, varname
+
+character(len=*), intent(in) :: varvalue, varname
 
 if(varvalue /= 'null') return
 
-call error_handler(E_ERR, 'preprocess', &
-                  'Namelist must provide ' // trim(varname))
+call error_handler(E_ERR, 'cannot_be_null', &
+                  'Namelist must provide ' // trim(varname),source)
 
 end subroutine cannot_be_null
 
 !------------------------------------------------------------------------------
 
 subroutine write_separator_line(unitnum)
- integer, intent(in) :: unitnum
+
+integer, intent(in) :: unitnum
 
 write(unitnum, '(A)') separator_line
 
@@ -936,7 +936,8 @@ end subroutine write_separator_line
 !------------------------------------------------------------------------------
 
 subroutine write_blank_line(unitnum)
- integer, intent(in) :: unitnum
+
+integer, intent(in) :: unitnum
 
 write(unitnum, '(A)') blank_line
 
@@ -952,12 +953,13 @@ end subroutine write_blank_line
 ! apparently intent(out) strings must have a length.
 
 subroutine parse_line(line, ntokens, tokens, estring, pairs_expected, valtokens)
- character(len=*),   intent(in)  :: line
- integer,            intent(out) :: ntokens
- character(len=256), intent(out) :: tokens(:)
- character(len=512), intent(out) :: estring
- logical,            intent(in)  :: pairs_expected
- character(len=256), intent(out), optional :: valtokens(:)
+
+character(len=*),   intent(in)  :: line
+integer,            intent(out) :: ntokens
+character(len=256), intent(out) :: tokens(:)
+character(len=512), intent(out) :: estring
+logical,            intent(in)  :: pairs_expected
+character(len=256), intent(out), optional :: valtokens(:)
 
 character(len=256) :: test
 integer :: i
@@ -1054,12 +1056,13 @@ end subroutine parse_line
 ! wants to change the behavior, add printed warnings, etc.
 
 subroutine resolve_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
- integer, intent(in) :: qty_indx
- integer, intent(in) :: ntokens
- character(len=*), intent(in) :: tname(MAX_TOKENS)
- character(len=*), intent(in) :: tval(MAX_TOKENS)
- character(len=*), intent(in) :: infile
- integer, intent(in) :: linenum
+
+integer,          intent(in) :: qty_indx
+integer,          intent(in) :: ntokens
+character(len=*), intent(in) :: tname(MAX_TOKENS)
+character(len=*), intent(in) :: tval(MAX_TOKENS)
+character(len=*), intent(in) :: infile
+integer,          intent(in) :: linenum
  
 integer :: k, l, first_t, last_t
 logical :: match(MAX_TOKENS)
@@ -1138,12 +1141,13 @@ end subroutine resolve_duplicates
 ! this routine currently errors out with a fatal error, so does not return.
 
 subroutine incompatible_duplicates(qty_indx, ntokens, tname, tval, infile, linenum)
- integer, intent(in) :: qty_indx
- integer, intent(in) :: ntokens
- character(len=*), intent(in) :: tname(MAX_TOKENS)
- character(len=*), intent(in) :: tval(MAX_TOKENS)
- character(len=*), intent(in) :: infile
- integer, intent(in) :: linenum
+
+integer,          intent(in) :: qty_indx
+integer,          intent(in) :: ntokens
+character(len=*), intent(in) :: tname(MAX_TOKENS)
+character(len=*), intent(in) :: tval(MAX_TOKENS)
+character(len=*), intent(in) :: infile
+integer,          intent(in) :: linenum
 
 integer :: i, j
 character(len=*), parameter :: routine = 'incompatible_duplicates'
@@ -1159,13 +1163,13 @@ call error_handler(E_MSG, empty, 'Incompatible duplicate entry detected')
 
 if (qty_info(qty_indx)%num_nameval_pairs == 0) then
    write(err_string, "(A)") 'Existing entry for '//trim(qty_info(qty_indx)%name)//' has no metadata'
-   call error_handler(E_MSG, empty, err_string)
+   call error_handler(E_MSG, empty, err_string, source)
 else
    write(err_string, "(A)") 'Existing entry for '//trim(qty_info(qty_indx)%name)//' has this metadata:'
    call error_handler(E_MSG, empty, err_string)
    do i=1, qty_info(qty_indx)%num_nameval_pairs 
       write(err_string, "(A,I3,A)") 'item ', i, ":  '"//trim(qty_info(qty_indx)%namepair(i))//"="//trim(qty_info(qty_indx)%valpair(i))//"'"
-      call error_handler(E_MSG, empty, err_string)
+      call error_handler(E_MSG, empty, err_string, source)
    enddo
 endif
 
@@ -1173,22 +1177,22 @@ call error_handler(E_MSG, empty, empty)
 
 if (ntokens <= 1) then
    write(err_string, "(A)") 'Duplicate entry for '//trim(token(1))// ' has no metadata'
-   call error_handler(E_MSG, empty, err_string)
+   call error_handler(E_MSG, empty, err_string, source)
 else
    write(err_string, "(A)") 'Duplicate entry for '//trim(token(1))// ' has this metadata:'
-   call error_handler(E_MSG, empty, err_string)
+   call error_handler(E_MSG, empty, err_string, source)
    do i=2, ntokens
       ! token 1 is the qty name.  
       write(err_string, "(A,I3,A)") 'item ', i-1, ":  '"//trim(tname(i))//"="//trim(tval(i))//"'"
-      call error_handler(E_MSG, empty, err_string)
+      call error_handler(E_MSG, empty, err_string, source)
    enddo
 endif
 write(err_string, "(A,I5)") 'File '//trim(infile)//' at line number ', linenum
-call error_handler(E_MSG, empty, err_string)
+call error_handler(E_MSG, empty, err_string, source)
 
 
 call error_handler(E_MSG, empty, empty)
-call error_handler(E_ERR, routine, 'Resolve entries to proceed')
+call error_handler(E_ERR, routine, 'Resolve entries to proceed', source)
 
 end subroutine incompatible_duplicates
 
@@ -1253,6 +1257,7 @@ end subroutine ensure_backwards_compatibility
 !> Remove this routine once backwards compatibility issues have been fully deprecated
 
 function default_quantity_file()
+
 character(len=256) :: default_quantity_file
 
 integer :: i
@@ -1275,7 +1280,7 @@ enddo ITERATE
 write(err_string ,*)'Unable to find relative location of default_quantities_mod.f90'
 write(err_string2,*)'Normally located in assimilation_code/modules/observations in DART source tree'
 write(err_string3,*)'Set namelist preprocess_nml:quantity_files to appropriate quantity file(s)'
-call error_handler(E_ERR, 'default_quantity_file', err_string, text2=err_string2, text3=err_string3)
+call error_handler(E_ERR, 'default_quantity_file', err_string, source, text2=err_string2, text3=err_string3)
 
 end function default_quantity_file
 
