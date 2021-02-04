@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 ! create synthetic observations evenly spaced on a sphere.
 ! this program creates observations without data - they have
@@ -139,10 +137,4 @@ call write_obs_seq(seq, 'even_sphere.in')
 call finalize_utilities('create_sphere_obs')
 
 end program create_sphere_obs
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
