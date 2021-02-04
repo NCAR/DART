@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module quikscat_JPL_mod
 
@@ -40,13 +38,12 @@ private
 public :: real_obs_sequence, read_qscat2b, orbit_type, create_output_filename
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'quikscat_JPL_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 logical, save :: module_initialized = .false.
-character(len=128) :: msgstring
+character(len=512) :: msgstring
 
 logical :: DEBUG = .false.
 
@@ -884,8 +881,3 @@ end subroutine read_qscat2b
 
 end module quikscat_JPL_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
