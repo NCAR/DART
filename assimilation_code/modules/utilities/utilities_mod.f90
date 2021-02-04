@@ -687,10 +687,9 @@ endif
 ! single strings so the code is easier to parse.  but can't
 ! add trailing blanks here because trim will strip them below.
 
-wherefrom = trim(taskstr)//' '//trim(routine)//':'
-wherecont = trim(taskstr)//' '//trim(routine)//': ...'
+wherefrom = trim(taskstr)//' '//trim(routine)
+wherecont = trim(taskstr)//' '//trim(routine)//'...'
 
-if (level == E_MSG)  msgtype = 'MESSAGE FROM:'
 if (level == E_ERR)  msgtype = 'ERROR FROM:'
 if (level == E_WARN) msgtype = 'WARNING FROM:'
 if (level == E_DBG)  msgtype = 'DEBUG FROM:'
@@ -701,7 +700,6 @@ if (level == E_DBG)  msgtype = 'DEBUG FROM:'
 
 select case(level)
    case (E_MSG)
-                          call log_it(msgtype)
                           call log_it(trim(wherefrom)//' '//trim(text))
       if (present(text2)) call log_it(trim(wherecont)//' '//trim(text2))
       if (present(text3)) call log_it(trim(wherecont)//' '//trim(text3))
