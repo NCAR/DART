@@ -214,12 +214,6 @@ set FAILURE = 0
 
 ( ./run_tests.csh > ${LOGDIR}/location_tests.out ) || set FAILURE = 1
 
-if ( $FAILURE ) then
-  echo "------------------------------------------------------------------"
-  echo "ERROR - unsuccessful location tests at "`date`
-  echo "------------------------------------------------------------------"
-endif
-
 echo
 echo
 echo "=================================================================="
@@ -238,4 +232,3 @@ echo "End of DART developer_tests at "`date`
 echo "=================================================================="
 
 exit 0
-

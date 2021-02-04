@@ -30,14 +30,6 @@
 !> to keep things working, are still outputing "use obs_kind_mod" instead 
 !> of "use obs_qty_mod".   this should change but i'm not sure when.
 !>
-!> @todo FIXME: this code now creates an obs_def_mod.f90 that contains
-!> a use line for all the known quantities, not just those referenced
-!> by the obs_def_xxx_mod.f90 file.  the obs_kind_mod.f90 has to define
-!> all of them, and the model_mod.f90 code should get quantities from
-!> the obs_kind_mod - so should this code go ahead and flag only the
-!> used quantities in a separate list and only output them in the
-!> final generated obs_def_mod.f90?
-!>
 
 program preprocess
 
@@ -62,14 +54,14 @@ character(len=256)   :: token(MAX_TOKENS)
 character(len=256)   :: valtokens(MAX_TOKENS)
 
 
-character(len = 256) :: line, test, t_string
+character(len=256)   :: line, test, t_string
 integer              :: iunit, io, i, j, k
 integer              :: linenum1, linenum2, linenum3, linenum4
 integer              :: num_types_found, num_qtys_found
 logical              :: duplicate, qty_found, temp_user, is_more
-character(len = 512) :: err_string, err_string2, err_string3
-character(len = 6)   :: full_line_in  = '(A256)'
-character(len = 3)   :: full_line_out = '(A)'
+character(len=512)   :: err_string, err_string2, err_string3
+character(len=6)     :: full_line_in  = '(A256)'
+character(len=3)     :: full_line_out = '(A)'
 
 logical :: DEBUG = .false.
 
@@ -110,19 +102,19 @@ character(len=*),parameter :: INSERT_INTS_STRING    = '! DART PREPROCESS INTEGER
 character(len=*),parameter :: INSERT_INIT_STRING    = '! DART PREPROCESS DERIVED TYPE INITIALIZATIONS INSERTED HERE'
 
 ! output format decorations
-character(len = 78) :: separator_line = &
+character(len=78) :: separator_line = &
 '!---------------------------------------------------------------------------'
-character(len = 78) :: blank_line = &
+character(len=78) :: blank_line = &
 '                                                                            '
 !! currently unused, but available if wanted:
-!character(len = 12) :: start_line = '!  Start of '
-!character(len = 12) :: end_line =   '!  End of   '
-!character(len = 78) :: blank_comment_line = &
+!character(len=12) :: start_line = '!  Start of '
+!character(len=12) :: end_line =   '!  End of   '
+!character(len=78) :: blank_comment_line = &
 !'!                                                                           '
 
 integer, parameter :: NUM_SECTIONS = 7
 ! List of the DART PREPROCESS strings for obs_def type files.
-character(len = 29) :: preprocess_string(NUM_SECTIONS) = (/ &
+character(len=29) :: preprocess_string(NUM_SECTIONS) = (/ &
       'MODULE CODE                  ', &
       'USE FOR OBS_QTY_MOD          ', &
       'USE OF SPECIAL OBS_DEF MODULE', &
@@ -198,6 +190,7 @@ namelist /preprocess_nml/ input_obs_def_mod_file, output_obs_def_mod_file,   &
 
 !Begin by reading the namelist
 call initialize_utilities('preprocess')
+call register_module(source, revision, revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "preprocess_nml", iunit)
