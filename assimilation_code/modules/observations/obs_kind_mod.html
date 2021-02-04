@@ -387,10 +387,10 @@ the preprocess program.
 <A NAME="get_name_for_type_of_obs"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_name_for_type_of_obs(obs_kind_ind) </em>
+<em class=call> var = get_name_for_type_of_obs(obs_type_ind) </em>
 <pre>
 character(len=32)              :: <em class=code>get_name_for_type_of_obs</em>
-integer, intent(in)            :: <em class=code>obs_kind_ind</em>
+integer, intent(in)            :: <em class=code>obs_type_ind</em>
 </pre>
 </div>
 
@@ -408,7 +408,7 @@ associated with the integer index.
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>Name string associated with this entry in the obs_type_type table.</TD>
 </TR>
-<TR><TD valign=top><em class=code>obs_kind_ind</em></TD>
+<TR><TD valign=top><em class=code>obs_type_ind</em></TD>
     <TD>An integer index into the obs_type_type table.</TD></TR>
 </TABLE>
 
@@ -420,10 +420,10 @@ associated with the integer index.
 <A NAME="get_name_for_quantity"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_name_for_quantity(obs_kind_ind) </em>
+<em class=call> var = get_name_for_quantity(obs_qty_ind) </em>
 <pre>
 character(len=32)              :: <em class=code>get_name_for_quantity</em>
-integer, intent(in)            :: <em class=code>obs_kind_ind</em>
+integer, intent(in)            :: <em class=code>obs_qty_ind</em>
 </pre>
 </div>
 
@@ -441,8 +441,8 @@ associated with the integer index.
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>Name string associated with this entry in the obs_qty_type table.</TD>
 </TR>
-<TR><TD valign=top><em class=code>obs_kind_ind</em></TD>
-    <TD>An integer index into the obs_kind_type table.</TD></TR>
+<TR><TD valign=top><em class=code>obs_qty_ind</em></TD>
+    <TD>An integer index into the obs_qty_type table.</TD></TR>
 </TABLE>
 
 </div>
@@ -476,7 +476,7 @@ as the name string.
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>get_index_for_type_of_obs</em></TD>
     <TD>Integer index into the obs_type_type table entry with name string
-        corresponding to obs_kind_name.</TD></TR>
+        corresponding to obs_type_name.</TD></TR>
 <TR><TD valign=top><em class=code>obs_type_name</em></TD>
     <TD>Name of specific observation type found in obs_type_type table.</TD></TR>
 </TABLE>
@@ -513,7 +513,7 @@ as the name string.
 <TR><TD valign=top><em class=code>get_index_for_quantity</em></TD>
     <TD>Integer index into the obs_qty_type table entry with name string
         corresponding to obs_qty_name.</TD></TR>
-<TR><TD valign=top><em class=code>obs_kind_name</em></TD>
+<TR><TD valign=top><em class=code>obs_qty_name</em></TD>
     <TD>Name of generic kind found in obs_qty_type table.</TD></TR>
 </TABLE>
 
