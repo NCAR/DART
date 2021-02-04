@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
 
 program convert_streamflow
 
@@ -43,9 +45,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'USGS/convert_streamflow.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source   = "USGS/convert_streamflow.f90"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 character(len=*), parameter :: routine  = 'convert_streamflow:'
 
 character(len=512) :: string1, string2, string3 ! strings for messages
@@ -608,3 +610,8 @@ end function estimate_total_obs_count
 
 end program convert_streamflow
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

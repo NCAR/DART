@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 ! parse a list of blank separated words or name=val pairs from a string.
 !
@@ -56,8 +58,6 @@ public :: get_args_from_string, &
           get_name_val_pairs_from_string, &
           get_next_arg
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'parse_args_mod.f90'
 
 contains
 
@@ -85,7 +85,7 @@ integer :: maxw, maxl
 integer :: wordlen, i
 
 character(len=len(inline)) :: argline
-character(len=512) :: msgstring
+character(len=512) :: msgstring, msgstring2
 character :: endword, thisc
 character(len=*), parameter :: routine = 'get_args_from_string'
 
@@ -187,12 +187,12 @@ enddo NEXTCHAR
 
 if (argcount > maxw) then
    write(msgstring,*) 'more blank-separated args than max number allowed by calling code, ', maxw
-   call error_handler(E_ERR,routine,msgstring,source)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 if (wordlen > maxl) then
    write(msgstring,*) 'one or more args longer than max length allowed by calling code, ', maxl
-   call error_handler(E_ERR,routine,msgstring,source)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 if (debug) then
@@ -255,11 +255,11 @@ maxl = len(argnames(1))
 
 if (size(argvals) /= maxw) then
    write(msgstring,*) 'array size of argnames and argvals must be the same.', size(argvals), ' != ', maxw
-   call error_handler(E_ERR,routine,msgstring,source)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 if (len(argvals(1)) /= maxl) then
    write(msgstring,*) 'character length of argnames and argvals must be the same.', len(argvals(1)), ' != ', maxl
-   call error_handler(E_ERR,routine,msgstring,source)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 ! return vals
@@ -298,7 +298,7 @@ if(debug) print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+word
       else if (inname) then
          write(msgstring,*) 'name without value found at end of line'
          write(msgstring2,*) 'line = ', '"'//trim(argline)//'"'
-         call error_handler(E_ERR,routine,msgstring,source,text2=msgstring2)
+         call error_handler(E_ERR,routine,msgstring,text2=msgstring2)
       endif
       exit NEXTCHAR
    endif
@@ -382,7 +382,7 @@ if(debug) print *, 'vals: arg ', argcount, ' is ', '"'//argline(firstoff:firstof
          else if (thisc == '&') then
             ! error for continue inside pair?
             write(msgstring,*) 'name without value found at end of line'
-            call error_handler(E_ERR,routine,msgstring,source)
+            call error_handler(E_ERR,routine,msgstring)
          else if (thisc == '=') then
             continue
          else if (thisc /= ' ') then
@@ -400,12 +400,12 @@ enddo NEXTCHAR
 
 if (argcount > maxw) then
    write(msgstring,*) 'more blank-separated args than max number allowed by calling code, ', maxw
-   call error_handler(E_ERR,routine,msgstring,source)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 if (wordlen > maxl) then
    write(msgstring,*) 'one or more args longer than max length allowed by calling code, ', maxl
-   call error_handler(E_ERR,routine,msgstring,source)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 if(debug) then
@@ -548,7 +548,7 @@ endoff = thisoff ! -1?
 
 if (wordlen > maxl) then
    write(msgstring,*) 'arg longer than max length allowed by calling code, ', maxl
-   call error_handler(E_ERR,routine,msgstring,source)
+   call error_handler(E_ERR,routine,msgstring)
 endif
 
 if (debug) print *, '3 arg is "'//trim(argword)//'"'

@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program prepbufr_to_obs
 
@@ -33,9 +35,10 @@ use obs_def_altimeter_mod, only: compute_altimeter
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'NCEP/ascii_to_obs/prepbufr_to_obs.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 
@@ -667,3 +670,8 @@ end subroutine construct_obs_sequence
 
 end program prepbufr_to_obs
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

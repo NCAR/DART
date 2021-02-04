@@ -14,6 +14,7 @@
 !
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !
+!     QTY_STATE_VARIABLE
 !     QTY_U_WIND_COMPONENT              units="m/s"
 !     QTY_V_WIND_COMPONENT              units="m/s"
 !     QTY_SURFACE_PRESSURE              units="hPa"    minval=0.0

@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program tc_to_obs
 
@@ -34,9 +36,10 @@ use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'tc_to_obs.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 
 ! IMPORTANT!  These are the observational errors for position (in degrees),
@@ -57,8 +60,7 @@ integer  :: iyear, imonth, iday, ihour
 integer  :: oday, osec, rcio, iunit
 integer  :: num_copies, num_qc, max_obs
            
-character(len=256) :: input_line
-character(len=512) :: msgstring
+character(len=256) :: input_line, msgstring
 character(len=10)  :: yyyymmddhh
 character(len=4)   :: ftype
 character(len=2)   :: basin, tcnum, stypei
@@ -242,3 +244,8 @@ call finalize_utilities()
 
 end program tc_to_obs
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
