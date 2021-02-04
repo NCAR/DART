@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program snow_to_obs
 
@@ -34,7 +32,7 @@ use      obs_kind_mod, only : MODIS_SNOWCOVER_FRAC
 
 implicit none
 
-character(len=64), parameter :: obs_out_file    = 'obs_seq.out'
+character(len=*), parameter :: obs_out_file = 'obs_seq.out'
 
 integer :: oday, osec, rcio, iunit, io
 integer :: num_copies, num_qc, max_obs, ix, iy
@@ -54,7 +52,7 @@ integer  :: longrid = 360
 integer  :: latgrid = 90
 integer  :: year  = 2000
 integer  :: doy   = 1
-character(len=128) :: snow_input_file = 'snowdata.input'
+character(len=256) :: snow_input_file = 'snowdata.input'
 real(r8) :: missing_value = -20.0_r8
 logical  :: debug = .false.  ! set to .true. to print info
 
@@ -197,8 +195,3 @@ call finalize_utilities()
 
 end program snow_to_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
