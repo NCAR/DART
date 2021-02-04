@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> An observation sequence converter for ionosphere profiles 
 !> from the CDAAC web site http://cosmic-io.cosmic.ucar.edu/cdaac
@@ -69,10 +67,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'convert_cosmic_ionosphere.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 character(len=*), parameter :: routine  = 'convert_cosmic_ionosphere'
 
 integer, parameter :: METHOD_CONSTANT      = 1   !! = 'constant'
@@ -751,8 +748,3 @@ end subroutine summarize
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
