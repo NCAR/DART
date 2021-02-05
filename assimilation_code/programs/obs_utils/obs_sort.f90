@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> Utility to try to sort observations at the same time into a
 !> consistent order.  Obs sequence files are guarenteed to be
@@ -221,11 +219,9 @@ implicit none
 !end interface
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source   = 'obs_sort.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in, last_obs

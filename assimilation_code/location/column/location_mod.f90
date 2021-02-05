@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module location_mod
 
@@ -27,10 +25,9 @@ public :: location_type, get_location, set_location, &
           VERTISHEIGHT, VERTISSCALEHEIGHT
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'column/location_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! The possible values for the location_type%which_vert component.
 ! These are intended to be PRIVATE to this module. Do not make public.
@@ -701,8 +698,3 @@ end subroutine convert_vertical_state
 
 end module location_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

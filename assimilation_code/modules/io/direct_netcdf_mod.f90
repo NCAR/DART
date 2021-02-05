@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module direct_netcdf_mod
 
@@ -125,10 +123,9 @@ public :: read_transpose,            &
           nc_get_num_times
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'direct_netcdf_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! only a single MPI Task reads and writes reads the state variable,
 ! when using single_file_{input,output} = .true.
@@ -3086,8 +3083,3 @@ end subroutine set_model_missing_value
 !> @}
 end module direct_netcdf_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

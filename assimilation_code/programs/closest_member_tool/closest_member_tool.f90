@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Select the member closest to the ensemble mean.
 !>
@@ -53,10 +51,9 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_c
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'closest_member_tool.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 integer               :: iunit, io, ens, i, j, total_j, qtyindex
 integer               :: num_qtys, stype

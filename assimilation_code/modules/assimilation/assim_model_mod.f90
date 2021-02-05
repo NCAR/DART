@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> This module is used to wrap around the basic portions of existing dynamical models to
 !> add capabilities needed by the standard assimilation methods.
@@ -52,12 +50,10 @@ public :: static_init_assim_model, &
           read_model_time, &
           write_model_time
 
-!>@todo FIXME ... the documentation for this module is out of date.
-
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'assim_model_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 
 ! Ensure init code is called exactly once
@@ -155,8 +151,3 @@ end subroutine end_assim_model
 !
 end module assim_model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

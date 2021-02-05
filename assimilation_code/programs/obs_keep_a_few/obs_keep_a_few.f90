@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> open an obs_seq file and copy over the first N of each obs type to
 !> the output file. the value of N is namelist-settable.  intended
@@ -47,10 +45,9 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'obs_keep_a_few.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in

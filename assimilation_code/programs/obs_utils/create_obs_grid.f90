@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> program intended to create a set of observations located on
 !> a regular grid.  obs have no data values - the output obs_seq
@@ -30,14 +28,12 @@ use obs_kind_mod
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source   = 'create_obs_grid.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(obs_sequence_type) :: seq
-character(len = 129)    :: file_name
+character(len=256)      :: file_name
 
 ! Record the current time, date, etc. to the logfile
 call initialize_utilities('create_obs_grid')

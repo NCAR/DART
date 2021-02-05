@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module state_vector_io_mod
 
@@ -72,10 +70,9 @@ use state_structure_mod,  only : get_num_domains
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'state_vector_io_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 private
 
@@ -593,8 +590,3 @@ end subroutine print_inflation_source
 !-------------------------------------------------------
 end module state_vector_io_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

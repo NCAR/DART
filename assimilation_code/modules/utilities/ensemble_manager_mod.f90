@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module ensemble_manager_mod
 
@@ -47,10 +45,9 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           deallocate_single_copy
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'ensemble_manager_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type ensemble_type
 
@@ -1947,8 +1944,3 @@ end subroutine get_current_time
 
 end module ensemble_manager_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

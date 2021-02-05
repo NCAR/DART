@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> Prints out a quick table of obs types and counts, overall start and
 !> stop times, and metadata strings and counts.
@@ -51,10 +49,9 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=*), parameter :: source   = 'obs_assim_count.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(obs_sequence_type) :: seq_in
 integer                 :: size_seq_in

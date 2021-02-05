@@ -1,10 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
-program sys_sim301
+program sys_sim302
 
 ! UPDATE from 22 Sept. 2003 for obs space factor correction.
 ! WARNING:WARNING:WARNING, when mean difference is much less than
@@ -32,10 +30,9 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'sys_sim302.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type (random_seq_type) :: r
 real(r8) :: growth, prior_var, prior_mean, obs_var, obs, new_var, new_mean
@@ -94,5 +91,5 @@ endif
 
 end subroutine update
 
-end program sys_sim301
+end program sys_sim302
 

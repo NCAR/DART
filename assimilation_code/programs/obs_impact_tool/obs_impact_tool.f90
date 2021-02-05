@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> This program users to construct a table that is read by filter at 
 !> run-time to localize the impact of sets of observation types on sets of 
@@ -98,11 +96,9 @@ use  utilities_mod, only : register_module, initialize_utilities, finalize_utili
 use obs_impact_mod, only : create_impact_table
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source   = 'obs_impact_tool.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 integer :: funit, ios
 

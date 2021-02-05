@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> This module supports both the obs_impact_tool and reading in the
 !> table at runtime for use during the assimilation phase, to
@@ -29,11 +27,9 @@ public :: create_impact_table,   &
           free_impact_table
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source   = 'obs_impact_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 integer :: ios, i
 
@@ -1715,8 +1711,3 @@ end subroutine output_impact_table
 
 end module obs_impact_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Generate initial inflation files from namelist values.
 !> This way an experiment can always start from a restart file 
@@ -45,10 +43,9 @@ use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utiliti
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'fill_inflation_restart.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! MAX_FILES is max number of domains
 integer, parameter :: MAX_FILES = 10

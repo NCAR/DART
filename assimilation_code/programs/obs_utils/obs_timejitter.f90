@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 program obs_timejitter
 
@@ -23,12 +21,9 @@ use        model_mod, only : static_init_model
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
-
+character(len=*), parameter :: source   = 'obs_timejitter.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(obs_sequence_type) :: seq, seq_in
 type(obs_type)          :: obs, next_obs, new_obs, last_obs
@@ -137,8 +132,3 @@ call finalize_utilities()
 
 end program obs_timejitter
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Program to integrate assimilation model forward without assimilation.
 !> Can be used for forecasts after an assimilation, spinning a model up
@@ -36,11 +34,9 @@ use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilitie
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source   = 'integrate_model_parallel.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(ensemble_type) :: ens_handle
 type(time_type)     :: target_time, init_time
@@ -116,7 +112,7 @@ if(task_count() > 1) &
    call error_handler(E_MSG,'integrate_model','Only one process doing the work', &
    source,revision,revdate)
 
-call register_module(id)
+call register_module(source)
 
 ! this must come AFTER the standard utils are initialized.
 ! Read the integrate_model_nml namelist from input.nml if 'use_namelist' true.

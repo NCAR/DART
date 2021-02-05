@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Implements location interfaces for a three dimensional spherical shell 
 !> with a choice of vertical coordinates.
@@ -49,17 +47,16 @@ public :: location_type, get_location, set_location, &
 
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'threed_sphere/location_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
-integer,             parameter :: LocationDims = 3
-character(len = 64), parameter :: LocationName = "loc3Dsphere"
-character(len = 64), parameter :: LocationLName = &
+integer,          parameter :: LocationDims = 3
+character(len=*), parameter :: LocationName = "loc3Dsphere"
+character(len=*), parameter :: LocationLName = &
                                    "threed sphere locations: lon, lat, vertical"
-character(len = 64), parameter :: LocationStorageOrder = "Lon Lat Vertical"
-character(len = 64), parameter :: LocationUnits = "degrees degrees which_vert"
+character(len=*), parameter :: LocationStorageOrder = "Lon Lat Vertical"
+character(len=*), parameter :: LocationUnits = "degrees degrees which_vert"
 
 
 ! The possible numeric values for the location_type%which_vert component.
@@ -2430,8 +2427,3 @@ end subroutine print_get_close_type
 
 end module location_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

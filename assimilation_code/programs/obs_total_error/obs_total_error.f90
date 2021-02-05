@@ -45,10 +45,9 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=*), parameter :: source   = 'obs_total_error.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(obs_sequence_type) :: seq_in
 integer                 :: size_seq_in

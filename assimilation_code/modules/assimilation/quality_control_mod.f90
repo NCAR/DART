@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !------------------------------------------------------------------------------
 !> quality_control_mod.f90
@@ -40,13 +38,11 @@ public :: initialize_qc, input_qc_ok, get_dart_qc, check_outlier_threshold, &
           DARTQC_BAD_INCOMING_QC, DARTQC_FAILED_OUTLIER_TEST, &
           DARTQC_FAILED_VERT_CONVERT
 
-!------------------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
-!------------------------------------------------------------------------------
+character(len=*), parameter :: source   = 'quality_control_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
+
 
 ! Dart quality control variables
 integer, parameter :: DARTQC_ASSIM_GOOD_FOP        = 0
@@ -401,8 +397,3 @@ end function good_dart_qc
 !------------------------------------------------------------------------------
 end module quality_control_mod
 
-! <next few lines under version control, do not edit>o
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

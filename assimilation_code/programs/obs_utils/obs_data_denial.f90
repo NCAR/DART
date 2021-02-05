@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> open an obs_seq file and randomly change the error variance of N of 
 !> each obs type to a huge value before copying obs over to the output file. 
@@ -55,10 +53,9 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'obs_data_denial.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in
