@@ -90,7 +90,6 @@ integer, parameter :: valuelen = 256
 integer :: num_types_assimilate, num_types_evaluate 
 integer :: num_types_use_precomputed_FOs
 
-! @todo FIXME would this be clearer as 2 named integer arrays?
 ! Map from values of type in a TOC (e.g. the start of an obs_seq file)
 !  to the type index in this module.
 ! Initially, these are undefined and have values -1.
@@ -990,4 +989,3 @@ end subroutine validate_metadata_strings
 
 end module obs_kind_mod
 !end module obs_qty_mod
-
