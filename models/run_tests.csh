@@ -236,7 +236,7 @@ foreach MODEL ( $DO_THESE_MODELS )
     echo
     echo "------------------------------------------------------------------"
     if ( $FAILURE ) then
-      echo "ERROR - unsuccessful test of $MODEL"
+      echo "ERROR - unsuccessful test of $MODEL at "`date`
 
       switch ( $MODEL )
          case FESOM

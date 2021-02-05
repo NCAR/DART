@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! DART $Id$
 
 !----------------------------------------------------------------------
 ! This module provides support for observations of streamflow.
@@ -28,11 +27,11 @@
 
 ! xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy-
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! STREAM_FLOW,                    QTY_STREAM_FLOW
 ! DEEP_GROUNDWATER_LEVEL,         QTY_DEEP_GROUNDWATER_LEVEL,    COMMON_CODE
 ! SKIN_TEMPERATURE,               QTY_SKIN_TEMPERATURE,          COMMON_CODE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -414,8 +413,3 @@ end module obs_def_streamflow_mod
 
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -9,12 +9,12 @@
 
 !>@todo FIXME remove all the TAB characters - technically not supported, can issue warnings
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! GOES_CWP_PATH,      QTY_CWP_PATH
 ! GOES_LWP_PATH,      QTY_CWP_PATH
 ! GOES_IWP_PATH,      QTY_CWP_PATH
 ! GOES_CWP_ZERO,      QTY_CWP_PATH_ZERO
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !  use obs_def_cwp_mod, only : get_expected_cwp, write_cwp, read_cwp, set_cbp_ctp,interactive_cwp 
@@ -781,8 +781,3 @@ end module obs_def_cwp_mod
 
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

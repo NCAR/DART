@@ -15,12 +15,12 @@
 #               input_files = '../../../../observations/forward_operators/obs_def_1d_state_mod.f90
 
 &preprocess_nml
-          overwrite_output = .true.
-    input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'  
+   overwrite_output        = .true.
+   input_obs_def_mod_file  = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'  
    output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
-   input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
-  output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
-               input_files = '../../../../observations/forward_operators/obs_def_AIRS_mod.f90',
+   input_obs_qty_mod_file  = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   obs_types_files         = '../../../../observations/forward_operators/obs_def_AIRS_mod.f90',
                              '../../../../observations/forward_operators/obs_def_AOD_mod.f90',
                              '../../../../observations/forward_operators/obs_def_AURA_mod.f90',
                              '../../../../observations/forward_operators/obs_def_COSMOS_mod.f90',

@@ -2,14 +2,13 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! TEMPERATURE,          QTY_TEMPERATURE,         COMMON_CODE
 ! SURFACE_PRESSURE,     QTY_SURFACE_PRESSURE,    COMMON_CODE
 ! SKIN_TEMPERATURE,     QTY_SKIN_TEMPERATURE,    COMMON_CODE
 ! TES_NADIR_OBS,        QTY_NADIR_RADIANCE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -1413,8 +1412,3 @@ end module obs_def_TES_nadir_mod
 
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -2,9 +2,9 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !   MPD_ABSOLUTE_HUMIDITY,    QTY_ABSOLUTE_HUMIDITY
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_abs_humidity_mod, only : get_expected_absolute_humidity
