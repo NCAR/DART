@@ -44,8 +44,8 @@ The distinction between quantities and types is this:
 <em class=unix>Quantities</em> apply both to observations and to state vector variables.
 Knowing the type of an observation must be sufficient
 to compute the correct forward operator.
-The quantities also must be able to identify the
-different variables in the state vector.
+The quantity associated with an observation must be sufficient to identify
+which variable in the state vector should be used to compute the expected value.
 <em class=unix>Types</em> only apply to observations, and are
 usually observation-platform dependent. Making distinctions
 between different observation sources by using different types
