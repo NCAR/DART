@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program COSMOS_to_obs
 
@@ -62,17 +64,18 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'COSMOS_to_obs.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 ! Namelist with default values
 !-----------------------------------------------------------------------
 
 character(len=256) :: site_metadata_file = 'COSMIC_parlist.nc'
-character(len=256) :: text_input_file = 'corcounts.txt'
-character(len=256) :: obs_out_file    = 'obs_seq.out'
+character(len=128) :: text_input_file = 'corcounts.txt'
+character(len=128) :: obs_out_file    = 'obs_seq.out'
 character(len=128) :: sitename        = 'missing'
 real(r8)           :: maxgoodqc       = 3
 logical            :: verbose         = .false.
@@ -84,7 +87,7 @@ namelist /COSMOS_to_obs_nml/ site_metadata_file, text_input_file, &
 ! globally-scoped variables
 !-----------------------------------------------------------------------
 
-character(len=512)      :: input_line, string1, string2, string3
+character(len=256)      :: input_line, string1, string2, string3
 integer                 :: iline
 logical                 :: first_obs
 integer                 :: oday, osec, rcio, iunit
@@ -602,3 +605,8 @@ end function find_site_index
 
 end program COSMOS_to_obs
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

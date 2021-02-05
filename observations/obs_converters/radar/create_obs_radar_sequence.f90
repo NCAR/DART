@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program create_obs_radar_sequence
 
@@ -46,12 +48,13 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs,         &
 implicit none
 
 ! version controlled file description for error handling, do not edit.
-character(len=*), parameter :: source   = 'create_obs_radar_sequence.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
-character(len=256)      :: file_name
+character(len = 129)    :: file_name
   
 ! Fixed parameters for WSR-88D radar elevations.
 integer,  parameter :: n_elev_clear = 9
@@ -474,3 +477,8 @@ end subroutine fillin_obsdef
 
 end program create_obs_radar_sequence
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

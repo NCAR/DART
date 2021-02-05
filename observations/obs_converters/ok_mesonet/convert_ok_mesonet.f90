@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program convert_ok_mesonet
 
@@ -62,8 +64,8 @@ implicit none
 ! (F6.1), tb05 (F6.1), ts30 (F6.1), tr05 (F6.1), tr25 (F6.1), tr60 (F6.1)
 ! first 3 lines are header, date info drawn from middle line
 
-character(len=*), parameter :: omeso_in_file  = 'okmeso_mdf.in'
-character(len=*), parameter :: omeso_out_file = 'obs_seq.okmeso'
+character(len=15),  parameter :: omeso_in_file  = 'okmeso_mdf.in'
+character(len=129), parameter :: omeso_out_file = 'obs_seq.okmeso'
 
 integer, parameter ::   nmax_out   = 4000, &   ! maximum number of reports for file
                         num_copies = 1,    &   ! number of copies in sequence
@@ -399,3 +401,8 @@ n10 = n9 + index(line(n9+1:nend), ',')
   close(iunit)
 end subroutine get_geo
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

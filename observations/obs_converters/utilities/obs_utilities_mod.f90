@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 ! utility routines intended to make it easier to create the most
 ! common types of observations:  threed_sphere locations, which
@@ -68,9 +70,9 @@ public :: create_3d_obs,    &
 character(len=NF90_MAX_NAME) :: missing_name = 'missing_value'
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_utilities_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! create an interface for both 3d sphere obs (most earth obs are this)
 ! and 3d cartesian obs (subsurface obs, idealized experiments)
@@ -1338,3 +1340,8 @@ end function is_variable_real
 
 end module obs_utilities_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

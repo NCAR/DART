@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program convert_madis_rawin
 
@@ -67,8 +69,8 @@ use           netcdf
 
 implicit none
 
-character(len=*), parameter :: rawin_in_file  = 'rawin_input.nc'
-character(len=*), parameter :: rawin_out_file = 'obs_seq.rawin'
+character(len=19),  parameter :: rawin_in_file  = 'rawin_input.nc'
+character(len=129), parameter :: rawin_out_file = 'obs_seq.rawin'
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
@@ -958,3 +960,8 @@ end subroutine get_or_fill_QC_2d
 
 end program convert_madis_rawin
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

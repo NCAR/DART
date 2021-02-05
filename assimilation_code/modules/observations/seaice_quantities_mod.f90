@@ -1,7 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
 
 ! ! in this section, define the quantity of interest.  it must
 ! ! start with QTY_xxx and be less than 32 characters total.
@@ -14,7 +13,8 @@
 !
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !
-! ! kinds for CICE added by C. Bitz
+! ! kinds for CICE
+!
 !   QTY_SEAICE_AGREG_CONCENTR
 !   QTY_SEAICE_AGREG_FREEBOARD
 !   QTY_SEAICE_AGREG_VOLUME
@@ -63,7 +63,6 @@
 !   QTY_SEAICE_FY
 !   QTY_SEAICE_AGREG_FY
 !   QTY_SEAICE_AGREG_SURFACETEMP
-! 
-! 
+!
 ! END DART PREPROCESS QUANTITY DEFINITIONS
 

@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
  
 PROGRAM rad_3dvar_to_dart
 
@@ -23,9 +25,10 @@ use obs_def_radar_mod, only : set_radial_vel
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'rad_3dvar_to_dart.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 type(obs_type)          :: obs, prev_obs
@@ -59,9 +62,9 @@ real(r8)          :: rgate, raz, elev_rad, elev_obs, ae
 !-----------------------------------------------------------------------------
 ! Namelist with default values
 !
-character(len=256) :: var_file              = 'qc_radr_3dvar_2002083100.dat', &
-                      obs_seq_out_file_name = 'obs_seq.out'
-integer            :: calendar_type         = GREGORIAN
+character(len = 129) :: var_file              = 'qc_radr_3dvar_2002083100.dat', &
+                        obs_seq_out_file_name = 'obs_seq.out'
+integer              :: calendar_type         = GREGORIAN
 
 namelist /rad_3dvar_to_dart_nml/ var_file, obs_seq_out_file_name, calendar_type
 
@@ -292,3 +295,8 @@ call finalize_utilities()
  
 END PROGRAM rad_3dvar_to_dart
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

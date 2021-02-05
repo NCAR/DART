@@ -1,6 +1,8 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program convert_gpspw
 
@@ -34,9 +36,9 @@ use obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
 
 implicit none
 
-character(len=*),  parameter :: gpspw_netcdf_file = 'gpspw_input.nc'
-character(len=*),  parameter :: gpspw_out_file    = 'obs_seq.gpspw'
-character(len=256)           :: gpspw_outfile
+character(len=20),  parameter :: gpspw_netcdf_file = 'gpspw_input.nc'
+character(len=129), parameter :: gpspw_out_file    = 'obs_seq.gpspw'
+character(len=129)            :: gpspw_outfile
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
@@ -265,3 +267,8 @@ call finalize_utilities()
 
 end program
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

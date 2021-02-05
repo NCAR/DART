@@ -44,7 +44,6 @@
 ! there is a following line that is part of the same context.
 !
 
-
 module parse_args_mod
 
 use utilities_mod, only : error_handler, E_ERR
@@ -56,8 +55,7 @@ public :: get_args_from_string, &
           get_name_val_pairs_from_string, &
           get_next_arg
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'parse_args_mod.f90'
+character(len=*), parameter :: source = 'parse_args_mod.f90'
 
 contains
 
@@ -85,7 +83,7 @@ integer :: maxw, maxl
 integer :: wordlen, i
 
 character(len=len(inline)) :: argline
-character(len=512) :: msgstring
+character(len=512) :: msgstring, msgstring2
 character :: endword, thisc
 character(len=*), parameter :: routine = 'get_args_from_string'
 
