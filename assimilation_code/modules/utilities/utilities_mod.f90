@@ -688,7 +688,7 @@ endif
 ! add trailing blanks here because trim will strip them below.
 
 wherefrom = trim(taskstr)//' '//trim(routine)
-wherecont = trim(taskstr)//' '//trim(routine)//' ...'
+wherecont = trim(taskstr)//' '//trim(routine)//'...'
 
 if (level == E_ERR)  msgtype = 'ERROR FROM:'
 if (level == E_WARN) msgtype = 'WARNING FROM:'
@@ -722,23 +722,12 @@ select case(level)
    case (E_DBG, E_WARN, E_ERR)
 
       call log_it(msgtype)
-      call log_it(wherefrom)
-      ! @todo FIXME 'wherefrom' on the line above already includes the
-      ! calling routine name.  the next line should probably be removed
-      ! at some point.  i didn't do it now because it would make diffs
-      ! with older files show differences that aren't significant.
+      if (present(src)) call log_it(' source : '//trim(src))
       call log_it(' routine: '//trim(routine))
       call log_it(' message: '//trim(text))
       if (present(text2)) call log_it(' message: ... '//trim(text2))
       if (present(text3)) call log_it(' message: ... '//trim(text3))
-      ! with the move from subversion to git, these strings no longer autogenerate
-      ! and should be removed from the calls.  in the meantime, to ease the transition
-      ! don't print values like $URL$, etc.
-      !call log_it('')
-      !if (present(src))   call log_it('   source file: '//trim(src))
-      !if (present(rev))   call log_it(' file revision: '//trim(rev))
-      !if (present(rdate)) call log_it(' revision date: '//trim(rdate))
-      !if (present(aut))   call log_it('   last editor: '//trim(aut))
+      call log_it('')
 
 end select
 

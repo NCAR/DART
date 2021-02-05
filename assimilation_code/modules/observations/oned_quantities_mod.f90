@@ -1,7 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
 
 ! ! in this section, define the quantities of interest. the name must
 ! ! start with QTY_xxx and be less than 32 characters total.
@@ -14,19 +13,13 @@
  
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !
-!  ! QTY_STATE_VARIABLE is also predefined in the preprocess program.
-!  ! it is being repeated here because for some classes of models
-!  ! this is the only quantity that they will use.  it must be the
-!  ! the first entry in this file and must not be altered.
+! ! QTY_STATE_VARIABLE is predefined in the preprocess program.
 !
-!  QTY_STATE_VARIABLE               desc="basic item in a state"
-! 
-!  QTY_1D_INTEGRAL                  desc="compute value with an integral"
-!  QTY_STATE_VAR_POWER     pdf=log  desc="raising a state value to a power"
-!  QTY_LARGE_SCALE_STATE            desc="state varies with large time/space scale"
-!  QTY_SMALL_SCALE_STATE            desc="state varies with small time/space scale"
-!  QTY_1D_PARAMETER
+!   QTY_1D_INTEGRAL                  desc="compute value with an integral"
+!   QTY_STATE_VAR_POWER              desc="raising a state value to a power"
+!   QTY_LARGE_SCALE_STATE            desc="state varies with large time/space scale"
+!   QTY_SMALL_SCALE_STATE            desc="state varies with small time/space scale"
+!   QTY_1D_PARAMETER
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS
-
 
