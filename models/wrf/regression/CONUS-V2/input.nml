@@ -39,18 +39,20 @@
    inf_lower_bound             = 0.50,                   1.0,
    inf_upper_bound             = 1000000.0,              1000000.0,
    inf_sd_lower_bound          = 0.60,                   0.10
-/
+   /
 
 &ensemble_manager_nml
    single_restart_file_in  = .false.,
-   single_restart_file_out = .false. /
+   single_restart_file_out = .false.
+   /
 
 &smoother_nml
    num_lags              = 0
    start_from_restart    = .false.
    output_restart        = .false.
    restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart' /
+   restart_out_file_name = 'smoother_restart'
+   /
 
 &assim_tools_nml
    filter_kind                     = 1,
@@ -59,45 +61,53 @@
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,         
    print_every_nth_obs             = 1000,
-   adaptive_localization_threshold = -1 /             
+   adaptive_localization_threshold = -1
+   /             
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+   /
 
 &assim_model_nml
    write_binary_restart_files = .true.,
    netCDF_large_file_support  = .false.
-  /
+   /
 
 &reg_factor_nml
    select_regression = 1,
    input_reg_file = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = 'reg_diagnostics'  /
+   reg_diagnostics_file = 'reg_diagnostics'
+   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
-   input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
-                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
-                              '../../../observations/forward_operators/obs_def_radar_mod.f90',
-                              '../../../observations/forward_operators/obs_def_metar_mod.f90',
-                              '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
-                              '../../../observations/forward_operators/obs_def_gps_mod.f90',
-                              '../../../observations/forward_operators/obs_def_gts_mod.f90',
-                              '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
-                              '../../../observations/forward_operators/obs_def_vortex_mod.f90'  /
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                             '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                             '../../../observations/forward_operators/obs_def_metar_mod.f90',
+                             '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                             '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../observations/forward_operators/obs_def_gts_mod.f90',
+                             '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
+                             '../../../observations/forward_operators/obs_def_vortex_mod.f90'
+   /
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT',
-   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'  /
+   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'
+   /
 
 
 # Notes for obs_def_radar_mod_nml:
@@ -116,7 +126,8 @@
    lowest_reflectivity_obs    =     0.0 ,
    apply_ref_limit_to_state   = .false. ,
    reflectivity_limit_state   =     0.0 ,
-   lowest_reflectivity_state  =     0.0 /
+   lowest_reflectivity_state  =     0.0
+   /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -128,8 +139,8 @@
 # Acceptable longitudes range from [  0, 360]
 
 &obs_def_gps_nml
-  max_gpsro_obs = 100000,
-  / 
+   max_gpsro_obs = 100000,
+   / 
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
@@ -168,7 +179,7 @@
    min_lon            =    0.0,
    max_lon            =  360.0,
    gregorian_cal      = .true.
-/
+   /
 
 ! these have no defaults (or the defaults are missing_r8 which
 ! cannot be represented in a namelist).  here are examples
@@ -233,7 +244,8 @@
    polar                       = .false.,
    periodic_x                  = .false.,
    periodic_y                  = .false.,
-   scm                         = .false.  /
+   scm                         = .false.
+   /
 
 # polar and periodic_x are used in global wrf.  if polar is true, the 
 # grid interpolation routines will wrap over the north & south poles.  
@@ -256,12 +268,13 @@
    approximate_distance        = .false.,
    nlon                        = 71,
    nlat                        = 36,
-   output_box_info             = .false.  /
+   output_box_info             = .false.
+   /
 
 &utilities_nml
    TERMLEVEL = 1,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
    module_details = .false.
-/
+   /
 

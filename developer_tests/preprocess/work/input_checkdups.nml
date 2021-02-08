@@ -1,0 +1,19 @@
+&preprocess_nml
+   overwrite_output         = .true.
+   input_obs_def_mod_file   = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file  = '../../../observations/forward_operators/obs_def_mod.f90'
+   input_obs_kind_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   obs_type_files           = '../../../observations/forward_operators/obs_def_1d_state_mod.f90'
+   quantity_files           = './checkdups_quantities_mod.f90'
+/
+
+&utilities_nml
+   TERMLEVEL      = 1
+   logfilename    = 'dart_log.out'
+   nmlfilename    = 'dart_log.nml'
+   module_details = .false.
+   print_debug    = .false.
+   write_nml      = 'file'
+/
+

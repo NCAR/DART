@@ -1,11 +1,12 @@
 
 &preprocess_nml
-    overwrite_output        = .true.
-    input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
-   output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
-     input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
-    output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
-   input_files              = '../../../../observations/forward_operators/obs_def_cice_mod.f90'
+   overwrite_output         = .true.
+   input_obs_qty_mod_file   = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file  = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file   = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file  = '../../../../observations/forward_operators/obs_def_mod.f90'
+   quantity_files           = '../../../../assimilation_code/modules/observations/seaice_quantities_mod.f90'
+   obs_type_files           = '../../../../observations/forward_operators/obs_def_cice_mod.f90'
   /
 
 &obs_sequence_nml
@@ -77,20 +78,20 @@
    ignore_zero_obs    = .false.
 
    use_data_filename_pattern   = .true.
-   data_filename_pattern       = 'bt_YYYYMMDD_v02_n.bin'
-   cice_data_file              = 'bt_20010101_v02_n.bin'
+   data_filename_pattern       = '../data/bt_YYYYMMDD_n07_v02_n.bin'
+   cice_data_file              = '../data/bt_20010101_n07_v02_n.bin'
 
    use_obsseq_filename_pattern = .true.
    obsseq_filename_pattern     = 'obs_seq.YYYY-MM-DD-00000'
    obsseq_out_file             = 'obs_seq.out'
 
-   start_year       = 2005
-   start_month      = 3
+   start_year       = 1980
+   start_month      = 1
    start_day        = 1
 
-   start_year       = 2005
-   end_month        = 12
-   end_day          = 31
+   start_year       = 1980
+   end_month        = 1
+   end_day          = 1
 
    append_to_existing_file     = .false.
    debug                       = .true.

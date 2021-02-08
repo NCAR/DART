@@ -29,14 +29,15 @@
 # The amount of data volume is quite large and you should become comfortable
 # using CESM's restart capability to re-stage files in your RUN directory.
 #
-# ${CASEROOT}/CESM_DART_config will change the xml settings of the CESM case to
-# enable data assimilation and set a data assimilation script, in this case,
-# assimilate.csh, which configures DART to harvest synthetic observations.
+# ${CASEROOT}/CESM_DART_config.csh will change the xml settings of the CESM
+# case to enable data assimilation and set a data assimilation script, in
+# this case, assimilate.csh, which configures DART to harvest synthetic
+# observations.
 #
 # This, and the required setup, can be run at a later date. e.g. you can
 # advance an ensemble from 2004-01-01 to 2004-02-01 and then run
-# CESM_DART_config to augment the existing run script, modify STOP_N to 6
-# hours, and start assimilating observations when CESM stops at
+# CESM_DART_config.csh to augment the existing run script, modify STOP_N
+# to 6 hours, and start assimilating observations when CESM stops at
 # 2004-02-01 06Z.
 #
 # This script relies heavily on the information in:
@@ -66,7 +67,7 @@
 #       storage of model output until it can be moved to long term storage
 #       (campaign storage or the research data archive)
 #
-# -- To run DART; read, understand, and execute ${CASEROOT}/CESM_DART_config
+# -- To run DART; read, understand, and execute ${CASEROOT}/CESM_DART_config.csh
 #
 # -- Submit the job using ${CASEROOT}/case.submit -M begin,end
 #
@@ -199,20 +200,20 @@ ${COPY} $ThisFileName ${CASEROOT}/${ThisFileName}.original
 ${COPY} DART_params.csh ${CASEROOT}
 
 # ==============================================================================
-# CESM_DART_config can be run at some later date if desired, but it presumes
-# to be run from a CASEROOT directory. If CESM_DART_config does not exist locally,
-# then it better exist in the expected part of the DARTROOT tree.
+# CESM_DART_config.csh can be run at some later date if desired, but it presumes
+# to be run from a CASEROOT directory. If CESM_DART_config.csh does not exist
+# locally, then it better exist in the expected part of the DARTROOT tree.
 # ==============================================================================
 
-if ( ! -e CESM_DART_config ) then
-   ${COPY} ${DARTROOT}/models/POP/shell_scripts/${cesmtagmajor}/CESM_DART_config .
+if ( ! -e CESM_DART_config.csh ) then
+   ${COPY} ${DARTROOT}/models/POP/shell_scripts/${cesmtagmajor}/CESM_DART_config.csh .
 endif
 
-if (  -e   CESM_DART_config ) then
-   ${COPY} CESM_DART_config ${CASEROOT}
+if (  -e   CESM_DART_config.csh ) then
+   ${COPY} CESM_DART_config.csh ${CASEROOT}
 else
    echo "WARNING: the script to configure for data assimilation is not available."
-   echo "         CESM_DART_config should be present locally or in"
+   echo "         CESM_DART_config.csh should be present locally or in"
    echo "         ${DARTROOT}/models/POP/shell_scripts/${cesmtagmajor}/"
    echo "         You can stage this script later if you must."
 endif
@@ -741,7 +742,7 @@ Checking the case.
 
 3) The case is initially configured to do NO ASSIMILATION.
    When you are ready to add data assimilation, configure and execute
-   the ${CASEROOT}/CESM_DART_config script.
+   the ${CASEROOT}/CESM_DART_config.csh script.
 
 4) The very first CESM advance (i.e. CONTINUE_RUN=FALSE)
    STOP_N must be longer than *AT LEAST 2 TIMES* the coupling

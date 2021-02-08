@@ -6,232 +6,358 @@ Contents
 ========
 
 #. `Overview`_
-#. `Observations`_
+
+#. `Development history`_
+
+   #. `LANL POP`_ 
+
+   #. `CESM POP2`_
+
+#. `Detailed instructions for using DART and CESM POP2 on NCAR's supercomputer`_ 
+
+   #. `Shell scripts`_
+
+   #. `Other files needed for assimilation`_
+
 #. `Namelist`_
-#. `Files`_
-#. `Terms of Use`_
+
+#. `Terms of use`_
+
+#. `References`_
 
 Overview
 ========
 
-The **Parallel Ocean Program (POP)** may be used with the **Data Assimilation
-Research Testbed (DART)**. Both main variants - `LANL POP
-<https://climatemodeling.science.energy.gov/projects/climate-ocean-and-sea-ice-modeling-cosim>`_
-and `CESM2.0 POP2 <https://www.cesm.ucar.edu/models/cesm2/ocean/>`_ have been
-tested under the Lanai framework, only use with **CESM** is supported under the 
-Manhattan framework.
+This document describes the DART interface to the Parallel Ocean Program (POP).
+It covers the `Development history`_ of the interface with two implementations
+of POP:
 
-We are assimilating salinity and temperature observations from either the World
-Ocean Database (2005) or (2009).
+- the Los Alamos National Laboratory Parallel Ocean Program (LANL POP), and
+- the Community Earth System Model Parallel Ocean Program 2
+  (CESM POP2; Smith et al. 2010 [1]_).
 
-The following POP variables are extracted from the POP **netCDF** restart files
-and are conveyed to DART: *SALT_CUR*, *TEMP_CUR*, *UVEL_CUR*, *VVEL_CUR*, and
-*PSURF_CUR*. These variables are then adjusted to be consistent with real
-observations and stuffed back into the same netCDF restart files. Since DART is
-an ensemble algorithm, there are multiple restart files for a single restart
-time: one for each ensemble member. Creating the initial ensemble of ocean
-states is an area of active research. At present, it may be sufficient to use a
-climatological ensemble; e.g., using the restarts for '1 January 00Z' from 50
-consecutive years.
+This document also provides `Detailed instructions for using DART and CESM POP2
+on NCAR's supercomputer`_, including information about the availability of
+restart files for `Creating an initial ensemble`_ of model states and
+`Observation sequence files`_ for assimilation.
 
-Experience has shown that having a paired (unique) atmospheric forcing maintains
-the ensemble spread better than simply forcing all the ocean ensemble members
-with one single atmospheric state.
+Development History
+===================
 
-DART reads the grid information for POP from the files specified in POP's
-``&grid_nml``. When DART is responsible for starting/stopping POP, the 
-information is conveyed through POP's ``&time_manager_nml``.
+When the DART interface to POP was originally developed circa 2009-2010, the
+interface worked with both the LANL POP and CESM POP2 implementations of POP.
 
-
-CESM1 POP2
-----------
-
-was tested and run in production on NCAR's bluefire computer from IBM. This
-implementation is a significant departure from the DART 'business as usual'
-model in that DART is not responsible for advancing the model - in this case,
-ALL of CESM! Instead, the CESM Interactive Ensemble facility is used to manage
-the ensemble and the Flux Coupler is responsible for stopping POP at the times
-required to perform an assimilation. DART simply runs 'end-to-end' at every
-assimilation time, while CESM runs continuously.
-
-This is a complete role-reversal from the normal DART operation but was
-relatively simple to implement because CESM had infrastructure to exploit.
-
-Several modifications to CESM CASEROOT scripts will be required and will be
-documented more later in this document. The
-``DART/models/POP/shell_scripts/cesm1_x/assimilate.csh`` script is inserted into
-the CESM run script. The Flux Coupler stops POP every midnight and all the
-observations within +/- 12 hours are assimilated. The observation sequence files
-have been parsed into 'daylong' chunks and have names derived from the date to
-facilitate manipulation in the UNIX shell.
-
-The DART components were built with the following settings in ``mkmf.template``:
-
-.. code-block:: perl
-
-   MPIFC = mpxlf95_r
-   MPILD = mpxlf95_r
-   FC = xlf90_r
-   LD = xlf90_r
-   INCS = -I/usr/local/lib64/r4i4 -I/usr/local/include
-   LIBS = -L/usr/local/lib64/r4i4 -lnetcdf
-   FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -O2 $(INCS)
-   LDFLAGS = $(FFLAGS) $(LIBS)
-
-LANL-POP
+LANL POP
 --------
 
-Has not been tested with this version of DART and must be verified.
+In years subsequent to the initial development of the DART interface, the
+Computer, Computational, and Statistical Sciences Division at LANL transitioned
+from using POP as their primary ocean model to using the Model for Prediction
+Across Scales-Ocean (MPAS-Ocean). Thus it became difficult for staff in the
+Data Assimilation Research Section (DAReS) at NCAR to maintain access to the
+`LANL POP <https://climatemodeling.science.energy.gov/projects/climate-ocean-and-sea-ice-modeling-cosim>`_
+source code. As a result, LANL POP has been tested using DART's Lanai framework
+but has not been tested using DART's Manhattan framework. If you intend to use
+LANL POP with DART Manhattan, contact DAReS staff for assistance by emailing
+dart@ucar.edu.
 
-It is invoked the same way as any other high-order model.
+CESM POP2
+---------
 
-.. important:: 
+The NCAR implementation of POP, `CESM POP2
+<https://ncar.github.io/POP/doc/build/html/index.html>`_, has been used
+extensively with DART throughout multiple generations of NCAR's supercomputer 
+(Bluefire, Yellowstone & Cheyenne) and multiple iterations of NCAR's earth
+system model (CCSM4, CESM1 and CESM2). CESM POP2 is supported under DART's
+Manhattan framework.
 
-   This interface was tested with the LANL/POP 2_0_1 version of POP ... but
-   STILL CANNOT BE USED for assimilation until the POP code is modified to do a
-   forward euler timestep for an 'assimilation' restart. DART is invoked and POP
-   is started/stopped multiple times. It was checked in the gx3v5 geometry and
-   POP was built in the 'default' configuration: one which requires no forcing
-   files, no boundary conditions, etc., so I have no idea what to expect when
-   confronting this with real observations ...
+For DART's CESM POP2 interface, the CESM Interactive Ensemble facility is used
+to manage the ensemble and the Flux Coupler is responsible for stopping POP2 at
+the times required to perform an assimilation. CESM runs continuously and all
+of the DART routines run at each assimilation time.
 
-.. code-block:: bash
+Detailed instructions for using DART and CESM POP2 on NCAR's supercomputer
+==========================================================================
 
-   setenv ARCHDIR linux
-   gmake OPTIMIZE=no COUPLED=no
-         
-Given the wide range of input files and modes for running POP - the DART scripts
-will surely have to be modified to accomodate moving the boundary/forcing files
-required for different usage patterns.
+If you're using NCAR's supercomputer, you can run the setup scripts after
+making minor edits to set details that are specific to your project. The setup
+scripts create a CESM case in which POP is configured using a 1° horizontal
+grid, and uses the eddy-paremetrization of  Gent and McWilliams (1990). [2]_
+The CICE model is active and atmospheric forcing is provided by the `CAM6 DART
+Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_.
 
-There are several scripts in the ``DART/models/POP/shell_scripts`` directory
-that are employed when using DART to assimilate with a LANL/POP model:
+The filesystem attached to NCAR's supercomputer is known as the Globally
+Accessible Data Environment (GLADE). All filepaths on GLADE have the structure:
 
-- ``advance_model.csh``
-- ``run_perfect_model_obs.batch``, and
-- ``run_filter.batch``.
+.. code-block::
 
-The DART components compile and run on our Intel-based cluster running SLES10
-with the ifort 10.1 20090203 compiler with the following flags (the value of
-NETCDF was appropriate for our system in ``mkmf.template``:
+   /glade/*
 
-.. code-block:: perl
+If you aren't using NCAR's supercomputer, take note of when the ``/glade/``
+filepath is present in the setup scripts, since this will indicate sections
+that you must alter in order to get the scripts to work on your supercomputer.
+Additionally, you'll need to generate your own initial condition and
+observation sequence files or you'll need to copy these files from GLADE. If
+you want to copy these files from GLADE and don't have access, contact DAReS
+staff by emailing dart@ucar.edu for assistance.
 
-   MPIFC = mpif90
-   MPILD = mpif90
-   FC = ifort
-   LD = ifort
-   INCS = -I$(NETCDF)/include
-   LIBS = -L$(NETCDF)/lib -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
-   FFLAGS = -O0 -fpe0 -vec-report0 -assume byterecl $(INCS)
-   LDFLAGS = $(FFLAGS) $(LIBS)
-         
+Summary
+-------
 
-Intel-based machines are natively little-endian, so I like to append a ".le"
-suffix on all binary files.
+To use DART and CESM POP2 on NCAR's supercomputer, you will need to complete
+the following steps.
 
-On our machine, with the openmpi framework, it is necessary to specify
-``input.nml:&mpi_utilities_nml:reverse_task_layout = .true.,`` to be able to
-simultaneously run (2) MPI programs on the same set of nodes.
+#. Configure the scripts for your specific experiment by editing
+   ``DART_params.csh``.
+#. Stage your initial ensemble using ``copy_POP_JRA_restarts.py``.
+#. Run the appropriate DART setup script to create and build the CESM case.
 
-Observations
-============
+If the DART setup script runs to completion, it will print instructions to the
+screen. Follow these instructions to submit your case.
 
-The observations come from the `World Ocean Database 2005
-<http://www.nodc.noaa.gov/OC5/WOD05/pr_wod05.html>`_ and are processed by DART
-routines in the ``$DART/observations/obs_converters/`` directory.
+Shell scripts
+-------------
 
-Converting between DART files and POP restart files
----------------------------------------------------
+Since CESM requires many third-party modules in order to compile, it is often 
+difficult to compile older versions of CESM because the older modules become 
+unavailable. You should attempt to use the most recent setup scripts. The
+`Discuss CESM bulletin board <https://bb.cgd.ucar.edu/cesm/>`_ specifies which 
+releases of CESM are supported.
 
-**Is not needed.** DART natively reads and writes netCDF files.
+The setup scripts are stored in:
 
-Generating the initial ensemble
--------------------------------
+.. code-block::
 
-Creating the initial ensemble of ocean states is an area of active research.
-The POP model cannot take one single model state and generate its own ensemble.
+   DART/models/POP/shell_scripts
 
-The ensemble has to come from 'somewhere else'. At present, it may be sufficient
-to use a climatological ensemble; e.g., using the POP restarts for '1 January
-00Z' from 50 consecutive years from a hindcast experiment.
+in subdirectories that correspond releases of CESM. For example:
 
-By The Way
-~~~~~~~~~~
+.. code-block::
 
-Experience has shown that having a paired (unique) atmospheric forcing maintains
-the ensemble spread better than simply forcing all the ocean ensemble members
-with one single atmospheric state.
+   DART/models/POP/shell_scripts/cesm2_1
 
-Generating a set of observations for a 'perfect model' experiment using the LANL/POP executable and scripts
------------------------------------------------------------------------------------------------------------
+contains scripts that should be used with CESM releases 2.1.0-2.1.3.
 
-A perfectly sensible approach to get to know the system would be to try to
+copy_POP_JRA_restarts.py
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. assimilate data for the first assimilation period and stop. Do not advance
-   the model at all. The filter namelist can control all of this and you do
-   not need to have a working *advance_model.csh* script, or even a working
-   ocean model (as long as you have input data files).
-#. advance the model first and then assimilate data for the first
-   assimilation period and stop.
-#. advance, assimilate and advance again. This tests the whole DART facility.
+This script stages an intial ensemble of POP2 restart files by copying files 
+from a prior experiment run by *Who Kim*. Thanks Who!
 
-I always like running something akin to a 'perfect model' experiment to
-start. Since I have not come up with a good way to perturb a single model
-state to generate an ensemble, here's the next best thing. The details for
-running each program are covered in their own documentation.
+These restart files can be used as an initial ensemble of model
+states. The files are kept in a directory on GLADE that is owned by the Climate
+and Global Dynamics (CGD) Ocean Section:
 
-#. Create a set of initial conditions for DART by running one instance of POP
-   for a very long time and saving restart files 'every so often'. Use one of
-   these as the initial condition for ``perfect_model_obs`` and the rest as the
-   ensemble for the assimilation experiment. Since no one in their right mind
-   would use a high-resolution model for a proof-of-concept case (hint,
-   hint), running a low-resolution model for a 'very long time' should not be
-   a problem.
-#. create a TINY (i.e. 1) set of 'perfect' observations in the normal
-   fashion using ``create_obs_sequence`` and then use
-   ``create_fixed_network_seq`` to create an empty observation sequence file
-   (usually called ``obs_seq.in``). The programs will prompt you for all the
-   information they require. Read their documentation if necessary.
-#. break the ``pop_in`` namelist that comes with POP into two pieces - one
-   called ``pop_in.part1``, that contains the ``&time_manager_nml`` and put the
-   rest in ``pop_in.part2``. The ``&time_manager_nml`` will be repeatedly
-   updated as the POP model is repeatedly called by ``advance_model.csh``.
-#. modify ``POP/work/input.nml`` as needed.
-#. modify ``DART/models/POP/shell_scriptsrun_perfect_model_obs.batch`` to
-   reflect the location of your DART directory, the POP directory, and which
-   POPFILE to use as the initial condition.
-#. Run the experiment and populate the observation sequence file by
-   executing/submitting the script
-   ``DART/models/POP/shell_scripts/run_perfect_model_obs.batch``. The script
-   may require some modification, but not much. Please let me know if I can
-   improve the readability or comments. ``run_perfect_model_obs.batch`` runs
-   ``perfect_model_obs``.
-#. ``run_filter.batch`` runs ``filter`` in a similar fashion. I have not
-   finished the documentation for this yet.
+.. code-block::
 
-Exploring the Output
---------------------
+   /glade/campaign/cgd/oce/people/whokim/csm/g210.G_JRA.v14.gx1v7.01
 
-Is pretty much like any other model. The netCDF files have the model prognostic
-variables before and after the assimilation. There are Matlab® scripts for
-perusing the netCDF files in the ``DART/matlab`` directory. There are Matlab®
-scripts for exploring the performance of the assimilation in observation-space
-(after running ``obs_diag``) to explore the ``obs_seq.final`` file) - use the
-scripts starting with ``plot_``, i.e. ``DART/diagnostics/matlab/plot_*.m*``.
+Unless you're already a member of the CGD Ocean Section, you must be granted 
+access to this directory by CISL. Use the `Service Desk
+<https://servicedesk.ucar.edu/plugins/servlet/desk>`_ to request permission. If
+you're unable to get permission, contact DAReS staff for assistance by emailing
+dart@ucar.edu.
 
-As always, there are some model-specific items you should know about in
-``DART/models/POP/matlab``, and ``DART/models/POP/shell_scripts``.
+Filepaths beginning with ``/glade/campaign/*`` can't be accessed from NCAR's 
+supercomputer nodes. You must log on to NCAR's data visualization computer to
+copy files from ``/glade/campaign/*``.
 
-It is also worthwhile to convert your ``obs_seq.final`` file to a netCDF format
-obs_sequence file with ``obs_seq_to_netcdf`` in
-``DART/assimilation_code/programs/obs_seq_to_netcdf/``.
+This python script was created by *Dan Amrhein*. Thanks Dan!
+
++-------------------------------+-----------------------------------------------------------+
+| Script name                   | Description                                               |
++===============================+===========================================================+
+| ``copy_POP_JRA_restarts.py``  | This script copies restart files from the                 |
+|                               | g210.G_JRA.v14.gx1v7.01 experiment that are saved in      |
+|                               | campaign storage. You must be granted access to the CGD   |
+|                               | Ocean Section campaign storage directory and be logged on |
+|                               | to NCAR's data visualization computer in order to run     |
+|                               | this script. The assignment of the ``stagedir`` variable  |
+|                               | in this script should match the assignment of the         |
+|                               | ``stagedir`` variable in ``DART_params.csh``.             |
++-------------------------------+-----------------------------------------------------------+
+
+In order to use this script, log in to NCAR's data visualization computer and
+use python to run the script. For example:
+
+.. code-block::
+
+   $ cd DART/models/POP/shell_scripts/cesm2_1
+   $ python copy_POP_JRA_restarts.py
+
+DART_params.csh
+~~~~~~~~~~~~~~~
+
+This is the essential script you must edit to get your cases to build properly.
+While you need to configure this script, you don't need to run this script.
+It is run by the setup scripts.
+
++---------------------+-----------------------------------------------------------+
+| Script name         | Description                                               |
++=====================+===========================================================+
+| ``DART_params.csh`` | This script contains most, if not all, of the variables   |
+|                     | that you need to set in order to build and run cases. You |
+|                     | must read this file carefully and configure the variables |
+|                     | to match your needs. The assignment of the ``stagedir``   |
+|                     | variable in this script should match the assignment of    |
+|                     | the ``stagedir`` variable in                              |
+|                     | ``copy_POP_JRA_restarts.py``.                             |
++---------------------+-----------------------------------------------------------+
+
+Setup scripts
+~~~~~~~~~~~~~
+
+These are the primary scripts used to setup CESM cases in which data
+assimilation is enabled in POP2. The only variable that you might need to set
+in these scripts is the ``extra_string`` variable. It is appended to the end of
+the CESM case name. You can use it to differentiate experiments with the same
+configuration.
+
++------------------------------------+--------------------------------------------+
+| Script name                        | Description                                |
++====================================+============================================+
+| ``setup_CESM_perfect_model.csh``   | This script creates a CESM case with a     |
+|                                    | single model instance in order to run      |
+|                                    | DART's ``perfect_model_obs`` program to    |
+|                                    | collect observations from the model run.   |
++------------------------------------+--------------------------------------------+
+| ``setup_CESM_hybrid_ensemble.csh`` | This script creates a CESM case with       |
+|                                    | multiple model instances in order to run   |
+|                                    | DART's ``filter`` program to complete      |
+|                                    | assimilation.                              |
++------------------------------------+--------------------------------------------+
+
+After configuring your experiment in ``DART_params.csh``, you can setup a case
+by running these scripts. For example, to setup an assimilation experiment:
+
+.. code-block::
+
+   $ cd DART/models/POP/shell_scripts/cesm2_1
+   $ ./setup_CESM_hybrid_ensemble.csh
+
+If the setup scripts run to completion, they will print instructions that you
+can follow to use CESM's case submit tool to begin a model integration.
+
+CESM_DART_config.csh
+~~~~~~~~~~~~~~~~~~~~
+
+This script is copied by the setup scripts into the CESM case directory. It 
+configures CESM to run DART.
+
++--------------------------+------------------------------------------------------+
+| Script name              | Description                                          |
++==========================+======================================================+
+| ``CESM_DART_config.csh`` | This script is copied into the CESM case directory   |
+|                          | where it configures CESM to run DART.                |
++--------------------------+------------------------------------------------------+
+
+Runtime scripts
+~~~~~~~~~~~~~~~
+
+These scripts are copied into the CESM case directory. They are called by CESM
+and contain the logic to run DART's ``perfect_model_obs`` or ``filter``
+programs. You shouldn't need to run these scripts directly, unless they exit 
+before completion and halt a CESM integration. In this case you may need to run
+the script directly to complete an assimilation in order to continue the
+integration.
+
++-----------------------+---------------------------------------------------------+
+| Script name           | Description                                             |
++=======================+=========================================================+
+| ``perfect_model.csh`` | This script runs ``perfect_model_obs`` to collect       |
+|                       | synthetic data in a single-instance CESM case.          |
++-----------------------+---------------------------------------------------------+
+| ``assimilate.csh``    | This script runs ``filter`` to perform assimilation in  |
+|                       | a multi-instance CESM case.                             |
++-----------------------+---------------------------------------------------------+
+
+Other files needed for assimilation
+-----------------------------------
+
+Creating an initial ensemble
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Karspeck et al. (2013) [3]_ find that an ensemble of 1 January model states
+selected from a multi-decade free-running integration of POP2 can be used as an
+initial ensemble.
+
+If you have access to CGD's Ocean Section directory on ``/glade/campaign`` you
+can use the `copy_POP_JRA_restarts.py`_ script to stage a collection of POP
+restart files from Who Kim's mulit-century ``g210.G_JRA.v14.gx1v7.01``
+experiment to serve as an initial ensemble. This experiment uses the JRA-55
+dataset for atmospheric forcing (Tsujino et al. 2018 [4]_).
+
+Observation sequence files
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``setup_CESM_hybrid_ensemble.csh`` is used to create an assimilation
+experiment, ``DART_params.csh`` configures the experiment to assimilate 
+observation sequence files from the World Ocean Database 2013 (WOD13; Boyer et
+al. 2013 [5]_).
+
+The WOD13 dataset comprises data from 2005-01-01 to 2016-12-31 and contains the
+following observation types:
+
++--------------------------------------+--------------------------------------+
+| FLOAT_SALINITY                       | FLOAT_TEMPERATURE                    |
++--------------------------------------+--------------------------------------+
+| DRIFTER_SALINITY                     | DRIFTER_TEMPERATURE                  |
++--------------------------------------+--------------------------------------+
+| GLIDER_SALINITY                      | GLIDER_TEMPERATURE                   |
++--------------------------------------+--------------------------------------+
+| MOORING_SALINITY                     | MOORING_TEMPERATURE                  |
++--------------------------------------+--------------------------------------+
+| BOTTLE_SALINITY                      | BOTTLE_TEMPERATURE                   |
++--------------------------------------+--------------------------------------+
+| CTD_SALINITY                         | CTD_TEMPERATURE                      |
++--------------------------------------+--------------------------------------+
+| XCTD_SALINITY                        | XCTD_TEMPERATURE                     |
++--------------------------------------+--------------------------------------+
+| APB_SALINITY                         | APB_TEMPERATURE                      |
++--------------------------------------+--------------------------------------+
+| XBT_TEMPERATURE                      |                                      |
++--------------------------------------+--------------------------------------+
+
+The W0D13 observations have already been converted into DART's observation 
+sequence file format by *Fred Castruccio*. Thanks Fred! The files are stored in
+the following directory on GLADE:
+
+.. code-block::
+
+   /glade/p/cisl/dares/Observations/WOD13
+
+The subdirectories are formatted in ``YYYYMM`` order.
+
+Observation sequence files converted from the World Ocean Database 2009 (WOD09;
+Johnson et al. 2009 [6]_), which comprises data from 1960-01-01 to 2008-12-31,
+are also stored in the following directory on GLADE:
+
+.. code-block::
+
+   /glade/p/cisl/dares/Observations/WOD09
+
+These observation sequence files can be assimilated by changing the
+``BASEOBSDIR`` variable in ``DART_params.csh``.
+
+DART extracts the following variables from the POP2 restart files and adjusts
+them to be consistent with the observations: ``SALT_CUR``, ``TEMP_CUR``,
+``UVEL_CUR``, ``VVEL_CUR``, and ``PSURF_CUR``. 
+
+Data atmosphere streams files
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The setup scripts configure the CESM case with atmospheric forcing from the 
+`CAM6 DART Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_. The coupler 
+history files from this reanalysis are referenced in
+``user_datm.streams*template`` files. These ``user_datm.streams*template``
+files are contained in the same directory as the setup scripts and are
+configured and  copied into the CESM case directory by the setup scripts.
 
 Namelist
 ========
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
-start with an ampersand ``&`` and terminate with a slash ``/``. Character
+start with an ampersand, ``&``, and terminate with a slash, ``/``. Character
 strings that contain a ``/`` must be enclosed in quotes to prevent them from
 prematurely terminating the namelist.
 
@@ -246,10 +372,10 @@ The variables and their default values are listed here:
       binary_grid_file_format      = 'big_endian'
       debug                        = 0,
       model_state_variables        = 'SALT_CUR ', 'QTY_SALINITY             ', 'UPDATE',
-                                       'TEMP_CUR ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
-                                       'UVEL_CUR ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE',
-                                       'VVEL_CUR ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE',
-                                       'PSURF_CUR', 'QTY_SEA_SURFACE_PRESSURE ', 'UPDATE'
+                                     'TEMP_CUR ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
+                                     'UVEL_CUR ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE',
+                                     'VVEL_CUR ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE',
+                                     'PSURF_CUR', 'QTY_SEA_SURFACE_PRESSURE ', 'UPDATE'
    /
 
 This namelist provides control over the assimilation period for the model. All
@@ -275,7 +401,7 @@ ocean model dynamical timestep.
 | ``assimilation_period_seconds``     | integer           | In addition to ``assimilation_period_days``, the number    |
 |                                     |                   | of seconds to advance the model for each assimilation.     |
 |                                     |                   | Make sure you read the description of                      |
-|                                     |                   | ``assimilation_period_days*.                               |
+|                                     |                   | ``assimilation_period_days``.                              |
 +-------------------------------------+-------------------+------------------------------------------------------------+
 | ``model_perturbation_amplitude``    | real(r8)          | Reserved for future use.                                   |
 +-------------------------------------+-------------------+------------------------------------------------------------+
@@ -296,9 +422,10 @@ ocean model dynamical timestep.
 |                                     |                   | the grid information and perform a grid interpolation      |
 |                                     |                   | test.                                                      |
 +-------------------------------------+-------------------+------------------------------------------------------------+
-| ``model_state_variables``           | character(:,3)    | Strings that associate POP variables with a DART kind and  |
-|                                     |                   | whether or not to write the updated values to the restart  |
-|                                     |                   | files. These variables will be read from the POP restart   |
+| ``model_state_variables``           | character(:,3)    | Strings that associate POP variables with a DART quantity  |
+|                                     |                   | and whether or not to write the updated values to the      |
+|                                     |                   | restart files.                                             |
+|                                     |                   | These variables will be read from the POP restart          |
 |                                     |                   | file and modified by the assimilation. Some (perhaps all)  |
 |                                     |                   | will be used by the forward observation operators. If the  |
 |                                     |                   | 3rd column is 'UPDATE', the output files will have the     |
@@ -309,126 +436,8 @@ ocean model dynamical timestep.
 |                                     |                   | Diagnostic variables that are useful for the calculation   |
 |                                     |                   | of the forward observation operator but have no impact on  |
 |                                     |                   | the forecast trajectory of the model could have a value of |
-|                                     |                   | ``NO_COPY_BACK``. The DART kind must be one found in the   |
-|                                     |                   | ``obs_kind_mod.f90`` source code file kept in              |
-|                                     |                   | ``DART/assimilation_code/modules/observations/`` **AFTER** |
-|                                     |                   | it gets built by ``preprocess``. Most of the ocean         |
-|                                     |                   | observation kinds are specified within the                 |
-|                                     |                   | ``obs_def_ocean_mod.f90`` source code file kept in         |
-|                                     |                   | ``DART/observations/forward_operators/``, so it should be  |
-|                                     |                   | specified in the ``&preprocess_nml:input_files``           |
-|                                     |                   | variable.                                                  |
+|                                     |                   | ``NO_COPY_BACK``.                                          |
 +-------------------------------------+-------------------+------------------------------------------------------------+
-
-.. code-block:: fortran
-
-      namelist /time_manager_nml/  runid, stop_option, stop_count, &
-             time_mix_opt, fit_freq, time_mix_freq, dt_option, dt_count, &
-             impcor, laccel, accel_file, dtuxcel, allow_leapyear, &
-             date_separator, iyear0, imonth0, iday0, ihour0, iminute0, isecond0
-
-This namelist is read in a file called ``pop_in``. This namelist is the same
-one that is used by the ocean model and is used to control the integration
-length of POP.
-
-It is unimportant for the CESM/POP experiments but is critically important for
-the LANL/POP experiments. The values are explained in full in the POP
-documentation. The DART code reads the namelist and simply overwrites several
-values with the new time integration information. All the other values are
-unchanged.
-
-``dart_to_pop`` writes out a new ``&time_manager_nml`` in ``pop_in.DART`` if the
-DART state being converted has the ``'advance_to_time'`` record in it. This is
-the case during the middle of a DART experiment, but is not typically
-encountered if one is working with DART 'initial conditions' or 'restart'
-files. The ``pop_in.DART`` must be concatenated with the other namelists
-needed by POP into a file called ``pop_in``. We have chosen to store the
-other namelists (which contain static information) in a file called
-``pop_in.part2``. Initially, the ``time_manager_nml`` is stored in a companion
-file called ``pop_in.part1`` and the two files are concatenated into the
-expected ``pop_in`` - then, during the course of an assimilation experiment,
-DART keeps writing out a new ``time_manager_nml`` with new integration
-information - which gets appended with the static information in
-``pop_in.part2``.
-
-If you are running the support programs in a standalone fashion (as you
-might if you are converting restart files into an intial ensemble), the
-'valid time' of the model state comes from the restart file - NOT - the
-namelist. You can always patch the times in the headers with
-``restart_file_utility``.
-
-Only the namelist variables of interest to DART are discussed. All other
-namelist variables are ignored by DART - but mean something to POP.
-
-+-------------------------------------+-----------------------------------+------------------------------------------+
-| Item                                | Type                              | Description                              |
-+=====================================+===================================+==========================================+
-| ``stop_option``                     | character [default: ``'nday'``]   | The units for ``stop_count``.            |
-+-------------------------------------+-----------------------------------+------------------------------------------+
-| ``stop_count``                      | integer [default: ``1``]          | The duration of the model integration.   |
-|                                     |                                   | The units come from ``stop_option``.     |
-+-------------------------------------+-----------------------------------+------------------------------------------+
-
-Example Namelist
-----------------
-
-.. code-block:: fortran
-
-   &time_manager_nml
-      runid          = 'gx3v5'
-      stop_option    = 'nday'
-      stop_count     = 1
-      time_mix_opt   = 'avgfit'
-      fit_freq       = 1
-      time_mix_freq  = 17
-      dt_option      = 'auto_dt'
-      dt_count       = 1
-      impcor         = .true.
-      laccel         = .false.
-      accel_file     = 'unknown_accel_file'
-      dtuxcel        = 1.0
-      allow_leapyear = .true.
-      iyear0         = 2000
-      imonth0        = 1
-      iday0          = 1
-      ihour0         = 0
-      iminute0       = 0
-      isecond0       = 0
-      date_separator = '-'
-   /
-
-Files
-=====
-
-+-------------------------------+---------------------------------------------+
-| filename                      | purpose                                     |
-+===============================+=============================================+
-| input.nml                     | to read the model_mod namelist              |
-+-------------------------------+---------------------------------------------+
-| pop_in                        | to read the model_mod namelist              |
-+-------------------------------+---------------------------------------------+
-| pop.r.nc                      | provides grid dimensions and 'valid_time'   |
-|                               | of the model state                          |
-+-------------------------------+---------------------------------------------+
-| *&grid_nml* "horiz_grid_file" | contains the values of the horizontal grid  |
-+-------------------------------+---------------------------------------------+
-| *&grid_nml* "vert_grid_file"  | contains the number and values of the       |
-|                               | vertical levels                             |
-+-------------------------------+---------------------------------------------+
-| true_state.nc                 | the time-history of the "true" model state  |
-|                               | from an OSSE                                |
-+-------------------------------+---------------------------------------------+
-| preassim.nc                   | the time-history of the model state before  |
-|                               | assimilation                                |
-+-------------------------------+---------------------------------------------+
-| analysis.nc                   | the time-history of the model state after   |
-|                               | assimilation                                |
-+-------------------------------+---------------------------------------------+
-| dart_log.out [default name]   | the run-time diagnostic output              |
-+-------------------------------+---------------------------------------------+
-| dart_log.nml [default name]   | the record of all the namelists actually    |
-|                               | USED - contains the default values          |
-+-------------------------------+---------------------------------------------+
 
 Terms of Use
 ============
@@ -439,3 +448,37 @@ http://www.image.ucar.edu/DAReS/DART/DART_download
 
 .. |DART project logo| image:: ../../docs/images/Dartboard7.png
    :height: 70px
+
+References
+==========
+
+.. [1] Smith, R., and Coauthors, 2010: The Parallel Ocean Program (POP)
+       Reference Manual Ocean Component of the Community Climate System Model
+       (CCSM) and Community Earth System Model (CESM). National Center for
+       Atmospheric Research,
+       `http://www.cesm.ucar.edu/ models/cesm1.0/pop2/doc/sci/POPRefManual.pdf <http://www.cesm.ucar.edu/ models/cesm1.0/pop2/doc/sci/POPRefManual.pdf>`_.
+
+.. [2] Gent, P. R., and J. C. McWilliams, 1990: Isopycnal Mixing in Ocean
+       Circulation Models. *Journal of Physical Oceanography*, **20**, 150–155,
+       `doi:10.1175/1520-0485(1990)020<0150:IMIOCM>2.0.CO;2 <https://doi.org/10.1175/1520-0485(1990)020\<0150:IMIOCM\>2.0.CO;2>`_.
+
+.. [3] Karspeck, A., Yeager, S., Danabasoglu, G., Hoar, T. J., Collins, N. S.,
+       Raeder, K. D., Anderson, J. L, Tribbia, J. 2013: An ensemble adjustment
+       Kalman filter for the CCSM4 ocean component. *Journal of Climate*, **26**, 7392-7413,
+       `doi:10.1175/JCLI-D-12-00402.1 <https://doi.org/10.1175/JCLI-D-12-00402.1>`_.
+
+.. [4] Tsujino, H., Urakawa, S., Nakano, H., Small, R. J., Kim, W. M., Yeager,
+       S. G., ... Yamazaki, D., 2018: JRA-55 based surface dataset for driving
+       ocean-sea-ice models (JRA55-do). *Ocean Modelling*, **130**, 79-139,
+       `doi:10.1016/j.ocemod.2018.07.002 <https://doi.org/10.1016/j.ocemod.2018.07.002>`_.
+
+.. [5] Boyer, T.P., J. I. Antonov, O. K. Baranova, C. Coleman, H. E. Garcia,
+       A. Grodsky, D. R. Johnson, R. A. Locarnini, A. V. Mishonov, T.D.
+       O'Brien, C.R. Paver, J.R. Reagan, D. Seidov, I. V. Smolyar, and M. M.
+       Zweng, 2013: World Ocean Database 2013, NOAA Atlas NESDIS 72, S.
+       Levitus, Ed., A. Mishonov, Technical Ed.; Silver Spring, MD, 209 pp., `doi:10.7289/V5NZ85MT <http://doi.org/10.7289/V5NZ85MT>`_.
+
+.. [6] Johnson, D.R., T.P. Boyer, H.E. Garcia, R.A. Locarnini, O.K. Baranova,
+       and M.M. Zweng,  2009. World Ocean Database 2009 Documentation. Edited
+       by Sydney Levitus. NODC Internal Report 20, NOAA Printing Office, Silver
+       Spring, MD, 175 pp., http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html.

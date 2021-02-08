@@ -64,19 +64,21 @@
    inf_sd_initial              = 0.0,                     0.0,
    inf_sd_lower_bound          = 0.0,                     0.0,
    inf_sd_max_change           = 1.05,                    1.05,
-/
+  /
 
 &smoother_nml
    num_lags              = 0,
    start_from_restart    = .false.,
    output_restart        = .false.,
    restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'  /
+   restart_out_file_name = 'smoother_restart'
+  /
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.,
    single_restart_file_out = .true.,
-   perturbation_amplitude  = 0.2  /
+   perturbation_amplitude  = 0.2
+  /
 
 &assim_tools_nml
    filter_kind                     = 1,
@@ -87,19 +89,23 @@
    adaptive_localization_threshold = -1,
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
-   print_every_nth_obs             = 0  /
+   print_every_nth_obs             = 0
+  /
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+  /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+  /
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT'
-   evaluate_these_obs_types   = 'RADIOSONDE_SURFACE_PRESSURE'  /
+   evaluate_these_obs_types   = 'RADIOSONDE_SURFACE_PRESSURE'
+  /
 
 &model_nml
    model_size = 539400,
@@ -115,31 +121,37 @@
    depth      = 0.14,
    delta_t    = 0.1,
    time_step_days    = 0,
-   time_step_seconds = 2160  /
+   time_step_seconds = 2160
+  /
 
 &location_nml
    min_radius = 0.0,
-   max_radius = 100000.0 /
+   max_radius = 100000.0
+  /
 
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .false.,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
-   write_nml   = 'file'  /
+   write_nml   = 'file'
+  /
 
 &reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"  /
+   reg_diagnostics_file = "reg_diagnostics"
+  /
 
 &preprocess_nml
-    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90', 
-   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90', 
-   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90', 
-  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90', 
-               input_files = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90'  /
+   overwrite_output        = .true.
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90'
+  /
 
 &restart_file_utility_nml
    input_file_name              = "filter_restart",
@@ -155,7 +167,8 @@
    output_is_model_advance_file = .false.,
    overwrite_advance_time       = .false.,
    new_advance_days             =  -1,
-   new_advance_secs             =  -1   /
+   new_advance_secs             =  -1
+  /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -187,5 +200,5 @@
    outliers_in_histogram = .true.,
    use_zero_error_obs    = .false.,
    verbose               = .false.
-   /
+  /
 
