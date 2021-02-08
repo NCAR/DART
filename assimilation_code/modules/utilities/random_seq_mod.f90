@@ -427,7 +427,7 @@ end function ran_unif
 !------------------------------------------------------------------------
 
 !> Polar (Box-Mueller) method; See Knuth v2, 3rd ed, p122 
-!> Returns a N(-1, 1) random number draw from a gaussian distribution
+!> Returns a N(0, 1) random number draw from a gaussian distribution
 
 function ran_gauss(s)
 
