@@ -46,8 +46,12 @@ character(len=*), parameter :: revdate  = ''
 ! and a spatially-varying state space inflation that carries
 ! a mean and variance for the state space inflation at each point. 
 
+! There are many length 2 variables declared to hold items. Some of them 
+! refer to the concept of prior and posterior. Those that do can be referenced
+! with the PRIOR and POSTERIOR - which MUST have values 1 and 2, do not change.
+
 integer, parameter :: PRIOR = 1
-integer, parameter :: POSTERIOR = 1
+integer, parameter :: POSTERIOR = 2
 
 !>@todo Eventually the namelist options corresponding to inflation should move from 
 !> filter into this module and then possibly become two different namelists so we
@@ -490,7 +494,7 @@ endif
 ! enhanced inflation checks - this is before we set the subflavor in the structure.
 if (inf_flavor(PRIOR) == ENHANCED_SS_INFLATION .or. inf_flavor(POSTERIOR) == ENHANCED_SS_INFLATION) then
    ! check inf_sd_max_change() for valid range
-   do i=1, 2
+   do i=PRIOR, POSTERIOR
       if (inf_sd_max_change(i) < 1.0_r8 .or. inf_sd_max_change(i) > 2.0_r8) then
          write(string1, *) 'inf_sd_max_change=', inf_sd_max_change(i), ' Must be 1.0 <= X <= 2.0'
          call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &

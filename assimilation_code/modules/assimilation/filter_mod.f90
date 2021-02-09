@@ -407,25 +407,25 @@ call validate_inflate_options(inflation_flavor, inf_damping, inf_initial_from_re
    do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, inflation_flavor(1), inf_initial_from_restart(1), &
-   inf_sd_initial_from_restart(1), output_inflation, inf_deterministic(1),            &
-   inf_initial(1), inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1),         &
-   inf_sd_lower_bound(1), inf_sd_max_change(1), state_ens_handle,                     &
+call adaptive_inflate_init(prior_inflate, inflation_flavor(PRIOR), inf_initial_from_restart(PRIOR), &
+   inf_sd_initial_from_restart(PRIOR), output_inflation, inf_deterministic(PRIOR),            &
+   inf_initial(PRIOR), inf_sd_initial(PRIOR), inf_lower_bound(PRIOR), inf_upper_bound(PRIOR),         &
+   inf_sd_lower_bound(PRIOR), inf_sd_max_change(PRIOR), state_ens_handle,                     &
    allow_missing, 'Prior')
 
-call adaptive_inflate_init(post_inflate, inflation_flavor(2), inf_initial_from_restart(2),  &
-   inf_sd_initial_from_restart(2), output_inflation, inf_deterministic(2),            &
-   inf_initial(2),  inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2),        &
-   inf_sd_lower_bound(2), inf_sd_max_change(2), state_ens_handle,                     &
+call adaptive_inflate_init(post_inflate, inflation_flavor(POSTERIOR), inf_initial_from_restart(POSTERIOR),  &
+   inf_sd_initial_from_restart(POSTERIOR), output_inflation, inf_deterministic(POSTERIOR),            &
+   inf_initial(POSTERIOR),  inf_sd_initial(POSTERIOR), inf_lower_bound(POSTERIOR), inf_upper_bound(POSTERIOR),        &
+   inf_sd_lower_bound(POSTERIOR), inf_sd_max_change(POSTERIOR), state_ens_handle,                     &
    allow_missing, 'Posterior')
 
 if (do_output()) then
-   if (inflation_flavor(1) > NO_INFLATION .and. inf_damping(1) < 1.0_r8) then
-      write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', inf_damping(1), ' will be used'
+   if (inflation_flavor(PRIOR) > NO_INFLATION .and. inf_damping(PRIOR) < 1.0_r8) then
+      write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', inf_damping(PRIOR), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
-   if (inflation_flavor(2) > NO_INFLATION .and. inf_damping(2) < 1.0_r8) then
-      write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', inf_damping(2), ' will be used'
+   if (inflation_flavor(POSTERIOR) > NO_INFLATION .and. inf_damping(POSTERIOR) < 1.0_r8) then
+      write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', inf_damping(POSTERIOR), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
 endif
@@ -815,10 +815,10 @@ AdvanceTime : do
    if(do_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
 
-      if (inf_damping(1) /= 1.0_r8) then
+      if (inf_damping(PRIOR) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(1) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
+            inf_damping(PRIOR) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
 
       call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
@@ -931,10 +931,10 @@ AdvanceTime : do
 
       call trace_message('Before posterior inflation damping')
 
-      if (inf_damping(2) /= 1.0_r8) then
+      if (inf_damping(POSTERIOR) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(2) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
+            inf_damping(POSTERIOR) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
 
       call trace_message('After  posterior inflation damping')
@@ -1041,7 +1041,7 @@ AdvanceTime : do
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
-      if ((inf_sd_initial(2) >= 0.0_r8) .or. inf_sd_initial_from_restart(2)) then
+      if ((inf_sd_initial(POSTERIOR) >= 0.0_r8) .or. inf_sd_initial_from_restart(POSTERIOR)) then
 
          call     trace_message('Before computing posterior state space inflation')
          call timestamp_message('Before computing posterior state space inflation')
@@ -1611,7 +1611,7 @@ do group = 1, num_groups
          call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source,revision,revdate)
 
          !Reset the RTPS factor to the given input.nml value
-         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(2)
+         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(POSTERIOR)
 
          do j = 1, ens_handle%my_num_vars
             call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
@@ -2417,16 +2417,16 @@ else
 endif
 
 if ( do_prior_inflate ) then
-   if ( inf_initial_from_restart(1)    ) &
+   if ( inf_initial_from_restart(PRIOR)    ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
-   if ( inf_sd_initial_from_restart(1) ) &
+   if ( inf_sd_initial_from_restart(PRIOR) ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
 endif
 
 if ( do_posterior_inflate ) then
-   if ( inf_initial_from_restart(2)    ) &
+   if ( inf_initial_from_restart(POSTERIOR)    ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
-   if ( inf_sd_initial_from_restart(2) ) &
+   if ( inf_sd_initial_from_restart(POSTERIOR) ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
@@ -2753,7 +2753,7 @@ integer,          intent(out) :: flavor_integer(2)
 integer :: i
 character(len=32) :: string
 
-do i = 1,2   ! one is prior, two is posterior
+do i = PRIOR,POSTERIOR
 
    string = adjustl(flavor_string(i))
    call to_upper(string)
