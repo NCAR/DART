@@ -688,7 +688,7 @@ endif
 ! add trailing blanks here because trim will strip them below.
 
 wherefrom = trim(taskstr)//' '//trim(routine)
-wherecont = trim(taskstr)//' '//trim(routine)//'...'
+wherecont = trim(taskstr)//' '//trim(routine)//' ...'
 
 if (level == E_ERR)  msgtype = 'ERROR FROM:'
 if (level == E_WARN) msgtype = 'WARNING FROM:'
@@ -2909,4 +2909,3 @@ end function interactive_i
 !=======================================================================
 
 end module utilities_mod
-
