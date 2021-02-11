@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Random number and random sequence routines.  Can generate random draws 
 !> from a uniform distribution or random draws from differently shaped
@@ -30,9 +28,9 @@ public :: random_seq_type, &
           random_exponential
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "random_seq_mod.f90"
-character(len=32 ), parameter :: revision = ""
-character(len=128), parameter :: revdate  = ""
+character(len=*), parameter :: source   = 'random_seq_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! Gives ability to generate unique repeatable sequences of random numbers
 ! using random congruential package. Needed to allow different assim algorithms
@@ -429,7 +427,7 @@ end function ran_unif
 !------------------------------------------------------------------------
 
 !> Polar (Box-Mueller) method; See Knuth v2, 3rd ed, p122 
-!> Returns a N(-1, 1) random number draw from a gaussian distribution
+!> Returns a N(0, 1) random number draw from a gaussian distribution
 
 function ran_gauss(s)
 
@@ -545,8 +543,3 @@ end function ran_gamma
 
 end module random_seq_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

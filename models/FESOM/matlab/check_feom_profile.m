@@ -11,8 +11,6 @@ function h = check_feom_profile(fname, vertex_list, varargin)
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id: check_feom_profile.m 10255 2016-05-05 22:15:53Z thoar $
 
 default_varname    = 'salt';
 default_range      = [];
@@ -86,9 +84,4 @@ string1 = sprintf('lat/lon %f, %f',y(1),x(1));
 title({string1,fname},'Interpreter','none')
 grid('on')
 fprintf('%s\n',string1)
-
-% <next few lines under version control, do not edit>
-% $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/FEOM/models/FeoM/matlab/check_feom_profile.m $
-% $Revision: 10255 $
-% $Date: 2016-05-06 00:15:53 +0200 (Fri, 06 May 2016) $
 

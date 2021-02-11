@@ -25,71 +25,71 @@
 <H2>Overview</H2>
 
 <P>
-Beginning with the I-release of DART, a more flexible, powerful (and
-complicated) mechanism for incorporating new types of observations is part of
-DART. The DEFAULT_obs_def module being described here is used by the program
-<em class="unix">preprocess</em> to create 
+DEFAULT_obs_def.F90 is a template used by the program <em class="unix">preprocess</em> to create
 <em class="file">obs_def_mod.f90</em>.
 <br>
 <br>
-To read more detailed instructions for adding your own new
+To read more detailed instructions on how to add new
 observation types, see the documentation for
 <a href="obs_def_mod.html">obs_def_mod</a>.
-The process does not involve altering this
-<em class="file">DEFAULT_obs_def_mod.F90</em> file.  Instead, new obs_def
-files are specified as input to the <em class="unix">preprocess</em> program
-by namelist,
-and a new <em class="file">obs_def_mod.f90</em> file is generated.  The rest
-of the documentation here describes the internals of how the
-<em class="unix">preprocess</em> program uses the template file to
-do the code generation.
+<em class="file">obs_def_*_mod.f90</em> files are specified as
+input to the <em class="unix">preprocess</em> program by namelist,
+and a new <em class="file">obs_def_mod.f90</em> file is generated which contains
+all the selected observation types.
+
+
 <br>
 <br>
-Information from zero or more special obs_def modules, such as 
-<em class="file">obs_def_1d_state_mod.f90</em> or 
+Information from zero or more special obs_def modules, such as
+<em class="file">obs_def_1d_state_mod.f90</em> or
 <em class="file">obs_def_reanalyis_bufr_mod.f90</em>,
-(also documented in this directory) are incorporated into the template
-provided by DEFAULT_obs_def_mod. If no special obs_def files are included in
-the preprocessor namelist, a minimal 
+(also documented in this directory) are incorporated into the
+DEFAULT_obs_def_mod.F90 template by <em class="unix">preprocess</em>. If no special
+obs_def files are included in the preprocess namelist, a minimal
 <em class="file">obs_def_mod.f90</em> is created which can only
 support identity forward observation operators.  Any identity observations on
 the obs_seq.out file will be assimilated, regardless of the obs types specified in
-assimilate_these_obs_types.  
+assimilate_these_obs_types.
 <br>
-<br> 
-This documentation file only describes the special formatting that is included
-in the DEFAULT_obs_def_mod in order to guide the preprocess program. Up to 
-seven sections of code are inserted into the DEFAULT_obs_def_mod from each of
-the special obs_def modules that are requested. The insertion point for each
-section is denoted by a special comment line that must be included VERBATIM in
-<em class="file">DEFAULT_obs_def_mod.F90</em>. 
+<br>
+The documentation below describes the special
+formatting that is included in the <em class="file">DEFAULT_obs_def_mod.F90</em> in order to guide the
+<em class="unix">preprocess</em> program.
+<p>
+
+Up to seven sections of code are inserted into <em class="file">DEFAULT_obs_def_mod.F90</em> from each of
+the special <em class="file">obs_def_*_mod.f90</em> files. The insertion point for each
+section is denoted by a special comment line that must be included <em>verbatim</em> in
+<em class="file">DEFAULT_obs_def_mod.F90</em>.
 These special comment lines and their significance are:
 </P>
 <ol>
 <li>
-! DART PREPROCESS MODULE CODE INSERTED HERE <BR>
+<code>! DART PREPROCESS MODULE CODE INSERTED HERE </code> <BR>
 Some special observation definition modules (see for instance
-<em class="file">obs_def_1d_state_mod.f90</em>) 
+<em class="file">obs_def_1d_state_mod.f90</em>)
 contain code for evaluating forward observation
 operators, reading or writing special information about an observation
 definition to an obs sequence file, or for interactive definition of an
-observation. The entire module code section is inserted here, 
+observation. The entire module code section is inserted here,
 so the resulting output file will be completely self-contained.
 Fortran 90 allows multiple modules to be defined in a single source
 file, and subsequent module code can use previously defined modules,
 so this statement must preceed the rest of the other comment lines.<br><br>
 </li>
 <li>
-! DART PREPROCESS USE FOR OBS_QTY_MOD INSERTED HERE <BR>
-Integer identifiers with a unique integer value corresponding to each
-available observation quantity are defined in a table in the obs_kind_mod which 
-is also created by the preprocessor. The use statements for these entries are
-inserted here.<br><br>
+<code>! DART PREPROCESS USE FOR OBS_QTY_MOD INSERTED HERE </code> <BR>
+The quantities available to DART are defined by passing quantity files
+from <em class="file">DART/assimilation_code/modules/observations</em> to
+<em class="unix">preprocess</em>.
+Unique integer values for each quantity are assigned by <em class="unix">preprocess</em> and
+the use statements for these entries are inserted here.
+<br><br>
 </li>
 <li>
-! DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE INSERTED HERE <BR>
+<code>! DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE INSERTED HERE </code> <BR>
 Some special observation definition modules (see for instance
-<em class="file">obs_def_1d_state_mod.f90</em>) 
+<em class="file">obs_def_1d_state_mod.f90</em>)
 contain code for evaluating forward observation
 operators, reading or writing special information about an observation
 definition to an obs sequence file, or for interactive definition of an
@@ -97,30 +97,30 @@ observation. The use statements for these routines from the special
 observation definition modules are inserted here.<br><br>
 </li>
 <li>
-! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE <BR>
+<code>! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE </code><BR>
 Special observation definition modules must contain case statement code saying
 what to do to evaluate a forward observation operator for each observation type
 that they define.
 This code is inserted here.<br><br>
 </li>
 <li>
-! DART PREPROCESS READ_OBS_DEF INSERTED HERE <BR>
+<code>! DART PREPROCESS READ_OBS_DEF INSERTED HERE  </code><BR>
 Special observation definition modules must contain case statement code saying
 what to do to read any additional information required for each observation type
 that they define from an observation sequence file.
 This code is inserted here.<br><br>
 </li>
 <li>
-! DART PREPROCESS WRITE_OBS_DEF INSERTED HERE <BR>
+<code>! DART PREPROCESS WRITE_OBS_DEF INSERTED HERE </code><BR>
 Special observation definition modules must contain case statement code saying
 what to do to write any additional information required for each observation
 type that they define to an observation sequence file.
 This code is inserted here.<br><br>
 </li>
 <li>
-! DART PREPROCESS INTERACTIVE_OBS_DEF INSERTED HERE <BR>
+<code>! DART PREPROCESS INTERACTIVE_OBS_DEF INSERTED HERE </code><BR>
 Special observation definition modules must contain case statement code saying
-what to do to interactively create any additional information required for each 
+what to do to interactively create any additional information required for each
 observation type that they define.
 This code is inserted here.<br><br>
 </li>

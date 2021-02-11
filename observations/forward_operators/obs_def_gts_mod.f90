@@ -2,9 +2,8 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !BUOY_U_WIND_COMPONENT,        QTY_U_WIND_COMPONENT,      COMMON_CODE
 !BUOY_V_WIND_COMPONENT,        QTY_V_WIND_COMPONENT,      COMMON_CODE
 !BUOY_SURFACE_PRESSURE,        QTY_SURFACE_PRESSURE,      COMMON_CODE
@@ -38,7 +37,7 @@
 !PROFILER_V_WIND_COMPONENT,    QTY_V_WIND_COMPONENT,      COMMON_CODE
 !PROFILER_PRESSURE,            QTY_PRESSURE,              COMMON_CODE
 !SATEM_THICKNESS,              QTY_TEMPERATURE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_gts_mod, only : get_expected_thickness
@@ -232,8 +231,3 @@ end subroutine get_expected_thickness
 end module obs_def_gts_mod
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

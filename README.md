@@ -54,7 +54,7 @@ The top level DART source code tree contains the following directories and files
 
 | Directory            | Purpose  |
 | :--------------      | :------- |
-| `assimilation_code/` | Low-level library and fonts required by NCAR Graphics and NCL |
+| `assimilation_code/` | assimilation tools and programs |
 | `build_templates/`   | Configuration files for installation |
 | `developer_tests/`   | regression testing |
 | `diagnostics/`       | routines to diagnose assimilation performance |
