@@ -24,11 +24,6 @@ public :: create_mean_window, create_state_window, free_mean_window, &
           free_state_window, data_count, mean_win, state_win, current_win, &
           mean_ens_handle, NO_WINDOW, MEAN_WINDOW, STATE_WINDOW
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'no_cray_win_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 ! mpi window handles
 integer :: state_win   !< window for the forward operator
 integer :: mean_win    !< window for the mean

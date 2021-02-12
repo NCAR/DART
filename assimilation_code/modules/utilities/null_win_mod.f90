@@ -13,18 +13,12 @@ use ensemble_manager_mod, only : ensemble_type, copies_in_window, &
                                  set_num_extra_copies, &
                                  end_ensemble_manager
 
-
 implicit none
 
 private
 public :: create_mean_window, create_state_window, free_mean_window, &
           free_state_window, data_count, mean_win, state_win, current_win, &
           mean_ens_handle, NO_WINDOW, MEAN_WINDOW, STATE_WINDOW
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'null_win_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
 integer :: data_count !! number of copies in the window
 type(ensemble_type) :: mean_ens_handle

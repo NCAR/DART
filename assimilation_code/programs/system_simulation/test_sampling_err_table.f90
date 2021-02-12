@@ -22,12 +22,6 @@ use sampling_error_correction_mod, only : get_sampling_error_table_size, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'test_sampling_err_table.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
-
 real(r8), allocatable :: true_correl_mean(:), alpha(:)
 
 integer :: i, requested_ens_size, table_size

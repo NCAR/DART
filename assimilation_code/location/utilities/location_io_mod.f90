@@ -39,11 +39,6 @@ public :: nc_write_location_atts, nc_get_location_varids, &
           nc_write_location, nc_write_location_vert,      &
           nc_add_location_atts
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'location_io_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 ! should import these but they don't exist in low order locations mods
 !>@todo define them all here and replicate in the ones which use them.
 

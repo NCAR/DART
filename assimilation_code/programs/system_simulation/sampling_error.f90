@@ -9,11 +9,6 @@ use random_seq_mod, only : random_seq_type, init_random_seq, twod_gaussians
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'sampling_error.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 integer, parameter :: sample_size = 1000000
 type (random_seq_type) :: ran_id
 real(r8) :: zero_2(2) = 0.0, cov(2, 2)

@@ -24,11 +24,6 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'sys_sim202.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 type (random_seq_type) :: r
 double precision, allocatable :: rnum(:)
 double precision :: sigma_y_p, y_p, sigma_y_o, y_o

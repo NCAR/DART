@@ -11,7 +11,6 @@ module default_location_mod
 ! anything outside of the location modules.
 
 use            types_mod, only : r8
-use        utilities_mod, only : register_module
 use ensemble_manager_mod, only : ensemble_type
 
 implicit none
@@ -19,11 +18,6 @@ private
 
 public :: has_vertical_choice, vertical_localization_on, &
           get_vertical_localization_coord, set_vertical_localization_coord
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'utilities/default_location_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
 integer :: location_vertical_localization_coord = 0
 
@@ -37,7 +31,6 @@ subroutine initialize_module
  
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 end subroutine initialize_module

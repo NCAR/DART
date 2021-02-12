@@ -42,7 +42,7 @@ use time_manager_mod, only : time_type, set_time, get_time, print_time, &
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=), operator(>=)
-use    utilities_mod, only : open_file, close_file, register_module, &
+use    utilities_mod, only : open_file, close_file, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG,  &
                              initialize_utilities, logfileunit, nmlfileunit,   &
                              find_namelist_in_file, check_namelist_read,       &
@@ -61,10 +61,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'oned/obs_diag.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'oned/obs_diag.f90'
 
 !---------------------------------------------------------------------
 
@@ -281,7 +278,6 @@ integer :: num_ambiguous = 0   ! prior QC 7, posterior mean MISSING_R8
 !=======================================================================
 
 call initialize_utilities('obs_diag')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 num_obs_types = max_defined_types_of_obs ! for compatibility with 3D version
@@ -442,7 +438,7 @@ ObsFileLoop : do ifile=1, num_input_files
          if (size(ens_copy_index) /= ens_size) then
             write(string1,'(''expecting '',i3,'' ensemble members, got '',i3)') &
                                        size(ens_copy_index), ens_size
-            call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+            call error_handler(E_ERR,'obs_diag',string1,source)
          endif
       else
          ! This should happen exactly once, if at all.
@@ -697,8 +693,7 @@ enddo ObsFileLoop
 call NormalizeTRV()
 
 if (sum(obs_used_in_epoch) == 0 ) then
-   call error_handler(E_ERR,'obs_diag','All identity observations. Stopping.', &
-                     source, revision, revdate)
+   call error_handler(E_ERR,'obs_diag','All identity observations. Stopping.', source)
 endif
 
 ! Print final summary.
@@ -1004,8 +999,7 @@ do ifile = 1, num_input_files
    else
       write(string1,*)'input observation file does not exist'
       write(string2,*)'looking for "'//trim(obs_sequence_name(ifile))//'"'
-      call error_handler(E_ERR, routine, string1, &
-                 source, revision, revdate, text2=string2)
+      call error_handler(E_ERR, routine, string1, source, text2=string2)
    endif
 
    ! Read in information about observation sequence so we can allocate
@@ -1030,7 +1024,7 @@ do ifile = 1, num_input_files
    is_there_one = get_first_obs(seq, obs1)
    if ( .not. is_there_one ) then
       call error_handler(E_ERR,routine,'No first observation in sequence.', &
-      source,revision,revdate,text2=obs_sequence_name(ifile))
+      source,text2=obs_sequence_name(ifile))
    endif
    call get_obs_def(obs1,   obs_def)
    seqT1 = get_obs_def_time(obs_def)
@@ -1038,7 +1032,7 @@ do ifile = 1, num_input_files
    is_there_one = get_last_obs(seq, obsN)
    if ( .not. is_there_one ) then
       call error_handler(E_ERR,routine,'No last observation in sequence.', &
-      source,revision,revdate,text2=obs_sequence_name(ifile))
+      source,text2=obs_sequence_name(ifile))
    endif
    call get_obs_def(obsN,   obs_def)
    seqTN = get_obs_def_time(obs_def)
@@ -1081,7 +1075,7 @@ enddo
 
 if (nsteps < 1) then
    write(string1,*)'cannot find any times in the ',num_input_files,' input files.'
-   call error_handler(E_ERR,'DetermineNumEpochs',string1,source,revision,revdate)
+   call error_handler(E_ERR,'DetermineNumEpochs',string1,source)
 endif
 
 ! Summarize first and last observations, first and last bins
@@ -1112,7 +1106,7 @@ if (timeN < time_to_skip) then
    call print_date(time_to_skip, ' implied skip-to-date')
    call print_time(time_to_skip, ' implied skip-to-time')
    write(string1,*)'Namelist set to skip beyond the last observation time.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 end subroutine DetermineNumEpochs
@@ -1145,7 +1139,7 @@ elseif ( (bin_width_days <  0) .and. (bin_width_seconds >= 0) .or. &
 
    write(string1,*)'bin_width_[days,seconds] must be non-negative, they are ', &
    bin_width_days, bin_width_seconds
-   call error_handler(E_ERR,'DefineTemporalBins',string1,source,revision,revdate, &
+   call error_handler(E_ERR,'DefineTemporalBins',string1,source, &
           text2='namelist parameter out-of-bounds. Fix and try again.')
 
 elseif ( (bin_width_days <= 0) .and. (bin_width_seconds <= 0) ) then
@@ -1183,8 +1177,7 @@ else ! honor the user input
    elseif (nbins == 0) then
       write(string1,*)'namelist settings for bin width results in no useful bins.'
       write(string2,*)'Stopping.'
-      call error_handler(E_MSG,'DefineTemporalBins',string1, &
-                 source, revision, revdate, text2=string2)
+      call error_handler(E_MSG,'DefineTemporalBins',string1,source,text2=string2)
       Nepochs = nbins
    endif
    obsTN = obsT1 + (Nepochs-1)*binwidth
@@ -1418,7 +1411,7 @@ if ( obs_index < 0 ) then
    else
       write(string1,*)'metadata:"observation" not found'
    endif
-   call error_handler(E_ERR,'SetIndices',string1,source,revision,revdate)
+   call error_handler(E_ERR,'SetIndices',string1,source)
 endif
 
 !--------------------------------------------------------------------
@@ -1474,8 +1467,7 @@ if ( any( (/ prior_mean_index, prior_spread_index/) < 0) ) then
    string1 = 'Observation sequence has no prior information.'
    string2 = 'You will still get a count, maybe observation value, incoming qc, ...'
    string3 = 'For simple information, you may want to use "obs_seq_to_netcdf" instead.'
-   call error_handler(E_MSG, 'SetIndices', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+   call error_handler(E_MSG, 'SetIndices', string1, source, text2=string2, text3=string3)
 endif
 
 has_posteriors = .true.
@@ -1483,8 +1475,7 @@ if ( any( (/ posterior_mean_index, posterior_spread_index /) < 0) ) then
    has_posteriors = .false.
    string1 = 'Observation sequence has no posterior information,'
    string2 = 'therefore - posterior diagnostics are not possible.'
-   call error_handler(E_WARN, 'SetIndices', string1, &
-              source, revision, revdate, text2=string2)
+   call error_handler(E_WARN, 'SetIndices', string1, source, text2=string2)
 endif
 
 end subroutine SetIndices
@@ -1756,7 +1747,7 @@ end function Rank_Histogram
 
    if(.not. byteSizesOK()) then
        call error_handler(E_ERR,'WriteNetCDF', &
-      'Compiler does not support required kinds of variables.',source,revision,revdate)
+      'Compiler does not support required kinds of variables.',source)
    endif
 
    call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
@@ -1771,12 +1762,8 @@ end function Rank_Histogram
                   values(1), values(2), values(3), values(5), values(6), values(7)
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(string1) ), &
               'WriteNetCDF', 'put_att creation_date '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_source', source ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_source', source), &
               'WriteNetCDF', 'put_att obs_diag_source '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_revision', revision ), &
-              'WriteNetCDF', 'put_att obs_diag_revision '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_revdate', revdate ), &
-              'WriteNetCDF', 'put_att obs_diag_revdate '//trim(fname))
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'LocationRank', LocationDims ), &
               'WriteNetCDF', 'put_att LocationRank '//trim(fname))
 
@@ -2261,15 +2248,13 @@ logical,         SAVE :: first_time = .true.
 type(time_type), SAVE :: absolute_first, absolute_last
 
 if ( .not. get_first_obs(my_sequence, my_obs1) ) then
-   call error_handler(E_ERR,'obs_diag','No first observation in '//trim(my_fname), &
-   source,revision,revdate)
+   call error_handler(E_ERR,'obs_diag','No first observation in '//trim(my_fname),source)
 endif
 call get_obs_def(my_obs1,   obs_def)
 my_seqT1 = get_obs_def_time(obs_def)
 
 if ( .not. get_last_obs(my_sequence, my_obsN) ) then
-   call error_handler(E_ERR,'obs_diag','No last observation in '//trim(my_fname), &
-   source,revision,revdate)
+   call error_handler(E_ERR,'obs_diag','No last observation in '//trim(my_fname),source)
 endif
 call get_obs_def(my_obsN,   obs_def)
 my_seqTN = get_obs_def_time(obs_def)
@@ -2383,7 +2368,7 @@ end function No_Time_Intersection
           trusted_list(num_trusted) = trim(trusted_obs(i))
       else
          write(string1,*)'trusted_obs "',trim(trusted_obs(i)),'" is not a supported observation type.'
-         call error_handler(E_WARN, 'DefineTrustedObs', trim(string1), source, revision, revdate)
+         call error_handler(E_WARN, 'DefineTrustedObs', trim(string1), source)
       endif
    enddo CountTrusted
 

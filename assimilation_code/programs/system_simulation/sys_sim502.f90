@@ -19,11 +19,6 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'sys_sim502.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 integer, parameter :: num_bins = 50
 real(r8) :: sum(num_bins) = 0.0, sum2(num_bins)
 integer  :: num(num_bins) = 0.0

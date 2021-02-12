@@ -12,7 +12,7 @@ module location_mod
 ! from -90 to 90 for consistency with most applications in the field.
 
 use      types_mod, only : r8, DEG2RAD, RAD2DEG, PI, MISSING_R8
-use  utilities_mod, only : register_module, error_handler, E_ERR, &
+use  utilities_mod, only : error_handler, E_ERR, &
                            ascii_file_format, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
@@ -29,10 +29,7 @@ public :: location_type, get_location, set_location, &
           vert_is_surface, has_vertical_localization, &
           set_vert, get_vert, set_which_vert
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'twod_sphere/location_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'twod_sphere/location_mod.f90'
 
 type location_type
    private
@@ -73,7 +70,6 @@ subroutine initialize_module
  
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 end subroutine initialize_module
@@ -173,12 +169,12 @@ if ( .not. module_initialized ) call initialize_module
 
 if(lon < 0.0_r8 .or. lon > 360.0_r8) then
    write(errstring,*)'longitude (',lon,') is not within range [0,360]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 if(lat < -90.0_r8 .or. lat > 90.0_r8) then
    write(errstring,*)'latitude (',lat,') is not within range [-90,90]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_single%lon = lon * DEG2RAD
@@ -200,7 +196,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if (size(list) < 2) then
    write(errstring,*)'requires 2 input values'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_array = set_location_single(list(1), list(2))
@@ -250,7 +246,7 @@ select case(attr)
    query_location = loc%lat
  case default
    call error_handler(E_ERR, 'query_location; twod_sphere', &
-         'Only lon or lat are legal attributes to request from location', source, revision, revdate)
+         'Only lon or lat are legal attributes to request from location', source)
 end select
 
 end function query_location
@@ -297,8 +293,7 @@ endif
 ! to a file, and you can't have binary format set.
 if (.not. ascii_file_format(fform)) then
    call error_handler(E_ERR, 'write_location', &
-      'Cannot use string buffer with binary format', &
-       source, revision, revdate)
+      'Cannot use string buffer with binary format', source)
 endif
 
 ! format the location to be more human-friendly; meaning
@@ -309,7 +304,7 @@ charlength = 39
 
 if (len(charstring) < charlength) then
    write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
-   call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'write_location', errstring, source)
 endif
 
 write(charstring, '(A,F12.8,1X,F12.8)') 'Lon/Lat(deg): ',  loc%lon*RAD2DEG, loc%lat*RAD2DEG
@@ -335,7 +330,7 @@ if (ascii_file_format(fform)) then
    read(locfile, '(a5)' ) header
    if(header /= 'loc2s') then
       write(errstring,*)'Expected location header "loc2s" in input file, got ', header 
-      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'read_location', errstring, source)
    endif
    ! Now read the location data value
    read(locfile, *) read_location%lon, read_location%lat
@@ -465,7 +460,7 @@ real(r8) :: this_dist
 ! you have to destroy the old gc and init a new one.
 if (size(obs) /= gc%num) then
    write(errstring,*)'obs() array must match one passed to get_close_obs_init()'
-   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_close_obs', errstring, source)
 endif
 
 ! Return list of obs that are within maxdist and their distances

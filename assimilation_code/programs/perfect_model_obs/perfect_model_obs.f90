@@ -7,7 +7,7 @@
 program perfect_model_obs
 
 use        types_mod,     only : r8, i8, metadatalength, MAX_NUM_DOMS
-use    utilities_mod,     only : register_module, error_handler, &
+use    utilities_mod,     only : error_handler, &
                                  find_namelist_in_file, check_namelist_read, &
                                  E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp, &
                                  do_nml_file, do_nml_term, logfileunit, &
@@ -63,10 +63,7 @@ use mpi_utilities_mod,    only : my_task_id
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'perfect_model_obs.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'perfect_model_obs.f90'
 
 ! Module storage for message output
 character(len=512) :: msgstring
@@ -284,7 +281,7 @@ endif
 !> and sd, and then maybe we should have a different name for output of input values.)
 if (nfilesin == 0 .or. nfilesout == 0 ) then
    msgstring = 'must specify both "input_state_files" and "output_state_files" in the namelist'
-   call error_handler(E_ERR,'perfect_main',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'perfect_main',msgstring,source)
 endif
 
 call io_filenames_init(file_info_input,  1, cycling=has_cycling, single_file=single_file_in)
@@ -323,7 +320,7 @@ endif
 if (my_task_id() == 0) then
    call get_time(ens_handle%time(1),secs,days)
    write(msgstring, *) 'initial model time of perfect_model member (days,seconds) ',days,secs
-   call error_handler(E_DBG,'perfect_read_restart',msgstring,source,revision,revdate)
+   call error_handler(E_DBG,'perfect_read_restart',msgstring,source)
 endif
 
 call trace_message('After reading in ensemble restart file')
@@ -352,7 +349,7 @@ if(first_obs_seconds > 0 .or. first_obs_days > 0) then
    call delete_seq_head(first_obs_time, seq, all_gone)
    if(all_gone) then
       msgstring = 'All obs in sequence are before first_obs_days:first_obs_seconds'
-      call error_handler(E_ERR,'perfect_main',msgstring,source,revision,revdate)
+      call error_handler(E_ERR,'perfect_main',msgstring,source)
    endif
 endif
 
@@ -364,7 +361,7 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
    call delete_seq_tail(last_obs_time, seq, all_gone)
    if(all_gone) then
       msgstring = 'All obs in sequence are after last_obs_days:last_obs_seconds'
-      call error_handler(E_ERR,'perfect_main',msgstring,source,revision,revdate)
+      call error_handler(E_ERR,'perfect_main',msgstring,source)
    endif
 endif
 
@@ -417,7 +414,7 @@ AdvanceTime: do
       if (.not. has_cycling) then
          call error_handler(E_ERR,'filter:', &
              'advancing the model inside PMO and multiple file output not currently supported', &
-             source, revision, revdate, text2='support will be added in subsequent releases', &
+             source, text2='support will be added in subsequent releases', &
              text3='set "single_file_out=.true" for PMO to advance the model, or advance the model outside PMO')
       endif
 
@@ -630,7 +627,7 @@ call trace_message('After  ensemble and obs memory cleanup')
 call trace_message('Perfect_model done')
 call timestamp_message('Perfect_model done')
 
-!call error_handler(E_MSG,'perfect_main','FINISHED',source,revision,revdate)
+!call error_handler(E_MSG,'perfect_main','FINISHED',source)
 
 ! closes the log file.
 call finalize_mpi_utilities()
@@ -646,7 +643,6 @@ subroutine perfect_initialize_modules_used()
 call initialize_mpi_utilities('perfect_model_obs')
 
 ! Initialize modules used that require it
-call register_module(source,revision,revdate)
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()

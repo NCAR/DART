@@ -4,8 +4,7 @@
 
 module obs_model_mod
 
-use utilities_mod,        only : register_module, error_handler,     &
-                                 E_ERR, E_MSG, E_WARN,               &
+use utilities_mod,        only : error_handler, E_ERR, E_MSG, E_WARN, &
                                  get_unit, file_exist, set_output
 use assim_model_mod,      only : get_closest_state_time_to,         &
                                  get_model_time_step,  adv_1step
@@ -32,10 +31,7 @@ private
 
 public :: move_ahead, advance_state, set_obs_model_trace, have_members
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_model_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'obs_model_mod.f90'
 
 logical :: module_initialized  = .false.
 integer :: print_timestamps    = 0
@@ -52,7 +48,6 @@ contains
 
 subroutine initialize_module
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 end subroutine initialize_module
@@ -253,7 +248,7 @@ if(next_time < start_time .or. next_time > end_time .or. print_trace_details > 0
       call error_handler(E_MSG, ' ', ' ')
       call error_handler(E_ERR, 'move_ahead', &
         'Inconsistent model state/observation times, cannot continue', &
-         source, revision, revdate, text2=errstring1, text3=errstring2)
+         source, text2=errstring1, text3=errstring2)
    endif
 endif
 
@@ -347,7 +342,7 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
       call get_time(ens_handle%time(i), is1, id1)
       call get_time(target_time, is2, id2)
       write(errstring,*)'target time ',is2,id2,' is before model_time ',is1,id1
-      call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+      call error_handler(E_ERR,'advance_state', errstring, source)
    endif
 
    ! Ok, this task does need to advance something. 
@@ -373,9 +368,9 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
       ! Can only handle up to 10000 ensemble members
       if(global_ens_index >= 10000) then
          write(errstring,*)'Trying to use ', ens_size,' model states -- too many.'
-         call error_handler(E_WARN,'advance_state',errstring,source,revision,revdate)
+         call error_handler(E_WARN,'advance_state',errstring,source)
          call error_handler(E_ERR,'advance_state','Use less than 10000 member ensemble.', &
-            source,revision,revdate)
+            source)
       endif
 
       !>@todo FIXME write the netCDF restart names into the control file
@@ -405,7 +400,7 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
 
    ! Get a unique name for the control file; use process id
    if(my_task_id() >= 10000) call error_handler(E_ERR, 'advance_state', &
-      'Can only have 10000 processes', source, revision, revdate)
+      'Can only have 10000 processes', source)
    write(control_file_name, '("filter_control", i5.5)') my_task_id()
 
    if (async == 2) then
@@ -439,7 +434,7 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
            write(errstring, "(A)")'If advance script finishes ok it removes '//trim(control_file_name)
            write(errstring1,"(A)")'It still exists, so 1+ members listed in that file failed to run'
            write(errstring2,"(A)")'Check the output of the model or script to find the error.'
-           call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate, &
+           call error_handler(E_ERR,'advance_state', errstring, source, &
                               text2=errstring1, text3=errstring2)
          endif
       endif
@@ -490,14 +485,14 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
         write(errstring, "(A)")'If advance script finishes ok it removes '//trim(control_file_name)
         write(errstring1,"(A)")'It still exists, so 1+ members listed in that file failed to run'
         write(errstring2,"(A)")'Check the output of the model or script to find the error.'
-        call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate, &
+        call error_handler(E_ERR,'advance_state', errstring, source, &
                            text2=errstring1, text3=errstring2)
       endif
 
    else
       ! Unsupported option for async error
       write(errstring,*)'input.nml - async is ',async,' must be 0, 2, or 4'
-      call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+      call error_handler(E_ERR,'advance_state', errstring, source)
    endif
 
    ! All should be done, read in the states and proceed
@@ -527,7 +522,7 @@ if (have_members(ens_handle, ens_size)) then
        
          write(errstring2, *) 'in timestamp on ensemble member ', ens_handle%my_copies(i)
          call error_handler(E_ERR,  'advance_state', 'Model advance complete but model time not correct', &
-                            source, revision, revdate, text2=errstring2)
+                            source, text2=errstring2)
       endif
    enddo
 

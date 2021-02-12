@@ -16,11 +16,6 @@ use random_seq_mod, only : random_seq_type, init_random_seq, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'system_simulation.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 type (random_seq_type) :: r
 real(r8), allocatable :: rnum(:, :)
 real(r8) :: c(2, 2), sum_err_var, sigma_y_p, sigma_y_o, sigma_x_p

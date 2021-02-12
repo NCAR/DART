@@ -14,11 +14,6 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'sys_sim301.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 type (random_seq_type) :: r
 double precision :: y_o, sigma_y_o, y_p, sigma_y_p, dist_sq, sample_mean
 double precision :: dist_sq_sum, mean_dist_sq

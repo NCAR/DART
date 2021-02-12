@@ -12,7 +12,7 @@ module location_mod
 ! the threed_sphere or threed_cartesian versions of this file.
 
 use            types_mod, only : r8, MISSING_R8, i8
-use        utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format
+use        utilities_mod, only : error_handler, E_ERR, ascii_file_format
 use       random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use ensemble_manager_mod, only : ensemble_type
 use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
@@ -31,11 +31,7 @@ public :: location_type, get_location, set_location, &
           set_vertical, is_vertical, get_vertical_localization_coord, &
           set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state
 
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'threed/location_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'threed/location_mod.f90'
 
 type location_type
    private
@@ -78,7 +74,6 @@ subroutine initialize_module
  
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 end subroutine initialize_module
@@ -179,17 +174,17 @@ if ( .not. module_initialized ) call initialize_module
 
 if(x < 0.0_r8 .or. x > 1.0_r8) then
    write(errstring,*)'x (',x,') is not within range [0,1]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 if(y < 0.0_r8 .or. y > 1.0_r8) then
    write(errstring,*)'y (',y,') is not within range [0,1]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 if(z < 0.0_r8 .or. z > 1.0_r8) then
    write(errstring,*)'z (',z,') is not within range [0,1]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_single%x = x
@@ -212,7 +207,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if (size(list) < 3) then
    write(errstring,*)'requires 3 input values'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_array = set_location_single(list(1), list(2), list(3))
@@ -265,7 +260,7 @@ select case(attr)
    query_location = loc%z
  case default
    call error_handler(E_ERR, 'query_location; threed', &
-         'Only x, y, or z are legal attributes to request from location', source, revision, revdate)
+         'Only x, y, or z are legal attributes to request from location', source)
 end select
 
 end function query_location
@@ -311,8 +306,7 @@ endif
 ! to a file, and you can't have binary format set.
 if (.not. ascii_file_format(fform)) then
    call error_handler(E_ERR, 'write_location', &
-      'Cannot use string buffer with binary format', &
-       source, revision, revdate)
+      'Cannot use string buffer with binary format', source)
 endif
 
 ! format the location to be more human-friendly; which in
@@ -323,7 +317,7 @@ charlength = 38
 
 if (len(charstring) < charlength) then
    write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
-   call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'write_location', errstring, source)
 endif
 
 write(charstring, '(A,F9.7,2(2X,F9.7))') 'X/Y/Z: ',  loc%x, loc%y, loc%z
@@ -350,7 +344,7 @@ if (ascii_file_format(fform)) then
    read(locfile, '(a5)' ) header
    if(header /= 'loc3D') then
       write(errstring,*)'Expected location header "loc3D" in input file, got ', header 
-      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'read_location', errstring, source)
    endif
    ! Now read the location data value
    read(locfile, *) read_location%x, read_location%y, read_location%z
@@ -441,7 +435,7 @@ gc%num = num
 
 if (present(maxdist_list)) then
    write(errstring,*)'threed locations does not support different cutoff distances by type'
-   call error_handler(E_ERR, 'get_close_init', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_close_init', errstring, source)
 endif
 
 end subroutine get_close_init
@@ -475,7 +469,7 @@ real(r8) :: this_dist
 ! you have to destroy the old gc and init a new one.
 if (size(locs) /= gc%num) then
    write(errstring,*)'locs() array must match one passed to get_close_init()'
-   call error_handler(E_ERR, 'get_close', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_close', errstring, source)
 endif
 
 ! Return list of obs that are within maxdist and their distances

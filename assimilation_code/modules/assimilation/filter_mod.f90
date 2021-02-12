@@ -28,7 +28,7 @@ use obs_def_utilities_mod, only : set_debug_fwd_op
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                   operator(-), print_time
 
-use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
+use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,       &
                                   logfileunit, nmlfileunit, timestamp,  &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
@@ -101,10 +101,7 @@ public :: filter_sync_keys_time, &
           filter_set_initial_time, &
           filter_main
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'filter_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'filter_mod.f90'
 
 ! Some convenient global storage items
 character(len=512)      :: msgstring, string2, string3
@@ -385,12 +382,12 @@ call timestamp_message('Filter start')
 ! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
 if(ens_size < 2) then
    write(msgstring, *) 'ens_size in namelist is ', ens_size, ': Must be > 1'
-   call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'filter_main', msgstring, source)
 endif
 
 ! informational message to log
 write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
-call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
+call error_handler(E_MSG,'filter_main:', msgstring, source)
 
 ! See if smoothing is turned on
 ds = do_smoothing()
@@ -442,7 +439,7 @@ has_cycling = single_file_out
 if (has_cycling .and. write_all_stages_at_end) then
    call error_handler(E_ERR,'filter:', &
          'advancing the model inside filter and writing all state data at end not supported', &
-          source, revision, revdate, text2='delaying write until end only supported when advancing model outside filter', &
+          source, text2='delaying write until end only supported when advancing model outside filter', &
           text3='set "write_all_stages_at_end=.false." to cycle and write data as it is computed')
 endif
 
@@ -511,7 +508,7 @@ else
 endif
 ! don't print if running single task.  transposes don't matter in this case.
 if (task_count() > 1) &
-   call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
+   call error_handler(E_MSG,'filter_main:', msgstring, source)
 
 call set_num_extra_copies(state_ens_handle, num_extras)
 
@@ -521,13 +518,12 @@ call trace_message('After  setting up space for ensembles')
 if(task_count() > model_size) then 
    write(msgstring, *) 'number of MPI processes = ', task_count(), ' while model size = ', model_size
    call error_handler(E_ERR,'filter_main', &
-      'Cannot have number of processes > model size' ,source,revision,revdate, &
-       text2=msgstring)
+      'Cannot have number of processes > model size' ,source, text2=msgstring)
 endif
 
 if(.not. compute_posterior) then
    msgstring = 'skipping computation of posterior forward operators'
-   call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
+   call error_handler(E_MSG,'filter_main:', msgstring, source)
 endif
 
 ! Set a time type for initial time if namelist inputs are not negative
@@ -611,7 +607,7 @@ if(first_obs_seconds > 0 .or. first_obs_days > 0) then
    call delete_seq_head(first_obs_time, seq, all_gone)
    if(all_gone) then
       msgstring = 'All obs in sequence are before first_obs_days:first_obs_seconds'
-      call error_handler(E_ERR,'filter_main',msgstring,source,revision,revdate)
+      call error_handler(E_ERR,'filter_main',msgstring,source)
    endif
 endif
 
@@ -624,7 +620,7 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
    call delete_seq_tail(last_obs_time, seq, all_gone)
    if(all_gone) then
       msgstring = 'All obs in sequence are after last_obs_days:last_obs_seconds'
-      call error_handler(E_ERR,'filter_main',msgstring,source,revision,revdate)
+      call error_handler(E_ERR,'filter_main',msgstring,source)
    endif
 endif
 
@@ -655,9 +651,8 @@ if (get_stage_to_write('input')) then
            call write_augmented_state(state_ens_handle, file_info_input)
         else
            call error_handler(E_ERR,'filter_main', &
-                              'can not insert mean or spread into input files that have multiple time steps',  &
-                              source, revision, revdate, &
-                              text2='please remove "input" from stages_to_write')
+                   'can not insert mean or spread into input files that have multiple time steps',  &
+                   source, text2='please remove "input" from stages_to_write')
         endif
      else ! muti file case
         ! write out input_mean.nc and input_sd.nc if requested
@@ -731,7 +726,7 @@ AdvanceTime : do
       if (.not. has_cycling) then
          call error_handler(E_ERR,'filter:', &
              'advancing the model inside filter and multiple file output not currently supported', &
-             source, revision, revdate, text2='support will be added in subsequent releases', &
+             source, text2='support will be added in subsequent releases', &
              text3='set "single_file_out=.true" for filter to advance the model, or advance the model outside filter')
       endif
 
@@ -1276,7 +1271,7 @@ endif
 if(num_output_obs_members > 10000) then
    write(msgstring, *)'output metadata in filter needs obs ensemble size < 10000, not ',&
                       num_output_obs_members
-   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source)
 endif
 
 ! Set up obs ensemble members as requested
@@ -1299,7 +1294,6 @@ end subroutine filter_generate_copy_meta_data
 subroutine filter_initialize_modules_used()
 
 call trace_message('Before filter_initialize_module_used call')
-call register_module(source,revision,revdate)
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
@@ -1395,8 +1389,7 @@ if (input_qc_index < 0) then
       input_qc_index = get_blank_qc_index(seq)
       if (input_qc_index < 0) then
          call error_handler(E_ERR,'filter_setup_obs_sequence', &
-           'error adding blank qc field to sequence; should not happen', &
-            source, revision, revdate)
+           'error adding blank qc field to sequence; should not happen', source)
       endif
    endif
    ! Since we are constructing a dummy QC, label it as such
@@ -1414,8 +1407,7 @@ if (DART_qc_index < 0 .and. my_task == io_task) then
       DART_qc_index = get_blank_qc_index(seq)
       if (DART_qc_index < 0) then
          call error_handler(E_ERR,'filter_setup_obs_sequence', &
-           'error adding blank qc field to sequence; should not happen', &
-            source, revision, revdate)
+           'error adding blank qc field to sequence; should not happen', source)
       endif
    endif
    call set_qc_meta_data(seq, DART_qc_index, dqc_meta_data)
@@ -1444,8 +1436,7 @@ do i = 1, get_num_copies(seq)
 end do
 ! Falling of end means 'observations' not found; die
 call error_handler(E_ERR,'get_obs_copy_index', &
-   'Did not find observation copy with metadata "observation"', &
-      source, revision, revdate)
+   'Did not find observation copy with metadata "observation"', source)
 
 end function get_obs_copy_index
 
@@ -1608,7 +1599,7 @@ do group = 1, num_groups
    if ( do_rtps_inflate(inflate)) then 
       if ( present(SPARE_PRIOR_SPREAD) .and. present(ENS_SD_COPY)) then 
          write(msgstring, *) ' doing RTPS inflation'
-         call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source,revision,revdate)
+         call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source)
 
          !Reset the RTPS factor to the given input.nml value
          ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(POSTERIOR)
@@ -1620,7 +1611,7 @@ do group = 1, num_groups
          end do 
       else 
          write(msgstring, *) 'internal error: missing arguments for RTPS inflation, should not happen'
-         call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source,revision,revdate)
+         call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source)
       endif 
    else 
       do j = 1, ens_handle%my_num_vars
@@ -2514,12 +2505,10 @@ do i = 1, nstages
       CASE ('INPUT', 'FORECAST', 'PREASSIM', 'POSTASSIM', 'ANALYSIS', 'OUTPUT')
          call set_stage_to_write(stages(i),.true.)
          write(msgstring,*)"filter will write stage : "//trim(stages(i))
-         call error_handler(E_MSG,'parse_stages_to_write:', &
-                         msgstring,source,revision,revdate)
+         call error_handler(E_MSG,'parse_stages_to_write:',msgstring,source)
       CASE DEFAULT
          write(msgstring,*)"unknown stage : "//trim(stages(i))
-         call error_handler(E_ERR,'parse_stages_to_write:', &
-                            msgstring,source,revision,revdate, &
+         call error_handler(E_ERR,'parse_stages_to_write:',msgstring,source, &
                            text2="currently supported stages include :",&
                            text3="input, forecast, preassim, postassim, analysis, output")
    END SELECT

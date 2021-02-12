@@ -18,11 +18,6 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'sys_sim104.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 type (random_seq_type) :: r
 double precision :: sd_ratio, mean_move, mean_move_2, alpha, ratio
 double precision, allocatable :: rnum(:), var_hist(:)

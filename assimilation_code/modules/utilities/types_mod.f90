@@ -21,11 +21,6 @@ public :: L_over_Rv, ps0, earth_radius, gravity
 public :: metadatalength, obstypelength, varnamelength, vtablenamelength
 public :: MAX_NUM_DOMS, MAX_FILES
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'types_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 !----------------------------------------------------------------------------
 ! constants that need to be shared - really has nothing to do with types ...
 !----------------------------------------------------------------------------

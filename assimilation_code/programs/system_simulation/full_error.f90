@@ -22,15 +22,10 @@ use random_seq_mod, only : random_seq_type, init_random_seq, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'full_error.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
+character(len=*), parameter :: source = 'full_error.f90'
 
 integer, parameter :: num_times   = 1
 integer, parameter :: num_samples = 100000000
-
 
 ! ---------------
 ! namelist items
@@ -160,7 +155,7 @@ do i = 1, 200
    if(bin_count(i) <= 1) then
       write(errstring, *) 'Bin ', i, ' has ', bin_count(i), ' counts'
       call error_handler(E_ERR,'full_error', errstring, &
-         source, revision, revdate, text2="All bins must have at least 2 counts")
+         source, text2="All bins must have at least 2 counts")
    endif
    
    ! Compute the standard deviation of the true correlations

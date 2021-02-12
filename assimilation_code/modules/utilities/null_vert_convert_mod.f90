@@ -14,11 +14,6 @@ private
 
 public :: query_vert_localization_coord, vert_convert_distrib, get_close_obs_distrib
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'null_vert_convert_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 contains
 
 !--------------------------------------------------------------------

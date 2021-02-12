@@ -30,11 +30,6 @@ private
 public :: get_state_array, get_state, create_state_window, &
           free_state_window, create_mean_window, free_mean_window
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'distributed_state_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 contains
 
 !---------------------------------------------------------

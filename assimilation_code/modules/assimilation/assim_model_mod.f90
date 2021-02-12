@@ -16,8 +16,6 @@ use time_manager_mod, only : time_type,                                         
                              operator(<), operator(>), operator(+), operator(-),   &
                              operator(/), operator(*), operator(==), operator(/=)
 
-use utilities_mod, only : register_module
-
 use ensemble_manager_mod, only : ensemble_type
 
 ! these are the required model_mod interfaces:
@@ -50,12 +48,6 @@ public :: static_init_assim_model, &
           read_model_time, &
           write_model_time
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'assim_model_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
-
 ! Ensure init code is called exactly once
 logical :: module_initialized = .false.
 
@@ -77,7 +69,6 @@ contains
 if (module_initialized) return
 
 ! First thing to do is echo info to logfile ... 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 ! give the model a chance to initialize itself once

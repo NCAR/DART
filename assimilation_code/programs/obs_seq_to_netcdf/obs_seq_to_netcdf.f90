@@ -33,8 +33,7 @@ use time_manager_mod, only : time_type, get_time, print_time, &
                              operator(>), operator(<) 
 use     schedule_mod, only : schedule_type, set_regular_schedule, get_schedule_length, &
                              get_time_from_schedule
-use    utilities_mod, only : register_module, &
-                             file_exist, error_handler, E_ERR, E_MSG, &
+use    utilities_mod, only : file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, finalize_utilities, nmlfileunit, &
                              find_namelist_in_file, check_namelist_read, &
                              next_file, get_next_filename, find_textfile_dims, &
@@ -46,10 +45,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_seq_to_netcdf.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'obs_seq_to_netcdf.f90'
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
@@ -152,7 +148,6 @@ character(len=512) :: string1, string2, string3
 !=======================================================================
 
 call initialize_utilities('obs_seq_to_netcdf')
-call register_module(source,revision,revdate) 
 call static_init_obs_sequence()  ! Initialize the obs sequence module 
 
 call init_obs(       obs1, 0, 0) ! I am initialiazing these obs
@@ -190,8 +185,7 @@ if (do_nml_term()) write(    *      , nml=obs_seq_to_netcdf_nml)
 if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
    write(string1,*)'specify "obs_sequence_name" -OR- "obs_sequence_list"'
    write(string2,*)'set other to an empty string ... i.e. ""'
-   call error_handler(E_ERR, 'obs_seq_to_netcdf', string1, &
-                 source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'obs_seq_to_netcdf', string1, source, text2=string2)
 endif
 
 !----------------------------------------------------------------------
@@ -244,11 +238,11 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(string1,*)'opening ', trim(obs_seq_in_file_name)
-      call error_handler(E_MSG,'obs_seq_to_netcdf',string1,source,revision,revdate)
+      call error_handler(E_MSG,'obs_seq_to_netcdf',string1,source)
    else
       write(string1,*)trim(obs_seq_in_file_name),&
                         ' does not exist. Finishing up.'
-      call error_handler(E_MSG,'obs_seq_to_netcdf',string1,source,revision,revdate)
+      call error_handler(E_MSG,'obs_seq_to_netcdf',string1,source)
       exit ObsFileLoop
    endif
 
@@ -276,7 +270,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    if ((num_qc <= 0) .or. (num_copies <=0)) then
       write(string1,*)'need at least 1 qc and 1 observation copy'
-      call error_handler(E_ERR,'obs_seq_to_netcdf',string1,source,revision,revdate)
+      call error_handler(E_ERR,'obs_seq_to_netcdf',string1,source)
    endif
 
    allocate( copyvals(allNcopies), &
@@ -340,7 +334,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             write(string3,'(''obs copy >'',a,''< expected >'',a,''<'')') &
                         trim(obs_copy_names(i)), trim(module_obs_copy_names(i))
             call error_handler(E_ERR,'obs_seq_to_netcdf',string1, &
-                source,revision,revdate,text2=string2,text3=string3)
+                source,text2=string2,text3=string3)
 
          endif
       enddo
@@ -352,7 +346,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             write(string3,'(''qc  copy >'',a,''< expected >'',a,''<'')') &
                          trim(qc_copy_names(i)), trim(module_qc_copy_names(i))
             call error_handler(E_ERR,'obs_seq_to_netcdf',string1, &
-                source,revision,revdate,text2=string2,text3=string3)
+                source,text2=string2,text3=string3)
          endif
       enddo
 
@@ -365,7 +359,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    is_there_one = get_first_obs(seq, obs1)
    if ( .not. is_there_one ) then
       call error_handler(E_ERR,'obs_seq_to_netcdf','No first observation  in sequence.', &
-      source,revision,revdate)
+      source)
    endif
    call get_obs_def(obs1,   obs_def)
    seqT1 = get_obs_def_time(obs_def)
@@ -373,7 +367,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    is_there_one = get_last_obs(seq, obsN)
    if ( .not. is_there_one ) then
       call error_handler(E_ERR,'obs_seq_to_netcdf','No last observation in sequence.', &
-      source,revision,revdate)
+      source)
    endif
    call get_obs_def(obsN,   obs_def)
    seqTN = get_obs_def_time(obs_def)
@@ -550,7 +544,7 @@ do iepoch = 1, Nepochs
       write(string1,'(''epoch '',i6,'' has no observations. verbose=.TRUE. may help'')')iepoch
       write(string2,*)'schedule_nml might not match observation times in files.'
       call error_handler(E_MSG, 'obs_seq_to_netcdf', string1, &
-              source, revision, revdate, text2=string2, text3=' ')
+              source, text2=string2, text3=' ')
    endif
 
 enddo
@@ -583,7 +577,7 @@ if (allocated(module_obs_copy_names)) &
 
 deallocate(obs_seq_filenames)
 
-call error_handler(E_MSG,'obs_seq_to_netcdf','Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG,'obs_seq_to_netcdf','Finished successfully.',source)
 call finalize_utilities()
 
 
@@ -616,7 +610,7 @@ type(time_type) :: mytime
 
 if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'InitNetCDF', &
-   'Compiler does not support required kinds of variables.',source,revision,revdate)
+   'Compiler does not support required kinds of variables.',source)
 endif
 
 InitNetCDF = 0
@@ -633,7 +627,7 @@ call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
          ncid = ncid), 'obs_seq_to_netcdf:InitNetCDF', 'create '//trim(fname))
 
 write(string1,*)trim(ncName), ' is fortran unit ',ncid
-call error_handler(E_MSG,'InitNetCDF',string1,source,revision,revdate)
+call error_handler(E_MSG,'InitNetCDF',string1,source)
 
 !----------------------------------------------------------------------------
 ! Write Global Attributes 
@@ -647,10 +641,6 @@ call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(string1) ), 
 
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_to_netcdf_source', source ), &
            'InitNetCDF', 'put_att obs_seq_to_netcdf_source '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_to_netcdf_revision', revision ), &
-           'InitNetCDF', 'put_att obs_seq_to_netcdf_revision '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_to_netcdf_revdate', revdate ), &
-           'InitNetCDF', 'put_att obs_seq_to_netcdf_revdate '//trim(fname))
 
 ! write all observation sequence files used
 FILEloop : do i = 1,SIZE(obs_seq_filenames)
@@ -1061,7 +1051,7 @@ call nc_check(nf90_inquire_dimension(ncid, DimID, name=dimname, len=dimlen), &
 
 if ( trim(dimname) /= 'ObsIndex' ) then
    write(string1,*)'problem with '//trim(dimname)
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 ! Check time period - do not paste in observations from wrong epoch 
@@ -1082,12 +1072,12 @@ call nc_check(nf90_get_att(ncid, VarID, 'valid_range', validRange), &
 
 if ( epoch_edges(1) < validRange(1) ) then
    write(string1,*)'problem : obs_time ',epoch_edges(1),' < ',validRange(1),' netcdf time'
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 if ( epoch_edges(2) > validRange(2) ) then
    write(string1,*)'problem : obs_time ',epoch_edges(2),' > ',validRange(1),' netcdf time'
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 ! Check stringlength dimension
@@ -1099,7 +1089,7 @@ call nc_check(nf90_inquire_dimension(ncid, StringDimID, name=dimname, len=dimlen
 
 if ( dimlen /= stringlength ) then
    write(string1,*)'stringlength problem ... ',dimlen,' /= ',stringlength
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 ! Check the number of copies
@@ -1111,7 +1101,7 @@ call nc_check(nf90_inquire_dimension(ncid, ObsCopyDimID, name=dimname, len=dimle
 
 if ( dimlen /= allNcopies ) then
    write(string1,*)'different number of copies ... ',dimlen,' /= ',allNcopies
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 ! must check shape and actual values of copy metadata
@@ -1127,7 +1117,7 @@ call nc_check(nf90_inquire_dimension(ncid, dimIDs(1), len=dimlen), &
 
 if ( dimlen /= stringlength ) then
    write(string1,*)'copymetadata dim1 ',dimlen,' /= ',stringlength
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 call nc_check(nf90_inquire_dimension(ncid, dimIDs(2), len=dimlen), &
@@ -1135,7 +1125,7 @@ call nc_check(nf90_inquire_dimension(ncid, dimIDs(2), len=dimlen), &
 
 if ( dimlen /= allNcopies ) then
    write(string1,*)'copymetadata dim2 ',dimlen,' /= ',allNcopies
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 do i = 1,allNcopies
@@ -1145,7 +1135,7 @@ do i = 1,allNcopies
 
    if ( trim(dimname) /= trim(module_obs_copy_names(i)) ) then
       write(string1,*)'copymetadata(',i,') ',trim(dimname),' /= ',trim(module_obs_copy_names(i))
-      call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+      call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
    endif
 enddo
 
@@ -1162,7 +1152,7 @@ call nc_check(nf90_inquire_dimension(ncid, dimIDs(1), len=dimlen), &
 
 if ( dimlen /= stringlength ) then
    write(string1,*)'QCMetaData dim1 ',dimlen,' /= ',stringlength
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 call nc_check(nf90_inquire_dimension(ncid, dimIDs(2), len=dimlen), &
@@ -1170,7 +1160,7 @@ call nc_check(nf90_inquire_dimension(ncid, dimIDs(2), len=dimlen), &
 
 if ( dimlen /= num_qc ) then
    write(string1,*)'QCMetaData dim2 ',dimlen,' /= ',num_qc
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 do i = 1,num_qc
@@ -1180,7 +1170,7 @@ do i = 1,num_qc
 
    if ( trim(dimname) /= trim(module_qc_copy_names(i)) ) then
       write(string1,*)'QCMetaData ',i,trim(dimname),' /= ',trim(module_qc_copy_names(i))
-      call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+      call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
    endif
 enddo
 
@@ -1197,7 +1187,7 @@ call nc_check(nf90_inquire_dimension(ncid, dimIDs(1), len=dimlen), &
 
 if ( dimlen /= stringlength ) then
    write(string1,*)'ObsTypesMetaData dim1 ',dimlen,' /= ',stringlength
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 call nc_check(nf90_inquire_dimension(ncid, dimIDs(2), len=dimlen), &
@@ -1205,7 +1195,7 @@ call nc_check(nf90_inquire_dimension(ncid, dimIDs(2), len=dimlen), &
 
 if ( dimlen /= num_obs_kinds ) then
    write(string1,*)'copymetadata dim2 ',dimlen,' /= ',num_obs_kinds
-   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+   call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
 endif
 
 do i = 1,num_obs_kinds
@@ -1214,7 +1204,7 @@ do i = 1,num_obs_kinds
         'NC_Compatibility_Check', 'get_var ObsTypesMetaData '//trim(fname))
    if ( trim(dimname) /= trim(my_obs_kind_names(i)) ) then
       write(string1,*)'typesmetavrid ',i,trim(dimname),' /= ',trim(my_obs_kind_names(i))
-      call error_handler(E_ERR,'NC_Compatibility_Check',string1,source,revision,revdate)
+      call error_handler(E_ERR,'NC_Compatibility_Check',string1,source)
    endif
 enddo
 

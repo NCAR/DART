@@ -6,11 +6,6 @@ program sys_sim401
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'sys_sim401.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 integer n, n_samples, i, j
 double precision :: sd_ratio, alpha
 

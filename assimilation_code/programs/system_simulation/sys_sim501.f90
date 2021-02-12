@@ -12,11 +12,6 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'sys_sim501.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
 type (random_seq_type) :: r
 double precision :: correl, cov(2, 2), zero_2(2) = 0.0, correl_mean, correl_var
 double precision :: q, alpha, alpha2, mean_abs_correl

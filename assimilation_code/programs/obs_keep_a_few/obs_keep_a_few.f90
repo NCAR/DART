@@ -10,7 +10,7 @@
 program obs_keep_a_few
 
 use        types_mod, only : r8, missing_r8, metadatalength
-use    utilities_mod, only : register_module, initialize_utilities,            &
+use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
@@ -44,10 +44,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_keep_a_few.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'obs_keep_a_few.f90'
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in
@@ -289,7 +286,6 @@ subroutine setup()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_keep_a_few')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 end subroutine setup
@@ -468,8 +464,7 @@ is_there_one = get_first_obs(seq, obs)
 ! we already tested for 0 obs above, so there should be a first obs here.
 if ( .not. is_there_one )  then
    write(msgstring,*)'no first obs in sequence ' // trim(filename)
-   call error_handler(E_ERR,'obs_keep_a_few:validate', &
-                      msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'obs_keep_a_few:validate', msgstring, source)
    return
 endif
 
@@ -491,8 +486,7 @@ ObsLoop : do while ( .not. is_this_last)
       write(msgstring1,*)'obs number ', key, ' has earlier time than previous obs'
       write(msgstring2,*)'observations must be in increasing time order, file ' // trim(filename)
       call error_handler(E_ERR,'obs_keep_a_few:validate', msgstring2, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+                         source, text2=msgstring1)
    endif
 
    last_time = this_time
@@ -521,13 +515,12 @@ if (obs_count /= size_seq) then
       ! this is a fatal error
       write(msgstring1,*) 'linked list obs_count > total size_seq, should not happen'
       call error_handler(E_ERR,'obs_keep_a_few:validate', msgstring, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+                         source, text2=msgstring1)
    else
       ! just warning msg
       write(msgstring1,*) 'only observations in linked list will be processed'
       call error_handler(E_MSG,'obs_keep_a_few:validate', msgstring, &
-                         source, revision, revdate, text2=msgstring1)
+                         source, text2=msgstring1)
    endif
 endif
 
@@ -552,8 +545,7 @@ num_qc     = get_num_qc(    seq)
 
 if ( num_copies < 0 .or. num_qc < 0 ) then
    write(msgstring3,*)' illegal copy or obs count in file '//trim(fname)
-   call error_handler(E_ERR, 'obs_keep_a_few', msgstring3, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'obs_keep_a_few', msgstring3, source)
 endif
 
 MetaDataLoop : do i=1, num_copies

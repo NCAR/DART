@@ -13,7 +13,7 @@ module quality_control_mod
 
 use     types_mod,    only : r8
 
-use utilities_mod,    only : register_module, error_handler, E_ERR, E_MSG, &
+use utilities_mod,    only : error_handler, E_ERR, E_MSG, &
                              do_output, do_nml_file, do_nml_term, nmlfileunit, &
                              find_namelist_in_file, check_namelist_read
 
@@ -38,11 +38,7 @@ public :: initialize_qc, input_qc_ok, get_dart_qc, check_outlier_threshold, &
           DARTQC_BAD_INCOMING_QC, DARTQC_FAILED_OUTLIER_TEST, &
           DARTQC_FAILED_VERT_CONVERT
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'quality_control_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
-
+character(len=*), parameter :: source = 'quality_control_mod.f90'
 
 ! Dart quality control variables
 integer, parameter :: DARTQC_ASSIM_GOOD_FOP        = 0
@@ -105,8 +101,8 @@ if(do_output()) then
 
    ! if doing something special with outlier threshold, say so
    if (enable_special_outlier_code) then
-      call error_handler(E_MSG,'quality_control_mod:', 'special outlier threshold handling enabled', &
-         source, revision, revdate)
+      call error_handler(E_MSG,'quality_control_mod:', &
+              'special outlier threshold handling enabled', source)
    endif
 
 endif
@@ -212,8 +208,8 @@ if(isprior) then
    
    else   ! 'should not happen'
       dart_qc = -99  ! inconsistent istatus codes
-      call error_handler(E_ERR, 'get_dart_qc: ', 'internal error, should not happen: bad else in qc case', &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'get_dart_qc: ', &
+              'internal error, should not happen: bad else in qc case', source)
    endif
 
 else ! posterior

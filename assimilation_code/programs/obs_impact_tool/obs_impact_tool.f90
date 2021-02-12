@@ -90,15 +90,10 @@
 program obs_impact_tool
 
 use      types_mod, only : r8
-use  utilities_mod, only : register_module, initialize_utilities, finalize_utilities, &
+use  utilities_mod, only : initialize_utilities, finalize_utilities, &
                            find_namelist_in_file, check_namelist_read, E_MSG,         &
                            do_nml_file, do_nml_term, nmlfileunit, error_handler
 use obs_impact_mod, only : create_impact_table
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_impact_tool.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
 integer :: funit, ios
 
@@ -117,7 +112,6 @@ namelist /obs_impact_tool_nml/  &
 ! initialization and setup
 
 call initialize_utilities('obs_impact_tool')
-call register_module(source,revision,revdate)
 
 call find_namelist_in_file("input.nml", "obs_impact_tool_nml", funit)
 read(funit, nml = obs_impact_tool_nml, iostat = ios)
