@@ -30,8 +30,9 @@ public :: update_inflation,                                 do_obs_inflate,     
           get_is_prior,             get_is_posterior,       do_ss_inflate,      &
           set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy, &
           get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options, &
-          print_inflation_restart_filename
-
+          print_inflation_restart_filename, &
+          PRIOR, POSTERIOR, NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION, &
+          SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD, ENHANCED_SS_INFLATION
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'adaptive_inflate_mod.f90'
@@ -652,7 +653,7 @@ real(r8) :: dist_2, rate, shape_old, shape_new, rate_new
 real(r8) :: lambda_sd_2, density_1, density_2, omega, ratio
 real(r8) :: new_1_sd, new_max
 
-! If gamma is 0, nothing changes
+! If gamma_corr is 0, nothing changes
 if(gamma_corr <= 0.0_r8) then
    new_cov_inflate = lambda_mean
    new_cov_inflate_sd = lambda_sd
@@ -665,65 +666,6 @@ lambda_sd_2 = lambda_sd**2
 ! Squared Innovation
 dist_2 = (y_o - x_p)**2
    
-! this block of code no longer being used.  it's here for historical purposes.
-
-!integer  :: i, mlambda_index(1)
-!real(r8) :: b, c, d, Q, R, disc, alpha, beta, cube_root_alpha, cube_root_beta, x
-!real(r8) :: rrr, cube_root_rrr, angle, mx(3), sep(3), mlambda(3)
-
-!   ! Use ONLY the linear approximation, cubic solution below can be numerically
-!   ! unstable for extreme cases. Should look at this later.
-!   if(gamma_corr > 0.99_r8) then
-!   
-!   ! The solution of the cubic below only works if gamma is 1.0
-!   ! Can analytically find the maximum of the product: d/dlambda is a
-!   ! cubic polynomial in lambda**2; solve using cubic formula for real root
-!   ! Can write so that coefficient of x**3 is 1, other coefficients are:
-!      b = -1.0_r8 * (sigma_o_2 + sigma_p_2 * lambda_mean)
-!      c = lambda_sd_2 * sigma_p_2**2 / 2.0_r8
-!      d = -1.0_r8 * (lambda_sd_2 * sigma_p_2**2 * dist_2) / 2.0_r8
-!   
-!      Q = c - b**2 / 3
-!      R = d + (2 * b**3) / 27 - (b * c) / 3
-!   
-!      ! Compute discriminant, if this is negative have 3 real roots, else 1 real root
-!      disc = R**2 / 4 + Q**3 / 27
-!   
-!      if(disc < 0.0_r8) then
-!         rrr = sqrt(-1.0 * Q**3 / 27)
-!         ! Note that rrr is positive so no problem for cube root
-!         cube_root_rrr = rrr ** (1.0 / 3.0)
-!         angle = acos(-0.5 * R / rrr)
-!         do i = 0, 2
-!            mx(i+1) = 2.0_r8 * cube_root_rrr * cos((angle + i * 2.0_r8 * PI) / 3.0_r8) - b / 3.0_r8
-!            mlambda(i + 1) = (mx(i + 1) - sigma_o_2) / sigma_p_2
-!            sep(i+1) = abs(mlambda(i + 1) - lambda_mean)
-!         end do
-!         ! Root closest to initial peak is appropriate
-!         mlambda_index = minloc(sep)
-!         new_cov_inflate = mlambda(mlambda_index(1))
-!   
-!      else
-!         ! Only one real root here, find it.
-!   
-!         ! Compute the two primary terms
-!         alpha = -R/2 + sqrt(disc)
-!         beta = R/2 + sqrt(disc)
-!   
-!         cube_root_alpha = abs(alpha) ** (1.0 / 3.0) * abs(alpha) / alpha
-!         cube_root_beta = abs(beta) ** (1.0 / 3.0) * abs(beta) / beta
-!   
-!         x = cube_root_alpha - cube_root_beta - b / 3.0
-!   
-!         ! This root is the value of x = theta**2
-!         new_cov_inflate = (x - sigma_o_2) / sigma_p_2
-!   
-!      endif
-!   
-!      ! Put in code to approximate the mode (new_cov_inflate)
-!      !write(*, *) 'old, orig mode is ', lambda_mean, new_cov_inflate
-!   endif
-
 if (inf_type == AND2009) then
 
    ! Approximate with Taylor series for likelihood term
@@ -741,43 +683,42 @@ if (inf_type == AND2009) then
    if(abs(lambda_sd - sd_lower_bound_in) <= TINY(0.0_r8)) then
       new_cov_inflate_sd = lambda_sd
       return
-   else
-      ! Compute by forcing a Gaussian fit at one positive SD
-      ! First compute the new_max value for normalization purposes
-      new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, &
-                                       gamma_corr, new_cov_inflate)
+   endif
+
+   ! Compute by forcing a Gaussian fit at one positive SD
+   ! First compute the new_max value for normalization purposes
+   new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, &
+                                    gamma_corr, new_cov_inflate)
    
-      ! Find value at a point one OLD sd above new mean value
-      new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma_corr, &
-                                     new_cov_inflate + lambda_sd)
+   ! Find value at a point one OLD sd above new mean value
+   new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, &
+                                    gamma_corr, new_cov_inflate + lambda_sd)
    
-      ! If either the numerator or denominator of the following computation 
-      ! of 'ratio' is going to be zero (or almost so), return the original incoming
-      ! inflation value.  The computation would have resulted in either Inf or NaN.
-      if (abs(new_max) <= TINY(0.0_r8) .or. abs(new_1_sd) <= TINY(0.0_r8)) then
-         new_cov_inflate_sd = lambda_sd
-         return
-      endif
+   ! If either the numerator or denominator of the following computation 
+   ! of 'ratio' is going to be zero (or almost so), return the original incoming
+   ! inflation value.  The computation would have resulted in either Inf or NaN.
+   if (abs(new_max) <= TINY(0.0_r8) .or. abs(new_1_sd) <= TINY(0.0_r8)) then
+      new_cov_inflate_sd = lambda_sd
+      return
+   endif
    
-      ratio = new_1_sd / new_max 
+   ratio = new_1_sd / new_max 
    
-      ! Another error for numerical issues; if ratio is larger than 0.99, bail out
-      if(ratio > 0.99) then
-         new_cov_inflate_sd = lambda_sd
-         return
-      endif
+   ! Another error for numerical issues; if ratio is larger than 0.99, bail out
+   if(ratio > 0.99) then
+      new_cov_inflate_sd = lambda_sd
+      return
+   endif
    
-      ! Can now compute the standard deviation consistent with this as
-      ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is lambda_sd (distance from mean)
-      new_cov_inflate_sd = sqrt( -1.0_r8 * lambda_sd_2 / (2.0_r8 * log(ratio)))
+   ! Can now compute the standard deviation consistent with this as
+   ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is lambda_sd (distance from mean)
+   new_cov_inflate_sd = sqrt( -1.0_r8 * lambda_sd_2 / (2.0_r8 * log(ratio)))
    
-      ! Prevent an increase in the sd of lambda???
-      ! For now, this is mostly countering numerical errors in this computation
-      if(new_cov_inflate_sd > lambda_sd) then
-         new_cov_inflate_sd = lambda_sd
-         return
-      endif
-   
+   ! Prevent an increase in the sd of lambda???
+   ! For now, this is mostly countering numerical errors in this computation
+   if(new_cov_inflate_sd > lambda_sd) then
+      new_cov_inflate_sd = lambda_sd
+      return
    endif
 
 else if (inf_type == GHA2017) then
@@ -786,7 +727,7 @@ else if (inf_type == GHA2017) then
    call change_GA_IG(lambda_mean, lambda_sd_2, rate)
 
    ! Approximate with Taylor series for likelihood term
-   call enh_linear_bayes(dist_2, sigma_p_2, sigma_o_2,lambda_mean, &
+   call enh_linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, &
                     gamma_corr, ens_size, rate, new_cov_inflate)
 
    ! Bail out to save cost when lower bound is reached on lambda standard deviation
@@ -794,52 +735,52 @@ else if (inf_type == GHA2017) then
    if(abs(lambda_sd - sd_lower_bound_in) <= TINY(0.0_r8)) then
       new_cov_inflate_sd = lambda_sd
       return 
-   else
-      ! Compute the shape parameter of the prior IG
-      ! This comes from the assumption that the mode of the IG is the mean/mode of the input Gaussian
-      shape_old = rate / lambda_mean - 1.0_r8
-      if (shape_old <= 2.0_r8) then
-         new_cov_inflate_sd = lambda_sd
-         return
-      endif
+   endif
+
+   ! Compute the shape parameter of the prior IG
+   ! This comes from the assumption that the mode of the IG is the mean/mode of the input Gaussian
+   shape_old = rate / lambda_mean - 1.0_r8
+   if (shape_old <= 2.0_r8) then
+      new_cov_inflate_sd = lambda_sd
+      return
+   endif
    
-      ! Evaluate the exact IG posterior at p1: \lambda_u+\sigma_{\lambda_b} & p2: \lambda_u
-      density_1 = enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, shape_old, &
-                                          rate, gamma_corr, new_cov_inflate+lambda_sd)
-      density_2 = enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, shape_old, &
-                                          rate, gamma_corr, new_cov_inflate)
+   ! Evaluate the exact IG posterior at p1: \lambda_u+\sigma_{\lambda_b} & p2: \lambda_u
+   density_1 = enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, shape_old, &
+                                       rate, gamma_corr, new_cov_inflate+lambda_sd)
+   density_2 = enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, shape_old, &
+                                       rate, gamma_corr, new_cov_inflate)
    
-      ! Computational errors check (small numbers + NaNs)
-      if (abs(density_1) <= TINY(0.0_r8) .OR. &
-          abs(density_2) <= TINY(0.0_r8) .OR. &
-          density_1 /= density_1 .OR. density_1 /= density_1 .OR. &
-          density_2 /= density_2 .OR. density_2 /= density_2) then
-         new_cov_inflate_sd = lambda_sd
-         return
-      endif
+   ! Computational errors check (small numbers + NaNs)
+   if (abs(density_1) <= TINY(0.0_r8) .OR. &
+       abs(density_2) <= TINY(0.0_r8) .OR. &
+       density_1 /= density_1 .OR. density_1 /= density_1 .OR. &
+       density_2 /= density_2 .OR. density_2 /= density_2) then
+      new_cov_inflate_sd = lambda_sd
+      return
+   endif
    
-      ! Now, compute omega and the new distribution parameters
-      ratio     = density_1 / density_2
-      omega     = log(new_cov_inflate          )/new_cov_inflate + 1.0_r8/new_cov_inflate - &
-                  log(new_cov_inflate+lambda_sd)/new_cov_inflate - 1.0_r8/(new_cov_inflate+lambda_sd)
-      rate_new  = log(ratio) / omega
-      shape_new = rate_new / new_cov_inflate - 1.0_r8
+   ! Now, compute omega and the new distribution parameters
+   ratio     = density_1 / density_2
+   omega     = log(new_cov_inflate          )/new_cov_inflate + 1.0_r8/new_cov_inflate - &
+               log(new_cov_inflate+lambda_sd)/new_cov_inflate - 1.0_r8/(new_cov_inflate+lambda_sd)
+   rate_new  = log(ratio) / omega
+   shape_new = rate_new / new_cov_inflate - 1.0_r8
    
-      ! Finally, get the sd of the IG posterior
-      if (shape_new <= 2.0_r8) then
-         new_cov_inflate_sd = lambda_sd
-         return
-      endif
-      new_cov_inflate_sd = sqrt(rate_new**2 / ( (shape_new-1.0_r8)**2 * (shape_new-2.0_r8) ))
+   ! Finally, get the sd of the IG posterior
+   if (shape_new <= 2.0_r8) then
+      new_cov_inflate_sd = lambda_sd
+      return
+   endif
+   new_cov_inflate_sd = sqrt(rate_new**2 / ( (shape_new-1.0_r8)**2 * (shape_new-2.0_r8) ))
    
-      ! If the updated variance is more than xx% the prior variance, keep the prior unchanged 
-      ! for stability reasons. Also, if the updated variance is NaN (not sure why this
-      ! can happen; never did when developing this code), keep the prior variance unchanged. 
-      if ( new_cov_inflate_sd > sd_max_change_in*lambda_sd .OR. &
-           new_cov_inflate_sd /= new_cov_inflate_sd) then
-         new_cov_inflate_sd = lambda_sd
-         return
-      endif
+   ! If the updated variance is more than xx% the prior variance, keep the prior unchanged 
+   ! for stability reasons. Also, if the updated variance is NaN (not sure why this
+   ! can happen; never did when developing this code), keep the prior variance unchanged. 
+   if ( new_cov_inflate_sd > sd_max_change_in*lambda_sd .OR. &
+        new_cov_inflate_sd /= new_cov_inflate_sd) then
+      new_cov_inflate_sd = lambda_sd
+      return
    endif
    
 else
@@ -854,9 +795,9 @@ end subroutine bayes_cov_inflate
 !> Used to update density by taking approximate gaussian product
 !> original routine.
 
-function compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, lambda)
+function compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma_corr, lambda)
 
-real(r8), intent(in) :: dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, lambda
+real(r8), intent(in) :: dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma_corr, lambda
 real(r8)             :: compute_new_density
 
 real(r8) :: theta_2, theta
@@ -867,7 +808,7 @@ real(r8) :: exponent_prior, exponent_likelihood
 exponent_prior = (lambda - lambda_mean)**2 / (-2.0_r8 * lambda_sd**2)
 
 ! Compute probability that observation would have been observed given this lambda
-theta_2 = (1.0_r8 + gamma * (sqrt(lambda) - 1.0_r8))**2 * sigma_p_2 + sigma_o_2
+theta_2 = (1.0_r8 + gamma_corr * (sqrt(lambda) - 1.0_r8))**2 * sigma_p_2 + sigma_o_2
 theta = sqrt(theta_2)
 
 exponent_likelihood = dist_2 / ( -2.0_r8 * theta_2)
@@ -932,25 +873,29 @@ end function enh_compute_new_density
 !-------------------------------------------------------------------------------
 !> original linear_bayes routine
 
-subroutine linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2, gamma, &
+subroutine linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2, gamma_corr, &
    new_cov_inflate)
 
 real(r8), intent(in)    :: dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2
-real(r8), intent(in)    :: gamma
+real(r8), intent(in)    :: gamma_corr
 real(r8), intent(inout) :: new_cov_inflate
 
 real(r8) :: theta_bar_2, u_bar, like_exp_bar, v_bar, like_bar, like_prime, theta_bar
 real(r8) :: a, b, c, plus_root, minus_root, dtheta_dlambda
    
 ! Compute value of theta at current lambda_mean
-theta_bar_2 = (1.0_r8 + gamma * (sqrt(lambda_mean) - 1.0_r8))**2 * sigma_p_2 + sigma_o_2
+theta_bar_2 = (1.0_r8 + gamma_corr * (sqrt(lambda_mean) - 1.0_r8))**2 * sigma_p_2 + sigma_o_2
 theta_bar = sqrt(theta_bar_2)
+
 ! Compute constant coefficient for likelihood at lambda_bar
 u_bar = 1.0_r8 / (sqrt(2.0_r8 * PI) * theta_bar)
+
 ! Compute exponent of likelihood at lambda_bar
 like_exp_bar = dist_2 / (-2.0_r8 * theta_bar_2)
+
 ! Compute exponential part of likelihood at lambda_bar
 v_bar = exp(like_exp_bar)
+
 ! Compute value of likelihood at current lambda_bar value
 like_bar = u_bar * v_bar
 
@@ -964,9 +909,10 @@ endif
 
 ! First compute d/dlambda of theta evaluated at lambda_mean
 ! Verified correct by finite difference, 1 January, 2006
-dtheta_dlambda = 0.5_r8 * sigma_p_2 * gamma *(1.0_r8 - gamma + gamma*sqrt(lambda_mean)) / &
+dtheta_dlambda = 0.5_r8 * sigma_p_2 * gamma_corr *(1.0_r8 - gamma_corr + gamma_corr*sqrt(lambda_mean)) / &
    (theta_bar * sqrt(lambda_mean))
-like_prime = (u_bar * v_bar * dtheta_dlambda / theta_bar) * (dist_2 / theta_bar_2 - 1.0_r8)
+
+like_prime = (like_bar * dtheta_dlambda / theta_bar) * (dist_2 / theta_bar_2 - 1.0_r8)
 
 ! If like_prime goes to 0, can't do anything, so just keep current values
 if(like_prime == 0.0_r8) then
@@ -1026,8 +972,9 @@ if(like_bar <= 0.0_r8) then
 endif
 
 ! Next compute derivative of likelihood at this point
-deriv_theta = 0.5_r8 * sigma_p_2 * gamma_corr * ( 1.0_r8 - gamma_corr + &
-              gamma_corr * sqrt(lambda_mean) ) / ( theta_bar * sqrt(lambda_mean) )
+deriv_theta = 0.5_r8 * sigma_p_2 * gamma_corr * &
+              ( 1.0_r8 - gamma_corr + gamma_corr * sqrt(lambda_mean)) / &
+              ( theta_bar * sqrt(lambda_mean))
 like_prime  = like_bar * deriv_theta * (dist_2 / theta_bar_2 - 1.0_r8) / theta_bar
 
 ! If like_prime goes to 0, can't do anything, so just keep current values
@@ -1177,7 +1124,7 @@ if (inflation_handle%minmax_sd(POSTERIOR) > 0.0_r8) then
 else
   tadapt = ' time-constant,'
 endif
-if (inflation_handle%inflation_sub_flavor == 5) then
+if (inflation_handle%inflation_sub_flavor == ENHANCED_SS_INFLATION) then
   tadapt = ' enhanced' //trim(tadapt)
 endif
 

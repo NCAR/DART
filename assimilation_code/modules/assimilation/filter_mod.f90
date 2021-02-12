@@ -53,11 +53,14 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   print_ens_handle
 
 use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
-                                  inflate_ens, adaptive_inflate_init,   &
-                                  adaptive_inflate_type, set_inflation_mean_copy ,            &
-                                  log_inflation_info, set_inflation_sd_copy,                  &
-                                  get_minmax_task_zero, do_rtps_inflate,                      &
-                                  validate_inflate_options, NO_INFLATION, PRIOR, POSTERIOR 
+                                  inflate_ens, adaptive_inflate_init,                 &
+                                  adaptive_inflate_type, set_inflation_mean_copy ,    &
+                                  log_inflation_info, set_inflation_sd_copy,          &
+                                  get_minmax_task_zero, do_rtps_inflate,              &
+                                  validate_inflate_options, PRIOR, POSTERIOR,         &
+                                  NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION,  &
+                                  SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD,    &
+                                  ENHANCED_SS_INFLATION
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
@@ -104,7 +107,7 @@ character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
 ! Some convenient global storage items
-character(len=512)      :: msgstring
+character(len=512)      :: msgstring, string2, string3
 
 integer :: trace_level, timestamp_level
 
@@ -237,7 +240,7 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
 ! as to whether or not we should 'use' the integer parameters for PRIOR
 ! and POSTERIOR from adaptive_inflate_mod.
 
-integer  :: inf_flavor(2)                  = 0
+character(len=32) :: inf_flavor(2)         = (/ 'none', 'none' /)
 logical  :: inf_initial_from_restart(2)    = .false.
 logical  :: inf_sd_initial_from_restart(2) = .false.
 logical  :: inf_deterministic(2)           = .true.
@@ -307,6 +310,8 @@ namelist /filter_nml/ async,     &
    write_obs_every_cycle,        & 
    allow_missing_clm
 
+
+integer :: inflation_flavor(2)
 
 !----------------------------------------------------------------
 
@@ -395,29 +400,31 @@ allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
-call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
+call parse_inflation_string(inf_flavor,inflation_flavor)
+
+call validate_inflate_options(inflation_flavor, inf_damping, inf_initial_from_restart, &
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
    do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
+call adaptive_inflate_init(prior_inflate, inflation_flavor(1), inf_initial_from_restart(1), &
    inf_sd_initial_from_restart(1), output_inflation, inf_deterministic(1),            &
    inf_initial(1), inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1),         &
    inf_sd_lower_bound(1), inf_sd_max_change(1), state_ens_handle,                     &
    allow_missing, 'Prior')
 
-call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
+call adaptive_inflate_init(post_inflate, inflation_flavor(2), inf_initial_from_restart(2),  &
    inf_sd_initial_from_restart(2), output_inflation, inf_deterministic(2),            &
    inf_initial(2),  inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2),        &
    inf_sd_lower_bound(2), inf_sd_max_change(2), state_ens_handle,                     &
    allow_missing, 'Posterior')
 
 if (do_output()) then
-   if (inf_flavor(1) > NO_INFLATION .and. inf_damping(1) < 1.0_r8) then
+   if (inflation_flavor(1) > NO_INFLATION .and. inf_damping(1) < 1.0_r8) then
       write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', inf_damping(1), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
-   if (inf_flavor(2) > NO_INFLATION .and. inf_damping(2) < 1.0_r8) then
+   if (inflation_flavor(2) > NO_INFLATION .and. inf_damping(2) < 1.0_r8) then
       write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', inf_damping(2), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
@@ -2350,7 +2357,7 @@ endif
 CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
                        PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
 
-! If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation (inf_flavor = 4)
+! If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation (inflation_flavor = 4)
 ! then we need an extra copy to hold (save) the prior ensemble spread
 ! ENS_SD_COPY will be overwritten with the posterior spread before
 ! applying the inflation algorithm; hence we must save the prior ensemble spread in a different copy
@@ -2722,6 +2729,83 @@ if (output_inflation) then
 endif
 
 end subroutine set_copies
+
+
+!-------------------------------------------------------------------------------
+!> The infl_flavor namelist is a string, and specifies the inflation algorithm.
+!> The character string can either be the name associated with the type of inflation
+!> or the integer associated with the type of inflation. The string names of the
+!> inflation algorithms is based on what is declared in the adaptive_inflate_mod.f90
+!> which is repeated here for reference. 
+!>
+!> NO_INFLATION               = 0
+!> OBS_INFLATION              = 1    observation-space inflation (deprecated)
+!> VARYING_SS_INFLATION       = 2    spatially-varying state-space inflation
+!> SINGLE_SS_INFLATION        = 3    spatially-constant state-space inflation
+!> RELAXATION_TO_PRIOR_SPREAD = 4    (available only with posterior inflation)
+!> ENHANCED_SS_INFLATION      = 5    Inverse Gamma version of VARYING_SS_INFLATION
+
+subroutine parse_inflation_string(flavor_string,flavor_integer)
+
+character(len=*), intent(in)  :: flavor_string(2)
+integer,          intent(out) :: flavor_integer(2)
+
+integer :: i
+character(len=32) :: string
+
+do i = 1,2   ! one is prior, two is posterior
+
+   string = adjustl(flavor_string(i))
+   call to_upper(string)
+
+   select case(trim(string))
+      case ('NO_INFLATION')
+         flavor_integer(i) = NO_INFLATION
+      case ('0')
+         flavor_integer(i) = NO_INFLATION
+
+      case ('OBS_INFLATION')
+         flavor_integer(i) = OBS_INFLATION
+      case ('1')
+         flavor_integer(i) = OBS_INFLATION
+
+      case ('VARYING_SS_INFLATION')
+         flavor_integer(i) = VARYING_SS_INFLATION
+      case ('2')
+         flavor_integer(i) = VARYING_SS_INFLATION
+
+      case ('SINGLE_SS_INFLATION')
+         flavor_integer(i) = SINGLE_SS_INFLATION
+      case ('3')
+         flavor_integer(i) = SINGLE_SS_INFLATION
+
+      case ('RELAXATION_TO_PRIOR_SPREAD')
+         flavor_integer(i) = RELAXATION_TO_PRIOR_SPREAD
+      case ('RTPS')
+         flavor_integer(i) = RELAXATION_TO_PRIOR_SPREAD
+      case ('4')
+         flavor_integer(i) = RELAXATION_TO_PRIOR_SPREAD
+
+      case ('ENHANCED_SS_INFLATION')
+         flavor_integer(i) = ENHANCED_SS_INFLATION
+      case ('5')
+         flavor_integer(i) = ENHANCED_SS_INFLATION
+
+      case default
+         write(msgstring,*)'unknown inflation value "'//trim(string)//'"'
+         write(string2,*)'valid values are the integers 0,1,2,3,4,5 -or- the corresponding strings:'
+         write(string3,*)'"NO_INFLATION", "OBS_INFLATION", "VARYING_SS_INFLATION", ',&
+                  &'"SINGLE_SS_INFLATION", "RELAXATION_TO_PRIOR_SPREAD", "ENHANCED_SS_INFLATION"'
+         call error_handler(E_ERR,'parse_inflation_string', msgstring, source, &
+                            text2=string2, text3=string3)
+   end select
+
+   ! write(*,*)'DEBUG '//trim(flavor_string(i))//' is '//trim(string)//' is ',flavor_integer(i)
+
+enddo
+
+end subroutine parse_inflation_string
+
 
 !==================================================================
 ! TEST FUNCTIONS BELOW THIS POINT
