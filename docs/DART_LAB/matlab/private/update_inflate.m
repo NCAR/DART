@@ -37,7 +37,7 @@ function [new_cov_inflate, new_cov_inflate_sd] = update_inflate(x_p, r_var, y_o,
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 
 % if the inflate_sd is not positive, keep everything the same
-if inflate_sd <= 0.0 
+if lambda_sd <= 0.0 
    new_cov_inflate    = lambda_mean;
    new_cov_inflate_sd = lambda_sd;
    return
@@ -72,8 +72,8 @@ switch (lower(flavor))
 
       %% FIRST, update the inflation 
       % Approximate with Taylor series for likelihood term
-      new_cov_inflate = linear_bayes(dist_2, sigma_p_2, sigma_o2, ...
-                                     lambda_mean, lambda_sd_2, gamma_corr)
+      new_cov_inflate = linear_bayes(dist_2, sigma_p_2, sigma_o_2, ...
+                                     lambda_mean, lambda_sd_2, gamma_corr);
 
       %% SECOND, update the inflation variance
       % Bail out to save cost when lower bound is reached on lambda standard deviation
@@ -112,7 +112,7 @@ switch (lower(flavor))
 
       % Prevent an increase in the sd of lambda
       if new_cov_inflate_sd > lambda_sd
-          new_cov_inflate_sd = lambda_sd
+          new_cov_inflate_sd = lambda_sd;
           return
       end
 
@@ -125,12 +125,12 @@ switch (lower(flavor))
    case 'i-gamma'
 
       % Transform Gaussian prior to Inverse Gamma
-      rate = change_GA_IG(lambda_mean, lambda_sd_2)
+      rate = change_GA_IG(lambda_mean, lambda_sd_2);
 
       %% FIRST, update the inflation mean
       % Approximate with Taylor series for likelihood term
       new_cov_inflate = enh_linear_bayes(dist2, sigma_p_2, sigma_o_2, ...
-                                         lambda_mean, gamma_corr, ens_size, rate)
+                                         lambda_mean, gamma_corr, ens_size, rate);
 
       %% SECOND, update the inflation variance
       % Bail out to save cost when lower bound is reached on lambda standard deviation
@@ -218,7 +218,7 @@ function new_cov_inflate = linear_bayes( dist_2, sigma_p_2, sigma_o_2, ...
 theta_bar_2  = ( 1 + gamma_corr * (sqrt(lambda_mean) - 1) )^2 * sigma_p_2 + sigma_o_2;
 theta_bar    = sqrt(theta_bar_2);
 u_bar        = 1 / (sqrt(2 * pi) * theta_bar);
-like_exp_bar = dist_2 / (-2.0 * theta_bar_2;
+like_exp_bar = dist_2 / (-2.0 * theta_bar_2);
 v_bar        = exp(like_exp_bar);            
 
 % The likelihood: p(d/lambda)
@@ -249,7 +249,7 @@ a = 1.0;
 b = like_bar / like_prime - 2.0 * lambda_mean;
 c = lambda_mean^2 - lambda_sd^2 - like_bar * lambda_mean / like_prime;
 
-[plus_root, minus_root] = solve_quadratic(a, b, c)
+[plus_root, minus_root] = solve_quadratic(a, b, c);
 
 % Select the updated-mean that is closest to the prior
 if abs(minus_root - lambda_mean) < abs(plus_root - lambda_mean)
@@ -261,7 +261,7 @@ end
 
 %-------------------------------------------------------------------------------
 
-function new_cov_inflate = enh_linear_bayes(dist2, sigma_p_2, sigma_o_2, ...
+function new_cov_inflate = enh_linear_bayes(dist_2, sigma_p_2, sigma_o_2, ...
                                     lambda_mean, gamma_corr, ens_size, beta)
 
 % d (distance between obs and ens) is drawn from Gaussian with 0 mean and
@@ -304,7 +304,7 @@ a = 1.0 - lambda_mean / beta;
 b = like_ratio - 2 * lambda_mean;
 c = lambda_mean^2 - like_ratio * lambda_mean;
 
-[plus_root, minus_root] = solve_quadratic(a, b, c)
+[plus_root, minus_root] = solve_quadratic(a, b, c);
 
 % Select the updated-mean that is closest to the prior
 if abs(minus_root - lambda_mean) < abs(plus_root - lambda_mean)
@@ -323,7 +323,7 @@ end
 %-------------------------------------------------------------------------------
 
 
-[r1, r2] = function solve_quadratic(a, b, c)
+function [r1, r2] = solve_quadratic(a, b, c)
 
 scaling = max( [ abs(a), abs(b), abs(c) ] );
 as = a / scaling;
