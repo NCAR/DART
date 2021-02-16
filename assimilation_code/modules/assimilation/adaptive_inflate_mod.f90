@@ -606,6 +606,8 @@ real(r8),                    intent(in)    :: obs, obs_var, gamma_corr
 
 real(r8) :: new_inflate, new_inflate_sd
 integer :: inf_type
+integer :: iunit
+integer :: test_flavor
 
 ! If the inflate_sd not positive, keep everything the same
 if(inflate_sd <= 0.0_r8) return
@@ -616,14 +618,43 @@ if(inflate_sd <= 0.0_r8) return
 ! select which method to update with
 if (do_enhanced_ss_inflate(inflate_handle)) then
    inf_type = GHA2017
+   test_flavor = 5;
 else
    inf_type = AND2009
+   test_flavor = 2;
 endif
 
 ! Use bayes theorem to update
 call bayes_cov_inflate(ens_size, inf_type, prior_mean, prior_var, obs, obs_var, inflate, &
    inflate_sd, gamma_corr, inflate_handle%sd_lower_bound, inflate_handle%sd_max_change, &
    new_inflate, new_inflate_sd)
+
+! Write minimum test data to a matlab file that can be explored with 'inflation_test.m'
+! This test should only be run with the Lorenz_63 model ... and even then it will
+! keep (over)writing the same file for each state variable. Since L63 only has 3 ...
+! Also - there is no need to test for more than 1 cycle.
+! Intentionally putting this before the constraint test. 
+
+if ( .true. ) then
+   iunit = open_file('inflation_input.m',action='write')
+   write(iunit,'(''% Explore L63 with input.inflationtest.nml'')')
+   write(iunit,'(''flavor     = '',I4,'';'')') test_flavor
+   write(iunit,'(''inflate    = '',F16.10,'';'')') inflate
+   write(iunit,'(''inflate_sd = '',F16.10,'';'')') inflate_sd
+   write(iunit,'(''prior_mean = '',F16.10,'';'')') prior_mean
+   write(iunit,'(''prior_var  = '',F16.10,'';'')') prior_var
+   write(iunit,'(''ens_size   = '',    I4,'';'')') ens_size
+   write(iunit,'(''obs        = '',F16.10,'';'')') obs
+   write(iunit,'(''obs_var    = '',F16.10,'';'')') obs_var
+   write(iunit,'(''gamma_corr = '',F16.10,'';'')') gamma_corr
+   write(iunit,'(''inf_lower_bound    = '',F16.10,'';'')') inflate_handle%inf_lower_bound
+   write(iunit,'(''inf_upper_bound    = '',F16.10,'';'')') inflate_handle%inf_upper_bound
+   write(iunit,'(''sd_lower_bound     = '',F16.10,'';'')') inflate_handle%sd_lower_bound
+   write(iunit,'(''sd_max_change      = '',F16.10,'';'')') inflate_handle%sd_max_change
+   write(iunit,'(''fortran_inflate    = '',F16.10,'';'')') new_inflate
+   write(iunit,'(''fortran_inflate_sd = '',F16.10,'';'')') new_inflate_sd
+   call close_file(iunit)
+endif
 
 ! Make sure inflate satisfies constraints
 inflate = new_inflate
