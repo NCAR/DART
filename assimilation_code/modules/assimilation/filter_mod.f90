@@ -107,7 +107,7 @@ character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
 ! Some convenient global storage items
-character(len=512)      :: msgstring, string2, string3
+character(len=512)      :: msgstring
 
 integer :: trace_level, timestamp_level
 
