@@ -73,6 +73,7 @@ public :: get_unit, &
           register_module, &
           find_namelist_in_file, &
           check_namelist_read, &
+          flex_parser, &
           do_nml_file, &
           do_nml_term, &
           log_it, &
@@ -491,6 +492,101 @@ call error_handler(E_ERR, 'check_namelist_read', msgstring1, &
                    source, revision, revdate)
 
 end subroutine check_namelist_read
+
+
+!-----------------------------------------------------------------------
+!> convert integers or strings describing options into integer. 
+!> 
+!> Some namelist items have historically been integers to describe inflation
+!> algorithms or ... which is a terrible thing to do to the users.
+!> This routine allows for backward compatibility and still provides
+!> the option to specify   inf_flavor = 'VARYING_SS_INFLATION' for example.
+
+function flex_parser(input,integer_options,string_options,context)
+
+character(len=*), intent(in) :: input                 ! value from namelist, eg
+integer,          intent(in) :: integer_options(:)    ! possible integer values
+character(len=*), intent(in) :: string_options(:)     ! matching string values
+character(len=*), intent(in), optional :: context 
+integer                      :: flex_parser
+
+character(len=len_trim(input)) :: uppercase
+character(len=len(string_options)) :: possibility
+integer :: ios, iopt, candidate
+
+if ( .not. module_initialized ) call initialize_utilities
+
+flex_parser = MISSING_I
+
+! Try to read the input as an ASCII-coded integer ( i.e. '3') 
+
+read(input,*,iostat=ios) candidate
+if (ios == 0) then
+
+   flex_parser = candidate
+
+   ! Check for valid value
+   if (any(integer_options == flex_parser)) then
+      return
+   else
+      call error_report(context)
+   endif
+endif
+
+! numeric conversion not possible, try to interpret as a string
+
+if (size(integer_options) /= size(string_options)) then
+   write(msgstring2,*)'size(integer_options) =',size(integer_options), &
+                  ' /= size( string_options) =',size( string_options)
+   call error_handler(E_ERR,'flex_parser',msgstring2,source,text2=context)
+endif
+
+uppercase = trim(input)
+call to_upper(uppercase)
+
+LOOP : do iopt = 1,size(integer_options)
+
+   possibility = string_options(iopt)
+   call to_upper(possibility)
+
+   if (uppercase == possibility) then
+      flex_parser = integer_options(iopt)
+      exit LOOP
+   endif
+
+enddo LOOP
+
+if (flex_parser == MISSING_I) call error_report(context)
+
+contains
+
+   subroutine error_report(whofrom)
+   character(len=*), optional, intent(in) :: whofrom
+
+
+      if (present(whofrom)) then
+         msgstring1 = trim(whofrom)//' no valid option found.' 
+      else
+         msgstring1 = 'No valid option found.' 
+      endif
+      write(msgstring2,*)'input is "'//trim(input)//'"'
+      write(msgstring3,*)'valid values are the following integers or matching character strings:'
+
+      call error_handler(E_MSG, 'flex_parser', msgstring1, source, &
+                 text2=msgstring2, text3=msgstring3)
+
+   do iopt = 1,size(integer_options)
+      write(msgstring1,*) integer_options(iopt), &
+                          ' = "'//trim(string_options(iopt))//'"' 
+      call error_handler(E_MSG,'flex_parser',msgstring1)
+   enddo
+   call error_handler(E_ERR,'flex_parser','Stopping.',source)
+
+   end subroutine error_report
+
+
+end function flex_parser
+
 
 !-----------------------------------------------------------------------
 !> if trying to write an unformatted string, like "write(*,*)"

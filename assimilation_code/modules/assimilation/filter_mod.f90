@@ -29,7 +29,7 @@ use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), o
                                   operator(-), print_time
 
 use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
-                                  logfileunit, nmlfileunit, timestamp,  &
+                                  logfileunit, nmlfileunit, timestamp,  flex_parser,          &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
                                   set_multiple_filename_lists, find_textfile_dims
@@ -400,7 +400,7 @@ allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
-call parse_inflation_string(inf_flavor,inflation_flavor)
+inflation_flavor = set_inflation_flavor(inf_flavor)
 
 call validate_inflate_options(inflation_flavor, inf_damping, inf_initial_from_restart, &
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
@@ -2745,52 +2745,33 @@ end subroutine set_copies
 !> RELAXATION_TO_PRIOR_SPREAD = 4    (available only with posterior inflation)
 !> ENHANCED_SS_INFLATION      = 5    Inverse Gamma version of VARYING_SS_INFLATION
 
-subroutine parse_inflation_string(flavor_string,flavor_integer)
+function set_inflation_flavor(flavor_string) result(flavors)
 
 character(len=*), intent(in)  :: flavor_string(2)
-integer,          intent(out) :: flavor_integer(2)
+integer                       :: flavors(2)
 
-integer :: i
-character(len=32) :: string
+integer :: int_options(7) = (/ NO_INFLATION,               &
+                               OBS_INFLATION,              &
+                               VARYING_SS_INFLATION,       &
+                               SINGLE_SS_INFLATION,        &
+                               RELAXATION_TO_PRIOR_SPREAD, &
+                               RELAXATION_TO_PRIOR_SPREAD, &
+                               ENHANCED_SS_INFLATION       /)
 
-do i = PRIOR,POSTERIOR
+character(len=32) :: string_options(7) = (/ 'NO_INFLATION              ',&
+                                            'OBS_INFLATION             ',&
+                                            'VARYING_SS_INFLATION      ',&
+                                            'SINGLE_SS_INFLATION       ',&
+                                            'RELAXATION_TO_PRIOR_SPREAD',&
+                                            'RTPS                      ',&
+                                            'ENHANCED_SS_INFLATION     ' /)
 
-   string = adjustl(flavor_string(i))
-   call to_upper(string)
+flavors(PRIOR)     = flex_parser(flavor_string(PRIOR),     &
+                          int_options, string_options, 'input_nml:inf_flavor(1)')
+flavors(POSTERIOR) = flex_parser(flavor_string(POSTERIOR), &
+                          int_options, string_options, 'input_nml:inf_flavor(2)')
 
-   select case(trim(string))
-      case ('0','NO_INFLATION')
-         flavor_integer(i) = NO_INFLATION
-
-      case ('1','OBS_INFLATION')
-         flavor_integer(i) = OBS_INFLATION
-
-      case ('2','VARYING_SS_INFLATION')
-         flavor_integer(i) = VARYING_SS_INFLATION
-
-      case ('3','SINGLE_SS_INFLATION')
-         flavor_integer(i) = SINGLE_SS_INFLATION
-
-      case ('4','RELAXATION_TO_PRIOR_SPREAD','RTPS')
-         flavor_integer(i) = RELAXATION_TO_PRIOR_SPREAD
-
-      case ('5','ENHANCED_SS_INFLATION')
-         flavor_integer(i) = ENHANCED_SS_INFLATION
-
-      case default
-         write(msgstring,*)'unknown inflation value "'//trim(string)//'"'
-         write(string2,*)'valid values are the integers 0,1,2,3,4,5 -or- the corresponding strings:'
-         write(string3,*)'"NO_INFLATION", "OBS_INFLATION", "VARYING_SS_INFLATION", ',&
-                  &'"SINGLE_SS_INFLATION", "RELAXATION_TO_PRIOR_SPREAD", "ENHANCED_SS_INFLATION"'
-         call error_handler(E_ERR,'parse_inflation_string', msgstring, source, &
-                            text2=string2, text3=string3)
-   end select
-
-   ! write(*,*)'DEBUG '//trim(flavor_string(i))//' is '//trim(string)//' is ',flavor_integer(i)
-
-enddo
-
-end subroutine parse_inflation_string
+end function set_inflation_flavor
 
 
 !==================================================================
