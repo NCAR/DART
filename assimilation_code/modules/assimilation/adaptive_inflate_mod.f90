@@ -29,10 +29,8 @@ public :: update_inflation,                                 do_obs_inflate,     
           get_is_prior,             get_is_posterior,       do_ss_inflate,      &
           set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy, &
           get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options, &
-          print_inflation_restart_filename, &
-          PRIOR, POSTERIOR, NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION, &
-          SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD, ENHANCED_SS_INFLATION
-
+          print_inflation_restart_filename
+          
 character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 
 ! Manages both observation space and state space inflation
@@ -42,31 +40,19 @@ character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 ! and a spatially-varying state space inflation that carries
 ! a mean and variance for the state space inflation at each point. 
 
-! There are many length 2 variables declared to hold items. Some of them 
-! refer to the concept of prior and posterior. Those that do can be referenced
-! with the PRIOR and POSTERIOR - which MUST have values 1 and 2, do not change.
-
-integer, parameter :: PRIOR = 1
-integer, parameter :: POSTERIOR = 2
-
-!>@todo Eventually the namelist options corresponding to inflation should move from 
-!> filter into this module and then possibly become two different namelists so we
-!> don't have these arrays of length (2).
-
-! Encode the different inflation options
-! OBS_INFLATION is currently deprecated.
-! ENHANCED_SS_INFLATION is an extension of VARYING_SS_INFLATION
-
-integer, parameter :: NO_INFLATION               = 0
-integer, parameter :: OBS_INFLATION              = 1
-integer, parameter :: VARYING_SS_INFLATION       = 2
-integer, parameter :: SINGLE_SS_INFLATION        = 3
-integer, parameter :: RELAXATION_TO_PRIOR_SPREAD = 4
-integer, parameter :: ENHANCED_SS_INFLATION      = 5
+!>@todo the 'flavor' should be a string in the namelist and an integer
+!>parameter with a more descriptive name instead of an arbitrary integer.
+!>Same with 1 and 2 corresponding to Prior and Posterior inflation.
+!> eventually these namelist options should move from filter into
+!> this module and then possibly become two different namelists so
+!> we don't have these arrays of length (2).
 
 ! Type to keep track of information for inflation
 type adaptive_inflate_type
    private
+   ! Flavor can be 0:none, 1:obs_inflate, 2:varying_ss_inflate, 3:single_ss_inflate
+   !  4 = RTPS, 5 = enhanced ss, modification of 2
+   ! 1:obs_inflate is currently deprecated.
    integer               :: inflation_flavor
    integer               :: inflation_sub_flavor
    logical               :: output_restart = .false.
@@ -264,22 +250,13 @@ inflate_handle%allow_missing_in_clm = missing_ok
 inflate_handle%mean_from_restart    = mean_from_restart
 inflate_handle%sd_from_restart      = sd_from_restart
 
-!Overwriting the initial value of inflation with 1.0
-!as in other inflation flavors (usually start from 1). 
-!This is required for RTPS because inf_initial(2)
-!is not really the inflation factor but rather the weighting
-!parameter, say alpha: 
-!RTPS: lambda = alpha * (sd_b - sd_a) / sd_a + 1
-!where; sd_b (sd_a): prior (posterior) spread
-if(inf_flavor == RELAXATION_TO_PRIOR_SPREAD) inflate_handle%inflate = 1.0_r8
-
 ! Prior and posterior are intialized to false
 if (trim(label)=='Prior') inflate_handle%prior = .true.
 if (trim(label)=='Posterior') inflate_handle%posterior = .true.
 
-! ENHANCED_SS_INFLATION is a subset of VARYING_SS_INFLATION. modify the main flavor here.
-if (inf_flavor == ENHANCED_SS_INFLATION) then
-   inflate_handle%inflation_flavor = VARYING_SS_INFLATION
+! inf type 5 is a subset of type 2. modify the main type here.
+if (inf_flavor == 5) then
+   inflate_handle%inflation_flavor = 2
 endif
 
 ! Cannot support non-determistic inflation and an inf_lower_bound < 1
@@ -296,7 +273,7 @@ inflate_handle%minmax_sd(:)   = MISSING_R8
 ! State space inflation is read in the IO routine read_state.
 
 ! Read type 1 (observation space inflation)
-if(inf_flavor == OBS_INFLATION) then
+if(inf_flavor == 1) then
 
    write(string1,  *) 'No longer supporting observation space inflation ', &
                         '(i.e. inf_flavor = 1).'
@@ -317,7 +294,7 @@ function do_obs_inflate(inflate_handle)
 logical                                 :: do_obs_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-do_obs_inflate = (inflate_handle%inflation_flavor == OBS_INFLATION)
+do_obs_inflate = (inflate_handle%inflation_flavor == 1)
 
 !>@todo I am not sure you can get here given the check in adaptive_inflate_init()
 if (do_obs_inflate) then
@@ -337,7 +314,7 @@ function do_varying_ss_inflate(inflate_handle)
 logical                                 :: do_varying_ss_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-do_varying_ss_inflate = (inflate_handle%inflation_flavor == VARYING_SS_INFLATION)
+do_varying_ss_inflate = (inflate_handle%inflation_flavor == 2)
 
 end function do_varying_ss_inflate
 
@@ -350,7 +327,7 @@ function do_single_ss_inflate(inflate_handle)
 logical                                 :: do_single_ss_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-do_single_ss_inflate = (inflate_handle%inflation_flavor == SINGLE_SS_INFLATION)
+do_single_ss_inflate = (inflate_handle%inflation_flavor == 3)
 
 end function do_single_ss_inflate
 
@@ -364,7 +341,7 @@ function do_rtps_inflate(inflate_handle)
 logical                                 :: do_rtps_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-do_rtps_inflate = (inflate_handle%inflation_flavor == RELAXATION_TO_PRIOR_SPREAD)
+do_rtps_inflate = (inflate_handle%inflation_flavor == 4)
 
 end function do_rtps_inflate
 
@@ -380,8 +357,8 @@ function do_enhanced_ss_inflate(inflate_handle)
 logical                                 :: do_enhanced_ss_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-do_enhanced_ss_inflate = ((inflate_handle%inflation_flavor == VARYING_SS_INFLATION) .and. &
-                          (inflate_handle%inflation_sub_flavor == ENHANCED_SS_INFLATION))
+do_enhanced_ss_inflate = ((inflate_handle%inflation_flavor == 2) .and. &
+                          (inflate_handle%inflation_sub_flavor == 5))
 
 end function do_enhanced_ss_inflate
 
@@ -422,11 +399,11 @@ integer :: i
 character(len=32) :: string(2)
 
 ! for error messages
-string(PRIOR)     = 'Prior'
-string(POSTERIOR) = 'Posterior'
+string(1)     = 'Prior'
+string(2) = 'Posterior'
 
 do i = 1, 2
-   if(inf_flavor(i) < NO_INFLATION .or. inf_flavor(i) > ENHANCED_SS_INFLATION) then
+   if(inf_flavor(i) < 0 .or. inf_flavor(i) > 5) then
       write(string1, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, 4, or 5 '
       call error_handler(E_ERR,'validate_inflate_options', string1, source, &
                                 text2='Inflation type for '//string(i))
@@ -440,23 +417,23 @@ do i = 1, 2
 end do
 
 ! Check to see if state space inflation is turned on
-if (inf_flavor(PRIOR)     > OBS_INFLATION)  do_prior_inflate     = .true.
-if (inf_flavor(POSTERIOR) > OBS_INFLATION)  do_posterior_inflate = .true.
+if (inf_flavor(1) > 1) do_prior_inflate     = .true.
+if (inf_flavor(2) > 1) do_posterior_inflate = .true.
 if (do_prior_inflate .or. do_posterior_inflate) output_inflation = .true.
 
 ! Observation space inflation not currently supported
-if(inf_flavor(PRIOR) == OBS_INFLATION .or. inf_flavor(POSTERIOR) == OBS_INFLATION) &
+if(inf_flavor(1) == 1 .or. inf_flavor(2) == 1) &
    call error_handler(E_ERR, 'validate_inflate_options', &
    'observation space inflation (type 1) not currently supported', source, &
    text2='contact DART developers if you are interested in using it.')
 
 ! Relaxation-to-prior-spread (RTPS) is only an option for posterior inflation
-if(inf_flavor(PRIOR) == RELAXATION_TO_PRIOR_SPREAD) &
+if(inf_flavor(1) == 4) &
    call error_handler(E_ERR, 'validate_inflate_options', &
    'RTPS inflation (type 4) only supported for Posterior inflation', source)
 
 ! Cannot select posterior options if not computing posterior
-if(.not. compute_posterior .and. inf_flavor(POSTERIOR) > NO_INFLATION) then
+if(.not. compute_posterior .and. inf_flavor(2) > 0) then
    write(string1, *) 'cannot enable posterior inflation if not computing posterior values'
    call error_handler(E_ERR,'validate_inflate_options', string1, source, &
                              text2='"compute_posterior" is false; posterior inflation flavor must be 0')
@@ -465,29 +442,29 @@ endif
 ! RTPS needs a single parameter from namelist: inf_initial(2).  
 ! Do not read in any files.  Also, no damping.  but warn the user if they try to set different
 ! values in the namelist.
-if (inf_flavor(POSTERIOR) == RELAXATION_TO_PRIOR_SPREAD) then
-   if (inf_initial_from_restart(POSTERIOR) .or. inf_sd_initial_from_restart(POSTERIOR)) &
+if (inf_flavor(2) == 4) then
+   if (inf_initial_from_restart(2) .or. inf_sd_initial_from_restart(2)) &
       call error_handler(E_MSG, 'validate_inflate_options:', &
          'RTPS inflation (type 4) overrides posterior inflation restart file with value in namelist', &
          text2='posterior inflation standard deviation value not used in RTPS')
-   inf_initial_from_restart(POSTERIOR) = .false.    ! Get parameter from namelist inf_initial(2), not from file
-   inf_sd_initial_from_restart(POSTERIOR) = .false. ! inf_sd not used in this algorithm
+   inf_initial_from_restart(2) = .false.    ! Get parameter from namelist inf_initial(2), not from file
+   inf_sd_initial_from_restart(2) = .false. ! inf_sd not used in this algorithm
 
-   if (.not. inf_deterministic(POSTERIOR)) &
+   if (.not. inf_deterministic(2)) &
       call error_handler(E_MSG, 'validate_inflate_options:', &
                         'RTPS inflation (type 4) overrides posterior inf_deterministic with .true.')
-   inf_deterministic(POSTERIOR) = .true.  ! this algorithm is deterministic
+   inf_deterministic(2) = .true.  ! this algorithm is deterministic
 
-   if (inf_damping(POSTERIOR) /= 1.0_r8) &
+   if (inf_damping(2) /= 1.0_r8) &
       call error_handler(E_MSG, 'validate_inflate_options:', &
                         'RTPS inflation (type 4) disables posterior inf_damping')
-   inf_damping(POSTERIOR) = 1.0_r8  ! no damping
+   inf_damping(2) = 1.0_r8  ! no damping
 endif
 
 ! enhanced inflation checks - this is before we set the subflavor in the structure.
-if (inf_flavor(PRIOR) == ENHANCED_SS_INFLATION .or. inf_flavor(POSTERIOR) == ENHANCED_SS_INFLATION) then
+if (inf_flavor(1) == 5 .or. inf_flavor(2) == 5) then
    ! check inf_sd_max_change() for valid range
-   do i=PRIOR, POSTERIOR
+   do i=1, 2
       if (inf_sd_max_change(i) < 1.0_r8 .or. inf_sd_max_change(i) > 2.0_r8) then
          write(string1, *) 'inf_sd_max_change=', inf_sd_max_change(i), ' Must be 1.0 <= X <= 2.0'
          call error_handler(E_ERR,'validate_inflate_options', string1, source, &
@@ -905,10 +882,10 @@ exp_like = - 0.5_r8 * dist_2 / theta**2
 ! If you have an unresolved external for the gamma function, you should
 ! either try a newer compiler or code your own gamma function here.
 ! We know pg compiler versions before pgf90 15.1 do not contain the
-! gamma function. If you are never going to use ENHANCED_SS_INFLATION
+! gamma function. If you are never going to use inflation flavor 5,
 ! you could also just comment out the computation for enh_compute_new_density
 ! and uncomment the following code block. This will ensure that if you ever
-! did try to use ENHANCED_SS_INFLATION, it would appropriately fail.
+! did try to use inflation 5, it would appropriately fail.
 
 ! write(string1,*)'gamma function not available'
 ! write(string2,*)'when available uncomment block below and recompile'
@@ -1144,7 +1121,7 @@ character(len = 128) :: det, tadapt, sadapt, akind, from
 if (mype /= 0) return
 
 ! if inflation is off, say so and return now
-if (inflation_handle%inflation_flavor <= NO_INFLATION) then
+if (inflation_handle%inflation_flavor <= 0) then
    call error_handler(E_MSG, trim(label) // ' inflation:', 'None', source)
    return
 endif
@@ -1156,36 +1133,36 @@ if(inflation_handle%deterministic) then
 else
   det = 'random-noise,'
 endif
-if (inflation_handle%minmax_sd(POSTERIOR) > inflation_handle%sd_lower_bound) then
+if (inflation_handle%minmax_sd(2) > inflation_handle%sd_lower_bound) then
    det = trim(det) // ' variance adaptive,'
 endif
 if (inflation_handle%inf_lower_bound < 1.0_r8) then
    det = trim(det) // ' deflation permitted,'
 endif
-if (inflation_handle%minmax_sd(POSTERIOR) > 0.0_r8) then
+if (inflation_handle%minmax_sd(2) > 0.0_r8) then
   tadapt = ' time-adaptive,'
-   if (inflation_handle%sd_lower_bound < inflation_handle%minmax_sd(POSTERIOR) .or. &
-       inflation_handle%inflation_sub_flavor == ENHANCED_SS_INFLATION) then
+   if (inflation_handle%sd_lower_bound < inflation_handle%minmax_sd(2) .or. &
+       inflation_handle%inflation_sub_flavor == 5) then
       tadapt = trim(tadapt) // ' time-rate adaptive,'
    endif
 else
   tadapt = ' time-constant,'
 endif
-if (inflation_handle%inflation_sub_flavor == ENHANCED_SS_INFLATION) then
+if (inflation_handle%inflation_sub_flavor == 5) then
   tadapt = ' enhanced' //trim(tadapt)
 endif
 
 select case(inflation_handle%inflation_flavor)
-   case (OBS_INFLATION)
+   case (1)
       sadapt = ' (deprecated),'
       akind = ' observation-space'
-   case (VARYING_SS_INFLATION)
+   case (2)
       sadapt = ' spatially-varying,'
       akind = ' state-space '
-   case (SINGLE_SS_INFLATION)
+   case (3)
       sadapt = ' spatially-constant,'
       akind = ' state-space'
-   case (RELAXATION_TO_PRIOR_SPREAD)
+   case (4)
       tadapt = ' time-adaptive,'    ! IS THIS TRUE??
       sadapt = ' spatially-varying relaxation-to-prior-spread,'
       akind = ' state-space'
@@ -1225,7 +1202,7 @@ else
 endif
 call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source)
 
-if (inflation_handle%inflation_sub_flavor == ENHANCED_SS_INFLATION) then
+if (inflation_handle%inflation_sub_flavor == 5) then
    write(string1, '(A, F8.3)') &
             'inf stddev max change: ', inflation_handle%sd_max_change
    call error_handler(E_MSG, trim(label) // ' inflation:', string1, source)
@@ -1263,8 +1240,8 @@ type(adaptive_inflate_type), intent(in) :: inflation_handle
 character(len=*),            intent(in) :: from_string
 integer :: nvalues_to_log
 
-if ((inflation_handle%inflation_flavor == SINGLE_SS_INFLATION) .or. &
-    (inflation_handle%inflation_flavor == VARYING_SS_INFLATION .and. from_string == 'from namelist')) then
+if ((inflation_handle%inflation_flavor == 3) .or. &
+    (inflation_handle%inflation_flavor == 2 .and. from_string == 'from namelist')) then
    nvalues_to_log = 1
 else
    nvalues_to_log = 2
@@ -1313,7 +1290,7 @@ integer,                     intent(in)    :: ss_inflate_sd_index
 real(r8) :: minmax_mean(2), minmax_sd(2), global_val(2)
 
 ! if not using inflation, return now
-if (inflation_handle%inflation_flavor <= NO_INFLATION) return
+if (inflation_handle%inflation_flavor <= 0) return
 
 if (inflation_handle%mean_from_restart) then
 

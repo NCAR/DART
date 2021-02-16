@@ -330,10 +330,6 @@ if ( .not. module_initialized ) call fatal_not_initialized('register_module')
 
 call log_it('')
 call log_it('Registering module : "'//trim(src)//'" ... complete.')
-! call log_it(src)
-! call log_it(rev)
-! call log_it(rdate)
-!call log_it('')
 
 end subroutine register_module
 
