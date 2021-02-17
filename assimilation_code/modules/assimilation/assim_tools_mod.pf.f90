@@ -1273,6 +1273,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       ! If no weight is indicated, no more to do with this state variable
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
+
       if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
 
       ! JPOTERJOY: Perform pf state update
