@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module location_mod
 
@@ -10,7 +8,7 @@ module location_mod
 
 use            types_mod, only : i8, r8, MISSING_R8, MISSING_I
 use ensemble_manager_mod, only : ensemble_type
-use        utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format
+use        utilities_mod, only : error_handler, E_ERR, ascii_file_format
 
 implicit none
 private
@@ -26,11 +24,7 @@ public :: location_type, get_location, set_location, &
           VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
           VERTISHEIGHT, VERTISSCALEHEIGHT
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'column/location_mod.f90'
 
 ! The possible values for the location_type%which_vert component.
 ! These are intended to be PRIVATE to this module. Do not make public.
@@ -84,7 +78,6 @@ subroutine initialize_module
  
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 end subroutine initialize_module
@@ -183,7 +176,7 @@ if (which_vert /= VERTISUNDEF    .and. &
     which_vert /= VERTISPRESSURE .and. &
     which_vert /= VERTISHEIGHT) then
    write(errstring,*) 'Illegal value for "which_vert", must be -2, -1, 1, 2, or 3'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 set_location_single%which_vert = which_vert
 set_location_single%vloc = vert_loc
@@ -204,7 +197,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if (size(list) < 2) then
    write(errstring,*) 'requires 2 input values'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_array = set_location_single(list(1), nint(list(2)))
@@ -254,7 +247,7 @@ select case(attr)
    query_location = loc%vloc
  case default
    call error_handler(E_ERR, 'query_location; column', &
-         'Only vloc and which_vert are legal attributes to request from location', source, revision, revdate)
+         'Only vloc and which_vert are legal attributes to request from location', source)
 end select
 
 end function query_location
@@ -302,8 +295,7 @@ endif
 ! to a file, and you can't have binary format set.
 if (.not. ascii_file_format(fform)) then
    call error_handler(E_ERR, 'write_location', &
-      'Cannot use string buffer with binary format', &
-       source, revision, revdate)
+      'Cannot use string buffer with binary format', source)
 endif
 
 ! format the location to be more human-friendly; meaning
@@ -316,7 +308,7 @@ charlength = 32
 
 if (len(charstring) < charlength) then
    write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
-   call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'write_location', errstring, source)
 endif
 
 select case  (loc%which_vert)
@@ -334,7 +326,7 @@ select case  (loc%which_vert)
       write(charstring, '(A,F13.7,A)') 'Vert: ', loc%vloc, ' scale ht'
    case default
       write(errstring, *) 'unrecognized key for vertical type: ', loc%which_vert
-      call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'write_location', errstring, source)
 end select
 
 
@@ -359,7 +351,7 @@ if (ascii_file_format(fform)) then
    read(locfile, '(a5)' ) header
    if(header /= 'loc1c') then
       write(errstring,*)'Expected location header "loc1c" in input file, got ', header 
-      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'read_location', errstring, source)
    endif
    ! Now read the location data value
    read(locfile, *) read_location%vloc, read_location%which_vert
@@ -554,7 +546,7 @@ if ( .not. module_initialized ) call initialize_module
 if ((minl%which_vert /= maxl%which_vert) .or. &
     (minl%which_vert /= loc%which_vert)) then
    write(errstring,*)'which_vert (',loc%which_vert,') must be same in all args'
-   call error_handler(E_ERR, 'is_location_in_region', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'is_location_in_region', errstring, source)
 endif
 
 ! assume failure and return as soon as we are confirmed right.
@@ -643,7 +635,7 @@ select case  (which_vert)
       is_vertical = (VERTISSCALEHEIGHT == loc%which_vert)
    case default
       write(errstring, *) 'unrecognized key for vertical type: ', which_vert
-      call error_handler(E_ERR, 'is_vertical', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'is_vertical', errstring, source)
 end select
 
 end function is_vertical
@@ -701,8 +693,3 @@ end subroutine convert_vertical_state
 
 end module location_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

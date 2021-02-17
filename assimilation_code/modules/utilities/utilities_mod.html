@@ -362,8 +362,8 @@ Closes the given unit number. If the unit is not open, nothing happens.
 <em class=call> call register_module(src, rev, rdate) </em>
 <pre>
 character(len=*), intent(in) :: <em class=code>src</em>
-character(len=*), intent(in) :: <em class=code>rev</em>
-character(len=*), intent(in) :: <em class=code>rdate</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>rev</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>rdate</em>
 </pre>
 </div>
 
@@ -371,18 +371,17 @@ character(len=*), intent(in) :: <em class=code>rdate</em>
 <!-- Description -->
 
 <P>
-Writes the source name, revision number and revision date to both
-the logfileunit and to standard out. All dart modules are supposed
-to register when first called.
+Writes the source name to both the logfileunit and to standard out.
+The rev and revdate are deprecated as they are unsupported by git.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>src&nbsp;&nbsp;</em></TD>
     <TD>source file name.</TD></TR>
 <TR><TD valign=top><em class=code>rev&nbsp;&nbsp;</em></TD>
-    <TD>Revision number of source.</TD></TR>
+    <TD>ignored</TD></TR>
 <TR><TD valign=top><em class=code>rdate&nbsp;&nbsp;</em></TD>
-    <TD>Date of revision.</TD></TR>
+    <TD>ignored</TD></TR>
 </TABLE>
 
 </div>

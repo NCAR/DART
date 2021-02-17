@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 
 !>  This program takes as input one or more sets of N obs_seq filenames. 
@@ -46,7 +44,7 @@
 program obs_common_subset
 
 use        types_mod, only : r8, metadatalength
-use    utilities_mod, only : register_module, initialize_utilities,            &
+use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
@@ -70,11 +68,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'obs_common_subset.f90'
 
 ! max_num_input_files : maximum total number of input sequence files to be processed.
 integer, parameter   :: max_num_input_files = 5000
@@ -160,11 +154,11 @@ if (do_nml_term()) write(     *     , nml=obs_common_subset_nml)
 ! list and the name of file for input.
 
 write(msgstring, '(A,I3,A)') "Asking to compare ", num_to_compare_at_once, " obs_seq files at a time"
-call error_handler(E_MSG, "obs_common_subset", msgstring, source,revision,revdate)
+call error_handler(E_MSG, "obs_common_subset", msgstring, source)
 
 if ((num_to_compare_at_once < 2) .or. (num_to_compare_at_once > maxcomp)) then
    write(msgstring, *) "num_to_compare_at_once must be >= 2 and <= ", maxcomp
-   call error_handler(E_ERR, "obs_common_subset", msgstring, source,revision,revdate)
+   call error_handler(E_ERR, "obs_common_subset", msgstring, source)
 endif
 
 ! if there is only a single file from each experiment to compare, the order
@@ -176,7 +170,7 @@ call handle_filenames(num_to_compare_at_once, maxcomp, filename_seq, filename_se
 
 if (num_input_sets > 1) then
    write(msgstring, '(A,I3,A)') "Will loop ", num_input_sets, " times to process the entire input filelist"
-   call error_handler(E_MSG, "obs_common_subset", msgstring, source,revision,revdate)
+   call error_handler(E_MSG, "obs_common_subset", msgstring, source)
 endif
 
 ! because i am a lazy typist
@@ -228,7 +222,7 @@ NUMSETS: do j = 1, nsets
          write(msgstring1, *) 'This tool cannot process empty obs_seq files'
          write(msgstring,*) 'No obs found in input sequence file ', trim(filename_in(i))
          call error_handler(E_ERR,'obs_common_subset',msgstring, &
-            source,revision,revdate, text2=msgstring1)
+            source, text2=msgstring1)
       endif
 
    enddo
@@ -239,7 +233,7 @@ NUMSETS: do j = 1, nsets
          write(msgstring2,*) 'Counts for file 1 and file ', i,' are ', size_seq_in(1), &
                              ' obs and ', size_seq_in(i), ' obs'
          call error_handler(E_ERR,'obs_common_subset',msgstring, &
-            source,revision,revdate, text2=msgstring2)
+            source, text2=msgstring2)
       endif
    enddo
 
@@ -282,7 +276,7 @@ NUMSETS: do j = 1, nsets
       write(msgstring,*)  'DART QC was not found in the input obs_seq files.'
       write(msgstring2,*) 'This tool only works on output files from an assimilation.'
       call error_handler(E_ERR,'obs_common_subset',msgstring, &
-            source,revision,revdate, text2=msgstring2)
+            source, text2=msgstring2)
    endif
 
 
@@ -327,7 +321,7 @@ NUMSETS: do j = 1, nsets
    do i = 1, atonce
       if ( .not. get_first_obs(seq_in(i), obs_in(i))) then
          write(msgstring, *)'no first observation in ',trim(filename_in(i))
-         call error_handler(E_ERR,'obs_common_subset',msgstring,source,revision,revdate)
+         call error_handler(E_ERR,'obs_common_subset',msgstring,source)
       endif
       is_this_last(i) = .false.
       next_obs_in(i) = obs_in(i)
@@ -453,7 +447,6 @@ subroutine setup()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_common_subset')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 end subroutine setup
@@ -495,15 +488,13 @@ character(len=32) :: nname
 if (filename_seq(1) == '' .and. filename_seq_list(1) == '') then
    msgstring2='One of filename_seq or filename_seq_list must be specified in namelist'
    call error_handler(E_ERR,'handle_filenames',            &
-                      'no filenames specified as input',  &
-                      source,revision,revdate, text2=msgstring2)
+           'no filenames specified as input', source, text2=msgstring2)
 endif
 
 ! make sure the namelist specifies one or the other but not both
 if (filename_seq(1) /= '' .and. filename_seq_list(1) /= '') then
    call error_handler(E_ERR,'handle_filenames', &
-       'cannot specify both filename_seq and filename_seq_list in namelist', &
-       source,revision,revdate)
+       'cannot specify both filename_seq and filename_seq_list in namelist', source)
 endif
 
 ! count of all filenames, either explicitly in the namelist
@@ -525,8 +516,7 @@ if (filename_seq(1) /= '') then
          if (indx < num_to_compare_at_once) then
             write(msgstring, '(A,I5,A)') trim(nname)//' must contain at least ', &
                 num_to_compare_at_once, ' obs_seq filenames'
-            call error_handler(E_ERR,'handle_filenames', msgstring, &
-                source,revision,revdate)
+            call error_handler(E_ERR,'handle_filenames', msgstring, source)
          endif
          num_input_files = indx - 1 
          exit FILELOOP
@@ -537,8 +527,7 @@ if (filename_seq(1) /= '') then
    if (modulo(num_input_files, setsize) /= 0) then
       write(msgstring, *) 'number of input files must be an even multiple of ', setsize
       write(msgstring1, *) 'found ', num_input_files, ' input files'
-      call error_handler(E_ERR,'handle_filenames', msgstring, source,revision,revdate, &
-                         text2=msgstring1)
+      call error_handler(E_ERR,'handle_filenames', msgstring, source, text2=msgstring1)
    endif
 
    num_input_sets = num_input_files / setsize
@@ -566,7 +555,7 @@ else
                   ' items while num_to_compare_at_once is ', setsize
          
             call error_handler(E_ERR,'handle_filenames', msgstring1, &
-                               source,revision,revdate, text2=msgstring2)
+                               source, text2=msgstring2)
          endif
          exit EXPLOOP
       endif
@@ -575,7 +564,7 @@ else
          if (fcount >= max_num_input_files) then
             write(msgstring, *)  'cannot specify more than ',max_num_input_files,' total files'
             write(msgstring1, *) 'for more, change "max_num_input_files" in the source and recompile'
-            call error_handler(E_ERR,'handle_filenames', msgstring, source,revision,revdate, &
+            call error_handler(E_ERR,'handle_filenames', msgstring, source, &
                                text2=msgstring1)
          endif
 
@@ -586,7 +575,7 @@ else
             if (ifiles == 1) then
                call error_handler(E_ERR,'handle_filenames', &
                    trim(filename_seq_list(iset))//' contains no input obs_seq filenames', &
-                   source,revision,revdate)
+                   source)
             endif
             this_set_filecount = ifiles-1
             exit LISTLOOP
@@ -606,7 +595,7 @@ else
             write(msgstring2, '(3(A,I5),A)') 'list 1 contains ', files_per_set, ' filenames while list ', iset, &
                ' contains ', this_set_filecount, ' filenames'
             call error_handler(E_ERR,'handle_filenames', msgstring1, &
-               source,revision,revdate, text2=msgstring2)
+                    source, text2=msgstring2)
          endif
       endif
    
@@ -618,8 +607,7 @@ endif
 if (num_input_files >= max_num_input_files) then
    write(msgstring, *)  'cannot specify more than ',max_num_input_files,' files'
    write(msgstring1, *) 'for more, change "max_num_input_files" in the source and recompile'
-   call error_handler(E_ERR,'handle_filenames', msgstring, source,revision,revdate, &
-                      text2=msgstring1)
+   call error_handler(E_ERR,'handle_filenames', msgstring, source, text2=msgstring1)
 endif
 
 if (from_file) then
@@ -681,7 +669,7 @@ do i = 2, count
    endif
    if ( num_copies1 < 0 .or. num_qc1 < 0 ) then
       call error_handler(E_ERR, 'compare_metadata', msgstring3, &
-                                 source, revision, revdate, text2=msgstring2)
+                                 source, text2=msgstring2)
    endif
 
    ! make sure the metadata matches exactly for both the copies and qcs
@@ -696,7 +684,7 @@ do i = 2, count
          write(msgstring1,*)'copy metadata value mismatch. ', trim(str1)
          write(msgstring2,*)'copy metadata value mismatch. ', trim(strN)
          call error_handler(E_ERR, 'compare_metadata', msgstring3, &
-                    source, revision, revdate, text2=msgstring1, text3=msgstring2)
+                    source, text2=msgstring1, text3=msgstring2)
       endif
 
    enddo CopyMetaData
@@ -711,7 +699,7 @@ do i = 2, count
          write(msgstring1,*)'qc metadata value mismatch.  ', trim(str1)
          write(msgstring2,*)'qc metadata value mismatch.  ', trim(strN)
          call error_handler(E_ERR, 'compare_metadata', msgstring3, &
-                    source, revision, revdate, text2=msgstring1, text3=msgstring2)
+                    source, text2=msgstring1, text3=msgstring2)
       endif
 
    enddo QCMetaData
@@ -888,7 +876,7 @@ is_there_one = get_first_obs(seq, obs)
 if ( .not. is_there_one )  then
    write(msgstring,*)'no first obs in sequence ' // trim(filename)
    call error_handler(E_ERR,'validate_obs_seq_time', &
-                      msgstring, source, revision, revdate)
+                      msgstring, source)
    return
 endif
 
@@ -910,8 +898,7 @@ ObsLoop : do while ( .not. is_this_last)
       write(msgstring1,*)'obs number ', key, ' has earlier time than previous obs'
       write(msgstring2,*)'observations must be in increasing time order, file ' // trim(filename)
       call error_handler(E_ERR,'validate_obs_seq_time', msgstring2, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+                         source, text2=msgstring1)
    endif
 
    last_time = this_time
@@ -940,13 +927,12 @@ if (obs_count /= size_seq) then
       ! this is a fatal error
       write(msgstring1,*) 'linked list obs_count > total size_seq, should not happen'
       call error_handler(E_ERR,'validate_obs_seq_time', msgstring, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+                         source, text2=msgstring1)
    else
       ! just warning msg
       write(msgstring1,*) 'only observations in linked list will be processed'
       call error_handler(E_MSG,'validate_obs_seq_time', msgstring, &
-                         source, revision, revdate, text2=msgstring1)
+                         source, text2=msgstring1)
    endif
 endif
 
@@ -969,8 +955,7 @@ num_qc     = get_num_qc(    seq)
 
 if ( num_copies < 0 .or. num_qc < 0 ) then
    write(msgstring,*)' illegal copy or obs count in file '//trim(fname)
-   call error_handler(E_ERR, 'print_metadata', msgstring, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'print_metadata', msgstring, source)
 endif
 
 MetaDataLoop : do i=1, num_copies

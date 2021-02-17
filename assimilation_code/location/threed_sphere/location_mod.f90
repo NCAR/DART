@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Implements location interfaces for a three dimensional spherical shell 
 !> with a choice of vertical coordinates.
@@ -23,7 +21,7 @@
 module location_mod
 
 use      types_mod, only : r8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD, OBSTYPELENGTH, i8
-use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
+use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            E_MSG, open_file, close_file, set_output,                 &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
                            check_namelist_read, do_output, do_nml_file,              &
@@ -48,18 +46,14 @@ public :: location_type, get_location, set_location, &
           VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type
 
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'threed_sphere/location_mod.f90'
 
-integer,             parameter :: LocationDims = 3
-character(len = 64), parameter :: LocationName = "loc3Dsphere"
-character(len = 64), parameter :: LocationLName = &
+integer,          parameter :: LocationDims = 3
+character(len=*), parameter :: LocationName = "loc3Dsphere"
+character(len=*), parameter :: LocationLName = &
                                    "threed sphere locations: lon, lat, vertical"
-character(len = 64), parameter :: LocationStorageOrder = "Lon Lat Vertical"
-character(len = 64), parameter :: LocationUnits = "degrees degrees which_vert"
+character(len=*), parameter :: LocationStorageOrder = "Lon Lat Vertical"
+character(len=*), parameter :: LocationUnits = "degrees degrees which_vert"
 
 
 ! The possible numeric values for the location_type%which_vert component.
@@ -255,7 +249,6 @@ integer :: iunit, io, i, k, typecount, type_index
 
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 ! give these initial values before reading them from the namelist.
@@ -277,20 +270,19 @@ if(do_nml_file()) write(nmlfileunit, nml=location_nml)
 if(do_nml_term()) write(     *     , nml=location_nml)
 
 call error_handler(E_MSG, 'location_mod:', 'using code with optimized cutoffs', &
-                   source, revision, revdate)
+                   source)
 
 ! Simple error checking for nlon, nlat to be sure we can use them for allocations.
 if (nlon < 1 .or. nlat < 1) then
    write(msgstring, '(A,I5,A,I5)') 'from the namelist, nlon is ', nlon, '; nlat is ', nlat
    write(msgstring2, '(A)') 'both must be >= 1, and nlon must be odd'
-   call error_handler(E_ERR, 'location_mod', msgstring, &
-                      source, revision, revdate, text2=msgstring2)
+   call error_handler(E_ERR, 'location_mod', msgstring, source, text2=msgstring2)
 endif
 
 ! One additional restriction; number of longitudes, nlon, for get_close
 if((nlon / 2) * 2 == nlon) then
    write(msgstring, '(A,I5,A)') 'nlon is ', nlon, '. Must be odd'
-   call error_handler(E_ERR, 'location_mod', msgstring, source, revision, revdate)
+   call error_handler(E_ERR, 'location_mod', msgstring, source)
 endif
 
 ! Copy the normalization factors in the vertical into an array
@@ -336,7 +328,7 @@ if (special_vert_normalization_obs_types(1) /= 'null' .or. &
       type_index = get_index_for_type_of_obs(special_vert_normalization_obs_types(i))
       if (type_index < 0) then
          write(msgstring, *) 'unrecognized TYPE_ in the special vertical normalization namelist:'
-         call error_handler(E_ERR,'location_mod:', msgstring, source, revision, revdate, &
+         call error_handler(E_ERR,'location_mod:', msgstring, source, &
                             text2=trim(special_vert_normalization_obs_types(i)))
       endif
 
@@ -351,8 +343,7 @@ if (special_vert_normalization_obs_types(1) /= 'null' .or. &
       write(msgstring, *) 'one or more special vertical normalization values is uninitialized.'
       call error_handler(E_ERR,'location_mod:', &
                         'special vert normalization value namelist requires all 4 values per type', &
-                        source, revision, revdate, &
-                        text2=trim(msgstring))
+                        source, text2=trim(msgstring))
    endif
 
 endif
@@ -362,19 +353,18 @@ endif
 if (horiz_dist_only) then
    call error_handler(E_MSG,'location_mod:', &
       'Ignoring vertical separation when computing distances; horizontal distances only', &
-      source,revision,revdate)
+      source)
 else
    call error_handler(E_MSG,'location_mod:', &
-      'Including vertical separation when computing distances:', &
-      source,revision,revdate)
+      'Including vertical separation when computing distances:', source)
    write(msgstring,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', vert_normalization_pressure
-   call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'location_mod:',msgstring,source)
    write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', vert_normalization_height
-   call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'location_mod:',msgstring,source)
    write(msgstring,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', vert_normalization_level
-   call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'location_mod:',msgstring,source)
    write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', vert_normalization_scale_height
-   call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'location_mod:',msgstring,source)
 
    if (allocated(per_type_vert_norm)) then
       typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
@@ -385,26 +375,26 @@ else
              (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height)) then
  
             write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_name_for_type_of_obs(i))
-            call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            call error_handler(E_MSG,'location_mod:',msgstring,source)
             if (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) then
                write(msgstring,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', &
                      per_type_vert_norm(VERTISPRESSURE, i)
-               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+               call error_handler(E_MSG,'location_mod:',msgstring,source)
             endif
             if (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
                write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', &
                      per_type_vert_norm(VERTISHEIGHT, i)
-               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+               call error_handler(E_MSG,'location_mod:',msgstring,source)
             endif
             if (per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) then
                write(msgstring,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', &
                      per_type_vert_norm(VERTISLEVEL, i)
-               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+               call error_handler(E_MSG,'location_mod:',msgstring,source)
             endif
             if (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height) then
                write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', &
                      per_type_vert_norm(VERTISSCALEHEIGHT, i)
-               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+               call error_handler(E_MSG,'location_mod:',msgstring,source)
             endif
          endif
       enddo
@@ -423,8 +413,7 @@ if(approximate_distance) then
       my_acos(i) = acos(i / ACOS_DELTA)
    end do
    call error_handler(E_MSG,'location_mod:', &
-      'Using table-lookup approximation for distance computations', &
-      source,revision,revdate)
+      'Using table-lookup approximation for distance computations', source)
 endif
 
 end subroutine initialize_module
@@ -520,14 +509,14 @@ if(.not. comp_h_only) then
    if(loc1%which_vert /= loc2%which_vert) then
       write(msgstring,*)'loc1%which_vert (',loc1%which_vert, &
                    ') /= loc2%which_vert (',loc2%which_vert,')'
-      call error_handler(E_MSG, 'get_dist', msgstring, source, revision, revdate)
+      call error_handler(E_MSG, 'get_dist', msgstring, source)
       call write_location(logfileunit,loc1)
       call write_location(logfileunit,loc2)
       call write_location(0,loc1)
       call write_location(0,loc2)
       call error_handler(E_ERR, 'get_dist', &
          'Dont know how to compute vertical distance for unlike vertical coordinates', &
-         source, revision, revdate)
+         source)
    endif
 
    ! Compute the difference and divide by the appropriate normalization factor
@@ -541,7 +530,7 @@ if(.not. comp_h_only) then
    if (allocated(per_type_vert_norm)) then 
       if (.not. present(type1)) then
          write(msgstring, *) 'obs type required in get_dist() if doing per-type vertical normalization'
-         call error_handler(E_MSG, 'get_dist', msgstring, source, revision, revdate)
+         call error_handler(E_MSG, 'get_dist', msgstring, source)
       endif 
       vert_dist = abs(loc1%vloc - loc2%vloc) / per_type_vert_norm(loc1%which_vert, type1)
    else
@@ -634,12 +623,12 @@ if ( .not. module_initialized ) call initialize_module()
 
 if(lon < 0.0_r8 .or. lon > 360.0_r8) then
    write(msgstring,*)'longitude (',lon,') is not within range [0,360]'
-   call error_handler(E_ERR, 'set_location', msgstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', msgstring, source)
 endif
 
 if(lat < -90.0_r8 .or. lat > 90.0_r8) then
    write(msgstring,*)'latitude (',lat,') is not within range [-90,90]'
-   call error_handler(E_ERR, 'set_location', msgstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', msgstring, source)
 endif
 
 set_location_single%lon = lon * DEG2RAD
@@ -647,7 +636,7 @@ set_location_single%lat = lat * DEG2RAD
 
 if(which_vert < VERTISUNDEF .or. which_vert == 0 .or. which_vert > VERTISSCALEHEIGHT) then
    write(msgstring,*)'which_vert (',which_vert,') must be one of -2, -1, 1, 2, 3, or 4'
-   call error_handler(E_ERR,'set_location', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'set_location', msgstring, source)
 endif
 
 set_location_single%vloc = vert_loc
@@ -669,7 +658,7 @@ if ( .not. module_initialized ) call initialize_module()
 
 if (size(list) < 4) then
    write(msgstring,*)'requires 4 input values'
-   call error_handler(E_ERR, 'set_location', msgstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', msgstring, source)
 endif
 
 set_location_array = set_location_single(list(1), list(2), list(3), nint(list(4)))
@@ -738,7 +727,7 @@ select case(attr)
    case default
       call error_handler(E_ERR, 'query_location:', &
          'Only "lon","lat","vloc","which_vert" are legal attributes to request from location', &
-          source, revision, revdate)
+          source)
 end select
 
 end function query_location
@@ -785,8 +774,7 @@ endif
 ! to a file, and you can't have binary format set.
 if (.not. ascii_file_format(fform)) then
    call error_handler(E_ERR, 'write_location', &
-      'Cannot use string buffer with binary format', &
-       source, revision, revdate)
+      'Cannot use string buffer with binary format', source)
 endif
 
 ! format the location to be more human-friendly; meaning
@@ -798,7 +786,7 @@ charlength = 72
 
 if (len(charstring) < charlength) then
    write(msgstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
-   call error_handler(E_ERR, 'write_location', msgstring, source, revision, revdate)
+   call error_handler(E_ERR, 'write_location', msgstring, source)
 endif
 
 ! format the horizontal into a temp string
@@ -824,7 +812,7 @@ select case  (loc%which_vert)
       write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc, ' scale ht'
    case default
       write(msgstring, *) 'unrecognized key for vertical type: ', loc%which_vert
-      call error_handler(E_ERR, 'write_location', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'write_location', msgstring, source)
 end select
 
 
@@ -849,7 +837,7 @@ if (ascii_file_format(fform)) then
    read(locfile, '(a5)' ) header
    if(header /= 'loc3d') then
          write(msgstring,*)'Expected location header "loc3d" in input file, got ', header
-      call error_handler(E_ERR, 'read_location', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'read_location', msgstring, source)
    endif
    ! Now read the location data value
    read(locfile, *)read_location%lon, read_location%lat, &
@@ -1003,7 +991,7 @@ if ( .not. module_initialized ) call initialize_module()
 !if ( (minl%which_vert /= maxl%which_vert) .or. &
 ! ((minl%which_vert /= loc%which_vert).and.(minl%which_vert /= VERTISUNDEF))) then
 !   write(msgstring,*)'which_vert (',loc%which_vert,') must be same in all args'
-!   call error_handler(E_ERR, 'is_location_in_region', msgstring, source, revision, revdate)
+!   call error_handler(E_ERR, 'is_location_in_region', msgstring, source)
 !endif
 
 ! assume failure and return as soon as we are confirmed right.
@@ -1096,7 +1084,7 @@ select case  (which_vert)
       is_vertical = (VERTISSCALEHEIGHT == loc%which_vert)
    case default
       write(msgstring, *) 'unrecognized key for vertical type: ', which_vert
-      call error_handler(E_ERR, 'is_vertical', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'is_vertical', msgstring, source)
 end select
 
 end function is_vertical
@@ -1181,7 +1169,7 @@ if (present(maxdist_list)) then
    if (size(maxdist_list) .ne. typecount) then
       write(msgstring,'(A,I8,A,I8)')'maxdist_list len must equal number of specific types, ', &
                                     size(maxdist_list), ' /= ', typecount
-      call error_handler(E_ERR, 'get_close_init', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'get_close_init', msgstring, source)
    endif
  
    allocate(distlist(typecount))
@@ -1189,7 +1177,7 @@ if (present(maxdist_list)) then
    gc%nt = distcount
    if (gc%nt <= 0) then
       write(msgstring,'(A)')'error getting count of distinct cutoff dists; should not happen'
-      call error_handler(E_ERR, 'get_close_init', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'get_close_init', msgstring, source)
    endif
 else
    gc%nt = 1
@@ -1303,9 +1291,9 @@ do n=1, gc%nt
       lon_box(i) = get_lon_box(gc%gtt(n), locs(i)%lon)
       if(lon_box(i) < 0 .or. lon_box(i) > nlon) then
          write(msgstring, *) 'Contact Dart Developers: this error should not happen'
-         call error_handler(E_MSG, 'get_close_init', msgstring, source, revision, revdate)
+         call error_handler(E_MSG, 'get_close_init', msgstring, source)
          write(msgstring, *) 'location outside grid boxes, index value:',  lon_box(i)
-         call error_handler(E_ERR, 'get_close_init', msgstring, source, revision, revdate)
+         call error_handler(E_ERR, 'get_close_init', msgstring, source)
       endif
    
       lat_box(i) = floor((locs(i)%lat - gc%gtt(n)%bot_lat) / gc%gtt(n)%lat_width) + 1
@@ -1462,8 +1450,7 @@ if (base_type < 0) then
    if (gc%nt > 1) then
       write(msgstring,  '(A)') 'no support for identity obs if per-obs-type cutoffs are specified'
       write(msgstring1, '(A)') 'contact dart support if you have a need for this combination'
-      call error_handler(E_ERR, 'get_close', msgstring, source, revision, revdate, &
-                         text2=msgstring1)
+      call error_handler(E_ERR, 'get_close', msgstring, source, text2=msgstring1)
    endif
    bt = 1
 else
@@ -1472,7 +1459,7 @@ else
       write(msgstring,'(A,I8)')'base_type out of range, is ', base_type
       write(msgstring1,'(A,2I8)')'must be between ', 1, size(gc%type_to_cutoff_map)
       call write_location (0, base_loc, charstring=msgstring2)
-      call error_handler(E_ERR, 'get_close', msgstring, source, revision, revdate, &
+      call error_handler(E_ERR, 'get_close', msgstring, source, &
                          text2=msgstring1, text3=msgstring2)
    endif
    bt = gc%type_to_cutoff_map(base_type)
@@ -1480,7 +1467,7 @@ else
       write(msgstring,'(A,I8)')'mapped type index out of range, is ', bt
       write(msgstring1,'(A,2I8)')'must be between ', 1, gc%nt
       write(msgstring2, '(A)')'internal error, should not happen.  Contact DART Support'
-      call error_handler(E_ERR, 'get_close', msgstring, source, revision, revdate, &
+      call error_handler(E_ERR, 'get_close', msgstring, source, &
                          text2=msgstring1, text3=msgstring2)
    endif
 endif
@@ -1493,7 +1480,7 @@ if (size(locs) /= gc%gtt(bt)%num) then
    write(msgstring,'(A)')'locs() array must match one passed to get_close_init()'
    write(msgstring1,'(A,2I8)')'init size, current list size: ', gc%gtt(bt)%num, size(locs)
    write(msgstring2,'(A,I8)')'bt = ', bt
-   call error_handler(E_ERR, 'get_close', msgstring, source, revision, revdate, &
+   call error_handler(E_ERR, 'get_close', msgstring, source, &
                       text2=msgstring1, text3=msgstring2)
 endif
 
@@ -1609,14 +1596,14 @@ if(COMPARE_TO_CORRECT) then
    ! Do comparisons against full search
    if((num_close /= cnum_close) .and. present(dist)) then
       write(msgstring, *) 'get_close (', num_close, ') should equal exhaustive search (', cnum_close, ')'
-      call error_handler(E_ERR, 'get_close', msgstring, source, revision, revdate, &
-                         text2='optional arg "dist" is present; we are computing exact distances', &
-                         text3='the exhaustive search should find an identical number of locations')
+      call error_handler(E_ERR, 'get_close', msgstring, source, &
+           text2='optional arg "dist" is present; we are computing exact distances', &
+           text3='the exhaustive search should find an identical number of locations')
    else if (num_close < cnum_close) then
       write(msgstring, *) 'get_close (', num_close, ') should not be smaller than exhaustive search (', cnum_close, ')'
-      call error_handler(E_ERR, 'get_close', msgstring, source, revision, revdate, &
-                         text2='optional arg "dist" not present; we are returning a superset of close locations', &
-                         text3='the exhaustive search should find an equal or lesser number of locations')
+      call error_handler(E_ERR, 'get_close', msgstring, source, &
+           text2='optional arg "dist" not present; we are returning a superset of close locations', &
+           text3='the exhaustive search should find an equal or lesser number of locations')
    endif
 endif
 !--------------------End of verify by comparing to exhaustive search --------------
@@ -1848,8 +1835,7 @@ end do
 
 ! Should never fall off the end since all boxes should not be empty
 ! Fatal error if this happens
-call error_handler(E_ERR, 'next_full_box', 'All boxes empty: should not happen', &
-   source, revision, revdate)
+call error_handler(E_ERR, 'next_full_box', 'All boxes empty: should not happen', source)
 
 end function next_full_box
 
@@ -1875,8 +1861,7 @@ end do
 
 ! Should never fall off the end since all boxes should not be full
 ! Fatal error if this happens
-call error_handler(E_ERR, 'next_empty_box', 'All boxes full: should not happen', &
-   source, revision, revdate)
+call error_handler(E_ERR, 'next_empty_box', 'All boxes full: should not happen', source)
 
 end function next_empty_box
 
@@ -2430,8 +2415,3 @@ end subroutine print_get_close_type
 
 end module location_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Program to integrate assimilation model forward without assimilation.
 !> Can be used for forecasts after an assimilation, spinning a model up
@@ -19,8 +17,7 @@ program integrate_model
 
 use time_manager_mod,    only : time_type, operator(<), print_time, get_time, &
                                 set_time, set_time_missing
-use utilities_mod,       only : register_module,  &
-                                error_handler, E_MSG, nmlfileunit, &
+use utilities_mod,       only : error_handler, E_MSG, nmlfileunit, &
                                 do_nml_file, do_nml_term,          &
                                 find_namelist_in_file, check_namelist_read
 use assim_model_mod,     only : static_init_assim_model, get_model_size,              &
@@ -35,12 +32,7 @@ use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilitie
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source = 'integrate_model_parallel.f90'
 
 type(ensemble_type) :: ens_handle
 type(time_type)     :: target_time, init_time
@@ -113,10 +105,8 @@ print *, 'in main program'
 ! FIXME: that could be changed to do multiple ens members in parallel.
 ! the code does NOT do this now.
 if(task_count() > 1) &
-   call error_handler(E_MSG,'integrate_model','Only one process doing the work', &
-   source,revision,revdate)
+   call error_handler(E_MSG,'integrate_model','Only one process doing the work', source)
 
-call register_module(id)
 
 ! this must come AFTER the standard utils are initialized.
 ! Read the integrate_model_nml namelist from input.nml if 'use_namelist' true.

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 
 !> A collection of interfaces to the MPI (Message Passing Interface)
@@ -33,7 +31,7 @@
 module mpi_utilities_mod
 
 use types_mod, only :  i8, r8, digits12
-use utilities_mod, only : register_module, error_handler, & 
+use utilities_mod, only : error_handler, & 
                           E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file, &
                           set_output, set_tasknum, initialize_utilities,     &
                           finalize_utilities,                                &
@@ -128,11 +126,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           start_mpi_timer, read_mpi_timer, send_sum_to,                      &
           all_reduce_min_max  ! deprecated, replace by broadcast_minmax
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'mpi_utilities_mod.f90'
 
 logical :: module_initialized   = .false.
 
@@ -220,7 +214,7 @@ logical :: already
 if ( module_initialized ) then
    ! return without calling the code below multiple times
    write(errstring, *) 'initialize_mpi_utilities has already been called'
-   call error_handler(E_WARN,'initialize_mpi_utilities', errstring, source, revision, revdate)
+   call error_handler(E_WARN,'initialize_mpi_utilities', errstring, source)
    return
 endif
 
@@ -281,7 +275,6 @@ endif
 
 ! if logging, add this info to the log
 ! (must come after regular utils are initialized)
-call register_module(source, revision, revdate)
 
 ! this must come AFTER the standard utils are initialized.
 ! Read the DART namelist for the mpi_utilities.
@@ -307,8 +300,7 @@ if (.not. given_communicator .and. create_local_comm) then
    call MPI_Comm_dup(MPI_COMM_WORLD, my_local_comm, errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Comm_dup returned error code ', errcode
-      call error_handler(E_ERR,'initialize_mpi_utilities', errstring, &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source)
    endif
 endif
 
@@ -316,14 +308,14 @@ endif
 call MPI_Comm_rank(my_local_comm, myrank, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Comm_rank returned error code ', errcode
-   call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source)
 endif
 
 ! number of tasks (if 10, returns 10.  task id numbers go from 0-9)
 call MPI_Comm_size(my_local_comm, total_tasks, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Comm_size returned error code ', errcode
-   call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source)
 endif
 
 ! tell the utilities module what task number we are.
@@ -352,7 +344,7 @@ else
    datasize = MPI_REAL4
    if (myrank == 0) then
       write(errstring, *) "Using real * 4 for datasize of r8"
-      call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring,source,revision,revdate)
+      call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring, source)
    endif
 endif
 
@@ -362,7 +354,7 @@ longinttype = MPI_INTEGER8
 !call MPI_Type_Create_F90_Integer(15, longinttype, errcode)
 !if (errcode /= MPI_SUCCESS) then
 !   write(errstring, '(a,i8)') 'MPI_Type_Create_F90_Integer returned error code ', errcode
-!   call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
+!   call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source)
 !endif
 
 
@@ -387,7 +379,7 @@ if (verbose) write(*,*) "PE", myrank, ": MPI successfully initialized"
 
 if (myrank == 0) then
    write(errstring, *) 'Running with ', total_tasks, ' MPI processes.'
-   call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring,source,revision,revdate)
+   call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring, source)
 endif
 
 end subroutine initialize_mpi_utilities
@@ -409,7 +401,7 @@ logical :: dofinalize
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source)
 endif
 
 ! give the async=4 case a chance to tell the script to shut down.
@@ -436,8 +428,7 @@ if (.not. given_communicator) then
       call MPI_Comm_free(my_local_comm, errcode)
       if (errcode /= MPI_SUCCESS) then
          write(errstring, '(a,i8)') 'MPI_Comm_free returned error code ', errcode
-         call error_handler(E_ERR,'finalize_mpi_utilities', errstring, &
-                            source, revision, revdate)
+         call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source)
       endif
    endif
    my_local_comm = MPI_COMM_WORLD
@@ -459,7 +450,7 @@ if (dofinalize) then
    call MPI_Finalize(errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Finalize returned error code ', errcode
-      call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
+      call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source)
    endif
 endif
 
@@ -480,7 +471,7 @@ integer :: task_count
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'task_count', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'task_count', errstring, source)
 endif
 
 task_count = total_tasks
@@ -499,7 +490,7 @@ integer :: my_task_id
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'my_task_id', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'my_task_id', errstring, source)
 endif
 
 my_task_id = myrank
@@ -518,14 +509,14 @@ integer :: errcode
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'task_sync', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'task_sync', errstring, source)
 endif
 
 if (verbose) write(*,*) "PE", myrank, ": waiting at MPI Barrier"
 call MPI_Barrier(my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Barrier returned error code ', errcode
-   call error_handler(E_ERR,'task_sync', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'task_sync', errstring, source)
 endif
 
 if (verbose) write(*,*) "PE", myrank, ": MPI Barrier released"
@@ -556,14 +547,14 @@ if (verbose) write(*,*) "PE", myrank, ": start of send_to "
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'send_to', errstring, source)
 endif
 
 ! simple idiotproofing
 if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
    write(errstring, '(a,i8,a,i8)') "destination task id ", dest_id, &
                                    "must be >= 0 and < ", total_tasks
-   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'send_to', errstring, source)
 endif
 
 itemcount = size(srcarray)
@@ -624,7 +615,7 @@ else
       endif
       if (errcode /= MPI_SUCCESS) then
          write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
-         call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+         call error_handler(E_ERR,'send_to', errstring, source)
       endif
       offset = offset + nextsize
    enddo
@@ -632,7 +623,7 @@ endif
 
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
-   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'send_to', errstring, source)
 endif
 
 ! if time specified, call MPI again to send the 2 time ints.
@@ -642,7 +633,7 @@ if (present(time)) then
    call MPI_Ssend(itime, 2, MPI_INTEGER, dest_id, tag*2, my_local_comm, errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
-      call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+      call error_handler(E_ERR,'send_to', errstring, source)
    endif
    if (verbose) write(*,*) "PE", myrank, ": sent time to ", dest_id
 endif
@@ -679,14 +670,14 @@ if (verbose) write(*,*) "PE", myrank, ": start of receive_from "
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'receive_from', errstring, source)
 endif
 
 ! simple idiotproofing
 if ((src_id < 0) .or. (src_id >= total_tasks)) then
    write(errstring, '(a,i8,a,i8)') "source task id ", src_id, &
                                    "must be >= 0 and < ", total_tasks
-   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'receive_from', errstring, source)
 endif
 
 itemcount = size(destarray)
@@ -746,7 +737,7 @@ else
       endif
       if (errcode /= MPI_SUCCESS) then
          write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
-         call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+         call error_handler(E_ERR,'receive_from', errstring, source)
       endif
       offset = offset + nextsize
    end do
@@ -754,7 +745,7 @@ endif
 
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
-   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'receive_from', errstring, source)
 endif
 
 if (verbose) write(*,*) "PE", myrank, ": received from ", src_id
@@ -766,11 +757,11 @@ if (present(time)) then
                  my_local_comm, status, errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
-      call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+      call error_handler(E_ERR,'receive_from', errstring, source)
    endif
    if (itime(2) < 0) then
       write(errstring, '(a,i8)') 'seconds in settime were < 0; using 0'
-      call error_handler(E_MSG,'receive_from', errstring, source, revision, revdate)
+      call error_handler(E_MSG,'receive_from', errstring, source)
       time = set_time(itime(1), 0)
    else
       time = set_time(itime(1), itime(2))
@@ -805,14 +796,14 @@ real(r8), allocatable :: tmpdata(:)
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'array_broadcast', errstring, source)
 endif
 
 ! simple idiotproofing
 if ((root < 0) .or. (root >= total_tasks)) then
    write(errstring, '(a,i8,a,i8)') "root task id ", root, &
                                    "must be >= 0 and < ", total_tasks
-   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'array_broadcast', errstring, source)
 endif
 
 ! if the actual data to be sent is shorter than the size of 'array',
@@ -824,7 +815,7 @@ if (present(icount)) then
    if (icount > size(array)) then
       write(errstring,  '(a,i12)') "number of items to broadcast: ", icount
       write(errstring1, '(a,i12)') "cannot be larger than the array size: ", size(array)
-      call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate, &
+      call error_handler(E_ERR,'array_broadcast', errstring, source, &
                          text2=errstring1)
    endif
    itemcount = icount
@@ -874,7 +865,7 @@ else
       endif
       if (errcode /= MPI_SUCCESS) then
          write(errstring, '(a,i8)') 'MPI_Bcast returned error code ', errcode
-         call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+         call error_handler(E_ERR,'array_broadcast', errstring, source)
       endif
       offset = offset + nextsize
    end do
@@ -882,7 +873,7 @@ endif
 
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Bcast returned error code ', errcode
-   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'array_broadcast', errstring, source)
 endif
 
 if (make_copy_before_broadcast) deallocate(tmpdata)
@@ -903,7 +894,7 @@ logical :: iam_task0
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'iam_task0', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'iam_task0', errstring, source)
 endif
 
 iam_task0 = (myrank == 0)
@@ -936,14 +927,14 @@ integer  :: itemcount
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'broadcast_send', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'broadcast_send', errstring, source)
 endif
 
 ! simple idiotproofing
 if (from /= myrank) then
    write(errstring, '(a,i8,a,i8)') "'from' task id ", from, &
                                    "must be same as current task id ", myrank
-   call error_handler(E_ERR,'broadcast_send', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'broadcast_send', errstring, source)
 endif
 
 ! for relatively small array sizes, pack them into a single send/recv pair.
@@ -1007,14 +998,14 @@ integer :: itemcount
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'broadcast_recv', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'broadcast_recv', errstring, source)
 endif
 
 ! simple idiotproofing
 if (from == myrank) then
    write(errstring, '(a,i8,a,i8)') "'from' task id ", from, &
                                    "cannot be same as current task id ", myrank
-   call error_handler(E_ERR,'broadcast_recv', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'broadcast_recv', errstring, source)
 endif
 
 ! for relatively small array sizes, pack them into a single send/recv pair.
@@ -1330,7 +1321,7 @@ subroutine sum_across_tasks_int4(addend, sum)
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source)
 endif
 
 localaddend(1) = addend
@@ -1341,7 +1332,7 @@ call MPI_Allreduce(localaddend, localsum, 1, MPI_INTEGER, MPI_SUM, &
                    my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Allreduce returned error code ', errcode
-   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source)
 endif
 
 sum = localsum(1)
@@ -1362,7 +1353,7 @@ subroutine sum_across_tasks_int8(addend, sum)
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source)
 endif
 
 localaddend(1) = addend
@@ -1373,7 +1364,7 @@ call MPI_Allreduce(localaddend, localsum, 1, longinttype, MPI_SUM, &
                    my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Allreduce returned error code ', errcode
-   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source)
 endif
 
 sum = localsum(1)
@@ -1393,7 +1384,7 @@ subroutine sum_across_tasks_real(addend, sum)
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source)
 endif
 
 localaddend(1) = addend
@@ -1404,7 +1395,7 @@ call MPI_Allreduce(localaddend, localsum, 1, datasize, MPI_SUM, &
                    my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Allreduce returned error code ', errcode
-   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source)
 endif
 
 sum = localsum(1)
@@ -1426,7 +1417,7 @@ integer :: errcode
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'send_sum_to', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'send_sum_to', errstring, source)
 endif
 
 ! collect values on a single given task 
@@ -1449,7 +1440,7 @@ integer :: errcode
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'send_minmax_to', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'send_minmax_to', errstring, source)
 endif
 
 ! collect values on a single given task 
@@ -1489,7 +1480,7 @@ integer :: errcode
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'broadcast_minmax', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'broadcast_minmax', errstring, source)
 endif
 
 call mpi_allreduce(MPI_IN_PLACE, min_var, num_elements, datasize, MPI_MIN, get_dart_mpi_comm(), errcode)
@@ -1509,7 +1500,7 @@ integer :: errcode
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'broadcast_flag', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'broadcast_flag', errstring, source)
 endif
 
 call MPI_Bcast(flag, 1, MPI_LOGICAL, root, my_local_comm, errcode)
@@ -1541,7 +1532,7 @@ integer :: rc
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'block_task', errstring, source)
 endif
 
 ! FIXME: this should be mpi or a string other than filter (this is generic 
@@ -1553,7 +1544,7 @@ non_pipe = 'filter_to_model.file'
 ! the i5.5 format below will not handle task counts larger than this.
 if (total_tasks > 99999) then
    write(errstring, *) 'cannot handle task counts > 99999'
-   call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'block_task', errstring, source)
 endif
 
 ! make it so we only have to test 1 or 2 things here instead of 3
@@ -1645,7 +1636,7 @@ integer :: rc
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'restart_task', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'restart_task', errstring, source)
 endif
 
 ! FIXME: ditto previous comment about using the string 'filter' here.
@@ -1654,7 +1645,7 @@ model_to_filter = 'model_to_filter.lock'
 ! the i5.5 format below will not handle task counts larger than this.
 if (total_tasks > 99999) then
    write(errstring, *) 'cannot handle task counts > 99999'
-   call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'block_task', errstring, source)
 endif
 
 ! make it so we only have to test 1 or 2 things here instead of 3
@@ -1705,7 +1696,7 @@ integer :: rc
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'restart_task', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'restart_task', errstring, source)
 endif
 
 ! only in the async=4 case does this matter.
@@ -1795,8 +1786,7 @@ if (myrank == 0) then
       if (errcode /= MPI_SUCCESS) then
          write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
                                      errcode
-         call error_handler(E_ERR,'shell_execute', errstring, source, &
-                            revision, revdate)
+         call error_handler(E_ERR,'shell_execute', errstring, source)
       endif
    endif
 
@@ -1806,8 +1796,7 @@ else if (myrank /= (total_tasks-1)) then
                  my_local_comm, status, errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
-      call error_handler(E_ERR,'shell_execute', errstring, source, &
-                         revision, revdate)
+      call error_handler(E_ERR,'shell_execute', errstring, source)
    endif
 
    ! my turn to execute
@@ -1819,8 +1808,7 @@ else if (myrank /= (total_tasks-1)) then
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
                                   errcode
-      call error_handler(E_ERR,'shell_execute', errstring, source, &
-                         revision, revdate)
+      call error_handler(E_ERR,'shell_execute', errstring, source)
    endif
 else
    ! last task, no one else to send to.
@@ -1828,8 +1816,7 @@ else
                  my_local_comm, status, errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
-      call error_handler(E_ERR,'shell_execute', errstring, source, &
-                         revision, revdate)
+      call error_handler(E_ERR,'shell_execute', errstring, source)
    endif
 
    ! my turn to execute
@@ -2022,8 +2009,3 @@ end subroutine exit_all
 
 !-----------------------------------------------------------------------------
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
