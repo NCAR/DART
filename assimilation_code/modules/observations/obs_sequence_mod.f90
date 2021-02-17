@@ -29,7 +29,8 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
                              interactive_obs_def, get_obs_def_location, &
                              get_obs_def_type_of_obs, get_obs_def_key,  &
-                             operator(==), operator(/=), print_obs_def
+                             operator(==), operator(/=), print_obs_def, &
+                             set_obs_def_write_external_FO
 
 use     obs_kind_mod, only : write_type_of_obs_table, &
                              read_type_of_obs_table, &
@@ -75,13 +76,14 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    delete_seq_head, delete_seq_tail, &
    get_next_obs_from_key, get_prev_obs_from_key, delete_obs_by_typelist, &
    select_obs_by_location, delete_obs_by_qc, delete_obs_by_copy, &
-   print_obs_seq_summary, validate_obs_seq_time
+   print_obs_seq_summary, validate_obs_seq_time, &
+   set_obs_seq_precomputed_FOs
 
 ! Public interfaces for obs
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
    get_obs_values, set_obs_values, replace_obs_values, get_qc, set_qc, &  
    read_obs, write_obs, replace_qc, interactive_obs, copy_obs, assignment(=), &
-   get_obs_key, copy_partial_obs, print_obs
+   get_obs_key, copy_partial_obs, print_obs, set_obs_precomputed_FOs
 
 ! Public interfaces for obs covariance modeling
 public :: obs_cov_type
@@ -3036,9 +3038,31 @@ if (obs_count /= size_seq) then
 endif
 
 end subroutine validate_obs_seq_time
+!-------------------------------------------------
+subroutine set_obs_seq_precomputed_FOs(seq,write_external_FOs)
+type(obs_sequence_type), intent(inout) :: seq
+logical,                 intent(in) :: write_external_FOs
 
+integer :: i
 
+do i = 1, seq%num_obs
+  call set_obs_precomputed_FOs(seq%obs(i),write_external_FOs)
+end do
 
+end subroutine set_obs_seq_precomputed_FOs
+!-------------------------------------------------
+subroutine set_obs_precomputed_FOs(obs, write_external_FOs)
+
+! Write out an observation to file, inefficient
+
+type(obs_type), intent(inout) :: obs
+logical,        intent(in) :: write_external_FOs
+
+integer :: i
+
+call set_obs_def_write_external_FO(obs%def, write_external_FOs)
+
+end subroutine set_obs_precomputed_FOs
 !-------------------------------------------------
 !subroutine get_cov_group
 !-------------------------------------------------
