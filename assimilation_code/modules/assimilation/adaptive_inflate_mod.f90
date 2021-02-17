@@ -428,6 +428,10 @@ logical,  intent(in)    :: compute_posterior
 integer :: i
 character(len=32) :: string(2)
 
+!TJH do_prior_inflate     = .false.
+!TJH do_posterior_inflate = .false.
+!TJH output_inflation     = .false.
+
 ! for error messages
 string(PRIOR)     = 'Prior'
 string(POSTERIOR) = 'Posterior'
@@ -446,10 +450,17 @@ do i = 1, 2
    endif
 end do
 
+!TJH ! Check to see if state space inflation is turned on
+!TJH if (inf_flavor(PRIOR)     /= NO_INFLATION .and. &
+!TJH     inf_flavor(PRIOR)     /= OBS_INFLATION)  do_prior_inflate     = .true.
+!TJH if (inf_flavor(POSTERIOR) /= NO_INFLATION .and. &
+!TJH     inf_flavor(POSTERIOR) /= OBS_INFLATION)  do_posterior_inflate = .true.
+
 ! Check to see if state space inflation is turned on
 if (inf_flavor(PRIOR)     > OBS_INFLATION)  do_prior_inflate     = .true.
 if (inf_flavor(POSTERIOR) > OBS_INFLATION)  do_posterior_inflate = .true.
-if (do_prior_inflate .or. do_posterior_inflate) output_inflation = .true.
+
+if (do_prior_inflate .or. do_posterior_inflate) output_inflation  = .true.
 
 ! Observation space inflation not currently supported
 if(inf_flavor(PRIOR) == OBS_INFLATION .or. inf_flavor(POSTERIOR) == OBS_INFLATION) &
@@ -463,7 +474,7 @@ if(inf_flavor(PRIOR) == RELAXATION_TO_PRIOR_SPREAD) &
    'RTPS inflation (type 4) only supported for Posterior inflation', source, revision, revdate)
 
 ! Cannot select posterior options if not computing posterior
-if(.not. compute_posterior .and. inf_flavor(POSTERIOR) > NO_INFLATION) then
+if(.not. compute_posterior .and. inf_flavor(POSTERIOR) /= NO_INFLATION) then
    write(string1, *) 'cannot enable posterior inflation if not computing posterior values'
    call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &
                              text2='"compute_posterior" is false; posterior inflation flavor must be 0')

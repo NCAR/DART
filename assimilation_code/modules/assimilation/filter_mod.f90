@@ -234,11 +234,9 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
                       obs_sequence_out_name = "obs_seq.final",  &
                       adv_ens_command       = './advance_model.csh'
 
-! The inflation flavors are defined in adaptive_inflate_mod.
-! There are accessor routines such that filter_mod should not need to know
-! the  integer values relating to the flavor. It is an open question
-! as to whether or not we should 'use' the integer parameters for PRIOR
-! and POSTERIOR from adaptive_inflate_mod.
+! The inflation flavor parameters are defined in adaptive_inflate_mod.
+! It is an open question as to whether or not we should 'use' the 
+! integer parameters for PRIOR and POSTERIOR from adaptive_inflate_mod.
 
 character(len=32) :: inf_flavor(2)         = (/ 'none', 'none' /)
 logical  :: inf_initial_from_restart(2)    = .false.

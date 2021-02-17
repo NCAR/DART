@@ -529,7 +529,7 @@ if (ios == 0) then
    if (any(integer_options == flex_parser)) then
       return
    else
-      call error_report(context)
+      call flex_parser_error(input, integer_options, string_options, context)
    endif
 endif
 
@@ -556,36 +556,46 @@ LOOP : do iopt = 1,size(integer_options)
 
 enddo LOOP
 
-if (flex_parser == MISSING_I) call error_report(context)
-
-contains
-
-   subroutine error_report(whofrom)
-   character(len=*), optional, intent(in) :: whofrom
-
-
-      if (present(whofrom)) then
-         msgstring1 = trim(whofrom)//' no valid option found.' 
-      else
-         msgstring1 = 'No valid option found.' 
-      endif
-      write(msgstring2,*)'input is "'//trim(input)//'"'
-      write(msgstring3,*)'valid values are the following integers or matching character strings:'
-
-      call error_handler(E_MSG, 'flex_parser', msgstring1, source, &
-                 text2=msgstring2, text3=msgstring3)
-
-   do iopt = 1,size(integer_options)
-      write(msgstring1,*) integer_options(iopt), &
-                          ' = "'//trim(string_options(iopt))//'"' 
-      call error_handler(E_MSG,'flex_parser',msgstring1)
-   enddo
-   call error_handler(E_ERR,'flex_parser','Stopping.',source)
-
-   end subroutine error_report
-
+if (flex_parser == MISSING_I) &
+   call flex_parser_error(input, integer_options, string_options, context)
 
 end function flex_parser
+
+
+!-----------------------------------------------------------------------
+!> report any errors from the flex_parser routine
+
+subroutine flex_parser_error(input, integer_options, string_options, whofrom)
+
+character(len=*),           intent(in) :: input
+integer,                    intent(in) :: integer_options(:)
+character(len=*),           intent(in) :: string_options(:)
+character(len=*), optional, intent(in) :: whofrom
+
+character(len=256) :: string1
+integer :: iopt
+
+if (present(whofrom)) then
+   msgstring1 = trim(whofrom)//' no valid option found.' 
+else
+   msgstring1 = 'No valid option found.' 
+endif
+write(msgstring2,*)'input is "'//trim(input)//'"'
+write(msgstring3,*)'valid values are the following integers or matching character strings:'
+
+call error_handler(E_MSG, 'flex_parser', msgstring1, source, &
+           text2=msgstring2, text3=msgstring3)
+
+do iopt = 1,size(integer_options)
+   write(string1,*) integer_options(iopt), ' = "'//trim(string_options(iopt))//'"' 
+   call error_handler(E_MSG,'flex_parser',string1)
+enddo
+
+! Repeat the leading message (as an E_ERR) to help delineate the problem.
+call error_handler(E_ERR, 'flex_parser', msgstring1, source, &
+           text2=msgstring2, text3=msgstring3)
+
+end subroutine flex_parser_error
 
 
 !-----------------------------------------------------------------------
