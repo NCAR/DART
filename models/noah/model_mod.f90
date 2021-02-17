@@ -20,7 +20,7 @@ use          location_mod, only : location_type, get_close_type, get_dist, &
                                   get_location, is_vertical,  &
                                   VERTISSURFACE, VERTISHEIGHT
 
-use         utilities_mod, only : register_module, error_handler, do_output, &
+use         utilities_mod, only : error_handler, do_output, &
                                   E_ERR, E_MSG, file_exist, get_unit, &
                                   logfileunit, nmlfileunit, to_upper, &
                                   do_nml_file, do_nml_term, &

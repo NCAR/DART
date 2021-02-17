@@ -17,7 +17,7 @@ use     location_mod,      only : location_type, set_location, set_location_miss
                                   get_close_type, get_close_obs, get_close_state, &
                                   convert_vertical_obs, convert_vertical_state
 
-use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
+use    utilities_mod,      only : error_handler, E_ERR, E_MSG, nmlfileunit, &
                                   do_output, find_namelist_in_file, check_namelist_read,     &
                                   do_nml_file, do_nml_term
 
