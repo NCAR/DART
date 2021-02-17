@@ -17,7 +17,7 @@ private
 
 ! module local data
 
-integer, parameter :: E_DBG = -2, E_MSG = -1, E_ALLMSG = 0, E_WARN = 1, E_ERR = 2
+integer, parameter :: E_DBG = -2, E_MSG = -1, E_ALLMSG = 0, E_WARN = 1, E_ERR = 2, E_CONTINUE = 3
 integer, parameter :: NML_NONE = 0, NML_FILE = 1, NML_TERMINAL = 2, NML_BOTH = 3
 
 real(r8), parameter :: TWOPI = PI * 2.0_r8
@@ -578,7 +578,7 @@ integer, intent(in) :: level
 if (.not. module_initialized) call fatal_not_initialized('check_term_level')
 
 select case (level)
-  case (E_MSG, E_ALLMSG, E_WARN, E_ERR, E_DBG)
+  case (E_MSG, E_ALLMSG, E_WARN, E_ERR, E_DBG, E_CONTINUE)
     ! ok, do nothing
   case default
     write(msgstring1, *) 'bad integer value for "termlevel", must be one of'
@@ -722,19 +722,12 @@ select case(level)
    case (E_DBG, E_WARN, E_ERR)
 
       call log_it(msgtype)
-      call log_it(wherefrom)
+      if (present(src)) call log_it(' source : '//trim(src))
       call log_it(' routine: '//trim(routine))
       call log_it(' message: '//trim(text))
       if (present(text2)) call log_it(' message: ... '//trim(text2))
       if (present(text3)) call log_it(' message: ... '//trim(text3))
-      ! with the move from subversion to git, these strings no longer autogenerate
-      ! and should be removed from the calls.  in the meantime, to ease the transition
-      ! don't print values like $URL$, etc.
-      !call log_it('')
-      !if (present(src))   call log_it('   source file: '//trim(src))
-      !if (present(rev))   call log_it(' file revision: '//trim(rev))
-      !if (present(rdate)) call log_it(' revision date: '//trim(rdate))
-      !if (present(aut))   call log_it('   last editor: '//trim(aut))
+      call log_it('')
 
 end select
 
@@ -2916,4 +2909,3 @@ end function interactive_i
 !=======================================================================
 
 end module utilities_mod
-

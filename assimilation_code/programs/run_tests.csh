@@ -159,7 +159,7 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
     echo
     if ( $FAILURE ) then
       echo "------------------------------------------------------------------"
-      echo "ERROR - unsuccessful build of $PROGRAMDIRECTORY"
+      echo "ERROR - unsuccessful build of $PROGRAMDIRECTORY at "`date`
       switch ( $PROGRAMDIRECTORY )
          case system_simulation
             echo "obs_sampling_err.f90 build expected to fail if running in reduced precision"
@@ -186,9 +186,9 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
 
 #      echo
 #      echo
-#      echo "=================================================================="
-#      echo "Running tests for $PROGRAMDIRECTORY"
-#      echo "=================================================================="
+#      echo "------------------------------------------------------------------"
+#      echo "Running tests for $PROGRAMDIRECTORY starting at "`date`
+#      echo "------------------------------------------------------------------"
 #      echo
 #      echo
 #  
@@ -216,9 +216,9 @@ foreach PROGRAMDIRECTORY ( $DO_THESE_DIRECTORIES )
 #
 #      echo
 #      echo
-#      echo "=================================================================="
+#      echo "------------------------------------------------------------------"
 #      echo "Done with tests of $PROGRAMDIRECTORY"
-#      echo "=================================================================="
+#      echo "------------------------------------------------------------------"
 #      echo
 #      echo
 

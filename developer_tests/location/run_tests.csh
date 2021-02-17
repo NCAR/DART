@@ -45,35 +45,41 @@ foreach i ( $LOCLIST )
 
    cd $i/test
 
-   ./mkmf_location_test
-   ( make > $LOGDIR/buildlog.$i.out ) || set FAILURE = 1
+   # The threed_sphere location_mod actually needs an obs_kind_mod.f90
+   # Consequently, we need to run preprocess to generate the file.
+   # It is the only location module that needs it, AFAIK
+   switch ( $i )
+     case threed_sphere
+        \rm -rf Makefile
+        ./mkmf_preprocess >  $LOGDIR/buildlog.$i.preprocess.out
+        make              >> $LOGDIR/buildlog.$i.preprocess.out
+        ./preprocess      >  $LOGDIR/runlog.$i.preprocess.out
+     breaksw
+     default
+     breaksw
+   endsw
+
+   \rm -rf Makefile
+   ./mkmf_location_test > $LOGDIR/buildlog.$i.out
+   ( make >> $LOGDIR/buildlog.$i.out ) || set FAILURE = 1
 
    echo
    echo
    if ( $FAILURE ) then
-     echo "------------------------------------------------------------------"
      echo "ERROR - unsuccessful build of location module $i at "`date`
-     echo "------------------------------------------------------------------"
+   else
+     echo "Build of location module $i complete"
      echo
      echo
    else
 
-      ls -l location_test
-      ( ./location_test < test.in > $LOGDIR/runlog.$i.out ) || set FAILURE = 1
+     ( ./location_test < test.in > $LOGDIR/runlog.$i.out ) || set FAILURE = 1
 
-     echo
-     echo
      if ( $FAILURE ) then
-       echo "------------------------------------------------------------------"
        echo "ERROR - unsuccessful run of location module $i tests at "`date`
-       echo "------------------------------------------------------------------"
      else
-       echo "------------------------------------------------------------------"
-       echo "Tests of location module $i complete at "`date`
-       echo "------------------------------------------------------------------"
+       echo "End of successful run of location module $i"
      endif
-     echo
-     echo
 
      \rm -f *.o *.mod input.nml*_default dart_log.* \
             Makefile location_test_file* location_test

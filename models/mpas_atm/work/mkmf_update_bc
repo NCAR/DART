@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: mkmf_filter 11289 2017-03-10 21:56:06Z hendric@ucar.edu $
-#
 # usage: mkmf_update_bc [ -mpi | -nompi ]
 #
 # without any args, builds update_bc without mpi libraries, and it will run
@@ -66,9 +64,4 @@ rm -f path_names_update_bc.back
         -a "../../.." ${wrapper_arg} path_names_update_bc
 
 exit $status
-
-# <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/mpas_atm/work/mkmf_update_bc $
-# $Revision: 11289 $
-# $Date: 2017-03-10 14:56:06 -0700 (Fri, 10 Mar 2017) $
 

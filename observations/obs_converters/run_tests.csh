@@ -157,7 +157,7 @@ echo "------------------------------------------------------------------"
 echo "Build of NCEP BUFR libs ended at "`date`
 if ( $FAILURE ) then
       echo 
-      echo "ERROR - build was unsuccessful"
+      echo "ERROR - build was unsuccessful at "`date`
       echo 
 endif
 echo "------------------------------------------------------------------"
@@ -209,15 +209,11 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
    echo
 
    if ( $FAILURE ) then
-      echo "ERROR - unsuccessful build of $project"
+      echo "ERROR - unsuccessful build of $project at "`date`
       echo 
 
       switch ( $project )
    
-         case GSI2DART
-            echo " This build expected to fail on case-insensitive filesystems."
-         breaksw
-            
          case var
             echo " This build expected to fail unless you have the WRF code in-situ."
          breaksw
@@ -244,11 +240,20 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
       ${REMOVE} *.o *.mod
       ${REMOVE} Makefile input.nml.*_default .cppdefs
 
+      # @todo FIXME ... can skip running preprocess at this point, SHOULD run the
+      # observation converter programs (whatever name) BEFORE running obs_sequence_tool
+      # as it is, the obs_sequence_tool is failing because the obs_seq.out has not
+      # been created yet.
+
       foreach TARGET ( mkmf_* )
+
+         if ( $TARGET == "mkmf_preprocess" && (-e preprocess)) goto skip
+
          set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+         echo
          echo "Running $PROG"
-   
+
          # for programs which read standard input, put what they need into a prog.in file
          # in the tests directory.
          # if we miss any programs which need input and we don't have a .in file, have it
@@ -309,7 +314,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
                breaksw
             
                default
-                  echo "ERROR - unsuccessful run of $PROG"
+                  echo "ERROR - unsuccessful run of $PROG at "`date`
                breaksw
             endsw
 
@@ -317,17 +322,16 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
             echo "Successful run of $PROG"
             ${REMOVE} $PROG
          endif
-      end
 
-      echo
+      skip:
+      end
 
    endif
 
    echo "Restoring original input.nml and obs_seq files"
    ${MOVE} ${SAVEDIR}/* .
    ${REMOVE_DIR} ${SAVEDIR}
-   echo
-  
+
 end
 
 echo 

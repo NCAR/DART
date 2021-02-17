@@ -62,6 +62,10 @@ else
   exit -1
 endif
 
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
+set nonomatch
+
 if ( ! $?REMOVE) then
    setenv REMOVE 'rm -f'
 endif
@@ -122,7 +126,7 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     if ( $FAILURE ) then
       echo "------------------------------------------------------------------"
-      echo "ERROR - unsuccessful build in $TESTDIR"
+      echo "ERROR - unsuccessful build in $TESTDIR at "`date`
       echo "------------------------------------------------------------------"
       cd $TOPDIR
       continue
@@ -138,16 +142,21 @@ foreach TESTFILE ( $HAS_TESTS )
 
            set FAILURE = 0
            set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+           set THISLOG = ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out 
            echo Starting $PROG
 
-           if ( -f using_mpi_for_$PROG ) then
-              ( ${MPICMD} ./$PROG >> ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+           if ( -f using_mpi_for_$PROG && -f ${PROG}.in ) then
+              ( ${MPICMD} ./$PROG < ${PROG}.in >> $THISLOG ) || set FAILURE = 1
+           else if ( -f using_mpi_for_$PROG ) then
+              ( ${MPICMD} ./$PROG              >> $THISLOG ) || set FAILURE = 1
+           else if ( -f ${PROG}.in ) then
+              (           ./$PROG < ${PROG}.in >> $THISLOG ) || set FAILURE = 1
            else
-              (           ./$PROG >> ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+              (           ./$PROG              >> $THISLOG ) || set FAILURE = 1
            endif
          
            if ( $FAILURE ) then
-              echo "ERROR - unsuccessful run of $PROG"
+              echo "ERROR - unsuccessful run of $PROG at "`date`
 
               switch ( $PROG )
                  case stacktest
@@ -223,4 +232,3 @@ echo "End of DART developer_tests at "`date`
 echo "=================================================================="
 
 exit 0
-

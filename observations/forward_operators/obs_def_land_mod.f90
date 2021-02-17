@@ -33,7 +33,7 @@
 !WINDSAT_SOIL_MOISTURE_X,      volumetric soil moisture  percent
 !WINDSAT_SOIL_MOISTURE_C,      volumetric soil moisture  percent
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !SOIL_TEMPERATURE,               QTY_SOIL_TEMPERATURE,           COMMON_CODE
 !LPRM_SOIL_MOISTURE,             QTY_SOIL_MOISTURE,              COMMON_CODE
 !SMOS_A_SOIL_MOISTURE,           QTY_SOIL_MOISTURE,              COMMON_CODE
@@ -77,7 +77,7 @@
 !SURFACE_ALBEDO,                 QTY_SURFACE_ALBEDO
 !OCO2_SIF,                       QTY_SOLAR_INDUCED_FLUORESCENCE, COMMON_CODE
 !ECOSTRESS_ET,                   QTY_LATENT_HEAT_FLUX,           COMMON_CODE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
