@@ -1391,9 +1391,18 @@ fclose(logfileid);
                     % [El Gharamti 2018]. The GUI option is only available
                     % in the Lorenz'96 section. 
                     [lambda, handles.adap_inf_Std] = ...
-                        update_inflate(mean(ens), var(ens), observation, obs_error_sd^2, inf_prior, ...
-                        handles.inflation, handles.adap_inf_Std, handles.adap_inf_Min, handles.adap_inf_Max, ...
-                        1, handles.adap_inf_Std_Min, handles.ens_size, 'Gaussian');
+                        update_inflate(mean(ens), ...                       % ensemble mean
+                                       var(ens), ...                        % ensemble variance
+                                       observation, ...                     % observation
+                                       obs_error_sd^2, ...                  % observation error variance
+                                       inf_prior, ...                       % (current) prior inflation
+                                       handles.inflation, ...               % current value of inflation
+                                       handles.adap_inf_Std, ...            % current value of inflation SD
+                                       handles.adap_inf_Min, ...            % inflation minimum 
+                                       handles.adap_inf_Max, ...            % inflation maximum
+                                       1, ...                               % (N/A) for 'Gaussian'
+                                       handles.adap_inf_Std_Min, ...        % inflation SD minimum
+                                       handles.ens_size, 'Gaussian');
                     
                     % Damping is placed unusually here to obtain a less messy code
                     % It won't matter because it's a single variable case!
