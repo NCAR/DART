@@ -1607,11 +1607,7 @@ do group = 1, num_groups
       if ( present(SPARE_PRIOR_SPREAD) .and. present(ENS_SD_COPY)) then 
          write(msgstring, *) ' doing RTPS inflation'
          call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source,revision,revdate)
-
-         !Reset the RTPS factor to the given input.nml value
-         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(POSTERIOR)
-
-         do j = 1, ens_handle%my_num_vars
+         do j = 1, ens_handle%my_num_vars 
             call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
                ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
                ens_handle%copies(SPARE_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
@@ -2359,8 +2355,13 @@ CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
 ! then we need an extra copy to hold (save) the prior ensemble spread
 ! ENS_SD_COPY will be overwritten with the posterior spread before
 ! applying the inflation algorithm; hence we must save the prior ensemble spread in a different copy
-
+write(*,*)'TJH inf_flavor(2) is ',inf_flavor(2)
+write(*,*)'TJH do_rtps_inflate(post_inflate) is ',do_rtps_inflate(post_inflate)
 if (do_rtps_inflate(post_inflate)) SPARE_PRIOR_SPREAD = next_copy_number(cnum)
+
+if ( inflation_flavor(POSTERIOR) == RELAXATION_TO_PRIOR_SPREAD ) then
+   SPARE_PRIOR_SPREAD = next_copy_number(cnum)
+endif
 
 num_copies = cnum
 
