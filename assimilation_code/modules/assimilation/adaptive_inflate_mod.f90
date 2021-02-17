@@ -484,8 +484,7 @@ subroutine inflate_ens(inflate_handle, ens, mean, inflate, var_in, fsprd, asprd)
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(inout) :: ens(:)
-real(r8),                    intent(in)    :: mean 
-real(r8),                    intent(inout) :: inflate
+real(r8),                    intent(in)    :: mean, inflate
 real(r8), optional,          intent(in)    :: var_in
 real(r8), optional,          intent(in)    :: fsprd, asprd
 
