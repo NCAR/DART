@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Generate initial inflation files from namelist values.
 !> This way an experiment can always start from a restart file 
@@ -18,7 +16,7 @@ program fill_inflation_restart
 
 use             types_mod, only : r8, i8, missing_r8
 
-use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
+use         utilities_mod, only : error_handler, E_MSG, E_ERR, &
                                   find_namelist_in_file, check_namelist_read,   &
                                   nmlfileunit, do_nml_file, do_nml_term
 
@@ -44,11 +42,7 @@ use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utiliti
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'fill_inflation_restart.f90'
 
 ! MAX_FILES is max number of domains
 integer, parameter :: MAX_FILES = 10
@@ -147,8 +141,7 @@ file_array_input  = RESHAPE(input_state_files,  (/1,  ndomains/))
 
 if(single_file) then
   call error_handler(E_ERR, 'fill_inflation_restart: ', &
-                     'single_file not yet supported, please contact DART', &
-                     source, revision, revdate)
+                     'single_file not yet supported, please contact DART', source)
 endif
 
 call io_filenames_init(file_info_input,             &
@@ -180,8 +173,7 @@ do idom = 1, ndomains
                      trim(get_restart_filename(input_restart_files, &
                                                copy   = imem,       &
                                                domain = idom))
-   call error_handler(E_MSG, 'fill_inflation_restart: ', string1,   &
-                      source, revision, revdate)
+   call error_handler(E_MSG, 'fill_inflation_restart: ', string1, source)
 enddo
 
 call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
@@ -241,7 +233,7 @@ if (inf_mean == MISSING_R8 .or. inf_sd == MISSING_R8) then
    write(string2,*) 'you have "',trim(stage),'_inf_mean = ', inf_mean,'" and '
    write(string3,*) '         "',trim(stage),'_inf_sd   = ', inf_sd,  '"     '
    call error_handler(E_MSG, 'fill_inflation_restart: ', string1,  &
-                      source, revision, revdate, text2=string2, text3=string3)
+                      source, text2=string2, text3=string3)
    return
 endif
 ens_handle%copies(ss_inflate_index   , :) = inf_mean
@@ -281,8 +273,7 @@ do idom = 1, ndomains
                                                copy   = ss_inflate_index,    &
                                                domain = idom)), '"'
    write(string2, *) ' with value = ', inf_mean
-   call error_handler(E_MSG, 'fill_inflation_restart: ', string1,            &
-                      source, revision, revdate, text2=string2)
+   call error_handler(E_MSG, 'fill_inflation_restart: ', string1, source, text2=string2)
 
    ! write inflation stadard deviation
    write(string1, *) '- Writing ',trim(stage), ' SD   Inflation File : "',   &
@@ -290,8 +281,7 @@ do idom = 1, ndomains
                                                copy   = ss_inflate_sd_index, &
                                                domain = idom)), '"'
    write(string2, *) ' with value = ', inf_sd
-   call error_handler(E_MSG, 'fill_inflation_restart: ', string1,            &
-                      source, revision, revdate, text2=string2)
+   call error_handler(E_MSG, 'fill_inflation_restart: ', string1, source, text2=string2)
 enddo
 
 
@@ -306,7 +296,6 @@ subroutine initialize_modules_used()
 
 call initialize_mpi_utilities('fill_inflation_restart')
 
-call register_module(source,revision,revdate)
 
 call state_vector_io_init()
 

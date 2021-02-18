@@ -1,14 +1,12 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module cov_cutoff_mod
 
 
 use     types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+use utilities_mod, only : error_handler, E_ERR, E_MSG, &
                           do_output, do_nml_file, do_nml_term, nmlfileunit, &
                           find_namelist_in_file, check_namelist_read
 use location_mod,  only : location_type
@@ -18,11 +16,7 @@ private
 
 public :: comp_cov_factor
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'cov_cutoff_mod.f90'
 
 
 !============================================================================
@@ -83,7 +77,6 @@ integer  :: localization_type
 ! Initialize namelist if not already done
 if(.not. namelist_initialized) then
 
-   call register_module(source, revision, revdate)
 
    namelist_initialized = .true.
 
@@ -109,8 +102,7 @@ if(.not. namelist_initialized) then
                'Ramped localization selected')
          case default
             call error_handler(E_ERR,'comp_cov_factor', &
-               'Illegal value of "select_localization" in cov_cutoff_mod namelist', &
-                source, revision, revdate )
+               'Illegal value of "select_localization" in cov_cutoff_mod namelist', source)
       end select
    endif
 
@@ -174,8 +166,7 @@ else if(localization_type == 3) then ! Ramped localization
 else ! Otherwise namelist parameter is illegal; this is an error
 
      call error_handler(E_ERR,'comp_cov_factor', &
-              'Illegal value of "localization" in cov_cutoff_mod namelist', &
-               source, revision, revdate )
+              'Illegal value of "localization" in cov_cutoff_mod namelist', source)
 
 endif
 
@@ -183,8 +174,3 @@ end function comp_cov_factor
 
 end module cov_cutoff_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

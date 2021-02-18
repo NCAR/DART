@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module default_model_mod
 
@@ -19,7 +17,7 @@ use     location_mod,      only : location_type, set_location, set_location_miss
                                   get_close_type, get_close_obs, get_close_state, &
                                   convert_vertical_obs, convert_vertical_state
 
-use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
+use    utilities_mod,      only : error_handler, E_ERR, E_MSG, nmlfileunit, &
                                   do_output, find_namelist_in_file, check_namelist_read,     &
                                   do_nml_file, do_nml_term
 
@@ -53,12 +51,7 @@ public :: get_model_size,         &
           read_model_time,        &  ! from the dart_time_io module
           write_model_time
 
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'utilities/default_model_mod.f90'
 
 contains
 
@@ -94,8 +87,8 @@ end subroutine init_conditions
 subroutine fail_init_conditions(x)
 real(r8), intent(out) :: x(:)
 
-call error_handler(E_ERR, 'init_conditions', 'this model cannot provide initial conditions', &
-                   source, revision, revdate)
+call error_handler(E_ERR, 'init_conditions', &
+           'this model cannot provide initial conditions', source)
 
 ! default
 x = 0.0_r8
@@ -114,8 +107,7 @@ subroutine adv_1step(x, time)
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
 
-call error_handler(E_ERR, 'adv_1step', 'unable to advance model', &
-                   source, revision, revdate)
+call error_handler(E_ERR, 'adv_1step', 'unable to advance model', source)
 
 end  subroutine adv_1step
 
@@ -155,8 +147,8 @@ end subroutine init_time
 subroutine fail_init_time(time)
 type(time_type), intent(out) :: time
 
-call error_handler(E_ERR, 'init_time', 'this model cannot provide an initial time', &
-                   source, revision, revdate)
+call error_handler(E_ERR, 'init_time', &
+           'this model cannot provide an initial time', source)
 
 time = set_time(0, 0)
 
@@ -296,8 +288,3 @@ end subroutine pert_model_copies
 !===================================================================
 end module default_model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module smoother_mod 
 
@@ -11,7 +9,7 @@ module smoother_mod
 use      types_mod,       only : r8, i8, metadatalength, MISSING_R8
 use  mpi_utilities_mod,   only : my_task_id
 use  utilities_mod,       only : file_exist, check_namelist_read, do_output,  &
-                                 find_namelist_in_file, register_module, error_handler, &
+                                 find_namelist_in_file, error_handler, &
                                  E_ERR, E_MSG, nmlfileunit, logfileunit, timestamp,     &
                                  do_nml_file, do_nml_term
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, &
@@ -38,10 +36,7 @@ public :: smoother_read_restart, advance_smoother,                     &
    smoother_end, set_smoother_trace
 
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'smoother_mod.f90'
 
 logical :: module_initialized = .false.
 integer :: print_trace_details = 0
@@ -84,7 +79,6 @@ integer :: iunit, io
 ! First call to init_smoother must initialize module and read namelist
 if ( .not. module_initialized ) then
    ! Initialize the module with utilities
-   call register_module(source, revision, revdate)
    module_initialized = .true.
 
    ! Read the namelist entry
@@ -116,7 +110,7 @@ logical :: allow_missing
 if ( .not. module_initialized ) call static_init_smoother()
 
 write(errstring, *)'Smoother is under construction for this version'
-call error_handler(E_ERR,'init_smoother',errstring,source,revision,revdate)
+call error_handler(E_ERR,'init_smoother',errstring,source)
 
 ! find out if it is ok to have missing values in the state vector
 allow_missing = get_missing_ok_status()
@@ -148,7 +142,7 @@ character(len = 256) :: file_name, temp_name
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'smoother_read_restart',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_read_restart',errstring,source)
 endif
 
 ! Initialize the storage space for the lag ensembles
@@ -219,7 +213,7 @@ integer         :: smoother_tail
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'advance_smoother',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'advance_smoother',errstring,source)
 endif
 
 !call error_handler(E_MSG, 'advance_smoother', 'start of routine')
@@ -278,7 +272,7 @@ integer              :: i, ensemble_offset, num_state_copies
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'smoother_gen_copy_meta_data',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_gen_copy_meta_data',errstring,source)
 endif
 
 ! Ensemble mean goes first 
@@ -294,7 +288,7 @@ state_meta(smoother_state_spread_index) = 'ensemble spread'
 if(num_output_state_members > 10000) then
    write(errstring, *)'output metadata in smoother needs state ensemble size < 10000, not ', &
                       num_output_state_members
-   call error_handler(E_ERR,'smoother_gen_copy_meta_data',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_gen_copy_meta_data',errstring,source)
 endif
 
 ! Compute starting point for ensemble member output
@@ -349,7 +343,7 @@ integer              :: i, smoother_index
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'smoother_write_restart',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_write_restart',errstring,source)
 endif
 
 ! namelist controlled
@@ -391,7 +385,7 @@ integer :: smoother_index, i
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'smoother_assim',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_assim',errstring,source)
 endif
 
 do i = 1, num_current_lags
@@ -460,7 +454,7 @@ integer :: smoother_index, i
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'smoother_mean_spread',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_mean_spread',errstring,source)
 endif
 
 ! Must be called when smoother handles are copy complete.
@@ -489,7 +483,7 @@ integer :: smoother_index, i
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'smoother_ss_diagnostics',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_ss_diagnostics',errstring,source)
 endif
 
 do i = 1, num_current_lags
@@ -529,7 +523,7 @@ subroutine smoother_inc_lags()
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'smoother_inc_lags',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_inc_lags',errstring,source)
 endif
 
 
@@ -551,7 +545,7 @@ function next_index(i)
 
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'smoother_inc_lags',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_inc_lags',errstring,source)
 endif
 
 

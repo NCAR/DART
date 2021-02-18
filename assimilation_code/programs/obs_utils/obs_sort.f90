@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> Utility to try to sort observations at the same time into a
 !> consistent order.  Obs sequence files are guarenteed to be
@@ -18,7 +16,7 @@
 module special_sort
 
 use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
-use    utilities_mod, only : register_module, initialize_utilities,            &
+use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
@@ -179,7 +177,7 @@ program obs_sort
 ! template for programs that want to alter existing obs in some simple way.
 
 use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
-use    utilities_mod, only : register_module, initialize_utilities,            &
+use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
@@ -220,12 +218,7 @@ implicit none
 ! end function obssort
 !end interface
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source = 'obs_sort.f90'
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in, last_obs
@@ -525,7 +518,6 @@ subroutine setup()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_sort')
-call register_module(source, revision, revdate)
 call static_init_obs_sequence()
 
 end subroutine setup
@@ -676,12 +668,13 @@ integer                 :: size_seq, obs_count
 integer                 :: key
 type(time_type)         :: last_time, this_time
 
+character(len=*), parameter :: routine = 'validate_obs_seq_time'
 
 ! make sure there are obs left to process before going on.
 size_seq = get_num_obs(seq) 
 if (size_seq == 0) then
    msgstring = 'Obs_seq file '//trim(filename)//' is empty.'
-   call error_handler(E_MSG,'obs_sort:validate',msgstring)
+   call error_handler(E_MSG,routine,msgstring)
    return
 endif
 
@@ -699,8 +692,7 @@ is_there_one = get_first_obs(seq, obs)
 ! we already tested for 0 obs above, so there should be a first obs here.
 if ( .not. is_there_one )  then
    write(msgstring,*)'no first obs in sequence ' // trim(filename)
-   call error_handler(E_ERR,'obs_sort:validate', &
-                      msgstring, source, revision, revdate)
+   call error_handler(E_ERR,routine, msgstring, source)
    return
 endif
 
@@ -721,9 +713,7 @@ ObsLoop : do while ( .not. is_this_last)
       key = get_obs_key(obs)
       write(msgstring1,*)'obs number ', key, ' has earlier time than previous obs'
       write(msgstring2,*)'observations must be in increasing time order, file ' // trim(filename)
-      call error_handler(E_ERR,'obs_sort:validate', msgstring2, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+      call error_handler(E_ERR,routine, msgstring2, source, text2=msgstring1)
    endif
 
    last_time = this_time
@@ -745,20 +735,17 @@ call destroy_obs(next_obs)
 ! situation and might indicate someone should check on the file.
 if (obs_count /= size_seq) then
    write(msgstring,*) 'input sequence ', trim(filename)
-   call error_handler(E_MSG,'obs_sort:validate', msgstring)
+   call error_handler(E_MSG,routine, msgstring)
 
    write(msgstring,*) 'total obs in file: ', size_seq, '  obs in linked list: ', obs_count
    if (obs_count > size_seq) then
       ! this is a fatal error
       write(msgstring1,*) 'linked list obs_count > total size_seq, should not happen'
-      call error_handler(E_ERR,'obs_sort:validate', msgstring, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+      call error_handler(E_ERR, routine, msgstring, source, text2=msgstring1)
    else
       ! just warning msg
       write(msgstring1,*) 'only observations in linked list will be processed'
-      call error_handler(E_MSG,'obs_sort:validate', msgstring, &
-                         source, revision, revdate, text2=msgstring1)
+      call error_handler(E_MSG, routine, msgstring, source, text2=msgstring1)
    endif
 endif
 
@@ -784,8 +771,7 @@ num_qc     = get_num_qc(    seq)
 
 if ( num_copies < 0 .or. num_qc < 0 ) then
    write(msgstring3,*)' illegal copy or obs count in file '//trim(fname)
-   call error_handler(E_ERR, 'obs_sort', msgstring3, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'print_metadata', msgstring3, source)
 endif
 
 MetaDataLoop : do i=1, num_copies

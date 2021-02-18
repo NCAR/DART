@@ -17,7 +17,7 @@ program obs_loop
 
 use        types_mod, only : r4, r8, missing_r8, metadatalength
 
-use    utilities_mod, only : register_module, initialize_utilities,            &
+use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term,                         &
@@ -54,10 +54,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_loop.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'obs_loop.f90'
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in
@@ -128,13 +125,12 @@ call read_obs_seq_header(filename_in, num_copies_in, num_qc_in, &
 
 if (max_num_obs == 0) then
    write(msgstring,*) 'No obs in input sequence file ', trim(filename_in)
-   call error_handler(E_ERR,'obs_loop',msgstring)
+   call error_handler(E_ERR,'main',msgstring,source)
 endif
 
 write(msgstring, *) 'Starting to process input sequence file: '
 write(msgstring1,*)  trim(filename_in)
-call error_handler(E_MSG,'obs_loop',msgstring, &
-                   text2=msgstring1)
+call error_handler(E_MSG,'main',msgstring,source,text2=msgstring1)
 
 call read_obs_seq(filename_in, 0, 0, 0, seq_in)
 
@@ -247,7 +243,7 @@ if ( get_first_obs(seq_in, obs_in) )  then
 
 else
    write(msgstring, *)'no first observation in ',trim(filename_in)
-   call error_handler(E_MSG,'obs_loop', msgstring)
+   call error_handler(E_MSG,'main', msgstring,source)
 endif
 
 if (.not. print_only) then
@@ -259,7 +255,7 @@ endif
 
 write(msgstring, *) 'Starting to process output sequence file ', &
                             trim(filename_out)
-call error_handler(E_MSG,'obs_loop',msgstring)
+call error_handler(E_MSG,'main',msgstring,source)
 
 print*, 'Number of obs in the output seq file :', get_num_key_range(seq_out)
 
@@ -294,8 +290,7 @@ contains
 subroutine setup()
 
 ! Initialize modules used that require it
-call initialize_utilities('obs_loop')
-call register_module(source,revision,revdate)
+call initialize_utilities(source)
 call static_init_obs_sequence()
 
 end subroutine setup
@@ -304,7 +299,7 @@ end subroutine setup
 !---------------------------------------------------------------------
 subroutine shutdown()
 
-call finalize_utilities('obs_loop')
+call finalize_utilities(source)
 
 end subroutine shutdown
 

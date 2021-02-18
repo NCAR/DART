@@ -114,10 +114,7 @@ end interface
 ! those things.
 logical :: standalone = .false.
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'utilities_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'utilities_mod.f90'
 
 character(len=512) :: msgstring1, msgstring2, msgstring3
 
@@ -229,7 +226,6 @@ if (do_output_flag) then
 endif
 
 ! Echo the module information using normal mechanism
-call register_module(source, revision, revdate)
 
 ! Set the defaults for logging the namelist values
 call set_nml_output(write_nml)
@@ -244,8 +240,7 @@ if (do_nml_file()) then
            position='append', iostat = io )
       if ( io /= 0 ) then
          call error_handler(E_ERR,'initialize_utilities', &
-             'Cannot open namelist log file "'//trim(nmlfilename)//'"', &
-              source, revision, revdate)
+             'Cannot open namelist log file "'//trim(nmlfilename)//'"', source)
       endif
  
    else
@@ -317,7 +312,8 @@ end subroutine finalize_utilities
 !> being used in this run.
 
 subroutine register_module(src, rev, rdate)
-character(len=*), intent(in) :: src, rev, rdate
+character(len=*),           intent(in) :: src
+character(len=*), optional, intent(in) :: rev, rdate
 
 if ( .not. do_output_flag) return
 if ( .not. module_details) return
@@ -333,12 +329,7 @@ if (standalone) return
 if ( .not. module_initialized ) call fatal_not_initialized('register_module')
 
 call log_it('')
-call log_it('Registering module :')
-call log_it(src)
-call log_it(rev)
-call log_it(rdate)
-call log_it('Registration complete.')
-call log_it('')
+call log_it('Registering module : "'//trim(src)//'" ... complete.')
 
 end subroutine register_module
 
@@ -410,8 +401,7 @@ endif
 if(.not. file_exist(trim(namelist_file_name))) then
 
    write(msgstring1, *) 'Namelist input file: ', namelist_file_name, ' must exist.'
-   call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, source)
 
 endif
 
@@ -432,8 +422,7 @@ do
       ! Reached end of file and didn't find this namelist
       write(msgstring1, *) 'Namelist entry &', trim(nml_name), &
                            ' must exist in file ', trim(namelist_file_name)
-      call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, source)
    else
       ! see if this line starts the namelist we are asking for
       string1 = adjustl(next_nml_string)
@@ -487,8 +476,7 @@ else
    write(msgstring1, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
 endif
 
-call error_handler(E_ERR, 'check_namelist_read', msgstring1, &
-                   source, revision, revdate)
+call error_handler(E_ERR, 'check_namelist_read', msgstring1, source)
 
 end subroutine check_namelist_read
 
@@ -519,8 +507,6 @@ write(*,*)'FATAL ERROR in '//trim(from_routine)
 write(*,*)'   unable to open the logfile for writing.'
 write(*,*)'   the logfile name is "',trim(lname),'"'
 write(*,*)'  ',trim(source)
-write(*,*)'  ',trim(revision)
-write(*,*)'  ',trim(revdate)
 write(*,*)'   stopping.'
 call exit_all(66)
 
@@ -539,8 +525,6 @@ write(*,*)'FATAL ERROR in '//trim(from_routine)
 write(*,*)'   initialize_utilities() or initialize_mpi_utilities()'
 write(*,*)'   must be called before calling '//trim(from_routine)//'().'
 write(*,*)'  ',trim(source)
-write(*,*)'  ',trim(revision)
-write(*,*)'  ',trim(revdate)
 write(*,*)'   stopping.'
 call exit_all(77)
 
@@ -562,8 +546,6 @@ if (present(msg1)) write(*,*) trim(msg1)
 if (present(msg2)) write(*,*) trim(msg2)
 if (present(msg2)) write(*,*) trim(msg3)
 write(*,*)'  ',trim(source)
-write(*,*)'  ',trim(revision)
-write(*,*)'  ',trim(revdate)
 write(*,*)'   stopping.'
 call exit_all(88)
 
@@ -584,7 +566,7 @@ select case (level)
     write(msgstring1, *) 'bad integer value for "termlevel", must be one of'
     write(msgstring2, *) '-1 (E_MSG), 0 (E_ALLMSG), 1 (E_WARN), 2 (E_ERR), -2 (E_DBG)'
     call error_handler(E_ERR,'check_term_level', msgstring1, &
-                       source, revision, revdate, text2=msgstring2)
+                       source, text2=msgstring2)
 
   end select
 
@@ -636,7 +618,7 @@ enddo
 
 ! if you get here it is an error
 write(msgstring1, *) 'Unable to find an available unit number between 10 and 80'
-call error_handler(E_ERR,'get_unit', msgstring1, source, revision, revdate)
+call error_handler(E_ERR,'get_unit', msgstring1, source)
 
 end function get_unit
 
@@ -805,7 +787,7 @@ if (present(action)) then
           ! if the user specifies an action, make sure it is a valid one.
           write(msgstring1,*) 'opening file "'//trim(fname)//'"'
           write(msgstring2,*) 'unrecognized action, "'//trim(action)//'"; valid values: "read", "write", "append"'
-          call error_handler(E_ERR, 'open_file', msgstring1, source, revision, revdate, text2=msgstring2)
+          call error_handler(E_ERR, 'open_file', msgstring1, source, text2=msgstring2)
     end select
 endif
 
@@ -840,7 +822,7 @@ if (present(convert)) then
    if (format == 'FORMATTED') then
       write(msgstring1,*) 'opening file "'//trim(fname)//'"'
       write(msgstring2,*) 'cannot specify binary conversion on a formatted file'
-      call error_handler(E_ERR, 'open_file ', msgstring1, source, revision, revdate, text2=msgstring2)
+      call error_handler(E_ERR, 'open_file ', msgstring1, source, text2=msgstring2)
    endif
    conversion = convert
 endif
@@ -850,7 +832,7 @@ if (present(delim)) then
    if (format /= 'FORMATTED') then
       write(msgstring1,*) 'opening file "'//trim(fname)//'"'
       write(msgstring2,*) 'cannot specify a delimiter on an unformatted file'
-      call error_handler(E_ERR, 'open_file ', msgstring1, source, revision, revdate, text2=msgstring2)
+      call error_handler(E_ERR, 'open_file ', msgstring1, source, text2=msgstring2)
    endif
    del = delim
 endif
@@ -889,7 +871,7 @@ if (rc /= 0) then
    write(msgstring1, *)'Cannot open file "'//trim(fname)//'" for '//trim(act)
    write(msgstring2,*)'File may not exist or permissions may prevent the requested operation'
    write(msgstring3,*)'Error code was ', rc
-   call error_handler(E_ERR, 'open_file: ', msgstring1, source, revision, revdate, &
+   call error_handler(E_ERR, 'open_file: ', msgstring1, source, &
                       text2=msgstring2, text3=msgstring3)
 endif
 
@@ -913,7 +895,7 @@ if ( .not. module_initialized ) call initialize_utilities
 inquire (unit=iunit, opened=open, iostat=ios)
 if ( ios /= 0 ) then
    write(msgstring1,*)'Unable to determine status of file unit ', iunit
-   call error_handler(E_MSG, 'close_file: ', msgstring1, source, revision, revdate)
+   call error_handler(E_MSG, 'close_file: ', msgstring1, source)
 endif
 
 if (open) close(iunit)
@@ -936,7 +918,7 @@ if ( .not. module_initialized ) call initialize_utilities
 inquire (unit=iunit, opened=open, iostat=ios)
 if ( ios /= 0 ) then
    write(msgstring1,*)'Unable to determine status of file unit ', iunit
-   call error_handler(E_MSG, 'is_file_open: ', msgstring1, source, revision, revdate)
+   call error_handler(E_MSG, 'is_file_open: ', msgstring1, source)
 endif
 
 is_file_open = open
@@ -1198,8 +1180,7 @@ select case (nmlstring)
 
    case default
       call error_handler(E_ERR, 'set_nml_output', &
-                        'unrecognized input string: '//trim(nmlstring), &
-                        source, revision, revdate)
+                        'unrecognized input string: '//trim(nmlstring), source)
  
 end select
 
@@ -1249,8 +1230,7 @@ else
 endif
 
 ! this does not return 
-call error_handler(E_ERR, 'nc_check', msgstring1, source, revision, revdate, &
-                      text2=subr_name)
+call error_handler(E_ERR, 'nc_check', msgstring1, source, text2=subr_name)
   
 end subroutine nc_check
 
@@ -1330,8 +1310,7 @@ READLOOP : do i = 1,100000
    if (ios < 0) exit READLOOP  ! end of file
    if (ios > 0) then
       write(error_msg,'(A,'' read around line '',i8)')trim(fname),nlines
-      call error_handler(E_ERR,'find_textfile_dims', error_msg, &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'find_textfile_dims', error_msg, source)
    endif
 
    nlines = nlines + 1
@@ -1390,8 +1369,7 @@ do i = 1,mynlines
 
    if ( ios /= 0 ) then
       write(string,'(A,'' read around line '',i8)')trim(fname),i
-      call error_handler(E_ERR,'file_to_text', trim(string), &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'file_to_text', trim(string), source)
    endif
 
 enddo 
@@ -1436,8 +1414,7 @@ call close_file(funit)
 ! @todo FIXME define 256 as a constant - MAXFILENAMELEN or something
 if (len_trim(adjustl(string)) > 256) then
    call error_handler(E_ERR, 'get_next_filename', &
-                      'maximum filename length of 256 exceeded', &
-                      source, revision, revdate)   
+                      'maximum filename length of 256 exceeded', source)   
 endif
 
 
@@ -1501,14 +1478,14 @@ character(len=64) :: fsource
 if (name_array(1) == '' .and. listname == '') then
    call error_handler(E_ERR, caller_name, &
           'must specify either filenames in the namelist, or a filename containing a list of names', &
-          source,revision,revdate)
+          source)
 endif
    
 ! make sure the namelist specifies one or the other but not both
 if (name_array(1) /= '' .and. listname /= '') then
    call error_handler(E_ERR, caller_name, &
        'cannot specify both filenames in the namelist and a filename containing a list of names', &
-       source,revision,revdate)
+       source)
 endif
 
 ! if they have specified a file which contains a list, read it into
@@ -1538,7 +1515,7 @@ do fileindex = 1, max_num_input_files
          write(msgstring2,*)'reading file # ',fileindex
          write(msgstring3,*)'reading file name "'//trim(name_array(fileindex))//'"'
          call error_handler(E_ERR, caller_name, 'found no '//trim(fsource), &
-                            source,revision,revdate,text2=msgstring2,text3=msgstring3)
+                            source,text2=msgstring2,text3=msgstring3)
       endif
 
       ! at the end of the list. return how many filenames were found, 
@@ -1558,7 +1535,7 @@ enddo
 if (from_file) then
    if (get_next_filename(listname, max_num_input_files+1) /= '') then
       write(msgstring1, *) 'cannot specify more than ',max_num_input_files,' filenames in the list file'
-      call error_handler(E_ERR, caller_name, msgstring1, source,revision,revdate)
+      call error_handler(E_ERR, caller_name, msgstring1, source)
    endif
 endif
 
@@ -1629,7 +1606,7 @@ integer :: nl, ne, num_lists
 
 if (name_array(1) == '' .and. listname(1) == '') then
    call error_handler(E_ERR, caller_name, &
-          'missing filenames',source,revision,revdate, &
+          'missing filenames',source, &
           text2='must specify either "'//trim(origin)//'" in the namelist,', &
           text3='or a "'//trim(origin_list)//'" file containing a list of names')
 endif
@@ -1637,8 +1614,7 @@ endif
 ! make sure the namelist specifies one or the other but not both
 if (name_array(1) /= '' .and. listname(1) /= '') then
    call error_handler(E_ERR, caller_name, &
-          'can not specify both an array of files and a list of files', &
-          source,revision,revdate, &
+          'can not specify both an array of files and a list of files', source, &
           text2='must specify either "'//trim(origin)//'" in the namelist,', &
           text3='or a "'//trim(origin_list)//'" file containing a list of names')
 endif
@@ -1665,8 +1641,7 @@ if (from_file) then
    if (num_lists /= nlists) then
       write(msgstring1, *) '..  read     ', num_lists, ' filename(s) in "'//trim(origin_list)//'"'
       write(msgstring2, *) 'expected ',nlists,' based on number of domains.'
-      call error_handler(E_ERR, caller_name, msgstring1, &
-                 source, revision, revdate, text2=msgstring2)
+      call error_handler(E_ERR, caller_name, msgstring1, source, text2=msgstring2)
    endif
 endif
    
@@ -1676,7 +1651,7 @@ max_num_input_files = size(name_array)
 if (max_num_input_files < nlists * nentries) then
    write(msgstring1, *) 'list length = ', max_num_input_files, '  needs room for ', nlists * nentries
    call error_handler(E_ERR, caller_name, 'internal error: name_array not long enough to hold lists', &
-                      source,revision,revdate, text2=msgstring1)
+                      source, text2=msgstring1)
 endif
 
 ! loop over the inputs.  if the names were already specified in the
@@ -1702,7 +1677,7 @@ do nl = 1, nlists
          endif
 
          call error_handler(E_ERR, caller_name, trim(msgstring1)//trim(fsource), &
-                            source,revision,revdate,text2=msgstring2,text3=msgstring3)
+                            source,text2=msgstring2,text3=msgstring3)
    
       endif
    enddo
@@ -1754,7 +1729,7 @@ if (len(fname) > len(dir_base) ) then
    write(string2,'('' input filename (len='',i3,'') tempvars are (len='',i3,'')'')') &
    len(fname),len(dir_base)
    write(string3,*)'increase len of dir_base, filename, dir_ext and recompile'
-   call error_handler(E_MSG, 'next_file', string1, source, revision, revdate, &
+   call error_handler(E_MSG, 'next_file', string1, source, &
               text2=string2, text3=string3)
 endif
 
@@ -1836,7 +1811,7 @@ else
 
       write(string1,*)'WARNING: This feature is deprecated and will be removed in the next release.'
       write(string2,*)'to use multiple input files, use the "list" construct.'
-      call error_handler(E_MSG,'next_file',string1,source,revision,revdate,text2=string2)
+      call error_handler(E_MSG,'next_file',string1,source,text2=string2)
 
    endif
 
@@ -2035,7 +2010,7 @@ select case (ucase_instring)
       msgstring1 = '.TRUE., TRUE, T or .FALSE., FALSE, F are valid values'         
       call error_handler(E_ERR,'string_to_logical', &
                  'Cannot parse true or false value from string: "'//trim(inputstring)//'"', &
-                  source, revision, revdate, text2=msgstring1)
+                  source, text2=msgstring1)
 end select
 
 end function string_to_logical
@@ -2810,8 +2785,7 @@ else   ! character
 
 endif
 
-call error_handler(E_MSG, 'dump_unit_attributes', string1, &
-                   source, revision, revdate)
+call error_handler(E_MSG, 'dump_unit_attributes', string1, source)
 
 end subroutine output_unit_attribs
 

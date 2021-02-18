@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Correct covariances for fixed ensemble sizes.
 !> Ref: Anderson, J., 2012: 
@@ -23,13 +21,6 @@ use sampling_error_correction_mod, only : get_sampling_error_table_size, &
                                           read_sampling_error_correction
 
 implicit none
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
 
 real(r8), allocatable :: true_correl_mean(:), alpha(:)
 

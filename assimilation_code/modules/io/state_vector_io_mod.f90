@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module state_vector_io_mod
 
@@ -53,7 +51,7 @@ use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
 
 use utilities_mod,        only : error_handler, check_namelist_read, &
                                  find_namelist_in_file, nmlfileunit, do_nml_file, &
-                                 do_nml_term, register_module, to_upper,  E_MSG, E_ERR
+                                 do_nml_term, to_upper,  E_MSG, E_ERR
 
 use time_manager_mod,     only : time_type, get_time
 
@@ -68,14 +66,9 @@ use model_mod,            only : read_model_time
 
 use state_structure_mod,  only : get_num_domains
 
-
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'state_vector_io_mod.f90'
 
 private
 
@@ -135,7 +128,6 @@ integer :: iunit, io
 
 if ( .not. module_initialized ) then
    ! Initialize the module with utilities 
-   call register_module(source, revision, revdate)
    module_initialized = .true.
 
    ! Read the namelist entry
@@ -185,8 +177,8 @@ call assert_file_info_initialized(file_info, 'read_state')
 
 ! check that we either have both inflation handles or neither:
 if ( present(prior_inflate_handle) .neqv. present(post_inflate_handle) ) then
-   call error_handler(E_ERR, 'read_state', 'must have both inflation handles or neither', &
-          source,revision,revdate)
+   call error_handler(E_ERR, 'read_state', &
+           'must have both inflation handles or neither', source)
 endif
 
 !>@todo all-or-nothing WHY?
@@ -260,8 +252,9 @@ if ( get_single_file(file_info) ) then
 
 else ! multiple files
    if ( get_cycling(file_info) ) then
-      call error_handler(E_ERR, 'write_state: ', 'currently cannot write multiple-file output while advancing the model inside filter', &
-      source, revision, revdate, text2='either use single file i/o, or advance the model outside filter')
+      call error_handler(E_ERR, 'write_state: ', &
+      'currently cannot write multiple-file output while advancing the model inside filter', &
+      source, text2='either use single file i/o, or advance the model outside filter')
    endif
    
    ! write ensemble copies
@@ -487,8 +480,7 @@ else if (get_is_posterior(inflate_handle)) then
    label = "Posterior"
 else
    write(msgstring, *) "state space inflation but neither prior or posterior"
-   call error_handler(E_ERR, 'fill_inf_from_namelist_value', msgstring, &
-      source, revision, revdate)
+   call error_handler(E_ERR, 'fill_inf_from_namelist_value', msgstring, source)
 endif
 
 if (.not. mean_from_restart(inflate_handle)) then
@@ -593,8 +585,3 @@ end subroutine print_inflation_source
 !-------------------------------------------------------
 end module state_vector_io_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

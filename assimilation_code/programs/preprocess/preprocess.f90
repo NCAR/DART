@@ -34,7 +34,7 @@
 program preprocess
 
 use types_mod,      only : r8, MISSING_R8     ! @todo FIXME r8 is needed; is MISSING_R8?
-use utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG,   &
+use utilities_mod,  only : error_handler, E_ERR, E_MSG,   &
                            file_exist, open_file, close_file,              &
                            initialize_utilities, do_nml_file, do_nml_term, &
                            find_namelist_in_file, check_namelist_read,     &
@@ -44,9 +44,7 @@ use parse_args_mod, only : get_args_from_string, get_name_val_pairs_from_string,
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'preprocess.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'preprocess.f90'
 
 ! Pick something ridiculously large and forget about it (lazy)
 integer, parameter   :: MAX_TYPES = 5000, MAX_QTYS = 5000
@@ -195,7 +193,6 @@ namelist /preprocess_nml/ input_obs_def_mod_file, output_obs_def_mod_file,   &
 
 !Begin by reading the namelist
 call initialize_utilities('preprocess')
-call register_module(source, revision, revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "preprocess_nml", iunit)

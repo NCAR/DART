@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> print out information about observation sequence file(s).
 !> summarizes obs types, times, counts.
@@ -10,7 +8,7 @@
 program obs_info
 
 use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
-use    utilities_mod, only : register_module, initialize_utilities,            &
+use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
@@ -38,12 +36,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source = 'obs_info.f90'
 
 type(obs_sequence_type) :: seq_in
 type(obs_type)          :: obs_in, next_obs_in
@@ -256,7 +249,6 @@ subroutine setup()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_info')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 end subroutine setup
@@ -472,8 +464,7 @@ is_there_one = get_first_obs(seq, obs)
 ! we already tested for 0 obs above, so there should be a first obs here.
 if ( .not. is_there_one )  then
    write(msgstring,*)'no first obs in sequence ' // trim(filename)
-   call error_handler(E_ERR,'obs_info:validate', &
-                      msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'obs_info:validate', msgstring, source)
    return
 endif
 
@@ -494,9 +485,7 @@ ObsLoop : do while ( .not. is_this_last)
       key = get_obs_key(obs)
       write(msgstring1,*)'obs number ', key, ' has earlier time than previous obs'
       write(msgstring2,*)'observations must be in increasing time order, file ' // trim(filename)
-      call error_handler(E_ERR,'obs_info:validate', msgstring2, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+      call error_handler(E_ERR,'obs_info:validate', msgstring2, source, text2=msgstring1)
    endif
 
    last_time = this_time
@@ -524,14 +513,11 @@ if (obs_count /= size_seq) then
    if (obs_count > size_seq) then
       ! this is a fatal error
       write(msgstring1,*) 'linked list obs_count > total size_seq, should not happen'
-      call error_handler(E_ERR,'obs_info:validate', msgstring, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+      call error_handler(E_ERR,'obs_info:validate', msgstring, source, text2=msgstring1)
    else
       ! just warning msg
       write(msgstring1,*) 'only observations in linked list will be processed'
-      call error_handler(E_MSG,'obs_info:validate', msgstring, &
-                         source, revision, revdate, text2=msgstring1)
+      call error_handler(E_MSG,'obs_info:validate', msgstring, source, text2=msgstring1)
    endif
 endif
 
@@ -556,8 +542,7 @@ num_qc     = get_num_qc(    seq)
 
 if ( num_copies < 0 .or. num_qc < 0 ) then
    write(msgstring3,*)' illegal copy or obs count in file '//trim(fname)
-   call error_handler(E_ERR, 'obs_info', msgstring3, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'obs_info', msgstring3, source)
 endif
 
 MetaDataLoop : do i=1, num_copies
@@ -624,8 +609,7 @@ if (filename_in(1) == '' .and. filelist_in == '') then
 
    if (num_input_files /= 0 .and. num_input_files /= 1) then
       call error_handler(E_ERR,'obs_info', &
-          'if no filenames specified, num_input_files must be 0 or 1', &
-          source,revision,revdate)
+          'if no filenames specified, num_input_files must be 0 or 1', source)
    endif
 
    num_input_files = 1
@@ -636,8 +620,7 @@ endif
 ! make sure the namelist specifies one or the other but not both
 if (filename_in(1) /= '' .and. filelist_in /= '') then
    call error_handler(E_ERR,'obs_info', &
-       'cannot specify both filename_in and filelist_in', &
-       source,revision,revdate)
+       'cannot specify both filename_in and filelist_in', source)
 endif
 
 ! if they have specified a file which contains a list, read it into
@@ -657,8 +640,7 @@ do index = 1, MAX_IN_FILES
    if (filename_in(index) == '') then
       if (index == 1) then
          call error_handler(E_ERR,'obs_info', &
-             'namelist item '//trim(fsource)//' contains no filenames', &
-             source,revision,revdate)
+             'namelist item '//trim(fsource)//' contains no filenames', source)
       endif
       ! leaving num_input_files unspecified (or set to 0) means use
       ! whatever number of files is in the list.
@@ -676,15 +658,14 @@ do index = 1, MAX_IN_FILES
          write(msgstring3, *) 'if num_input_files is not 0, it must match the number of filenames specified'
 
          call error_handler(E_ERR,'obs_info', msgstring, &
-            source,revision,revdate, text2=msgstring2, text3=msgstring3)
+            source, text2=msgstring2, text3=msgstring3)
 
       endif
    endif
 enddo
 
 write(msgstring, *) 'cannot specify more than ',MAX_IN_FILES,' files'
-call error_handler(E_ERR,'obs_info', msgstring, &
-     source,revision,revdate)
+call error_handler(E_ERR,'obs_info', msgstring, source)
 
 end subroutine handle_filenames
 

@@ -1,13 +1,11 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module reg_factor_mod
 
 use     types_mod, only : r8, i8
-use utilities_mod, only : get_unit, open_file, register_module, error_handler, &
+use utilities_mod, only : get_unit, open_file, error_handler, &
                           E_ERR, nmlfileunit, find_namelist_in_file,    &
                           check_namelist_read, do_nml_file, do_nml_term
 
@@ -18,11 +16,7 @@ private
 
 public :: comp_reg_factor
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'reg_factor_mod.f90'
 
 !============================================================================
 
@@ -87,7 +81,6 @@ integer :: i, j, ii, jj, iunit, io, secs, days
 ! Initialize namelist if not already done
 if(.not. namelist_initialized) then
 
-   call register_module(source,revision,revdate)
 
    namelist_initialized = .true.
 
@@ -193,15 +186,10 @@ else if(select_regression == 3) then
 
 else
    call error_handler(E_ERR,'comp_reg_factor', &
-      'Illegal value for namelist parameter select_regression',source, revision, revdate)
+      'Illegal value for namelist parameter select_regression',source)
 endif
 
 end function comp_reg_factor
 
 end module reg_factor_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
