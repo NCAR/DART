@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> This program creates a netCDF file suitable for forecast evaluation.
 !>
@@ -79,7 +77,7 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(>), operator(<), operator(==), &
                              operator(<=), operator(-), operator(+), operator(/=)
 
-use    utilities_mod, only : get_unit, close_file, register_module, timestamp, &
+use    utilities_mod, only : get_unit, close_file, timestamp, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, finalize_utilities, nmlfileunit, &
                              find_namelist_in_file, check_namelist_read, &
@@ -93,11 +91,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'obs_seq_verify.f90'
 
 !---------------------------------------------------------------------
 ! An array of these structures will be filled for each obs sequence file.
@@ -248,7 +242,6 @@ real(r8), parameter :: OnePa = 1.0_r8
 !=======================================================================
 
 call initialize_utilities('obs_seq_verify')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()  ! Initialize the obs sequence module
 
 call init_obs(obs1, 0, 0)
@@ -284,7 +277,7 @@ obtype_integer = get_index_for_type_of_obs(obtype_string)
 
 if (obtype_integer < 1) then
    write(string1,*)'obtype_string ',trim(obtype_string),' is unknown. change input.nml'
-   call error_handler(E_ERR,'obs_seq_verify:',string1,source,revision,revdate)
+   call error_handler(E_ERR,'obs_seq_verify:',string1,source)
 endif
 
 call set_calendar_type(calendar)
@@ -339,7 +332,7 @@ ObsFileLoop : do ifile=1,num_input_files
       call error_handler(E_MSG,'obs_seq_verify:',string1)
    else
       write(string1,*)'['//trim(obs_seq_in_file_name)//'] does not exist.'
-      call error_handler(E_ERR,'obs_seq_verify:',string1,source,revision,revdate)
+      call error_handler(E_ERR,'obs_seq_verify:',string1,source)
       exit ObsFileLoop
    endif
 
@@ -357,7 +350,7 @@ ObsFileLoop : do ifile=1,num_input_files
 
    if ((num_qc <= 0) .or. (num_copies <= 0)) then
       write(string1,*)'need at least 1 qc and 1 observation copy'
-      call error_handler(E_ERR,'obs_seq_verify:',string1,source,revision,revdate)
+      call error_handler(E_ERR,'obs_seq_verify:',string1,source)
    endif
 
    ! Initialize some (individual) observation variables
@@ -411,8 +404,7 @@ ObsFileLoop : do ifile=1,num_input_files
             write(string2,'(A,'' has '',A)') trim(obs_seq_in_file_name), &
                                              trim(obs_copy_names(prior_copy_indices(i)))
             call error_handler(E_ERR,'obs_seq_verify:', &
-               'mismatch in observation copies', source, &
-               revision, revdate, text2=string1,text3=string2)
+               'mismatch in observation copies',source,text2=string1,text3=string2)
          endif
       enddo
    endif
@@ -426,8 +418,7 @@ ObsFileLoop : do ifile=1,num_input_files
       if (iobs == 1) then
          if ( .not. get_first_obs(seq, obs1) )           &
             call error_handler(E_ERR,'obs_seq_verify:',   &
-              'No first observation in sequence.', &
-              source,revision,revdate)
+              'No first observation in sequence.', source)
       else
          call get_next_obs(seq, obs1, obs2, last_ob_flag)
          obs1 = obs2
@@ -799,7 +790,7 @@ enddo
 ! check to make sure nvoxels is not zero
 if (sum(voxel_flag) < 1) then
    write(string1,*)'no valid voxels of ',trim(obtype_string)
-   call error_handler(E_ERR,'fill_voxels:',string1,source,revision,revdate)
+   call error_handler(E_ERR,'fill_voxels:',string1,source)
 endif
 
 !-----------------------------------------------------------------------
@@ -869,8 +860,7 @@ enddo FirstLocation
 
 if (nstations == 0) then
    write(string1,*)'Unable to find even 1 good voxel.'
-   call error_handler(E_ERR, 'relate_voxels_to_stations:', string1, &
-              source, revision, revdate )
+   call error_handler(E_ERR, 'relate_voxels_to_stations:', string1, source)
 endif
 
 ! Compare each good voxel to the list of known stations.
@@ -978,7 +968,7 @@ endif
 
 if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'InitNetCDF:', &
-   'Compiler does not support required kinds of variables.',source,revision,revdate)
+   'Compiler does not support required kinds of variables.',source)
 endif
 
 InitNetCDF = 0
@@ -1002,12 +992,8 @@ write(string1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(string1) ), &
            'InitNetCDF', 'put_att creation_date '//trim(fname))
 
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'source',   source   ), &
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'source',   source), &
            'InitNetCDF', 'put_att   source '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'revision', revision ), &
-           'InitNetCDF', 'put_att revision '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'revdate',  revdate  ), &
-           'InitNetCDF', 'put_att  revdate '//trim(fname))
 
 ! write all observation sequence files used
 FILEloop : do i = 1,num_input_files
@@ -1491,7 +1477,7 @@ if ( file_exist(obs_sequences(filenum)) ) then
 else
    write(string1,*)trim(obs_sequences(filenum)), &
                    ' does not exist. Dying a dramatic death.'
-   call error_handler(E_ERR,'find_ensemble_size:',string1,source,revision,revdate)
+   call error_handler(E_ERR,'find_ensemble_size:',string1,source)
 endif
 
 !-----------------------------------------------------------------------
@@ -1523,8 +1509,7 @@ endif
 if (ensemble_size < 1) then
    write(string1,*)'no ensemble member info in ', trim(obs_sequences(filenum))
    write(string2,*)'cannot continue'
-   call error_handler(E_ERR,'find_ensemble_size:', string1, &
-                 source, revision, revdate, text2=string2)
+   call error_handler(E_ERR,'find_ensemble_size:', string1, source, text2=string2)
 else
    call error_handler(E_MSG,'find_ensemble_size:', 'found a prior ensemble mean.')
 endif
@@ -1568,36 +1553,31 @@ string2 = 'The extension must be the analysis time - YYYYMMDDHH'
 
 if (indx == 1) then
    write(string1,*)'Cannot find the YYYYMMDDHH extension on '//trim(lj_filename)
-   call error_handler(E_ERR,'find_analysis_time:', string1, &
-                 source, revision, revdate, text2=string2)
+   call error_handler(E_ERR,'find_analysis_time:', string1, source, text2=string2)
 endif
 
 read(lj_filename(indx+0:indx+3),'(i4)',iostat=mystat)iyear
 if (mystat /= 0) then
    write(string1,*)'Cannot find the year in the extension (YYYYMMDDHH) on '//trim(lj_filename)
-   call error_handler(E_ERR,'find_analysis_time:', string1, &
-                 source, revision, revdate, text2=string2)
+   call error_handler(E_ERR,'find_analysis_time:', string1, source, text2=string2)
 endif
 
 read(lj_filename(indx+4:indx+5),'(i2)',iostat=mystat)imonth
 if (mystat /= 0) then
    write(string1,*)'Cannot find the month in the extension (YYYYMMDDHH) on '//trim(lj_filename)
-   call error_handler(E_ERR,'find_analysis_time:', string1, &
-                 source, revision, revdate, text2=string2)
+   call error_handler(E_ERR,'find_analysis_time:', string1, source, text2=string2)
 endif
 
 read(lj_filename(indx+6:indx+7),'(i2)',iostat=mystat)iday
 if (mystat /= 0) then
    write(string1,*)'Cannot find the day in the extension (YYYYMMDDHH) on '//trim(lj_filename)
-   call error_handler(E_ERR,'find_analysis_time:', string1, &
-                 source, revision, revdate, text2=string2)
+   call error_handler(E_ERR,'find_analysis_time:', string1, source, text2=string2)
 endif
 
 read(lj_filename(indx+8:indx+9),'(i2)',iostat=mystat)ihour
 if (mystat /= 0) then
    write(string1,*)'Cannot find the hour in the extension (YYYYMMDDHH) on '//trim(lj_filename)
-   call error_handler(E_ERR,'find_analysis_time:', string1, &
-                 source, revision, revdate, text2=string2)
+   call error_handler(E_ERR,'find_analysis_time:', string1, source, text2=string2)
 endif
 
 mytime = set_date(iyear, imonth, iday, hours=ihour)
@@ -1612,7 +1592,7 @@ enddo TimeLoop
 
 if ( ExpIndex == 0 ) then
    write(string1,*)'Cannot find an analysis time that matches '//lj_filename(indx+0:indx+9)
-   call error_handler(E_ERR,'find_analysis_time:',string1,source,revision,revdate)
+   call error_handler(E_ERR,'find_analysis_time:',string1,source)
 endif
 
 if (debug) then
@@ -1667,7 +1647,7 @@ enddo ObsDataLoop
 
 if (obsindex < 0) then
    write(string1,*)'Could not find observation copy index in sequence.'
-   call error_handler(E_ERR,'find_our_copies:',string1,source,revision,revdate)
+   call error_handler(E_ERR,'find_our_copies:',string1,source)
 endif
 
 myindex = 0
@@ -1680,7 +1660,7 @@ MetaDataLoop : do i=1, get_num_copies(myseq)
       myindex = myindex + 1
       if ( myindex > size(indices) ) then
          write(string1,*)'Found too many prior copies in metadata.'
-         call error_handler(E_ERR,'find_our_copies:',string1,source,revision,revdate)
+         call error_handler(E_ERR,'find_our_copies:',string1,source)
       endif
       indices(myindex) = i
    endif
@@ -1690,7 +1670,7 @@ MetaDataLoop : do i=1, get_num_copies(myseq)
       myindex = myindex + 1
       if ( myindex > size(indices) ) then
          write(string1,*)'Found too many prior copies in metadata.'
-         call error_handler(E_ERR,'find_our_copies:',string1,source,revision,revdate)
+         call error_handler(E_ERR,'find_our_copies:',string1,source)
       endif
       indices(myindex) = i
       exit MetaDataLoop
@@ -1700,7 +1680,7 @@ enddo MetaDataLoop
 
 if (myindex == 0) then
    write(string1,*)'Could not find any prior copy indices in sequence.'
-   call error_handler(E_ERR,'find_our_copies:',string1,source,revision,revdate)
+   call error_handler(E_ERR,'find_our_copies:',string1,source)
 endif
 
 ! Here is the sanity check to make sure the indices pick off just the
@@ -1726,11 +1706,11 @@ enddo QCMetaDataLoop
 
 if (      qc_index < 0 ) then
    write(string1,*)'metadata:Quality Control copyindex not found'
-   call error_handler(E_ERR,'find_qc_indices:',string1,source,revision,revdate)
+   call error_handler(E_ERR,'find_qc_indices:',string1,source)
 endif
 if ( dart_qc_index < 0 ) then
    write(string1,*)'metadata:DART quality control copyindex not found'
-   call error_handler(E_ERR,'find_qc_indices:',string1,source,revision,revdate)
+   call error_handler(E_ERR,'find_qc_indices:',string1,source)
 endif
 
 ! Just echo what we know
@@ -1936,8 +1916,3 @@ end subroutine determine_hyperslab_indices
 
 end program obs_seq_verify
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

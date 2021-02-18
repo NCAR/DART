@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Should only have fortran "kinds" - number of bytes/precision - for
 !> integer, real, etc.  the constants should go into their own module, 
@@ -22,12 +20,6 @@ public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
 public :: metadatalength, obstypelength, varnamelength, vtablenamelength
 public :: MAX_NUM_DOMS, MAX_FILES
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
 
 !----------------------------------------------------------------------------
 ! constants that need to be shared - really has nothing to do with types ...
@@ -135,8 +127,3 @@ real(r8), parameter :: gravity        = 9.81_r8        ! wikipedia has 9.80665
 
 end module types_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

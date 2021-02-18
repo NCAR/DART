@@ -18,7 +18,7 @@
 module obs_kind_mod
 
 use        types_mod, only : obstypelength, r8, MISSING_R8
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN,  &
+use    utilities_mod, only : error_handler, E_ERR, E_WARN,  &
                              logfileunit, find_namelist_in_file, log_it,     &
                              check_namelist_read, do_output, ascii_file_format, &
                              string_to_real
@@ -70,10 +70,7 @@ public :: get_num_types_of_obs, get_num_quantities
 
 !----------------------------------------------------------------------------
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'DEFAULT_obs_def_mod.F90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'DEFAULT_obs_def_mod.F90'
 
 ! integer, parameters: max_defined_types_of_obs, max_defined_quantities 
 ! generated and inserted by preprocess.
@@ -165,7 +162,6 @@ integer :: iunit, io, i, j
 character(len = 169) :: err_string
 character(len=*), parameter :: routine = 'initialize_module'
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 ! Read the namelist entry
@@ -271,7 +267,7 @@ if (num_types_assimilate > 0) then
       ! Falling off the end is an error
       write(err_string, *) '"',trim(assimilate_these_obs_types(i)), &
          '" from obs_kind_nml::assimilate_these_obs_types is not a legal observation type'
-      call error_handler(E_ERR, routine, err_string, source, revision, revdate)
+      call error_handler(E_ERR, routine, err_string, source)
       44 continue
    end do
 endif
@@ -289,7 +285,7 @@ if (num_types_evaluate > 0) then
       ! Falling off the end is an error
       write(err_string, *) '"',trim(evaluate_these_obs_types(i)), &
          '" from obs_kind_nml::evaluate_these_obs_types is not a legal observation type'
-      call error_handler(E_ERR, routine, err_string, source, revision, revdate)
+      call error_handler(E_ERR, routine, err_string, source)
       55 continue
    end do
 endif
@@ -306,7 +302,7 @@ if (num_types_use_precomputed_FOs > 0) then
       ! Falling off the end is an error
       write(err_string, *) '"',trim(use_precomputed_FOs_these_obs_types(i)), &
          '" from obs_kind_nml::use_precomputed_FOs_these_obs_types is not a legal observation type'
-      call error_handler(E_ERR, routine, err_string, source, revision, revdate)
+      call error_handler(E_ERR, routine, err_string, source)
       66 continue
    end do
 endif
@@ -316,7 +312,7 @@ do i = 1, max_defined_types_of_obs
    if(obs_type_info(i)%evaluate .and. obs_type_info(i)%assimilate) then
       write(err_string, *) 'Illegal to both evaluate and assimilate same type ', &
          trim(obs_type_info(i)%name)
-      call error_handler(E_ERR, routine, err_string, source, revision, revdate)
+      call error_handler(E_ERR, routine, err_string, source)
    endif
 end do
 
@@ -350,7 +346,7 @@ end do
 ! Error, didn't find this obs_def_index in the map
 write(err_string, *) 'Could not find obs type index ', obs_def_index, &
    ' in current type list compiled in this program'
-call error_handler(E_ERR, routine, err_string, source, revision, revdate)
+call error_handler(E_ERR, routine, err_string, source)
 
 end function map_type_of_obs_table
 
@@ -748,8 +744,8 @@ endif
 if (present(use_list)) then
    ! make sure the list is the right length
    if (size(use_list) /= max_defined_types_of_obs) then
-      call error_handler(E_ERR, routine, 'use_list(:) must be the same length as number of types', &
-                         source, revision, revdate)
+      call error_handler(E_ERR, routine, &
+              'use_list(:) must be the same length as number of types', source)
    endif
 
    ntypes = count(use_list(:) > 0)
@@ -799,8 +795,7 @@ if ( .not. module_initialized ) call initialize_module
 
 ! pre_I_format has been deprecated.
 if(pre_I_format) then
-   call error_handler(E_ERR, routine, 'pre_I_format no longer supported', &
-                      source, revision, revdate)
+   call error_handler(E_ERR, routine, 'pre_I_format no longer supported', source)
 endif
 
 is_ascii = ascii_file_format(fform)
@@ -816,7 +811,7 @@ endif
 if(rc /= 0 .or. (header /= 'obs_type_definitions' .and. header /= 'obs_kind_definitions')) then
    write(msg_string,  *) 'Did not find expected "obs_type_definitions" or "obs_kind_definitions" string at start of obs_seq file '
    write(msg_string1, *) 'Possible causes include: not an obs_seq file format, corrupted file, or wrong-endian binary file'
-   call error_handler(E_ERR, routine, msg_string, source, revision, revdate, text2=msg_string1)
+   call error_handler(E_ERR, routine, msg_string, source, text2=msg_string1)
 endif
 
 ! Loop through the list to read the integer indices and strings
@@ -843,7 +838,7 @@ do i = 1, num_def_types
    if(list_index == -1) then
       write(msg_string, *) 'Did not find observation type "', o_name, &
          '" in current type list compiled in this program'
-      call error_handler(E_ERR, routine, msg_string, source, revision, revdate)
+      call error_handler(E_ERR, routine, msg_string, source)
    endif
 
    toc_mod_type_map%toc_type_index(i) = o_index
@@ -913,7 +908,7 @@ character(len=*), intent(in) :: calling_routine
 if (test_me < 1 .or. test_me > max_defined_types_of_obs) then
    write(msg_string,'(A,I6,A,I6)') 'obs type number ', test_me, &
                                    ' must be between 1 and ', max_defined_types_of_obs
-   call error_handler(E_ERR, calling_routine, msg_string, source, revision, revdate)
+   call error_handler(E_ERR, calling_routine, msg_string, source)
 endif
 
 end subroutine validate_obs_type_index
@@ -931,7 +926,7 @@ character(len=*), intent(in) :: calling_routine
 if (test_me < 0 .or. test_me > max_defined_quantities) then
    write(msg_string,'(A,I6,A,I6)') 'obs quantity number ', test_me, &
                                    ' must be between 0 and ', max_defined_quantities
-   call error_handler(E_ERR, calling_routine, msg_string, source, revision, revdate)
+   call error_handler(E_ERR, calling_routine, msg_string, source)
 endif
 
 end subroutine validate_obs_qty_index
@@ -956,7 +951,7 @@ nitems = obs_qty_info(qty_index)%nitems
 if (test_me < 1 .or. test_me > nitems) then
    write(msg_string,'(3(A,I6))') 'item number ', test_me, ' for obs quantity number ', qty_index, &
                                    ' ('//trim(obs_type_info(qty_index)%name)//') must be between 1 and ', nitems
-   call error_handler(E_ERR, calling_routine, msg_string, source, revision, revdate)
+   call error_handler(E_ERR, calling_routine, msg_string, source)
 endif
 
 end subroutine validate_qty_item_index
@@ -974,13 +969,13 @@ character(len=*), parameter :: routine = 'validate_metadata_strings'
 if (len_trim(itemname) > namelen) then
   write(msg_string, *) 'quantity ', obs_qty_ind, ' metadata name "'//trim(itemname)//'" must be shorter than', namelen
   write(msg_string1, *) 'quantity ', obs_qty_ind, ' is ', get_name_for_quantity(obs_qty_ind)
-  call error_handler(E_ERR, routine, msg_string, source, revision, revdate, text2=msg_string1)
+  call error_handler(E_ERR, routine, msg_string, source, text2=msg_string1)
 endif
 
 if (len_trim(itemvalue) > valuelen) then
   write(msg_string, *) 'quantity ', obs_qty_ind, ' metadata value "'//trim(itemvalue)//'" must be shorter than', valuelen
   write(msg_string1, *) 'quantity ', obs_qty_ind, ' is ', get_name_for_quantity(obs_qty_ind)
-  call error_handler(E_ERR, routine, msg_string, source, revision, revdate, text2=msg_string1)
+  call error_handler(E_ERR, routine, msg_string, source, text2=msg_string1)
 endif
 
 end subroutine validate_metadata_strings

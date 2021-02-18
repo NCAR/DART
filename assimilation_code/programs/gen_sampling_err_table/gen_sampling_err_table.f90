@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Correct covariances for fixed ensemble sizes.
 !>
@@ -42,12 +40,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
+character(len=*), parameter :: source = 'gen_sampling_err_table.f90'
 
 integer, parameter :: num_times   = 1
 integer, parameter :: num_samples = 100000000 ! large number for statistical rigor
@@ -103,7 +96,7 @@ call error_handler(E_MSG, '', '')
 num_ens = valid_entries(ens_sizes, 3, MISSING_I, 'namelist variable "ens_size"')
 if (num_ens < 1) then
    call error_handler(E_ERR, 'gen_sampling_err_table:', 'no valid ensemble sizes specified', &
-             source, revision, revdate, text2='check values of namelist item "ens_sizes"')
+             source, text2='check values of namelist item "ens_sizes"')
 endif
 
 if (file_exist(output_filename)) then
@@ -126,13 +119,12 @@ if (add_ens <= 0) then
 
    call error_handler(E_MSG, 'gen_sampling_err_table:', &
              'no new ensemble sizes specified, nothing to do.', &
-             source, revision, revdate, text2='all sizes specified already exist in output file')
+             source, text2='all sizes specified already exist in output file')
 
 else
    if (num_ens /= add_ens) then
       write(msgstring, *) num_ens-add_ens, ' "ens_sizes" entries ignored; either duplicate values'
-      call error_handler(E_MSG, 'gen_sampling_err_table:', msgstring, &
-             source, revision, revdate, &
+      call error_handler(E_MSG, 'gen_sampling_err_table:', msgstring, source, &
              text2='in namelist, or ensemble size already exists in output file')
       call error_handler(E_MSG, '', '')  ! blank line
    endif
@@ -263,7 +255,7 @@ do i = 1, nentries
    if(bin_count(i) <= 1) then
       write(msgstring, *) 'Bin ', i, ' has ', bin_count(i), ' counts'
       call error_handler(E_ERR, 'compute_table', msgstring, &
-         source, revision, revdate, text2='All bins must have at least 2 counts')
+         source, text2='All bins must have at least 2 counts')
    endif
    
    ! Compute the standard deviation of the true correlations
@@ -408,8 +400,7 @@ call get_sec_dim_info(fid, 'bins', l1=nbins)
 if (nbins /= nentries) then
    write(msgstring, *) 'existing file has ', nbins, ' bins, the program has ', nentries, ' bins.'
    call error_handler(E_ERR, 'setup_to_append_output_file', &
-             'existing file used a different bin size', &
-             source, revision, revdate, text2=msgstring)
+             'existing file used a different bin size', source, text2=msgstring)
 endif
 
 ! also make sure num_samples matches
@@ -420,8 +411,7 @@ if (nsamp /= num_samples) then
    write(msgstring, *) 'existing file uses ', nsamp, ' samples, the program has ', &
                        num_samples, ' samples.'
    call error_handler(E_ERR, 'setup_to_append_output_file', &
-             'existing file used a different number of samples', &
-             source, revision, revdate, text2=msgstring)
+             'existing file used a different number of samples', source, text2=msgstring)
 endif
 
 ! get the current size of the unlimited dimension 
@@ -789,15 +779,13 @@ do i=1, MAX_LIST_LEN
    if (min_valid /= MISSING_I .and. list(i) < min_valid) then
       write(msgstring, *) 'minimum valid value is ', min_valid
       call error_handler(E_ERR, 'valid_entries', &
-                 'illegal value found in '//trim(where), &
-                 source, revision, revdate, text2=msgstring)
+                 'illegal value found in '//trim(where), source, text2=msgstring)
    endif
 
    if (max_valid /= MISSING_I .and. list(i) > max_valid) then
       write(msgstring, *) 'maximum valid value is ', max_valid
       call error_handler(E_ERR, 'valid_entries', &
-                 'illegal value found in '//trim(where), &
-                 source, revision, revdate, text2=msgstring)
+                 'illegal value found in '//trim(where), source, text2=msgstring)
    endif
 
    val = i

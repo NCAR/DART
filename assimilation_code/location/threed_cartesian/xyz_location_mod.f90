@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module xyz_location_mod
 
@@ -12,7 +10,7 @@ module xyz_location_mod
 ! locations module should do.  
 
 use      types_mod, only : r8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD
-use  utilities_mod, only : register_module, error_handler, E_ERR,           &
+use  utilities_mod, only : error_handler, E_ERR,           &
                            E_MSG, open_file, close_file, set_output,        &
                            logfileunit, nmlfileunit, find_namelist_in_file, &
                            check_namelist_read, do_nml_file, do_nml_term
@@ -34,11 +32,7 @@ public :: xyz_location_type,         &
           xyz_get_ll_location,       &
           xyz_write_location
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'threed_cartesian/xyz_location_mod.f90'
 
 type xyz_location_type
    private
@@ -123,7 +117,6 @@ integer :: iunit, io
 
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 ! Read the namelist entry
@@ -274,7 +267,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if (size(list) < 3) then
    write(errstring,*)'requires 3 input values'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_array = set_location_single(list(1), list(2), list(3))
@@ -530,7 +523,7 @@ if (present(dist)) dist = 1e38_r8  ! ditto
 ! you have to destroy the old gc and init a new one.
 if (size(loc_list) /= gc%num) then
    write(errstring,*)'loc_list() array must match one passed to xyz_get_close_init()'
-   call error_handler(E_ERR, 'find_nearest_boxes', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'find_nearest_boxes', errstring, source)
 endif
 
 ! If num == 0, no point in going any further. 
@@ -655,13 +648,13 @@ if (present(dist)) dist(:) = 1e38_r8  ! ditto
 ! make sure they want something - else return or fail?
 if (n_wanted < 1) then
    write(errstring,*)'n_wanted must be 1 or larger'
-   call error_handler(E_ERR, 'find_nearest_n_boxes', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'find_nearest_n_boxes', errstring, source)
 endif
 
 if (present(dist)) then
   if (size(dist) < n_wanted) then
     write(errstring,*)'dist(:) array size must be equal to or larger than n_wanted'
-    call error_handler(E_ERR, 'find_nearest_n_boxes', errstring, source, revision, revdate)
+    call error_handler(E_ERR, 'find_nearest_n_boxes', errstring, source)
   endif
 endif
 
@@ -671,7 +664,7 @@ endif
 ! you have to destroy the old gc and init a new one.
 if (size(loc_list) /= gc%num) then
    write(errstring,*)'loc_list() array must match one passed to xyz_get_close_init()'
-   call error_handler(E_ERR, 'find_nearest_n_boxes', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'find_nearest_n_boxes', errstring, source)
 endif
 
 ! If num == 0, no point in going any further. 
@@ -849,8 +842,3 @@ end subroutine
 
 end module xyz_location_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

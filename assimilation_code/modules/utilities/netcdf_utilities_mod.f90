@@ -176,10 +176,7 @@ interface nc_get_variable_size
    module procedure nc_get_variable_size_Nd
 end interface
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'netcdf_utilities_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'netcdf_utilities_mod.f90'
 
 character(len=512) :: msgstring1
 
@@ -244,7 +241,7 @@ else
 endif
 
 ! this does not return 
-call error_handler(E_ERR, subr_name, msgstring1, source, revision, revdate, &
+call error_handler(E_ERR, subr_name, msgstring1, source, &
                    text2=context2, text3=saved_filename)
 
 
@@ -896,7 +893,7 @@ endif
 
 if (size(dimnames) >= 4) then
    call error_handler(E_ERR, routine, 'only 1d, 2d and 3d character variables supported', &
-                      source, revision, revdate, text2='variable '//trim(varname))
+                      source, text2='variable '//trim(varname))
 endif
 
 if (size(dimnames) == 1) then
@@ -967,7 +964,7 @@ integer :: i, ret, ndims, varid, dimids(NF90_MAX_VAR_DIMS)
 ndims = size(dimnames)
 if (ndims > 4) then
    call error_handler(E_ERR, routine, 'only 1d, 2d, 3d and 4d integer variables supported', &
-                      source, revision, revdate, text2='variable '//trim(varname))
+                      source, text2='variable '//trim(varname))
 endif
 
 do i=1, ndims
@@ -1035,7 +1032,7 @@ integer :: i, ret, ndims, varid, dimids(NF90_MAX_VAR_DIMS)
 ndims = size(dimnames)
 if (ndims > 4) then
    call error_handler(E_ERR, routine, 'only 1d, 2d, 3d and 4d real variables supported', &
-                      source, revision, revdate, text2='variable '//trim(varname))
+                      source, text2='variable '//trim(varname))
 endif
 
 do i=1, ndims
@@ -1103,7 +1100,7 @@ integer :: i, ret, ndims, varid, dimids(NF90_MAX_VAR_DIMS)
 ndims = size(dimnames)
 if (ndims > 4) then
    call error_handler(E_ERR, routine, 'only 1d, 2d, 3d and 4d double variables supported', &
-                      source, revision, revdate, text2='variable '//trim(varname))
+                      source, text2='variable '//trim(varname))
 endif
 
 do i=1, ndims

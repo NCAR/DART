@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> This program queries a bunch of obs_seq.xxxx files and tries to
 !> figure out 'voxel coverage' ... what locations are consistently
@@ -44,7 +42,7 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, &
                              operator(==), operator(/=), operator(<=), operator(/), &
                              operator(>=), operator(*)
 
-use    utilities_mod, only : get_unit, close_file, register_module, &
+use    utilities_mod, only : get_unit, close_file, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, nmlfileunit, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
@@ -58,11 +56,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'obs_seq_coverage.f90'
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
@@ -190,7 +184,6 @@ real(r8), dimension(NUM_MANDATORY_LEVELS) :: mandatory_levels = MISSING_R8 ! pre
 !=======================================================================
 
 call initialize_utilities('obs_seq_coverage')
-call register_module(source,revision,revdate) 
 call static_init_obs_sequence()  ! Initialize the obs sequence module 
 
 call init_obs(obs1, 0, 0)
@@ -214,7 +207,7 @@ if (do_nml_term()) write(    *      , nml=obs_seq_coverage_nml)
 if (temporal_coverage_percent < 100.0_r8) then
    write(string1,*)'namelist: temporal_coverage_percent (',temporal_coverage_percent,&
                    ') must be == 100.0 for now.)' 
-   call error_handler(E_MSG, 'obs_seq_coverage', string1, source, revision, revdate)
+   call error_handler(E_MSG, 'obs_seq_coverage', string1, source)
 endif
 
 num_input_files =  set_filename_list(obs_sequences, obs_sequence_list,'obs_seq_coverage')
@@ -239,7 +232,7 @@ TypeLoop : do i = 1,MAX_OBS_NAMES_IN_NAMELIST
 
    if (flavor_of_interest < 0) then
       write(string1,*)trim(string2),' is not a known observation type.'
-      call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
+      call error_handler(E_ERR, 'obs_seq_coverage', string1, source)
    endif
 
    if (verbose) write(*,*)trim(string2),' is type ',flavor_of_interest
@@ -251,8 +244,7 @@ enddo TypeLoop
 if (all(obs_type_inds < 1)) then
       write(string1,*)' No desired observation types of interest specified.'
       write(string2,*)' Check the value of "obs_of_interest".'
-      call error_handler(E_ERR, 'obs_seq_coverage', string1, &
-                      source, revision, revdate, text2=string2)
+      call error_handler(E_ERR, 'obs_seq_coverage', string1, source, text2=string2)
 endif
 
 ! Set the verification time array (global storage)
@@ -313,11 +305,11 @@ ObsFileLoop : do ifile = 1, num_input_files
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(string1,*)'opening ', trim(obs_seq_in_file_name)
-      call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
+      call error_handler(E_MSG,'obs_seq_coverage',string1,source)
    else
       write(string1,*)trim(obs_seq_in_file_name),&
                         ' does not exist. Finishing up.'
-      call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
+      call error_handler(E_MSG,'obs_seq_coverage',string1,source)
       write(*,*) ! whitespace
       exit ObsFileLoop
    endif
@@ -339,7 +331,7 @@ ObsFileLoop : do ifile = 1, num_input_files
 
    if ((num_qc <= 0) .or. (num_copies <=0)) then
       write(string1,*)'need at least 1 qc and 1 observation copy'
-      call error_handler(E_ERR,'obs_seq_coverage',string1,source,revision,revdate)
+      call error_handler(E_ERR,'obs_seq_coverage',string1,source)
    endif
 
    allocate( obs_copy_names(num_copies), qc_copy_names(num_qc), qc_values(num_qc))
@@ -388,32 +380,32 @@ ObsFileLoop : do ifile = 1, num_input_files
       if (num_copies /= size(module_obs_copy_names)) then
             write(string1,'(''num_copies '',i3,'' does not match '',i3)') &
                               num_copies, size(module_obs_copy_names) 
-            call error_handler(E_ERR,'obs_seq_coverage',string1,source,revision,revdate)
+            call error_handler(E_ERR,'obs_seq_coverage',string1,source)
       endif
 
       do i = 1,num_copies
          if (trim(obs_copy_names(i)) /= trim(module_obs_copy_names(i))) then
             write(string1,'(''obs copy '',i3,'' from '',a)') i,trim(obs_seq_in_file_name)
-            call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
+            call error_handler(E_MSG,'obs_seq_coverage',string1,source)
 
             string1 = 'does not match the same observation copy from the first file.'
             write(string2,'(''obs copy >'',a,''<'')') trim(obs_copy_names(i))
             write(string3,'(''expected >'',a,''<'')') trim(module_obs_copy_names(i))
-            call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, &
-                                            revdate,text2=string2,text3=string3)
+            call error_handler(E_ERR, 'obs_seq_coverage', string1, source, &
+                    text2=string2,text3=string3)
          endif
       enddo
 
       do i = 1,num_qc
          if (trim(qc_copy_names(i)) /= trim(module_qc_copy_names(i))) then
             write(string1,'(''qc copy '',i3,'' from '',a)') i,trim(obs_seq_in_file_name)
-            call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
+            call error_handler(E_MSG,'obs_seq_coverage',string1,source)
 
             string1 = 'does not match the same qc copy from the first file.'
             write(string2,'(''qc  copy '',a)') trim(qc_copy_names(i))
             write(string3,'(''expected '',a)') trim(module_qc_copy_names(i))
-            call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, &
-                                            revdate,text2=string2,text3=string3)
+            call error_handler(E_ERR, 'obs_seq_coverage', string1, source, &
+                    text2=string2,text3=string3)
          endif
       enddo
 
@@ -428,8 +420,7 @@ ObsFileLoop : do ifile = 1, num_input_files
       if (iobs == 1) then
          if ( .not. get_first_obs(seq, obs1) )           &
             call error_handler(E_ERR,'obs_seq_coverage', &
-                    'No first observation in sequence.', &
-                    source,revision,revdate)
+                    'No first observation in sequence.', source)
       else
          call get_next_obs(seq, obs1, obs2, last_ob_flag)
          obs1 = obs2
@@ -535,7 +526,7 @@ call CloseNetCDF(ncunit, trim(ncName))
 
 if (num_out_stat < 1) then
    write(string1,*)'No location had at least ',nT_minimum,' reporting times.'
-   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'obs_seq_coverage', string1, source)
 endif
 
 ! Output the file of desired observation locations and times.
@@ -558,7 +549,7 @@ if (allocated(module_obs_copy_names)) deallocate(module_obs_copy_names)
 if (allocated(module_qc_copy_names )) deallocate(module_qc_copy_names )
 if (allocated(Desiredvoxels))         deallocate(Desiredvoxels)
 
-call error_handler(E_MSG,'obs_seq_coverage','Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG,'obs_seq_coverage','Finished successfully.',source)
 call finalize_utilities()
 
 
@@ -842,7 +833,7 @@ integer, dimension(nf90_max_var_dims) :: dimIDs
 
 if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'InitNetCDF', &
-   'Compiler does not support required kinds of variables.',source,revision,revdate)
+   'Compiler does not support required kinds of variables.',source)
 endif
 
 InitNetCDF = 0
@@ -860,12 +851,8 @@ write(string1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(string1) ), &
            'InitNetCDF', 'put_att creation_date '//trim(fname))
 
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_source', source ), &
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_source', source), &
            'InitNetCDF', 'put_att obs_seq_coverage_source '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_revision', revision ), &
-           'InitNetCDF', 'put_att obs_seq_coverage_revision '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_revdate', revdate ), &
-           'InitNetCDF', 'put_att obs_seq_coverage_revdate '//trim(fname))
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'min_steps_required', nT_minimum ), &
            'InitNetCDF', 'put_att min_steps_required '//trim(fname))
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'forecast_length_days', &
@@ -1513,7 +1500,7 @@ TN   = set_date(analysisN(1), analysisN(2), analysisN(3), &
 
 if ( TN < T1 ) then
    write(string1,*)'namelist: last_analysis must be >= first analysis'
-   call error_handler(E_ERR,'set_required_times',string1,source,revision,revdate)
+   call error_handler(E_ERR,'set_required_times',string1,source)
 endif
 
 ! Check to make sure the forecast length is a multiple
@@ -1528,8 +1515,7 @@ if (nexttime /= flen) then
    call print_time(nexttime,'implied  forecast length')
    write(string1,*)'namelist: forecast length is not a multiple of the verification interval'
    write(string2,*)'check forecast_length_[days,seconds] and verification_interval_seconds'
-   call error_handler(E_ERR, 'set_required_times', string1, &
-            source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'set_required_times', string1, source, text2=string2)
 endif
 
 num_verify_per_fcst = nsteps+1   ! SET GLOBAL VALUE
@@ -1562,8 +1548,7 @@ if (TN /= T1) then
 
       write(string1,*)'namelist: last analysis time is not a multiple of the verification interval'
       write(string2,*)'check [first,last]_analysis and verification_interval_seconds'
-      call error_handler(E_ERR, 'set_required_times', string1, &
-            source, revision, revdate, text2=string2)
+      call error_handler(E_ERR, 'set_required_times', string1, source, text2=string2)
    endif
 
    num_analyses = nsteps+1   ! SET GLOBAL VALUE
@@ -1586,7 +1571,7 @@ if (nexttime /= thistime) then
    call print_time(thistime,'total time interval')
    call print_time(nexttime,'implied total time')
    write(string1,*)'bad logic on Tims part. Should not be able to get here.'
-   call error_handler(E_ERR,'set_required_times',string1,source,revision,revdate)
+   call error_handler(E_ERR,'set_required_times',string1,source)
 endif
 
 num_verification_times = nsteps + 1                                ! SET GLOBAL VALUE
@@ -1656,11 +1641,11 @@ enddo QCMetaDataLoop
 
 if (      qcindex < 0 ) then
    write(string1,*)'metadata:source Quality Control copyindex not found'
-   call error_handler(E_MSG,'find_qc_indices',string1,source,revision,revdate)
+   call error_handler(E_MSG,'find_qc_indices',string1,source)
 endif
 if ( dart_qcindex < 0 ) then
    write(string1,*)'metadata:DART   Quality Control copyindex not found'
-   call error_handler(E_MSG,'find_qc_indices',string1,source,revision,revdate)
+   call error_handler(E_MSG,'find_qc_indices',string1,source)
 endif
 
 ! Just echo what we know
