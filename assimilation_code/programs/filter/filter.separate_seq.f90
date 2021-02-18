@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> filter.separate_seq.f90 is filter.f90 (circa 2014) but each task updates its own 
 !> sequence in obs_space_diagnostics, included here just for future reference. 
@@ -32,7 +30,7 @@ use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_o
                                  get_obs_def_type_of_obs
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-), print_time
-use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
+use utilities_mod,        only : error_handler, E_ERR, E_MSG, E_DBG,       &
                                  initialize_utilities, logfileunit, nmlfileunit, timestamp,  &
                                  do_output, find_namelist_in_file, check_namelist_read,      &
                                  open_file, close_file, do_nml_file, do_nml_term
@@ -74,11 +72,7 @@ use mpi
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'filter.separate_seq.f90'
 
 ! Some convenient global storage items
 character(len=129)      :: msgstring
@@ -237,12 +231,12 @@ call timestamp_message('Filter start')
 ! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
 if(ens_size < 2) then
    write(msgstring, *) 'ens_size in namelist is ', ens_size, ': Must be > 1'
-   call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'filter_main', msgstring, source)
 endif
 
 ! informational message to log
 write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
-call error_handler(E_MSG,'filter:', msgstring, source, revision, revdate)
+call error_handler(E_MSG,'filter:', msgstring, source)
 
 ! See if smoothing is turned on
 ds = do_smoothing()
@@ -251,23 +245,23 @@ ds = do_smoothing()
 do i = 1, 2
    if(inf_flavor(i) < 0 .or. inf_flavor(i) > 3) then
       write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3 '
-      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+      call error_handler(E_ERR,'filter_main', msgstring, source)
    endif
    if(inf_damping(i) < 0.0_r8 .or. inf_damping(i) > 1.0_r8) then
       write(msgstring, *) 'inf_damping=', inf_damping(i), ' Must be 0.0 <= d <= 1.0'
-      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+      call error_handler(E_ERR,'filter_main', msgstring, source)
    endif
 end do
 
 ! if doing something special with outlier threshold, say so
 if (enable_special_outlier_code) then
    call error_handler(E_MSG,'filter:', 'special outlier threshold handling enabled', &
-      source, revision, revdate)
+      source)
 endif
 
 ! Observation space inflation for posterior not currently supported
 if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
-   'Posterior observation space inflation (type 1) not supported', source, revision, revdate)
+   'Posterior observation space inflation (type 1) not supported', source)
 
 ! Setup the indices into the ensemble storage
 ENS_MEAN_COPY        = ens_size + 1
@@ -307,7 +301,7 @@ call trace_message('After  setting up space for ensembles')
 
 ! Don't currently support number of processes > model_size
 if(task_count() > model_size) call error_handler(E_ERR,'filter_main', &
-   'Number of processes > model size' ,source,revision,revdate)
+   'Number of processes > model size' ,source)
 
 call     trace_message('Before reading in ensemble restart files')
 call timestamp_message('Before reading in ensemble restart files')
@@ -392,7 +386,7 @@ if(first_obs_seconds > 0 .or. first_obs_days > 0) then
    call delete_seq_head(first_obs_time, seq, all_gone)
    if(all_gone) then
       msgstring = 'All obs in sequence are before first_obs_days:first_obs_seconds'
-      call error_handler(E_ERR,'filter_main',msgstring,source,revision,revdate)
+      call error_handler(E_ERR,'filter_main',msgstring,source)
    endif
 endif
 
@@ -405,7 +399,7 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
    call delete_seq_tail(last_obs_time, seq, all_gone)
    if(all_gone) then
       msgstring = 'All obs in sequence are after last_obs_days:last_obs_seconds'
-      call error_handler(E_ERR,'filter_main',msgstring,source,revision,revdate)
+      call error_handler(E_ERR,'filter_main',msgstring,source)
    endif
 endif
 
@@ -932,7 +926,7 @@ state_meta(output_state_spread_index) = 'ensemble spread'
 if(num_output_state_members > 10000) then
    write(msgstring, *)'output metadata in filter needs state ensemble size < 10000, not ', &
                       num_output_state_members
-   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source)
 endif
 
 ! Compute starting point for ensemble member output
@@ -987,7 +981,7 @@ posterior_obs_spread_index = num_obs_copies
 if(num_output_obs_members > 10000) then
    write(msgstring, *)'output metadata in filter needs obs ensemble size < 10000, not ',&
                       num_output_obs_members
-   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source)
 endif
 
 ! Set up obs ensemble members as requested
@@ -1010,7 +1004,6 @@ subroutine filter_initialize_modules_used()
 ! Initialize modules used that require it
 call initialize_mpi_utilities('Filter')
 
-call register_module(source,revision,revdate)
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
@@ -1073,8 +1066,7 @@ if (input_qc_index < 0) then
       input_qc_index = get_blank_qc_index(seq)
       if (input_qc_index < 0) then
          call error_handler(E_ERR,'filter_setup_obs_sequence', &
-           'error adding blank qc field to sequence; should not happen', &
-            source, revision, revdate)
+           'error adding blank qc field to sequence; should not happen', source)
       endif
    endif
    ! Since we are constructing a dummy QC, label it as such
@@ -1092,8 +1084,7 @@ if (DART_qc_index < 0) then
       DART_qc_index = get_blank_qc_index(seq)
       if (DART_qc_index < 0) then
          call error_handler(E_ERR,'filter_setup_obs_sequence', &
-           'error adding blank qc field to sequence; should not happen', &
-            source, revision, revdate)
+           'error adding blank qc field to sequence; should not happen', source)
       endif
    endif
    call set_qc_meta_data(seq, DART_qc_index, dqc_meta_data)
@@ -1133,8 +1124,7 @@ do i = 1, get_num_copies(seq)
 end do
 ! Falling of end means 'observations' not found; die
 call error_handler(E_ERR,'get_obs_copy_index', &
-   'Did not find observation copy with metadata "observation"', &
-      source, revision, revdate)
+   'Did not find observation copy with metadata "observation"', source)
 
 end function get_obs_copy_index
 
@@ -1304,9 +1294,9 @@ if(init_time_days >= 0) then
    if (do_output()) then
       call get_time(time, secs, days)
       write(msgstring, '(A)') 'By namelist control, ignoring time found in restart file.'
-      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'filter_read_restart:',msgstring,source)
       write(msgstring, '(A,I6,1X,I5)') 'Setting initial days, seconds to ',days,secs
-      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'filter_read_restart:',msgstring,source)
    endif
 else
    call read_ensemble_restart(ens_handle, 1, ens_size, &
@@ -1319,7 +1309,7 @@ if(ens_handle%my_pe == 0) then
    ! FIXME for the future: if pe 0 is not task 0, pe 0 can not print debug messages
    call get_time(time, secs, days)
    write(msgstring, *) 'initial model time of 1st ensemble member (days,seconds) ',days,secs
-   call error_handler(E_DBG,'filter_read_restart',msgstring,source,revision,revdate)
+   call error_handler(E_DBG,'filter_read_restart',msgstring,source)
 endif
 
 end subroutine filter_read_restart
@@ -1456,7 +1446,7 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
          if ((assimilate_this_ob .or. evaluate_this_ob) .and. (expected_obs(e) == missing_r8))  then
                print*, ' observation ', global_obs_num
                write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
-            call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+            call error_handler(E_ERR,'filter_main', msgstring, source)
          endif
          if(assimilate_this_ob) then
             forward_op_ens_handle%copies(e, j) = 0
@@ -1467,7 +1457,7 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
          endif
       else if (istatus(e) < 0) then
          write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
-         call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+         call error_handler(E_ERR,'filter_main', msgstring, source)
       else
          forward_op_ens_handle%copies(e, j) = istatus(e)
       endif

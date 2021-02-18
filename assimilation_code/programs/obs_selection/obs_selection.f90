@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> This specialized tool selects a subset of input observations
 !> from an observation sequence file.
@@ -24,7 +22,7 @@ program obs_selection
 ! this latest addition has select by list of obs types.
 
 use        types_mod, only : r8, missing_r8, metadatalength
-use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
+use    utilities_mod, only : timestamp, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
                              do_nml_file, do_nml_term, get_next_filename, &
@@ -59,11 +57,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'obs_selection.f90'
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in
@@ -191,7 +185,7 @@ do i = 1, num_input_files
 
    if ( len(filename_seq(i)) .eq. 0 .or. filename_seq(i) .eq. "" ) then
       call error_handler(E_ERR,'obs_selection', &
-         'num_input_files and filename_seq mismatch',source,revision,revdate)
+         'num_input_files and filename_seq mismatch',source)
    endif
 
    ! count up the max number of observations possible if every obs in the
@@ -229,7 +223,7 @@ if (print_timestamps) call timestamp(string1='end   of pass1', pos='brief')
 ! still waiting to process the first one and never found one.
 if (first_seq < 0 .or. size_seq_out == 0) then
    msgstring = 'All input files are empty'
-   call error_handler(E_MSG,'obs_by_selection',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'obs_by_selection',msgstring,source)
 endif
 
 
@@ -310,7 +304,7 @@ FILES: do i = 1, num_input_files
    if ( .not. is_there_one )  then
       write(msgstring2,*)  'no valid observations in ',trim(filename_seq(i))
       call error_handler(E_MSG,'obs_selection', 'skipping to next input file', &
-              source, revision, revdate, text2=msgstring2)
+              source, text2=msgstring2)
 
       call destroy_obs_sequence(seq_in)
 
@@ -332,7 +326,7 @@ FILES: do i = 1, num_input_files
       write(msgstring2, *) 'skipping all obs in ', trim(filename_seq(i))
       call error_handler(E_MSG, 'obs_selection', &
           'first time in obs_sequence file is after all times in selection file', &
-           source, revision, revdate, text2=msgstring2)
+           source, text2=msgstring2)
       call destroy_obs_sequence(seq_in)
       write(msgstring, *) 'input file ', i
       if (print_timestamps) call timestamp(string1='cyc 1 of '//trim(msgstring), pos='brief')
@@ -374,8 +368,7 @@ FILES: do i = 1, num_input_files
                ! next obs in selection file is after all the rest of the obs in this
                ! input obs_seq file, so we can move on now.
                write(msgstring, *) 'done with ', trim(filename_seq(i))
-               call error_handler(E_MSG, 'obs_selection', msgstring, &
-                    source, revision, revdate)
+               call error_handler(E_MSG, 'obs_selection', msgstring, source)
                call destroy_obs_sequence(seq_in)
                write(msgstring, *) 'input file ', i
                if (print_timestamps) call timestamp(string1='cyc 2 of '//trim(msgstring), pos='brief')
@@ -403,8 +396,7 @@ FILES: do i = 1, num_input_files
             if (print_every_nth_obs > 0) then
                if (mod(num_inserted,print_every_nth_obs) == 0) then
                   write(msgstring,*) 'inserted number ',num_inserted,' of ',size_seq_in, ' possible obs'
-                  call error_handler(E_MSG, 'obs_selection', msgstring, &
-                       source, revision, revdate)
+                  call error_handler(E_MSG, 'obs_selection', msgstring, source)
                endif
             endif
 
@@ -485,7 +477,6 @@ subroutine obs_seq_modules_used()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_selection')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 end subroutine obs_seq_modules_used
@@ -519,8 +510,7 @@ if (filename_seq(1) == '' .and. filename_seq_list == '') then
 
    if (num_input_files /= 0 .and. num_input_files /= 1) then
       call error_handler(E_ERR,'obs_selection', &
-          'if no filenames specified, num_input_files must be 0 or 1', &
-          source,revision,revdate)
+          'if no filenames specified, num_input_files must be 0 or 1', source)
    endif
    
    num_input_files = 1
@@ -531,8 +521,7 @@ endif
 ! make sure the namelist specifies one or the other but not both
 if (filename_seq(1) /= '' .and. filename_seq_list /= '') then
    call error_handler(E_ERR,'obs_selection', &
-       'cannot specify both filename_seq and filename_seq_list', &
-       source,revision,revdate)
+       'cannot specify both filename_seq and filename_seq_list', source)
 endif
 
 ! if they have specified a file which contains a list, read it into
@@ -552,8 +541,7 @@ do index = 1, max_num_input_files
    if (filename_seq(index) == '') then
       if (index == 1) then
          call error_handler(E_ERR,'obs_selection', &
-             'namelist item '//trim(fsource)//' contains no filenames', &
-             source,revision,revdate)
+             'namelist item '//trim(fsource)//' contains no filenames', source)
       endif
       ! leaving num_input_files unspecified (or set to 0) means use
       ! whatever number of files is in the list.
@@ -571,15 +559,14 @@ do index = 1, max_num_input_files
          write(msgstring3, *) 'if num_input_files is not 0, it must match the number of filenames specified'
 
          call error_handler(E_ERR,'obs_selection', msgstring, &
-            source,revision,revdate, text2=msgstring2, text3=msgstring3)
+            source, text2=msgstring2, text3=msgstring3)
          
       endif
    endif
 enddo
 
 write(msgstring, *) 'cannot specify more than ',max_num_input_files,' files'
-call error_handler(E_ERR,'obs_selection', msgstring, &
-     source,revision,revdate)
+call error_handler(E_ERR,'obs_selection', msgstring, source)
 
 end subroutine handle_filenames
 
@@ -628,14 +615,12 @@ endif
 if ( num_copies1 /= num_copies2 ) then
    write(msgstring2,*)'Different numbers of data copies found: ', &
                       num_copies1, ' vs ', num_copies2 
-   call error_handler(E_ERR, 'obs_selection', msgstring1, &
-             source, revision, revdate, text2=msgstring2)
+   call error_handler(E_ERR, 'obs_selection', msgstring1, source, text2=msgstring2)
 endif
 if ( num_qc1 /= num_qc2 ) then
    write(msgstring2,*)'Different different numbers of QCs found: ', &
                       num_qc1, ' vs ', num_qc2
-   call error_handler(E_MSG, 'obs_selection', msgstring1, &
-              source, revision, revdate, text2=msgstring2)
+   call error_handler(E_MSG, 'obs_selection', msgstring1, source, text2=msgstring2)
 endif
 
 ! watch the code flow in this loop and the one below it.
@@ -659,7 +644,7 @@ CopyMetaData : do i=1, num_copies
    write(msgstring2,*)'metadata value mismatch. seq1: ', trim(str1)
    write(msgstring3,*)'metadata value mismatch. seq2: ', trim(str2)
    call error_handler(E_ERR, 'obs_selection', msgstring1, &
-       source, revision, revdate, text2=msgstring2, text3=msgstring3)
+       source, text2=msgstring2, text3=msgstring3)
 
 enddo CopyMetaData
 
@@ -680,7 +665,7 @@ QCMetaData : do i=1, num_qc
    write(msgstring2,*)'qc metadata value mismatch. seq1: ', trim(str1)
    write(msgstring3,*)'qc metadata value mismatch. seq2: ', trim(str2)
    call error_handler(E_ERR, 'obs_selection', msgstring1, &
-       source, revision, revdate, text2=msgstring2, text3=msgstring3)
+       source, text2=msgstring2, text3=msgstring3)
 
 enddo QCMetaData
 
@@ -839,7 +824,7 @@ is_there_one = get_first_obs(seq, obs)
 
 if ( .not. is_there_one )  then
    write(msgstring,*)'no first observation in sequence ' // trim(filename)
-   call error_handler(E_MSG,'obs_selection:validate', msgstring, source, revision, revdate)
+   call error_handler(E_MSG,'obs_selection:validate', msgstring, source)
 endif
 
 last_time = get_time_from_obs(obs)
@@ -860,7 +845,7 @@ ObsLoop : do while ( .not. is_this_last)
       write(msgstring2,*)'obs number ', key, ' has earlier time than previous obs'
       write(msgstring,*)'observations must be in increasing time order, file ' // trim(filename)
       call error_handler(E_ERR,'obs_selection:validate', msgstring, &
-                source, revision, revdate, text2=msgstring2)
+                source, text2=msgstring2)
    endif
 
    last_time = this_time
@@ -894,7 +879,7 @@ num_qc     = get_num_qc(    seq1)
 
 if ( num_copies < 0 .or. num_qc < 0 ) then
    write(msgstring1,*)' illegal copy or obs count in file '//trim(fname1)
-   call error_handler(E_ERR, 'obs_selection', msgstring1, source, revision, revdate)
+   call error_handler(E_ERR, 'obs_selection', msgstring1, source)
 endif
 
 MetaDataLoop : do i=1, num_copies
@@ -949,8 +934,7 @@ subroutine read_selection_list(select_file, select_is_seq, &
      read(iunit, *) label, count
      if (label /= 'num_definitions') then
          call error_handler(E_ERR,'obs_selection', &
-           'bad format, expected "num_definitions" at start of selection file', &
-            source,revision,revdate)
+           'bad format, expected "num_definitions" at start of selection file', source)
      endif
     
      ! set up the mapping table for the kinds here
@@ -1005,8 +989,7 @@ subroutine read_selection_list(select_file, select_is_seq, &
     
      if (.not. get_first_obs(seq_in, obs)) then
          call error_handler(E_ERR,'obs_selection', &
-           'empty obs_seq for selection file', &
-            source,revision,revdate)
+                 'empty obs_seq for selection file', source)
      endif
 
      ! in an obs_seq file, using get_next_obs you will
@@ -1031,7 +1014,7 @@ subroutine read_selection_list(select_file, select_is_seq, &
  selection_count = count
 
 write(msgstring, *) 'selection file contains ', count, ' entries'
-call error_handler(E_MSG, 'obs_selection', msgstring, source, revision, revdate)
+call error_handler(E_MSG, 'obs_selection', msgstring, source)
          call print_time(get_obs_def_time(selection_list(1)),     'time of first selection:')
 if (cal) call print_date(get_obs_def_time(selection_list(1)),     '          which is date:')
          call print_time(get_obs_def_time(selection_list(count)), 'time of last  selection:')
@@ -1120,7 +1103,7 @@ function good_selection(obs_in, selection_list, selection_count, startindex)
     write(msgstring2, *) 'startindex ', startindex, ' is not between 1 and ', selection_count
     call error_handler(E_ERR, 'good_selection', &
        'invalid startindex, internal error should not happen', &
-       source, revision, revdate, text2=msgstring2) 
+       source, text2=msgstring2) 
  endif
  
  ! statistics for timing/debugging
@@ -1233,7 +1216,7 @@ if (vert_flag) then
          if ( abs(larray1(3) - larray2(3)) > scaleheight_tolerance ) return
       case default
          write(msgstring, *) 'unrecognized key for vertical type: ', whichv1
-         call error_handler(E_ERR, 'same_location', msgstring, source, revision, revdate)
+         call error_handler(E_ERR, 'same_location', msgstring, source)
    end select
  
 endif

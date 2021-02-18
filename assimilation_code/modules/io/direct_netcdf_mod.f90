@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module direct_netcdf_mod
 
@@ -124,11 +122,7 @@ public :: read_transpose,            &
           read_variables,            &
           nc_get_num_times
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'direct_netcdf_mod.f90'
 
 ! only a single MPI Task reads and writes reads the state variable,
 ! when using single_file_{input,output} = .true.
@@ -268,7 +262,7 @@ integer :: icopy, ivar, ret, ens_size, num_output_ens, domain
 if (my_task_id() == 0) then
    if(.not. byteSizesOK()) then
        call error_handler(E_ERR,'initialize_single_file_io', &
-      'Compiler does not support required kinds of variables.',source,revision,revdate) 
+      'Compiler does not support required kinds of variables.',source) 
    end if
 
    num_output_ens = file_handle%stage_metadata%noutput_ens
@@ -316,8 +310,7 @@ if (my_task_id() == 0) then
    call find_textfile_dims("input.nml", nlines, linelen)
    if (nlines <= 0 .or. linelen <= 0) then
       call error_handler(E_MSG,'initialize_single_file_io', &
-                         'cannot open/read input.nml to save in diagnostic file', &
-                         source,revision,revdate)
+              'cannot open/read input.nml to save in diagnostic file', source)
    endif
    
    allocate(textblock(nlines))
@@ -339,10 +332,6 @@ if (my_task_id() == 0) then
                  'initialize_single_file_io', 'put_att title '//trim(fname))
    call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_source", source ), &
                  'initialize_single_file_io', 'put_att assim_model_source '//trim(fname))
-   call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revision", revision ), &
-                 'initialize_single_file_io', 'put_att assim_model_revision '//trim(fname))
-   call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revdate", revdate ), &
-                 'initialize_single_file_io', 'put_att assim_model_revdate '//trim(fname))
    
    !    Metadata for each Copy
    call nc_check(nf90_def_var(ncid=ncFileID%ncid, name="MemberMetadata", xtype=nf90_char,    &
@@ -364,7 +353,7 @@ if (my_task_id() == 0) then
    ret = nc_write_calendar_atts(ncFileID, TimeVarID)     ! comes from time_manager_mod
    if ( ret /= 0 ) then
       write(msgstring, *)'nc_write_calendar_atts  bombed with error ', ret
-      call error_handler(E_MSG,'initialize_single_file_io',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'initialize_single_file_io',msgstring,source)
    endif
    
    ! Create the time "mirror" with a static length. There is another routine
@@ -533,7 +522,7 @@ ret = nf90_inq_dimid(my_ncid, "member", MemDimID)
 if (ret /= NF90_NOERR) then
    call error_handler(E_ERR,'direct_netcdf_mod:', &
          'If using single_file_in/single_file_out = .true. ', &
-          source, revision, revdate, text2='you must have a member dimension in your input/output file.')
+          source, text2='you must have a member dimension in your input/output file.')
 endif
 
 ret = nf90_inq_dimid(my_ncid, "time", TimeDimID)
@@ -705,13 +694,13 @@ if (my_task_id() == SINGLE_IO_TASK_ID) then
       write(msgstring,*)'model time (d,s)',id1,is1,' not in ',ncFileID%fname
       write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
              id1,is1,timeindex,ncFileID%ncid
-      call error_handler(E_ERR,'write_model_variables', msgstring, source, revision, revdate)
+      call error_handler(E_ERR,'write_model_variables', msgstring, source)
    endif
    
    call get_time(curr_ens_time,is1,id1)
    write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
           id1,is1,timeindex,ncFileID%ncid
-   call error_handler(E_DBG,'write_model_variables', msgstring, source, revision, revdate)
+   call error_handler(E_DBG,'write_model_variables', msgstring, source)
    
    my_ncid = ncFileID%ncid
 endif 
@@ -1488,7 +1477,7 @@ if ( minclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
    
 ! TJH TOO VERBOSE      write(msgstring, *) trim(varname)// ' lower bound ', minclamp, ' min value ', my_minmax(1)
 ! TJH TOO VERBOSE      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
-! TJH TOO VERBOSE                         source,revision,revdate)
+! TJH TOO VERBOSE                         source)
    endif
 endif ! min range set
 
@@ -1504,7 +1493,7 @@ if ( maxclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
 
 ! TJH TOO VERBOSE      write(msgstring, *) trim(varname)// ' upper bound ', maxclamp, ' max value ', my_minmax(2)
 ! TJH TOO VERBOSE      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
-! TJH TOO VERBOSE                         source,revision,revdate)
+! TJH TOO VERBOSE                         source)
    endif
 
 endif ! max range set
@@ -1911,14 +1900,10 @@ call DATE_AND_TIME(crdate,crtime,crzone,values)
 write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_creation_date' ,str1    ), &
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_creation_date', str1), &
            'nc_write_revision_info', 'creation put ')
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_source'  ,source  ), &
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_source', source), &
            'nc_write_revision_info', 'source put ')
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_revision',revision), &
-           'nc_write_revision_info', 'revision put ')
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_revdate' ,revdate ), &
-           'nc_write_revision_info', 'revdate put ')
 
 end subroutine nc_write_revision_info
 
@@ -2588,13 +2573,13 @@ if( ret == 0 ) then ! has member id
       if (member_size < 1) then
          write(msgstring,  *) 'input file contains ', member_size, ' ensemble members; '
          write(msgstring2, *) 'requires at least 1 member to perturb'
-         call error_handler(E_ERR, 'check_singlefile_member_info: ', msgstring, source, revision, revdate)
+         call error_handler(E_ERR, 'check_singlefile_member_info: ', msgstring, source)
       endif
 
    else if (member_size < ens_size) then
       write(msgstring,  *) 'input file only contains ', member_size, ' ensemble members; '
       write(msgstring2, *) 'requested ensemble size is ', ens_size
-      call error_handler(E_ERR, 'check_singlefile_member_info: ', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'check_singlefile_member_info: ', msgstring, source)
 
    endif
 
@@ -2604,7 +2589,7 @@ else
    if ( .not. do_pert ) then
       write(msgstring,  *) 'input file does not contain a "member" dimension; '
       write(msgstring2, *) 'cannot read in an ensemble of values'
-      call error_handler(E_ERR, 'check_singlefile_member_info: ', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'check_singlefile_member_info: ', msgstring, source)
    endif
 
 endif
@@ -2670,17 +2655,17 @@ call nc_check(NF90_Inquire_Dimension(my_ncid, unlimitedDimID, varname, nTlen), &
 
 if ( ndims /= 1 ) then
    write(msgstring,*)'"time" expected to be rank-1' 
-   call error_handler(E_WARN,'nc_get_tindex',msgstring,source,revision,revdate)
+   call error_handler(E_WARN,'nc_get_tindex',msgstring,source)
    timeindex = timeindex -   1
 endif
 if ( dimids(1) /= unlimitedDimID ) then
    write(msgstring,*)'"time" must be the unlimited dimension'
-   call error_handler(E_WARN,'nc_get_tindex',msgstring,source,revision,revdate)
+   call error_handler(E_WARN,'nc_get_tindex',msgstring,source)
    timeindex = timeindex -  10
 endif
 if ( timeindex < -1 ) then
    write(msgstring,*)'trouble deep ... can go no farther. Stopping.'
-   call error_handler(E_ERR,'nc_get_tindex',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'nc_get_tindex',msgstring,source)
 endif
 
 ! convert statetime to time base of "days since ..."
@@ -2690,14 +2675,14 @@ if (ncFileID%Ntimes < 1) then          ! First attempt at writing a state ...
 
    write(msgstring,*)'current unlimited  dimension length',nTlen, &
                      'for ncFileID ',trim(ncFileID%fname)
-   call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
+   call error_handler(E_DBG,'nc_get_tindex',msgstring,source)
    write(msgstring,*)'current time array dimension length',ncFileID%Ntimes
-   call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
+   call error_handler(E_DBG,'nc_get_tindex',msgstring,source)
 
    nTlen = nc_append_time(ncFileID, statetime)
 
    write(msgstring,*)'Initial time array dimension length',ncFileID%Ntimes
-   call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
+   call error_handler(E_DBG,'nc_get_tindex',msgstring,source)
 
 endif
 
@@ -2721,17 +2706,17 @@ if ( timeindex <= 0 ) then   ! There was no match. Either the model
    if (statetime < ncFileID%times(1) ) then
 
       call error_handler(E_DBG,'nc_get_tindex', &
-              'Model time precedes earliest netCDF time.', source,revision,revdate)
+              'Model time precedes earliest netCDF time.', source)
 
       write(msgstring,*)'          model time (days, seconds) ',days,secs
-      call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
+      call error_handler(E_DBG,'nc_get_tindex',msgstring,source)
 
       call get_time(ncFileID%times(1),secs,days)
       write(msgstring,*)'earliest netCDF time (days, seconds) ',days,secs
-      call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
+      call error_handler(E_DBG,'nc_get_tindex',msgstring,source)
 
       call error_handler(E_ERR,'nc_get_tindex', &
-              'Model time precedes earliest netCDF time.', source,revision,revdate)
+              'Model time precedes earliest netCDF time.', source)
       timeindex = -2
 
    else if ( statetime < ncFileID%times(ncFileID%Ntimes) ) then  
@@ -2740,20 +2725,20 @@ if ( timeindex <= 0 ) then   ! There was no match. Either the model
       ! This is very bad.
 
       write(msgstring,*)'model time does not match any netCDF time.'
-      call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
+      call error_handler(E_DBG,'nc_get_tindex',msgstring,source)
       write(msgstring,*)'model time (days, seconds) is ',days,secs
-      call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
+      call error_handler(E_DBG,'nc_get_tindex',msgstring,source)
 
       BadLoop : do i = 1,ncFileId%Ntimes   ! just find times to print before exiting
 
          if ( ncFileId%times(i) > statetime ) then
             call get_time(ncFileID%times(i-1),secs,days)
             write(msgstring,*)'preceding netCDF time (days, seconds) ',days,secs
-            call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
+            call error_handler(E_DBG,'nc_get_tindex',msgstring,source)
 
             call get_time(ncFileID%times(i),secs,days)
             write(msgstring,*)'subsequent netCDF time (days, seconds) ',days,secs
-            call error_handler(E_ERR,'nc_get_tindex',msgstring,source,revision,revdate)
+            call error_handler(E_ERR,'nc_get_tindex',msgstring,source)
             timeindex = -3
             exit BadLoop
          endif
@@ -2766,7 +2751,7 @@ if ( timeindex <= 0 ) then   ! There was no match. Either the model
 
       write(msgstring,'(''appending model time (d,s) ('',i8,i5,'') as index '',i6, '' in ncFileID '',i10)') &
           days,secs,timeindex,my_ncid
-      call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
+      call error_handler(E_DBG,'nc_get_tindex',msgstring,source)
 
    endif
    
@@ -2813,10 +2798,10 @@ call nc_check(NF90_Inquire_Variable(my_ncid, TimeVarID, varname, xtype, ndims, d
              'nc_append_time', 'inquire_variable time')
 
 if ( ndims /= 1 ) call error_handler(E_ERR,'nc_append_time', &
-           '"time" expected to be rank-1',source,revision,revdate)
+           '"time" expected to be rank-1',source)
 
 if ( dimids(1) /= unlimitedDimID ) call error_handler(E_ERR,'nc_append_time', &
-           'unlimited dimension expected to be slowest-moving',source,revision,revdate)
+           'unlimited dimension expected to be slowest-moving',source)
 
 ! make sure the mirror and the netcdf file are in sync
 call nc_check(NF90_Inquire_Dimension(my_ncid, unlimitedDimID, varname, lngth ), &
@@ -2826,14 +2811,14 @@ if (lngth /= ncFileId%Ntimes) then
    write(msgstring,*)'netCDF file has length ',lngth,' /= mirror has length of ',ncFileId%Ntimes
    call error_handler(E_ERR,'nc_append_time', &
            'time mirror and netcdf file time dimension out-of-sync', &
-           source,revision,revdate,text2=msgstring)
+           source,text2=msgstring)
 endif
 
 ! make sure the time mirror can handle another entry.
 if ( lngth == ncFileID%NtimesMAX ) then   
 
    write(msgstring,*)'doubling mirror length of ',lngth,' of ',ncFileID%fname
-   call error_handler(E_DBG,'nc_append_time',msgstring,source,revision,revdate)
+   call error_handler(E_DBG,'nc_append_time',msgstring,source)
 
    allocate(temptime(ncFileID%NtimesMAX), tempRtime(ncFileID%NtimesMAX)) 
    temptime  = ncFileID%times            ! preserve
@@ -2865,7 +2850,7 @@ ncFileID%rtimes(lngth) = realtime
 
 write(msgstring,*)'ncFileID (',my_ncid,') : "',trim(varname), &
          '" (should be "time") has length ',lngth, ' appending t= ',realtime
-call error_handler(E_DBG,'nc_append_time',msgstring,source,revision,revdate)
+call error_handler(E_DBG,'nc_append_time',msgstring,source)
 
 end function nc_append_time
 
@@ -3086,8 +3071,3 @@ end subroutine set_model_missing_value
 !> @}
 end module direct_netcdf_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

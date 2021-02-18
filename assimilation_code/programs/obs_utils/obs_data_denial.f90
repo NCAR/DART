@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> open an obs_seq file and randomly change the error variance of N of 
 !> each obs type to a huge value before copying obs over to the output file. 
@@ -20,7 +18,7 @@
 program obs_data_denial
 
 use        types_mod, only : r8, missing_r8, metadatalength
-use    utilities_mod, only : register_module, initialize_utilities,            &
+use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
@@ -54,11 +52,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'obs_data_denial.f90'
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in
@@ -300,11 +294,10 @@ subroutine setup()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_data_denial')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 call error_handler(E_ERR, 'obs_data_denial', 'this program is not finished yet', &
-     source, revision, revdate, text2='contact dart@ucar.edu for more info')
+     source, text2='contact dart@ucar.edu for more info')
 
 end subroutine setup
 
@@ -482,8 +475,7 @@ is_there_one = get_first_obs(seq, obs)
 ! we already tested for 0 obs above, so there should be a first obs here.
 if ( .not. is_there_one )  then
    write(msgstring,*)'no first obs in sequence ' // trim(filename)
-   call error_handler(E_ERR,'obs_data_denial:validate', &
-                      msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'obs_data_denial:validate', msgstring, source)
    return
 endif
 
@@ -505,8 +497,7 @@ ObsLoop : do while ( .not. is_this_last)
       write(msgstring1,*)'obs number ', key, ' has earlier time than previous obs'
       write(msgstring2,*)'observations must be in increasing time order, file ' // trim(filename)
       call error_handler(E_ERR,'obs_data_denial:validate', msgstring2, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+                         source, text2=msgstring1)
    endif
 
    last_time = this_time
@@ -535,13 +526,12 @@ if (obs_count /= size_seq) then
       ! this is a fatal error
       write(msgstring1,*) 'linked list obs_count > total size_seq, should not happen'
       call error_handler(E_ERR,'obs_data_denial:validate', msgstring, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+                         source, text2=msgstring1)
    else
       ! just warning msg
       write(msgstring1,*) 'only observations in linked list will be processed'
       call error_handler(E_MSG,'obs_data_denial:validate', msgstring, &
-                         source, revision, revdate, text2=msgstring1)
+                         source, text2=msgstring1)
    endif
 endif
 
@@ -566,8 +556,7 @@ num_qc     = get_num_qc(    seq)
 
 if ( num_copies < 0 .or. num_qc < 0 ) then
    write(msgstring3,*)' illegal copy or obs count in file '//trim(fname)
-   call error_handler(E_ERR, 'obs_data_denial', msgstring3, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'obs_data_denial', msgstring3, source)
 endif
 
 MetaDataLoop : do i=1, num_copies

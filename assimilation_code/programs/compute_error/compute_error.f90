@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Program to read true_state.nc and preassim.nc (or analysis.nc)
 !> and print out the time-mean total error and spread.  The matlab macros 
@@ -27,7 +25,7 @@ program compute_error
 
 use types_mod,     only : r8, metadatalength
 
-use utilities_mod, only : initialize_utilities, register_module,     &
+use utilities_mod, only : initialize_utilities, &
                           error_handler, nmlfileunit, E_MSG, E_ERR,  &
                           find_namelist_in_file, nc_check,           &
                           check_namelist_read, finalize_utilities,   &
@@ -37,11 +35,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'compute_error.f90'
 
 character(len = 512) :: message1, message2
 
@@ -88,7 +82,6 @@ namelist /compute_error_nml/  &
 
 call initialize_utilities('compute_error')
 
-call register_module(source,revision,revdate)
 
 ! Read the namelist entry and print it
 call find_namelist_in_file("input.nml", "compute_error_nml", iunit)
@@ -119,12 +112,12 @@ call findlengths(d)
 if (t%ntimes <= 0) then
    write(message1, '(A)') 'file '//trim(t%fname)
    call error_handler(E_ERR, 'findlengths', 'time dimension must have at least 1 value', &
-                      source, revision, revdate, text2=message1)
+                      source, text2=message1)
 endif
 if (d%ntimes <= 0) then
    write(message1, '(A)') 'file '//trim(d%fname)
    call error_handler(E_ERR, 'findlengths', 'time dimension must have at least 1 value', &
-                      source, revision, revdate, text2=message1)
+                      source, text2=message1)
 endif
 
 call confirm_modelsizes_match(t, d)
@@ -316,7 +309,7 @@ if (foundindex < 0) then
    write(message1, '(A)') 'does not contain a copy labeled "'//trim(tofind)//'"'
    write(message2, '(A)') 'Use "ncdump -v '//trim(copyarrayname)//' '//trim(infile)//'" to see existing copy names'
    call error_handler(E_ERR, 'findcopyindex', 'error in file "'//trim(infile)//'"', &
-                      source, revision, revdate, text2=message1, text3=message2)
+                      source, text2=message1, text3=message2)
 endif
 
 end subroutine findcopyindex
@@ -369,7 +362,7 @@ if (this%model_size /= that%model_size) then
    write(message1, '(A)') 'model sizes must be identical in input files'
    write(message2, '(A,I10)') 'sizes are ', this%model_size, that%model_size
    call error_handler(E_ERR, 'confirm_modelsizes_match', message1, &
-                      source, revision, revdate, text2=message2)
+                      source, text2=message2)
 endif
 
 end subroutine confirm_modelsizes_match
@@ -505,7 +498,7 @@ if (this%timevals(1) > that%timevals(that%ntimes)) then
    write(message1, '(A)') 'all times in the diag file are before times in the truth file'
    write(message2, '(A)') 'no common times in the two input files'
    call error_handler(E_ERR, 'compare_lengths', message1, &
-                      source, revision, revdate, text2=message2)
+                      source, text2=message2)
 endif
 
 if (this%timevals(this%ntimes) < that%timevals(1)) then
@@ -513,7 +506,7 @@ if (this%timevals(this%ntimes) < that%timevals(1)) then
    write(message1, '(A)') 'all times in the diag file are after times in the truth file'
    write(message2, '(A)') 'no common times in the two input files'
    call error_handler(E_ERR, 'compare_lengths', message1, &
-                      source, revision, revdate, text2=message2)
+                      source, text2=message2)
 endif
 
 ! find which one has the earliest time and loop over the other looking for
@@ -583,7 +576,7 @@ return
 write(message1, '(A)') 'there is an overlapping time period, but the exact times do not match'
 write(message2, '(A)') 'mismatched times between the two input files'
 call error_handler(E_ERR, 'compare_lengths', message1, &
-                   source, revision, revdate, text2=message2)
+                   source, text2=message2)
 
 end subroutine findtimesubset
 

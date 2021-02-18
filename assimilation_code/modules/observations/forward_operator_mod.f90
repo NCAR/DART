@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !------------------------------------------------------------------------------
 !> forward_operator_mod.f90
@@ -57,14 +55,7 @@ private
 
 public :: get_obs_ens_distrib_state, get_expected_obs_distrib_state
 
-!------------------------------------------------------------------------------
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
-!------------------------------------------------------------------------------
-
+character(len=*), parameter :: source = 'forward_operator_mod.f90'
 
 ! Module storage for writing error messages
 character(len=512) :: string1, string2
@@ -443,8 +434,8 @@ do i = 1, num_obs
          write(identity_obs_string, *) -obs_kind_ind
          write(string1,  *) 'unable to compute forward operator for obs number '//trim(adjustl(obs_key_string))
          write(string2, *) 'identity index '//trim(adjustl(identity_obs_string))//&
-                              ' must be between 1 and the state size of '//trim(adjustl(state_size_string))
-         call error_handler(E_ERR, 'get_expected_obs', string1, source, revision, revdate, text2=string2)
+             ' must be between 1 and the state size of '//trim(adjustl(state_size_string))
+         call error_handler(E_ERR, 'get_expected_obs', string1, source, text2=string2)
       endif
 
       expected_obs =  get_state(-1*int(obs_kind_ind,i8), state_ens_handle)
@@ -492,10 +483,8 @@ obs_kind_ind = get_obs_def_type_of_obs(obs_def)
 
 if (obs_kind_ind < 0) then
    if ( -obs_kind_ind > numvars ) then
-      call error_handler(E_ERR,  &
-      'get_expected_obs', &
-      'identity obs is outside of state vector ', &
-      source, revision, revdate)
+      call error_handler(E_ERR,  'get_expected_obs', &
+              'identity obs is outside of state vector ', source)
    endif
 
    ! FIXME : we currently have no option to eval only identity obs,
@@ -537,14 +526,14 @@ do copy = 1, num_fwd_ops
          write(string1, *) 'istatus was 0 (OK) but forward operator returned missing value.'
          write(string2, *) 'observation number ', thiskey
          call error_handler(E_ERR,'check_forward_operator_istatus', string1, &
-                    source, revision, revdate, text2=string2)
+                    source, text2=string2)
       endif
    ! Negative istatus
    else if (istatus(copy) < 0) then
       write(string1, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
       write(string2, *) 'observation number ', thiskey
       call error_handler(E_ERR,'check_forward_operator_istatus', string1, &
-                    source, revision, revdate, text2=string2)
+                    source, text2=string2)
    endif
 
 enddo
@@ -554,8 +543,3 @@ end subroutine check_forward_operator_istatus
 !------------------------------------------------------------------------------
 end module forward_operator_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

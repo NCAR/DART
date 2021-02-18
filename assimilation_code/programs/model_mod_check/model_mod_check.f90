@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Tests model_mod routines. Very useful when adding a new model.
 !> This version works for models with any location type.
@@ -13,7 +11,7 @@ program model_mod_check
 
 use             types_mod, only : r8, i8, missing_r8, metadatalength
 
-use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
+use         utilities_mod, only : error_handler, E_MSG, E_ERR, &
                                   find_namelist_in_file, check_namelist_read,   &
                                   E_MSG, open_file, close_file, do_output
 
@@ -52,11 +50,7 @@ use  test_interpolate_mod, only : test_interpolate_single, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'model_mod_check.f90'
 
 integer, parameter :: MAX_TESTS = 7
 
@@ -382,7 +376,6 @@ subroutine initialize_modules_used()
 
 call initialize_mpi_utilities('model_mod_check')
 
-call register_module(source,revision,revdate)
 
 call static_init_obs_sequence()
 
@@ -478,8 +471,7 @@ tests_to_run(:) = .false.
 if (test1thru > 0) then
    if (test1thru > MAX_TESTS) then
       write(string1, *) 'test1thru must be between 1 and ', MAX_TESTS, '; found value ', test1thru
-      call error_handler(E_ERR, 'model_mod_check: setup_run_array', string1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'model_mod_check: setup_run_array', string1, source)
    endif
 
    tests_to_run(1:test1thru) = .true.
@@ -494,8 +486,7 @@ do i=1, MAX_TESTS
 
    if (run_tests(i) > MAX_TESTS) then
       write(string1, *) 'test numbers must be between 1 and ', MAX_TESTS, '; found value ', run_tests(i)
-      call error_handler(E_ERR, 'model_mod_check: setup_run_array', string1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'model_mod_check: setup_run_array', string1, source)
    endif
 
    tests_to_run(run_tests(i)) = .true.
@@ -507,8 +498,7 @@ if (run_tests(1) == -1) then
       write(string1, *) 'No tests selected from the namelist.'
       write(string2, *) 'Either specify "test1thru" to be a positive number - or -'
       write(string3, *) 'specify a list of tests to run in "run_tests".'
-      call error_handler(E_ERR, 'model_mod_check: setup_run_array', string1, &
-                         source, revision, revdate, text2=string2, text3=string3)
+      call error_handler(E_ERR, 'model_mod_check: setup_run_array', string1, source, text2=string2, text3=string3)
 endif
 
 ! enforce and report on unfulfilled dependencies
@@ -576,7 +566,7 @@ do iloc = 1,model_size
       write(string2,*)' expected quantity of "'//trim(qty_string)//'"'
       write(string3,*)' got      quantity of "'//trim(metadata_qty_string)//'"'
       call error_handler(E_ERR, 'check_all_meta_data', string1, source, &
-                         revision, revdate, text2=string2, text3=string3)
+                         text2=string2, text3=string3)
    endif
 
    call write_location(0,loc,charstring=string2)
