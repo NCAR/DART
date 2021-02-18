@@ -264,15 +264,6 @@ inflate_handle%allow_missing_in_clm = missing_ok
 inflate_handle%mean_from_restart    = mean_from_restart
 inflate_handle%sd_from_restart      = sd_from_restart
 
-!Overwriting the initial value of inflation with 1.0
-!as in other inflation flavors (usually start from 1). 
-!This is required for RTPS because inf_initial(2)
-!is not really the inflation factor but rather the weighting
-!parameter, say alpha: 
-!RTPS: lambda = alpha * (sd_b - sd_a) / sd_a + 1
-!where; sd_b (sd_a): prior (posterior) spread
-if(inf_flavor == RELAXATION_TO_PRIOR_SPREAD) inflate_handle%inflate = 1.0_r8
-
 ! Prior and posterior are intialized to false
 if (trim(label)=='Prior') inflate_handle%prior = .true.
 if (trim(label)=='Posterior') inflate_handle%posterior = .true.
@@ -448,10 +439,6 @@ if (inf_flavor(PRIOR)     /= NO_INFLATION .and. &
     inf_flavor(PRIOR)     /= OBS_INFLATION)  do_prior_inflate     = .true.
 if (inf_flavor(POSTERIOR) /= NO_INFLATION .and. &
     inf_flavor(POSTERIOR) /= OBS_INFLATION)  do_posterior_inflate = .true.
-
-! Check to see if state space inflation is turned on
-! if (inf_flavor(PRIOR)     > OBS_INFLATION)  do_prior_inflate     = .true.
-! if (inf_flavor(POSTERIOR) > OBS_INFLATION)  do_posterior_inflate = .true.
 
 if (do_prior_inflate .or. do_posterior_inflate) output_inflation = .true.
 
