@@ -1,15 +1,12 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module schedule_mod
 
 use        types_mod, only : missing_i, digits12
 
-use    utilities_mod, only : error_handler, E_ERR, &
-                             register_module, nmlfileunit, do_output,    &
+use    utilities_mod, only : error_handler, E_ERR, nmlfileunit, do_output, &
                              check_namelist_read, find_namelist_in_file, &
                              do_nml_file, do_nml_term
 
@@ -29,11 +26,7 @@ private
 !
 !=======================================================================
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'schedule_mod.f90'
 
 type schedule_type
    private
@@ -94,7 +87,6 @@ subroutine schedule_init()
 
 integer :: iunit, io
 
-call register_module(source, revision, revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "schedule_nml", iunit)
@@ -145,12 +137,12 @@ bininterval = set_time(bin_interval_seconds, bin_interval_days)
 
 if (end_time < beg_time) then
    write(msgstring,*)'schedule_nml:first_bin_end must be at or after first_bin_start'
-   call error_handler(E_ERR,'set_regular_schedule',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'set_regular_schedule',msgstring,source)
 endif
 
 if (TimeMax < end_time) then
    write(msgstring,*)'schedule_nml:last_bin_end must be at or after first_bin_end'
-   call error_handler(E_ERR,'set_regular_schedule',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'set_regular_schedule',msgstring,source)
 endif
 
 binwidth = beg_time - end_time
@@ -159,7 +151,7 @@ binwidth = set_time(seconds, days)
 
 if (bininterval < binwidth) then
    write(msgstring,*)'schedule_nml:bin interval must be >= bin width'
-   call error_handler(E_ERR,'set_regular_schedule',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'set_regular_schedule',msgstring,source)
 endif
 
 ! FIXME
@@ -185,7 +177,7 @@ if (do_output()) write(*,*)'Requesting ',Nepochs,' assimilation periods.'
 
 if (Nepochs < 1) then
    write(msgstring,*)'schedule_nml:Requesting ZERO assimilation periods.'
-   call error_handler(E_ERR,'set_regular_schedule',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'set_regular_schedule',msgstring,source)
 endif
 
 ! Now that we know the number of assimilation epochs, allocate and fill.
@@ -255,8 +247,7 @@ integer, optional,   intent(IN)  :: edge
 
 if (iepoch > schedule%num_bins) then
    write(msgstring,*)'schedule has ',schedule%num_bins,' bins; you wanted bin',iepoch
-   call error_handler(E_ERR,'get_timetype_from_schedule',msgstring, &
-                      source,revision,revdate)
+   call error_handler(E_ERR,'get_timetype_from_schedule',msgstring, source)
 endif
 
 if (present(edge)) then
@@ -305,8 +296,3 @@ end function
 
 end module schedule_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -17,7 +17,7 @@ use types_mod,            only : r8, i8, obstypelength, MAX_NUM_DOMS, MAX_FILES
 use time_manager_mod,     only : time_type, set_time_missing, operator(/=), &
                                  print_time
  
-use utilities_mod,        only : register_module, find_namelist_in_file,        &
+use utilities_mod,        only : find_namelist_in_file,        &
                                  error_handler, nmlfileunit, E_MSG, E_ERR,      &
                                  check_namelist_read, do_nml_file, do_nml_term, &
                                  open_file, close_file, set_multiple_filename_lists
@@ -51,10 +51,7 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_c
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'perturb_single_instance.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'perturb_single_instance.f90'
 
 !----------------------------------------------------------------
 ! These variables are namelist-controllable.
@@ -97,7 +94,6 @@ type(stage_metadata_type)       :: output_restart_files
 
 call initialize_mpi_utilities('perturb_single_instance')
 
-call register_module(source,revision,revdate)
 
 ! Read the namelist entry and print it
 call find_namelist_in_file("input.nml", "perturb_single_instance_nml", iunit)
@@ -183,8 +179,7 @@ do idom = 1, ndomains
                      trim(get_restart_filename(input_restart_files, &
                                                copy   = imem,       &
                                                domain = idom))
-   call error_handler(E_MSG, 'perturb_single_instance: ', msgstring1,   &
-                      source, revision, revdate)
+   call error_handler(E_MSG, 'perturb_single_instance: ', msgstring1, source)
 enddo
 
 !----------------------------------------------------------------------
@@ -252,8 +247,7 @@ do imem = 1, ens_size
                         trim(get_restart_filename(output_restart_files, &
                                                   copy   = imem,       &
                                                   domain = idom))
-      call error_handler(E_MSG, 'perturb_single_instance: ', msgstring1,   &
-                         source, revision, revdate)
+      call error_handler(E_MSG, 'perturb_single_instance: ', msgstring1, source)
    enddo
 enddo
 

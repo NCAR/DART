@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !>  A variety of operations required by assimilation.
 module assim_tools_mod
@@ -15,7 +13,7 @@ use      types_mod,       only : r8, i8, digits12, PI, missing_r8
 use    options_mod,       only : get_missing_ok_status
 
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
-                                 find_namelist_in_file, register_module, error_handler,   &
+                                 find_namelist_in_file, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
 use       sort_mod,       only : index_sort 
@@ -110,11 +108,7 @@ real(r8), allocatable  :: exp_true_correl(:), alpha(:)
 ! and fill this 2d impact table.
 real(r8), allocatable  :: obs_impact_table(:,:)
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'assim_tools_mod.f90'
 
 !============================================================================
 
@@ -213,7 +207,6 @@ integer :: iunit, io, i, j
 integer :: num_special_cutoff, type_index
 logical :: cache_override = .false.
 
-call register_module(source, revision, revdate)
 
 ! do this up front
 module_initialized = .true.
@@ -240,7 +233,7 @@ if (task_count() == 1) distribute_mean = .true.
 ! FOR NOW, can only do spread restoration with filter option 1 (need to extend this)
 if(spread_restoration .and. .not. filter_kind == 1) then
    write(msgstring, *) 'cannot combine spread_restoration and filter_kind ', filter_kind
-   call error_handler(E_ERR,'assim_tools_init:', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'assim_tools_init:', msgstring, source)
 endif
 
 ! allocate a list in all cases - even the ones where there is only
@@ -264,7 +257,7 @@ do i = 1, MAX_ITEMS
       write(msgstring, *) 'cutoff value', i, ' is uninitialized.'
       call error_handler(E_ERR,'assim_tools_init:', &
                          'special cutoff namelist for types and distances do not match', &
-                         source, revision, revdate, &
+                         source, &
                          text2='kind = '//trim(special_localization_obs_types(i)), &
                          text3=trim(msgstring))
    endif
@@ -278,7 +271,7 @@ do i = 1, num_special_cutoff
    type_index = get_index_for_type_of_obs(special_localization_obs_types(i))
    if (type_index < 0) then
       write(msgstring, *) 'unrecognized TYPE_ in the special localization namelist:'
-      call error_handler(E_ERR,'assim_tools_init:', msgstring, source, revision, revdate, &
+      call error_handler(E_ERR,'assim_tools_init:', msgstring, source, &
                          text2=trim(special_localization_obs_types(i)))
    endif
    cutoff_list(type_index) = special_localization_cutoffs(i)
@@ -469,7 +462,7 @@ if (sort_obs_inc) then
       write(msgstring2, *) 'and deterministic inflation [filter_nml:inf_deterministic = .TRUE.]'
       write(msgstring3, *) 'assim_tools_nml:sort_obs_inc = .TRUE. is not needed and is expensive.'
       call error_handler(E_MSG,'', '')  ! whitespace
-      call error_handler(E_MSG,'WARNING filter_assim:', msgstring, source, revision, revdate, &
+      call error_handler(E_MSG,'WARNING filter_assim:', msgstring, source, &
                          text2=msgstring2,text3=msgstring3)
       call error_handler(E_MSG,'', '')  ! whitespace
       sort_obs_inc = .FALSE.
@@ -500,14 +493,14 @@ if ((grp_size * num_groups) /= ens_size) then
    write(msgstring,  *) 'The number of ensemble members must divide into the number of groups evenly.'
    write(msgstring2, *) 'Ensemble size = ', ens_size, '  Number of groups = ', num_groups
    write(msgstring3, *) 'Change number of groups or ensemble size to avoid remainders.'
-   call error_handler(E_ERR,'filter_assim:', msgstring, source, revision, revdate, &
+   call error_handler(E_ERR,'filter_assim:', msgstring, source, &
                          text2=msgstring2,text3=msgstring3)
 endif
 if (grp_size < 2) then
    write(msgstring,  *) 'There must be at least 2 ensemble members in each group.'
    write(msgstring2, *) 'Ensemble size = ', ens_size, '  Number of groups = ', num_groups
    write(msgstring3, *) 'results in < 2 members/group.  Decrease number of groups or increase ensemble size'
-   call error_handler(E_ERR,'filter_assim:', msgstring, source, revision, revdate, &
+   call error_handler(E_ERR,'filter_assim:', msgstring, source, &
                          text2=msgstring2,text3=msgstring3)
 endif
 do group = 1, num_groups
@@ -1402,7 +1395,7 @@ if ((obs_var == 0.0_r8) .and. (prior_var == 0.0_r8)) then
    write(msgstring2, *) 'The observation has 0.0 error variance, and the ensemble members have 0.0 spread.'
    write(msgstring3, *) 'These require inconsistent actions and the algorithm cannot continue.'
    call error_handler(E_ERR, 'obs_increment', msgstring, &
-           source, revision, revdate, text2=msgstring2, text3=msgstring3)
+           source, text2=msgstring2, text3=msgstring3)
 
 else if (obs_var == 0.0_r8) then
 
@@ -1440,8 +1433,7 @@ else
       call obs_increment_rank_histogram(ens, ens_size, prior_var, obs, obs_var, obs_inc)
    else
       call error_handler(E_ERR,'obs_increment', &
-                 'Illegal value of filter_kind in assim_tools namelist [1-8 OK]', &
-                 source, revision, revdate)
+              'Illegal value of filter_kind in assim_tools namelist [1-8 OK]', source)
    endif
 endif
 
@@ -2461,7 +2453,7 @@ do i = 1, ens_size
                   else
                      msgstring = 'Did not get a satisfactory quadratic root'
                      call error_handler(E_ERR, 'obs_increment_rank_histogram', msgstring, &
-                        source, revision, revdate)
+                        source)
                   endif
                endif
                !********* End block for quadratic interpolation *******************
@@ -2509,7 +2501,7 @@ real(r8) :: total_mass_left, total_mass_right, alpha(2)
 if (.not. module_initialized) call assim_tools_init()
 
 call error_handler(E_ERR,'update_ens_from_weight','Routine needs testing.', &
-           source, revision, revdate, text2='Talk to Jeff before using.')
+           source, text2='Talk to Jeff before using.')
 
 ! Do an index sort of the ensemble members
 call index_sort(ens, e_ind, ens_size)
@@ -2826,7 +2818,7 @@ else if (LocationDims == 3) then
    endif
 else
    call error_handler(E_ERR, 'revised_distance', 'unknown locations dimension, not 1, 2 or 3', &
-      source, revision, revdate)
+      source)
 endif
 
 ! allow user to set a minimum cutoff, so even if there are very dense
@@ -3043,7 +3035,7 @@ select case (filter_kind)
    msgstring = 'Rank Histogram Filter'
  case default
    call error_handler(E_ERR, 'assim_tools_init:', 'illegal filter_kind value, valid values are 1-8', &
-                      source, revision, revdate)
+                      source)
 end select
 call error_handler(E_MSG, 'assim_tools_init:', 'Selected filter type is '//trim(msgstring))
 
@@ -3223,8 +3215,3 @@ end subroutine test_close_obs_dist
 
 end module assim_tools_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

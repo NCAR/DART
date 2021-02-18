@@ -10,7 +10,7 @@ module location_mod
 ! Y has walls (limited domain), and Z is infinite
 
 use      types_mod, only : r8, i8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD
-use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
+use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            E_MSG, open_file, close_file, set_output,                 &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
                            check_namelist_read, do_output, do_nml_file,              &
@@ -36,10 +36,7 @@ public :: location_type, get_location, set_location, &
           set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
           print_get_close_type, find_nearest
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'channel/location_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'channel/location_mod.f90'
 
 type location_type
    private
@@ -114,7 +111,6 @@ integer :: iunit, io
 
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 ! Read the namelist entry
@@ -248,7 +244,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if (size(list) < 3) then
    write(errstring,*)'requires 3 input values'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_array = set_location_single(list(1), list(2), list(3))
@@ -301,8 +297,7 @@ select case(attr)
       query_location = loc%z
    case default
       call error_handler(E_ERR, 'query_location:', &
-         'Only "X","Y","Z" are legal attributes to request from location', &
-          source, revision, revdate)
+         'Only "X","Y","Z" are legal attributes to request from location', source)
 end select
 
 end function query_location
@@ -345,8 +340,7 @@ endif
 ! to a file, and you can't have binary format set.
 if (.not. ascii_file_format(fform)) then
    call error_handler(E_ERR, 'write_location', &
-      'Cannot use string buffer with binary format', &
-       source, revision, revdate)
+      'Cannot use string buffer with binary format', source)
 endif
 
 ! format the location to be human-friendly
@@ -356,7 +350,7 @@ charlength = 70
 
 if (len(charstring) < charlength) then
    write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
-   call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'write_location', errstring, source)
 endif
 
 ! format into the outout string
@@ -383,7 +377,7 @@ if (ascii_file_format(fform)) then
    read(locfile, '(A9)' ) header
    if(header /= 'loc3Dchan') then
          write(errstring,*)'Expected location header "loc3Dchan" in input file, got ', header
-      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'read_location', errstring, source)
    endif
    ! Now read the location data value
    read(locfile, *)read_location%x, read_location%y, read_location%z
@@ -686,7 +680,7 @@ this_dist = 1e38_r8                ! something big and positive.
 ! you have to destroy the old gc and init a new one.
 if (size(locs) /= gc%num) then
    write(errstring,*)'locs() array must match one passed to get_close_init()'
-   call error_handler(E_ERR, 'get_close', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_close', errstring, source)
 endif
 
 ! If num == 0, no point in going any further. 
@@ -850,7 +844,7 @@ dist = 1e38_r8                ! something big and positive.
 ! you have to destroy the old gc and init a new one.
 if (size(loc_list) /= gc%num) then
    write(errstring,*)'loc() array must match one passed to get_close_init()'
-   call error_handler(E_ERR, 'find_nearest_boxes', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'find_nearest_boxes', errstring, source)
 endif
 
 ! If num == 0, no point in going any further. 
@@ -1311,12 +1305,12 @@ real(r8),              optional, intent(in)    :: close_dist(:)
 ! Do comparisons against full search
 if((num_close /= cnum_close) .and. present(close_dist)) then
    write(errstring, *) 'get_close (', num_close, ') should equal exhaustive search (', cnum_close, ')'
-   call error_handler(E_ERR, 'get_close', errstring, source, revision, revdate, &
+   call error_handler(E_ERR, 'get_close', errstring, source, &
                       text2='optional arg "dist" is present; we are computing exact distances', &
                       text3='the exhaustive search should find an identical number of locations')
 else if (num_close < cnum_close) then
    write(errstring, *) 'get_close (', num_close, ') should not be smaller than exhaustive search (', cnum_close, ')'
-   call error_handler(E_ERR, 'get_close', errstring, source, revision, revdate, &
+   call error_handler(E_ERR, 'get_close', errstring, source, &
                       text2='optional arg "dist" not present; we are returning a superset of close locations', &
                       text3='the exhaustive search should find an equal or lesser number of locations')
 endif

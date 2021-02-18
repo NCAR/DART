@@ -130,10 +130,7 @@ public :: add_domain,                 &
 public :: create_diagnostic_structure, &
           end_diagnostic_structure
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'state_structure_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'state_structure_mod.f90'
 
 character(len=512) :: string1, string2, string3
 
@@ -852,7 +849,7 @@ do ivar = 1, nvars
 
       case DEFAULT
          write(string1,*) ' unsupported netcdf variable type : ', var_xtype
-         call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,revision,revdate)
+         call error_handler(E_ERR, 'load_common_cf_conventions',string1,source)
    end select
 
    !>@todo FIXME : Not using scale factor or offset at the moment. Need to
@@ -861,14 +858,14 @@ do ivar = 1, nvars
       domain%variable(ivar)%io_info%scale_factor = cf_scale_factor
       write(string1,*) 'scale_factor not supported at the moment'
       write(string2,*) 'contact DART if you would like to get this to work'
-      call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,revision,revdate,text2=string2)
+      call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,text2=string2)
    endif
 
    if (nf90_get_att(ncid, VarID, 'add_offset', cf_add_offset) == NF90_NOERR) then
       domain%variable(ivar)%io_info%add_offset = cf_add_offset
       write(string1,*) 'add_offset not supported at the moment'
       write(string2,*) 'contact DART if you would like to get this to work'
-      call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,revision,revdate,text2=string2)
+      call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,text2=string2)
    endif
 
 enddo
@@ -942,7 +939,7 @@ if (state%domain(dom_id)%num_variables < ivar) then
    write(string1,'(''domain '',i4,'' has '',i6,'' variable(s).'')') dom_id, &
                      state%domain(dom_id)%num_variables
    write(string2,*)'requested size of variable # ',ivar
-   call error_handler(E_ERR,'get_variable_size',string1,source,revision,revdate,text2=string2)
+   call error_handler(E_ERR,'get_variable_size',string1,source,text2=string2)
 endif
 
 get_variable_size = state%domain(dom_id)%variable(ivar)%var_size
@@ -1356,7 +1353,7 @@ else
    write(string1,*) 'Can only calculate variable indices for 1<=ndims<=3 '
    write(string2,*) trim(get_variable_name(domid, varid)), 'has ndims = ', ndims
    call error_handler(E_ERR, 'get_model_variable_indices',string1, &
-                      source, revision, revdate, text2=string2)
+                      source, text2=string2)
 endif
 
 if (debug) then
@@ -1518,8 +1515,7 @@ integer :: d_new ! dimension you are adding
 if ( state%domain(dom_id)%method /= 'spec') then
    write(string1,'(''domain '',i4,'' created with method "'',A,''"'')')dom_id, trim(state%domain(dom_id)%method)
    write(string2,*)'only domains created by add_domain_from_spec() may add dimensions to their variables.'
-   call error_handler(E_ERR,'add_dimension_to_variable', string1, &
-              source, revision, revdate, text2=string2)
+   call error_handler(E_ERR,'add_dimension_to_variable', string1, source, text2=string2)
 
 endif
 
@@ -1557,7 +1553,7 @@ if ( state%domain(dom_id)%method /= 'spec') then
    write(string1,'(''domain '',i4,'' created with method "'',A,''"'')')dom_id, trim(state%domain(dom_id)%method)
    write(string2,*)'only domains created by add_domain_from_spec() may call finished_adding_domain.'
    call error_handler(E_ERR,'finished_adding_domain', string1, &
-              source, revision, revdate, text2=string2)
+              source, text2=string2)
 
 endif
 
@@ -1828,7 +1824,7 @@ if ( get_num_varids_from_kind(dom_id, dart_kind_index) > 1 ) then
    write(string2,*) 'for dart kind : ', get_name_for_quantity(dart_kind_index)
    write(string3,*) 'Please use get_varids_from_kind to get a list of indices '
    call error_handler(E_ERR,'get_varid_from_kind', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+              source, text2=string2, text3=string3)
 endif
 
 num_vars = get_num_variables(dom_id)
@@ -1860,8 +1856,7 @@ if ( size(varid_table) < get_num_varids_from_kind(dom_id, dart_kind_index) ) the
    write(string1,*) 'Found ', get_num_varids_from_kind(dom_id, dart_kind_index)
    write(string2,*) 'varid_table must be at least this size, ', &
                     'you have size(varid_table) = ', size(varid_table)
-   call error_handler(E_ERR,'get_varids_from_kind', string1, &
-              source, revision, revdate, text2=string2)
+   call error_handler(E_ERR,'get_varids_from_kind', string1, source, text2=string2)
 endif
 
 ! Initialize to no variables found
@@ -2198,7 +2193,7 @@ if (state%num_domains + 1 > MAX_NUM_DOMS) then
    write(string2,*)'maximum number of domains is ',MAX_NUM_DOMS
    write(string3,*)'increase "MAX_NUM_DOMS" in the common/types_mod.f90 and recompile'
    call error_handler(E_ERR, 'assert_below_max_num_domains', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+              source, text2=string2, text3=string3)
 endif
 
 end subroutine assert_below_max_num_domains
@@ -2292,7 +2287,7 @@ if (dom_id > state%num_domains .or. dom_id < 0 ) then
    write(string1,*)'number of known domains is ',state%num_domains
    write(string2,*)'requesting information for unknown domain ',dom_id
    call error_handler(E_ERR,'check_domain_id', message, &
-              source, revision, revdate, text2=string1, text3=string2)
+              source, text2=string1, text3=string2)
 endif
 
 end subroutine check_domain_id

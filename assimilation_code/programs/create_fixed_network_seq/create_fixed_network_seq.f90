@@ -1,13 +1,10 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program create_fixed_network_seq
 
-use    utilities_mod, only : register_module, &
-                             initialize_utilities, finalize_utilities, &
+use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              error_handler, E_MSG
 use      obs_def_mod, only : obs_def_type, set_obs_def_time
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
@@ -23,12 +20,7 @@ use        model_mod, only : static_init_model
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
+character(len=*), parameter :: source = 'create_fixed_network_seq.f90'
 
 type(obs_sequence_type) :: seq, seq_in
 type(obs_type)          :: obs, next_obs, new_obs
@@ -40,7 +32,6 @@ integer                 :: seconds, days, i, j, network_size, option, num_times,
 
 ! Record the current time, date, etc. to the logfile
 call initialize_utilities('Create_fixed_network_seq')
-call register_module(source,revision,revdate)
 
 ! Call the underlying model's static initialization for calendar info
 call static_init_model()
@@ -191,7 +182,7 @@ if(file_name == '') file_name = 'obs_seq.in'
 
 call write_obs_seq(seq, file_name)
 
-call error_handler(E_MSG,'create_fixed_network_seq','Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG,'create_fixed_network_seq','Finished successfully.',source)
 call finalize_utilities()
 
 end program create_fixed_network_seq

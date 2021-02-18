@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module location_mod
 
@@ -11,7 +9,7 @@ module location_mod
 ! as (x, y) from 0.0 to 1.0 in both dimensions.
 
 use      types_mod, only : r8, MISSING_R8
-use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format
+use  utilities_mod, only : error_handler, E_ERR, ascii_file_format
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -27,11 +25,7 @@ public :: location_type, get_location, set_location, &
           vert_is_surface, has_vertical_localization, &
           set_vert, get_vert, set_which_vert
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'twod/location_mod.f90'
 
 type location_type
    private
@@ -71,7 +65,6 @@ subroutine initialize_module
  
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 end subroutine initialize_module
@@ -168,12 +161,12 @@ if ( .not. module_initialized ) call initialize_module
 
 if(x < 0.0_r8 .or. x > 1.0_r8) then
    write(errstring,*)'x (',x,') is not within range [0,1]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 if(y < 0.0_r8 .or. y > 1.0_r8) then
    write(errstring,*)'y (',y,') is not within range [0,1]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_single%x = x
@@ -195,7 +188,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if (size(list) < 2) then
    write(errstring,*)'requires 2 input values'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_array = set_location_single(list(1), list(2))
@@ -245,7 +238,7 @@ select case(attr)
    query_location = loc%y
  case default
    call error_handler(E_ERR, 'query_location; twod', &
-         'Only x or y are legal attributes to request from location', source, revision, revdate)
+         'Only x or y are legal attributes to request from location', source)
 end select
 
 end function query_location
@@ -291,8 +284,7 @@ endif
 ! to a file, and you can't have binary format set.
 if (.not. ascii_file_format(fform)) then
    call error_handler(E_ERR, 'write_location', &
-      'Cannot use string buffer with binary format', &
-       source, revision, revdate)
+      'Cannot use string buffer with binary format', source)
 endif
 
 ! format the location to be more human-friendly; which in
@@ -303,7 +295,7 @@ charlength = 25
 
 if (len(charstring) < charlength) then
    write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
-   call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'write_location', errstring, source)
 endif
 
 write(charstring, '(A,F9.7,2X,F9.7)') 'X/Y: ',  loc%x, loc%y
@@ -330,7 +322,7 @@ if (ascii_file_format(fform)) then
    read(locfile, '(a5)' ) header
    if(header /= 'loc2D') then
       write(errstring,*)'Expected location header "loc2D" in input file, got ', header 
-      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'read_location', errstring, source)
    endif
    ! Now read the location data value
    read(locfile, *) read_location%x, read_location%y
@@ -478,7 +470,7 @@ real(r8) :: this_dist
 ! you have to destroy the old gc and init a new one.
 if (size(obs) /= gc%num) then
    write(errstring,*)'obs() array must match one passed to get_close_obs_init()'
-   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_close_obs', errstring, source)
 endif
 
 ! Return list of obs that are within maxdist and their distances
@@ -651,8 +643,3 @@ end subroutine set_which_vert
 
 end module location_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program sys_sim501
 
@@ -13,12 +11,6 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
    twod_gaussians, random_uniform
 
 implicit none
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
 
 type (random_seq_type) :: r
 double precision :: correl, cov(2, 2), zero_2(2) = 0.0, correl_mean, correl_var

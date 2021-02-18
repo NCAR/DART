@@ -52,10 +52,7 @@ public :: configure_lsm, &
           read_hydro_global_atts, write_hydro_global_atts , &
           read_noah_global_atts, write_noah_global_atts 
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'noah_hydro_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'noah_hydro_mod.f90'
 
 logical, save :: module_initialized = .false.
 
@@ -300,7 +297,7 @@ if ( file_exist(hydro_namelist_filename) ) then
    call check_namelist_read(iunit, io, 'HYDRO_nlist')
 else
    write(string1,*) 'hydro namelist file "', trim(hydro_namelist_filename),'" does not exist.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 ! Though all non-soil variables are "surface" it may be advisable to extract 
@@ -569,13 +566,13 @@ if ( chanrtswcrt == 1 ) then
 
    else
        write(string1,'("channel_option ",i1," is not supported.")')channel_option
-       call error_handler(E_ERR,routine,string1,source,revision,revdate)
+       call error_handler(E_ERR,routine,string1,source)
 
    endif
 else
    write(string1,'("CHANRTSWCRT ",i1," is not supported.")')chanrtswcrt
    write(string2,*)'This is specified in hydro.namelist'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 io = nf90_close(ncid)
@@ -849,7 +846,7 @@ print *, "Total Number of Lakes in Domain: ", n_lake
 
 if (cnt .ne. n_link) then
    write(string1,*) 'Error with number of links in the channel grid.'
-   call error_handler(E_ERR, 'getChannelGridCoords', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'getChannelGridCoords', string1, source)
 endif
 
 ! Now that we have the matrix version of the indices, put them into the
@@ -996,8 +993,7 @@ strlen          = nc_get_dimension_size(ncid,'IDLength',  routine)
 if (strlen /= IDSTRLEN) then 
    write(string1,*)'IDLength read as ',strlen,' expected ',IDSTRLEN
    write(string2,*)'Required to interpret "gages" variable in'
-   call error_handler(E_ERR, routine, string1, source, revision, &
-              revdate, text2=string2, text3=filename)
+   call error_handler(E_ERR, routine, string1, source, text2=string2, text3=filename)
 endif
 
 allocate (fromIndices(database_length))
@@ -1338,14 +1334,14 @@ if ( file_exist(lsm_namelist_filename) ) then
    call check_namelist_read(iunit, io, 'NOAHLSM_OFFLINE')
 else
    write(string1,*) 'LSM namelist file "', trim(lsm_namelist_filename),'" does not exist.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 ! Check to make sure the hrldas setup file exists
 if ( .not. file_exist(hrldas_setup_file) ) then
    write(string1,*) 'NOAH hrldas_setup_file "',trim(hrldas_setup_file), &
                     '" does not exist.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 setup_filename           = hrldas_setup_file
@@ -1365,8 +1361,7 @@ if ( (kday             < 0    ) .or. &
         &output_timestep=3600, restart_frequency_hours=1)'
    write(string2,*)'restart_frequency_hours must be equal to the noah_timestep'
    write(string1,*)'unsupported noah namelist settings'
-   call error_handler(E_MSG,routine,string1,source,revision,revdate,&
-        text2=string2,text3=string3)
+   call error_handler(E_MSG,routine,string1,source,text2=string2,text3=string3)
 endif
 
 timestepping%day       = kday
@@ -1441,14 +1436,14 @@ if ( file_exist(lsm_namelist_filename) ) then
 else
    write(string1,*) 'LSM namelist file "', trim(lsm_namelist_filename), &
                     '" does not exist.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 ! Check to make sure the hrldas constants file exists
 if ( .not. file_exist(hrldas_constants_file) ) then
    write(string1,*) 'NOAH constants file "',trim(hrldas_constants_file), &
                     '" does not exist.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 setup_filename           = hrldas_constants_file
@@ -1468,8 +1463,7 @@ if ( (kday             < 0    ) .or. &
         &output_timestep=3600, restart_frequency_hours=1)'
    write(string2,*)'restart_frequency_hours must be equal to the noah_timestep'
    write(string1,*)'unsupported noah namelist settings'
-   call error_handler(E_MSG,routine,string1,source,revision,revdate,&
-        text2=string2,text3=string3)
+   call error_handler(E_MSG,routine,string1,source,text2=string2,text3=string3)
 endif
 
 timestepping%day       = kday
@@ -1497,7 +1491,7 @@ integer, intent(out) :: restart
 
 character(len=*), parameter :: routine = 'get_noah_timestepping'
 
-call error_handler(E_MSG,routine,'routine not tested',source,revision,revdate)
+call error_handler(E_MSG,routine,'routine not tested',source)
 
 day       = timestepping%day
 hour      = timestepping%hour
@@ -1541,7 +1535,7 @@ character(len=*), parameter :: routine = 'get_lsm_domain_filename'
 
 if (domain_id /= 1) then
    write(string1,*)'only configured for 1 lsm domain at present'
-   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+   call error_handler(E_ERR, routine, string1, source)
 endif
 
 filename = lsm_domain_file(1)

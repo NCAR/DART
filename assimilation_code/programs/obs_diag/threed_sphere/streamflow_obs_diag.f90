@@ -54,7 +54,7 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(>),  operator(<),  operator(/),             &
                              operator(/=), operator(<=), operator(>=)
 
-use    utilities_mod, only : open_file, close_file, register_module, &
+use    utilities_mod, only : open_file, close_file, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG,  &
                              initialize_utilities, logfileunit, nmlfileunit,   &
                              find_namelist_in_file, check_namelist_read,       &
@@ -73,10 +73,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'threed_sphere/streamflow_obs_diag.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'streamflow_obs_diag.f90'
 
 !---------------------------------------------------------------------
 
@@ -323,7 +320,6 @@ integer :: num_ambiguous = 0   ! prior QC 7, posterior mean MISSING_R8
 !=======================================================================
 
 call initialize_utilities('obs_diag')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 ! This is the part that makes identity observations hard.
@@ -463,7 +459,7 @@ ObsFileLoop : do ifile=1, num_input_files
          if (size(ens_copy_index) /= ens_size) then
             write(string1,'(''expecting '',i3,'' ensemble members, got '',i3)') &
                                        size(ens_copy_index), ens_size
-            call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+            call error_handler(E_ERR,'obs_diag',string1,source)
          endif
       else
          ! This should happen exactly once, if at all.
@@ -556,8 +552,7 @@ ObsFileLoop : do ifile=1, num_input_files
             if (flavor > num_obs_types) then
                write(string1,*)'unsupported identity observation ',-1*flavor
                write(string2,*)'Increase "num_obs_types" and recompile.'
-               call error_handler(E_ERR, 'obs_diag', string1, &
-                          source, revision, revdate, text2=string2)
+               call error_handler(E_ERR, 'obs_diag', string1, source, text2=string2)
             endif
 
             obsname = 'STREAM_FLOW'
@@ -915,7 +910,7 @@ if ( sum(obs_used_in_epoch) == 0 ) then
    call print_date( TimeMin,' First REQUESTED   date')
    call print_date( TimeMax,' Last  REQUESTED   date')
    write(string1,*)'NO OBSERVATIONS in requested time bins.'
-   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+   call error_handler(E_ERR,'obs_diag',string1,source)
 endif
 
 call WriteNetCDF('obs_diag_output.nc')
@@ -1133,26 +1128,26 @@ integer :: seconds
 if ( (bin_separation(1) /= 0) .or. (bin_separation(2) /= 0) ) then
    write(string1,*)'bin_separation:year,month must both be zero, they are ', &
    bin_separation(1),bin_separation(2)
-   call error_handler(E_WARN,'Namelist2Times',string1,source,revision,revdate)
+   call error_handler(E_WARN,'Namelist2Times',string1,source)
    error_out = .true.
 endif
 
 if ( (bin_width(1) /= 0) .or. (bin_width(2) /= 0) ) then
    write(string1,*)'bin_width:year,month must both be zero, they are ', &
    bin_width(1),bin_width(2)
-   call error_handler(E_WARN,'Namelist2Times',string1,source,revision,revdate)
+   call error_handler(E_WARN,'Namelist2Times',string1,source)
    error_out = .true.
 endif
 
 if ( (time_to_skip(1) /= 0) .or. (time_to_skip(2) /= 0) ) then
    write(string1,*)'time_to_skip:year,month must both be zero, they are ', &
    time_to_skip(1),time_to_skip(2)
-   call error_handler(E_WARN,'Namelist2Times',string1,source,revision,revdate)
+   call error_handler(E_WARN,'Namelist2Times',string1,source)
    error_out = .true.
 endif
 
 if ( error_out ) call error_handler(E_ERR,'Namelist2Times', &
-    'namelist parameter out-of-bounds. Fix and try again.',source,revision,revdate)
+    'namelist parameter out-of-bounds. Fix and try again.',source)
 
 ! Set time of first bin center
 beg_time   = set_date(first_bin_center(1), first_bin_center(2), &
@@ -1365,8 +1360,7 @@ if (any(layerMiddles /= MISSING_R8) .and. any(layerEdges /= MISSING_R8)) then
 
    write(string1,*)'Specify "hlevel" or "hlevel_edges" but not both.'
    write(string2,*)'Check your input.nml obs_diag_nml settings.'
-   call error_handler(E_ERR, 'setHeightLevels', string1, &
-          source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'setHeightLevels', string1, source, text2=string2)
 
 elseif (all(layerMiddles == MISSING_R8) .and. all(layerEdges == MISSING_R8)) then
 
@@ -1422,8 +1416,7 @@ if (any(layerMiddles /= MISSING_R8) .and. any(layerEdges /= MISSING_R8)) then
 
    write(string1,*)'Specify "plevel" or "plevel_edges" but not both.'
    write(string2,*)'Check your input.nml obs_diag_nml settings.'
-   call error_handler(E_ERR, 'setPressureLevels', string1, &
-          source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'setPressureLevels', string1, source, text2=string2)
 
 elseif (all(layerMiddles == MISSING_R8) .and. all(layerEdges == MISSING_R8)) then
 
@@ -1478,8 +1471,7 @@ if (any(layerMiddles /= MISSING_R8) .and. any(layerEdges /= MISSING_R8)) then
 
    write(string1,*)'Specify "mlevel" or "mlevel_edges" but not both.'
    write(string2,*)'Check your input.nml obs_diag_nml settings.'
-   call error_handler(E_ERR, 'setModelLevels', string1, &
-          source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'setModelLevels', string1, source, text2=string2)
 
 elseif (all(layerMiddles == MISSING_R8) .and. all(layerEdges == MISSING_R8)) then
 
@@ -1642,8 +1634,7 @@ InputList : do i = 1,MaxTrusted
       write(string1,*)'trusted_obs "',trim(trusted_obs(i)), &
                     & '" is not a supported observation type.'
       write(string2,*)'to get past this warning, set utilities_nml:TERMLEVEL > 1 and rerun.'
-      call error_handler(E_WARN,'CountTrustedObsTypes', string1, &
-         source, revision, revdate, text2=string2)
+      call error_handler(E_WARN,'CountTrustedObsTypes', string1, source, text2=string2)
       endif
 
 enddo InputList
@@ -1657,7 +1648,7 @@ if (num_trusted == MaxTrusted) then
    write(string2,*)'This is the maximum allowed unless you increase "MaxTrusted" and recompile.'
    write(string3,*)'to get past this warning, set utilities_nml:TERMLEVEL > 1 and rerun.'
    call error_handler(E_WARN, 'CountTrustedObsTypes', string1, &
-                         source, revision, revdate, text2=string2, text3=string3)
+                         source, text2=string2, text3=string3)
 endif
 
 ! If there are some trusted observation types, list them.
@@ -1747,14 +1738,14 @@ logical, SAVE :: first_time = .true.
 
 if ( .not. get_first_obs(my_sequence, my_obs1) ) then
    call error_handler(E_ERR,'GetFirstLastObs','No first observation in '//trim(my_fname), &
-   source,revision,revdate)
+   source)
 endif
 call get_obs_def(my_obs1,   obs_def)
 my_seqT1 = get_obs_def_time(obs_def)
 
 if ( .not. get_last_obs(my_sequence, my_obsN) ) then
    call error_handler(E_ERR,'GetFirstLastObs','No last observation in '//trim(my_fname), &
-   source,revision,revdate)
+   source)
 endif
 call get_obs_def(my_obsN,   obs_def)
 my_seqTN = get_obs_def_time(obs_def)
@@ -1967,7 +1958,7 @@ if ( obs_index < 0 ) then
    else
       write(string1,*)'metadata:"observation" not found'
    endif
-   call error_handler(E_ERR,'SetIndices',string1,source,revision,revdate)
+   call error_handler(E_ERR,'SetIndices',string1,source)
 endif
 
 !--------------------------------------------------------------------
@@ -2024,7 +2015,7 @@ if ( any( (/ prior_mean_index, prior_spread_index/) < 0) ) then
    string2 = 'You will still get a count, maybe observation value, incoming qc, ...'
    string3 = 'For simple information, you may want to use "obs_seq_to_netcdf" instead.'
    call error_handler(E_MSG, 'SetIndices', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+              source, text2=string2, text3=string3)
 endif
 
 has_posteriors = .true.
@@ -2032,8 +2023,7 @@ if ( any( (/ posterior_mean_index, posterior_spread_index /) < 0) ) then
    has_posteriors = .false.
    string1 = 'Observation sequence has no posterior information,'
    string2 = 'therefore - posterior diagnostics are not possible.'
-   call error_handler(E_WARN, 'SetIndices', string1, &
-              source, revision, revdate, text2=string2)
+   call error_handler(E_WARN, 'SetIndices', string1, source, text2=string2)
 endif
 
 end subroutine SetIndices
@@ -2087,7 +2077,7 @@ if (is_vertical(obslocation, "HEIGHT")        .and. &
         write(string1,'(''obs '', i8, '' type '', i3, &
         & '' changing from '', i2, '' to height - def by obs '',i8)') &
         keys(obsindex), flavor, which_vert(flavor), ob_defining_vert(flavor)
-   call error_handler(E_WARN,'CheckVertical',string1,source,revision,revdate)
+   call error_handler(E_WARN,'CheckVertical',string1,source)
 endif
 
 end subroutine CheckVertical
@@ -2157,8 +2147,7 @@ elseif(is_vertical(obslocation, "UNDEFINED")) then
    which_vert(flavor) = VERTISUNDEF
 
 else
-   call error_handler(E_ERR,'ParseLevel','Vertical coordinate not recognized', &
-        source,revision,revdate)
+   call error_handler(E_ERR,'ParseLevel','Vertical coordinate not recognized', source)
 endif
 
 ob_defining_vert(flavor) = keys(obsindex)
@@ -2463,8 +2452,7 @@ if ( all(optionals) ) then
    myrank = -99
 
 elseif ( any(optionals) ) then
-   call error_handler(E_ERR,'Bin4D','wrong number of optional arguments', &
-                      source,revision,revdate)
+   call error_handler(E_ERR,'Bin4D','wrong number of optional arguments', source)
 else
 
    priorsqerr     = (prmean - obsval)**2
@@ -2694,7 +2682,7 @@ integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 
 if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'WriteNetCDF', &
-   'Compiler does not support required kinds of variables.',source,revision,revdate)
+   'Compiler does not support required kinds of variables.',source)
 endif
 
 call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
@@ -2714,10 +2702,6 @@ call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(string1) ), 
 !             'WriteNetCDF', 'put_att title '//trim(fname))
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_source', source ), &
            'WriteNetCDF', 'put_att obs_diag_source '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_revision', revision ), &
-           'WriteNetCDF', 'put_att obs_diag_revision '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_revdate', revdate ), &
-           'WriteNetCDF', 'put_att obs_diag_revdate '//trim(fname))
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'LocationRank', LocationDims ), &
            'WriteNetCDF', 'put_att LocationRank '//trim(fname))
 
@@ -3230,7 +3214,7 @@ integer :: n, i
 Rlevels2edges = SIZE(level_middle,1)
 if (Rlevels2edges > MaxLevels) then
    write(string1,*)Rlevels2edges,' is too many levels - max is ',MaxLevels,' (MaxLevels)'
-   call error_handler(E_ERR,'Rlevels2edges', string1,source,revision,revdate)
+   call error_handler(E_ERR,'Rlevels2edges', string1,source)
 endif
 
 ! find length of useful portion of level_middle array ... among other things.
@@ -3286,14 +3270,14 @@ integer :: n, i
 Redges2levels = SIZE(level_edge,1) - 1
 if (Redges2levels > MaxLevels) then
    write(string1,*)Redges2levels,' is too many level_middle - max is ',MaxLevels,' (MaxLevels)'
-   call error_handler(E_ERR,'Redges2levels', string1,source,revision,revdate)
+   call error_handler(E_ERR,'Redges2levels', string1,source)
 endif
 
 ! find the number of edges the user specified
 n = RRemoveDuplicates(level_edge)
 if ( n == 1 ) then
    write(string1,*)'obs_diag_nml: need at least two entries in hlevel_edges. Only got 1.'
-   call error_handler(E_ERR,'Redges2levels', string1,source,revision,revdate)
+   call error_handler(E_ERR,'Redges2levels', string1,source)
    return
 endif
 
@@ -3697,8 +3681,7 @@ elseif ( which_vert(flav) == VERTISHEIGHT .or. &
                                  'FindVertical', 'vertisheight')
 
 else
-   call error_handler(E_ERR,'FindVertical','unknown vertical', &
-              source,revision,revdate)
+   call error_handler(E_ERR,'FindVertical','unknown vertical', source)
 endif
 
 end function FindVertical
@@ -3831,7 +3814,7 @@ if (maxflavors < MaxGages) then
       write(*,*)'making ',trim(obs_type_strings(maxflavors))
       write(string1,*)'Identity observation at ',indx, &
                       ' being added to list as ',maxflavors
-      call error_handler(E_MSG, 'lookup_flavor', string1,  source, revision, revdate )
+      call error_handler(E_MSG, 'lookup_flavor', string1,  source )
    endif
 
    indx = maxflavors
@@ -3842,7 +3825,7 @@ else
    write(string2,*)'Increase "MaxGages", recompile, and rerun.'
    write(string3,*)'"MaxGages" is currently ',MaxGages
    call error_handler(E_ERR, 'lookup_flavor', string1, & 
-              source, revision, revdate, text2=string2, text3=string3)
+              source, text2=string2, text3=string3)
 endif
 
 end function lookup_flavor
