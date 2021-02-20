@@ -101,7 +101,7 @@ public :: filter_sync_keys_time, &
 character(len=*), parameter :: source = 'filter_mod.dopplerfold.f90'
 
 ! Some convenient global storage items
-character(len=512)      :: msgstring
+character(len=512)      :: msgstring, string2, string3
 
 integer :: trace_level, timestamp_level
 
@@ -227,8 +227,6 @@ logical :: write_all_stages_at_end = .false.
 character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
                       obs_sequence_out_name = "obs_seq.final",  &
                       adv_ens_command       = './advance_model.csh'
-
-!                  == './advance_model.csh'    -> advance ensemble using a script
 
 ! Inflation namelist entries follow, first entry for prior, second for posterior
 ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space,
@@ -1026,7 +1024,8 @@ AdvanceTime : do
    ! (it was applied earlier, this is computing the updated values for
    ! the next cycle.)
 
-   if(do_ss_inflate(post_inflate)) then
+   ! CSS added condition: Don't update posterior inflation if relaxing to prior spread
+   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) then
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
@@ -1535,17 +1534,17 @@ end function get_blank_qc_index
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_initial_time(days, seconds, time, read_time_from_file)
+subroutine filter_set_initial_time(days, seconds, dart_time, read_time_from_file)
 
 integer,         intent(in)  :: days, seconds
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 logical,         intent(out) :: read_time_from_file
 
 if(days >= 0) then
-   time = set_time(seconds, days)
+   dart_time = set_time(seconds, days)
    read_time_from_file = .false.
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
    read_time_from_file = .true.
 endif
 
@@ -1553,15 +1552,15 @@ end subroutine filter_set_initial_time
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_window_time(time)
+subroutine filter_set_window_time(dart_time)
 
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 
 
 if(obs_window_days >= 0) then
-   time = set_time(obs_window_seconds, obs_window_days)
+   dart_time = set_time(obs_window_seconds, obs_window_days)
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
 endif
 
 end subroutine filter_set_window_time
@@ -1594,7 +1593,11 @@ do group = 1, num_groups
       if ( present(SPARE_PRIOR_SPREAD) .and. present(ENS_SD_COPY)) then 
          write(msgstring, *) ' doing RTPS inflation'
          call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source)
-         do j = 1, ens_handle%my_num_vars 
+
+         !Reset the RTPS factor to the given input.nml value
+         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(2)
+
+         do j = 1, ens_handle%my_num_vars
             call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
                ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
                ens_handle%copies(SPARE_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
@@ -1674,8 +1677,11 @@ call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 
 ! allocate temp space for sending data only on the task that will
 ! write the obs_seq.final file
-if (my_task == io_task) allocate(obs_temp(num_obs_in_set))
-
+if (my_task == io_task) then
+   allocate(obs_temp(num_obs_in_set))
+else ! TJH: this change became necessary when using Intel 19.0.5 ...
+   allocate(obs_temp(1))
+endif
 
 ! Update the ensemble mean
 call get_copy(io_task, obs_fwd_op_ens_handle, OBS_MEAN_START, obs_temp)
@@ -1721,7 +1727,7 @@ if(my_task == io_task) then
    end do
 endif
 
-if (my_task == io_task) deallocate(obs_temp)
+deallocate(obs_temp)
 
 end subroutine obs_space_diagnostics
 
@@ -2000,7 +2006,7 @@ integer,             intent(in)    :: prior_post
 integer,             intent(in)    :: ens_size
 integer,             intent(in)    :: keys(:) ! I think this is still var size
 
-character*12 :: task
+character(len=12) :: task
 integer :: j, i
 integer :: forward_unit
 
@@ -2043,18 +2049,22 @@ subroutine create_ensemble_from_single_file(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
 
-integer               :: i ! loop variable
+integer               :: i
 logical               :: interf_provided ! model does the perturbing
 logical, allocatable  :: miss_me(:)
+integer               :: partial_state_on_my_task ! the number of elements ON THIS TASK
 
 ! Copy from ensemble member 1 to the other copies
 do i = 1, ens_handle%my_num_vars
    ens_handle%copies(2:ens_size, i) = ens_handle%copies(1, i)  ! How slow is this?
 enddo
 
-! store missing_r8 locations
-if (get_missing_ok_status()) then ! missing_r8 is allowed in the state
-   allocate(miss_me(ens_size))
+! If the state allows missing values, we have to record their locations
+! and restore them in all the new perturbed copies.
+
+if (get_missing_ok_status()) then
+   partial_state_on_my_task = size(ens_handle%copies,2)
+   allocate(miss_me(partial_state_on_my_task))
    miss_me = .false.
    where(ens_handle%copies(1, :) == missing_r8) miss_me = .true.
 endif
@@ -2064,11 +2074,12 @@ if (.not. interf_provided) then
    call perturb_copies_task_bitwise(ens_handle)
 endif
 
-! Put back in missing_r8
+! Restore the missing_r8
 if (get_missing_ok_status()) then
    do i = 1, ens_size
       where(miss_me) ens_handle%copies(i, :) = missing_r8
    enddo
+   deallocate(miss_me)
 endif
 
 end subroutine create_ensemble_from_single_file
@@ -2498,12 +2509,10 @@ do i = 1, nstages
       CASE ('INPUT', 'FORECAST', 'PREASSIM', 'POSTASSIM', 'ANALYSIS', 'OUTPUT')
          call set_stage_to_write(stages(i),.true.)
          write(msgstring,*)"filter will write stage : "//trim(stages(i))
-         call error_handler(E_MSG,'parse_stages_to_write:', &
-                         msgstring,source)
+         call error_handler(E_MSG,'parse_stages_to_write:',msgstring,source)
       CASE DEFAULT
          write(msgstring,*)"unknown stage : "//trim(stages(i))
-         call error_handler(E_ERR,'parse_stages_to_write:', &
-                            msgstring,source, &
+         call error_handler(E_ERR,'parse_stages_to_write:',msgstring,source, &
                            text2="currently supported stages include :",&
                            text3="input, forecast, preassim, postassim, analysis, output")
    END SELECT
@@ -2714,6 +2723,7 @@ endif
 
 end subroutine set_copies
 
+
 !==================================================================
 ! TEST FUNCTIONS BELOW THIS POINT
 !------------------------------------------------------------------
@@ -2724,18 +2734,19 @@ type(ensemble_type), intent(in) :: obs_fwd_op_ens_handle
 character(len=*),    intent(in) :: information
 
 character(len=20)  :: task_str !! string to hold the task number
-character(len=129) :: file_obscopies !! output file name
-integer :: i
+character(len=256) :: file_obscopies !! output file name
+integer :: i, iunit
 
 write(task_str, '(i10)') obs_fwd_op_ens_handle%my_pe
 file_obscopies = TRIM('obscopies_' // TRIM(ADJUSTL(information)) // TRIM(ADJUSTL(task_str)))
-open(15, file=file_obscopies, status ='unknown')
+
+iunit = open_file(file_obscopies, 'formatted', 'append')
 
 do i = 1, obs_fwd_op_ens_handle%num_copies - 4
-   write(15, *) obs_fwd_op_ens_handle%copies(i,:)
+   write(iunit, *) obs_fwd_op_ens_handle%copies(i,:)
 enddo
 
-close(15)
+close(iunit)
 
 end subroutine test_obs_copies
 
