@@ -29,7 +29,7 @@ use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), o
                                   operator(-), print_time
 
 use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,       &
-                                  logfileunit, nmlfileunit, timestamp,  &
+                                  logfileunit, nmlfileunit, timestamp, flex_parser,           &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
                                   set_multiple_filename_lists, find_textfile_dims
@@ -57,7 +57,10 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
                                   adaptive_inflate_type, set_inflation_mean_copy ,            &
                                   log_inflation_info, set_inflation_sd_copy,                  &
                                   get_minmax_task_zero, do_rtps_inflate,                      &
-                                  validate_inflate_options
+                                  validate_inflate_options, PRIOR, POSTERIOR,         &
+                                  NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION,  &
+                                  SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD,    &
+                                  ENHANCED_SS_INFLATION
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
@@ -101,7 +104,7 @@ public :: filter_sync_keys_time, &
 character(len=*), parameter :: source = 'filter_mod.dopplerfold.f90'
 
 ! Some convenient global storage items
-character(len=512)      :: msgstring, string2, string3
+character(len=512)      :: msgstring
 
 integer :: trace_level, timestamp_level
 
@@ -228,10 +231,11 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
                       obs_sequence_out_name = "obs_seq.final",  &
                       adv_ens_command       = './advance_model.csh'
 
-! Inflation namelist entries follow, first entry for prior, second for posterior
-! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space,
-! 4: rtps (relax to prior spread), 5: enhanced state space
-integer  :: inf_flavor(2)                  = 0
+! The inflation flavor parameters are defined in adaptive_inflate_mod.
+! It is an open question as to whether or not we should 'use' the 
+! integer parameters for PRIOR and POSTERIOR from adaptive_inflate_mod.
+
+character(len=32) :: inf_flavor(2)         = (/ 'none', 'none' /)
 logical  :: inf_initial_from_restart(2)    = .false.
 logical  :: inf_sd_initial_from_restart(2) = .false.
 logical  :: inf_deterministic(2)           = .true.
@@ -304,6 +308,8 @@ namelist /filter_nml/ async,     &
 ! Are any of the observation types subject to being updated
 ! during the computation?  e.g. Folded doppler intensities.
 logical :: observations_updateable = .true.
+
+integer :: inflation_flavor(2)
 
 !----------------------------------------------------------------
 
@@ -392,30 +398,32 @@ allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
-call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
+inflation_flavor = set_inflation_flavor(inf_flavor)
+
+call validate_inflate_options(inflation_flavor, inf_damping, inf_initial_from_restart, &
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
    do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
-   inf_sd_initial_from_restart(1), output_inflation, inf_deterministic(1),            &
-   inf_initial(1), inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1),         &
-   inf_sd_lower_bound(1), inf_sd_max_change(1), state_ens_handle,                     &
+call adaptive_inflate_init(prior_inflate, inflation_flavor(PRIOR), inf_initial_from_restart(PRIOR), &
+   inf_sd_initial_from_restart(PRIOR), output_inflation, inf_deterministic(PRIOR),            &
+   inf_initial(PRIOR), inf_sd_initial(PRIOR), inf_lower_bound(PRIOR), inf_upper_bound(PRIOR),         &
+   inf_sd_lower_bound(PRIOR), inf_sd_max_change(PRIOR), state_ens_handle,                     &
    allow_missing, 'Prior')
 
-call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
-   inf_sd_initial_from_restart(2), output_inflation, inf_deterministic(2),            &
-   inf_initial(2),  inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2),        &
-   inf_sd_lower_bound(2), inf_sd_max_change(2), state_ens_handle,                     &
+call adaptive_inflate_init(post_inflate, inflation_flavor(POSTERIOR), inf_initial_from_restart(POSTERIOR),  &
+   inf_sd_initial_from_restart(POSTERIOR), output_inflation, inf_deterministic(POSTERIOR),            &
+   inf_initial(POSTERIOR),  inf_sd_initial(POSTERIOR), inf_lower_bound(POSTERIOR), inf_upper_bound(POSTERIOR),        &
+   inf_sd_lower_bound(POSTERIOR), inf_sd_max_change(POSTERIOR), state_ens_handle,                     &
    allow_missing, 'Posterior')
 
 if (do_output()) then
-   if (inf_flavor(1) > 0 .and. inf_damping(1) < 1.0_r8) then
-      write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', inf_damping(1), ' will be used'
+   if (inflation_flavor(PRIOR) > NO_INFLATION .and. inf_damping(PRIOR) < 1.0_r8) then
+      write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', inf_damping(PRIOR), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
-   if (inf_flavor(2) > 0 .and. inf_damping(2) < 1.0_r8) then
-      write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', inf_damping(2), ' will be used'
+   if (inflation_flavor(POSTERIOR) > NO_INFLATION .and. inf_damping(POSTERIOR) < 1.0_r8) then
+      write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', inf_damping(POSTERIOR), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
 endif
@@ -803,10 +811,10 @@ AdvanceTime : do
    if(do_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
 
-      if (inf_damping(1) /= 1.0_r8) then
+      if (inf_damping(PRIOR) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(1) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
+            inf_damping(PRIOR) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
 
       call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
@@ -919,10 +927,10 @@ AdvanceTime : do
 
       call trace_message('Before posterior inflation damping')
 
-      if (inf_damping(2) /= 1.0_r8) then
+      if (inf_damping(POSTERIOR) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(2) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
+            inf_damping(POSTERIOR) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
 
       call trace_message('After  posterior inflation damping')
@@ -1029,7 +1037,7 @@ AdvanceTime : do
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
-      if ((inf_sd_initial(2) >= 0.0_r8) .or. inf_sd_initial_from_restart(2)) then
+      if ((inf_sd_initial(POSTERIOR) >= 0.0_r8) .or. inf_sd_initial_from_restart(POSTERIOR)) then
 
          call     trace_message('Before computing posterior state space inflation')
          call timestamp_message('Before computing posterior state space inflation')
@@ -2351,11 +2359,11 @@ endif
 CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
                        PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
 
-! CSS If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation (inf_flavor = 4)
+! If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation
 !  then we need an extra copy to hold (save) the prior ensemble spread
 !   ENS_SD_COPY will be overwritten with the posterior spread before
-!   applying the inflation algorithm; hence we must save the prior ensemble spread in a different copy
-if ( inf_flavor(2) == 4 ) then ! CSS
+! applying the inflation algorithm; must save the prior ensemble spread in a different copy
+if ( inflation_flavor(POSTERIOR) == RELAXATION_TO_PRIOR_SPREAD ) then
    SPARE_PRIOR_SPREAD = next_copy_number(cnum)
 endif 
 
@@ -2412,16 +2420,16 @@ else
 endif
 
 if ( do_prior_inflate ) then
-   if ( inf_initial_from_restart(1)    ) &
+   if ( inf_initial_from_restart(PRIOR)    ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
-   if ( inf_sd_initial_from_restart(1) ) &
+   if ( inf_sd_initial_from_restart(PRIOR) ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
 endif
 
 if ( do_posterior_inflate ) then
-   if ( inf_initial_from_restart(2)    ) &
+   if ( inf_initial_from_restart(POSTERIOR)    ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
-   if ( inf_sd_initial_from_restart(2) ) &
+   if ( inf_sd_initial_from_restart(POSTERIOR) ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
@@ -2722,6 +2730,49 @@ if (output_inflation) then
 endif
 
 end subroutine set_copies
+
+
+!-------------------------------------------------------------------------------
+!> The infl_flavor namelist is a string, and specifies the inflation algorithm.
+!> The character string can either be the name associated with the type of inflation
+!> or the integer associated with the type of inflation. The string names of the
+!> inflation algorithms is based on what is declared in the adaptive_inflate_mod.f90
+!> which is repeated here for reference. 
+!>
+!> NO_INFLATION               = 0
+!> OBS_INFLATION              = 1    observation-space inflation (deprecated)
+!> VARYING_SS_INFLATION       = 2    spatially-varying state-space inflation
+!> SINGLE_SS_INFLATION        = 3    spatially-constant state-space inflation
+!> RELAXATION_TO_PRIOR_SPREAD = 4    (available only with posterior inflation)
+!> ENHANCED_SS_INFLATION      = 5    Inverse Gamma version of VARYING_SS_INFLATION
+
+function set_inflation_flavor(flavor_string) result(flavors)
+
+character(len=*), intent(in)  :: flavor_string(2)
+integer                       :: flavors(2)
+
+integer :: int_options(7) = (/ NO_INFLATION,               &
+                               OBS_INFLATION,              &
+                               VARYING_SS_INFLATION,       &
+                               SINGLE_SS_INFLATION,        &
+                               RELAXATION_TO_PRIOR_SPREAD, &
+                               RELAXATION_TO_PRIOR_SPREAD, &
+                               ENHANCED_SS_INFLATION       /)
+
+character(len=32) :: string_options(7) = (/ 'NO_INFLATION              ',&
+                                            'OBS_INFLATION             ',&
+                                            'VARYING_SS_INFLATION      ',&
+                                            'SINGLE_SS_INFLATION       ',&
+                                            'RELAXATION_TO_PRIOR_SPREAD',&
+                                            'RTPS                      ',&
+                                            'ENHANCED_SS_INFLATION     ' /)
+
+flavors(PRIOR)     = flex_parser(flavor_string(PRIOR),     &
+                          int_options, string_options, 'input_nml:inf_flavor(1)')
+flavors(POSTERIOR) = flex_parser(flavor_string(POSTERIOR), &
+                          int_options, string_options, 'input_nml:inf_flavor(2)')
+
+end function set_inflation_flavor
 
 
 !==================================================================

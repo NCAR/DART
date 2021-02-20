@@ -2346,15 +2346,10 @@ endif
 CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
                        PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
 
-! If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation (inflation_flavor = 4)
+! If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation
 ! then we need an extra copy to hold (save) the prior ensemble spread
 ! ENS_SD_COPY will be overwritten with the posterior spread before
-! applying the inflation algorithm; hence we must save the prior ensemble spread in a different copy
-write(*,*)'TJH inf_flavor(2) is ',inf_flavor(2)
-write(*,*)'TJH do_rtps_inflate(post_inflate) is ',do_rtps_inflate(post_inflate)
-if (do_rtps_inflate(post_inflate)) SPARE_PRIOR_SPREAD = next_copy_number(cnum)
-
-! ERROR DEBUG ... WHY IS THE PREVIOUS TEST FAILING ?
+! applying the inflation algorithm; must save the prior ensemble spread in a different copy
 if ( inflation_flavor(POSTERIOR) == RELAXATION_TO_PRIOR_SPREAD ) then
    SPARE_PRIOR_SPREAD = next_copy_number(cnum)
 endif
