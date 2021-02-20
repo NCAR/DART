@@ -52,25 +52,11 @@
           <a href="#REFERENCES">REFERENCES </a>~ 
           <a href="#NOTES">NOTES</a></font>
 <hr>
-<h2>module atmos_sulfur_hex_mod</h2>
+<h1>module atmos_sulfur_hex_mod</h1>
 <a name="HEADER"></a>
-<!-- BEGIN HEADER -->
-<div>
-<b>Contact:</b>&nbsp;<a href="mailto:jbg@gfdl.noaa.gov">
-   Jeff Greenblatt</a>
-<br>
-<b>Reviewers:</b>&nbsp;<a href="mailto:wfc@gfdl.noaa.gov">
-   William Cooke</a>
-<br>
-<b>Change History: </b>&nbsp;<a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
-<br>
-<b>Last Modified:</b>&nbsp;2002/06/14 16:58:21<br>
-<br>
-</div>
-<!-- END HEADER -->
 <a name="OVERVIEW"></a>
 <hr>
-<h4>OVERVIEW</h4>
+<h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
 <p class="text">
    This code allows the implementation of sulfur hexafluoride
@@ -85,7 +71,7 @@
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
 <hr>
-<h4>OTHER MODULES USED</h4>
+<h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
 <div>
 <pre>             fms_mod<br>    time_manager_mod<br>    diag_manager_mod<br>  tracer_manager_mod<br>   field_manager_mod<br>tracer_utilities_mod<br>       constants_mod</pre>
@@ -94,7 +80,7 @@
 <!-- BEGIN PUBLIC INTERFACE -->
 <a name="PUBLIC INTERFACE"></a>
 <hr>
-<h4>PUBLIC INTERFACE</h4>
+<h2>PUBLIC INTERFACE</h2>
 <div>
 <pre>use atmos_sulfur_hex_mod [, only:  atmos_sf6_sourcesink,<br>                                   atmos_sulfur_hex_init,<br>                                   sulfur_hex_end ]</pre>
 <dl>
@@ -116,7 +102,7 @@
 <!-- END PUBLIC INTERFACE -->
 <a name="PUBLIC DATA"></a>
 <hr>
-<h4>PUBLIC DATA</h4>
+<h2>PUBLIC DATA</h2>
 <!-- BEGIN PUBLIC DATA -->
 <div>None.<br>
 <br>
@@ -124,12 +110,12 @@
 <!-- END PUBLIC DATA -->
 <a name="PUBLIC ROUTINES"></a>
 <hr>
-<h4>PUBLIC ROUTINES</h4>
+<h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
 <ol type="a">
 <li>
 <a name="atmos_sf6_sourcesink"></a>
-<h4>atmos_sf6_sourcesink</h4>
+<h2>atmos_sf6_sourcesink</h2>
 <pre>
 <b>call atmos_sf6_sourcesink </b>(lon, lat, land, pwt, sf6, sf6_dt, Time, is, ie, js, je, kbot)</pre>
 <dl>
@@ -187,7 +173,7 @@
 </li>
 <li>
 <a name="atmos_sulfur_hex_init"></a>
-<h4>atmos_sulfur_hex_init</h4>
+<h2>atmos_sulfur_hex_init</h2>
 <pre>
 <b>call atmos_sulfur_hex_init </b>(lonb, latb, r, axes, Time, mask)</pre>
 <dl>
@@ -239,7 +225,7 @@
 </li>
 <li>
 <a name="sulfur_hex_end"></a>
-<h4>sulfur_hex_end</h4>
+<h2>sulfur_hex_end</h2>
 <pre>
 <b>call sulfur_hex_end </b>
 </pre>
@@ -262,7 +248,7 @@
 <!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a>
 <!-- BEGIN DATA SETS -->
 <hr>
-<h4>DATA SETS</h4>
+<h2>DATA SETS</h2>
 <div>
 <dl>
 <dt>Sulfur hexaflouride emissions</dt>
@@ -283,14 +269,14 @@
 <a name="ERROR MESSAGES"></a>
 <!-- BEGIN ERROR MESSAGES -->
 <hr>
-<h4>ERROR MESSAGES</h4>
+<h2>ERROR MESSAGES</h2>
 <div>None.<br>
 <br>
 </div>
 <!-- END ERROR MESSAGES -->
 <a name="REFERENCES"></a>
 <hr>
-<h4>REFERENCES</h4>
+<h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
 <div>
 <ol>
@@ -305,7 +291,7 @@
 <!-- END REFERENCES -->
 <a name="COMPILER SPECIFICS"></a>
 <hr>
-<h4>COMPILER SPECIFICS</h4>
+<h2>COMPILER SPECIFICS</h2>
 <!-- BEGIN COMPILER SPECIFICS -->
 <div>
         None.
@@ -314,7 +300,7 @@
 <!-- END COMPILER SPECIFICS -->
 <a name="PRECOMPILER OPTIONS"></a>
 <hr>
-<h4>PRECOMPILER OPTIONS</h4>
+<h2>PRECOMPILER OPTIONS</h2>
 <!-- BEGIN PRECOMPILER OPTIONS -->
 <div>
         None.
@@ -323,7 +309,7 @@
 <!-- END PRECOMPILER OPTIONS -->
 <a name="LOADER OPTIONS"></a>
 <hr>
-<h4>LOADER OPTIONS</h4>
+<h2>LOADER OPTIONS</h2>
 <!-- BEGIN LOADER -->
 <div>None.<br>
 <br>
@@ -331,7 +317,7 @@
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>
-<h4>TEST PROGRAM</h4>
+<h2>TEST PROGRAM</h2>
 <!-- BEGIN TEST PROGRAM -->
 <div>None.<br>
 </div>
@@ -339,7 +325,7 @@
 <!-- END TEST PROGRAM -->
 <a name="KNOWN BUGS"></a>
 <hr>
-<h4>KNOWN BUGS</h4>
+<h2>KNOWN BUGS</h2>
 <!-- BEGIN KNOWN BUGS -->
 <div>
         None.
@@ -348,7 +334,7 @@
 <!-- END KNOWN BUGS -->
 <a name="NOTES"></a>
 <hr>
-<h4>NOTES</h4>
+<h2>NOTES</h2>
 <!-- BEGIN NOTES -->
 <div>None.<br>
 </div>
@@ -356,7 +342,7 @@
 <!-- END NOTES -->
 <a name="FUTURE PLANS"></a>
 <hr>
-<h4>FUTURE PLANS</h4>
+<h2>FUTURE PLANS</h2>
 <!-- BEGIN FUTURE PLANS -->
 <div>
         None.

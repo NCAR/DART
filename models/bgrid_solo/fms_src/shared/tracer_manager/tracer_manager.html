@@ -52,27 +52,11 @@
           <a href="#REFERENCES">REFERENCES </a>~ 
           <a href="#NOTES">NOTES</a></font>
 <hr>
-<h2>module tracer_manager_mod</h2>
+<h1>module tracer_manager_mod</h1>
 <a name="HEADER"></a>
-<!-- BEGIN HEADER -->
-<div>
-<b>Contact:</b>&nbsp;<a href="mailto:wfc@gfdl.noaa.gov">
-   William Cooke</a>
-<br>
-<b>Reviewers:</b>&nbsp;<a href="mailto:mjh@gfdl.noaa.gov">
-   Matt Harrison</a>,&nbsp;
-    <a href="mailto:bw@gfdl.noaa.gov">
-   Bruce Wyman</a>
-<br>
-<b>Change History: </b>&nbsp;<a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
-<br>
-<b>Last Modified:</b>&nbsp;2002/06/11 18:44:40<br>
-<br>
-</div>
-<!-- END HEADER -->
 <a name="OVERVIEW"></a>
 <hr>
-<h4>OVERVIEW</h4>
+<h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
 <p class="text">
    Code to manage the simple addition of tracers to the FMS code.
@@ -105,7 +89,7 @@
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
 <hr>
-<h4>OTHER MODULES USED</h4>
+<h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
 <div>
 <pre>          mpp_mod<br>       mpp_io_mod<br>          fms_mod<br>field_manager_mod</pre>
@@ -114,7 +98,7 @@
 <!-- BEGIN PUBLIC INTERFACE -->
 <a name="PUBLIC INTERFACE"></a>
 <hr>
-<h4>PUBLIC INTERFACE</h4>
+<h2>PUBLIC INTERFACE</h2>
 <div>
 <pre>use tracer_manager_mod [, only:  tracer_manager_init,<br>                                 register_tracers,<br>                                 get_number_tracers,<br>                                 get_tracer_indices,<br>                                 get_tracer_index,<br>                                 assign_tracer_field,<br>                                 tracer_manager_end,<br>                                 get_tracer_field,<br>                                 get_tracer_tlevels,<br>                                 get_tracer_tendency,<br>                                 get_tracer_names,<br>                                 get_family_name,<br>                                 check_if_prognostic,<br>                                 find_family_members,<br>                                 add_members_to_family,<br>                                 split_family_into_members,<br>                                 set_tracer_profile,<br>                                 query_method,<br>                                 query_combined,<br>                                 set_tracer_atts ]</pre>
 <dl>
@@ -210,7 +194,7 @@
 <!-- END PUBLIC INTERFACE -->
 <a name="PUBLIC DATA"></a>
 <hr>
-<h4>PUBLIC DATA</h4>
+<h2>PUBLIC DATA</h2>
 <!-- BEGIN PUBLIC DATA -->
 <div>None.<br>
 <br>
@@ -218,12 +202,12 @@
 <!-- END PUBLIC DATA -->
 <a name="PUBLIC ROUTINES"></a>
 <hr>
-<h4>PUBLIC ROUTINES</h4>
+<h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
 <ol type="a">
 <li>
 <a name="tracer_manager_init"></a>
-<h4>tracer_manager_init</h4>
+<h2>tracer_manager_init</h2>
 <pre>
 <b>call tracer_manager_init </b>
 </pre>
@@ -240,7 +224,7 @@
 </li>
 <li>
 <a name="register_tracers"></a>
-<h4>register_tracers</h4>
+<h2>register_tracers</h2>
 <pre>
 <b>call register_tracers </b>(model, num_tracers,num_prog,num_diag,num_family)</pre>
 <dl>
@@ -288,7 +272,7 @@
 </li>
 <li>
 <a name="get_number_tracers"></a>
-<h4>get_number_tracers</h4>
+<h2>get_number_tracers</h2>
 <pre>
 <b>call get_number_tracers </b>(model, num_tracers,num_prog,num_diag,num_family)</pre>
 <dl>
@@ -336,7 +320,7 @@
 </li>
 <li>
 <a name="get_tracer_indices"></a>
-<h4>get_tracer_indices</h4>
+<h2>get_tracer_indices</h2>
 <pre>
 <b>call get_tracer_indices </b>(model, ind, prog_ind, diag_ind, fam_ind)</pre>
 <dl>
@@ -391,7 +375,7 @@
 </li>
 <li>
 <a name="get_tracer_index"></a>
-<h4>get_tracer_index</h4>
+<h2>get_tracer_index</h2>
 <pre>value= <b>get_tracer_index</b> (model, name, indices, verbose)</pre>
 <dl>
 <dt>
@@ -440,7 +424,7 @@
 </li>
 <li>
 <a name="assign_tracer_field"></a>
-<h4>assign_tracer_field</h4>
+<h2>assign_tracer_field</h2>
 <pre>
 <b>call assign_tracer_field </b>(model,index, data, data_tlevels, tendency)</pre>
 <dl>
@@ -486,7 +470,7 @@
 </li>
 <li>
 <a name="tracer_manager_end"></a>
-<h4>tracer_manager_end</h4>
+<h2>tracer_manager_end</h2>
 <pre>
 <b>call tracer_manager_end </b>
 </pre>
@@ -502,7 +486,7 @@
 </li>
 <li>
 <a name="get_tracer_field"></a>
-<h4>get_tracer_field</h4>
+<h2>get_tracer_field</h2>
 <pre>array= <b>get_tracer_field</b> (model, tracer_index)</pre>
 <dl>
 <dt>
@@ -541,7 +525,7 @@
 </li>
 <li>
 <a name="get_tracer_tlevels"></a>
-<h4>get_tracer_tlevels</h4>
+<h2>get_tracer_tlevels</h2>
 <pre>array= <b>get_tracer_tlevels</b> (model, tracer_index)</pre>
 <dl>
 <dt>
@@ -580,7 +564,7 @@
 </li>
 <li>
 <a name="get_tracer_tendency"></a>
-<h4>get_tracer_tendency</h4>
+<h2>get_tracer_tendency</h2>
 <pre>array= <b>get_tracer_tendency</b> (model, tracer_index)</pre>
 <dl>
 <dt>
@@ -619,7 +603,7 @@
 </li>
 <li>
 <a name="get_tracer_names"></a>
-<h4>get_tracer_names</h4>
+<h2>get_tracer_names</h2>
 <pre>
 <b>call get_tracer_names </b>(model,n,name,longname, units)</pre>
 <dl>
@@ -666,7 +650,7 @@
 </li>
 <li>
 <a name="get_family_name"></a>
-<h4>get_family_name</h4>
+<h2>get_family_name</h2>
 <pre>
 <b>call get_family_name </b>(model,n,name)</pre>
 <dl>
@@ -707,7 +691,7 @@
 </li>
 <li>
 <a name="check_if_prognostic"></a>
-<h4>check_if_prognostic</h4>
+<h2>check_if_prognostic</h2>
 <pre>logical = <b>check_if_prognostic</b> (model, n)</pre>
 <dl>
 <dt>
@@ -750,7 +734,7 @@
 </li>
 <li>
 <a name="find_family_members"></a>
-<h4>find_family_members</h4>
+<h2>find_family_members</h2>
 <pre>
 <b>call find_family_members </b>(model, family_name,is_family_member)</pre>
 <dl>
@@ -796,7 +780,7 @@
 </li>
 <li>
 <a name="add_members_to_family"></a>
-<h4>add_members_to_family</h4>
+<h2>add_members_to_family</h2>
 <pre>
 <b>call add_members_to_family </b>(model,family_name, cur, prev, next)</pre>
 <dl>
@@ -851,7 +835,7 @@
 </li>
 <li>
 <a name="split_family_into_members"></a>
-<h4>split_family_into_members</h4>
+<h2>split_family_into_members</h2>
 <pre>
 <b>call split_family_into_members </b>(model,family_name,cur,prev,next)</pre>
 <dl>
@@ -914,7 +898,7 @@
 </li>
 <li>
 <a name="set_tracer_profile"></a>
-<h4>set_tracer_profile</h4>
+<h2>set_tracer_profile</h2>
 <pre>
 <b>call set_tracer_profile </b>(model, n, surf_value, multiplier)</pre>
 <dl>
@@ -982,7 +966,7 @@
 </li>
 <li>
 <a name="query_method"></a>
-<h4>query_method</h4>
+<h2>query_method</h2>
 <pre>logical = <b>query_method</b> (method_type, model, n, name, control)</pre>
 <dl>
 <dt>
@@ -1065,7 +1049,7 @@
 </li>
 <li>
 <a name="query_combined"></a>
-<h4>query_combined</h4>
+<h2>query_combined</h2>
 <pre>logical = <b>query_combined</b> (model, index)</pre>
 <dl>
 <dt>
@@ -1106,7 +1090,7 @@
 </li>
 <li>
 <a name="set_tracer_atts"></a>
-<h4>set_tracer_atts</h4>
+<h2>set_tracer_atts</h2>
 <pre>
 <b>call set_tracer_atts </b>(model, name, longname, units)</pre>
 <dl>
@@ -1163,7 +1147,7 @@
 <!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a>
 <!-- BEGIN DATA SETS -->
 <hr>
-<h4>DATA SETS</h4>
+<h2>DATA SETS</h2>
 <div>None.<br>
 <br>
 </div>
@@ -1171,7 +1155,7 @@
 <a name="ERROR MESSAGES"></a>
 <!-- BEGIN ERROR MESSAGES -->
 <hr>
-<h4>ERROR MESSAGES</h4>
+<h2>ERROR MESSAGES</h2>
 <div>
 <dl>
 <dt>

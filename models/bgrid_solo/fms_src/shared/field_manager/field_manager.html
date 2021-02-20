@@ -52,23 +52,10 @@
           <a href="#REFERENCES">REFERENCES </a>~ 
           <a href="#NOTES">NOTES</a></font>
 <hr>
-<h2>module field_manager_mod</h2>
-<a name="HEADER"></a>
-<!-- BEGIN HEADER -->
-<div>
-<b>Contact:&nbsp;</b><a href="mailto:wfc@gfdl.noaa.gov">   William Cooke </a>,&nbsp;
-    <a href="mailto:mh2@gfdl.noaa.gov">   Matthew Harrison </a>
-<br>
-<b>Reviewers:&nbsp;</b>
-<br>
-<b>Change History:&nbsp;</b><a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi">WebCVS Log home</a>
-<br>
-<br>
-</div>
-<!-- END HEADER -->
+<h1>module field_manager_mod</h1>
 <a name="OVERVIEW"></a>
 <hr>
-<h4>OVERVIEW</h4>
+<h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
 <p class="text">   The field manager reads entries from a field table and stores this information along with the type 
    of field it belongs to. This allows the component models to query the field manager to see if 
@@ -138,7 +125,7 @@
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
 <hr>
-<h4>OTHER MODULES USED</h4>
+<h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
 <div>
 <pre>   mpp_mod<br>mpp_io_mod<br>   fms_mod</pre>
@@ -147,7 +134,7 @@
 <!-- BEGIN PUBLIC INTERFACE -->
 <a name="PUBLIC INTERFACE"></a>
 <hr>
-<h4>PUBLIC INTERFACE</h4>
+<h2>PUBLIC INTERFACE</h2>
 <div>
 <pre>use field_manager_mod [, only:  field_manager_init,<br>                                field_manager_end,<br>                                find_field_index,<br>                                get_field_info,<br>                                get_field_method,<br>                                get_field_methods,<br>                                parse ]</pre>
 <dl>
@@ -179,7 +166,7 @@
 <!-- END PUBLIC INTERFACE -->
 <a name="PUBLIC DATA"></a>
 <hr>
-<h4>PUBLIC DATA</h4>
+<h2>PUBLIC DATA</h2>
 <!-- BEGIN PUBLIC DATA -->
 <div>
 <table align="center" cellspacing="2" CELLPADDING="2" BORDER="2">
@@ -210,12 +197,12 @@
 <!-- END PUBLIC DATA -->
 <a name="PUBLIC ROUTINES"></a>
 <hr>
-<h4>PUBLIC ROUTINES</h4>
+<h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
 <ol type="a">
 <li>
 <a name="field_manager_init"></a>
-<h4>field_manager_init</h4>
+<h2>field_manager_init</h2>
 <pre>
 <b>call field_manager_init </b>(nfields, table_name)</pre>
 <dl>
@@ -255,7 +242,7 @@
 </li>
 <li>
 <a name="field_manager_end"></a>
-<h4>field_manager_end</h4>
+<h2>field_manager_end</h2>
 <pre>
 <b>call field_manager_end </b>
 </pre>
@@ -271,7 +258,7 @@
 </li>
 <li>
 <a name="find_field_index"></a>
-<h4>find_field_index</h4>
+<h2>find_field_index</h2>
 <pre>value= <b>find_field_index</b> ( model, field_name )</pre>
 <dl>
 <dt>
@@ -297,7 +284,7 @@
 </li>
 <li>
 <a name="get_field_info"></a>
-<h4>get_field_info</h4>
+<h2>get_field_info</h2>
 <pre>
 <b>call get_field_info </b>( n,fld_type,fld_name,model,num_methods )</pre>
 <dl>
@@ -344,7 +331,7 @@
 </li>
 <li>
 <a name="get_field_method"></a>
-<h4>get_field_method</h4>
+<h2>get_field_method</h2>
 <pre>
 <b>call get_field_method </b>( n,m,method )</pre>
 <dl>
@@ -373,7 +360,7 @@
 </li>
 <li>
 <a name="get_field_methods"></a>
-<h4>get_field_methods</h4>
+<h2>get_field_methods</h2>
 <pre>
 <b>call get_field_methods </b>( n,methods )</pre>
 <dl>
@@ -399,7 +386,7 @@
 </li>
 <li>
 <a name="parse"></a>
-<h4>parse</h4>
+<h2>parse</h2>
 <pre>number = <b>parse</b> (text, label, value)</pre>
 <dl>
 <dt>
@@ -454,7 +441,7 @@
 <!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a>
 <!-- BEGIN DATA SETS -->
 <hr>
-<h4>DATA SETS</h4>
+<h2>DATA SETS</h2>
 <div>None.<br>
 <br>
 </div>
@@ -462,7 +449,7 @@
 <a name="ERROR MESSAGES"></a>
 <!-- BEGIN ERROR MESSAGES -->
 <hr>
-<h4>ERROR MESSAGES</h4>
+<h2>ERROR MESSAGES</h2>
 <div>
 <dl>
 <dt>

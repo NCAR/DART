@@ -52,25 +52,11 @@
           <a href="#REFERENCES">REFERENCES </a>~ 
           <a href="#NOTES">NOTES</a></font>
 <hr>
-<h2>module mpp_domains_mod</h2>
+<h1>module mpp_domains_mod</h1>
 <a name="HEADER"></a>
-<!-- BEGIN HEADER -->
-<div>
-<b>Contact:&nbsp;</b><a href="mailto:vb@gfdl.noaa.gov">   V. Balaji </a>
-<br>
-<b>Reviewers:&nbsp;</b>
-<br>
-<b>Change History:&nbsp;</b><a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
-<br>
-<b>RCS Log:&nbsp;</b><a href="http://www.gfdl.noaa.gov/~vb/changes_models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html">RCS Log</a>
-<br>
-<b>Last Modified:&nbsp;</b>2002/07/19 18:10:06<br>
-<br>
-</div>
-<!-- END HEADER -->
 <a name="OVERVIEW"></a>
 <hr>
-<h4>OVERVIEW</h4>
+<h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
 <p class="text"> 
 <tt>mpp_domains_mod</tt>   is a set of simple calls for domain
@@ -100,7 +86,7 @@
    Design toward typical use in climate/weather CFD codes.
    <br>
 <br> 
-<h4>Domains</h4>   I have assumed that domain decomposition will mainly be in 2
+<h2>Domains</h2>   I have assumed that domain decomposition will mainly be in 2
    horizontal dimensions, which will in general be the two
    fastest-varying indices. There is a separate implementation of 1D
    decomposition on the fastest-varying index, and 1D decomposition on
@@ -151,7 +137,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
 <hr>
-<h4>OTHER MODULES USED</h4>
+<h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
 <div>
 <pre>mpp_mod</pre>
@@ -160,7 +146,7 @@ some elements are repeated below if they are needed once per domain
 <!-- BEGIN PUBLIC INTERFACE -->
 <a name="PUBLIC INTERFACE"></a>
 <hr>
-<h4>PUBLIC INTERFACE</h4>
+<h2>PUBLIC INTERFACE</h2>
 <div>
 <pre>use mpp_domains_mod [, only:  mpp_define_domains,<br>                              mpp_update_domains,<br>                              mpp_redistribute,<br>                              mpp_global_field,<br>                              mpp_global_max,<br>                              mpp_global_sum,<br>                              operator,<br>                              mpp_get_compute_domain,<br>                              mpp_get_compute_domains,<br>                              mpp_get_data_domain,<br>                              mpp_get_global_domain,<br>                              mpp_define_layout,<br>                              mpp_get_pelist,<br>                              mpp_get_layout,<br>                              mpp_domains_init,<br>                              mpp_domains_set_stack_size,<br>                              mpp_domains_exit,<br>                              mpp_get_domain_components ]</pre>
 <dl>
@@ -224,7 +210,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END PUBLIC INTERFACE -->
 <a name="PUBLIC DATA"></a>
 <hr>
-<h4>PUBLIC DATA</h4>
+<h2>PUBLIC DATA</h2>
 <!-- BEGIN PUBLIC DATA -->
 <div>None.<br>
 <br>
@@ -232,12 +218,12 @@ some elements are repeated below if they are needed once per domain
 <!-- END PUBLIC DATA -->
 <a name="PUBLIC ROUTINES"></a>
 <hr>
-<h4>PUBLIC ROUTINES</h4>
+<h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
 <ol type="a">
 <li>
 <a name="mpp_define_domains"></a>
-<h4>mpp_define_domains</h4>
+<h2>mpp_define_domains</h2>
 <pre>
 <b>call mpp_define_domains </b>( global_indices, ndivs, domain, &amp; pelist, flags, halo, extent, maskmap )</pre>
 <pre>
@@ -403,7 +389,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_update_domains"></a>
-<h4>mpp_update_domains</h4>
+<h2>mpp_update_domains</h2>
 <pre>
 <b>call mpp_update_domains </b>( field, domain, flags )</pre>
 <pre>
@@ -481,7 +467,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_redistribute"></a>
-<h4>mpp_redistribute</h4>
+<h2>mpp_redistribute</h2>
 <pre>
 <b>call mpp_redistribute </b>( domain_in, field_in, domain_out, field_out )</pre>
 <dl>
@@ -520,7 +506,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_global_field"></a>
-<h4>mpp_global_field</h4>
+<h2>mpp_global_field</h2>
 <pre>
 <b>call mpp_global_field </b>( domain, local, global, flags )</pre>
 <dl>
@@ -571,7 +557,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_global_max"></a>
-<h4>mpp_global_max</h4>
+<h2>mpp_global_max</h2>
 <pre> 
 <b>mpp_global_max</b> ( domain, field, locus )</pre>
 <dl>
@@ -622,7 +608,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_global_sum"></a>
-<h4>mpp_global_sum</h4>
+<h2>mpp_global_sum</h2>
 <pre>
 <b>call mpp_global_sum </b>( domain, field, flags )</pre>
 <dl>
@@ -669,7 +655,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="operator"></a>
-<h4>operator</h4>
+<h2>operator</h2>
 <dl>
 <dt>
 <b>DESCRIPTION</b>
@@ -695,7 +681,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_get_compute_domain"></a>
-<h4>mpp_get_compute_domain</h4>
+<h2>mpp_get_compute_domain</h2>
 <pre>
 <b>call mpp_get_compute_domain </b>
 </pre>
@@ -712,7 +698,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_get_compute_domains"></a>
-<h4>mpp_get_compute_domains</h4>
+<h2>mpp_get_compute_domains</h2>
 <pre>
 <b>call mpp_get_compute_domains </b>( domain, xbegin, xend, xsize, &amp; ybegin, yend, ysize )</pre>
 <dl>
@@ -754,7 +740,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_get_data_domain"></a>
-<h4>mpp_get_data_domain</h4>
+<h2>mpp_get_data_domain</h2>
 <pre>
 <b>call mpp_get_data_domain </b>
 </pre>
@@ -771,7 +757,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_get_global_domain"></a>
-<h4>mpp_get_global_domain</h4>
+<h2>mpp_get_global_domain</h2>
 <pre>
 <b>call mpp_get_global_domain </b>
 </pre>
@@ -788,7 +774,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_define_layout"></a>
-<h4>mpp_define_layout</h4>
+<h2>mpp_define_layout</h2>
 <pre>
 <b>call mpp_define_layout </b>( global_indices, ndivs, layout )</pre>
 <dl>
@@ -839,7 +825,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_get_pelist"></a>
-<h4>mpp_get_pelist</h4>
+<h2>mpp_get_pelist</h2>
 <dl>
 <dt>
 <b>DESCRIPTION</b>
@@ -887,7 +873,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_get_layout"></a>
-<h4>mpp_get_layout</h4>
+<h2>mpp_get_layout</h2>
 <pre>
 <b>call mpp_get_layout </b>( domain, layout )</pre>
 <dl>
@@ -929,7 +915,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_domains_init"></a>
-<h4>mpp_domains_init</h4>
+<h2>mpp_domains_init</h2>
 <pre>
 <b>call mpp_domains_init </b>(flags)</pre>
 <dl>
@@ -964,7 +950,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_domains_set_stack_size"></a>
-<h4>mpp_domains_set_stack_size</h4>
+<h2>mpp_domains_set_stack_size</h2>
 <pre>
 <b>call mpp_domains_set_stack_size </b>(n)</pre>
 <dl>
@@ -995,7 +981,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_domains_exit"></a>
-<h4>mpp_domains_exit</h4>
+<h2>mpp_domains_exit</h2>
 <pre>
 <b>call mpp_domains_exit </b>()</pre>
 <dl>
@@ -1010,7 +996,7 @@ some elements are repeated below if they are needed once per domain
 </li>
 <li>
 <a name="mpp_get_domain_components"></a>
-<h4>mpp_get_domain_components</h4>
+<h2>mpp_get_domain_components</h2>
 <pre>
 <b>call mpp_get_domain_components </b>( domain, x, y )</pre>
 <dl>
@@ -1056,7 +1042,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a>
 <!-- BEGIN DATA SETS -->
 <hr>
-<h4>DATA SETS</h4>
+<h2>DATA SETS</h2>
 <div>None.<br>
 <br>
 </div>
@@ -1064,14 +1050,14 @@ some elements are repeated below if they are needed once per domain
 <a name="ERROR MESSAGES"></a>
 <!-- BEGIN ERROR MESSAGES -->
 <hr>
-<h4>ERROR MESSAGES</h4>
+<h2>ERROR MESSAGES</h2>
 <div>None.<br>
 <br>
 </div>
 <!-- END ERROR MESSAGES -->
 <a name="REFERENCES"></a>
 <hr>
-<h4>REFERENCES</h4>
+<h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
 <div>
         None.
@@ -1080,7 +1066,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END REFERENCES -->
 <a name="COMPILER SPECIFICS"></a>
 <hr>
-<h4>COMPILER SPECIFICS</h4>
+<h2>COMPILER SPECIFICS</h2>
 <!-- BEGIN COMPILER SPECIFICS -->
 <div>
 <dl>
@@ -1094,7 +1080,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END COMPILER SPECIFICS -->
 <a name="PRECOMPILER OPTIONS"></a>
 <hr>
-<h4>PRECOMPILER OPTIONS</h4>
+<h2>PRECOMPILER OPTIONS</h2>
 <!-- BEGIN PRECOMPILER OPTIONS -->
 <div>
 <dl>
@@ -1111,7 +1097,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END PRECOMPILER OPTIONS -->
 <a name="LOADER OPTIONS"></a>
 <hr>
-<h4>LOADER OPTIONS</h4>
+<h2>LOADER OPTIONS</h2>
 <!-- BEGIN LOADER -->
 <div>
 <p>   The    source consists of the main source file    and also requires the following include files:    GFDL users can check it out of the main CVS repository as part of
@@ -1124,7 +1110,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>
-<h4>TEST PROGRAM</h4>
+<h2>TEST PROGRAM</h2>
 <!-- BEGIN TEST PROGRAM -->
 <div>None.<br>
 </div>
@@ -1132,7 +1118,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END TEST PROGRAM -->
 <a name="KNOWN BUGS"></a>
 <hr>
-<h4>KNOWN BUGS</h4>
+<h2>KNOWN BUGS</h2>
 <!-- BEGIN KNOWN BUGS -->
 <div>
         None.
@@ -1141,7 +1127,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END KNOWN BUGS -->
 <a name="NOTES"></a>
 <hr>
-<h4>NOTES</h4>
+<h2>NOTES</h2>
 <!-- BEGIN NOTES -->
 <div>None.<br>
 </div>
@@ -1149,7 +1135,7 @@ some elements are repeated below if they are needed once per domain
 <!-- END NOTES -->
 <a name="FUTURE PLANS"></a>
 <hr>
-<h4>FUTURE PLANS</h4>
+<h2>FUTURE PLANS</h2>
 <!-- BEGIN FUTURE PLANS -->
 <div>
         None.

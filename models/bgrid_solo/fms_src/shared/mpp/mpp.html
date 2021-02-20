@@ -52,25 +52,10 @@
           <a href="#REFERENCES">REFERENCES </a>~ 
           <a href="#NOTES">NOTES</a></font>
 <hr>
-<h2>module mpp_mod</h2>
-<a name="HEADER"></a>
-<!-- BEGIN HEADER -->
-<div>
-<b>Contact:&nbsp;</b><a href="mailto:vb@gfdl.noaa.gov">   V. Balaji </a>
-<br>
-<b>Reviewers:&nbsp;</b>
-<br>
-<b>Change History:&nbsp;</b><a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
-<br>
-<b>RCS Log:&nbsp;</b><a href="http://www.gfdl.noaa.gov/~vb/changes_models/bgrid_solo/fms_src/shared/mpp/mpp.html">RCS Log</a>
-<br>
-<b>Last Modified:&nbsp;</b>2002/07/19 18:10:05<br>
-<br>
-</div>
-<!-- END HEADER -->
+<h1>module mpp_mod</h1>
 <a name="OVERVIEW"></a>
 <hr>
-<h4>OVERVIEW</h4>
+<h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
 <p class="text"> 
 <tt>mpp_mod</tt>, is a set of simple calls to provide a uniform interface
@@ -175,7 +160,7 @@
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
 <hr>
-<h4>OTHER MODULES USED</h4>
+<h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
 <div>
 <pre>shmem_interface<br>            mpi</pre>
@@ -184,7 +169,7 @@
 <!-- BEGIN PUBLIC INTERFACE -->
 <a name="PUBLIC INTERFACE"></a>
 <hr>
-<h4>PUBLIC INTERFACE</h4>
+<h2>PUBLIC INTERFACE</h2>
 <div>   F90 is a strictly-typed language, and the syntax pass of the
    compiler requires matching of type, kind and rank (TKR). Most calls
    listed here use a generic type, shown here as <tt>MPP_TYPE_</tt>. This
@@ -254,7 +239,7 @@
 <!-- END PUBLIC INTERFACE -->
 <a name="PUBLIC DATA"></a>
 <hr>
-<h4>PUBLIC DATA</h4>
+<h2>PUBLIC DATA</h2>
 <!-- BEGIN PUBLIC DATA -->
 <div>None.<br>
 <br>
@@ -262,12 +247,12 @@
 <!-- END PUBLIC DATA -->
 <a name="PUBLIC ROUTINES"></a>
 <hr>
-<h4>PUBLIC ROUTINES</h4>
+<h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
 <ol type="a">
 <li>
 <a name="mpp_max"></a>
-<h4>mpp_max</h4>
+<h2>mpp_max</h2>
 <pre>
 <b>call mpp_max </b>( a, pelist )</pre>
 <dl>
@@ -297,7 +282,7 @@
 </li>
 <li>
 <a name="mpp_sum"></a>
-<h4>mpp_sum</h4>
+<h2>mpp_sum</h2>
 <pre>
 <b>call mpp_sum </b>( a, length, pelist )</pre>
 <dl>
@@ -353,7 +338,7 @@
 </li>
 <li>
 <a name="mpp_transmit"></a>
-<h4>mpp_transmit</h4>
+<h2>mpp_transmit</h2>
 <pre>
 <b>call mpp_transmit </b>( put_data, put_len, put_pe, get_data, get_len, get_pe )</pre>
 <dl>
@@ -425,7 +410,7 @@
 </li>
 <li>
 <a name="mpp_broadcast"></a>
-<h4>mpp_broadcast</h4>
+<h2>mpp_broadcast</h2>
 <pre>
 <b>call mpp_broadcast </b>( data, length, from_pe, pelist )</pre>
 <dl>
@@ -483,7 +468,7 @@
 </li>
 <li>
 <a name="mpp_chksum"></a>
-<h4>mpp_chksum</h4>
+<h2>mpp_chksum</h2>
 <pre> 
 <b>mpp_chksum</b> ( var, pelist )</pre>
 <dl>
@@ -538,7 +523,7 @@
 </li>
 <li>
 <a name="mpp_error"></a>
-<h4>mpp_error</h4>
+<h2>mpp_error</h2>
 <pre>
 <b>call mpp_error </b>( errortype, routine, errormsg )</pre>
 <dl>
@@ -597,7 +582,7 @@
 </li>
 <li>
 <a name="mpp_init"></a>
-<h4>mpp_init</h4>
+<h2>mpp_init</h2>
 <pre>
 <b>call mpp_init </b>( flags )</pre>
 <dl>
@@ -627,7 +612,7 @@
 </li>
 <li>
 <a name="stdin"></a>
-<h4>stdin</h4>
+<h2>stdin</h2>
 <pre> 
 <b>stdin</b> ()</pre>
 <dl>
@@ -644,7 +629,7 @@
 </li>
 <li>
 <a name="mpp_exit"></a>
-<h4>mpp_exit</h4>
+<h2>mpp_exit</h2>
 <pre>
 <b>call mpp_exit </b>()</pre>
 <dl>
@@ -662,7 +647,7 @@
 </li>
 <li>
 <a name="mpp_pe"></a>
-<h4>mpp_pe</h4>
+<h2>mpp_pe</h2>
 <pre> 
 <b>mpp_pe</b> ()</pre>
 <dl>
@@ -679,7 +664,7 @@
 </li>
 <li>
 <a name="mpp_npes"></a>
-<h4>mpp_npes</h4>
+<h2>mpp_npes</h2>
 <pre> 
 <b>mpp_npes</b> ()</pre>
 <dl>
@@ -694,7 +679,7 @@
 </li>
 <li>
 <a name="mpp_declare_pelist"></a>
-<h4>mpp_declare_pelist</h4>
+<h2>mpp_declare_pelist</h2>
 <pre>
 <b>call mpp_declare_pelist </b>( pelist,name )</pre>
 <dl>
@@ -734,7 +719,7 @@
 </li>
 <li>
 <a name="mpp_set_current_pelist"></a>
-<h4>mpp_set_current_pelist</h4>
+<h2>mpp_set_current_pelist</h2>
 <pre>
 <b>call mpp_set_current_pelist </b>( pelist )</pre>
 <dl>
@@ -770,7 +755,7 @@
 </li>
 <li>
 <a name="mpp_clock_set_grain"></a>
-<h4>mpp_clock_set_grain</h4>
+<h2>mpp_clock_set_grain</h2>
 <pre>
 <b>call mpp_clock_set_grain </b>( grain )</pre>
 <dl>
@@ -864,7 +849,7 @@
 </li>
 <li>
 <a name="mpp_sync"></a>
-<h4>mpp_sync</h4>
+<h2>mpp_sync</h2>
 <pre>
 <b>call mpp_sync </b>( pelist )</pre>
 <dl>
@@ -899,7 +884,7 @@
 </li>
 <li>
 <a name="mpp_sync_self"></a>
-<h4>mpp_sync_self</h4>
+<h2>mpp_sync_self</h2>
 <dl>
 <dt>
 <b>DESCRIPTION</b>
@@ -930,7 +915,7 @@
 </li>
 <li>
 <a name="mpp_malloc"></a>
-<h4>mpp_malloc</h4>
+<h2>mpp_malloc</h2>
 <pre>
 <b>call mpp_malloc </b>( ptr, newlen, len )</pre>
 <dl>
@@ -980,7 +965,7 @@
 </li>
 <li>
 <a name="mpp_set_stack_size"></a>
-<h4>mpp_set_stack_size</h4>
+<h2>mpp_set_stack_size</h2>
 <pre>
 <b>call mpp_set_stack_size </b>(n)</pre>
 <dl>
@@ -1041,7 +1026,7 @@
 <!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a>
 <!-- BEGIN DATA SETS -->
 <hr>
-<h4>DATA SETS</h4>
+<h2>DATA SETS</h2>
 <div>None.<br>
 <br>
 </div>
@@ -1049,14 +1034,14 @@
 <a name="ERROR MESSAGES"></a>
 <!-- BEGIN ERROR MESSAGES -->
 <hr>
-<h4>ERROR MESSAGES</h4>
+<h2>ERROR MESSAGES</h2>
 <div>None.<br>
 <br>
 </div>
 <!-- END ERROR MESSAGES -->
 <a name="REFERENCES"></a>
 <hr>
-<h4>REFERENCES</h4>
+<h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
 <div>
         None.
@@ -1065,7 +1050,7 @@
 <!-- END REFERENCES -->
 <a name="COMPILER SPECIFICS"></a>
 <hr>
-<h4>COMPILER SPECIFICS</h4>
+<h2>COMPILER SPECIFICS</h2>
 <!-- BEGIN COMPILER SPECIFICS -->
 <div>
 <dl>
@@ -1121,7 +1106,7 @@
 <!-- END COMPILER SPECIFICS -->
 <a name="PRECOMPILER OPTIONS"></a>
 <hr>
-<h4>PRECOMPILER OPTIONS</h4>
+<h2>PRECOMPILER OPTIONS</h2>
 <!-- BEGIN PRECOMPILER OPTIONS -->
 <div>
 <dl>
@@ -1147,7 +1132,7 @@
 <!-- END PRECOMPILER OPTIONS -->
 <a name="LOADER OPTIONS"></a>
 <hr>
-<h4>LOADER OPTIONS</h4>
+<h2>LOADER OPTIONS</h2>
 <!-- BEGIN LOADER -->
 <div>
 <p>   The    source consists of the main source file    and also requires the following include files:
@@ -1161,7 +1146,7 @@
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>
-<h4>TEST PROGRAM</h4>
+<h2>TEST PROGRAM</h2>
 <!-- BEGIN TEST PROGRAM -->
 <div>None.<br>
 </div>
@@ -1169,7 +1154,7 @@
 <!-- END TEST PROGRAM -->
 <a name="KNOWN BUGS"></a>
 <hr>
-<h4>KNOWN BUGS</h4>
+<h2>KNOWN BUGS</h2>
 <!-- BEGIN KNOWN BUGS -->
 <div>
 <p>   The <tt>SYSTEM_CLOCK</tt>   intrinsic has a limited range before the
@@ -1182,7 +1167,7 @@
 <!-- END KNOWN BUGS -->
 <a name="NOTES"></a>
 <hr>
-<h4>NOTES</h4>
+<h2>NOTES</h2>
 <!-- BEGIN NOTES -->
 <div>None.<br>
 </div>
@@ -1190,7 +1175,7 @@
 <!-- END NOTES -->
 <a name="FUTURE PLANS"></a>
 <hr>
-<h4>FUTURE PLANS</h4>
+<h2>FUTURE PLANS</h2>
 <!-- BEGIN FUTURE PLANS -->
 <div>
         None.

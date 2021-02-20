@@ -52,22 +52,10 @@
           <a href="#REFERENCES">REFERENCES </a>~ 
           <a href="#NOTES">NOTES</a></font>
 <hr>
-<h2>module diag_manager_mod</h2>
-<a name="HEADER"></a>
-<!-- BEGIN HEADER -->
-<div>
-<b>Contact:</b>&nbsp;<a href="mailto:mh@gfdl.noaa.gov">   Matt Harrison </a>
-<br>
-<b>Reviewers:</b>&nbsp;<br>
-<b>Change History: </b>&nbsp;<a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
-<br>
-<b>Last Modified:</b>&nbsp;2002/03/22 00:08:55<br>
-<br>
-</div>
-<!-- END HEADER -->
+<h1>module diag_manager_mod</h1>
 <a name="OVERVIEW"></a>
 <hr>
-<h4>OVERVIEW</h4>
+<h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
 <p class="text">   &lt;TT&gt;diag_manager_mod&lt;/TT&gt; is a set of simple calls for parallel diagnostics on
    distributed systems. It is geared toward the writing of data in netCDF format. </p>
@@ -98,7 +86,7 @@
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
 <hr>
-<h4>OTHER MODULES USED</h4>
+<h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
 <div>
 <pre>time_manager_mod<br>      mpp_io_mod<br>         fms_mod<br>   diag_axis_mod<br> diag_output_mod</pre>
@@ -107,7 +95,7 @@
 <!-- BEGIN PUBLIC INTERFACE -->
 <a name="PUBLIC INTERFACE"></a>
 <hr>
-<h4>PUBLIC INTERFACE</h4>
+<h2>PUBLIC INTERFACE</h2>
 <div>
 <pre>use diag_manager_mod [, only:  send_data,<br>                               register_diag_field,<br>                               register_static_field,<br>                               diag_manager_end,<br>                               diag_manager_init,<br>                               get_base_time,<br>                               get_base_date,<br>                               need_data ]</pre>
 <dl>
@@ -141,7 +129,7 @@
 <!-- END PUBLIC INTERFACE -->
 <a name="PUBLIC DATA"></a>
 <hr>
-<h4>PUBLIC DATA</h4>
+<h2>PUBLIC DATA</h2>
 <!-- BEGIN PUBLIC DATA -->
 <div>None.<br>
 <br>
@@ -149,12 +137,12 @@
 <!-- END PUBLIC DATA -->
 <a name="PUBLIC ROUTINES"></a>
 <hr>
-<h4>PUBLIC ROUTINES</h4>
+<h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
 <ol type="a">
 <li>
 <a name="send_data"></a>
-<h4>send_data</h4>
+<h2>send_data</h2>
 <dl>
 <dt>
 <b>DESCRIPTION</b>
@@ -202,7 +190,7 @@
 </li>
 <li>
 <a name="register_diag_field"></a>
-<h4>register_diag_field</h4>
+<h2>register_diag_field</h2>
 <pre> 
 <b>register_diag_field</b> (module_name, field_name, axes, init_time, &amp; long_name, units, missing_value, range)</pre>
 <dl>
@@ -257,7 +245,7 @@
 </li>
 <li>
 <a name="register_static_field"></a>
-<h4>register_static_field</h4>
+<h2>register_static_field</h2>
 <pre> 
 <b>register_static_field</b> (module_name, field_name, axes, &amp; long_name, units, missing_value, range, require)</pre>
 <dl>
@@ -307,7 +295,7 @@
 </li>
 <li>
 <a name="diag_manager_end"></a>
-<h4>diag_manager_end</h4>
+<h2>diag_manager_end</h2>
 <pre>
 <b>call diag_manager_end </b>(time)</pre>
 <dl>
@@ -333,7 +321,7 @@
 </li>
 <li>
 <a name="diag_manager_init"></a>
-<h4>diag_manager_init</h4>
+<h2>diag_manager_init</h2>
 <pre>
 <b>call diag_manager_init </b>()</pre>
 <dl>
@@ -347,7 +335,7 @@
 </li>
 <li>
 <a name="get_base_time"></a>
-<h4>get_base_time</h4>
+<h2>get_base_time</h2>
 <pre>
 <b>call get_base_time </b>()</pre>
 <dl>
@@ -361,7 +349,7 @@
 </li>
 <li>
 <a name="get_base_date"></a>
-<h4>get_base_date</h4>
+<h2>get_base_date</h2>
 <pre>
 <b>call get_base_date </b>(year, month, day, hour, minute, second)</pre>
 <dl>
@@ -375,7 +363,7 @@
 </li>
 <li>
 <a name="need_data"></a>
-<h4>need_data</h4>
+<h2>need_data</h2>
 <pre> 
 <b>need_data</b> (diag_field_id,next_model_time)</pre>
 <dl>
@@ -414,7 +402,7 @@
 <!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a>
 <!-- BEGIN DATA SETS -->
 <hr>
-<h4>DATA SETS</h4>
+<h2>DATA SETS</h2>
 <div>None.<br>
 <br>
 </div>
@@ -422,14 +410,14 @@
 <a name="ERROR MESSAGES"></a>
 <!-- BEGIN ERROR MESSAGES -->
 <hr>
-<h4>ERROR MESSAGES</h4>
+<h2>ERROR MESSAGES</h2>
 <div>None.<br>
 <br>
 </div>
 <!-- END ERROR MESSAGES -->
 <a name="REFERENCES"></a>
 <hr>
-<h4>REFERENCES</h4>
+<h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
 <div>
         None.
@@ -438,7 +426,7 @@
 <!-- END REFERENCES -->
 <a name="COMPILER SPECIFICS"></a>
 <hr>
-<h4>COMPILER SPECIFICS</h4>
+<h2>COMPILER SPECIFICS</h2>
 <!-- BEGIN COMPILER SPECIFICS -->
 <div>
 <dl>
@@ -454,7 +442,7 @@
 <!-- END COMPILER SPECIFICS -->
 <a name="PRECOMPILER OPTIONS"></a>
 <hr>
-<h4>PRECOMPILER OPTIONS</h4>
+<h2>PRECOMPILER OPTIONS</h2>
 <!-- BEGIN PRECOMPILER OPTIONS -->
 <div>
 <dl>
@@ -466,7 +454,7 @@
 <!-- END PRECOMPILER OPTIONS -->
 <a name="LOADER OPTIONS"></a>
 <hr>
-<h4>LOADER OPTIONS</h4>
+<h2>LOADER OPTIONS</h2>
 <!-- BEGIN LOADER -->
 <div>
 <p>   GFDL users can checkout diag_manager_mod using the cvs command
@@ -476,7 +464,7 @@
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>
-<h4>TEST PROGRAM</h4>
+<h2>TEST PROGRAM</h2>
 <!-- BEGIN TEST PROGRAM -->
 <div>None.<br>
 </div>
@@ -484,7 +472,7 @@
 <!-- END TEST PROGRAM -->
 <a name="KNOWN BUGS"></a>
 <hr>
-<h4>KNOWN BUGS</h4>
+<h2>KNOWN BUGS</h2>
 <!-- BEGIN KNOWN BUGS -->
 <div>
         None.
@@ -493,7 +481,7 @@
 <!-- END KNOWN BUGS -->
 <a name="NOTES"></a>
 <hr>
-<h4>NOTES</h4>
+<h2>NOTES</h2>
 <!-- BEGIN NOTES -->
 <div>None.<br>
 </div>
@@ -501,7 +489,7 @@
 <!-- END NOTES -->
 <a name="FUTURE PLANS"></a>
 <hr>
-<h4>FUTURE PLANS</h4>
+<h2>FUTURE PLANS</h2>
 <!-- BEGIN FUTURE PLANS -->
 <div>
         None.

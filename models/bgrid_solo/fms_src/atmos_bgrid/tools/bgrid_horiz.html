@@ -41,20 +41,10 @@
 <BR><BR></DIV><HR>
 
 
-<H2>module bgrid_horiz_mod</H2>
-<A NAME="HEADER">
-<PRE>
-     <B>Contact:</B>   B. Wyman
-     <B>Reviewers:</B>
-     <B>Change history:</B> <A HREF="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS
-/atmos/bgrid/tools/bgrid_horiz.f90">WebCVS Log for bgrid_horiz.f90</A>
-
-</PRE>
-</A><!-- END HEADER -->
-<!--------------------------------------------------------------------->
+<H1>module bgrid_horiz_mod</H1>
 <A NAME="OVERVIEW">
 <HR>
-<H4>OVERVIEW</H4>
+<h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
 <PRE>
 
@@ -117,7 +107,7 @@ while velocity points lie along the equator.
 <!--------------------------------------------------------------------->
 <A NAME="MODULES_USED">
 <HR>
-<H4>OTHER MODULES USED</H4>
+<h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
 <PRE>
 
@@ -130,7 +120,7 @@ while velocity points lie along the equator.
 <!--------------------------------------------------------------------->
 <A NAME="INTERFACE">
 <HR>
-<H4>PUBLIC INTERFACE</H4>
+<h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
 <PRE>
 
@@ -177,9 +167,9 @@ while velocity points lie along the equator.
 <!--------------------------------------------------------------------->
 <A NAME="DATA_TYPES">
 <HR>
-<H4>PUBLIC DATA</H4>
+<h2>PUBLIC DATA</h2>
 <!-- BEGIN DATA_TYPES -->
-<H4>TYPE bgrid_type</H4>
+<h2>TYPE bgrid_type</h2>
 <PRE>
     is, ie        <FONT SIZE=-1>first, last x-axis index in the compute domain <FONT COLOR="#000099">[integer,scalar]</FONT></FONT>
     js, je        <FONT SIZE=-1>first, last y-axis index in the compute domain <FONT COLOR="#000099">[integer,scalar]</FONT></FONT>
@@ -205,7 +195,7 @@ while velocity points lie along the equator.
                         <FONT COLOR="#000099">[type(domain2d)]</FONT></FONT>
 </PRE>
 
-<H4>TYPE horiz_grid_type</H4>
+<h2>TYPE horiz_grid_type</h2>
 <PRE>
     Tmp          <FONT SIZE=-1>grid constants for the temperature/tracer/mass grid <FONT COLOR="#000099">[type(bgrid_type)]</FONT></FONT>
     Vel          <FONT SIZE=-1>grid constants for the u/v wind component grid <FONT COLOR="#000099">[type(bgrid_type)]</FONT></FONT>
@@ -246,7 +236,7 @@ NOTES:
 <!--------------------------------------------------------------------->
 <A NAME="ROUTINES">
 <HR>
-<H4>PUBLIC ROUTINES</H4>
+<h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
 <a name="horiz_grid_init">
 
@@ -402,7 +392,7 @@ RETURNED VALUE
 <!--------------------------------------------------------------------->
 <A NAME="ERRORS">
 <HR>
-<H4>ERROR MESSAGES</H4>
+<h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
 <PRE>
 
@@ -447,7 +437,7 @@ RETURNED VALUE
 <!--------------------------------------------------------------------->
 <A NAME="REFERENCES">
 <HR>
-<H4>REFERENCES</H4>
+<h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
 <PRE>
 
@@ -458,7 +448,7 @@ RETURNED VALUE
 <!--------------------------------------------------------------------->
 <A NAME="BUGS">
 <HR>
-<H4>KNOWN BUGS</H4>
+<h2>KNOWN BUGS</h2>
 <!-- BEGIN BUGS -->
 <PRE>
 
@@ -473,7 +463,7 @@ RETURNED VALUE
 <!--------------------------------------------------------------------->
 <A NAME="NOTES">
 <HR>
-<H4>NOTES</H4>
+<h2>NOTES</h2>
 <!-- BEGIN NOTES -->
 <PRE>
 
@@ -484,7 +474,7 @@ RETURNED VALUE
 <!--------------------------------------------------------------------->
 <A NAME="PLANS">
 <HR>
-<H4>FUTURE PLANS</H4>
+<h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
 <PRE>
 

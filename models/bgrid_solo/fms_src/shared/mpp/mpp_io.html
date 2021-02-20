@@ -52,25 +52,11 @@
           <a href="#REFERENCES">REFERENCES </a>~ 
           <a href="#NOTES">NOTES</a></font>
 <hr>
-<h2>module mpp_io_mod</h2>
+<h1>module mpp_io_mod</h1>
 <a name="HEADER"></a>
-<!-- BEGIN HEADER -->
-<div>
-<b>Contact:&nbsp;</b><a href="mailto:vb@gfdl.noaa.gov">   V. Balaji </a>
-<br>
-<b>Reviewers:&nbsp;</b>
-<br>
-<b>Change History:&nbsp;</b><a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
-<br>
-<b>RCS Log:&nbsp;</b><a href="http://www.gfdl.noaa.gov/~vb/changes_models/bgrid_solo/fms_src/shared/mpp/mpp_io.html">RCS Log</a>
-<br>
-<b>Last Modified:&nbsp;</b>2002/07/19 18:10:07<br>
-<br>
-</div>
-<!-- END HEADER -->
 <a name="OVERVIEW"></a>
 <hr>
-<h4>OVERVIEW</h4>
+<h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
 <p class="text"> 
 <tt>mpp_io_mod</tt>, is a set of simple calls for parallel I/O on
@@ -119,8 +105,8 @@
    <br>
 <br> 
 <a href="modes"></a>
-<h4>I/O modes in <tt>mpp_io_mod</tt>
-</h4>   The I/O activity critical to performance in the models for which <tt>mpp_io_mod</tt>   is designed is typically the writing of large
+<h2>I/O modes in <tt>mpp_io_mod</tt>
+</h2>   The I/O activity critical to performance in the models for which <tt>mpp_io_mod</tt>   is designed is typically the writing of large
    datasets on a model grid volume produced at intervals during
    a run. Consider a 3D grid volume, where model arrays are stored as <tt>(i,j,k)</tt>. The domain decomposition is typically along <tt>i</tt>   or <tt>j</tt>: thus to store data to disk as a global
    volume, the distributed chunks of data have to be seen as
@@ -147,8 +133,8 @@
    <br>
 <br> 
 <a href=""></a>
-<h4>Metadata in <tt>mpp_io_mod</tt>
-</h4>   A requirement of the design of <tt>mpp_io_mod</tt>   is that the file must
+<h2>Metadata in <tt>mpp_io_mod</tt>
+</h2>   A requirement of the design of <tt>mpp_io_mod</tt>   is that the file must
    be entirely self-describing: comprehensive header information
    describing its contents is present in the header of every file. The
    header information follows the model of netCDF. Variables in the file
@@ -317,7 +303,7 @@
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
 <hr>
-<h4>OTHER MODULES USED</h4>
+<h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
 <div>
 <pre>        mpp_mod<br>mpp_domains_mod</pre>
@@ -326,7 +312,7 @@
 <!-- BEGIN PUBLIC INTERFACE -->
 <a name="PUBLIC INTERFACE"></a>
 <hr>
-<h4>PUBLIC INTERFACE</h4>
+<h2>PUBLIC INTERFACE</h2>
 <div>
 <pre>use mpp_io_mod [, only:  mpp_write_meta,<br>                         mpp_write,<br>                         mpp_read,<br>                         mpp_get_atts,<br>                         mpp_io_init,<br>                         mpp_io_exit,<br>                         mpp_open,<br>                         mpp_close,<br>                         mpp_read_meta,<br>                         mpp_get_info,<br>                         mpp_get_times,<br>                         mpp_flush,<br>                         mpp_get_ncid ]</pre>
 <dl>
@@ -375,7 +361,7 @@
 <!-- END PUBLIC INTERFACE -->
 <a name="PUBLIC DATA"></a>
 <hr>
-<h4>PUBLIC DATA</h4>
+<h2>PUBLIC DATA</h2>
 <!-- BEGIN PUBLIC DATA -->
 <div>None.<br>
 <br>
@@ -383,12 +369,12 @@
 <!-- END PUBLIC DATA -->
 <a name="PUBLIC ROUTINES"></a>
 <hr>
-<h4>PUBLIC ROUTINES</h4>
+<h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
 <ol type="a">
 <li>
 <a name="mpp_write_meta"></a>
-<h4>mpp_write_meta</h4>
+<h2>mpp_write_meta</h2>
 <pre>
 <b>call mpp_write_meta </b>( unit, axis, name, units, longname, cartesian, sense, domain, data )</pre>
 <pre>
@@ -533,7 +519,7 @@
 </li>
 <li>
 <a name="mpp_write"></a>
-<h4>mpp_write</h4>
+<h2>mpp_write</h2>
 <pre> 
 <b>mpp_write</b> ( unit, axis )</pre>
 <pre> 
@@ -616,7 +602,7 @@
 </li>
 <li>
 <a name="mpp_read"></a>
-<h4>mpp_read</h4>
+<h2>mpp_read</h2>
 <pre>
 <b>call mpp_read </b>( unit, field, data, time_index )</pre>
 <pre>
@@ -700,7 +686,7 @@
 </li>
 <li>
 <a name="mpp_get_atts"></a>
-<h4>mpp_get_atts</h4>
+<h2>mpp_get_atts</h2>
 <pre>
 <b>call mpp_get_atts </b>( unit, global_atts)</pre>
 <dl>
@@ -730,7 +716,7 @@
 </li>
 <li>
 <a name="mpp_io_init"></a>
-<h4>mpp_io_init</h4>
+<h2>mpp_io_init</h2>
 <pre>
 <b>call mpp_io_init </b>( flags, maxunit )</pre>
 <dl>
@@ -763,7 +749,7 @@
 </li>
 <li>
 <a name="mpp_io_exit"></a>
-<h4>mpp_io_exit</h4>
+<h2>mpp_io_exit</h2>
 <pre>
 <b>call mpp_io_exit </b>()</pre>
 <dl>
@@ -780,7 +766,7 @@
 </li>
 <li>
 <a name="mpp_open"></a>
-<h4>mpp_open</h4>
+<h2>mpp_open</h2>
 <pre>
 <b>call mpp_open </b>( unit, file, action, form, access, threading, fileset, iospec, nohdrs, recl, pelist )</pre>
 <dl>
@@ -904,7 +890,7 @@
 </li>
 <li>
 <a name="mpp_close"></a>
-<h4>mpp_close</h4>
+<h2>mpp_close</h2>
 <pre>
 <b>call mpp_close </b>( unit, action )</pre>
 <dl>
@@ -935,7 +921,7 @@
 </li>
 <li>
 <a name="mpp_read_meta"></a>
-<h4>mpp_read_meta</h4>
+<h2>mpp_read_meta</h2>
 <pre>
 <b>call mpp_read_meta </b>(unit)</pre>
 <dl>
@@ -971,7 +957,7 @@
 </li>
 <li>
 <a name="mpp_get_info"></a>
-<h4>mpp_get_info</h4>
+<h2>mpp_get_info</h2>
 <pre>
 <b>call mpp_get_info </b>( unit, ndim, nvar, natt, ntime )</pre>
 <dl>
@@ -1021,7 +1007,7 @@
 </li>
 <li>
 <a name="mpp_get_times"></a>
-<h4>mpp_get_times</h4>
+<h2>mpp_get_times</h2>
 <pre>
 <b>call mpp_get_times </b>( unit, time_values )</pre>
 <dl>
@@ -1059,7 +1045,7 @@
 </li>
 <li>
 <a name="mpp_flush"></a>
-<h4>mpp_flush</h4>
+<h2>mpp_flush</h2>
 <pre>
 <b>call mpp_flush </b>(unit)</pre>
 <dl>
@@ -1088,7 +1074,7 @@
 </li>
 <li>
 <a name="mpp_get_ncid"></a>
-<h4>mpp_get_ncid</h4>
+<h2>mpp_get_ncid</h2>
 <pre> 
 <b>mpp_get_ncid</b> (unit)</pre>
 <dl>
@@ -1122,7 +1108,7 @@
 <!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a>
 <!-- BEGIN DATA SETS -->
 <hr>
-<h4>DATA SETS</h4>
+<h2>DATA SETS</h2>
 <div>None.<br>
 <br>
 </div>
@@ -1130,14 +1116,14 @@
 <a name="ERROR MESSAGES"></a>
 <!-- BEGIN ERROR MESSAGES -->
 <hr>
-<h4>ERROR MESSAGES</h4>
+<h2>ERROR MESSAGES</h2>
 <div>None.<br>
 <br>
 </div>
 <!-- END ERROR MESSAGES -->
 <a name="REFERENCES"></a>
 <hr>
-<h4>REFERENCES</h4>
+<h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
 <div>
         None.
@@ -1146,7 +1132,7 @@
 <!-- END REFERENCES -->
 <a name="COMPILER SPECIFICS"></a>
 <hr>
-<h4>COMPILER SPECIFICS</h4>
+<h2>COMPILER SPECIFICS</h2>
 <!-- BEGIN COMPILER SPECIFICS -->
 <div>
 <dl>
@@ -1164,7 +1150,7 @@
 <!-- END COMPILER SPECIFICS -->
 <a name="PRECOMPILER OPTIONS"></a>
 <hr>
-<h4>PRECOMPILER OPTIONS</h4>
+<h2>PRECOMPILER OPTIONS</h2>
 <!-- BEGIN PRECOMPILER OPTIONS -->
 <div>
 <dl>
@@ -1184,7 +1170,7 @@
 <!-- END PRECOMPILER OPTIONS -->
 <a name="LOADER OPTIONS"></a>
 <hr>
-<h4>LOADER OPTIONS</h4>
+<h2>LOADER OPTIONS</h2>
 <!-- BEGIN LOADER -->
 <div>
 <p>    The    source consists of the main source file    and also requires the following include files:    (when compiled with )       GFDL users can check it out of the main CVS repository as part of
@@ -1197,7 +1183,7 @@
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>
-<h4>TEST PROGRAM</h4>
+<h2>TEST PROGRAM</h2>
 <!-- BEGIN TEST PROGRAM -->
 <div>None.<br>
 </div>
@@ -1205,7 +1191,7 @@
 <!-- END TEST PROGRAM -->
 <a name="KNOWN BUGS"></a>
 <hr>
-<h4>KNOWN BUGS</h4>
+<h2>KNOWN BUGS</h2>
 <!-- BEGIN KNOWN BUGS -->
 <div>
         None.
@@ -1214,7 +1200,7 @@
 <!-- END KNOWN BUGS -->
 <a name="NOTES"></a>
 <hr>
-<h4>NOTES</h4>
+<h2>NOTES</h2>
 <!-- BEGIN NOTES -->
 <div>None.<br>
 </div>
@@ -1222,7 +1208,7 @@
 <!-- END NOTES -->
 <a name="FUTURE PLANS"></a>
 <hr>
-<h4>FUTURE PLANS</h4>
+<h2>FUTURE PLANS</h2>
 <!-- BEGIN FUTURE PLANS -->
 <div>
         None.

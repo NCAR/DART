@@ -52,22 +52,11 @@
           <a href="#REFERENCES">REFERENCES </a>~ 
           <a href="#NOTES">NOTES</a></font>
 <hr>
-<h2>module time_manager_mod</h2>
+<h1>module time_manager_mod</h1>
 <a name="HEADER"></a>
-<!-- BEGIN HEADER -->
-<div>
-<b>Contact:</b>&nbsp;<a href="mailto:fms@gfdl.noaa.gov">   fms </a>
-<br>
-<b>Reviewers:</b>&nbsp;<br>
-<b>Change History: </b>&nbsp;<a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
-<br>
-<b>Last Modified:</b>&nbsp;2002/04/16 21:00:57<br>
-<br>
-</div>
-<!-- END HEADER -->
 <a name="OVERVIEW"></a>
 <hr>
-<h4>OVERVIEW</h4>
+<h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
 <p class="text">   A software package that provides a set of simple interfaces for
    modelers to perform computations related to time and dates. </p>
@@ -100,7 +89,7 @@
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
 <hr>
-<h4>OTHER MODULES USED</h4>
+<h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
 <div>
 <pre>fms_mod</pre>
@@ -109,7 +98,7 @@
 <!-- BEGIN PUBLIC INTERFACE -->
 <a name="PUBLIC INTERFACE"></a>
 <hr>
-<h4>PUBLIC INTERFACE</h4>
+<h2>PUBLIC INTERFACE</h2>
 <div>
 <pre>use time_manager_mod [, only:  set_time,<br>                               get_time,<br>                               increment_time,<br>                               decrement_time,<br>                               time_gt,<br>                               time_ge,<br>                               time_lt,<br>                               time_le,<br>                               time_eq,<br>                               time_ne,<br>                               time_plus,<br>                               time_minus,<br>                               time_scalar_mult,<br>                               scalar_time_mult,<br>                               time_divide,<br>                               time_real_divide,<br>                               time_scalar_divide,<br>                               interval_alarm,<br>                               repeat_alarm,<br>                               set_calendar_type,<br>                               get_calendar_type,<br>                               get_date,<br>                               set_date,<br>                               increment_date,<br>                               decrement_date,<br>                               days_in_month,<br>                               leap_year,<br>                               length_of_year,<br>                               days_in_year,<br>                               month_name,<br>                               time_manager_init,<br>                               print_time,<br>                               print_date ]</pre>
 <dl>
@@ -234,7 +223,7 @@
 <!-- END PUBLIC INTERFACE -->
 <a name="PUBLIC DATA"></a>
 <hr>
-<h4>PUBLIC DATA</h4>
+<h2>PUBLIC DATA</h2>
 <!-- BEGIN PUBLIC DATA -->
 <div>
 <table align="center" cellspacing="2" CELLPADDING="2" BORDER="2">
@@ -251,12 +240,12 @@
 <!-- END PUBLIC DATA -->
 <a name="PUBLIC ROUTINES"></a>
 <hr>
-<h4>PUBLIC ROUTINES</h4>
+<h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
 <ol type="a">
 <li>
 <a name="set_time"></a>
-<h4>set_time</h4>
+<h2>set_time</h2>
 <pre>&lt;B&gt; <b>set_time</b> &lt;/B&gt;(seconds, days)</pre>
 <dl>
 <dt>
@@ -295,7 +284,7 @@
 </li>
 <li>
 <a name="get_time"></a>
-<h4>get_time</h4>
+<h2>get_time</h2>
 <pre>
 <b>call get_time </b>&lt;/B&gt;(time, seconds, days)</pre>
 <dl>
@@ -334,7 +323,7 @@
 </li>
 <li>
 <a name="increment_time"></a>
-<h4>increment_time</h4>
+<h2>increment_time</h2>
 <pre> 
 <b>increment_time</b> (time, seconds, days)</pre>
 <dl>
@@ -378,7 +367,7 @@
 </li>
 <li>
 <a name="decrement_time"></a>
-<h4>decrement_time</h4>
+<h2>decrement_time</h2>
 <pre> 
 <b>decrement_time</b> (time, seconds, days)</pre>
 <dl>
@@ -421,7 +410,7 @@
 </li>
 <li>
 <a name="time_gt"></a>
-<h4>time_gt</h4>
+<h2>time_gt</h2>
 <pre>&lt;B&gt; <b>time_gt</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -459,7 +448,7 @@
 </li>
 <li>
 <a name="time_ge"></a>
-<h4>time_ge</h4>
+<h2>time_ge</h2>
 <pre>&lt;B&gt; <b>time_ge</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -497,7 +486,7 @@
 </li>
 <li>
 <a name="time_lt"></a>
-<h4>time_lt</h4>
+<h2>time_lt</h2>
 <pre>&lt;B&gt; <b>time_lt</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -535,7 +524,7 @@
 </li>
 <li>
 <a name="time_le"></a>
-<h4>time_le</h4>
+<h2>time_le</h2>
 <pre>&lt;B&gt; <b>time_le</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -573,7 +562,7 @@
 </li>
 <li>
 <a name="time_eq"></a>
-<h4>time_eq</h4>
+<h2>time_eq</h2>
 <pre>&lt;B&gt; <b>time_eq</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -611,7 +600,7 @@
 </li>
 <li>
 <a name="time_ne"></a>
-<h4>time_ne</h4>
+<h2>time_ne</h2>
 <pre>&lt;B&gt; <b>time_ne</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -649,7 +638,7 @@
 </li>
 <li>
 <a name="time_plus"></a>
-<h4>time_plus</h4>
+<h2>time_plus</h2>
 <pre>&lt;B&gt; <b>time_plus</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -687,7 +676,7 @@
 </li>
 <li>
 <a name="time_minus"></a>
-<h4>time_minus</h4>
+<h2>time_minus</h2>
 <pre>&lt;B&gt; <b>time_minus</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -726,7 +715,7 @@
 </li>
 <li>
 <a name="time_scalar_mult"></a>
-<h4>time_scalar_mult</h4>
+<h2>time_scalar_mult</h2>
 <pre>&lt;B&gt; <b>time_scalar_mult</b> &lt;/B&gt;(time, n)</pre>
 <dl>
 <dt>
@@ -764,7 +753,7 @@
 </li>
 <li>
 <a name="scalar_time_mult"></a>
-<h4>scalar_time_mult</h4>
+<h2>scalar_time_mult</h2>
 <pre>&lt;B&gt; <b>scalar_time_mult</b> &lt;/B&gt;(n, time)</pre>
 <dl>
 <dt>
@@ -802,7 +791,7 @@
 </li>
 <li>
 <a name="time_divide"></a>
-<h4>time_divide</h4>
+<h2>time_divide</h2>
 <pre>&lt;B&gt; <b>time_divide</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -840,7 +829,7 @@
 </li>
 <li>
 <a name="time_real_divide"></a>
-<h4>time_real_divide</h4>
+<h2>time_real_divide</h2>
 <pre>&lt;B&gt; <b>time_real_divide</b> &lt;/B&gt;(time1, time2)</pre>
 <dl>
 <dt>
@@ -878,7 +867,7 @@
 </li>
 <li>
 <a name="time_scalar_divide"></a>
-<h4>time_scalar_divide</h4>
+<h2>time_scalar_divide</h2>
 <pre>&lt;B&gt; <b>time_scalar_divide</b> &lt;/B&gt;(time, n)</pre>
 <dl>
 <dt>
@@ -916,7 +905,7 @@
 </li>
 <li>
 <a name="interval_alarm"></a>
-<h4>interval_alarm</h4>
+<h2>interval_alarm</h2>
 <pre> 
 <b>interval_alarm</b> (time, time_interval, alarm, alarm_interval)</pre>
 <dl>
@@ -983,7 +972,7 @@
 </li>
 <li>
 <a name="repeat_alarm"></a>
-<h4>repeat_alarm</h4>
+<h2>repeat_alarm</h2>
 <pre> 
 <b>repeat_alarm</b> 
 </pre>
@@ -1031,7 +1020,7 @@
 </li>
 <li>
 <a name="set_calendar_type"></a>
-<h4>set_calendar_type</h4>
+<h2>set_calendar_type</h2>
 <pre>
 <b>call set_calendar_type </b>(type)</pre>
 <dl>
@@ -1077,7 +1066,7 @@
 </li>
 <li>
 <a name="get_calendar_type"></a>
-<h4>get_calendar_type</h4>
+<h2>get_calendar_type</h2>
 <pre> 
 <b>get_calendar_type</b> ()</pre>
 <dl>
@@ -1092,7 +1081,7 @@
 </li>
 <li>
 <a name="get_date"></a>
-<h4>get_date</h4>
+<h2>get_date</h2>
 <pre>
 <b>call get_date </b>(time, year, month, day, hour, minute, second)</pre>
 <dl>
@@ -1159,7 +1148,7 @@
 </li>
 <li>
 <a name="set_date"></a>
-<h4>set_date</h4>
+<h2>set_date</h2>
 <pre> 
 <b>set_date</b> (year, month, day, hours, minutes, seconds)</pre>
 <dl>
@@ -1222,7 +1211,7 @@
 </li>
 <li>
 <a name="increment_date"></a>
-<h4>increment_date</h4>
+<h2>increment_date</h2>
 <pre> 
 <b>increment_date</b> (time, years, months, days, hours, minutes, seconds)</pre>
 <dl>
@@ -1281,7 +1270,7 @@
 </li>
 <li>
 <a name="decrement_date"></a>
-<h4>decrement_date</h4>
+<h2>decrement_date</h2>
 <pre> 
 <b>decrement_date</b> (time, years, months, days, hours, minutes, seconds)</pre>
 <dl>
@@ -1350,7 +1339,7 @@
 </li>
 <li>
 <a name="days_in_month"></a>
-<h4>days_in_month</h4>
+<h2>days_in_month</h2>
 <pre>&lt;B&gt; <b>days_in_month</b> (time)</pre>
 <dl>
 <dt>
@@ -1387,7 +1376,7 @@
 </li>
 <li>
 <a name="leap_year"></a>
-<h4>leap_year</h4>
+<h2>leap_year</h2>
 <pre> 
 <b>leap_year</b> (time)</pre>
 <dl>
@@ -1427,7 +1416,7 @@
 </li>
 <li>
 <a name="length_of_year"></a>
-<h4>length_of_year</h4>
+<h2>length_of_year</h2>
 <pre> 
 <b>length_of_year</b> ()</pre>
 <dl>
@@ -1442,7 +1431,7 @@
 </li>
 <li>
 <a name="days_in_year"></a>
-<h4>days_in_year</h4>
+<h2>days_in_year</h2>
 <pre> 
 <b>days_in_year</b> ()</pre>
 <dl>
@@ -1479,7 +1468,7 @@
 </li>
 <li>
 <a name="month_name"></a>
-<h4>month_name</h4>
+<h2>month_name</h2>
 <pre> 
 <b>month_name</b> (n)</pre>
 <dl>
@@ -1518,7 +1507,7 @@
 </li>
 <li>
 <a name="time_manager_init"></a>
-<h4>time_manager_init</h4>
+<h2>time_manager_init</h2>
 <pre> 
 <b>time_manager_init</b> ()</pre>
 <dl>
@@ -1533,7 +1522,7 @@
 </li>
 <li>
 <a name="print_time"></a>
-<h4>print_time</h4>
+<h2>print_time</h2>
 <pre> 
 <b>print_time</b> (time,str,unit)</pre>
 <dl>
@@ -1565,7 +1554,7 @@
 </li>
 <li>
 <a name="print_date"></a>
-<h4>print_date</h4>
+<h2>print_date</h2>
 <pre> 
 <b>print_date</b> (time,str,unit)</pre>
 <dl>
@@ -1604,7 +1593,7 @@
 <!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a>
 <!-- BEGIN DATA SETS -->
 <hr>
-<h4>DATA SETS</h4>
+<h2>DATA SETS</h2>
 <div>None.<br>
 <br>
 </div>
@@ -1612,14 +1601,14 @@
 <a name="ERROR MESSAGES"></a>
 <!-- BEGIN ERROR MESSAGES -->
 <hr>
-<h4>ERROR MESSAGES</h4>
+<h2>ERROR MESSAGES</h2>
 <div>None.<br>
 <br>
 </div>
 <!-- END ERROR MESSAGES -->
 <a name="REFERENCES"></a>
 <hr>
-<h4>REFERENCES</h4>
+<h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
 <div>
         None.
@@ -1628,7 +1617,7 @@
 <!-- END REFERENCES -->
 <a name="COMPILER SPECIFICS"></a>
 <hr>
-<h4>COMPILER SPECIFICS</h4>
+<h2>COMPILER SPECIFICS</h2>
 <!-- BEGIN COMPILER SPECIFICS -->
 <div>
         None.
@@ -1637,7 +1626,7 @@
 <!-- END COMPILER SPECIFICS -->
 <a name="PRECOMPILER OPTIONS"></a>
 <hr>
-<h4>PRECOMPILER OPTIONS</h4>
+<h2>PRECOMPILER OPTIONS</h2>
 <!-- BEGIN PRECOMPILER OPTIONS -->
 <div>
         None.
@@ -1646,7 +1635,7 @@
 <!-- END PRECOMPILER OPTIONS -->
 <a name="LOADER OPTIONS"></a>
 <hr>
-<h4>LOADER OPTIONS</h4>
+<h2>LOADER OPTIONS</h2>
 <!-- BEGIN LOADER -->
 <div>None.<br>
 <br>
@@ -1654,7 +1643,7 @@
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>
-<h4>TEST PROGRAM</h4>
+<h2>TEST PROGRAM</h2>
 <!-- BEGIN TEST PROGRAM -->
 <div>
 <dl>
@@ -1751,7 +1740,7 @@ Set calendar type
 <!-- END TEST PROGRAM -->
 <a name="KNOWN BUGS"></a>
 <hr>
-<h4>KNOWN BUGS</h4>
+<h2>KNOWN BUGS</h2>
 <!-- BEGIN KNOWN BUGS -->
 <div>
         None.
@@ -1760,7 +1749,7 @@ Set calendar type
 <!-- END KNOWN BUGS -->
 <a name="NOTES"></a>
 <hr>
-<h4>NOTES</h4>
+<h2>NOTES</h2>
 <!-- BEGIN NOTES -->
 <div>   The Gregorian calendar type is not completely implemented, and currently
    no effort is put on it since it doesn't differ from Julian in use between
@@ -1777,7 +1766,7 @@ Set calendar type
 <!-- END NOTES -->
 <a name="FUTURE PLANS"></a>
 <hr>
-<h4>FUTURE PLANS</h4>
+<h2>FUTURE PLANS</h2>
 <!-- BEGIN FUTURE PLANS -->
 <div>
         None.
