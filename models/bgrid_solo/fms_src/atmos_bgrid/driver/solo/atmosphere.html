@@ -26,46 +26,44 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module atmosphere_mod</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=1>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#NAMELIST">NAMELIST</A> / 
-<A HREF="#ERRORS">ERRORS</A>
-</FONT>
-<BR><BR></DIV><HR>
-
-<H1>module atmosphere_mod</H1>
-<A NAME="OVERVIEW">
-<HR>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module atmosphere_mod</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="1"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#ROUTINES">ROUTINES</a> / <a href=
+"#NAMELIST">NAMELIST</a> / <a href="#ERRORS">ERRORS</a></font><br>
+<br></div>
+<hr>
+<h1>module atmosphere_mod</h1>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      Atmospheric driver for the dry B-grid dynamical core and Held-Suarez
      benchmark (aka simple_phyhsics).
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!-- ------------------------------------------------------------------>
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
      This module provides a standard interface to the B-grid dynamical
      core and B-grid interface to the simple physics.
      A similar interface for the spectral dynamical core exists that
      may be easily switched with this interface.
 
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!-- ------------------------------------------------------------------>
-<A NAME="OTHER MODULES USED">
-<HR>
+ <a name="OTHER MODULES USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
-<PRE>
+<pre>
 
    bgrid_horiz_mod
    bgrid_vert_mod
@@ -77,14 +75,13 @@
    time_manager_mod
    fms_mod
 
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!-- ------------------------------------------------------------------>
-<A NAME="PUBLIC INTERFACE">
-<HR>
+ <a name="PUBLIC INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN PUBLIC INTERFACE -->
-<PRE>
+<pre>
 
   <b>use atmosphere_mod</b> [,only: atmosphere_init,       atmosphere_end,
                              atmosphere,
@@ -93,17 +90,16 @@
 
   NOTES
 
-     1)  Optional namelist interface <b>&atmosphere_nml</b> may be
+     1)  Optional namelist interface <b>&amp;atmosphere_nml</b> may be
          read from file <b>input.nml</b>.
                                 
-</PRE>
-</A><!-- END PUBLIC INTERFACE -->
+</pre></a><!-- END PUBLIC INTERFACE -->
 <!-- ------------------------------------------------------------------>
-<A NAME="PUBLIC ROUTINES">
-<HR>
+ <a name="PUBLIC ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
-<PRE>
+<pre>
 
 <b>call atmosphere_init</b> ( Time_init, Time, Time_step )
 
@@ -112,14 +108,18 @@ DESCRIPTION
    Held-Suarez GCM forcing.
 
 INPUT
-   Time_init   The initial (or base) time.  <FONT SIZE=-1 COLOR="#000099">[time_type]</FONT>
+   Time_init   The initial (or base) time.  <font size="-1" color=
+"#000099">[time_type]</font>
 
-   Time        The current time.  <FONT SIZE=-1 COLOR="#000099">[time_type]</FONT>
+   Time        The current time.  <font size="-1" color=
+"#000099">[time_type]</font>
 
-   Time_step   The atmospheric model/physics time step.  <FONT SIZE=-1 COLOR="#000099">[time_type]</FONT>
+   Time_step   The atmospheric model/physics time step.  <font size="-1"
+color="#000099">[time_type]</font>
 
-<!------------------------>
-<HR WIDTH="50%" ALIGN=LEFT>
+<!------------------------></pre>
+<hr width="50%" align="left">
+<pre>
 
 <b>call atmosphere_end</b>
 
@@ -127,8 +127,9 @@ DESCRIPTION
    Termination call for the bgrid dynamical with Held-Suarez
    GCM forcing.  There are no arguments to this routine.
 
-<!------------------------>
-<HR WIDTH="50%" ALIGN=LEFT>
+<!------------------------></pre>
+<hr width="50%" align="left">
+<pre>
 
 <b>call atmosphere</b> ( Time )
 
@@ -139,7 +140,8 @@ DESCRIPTION
    once per time step.
 
 INPUT
-   Time    The current time.  <FONT SIZE=-1 COLOR="#000099">[time_type]</FONT>
+   Time    The current time.  <font size="-1" color=
+"#000099">[time_type]</font>
 
 NOTE
    The prognostic variables are stored in a private derived-type 
@@ -156,10 +158,12 @@ OUTPUT
                The axes returned are ordered (/ x, y, p_full, p_half /).
                  [integer, dimension(:)]
 
-<!------------------------>
-<HR WIDTH="50%" ALIGN=LEFT>
+<!------------------------></pre>
+<hr width="50%" align="left">
+<pre>
 
-<b>call atmosphere_resolution</b> ( nlon, nlat <FONT COLOR="#007700">[, global]</FONT> )
+<b>call atmosphere_resolution</b> ( nlon, nlat <font color=
+"#007700">[, global]</font> )
 
 DESCRIPTION
    Returns the resolution of compute domain for either the
@@ -167,21 +171,24 @@ DESCRIPTION
 
 OUTPUT
    nlon   The number of longitude points in the compute domain.
-             <FONT SIZE=-1 COLOR="#000099">[integer]</FONT>
+             <font size="-1" color="#000099">[integer]</font>
 
    nlat   The number of latitude points in the compute domain.
-             <FONT SIZE=-1 COLOR="#000099">[integer]</FONT>
+             <font size="-1" color="#000099">[integer]</font>
 
 OPTIONAL INPUT
 
    global  Flag that specifies whether the returned compute domain size is
            for the global grid (TRUE) or for the current processor (FALSE).
-              <FONT SIZE=-1 COLOR="#000099">[logical, default: FALSE]</FONT>
+              <font size="-1" color=
+"#000099">[logical, default: FALSE]</font>
            
-<!------------------------>
-<HR WIDTH="50%" ALIGN=LEFT>
+<!------------------------></pre>
+<hr width="50%" align="left">
+<pre>
 
-<b>call atmosphere_boundary</b> ( blon, blat <FONT COLOR="#007700">[, global]</FONT> )
+<b>call atmosphere_boundary</b> ( blon, blat <font color=
+"#007700">[, global]</font> )
 
 DESCRIPTION
    Returns the grid box edges of compute domain for either the
@@ -189,44 +196,46 @@ DESCRIPTION
 
 OUTPUT
    blon    The west-to-east longitude edges of grid boxes (in radians).
-              <FONT SIZE=-1 COLOR="#000099">[real, dimension(nlon+1)]</FONT>
+              <font size="-1" color=
+"#000099">[real, dimension(nlon+1)]</font>
 
    blat    The south-to-north latitude edges of grid boxes (in radians).
-              <FONT SIZE=-1 COLOR="#000099">[real, dimension(nlat+1)]</FONT>
+              <font size="-1" color=
+"#000099">[real, dimension(nlat+1)]</font>
 
 OPTIONAL INPUT
    global  Flag that specifies whether the returned grid box edges are
            for the global grid (TRUE) or for the current processor (FALSE).
-              <FONT SIZE=-1 COLOR="#000099">[logical, default: FALSE]</FONT>
+              <font size="-1" color=
+"#000099">[logical, default: FALSE]</font>
            
 NOTE
    The size of the output arguments, blon and blat, must be +1 more than the
    output arguments for call atmosphere_resolution, nlon+1 and nlat+1, respectively.
 
-</PRE>
-</A><!-- END PUBLIC ROUTINES -->
+</pre></a><!-- END PUBLIC ROUTINES -->
 <!-- ------------------------------------------------------------------>
-<A NAME="NAMELIST">
-<HR>
+ <a name="NAMELIST" id="NAMELIST">
+<hr>
 <h2>NAMELIST</h2>
 <!-- BEGIN NAMELIST -->
-<PRE>
+<pre>
 
-<b>&atmosphere_nml</b>
+<b>&amp;atmosphere_nml</b>
 
  physics_window  The number of "i" and "j" rows processed each time
                  the modular physics is called. To process the entire
                  domain use physics_window = 0,0.
-                    <FONT SIZE=-1 COLOR="#000099">[integer, default: physics_window = 0,0]</FONT>
+                    <font size="-1" color=
+"#000099">[integer, default: physics_window = 0,0]</font>
 
-</PRE>
-</A><!-- END NAMELIST -->
+</pre></a><!-- END NAMELIST -->
 <!-- ------------------------------------------------------------------>
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
 <b>FATAL errors from get_atmosphere_axes in atmosphere_mod</b>
 
@@ -235,10 +244,8 @@ NOTE
         between 1 and 4.
 
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!-- ------------------------------------------------------------------>
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

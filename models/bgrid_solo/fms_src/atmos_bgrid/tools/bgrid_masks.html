@@ -26,45 +26,42 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module bgrid_masks_mod</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=1>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#ERRORS">ERRORS</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-
-<H1>module bgrid_masks_mod</H1>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module bgrid_masks_mod</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="1"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#ROUTINES">ROUTINES</a> / <a href=
+"#ERRORS">ERRORS</a> / <a href="#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
+<h1>module bgrid_masks_mod</h1>
 <!--------------------------------------------------------------------->
-<A NAME="OVERVIEW">
-<HR>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      Provides a data structure for three-dimensional masks used
      to define the step-mountain/eta coordinate topography.
 
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
 
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="MODULES_USED">
-<HR>
+ <a name="MODULES_USED" id="MODULES_USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
-<PRE>
+<pre>
 
    bgrid_horiz_mod
    bgrid_vert_mod
@@ -72,33 +69,31 @@
    fms_mod
    mpp_mod
 
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!--------------------------------------------------------------------->
-<A NAME="INTERFACE">
-<HR>
+ <a name="INTERFACE" id="INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
-<PRE>
+<pre>
 
    <b>use bgrid_masks_mod</b> [, only: grid_mask_type, mask_type,
                                 grid_masks_init ]
 
-   <a href="#DATA TYPES">grid_mask_type, mask_type</a>
+   <a href="#DATA%20TYPES">grid_mask_type, mask_type</a>
         Data structures that contain the 3d step-mountain topography masks
         and 2d indexing for the lowest model level.
 
    <a href="#grid_masks_init">grid_masks_init</a>
         Initializes data with the grid_mask_type.
 
-</PRE>
-</A><!-- END INTERFACE -->
+</pre></a><!-- END INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="DATA TYPES">
-<HR>
+ <a name="DATA TYPES">
+<hr>
 <h2>DATA TYPES</h2>
 <!-- BEGIN DATA TYPES -->
-<PRE>
+<pre>
    <b>type grid_mask_type</b>
       type(mask_type) :: Tmp, Vel
       logical :: sigma
@@ -123,66 +118,50 @@
           kbot = number of vertical model levels
 
 
-</PRE>
-</A><!-- END DATA TYPES -->
+</pre></a><!-- END DATA TYPES -->
 <!--------------------------------------------------------------------->
-<A NAME="ROUTINES">
-<HR>
+ <a name="ROUTINES" id="ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
-<PRE>
-<a name="grid_masks_init">
+<pre>
+<a name="grid_masks_init" id="grid_masks_init">
 
-Mask = <b>grid_masks_init</b> ( Hgrid, Vgrid, res )
-
-INPUT
-   Vgrid     The derived-type variable returned by a previous call to vert_grid_init.
-                <FONT SIZE=-1 COLOR="#000099">[type(vert_grid_type)]</FONT>
-
-   res       Reciporal of eta at the surface (i.e., the model interface that
-             coincides with the step-mountain height). Note: for sigma
-             coordinate model res=1. everywhere.
-                <FONT SIZE=-1 COLOR="#000099">[real, dimension(:,:)]</FONT>
-
-INPUT/OUTPUT
-   Hgrid     The derived-type variable returned by a previous call to horiz_grid_init.
-                See the module horiz_grid_mod for details.
-                <FONT SIZE=-1 COLOR="#000099">[type(horiz_grid_type)]</FONT>
-
-RETURNS
-   Mask      The derived-type variable containing grid masking arrays.
-                <FONT SIZE=-1 COLOR="#000099">[type(grid_mask_type)]</FONT>
-
-</PRE>
-</A><!-- END ROUTINES -->
+Mask = <b>grid_masks_init</b> ( Hgrid, Vgrid, res ) INPUT Vgrid The derived-type variable returned by a previous call to vert_grid_init. <font size="-1"
+color=
+"#000099">[type(vert_grid_type)]</font> res Reciporal of eta at the surface (i.e., the model interface that coincides with the step-mountain height). Note: for sigma coordinate model res=1. everywhere. <font size="-1"
+color=
+"#000099">[real, dimension(:,:)]</font> INPUT/OUTPUT Hgrid The derived-type variable returned by a previous call to horiz_grid_init. See the module horiz_grid_mod for details. <font size="-1"
+color=
+"#000099">[type(horiz_grid_type)]</font> RETURNS Mask The derived-type variable containing grid masking arrays. <font size="-1"
+color="#000099">[type(grid_mask_type)]</font> </a></pre></a> 
+<!-- END ROUTINES -->
 <!--------------------------------------------------------------------->
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
  There are no error messages printed by this module.
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!--------------------------------------------------------------------->
-<A NAME="BUGS">
-<HR>
+ <a name="BUGS" id="BUGS">
+<hr>
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN BUGS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END BUGS -->
+</pre></a><!-- END BUGS -->
 <!--------------------------------------------------------------------->
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
    The interface grid_masks_init prints a message to STDOUT that
    describes the type of vertical coordinate that was initialized.
@@ -194,21 +173,18 @@ RETURNS
    module bgrid_vert_mod (maybe in a future version).
 
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!--------------------------------------------------------------------->
-<A NAME="PLANS">
-<HR>
+ <a name="PLANS" id="PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END PLANS -->
+</pre></a><!-- END PLANS -->
 <!--------------------------------------------------------------------->
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

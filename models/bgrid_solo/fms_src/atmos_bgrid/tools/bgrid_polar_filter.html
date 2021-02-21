@@ -26,37 +26,35 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module bgrid_polar_filter_mod</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=-2>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#DATA_TYPES">DATA</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#ERRORS">ERRORS</A> / 
-<A HREF="#REFERENCES">REFERENCES</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-
-<H1>module bgrid_polar_filter_mod</H1>
-<A NAME="OVERVIEW">
-<HR>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module bgrid_polar_filter_mod</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="-2"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#DATA_TYPES">DATA</a> / <a href=
+"#ROUTINES">ROUTINES</a> / <a href="#ERRORS">ERRORS</a> / <a href=
+"#REFERENCES">REFERENCES</a> / <a href=
+"#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
+<h1>module bgrid_polar_filter_mod</h1>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      Provides polar filtering routines for the B-grid dynamical core.
      This is an MPP version that can be run with 1-D or 2-D decomposition.
 
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
 
      The polar filtering scheme is used at high latitudes to damp the shortest
      resolvable waves so that a longer time step can be taken.  Filtering is
@@ -70,20 +68,20 @@
      The fields are filtered by transforming a full latitude circle of data
      to Fourier components using a fast Fourier transform (FFT). The Fourier
      components are damped (i.e., multiplied) by a given function of wave
-     number and latitude (see <a href="#NOTES">NOTES</a>), and then transformed back to grid point
+     number and latitude (see <a href=
+"#NOTES">NOTES</a>), and then transformed back to grid point
      space using the inverse FFT.
 
      Load balancing for multiple processor runs is handled by gathering up full
      latitude rows on data and transmitting them equally to all processors.
 
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="MODULES_USED">
-<HR>
+ <a name="MODULES_USED" id="MODULES_USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
-<PRE>
+<pre>
 
      bgrid_horiz_mod
      fft_mod
@@ -91,14 +89,13 @@
      mpp_mod
      mpp_domains_mod
 
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!--------------------------------------------------------------------->
-<A NAME="INTERFACE">
-<HR>
+ <a name="INTERFACE" id="INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
-<PRE>
+<pre>
 
   <b>use bgrid_polar_filter_mod</b> [,only: pfilt_control_type,
                                      polar_filter_init ,
@@ -121,125 +118,41 @@
        Performs polar filtering of the velocity components. The components
        are transformed to stereographic components for the actually filtering.
 
-</PRE>
-</A><!-- END INTERFACE -->
+</pre></a><!-- END INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="DATA_TYPES">
-<HR>
+ <a name="DATA_TYPES" id="DATA_TYPES">
+<hr>
 <h2>PUBLIC DATA</h2>
 <!-- BEGIN DATA_TYPES -->
-<PRE>
+<pre>
 
 <b>type (pfilt_control_type)</b>
 
     The internal contents of this type are private and cannot be accessed
     by the user.
 
-</PRE>
-</A><!-- END DATA_TYPES -->
+</pre></a><!-- END DATA_TYPES -->
 <!--------------------------------------------------------------------->
-<A NAME="ROUTINES">
-<HR>
+ <a name="ROUTINES" id="ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
-<PRE>
-<a name="polar_filter_init">
+<pre>
+<a name="polar_filter_init" id="polar_filter_init">
 
-Control = <b>polar_filter_init</b> ( Hgrid, reflat, weight, sigma, verbose )
+Control = <b>polar_filter_init</b> ( Hgrid, reflat, weight, sigma, verbose ) INPUT Hgrid horiz_grid_type (see horiz_grid_mod) OPTIONAL INPUT reflat The reference latitude in degrees. This is the latitude where polar filtering begins. Equator-ward from this latitude there is no filtering. [real, default: reflat=60.] weight A weight to modify the overall strength of the filter without increasing the number of latitudes filtered. [integer, default: weight=1] sigma Logical flag the sigma or eta coordinate. Setting this flag equal true when running a sigma coordinate model will make the code more efficient. [logical, default: sigma=.false.] verbose verbose flag, a larger number increases the printed output [integer, default: verbose=0] RETURNS Control A variable of derived-type pfilt_control_type (see above). ----------------------------------------------------------------- </a><a name="polar_filter"
+id="polar_filter">
 
-  INPUT
+<b>call polar_filter</b> (Control, data, grid, mask) OR <b>call polar_filter</b> (Control, u, v, grid, mask) INPUT Control Derived-type variable returned by a previous call to polar_filter_init. [type(pfilt_control_type)] grid Identifier for the grid that the data in on. Possible values are: grid = 1, mass grid = 2, velocity grid, u comp = 3, velocity grid, v comp [integer, scalar] INPUT/OUTPUT data, u, v The data arrays to be filtered. The returned value will be the filtered data. The horizontal dimensions (1 and 2) must be consistent with the model's <b>data domain</b>. The third and fourth dimensions are arbitrary. The halo regions of the returned fields have not been updated. The arguments u and v do not necessarily have to be on the momentum grid. [real, dimension(:,:) or (:,:,:) or (:,:,:,:)] OPTIONAL INPUT mask data mask, 0.0 (data not present) or 1.0 (data present) must have the same first 3 dimensions as data [real, dimension(:,:) or (:,:,:)] ----------------------------------------------------------------- </a><a name="polar_filter_wind"
+id="polar_filter_wind">
 
-     Hgrid     horiz_grid_type (see horiz_grid_mod)
-
-  OPTIONAL INPUT
-
-     reflat    The reference latitude in degrees. This is the latitude
-               where polar filtering begins. Equator-ward from this latitude
-               there is no filtering.
-                 [real, default: reflat=60.]
-
-     weight    A weight to modify the overall strength of the filter without
-               increasing the number of latitudes filtered.
-                 [integer, default: weight=1]
-
-     sigma     Logical flag the sigma or eta coordinate.
-               Setting this flag equal true when running a sigma coordinate
-               model will make the code more efficient.
-                 [logical, default: sigma=.false.]
-
-     verbose   verbose flag, a larger number increases the printed output
-                 [integer, default: verbose=0]
-
-  RETURNS
-
-     Control   A variable of derived-type pfilt_control_type (see above).
-
------------------------------------------------------------------
-<a name="polar_filter">
-
-<b>call polar_filter</b> (Control, data, grid, mask)
-          OR
-<b>call polar_filter</b> (Control, u, v, grid, mask)
-
-  INPUT
-
-    Control   Derived-type variable returned by a previous call
-              to polar_filter_init. 
-                 [type(pfilt_control_type)]
-
-    grid      Identifier for the grid that the data in on.
-              Possible values are:  grid = 1, mass grid
-                                         = 2, velocity grid, u comp
-                                         = 3, velocity grid, v comp
-                 [integer, scalar]
-
-  INPUT/OUTPUT
-
-    data, u, v   The data arrays to be filtered.  The returned value
-                 will be the filtered data.  The horizontal dimensions (1 and 2)
-                 must be consistent with the model's <b>data domain</b>.
-                 The third and fourth dimensions are arbitrary.
-                 The halo regions of the returned fields have not been updated.
-                 The arguments u and v do not necessarily have to be on the
-                 momentum grid.
-                   [real, dimension(:,:) or (:,:,:) or (:,:,:,:)]
-
-  OPTIONAL INPUT
-
-    mask      data mask, 0.0 (data not present) or 1.0 (data present)
-              must have the same first 3 dimensions as data
-                [real, dimension(:,:) or (:,:,:)]
-
------------------------------------------------------------------
-<a name="polar_filter_wind">
-
-<b>call polar_filter_wind</b> ( Control, u, v, mask )
-
-  INPUT
-
-    Control   Derived-type variable returned by a previous call
-              to polar_filter_init. 
-                 [type(pfilt_control_type)]
-
-  INPUT/OUTPUT
-
-    u, v      velocity components to be filtered
-                [real, dimension(:,:) or (:,:,:)]
-
-  OPTIONAL INPUT
-
-    mask      data mask, 0.0 (data not present) or 1.0 (data present)
-              must have the same first 3 dimensions as data
-                [real, dimension(:,:) or (:,:,:)]
-
-</PRE>
-</A><!-- END ROUTINES -->
+<b>call polar_filter_wind</b> ( Control, u, v, mask ) INPUT Control Derived-type variable returned by a previous call to polar_filter_init. [type(pfilt_control_type)] INPUT/OUTPUT u, v velocity components to be filtered [real, dimension(:,:) or (:,:,:)] OPTIONAL INPUT mask data mask, 0.0 (data not present) or 1.0 (data present) must have the same first 3 dimensions as data [real, dimension(:,:) or (:,:,:)] </a></pre></a><!-- END ROUTINES -->
 <!--------------------------------------------------------------------->
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
 <b>FATAL error in polar_filter or polar_filter_wind</b>
 
@@ -259,7 +172,7 @@ Control = <b>polar_filter_init</b> ( Hgrid, reflat, weight, sigma, verbose )
     <b>reflat must lie between 0 and 90.</b>
         The reflat (reference latitude in degrees) was not in the
         required range.  Check the namelist value you supplied (for the
-        B-grid model check namelist &dynamics_driver).  Also consider
+        B-grid model check namelist &amp;dynamics_driver).  Also consider
         whether round-off error may caused the problem, if so slightly
         adjust the value.
 
@@ -268,14 +181,13 @@ Control = <b>polar_filter_init</b> ( Hgrid, reflat, weight, sigma, verbose )
     <b>cannot get and put fft rows on the same pe</b>
        There may be a code error. Check with the delveloper.
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!--------------------------------------------------------------------->
-<A NAME="REFERENCES">
-<HR>
+ <a name="REFERENCES" id="REFERENCES">
+<hr>
 <h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
-<PRE>
+<pre>
 
 Arakawa, A. and R. Lamb, 1977: Computational design of the basic
     dynamical processes of the UCLA general circulation model. 
@@ -287,25 +199,23 @@ Takacs, L. L. and R. C. Balgovind, 1983: High-latitude filtering
 Renner, V., 1981: Zonal filtering experiments with a barotropic
     model.  Contrib. Atmos. Phys., 54, 453-464.
 
-</PRE>
-</A><!-- END REFERENCES -->
+</pre></a><!-- END REFERENCES -->
 <!--------------------------------------------------------------------->
-<A NAME="BUGS">
-<HR>
+ <a name="BUGS" id="BUGS">
+<hr>
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN BUGS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END BUGS -->
+</pre></a><!-- END BUGS -->
 <!--------------------------------------------------------------------->
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
  Filter Response Function
  ------------------------
@@ -342,21 +252,18 @@ Renner, V., 1981: Zonal filtering experiments with a barotropic
     from the other PEs at that latitude.  At this point the problem is
     identical to the one-dimensional case.
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!--------------------------------------------------------------------->
-<A NAME="PLANS">
-<HR>
+ <a name="PLANS" id="PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END PLANS -->
+</pre></a><!-- END PLANS -->
 <!--------------------------------------------------------------------->
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

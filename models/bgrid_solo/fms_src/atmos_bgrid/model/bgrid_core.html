@@ -26,38 +26,36 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module bgrid_core_mod</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=-2>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#DATA_TYPES">DATA</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#ERRORS">ERRORS</A> / 
-<A HREF="#REFERENCES">REFERENCES</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-
-<H1>module bgrid_core_mod</H1>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module bgrid_core_mod</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="-2"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#DATA_TYPES">DATA</a> / <a href=
+"#ROUTINES">ROUTINES</a> / <a href="#ERRORS">ERRORS</a> / <a href=
+"#REFERENCES">REFERENCES</a> / <a href=
+"#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
+<h1>module bgrid_core_mod</h1>
 <!--------------------------------------------------------------------->
-<A NAME="OVERVIEW">
-<HR>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      The basic driver module for the B-grid atmospheric dynamical core.
      This version can be run on distributed memory machines.
 
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
      The B-grid dynamical core updates the tendencies of the 
      prognostic variables, the variables themselves are not modified.
      The prognostic variables are surface pressure, the zonal and 
@@ -78,16 +76,16 @@
      are also contained as a derived-type variable.
 
      Here is a detailed write-up of the finite differencing used in the
-     <A HREF="bgrid_core.tech.ps">B-grid atmospheric dynamical core</A>.
+     <a href=
+"bgrid_core.tech.ps">B-grid atmospheric dynamical core</a>.
 
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="MODULES_USED">
-<HR>
+ <a name="MODULES_USED" id="MODULES_USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
-<PRE>
+<pre>
 
    bgrid_prog_var_mod
    bgrid_horiz_mod
@@ -103,14 +101,13 @@
    fms_mod
    constants_mod
 
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!--------------------------------------------------------------------->
-<A NAME="INTERFACE">
-<HR>
+ <a name="INTERFACE" id="INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
-<PRE>
+<pre>
 
    <b>use bgrid_core_mod</b> [ ,only: bgrid_dynam_type, 
                                bgrid_core_init,
@@ -137,14 +134,13 @@
         Called at the end of the model run to terminate the module.
         Currently this call does nothing.
 
-</PRE>
-</A><!-- END INTERFACE -->
+</pre></a><!-- END INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="DATA_TYPES">
-<HR>
+ <a name="DATA_TYPES" id="DATA_TYPES">
+<hr>
 <h2>PUBLIC DATA</h2>
 <!-- BEGIN DATA_TYPES -->
-<PRE>
+<pre>
 
 <b>type bgrid_dynam_type</b>
 
@@ -190,225 +186,58 @@
    via the initialization call (bgrid_core_init).
 
 
-</PRE>
-</A><!-- END DATA_TYPES -->
+</pre></a><!-- END DATA_TYPES -->
 <!--------------------------------------------------------------------->
-<A NAME="ROUTINES">
-<HR>
+ <a name="ROUTINES" id="ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
-<PRE>
-<a name="bgrid_core_init">
+<pre>
+<a name="bgrid_core_init" id="bgrid_core_init">
 
-Dynam = <b>bgrid_core_init</b> ( Hgrid, Vgrid, fis, res, dt, ntadj, ntadv
-                  <FONT COLOR="#007700">[, damp_order_vel,  damp_order_tmp,  damp_order_trs,
-                     damp_coeff_vel,  damp_coeff_tmp,  damp_coeff_trs,
-                     damp_scheme, damp_slope_coeff_vel, damp_slope_coeff_tmp,
-                     num_horiz_fill, num_vert_fill,
-                     advec_order_vel, advec_order_tmp, advec_order_trs,
-                     advec_coeff_vel, advec_coeff_tmp, advec_coeff_trs,
-                     grid_sep_coeff, filter_option, filter_weight,
-                     ref_lat_filter, num_sponge_levels,
-                     sponge_coeff_vel, sponge_coeff_tmp, sponge_coeff_trs,
-                     dry_model, verbose ]</FONT>  )
+Dynam = <b>bgrid_core_init</b> ( Hgrid, Vgrid, fis, res, dt, ntadj, ntadv <font color="#007700">[, damp_order_vel, damp_order_tmp, damp_order_trs, damp_coeff_vel, damp_coeff_tmp, damp_coeff_trs, damp_scheme, damp_slope_coeff_vel, damp_slope_coeff_tmp, num_horiz_fill, num_vert_fill, advec_order_vel, advec_order_tmp, advec_order_trs, advec_coeff_vel, advec_coeff_tmp, advec_coeff_trs, grid_sep_coeff, filter_option, filter_weight, ref_lat_filter, num_sponge_levels, sponge_coeff_vel, sponge_coeff_tmp, sponge_coeff_trs, dry_model, verbose ]</font> ) INPUT Hgrid Derived-type variable containing horizontal grid constants (see horiz_grid_mod). [type(horiz_grid_type)] Vgrid Derived-type variable containing vertical grid constants (see vert_grid_mod). [type(vert_grid_type)] fis Geopotential height of the surface (m2/s2). Should have horizontal indexing consistent with the B-grid core. [real, dimension(:,:)] res Reciprocal of eta at the surface. Used at a switch for sigma vs. eta. For the sigma coordinate, all res = 0. Should have horizontal indexing consistent with the B-grid core. [real, dimension(:,:)] dtadv Time step in seconds for each call to update_bgrid_core. This should be the atmospheric time step. [real] ntadj The number of adjustment time steps for each advective time step. [integer] ntadv The number of advection time steps for each call to update bgrid_core. [integer] RETURNS Dynam Derived-type variable that contains quantities needed by the dynamical core. [type(bgrid_dynam_type)] OPTIONAL INPUT (Note: These argument can be modified through a namelist interface in the bgrid_core_driver_mod) damp_order_vel The horizontal damping order for momentum, damp_order_tmp temperature, and default order for all damp_order_trs prognostic tracers. The damping order must be an even number; damp_order = 0 turns off damping. <font size="-1"
+color=
+"#000099">[integer, default: damp_order = 4]</font> damp_coeff_vel The horizontal damping coefficients for damp_coeff_tmp momentum, temperature, and default value for damp_coeff_trs all prognostic tracers. The coefficients are expressed as non-dimensional values for the second-order diffusion operator (range = 0,1). <font size="-1"
+color=
+"#000099">[real, default: damp_coeff = 0.50]</font> damp_scheme Determines how horizontal damping coefficients vary with latitude. = 1, constant = 2, varies as inverse of diagonal grid distance = 3, varies as inverse of x-axis grid distance Note: damp_scheme = 1 is recommended, damp_scheme = 2,3 is experimental. <font size="-1"
+color=
+"#000099">[integer, default: damp_scheme = 1]</font> damp_slope_corr_vel The topography slope correction applied to horizontal damp_slope_corr_tmp damping of momentum and temperature (including all prognostic tracers). The coefficients (with range = 0,1) are expressed as arrays of size 4. The first 3 values are coefficients for the lowest 3 model layers, the last value represents the remaining uppermost layers. A NON-ZERO value turns the correction ON. Typical values might be (/ .25, .50, .75, .95 /). <font size="-1"
+color=
+"#000099">[real, dimension(4), default: damp_slope_corr = 0.,0.,0.,0.]</font> advec_order_vel The advection order for momentum, temperature, advec_order_tmp and default order for all prognostic tracers. advec_order_trs The advection order must be an even number. <font size="-1"
+color=
+"#000099">[integer, default: advec_order = 2]</font> advec_coeff_vel Coefficients for modified Euler-backward advection advec_coeff_tmp scheme for momentum, temperature, and all advec_coeff_trs prognostic tracers. NOTE: advec_coeff=0 is the Euler-forward scheme which is unstable, advec_coeff=1 is the Euler-backward scheme which is highly dissipative. <font size="-1"
+color=
+"#000099">[real, default: advec_coeff = 0.7]</font> num_horiz_fill The number of successive horizontal and vertical passes num_vert_fill applied in the tracer borrowing/filling scheme. This conservative scheme is used to fill negative tracer values. It is applied in either the vertical and horizontal directions. Each successive pass should remove more negative values, however an optimum number of passes is probably between 1-3. This is applied after advection to all prognostic tracers. <font size="-1"
+color=
+"#000099">[integer, default: num_fill = 1]</font> grid_sep_coeff Coefficient to suppress grid-separation problem associated with the B-grid. Currently, this option has been disabled within the model, so that this coefficient does nothing. <font size="-1"
+color=
+"#000099">[real, default: grid_sep_coeff = 0.00]</font> filter_option Determines how polar filtering is performed. filter_option = 0, NO filtering = 1, not implemented = 2, filter horiz OMG/DIV, advec mass tendencies, and momentum <font size="-1"
+color=
+"#000099">[integer, default: filter_option = 2]</font> filter_weight Weight applied to the polar filter that will increase (or decrease) the strength of the standard polar filter response function. SS(new) = SS(std)**filter_weight, where SS(std) is the Arakawa and Lamb response function. <font size="-1"
+color=
+"#000099">[integer, default: filter_weight = 1 ]</font> ref_lat_filter The reference latitude at which polar filtering (in each hemisphere) will begin to be applied. Setting this argument &gt;= 90. will turn off polar filtering. <font size="-1"
+color=
+"#000099">[real, default: ref_lat_filter = 60.]</font> num_sponge_levels Number of uppermost model level where a band-pass filter is applied to damp undesirable waves. Currently num_sponge_levels &gt; 1 is not allowed. If num_sponge_levels = 0, no damping is done. <font size="-1"
+color=
+"#000099">[integer, default: num_sponge_levels = 0 ]</font> sponge_coeff_vel Damping coefficients for the sponge layer(s) in sponge_coeff_tmp the uppermost model levels. Coefficients have been sponge_coeff_trs normalized and must be in the range [0,1]. If num_sponge_levels = 0, the value of the coefficients is ignored. There is no option to specify coefficients that vary with level, although currently num_sponge_levels &gt; 1 is not allowed. <font size="-1"
+color=
+"#000099">[real, default: sponge_coeff = 0.]</font> dry_model Flag that determines whether or not water vapor effects are included in the hydrostatic equation. <font size="-1"
+color=
+"#000099">[logical, default: dry_model = true]</font> verbose Flag that control additional printed output. Currently, this option is not being used. <font size="-1"
+color=
+"#000099">[integer, default: verbose = 0]</font> NOTES fis and res should be dimension by the size of the global grid, the number of longitude points by number of latitude points. <b>The declaration of fis and res must have the target attribute and the storage must be static.</b> --------------------------------------------------------------- </a><a name="update_bgrid_core"
+id="update_bgrid_core">
 
-INPUT
+<b>call update_bgrid_core</b> ( Var, Var_dt, Dynam, omega ) INPUT Var A derived-type variable that contains the B-grid's prognostic variables. [prog_var_type, see prog_var_mod] INPUT/OUTPUT Var_dt A derived-type variable that contains the TENDENCIES for the B-grid's prognostic variables. [prog_var_type, see prog_var_mod] Dynam The derived-type variable returned by a previous call to bgrid_core_init (see above). [type(bgrid_dynam_type)] OUTPUT omega The omega diagnostic (from the thermodynamic equation) in pascals per second. The array should have horizontal dimensions that are consistent with the B-grid dynamical core. [real, dimension(ilb:,jlb:,:)] --------------------------------------------------------------- </a><a name="bgrid_core_end"
+id="bgrid_core_end">
 
-   Hgrid     Derived-type variable containing horizontal grid constants (see horiz_grid_mod).
-                [type(horiz_grid_type)]
-
-   Vgrid     Derived-type variable containing vertical grid constants (see vert_grid_mod).
-                [type(vert_grid_type)]
-
-   fis       Geopotential height of the surface (m2/s2).
-             Should have horizontal indexing consistent with the B-grid core.
-                [real, dimension(:,:)]
-
-   res       Reciprocal of eta at the surface. Used at a switch for sigma vs. eta.
-             For the sigma coordinate, all res = 0.
-             Should have horizontal indexing consistent with the B-grid core.
-                [real, dimension(:,:)]
-
-   dtadv     Time step in seconds for each call to update_bgrid_core.
-             This should be the atmospheric time step.
-                [real]
-
-   ntadj     The number of adjustment time steps for each advective time step.
-                [integer]
-
-   ntadv     The number of advection time steps for each call to update bgrid_core.
-                [integer]
-
-
-RETURNS
-
-   Dynam      Derived-type variable that contains quantities needed
-              by the dynamical core.   [type(bgrid_dynam_type)]
-
-
-OPTIONAL INPUT  (Note: These argument can be modified through a
-                        namelist interface in the bgrid_core_driver_mod)
-
-   damp_order_vel       The horizontal damping order for momentum,
-   damp_order_tmp       temperature, and default order for all 
-   damp_order_trs       prognostic tracers. The damping order must be 
-                        an even number; damp_order = 0 turns off damping.
-                           <FONT SIZE=-1 COLOR="#000099">[integer, default: damp_order = 4]</FONT>
-
-   damp_coeff_vel       The horizontal damping coefficients for
-   damp_coeff_tmp       momentum, temperature, and default value for
-   damp_coeff_trs       all prognostic tracers. The coefficients are
-                        expressed as non-dimensional values for the 
-                        second-order diffusion operator (range = 0,1). 
-                           <FONT SIZE=-1 COLOR="#000099">[real, default: damp_coeff = 0.50]</FONT>
-
-   damp_scheme          Determines how horizontal damping coefficients
-                        vary with latitude.
-                           = 1, constant
-                           = 2, varies as inverse of diagonal grid distance
-                           = 3, varies as inverse of x-axis grid distance
-                        Note: damp_scheme = 1 is recommended, 
-                        damp_scheme = 2,3 is experimental.
-                            <FONT SIZE=-1 COLOR="#000099">[integer, default: damp_scheme = 1]</FONT>
-
-
-
-   damp_slope_corr_vel  The topography slope correction applied to horizontal
-   damp_slope_corr_tmp  damping of momentum and temperature (including all
-                        prognostic tracers).  The coefficients (with range = 0,1)
-                        are expressed as arrays of size 4.  The first 3 values are
-                        coefficients for the lowest 3 model layers, the last value
-                        represents the remaining uppermost layers.  A NON-ZERO
-                        value turns the correction ON.  Typical values might be
-                        (/ .25, .50, .75, .95 /).
-                           <FONT SIZE=-1 COLOR="#000099">[real, dimension(4), default: damp_slope_corr = 0.,0.,0.,0.]</FONT>
-
-   advec_order_vel      The advection order for momentum, temperature,
-   advec_order_tmp      and default order for all prognostic tracers.
-   advec_order_trs      The advection order must be an even number.
-                           <FONT SIZE=-1 COLOR="#000099">[integer, default: advec_order = 2]</FONT>
-
-   advec_coeff_vel      Coefficients for modified Euler-backward advection
-   advec_coeff_tmp      scheme for momentum, temperature, and all
-   advec_coeff_trs      prognostic tracers.
-                        NOTE: advec_coeff=0 is the Euler-forward scheme which
-                        is unstable, advec_coeff=1 is the Euler-backward scheme
-                        which is highly dissipative.
-                           <FONT SIZE=-1 COLOR="#000099">[real, default: advec_coeff = 0.7]</FONT>
-
-   num_horiz_fill       The number of successive horizontal and vertical passes
-   num_vert_fill        applied in the tracer borrowing/filling scheme.  This
-                        conservative scheme is used to fill negative tracer values.
-                        It is applied in either the vertical and horizontal directions.
-                        Each successive pass should remove more negative values,
-                        however an optimum number of passes is probably between 1-3.
-                        This is applied after advection to all prognostic tracers.
-                           <FONT SIZE=-1 COLOR="#000099">[integer, default: num_fill = 1]</FONT>
-
-   grid_sep_coeff       Coefficient to suppress grid-separation problem
-                        associated with the B-grid. Currently, this option has been
-                        disabled within the model, so that this coefficient does nothing.
-                           <FONT SIZE=-1 COLOR="#000099">[real, default: grid_sep_coeff = 0.00]</FONT>
-
-   filter_option        Determines how polar filtering is performed.
-                        filter_option = 0,  NO filtering
-                                      = 1,  not implemented
-                                      = 2,  filter horiz OMG/DIV,
-                                            advec mass tendencies,
-                                            and momentum
-                           <FONT SIZE=-1 COLOR="#000099">[integer, default: filter_option = 2]</FONT>
-
-   filter_weight        Weight applied to the polar filter that will
-                        increase (or decrease) the strength of the standard
-                        polar filter response function.
-                        SS(new) = SS(std)**filter_weight,
-                        where SS(std) is the Arakawa and Lamb response function.
-                           <FONT SIZE=-1 COLOR="#000099">[integer, default: filter_weight = 1 ]</FONT>
-
-   ref_lat_filter       The reference latitude at which polar filtering
-                        (in each hemisphere) will begin to be applied.
-                        Setting this argument &gt;= 90. will turn off
-                        polar filtering.
-                           <FONT SIZE=-1 COLOR="#000099">[real, default: ref_lat_filter = 60.]</FONT>
-
-   num_sponge_levels    Number of uppermost model level where a band-pass
-                        filter is applied to damp undesirable waves.
-                        Currently num_sponge_levels &gt; 1 is not allowed.
-                        If num_sponge_levels = 0, no damping is done.
-                           <FONT SIZE=-1 COLOR="#000099">[integer, default: num_sponge_levels = 0 ]</FONT>
-
-   sponge_coeff_vel     Damping coefficients for the sponge layer(s) in
-   sponge_coeff_tmp     the uppermost model levels. Coefficients have been
-   sponge_coeff_trs     normalized and must be in the range [0,1].
-                        If num_sponge_levels = 0, the value of the coefficients
-                        is ignored.  There is no option to specify coefficients
-                        that vary with level, although currently
-                        num_sponge_levels &gt; 1 is not allowed.
-                           <FONT SIZE=-1 COLOR="#000099">[real, default: sponge_coeff = 0.]</FONT>
-
-   dry_model            Flag that determines whether or not water vapor effects
-                        are included in the hydrostatic equation.
-                           <FONT SIZE=-1 COLOR="#000099">[logical, default: dry_model = true]</FONT>
-
-   verbose              Flag that control additional printed output.
-                        Currently, this option is not being used.
-                          <FONT SIZE=-1 COLOR="#000099">[integer, default: verbose = 0]</FONT>
-
-
-NOTES
-
-    fis and res should be dimension by the size of the global grid,
-    the number of longitude points by number of latitude points.
-    <b>The declaration of fis and res must have the target attribute
-    and the storage must be static.</b>
-
-
----------------------------------------------------------------
-<a name="update_bgrid_core">
-
-<b>call update_bgrid_core</b> ( Var, Var_dt, Dynam, omega )
-
-  INPUT
-
-     Var     A derived-type variable that contains the B-grid's
-             prognostic variables.
-                [prog_var_type, see prog_var_mod]
-
-  INPUT/OUTPUT
-
-     Var_dt  A derived-type variable that contains the TENDENCIES
-             for the B-grid's prognostic variables.
-                [prog_var_type, see prog_var_mod]
-
-     Dynam   The derived-type variable returned by a previous call
-             to bgrid_core_init (see above).
-                [type(bgrid_dynam_type)]
-
-  OUTPUT
-
-     omega   The omega diagnostic (from the thermodynamic equation) in
-             pascals per second. The array should have horizontal dimensions
-             that are consistent with the B-grid dynamical core.
-                [real, dimension(ilb:,jlb:,:)]
-
----------------------------------------------------------------
-<a name="bgrid_core_end">
-
-<b>call bgrid_core_end</b> ( Dynam )
-
-  INPUT
-
-     Dynam    Derived-type variable returned by a previous call to bgrid_core_init.
-                [type(bgrid_dynam_type)]
-
-</PRE>
-</A><!-- END ROUTINES -->
+<b>call bgrid_core_end</b> ( Dynam ) INPUT Dynam Derived-type variable returned by a previous call to bgrid_core_init. [type(bgrid_dynam_type)] </a></pre></a><!-- END ROUTINES -->
 <!-- ------------------------------------------------------------------>
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
 <b>FATAL ERRORS in bgrid_core_init</b>
 
@@ -424,37 +253,35 @@ NOTES
         The model time step usually is set at the highest program level.
         Check the namelist for the main program.
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!-- ------------------------------------------------------------------>
-<A NAME="REFERENCES">
-<HR>
+ <a name="REFERENCES" id="REFERENCES">
+<hr>
 <h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
-<PRE>
+<pre>
 
      Here is a detailed write-up of the finite differencing used in the
-     <A HREF="bgrid_core.tech.ps">B-grid atmospheric dynamical core</A>.
+     <a href=
+"bgrid_core.tech.ps">B-grid atmospheric dynamical core</a>.
 
-</PRE>
-</A><!-- END REFERENCES -->
+</pre></a><!-- END REFERENCES -->
 <!-- ------------------------------------------------------------------>
-<A NAME="BUGS">
-<HR>
+ <a name="BUGS" id="BUGS">
+<hr>
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN BUGS -->
-<PRE>
+<pre>
 
   There are no known bugs.
 
-</PRE>
-</A><!-- END BUGS -->
+</pre></a><!-- END BUGS -->
 <!-- ------------------------------------------------------------------>
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
  internal options:
 
@@ -464,22 +291,19 @@ NOTES
                          = 1.0        fully implicit
                      [real, default: alpha_implicit = 0.5]
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!-- ------------------------------------------------------------------>
-<A NAME="PLANS">
-<HR>
+ <a name="PLANS" id="PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
-<PRE>
+<pre>
 
   1) Addition polar filter options 
      (e.g., filter prognostic variables or tendencies)
 
-</PRE>
-</A><!-- END PLANS -->
+</pre></a><!-- END PLANS -->
 <!-- ------------------------------------------------------------------>
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

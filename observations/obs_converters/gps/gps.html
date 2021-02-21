@@ -1,289 +1,266 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>GPS Observations</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
-<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
-
-<H1>GPS Observations</H1>
-
-<table border=0 summary="" cellpadding=5>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>GPS Observations</title>
+<link rel="stylesheet" type="text/css" href=
+"../../../docs/html/doc.css">
+<link href="../../../docs/images/dart.ico" rel="shortcut icon">
+</head>
+<body>
+<a name="TOP" id="TOP"></a>
+<h1>GPS Observations</h1>
+<table border="0" summary="" cellpadding="5">
 <tr>
-    <td valign=middle>
-    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
+<td valign="middle"><img src="../../../docs/images/Dartboard7.png"
+alt="DART project logo" height="70"></td>
+<td>Jump to <a href="../../../docs/index.html">DART Documentation
+Main Index</a></td>
 </tr>
 </table>
-
-<A HREF="#DataSources">DATA SOURCES</A> /
-<A HREF="#Programs">PROGRAMS</A> / 
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Workflow">WORKFLOW</A> / 
-<A HREF="#Modules">MODULES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-
-<H2>Overview</H2>
-
-<P>
-The <a href="http://www.cosmic.ucar.edu">COSMIC</a> project provides data from 
-a series of satellites.  There are two forms of the data that are used by 
-DART: GPS Radio Occultation data and Electron Density.  The programs in this 
-directory extract the data from the distribution files and put them into 
-DART observation sequence (obs_seq) file format.
-</P>
-<H3>Radio Occultation</H3>
-<P>
-The COSMIC satellites measure the phase delay caused by deviation of the
-straight-line path of the GPS satellite signal as it passes through the 
-Earth's atmosphere when the GPS and COSMIC
-satellites rise and set relative to each other.
-This deviation results from changes in the angle of refraction of light
-as it passes through regions of varying density of atmosphere.
-These changes are a result of variations in the temperature,
-pressure, and moisture content.
-Vertical profiles of temperature and moisture can be derived as 
-the signal passes through more and more atmosphere 
-until it is obscured by the earth's horizon.
-There are thousands of observations each day
-distributed around the globe, including in areas which
-previously were poorly observed.
-These data are converted with the <em class=code>convert_cosmic_gps_cdf.f90</em>
-program and create DART observations of GPSRO_REFRACTIVITY.
-</P>
-
-<H3>Electron Density</H3>
-<P>
-The COSMIC satellites also provide ionospheric profiles of electron density.
-The accuracy is generally about 10<sup>-4</sup> &sim; 10<sup>-5</sup> cm<sup>-3</sup>.
-These data are converted with the <em class=code>convert_cosmic_ionosphere.f90</em>
-program and create DART observations tagged as COSMIC_ELECTRON_DENSITY.
-</P>
-
+<a href="#DataSources">DATA SOURCES</a> / <a href=
+"#Programs">PROGRAMS</a> / <a href="#Namelist">NAMELIST</a> /
+<a href="#Workflow">WORKFLOW</a> / <a href="#Modules">MODULES</a> /
+<a href="#Errors">ERRORS</a> / <a href="#FuturePlans">FUTURE
+PLANS</a> / <a href="#Legalese">TERMS OF USE</a>
+<h2>Overview</h2>
+<p>The <a href="http://www.cosmic.ucar.edu">COSMIC</a> project
+provides data from a series of satellites. There are two forms of
+the data that are used by DART: GPS Radio Occultation data and
+Electron Density. The programs in this directory extract the data
+from the distribution files and put them into DART observation
+sequence (obs_seq) file format.</p>
+<h3>Radio Occultation</h3>
+<p>The COSMIC satellites measure the phase delay caused by
+deviation of the straight-line path of the GPS satellite signal as
+it passes through the Earth's atmosphere when the GPS and COSMIC
+satellites rise and set relative to each other. This deviation
+results from changes in the angle of refraction of light as it
+passes through regions of varying density of atmosphere. These
+changes are a result of variations in the temperature, pressure,
+and moisture content. Vertical profiles of temperature and moisture
+can be derived as the signal passes through more and more
+atmosphere until it is obscured by the earth's horizon. There are
+thousands of observations each day distributed around the globe,
+including in areas which previously were poorly observed. These
+data are converted with the <em class=
+"code">convert_cosmic_gps_cdf.f90</em> program and create DART
+observations of GPSRO_REFRACTIVITY.</p>
+<h3>Electron Density</h3>
+<p>The COSMIC satellites also provide ionospheric profiles of
+electron density. The accuracy is generally about 10<sup>-4</sup> ∼
+10<sup>-5</sup> cm<sup>-3</sup>. These data are converted with the
+<em class="code">convert_cosmic_ionosphere.f90</em> program and
+create DART observations tagged as COSMIC_ELECTRON_DENSITY.</p>
 <!--==================================================================-->
-
-<A NAME="DataSources"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>DATA SOURCES</H2>
-
-<P>
-Data from the
-<a href="http://www.cosmic.ucar.edu">COSMIC</a> Program
-are available by signing up on the
-<a href="http://cosmic-io.cosmic.ucar.edu/cdaac">data access</a>
-web page.  We prefer delivery in
-<a href="http://www.unidata.ucar.edu/software/netcdf">netCDF</a>
-file format.
-<P>
-
-<H3>Radio Occultation</H3>
-<P>
-The files we use as input to these conversion programs are
-the Level 2 data, Atmospheric Profiles (filenames include
-the string 'atmPrf').
-<br />
-<br />
-Each vertical profile is stored in a separate netCDF file,
-and there are between 1000-3000 profiles/day, so converting a day's
-worth of observations used to involve downloading many individual files.
-There are now daily tar files available which makes it simpler
-to download the raw data all in a single file and then untar it to
-get the individual profiles.
-<br />
-<br />
-The scripts in the <em class=file>shell_scripts</em> directory can
-now download profiles from any of the available
-satellites that return GPS RO data to the CDAAC web site.  See the
-<em class=file>gpsro_to_obsseq.csh</em> or
-<em class=file>convert_many_gpsro.csh</em> script for where to 
-specify the satellites to be included.
-</P>
-
-<H3>Electron Density</H3>
-<P>
-The files we have used as input to these conversion programs are from 
-the COSMIC 2013 Mission and have a data type of 'ionPrf'.
-<br />
-<br />
-The file naming convention and file format are described by COSMIC 
-<a href=' http://cdaac-www.cosmic.ucar.edu/cdaac/cgi_bin/fileFormats.cgi?type=ionPrf'>here</a> 
-and there can be more than 1000 profiles/day. Like the GPS radio
-occultation data, the profiles are now available in a single daily
-tar file which can be downloaded then be unpacked into the individual files.
-COSMIC has instructions on ways to download the data at<br />
-<a href='http://cdaac-www.cosmic.ucar.edu/cdaac/tar/rest.html'
->http://cdaac-www.cosmic.ucar.edu/cdaac/tar/rest.html</a>
-</P>
-
+<a name="DataSources" id="DataSources"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>DATA SOURCES</h2>
+<p>Data from the <a href="http://www.cosmic.ucar.edu">COSMIC</a>
+Program are available by signing up on the <a href=
+"http://cosmic-io.cosmic.ucar.edu/cdaac">data access</a> web page.
+We prefer delivery in <a href=
+"http://www.unidata.ucar.edu/software/netcdf">netCDF</a> file
+format.</p>
+<h3>Radio Occultation</h3>
+<p>The files we use as input to these conversion programs are the
+Level 2 data, Atmospheric Profiles (filenames include the string
+'atmPrf').<br>
+<br>
+Each vertical profile is stored in a separate netCDF file, and
+there are between 1000-3000 profiles/day, so converting a day's
+worth of observations used to involve downloading many individual
+files. There are now daily tar files available which makes it
+simpler to download the raw data all in a single file and then
+untar it to get the individual profiles.<br>
+<br>
+The scripts in the <em class="file">shell_scripts</em> directory
+can now download profiles from any of the available satellites that
+return GPS RO data to the CDAAC web site. See the <em class=
+"file">gpsro_to_obsseq.csh</em> or <em class=
+"file">convert_many_gpsro.csh</em> script for where to specify the
+satellites to be included.</p>
+<h3>Electron Density</h3>
+<p>The files we have used as input to these conversion programs are
+from the COSMIC 2013 Mission and have a data type of 'ionPrf'.<br>
+<br>
+The file naming convention and file format are described by COSMIC
+<a href=
+'http://cdaac-www.cosmic.ucar.edu/cdaac/cgi_bin/fileFormats.cgi?type=ionPrf'>
+here</a> and there can be more than 1000 profiles/day. Like the GPS
+radio occultation data, the profiles are now available in a single
+daily tar file which can be downloaded then be unpacked into the
+individual files. COSMIC has instructions on ways to download the
+data at<br>
+<a href=
+'http://cdaac-www.cosmic.ucar.edu/cdaac/tar/rest.html'>http://cdaac-www.cosmic.ucar.edu/cdaac/tar/rest.html</a></p>
 <!--==================================================================-->
-
-<A NAME="Programs"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PROGRAMS</H2>
-
-<H3>convert_cosmic_gps_cdf</H3>
-<P>
-The data are distributed in
-<a href="http://www.unidata.ucar.edu/software/netcdf">netCDF</a>
-file format.  DART requires all observations to be in a proprietary
-format often called DART "obs_seq" format.
-The files in this directory (a combination
-of C shell scripts and a Fortran source executable)
-do this data conversion.
-<br />
-<br />
-The shell_scripts directory contains several example scripts, including one 
-which downloads the raw data files a day at a time (<em class=program>download_script.csh</em>), 
-and one which executes the conversion program (<em class=program>convert_script.csh</em>).  
-These scripts make 6 hour files by default, but have options for other times.  
-Each profile is stored in a separate netcdf file and there are usually
-between 1000-3000 files/day, so the download process can be
-lengthy.  You probably want to download as a separate preprocess step
-and do not use the script options to automatically delete the input files.
-Keep the files around until you are sure you are satisified with the
-output files and then delete them by hand.
-<br />
-<br />
-The conversion executable <em class=program>convert_cosmic_gps_cdf</em>, 
-reads the namelist
-<A HREF="#Namelist"> <em class=code>&amp;convert_cosmic_gps_nml</em> </A>
-from the file <em class=file>input.nml</em>.
-<br />
-<br />
+<a name="Programs" id="Programs"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>PROGRAMS</h2>
+<h3>convert_cosmic_gps_cdf</h3>
+<p>The data are distributed in <a href=
+"http://www.unidata.ucar.edu/software/netcdf">netCDF</a> file
+format. DART requires all observations to be in a proprietary
+format often called DART "obs_seq" format. The files in this
+directory (a combination of C shell scripts and a Fortran source
+executable) do this data conversion.<br>
+<br>
+The shell_scripts directory contains several example scripts,
+including one which downloads the raw data files a day at a time
+(<em class="program">download_script.csh</em>), and one which
+executes the conversion program (<em class=
+"program">convert_script.csh</em>). These scripts make 6 hour files
+by default, but have options for other times. Each profile is
+stored in a separate netcdf file and there are usually between
+1000-3000 files/day, so the download process can be lengthy. You
+probably want to download as a separate preprocess step and do not
+use the script options to automatically delete the input files.
+Keep the files around until you are sure you are satisified with
+the output files and then delete them by hand.<br>
+<br>
+The conversion executable <em class=
+"program">convert_cosmic_gps_cdf</em>, reads the namelist <a href=
+"#Namelist"><em class="code">&amp;convert_cosmic_gps_nml</em></a>
+from the file <em class="file">input.nml</em>.<br>
+<br>
 The namelist lets you select from one of two different forward
-operators.  The 'local' forward operator computes the expected
+operators. The 'local' forward operator computes the expected
 observation value at a single point: the requested height at the
-tangent point of the ray between satellites.  The 'non-local' operator
-computes values along the ray-path and does an integration to get
-the expected value.  The length of the integration segments and
-height at which to end the integration are given in the namelist.
-In some experiments the difference between the two types of
-operators was negligible.  This choice is made at the time of
-the conversion, and the type of operator is stored in the observation,
+tangent point of the ray between satellites. The 'non-local'
+operator computes values along the ray-path and does an integration
+to get the expected value. The length of the integration segments
+and height at which to end the integration are given in the
+namelist. In some experiments the difference between the two types
+of operators was negligible. This choice is made at the time of the
+conversion, and the type of operator is stored in the observation,
 so at runtime the corresponding forward operator will be used to
-compute the expected observation value.
-<br />
-<br />
+compute the expected observation value.<br>
+<br>
 The namelist also lets you specify at what heights you want
-observations to be extracted.  The raw data is very dense in
-the vertical; using all values would not results in a set of
-independent observations.  The current source code no longer
-does an intermediate interpolation; the original profiles
-appear to be smooth enough that this is not needed.  The requested
-vertical output heights are interpolated directly from the full profile.
-</P>
-
-<H3>convert_cosmic_ionosphere</H3>
-<P>
-Each profile is interpolated to a set of desired levels that are specified at run time.
-During the conversion process, each profile is checked for negative values of 
-electron density above the minimum desired level. If negative values are found,
-the entire profile is discarded. If an observation sequence file already exists,
-the converter will simply add the new observations to it. Multiple profiles may
-be converted in a single execution, so it is easy to consolidate all the profiles
-for a single day into a single observation sequence file, for example.
-<br />
-<br />
-<em class=program>convert_cosmic_ionosphere</em>
-reads the namelist
-<A HREF="#Namelist"> <em class=code>&amp;convert_cosmic_ionosphere_nml</em> </A>
-from the file <em class=file>input.nml</em>.
-<br />
-<br />
-The original observation times are preserved in the conversion process. If it is
-desired to subset the observation sequence file such that observations too far away
-from desired assimilation times are rejected, a separate post-processing step
-using the <a href='obs_sequence_tool.html'>obs_sequence_tool</a> is required.
-A script will be necessary to take a start date, an end date, an assimilation
-time step, and a desired time 'window' - and strip out the unwanted observations from
-a series of observation sequence files.
-<br />
-<br />
-There are multiple ways of specifying the observation error variance at run 
-time. They are implemented in a routine named 
-<em class=code>electron_density_error()</em> and are selected by the namelist
-variable <em class=code>observation_error_method</em>.
-<P>
-<TABLE border=0 cellpadding=1 width=100% summary='namelist description'>
-<tr><td>'constant'<td>
-    <td>a scalar value for all observations</td>
+observations to be extracted. The raw data is very dense in the
+vertical; using all values would not results in a set of
+independent observations. The current source code no longer does an
+intermediate interpolation; the original profiles appear to be
+smooth enough that this is not needed. The requested vertical
+output heights are interpolated directly from the full profile.</p>
+<h3>convert_cosmic_ionosphere</h3>
+<p>Each profile is interpolated to a set of desired levels that are
+specified at run time. During the conversion process, each profile
+is checked for negative values of electron density above the
+minimum desired level. If negative values are found, the entire
+profile is discarded. If an observation sequence file already
+exists, the converter will simply add the new observations to it.
+Multiple profiles may be converted in a single execution, so it is
+easy to consolidate all the profiles for a single day into a single
+observation sequence file, for example.<br>
+<br>
+<em class="program">convert_cosmic_ionosphere</em> reads the
+namelist <a href="#Namelist"><em class=
+"code">&amp;convert_cosmic_ionosphere_nml</em></a> from the file
+<em class="file">input.nml</em>.<br>
+<br>
+The original observation times are preserved in the conversion
+process. If it is desired to subset the observation sequence file
+such that observations too far away from desired assimilation times
+are rejected, a separate post-processing step using the <a href=
+'obs_sequence_tool.html'>obs_sequence_tool</a> is required. A
+script will be necessary to take a start date, an end date, an
+assimilation time step, and a desired time 'window' - and strip out
+the unwanted observations from a series of observation sequence
+files.<br>
+<br>
+There are multiple ways of specifying the observation error
+variance at run time. They are implemented in a routine named
+<em class="code">electron_density_error()</em> and are selected by
+the namelist variable <em class=
+"code">observation_error_method</em>.</p>
+<table border="0" cellpadding="1" width="100%" summary=
+'namelist description'>
+<tr>
+<td>'constant'</td>
+<td></td>
+<td>a scalar value for all observations</td>
 </tr>
-<tr><td>'scaled'<td>
-    <td>the electron density is multiplied by a scalar value</td>
+<tr>
+<td>'scaled'</td>
+<td></td>
+<td>the electron density is multiplied by a scalar value</td>
 </tr>
-<tr><td>'lookup'<td>
-    <td>a lookup table is read</td>
+<tr>
+<td>'lookup'</td>
+<td></td>
+<td>a lookup table is read</td>
 </tr>
-<tr><td>'scaled_lookup'<td>
-    <td>the lookup table value is multiplied by a scalar value and the electron density value</td>
+<tr>
+<td>'scaled_lookup'</td>
+<td></td>
+<td>the lookup table value is multiplied by a scalar value and the
+electron density value</td>
 </tr>
-</TABLE>
-
-<blockquote>
-I-Te Lee: " ... the original idea for error of ionospheric observation is 1%. Thus, I 
-put the code as "oerr = 0.01_r8 * obsval". Liu et. al and Yue et al investigated 
-the Abel inversion error of COSMIC ionosphere profile, both of them figure out 
-the large error would appear at the lower altitude and push model toward wrong 
-direction at the lower ionosphere while assimilating these profiles.
-On the other hand, the Abel inversion error depends on the ionospheric electron 
-density structure, which is a function of local time, altitude and geomagnetic latitude.
-To simplify the procedure to define observation error of profiles, Xinan Yue help 
-me to estimate an error matrix and saved in the file which named 'f3coerr.nc'. 
-...
-The number in the matrix is error percentage (%), which calculated by OSSE.  
-Here are two reference papers.  In the end, the observation error consists of 
+</table>
+<blockquote>I-Te Lee: " ... the original idea for error of
+ionospheric observation is 1%. Thus, I put the code as "oerr =
+0.01_r8 * obsval". Liu et. al and Yue et al investigated the Abel
+inversion error of COSMIC ionosphere profile, both of them figure
+out the large error would appear at the lower altitude and push
+model toward wrong direction at the lower ionosphere while
+assimilating these profiles. On the other hand, the Abel inversion
+error depends on the ionospheric electron density structure, which
+is a function of local time, altitude and geomagnetic latitude. To
+simplify the procedure to define observation error of profiles,
+Xinan Yue help me to estimate an error matrix and saved in the file
+which named 'f3coerr.nc'. ... The number in the matrix is error
+percentage (%), which calculated by OSSE. Here are two reference
+papers. In the end, the observation error consists of
 instrumentation error (10%) and Abel error."
-
-<ul><li>X.&nbsp;Yue, W.S.&nbsp;Schreiner, J.&nbsp;Lei, S.V.&nbsp;Sokolovskiy, C.&nbsp;Rocken, D.C.&nbsp;Hunt, and Y.-H.&nbsp;Kuo (2010),<br />
-<a href="https://www.ann-geophys.net/28/217/2010/"
->Error analysis of Abel retrieved electron density profiles from radio occultation measurements.</a><br />
-<i>Annales Geophysicae: Atmospheres, Hydrospheres and Space Sciences</i>. <b>28</b> No. 1, pp 217-222,
-doi:10.5194/angeo-28-217-2010
-</li>
-
-<li> J.Y.&nbsp;Liu, C.Y.&nbsp;Lin, C.H.&nbsp;Lin, H.F.&nbsp;Tsai, S.C.&nbsp;Solomon, Y.Y.&nbsp;Sun, I.T.&nbsp;Lee, W.S.&nbsp;Schreiner, and Y.H.&nbsp;Kuo (2010), <br>
-<a href="http://dx.doi.org/10.1029/2009JA015079"
->Artificial plasma cave in the low-latitude ionosphere results from the radio occultation inversion of the FORMOSAT-3/COSMIC}</a>,
-<i>Journal of Geophysical Research: Space Physics</i>. <b>115</b> No. A7, pp 2156-2202,
-doi:10.1029/2009JA015079
-</li>
+<ul>
+<li>X.&nbsp;Yue, W.S.&nbsp;Schreiner, J.&nbsp;Lei,
+S.V.&nbsp;Sokolovskiy, C.&nbsp;Rocken, D.C.&nbsp;Hunt, and
+Y.-H.&nbsp;Kuo (2010),<br>
+<a href="https://www.ann-geophys.net/28/217/2010/">Error analysis
+of Abel retrieved electron density profiles from radio occultation
+measurements.</a><br>
+<i>Annales Geophysicae: Atmospheres, Hydrospheres and Space
+Sciences</i>. <b>28</b> No. 1, pp 217-222,
+doi:10.5194/angeo-28-217-2010</li>
+<li>J.Y.&nbsp;Liu, C.Y.&nbsp;Lin, C.H.&nbsp;Lin, H.F.&nbsp;Tsai,
+S.C.&nbsp;Solomon, Y.Y.&nbsp;Sun, I.T.&nbsp;Lee,
+W.S.&nbsp;Schreiner, and Y.H.&nbsp;Kuo (2010),<br>
+<a href="http://dx.doi.org/10.1029/2009JA015079">Artificial plasma
+cave in the low-latitude ionosphere results from the radio
+occultation inversion of the FORMOSAT-3/COSMIC}</a>, <i>Journal of
+Geophysical Research: Space Physics</i>. <b>115</b> No. A7, pp
+2156-2202, doi:10.1029/2009JA015079</li>
 </ul>
 </blockquote>
-
-<P>
-It is possible to create observation sequence files for perfect model 
-experiments that have realistic observation sampling patterns and observation
-error variances that <strong>do not have any actual electron densities</strong>. 
-The COSMIC data files are read, but the electron density information is not 
-written.  Keep in mind that some methods of specifying the observation error 
-variance require knowledge of the observation value. If the observation 
-value is bad or the entire profile is bad, no observation locations are 
-created for the profile.
-<P>
-
+<p>It is possible to create observation sequence files for perfect
+model experiments that have realistic observation sampling patterns
+and observation error variances that <strong>do not have any actual
+electron densities</strong>. The COSMIC data files are read, but
+the electron density information is not written. Keep in mind that
+some methods of specifying the observation error variance require
+knowledge of the observation value. If the observation value is bad
+or the entire profile is bad, no observation locations are created
+for the profile.</p>
+<p>
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST ====================-->
 <!--==================================================================-->
-
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
-This namelist is read from the file <em class=file>input.nml</em>.
-Namelists start with an ampersand
-'&amp;' and terminate with a slash '/'.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
-prematurely terminating the namelist.
-</P>
-
-<div class=namelist>
+ <a name="Namelist" id="Namelist"></a></p>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>NAMELIST</h2>
+<p>This namelist is read from the file <em class=
+"file">input.nml</em>. Namelists start with an ampersand '&amp;'
+and terminate with a slash '/'. Character strings that contain a
+'/' must be enclosed in quotes to prevent them from prematurely
+terminating the namelist.</p>
+<div class="namelist">
 <pre>
 &amp;convert_cosmic_gps_nml
    obs_levels             = -1.0
@@ -295,82 +272,83 @@ prematurely terminating the namelist.
    gpsro_netcdf_filelist  = ''
    gpsro_out_file         = 'obs_seq.gpsro'
  /
-</pre>
-</div>
-
-<br />
-<br />
-
+</pre></div>
+<br>
+<br>
 <div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
-
-<TBODY valign=top>
-  
-<TR><TD> obs_levels </TD>
-    <TD> integer(200) </TD>
-    <TD>A series of heights, in kilometers, where observations from this profile
-should be interpolated.  (Note that the other distances and heights in the
-namelist are specified in meters.)  The values should be listed in increasing
-height order.
-</TD></TR>
-  
-<TR><TD> use_original_kuo_error </TD>
-    <TD> logical </TD>
-   <TD>If .true. use the observation error variances for a refractivity observation
-that come from a Kuo paper and were implied to be used for the CONUS domain.
-If .false. use observation error variances similar to what is used in GSI.
-</TD></TR>
-  
-<TR><TD> local_operator </TD>
-    <TD> logical </TD>
-   <TD>If .true. compute the observation using a method which assumes all
-effects occur at the tangent point.  If .false. integrate along the tangent
-line and do ray-path reconstruction.
-</TD></TR>
-  
-<TR><TD> ray_ds </TD>
-    <TD> real(r8) </TD>
-    <TD>For the non-local operator only, the delta stepsize, in meters, to use
-for the along-path integration in each direction out from the tangent point.
-</TD></TR>
-  
-<TR><TD> ray_htop </TD>
-    <TD> real(r8) </TD>
-    <TD>For the non-local operator only, stop the integration when one of the
-endpoints of the next integration step goes above this height.  Specify in meters.
-</TD></TR>
-  
-<TR><TD> gpsro_netcdf_file </TD>
-    <TD> character(len=128) </TD>
-    <TD>The input filename when converting a single profile.  Only one of the 
-file or filelist items can have a valid value, so to use the single filename
-set the list name 'gpsro_netcdf_filelist' to the empty string ('&nbsp;').
-</TD></TR>
-
-<TR><TD> gpsro_netcdf_filelist </TD>
-    <TD> character(len=128) </TD> 
-    <TD>To convert a series of profiles in a single execution create a text file
-which contains each input file, in ascii, one filename per line.  Set this
-item to the name of that file, and set 'gpsro_netcdf_file' to the empty
-string ('&nbsp;').  
-</TD></TR>
-
-<TR><TD> gpsro_out_file </TD>
-    <TD> character(len=128) </TD> 
-    <TD>The output file to be created.  To be compatible with earlier
-versions of this program, if this file already exists it will be read in and
-the new data will be appended to that file.  
-</TD></TR>
-
-</TBODY> 
-</TABLE> 
-
-<P>A more useful example follows:</P>
+<table border="0" cellpadding="10" width="100%" summary=
+'namelist description'>
+<thead align="left">
+<tr>
+<th>Item</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr>
+<td>obs_levels</td>
+<td>integer(200)</td>
+<td>A series of heights, in kilometers, where observations from
+this profile should be interpolated. (Note that the other distances
+and heights in the namelist are specified in meters.) The values
+should be listed in increasing height order.</td>
+</tr>
+<tr>
+<td>use_original_kuo_error</td>
+<td>logical</td>
+<td>If .true. use the observation error variances for a
+refractivity observation that come from a Kuo paper and were
+implied to be used for the CONUS domain. If .false. use observation
+error variances similar to what is used in GSI.</td>
+</tr>
+<tr>
+<td>local_operator</td>
+<td>logical</td>
+<td>If .true. compute the observation using a method which assumes
+all effects occur at the tangent point. If .false. integrate along
+the tangent line and do ray-path reconstruction.</td>
+</tr>
+<tr>
+<td>ray_ds</td>
+<td>real(r8)</td>
+<td>For the non-local operator only, the delta stepsize, in meters,
+to use for the along-path integration in each direction out from
+the tangent point.</td>
+</tr>
+<tr>
+<td>ray_htop</td>
+<td>real(r8)</td>
+<td>For the non-local operator only, stop the integration when one
+of the endpoints of the next integration step goes above this
+height. Specify in meters.</td>
+</tr>
+<tr>
+<td>gpsro_netcdf_file</td>
+<td>character(len=128)</td>
+<td>The input filename when converting a single profile. Only one
+of the file or filelist items can have a valid value, so to use the
+single filename set the list name 'gpsro_netcdf_filelist' to the
+empty string ('&nbsp;').</td>
+</tr>
+<tr>
+<td>gpsro_netcdf_filelist</td>
+<td>character(len=128)</td>
+<td>To convert a series of profiles in a single execution create a
+text file which contains each input file, in ascii, one filename
+per line. Set this item to the name of that file, and set
+'gpsro_netcdf_file' to the empty string ('&nbsp;').</td>
+</tr>
+<tr>
+<td>gpsro_out_file</td>
+<td>character(len=128)</td>
+<td>The output file to be created. To be compatible with earlier
+versions of this program, if this file already exists it will be
+read in and the new data will be appended to that file.</td>
+</tr>
+</tbody>
+</table>
+<p>A more useful example follows:</p>
 <pre>
 &amp;convert_cosmic_gps_nml
   gpsro_netcdf_file      = ''
@@ -408,11 +386,8 @@ the new data will be appended to that file.
                53.0, 54.0, 55.0, 56.0, 57.0,
                58.0, 59.0, 60.0,
  /
-</pre>
-</div>
-
-
-<div class=namelist>
+</pre></div>
+<div class="namelist">
 <pre>
 &amp;convert_cosmic_ionosphere_nml
   input_file               = ''
@@ -425,101 +400,99 @@ the new data will be appended to that file.
   verbose                  = 0
   obs_levels               = -1.0
  /
-</pre>
-</div>
-
-<br />
-<br />
-
+</pre></div>
+<br>
+<br>
 <div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
-
-<TBODY valign=top>
-  
-<TR><TD> input_file </TD>
-    <TD> character(len=256) </TD>
-    <TD>The input filename when converting a single profile.  Only one of 
-        the <em class=code>input_file</em> or 
-        <em class=code>input_file_list</em> items can have a valid value,
-        so to use a single filename set 
-        <em class=code>input_file_list&nbsp;=&nbsp;''</em>
-</TD></TR>
-
-<TR><TD> input_file_list </TD>
-    <TD> character(len=256) </TD> 
-    <TD>To convert a series of profiles in a single execution create a text 
-        file which contains one filename per line.
-        Set this item to the name of that file, and set 
-        <em class=code>input_file&nbsp;=&nbsp;''</em>
-</TD></TR>
-
-<TR><TD> output_file </TD>
-    <TD> character(len=256) </TD> 
-    <TD>The output file to be created. If this file already exists the new 
-        data will be added to that file. DART observation sequences are 
-        linked lists. When the list is traversed, the observations are in 
-        ascending time order. The order they appear in the file is 
-        completely irrelevant. 
-</TD></TR>
-
-<TR><TD> observation_error_file </TD>
-    <TD> character(len=256) </TD> 
-    <TD>This specifies a lookup table. The table created by I-Te Lee and 
-        Xinan Yue is called <em class=file>f3coerr.nc</em>.
-</TD></TR>
-
-<TR><TD> observation_error_method </TD>
-    <TD> character(len=128) </TD> 
-    <TD> There are multiple ways of specifying the observation error
-         variance. This character string allows you to select the method.
-         The selection is not case-sensitive.  Allowable values are: 
-         'constant', 'scaled', 'lookup', or 'scaled_lookup'.
-         Anything else will result in an error. Look in the 
-         <em class=code>electron_density_error()</em> routine for specifics.
-</TD></TR>
-
-<TR><TD> locations_only </TD>
-    <TD> logical </TD> 
-    <TD> If <em class=code>locations_only&nbsp;=&nbsp;.true.</em> then the actual
-         observation values are not written to the output observation 
-         sequence file. This is useful for designing an OSSE that has a
-         realistic observation sampling pattern. Keep in mind that some
-         methods of specifying the observation error variance require
-         knowledge of the observation value. If the observation value
-         is bad or the entire profile is bad, this profile is rejected -
-         even if <em class=code>locations_only&nbsp;=&nbsp;.true.</em> 
-</TD></TR>
-
-<TR><TD> obs_error_factor </TD>
-    <TD> real(r8) </TD> 
-    <TD> This is the scalar that is used in several of the methods
-         specifying the observation error variance.
-</TD></TR>
-
-<TR><TD> verbose </TD>
-    <TD> integer </TD> 
-    <TD> controls the amount of run-time output echoed to the screen.
-         0 is nearly silent, higher values write out more. The filenames 
-         of the profiles that are skipped are ALWAYS printed.
-</TD></TR>
-
-<TR><TD> obs_levels </TD>
-    <TD> integer(200) </TD>
-    <TD>A series of heights, in kilometers, where observations from this profile
-        should be interpolated.  (Note that the other distances and heights 
-        in the namelist are specified in meters.)  The values must be listed
-        in increasing height order.
-</TD></TR>
-  
-</TBODY> 
-</TABLE> 
-
-<P>A more useful example follows:</P>
+<table border="0" cellpadding="10" width="100%" summary=
+'namelist description'>
+<thead align="left">
+<tr>
+<th>Item</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr>
+<td>input_file</td>
+<td>character(len=256)</td>
+<td>The input filename when converting a single profile. Only one
+of the <em class="code">input_file</em> or <em class=
+"code">input_file_list</em> items can have a valid value, so to use
+a single filename set <em class=
+"code">input_file_list&nbsp;=&nbsp;''</em></td>
+</tr>
+<tr>
+<td>input_file_list</td>
+<td>character(len=256)</td>
+<td>To convert a series of profiles in a single execution create a
+text file which contains one filename per line. Set this item to
+the name of that file, and set <em class=
+"code">input_file&nbsp;=&nbsp;''</em></td>
+</tr>
+<tr>
+<td>output_file</td>
+<td>character(len=256)</td>
+<td>The output file to be created. If this file already exists the
+new data will be added to that file. DART observation sequences are
+linked lists. When the list is traversed, the observations are in
+ascending time order. The order they appear in the file is
+completely irrelevant.</td>
+</tr>
+<tr>
+<td>observation_error_file</td>
+<td>character(len=256)</td>
+<td>This specifies a lookup table. The table created by I-Te Lee
+and Xinan Yue is called <em class="file">f3coerr.nc</em>.</td>
+</tr>
+<tr>
+<td>observation_error_method</td>
+<td>character(len=128)</td>
+<td>There are multiple ways of specifying the observation error
+variance. This character string allows you to select the method.
+The selection is not case-sensitive. Allowable values are:
+'constant', 'scaled', 'lookup', or 'scaled_lookup'. Anything else
+will result in an error. Look in the <em class=
+"code">electron_density_error()</em> routine for specifics.</td>
+</tr>
+<tr>
+<td>locations_only</td>
+<td>logical</td>
+<td>If <em class="code">locations_only&nbsp;=&nbsp;.true.</em> then
+the actual observation values are not written to the output
+observation sequence file. This is useful for designing an OSSE
+that has a realistic observation sampling pattern. Keep in mind
+that some methods of specifying the observation error variance
+require knowledge of the observation value. If the observation
+value is bad or the entire profile is bad, this profile is rejected
+- even if <em class=
+"code">locations_only&nbsp;=&nbsp;.true.</em></td>
+</tr>
+<tr>
+<td>obs_error_factor</td>
+<td>real(r8)</td>
+<td>This is the scalar that is used in several of the methods
+specifying the observation error variance.</td>
+</tr>
+<tr>
+<td>verbose</td>
+<td>integer</td>
+<td>controls the amount of run-time output echoed to the screen. 0
+is nearly silent, higher values write out more. The filenames of
+the profiles that are skipped are ALWAYS printed.</td>
+</tr>
+<tr>
+<td>obs_levels</td>
+<td>integer(200)</td>
+<td>A series of heights, in kilometers, where observations from
+this profile should be interpolated. (Note that the other distances
+and heights in the namelist are specified in meters.) The values
+must be listed in increasing height order.</td>
+</tr>
+</tbody>
+</table>
+<p>A more useful example follows:</p>
 <pre>
 &amp;convert_cosmic_ionosphere_nml
    input_file               = ''
@@ -537,37 +510,27 @@ the new data will be appended to that file.
                 360.0, 370.0, 380.0, 390.0, 400.0,
                 410.0, 420.0, 430.0, 440.0, 450.0
   /
-</pre>
-</div>
-
-<P><!-- useless divider for 'top' --></P>
-
+</pre></div>
+<p><!-- useless divider for 'top' --></p>
 <!--==================================================================-->
-
-<A NAME="Workflow"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>WORKFLOW FOR BATCH CONVERSIONS</H2>
-
+<a name="Workflow" id="Workflow"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>WORKFLOW FOR BATCH CONVERSIONS</h2>
 <!-- THIS NEEDS MORE WORK.  IT'S BASICALLY THE CONTENTS OF
      THE README DROPPED IN HERE WITH A </pre> PREPENDED.  
      BUT IT'S BETTER THAN NOTHING.  -->
-
-<P>
-If you are converting only a day or two of observations
-you can download the files by hand and call the converter 
-programs from the command line.  However if you are going
-convert many days/months/years of data you need an automated
-script, possibly submitted to a batch queue on a large machine.
-The following instructions describe shell scripts we provide
-as a guide in the <em class=file>shell_scripts</em> directory.
-You will have to adapt them for your own system
-unless you are running on an NCAR superscomputer.
-</P>
-
-<P>
-<b>Making DART Observations from Radio Occultation atmPrf Profiles:</b>
-<br />
-
+<p>If you are converting only a day or two of observations you can
+download the files by hand and call the converter programs from the
+command line. However if you are going convert many
+days/months/years of data you need an automated script, possibly
+submitted to a batch queue on a large machine. The following
+instructions describe shell scripts we provide as a guide in the
+<em class="file">shell_scripts</em> directory. You will have to
+adapt them for your own system unless you are running on an NCAR
+superscomputer.</p>
+<p><b>Making DART Observations from Radio Occultation atmPrf
+Profiles:</b><br></p>
 <pre>
 Description of the scripts provided to process the COSMIC and 
 CHAMP GPS radio occultation data.
@@ -624,15 +587,10 @@ etc) and the script doesn't exit, it can delete the input files before
 the conversion has succeeded.  But if you have file quota concerns
 this allows you to keep the total disk usage lower.
 </pre>
-</P>
-
-<br />
-<br />
-
-<P>
-<b>Making DART Observations from Ionospheric ionPrf Profiles:</b>
-<br />
-
+<br>
+<br>
+<p><b>Making DART Observations from Ionospheric ionPrf
+Profiles:</b><br></p>
 <pre>
 0) run quickbuild.csh as described above
 
@@ -647,20 +605,13 @@ create a single obs_seq.ion.YYYYMMDD file per day.
 split the daily files into X minute/hour files - set the
 window times at the top of the file before running.
 </pre>
-</P>
-
-<br />
-<br />
-
-<P>
-<b>Notes on already converted observations on the NCAR supercomputers</b>
-<br />
-<br />
-
-<b>GPS Radio Occultation Data:</b>
-<br />
-<br />
-
+<br>
+<br>
+<p><b>Notes on already converted observations on the NCAR
+supercomputers</b><br>
+<br>
+<b>GPS Radio Occultation Data:</b><br>
+<br></p>
 <pre>
 See /glade/p/image/Observations/GPS
 
@@ -714,14 +665,10 @@ nsc
 jan 2016
 
 </pre>
-
-<br />
-<br />
-
-<b>Ionosphere Data:</b>
-<br />
-<br />
-
+<br>
+<br>
+<b>Ionosphere Data:</b><br>
+<br>
 <pre>
 See /glade/p/image/Observation/ionosphere
 
@@ -759,23 +706,18 @@ In that case the script should add time to the next model
 advance request and loop to the next interval.
 
 </pre>
-</P>
-
-<br />
-<br />
-
-<P><!-- useless divider for 'top' --></P>
-
+<br>
+<br>
+<p><!-- useless divider for 'top' --></p>
 <!--==================================================================-->
-
-<A NAME="Modules"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>MODULES USED</H2>
-<P>
-<em class=program>convert_cosmic_gps_cdf</em> and
-<em class=program>convert_cosmic_ionosphere</em> use the same set of modules.
-</P>
-<PRE>
+<a name="Modules" id="Modules"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>MODULES USED</h2>
+<p><em class="program">convert_cosmic_gps_cdf</em> and <em class=
+"program">convert_cosmic_ionosphere</em> use the same set of
+modules.</p>
+<pre>
 assimilation_code/location/threed_sphere/location_mod.f90
 assimilation_code/modules/assimilation/adaptive_inflate_mod.f90
 assimilation_code/modules/assimilation/assim_model_mod.f90
@@ -802,73 +744,57 @@ models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
 observations/obs_converters/utilities/obs_utilities_mod.f90
-</PRE>
-
+</pre>
 <!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>KNOWN BUGS</H2>
-<P>
-Some COSMIC files seem to have internal times which differ from the
-times encoded in the filenames by as much as 2-3 minutes.  If it is
-important to get all the observations within a particular time window
-files with filenames from a few minutes before and after the window 
-should be converted.
-Times really outside the window can be excluded in a separate step using the
-<a href="../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>.
-</P>
-
+<a name="KnownBugs" id="KnownBugs"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>KNOWN BUGS</h2>
+<p>Some COSMIC files seem to have internal times which differ from
+the times encoded in the filenames by as much as 2-3 minutes. If it
+is important to get all the observations within a particular time
+window files with filenames from a few minutes before and after the
+window should be converted. Times really outside the window can be
+excluded in a separate step using the <a href=
+"../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">
+obs_sequence_tool</a>.</p>
 <!--==================================================================-->
 <!-- Describe Errors.                                                 -->
 <!--==================================================================-->
-
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERRORS</H2>
-<P>
-The converters have a parameter declaring the maximum number of desired 
-levels as 200. If more than 200 levels are entered as input
-(to <em class=code>obs_levels</em>), a rather uninformative run-time 
-error is generated:
-</P>
+<a name="Errors" id="Errors"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>ERRORS</h2>
+<p>The converters have a parameter declaring the maximum number of
+desired levels as 200. If more than 200 levels are entered as input
+(to <em class="code">obs_levels</em>), a rather uninformative
+run-time error is generated:</p>
 <pre>
  ERROR FROM:
   routine: check_namelist_read
   message:  INVALID NAMELIST ENTRY:  / in namelist convert_cosmic_ionosphere_nml
 </pre>
-<P>
-Your error may be different if <em class=code>obs_levels</em> is not the
-last namelist item before the slash '/'
-</P>
-
+<p>Your error may be different if <em class="code">obs_levels</em>
+is not the last namelist item before the slash '/'</p>
 <!--==================================================================-->
 <!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-none
-</P>
-
+<a name="FuturePlans" id="FuturePlans"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>FUTURE PLANS</h2>
+<p>none</p>
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
+<a name="Legalese" id="Legalese"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>Terms of Use</h2>
+<p>DART software - Copyright UCAR. This open source software is
+provided by UCAR, "as is", without charge, subject to all terms of
+use at <a href=
+"http://www.image.ucar.edu/DAReS/DART/DART_download">http://www.image.ucar.edu/DAReS/DART/DART_download</a></p>
 <!--==================================================================-->
-
-</BODY>
-</HTML>
+</body>
+</html>

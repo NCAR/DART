@@ -26,43 +26,43 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>program atmos_model</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=-2>
-<A HREF="#PUBLIC INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#NAMELIST">NAMELIST</A> / 
-<A HREF="#ERROR MESSAGES">ERRORS</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-<H1>program atmos_model</H1>
-<A NAME="OVERVIEW">
-<HR>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>program atmos_model</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="-2"><a href=
+"#PUBLIC%20INTERFACE">PUBLIC INTERFACE</a> / <a href=
+"#NAMELIST">NAMELIST</a> / <a href="#ERROR%20MESSAGES">ERRORS</a> /
+<a href="#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
+<h1>program atmos_model</h1>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      A main program for running a stand-alone atmospheric model.
 
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
      This version is suitable for running a dry dynamical core (Held-Suarez
      benchmark, aka simple_physics) and shallow water models.
 
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="OTHER MODULES USED">
-<HR>
+ <a name="OTHER MODULES USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
-<PRE>
+<pre>
 
        atmosphere_mod
      time_manager_mod
@@ -71,30 +71,28 @@
     field_manager_mod
    tracer_manager_mod
 
-</PRE>
-</A><!-- END OTHER MODULES USED -->
+</pre></a><!-- END OTHER MODULES USED -->
 <!--------------------------------------------------------------------->
-<A NAME="PUBLIC INTERFACE">
-<HR>
+ <a name="PUBLIC INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN PUBLIC INTERFACE -->
-<PRE>
+<pre>
 
    This is a main program. There are no callable interfaces.
 
-   A namelist interface called <b>&main_nml</b> must reside
+   A namelist interface called <b>&amp;main_nml</b> must reside
    in file <b>input.nml</b>. See the details below.
 
-</PRE>
-</A><!-- END PUBLIC INTERFACE -->
+</pre></a><!-- END PUBLIC INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="NAMELIST">
-<HR>
+ <a name="NAMELIST" id="NAMELIST">
+<hr>
 <h2>NAMELIST</h2>
 <!-- BEGIN NAMELIST -->
-<PRE>
+<pre>
 
-<b>&main_nml</b>
+<b>&amp;main_nml</b>
 
   current_time  The time (day,hour,minute,second) that the current
                 integration starts with.
@@ -134,20 +132,19 @@
     2) The actual run length will be the sum of days, hours,
        minutes, and seconds.  A run length of zero is not a valid option.
 
-</PRE>
-</A><!-- END NAMELIST -->
+</pre></a><!-- END NAMELIST -->
 <!--------------------------------------------------------------------->
-<A NAME="ERROR MESSAGES">
-<HR>
+ <a name="ERROR MESSAGES">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERROR MESSAGES -->
-<PRE>
+<pre>
 
 <b>FATAL ERRORS in program atmos_model</b>
 
     <b>dt_atmos has not been specified</b>
         A value must be specified for variable "dt_atmos" in
-        namelist &main_nml. See the namelist documentation for details.
+        namelist &amp;main_nml. See the namelist documentation for details.
 
     <b>invalid base date - must have year = month = 0</b>
         There is no calendar associated with this model.
@@ -169,43 +166,38 @@
         This error should probably not occur because of checks done at
         initialization time.
 
-</PRE>
-</A><!-- END ERROR MESSAGES -->
+</pre></a><!-- END ERROR MESSAGES -->
 <!--------------------------------------------------------------------->
-<A NAME="KNOWN BUGS">
-<HR>
+ <a name="KNOWN BUGS">
+<hr>
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN KNOWN BUGS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END KNOWN BUGS -->
+</pre></a><!-- END KNOWN BUGS -->
 <!--------------------------------------------------------------------->
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!--------------------------------------------------------------------->
-<A NAME="FUTURE PLANS">
-<HR>
+ <a name="FUTURE PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN FUTURE PLANS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END FUTURE PLANS -->
+</pre></a><!-- END FUTURE PLANS -->
 <!--------------------------------------------------------------------->
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

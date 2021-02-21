@@ -26,36 +26,33 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module bgrid_cold_start_mod</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=-2>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#NAMELIST">NAMELIST</A> / 
-<A HREF="#ERRORS">ERRORS</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-
-<H1>module bgrid_cold_start_mod</H1>
-
-<A NAME="OVERVIEW">
-<HR>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module bgrid_cold_start_mod</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="-2"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#ROUTINES">ROUTINES</a> / <a href=
+"#NAMELIST">NAMELIST</a> / <a href="#ERRORS">ERRORS</a> / <a href=
+"#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
+<h1>module bgrid_cold_start_mod</h1>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      Generates initial conditions for the B-grid dynamics core.
 
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
      Provides initial data (flow at rest) for all fields that
      are saved on the B-grid core restart file.
 
@@ -64,14 +61,13 @@
      there are options to generate (or read) realistic topography,
      but there is no way to generate a land-sea mask.
 
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="MODULES_USED">
-<HR>
+ <a name="MODULES_USED" id="MODULES_USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
-<PRE>
+<pre>
 
     bgrid_horiz_mod
      bgrid_halo_mod
@@ -79,14 +75,13 @@
             fms_mod
       constants_mod
 
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!--------------------------------------------------------------------->
-<A NAME="INTERFACE">
-<HR>
+ <a name="INTERFACE" id="INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
-<PRE>
+<pre>
 
    <b>use bgrid_cold_start_mod</b> [ ,only: cold_start_resol, cold_start ]
 
@@ -102,92 +97,31 @@
 
    <b>NOTES</b>
 
-      * A namelist interface called <a href="#NAMELIST">bgrid_cold_start_nml</a> is read
+      * A namelist interface called <a href=
+"#NAMELIST">bgrid_cold_start_nml</a> is read
         from file <b>input.nml</b>.
 
-</PRE>
-</A><!-- END INTERFACE -->
+</pre></a><!-- END INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="ROUTINES">
-<HR>
+ <a name="ROUTINES" id="ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
-<PRE>
-<a name="cold_start_resol">
+<pre>
+<a name="cold_start_resol" id="cold_start_resol">
 
-<b>call cold_start_resol</b> ( nx, ny, nz )
+<b>call cold_start_resol</b> ( nx, ny, nz ) OUTPUT nx number of grid boxes along the longitude (x) axis ny number of grid boxes along the latitude (y) axis nz number of vertical model levels NOTES The values returned by this routine are from the namelist &amp;bgrid_cold_start_nml. -------------------------------------------------------------------- </a><a name="cold_start"
+id="cold_start">
 
-  OUTPUT
-
-     nx     number of grid boxes along the longitude (x) axis
-
-     ny     number of grid boxes along the latitude (y) axis
-
-     nz     number of vertical model levels
-
-
-  NOTES
-
-     The values returned by this routine are from the namelist &amp;bgrid_cold_start_nml.
-
---------------------------------------------------------------------
-<a name="cold_start">
-
-<b>call cold_start</b> ( Hgrid, eta, peta, fis, res, ps, pssl, u, v, t )
-
-  INPUT/OUTPUT
-
-     Hgrid   Horizontal grid constants (see horiz_grid_mod)
-
-  OUTPUT
-
-     eta     Values of sigma/eta at the interface between model levels.
-             Must be dimensioned by the number of levels + 1.
-             NOTE: This value corresponds to the "B" term when determining
-             pressure (i.e., p = A + B*ps).
-                [real, dimension(:)]
-
-     peta    Values of constant pressure at the interface between model levels.
-             Must be dimensioned by the number of levels + 1.
-             NOTE: This value corresponds to the "A" term when determining
-             pressure (i.e., p = A + B*ps).
-                [real, dimension(:)]
-
-     fis     geopotential height of the surface (m2/s2)
-                [real, dimension(:,:)]
-
-     res     reciprocal of eta at the surface
-                [real, dimension(:,:)]
-
-     ps      surface pressure (pascals)
-                [real, dimension(:,:)]
-
-     pssl    surface pressure at eta=1. (pascals)
-                [real, dimension(:,:)]
-
-     u       zonal wind component (m/s)
-                [real, dimension(:,:,:)]
-
-     v       meridional wind component (m/s)
-                [real, dimension(:,:,:)]
-
-     t       temperature (deg K)
-                [real, dimension(:,:,:)]
-
-  NOTES
-
-     The storage for all arguments must be allocated by the calling program.
-
-</PRE>
-</A><!-- END ROUTINES -->
+<b>call cold_start</b> ( Hgrid, eta, peta, fis, res, ps, pssl, u, v, t ) INPUT/OUTPUT Hgrid Horizontal grid constants (see horiz_grid_mod) OUTPUT eta Values of sigma/eta at the interface between model levels. Must be dimensioned by the number of levels + 1. NOTE: This value corresponds to the "B" term when determining pressure (i.e., p = A + B*ps). [real, dimension(:)] peta Values of constant pressure at the interface between model levels. Must be dimensioned by the number of levels + 1. NOTE: This value corresponds to the "A" term when determining pressure (i.e., p = A + B*ps). [real, dimension(:)] fis geopotential height of the surface (m2/s2) [real, dimension(:,:)] res reciprocal of eta at the surface [real, dimension(:,:)] ps surface pressure (pascals) [real, dimension(:,:)] pssl surface pressure at eta=1. (pascals) [real, dimension(:,:)] u zonal wind component (m/s) [real, dimension(:,:,:)] v meridional wind component (m/s) [real, dimension(:,:,:)] t temperature (deg K) [real, dimension(:,:,:)] NOTES The storage for all arguments must be allocated by the calling program. </a></pre></a><!-- END ROUTINES -->
 <!--------------------------------------------------------------------->
-<A NAME="NAMELIST">
-<HR>
+ <a name="NAMELIST" id="NAMELIST">
+<hr>
 <h2>NAMELIST</h2>
 <!-- BEGIN NAMELIST -->
-<PRE>
+<pre>
 
- <b>&bgrid_cold_start_nml</b>
+ <b>&amp;bgrid_cold_start_nml</b>
 
    nlon   = number of grid points along the longitude axis (1st dimension)
               [integer, default: nlon = 0]
@@ -215,14 +149,13 @@
       All vertical coordinates use the pure sigma system.
 
 
-</PRE>
-</A><!-- END NAMELIST -->
+</pre></a><!-- END NAMELIST -->
 <!--------------------------------------------------------------------->
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
 <b>FATAL errors in bgrid_cold_start_mod</b>
 
@@ -236,14 +169,13 @@
         The resolution read from the topography file does not agree with
         the resolution given by the namelist.
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!--------------------------------------------------------------------->
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
   Initial data (momentum,temperature,surface pressure) are computed as:
 
@@ -258,22 +190,19 @@
       Rd  = dry gas constant
       tref, pref = namelist parameters
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!--------------------------------------------------------------------->
-<A NAME="PLANS">
-<HR>
+ <a name="PLANS" id="PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
-<PRE>
+<pre>
 
    Coordinate development of this module with the "off-line" program
    for generating spin-up initial conditions.
 
-</PRE>
-</A><!-- END PLANS -->
+</pre></a><!-- END PLANS -->
 <!--------------------------------------------------------------------->
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

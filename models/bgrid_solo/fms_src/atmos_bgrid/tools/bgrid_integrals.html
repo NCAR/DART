@@ -26,36 +26,34 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module bgrid_integrals</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=-2>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#NAMELIST">NAMELIST</A> / 
-<A HREF="#ERRORS">ERRORS</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-
-<H1>module bgrid_integrals</H1>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module bgrid_integrals</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="-2"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#ROUTINES">ROUTINES</a> / <a href=
+"#NAMELIST">NAMELIST</a> / <a href="#ERRORS">ERRORS</a> / <a href=
+"#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
+<h1>module bgrid_integrals</h1>
 <!--------------------------------------------------------------------->
-<A NAME="OVERVIEW">
-<HR>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      Computes and outputs global integrals of various quantities
      for the B-grid dynamical core.
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
 
      Global integrals of the following quantities (except wind speed)
      are computed and output as ascii to either standard output or
@@ -69,7 +67,7 @@
         kinetic energy       (ke)
         total energy         (te)
         enstrophy            (ens)
-        tracers 1-4 (trs --->)
+        tracers 1-4 (trs ---&gt;)
 
      An internal variable allows for backward compatibility with
      the previous version. Zonal and eddy kinetic energy averages
@@ -90,14 +88,13 @@
            The zonal mean will not be computed correctly when there is
            domain decomposition along the x-axis.
 
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="MODULES_USED">
-<HR>
+ <a name="MODULES_USED" id="MODULES_USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
-<PRE>
+<pre>
 
     bgrid_change_grid_mod
     bgrid_horiz_mod
@@ -113,14 +110,13 @@
     field_manager_mod
     tracer_manager_mod
 
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!--------------------------------------------------------------------->
-<A NAME="INTERFACE">
-<HR>
+ <a name="INTERFACE" id="INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
-<PRE>
+<pre>
 
    <b>use bgrid_integrals_mod</b> [, only: bgrid_integrals_init,
                                        bgrid_integrals,
@@ -141,81 +137,38 @@
 
    Notes:
 
-     1) Namelist <a href="#NAMELIST">&bgrid_integrals_nml</a> controls the output frequency of 
+     1) Namelist <a href=
+"#NAMELIST">&amp;bgrid_integrals_nml</a> controls the output frequency of 
         B-grid global integrals.
 
      2) When the model is stopped, there is no saving of restart data
         such as the alarm information. The alarm will be reset when the
         model is restarted.
 
-</PRE>
-</A><!-- END INTERFACE -->
+</pre></a><!-- END INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="ROUTINES">
-<HR>
+ <a name="ROUTINES" id="ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
-<PRE>
-<a name="bgrid_integrals_init">
+<pre>
+<a name="bgrid_integrals_init" id="bgrid_integrals_init">
 
-<b>call bgrid_integrals_init</b> ( Time_init, Time )
+<b>call bgrid_integrals_init</b> ( Time_init, Time ) INPUT Time_init Reference (base) time. [time_type] Time The current time, must always be greater or equal to Time_init. The base time (Time_init) will be subtracted from this time when labeling the integral output. [time_type] NOTES Time_init is saved internally by this module as the base time. ------------------------------------------------------------------------ </a><a name="bgrid_integrals"
+id="bgrid_integrals">
 
- INPUT
+<b>call bgrid_integrals</b> ( Time, Hgrid, Vgrid, Var, Masks ) INPUT Time The current time, must always be greater or equal to Time_init. [time_type] Hgrid derived-type variable containing horizontal grid constants for the B-grid dynamical core [horiz_grid_type] Vgrid derived-type variable containing vertical grid constants for the B-grid dynamical core [vert_grid_type] Var derived-type variable containing the prognostic variables for the B-grid dynamical core [prog_var_type] Masks derived-type variable containing the grid box masks for the eta coordinate [grid_mask_type] NOTES 1) If it is not time to output integrals, bgrid_integrals will do nothing. 2) Integrals are computed only when they will be written to standard output or the requested file name. ------------------------------------------------------------------------ </a><a name="bgrid_integrals_end"
+id="bgrid_integrals_end">
 
-   Time_init    Reference (base) time.     [time_type]
-
-   Time         The current time, must always be greater or equal to Time_init.
-                The base time (Time_init) will be subtracted from this time
-                when labeling the integral output.   [time_type]
-
- NOTES
-
-   Time_init is saved internally by this module as the base time.
-
-------------------------------------------------------------------------
-<a name="bgrid_integrals">
-
-<b>call bgrid_integrals</b> ( Time, Hgrid, Vgrid, Var, Masks )
-
- INPUT
-
-   Time         The current time, must always be greater or equal to Time_init.
-                   [time_type]
-
-   Hgrid        derived-type variable containing horizontal grid constants
-                for the B-grid dynamical core   [horiz_grid_type]
-
-   Vgrid        derived-type variable containing vertical grid constants
-                for the B-grid dynamical core     [vert_grid_type]
-
-   Var          derived-type variable containing the prognostic variables
-                for the B-grid dynamical core        [prog_var_type]
-
-   Masks        derived-type variable containing the grid box masks for
-                the eta coordinate   [grid_mask_type]
-
-
- NOTES
-
-   1) If it is not time to output integrals, bgrid_integrals will do nothing.
-   2) Integrals are computed only when they will be written to standard 
-      output or the requested file name.
-
-------------------------------------------------------------------------
-<a name="bgrid_integrals_end">
-
-<b>call bgrid_integrals_end</b>
-
-</PRE>
-</A><!-- END ROUTINES -->
+<b>call bgrid_integrals_end</b> </a></pre></a><!-- END ROUTINES -->
 <!--------------------------------------------------------------------->
-<A NAME="NAMELIST">
-<HR>
+ <a name="NAMELIST" id="NAMELIST">
+<hr>
 <h2>NAMELIST</h2>
 <!-- BEGIN NAMELIST -->
-<PRE>
+<pre>
 
-<b>&bgrid_integrals_nml</b>
+<b>&amp;bgrid_integrals_nml</b>
 
  file_name  = optional file name for output (max length of 32 chars);
               if no name is specified (the default) then
@@ -257,14 +210,13 @@
                     for  more than 4 tracers is needed, "tracer_file_name"
                     specifies the file for additional tracer integrals.
 
-</PRE>
-</A><!-- END NAMELIST -->
+</pre></a><!-- END NAMELIST -->
 <!--------------------------------------------------------------------->
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
 <b>FATAL Errors in bgrid_integrals_mod</b>
 
@@ -286,25 +238,23 @@
         Quantities that are buffered between output intervals (tmin,vmax)
         may not reproduce between runs.
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!--------------------------------------------------------------------->
-<A NAME="BUGS">
-<HR>
+ <a name="BUGS" id="BUGS">
+<hr>
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN BUGS -->
-<PRE>
+<pre>
 
      No known bugs.
 
-</PRE>
-</A><!-- END BUGS -->
+</pre></a><!-- END BUGS -->
 <!--------------------------------------------------------------------->
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
  FORMULAS USED FOR COMPUTING INTEGRAL QUANTITIES
 
@@ -341,22 +291,19 @@
 
         R = relative vorticity
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!--------------------------------------------------------------------->
-<A NAME="PLANS">
-<HR>
+ <a name="PLANS" id="PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
-<PRE>
+<pre>
 
     1) Netcdf capabilities?
     2) Switch to a very general diagnostics handler?
 
-</PRE>
-</A><!-- END PLANS -->
+</pre></a><!-- END PLANS -->
 <!--------------------------------------------------------------------->
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

@@ -26,63 +26,58 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module utilities</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=1>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#DATA_TYPES">DATA</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#NAMELIST">NAMELIST</A> / 
-<A HREF="#CHANGES">CHANGES</A> / 
-<A HREF="#ERRORS">ERRORS</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module utilities</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="1"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#DATA_TYPES">DATA</a> / <a href=
+"#ROUTINES">ROUTINES</a> / <a href="#NAMELIST">NAMELIST</a> /
+<a href="#CHANGES">CHANGES</a> / <a href="#ERRORS">ERRORS</a> /
+<a href="#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
 <h1>Module Utilities</h1>
-<A NAME="OVERVIEW">
-<HR>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      A collection of routines for performing commonly used
      (predominately I/O) functions.
      
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
 
      The utilities module contains routines for opening files,
      error handling, and outputting version numbers.
 
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="MODULES_USED">
-<HR>
+ <a name="MODULES_USED" id="MODULES_USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
-<PRE>
+<pre>
 
              mpp_mod
      mpp_domains_mod
           mpp_io_mod
 
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!--------------------------------------------------------------------->
-<A NAME="INTERFACE">
-<HR>
+ <a name="INTERFACE" id="INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
-<PRE>
+<pre>
 
 use utilities_mod [, only: utilities_init, utilities_end,
                            error_mesg, NOTE, WARNING, FATAL,
@@ -169,25 +164,23 @@ use utilities_mod [, only: utilities_init, utilities_end,
    mpp_clock_end       Terminates performance timing (mpp_clock_end)
 
 
-</PRE>
-</A><!-- END INTERFACE -->
+</pre></a><!-- END INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="DATA_TYPES">
-<HR>
+ <a name="DATA_TYPES" id="DATA_TYPES">
+<hr>
 <h2>PUBLIC DATA</h2>
 <!-- BEGIN DATA_TYPES -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END DATA_TYPES -->
+</pre></a><!-- END DATA_TYPES -->
 <!--------------------------------------------------------------------->
-<A NAME="ROUTINES">
-<HR>
+ <a name="ROUTINES" id="ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
-<PRE>
+<pre>
 
 <b>file_exist</b> (file_name)
 
@@ -249,7 +242,8 @@ check_nml_error ( iostat, nml_name )
 
    Note
 
-      See a <A HREF="ioerrors.txt">table of possible iostat error codes</A>
+      See a <a href=
+"ioerrors.txt">table of possible iostat error codes</a>
       you may encounter on the Cray T90 or an SGI workstation.
 
    Example
@@ -474,7 +468,7 @@ id = <b>mpp_clock_init</b> ( module, routine, level )
                    [character]
 
       level     Level of timing.  When this level equals "timing_level"
-                defined by namelist &utilities_nml a non-zero identification
+                defined by namelist &amp;utilities_nml a non-zero identification
                 integer will be returned. 
                    [integer]
 
@@ -484,16 +478,15 @@ id = <b>mpp_clock_init</b> ( module, routine, level )
                 A zero value is returned (turning clocks off) when input
                 argument level does not equal namelist variable timing_level.
 
-</PRE>
-</A><!-- END ROUTINES -->
+</pre></a><!-- END ROUTINES -->
 <!--------------------------------------------------------------------->
-<A NAME="NAMELIST">
-<HR>
+ <a name="NAMELIST" id="NAMELIST">
+<hr>
 <h2>NAMELIST</h2>
 <!-- BEGIN NAMELIST -->
-<PRE>
+<pre>
 
-<b>&utilities_nml</b>
+<b>&amp;utilities_nml</b>
 
   timing_level          Level/degree of detailed performance timing.
                         If timing_level = 0 then no timing is done.
@@ -515,14 +508,14 @@ id = <b>mpp_clock_init</b> ( module, routine, level )
                            [character, default: iospec_ieee32='-F f77,cachea:48:1']
 
    stack_size          The size in words of the MPP user stack.
-                       If stack_size > 0, the following MPP routine is called:
+                       If stack_size &gt; 0, the following MPP routine is called:
                        call mpp_set_stack_size (stack_size).
                        If stack_size = 0 (default) then the default size set
                        by mpp_mod is used.
                            [integer, default: stack_size = 0]
 
    domains_stack_size  The size in words of the MPP_DOMAINS user stack.
-                       If domains_stack_size > 0, the following
+                       If domains_stack_size &gt; 0, the following
                        MPP_DOMAINS routine is called:
                        call mpp_domains_set_stack_size (domains_stack_size).
                        If domains_stack_size = 0 (default) then the default
@@ -535,15 +528,14 @@ NOTE:
     terminate after printing the required size.
 
 
-</PRE>
-</A><!-- END NAMELIST -->
+</pre></a><!-- END NAMELIST -->
 <!--------------------------------------------------------------------->
-<A NAME="CHANGES">
-<HR>
+ <a name="CHANGES" id="CHANGES">
+<hr>
 <h2>CHANGE HISTORY</h2>
 <!-- BEGIN CHANGES -->
-<PRE>
-<B><A HREF=".doc.log#utilities.f90">Revision history</A></B>
+<pre>
+<a href=".doc.log#utilities.f90">Revision history</a>
 
 <b>changes</b> (5/1/2000)
 
@@ -559,14 +551,13 @@ NOTE:
    3) Timing interface check_system_clock now prints an optional string.
    4) Subroutine utilities_end now calls mpp_io_exit.
 
-</PRE>
-</A><!-- END CHANGES -->
+</pre></a><!-- END CHANGES -->
 <!--------------------------------------------------------------------->
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
 <b>FATAL ERROR in check_nml_error</b>
 
@@ -588,14 +579,13 @@ NOTE:
 
     <b>invalid entry for namelist variable warning_level</b>
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!--------------------------------------------------------------------->
-<A NAME="BUGS">
-<HR>
+ <a name="BUGS" id="BUGS">
+<hr>
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN BUGS -->
-<PRE>
+<pre>
 
    Namelist error checking may not work correctly with some compilers.
 
@@ -604,46 +594,42 @@ NOTE:
    read_all_pe = .false. (not the default), then the code will fail.
    It is safest if straight reads precede the read_data calls.
 
-</PRE>
-</A><!-- END BUGS -->
+</pre></a><!-- END BUGS -->
 <!--------------------------------------------------------------------->
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
-   Version numbers are printed out from the CVS keyword "&#36;Id&#36;".
+   Version numbers are printed out from the CVS keyword "$Id$".
    The tag that the code was checked out with is also included
-   by using the keyword "&#36;Name&#36;". The following code can serve as
+   by using the keyword "$Name$". The following code can serve as
    a guideline for how to generate and output this information.
 
-   character(len=128) :: version = '&#36;Id&#36;'
-   character(len=128) :: tag = '&#36;Name&#36;'
+   character(len=128) :: version = '$Id$'
+   character(len=128) :: tag = '$Name$'
 
    if (get_my_pe() == 0) &
         write (unit,'(/,80("="),/(a))') trim(version), trim(tag)
 
    This output format may now done with the routine
-   <B>write_version_number</B>.
+   <b>write_version_number</b>.
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!--------------------------------------------------------------------->
-<A NAME="PLANS">
-<HR>
+ <a name="PLANS" id="PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
-<PRE>
+<pre>
 
    1) The name of this module will be changed to fms_utilities.f90
       (or something like that).
    2) MPP routines will be usable through this module.
 
-</PRE>
-</A><!-- END PLANS -->
+</pre></a><!-- END PLANS -->
 <!--------------------------------------------------------------------->
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

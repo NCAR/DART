@@ -26,12 +26,16 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
+<!DOCTYPE html>
 <html>
 <head>
-<META http-equiv="Content-Type" content="text/html; charset=EUC-JP">
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>Module topography_mod</title>
-<link type="text/css" href="http://www.gfdl.noaa.gov/~fms/style/doc.css" rel="stylesheet">
-<STYLE TYPE="text/css">
+<link type="text/css" href=
+"http://www.gfdl.noaa.gov/~fms/style/doc.css" rel="stylesheet">
+<style type="text/css">
           .fixed {
             font-size:medium;
             font-family:monospace;
@@ -40,41 +44,41 @@
             padding:0.1em;
             color:#663366;
           }
-        </STYLE>
+</style>
 </head>
 <body>
-<a name="TOP"></a><font class="header" size="1"><a href="#PUBLIC INTERFACE">PUBLIC INTERFACE </a>~
-          <a href="#PUBLIC DATA">PUBLIC DATA </a>~
-          <a href="#PUBLIC ROUTINES">PUBLIC ROUTINES </a>~
-          <a href="#NAMELIST">NAMELIST </a>~
-          <a href="#DIAGNOSTIC FIELDS">DIAGNOSTIC FIELDS </a>~
-          <a href="#ERROR MESSAGES">ERROR MESSAGES </a>~
-          <a href="#REFERENCES">REFERENCES </a>~ 
-          <a href="#NOTES">NOTES</a></font>
+<a name="TOP" id="TOP"></a><font class="header" size="1"><a href=
+"#PUBLIC%20INTERFACE">PUBLIC INTERFACE</a> ~ <a href=
+"#PUBLIC%20DATA">PUBLIC DATA</a> ~ <a href=
+"#PUBLIC%20ROUTINES">PUBLIC ROUTINES</a> ~ <a href=
+"#NAMELIST">NAMELIST</a> ~ <a href=
+"#DIAGNOSTIC%20FIELDS">DIAGNOSTIC FIELDS</a> ~ <a href=
+"#ERROR%20MESSAGES">ERROR MESSAGES</a> ~ <a href=
+"#REFERENCES">REFERENCES</a> ~ <a href="#NOTES">NOTES</a></font>
 <hr>
 <h1>module topography_mod</h1>
-<a name="OVERVIEW"></a>
+<a name="OVERVIEW" id="OVERVIEW"></a>
 <hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<p class="text">   Routines for creating land surface topography fields and land-water masks
-   for latitude-longitude grids. </p>
+<p class="text">Routines for creating land surface topography
+fields and land-water masks for latitude-longitude grids.</p>
 <!-- END OVERVIEW -->
-<a name="DESCRIPTION"></a>
+<a name="DESCRIPTION" id="DESCRIPTION"></a> 
 <!-- BEGIN DESCRIPTION -->
-<div>   This module generates realistic mountains and land-water masks
-   on a specified latitude-longitude grid by interpolating from the
-   1/6 degree Navy mean topography and percent water data sets.
-   The fields that can be generated are mean and standard deviation
-   of topography within the specified grid boxes; and land-ocean (or
-   water) mask and land-ocean (or water) fractional area.
-   <br>
+<div>This module generates realistic mountains and land-water masks
+on a specified latitude-longitude grid by interpolating from the
+1/6 degree Navy mean topography and percent water data sets. The
+fields that can be generated are mean and standard deviation of
+topography within the specified grid boxes; and land-ocean (or
+water) mask and land-ocean (or water) fractional area.<br>
 <br>
-   The interpolation scheme conserves the area-weighted average
-   of the input data by using module horiz_interp.
-   <br>
+The interpolation scheme conserves the area-weighted average of the
+input data by using module horiz_interp.<br>
 <br>
-   The interfaces get_gaussian_topog and gaussian_topog_init are documented in <a href="gaussian_topog.html">gaussian_topog_mod</a>. </div>
+The interfaces get_gaussian_topog and gaussian_topog_init are
+documented in <a href=
+"gaussian_topog.html">gaussian_topog_mod</a>.</div>
 <br>
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
@@ -82,35 +86,30 @@
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN OTHER MODULES USED -->
 <div>
-<pre>gaussian_topog_mod<br>  horiz_interp_mod<br>           fms_mod</pre>
-</div>
+<pre>
+gaussian_topog_mod<br>  horiz_interp_mod<br>           fms_mod</pre></div>
 <!-- END OTHER MODULES USED -->
 <!-- BEGIN PUBLIC INTERFACE -->
 <a name="PUBLIC INTERFACE"></a>
 <hr>
 <h2>PUBLIC INTERFACE</h2>
 <div>
-<pre>use topography_mod [, only:  get_topog_mean,<br>                             get_topog_stdev,<br>                             get_ocean_frac,<br>                             get_ocean_mask,<br>                             get_water_frac,<br>                             get_water_mask ]</pre>
+<pre>
+use topography_mod [, only:  get_topog_mean,<br>                             get_topog_stdev,<br>                             get_ocean_frac,<br>                             get_ocean_mask,<br>                             get_water_frac,<br>                             get_water_mask ]</pre>
 <dl>
-<dt>
-<a href="#get_topog_mean">get_topog_mean</a>:</dt>
-<dd>   Returns a "realistic" mean surface height field. </dd>
-<dt>
-<a href="#get_topog_stdev">get_topog_stdev</a>:</dt>
-<dd>   Returns a standard deviation of higher resolution topography with 
-   the given model grid boxes. </dd>
-<dt>
-<a href="#get_ocean_frac">get_ocean_frac</a>:</dt>
-<dd>   Returns fractional area covered by ocean in a grid box. </dd>
-<dt>
-<a href="#get_ocean_mask">get_ocean_mask</a>:</dt>
-<dd>   Returns a land-ocean mask in a grid box. </dd>
-<dt>
-<a href="#get_water_frac">get_water_frac</a>:</dt>
-<dd>   Returns fractional area covered by water. </dd>
-<dt>
-<a href="#get_water_mask">get_water_mask</a>:</dt>
-<dd>   Returns a land-water mask in a grid box. </dd>
+<dt><a href="#get_topog_mean">get_topog_mean</a>:</dt>
+<dd>Returns a "realistic" mean surface height field.</dd>
+<dt><a href="#get_topog_stdev">get_topog_stdev</a>:</dt>
+<dd>Returns a standard deviation of higher resolution topography
+with the given model grid boxes.</dd>
+<dt><a href="#get_ocean_frac">get_ocean_frac</a>:</dt>
+<dd>Returns fractional area covered by ocean in a grid box.</dd>
+<dt><a href="#get_ocean_mask">get_ocean_mask</a>:</dt>
+<dd>Returns a land-ocean mask in a grid box.</dd>
+<dt><a href="#get_water_frac">get_water_frac</a>:</dt>
+<dd>Returns fractional area covered by water.</dd>
+<dt><a href="#get_water_mask">get_water_mask</a>:</dt>
+<dd>Returns a land-water mask in a grid box.</dd>
 </dl>
 </div>
 <br>
@@ -120,392 +119,417 @@
 <h2>PUBLIC DATA</h2>
 <!-- BEGIN PUBLIC DATA -->
 <div>None.<br>
-<br>
-</div>
+<br></div>
 <!-- END PUBLIC DATA -->
 <a name="PUBLIC ROUTINES"></a>
 <hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN PUBLIC ROUTINES -->
 <ol type="a">
-<li>
-<a name="get_topog_mean"></a>
+<li><a name="get_topog_mean" id="get_topog_mean"></a>
 <h2>get_topog_mean</h2>
-<pre>flag = &lt;B&gt; <b>get_topog_mean</b> &lt;/B&gt; ( blon, blat, zmean )</pre>
+<pre>
+flag = &lt;B&gt; <b>get_topog_mean</b> &lt;/B&gt; ( blon, blat, zmean )</pre>
 <dl>
-<dt>
-<b>DESCRIPTION</b>
-</dt>
-<dd>   Returns realistic mountains on a latitude-longtude grid.
-   The returned field is the mean topography for the given grid boxes.
-   Computed using a conserving area-weighted interpolation.
-   The current input data set is the 1/6 degree Navy mean topography. </dd>
-<br>
-<br>
-<dt>
-<b>INPUT</b>
-</dt>
+<dt><b>DESCRIPTION</b></dt>
+<dd>Returns realistic mountains on a latitude-longtude grid. The
+returned field is the mean topography for the given grid boxes.
+Computed using a conserving area-weighted interpolation. The
+current input data set is the 1/6 degree Navy mean topography.</dd>
+<dd><br>
+<br></dd>
+<dt><b>INPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td><td>   The longitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The longitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td><td>   The latitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The latitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 </table>
 </dd>
-<br>
-<dt>
-<b>OUTPUT</b>
-</dt>
+<dd><br></dd>
+<dt><b>OUTPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>zmean&nbsp;&nbsp;&nbsp;</tt></td><td>   The mean surface height (meters).
-   The size of this field must be size(blon)-1 by size(blat)-1. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:,:)]</span></td>
+<td valign="top" align="left"><tt>zmean&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The mean surface height (meters). The size of this field must
+be size(blon)-1 by size(blat)-1.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>get_topog_mean&nbsp;&nbsp;&nbsp;</tt></td><td>   A logical value of TRUE is returned if the surface height field
-   was successfully created. A value of FALSE may be returned if the
-   input topography data set was not readable. <br>&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+<td valign="top" align="left">
+<tt>get_topog_mean&nbsp;&nbsp;&nbsp;</tt></td>
+<td>A logical value of TRUE is returned if the surface height field
+was successfully created. A value of FALSE may be returned if the
+input topography data set was not readable.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
-<br>
+<dd><br></dd>
 </dl>
 </li>
-<li>
-<a name="get_topog_stdev"></a>
+<li><a name="get_topog_stdev" id="get_topog_stdev"></a>
 <h2>get_topog_stdev</h2>
-<pre>flag = &lt;B&gt; <b>get_topog_stdev</b> &lt;/B&gt; ( blon, blat, stdev )</pre>
+<pre>
+flag = &lt;B&gt; <b>get_topog_stdev</b> &lt;/B&gt; ( blon, blat, stdev )</pre>
 <dl>
-<dt>
-<b>DESCRIPTION</b>
-</dt>
-<dd>   Returns the standard deviation of the "finer" input topography data set,
-   currently the Navy 1/6 degree mean topography data, within the
-   boundaries of the given input grid. </dd>
-<br>
-<br>
-<dt>
-<b>INPUT</b>
-</dt>
+<dt><b>DESCRIPTION</b></dt>
+<dd>Returns the standard deviation of the "finer" input topography
+data set, currently the Navy 1/6 degree mean topography data,
+within the boundaries of the given input grid.</dd>
+<dd><br>
+<br></dd>
+<dt><b>INPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td><td>   The longitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The longitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td><td>   The latitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The latitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 </table>
 </dd>
-<br>
-<dt>
-<b>OUTPUT</b>
-</dt>
+<dd><br></dd>
+<dt><b>OUTPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>stdev&nbsp;&nbsp;&nbsp;</tt></td><td>   The standard deviation of surface height (in meters) within
-   given input model grid boxes.
-   The size of this field must be size(blon)-1 by size(blat)-1. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:,:)]</span></td>
+<td valign="top" align="left"><tt>stdev&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The standard deviation of surface height (in meters) within
+given input model grid boxes. The size of this field must be
+size(blon)-1 by size(blat)-1.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>get_topog_stdev&nbsp;&nbsp;&nbsp;</tt></td><td>   A logical value of TRUE is returned if the output field was
-   successfully created. A value of FALSE may be returned if the
-   input topography data set was not readable. <br>&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+<td valign="top" align="left">
+<tt>get_topog_stdev&nbsp;&nbsp;&nbsp;</tt></td>
+<td>A logical value of TRUE is returned if the output field was
+successfully created. A value of FALSE may be returned if the input
+topography data set was not readable.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
-<br>
+<dd><br></dd>
 </dl>
 </li>
-<li>
-<a name="get_ocean_frac"></a>
+<li><a name="get_ocean_frac" id="get_ocean_frac"></a>
 <h2>get_ocean_frac</h2>
-<pre>flag = &lt;B&gt; <b>get_ocean_frac</b> &lt;/B&gt; ( blon, blat, ocean_frac )</pre>
+<pre>
+flag = &lt;B&gt; <b>get_ocean_frac</b> &lt;/B&gt; ( blon, blat, ocean_frac )</pre>
 <dl>
-<dt>
-<b>DESCRIPTION</b>
-</dt>
-<dd>   Returns fractional area covered by ocean in the given model grid boxes. </dd>
-<br>
-<br>
-<dt>
-<b>INPUT</b>
-</dt>
+<dt><b>DESCRIPTION</b></dt>
+<dd>Returns fractional area covered by ocean in the given model
+grid boxes.</dd>
+<dd><br>
+<br></dd>
+<dt><b>INPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td><td>   The longitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The longitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td><td>   The latitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The latitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 </table>
 </dd>
-<br>
-<dt>
-<b>OUTPUT</b>
-</dt>
+<dd><br></dd>
+<dt><b>OUTPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>ocean_frac&nbsp;&nbsp;&nbsp;</tt></td><td>   The fractional amount (0 to 1) of ocean in a grid box.
-   The size of this field must be size(blon)-1 by size(blat)-1. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:,:)]</span></td>
+<td valign="top" align="left">
+<tt>ocean_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The fractional amount (0 to 1) of ocean in a grid box. The size
+of this field must be size(blon)-1 by size(blat)-1.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>get_ocean_frac&nbsp;&nbsp;&nbsp;</tt></td><td>   A logical value of TRUE is returned if the output field
-   was successfully created. A value of FALSE may be returned
-   if the Navy 1/6 degree percent water data set was not readable. <br>&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+<td valign="top" align="left">
+<tt>get_ocean_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<td>A logical value of TRUE is returned if the output field was
+successfully created. A value of FALSE may be returned if the Navy
+1/6 degree percent water data set was not readable.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
-<br>
+<dd><br></dd>
 </dl>
 </li>
-<li>
-<a name="get_ocean_mask"></a>
+<li><a name="get_ocean_mask" id="get_ocean_mask"></a>
 <h2>get_ocean_mask</h2>
-<pre>flag = &lt;B&gt; <b>get_ocean_mask</b> &lt;/B&gt; ( blon, blat, ocean_mask )</pre>
+<pre>
+flag = &lt;B&gt; <b>get_ocean_mask</b> &lt;/B&gt; ( blon, blat, ocean_mask )</pre>
 <dl>
-<dt>
-<b>DESCRIPTION</b>
-</dt>
-<dd>   Returns a land-ocean mask in the given model grid boxes. </dd>
-<br>
-<br>
-<dt>
-<b>INPUT</b>
-</dt>
+<dt><b>DESCRIPTION</b></dt>
+<dd>Returns a land-ocean mask in the given model grid boxes.</dd>
+<dd><br>
+<br></dd>
+<dt><b>INPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td><td>   The longitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The longitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td><td>   The latitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The latitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 </table>
 </dd>
-<br>
-<dt>
-<b>OUTPUT</b>
-</dt>
+<dd><br></dd>
+<dt><b>OUTPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>ocean_frac&nbsp;&nbsp;&nbsp;</tt></td><td>   The fractional amount (0 to 1) of ocean in a grid box.
-   The size of this field must be size(blon)-1 by size(blat)-1. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:,:)]</span></td>
+<td valign="top" align="left">
+<tt>ocean_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The fractional amount (0 to 1) of ocean in a grid box. The size
+of this field must be size(blon)-1 by size(blat)-1.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>get_ocean_mask&nbsp;&nbsp;&nbsp;</tt></td><td>   A logical value of TRUE is returned if the output field
-   was successfully created. A value of FALSE may be returned
-   if the Navy 1/6 degree percent water data set was not readable. <br>&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+<td valign="top" align="left">
+<tt>get_ocean_mask&nbsp;&nbsp;&nbsp;</tt></td>
+<td>A logical value of TRUE is returned if the output field was
+successfully created. A value of FALSE may be returned if the Navy
+1/6 degree percent water data set was not readable.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
-<br>
+<dd><br></dd>
 </dl>
 </li>
-<li>
-<a name="get_water_frac"></a>
+<li><a name="get_water_frac" id="get_water_frac"></a>
 <h2>get_water_frac</h2>
-<pre>flag = &lt;B&gt; <b>get_water_frac</b> &lt;/B&gt; ( blon, blat, water_frac )</pre>
+<pre>
+flag = &lt;B&gt; <b>get_water_frac</b> &lt;/B&gt; ( blon, blat, water_frac )</pre>
 <dl>
-<dt>
-<b>DESCRIPTION</b>
-</dt>
-<dd>   Returns the percent of water in a grid box. </dd>
-<br>
-<br>
-<dt>
-<b>INPUT</b>
-</dt>
+<dt><b>DESCRIPTION</b></dt>
+<dd>Returns the percent of water in a grid box.</dd>
+<dd><br>
+<br></dd>
+<dt><b>INPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td><td>   The longitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The longitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td><td>   The latitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The latitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 </table>
 </dd>
-<br>
-<dt>
-<b>OUTPUT</b>
-</dt>
+<dd><br></dd>
+<dt><b>OUTPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>water_frac&nbsp;&nbsp;&nbsp;</tt></td><td>   The fractional amount (0 to 1) of water in a grid box.
-   The size of this field must be size(blon)-1 by size(blat)-1. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:,:)]</span></td>
+<td valign="top" align="left">
+<tt>water_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The fractional amount (0 to 1) of water in a grid box. The size
+of this field must be size(blon)-1 by size(blat)-1.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>get_water_frac&nbsp;&nbsp;&nbsp;</tt></td><td>   A logical value of TRUE is returned if the output field
-   was successfully created. A value of FALSE may be returned
-   if the Navy 1/6 degree percent water data set was not readable. <br>&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+<td valign="top" align="left">
+<tt>get_water_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<td>A logical value of TRUE is returned if the output field was
+successfully created. A value of FALSE may be returned if the Navy
+1/6 degree percent water data set was not readable.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
-<br>
+<dd><br></dd>
 </dl>
 </li>
-<li>
-<a name="get_water_mask"></a>
+<li><a name="get_water_mask" id="get_water_mask"></a>
 <h2>get_water_mask</h2>
-<pre>flag = &lt;B&gt; <b>get_water_mask</b> &lt;/B&gt; ( blon, blat, water_mask )</pre>
+<pre>
+flag = &lt;B&gt; <b>get_water_mask</b> &lt;/B&gt; ( blon, blat, water_mask )</pre>
 <dl>
-<dt>
-<b>DESCRIPTION</b>
-</dt>
-<dd>   Returns a land-water mask in the given model grid boxes. </dd>
-<br>
-<br>
-<dt>
-<b>INPUT</b>
-</dt>
+<dt><b>DESCRIPTION</b></dt>
+<dd>Returns a land-water mask in the given model grid boxes.</dd>
+<dd><br>
+<br></dd>
+<dt><b>INPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td><td>   The longitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The longitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td><td>   The latitude (in radians) at grid box boundaries. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:)]</span></td>
+<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td>The latitude (in radians) at grid box boundaries.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:)]</span></td>
 </tr>
 </table>
 </dd>
-<br>
-<dt>
-<b>OUTPUT</b>
-</dt>
+<dd><br></dd>
+<dt><b>OUTPUT</b></dt>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>water_mask&nbsp;&nbsp;&nbsp;</tt></td><td>   A binary mask for water (true) or land (false).
-   The size of this field must be size(blon)-1 by size(blat)-1. <br>&nbsp;&nbsp;&nbsp;<span class="type">[real, dimension(:,:)]</span></td>
+<td valign="top" align="left">
+<tt>water_mask&nbsp;&nbsp;&nbsp;</tt></td>
+<td>A binary mask for water (true) or land (false). The size of
+this field must be size(blon)-1 by size(blat)-1.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[real,
+dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>get_water_mask&nbsp;&nbsp;&nbsp;</tt></td><td>   A logical value of TRUE is returned if the output field
-   was successfully created. A value of FALSE may be returned
-   if the Navy 1/6 degree percent water data set was not readable. <br>&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+<td valign="top" align="left">
+<tt>get_water_mask&nbsp;&nbsp;&nbsp;</tt></td>
+<td>A logical value of TRUE is returned if the output field was
+successfully created. A value of FALSE may be returned if the Navy
+1/6 degree percent water data set was not readable.<br>
+&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
-<br>
+<dd><br></dd>
 </dl>
 </li>
 </ol>
 <!-- END PUBLIC ROUTINES -->
-<a name="NAMELIST"></a>
-<!-- BEGIN NAMELIST -->
+<a name="NAMELIST" id="NAMELIST"></a> <!-- BEGIN NAMELIST -->
 <hr>
 <h2>NAMELIST</h2>
-<div>
-<b>&amp;topography_nml</b>
-<br>
+<div><b>&amp;topography_nml</b><br>
 <br>
 <dl>
-<dt>
-<tt>topog_file</tt>
-</dt>
-<dl>   Name of topography file. <br>
-<span class="type">[character, default: DATA/navy_topography.data]</span>
+<dt><tt>topog_file</tt></dt>
+<dd>
+<dl>
+<dt>Name of topography file.<br>
+<span class="type">[character, default:
+DATA/navy_topography.data]</span></dt>
 </dl>
-<dt>
-<tt>water_file</tt>
-</dt>
-<dl>   Name of percent water file. <br>
-<span class="type">[character, default: DATA/navy_pctwater.data]</span>
+</dd>
+<dt><tt>water_file</tt></dt>
+<dd>
+<dl>
+<dt>Name of percent water file.<br>
+<span class="type">[character, default:
+DATA/navy_pctwater.data]</span></dt>
 </dl>
+</dd>
 </dl>
 </div>
 <br>
 <!-- END NAMELIST -->
-<a name="DIAGNOSTIC FIELDS"></a>
-<!-- BEGIN DIAGNOSTIC FIELDS -->
-<!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a>
+<a name="DIAGNOSTIC FIELDS"></a> <!-- BEGIN DIAGNOSTIC FIELDS -->
+<!-- END DIAGNOSTIC FIELDS --><a name="DATA SETS"></a> 
 <!-- BEGIN DATA SETS -->
 <hr>
 <h2>DATA SETS</h2>
 <div>
 <dl>
-<dt></dt>
-<dd>   This module uses the 1/6 degree U.S. Navy mean topography
-   and percent water data sets.
-   <br>
+<dd>This module uses the 1/6 degree U.S. Navy mean topography and
+percent water data sets.<br>
 <br>
-   These data sets have been re-formatted to separate 32-bit IEEE files.
-   The names of these files is specified by the <a href="#NAMELIST">namelist</a>   input.
-   <br>
+These data sets have been re-formatted to separate 32-bit IEEE
+files. The names of these files is specified by the <a href=
+"#NAMELIST">namelist</a> input.<br>
 <br>
-   The format for both files is as follows: <pre>     record = 1    nlon, nlat
+The format for both files is as follows:
+<pre>     record = 1    nlon, nlat
      record = 2    blon, blat
-     record = 3    data</pre>   where: <pre>     nlon, nlat = The number of longitude and latitude points
+     record = 3    data</pre>
+where:
+<pre>     nlon, nlat = The number of longitude and latitude points
                   in the horizontal grid.  For the 1/6 degree
                   data sets this is 2160 x 1080. [integer]
      blon, blat = The longitude and latitude grid box boundaries in degrees.
                      [real :: blon(nlon+1), blat(nlat+1)]
 
      data       = The topography or percent water data.
-                    [real :: data(nlon,nlat)]</pre> 
-</dd>
+                    [real :: data(nlon,nlat)]</pre></dd>
 </dl>
-<br>
-</div>
+<br></div>
 <!-- END DATA SETS -->
-<a name="ERROR MESSAGES"></a>
-<!-- BEGIN ERROR MESSAGES -->
+<a name="ERROR MESSAGES"></a> <!-- BEGIN ERROR MESSAGES -->
 <hr>
 <h2>ERROR MESSAGES</h2>
 <div>
 <dl>
-<dt>
-<b>FATAL in get_topog_mean</b>
-</dt>
-<dd>
-<span class="errmsg">shape(zmean) is not equal to (/size(blon)-1,size(blat)-1/))</span>
-</dd>
-<dd>   Check the input grid size and output field size. </dd>
-<dt>
-<b>FATAL in get_water_frac</b>
-</dt>
-<dd>
-<span class="errmsg">shape(water_frac) is not equal to (/size(blon)-1,size(blat)-1/))</span>
-</dd>
-<dd>   Check the input grid size and output field size. </dd>
+<dt><b>FATAL in get_topog_mean</b></dt>
+<dd><span class="errmsg">shape(zmean) is not equal to
+(/size(blon)-1,size(blat)-1/))</span></dd>
+<dd>Check the input grid size and output field size.</dd>
+<dt><b>FATAL in get_water_frac</b></dt>
+<dd><span class="errmsg">shape(water_frac) is not equal to
+(/size(blon)-1,size(blat)-1/))</span></dd>
+<dd>Check the input grid size and output field size.</dd>
 </dl>
-<br>
-</div>
+<br></div>
 <!-- END ERROR MESSAGES -->
-<a name="REFERENCES"></a>
+<a name="REFERENCES" id="REFERENCES"></a>
 <hr>
 <h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
-<div>
-        None.
-      </div>
+<div>None.</div>
 <br>
 <!-- END REFERENCES -->
 <a name="COMPILER SPECIFICS"></a>
 <hr>
 <h2>COMPILER SPECIFICS</h2>
 <!-- BEGIN COMPILER SPECIFICS -->
-<div>
-        None.
-      </div>
+<div>None.</div>
 <br>
 <!-- END COMPILER SPECIFICS -->
 <a name="PRECOMPILER OPTIONS"></a>
 <hr>
 <h2>PRECOMPILER OPTIONS</h2>
 <!-- BEGIN PRECOMPILER OPTIONS -->
-<div>
-        None.
-      </div>
+<div>None.</div>
 <br>
 <!-- END PRECOMPILER OPTIONS -->
 <a name="LOADER OPTIONS"></a>
@@ -513,8 +537,7 @@
 <h2>LOADER OPTIONS</h2>
 <!-- BEGIN LOADER -->
 <div>None.<br>
-<br>
-</div>
+<br></div>
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>
@@ -522,23 +545,18 @@
 <!-- BEGIN TEST PROGRAM -->
 <div>
 <dl>
-<dt></dt>
-<dd>   To run this program you will need the topography and percent water
-   data sets and use the following namelist (in file input.nml).
-   <br>
+<dd>To run this program you will need the topography and percent
+water data sets and use the following namelist (in file
+input.nml).<br>
 <br>
-   &amp;gaussian_topog_nml
-   height = 5000., 3000., 3000., 3000.,
-   olon   =   90.,  255.,  285.,    0.,
-   olat   =   45.,   45.,  -15.,  -90.,
-   wlon   =   15.,   10.,    5.,  180.,
-   wlat   =   15.,   25.,   25.,   20., /
-   <br>
+&amp;gaussian_topog_nml height = 5000., 3000., 3000., 3000., olon =
+90., 255., 285., 0., olat = 45., 45., -15., -90., wlon = 15., 10.,
+5., 180., wlat = 15., 25., 25., 20., /<br>
 <br>
-   program test
-   <br>
+program test<br>
 <br>
-   test program for topography and gaussian_topog modules <pre>  use topography_mod
+test program for topography and gaussian_topog modules
+<pre>  use topography_mod
   implicit none
   
   integer, parameter :: nlon=24, nlat=18
@@ -606,8 +624,7 @@
       enddo
     end subroutine printz
   
-  end program test</pre> 
-</dd>
+  end program test</pre></dd>
 </dl>
 </div>
 <br>
@@ -617,17 +634,16 @@
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN KNOWN BUGS -->
 <div>
-<p>   Water mask produces some possible erroneous water points along
-   the coast of Antarctic (at about 90W). </p>
+<p>Water mask produces some possible erroneous water points along
+the coast of Antarctic (at about 90W).</p>
 </div>
 <br>
 <!-- END KNOWN BUGS -->
-<a name="NOTES"></a>
+<a name="NOTES" id="NOTES"></a>
 <hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<div>None.<br>
-</div>
+<div>None.<br></div>
 <br>
 <!-- END NOTES -->
 <a name="FUTURE PLANS"></a>
@@ -635,14 +651,13 @@
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN FUTURE PLANS -->
 <div>
-<p>Use of netcdf data sets. </p>
-<p>Incorporate other topography and ocean data sets. </p>
+<p>Use of netcdf data sets.</p>
+<p>Incorporate other topography and ocean data sets.</p>
 </div>
 <br>
 <!-- END FUTURE PLANS -->
 <hr>
-<div align="right">
-<font size="-1"><a href="#TOP">top</a></font>
-</div>
+<div align="right"><a href="#TOP"><font size=
+"-1">top</font></a></div>
 </body>
 </html>

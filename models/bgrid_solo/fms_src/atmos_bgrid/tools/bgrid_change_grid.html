@@ -26,60 +26,56 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module bgrid_change_grid_mod</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=-2>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#ERRORS">ERRORS</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-
-<H1>module bgrid_change_grid_mod</H1>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module bgrid_change_grid_mod</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="-2"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#ROUTINES">ROUTINES</a> / <a href=
+"#ERRORS">ERRORS</a> / <a href="#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
+<h1>module bgrid_change_grid_mod</h1>
 <!--------------------------------------------------------------------->
-<A NAME="OVERVIEW">
-<HR>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
     Provides interfaces to interpolate between the B-grid mass and
     velocity grids.
 
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
     The interpolation to a grid box is performed using the (four) 
     grid boxes centered at it's corners.  The interfaces have been
     overloaded for area-weighted interpolation and simple
     equal-weighted (4-point) interpolation.
 
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="MODULES_USED">
-<HR>
+ <a name="MODULES_USED" id="MODULES_USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
-<PRE>
+<pre>
 
     bgrid_horiz_mod
 
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!--------------------------------------------------------------------->
-<A NAME="INTERFACE">
-<HR>
+ <a name="INTERFACE" id="INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
-<PRE>
+<pre>
 
    <b>use bgrid_change_grid_mod</b> [,only:  mass_to_vel, vel_to_mass ]
 
@@ -90,126 +86,60 @@
         Interpolates the velocity components from the velocity grid to
         the mass grid.
 
-</PRE>
-</A><!-- END INTERFACE -->
+</pre></a><!-- END INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="ROUTINES">
-<HR>
+ <a name="ROUTINES" id="ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
-<PRE>
-<a name="mass_to_vel">
+<pre>
+<a name="mass_to_vel" id="mass_to_vel">
 
-<b>call mass_to_vel</b> (Hgrid, fm, fv)
-         OR
-<b>call mass_to_vel</b>        (fm, fv)
+<b>call mass_to_vel</b> (Hgrid, fm, fv) OR <b>call mass_to_vel</b> (fm, fv) INPUT Hgrid horiz_grid_type (see horiz_grid_mod) When this variable is present, area weighted averaging is performed. When this variable is not present, simple four-point averaging is performed. fm 2-d or 3-d real array located at mass points OUTPUT fv 2-d or 3-d real array located at velocity points NOTES 1) No output value is calculated in the east-most and north-most rows. 2) If the Hgrid interface is used, then the horizontal dimensions of the input/output arrays must be consistent with the size of the local data domain. 3) The input and output arrays can be the same since a temporary array is used for the result. -------------------------------------------------------------------- </a><a name="vel_to_mass"
+id="vel_to_mass">
 
-  INPUT
-
-      Hgrid    horiz_grid_type (see horiz_grid_mod)
-               When this variable is present, area weighted averaging
-               is performed. When this variable is not present,
-               simple four-point averaging is performed.
-
-      fm       2-d or 3-d real array located at mass points
-
-  OUTPUT
-
-      fv       2-d or 3-d real array located at velocity points
-
-
-  NOTES
-
-      1) No output value is calculated in the east-most and north-most rows.
-      2) If the Hgrid interface is used, then the horizontal dimensions of
-         the input/output arrays must be consistent with the size of the
-         local data domain.
-      3) The input and output arrays can be the same since a temporary array
-         is used for the result.
-
---------------------------------------------------------------------
-<a name="vel_to_mass">
-
-<b>call vel_to_mass</b> (Hgrid, u, v, um, vm, mask)
-        OR
-<b>call vel_to_mass</b>        (u, v, um, vm, mask)
-
-  INPUT
-
-      Hgrid    horiz_grid_type (see horiz_grid_mod)
-               When this variable is present, area weighted averaging
-               is performed. When this variable is not present,
-               simple four-point averaging is performed.
-   
-      u, v     2-d or 3-d real arrays of velocity components array
-
-  OUTPUT
-
-      um, vm   2-d or 3-d real arrays averaged to mass points
-
-  INPUT
-
-      mask     2-d or 3-d topography mask array (real, 0. or 1.) located
-               at velocity points for the eta/step-mountain coordinate
-
-
-  NOTES
-
-      1) No output value is calculated in the west-most and south-most rows.
-      2) If the Hgrid interface is used, then the horizontal dimensions of
-         the input/output arrays must be consistent with the size of the
-         local data domain.
-      3) The input and output arrays can be the same since a temporary array
-         is used for the result.
-
-</PRE>
-</A><!-- END ROUTINES -->
+<b>call vel_to_mass</b> (Hgrid, u, v, um, vm, mask) OR <b>call vel_to_mass</b> (u, v, um, vm, mask) INPUT Hgrid horiz_grid_type (see horiz_grid_mod) When this variable is present, area weighted averaging is performed. When this variable is not present, simple four-point averaging is performed. u, v 2-d or 3-d real arrays of velocity components array OUTPUT um, vm 2-d or 3-d real arrays averaged to mass points INPUT mask 2-d or 3-d topography mask array (real, 0. or 1.) located at velocity points for the eta/step-mountain coordinate NOTES 1) No output value is calculated in the west-most and south-most rows. 2) If the Hgrid interface is used, then the horizontal dimensions of the input/output arrays must be consistent with the size of the local data domain. 3) The input and output arrays can be the same since a temporary array is used for the result. </a></pre></a><!-- END ROUTINES -->
 <!--------------------------------------------------------------------->
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!--------------------------------------------------------------------->
-<A NAME="BUGS">
-<HR>
+ <a name="BUGS" id="BUGS">
+<hr>
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN BUGS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END BUGS -->
+</pre></a><!-- END BUGS -->
 <!--------------------------------------------------------------------->
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
      The 2-d versions call the 3-d versions.
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!--------------------------------------------------------------------->
-<A NAME="PLANS">
-<HR>
+ <a name="PLANS" id="PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END PLANS -->
+</pre></a><!-- END PLANS -->
 <!--------------------------------------------------------------------->
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

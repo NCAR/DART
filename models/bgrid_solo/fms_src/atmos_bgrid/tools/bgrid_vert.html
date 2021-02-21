@@ -26,38 +26,36 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module bgrid_vert_mod</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=-2>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#DATA_TYPES">DATA</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#ERRORS">ERRORS</A> / 
-<A HREF="#REFERENCES">REFERENCES</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-
-<H1>module bgrid_vert_mod</H1>
-<A NAME="OVERVIEW">
-<HR>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module bgrid_vert_mod</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="-2"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#DATA_TYPES">DATA</a> / <a href=
+"#ROUTINES">ROUTINES</a> / <a href="#ERRORS">ERRORS</a> / <a href=
+"#REFERENCES">REFERENCES</a> / <a href=
+"#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
+<h1>module bgrid_vert_mod</h1>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      Initializes the derived-type variable vert_grid_type,
      which contains vertical grid constants needed by the
      B-grid dynamical core and many other B-grid routines.
 
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
  
      This module initializes the constants needed for a
      hybrid sigma/pressure vertical coordinate that also
@@ -95,26 +93,24 @@ model levels.
              pssl, ps, res  are dimensioned only in the horizontal
 
 
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="MODULES_USED">
-<HR>
+ <a name="MODULES_USED" id="MODULES_USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
-<PRE>
+<pre>
 
      constants_mod
      fms_mod
 
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!--------------------------------------------------------------------->
-<A NAME="INTERFACE">
-<HR>
+ <a name="INTERFACE" id="INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
-<PRE>
+<pre>
 
    <b>use bgrid_vert_mod</b> [,only: vert_grid_type      ,
                               vert_grid_init      ,
@@ -161,14 +157,13 @@ model levels.
         Computes the height (in meters) and pressure at the lowest
         full model level.
 
-</PRE>
-</A><!-- END INTERFACE -->
+</pre></a><!-- END INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="DATA_TYPES">
-<HR>
+ <a name="DATA_TYPES" id="DATA_TYPES">
+<hr>
 <h2>PUBLIC DATA</h2>
 <!-- BEGIN DATA_TYPES -->
-<PRE>
+<pre>
 
  <b>type (vert_grid_type)</b>
 
@@ -210,357 +205,46 @@ model levels.
    gamma  = reference lapse rate for the eta coordinate (.0065 degK/m)
               [real]
 
-</PRE>
-</A><!-- END DATA_TYPES -->
+</pre></a><!-- END DATA_TYPES -->
 <!--------------------------------------------------------------------->
-<A NAME="ROUTINES">
-<HR>
+ <a name="ROUTINES" id="ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
-<PRE>
-<a name="vert_grid_init">
+<pre>
+<a name="vert_grid_init" id="vert_grid_init">
 
-Vgrid = <b>vert_grid_init</b> (eta, peta, verbose)
+Vgrid = <b>vert_grid_init</b> (eta, peta, verbose) INPUT eta The sigma/eta values at model layer interfaces (half levels). The size of this array will determine the vertical resolution (i.e., number of levels = size(eta)-1). [real, dimension(:)] OPTIONAL INPUT peta A profile of reference pressure values at model layer interfaces (half levels) used to define the HYBRID vertical coordinate. If all values of "peta" are zero (the default), then the vertical coordinate used will be a pure sigma/eta coordinate. This variable along with "eta" determine the pressure at half model levels. The size of this array must be the same as eta. [real, dimension(:), default: peta=0.] verbose Integer flag that controls the amount of printed output. [integer, default: verbose = 0] RETURNS Vgrid Derived-type variable that contains all necessary vertical grid information needed by the dynamical core. [type(vert_grid_type)] ------------------------------------------------------------------------ </a><a name="compute_pres_depth"
+id="compute_pres_depth">
 
-  INPUT
+<b>call compute_pres_depth</b> ( Vgrid, pssl, pdepth ) INPUT Vgrid Derived-type variable containing vertical grid information returned by a previous call to vert_grid_init. [type(vert_grid_type)] pssl The (surface) pressure at eta = 1. [real, dimension(:,:)] OUTPUT pdepth The pressure depth (i.e., weight) for all model layers. The first 2 dimensions of pdepth must be the same as the dimensions of pssl. The third dimension of pdepth must equal the number of full model levels. [real, dimension(:,:,nlev)] ------------------------------------------------------------------------ </a><a name="compute_pres_full"
+id="compute_pres_full">
 
-     eta    The sigma/eta values at model layer interfaces (half levels).
-            The size of this array will determine the vertical resolution
-            (i.e., number of levels = size(eta)-1).
-               [real, dimension(:)]
+<b>call compute_pres_full</b> ( Vgrid, pssl, pfull [,phalf, dpde] ) INPUT Vgrid Derived-type variable containing vertical grid information returned by a previous call to vert_grid_init. [type(vert_grid_type)] pssl The (surface) pressure at eta = 1. [real, dimension(:,:)] OUTPUT pfull The pressure at full model levels. The first 2 dimensions of pfull must be the same as the dimensions of pssl. The third dimension of pfull must equal the number of full model levels. [real, dimension(:,:,nlev)] OPTIONAL INPUT phalf The pressure at half model levels (the interface between model layers). The first 2 dimensions of phalf must be the same as the dimensions of pssl. The third dimension of phalf must equal the number of half model levels. [real, dimension(:,:,nlev+1)] dpde The pressure depth (i.e., weight) for all model layers. The first 2 dimensions of dpde must be the same as the dimensions of pssl. The third dimension of dpde must equal the number of full model levels. [real, dimension(:,:,nlev)] ------------------------------------------------------------------------ </a><a name="compute_pres_half"
+id="compute_pres_half">
 
-  OPTIONAL INPUT
+<b>call compute_pres_half</b> ( Vgrid, pssl, phalf ) INPUT Vgrid Derived-type variable containing vertical grid information returned by a previous call to vert_grid_init. [type(vert_grid_type)] pssl The (surface) pressure at eta = 1. [real, dimension(:,:)] OUTPUT phalf The pressure at half model levels (the interface between model layers). The first 2 dimensions of phalf must be the same as the dimensions of pssl. The third dimension of phalf must equal the number of half model levels. [real, dimension(:,:,nlev+1)] ------------------------------------------------------------------------ </a><a name="compute_pres_weights"
+id="compute_pres_weights">
 
-     peta     A profile of reference pressure values at model layer interfaces
-              (half levels) used to define the HYBRID vertical coordinate.
-              If all values of "peta" are zero (the default), then the vertical
-              coordinate used will be a pure sigma/eta coordinate.
-              This variable along with "eta" determine the pressure at half
-              model levels.  The size of this array must be the same as eta.
-                 [real, dimension(:), default: peta=0.]
+<b>call compute_pres_weights</b> ( Vgrid, phalf, pfull, wta, wtb ) INPUT Vgrid Derived-type variable containing vertical grid information returned by a previous call to vert_grid_init. [type(vert_grid_type)] phalf The pressure at half model levels (the interface between model layers). [real, dimension(:,:,nlev+1)] pfull The pressure at full model levels. [real, dimension(:,:,nlev)] OUTPUT wta Weighting term used to average data from half levels to full model levels. wta is applied to data at the half level ABOVE. [real, dimension(:,:,nlev)] wtb Weighting term used to average data from half levels to full model levels. wtb is applied to data at the half level BELOW. [real, dimension(:,:,nlev)] NOTES For input and output arrays: phalf, pfull, wta, wtb. 1) The first 2 dimensions must all be the same. 2) The third dimension must agree with the vertical resolution of the model (as stated above). ------------------------------------------------------------------------ </a><a name="compute_pressures"
+id="compute_pressures">
 
-     verbose  Integer flag that controls the amount of printed output.
-                 [integer, default: verbose = 0]
+<b>call compute_pressures</b> ( Vgrid, pssl, phalf, pfull [, dpde, wta, wtb] ) INPUT Vgrid Derived-type variable containing vertical grid information returned by a previous call to vert_grid_init. [type(vert_grid_type)] pssl The (surface) pressure at eta = 1. [real, dimension(:,:)] OUTPUT phalf The pressure at half model levels (the interface between model layers). [real, dimension(:,:,nlev+1)] pfull The pressure at full model levels. [real, dimension(:,:,nlev)] OPTIONAL OUTPUT dpde The pressure depth (i.e., weight) for all model layers. [real, dimension(:,:,nlev)] wta Weighting term used to average data from half levels to full model levels. wta is applied to data at the half level ABOVE. [real, dimension(:,:,nlev)] wtb Weighting term used to average data from half levels to full model levels. wtb is applied to data at the half level BELOW. [real, dimension(:,:,nlev)] NOTES For output arrays: phalf, pfull, dpde, wta, wtb. 1) The first 2 dimensions must be the same as the dimensions of input argument pssl. 2) The third dimension must agree with the vertical resolution of the model (as stated above). ------------------------------------------------------------------------ </a><a name="compute_geop_height"
+id="compute_geop_height">
 
-  RETURNS
+<b>call compute_geop_height</b> ( Vgrid, fssl, vtemp, wta, wtb, zfull [, zhalf, mask] ) INPUT Vgrid Derived-type variable containing vertical grid information returned by a previous call to vert_grid_init. [type(vert_grid_type)] fssl The geopotential height (in m2/s2) at eta = 1. Note that for the eta coordinate fssl = 0. [real, dimension(:,:)] vtemp The virtual temperature (degK) at full model levels. [real, dimension(:,:,nlev)] wta Weighting term used to average data from half levels to full model levels. wta is applied to data at the half level ABOVE. [real, dimension(:,:,nlev)] wtb Weighting term used to average data from half levels to full model levels. wtb is applied to data at the half level BELOW. [real, dimension(:,:,nlev)] OUTPUT zfull The geopotential height (in m2/s2) at full model levels. [real, dimension(:,:,nlev)] OPTIONAL OUTPUT zhalf The geopotential height (in m2/s2) at half model levels (the interface between model layers). [real, dimension(:,:,nlev+1)] OPTIONAL INPUT mask A topography mask (0. or 1.) at full model levels for the eta/step-mountain vertical coordinate. [real, dimension(:,:,nlev)] NOTES For input and output arrays: vtemp, wta, wtb, zfull, zhalf, mask. 1) The first 2 dimensions must all be the same as the dimensions of input argument fssl. 2) The third dimension must agree with the vertical resolution of the model (as stated above). ------------------------------------------------------------------------ </a><a name="compute_height"
+id="compute_height">
 
-     Vgrid    Derived-type variable that contains all necessary 
-              vertical grid information needed by the dynamical core.
-                 [type(vert_grid_type)]
+<b>call compute_height</b> ( Vgrid, fssl, temp, sphum, pfull, phalf, zfull, zhalf [, mask] ) INPUT Vgrid Derived-type variable containing vertical grid information returned by a previous call to vert_grid_init. [type(vert_grid_type)] fssl The geopotential height (in m2/s2) at eta = 1. Note that for the eta coordinate fssl = 0. [real, dimension(:,:)] temp The temperature (degK) at full model levels. [real, dimension(:,:,nlev)] sphum The specific humidity (Kg/Kg) at full model levels. [real, dimension(:,:,nlev)] pfull The pressure at full model levels. [real, dimension(:,:,nlev)] phalf The pressure at half model levels (the interface between model layers). [real, dimension(:,:,nlev+1)] OUTPUT zfull The geopotential height (in meters) at full model levels. [real, dimension(:,:,nlev)] zhalf The geopotential height (in meters) at half model levels (the interface between model layers). [real, dimension(:,:,nlev+1)] OPTIONAL INPUT mask A topography mask (0. or 1.) at full model levels for the eta/step-mountain vertical coordinate. [real, dimension(:,:,nlev)] NOTES For input and output arrays: temp, sphum, pfull, phalf, zfull, zhalf, mask. 1) The first 2 dimensions must all be the same as the dimensions of input argument fssl. 2) The third dimension must agree with the vertical resolution of the model (as stated above). ------------------------------------------------------------------------ </a><a name="compute_height_bottom"
+id="compute_height_bottom">
 
-------------------------------------------------------------------------
-<a name="compute_pres_depth">
-
-<b>call compute_pres_depth</b> ( Vgrid, pssl, pdepth )
-
-  INPUT
-
-     Vgrid    Derived-type variable containing vertical grid information
-              returned by a previous call to vert_grid_init.
-                [type(vert_grid_type)]
-
-     pssl     The (surface) pressure at eta = 1.
-                [real, dimension(:,:)]
-
-  OUTPUT
-
-     pdepth   The pressure depth (i.e., weight) for all model layers.
-              The first 2 dimensions of pdepth must be the same as the
-              dimensions of pssl. The third dimension of pdepth must equal
-              the number of full model levels.
-                [real, dimension(:,:,nlev)]
-
-------------------------------------------------------------------------
-<a name="compute_pres_full">
-
-<b>call compute_pres_full</b> ( Vgrid, pssl, pfull [,phalf, dpde] )
-
-  INPUT
-
-     Vgrid    Derived-type variable containing vertical grid information
-              returned by a previous call to vert_grid_init.
-                [type(vert_grid_type)]
-
-     pssl     The (surface) pressure at eta = 1.
-                [real, dimension(:,:)]
-                                                            
-  OUTPUT
-
-     pfull    The pressure at full model levels.  The first 2 dimensions
-              of pfull must be the same as the dimensions of pssl. The third
-              dimension of pfull must equal the number of full model levels.
-                [real, dimension(:,:,nlev)]
-
-  OPTIONAL INPUT
-
-     phalf    The pressure at half model levels (the interface between model
-              layers). The first 2 dimensions of phalf must be the same as the
-              dimensions of pssl. The third dimension of phalf must equal the
-              number of half model levels.
-                [real, dimension(:,:,nlev+1)]
-
-     dpde     The pressure depth (i.e., weight) for all model layers.
-              The first 2 dimensions of dpde must be the same as the
-              dimensions of pssl. The third dimension of dpde must equal
-              the number of full model levels.
-                [real, dimension(:,:,nlev)]
-
-------------------------------------------------------------------------
-<a name="compute_pres_half">
-
-<b>call compute_pres_half</b> ( Vgrid, pssl, phalf )
-
-  INPUT
-
-     Vgrid    Derived-type variable containing vertical grid information
-              returned by a previous call to vert_grid_init.
-                [type(vert_grid_type)]
-
-     pssl     The (surface) pressure at eta = 1.
-                [real, dimension(:,:)]
-                                                            
-  OUTPUT
-
-     phalf    The pressure at half model levels (the interface between model
-              layers). The first 2 dimensions of phalf must be the same as the
-              dimensions of pssl. The third dimension of phalf must equal the
-              number of half model levels.
-                [real, dimension(:,:,nlev+1)]
-
-------------------------------------------------------------------------
-<a name="compute_pres_weights">
-
-<b>call compute_pres_weights</b> ( Vgrid, phalf, pfull, wta, wtb )
-
-  INPUT
-
-     Vgrid    Derived-type variable containing vertical grid information
-              returned by a previous call to vert_grid_init.
-                [type(vert_grid_type)]
-
-     phalf    The pressure at half model levels (the interface between model layers).
-                [real, dimension(:,:,nlev+1)]
-
-     pfull    The pressure at full model levels.
-                [real, dimension(:,:,nlev)]
-
-  OUTPUT
-
-     wta      Weighting term used to average data from half levels to full
-              model levels. wta is applied to data at the half level ABOVE.
-                [real, dimension(:,:,nlev)]
-
-     wtb      Weighting term used to average data from half levels to full
-              model levels. wtb is applied to data at the half level BELOW.
-                [real, dimension(:,:,nlev)]
-
-  NOTES
-
-     For input and output arrays: phalf, pfull, wta, wtb.
-
-      1) The first 2 dimensions must all be the same.
-      2) The third dimension must agree with the vertical resolution
-         of the model (as stated above).
-     
-------------------------------------------------------------------------
-<a name="compute_pressures">
-
-<b>call compute_pressures</b> ( Vgrid, pssl, phalf, pfull [, dpde, wta, wtb] )
-
-  INPUT
-
-     Vgrid    Derived-type variable containing vertical grid information
-              returned by a previous call to vert_grid_init.
-                [type(vert_grid_type)]
-
-     pssl     The (surface) pressure at eta = 1.
-                [real, dimension(:,:)]
-
-  OUTPUT
-
-     phalf    The pressure at half model levels (the interface between model layers).
-                [real, dimension(:,:,nlev+1)]
-
-     pfull    The pressure at full model levels.
-                [real, dimension(:,:,nlev)]
-
-  OPTIONAL OUTPUT
-
-     dpde     The pressure depth (i.e., weight) for all model layers.
-                [real, dimension(:,:,nlev)]
-
-     wta      Weighting term used to average data from half levels to full
-              model levels. wta is applied to data at the half level ABOVE.
-                [real, dimension(:,:,nlev)]
-
-     wtb      Weighting term used to average data from half levels to full
-              model levels. wtb is applied to data at the half level BELOW.
-                [real, dimension(:,:,nlev)]
-
-  NOTES
-
-     For output arrays: phalf, pfull, dpde, wta, wtb.
-
-      1) The first 2 dimensions must be the same as the dimensions of
-         input argument pssl.
-      2) The third dimension must agree with the vertical resolution
-         of the model (as stated above).
-     
-------------------------------------------------------------------------
-<a name="compute_geop_height">
-
-<b>call compute_geop_height</b> ( Vgrid, fssl, vtemp, wta, wtb, zfull [, zhalf, mask] )
-
-  INPUT
-
-     Vgrid    Derived-type variable containing vertical grid information
-              returned by a previous call to vert_grid_init.
-                [type(vert_grid_type)]
-
-     fssl     The geopotential height (in m2/s2) at eta = 1.
-              Note that for the eta coordinate fssl = 0.
-                [real, dimension(:,:)]
-
-     vtemp    The virtual temperature (degK) at full model levels.
-                [real, dimension(:,:,nlev)]
-
-     wta      Weighting term used to average data from half levels to full
-              model levels. wta is applied to data at the half level ABOVE.
-                [real, dimension(:,:,nlev)]
-
-     wtb      Weighting term used to average data from half levels to full
-              model levels. wtb is applied to data at the half level BELOW.
-                [real, dimension(:,:,nlev)]
-
-  OUTPUT
-
-     zfull    The geopotential height (in m2/s2) at full model levels.
-                [real, dimension(:,:,nlev)]
-
-  OPTIONAL OUTPUT
-
-     zhalf    The geopotential height (in m2/s2) at half model levels
-              (the interface between model layers).
-                [real, dimension(:,:,nlev+1)]
-
-  OPTIONAL INPUT
-
-     mask     A topography mask (0. or 1.) at full model levels for the
-              eta/step-mountain vertical coordinate.
-                [real, dimension(:,:,nlev)]
-
-
-  NOTES
-
-     For input and output arrays: vtemp, wta, wtb, zfull, zhalf, mask.
-
-      1) The first 2 dimensions must all be the same as the dimensions of
-         input argument fssl.
-      2) The third dimension must agree with the vertical resolution
-         of the model (as stated above).
-
-------------------------------------------------------------------------
-<a name="compute_height">
-
-<b>call compute_height</b> ( Vgrid, fssl, temp, sphum, pfull, phalf, zfull, zhalf [, mask] )
-
-  INPUT
-
-     Vgrid    Derived-type variable containing vertical grid information
-              returned by a previous call to vert_grid_init.
-                [type(vert_grid_type)]
-
-     fssl     The geopotential height (in m2/s2) at eta = 1.
-              Note that for the eta coordinate fssl = 0.
-                [real, dimension(:,:)]
-
-     temp     The temperature (degK) at full model levels.
-                [real, dimension(:,:,nlev)]
-
-     sphum    The specific humidity (Kg/Kg) at full model levels.
-                [real, dimension(:,:,nlev)]
-
-     pfull    The pressure at full model levels.
-                [real, dimension(:,:,nlev)]
-
-     phalf    The pressure at half model levels (the interface between model layers).
-                [real, dimension(:,:,nlev+1)]
-
-  OUTPUT
-
-     zfull    The geopotential height (in meters) at full model levels.
-                [real, dimension(:,:,nlev)]
-
-     zhalf    The geopotential height (in meters) at half model levels
-              (the interface between model layers).
-                [real, dimension(:,:,nlev+1)]
-
-  OPTIONAL INPUT
-
-     mask     A topography mask (0. or 1.) at full model levels for the
-              eta/step-mountain vertical coordinate.
-                [real, dimension(:,:,nlev)]
-
-
-  NOTES
-
-     For input and output arrays: temp, sphum, pfull, phalf, zfull, zhalf, mask.
-
-      1) The first 2 dimensions must all be the same as the dimensions of
-         input argument fssl.
-      2) The third dimension must agree with the vertical resolution
-         of the model (as stated above).
-
-------------------------------------------------------------------------
-<a name="compute_height_bottom">
-
-<b>call compute_height_bottom</b> ( Vgrid, pssl, tbot, qbot, zbot, pbot [, kbot] )
-
-  INPUT
-
-     Vgrid    Derived-type variable containing vertical grid information
-              returned by a previous call to vert_grid_init.
-                [type(vert_grid_type)]
-
-     pssl     The (surface) pressure at eta = 1.
-                [real, dimension(:,:)]
-
-     tbot     The temperature (degK) at the lowest full model level.
-                [real, dimension(:,:)]
-
-     qbot     The specific humidity (Kg/Kg) at the lowest full model level.
-                [real, dimension(:,:)]
-
-  OUTPUT
-
-     zbot     Height (in meters) between the surface and the lowest 
-              full model level.   [real, dimension(:,:)]
-
-     pbot     Pressure (in pascals) between the surface and the lowest 
-              full model level.   [real, dimension(:,:)]
-
-  OPTIONAL INPUT
-
-     kbot     Vertical index of the model closest to the surface.
-              This argument does not need to be passed for the sigma
-              coordinate system (at all grid points it will equal the
-              number of levels as determined from Vgrid).
-                  [integer, dimension(:,:)]
-
-  NOTES
-
-      1) The size of all 2D arrays must all be the same.
-      2) The number of vertical levels is determined from Vgrid.
-
-
-</PRE>
-</A><!-- END ROUTINES -->
+<b>call compute_height_bottom</b> ( Vgrid, pssl, tbot, qbot, zbot, pbot [, kbot] ) INPUT Vgrid Derived-type variable containing vertical grid information returned by a previous call to vert_grid_init. [type(vert_grid_type)] pssl The (surface) pressure at eta = 1. [real, dimension(:,:)] tbot The temperature (degK) at the lowest full model level. [real, dimension(:,:)] qbot The specific humidity (Kg/Kg) at the lowest full model level. [real, dimension(:,:)] OUTPUT zbot Height (in meters) between the surface and the lowest full model level. [real, dimension(:,:)] pbot Pressure (in pascals) between the surface and the lowest full model level. [real, dimension(:,:)] OPTIONAL INPUT kbot Vertical index of the model closest to the surface. This argument does not need to be passed for the sigma coordinate system (at all grid points it will equal the number of levels as determined from Vgrid). [integer, dimension(:,:)] NOTES 1) The size of all 2D arrays must all be the same. 2) The number of vertical levels is determined from Vgrid. </a></pre></a><!-- END ROUTINES -->
 <!--------------------------------------------------------------------->
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
 <b>Fatal errors in compute_pres_depth</b>
 
@@ -596,54 +280,48 @@ Vgrid = <b>vert_grid_init</b> (eta, peta, verbose)
           The third dimension of output argument zhalf must equal
           the number of model levels plus one.
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!--------------------------------------------------------------------->
-<A NAME="REFERENCES">
-<HR>
+ <a name="REFERENCES" id="REFERENCES">
+<hr>
 <h2>REFERENCES</h2>
 <!-- BEGIN REFERENCES -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END REFERENCES -->
+</pre></a><!-- END REFERENCES -->
 <!--------------------------------------------------------------------->
-<A NAME="BUGS">
-<HR>
+ <a name="BUGS" id="BUGS">
+<hr>
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN BUGS -->
-<PRE>
+<pre>
 
     There are no known bugs.
    
-</PRE>
-</A><!-- END BUGS -->
+</pre></a><!-- END BUGS -->
 <!--------------------------------------------------------------------->
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!--------------------------------------------------------------------->
-<A NAME="PLANS">
-<HR>
+ <a name="PLANS" id="PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END PLANS -->
+</pre></a><!-- END PLANS -->
 <!--------------------------------------------------------------------->
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

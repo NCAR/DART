@@ -26,36 +26,34 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -->
-<HTML>
-<TITLE>module bgrid_prog_var_mod</TITLE>
-<BODY BGCOLOR="#AABBCC" TEXT="#332211" >
-
-<DIV ALIGN="CENTER"> <FONT SIZE=-2>
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#DATA_TYPES">DATA</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#ERRORS">ERRORS</A> / 
-<A HREF="#NOTES">NOTES</A> 
-</FONT>
-<BR><BR></DIV><HR>
-
-
-<H1>module bgrid_prog_var_mod</H1>
-<A NAME="OVERVIEW">
-<HR>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>module bgrid_prog_var_mod</title>
+</head>
+<body bgcolor="#AABBCC" text="#332211">
+<div align="center"><font size="-2"><a href="#INTERFACE">PUBLIC
+INTERFACE</a> / <a href="#DATA_TYPES">DATA</a> / <a href=
+"#ROUTINES">ROUTINES</a> / <a href="#ERRORS">ERRORS</a> / <a href=
+"#NOTES">NOTES</a></font><br>
+<br></div>
+<hr>
+<h1>module bgrid_prog_var_mod</h1>
+<a name="OVERVIEW" id="OVERVIEW">
+<hr>
 <h2>OVERVIEW</h2>
 <!-- BEGIN OVERVIEW -->
-<PRE>
+<pre>
 
      Initializes a derived-type variable that contains prognostic
      variables for the B-grid dynamical core.
 
-</PRE>
-</A><!-- END OVERVIEW -->
+</pre></a><!-- END OVERVIEW -->
 <!--------------------------------------------------------------------->
-<A NAME="DESCRIPTION">
-<!-- BEGIN DESCRIPTION -->
-<PRE>
+ <a name="DESCRIPTION" id="DESCRIPTION"><!-- BEGIN DESCRIPTION -->
+<pre>
      This modules defines and initializes a derived-type variable
      (prog_var_type) that contains the following prognostic fields:
        surface pressure, temperature, momentum, and tracers.
@@ -68,14 +66,13 @@
      There are also operators and interfaces for performing some
      simple operations between prog_var_type variables.
       
-</PRE>
-</A><!-- END DESCRIPTION -->
+</pre></a><!-- END DESCRIPTION -->
 <!--------------------------------------------------------------------->
-<A NAME="MODULES_USED">
-<HR>
+ <a name="MODULES_USED" id="MODULES_USED">
+<hr>
 <h2>OTHER MODULES USED</h2>
 <!-- BEGIN MODULES_USED -->
-<PRE>
+<pre>
 
    bgrid_horiz_mod
    bgrid_vert_mod
@@ -85,14 +82,13 @@
    field_manager_mod
    tracer_manager_mod
  
-</PRE>
-</A><!-- END MODULES_USED -->
+</pre></a><!-- END MODULES_USED -->
 <!--------------------------------------------------------------------->
-<A NAME="INTERFACE">
-<HR>
+ <a name="INTERFACE" id="INTERFACE">
+<hr>
 <h2>PUBLIC INTERFACE</h2>
 <!-- BEGIN INTERFACE -->
-<PRE>
+<pre>
 
    <b>use bgrid_prog_var_mod</b> [, only: prog_var_type, 
                                    prog_var_init,
@@ -134,14 +130,13 @@
    <a href="#write_prog_var">write_prog_var</a>
         reads the restart file for bgrid prognostic variables
  
-</PRE>
-</A><!-- END INTERFACE -->
+</pre></a><!-- END INTERFACE -->
 <!--------------------------------------------------------------------->
-<A NAME="DATA_TYPES">
-<HR>
+ <a name="DATA_TYPES" id="DATA_TYPES">
+<hr>
 <h2>PUBLIC DATA</h2>
 <!-- BEGIN DATA_TYPES -->
-<PRE>
+<pre>
 
 <b>type prog_var_type</b>
 
@@ -178,15 +173,14 @@
      r    = arbitrary number of tracers (includes specific humidity)
               [real, dimension (ilb:iub, jlb:jub, klb:kub, 1:ntrace) ]
 
-</PRE>
-</A><!-- END DATA_TYPES -->
+</pre></a><!-- END DATA_TYPES -->
 <!--------------------------------------------------------------------->
-<A NAME="ROUTINES">
-<HR>
+ <a name="ROUTINES" id="ROUTINES">
+<hr>
 <h2>PUBLIC ROUTINES</h2>
 <!-- BEGIN ROUTINES -->
-<PRE>
-<a name="prog_var_init">
+<pre>
+<a name="prog_var_init" id="prog_var_init">
 
 call prog_var_init ( Hgrid, nlev, ntrs, Vars )
 
@@ -208,189 +202,69 @@ call prog_var_init ( Hgrid, nlev, ntrs, Vars )
                [type(prog_var_type)]
 
 ---------------------------------------------------------------------
-<a name="var_init">
+</a><a name="var_init" id="var_init">
 
-The interface <b>var_init</b> can take several forms.
+The interface <b>var_init</b> can take several forms. var =&gt; <b>var_init</b> ( Hgrid ) var =&gt; <b>var_init</b> ( Hgrid, kdim ) var =&gt; <b>var_init</b> ( Hgrid, kdim, ntrace ) var =&gt; <b>var_init</b> ( ilb, iub, jlb, jub ) var =&gt; <b>var_init</b> ( ilb, iub, jlb, jub, kdim ) var =&gt; <b>var_init</b> ( ilb, iub, jlb, jub, kdim, ntrace ) INPUT Hgrid Derived-type variable containing horizontal grid constants. [type(horiz_grid_type), see horiz_grid_mod] ilb Lower bound/index for first dimension. [integer] iub Upper bound/index for first dimension. [integer] jlb Lower bound/index for second dimension. [integer] jub Upper bound/index for second dimension. [integer] kdim The size of the third dimension (or level dimension). [integer] ntrace The size of the fourth dimension (or tracer dimension). [integer] RETURNS The returned value is a pointer to memory. <b>Fields that are initialized this way must be declared at pointers.</b> Use the following syntax: real, pointer :: var(:,:) or var(:,:,:) or var(:,:,:,:) --------------------------------------------------------------------- </a><a name="prog_var_times_scalar"
+id="prog_var_times_scalar">
 
-var =&gt; <b>var_init</b> ( Hgrid )
-var =&gt; <b>var_init</b> ( Hgrid, kdim )
-var =&gt; <b>var_init</b> ( Hgrid, kdim, ntrace )
+<b>call prog_var_times_scalar</b> ( Var, scalar ) INPUT/OUTPUT Var prog_var_type which on output will have the prognostic variable components (u,v,t,r,ps,pssl) multiplied by scalar INPUT scalar a real scalar quantity --------------------------------------------------------------------- </a><a name="prog_var_equals_scalar"
+id="prog_var_equals_scalar">
 
-var =&gt; <b>var_init</b> ( ilb, iub, jlb, jub )
-var =&gt; <b>var_init</b> ( ilb, iub, jlb, jub, kdim )
-var =&gt; <b>var_init</b> ( ilb, iub, jlb, jub, kdim, ntrace )
+<b>call prog_var_equals_scalar</b> ( Var, scalar ) INPUT/OUTPUT Var prog_var_type which on output will have the prognostic variable components (u,v,t,r,ps,pssl) multiplied by scalar INPUT scalar a real scalar quantity --------------------------------------------------------------------- </a><a name="prog_var_time_diff"
+id="prog_var_time_diff">
 
-  INPUT
+<b>call prog_var_time_diff</b> ( dt, Var_dt, Var, nt ) INPUT dt time step [real] INPUT/OUTPUT Var_dt input value is the tendency for prognostic variables, the output value is zero [prog_var_type] Var the prognostic variables, the input values are at time level n, and the output values are at time level n+1 [prog_var_type] OPTIONAL INPUT nt number of tracers to be advanced in time, by default all tracers will be advanced from time n to n+1 --------------------------------------------------------------------- </a><a name="open_prog_var_file"
+id="open_prog_var_file">
 
-     Hgrid   Derived-type variable containing horizontal grid constants.
-               [type(horiz_grid_type), see horiz_grid_mod]
+<b>call open_prog_var_file</b> ( ix, jx, kx ) OUTPUT ix, jx, kx The 3-dimensional size of a prognostic field. [integer] ------------------------------------------------------------- </a><a name="read_prog_var"
+id="read_prog_var">
 
-     ilb     Lower bound/index for first dimension.
-               [integer]
+<b>call read_prog_var</b> ( Hgrid, Var, eta, peta, fis, res ) INPUT/OUTPUT Hgrid Var OUTPUT eta peta fis res ------------------------------------------------------------- </a><a name="write_prog_var"
+id="write_prog_var">
 
-     iub     Upper bound/index for first dimension.
-               [integer]
-
-     jlb     Lower bound/index for second dimension.
-               [integer]
-
-     jub     Upper bound/index for second dimension.
-               [integer]
-
-     kdim    The size of the third dimension (or level dimension).
-               [integer]
-
-     ntrace  The size of the fourth dimension (or tracer dimension).
-               [integer]
-
-  RETURNS
-
-     The returned value is a pointer to memory.
-     <b>Fields that are initialized this way must be declared at pointers.</b>
-
-     Use the following syntax:
-
-           real, pointer :: var(:,:) or var(:,:,:) or var(:,:,:,:)
-
----------------------------------------------------------------------
-<a name="prog_var_times_scalar">
-
-<b>call prog_var_times_scalar</b> ( Var, scalar )
-
-  INPUT/OUTPUT
-
-     Var      prog_var_type which on output will have the
-              prognostic variable components (u,v,t,r,ps,pssl)
-              multiplied by scalar
-
-  INPUT
-
-     scalar   a real scalar quantity
-
----------------------------------------------------------------------
-<a name="prog_var_equals_scalar">
-
-<b>call prog_var_equals_scalar</b> ( Var, scalar )
-
-  INPUT/OUTPUT
-
-     Var      prog_var_type which on output will have the
-              prognostic variable components (u,v,t,r,ps,pssl)
-              multiplied by scalar
-
-  INPUT
-
-     scalar   a real scalar quantity
-
----------------------------------------------------------------------
-<a name="prog_var_time_diff">
-
-<b>call prog_var_time_diff</b> ( dt, Var_dt, Var, nt )
-
-  INPUT
-
-     dt      time step [real]
-
-  INPUT/OUTPUT
-
-     Var_dt  input value is the tendency for prognostic variables,
-             the output value is zero [prog_var_type]
-
-     Var     the prognostic variables, the input values are at time
-             level n, and the output values are at time level n+1
-                [prog_var_type]
-
-  OPTIONAL INPUT
-
-     nt      number of tracers to be advanced in time, by default
-             all tracers will be advanced from time n to n+1
-
----------------------------------------------------------------------
-<a name="open_prog_var_file">
-
-<b>call open_prog_var_file</b> ( ix, jx, kx )
-
-OUTPUT
-
-  ix, jx, kx   The 3-dimensional size of a prognostic field.
-                 [integer]
-
--------------------------------------------------------------
-<a name="read_prog_var">
-
-<b>call read_prog_var</b> ( Hgrid, Var, eta, peta, fis, res )
-
-INPUT/OUTPUT
-   Hgrid
-   Var
-
-OUTPUT
-   eta
-   peta
-   fis
-   res
-
--------------------------------------------------------------
-<a name="write_prog_var">
-
-<b>call write_prog_var</b> ( Var, Hgrid, Vgrid, fis, res )
-
-INPUT
-   Var
-   Hgrid
-   Vgrid
-   fis
-   res
-
-</PRE>
-</A><!-- END ROUTINES -->
+<b>call write_prog_var</b> ( Var, Hgrid, Vgrid, fis, res ) INPUT Var Hgrid Vgrid fis res </a></pre></a><!-- END ROUTINES -->
 <!--------------------------------------------------------------------->
-<A NAME="ERRORS">
-<HR>
+ <a name="ERRORS" id="ERRORS">
+<hr>
 <h2>ERROR MESSAGES</h2>
 <!-- BEGIN ERRORS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END ERRORS -->
+</pre></a><!-- END ERRORS -->
 <!--------------------------------------------------------------------->
-<A NAME="BUGS">
-<HR>
+ <a name="BUGS" id="BUGS">
+<hr>
 <h2>KNOWN BUGS</h2>
 <!-- BEGIN BUGS -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END BUGS -->
+</pre></a><!-- END BUGS -->
 <!--------------------------------------------------------------------->
-<A NAME="NOTES">
-<HR>
+ <a name="NOTES" id="NOTES">
+<hr>
 <h2>NOTES</h2>
 <!-- BEGIN NOTES -->
-<PRE>
+<pre>
 
      None.
 
-</PRE>
-</A><!-- END NOTES -->
+</pre></a><!-- END NOTES -->
 <!--------------------------------------------------------------------->
-<A NAME="PLANS">
-<HR>
+ <a name="PLANS" id="PLANS">
+<hr>
 <h2>FUTURE PLANS</h2>
 <!-- BEGIN PLANS -->
-<PRE>
+<pre>
 
      Need routines to release allocated memory.
      These may be called prog_var_end and var_end.
 
-</PRE>
-</A><!-- END PLANS -->
+</pre></a><!-- END PLANS -->
 <!--------------------------------------------------------------------->
-
-<HR>
-</BODY>
-</HTML>
+<hr>
+</body>
+</html>

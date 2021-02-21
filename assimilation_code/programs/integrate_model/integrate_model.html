@@ -1,77 +1,62 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>program integrate_model</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
-<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
-
-<H1>PROGRAM <em class=program>integrate_model</em></H1>
-
-<table border=0 summary="" cellpadding=5>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>program integrate_model</title>
+<link rel="stylesheet" type="text/css" href=
+"../../../docs/html/doc.css">
+<link href="../../../docs/images/dart.ico" rel="shortcut icon">
+</head>
+<body>
+<a name="TOP" id="TOP"></a>
+<h1>PROGRAM <em class="program">integrate_model</em></h1>
+<table border="0" summary="" cellpadding="5">
 <tr>
-    <td valign=middle>
-    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
+<td valign="middle"><img src="../../../docs/images/Dartboard7.png"
+alt="DART project logo" height="70"></td>
+<td>Jump to <a href="../../../docs/index.html">DART Documentation
+Main Index</a></td>
 </tr>
 </table>
-
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-
-<H2>Overview</H2>
-
-<P>
-  Generic main program which can be compiled with a model-specific
-  <em class="file">model_mod.f90</em> file.  The model must provide
-  an <em class="code">adv_1step()</em> subroutine which advances one
-  copy of the model forward in time.  
-</P><P>
-  The executable built by this program can be used by the serial
-  program <em class="program">perfect_model_obs</em>, or 
-  either the serial
-  or parallel version of the <em class="program">filter</em> program.  
-  This program is called by the default script in the template directory
-  called <em class="code">advance_model.csh</em>, and is selected by
-  setting the corresponding <em class="code">"async = "</em> namelist 
-  setting to 2.
-</P><P>
-  This program only advances a single ensemble member per execution and 
-  is expected to be run as a serial program.
-  It can be compiled with the MPI wrappers and called with mpirun with more
-  than 1 task, however, it will
-  only call the model advance subroutine from a single task (task 0).  
-  This can be
-  useful in testing various scripting options using simpler and smaller
-  models in preparation for running a larger parallel model.
-</P>
-
+<a href="#Namelist">NAMELIST</a> / <a href="#FilesUsed">FILES</a> /
+<a href="#References">REFERENCES</a> / <a href="#Errors">ERRORS</a>
+/ <a href="#FuturePlans">PLANS</a> / <a href="#Legalese">TERMS OF
+USE</a>
+<h2>Overview</h2>
+<p>Generic main program which can be compiled with a model-specific
+<em class="file">model_mod.f90</em> file. The model must provide an
+<em class="code">adv_1step()</em> subroutine which advances one
+copy of the model forward in time.</p>
+<p>The executable built by this program can be used by the serial
+program <em class="program">perfect_model_obs</em>, or either the
+serial or parallel version of the <em class="program">filter</em>
+program. This program is called by the default script in the
+template directory called <em class="code">advance_model.csh</em>,
+and is selected by setting the corresponding <em class=
+"code">"async = "</em> namelist setting to 2.</p>
+<p>This program only advances a single ensemble member per
+execution and is expected to be run as a serial program. It can be
+compiled with the MPI wrappers and called with mpirun with more
+than 1 task, however, it will only call the model advance
+subroutine from a single task (task 0). This can be useful in
+testing various scripting options using simpler and smaller models
+in preparation for running a larger parallel model.</p>
 <!--==================================================================-->
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
 <!--==================================================================-->
-
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
-There is no namelist for this program.
-</P>
-
-
+<a name="Namelist" id="Namelist"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>NAMELIST</h2>
+<p>There is no namelist for this program.</p>
 <!--==================================================================-->
-
-<A NAME="Modules"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>MODULES USED</H2>
-<PRE>
+<a name="Modules" id="Modules"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>MODULES USED</h2>
+<pre>
 types_mod
 time_manager_mod
 utilities_mod
@@ -79,90 +64,80 @@ assim_model_mod
 obs_model_mod
 ensemble_manager_mod
 mpi_utilities_mod
-</PRE>
-
+</pre>
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
-
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES</H2>
-<UL> <LI>inputfile (temp_ic)
-<!-- <LI>integrate_model.nml  (?does not currently exist) -->
-     <LI>outputfile (temp_ud)
-</UL>
-
+<a name="FilesUsed" id="FilesUsed"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>FILES</h2>
+<ul>
+<li>inputfile (temp_ic) 
+<!-- <LI>integrate_model.nml  (?does not currently exist) --></li>
+<li>outputfile (temp_ud)</li>
+</ul>
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
-
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
+<a name="References" id="References"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>REFERENCES</h2>
 <ul>
-<li> none </li>
+<li>none</li>
 </ul>
-
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
-
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-
-<TR><!-- routine --><TD VALIGN=top>integrate_model</TD>
-    <!-- message --><TD VALIGN=top>none</TD>
-    <!-- comment --><TD VALIGN=top>none</TD>
-</TR>
-</TABLE>
+<a name="Errors" id="Errors"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>ERROR CODES and CONDITIONS</h2>
+<div class="errors">
+<table border="1" cellspacing="1" cellpadding="10" width="100%">
+<tr>
+<th>Routine</th>
+<th>Message</th>
+<th>Comment</th>
+</tr>
+<tr><!-- routine -->
+<td valign="top">integrate_model</td>
+<!-- message -->
+<td valign="top">none</td>
+<!-- comment -->
+<td valign="top">none</td>
+</tr>
+</table>
 </div>
-
-<H2>KNOWN BUGS</H2>
-<P>
-none
-</P>
-
+<h2>KNOWN BUGS</h2>
+<p>none</p>
 <!--==================================================================-->
 <!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-This program could have a namelist.
-Possible items for the namelist include
-the names of the input and output files, and the
-format of the updated model state in the output files.
-Right now the names are hardcoded and the format is always
-binary (for more accurate numerical fidelity), but for
-debugging human-readable ascii files can be more useful.
-</P><P>
-A true MPI version of this program could advance multiple
-ensemble members at a time, one per MPI task.
-</P>
-
+<a name="FuturePlans" id="FuturePlans"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>FUTURE PLANS</h2>
+<p>This program could have a namelist. Possible items for the
+namelist include the names of the input and output files, and the
+format of the updated model state in the output files. Right now
+the names are hardcoded and the format is always binary (for more
+accurate numerical fidelity), but for debugging human-readable
+ascii files can be more useful.</p>
+<p>A true MPI version of this program could advance multiple
+ensemble members at a time, one per MPI task.</p>
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
+<a name="Legalese" id="Legalese"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>Terms of Use</h2>
+<p>DART software - Copyright UCAR. This open source software is
+provided by UCAR, "as is", without charge, subject to all terms of
+use at <a href=
+"http://www.image.ucar.edu/DAReS/DART/DART_download">http://www.image.ucar.edu/DAReS/DART/DART_download</a></p>
 <!--==================================================================-->
-
-</BODY>
-</HTML>
+</body>
+</html>

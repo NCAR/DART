@@ -1,64 +1,55 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>program PrecisionCheck</TITLE>
-<link rel="stylesheet" type="text/css" href="../../docs/html/doc.css" />
-<link href="../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
-
-<H1>PROGRAM <em class=program>PrecisionCheck</em></H1>
-
-<table border=0 summary="" cellpadding=5>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
+<title>program PrecisionCheck</title>
+<link rel="stylesheet" type="text/css" href=
+"../../docs/html/doc.css">
+<link href="../../docs/images/dart.ico" rel="shortcut icon">
+</head>
+<body>
+<a name="TOP" id="TOP"></a>
+<h1>PROGRAM <em class="program">PrecisionCheck</em></h1>
+<table border="0" summary="" cellpadding="5">
 <tr>
-    <td valign=middle>
-    <img src="../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../docs/index.html">DART Documentation Main Index</a></td>
+<td valign="middle"><img src="../../docs/images/Dartboard7.png"
+alt="DART project logo" height="70"></td>
+<td>Jump to <a href="../../docs/index.html">DART Documentation Main
+Index</a></td>
 </tr>
 </table>
-
-<A HREF="#Legalese">TERMS OF USE</A>
-
-<H2>Overview</H2>
-
-<P>
-This is a self-contained program to explore the interaction between
-the compiler options to 'autopromote' variables from one precision
-to another and the intrinsic F90 mechanism for getting consistent
-behavior without relying on autopromotion - namely, the
-<em class="code">SELECT_INT_KIND()</em> and 
-<em class="code">SELECT_REAL_KIND()</em> functions.
-The most portable code explicity types the variables to avoid relying
-on compiler flags. The core DART code abides by these rules; some pieces
-that are derived from dynamical models may have original code fragments.
-<br />
-<br />
-All that is required is to compile the single file and run the resulting
-executable. There are no required libraries - any F90 compiler should
-have no trouble with this program. There is no input of any kind.
-<br />
-<br />
-You are encouraged to view the source code. It's pretty obvious 
-what is being tested. 
-</P>
-
+<a href="#Legalese">TERMS OF USE</a>
+<h2>Overview</h2>
+<p>This is a self-contained program to explore the interaction
+between the compiler options to 'autopromote' variables from one
+precision to another and the intrinsic F90 mechanism for getting
+consistent behavior without relying on autopromotion - namely, the
+<em class="code">SELECT_INT_KIND()</em> and <em class=
+"code">SELECT_REAL_KIND()</em> functions. The most portable code
+explicity types the variables to avoid relying on compiler flags.
+The core DART code abides by these rules; some pieces that are
+derived from dynamical models may have original code fragments.<br>
+<br>
+All that is required is to compile the single file and run the
+resulting executable. There are no required libraries - any F90
+compiler should have no trouble with this program. There is no
+input of any kind.<br>
+<br>
+You are encouraged to view the source code. It's pretty obvious
+what is being tested.</p>
 <!--==================================================================-->
-
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>EXAMPLES</H2>
-<P>
-The following examples have differences from the default configuration
-highlighted in boldface. You are strongly encouraged to test your compiler
-and its autopromotion options. The Absoft compiler actually does what I 
-consider to be reasonable and logical (as long as you know that "-dp" 
-means <b>d</b>emote <b>p</b>recision). Many other compilers are surprising.
-</P>
-
-
-<H3 class="indent">PowerPC chipset : Absoft Pro Fortran 9.0</H3>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>EXAMPLES</h2>
+<p>The following examples have differences from the default
+configuration highlighted in boldface. You are strongly encouraged
+to test your compiler and its autopromotion options. The Absoft
+compiler actually does what I consider to be reasonable and logical
+(as long as you know that "-dp" means <b>d</b>emote
+<b>p</b>recision). Many other compilers are surprising.</p>
+<h3 class="indent">PowerPC chipset : Absoft Pro Fortran 9.0</h3>
 <div class="unix">
 <pre>
 [~/DART/utilities] % <em class="input">f90 PrecisionCheck.f90</em>
@@ -111,13 +102,13 @@ means <b>d</b>emote <b>p</b>recision). Many other compilers are surprising.
  HUGE      =   1.797693134862315E+308
  KIND      =   8
  PRECISION =   15
-</pre>
-</div>
-
-<H3 class="indent">PowerPC chipset : Absoft Pro Fortran 9.0 : "-dp"</H3>
+</pre></div>
+<h3 class="indent">PowerPC chipset : Absoft Pro Fortran 9.0 :
+"-dp"</h3>
 <div class="unix">
 <pre>
-[~/DART/utilities] % <em class="input">f90 -dp PrecisionCheck.f90</em>
+[~/DART/utilities] % <em class=
+"input">f90 -dp PrecisionCheck.f90</em>
 [~/DART/utilities] % <em class="input">./a.out</em>
  
  This explores the use of the intrinisc SELECTED_[REAL,INT]_KIND() functions
@@ -167,13 +158,13 @@ means <b>d</b>emote <b>p</b>recision). Many other compilers are surprising.
  HUGE      =   <b>3.402823E+38</b>
  KIND      =   <b>4</b>
  PRECISION =   <b>6</b>
-</pre>
-</div>
- 
-<H3 class="indent">PowerPC chipset : Absoft Pro Fortran 9.0 : "-N113"</H3>
+</pre></div>
+<h3 class="indent">PowerPC chipset : Absoft Pro Fortran 9.0 :
+"-N113"</h3>
 <div class="unix">
 <pre>
-[~/DART/utilities] % <em class="input">f90 -N113 PrecisionCheck.f90</em>
+[~/DART/utilities] % <em class=
+"input">f90 -N113 PrecisionCheck.f90</em>
 [~/DART/utilities] % <em class="input">./a.out</em>
  
  This explores the use of the intrinisc SELECTED_[REAL,INT]_KIND() functions
@@ -223,25 +214,18 @@ means <b>d</b>emote <b>p</b>recision). Many other compilers are surprising.
  HUGE      =   1.797693134862315E+308
  KIND      =   8
  PRECISION =   15
-</pre>
-</div>
-
+</pre></div>
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
+<a name="Legalese" id="Legalese"></a>
+<div class="top">[<a href="#">top</a>]</div>
+<hr>
+<h2>Terms of Use</h2>
+<p>DART software - Copyright UCAR. This open source software is
+provided by UCAR, "as is", without charge, subject to all terms of
+use at <a href=
+"http://www.image.ucar.edu/DAReS/DART/DART_download">http://www.image.ucar.edu/DAReS/DART/DART_download</a></p>
 <!--==================================================================-->
-
-</BODY>
-</HTML>
+</body>
+</html>
