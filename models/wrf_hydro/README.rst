@@ -1,19 +1,8 @@
-################
 WRF-Hydro README
-################
-
-Contents
-========
-
-#. `Overview`_
-#. `Description of this Directory within the DART Repository`_
-#. `To Setup an Experiment`_
-#. `Description of External Directories on GLADE`_
-#. `Namelist`_
-#. `Terms of Use`_
+================
 
 Overview
-========
+--------
 
 The Weather Research and Forecasting Hydrologic Model 
 (`WRF-Hydro <http://www.ral.ucar.edu/projects/wrf_hydro/overview>`_ )
@@ -29,8 +18,8 @@ the Data Assimilation Research Section of NCAR.
 Streamflow assimilation is an active area of research and provides many
 interesting research challenges. 
 
-Description of this Directory within the DART Repository
-========================================================
+Description of this directory within the DART repository
+--------------------------------------------------------
 
 Contents of the ``$DARTROOT/models/wrf_hydro/``:
 
@@ -66,13 +55,13 @@ Contents of the ``$DARTROOT/models/wrf_hydro/``:
    ├── README.rst
           # This file.
 
-To Setup an Experiment
-======================
+To set up an experiment
+-----------------------
 
-Please consult the ``./python/experiment`` directory.
+To set up an experiment, consult the ``./python/experiment`` directory.
 
-Description of External Directories on GLADE
-============================================
+Description of external directories on GLADE
+--------------------------------------------
 
 The gridded version of the model has bits/bobs in these directories:
 
@@ -84,7 +73,7 @@ variables, so they must be unpacked in EXACTLY the same way as wrfHydo packs
 them from the grid to their 'sparse' representation.
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -141,7 +130,7 @@ model dynamical timestep.
 |                                     |                                   | ``input.nml`` is set with                |
 |                                     |                                   | ``&filter_nml:start_from_restart =       |
 |                                     |                                   | .false.``. See also                      |
-|                                     |                                   | `Generating the initial ensemble`_.      |
+|                                     |                                   | Generating the initial ensemble.         |
 |                                     |                                   | units: standard deviation of the         |
 |                                     |                                   | specified distribution the mean at the   |
 |                                     |                                   | value of the state vector element.       |
@@ -223,18 +212,3 @@ running ``preprocess`` with the following namelist settings:
                                  '../../../observations/forward_operators/obs_def_land_mod.f90',
                                  '../../../observations/forward_operators/obs_def_COSMOS_mod.f90'
      /
-
-
-
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign

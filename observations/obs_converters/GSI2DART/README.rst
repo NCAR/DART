@@ -1,16 +1,8 @@
-###############
-GSI2DART README
-###############
-
-Contents
+GSI2DART
 ========
-
-#. `Overview`_
-#. `Issues`_
-#. `Terms of Use`_
 
 Overview
-========
+--------
 
 The GSI2DART converter was contributed by **Craig Schwartz** and **Jamie Bresch** of the 
 Mesoscale & Microscale Meteorology Lab at NCAR. *Thanks Craig and Jamie!* 
@@ -72,8 +64,8 @@ The following three files had their open() statements modified to read
 the ``-convert big_endian`` compiler option. Using the DART open_file() 
 routine also provides some nice error handling.
 
-- original: :fortran:`open(iunit,form="unformatted",file=obsfile,iostat=ios)`
-- modified: :fortran:`iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')`
+- original: ``open(iunit,form="unformatted",file=obsfile,iostat=ios)``
+- modified: ``iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')``
 
 1. ``GSI2DART/enkf/readconvobs.f90``
 2. ``GSI2DART/enkf/readozobs.f90``
@@ -122,7 +114,7 @@ Additional files and directories
 3. ``submit.csh`` is contained in ``GSI2DART/work/`` -- it runs the gsi_to_dart converter once it has been compiled. Again, since GSI requires MPI, multiple processors must be requested to run the gsi_to_dart executable.
 
 Issues
-======
+------
 
 1. The converter requires an ensemble size greater than one and will MPI_Abort() 
 if only one ensemble member is requested.
@@ -137,13 +129,13 @@ The following are issues previously recorded in the README:
 
 .. code-block:: fortran
 
-  ! If which_vert has no vertical definition for either location do only horizontal
-  if(loc1%which_vert == VERTISUNDEF .or. loc2%which_vert == VERTISUNDEF) comp_h_only = .true.
-  ! If both verts are surface, do only horizontal
-  if(loc1%which_vert == VERTISSURFACE .and. loc2%which_vert == VERTISSURFACE) comp_h_only = .true.
+   ! If which_vert has no vertical definition for either location do only horizontal
+   if(loc1%which_vert == VERTISUNDEF .or. loc2%which_vert == VERTISUNDEF) comp_h_only = .true.
+   ! If both verts are surface, do only horizontal
+   if(loc1%which_vert == VERTISSURFACE .and. loc2%which_vert == VERTISSURFACE) comp_h_only = .true.
 
 Running with 32 bit reals
--------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The converter has been tested with 64-bit reals as well as 32-bit reals 
 (i.e. r8=r4 and -D_REAL_4). The answers are different only at the roundoff level.
@@ -151,20 +143,20 @@ The converter has been tested with 64-bit reals as well as 32-bit reals
 This requires changes in two places:
 
 1. ``DART/assimilation_code/modules/utilities/types_mod.f90`` change required:  r8 = r4
-2. ``GSI2DART/work/mkmf_gsi_to_dart`` change required:  -D_REAL4_
+2. ``GSI2DART/work/mkmf_gsi_to_dart`` change required: ``-D_REAL4_``
 
 If these are not set in a compatible fashion, you will fail to compile with the
 following error (or something similar):
 
 .. code-block:: bash
 
-  ../../../../observations/obs_converters/GSI2DART/dart_obs_seq_mod.f90(213): error #6284:
-  There is no matching specific function for this generic function reference.   [SET_LOCATION]
-  location = set_location(lon, lat, vloc, which_vert)
-  -----------------^
+   ../../../../observations/obs_converters/GSI2DART/dart_obs_seq_mod.f90(213): error #6284:
+   There is no matching specific function for this generic function reference.   [SET_LOCATION]
+   location = set_location(lon, lat, vloc, which_vert)
+   -----------------^
 
 Terms of Use
-============
+------------
 
 |Copyright| University Corporation for Atmospheric Research
 
