@@ -580,8 +580,7 @@ do iopt = 1,size(integer_options)
 enddo
 
 ! Repeat the leading message (as an E_ERR) to help delineate the problem.
-call error_handler(E_ERR, 'flex_parser', msgstring1, source, &
-           text2=msgstring2, text3=msgstring3)
+call error_handler(E_ERR, 'flex_parser', msgstring1, source)
 
 end subroutine flex_parser_error
 
