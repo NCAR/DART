@@ -1,17 +1,8 @@
-#################
-null_model README
-#################
-
-Contents
-========
-
-#. `Overview`_
-#. `Namelist`_
-#. `Files`_
-#. `Terms of Use`_
+null_model
+==========
 
 Overview
-========
+--------
 
 DART interface module for the 'null_model'. This model provides very simple
 models for evaluating filtering algorithms. It can provide simple linear growth
@@ -25,7 +16,7 @@ describing this state, find state variables that are close to a given location,
 and do spatial interpolation for model state variables.
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -45,7 +36,7 @@ prematurely terminating the namelist.
    /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +----------------------+---------------+--------------------------------------+
 | Item                 | Type          | Description                          |
@@ -86,7 +77,7 @@ Description of each namelist entry
 +----------------------+---------------+--------------------------------------+
 
 Files
-=====
+-----
 
 +-----------------------------+-----------------------------------------------+
 | filename                    | purpose                                       |
@@ -104,16 +95,3 @@ Files
 | dart_log.nml [default name] | the record of all the namelists actually USED |
 |                             | - contains the default values                 |
 +-----------------------------+-----------------------------------------------+
-
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign

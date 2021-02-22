@@ -1,16 +1,8 @@
-#######################
-Simple Advection README
-#######################
-
-Contents
-========
-
-#. `Overview`_
-#. `Namelist`_
-#. `Terms of Use`_
+Simple advection
+================
 
 Overview
-========
+--------
 
 This simple advection model simulates a wind field using Burger's Equation with
 an upstream semi-lagrangian differencing on a periodic one-dimensional domain.
@@ -60,7 +52,7 @@ The example **may or may not** result in good (*or even decent!*) results!
 
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -87,7 +79,7 @@ prematurely terminating the namelist.
   /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +------------------------+----------+----------------------------+
 | Item                   | Type     | Description                |
@@ -152,16 +144,3 @@ Description of each namelist entry
 |                        |          | (gridded data) for easier  |
 |                        |          | plotting (recommended).    |
 +------------------------+----------+----------------------------+
-
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign

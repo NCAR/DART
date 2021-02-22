@@ -1,17 +1,8 @@
-#################
-bgrid_solo README
-#################
-
-Contents
-========
-
-#. `Overview`_
-#. `Namelist`_
-#. `Terms of Use`_
-#. `References`_
+bgrid_solo
+==========
 
 Overview
-========
+--------
 
 DART interface module for the dynamical core of the GFDL AM2 Bgrid model. This
 model is subroutine callable from DART and can be run in a similar fashion to
@@ -68,7 +59,7 @@ observations with an interactively specified error variance. It also allows the
 observations to be confined to a rectangular subdomain.
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -138,7 +129,7 @@ prematurely terminating the namelist.
    /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following values are specified in ``model_nml``.
 
@@ -231,21 +222,8 @@ namelist using the documentation in Held and Suarez (1994).
 Model dynamics can be adjusted with the bgrid_core_driver_nml following the
 documentation in the references and internal documentation in the bgrid code.
 
-Terms of Use
-============
- 
-|Copyright| University Corporation for Atmospheric Research
- 
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
- 
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 .. [1] Anderson, J. L. and Coauthors, 2004: The new GFDL global atmosphere and
        land model AM2-LM2: Evaluation with prescribed SST simulations. *Journal

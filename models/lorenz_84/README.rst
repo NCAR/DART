@@ -1,17 +1,8 @@
-################
-Lorenz 84 README
-################
-
-Contents
-========
-
-#. `Overview`_
-#. `Namelist`_
-#. `Terms of Use`_
-#. `References`_
+Lorenz 84
+=========
 
 Overview
-========
+--------
 
 This model was described in Lorenz (1984). [1]_ In Lorenz 84, DART advances the
 model, gets the model state and metadata describing this state, find states
@@ -21,17 +12,17 @@ for model state variables. The distinctive part of the model interfaces is the
 
 The system of equations is:
 
-|Lorenz 84 system of equations|
+.. math::
 
-.. \frac{dx}{dt} = -y^2-z^2-ax+aF
-.. \frac{dy}{dt} = xy-bxz-y+G
-.. \frac{dz}{dt} = bxy+xz-z
+   \frac{dx}{dt} = -y^2-z^2-ax+aF
+   \frac{dy}{dt} = xy-bxz-y+G
+   \frac{dz}{dt} = bxy+xz-z
 
 and, within DART, the model parameters have default values of:
 
-|Lorenz 84 default values|
+.. math::
 
-.. a=\frac{1}{4}, b=4, F=8, G=\frac{5}{4}
+   a=\frac{1}{4}, b=4, F=8, G=\frac{5}{4}
 
 that can be altered by editing the ``&model_nml`` `namelist`_ in the
 ``input.nml`` file.
@@ -47,7 +38,7 @@ of the Tutorial. It has a more complex attractor, is not as periodic as Lorenz 6
 and may be more challenging for certain filter variants.
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -67,7 +58,7 @@ prematurely terminating the namelist.
   /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +-------------------+----------+-------------------------------------+
 | Item              | Type     | Description                         |
@@ -92,27 +83,10 @@ Description of each namelist entry
 |                   |          | timestep, mapped to deltat.         |
 +-------------------+----------+-------------------------------------+
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+~~~~~~~~~~
 
 .. [1] Lorenz, Edward N., 1984: Irregularity: A Fundamental Property of the
        Atmosphere. *Tellus*, **36A**, 98-110, 
        `doi:10.1111/j.1600-0870.1984.tb00230.x
        <https://doi.org/10.1111/j.1600-0870.1984.tb00230.x>`__
-
-.. |Lorenz 84 system of equations| image:: ./images/lorenz_84_equations.svg
-
-.. |Lorenz 84 default values| image:: ./images/lorenz_84_default_values.svg

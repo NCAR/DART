@@ -1,32 +1,8 @@
-##########
-POP README
-##########
-
-Contents
-========
-
-#. `Overview`_
-
-#. `Development history`_
-
-   #. `LANL POP`_ 
-
-   #. `CESM POP2`_
-
-#. `Detailed instructions for using DART and CESM POP2 on NCAR's supercomputer`_ 
-
-   #. `Shell scripts`_
-
-   #. `Other files needed for assimilation`_
-
-#. `Namelist`_
-
-#. `Terms of use`_
-
-#. `References`_
+POP
+===
 
 Overview
-========
+--------
 
 This document describes the DART interface to the Parallel Ocean Program (POP).
 It covers the `Development history`_ of the interface with two implementations
@@ -42,13 +18,13 @@ restart files for `Creating an initial ensemble`_ of model states and
 `Observation sequence files`_ for assimilation.
 
 Development History
-===================
+-------------------
 
 When the DART interface to POP was originally developed circa 2009-2010, the
 interface worked with both the LANL POP and CESM POP2 implementations of POP.
 
 LANL POP
---------
+~~~~~~~~
 
 In years subsequent to the initial development of the DART interface, the
 Computer, Computational, and Statistical Sciences Division at LANL transitioned
@@ -62,7 +38,7 @@ LANL POP with DART Manhattan, contact DAReS staff for assistance by emailing
 dart@ucar.edu.
 
 CESM POP2
----------
+~~~~~~~~~
 
 The NCAR implementation of POP, `CESM POP2
 <https://ncar.github.io/POP/doc/build/html/index.html>`_, has been used
@@ -77,7 +53,7 @@ the times required to perform an assimilation. CESM runs continuously and all
 of the DART routines run at each assimilation time.
 
 Detailed instructions for using DART and CESM POP2 on NCAR's supercomputer
-==========================================================================
+--------------------------------------------------------------------------
 
 If you're using NCAR's supercomputer, you can run the setup scripts after
 making minor edits to set details that are specific to your project. The setup
@@ -354,7 +330,7 @@ files are contained in the same directory as the setup scripts and are
 configured and  copied into the CESM case directory by the setup scripts.
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand, ``&``, and terminate with a slash, ``/``. Character
@@ -439,18 +415,8 @@ ocean model dynamical timestep.
 |                                     |                   | ``NO_COPY_BACK``.                                          |
 +-------------------------------------+-------------------+------------------------------------------------------------+
 
-Terms of Use
-============
-
-DART software - Copyright UCAR. This open source software is provided by UCAR,
-"as is", without charge, subject to all terms of use at
-http://www.image.ucar.edu/DAReS/DART/DART_download
-
-.. |DART project logo| image:: ../../docs/images/Dartboard7.png
-   :height: 70px
-
 References
-==========
+----------
 
 .. [1] Smith, R., and Coauthors, 2010: The Parallel Ocean Program (POP)
        Reference Manual Ocean Component of the Community Climate System Model

@@ -1,21 +1,5 @@
-############
-FESOM README
-############
-
-Contents
-========
-
-1. `Overview`_
-
-   1.1. `model_mod.f90`_
-
-   1.2. `Workflow`_
-
-   1.3. `Shell Scripts`_
-
-   1.4. `Diagnostics`_
-
-2. `References`_
+FESOM
+=====
 
 The Finite Element Sea-ice Ocean Model (FESOM) is an unstructured mesh global
 ocean model using finite element methods to solve the hydro-static primitive
@@ -35,10 +19,10 @@ The FESOM/DART interfaces, diagnostics and support scripting were contributed
 by **Ali Aydoğdu**. Thanks Ali!
 
 Overview
-========
+--------
 
 model_mod.f90
--------------
+~~~~~~~~~~~~~
 
 A module called *fesom_modules* is provided to pass the information from FESOM
 to DART. fesom_modules.f90 includes fortran routines adopted from FESOM v1.4 to
@@ -57,7 +41,7 @@ mechanism of being able to run in reduced precision by defining real(r8) to be
 the same as real(r4) via ‘types_mod.f90’ is not supported.
 
 Workflow
---------
+~~~~~~~~
 
 1. *environment.load* Must be modified to contain the specifics of an
    experiment. This file is sourced by every other script below.
@@ -80,7 +64,7 @@ Workflow
             continue to 2.1
 
 Shell Scripts
--------------
+~~~~~~~~~~~~~
 
 Shell scripts are written in bash for LSF queuing system. They should be
 modified to work with others such as SLURM. FESOM executables are called
@@ -134,7 +118,7 @@ externally detached from DART therefore no need for an advance model.
 +------------------------------------------------------------------+---------------+-----------------------------------+
 
 Diagnostics
------------
+~~~~~~~~~~~
 
 A toolbox for diagnostics is provided. Some are written for a specific regional
 application using Ferrybox observations of temperature and salinity. However,
@@ -186,7 +170,7 @@ ferret/
 ========= ========================== ===========================================================================
 
 References
-==========
+----------
 
 .. [1] Danilov, S., Kivman, G., and Schröter, J.: A finite-element ocean model:
    principles and evaluation, Ocean Modell., 6, 125–150, 2004.

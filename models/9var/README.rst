@@ -1,17 +1,8 @@
-#################
-9-variable README
-#################
-
-Contents
-========
-
-#. `Overview`_
-#. `Namelist`_
-#. `Terms of Use`_
-#. `References`_
+9-variable
+==========
 
 Overview
-========
+--------
 
 The 9-variable model is described in Lorenz (1980). [1]_ Lorenz developed this
 primitive-equation model using shallow-water equations as a starting point and
@@ -40,7 +31,7 @@ and is intended to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -57,7 +48,7 @@ prematurely terminating the namelist.
   /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +-------------------+----------+-------------------------------------+
 | Item              | Type     | Description                         |
@@ -77,21 +68,8 @@ Description of each namelist entry
 |                   |          | timestep, mapped to delta_t.        |
 +-------------------+----------+-------------------------------------+
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__.
-Unless required by applicable law or agreed to in writing, software distributed
-under this license is distributed on an "as is" basis, without warranties or
-conditions of any kind, either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 .. [1] Lorenz, Edward N., 1980: Attractor Sets and Quasi-Geostrophic
    Equilibrium. *Journal of the Atmospheric Sciences*, **37**, 1685-1699.

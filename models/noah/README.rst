@@ -390,8 +390,3 @@ Input Files
 | *&model_nml:noah_netcdf_filename* | the RESTART file containing the NOAH    |
 |                                   | model state.                            |
 +-----------------------------------+-----------------------------------------+
-
-Output Files
-------------
-
-Under Construction.

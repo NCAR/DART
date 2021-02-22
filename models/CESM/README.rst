@@ -1,15 +1,8 @@
-###########
-CESM README
-###########
-
-Contents
-========
-
-#. `Overview`_
-#. `Terms of Use`_
+CESM
+====
 
 Overview
-========
+--------
 
 This is the start of an interface for assimilating observations
 into the fully-coupled CESM whole-system model.  It makes use
@@ -57,16 +50,3 @@ each component (cam-fv, pop, ...).
 The models/CESM/work directory has nothing of use in it, since there 
 are no programs to interact with a cross-component DART state vector
 (a DART state that consists of atmosphere and/or ocean and/or land).
-
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign

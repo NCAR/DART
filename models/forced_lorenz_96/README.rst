@@ -1,18 +1,8 @@
-#######################
-Forced Lorenz 96 README
-#######################
-
-Contents
-========
-
-#. `Overview`_
-#. `Quick Start`_
-#. `Namelist`_
-#. `Terms of Use`_
-#. `References`_
+Forced Lorenz 96
+================
 
 Overview
-========
+--------
 
 The *forced_lorenz_96* model implements the standard Lorenz (1996) [1]_
 equations except that the forcing term, ``F``, is added to the state vector and
@@ -42,7 +32,7 @@ behavior.
 Be aware that the ``input.nml`` file is modified by the ``workshop_setup.csh`` script.
 
 Quick Start
-===========
+-----------
 
 To become familiar with the model, try this quick experiment.
 
@@ -146,7 +136,7 @@ true state and *reset_forcing = .false.* when assimilating. What
 happens?
 
 Namelist
-========
+--------
 
 The model also implements the variant of Smith (2001), which can be invoked by
 setting ``local_y = .true.`` in the ``&model_nml`` namelist in the
@@ -170,7 +160,7 @@ prematurely terminating the namelist.
    /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------------------+----------+----------------------------+
 | Item                     | Type     | Description                |
@@ -199,20 +189,7 @@ Description of each namelist entry
 |                          |          | forcing value's time step. |
 +--------------------------+----------+----------------------------+
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 .. [1] Lorenz, Edward N., 1996: Predictability: A Problem Partly Solved. *Seminar on Predictability*. **1**, ECMWF, Reading, Berkshire, UK, 1-18.

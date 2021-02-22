@@ -1,16 +1,8 @@
-###########
-LMDZ README
-###########
-
-Contents
-========
-
-#. `Overview`_
-#. `Terms of Use`_
-#. `References`_
+LMDZ
+====
 
 Overview
-========
+--------
 
 The `Laboratoire de Météorologie Dynamique Zoom (LMDZ)
 <https://lmdz.lmd.jussieu.fr/le-projet-lmdz-en-bref-en>`_ model is a global
@@ -31,21 +23,8 @@ what is contained within the repository.
 If you are interested in using LMDZ in the Manhattan version of DART, we
 encourage you to contact us. We would like to participate!**
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 .. [1] **Singh, Tarkeshwar, Rashmi Mitta, and H.C. Upadhyaya**, 2015: Ensemble
        Adjustment Kalman Filter Data Assimilation for a Global Atmospheric

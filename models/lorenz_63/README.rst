@@ -1,17 +1,8 @@
-################
-Lorenz 63 README
-################
-
-Contents
-========
-
-#. `Overview`_
-#. `Namelist`_
-#. `Terms of Use`_
-#. `References`_
+Lorenz 63
+=========
 
 Overview
-========
+--------
 
 This 3-variable model was described in Lorenz (1963). [1]_ In Lorenz 63, DART
 advances the model, gets the model state and metadata describing this state,
@@ -32,17 +23,17 @@ image of chaotic systems:
 
 The system of equations for Lorenz 63 is:
 
-|Lorenz 63 system of equations|
+.. math::
 
-.. \frac{dx}{dt} = \sigma(y-x)
-.. \frac{dy}{dt} = x(r-z)-y
-.. \frac{dz}{dt} = xy-bz
+   \frac{dx}{dt} = \sigma(y-x)
+   \frac{dy}{dt} = x(r-z)-y
+   \frac{dz}{dt} = xy-bz
 
 and, within DART, the constants have default values of:
 
-|Lorenz 63 default values|
+.. math::
 
-.. \sigma=10, r=28, b=8/3
+   \sigma=10, r=28, b=8/3
 
 that can be altered by editing the ``&model_nml`` `namelist`_ in the
 ``input.nml`` file.
@@ -64,7 +55,7 @@ Lorenz 63 model. It is part of the
 
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -84,7 +75,7 @@ prematurely terminating the namelist.
   /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +-------------------+--------------+---------------------------------+
 | Item              | Type         | Description                     |
@@ -117,21 +108,8 @@ Description of each namelist entry
 |                   |              | classic Runge-Kutta method.     |
 +-------------------+--------------+---------------------------------+
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 .. [1] Lorenz, Edward N., 1963: Deterministic Nonperiodic Flow. *Journal of the
        Atmospheric Sciences*, **20**, 130-141,
@@ -139,7 +117,3 @@ References
        <https://doi.org/10.1175/1520-0469(1963)020\<0130:DNF\>2.0.CO;2>`__
 
 .. |Plot of Lorenz 63 attractor| image:: ./images/lorenz_63_thumb.png
-
-.. |Lorenz 63 system of equations| image:: ./images/lorenz_63_equations.svg
-
-.. |Lorenz 63 default values| image:: ./images/lorenz_63_default_values.svg

@@ -1,21 +1,8 @@
-###############
-MPAS_ATM README
-###############
-
-Contents
+MPAS_ATM
 ========
-
-#. `Overview`_
-#. `Namelist`_
-#. `Grid Information`_
-#. `model_mod Variable Storage`_
-#. `Compilation`_
-#. `Conversions`_
-#. `Files`_
-#. `Terms of Use`_
 
 Overview
-========
+--------
 
 This document describes the DART interface module for the MPAS-Atmosphere (or
 briefly, MPAS-ATM) global model, which uses an unstructured Voronoi grid mesh,
@@ -71,7 +58,7 @@ previous cycle (rather than having a single template file in CENTRALDIR).
 Creating the initial ensemble of states is an area of active research.
 
 Namelist
-========
+--------
 
 This namelist is read from the file *input.nml*. Namelists start with an
 ampersand '&' and terminate with a slash '/'. Character strings that contain a
@@ -336,7 +323,7 @@ fields carefully when using bounds to restrict their values.
 +--------------------+---------------------------------------+---------------------------------------------+
 
 Grid Information
-================
+----------------
 
 As the forward operators use the unstructured grid meshes in MPAS-ATM, the
 DART/MPAS interface needs to read static variables related to the grid structure
@@ -404,8 +391,8 @@ cartesian coordinate (to avoid the polar issues).
 |                                   | .true.)                                 |
 +-----------------------------------+-----------------------------------------+
 
-model_mod Variable Storage
-==========================
+model_mod variable storage
+--------------------------
 
 The ``&mpas_vars_nml`` within ``input.nml`` defines the list of MPAS variables
 used to build the DART state vector. Combined with an MPAS analysis file, the
@@ -451,7 +438,7 @@ naturally, the DART state vector is 1D. Each variable is also stored this way
 in the MPAS analysis file.
 
 Compilation
-===========
+-----------
 
 The DART interface for MPAS-ATM can be compiled with various fortran compilers
 such as (but not limited to) gfortran, pgf90, and intel. It has been tested on a
@@ -468,16 +455,16 @@ Mac and NCAR IBM supercomputer (yellowstone).
    necessary.
 
 Conversions
-===========
+-----------
 
 A Welcome Development
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 MPAS files no longer beed to be converted to DART formatted files, they can be
 read in directly from a input file list!
 
 Analysis File NetCDF header
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The header of an MPAS analysis file is presented below - simply for context.
 Keep in mind that **many** variables have been removed for clarity. Also keep
@@ -604,7 +591,7 @@ reversed from the Fortran convention.
             double tend_qni(Time, nCells, nVertLevels) ;
 
 Files
-=====
+-----
 
 +-----------------------------+-----------------------------------------------+
 | filename                    | purpose                                       |
@@ -632,21 +619,8 @@ Files
 |                             | - contains the default values                 |
 +-----------------------------+-----------------------------------------------+
 
-Terms of Use
-============
- 
-|Copyright| University Corporation for Atmospheric Research
- 
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
- 
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 The Data Assimilation section in the MPAS documentation found at
 http://mpas-dev.github.io.

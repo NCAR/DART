@@ -1,17 +1,8 @@
-################
-Lorenz 96 README
-################
-
-Contents
-========
-
-#. `Overview`_
-#. `Namelist`_
-#. `Terms of Use`_
-#. `References`_
+Lorenz 96
+=========
 
 Overview
-========
+--------
 
 The Lorenz 96 model was first described by Edward Lorenz during a seminar at
 the European Centre for Medium-Range Weather Forecasts in the Autumn of 1995,
@@ -28,29 +19,30 @@ Lorenz and Emmanuel (1998) [2]_ describe the model as:
   solutions) tend to double in about 2 days. Localized errors tend to spread
   eastward as they grow, encircling the globe after about 14 days.
 
-  We have chosen a model with *J* variables, denoted by:
+  We have chosen a model with :math:`J` variables, denoted by:
 
-  |Lorenz 96 variables|;
+  .. math::
 
-  .. X_1, ... , X_j;
+     X_1, ... , X_j;
 
-  in most of our experiments we have let *J = 40*. The governing equations are:
+  in most of our experiments we have let :math:`J = 40`. The governing
+  equations are:
 
-  |Lorenz 96 governing equations|
+  .. math::
 
-  .. dX_j/dt=(X_{j+1}-X_{j-2})X_{j-1}-X_j+F (1)
+     dX_j/dt=(X_{j+1}-X_{j-2})X_{j-1}-X_j+F (1)
 
   for:
 
-  |Lorenz 96 indices|.
+  .. math::
 
-  .. j=1,...,J.
+     j=1,...,J.
 
   To make Eq. (1) meaningful for all values of *j* we define:
 
-  |Lorenz 96 cyclic chain|,
+  .. math::
 
-  .. X_{-1}=X_{J-1}, X_0=X_J, \& X_{J+1}=X_1,
+     X_{-1}=X_{J-1}, X_0=X_J, \& X_{J+1}=X_1,
 
   so that the variables form a cyclic chain, and may be looked at as values of
   some unspecified scalar meteorological quantity, perhaps vorticity or
@@ -73,9 +65,8 @@ There are also some excellent Matlab tools to explore the behavior of the
 Lorenz 96 model, namely ``run_lorenz_96.m`` and ``run_lorenz_96_inf.m``, both of 
 which are part of the `DART_LAB Tutorial. <https://dart.ucar.edu/pages/dart_lab.html>`__
 
-
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -93,7 +84,7 @@ prematurely terminating the namelist.
   /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +-------------------+----------+-------------------------------------+
 | Item              | Type     | Description                         |
@@ -114,21 +105,8 @@ Description of each namelist entry
 |                   |          | timestep, mapped to delta_t.        |
 +-------------------+----------+-------------------------------------+
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 .. [1] Lorenz, Edward N., 1996: Predictability: A Problem Partly Solved.
        *Seminar on Predictability.* **1**, ECMWF, Reading, Berkshire, UK, 1-18.
@@ -138,11 +116,3 @@ References
        *Journal of the Atmospheric Sciences*, **55**, 399-414,
        `doi:10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2
        <https://doi.org/10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2>`__
-
-.. |Lorenz 96 cyclic chain| image:: ./images/lorenz_96_cyclic_chain.svg
-
-.. |Lorenz 96 governing equations| image:: ./images/lorenz_96_governing_equations.svg
-
-.. |Lorenz 96 indices| image:: ./images/lorenz_96_indices.svg
-
-.. |Lorenz 96 variables| image:: ./images/lorenz_96_variables.svg

@@ -154,12 +154,3 @@ following error (or something similar):
    There is no matching specific function for this generic function reference.   [SET_LOCATION]
    location = set_location(lon, lat, vloc, which_vert)
    -----------------^
-
-Terms of Use
-------------
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable law or agreed to in writing, software distributed under this license is distributed on an "as is" basis, without warranties or conditions of any kind, either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign

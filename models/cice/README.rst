@@ -1,18 +1,8 @@
-###########
-CICE README
-###########
-
-Contents
-========
-
-#. `Overview`_
-#. `Development Notes`_
-#. `Namelist`_
-#. `Terms of Use`_
-#. `References`_
+CICE
+====
 
 Overview
-========
+--------
 
 The `Community Ice CodE (CICE) <https://github.com/CICE-Consortium/CICE>`_ is a
 sea ice model that was first developed by Elizabeth Hunke as the Los Alamos Sea
@@ -41,7 +31,7 @@ Hence, in the DART interface:
 - T, h, hs, and the various scalar quantities are at grid cell centers
 
 Development Notes
-=================
+-----------------
 
 CICE is under active development to work with other grids, such as the
 unstructured grid in MPAS and the C-grid in MOM. Due to this activity, this
@@ -53,7 +43,7 @@ this README and with descriptive comments in the source code.
   this day. The routine wants sec this min.
 
 Notes from Cecilia M. Bitz on 14 May 2016
------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Created ``../../obs_def/obs_def_cice_mod.f90`` to make new obs_kinds used in
   ``model_mod.f90`` and ``input.nml``.
@@ -121,7 +111,7 @@ Code Snippet from model_mod.f90
             write_model_time
 
 Namelist
-========
+--------
 
 .. code-block:: fortran
 
@@ -138,7 +128,7 @@ Namelist
   /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +------------------------------+---------------+---------------------------------+
 | Item                         | Type          | Description                     |
@@ -163,21 +153,8 @@ Description of each namelist entry
 | model_state_variables        | character(*)  | List of model state variables   |
 +------------------------------+---------------+---------------------------------+
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+~~~~~~~~~~
 
 .. [1] Arakawa, Akio and Vivian R. Lamb, 1977: Computational Design of the
        Basic Dynamical Processes of the UCLA General Circulation Model.

@@ -1,25 +1,8 @@
-###########
-GITM README
-###########
-
-`NAMELIST <#Namelist>`__ / `INTERFACES <#Interface>`__ / `FILES <#FilesUsed>`__
-/ `REFERENCES <#References>`__ / `ERRORS <#Errors>`__ / `PLANS <#FuturePlans>`__
-/ `PRIVATE COMPONENTS <#PrivateComponents>`__ / `TERMS OF USE <#Legalese>`__
-
-Contents
-========
-
-#. `Overview`_
-#. `Compiling`_
-#. `Converting Between DART Files and GITM Restart Files`_
-#. `Simple Test`_
-#. `Namelist`_
-#. `Files`_
-#. `Terms of Use`_
-#. `References`_
+GITM
+====
 
 Overview
-========
+--------
 
 The `Global Ionosphere Thermosphere Model
 (GITM) <http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM>`__ is a
@@ -91,7 +74,7 @@ following variables exist:
 +-----------------+---------------+------------------------------------------+
 
 Compiling
-=========
+---------
 
 GITM has been sucessfully tested with DART using the ``gfortran`` compiler,
 version ``4.2.3``. The DART components were built with the following
@@ -108,7 +91,7 @@ version ``4.2.3``. The DART components were built with the following
    LDFLAGS = $(FFLAGS) $(LIBS)
          
 Converting Between DART Files and GITM Restart Files
-====================================================
+----------------------------------------------------
 
 The binary GITM files contain no metadata, so care is needed when converting
 between DART state variables and GITM files.
@@ -149,7 +132,7 @@ DART state vector: the ``&model_nml:gitm_state_variables`` variable in the
 +--------------------------------------+--------------------------------------+
 
 Simple Test
-===========
+-----------
 
 The simplest way to test the converter is to compile GITM and run a single
 model state forward using ``work/clean.sh``. To build GITM ... download GITM
@@ -165,7 +148,7 @@ commands:
    $ ./clean.sh 1 1 0 150.0 170.0 1.0
 
 Namelist
-========
+--------
 
 We adhere to the F90 standard of starting a namelist with an ampersand ``&``
 and terminating with a slash ``/`` for all our namelist input. Character
@@ -180,7 +163,7 @@ performed to ensure that the assimilation window is a multiple of the model
 dynamical timestep.
 
 Sample input.nml Configuration
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: fortran
 
@@ -284,7 +267,7 @@ Description of Each Term in the Namelist
 +-------------------------------------+-----------------------------------+------------------------------------------+
 
 Files
-=====
+-----
 
 +--------------------------------------+--------------------------------------+
 | filename                             | purpose                              |
@@ -315,21 +298,8 @@ Files
 |                                      | values                               |
 +--------------------------------------+--------------------------------------+
 
-Terms of Use
-============
- 
-|Copyright| University Corporation for Atmospheric Research
- 
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
- 
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 NASA's official *GITM* description can be found at their `Community Coordinated
 Modeling Center website <http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM>`_.

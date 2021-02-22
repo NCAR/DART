@@ -1,18 +1,8 @@
-########################
-Lorenz 96 2-scale README
-########################
-
-Contents
-========
-
-#. `Overview`_
-#. `Quick Start`_
-#. `Namelist`_
-#. `Terms of Use`_
-#. `References`_
+Lorenz 96 2-scale
+=================
 
 Overview
-========
+--------
 
 The Lorenz 96 2-scale model was first described by Edward Lorenz during a
 seminar at the European Centre for Medium-Range Weather Forecasts in the Autumn
@@ -40,14 +30,14 @@ and is intended to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
 
 Development History
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 This DART model interface was developed by Josh Hacker as an adaptation of 
 Tim Hoar's Lorenz 96 implementation. The 2-scale model is the second model
 described in Lorenz (1996).
 
 Quick Start
-===========
+-----------
 
 To run Lorenz 96 2-scale with its default settings:
 
@@ -60,7 +50,7 @@ To run Lorenz 96 2-scale with its default settings:
    be used to spin up the model and run an experiment.
 
 Namelist
-========
+--------
 
 The model also implements the variant of Smith (2001), which can be invoked by
 setting ``local_y = .true.`` in the ``&model_nml`` namelist in the
@@ -89,7 +79,7 @@ prematurely terminating the namelist.
 
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +-------------------+--------------------+-------------------------------------+
 | Item              | Type               | Description                         |
@@ -124,17 +114,8 @@ Description of each namelist entry
 | template_file     | character(len=256) | this in script                      |
 +-------------------+--------------------+-------------------------------------+
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable law or agreed to in writing, software distributed under this license is distributed on an "as is" basis, without warranties or conditions of any kind, either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+~~~~~~~~~~
 
 .. [1] Lorenz, Edward N., 1996: Predictability: A Problem Partly Solved. *Seminar on Predictability*. **1**, ECMWF, Reading, Berkshire, UK, 1-18.
 

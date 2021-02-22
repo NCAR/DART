@@ -1,5 +1,5 @@
-WRF-Hydro README
-================
+WRF-Hydro
+=========
 
 Overview
 --------

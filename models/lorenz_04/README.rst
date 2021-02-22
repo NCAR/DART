@@ -1,18 +1,8 @@
-################
-Lorenz 05 README
-################
-
-Contents
-========
-
-#. `Naming History`_
-#. `Overview`_
-#. `Namelist`_
-#. `Terms of Use`_
-#. `References`_
+Lorenz 05
+=========
 
 Naming History
-==============
+--------------
 
 In earlier versions of DART, this collection of models was referred to as
 Lorenz 04. Edward Lorenz provided James A. Hansen these model formulations
@@ -27,7 +17,7 @@ Lorenz 05. To reflect this fact, the collection of models was renamed within
 DART from Lorenz 04 to Lorenz 05 during the Manhattan release.
 
 Overview
-========
+--------
 
 Lorenz (2005) provides a fascinating account of the difficulties involved in
 designing simple models that exhibit chaotic behavior and realistically
@@ -57,21 +47,14 @@ and to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
 
 Model Formulation
------------------
+~~~~~~~~~~~~~~~~~
 
 For Lorenz 05, DART to advances the model, gets the model state and metadata
 describing this state, finds state variables that are close to a given
 location, and does spatial interpolation for model state variables.
 
-Equations
-~~~~~~~~~
-
-The equations are in the README (the non-reStructuredText version of it).
-
-
-
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -94,7 +77,7 @@ prematurely terminating the namelist.
   /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +-------------------+----------+-------------------------------------+
 | Contents          | Type     | Description                         |
@@ -130,21 +113,8 @@ Description of each namelist entry
 |                   |          | paper.)                             |
 +-------------------+----------+-------------------------------------+
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`_. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 .. [1] Lorenz, Edward N., 2005: Designing Chaotic Models. *Journal of the Atmospheric Sciences*, **62**, 1574-1587.
 .. [2] Lorenz, Edward N., 1996: Predictability: A Problem Partly Solved. *Seminar on Predictability.* **1**, ECMWF, Reading, Berkshire, UK, 1-18.

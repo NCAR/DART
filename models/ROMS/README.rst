@@ -1,16 +1,5 @@
-###########
-ROMS README
-###########
-
-Contents
-========
-
-#. `Overview`_
-#. `A Note About Filenames`_
-#. `Procedure`_
-#. `Shell Scripts`_
-#. `Namelist`_
-#. `Terms of Use`_
+ROMS
+====
 
 There are several DART users who have working DART interface code
 to the Regional Ocean Modeling System (ROMS), as the model is a community ocean
@@ -28,7 +17,7 @@ run data assimilation experiments with this model. We may be able to put you in
 contact with the right people to get a copy of the code.
 
 Overview
-========
+--------
 
 This document describes the relationship between ROMS and DART and provides an
 overview of how to perform ensemble data assimilation with ROMS to provide ocean
@@ -61,7 +50,7 @@ and horizontally curvilinear orthogonal coordinates to the observation location.
 Please contact us for more information about this interpolation.
 
 A Note About Filenames
-======================
+----------------------
 
 During the course of an experiment, many files are created. To make them unique,
 the *ocean_time* is converted from "seconds since 1900-01-01 00:00:00" to the
@@ -86,7 +75,7 @@ plan.
 These are just examples...after all; hopefully good examples.
 
 Procedure
-=========
+---------
 
 The procedure to perform an assimilation experiment is outlined in the following
 steps:
@@ -109,10 +98,10 @@ steps:
 #. Update the control files for ROMS in preparation for the next model
    advance.
 
-Shell Scripts
-=============
+Shell scripts
+-------------
 
-The *shell_scripts* directory has several scripts that are intended to
+The ``shell_scripts`` directory has several scripts that are intended to
 provide examples. These scripts **WILL** need to be modified to work on
 your system and are heavily internally commented. It will be necessary
 to read through and understand the scripts. As mentioned before, the
@@ -274,7 +263,7 @@ namelist item:
 +-----------------------------------+-----------------------------------+
 
 Namelist
-========
+--------
 
 This namelist is read from the file *input.nml*. Namelists start with an
 ampersand '&' and terminate with a slash '/'. Character strings that
@@ -430,16 +419,3 @@ file.
                                            'SATELLITE_MICROWAVE_SST',
                                            'SATELLITE_INFRARED_SST'
    /
-
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign

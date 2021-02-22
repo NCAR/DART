@@ -1,15 +1,8 @@
-##########
-CM1 README
-##########
-
-#. `Overview`_
-#. `namelist.input`_
-#. `About Testing CM1 and DART`_
-#. `Namelist`_
-#. `Terms of Use`_
+CM1
+===
 
 Overview
-========
+--------
 
 Cloud Model 1 (CM1) version 18 (CM1r18) is compatible with the DART. CM1 is a
 non-hydrostatic numerical model in Cartesian 3D coordinates designed for the
@@ -27,7 +20,7 @@ This model interface and scripting support were created by Luke Madaus.
 **Thanks Luke!**
 
 namelist.input
-==============
+--------------
 
 Several modifications to the CM1 namelist ``namelist.input`` are required to
 produce model output compatible with DART. The values are described here and an
@@ -77,7 +70,7 @@ Observation locations are specified in meters relative to the domain origin as
 defined the ``iorigin`` setting of ``&param2``.
 
 About Testing CM1 and DART
-==========================
+--------------------------
 
 There are two sets of scripts in the ``shell_scripts`` directory. Luke
 contributed a set written in python, and the DART team had a set written in
@@ -284,7 +277,7 @@ and "END USER-DEFINED VARIABLES" comment blocks:
 
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Again,
 namelists start with an ampersand ``&`` and terminate with a slash ``/``.
@@ -307,7 +300,7 @@ them from prematurely terminating the namelist.
    /
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +------------------------------------+-----------------------+-------------------------------------------------------+
 | Item                               | Type                  | Description                                           |
@@ -412,16 +405,3 @@ Description of each namelist entry
                         'qs'   , 'QTY_SNOW_MIXING_RATIO'     , 0.0000, 'NULL', 'UPDATE',
                         'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE'
    /
-
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign

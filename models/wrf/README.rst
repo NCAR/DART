@@ -1,25 +1,14 @@
-==========
-WRF README
-==========
-
-Contents
-========
-
-#. `Overview`_
-#. `WRF+DART Tutorial`_
-#. `Namelist`_
-#. `Files`_
-#. `Terms of Use`_
-#. `References`_
+WRF
+===
 
 Overview
-========
+--------
 
 DART interface module for the WRF model. This page documents the details of the
 module compiled into DART that interfaces with the WRF data in the state vector.
 
 WRF+DART Tutorial
-=================
+-----------------
 
 **There is additional overview and tutorial documentation for running a WRF/DART
 assimilation in** ``./tutorial/README.md`` **.**
@@ -27,7 +16,7 @@ assimilation in** ``./tutorial/README.md`` **.**
 Please work through the tutorial in order to learn how to run WRF and DART.
 
 Items of Note
--------------
+~~~~~~~~~~~~~
 
 - The ``model_mod`` reads WRF netCDF files directly to acquire the model state
   data. The ``wrf_to_dart`` and ``dart_to_wrf`` programs are no longer
@@ -65,7 +54,7 @@ ascii file ``wrf_state_variables_table`` in the ``models/wrf`` directory for a
 list of fields that are often included in the DART state.
 
 Namelist
-========
+--------
 
 The ``&model_nml`` namelist is read from the ``input.nml`` file. Namelists
 start with an ampersand ``&`` and terminate with a slash ``/``. Character
@@ -153,7 +142,7 @@ prematurely terminating the namelist.
       # into a single location like the 3d-spherical polar flag implies.
 
 Description of each namelist entry
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +---------------------------------------+---------------------------------------+---------------------------------------+
 | Item                                  | Type                                  | Description                           |
@@ -361,26 +350,13 @@ Item                Type              Description
 =================== ================= =========================================
 
 Files
-=====
+-----
 
 -  model_nml in input.nml
 -  wrfinput_d01, wrfinput_d02, ... (one file for each domain)
 -  netCDF output state diagnostics files
 
-Terms of Use
-============
-
-|Copyright| University Corporation for Atmospheric Research
-
-Licensed under the `Apache License, Version 2.0
-<http://www.apache.org/licenses/LICENSE-2.0>`__. Unless required by applicable
-law or agreed to in writing, software distributed under this license is
-distributed on an "as is" basis, without warranties or conditions of any kind,
-either express or implied.
-
-.. |Copyright| unicode:: 0xA9 .. copyright sign
-
 References
-==========
+----------
 
 http://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/contents.html
