@@ -173,9 +173,9 @@ false result.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>file_name&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>file_name   </tt></td>
 <td>A file name (or path name) that is checked for existence.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character]</span></td>
+   <span class="type">[character]</span></td>
 </tr>
 </table>
 </dd>
@@ -184,14 +184,14 @@ false result.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left">   </td>
 <td>This function returns a logical result. If file_name exists the
 result is true, otherwise false is returned. If the length of
 character string "file_name" is zero or the first character is
 blank, then the returned value will be false. When reading a file,
 this function is often used in conjunction with routine
 open_file.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[]</span></td>
+   <span class="type">[]</span></td>
 </tr>
 </table>
 </dd>
@@ -216,22 +216,22 @@ interface</b>.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>routine&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>routine   </tt></td>
 <td>Routine name where the warning or error has occurred.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character]</span></td>
+   <span class="type">[character]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>message&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>message   </tt></td>
 <td>Warning or error message to be printed.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character]</span></td>
+   <span class="type">[character]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>level&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>level   </tt></td>
 <td>Level of severity; set to NOTE, WARNING, or FATAL Termination
 always occurs for FATAL, never for NOTE, and is settable for
 WARNING (see namelist).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -263,16 +263,16 @@ error. See the NOTE below.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>iostat&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>iostat   </tt></td>
 <td>The iostat value returned when reading a namelist record.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>nml_name&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>nml_name   </tt></td>
 <td>The name of the namelist. This name will be printed if an error
 is encountered, otherwise the name is not used.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character]</span></td>
+   <span class="type">[character]</span></td>
 </tr>
 </table>
 </dd>
@@ -281,11 +281,11 @@ is encountered, otherwise the name is not used.<br>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left">   </td>
 <td>This function returns the input iostat value (integer) if it is
 an allowable error code. If the iostat error code is not allowable,
 an error message is printed and the program terminated.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -332,22 +332,22 @@ version id string and (cvs) tag name.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>version&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>version   </tt></td>
 <td>string that contains routine name and version number.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*)]</span></td>
+   <span class="type">[character(len=*)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>tag&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>tag   </tt></td>
 <td>The tag/name string, this is usually the Name string returned
 by CVS when checking out the code.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*)]</span></td>
+   <span class="type">[character(len=*)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td>The Fortran unit number of an open formatted file. If this unit
 number is not supplied the log file unit number is used
 (stdlog).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -369,25 +369,25 @@ module and look at the example below.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>name&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>name   </tt></td>
 <td>A unique name string given to the code segment to be timed. The
 length should not exceed 32 characters.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character]</span></td>
+   <span class="type">[character]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>level&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>level   </tt></td>
 <td>Level of timing. When level &gt; timing_level, which is set by
 namelist <a href="#NAMELIST">&amp;fms_nml</a>, an identifier of
 zero is returned. This will turn off performance timing for the
 code section.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>flags&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>flags   </tt></td>
 <td>Use the flags published via the mpp_mod to control whether
 synchronization or extra detail is desired. (flags =
 MPP_CLOCK_SYNC, MPP_CLOCK_DETAILED)<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -396,11 +396,11 @@ MPP_CLOCK_SYNC, MPP_CLOCK_DETAILED)<br>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>id&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>id   </tt></td>
 <td>The identification index returned by mpp_clocks_id. A zero
 value is returned (turning clocks off) when input argument level
 &gt; namelist variable timing_level.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -460,9 +460,9 @@ left unchanged.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>cs&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>cs   </tt></td>
 <td>Character string that may contain upper case letters.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*),
+   <span class="type">[character(len=*),
 scalar]</span></td>
 </tr>
 </table>
@@ -473,10 +473,10 @@ scalar]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>string&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>string   </tt></td>
 <td>Character string that contains all lower case letters. The
 length of this string must be the same as the input string.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=len(cs)),
+   <span class="type">[character(len=len(cs)),
 scalar]</span></td>
 </tr>
 </table>
@@ -498,9 +498,9 @@ left unchanged.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>cs&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>cs   </tt></td>
 <td>Character string that may contain lower case letters.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*),
+   <span class="type">[character(len=*),
 scalar]</span></td>
 </tr>
 </table>
@@ -511,10 +511,10 @@ scalar]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>string&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>string   </tt></td>
 <td>Character string that contains all upper case letters. The
 length of this string must be the same as the input string.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=len(cs)),
+   <span class="type">[character(len=len(cs)),
 scalar]</span></td>
 </tr>
 </table>
@@ -538,16 +538,16 @@ characters to the right of the string.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>string&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>string   </tt></td>
 <td>Character string of arbitrary length.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*),
+   <span class="type">[character(len=*),
 scalar]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>string_array&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>string_array   </tt></td>
 <td>Array/list of character strings.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*),
+   <span class="type">[character(len=*),
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -557,16 +557,16 @@ dimension(:)]</span></td>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>index&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>index   </tt></td>
 <td>The index of string_array where the first match was found. If
 no match was found then index = 0.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[]</span></td>
+   <span class="type">[]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>found&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>found   </tt></td>
 <td>If an exact match was found then TRUE is returned, otherwise
 FALSE is returned.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+   <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
@@ -595,11 +595,11 @@ or decreasing values.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>array&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>array   </tt></td>
 <td>An array of real values. If the size(array) &lt; 2 this
 function assumes the array is not monotonic, no fatal error will
 occur.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -610,18 +610,18 @@ dimension(:)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>direction&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>direction   </tt></td>
 <td>If the input array is: &gt;&gt; monotonic (small to large) then
 direction = +1. &gt;&gt; monotonic (large to small) then direction
 = -1. &gt;&gt; not monotonic then direction = 0.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left">   </td>
 <td>If the input array of real values either increases or decreases
 monotonically then TRUE is returned, otherwise FALSE is
 returned.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+   <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>

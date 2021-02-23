@@ -71,7 +71,7 @@ which it is built.</p>
 <!-- END OVERVIEW -->
 <a name="DESCRIPTION" id="DESCRIPTION"></a> 
 <!-- BEGIN DESCRIPTION -->
-<div>In massively parallel environments, an often difficult problem
+<p>In massively parallel environments, an often difficult problem
 is the reading and writing of data to files on disk. MPI-IO and
 MPI-2 IO are moving toward providing this capability, but are
 currently not widely implemented. Further, it is a rather abstruse
@@ -81,48 +81,50 @@ not attempt to be an all-encompassing standard such as MPI,
 however, it can be implemented in MPI if so desired. It is equally
 simple to add parallel I/O capability to <tt>mpp_io_mod</tt> based
 on vendor-specific APIs while providing a layer of insulation for
-user codes.<br>
-<br>
-The <tt>mpp_io_mod</tt> parallel I/O API built on top of the
+user codes.</p>
+
+<p>The <tt>mpp_io_mod</tt> parallel I/O API built on top of the
 <a href=
 "models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html"></a> and
 <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a> API
 for domain decomposition and message passing. Features of
-<tt>mpp_io_mod</tt> include:<br>
-<br>
-1) Simple, minimal API, with free access to underlying API for more
-complicated stuff.<br>
-2) Self-describing files: comprehensive header information
-(metadata) in the file itself.<br>
-3) Strong focus on performance of parallel write: the climate
+<tt>mpp_io_mod</tt> include:</p>
+
+<ol>
+<li>Simple, minimal API, with free access to underlying API for more
+complicated stuff.</li>
+<li>Self-describing files: comprehensive header information
+(metadata) in the file itself.</li>
+<li>Strong focus on performance of parallel write: the climate
 models for which it is designed typically read a minimal amount of
 data (typically at the beginning of the run); but on the other
 hand, tend to write copious amounts of data during the run. An
 interface for reading is also supplied, but its performance has not
-yet been optimized.<br>
-4) Integrated netCDF capability: <a href=
+yet been optimized.</li>
+<li>Integrated netCDF capability: <a href=
 "http://www.unidata.ucar.edu/packages/netcdf/">netCDF</a> is a data
 format widely used in the climate/weather modeling community.
 netCDF is considered the principal medium of data storage for
 <tt>mpp_io_mod</tt>. But I provide a raw unformatted fortran I/O
 capability in case netCDF is not an option, either due to
-unavailability, inappropriateness, or poor performance.<br>
-5) May require off-line post-processing: a tool for this purpose,
+unavailability, inappropriateness, or poor performance.</li>
+<li>May require off-line post-processing: a tool for this purpose,
 <tt>mppnccombine</tt>, is available. GFDL users may use
 <tt>~hnv/pub/mppnccombine</tt>. Outside users may obtain the source
 <a href="ftp://ftp.gfdl.gov/perm/hnv/mpp/mppnccombine.c">here</a>.
 It can be compiled on any C compiler and linked with the netCDF
 library. The program is free and is covered by the <a href=
-"ftp://ftp.gfdl.gov/perm/hnv/mpp/LICENSE">GPL license</a>.<br>
-<br>
-The internal representation of the data being written out is
+"ftp://ftp.gfdl.gov/perm/hnv/mpp/LICENSE">GPL license</a>.</li>
+</ol>
+
+<p>The internal representation of the data being written out is
 assumed be the default real type, which can be 4 or 8-byte. Time
 data is always written as 8-bytes to avoid overflow on climatic
-time scales in units of seconds.<br>
-<br>
-<a href="modes"></a>
+time scales in units of seconds.</p>
+
 <h2>I/O modes in <tt>mpp_io_mod</tt></h2>
-The I/O activity critical to performance in the models for which
+
+<p>The I/O activity critical to performance in the models for which
 <tt>mpp_io_mod</tt> is designed is typically the writing of large
 datasets on a model grid volume produced at intervals during a run.
 Consider a 3D grid volume, where model arrays are stored as
@@ -136,22 +138,22 @@ have one PE acquire all the data and write it out, or to have all
 the PEs write independent files, which are recombined offline.
 These three modes of operation are described in the
 <tt>mpp_io_mod</tt> terminology in terms of two parameters,
-<i>threading</i> and <i>fileset</i>, as follows:<br>
-<br>
-<i>Single-threaded I/O:</i> a single PE acquires all the data and
+<i>threading</i> and <i>fileset</i>, as follows:</p>
+
+<p><i>Single-threaded I/O:</i> a single PE acquires all the data and
 writes it out.<br>
 <i>Multi-threaded, single-fileset I/O:</i> many PEs write to a
 single file.<br>
 <i>Multi-threaded, multi-fileset I/O:</i> many PEs write to
-independent files. This is also called <i>distributed I/O</i>.<br>
+independent files. This is also called <i>distributed I/O</i>.</p>
 <br>
-The middle option is the most difficult to achieve performance. The
+<p>The middle option is the most difficult to achieve performance. The
 choice of one of these modes is made when a file is opened for I/O,
-in <a href="#mpp_open"></a>.<br>
-<br>
-<a href=""></a>
+in <a href="#mpp_open"></a>.</p>
+
 <h2>Metadata in <tt>mpp_io_mod</tt></h2>
-A requirement of the design of <tt>mpp_io_mod</tt> is that the file
+
+<p>A requirement of the design of <tt>mpp_io_mod</tt> is that the file
 must be entirely self-describing: comprehensive header information
 describing its contents is present in the header of every file. The
 header information follows the model of netCDF. Variables in the
@@ -159,51 +161,67 @@ file are divided into <i>axes</i> and <i>fields</i>. An axis
 describes a co-ordinate variable, e.g <tt>x,y,z,t</tt>. A field
 consists of data in the space described by the axes. An axis is
 described in <tt>mpp_io_mod</tt> using the defined type
-<tt>axistype</tt>:<br>
-<br>
-<pre>   type, public :: axistype
-      sequence
-      character(len=128) :: name
-      character(len=128) :: units
-      character(len=256) :: longname
-      character(len=8) :: cartesian
-      integer :: len
-      integer :: sense           !+/-1, depth or height?
-      type(domain1D), pointer :: domain
-      real, dimension(:), pointer :: data
-      integer :: id, did
-      integer :: type  ! external NetCDF type format for axis data
-      integer :: natt
-      type(atttype), pointer :: Att(:) ! axis attributes
-   end type axistype</pre>
-A field is described using the type <tt>fieldtype</tt>:<br>
-<br>
-<pre>   type, public :: fieldtype
-      sequence
-      character(len=128) :: name
-      character(len=128) :: units
-      character(len=256) :: longname
-      real :: min, max, missing, fill, scale, add
-      integer :: pack
-      type(axistype), dimension(:), pointer :: axes
-      integer, dimension(:), pointer :: size
-      integer :: time_axis_index
-      integer :: id
-      integer :: type ! external NetCDF format for field data
-      integer :: natt, ndim
-      type(atttype), pointer :: Att(:) ! field metadata
-   end type fieldtype</pre>
-An attribute (global, field or axis) is described using the
-<tt>atttype</tt>:<br>
-<br>
-<pre>   type, public :: atttype
-      sequence
-      integer :: type, len
-      character(len=128) :: name
-      character(len=256)  :: catt
-      real(FLOAT_KIND), pointer :: fatt(:)
-   end type atttype</pre>
-<a href=""></a>This default set of field attributes corresponds
+<tt>axistype</tt>:</p>
+
+
+<pre>
+<code>
+type, public :: axistype
+  sequence
+  character(len=128) :: name
+  character(len=128) :: units
+  character(len=256) :: longname
+  character(len=8) :: cartesian
+  integer :: len
+  integer :: sense           !+/-1, depth or height?
+  type(domain1D), pointer :: domain
+  real, dimension(:), pointer :: data
+  integer :: id, did
+  integer :: type  ! external NetCDF type format for axis data
+  integer :: natt
+  type(atttype), pointer :: Att(:) ! axis attributes
+end type axistype
+</code>
+</pre>
+
+<p>A field is described using the type <tt>fieldtype</tt>:</p>
+
+<pre>
+<code>
+type, public :: fieldtype
+  sequence
+  character(len=128) :: name
+  character(len=128) :: units
+  character(len=256) :: longname
+  real :: min, max, missing, fill, scale, add
+  integer :: pack
+  type(axistype), dimension(:), pointer :: axes
+  integer, dimension(:), pointer :: size
+  integer :: time_axis_index
+  integer :: id
+  integer :: type ! external NetCDF format for field data
+  integer :: natt, ndim
+  type(atttype), pointer :: Att(:) ! field metadata
+end type fieldtype
+</code>
+</pre>
+
+<p>An attribute (global, field or axis) is described using the
+<tt>atttype</tt>:</p>
+
+<pre>
+<code>
+type, public :: atttype
+  sequence
+  integer :: type, len
+  character(len=128) :: name
+  character(len=256)  :: catt
+  real(FLOAT_KIND), pointer :: fatt(:)
+end type atttype
+</code>
+</pre>
+  
+<p><a href=""></a>This default set of field attributes corresponds
 closely to various conventions established for netCDF files. The
 <tt>pack</tt> attribute of a field defines whether or not a field
 is to be packed on output. Allowed values of <tt>pack</tt> are
@@ -215,43 +233,49 @@ scheme using the <tt>scale</tt> and <tt>add</tt> attributes. There
 is thus likely to be a significant loss of dynamic range with
 packing. When a field is declared to be packed, the
 <tt>missing</tt> and <tt>fill</tt> attributes, if supplied, are
-packed also.<br>
-<br>
-Please note that the pack values are the same even if the default
+packed also.</p>
+
+<p>Please note that the pack values are the same even if the default
 real is 4 bytes, i.e <tt>PACK=1</tt> still follows the definition
-above and writes out 8 bytes.<br>
-<br>
-A set of <i>attributes</i> for each variable is also available. The
+above and writes out 8 bytes.</p>
+
+<p>A set of <i>attributes</i> for each variable is also available. The
 variable definitions and attribute information is written/read by
 calling <a href="#mpp_write_meta"></a> or <a href=
 "#mpp_read_meta"></a>. A typical calling sequence for writing data
-might be:<br>
-<br>
-<pre>   ...
-     type(domain2D), dimension(:), allocatable, target :: domain
-     type(fieldtype) :: field
-     type(axistype) :: x, y, z, t
-   ...
-     call mpp_define_domains( (/1,nx,1,ny/), domain )
-     allocate( a(domain(pe)%x%data%start_index:domain(pe)%x%data%end_index, &
-                 domain(pe)%y%data%start_index:domain(pe)%y%data%end_index,nz) )
-   ...
-     call mpp_write_meta( unit, x, 'X', 'km', 'X distance', &
-          domain=domain(pe)%x, data=(/(float(i),i=1,nx)/) )
-     call mpp_write_meta( unit, y, 'Y', 'km', 'Y distance', &
-          domain=domain(pe)%y, data=(/(float(i),i=1,ny)/) )
-     call mpp_write_meta( unit, z, 'Z', 'km', 'Z distance', &
-          data=(/(float(i),i=1,nz)/) )
-     call mpp_write_meta( unit, t, 'Time', 'second', 'Time' )
-   
-     call mpp_write_meta( unit, field, (/x,y,z,t/), 'a', '(m/s)', AAA', &
-          missing=-1e36 )
-   ...
-     call mpp_write( unit, x )
-     call mpp_write( unit, y )
-     call mpp_write( unit, z )
-   ...</pre>
-In this example, <tt>x</tt> and <tt>y</tt> have been declared as
+might be:</p>
+
+
+<pre>
+<code>
+...
+  type(domain2D), dimension(:), allocatable, target :: domain
+  type(fieldtype) :: field
+  type(axistype) :: x, y, z, t
+...
+  call mpp_define_domains( (/1,nx,1,ny/), domain )
+  allocate( a(domain(pe)%x%data%start_index:domain(pe)%x%data%end_index, &
+              domain(pe)%y%data%start_index:domain(pe)%y%data%end_index,nz) )
+...
+  call mpp_write_meta( unit, x, 'X', 'km', 'X distance', &
+      domain=domain(pe)%x, data=(/(float(i),i=1,nx)/) )
+  call mpp_write_meta( unit, y, 'Y', 'km', 'Y distance', &
+      domain=domain(pe)%y, data=(/(float(i),i=1,ny)/) )
+  call mpp_write_meta( unit, z, 'Z', 'km', 'Z distance', &
+      data=(/(float(i),i=1,nz)/) )
+  call mpp_write_meta( unit, t, 'Time', 'second', 'Time' )
+
+  call mpp_write_meta( unit, field, (/x,y,z,t/), 'a', '(m/s)', AAA', &
+      missing=-1e36 )
+...
+  call mpp_write( unit, x )
+  call mpp_write( unit, y )
+  call mpp_write( unit, z )
+...
+</code>
+</pre>
+
+<p>In this example, <tt>x</tt> and <tt>y</tt> have been declared as
 distributed axes, since a domain decomposition has been associated.
 <tt>z</tt> and <tt>t</tt> are undistributed axes. <tt>t</tt> is
 known to be a <i>record</i> axis (netCDF terminology) since we do
@@ -263,50 +287,55 @@ associates a unique variable ID with each axis. The call to
 <tt>field</tt> to be a 4D variable that is a function of
 <tt>(x,y,z,t)</tt>, and a unique variable ID is associated with it.
 A 3D field will be written at each call to
-<tt>mpp_write(field)</tt>.<br>
-<br>
-The data to any variable, including axes, is written by
-<tt>mpp_write</tt>.<br>
-<br>
-Any additional attributes of variables can be added through
+<tt>mpp_write(field)</tt>.</p>
+
+<p>The data to any variable, including axes, is written by
+<tt>mpp_write</tt>.</p>
+
+<p>Any additional attributes of variables can be added through
 subsequent <tt>mpp_write_meta</tt> calls, using the variable ID as
 a handle. <i>Global</i> attributes, associated with the dataset as
 a whole, can also be written thus. See the <a href=
-"#mpp_write_meta"></a> call syntax below for further details.<br>
-<br>
-You cannot interleave calls to <tt>mpp_write</tt> and
+"#mpp_write_meta"></a> call syntax below for further details.</p>
+
+<p>You cannot interleave calls to <tt>mpp_write</tt> and
 <tt>mpp_write_meta</tt>: the first call to <tt>mpp_write</tt>
-implies that metadata specification is complete.<br>
-<br>
-A typical calling sequence for reading data might be:<br>
-<br>
-<pre>   ...
-     integer :: unit, natt, nvar, ntime
-     type(domain2D), dimension(:), allocatable, target :: domain
-     type(fieldtype), allocatable, dimension(:) :: fields
-     type(atttype), allocatable, dimension(:) :: global_atts
-     real, allocatable, dimension(:) :: times
-   ...
-     call mpp_define_domains( (/1,nx,1,ny/), domain )
-   
-     call mpp_read_meta(unit)
-     call mpp_get_info(unit,natt,nvar,ntime)
-     allocate(global_atts(natt))
-     call mpp_get_atts(unit,global_atts)
-     allocate(fields(nvar))
-     call mpp_get_vars(unit, fields)
-     allocate(times(ntime))
-     call mpp_get_times(unit, times)
-   
-     allocate( a(domain(pe)%x%data%start_index:domain(pe)%x%data%end_index, &
-                 domain(pe)%y%data%start_index:domain(pe)%y%data%end_index,nz) )
-   ...
-     do i=1, nvar
-       if (fields(i)%name == 'a')  call mpp_read(unit,fields(i),domain(pe), a,
-                                                 tindex)
-     enddo
-   ...</pre>
-In this example, the data are distributed as in the previous
+implies that metadata specification is complete.</p>
+
+<p>A typical calling sequence for reading data might be:</p>
+
+<pre>
+<code>
+...
+  integer :: unit, natt, nvar, ntime
+  type(domain2D), dimension(:), allocatable, target :: domain
+  type(fieldtype), allocatable, dimension(:) :: fields
+  type(atttype), allocatable, dimension(:) :: global_atts
+  real, allocatable, dimension(:) :: times
+...
+  call mpp_define_domains( (/1,nx,1,ny/), domain )
+
+  call mpp_read_meta(unit)
+  call mpp_get_info(unit,natt,nvar,ntime)
+  allocate(global_atts(natt))
+  call mpp_get_atts(unit,global_atts)
+  allocate(fields(nvar))
+  call mpp_get_vars(unit, fields)
+  allocate(times(ntime))
+  call mpp_get_times(unit, times)
+
+  allocate( a(domain(pe)%x%data%start_index:domain(pe)%x%data%end_index, &
+              domain(pe)%y%data%start_index:domain(pe)%y%data%end_index,nz) )
+...
+  do i=1, nvar
+    if (fields(i)%name == 'a')  call mpp_read(unit,fields(i),domain(pe), a,
+                                              tindex)
+  enddo
+...
+</code>
+</pre>
+
+<p>In this example, the data are distributed as in the previous
 example. The call to <a href="#mpp_read_meta"></a> initializes all
 of the metadata associated with the file, including global
 attributes, variable attributes and non-record dimension data. The
@@ -324,12 +353,11 @@ arrays corresponding to the fieldtype. The <tt>domain</tt> type is
 an optional argument. If <tt>domain</tt> is omitted, the incoming
 field array should be dimensioned for the global domain, otherwise,
 the field data is assigned to the computational domain of a local
-array.<br>
-<br>
-<i>Multi-fileset</i> reads are not supported with
-<tt>mpp_read</tt>.</div>
-<br>
+array.</p>
+
+<p><i>Multi-fileset</i> reads are not supported with <tt>mpp_read</tt>.</p>
 <!-- END DESCRIPTION -->
+
 <a name="OTHER MODULES USED"></a>
 <hr>
 <h2>OTHER MODULES USED</h2>
@@ -419,105 +447,32 @@ or field). These can be used to attach any other real, integer or
 character attribute to a variable. The last form is used to define
 a <i>global</i> real, integer or character attribute that applies
 to the dataset as a whole.</dd>
-<dd><br>
-<br></dd>
 <dt><b>INPUT</b></dt>
 <dd>
-<table border="0">
-<tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>name&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>units&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<tt>longname&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<tt>cartesian&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>sense&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<tt>domain&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>data&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>min,
-max&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<tt>missing&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>fill&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>scale&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>add&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>pack&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>id&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>cval&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>ival&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>rval&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-</table>
+<tt>unit   </tt>, 
+<tt>name   </tt>, 
+<tt>units   </tt>, 
+<tt>longname   </tt>, 
+<tt>cartesian   </tt>, 
+<tt>sense   </tt>, 
+<tt>domain   </tt>, 
+<tt>data   </tt>, 
+<tt>min, max   </tt>, 
+<tt>missing   </tt>, 
+<tt>fill   </tt>, 
+<tt>scale   </tt>, 
+<tt>add   </tt>, 
+<tt>pack   </tt>, 
+<tt>id   </tt>, 
+<tt>cval   </tt>, 
+<tt>ival   </tt>, 
+<tt>rval   </tt>
 </dd>
-<dd><br></dd>
 <dt><b>OUTPUT</b></dt>
 <dd>
-<table border="0">
-<tr>
-<td valign="top" align="left"><tt>axis&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>field&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-</table>
+<tt>axis   </tt>, 
+<tt>field   </tt>
 </dd>
-<dd><br></dd>
 <dt><b>NOTE</b></dt>
 <dd>The first form defines a time or space axis. Metadata
 corresponding to the type above are written to the file on
@@ -600,7 +555,7 @@ real</i>, which can be 4 or 8 byte.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>tstamp&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>tstamp   </tt></td>
 <td><tt>tstamp</tt> is an optional argument. It is to be omitted if
 the field was defined not to be a function of time. Results are
 unpredictable if the argument is supplied for a time- independent
@@ -676,23 +631,23 @@ domain.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>field&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>field   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(fieldtype)]</span></td>
+   <span class="type">[type(fieldtype)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>domain&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>domain   </tt></td>
 <td></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>time_index&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>time_index   </tt></td>
 <td>time_index is an optional argument. It is to be omitted if the
 field was defined not to be a function of time. Results are
 unpredictable if the argument is supplied for a time- independent
@@ -705,9 +660,9 @@ field, or omitted for a time-dependent field.</td>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>data&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>data   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 </table>
@@ -744,15 +699,15 @@ Packed variables are unpacked using the <tt>scale</tt> and
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>global_atts&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>global_atts   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[atttype,
+   <span class="type">[atttype,
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -779,15 +734,15 @@ called it).</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>flags&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>flags   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>maxunit&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>maxunit   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -821,75 +776,75 @@ otherwise are not affected.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>file&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>file   </tt></td>
 <td>file is the filename: REQUIRED we append .nc to filename if it
 is a netCDF file we append .&lt;pppp&gt; to filename if fileset is
 private (pppp is PE number)<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*)]</span></td>
+   <span class="type">[character(len=*)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>action&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>action   </tt></td>
 <td>action is one of MPP_RDONLY, MPP_APPEND, MPP_WRONLY or
 MPP_OVERWR.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>form&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>form   </tt></td>
 <td>form is one of MPP_ASCII: formatted read/write MPP_NATIVE:
 unformatted read/write with no conversion MPP_IEEE32: unformatted
 read/write with conversion to IEEE32 MPP_NETCDF: unformatted
 read/write with conversion to netCDF<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>access&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>access   </tt></td>
 <td>access is one of MPP_SEQUENTIAL or MPP_DIRECT (ignored for
 netCDF). RECL argument is REQUIRED for direct access IO.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>threading&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>threading   </tt></td>
 <td>threading is one of MPP_SINGLE or MPP_MULTI single-threaded IO
 in a multi-PE run is done by PE0.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>fileset&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>fileset   </tt></td>
 <td>fileset is one of MPP_MULTI and MPP_SINGLE fileset is only used
 for multi-threaded I/O if all I/O PEs in &lt;pelist&gt; use a
 single fileset, they write to the same file if all I/O PEs in
 &lt;pelist&gt; use a multi fileset, they each write an independent
 file<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>pelist&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>pelist   </tt></td>
 <td>pelist is the list of I/O PEs (currently ALL).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>recl&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>recl   </tt></td>
 <td>recl is the record length in bytes.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>iospec&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>iospec   </tt></td>
 <td>iospec is a system hint for I/O organization, e.g assign(1) on
 SGI/Cray systems.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*)]</span></td>
+   <span class="type">[character(len=*)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>nohdrs&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>nohdrs   </tt></td>
 <td>nohdrs has no effect when action=MPP_RDONLY|MPP_APPEND or when
 form=MPP_NETCDF<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+   <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
@@ -898,9 +853,9 @@ form=MPP_NETCDF<br>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td>unit is intent(OUT): always _returned_by_ mpp_open().<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -975,15 +930,15 @@ available for reuse.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>action&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>action   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1012,9 +967,9 @@ for <tt>axistype</tt> and <tt>fieldtype</tt> are stored in
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1039,9 +994,9 @@ for <tt>axistype</tt> and <tt>fieldtype</tt> are stored in
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1050,24 +1005,24 @@ for <tt>axistype</tt> and <tt>fieldtype</tt> are stored in
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>ndim&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>ndim   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>nvar&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>nvar   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>natt&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>natt   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>ntime&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>ntime   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1087,9 +1042,9 @@ for <tt>axistype</tt> and <tt>fieldtype</tt> are stored in
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1099,9 +1054,9 @@ for <tt>axistype</tt> and <tt>fieldtype</tt> are stored in
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>time_values&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>time_values   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real(DOUBLE_KIND),
+   <span class="type">[real(DOUBLE_KIND),
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -1127,9 +1082,9 @@ behaviour.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1152,9 +1107,9 @@ perform netCDF calls upon the file that are not provided by the
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>unit&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>unit   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1216,7 +1171,6 @@ are <tt>use</tt>d by this module.</dd>
 <hr>
 <h2>PRECOMPILER OPTIONS</h2>
 <!-- BEGIN PRECOMPILER OPTIONS -->
-<div>
 <dl>
 <dd><tt>mpp_io_mod</tt> uses standard f90. On SGI/Cray systems,
 certain I/O characteristics are specified using
@@ -1226,22 +1180,20 @@ similar capability if required.<br>
 There are some OS-dependent pre-processor directives that you might
 need to modify on non-SGI/Cray systems and compilers.</dd>
 </dl>
-</div>
 <br>
 <!-- END PRECOMPILER OPTIONS -->
 <a name="LOADER OPTIONS"></a>
 <hr>
 <h2>LOADER OPTIONS</h2>
 <!-- BEGIN LOADER -->
-<div>
+
 <p>The source consists of the main source file and also requires
 the following include files: (when compiled with ) GFDL users can
 check it out of the main CVS repository as part of the CVS module.
 The current public tag is . External users can download the latest
 package . Public access to the GFDL CVS repository will soon be
 made available.</p>
-<pre>        
-</pre></div>
+
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>
@@ -1272,7 +1224,5 @@ made available.</p>
 <br>
 <!-- END FUTURE PLANS -->
 <hr>
-<div align="right"><a href="#TOP"><font size=
-"-1">top</font></a></div>
 </body>
 </html>

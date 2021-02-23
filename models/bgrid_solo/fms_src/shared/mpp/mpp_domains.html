@@ -70,28 +70,29 @@ is built.</p>
 <!-- END OVERVIEW -->
 <a name="DESCRIPTION" id="DESCRIPTION"></a> 
 <!-- BEGIN DESCRIPTION -->
-<div>Scalable implementations of finite-difference codes are
+<p>Scalable implementations of finite-difference codes are
 generally based on decomposing the model domain into subdomains
 that are distributed among processors. These domains will then be
 obliged to exchange data at their boundaries if data dependencies
 are merely nearest-neighbour, or may need to acquire information
 from the global domain if there are extended data dependencies, as
 in the spectral transform. The domain decomposition is a key
-operation in the development of parallel codes.<br>
-<br>
-<code>mpp_domains_mod</code> provides a domain decomposition and
+operation in the development of parallel codes.</p>
+
+<p><code>mpp_domains_mod</code> provides a domain decomposition and
 domain update API for <i>rectilinear</i> grids, built on top of the
 <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a> API
 for message passing. Features of <code>mpp_domains_mod</code>
-include:<br>
-<br>
-Simple, minimal API, with free access to underlying API for more
-complicated stuff.<br>
-<br>
-Design toward typical use in climate/weather CFD codes.<br>
-<br>
+include:</p>
+
+<p>Simple, minimal API, with free access to underlying API for more
+complicated stuff.</p>
+
+<p>Design toward typical use in climate/weather CFD codes.</p>
+
 <h2>Domains</h2>
-I have assumed that domain decomposition will mainly be in 2
+
+<p>I have assumed that domain decomposition will mainly be in 2
 horizontal dimensions, which will in general be the two
 fastest-varying indices. There is a separate implementation of 1D
 decomposition on the fastest-varying index, and 1D decomposition on
@@ -106,40 +107,45 @@ count. We define the <i>global domain</i> as the global
 computational domain of the entire model (i.e, the same as the
 computational domain if run on a single processor). 2D domains are
 defined using a derived type <code>domain2D</code>, constructed as
-follows (see comments in code for more details):<br>
-<br>
-<pre>     type, public :: domain_axis_spec
-        private
-        integer :: begin, end, size, max_size
-        logical :: is_global
-     end type domain_axis_spec
-     type, public :: domain1D
-        private
-        type(domain_axis_spec) :: compute, data, global, active
-        logical :: mustputb, mustgetb, mustputf, mustgetf, folded
-        type(domain1D), pointer, dimension(:) :: list
-        integer :: pe              !PE to which this domain is assigned
-        integer :: pos
-     end type domain1D
+follows (see comments in code for more details):</p>
+
+<pre>
+<code>
+type, public :: domain_axis_spec
+    private
+    integer :: begin, end, size, max_size
+    logical :: is_global
+    end type domain_axis_spec
+    type, public :: domain1D
+    private
+    type(domain_axis_spec) :: compute, data, global, active
+    logical :: mustputb, mustgetb, mustputf, mustgetf, folded
+    type(domain1D), pointer, dimension(:) :: list
+    integer :: pe              !PE to which this domain is assigned
+    integer :: pos
+    end type domain1D
 domaintypes of higher rank can be constructed from type domain1D
 typically we only need 1 and 2D, but could need higher (e.g 3D LES)
 some elements are repeated below if they are needed once per domain
-     type, public :: domain2D
-        private
-        type(domain1D) :: x
-        type(domain1D) :: y
-        type(domain2D), pointer, dimension(:) :: list
-        integer :: pe              !PE to which this domain is assigned
-        integer :: pos
-     end type domain2D
-     type(domain1D), public :: NULL_DOMAIN1D
-     type(domain2D), public :: NULL_DOMAIN2D</pre>
-The <code>domain2D</code> type contains all the necessary
+    type, public :: domain2D
+    private
+    type(domain1D) :: x
+    type(domain1D) :: y
+    type(domain2D), pointer, dimension(:) :: list
+    integer :: pe              !PE to which this domain is assigned
+    integer :: pos
+    end type domain2D
+    type(domain1D), public :: NULL_DOMAIN1D
+    type(domain2D), public :: NULL_DOMAIN2D
+</code>
+</pre>
+
+<p>The <code>domain2D</code> type contains all the necessary
 information to define the global, compute and data domains of each
 task, as well as the PE associated with the task. The PEs from
 which remote data may be acquired to update the data domain are
-also contained in a linked list of neighbours.</div>
-<br>
+also contained in a linked list of neighbours.</p>
+
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
 <hr>
@@ -236,60 +242,60 @@ repeated calls to the 1D version, also provided.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>global_indices&nbsp;&nbsp;&nbsp;</code></td>
+<code>global_indices   </code></td>
 <td>Defines the global domain.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(2)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(4)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>ndivs&nbsp;&nbsp;&nbsp;</code></td>
+<code>ndivs   </code></td>
 <td>Is the number of domain divisions required.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>pelist&nbsp;&nbsp;&nbsp;</code></td>
+<code>pelist   </code></td>
 <td>List of PEs to which the domains are to be assigned.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(0:)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(0:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>flags&nbsp;&nbsp;&nbsp;</code></td>
+<code>flags   </code></td>
 <td>An optional flag to pass additional information about the
 desired domain topology. Useful flags in a 1D decomposition include
 <code>GLOBAL_DATA_DOMAIN</code> and
 <code>CYCLIC_GLOBAL_DOMAIN</code>. Flags are integers: multiple
 flags may be added together. The flag values are public parameters
 available by use association.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>halo&nbsp;&nbsp;&nbsp;</code></td>
+<code>halo   </code></td>
 <td>Width of the halo.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>extent&nbsp;&nbsp;&nbsp;</code></td>
+<code>extent   </code></td>
 <td>Normally <code>mpp_define_domains</code> attempts an even
 division of the global domain across <code>ndivs</code> domains.
 The <code>extent</code> array can be used by the user to pass a
 custom domain division. The <code>extent</code> array has
 <code>ndivs</code> elements and holds the compute domain widths,
 which should add up to cover the global domain exactly.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(0:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>maskmap&nbsp;&nbsp;&nbsp;</code></td>
+<code>maskmap   </code></td>
 <td>Some divisions may be masked (<code>maskmap=.FALSE.</code>) to
 exclude them from the computation (e.g for ocean model domains that
 are all land). The <code>maskmap</code> array is dimensioned
@@ -297,42 +303,42 @@ are all land). The <code>maskmap</code> array is dimensioned
 domain that must be <i>included</i> in the computation (default
 all). The <code>pelist</code> array length should match the number
 of domains included in the computation.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical,
+   <span class="type">[logical,
 dimension(0:)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical,
+   <span class="type">[logical,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>layout&nbsp;&nbsp;&nbsp;</code></td>
+<code>layout   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(2)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left"><code>xflags,
-yflags&nbsp;&nbsp;&nbsp;</code></td>
+yflags   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left"><code>xhalo,
-yhalo&nbsp;&nbsp;&nbsp;</code></td>
+yhalo   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left"><code>xextent,
-yextent&nbsp;&nbsp;&nbsp;</code></td>
+yextent   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(0:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>name&nbsp;&nbsp;&nbsp;</code></td>
+<code>name   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*)]</span></td>
+   <span class="type">[character(len=*)]</span></td>
 </tr>
 </table>
 </dd>
@@ -342,10 +348,10 @@ dimension(0:)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>domain&nbsp;&nbsp;&nbsp;</code></td>
+<code>domain   </code></td>
 <td>Holds the resulting domain decomposition.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(domain1D)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(domain2D)]</span></td>
+   <span class="type">[type(domain1D)]</span><br>
+   <span class="type">[type(domain2D)]</span></td>
 </tr>
 </table>
 </dd>
@@ -554,7 +560,7 @@ of 4-byte or 8-byte kind; of rank up to 5.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>field_in&nbsp;&nbsp;&nbsp;</code></td>
+<code>field_in   </code></td>
 <td><code>field_in</code> is dimensioned on the data domain of
 <code>domain_in</code>.</td>
 </tr>
@@ -566,7 +572,7 @@ of 4-byte or 8-byte kind; of rank up to 5.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>field_out&nbsp;&nbsp;&nbsp;</code></td>
+<code>field_out   </code></td>
 <td><code>field_out</code> on the data domain of
 <code>domain_out</code>.</td>
 </tr>
@@ -598,18 +604,18 @@ higher could occupy a lot of memory.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>domain&nbsp;&nbsp;&nbsp;</code></td>
+<code>domain   </code></td>
 <td></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>local&nbsp;&nbsp;&nbsp;</code></td>
+<code>local   </code></td>
 <td><code>local</code> is dimensioned on either the compute domain
 or the data domain of <code>domain</code>.</td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>flags&nbsp;&nbsp;&nbsp;</code></td>
+<code>flags   </code></td>
 <td><code>flags</code> can be given the value <code>XONLY</code> or
 <code>YONLY</code>, to specify a globalization on one axis
 only.</td>
@@ -622,7 +628,7 @@ only.</td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>global&nbsp;&nbsp;&nbsp;</code></td>
+<code>global   </code></td>
 <td><code>global</code> is dimensioned on the corresponding global
 domain.</td>
 </tr>
@@ -656,12 +662,12 @@ is also available.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>domain&nbsp;&nbsp;&nbsp;</code></td>
+<code>domain   </code></td>
 <td></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>field&nbsp;&nbsp;&nbsp;</code></td>
+<code>field   </code></td>
 <td><code>field</code> is dimensioned on either the compute domain
 or the data domain of <code>domain</code>.</td>
 </tr>
@@ -673,7 +679,7 @@ or the data domain of <code>domain</code>.</td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>locus&nbsp;&nbsp;&nbsp;</code></td>
+<code>locus   </code></td>
 <td><code>locus</code>, if present, can be used to retrieve the
 location of the maximum (as in the <code>MAXLOC</code> intrinsic of
 f90).</td>
@@ -700,18 +706,18 @@ of type <code>integer</code>, <code>complex</code>, or
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>domain&nbsp;&nbsp;&nbsp;</code></td>
+<code>domain   </code></td>
 <td></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>field&nbsp;&nbsp;&nbsp;</code></td>
+<code>field   </code></td>
 <td><code>field</code> is dimensioned on either the compute domain
 or the data domain of <code>domain</code>.</td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>flags&nbsp;&nbsp;&nbsp;</code></td>
+<code>flags   </code></td>
 <td><code>flags</code>, if present, must have the value
 <code>BITWISE_EXACT_SUM</code>. This produces a sum that is
 guaranteed to produce the identical result irrespective of how the
@@ -785,34 +791,14 @@ with a decomposition.</dd>
 <br></dd>
 <dt><b>INPUT</b></dt>
 <dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<code>domain&nbsp;&nbsp;&nbsp;</code></td>
-<td></td>
-</tr>
-</table>
+<code>domain   </code>
 </dd>
 <dd><br></dd>
 <dt><b>OUTPUT</b></dt>
 <dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<code>xbegin,ybegin&nbsp;&nbsp;&nbsp;</code></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<code>xend,yend&nbsp;&nbsp;&nbsp;</code></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<code>xsize,ysize&nbsp;&nbsp;&nbsp;</code></td>
-<td></td>
-</tr>
-</table>
+<code>xbegin,ybegin   </code>, 
+<code>xend,yend   </code>, 
+<code>xsize,ysize   </code>
 </dd>
 <dd><br></dd>
 </dl>
@@ -868,16 +854,16 @@ preference that could improve vector performance.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>global_indices&nbsp;&nbsp;&nbsp;</code></td>
+<code>global_indices   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(4)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>ndivs&nbsp;&nbsp;&nbsp;</code></td>
+<code>ndivs   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -887,9 +873,9 @@ dimension(4)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>layout&nbsp;&nbsp;&nbsp;</code></td>
+<code>layout   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(2)]</span></td>
 </tr>
 </table>
@@ -916,10 +902,10 @@ version of this call is identical to 1D version.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>domain&nbsp;&nbsp;&nbsp;</code></td>
+<code>domain   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(domain1D)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(domain2D)]</span></td>
+   <span class="type">[type(domain1D)]</span><br>
+   <span class="type">[type(domain2D)]</span></td>
 </tr>
 </table>
 </dd>
@@ -929,19 +915,19 @@ version of this call is identical to 1D version.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>pelist&nbsp;&nbsp;&nbsp;</code></td>
+<code>pelist   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(:)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<code>pos&nbsp;&nbsp;&nbsp;</code></td>
+<code>pos   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span><br>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -965,10 +951,10 @@ two axes.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>domain&nbsp;&nbsp;&nbsp;</code></td>
+<code>domain   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(domain1D)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(domain2D)]</span></td>
+   <span class="type">[type(domain1D)]</span><br>
+   <span class="type">[type(domain2D)]</span></td>
 </tr>
 </table>
 </dd>
@@ -978,10 +964,10 @@ two axes.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>layout&nbsp;&nbsp;&nbsp;</code></td>
+<code>layout   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer]</span><br>
+   <span class="type">[integer,
 dimension(2)]</span></td>
 </tr>
 </table>
@@ -1015,9 +1001,9 @@ so don't worry if you already called it).</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>flags&nbsp;&nbsp;&nbsp;</code></td>
+<code>flags   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1043,9 +1029,9 @@ somewhere where all PEs can call it.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><code>n&nbsp;&nbsp;&nbsp;</code></td>
+<td valign="top" align="left"><code>n   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1082,9 +1068,9 @@ them.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>domain&nbsp;&nbsp;&nbsp;</code></td>
+<code>domain   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(domain2D)]</span></td>
+   <span class="type">[type(domain2D)]</span></td>
 </tr>
 </table>
 </dd>
@@ -1094,9 +1080,9 @@ them.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<code>x,y&nbsp;&nbsp;&nbsp;</code></td>
+<code>x,y   </code></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(domain1D)]</span></td>
+   <span class="type">[type(domain1D)]</span></td>
 </tr>
 </table>
 </dd>
@@ -1167,14 +1153,11 @@ of it. Contact me, Balaji, SGI/GFDL, with questions.</dd>
 <hr>
 <h2>LOADER OPTIONS</h2>
 <!-- BEGIN LOADER -->
-<div>
 <p>The source consists of the main source file and also requires
 the following include files: GFDL users can check it out of the
 main CVS repository as part of the CVS module. The current public
 tag is . External users can download the latest package . Public
 access to the GFDL CVS repository will soon be made available.</p>
-<pre>        
-</pre></div>
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>

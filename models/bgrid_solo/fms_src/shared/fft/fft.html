@@ -133,16 +133,16 @@ computes the complex Fourier transform for all sequences.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>grid&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>grid   </tt></td>
 <td>Multiple sequence of real data values. The first dimension must
 be n+1 (where n is the size of a single sequence).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real(R4_KIND),
+   <span class="type">[real(R4_KIND),
 dimension(:,:)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real(R8_KIND),
+   <span class="type">[real(R8_KIND),
 dimension(:,:)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real(R4_KIND),
+   <span class="type">[real(R4_KIND),
 dimension(:,:,:)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real(R8_KIND),
+   <span class="type">[real(R8_KIND),
 dimension(:,:,:)]</span></td>
 </tr>
 </table>
@@ -153,18 +153,18 @@ dimension(:,:,:)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>fourier&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>fourier   </tt></td>
 <td>Multiple sequences of transformed data in complex Fourier
 space. The first dimension must equal n/2+1 (where n is the size of
 a single sequence). The remaining dimensions must be the same size
 as the input argument "grid".<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[complex(R4_KIND),
+   <span class="type">[complex(R4_KIND),
 dimension(lenc,size(grid,2))]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[complex(R8_KIND),
+   <span class="type">[complex(R8_KIND),
 dimension(lenc,size(grid,2))]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[complex(R4_KIND),
+   <span class="type">[complex(R4_KIND),
 dimension(lenc,size(grid,2),size(grid,3))]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[complex(R8_KIND),
+   <span class="type">[complex(R8_KIND),
 dimension(lenc,size(grid,2),size(grid,3))]</span></td>
 </tr>
 </table>
@@ -198,17 +198,17 @@ values for all sequences.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>fourier&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>fourier   </tt></td>
 <td>Multiple sequence complex Fourier space transforms. The first
 dimension must equal n/2+1 (where n is the size of a single real
 data sequence).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real(R4_KIND),
+   <span class="type">[real(R4_KIND),
 dimension(:,:)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real(R8_KIND),
+   <span class="type">[real(R8_KIND),
 dimension(:,:)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real(R4_KIND),
+   <span class="type">[real(R4_KIND),
 dimension(:,:,:)]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real(R8_KIND),
+   <span class="type">[real(R8_KIND),
 dimension(:,:,:)]</span></td>
 </tr>
 </table>
@@ -218,18 +218,18 @@ dimension(:,:,:)]</span></td>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>grid&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>grid   </tt></td>
 <td>Multiple sequence of real data values. The first dimension must
 be n+1 (where n is the size of a single sequence). The remaining
 dimensions must be the same size as the input argument
 "fourier".<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[complex(R4_KIND),
+   <span class="type">[complex(R4_KIND),
 dimension(leng1,size(fourier,2))]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[complex(R8_KIND),
+   <span class="type">[complex(R8_KIND),
 dimension(leng1,size(fourier,2))]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[complex(R4_KIND),
+   <span class="type">[complex(R4_KIND),
 dimension(leng1,size(fourier,2),size(fourier,3))]</span><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[complex(R8_KIND),
+   <span class="type">[complex(R8_KIND),
 dimension(leng1,size(fourier,2),size(fourier,3))]</span></td>
 </tr>
 </table>
@@ -252,11 +252,11 @@ fft_exit must be called before re-initialing with fft_init.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>n&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>n   </tt></td>
 <td>The number of real values in a single sequence of data. The
 resulting transformed data will have n/2+1 pairs of complex
 values.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>

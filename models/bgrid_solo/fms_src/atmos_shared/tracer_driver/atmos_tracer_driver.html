@@ -176,97 +176,97 @@ losses.<br>
 <table border="0">
 <tr>
 <td valign="top" align="left"><tt>is, ie, js,
-je&nbsp;&nbsp;&nbsp;</tt></td>
+je   </tt></td>
 <td>Local domain boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>Time&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>Time   </tt></td>
 <td>Model time.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(time_type)]</span></td>
+   <span class="type">[type(time_type)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>lon&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>lon   </tt></td>
 <td>Longitude of the centre of the model gridcells<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>lat&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>lat   </tt></td>
 <td>Latitude of the centre of the model gridcells<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>land&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>land   </tt></td>
 <td>Land/sea mask.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical,
+   <span class="type">[logical,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>phalf&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>phalf   </tt></td>
 <td>Pressures on the model half levels.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>pfull&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>pfull   </tt></td>
 <td>Pressures on the model full levels.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>r&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>r   </tt></td>
 <td>The tracer array in the component model.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>u&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>u   </tt></td>
 <td>Zonal wind speed.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>v&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>v   </tt></td>
 <td>Meridonal wind speed.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>t&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>t   </tt></td>
 <td>Temperature.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>q&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>q   </tt></td>
 <td>Specific humidity. This may also be accessible as a portion of
 the tracer array.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>u_star&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>u_star   </tt></td>
 <td>Friction velocity :: The magnitude of the wind stress is
 density*(ustar**2) The drag coefficient for momentum is
 u_star**2/(u**2+v**2)<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>rm&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>rm   </tt></td>
 <td>The tracer array in the component model for the previous
 timestep.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>kbot&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>kbot   </tt></td>
 <td>Integer array describing which model layer intercepts the
 surface.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer, optional,
+   <span class="type">[integer, optional,
 dimension(:,:)]</span></td>
 </tr>
 </table>
@@ -276,20 +276,20 @@ dimension(:,:)]</span></td>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>rdt&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>rdt   </tt></td>
 <td>The tendency of the tracer array in the compenent model. The
 tendency due to sources and sinks computed in the individual tracer
 routines should be added to this array before exiting
 tracer_driver.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>rdiag&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>rdiag   </tt></td>
 <td>The array of diagnostic tracers. As these may be changed within
 the tracer routines for diagnostic purposes, they need to be
 writable.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:,:)]</span></td>
 </tr>
 </table>
@@ -318,35 +318,35 @@ tracer code.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>lonb&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>lonb   </tt></td>
 <td>The longitudes for the local domain.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>latb&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>latb   </tt></td>
 <td>The latitudes for the local domain.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>mask&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>mask   </tt></td>
 <td>optional mask (0. or 1.) that designates which grid points are
 above (=1.) or below (=0.) the ground dimensioned as
 (nlon,nlat,nlev).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real, optional,
+   <span class="type">[real, optional,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>Time&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>Time   </tt></td>
 <td>Model time.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(time_type)]</span></td>
+   <span class="type">[type(time_type)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>axes&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>axes   </tt></td>
 <td>The axes relating to the tracer array dimensioned as (nlon,
 nlat, nlev, ntime)<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(4)]</span></td>
 </tr>
 </table>
@@ -356,9 +356,9 @@ dimension(4)]</span></td>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>r&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>r   </tt></td>
 <td>Tracer fields dimensioned as (nlon,nlat,nlev,ntrace).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:,:)]</span></td>
 </tr>
 </table>

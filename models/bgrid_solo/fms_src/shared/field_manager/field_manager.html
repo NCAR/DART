@@ -242,10 +242,10 @@ information and is queried by the appropriate module.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>table_name&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>table_name   </tt></td>
 <td>The name of the field table. The default name is
 field_table.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character, optional,
+   <span class="type">[character, optional,
 dimension(len=128)]</span></td>
 </tr>
 </table>
@@ -256,9 +256,9 @@ dimension(len=128)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>nfields&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>nfields   </tt></td>
 <td>The number of fields.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -293,9 +293,9 @@ manager.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>model&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>model   </tt></td>
 <td>The number indicating which model is used.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -318,9 +318,9 @@ field.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>n&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>n   </tt></td>
 <td>The field index.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -330,28 +330,28 @@ field.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>fld_type&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>fld_type   </tt></td>
 <td>The field type.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character,
+   <span class="type">[character,
 dimension(*)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>fld_name&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>fld_name   </tt></td>
 <td>The name of the field.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character,
+   <span class="type">[character,
 dimension(*)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>model&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>model   </tt></td>
 <td>The number indicating which model is used.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>num_methods&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>num_methods   </tt></td>
 <td>The number of methods.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -372,14 +372,14 @@ return the method text associated with the field(n) method(m).</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>n&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>n   </tt></td>
 <td>The field index.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>m&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>m   </tt></td>
 <td>The method index.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -400,9 +400,9 @@ associated with all the methods attached to the field.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>n&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>n   </tt></td>
 <td>The field index.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -426,14 +426,14 @@ returns the number of values decoded.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>text&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>text   </tt></td>
 <td>The text string from which the values will be parsed.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*)]</span></td>
+   <span class="type">[character(len=*)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>label&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>label   </tt></td>
 <td>A label which describes the values being decoded.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character(len=*)]</span></td>
+   <span class="type">[character(len=*)]</span></td>
 </tr>
 </table>
 </dd>
@@ -442,17 +442,17 @@ returns the number of values decoded.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>value&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>value   </tt></td>
 <td>The value or values that have been decoded.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer, real,
+   <span class="type">[integer, real,
 character(len=*)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>parse&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>parse   </tt></td>
 <td>The number of values that have been decoded. This allows a user
 to define a large array and fill it partially with values from a
 list. This should be the size of the value array.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>

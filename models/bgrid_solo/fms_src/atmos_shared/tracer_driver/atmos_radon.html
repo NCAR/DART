@@ -136,45 +136,45 @@ e-folding time of 5.52 days.<br>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>lon&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>lon   </tt></td>
 <td>Longitude of the centre of the model gridcells<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>lat&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>lat   </tt></td>
 <td>Latitude of the centre of the model gridcells<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>land&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>land   </tt></td>
 <td>Land/sea mask.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>pwt&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>pwt   </tt></td>
 <td>The pressure weighting array. = dP/grav<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>radon&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>radon   </tt></td>
 <td>The array of the radon mixing ratio.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>Time&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>Time   </tt></td>
 <td>Model time.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(time_type)]</span></td>
+   <span class="type">[type(time_type)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>kbot&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>kbot   </tt></td>
 <td>Integer array describing which model layer intercepts the
 surface.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer, optional,
+   <span class="type">[integer, optional,
 dimension(:,:)]</span></td>
 </tr>
 </table>
@@ -185,9 +185,9 @@ dimension(:,:)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>radon_dt&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>radon_dt   </tt></td>
 <td>The array of the tendency of the radon mixing ratio.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 </table>
@@ -209,23 +209,23 @@ dimension(:,:,:)]</span></td>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>mask&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>mask   </tt></td>
 <td>optional mask (0. or 1.) that designates which grid points are
 above (=1.) or below (=0.) the ground dimensioned as
 (nlon,nlat,nlev).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real, optional,
+   <span class="type">[real, optional,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>Time&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>Time   </tt></td>
 <td>Model time.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(time_type)]</span></td>
+   <span class="type">[type(time_type)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>axes&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>axes   </tt></td>
 <td>The axes relating to the tracer array dimensioned as (nlon,
 nlat, nlev, ntime)<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+   <span class="type">[integer,
 dimension(4)]</span></td>
 </tr>
 </table>
@@ -235,9 +235,9 @@ dimension(4)]</span></td>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>r&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>r   </tt></td>
 <td>Tracer fields dimensioned as (nlon,nlat,nlev,ntrace).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:,:,:)]</span></td>
 </tr>
 </table>

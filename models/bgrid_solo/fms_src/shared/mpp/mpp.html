@@ -69,7 +69,7 @@ Co-Array Fortran) can be incorporated as the need arises.</p>
 <!-- END OVERVIEW -->
 <a name="DESCRIPTION" id="DESCRIPTION"></a> 
 <!-- BEGIN DESCRIPTION -->
-<div>The data transfer between a processor and its own memory is
+<p>The data transfer between a processor and its own memory is
 based on <tt>load</tt> and <tt>store</tt> operations upon memory.
 Shared-memory systems (including distributed shared memory systems)
 have a single address space and any processor can acquire any data
@@ -83,39 +83,35 @@ communication, such as TCP/IP. This requires a ``handshaking''
 between nodes of the distributed system. One can think of the two
 different methods as involving <tt>put</tt>s or <tt>get</tt>s (e.g
 the SHMEM library), or in the case of negotiated communication (e.g
-MPI), <tt>send</tt>s and <tt>recv</tt>s.<br>
-<br>
-The difference between SHMEM and MPI is that SHMEM uses one-sided
-communication, which can have very low-latency high-bandwidth
-implementations on tightly coupled systems. MPI is a standard
-developed for distributed computing across loosely-coupled systems,
-and therefore incurs a software penalty for negotiating the
-communication. It is however an open industry standard whereas
+MPI), <tt>send</tt>s and <tt>recv</tt>s.</p>
+<p>The difference between SHMEM and MPI is that SHMEM uses
+one-sided communication, which can have very low-latency
+high-bandwidth implementations on tightly coupled systems. MPI is a
+standard developed for distributed computing across loosely-coupled
+systems, and therefore incurs a software penalty for negotiating
+the communication. It is however an open industry standard whereas
 SHMEM is a proprietary interface. Besides, the <tt>put</tt>s or
 <tt>get</tt>s on which it is based cannot currently be implemented
 in a cluster environment (there are recent announcements from
-Compaq that occasion hope).<br>
-<br>
-The message-passing requirements of climate and weather codes can
-be reduced to a fairly simple minimal set, which is easily
+Compaq that occasion hope).</p>
+<p>The message-passing requirements of climate and weather codes
+can be reduced to a fairly simple minimal set, which is easily
 implemented in any message-passing API. <tt>mpp_mod</tt> provides
-this API.<br>
-<br>
-Features of <tt>mpp_mod</tt> include:<br>
-<br>
-1) Simple, minimal API, with free access to underlying API for more
-complicated stuff.<br>
-2) Design toward typical use in climate/weather CFD codes.<br>
-3) Performance to be not significantly lower than any native
-API.<br>
-<br>
-This module is used to develop higher-level calls for <a href=
+this API.</p>
+<p>Features of <tt>mpp_mod</tt> include:</p>
+<ol>
+<li>Simple, minimal API, with free access to underlying API for
+more complicated stuff.</li>
+<li>Design toward typical use in climate/weather CFD codes.</li>
+<li>Performance to be not significantly lower than any native
+API.</li>
+</ol>
+<p>This module is used to develop higher-level calls for <a href=
 "models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html">domain
 decomposition</a> and <a href=
 "models/bgrid_solo/fms_src/shared/mpp/mpp_io.html">parallel
-I/O</a>.<br>
-<br>
-Parallel computing is initially daunting, but it soon becomes
+I/O</a>.</p>
+<p>Parallel computing is initially daunting, but it soon becomes
 second nature, much the way many of us can now write vector code
 without much effort. The key insight required while reading and
 writing parallel code is in arriving at a mental grasp of several
@@ -126,15 +122,17 @@ Subroutines and function calls are particularly subtle, since it is
 not always obvious from looking at a call what synchronization
 between execution streams it implies. An example of erroneous code
 would be a global barrier call (see <a href="#mpp_sync"></a> below)
-placed within a code block that not all PEs will execute, e.g:<br>
-<br>
-<pre>   if( pe.EQ.0 )call mpp_sync()</pre>
-Here only PE 0 reaches the barrier, where it will wait
+placed within a code block that not all PEs will execute, e.g:</p>
+<pre>
+<code>
+if( pe.EQ.0 )call mpp_sync()
+</code>
+</pre>
+<p>Here only PE 0 reaches the barrier, where it will wait
 indefinitely. While this is a particularly egregious example to
 illustrate the coding flaw, more subtle versions of the same are
-among the most common errors in parallel code.<br>
-<br>
-It is therefore important to be conscious of the context of a
+among the most common errors in parallel code.</p>
+<p>It is therefore important to be conscious of the context of a
 subroutine or function call, and the implied synchronization. There
 are certain calls here (e.g <tt>mpp_declare_pelist, mpp_init,
 mpp_malloc, mpp_set_stack_size</tt>) which must be called by all
@@ -143,18 +141,16 @@ called a <tt>pelist</tt>) which must be called by all the PEs in
 the <tt>pelist</tt> (e.g <tt>mpp_max, mpp_sum, mpp_sync</tt>).
 Still others imply no synchronization at all. I will make every
 effort to highlight the context of each call in the MPP modules, so
-that the implicit synchronization is spelt out.<br>
-<br>
-For performance it is necessary to keep synchronization as limited
-as the algorithm being implemented will allow. For instance, a
-single message between two PEs should only imply synchronization
-across the PEs in question. A <i>global</i> synchronization (or
-<i>barrier</i>) is likely to be slow, and is best avoided. But
-codes first parallelized on a Cray T3E tend to have many global
-syncs, as very fast barriers were implemented there in
-hardware.<br>
-<br>
-Another reason to use pelists is to run a single program in MPMD
+that the implicit synchronization is spelt out.</p>
+<p>For performance it is necessary to keep synchronization as
+limited as the algorithm being implemented will allow. For
+instance, a single message between two PEs should only imply
+synchronization across the PEs in question. A <i>global</i>
+synchronization (or <i>barrier</i>) is likely to be slow, and is
+best avoided. But codes first parallelized on a Cray T3E tend to
+have many global syncs, as very fast barriers were implemented
+there in hardware.</p>
+<p>Another reason to use pelists is to run a single program in MPMD
 mode, where different PE subsets work on different portions of the
 code. A typical example is to assign an ocean model and atmosphere
 model to different PE subsets, and couple them concurrently instead
@@ -166,7 +162,7 @@ assume that the implied synchronization is across the current
 pelist. The calls <tt>mpp_root_pe</tt> and <tt>mpp_npes</tt> also
 return the values appropriate to the current pelist. The
 <tt>mpp_set_current_pelist</tt> call is provided to set the current
-pelist.</div>
+pelist.</p>
 <br>
 <!-- END DESCRIPTION -->
 <a name="OTHER MODULES USED"></a>
@@ -259,13 +255,13 @@ automatically broadcast to all PEs</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>a&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>a   </tt></td>
 <td><tt>real</tt> or <tt>integer</tt>, of 4-byte of 8-byte
 kind.</td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>pelist&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>pelist   </tt></td>
 <td>If <tt>pelist</tt> is omitted, the context is assumed to be the
 current pelist. This call implies synchronization across the PEs in
 <tt>pelist</tt>, or the current pelist if <tt>pelist</tt> is
@@ -305,31 +301,11 @@ absent.</dd>
 <dd><br>
 <br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<tt>length&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<tt>pelist&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-</table>
-</dd>
+<dd><tt>length   </tt>
+<tt>pelist   </tt></dd>
 <dd><br></dd>
 <dt><b>INPUT/OUTPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left"><tt>a&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-</table>
-</dd>
-<dd><br></dd>
+<dd><tt>a   </tt></dd>
 </dl>
 </li>
 <li><a name="mpp_transmit" id="mpp_transmit"></a>
@@ -423,37 +399,11 @@ absent.</dd>
 <dd><br>
 <br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<tt>length&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<tt>from_pe&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<tt>pelist&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-</table>
-</dd>
-<dd><br></dd>
+<dd><tt>length   </tt>,
+<tt>from_pe   </tt>,
+<tt>pelist   </tt></dd>
 <dt><b>INPUT/OUTPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<tt>data(*)&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-</table>
-</dd>
-<dd><br></dd>
+<dd><tt>data(*)   </tt></dd>
 </dl>
 </li>
 <li><a name="mpp_chksum" id="mpp_chksum"></a>
@@ -496,22 +446,9 @@ If <tt>pelist</tt> is omitted, the context is assumed to be the
 current pelist. This call implies synchronization across the PEs in
 <tt>pelist</tt>, or the current pelist if <tt>pelist</tt> is
 absent.</dd>
-<dd><br>
-<br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<tt>pelist&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>var&nbsp;&nbsp;&nbsp;</tt></td>
-<td></td>
-</tr>
-</table>
-</dd>
+<dd><tt>pelist   </tt>,
+<tt>var   </tt></dd>
 <dd><br></dd>
 </dl>
 </li>
@@ -563,20 +500,13 @@ issued, and the user can take appropriate action:<br>
 <dd><br>
 <br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<tt>errortype&nbsp;&nbsp;&nbsp;</tt></td>
-<td>One of <tt>NOTE</tt>, <tt>WARNING</tt> or <tt>FATAL</tt> (these
-definitions are acquired by use association). <tt>NOTE</tt> writes
-<tt>errormsg</tt> to <tt>STDOUT</tt>. <tt>WARNING</tt> writes
-<tt>errormsg</tt> to <tt>STDERR</tt>. <tt>FATAL</tt> writes
-<tt>errormsg</tt> to <tt>STDERR</tt>, and induces a clean error
-exit with a call stack traceback.</td>
-</tr>
-</table>
-</dd>
+<dd><tt>errortype   </tt>. One of <tt>NOTE</tt>,
+<tt>WARNING</tt> or <tt>FATAL</tt> (these definitions are acquired
+by use association). <tt>NOTE</tt> writes <tt>errormsg</tt> to
+<tt>STDOUT</tt>. <tt>WARNING</tt> writes <tt>errormsg</tt> to
+<tt>STDERR</tt>. <tt>FATAL</tt> writes <tt>errormsg</tt> to
+<tt>STDERR</tt>, and induces a clean error exit with a call stack
+traceback.</dd>
 <dd><br></dd>
 </dl>
 </li>
@@ -596,17 +526,10 @@ be accessed by calling <a href="#mpp_npes"></a> and <a href=
 <dd><br>
 <br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left"><tt>flags&nbsp;&nbsp;&nbsp;</tt></td>
-<td><tt>flags</tt> can be set to <tt>MPP_VERBOSE</tt> to have
-<tt>mpp_mod</tt> keep you informed of what it's up to.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
-</tr>
-</table>
-</dd>
-<dd><br></dd>
+<dd><tt>flags   </tt>&lt;<tt>flags</tt> can be set
+to <tt>MPP_VERBOSE</tt> to have <tt>mpp_mod</tt> keep you informed
+of what it's up to.<br>
+   <span class="type">[integer]</span></dd>
 </dl>
 </li>
 <li><a name="stdin" id="stdin"></a>
@@ -682,21 +605,10 @@ may as well call it.<br>
 <br>
 This call implies synchronization across the PEs in the current
 pelist, of which <tt>pelist</tt> is a subset.</dd>
-<dd><br>
-<br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<tt>pelist&nbsp;&nbsp;&nbsp;</tt></td>
-<td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
-dimension(:)]</span></td>
-</tr>
-</table>
-</dd>
-<dd><br></dd>
+<dd><tt>pelist   </tt><br>
+   <span class="type">[integer,
+dimension(:)]</span></dd>
 </dl>
 </li>
 <li><a name="mpp_set_current_pelist" id=
@@ -719,17 +631,8 @@ set to the "world" pelist, of all PEs in the job.</dd>
 <dd><br>
 <br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<tt>pliest&nbsp;&nbsp;&nbsp;</tt></td>
-<td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
-</tr>
-</table>
-</dd>
-<dd><br></dd>
+<dd><tt>pliest   </tt><br>
+   <span class="type">[integer]</span></dd>
 </dl>
 </li>
 <li><a name="mpp_clock_set_grain" id="mpp_clock_set_grain"></a>
@@ -821,15 +724,8 @@ This guarantees backward compatibility.</dd>
 <dd><br>
 <br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left"><tt>grain&nbsp;&nbsp;&nbsp;</tt></td>
-<td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
-</tr>
-</table>
-</dd>
+<dd><tt>grain   </tt><br>
+   <span class="type">[integer]</span></dd>
 <dd><br></dd>
 </dl>
 </li>
@@ -855,17 +751,9 @@ absent.</dd>
 <dd><br>
 <br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<tt>pelist&nbsp;&nbsp;&nbsp;</tt></td>
-<td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
-dimension(:)]</span></td>
-</tr>
-</table>
-</dd>
+<dd><tt>pelist   </tt><br>
+   <span class="type">[integer,
+dimension(:)]</span></dd>
 <dd><br></dd>
 </dl>
 </li>
@@ -884,21 +772,9 @@ If <tt>pelist</tt> is omitted, the context is assumed to be the
 current pelist. This call implies synchronization across the PEs in
 <tt>pelist</tt>, or the current pelist if <tt>pelist</tt> is
 absent.</dd>
-<dd><br>
-<br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left">
-<tt>pelist&nbsp;&nbsp;&nbsp;</tt></td>
-<td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
-dimension(:)]</span></td>
-</tr>
-</table>
-</dd>
-<dd><br></dd>
+<dd><tt>pelist   </tt>   <span class=
+"type">[integer, dimension(:)]</span></dd>
 </dl>
 </li>
 <li><a name="mpp_malloc" id="mpp_malloc"></a>
@@ -931,27 +807,13 @@ This call implies synchronization across all PEs.</dd>
 <dd><br>
 <br></dd>
 <dt><b>INPUT</b></dt>
-<dd>
-<table border="0">
-<tr>
-<td valign="top" align="left"><tt>ptr&nbsp;&nbsp;&nbsp;</tt></td>
-<td>a cray pointer, points to a dummy argument in this
-routine.</td>
-</tr>
-<tr>
-<td valign="top" align="left">
-<tt>newlen&nbsp;&nbsp;&nbsp;</tt></td>
-<td>the required allocation length for the pointer ptr<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
-</tr>
-<tr>
-<td valign="top" align="left"><tt>len&nbsp;&nbsp;&nbsp;</tt></td>
-<td>the current allocation (0 if unallocated).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
-</tr>
-</table>
-</dd>
-<dd><br></dd>
+<dd><tt>ptr   </tt>, a cray pointer, points to a
+dummy argument in this routine. <tt>newlen   </tt>,
+the required allocation length for the pointer ptr<br>
+   <span class="type">[integer]</span>.
+<tt>len   </tt>, the current allocation (0 if
+unallocated).<br>
+   <span class="type">[integer]</span>.</dd>
 </dl>
 </li>
 <li><a name="mpp_set_stack_size" id="mpp_set_stack_size"></a>
@@ -994,9 +856,9 @@ present.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>n&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>n   </tt></td>
 <td><br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+   <span class="type">[integer]</span></td>
 </tr>
 </table>
 </dd>
@@ -1092,7 +954,7 @@ systems, <tt>mpp_mod</tt> can be used on any other system with a
 standard-compliant f90 compiler and MPI library. SHMEM is now
 becoming available on other systems as well.<br>
 <br>
-There are some <a href="">OS-dependent pre-processor directives</a>
+There are some OS-dependent pre-processor directives
 that you might need to modify on non-SGI/Cray systems and
 compilers.<br>
 <br>
@@ -1104,21 +966,6 @@ other platforms, since the resolution of the default clock is often
 too coarse for our needs.</dd>
 </dl>
 </div>
-<br>
-<!-- END PRECOMPILER OPTIONS -->
-<a name="LOADER OPTIONS"></a>
-<hr>
-<h2>LOADER OPTIONS</h2>
-<!-- BEGIN LOADER -->
-<div>
-<p>The source consists of the main source file and also requires
-the following include files: (when compiled with ) (when compiled
-with ) GFDL users can check it out of the main CVS repository as
-part of the CVS module. The current public tag is . External users
-can download the latest package . Public access to the GFDL CVS
-repository will soon be made available.</p>
-<pre>        
-</pre></div>
 <!-- END LOADER OPTIONS -->
 <a name="TEST PROGRAM"></a>
 <hr>
@@ -1149,16 +996,3 @@ interval. Note that this is a limitation, or "feature" of the
 <!-- BEGIN NOTES -->
 <div>None.<br></div>
 <br>
-<!-- END NOTES -->
-<a name="FUTURE PLANS"></a>
-<hr>
-<h2>FUTURE PLANS</h2>
-<!-- BEGIN FUTURE PLANS -->
-<div>None.</div>
-<br>
-<!-- END FUTURE PLANS -->
-<hr>
-<div align="right"><a href="#TOP"><font size=
-"-1">top</font></a></div>
-</body>
-</html>

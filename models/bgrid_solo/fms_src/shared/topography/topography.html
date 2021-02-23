@@ -142,15 +142,15 @@ current input data set is the 1/6 degree Navy mean topography.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blon   </tt></td>
 <td>The longitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blat   </tt></td>
 <td>The latitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -160,19 +160,19 @@ dimension(:)]</span></td>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>zmean&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>zmean   </tt></td>
 <td>The mean surface height (meters). The size of this field must
 be size(blon)-1 by size(blat)-1.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>get_topog_mean&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>get_topog_mean   </tt></td>
 <td>A logical value of TRUE is returned if the surface height field
 was successfully created. A value of FALSE may be returned if the
 input topography data set was not readable.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+   <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
@@ -194,15 +194,15 @@ within the boundaries of the given input grid.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blon   </tt></td>
 <td>The longitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blat   </tt></td>
 <td>The latitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -212,20 +212,20 @@ dimension(:)]</span></td>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>stdev&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>stdev   </tt></td>
 <td>The standard deviation of surface height (in meters) within
 given input model grid boxes. The size of this field must be
 size(blon)-1 by size(blat)-1.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>get_topog_stdev&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>get_topog_stdev   </tt></td>
 <td>A logical value of TRUE is returned if the output field was
 successfully created. A value of FALSE may be returned if the input
 topography data set was not readable.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+   <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
@@ -246,15 +246,15 @@ grid boxes.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blon   </tt></td>
 <td>The longitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blat   </tt></td>
 <td>The latitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -265,19 +265,19 @@ dimension(:)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>ocean_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>ocean_frac   </tt></td>
 <td>The fractional amount (0 to 1) of ocean in a grid box. The size
 of this field must be size(blon)-1 by size(blat)-1.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>get_ocean_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>get_ocean_frac   </tt></td>
 <td>A logical value of TRUE is returned if the output field was
 successfully created. A value of FALSE may be returned if the Navy
 1/6 degree percent water data set was not readable.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+   <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
@@ -297,15 +297,15 @@ flag = &lt;B&gt; <b>get_ocean_mask</b> &lt;/B&gt; ( blon, blat, ocean_mask )</pr
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blon   </tt></td>
 <td>The longitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blat   </tt></td>
 <td>The latitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -316,19 +316,19 @@ dimension(:)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>ocean_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>ocean_frac   </tt></td>
 <td>The fractional amount (0 to 1) of ocean in a grid box. The size
 of this field must be size(blon)-1 by size(blat)-1.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>get_ocean_mask&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>get_ocean_mask   </tt></td>
 <td>A logical value of TRUE is returned if the output field was
 successfully created. A value of FALSE may be returned if the Navy
 1/6 degree percent water data set was not readable.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+   <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
@@ -348,15 +348,15 @@ flag = &lt;B&gt; <b>get_water_frac</b> &lt;/B&gt; ( blon, blat, water_frac )</pr
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blon   </tt></td>
 <td>The longitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blat   </tt></td>
 <td>The latitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -367,19 +367,19 @@ dimension(:)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>water_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>water_frac   </tt></td>
 <td>The fractional amount (0 to 1) of water in a grid box. The size
 of this field must be size(blon)-1 by size(blat)-1.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>get_water_frac&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>get_water_frac   </tt></td>
 <td>A logical value of TRUE is returned if the output field was
 successfully created. A value of FALSE may be returned if the Navy
 1/6 degree percent water data set was not readable.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+   <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
@@ -399,15 +399,15 @@ flag = &lt;B&gt; <b>get_water_mask</b> &lt;/B&gt; ( blon, blat, water_mask )</pr
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>blon&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blon   </tt></td>
 <td>The longitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>blat&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>blat   </tt></td>
 <td>The latitude (in radians) at grid box boundaries.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 </table>
@@ -418,19 +418,19 @@ dimension(:)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>water_mask&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>water_mask   </tt></td>
 <td>A binary mask for water (true) or land (false). The size of
 this field must be size(blon)-1 by size(blat)-1.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+   <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>get_water_mask&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>get_water_mask   </tt></td>
 <td>A logical value of TRUE is returned if the output field was
 successfully created. A value of FALSE may be returned if the Navy
 1/6 degree percent water data set was not readable.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+   <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>

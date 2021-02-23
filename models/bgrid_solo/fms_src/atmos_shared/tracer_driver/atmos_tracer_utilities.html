@@ -142,28 +142,28 @@ the deposition fields are assumed to be kg/m2/s.</dd>
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>lonb&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>lonb      </tt></td>
 <td>The longitudes for the local domain.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>latb&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>latb      </tt></td>
 <td>The latitudes for the local domain.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>mass_axes&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>mass_axes      </tt></td>
 <td>The axes relating to the tracer array.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer,
+      <span class="type">[integer,
 dimension(3)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>Time&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>Time      </tt></td>
 <td>Model time.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(time_type)]</span></td>
+      <span class="type">[type(time_type)]</span></td>
 </tr>
 </table>
 </dd>
@@ -210,58 +210,58 @@ method for the tracer of interest in the field table.
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>n&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>n      </tt></td>
 <td>The tracer number.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+      <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left"><tt>is,
-js&nbsp;&nbsp;&nbsp;</tt></td>
+js      </tt></td>
 <td>Start indices for array (computational indices).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+      <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>u&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>u      </tt></td>
 <td>U wind field.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>v&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>v      </tt></td>
 <td>V wind field.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>T&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>T      </tt></td>
 <td>Temperature.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>pwt&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>pwt      </tt></td>
 <td>Pressure differential of half levels.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>pfull&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>pfull      </tt></td>
 <td>Full pressure levels.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>u_star&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>u_star      </tt></td>
 <td>Friction velocity.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>landmask&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>landmask      </tt></td>
 <td>Land - sea mask.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[logical]</span></td>
+      <span class="type">[logical]</span></td>
 </tr>
 </table>
 </dd>
@@ -271,10 +271,10 @@ dimension(:,:)]</span></td>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>dsinku&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>dsinku      </tt></td>
 <td>The amount of tracer in the surface layer which is dry
 deposited per second.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 </table>
@@ -319,72 +319,72 @@ tracer of interest in the field table.
 <dd>
 <table border="0">
 <tr>
-<td valign="top" align="left"><tt>n&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>n      </tt></td>
 <td>Tracer number<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+      <span class="type">[integer]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left"><tt>is,
-js&nbsp;&nbsp;&nbsp;</tt></td>
+js      </tt></td>
 <td>start indices for array (computational indices)<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[integer]</span></td>
+      <span class="type">[integer]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>T&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>T      </tt></td>
 <td>Temperature<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>pfull&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>pfull      </tt></td>
 <td>Full level pressure field<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>phalf&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>phalf      </tt></td>
 <td>Half level pressure field<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>rain&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>rain      </tt></td>
 <td>Precipitation in the form of rain<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>snow&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>snow      </tt></td>
 <td>Precipitation in the form of snow<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>qdt&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>qdt      </tt></td>
 <td>The tendency of the specific humidity due to the cloud
 parametrization<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>tracer&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>tracer      </tt></td>
 <td>The tracer field<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 <tr>
-<td valign="top" align="left"><tt>Time&nbsp;&nbsp;&nbsp;</tt></td>
+<td valign="top" align="left"><tt>Time      </tt></td>
 <td>The time structure for submitting wet deposition as a
 diagnostic<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[type(time_type)]</span></td>
+      <span class="type">[type(time_type)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>cloud_param&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>cloud_param      </tt></td>
 <td>Is this a convective (convect) or large scale (lscale) cloud
 parametrization?<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[character]</span></td>
+      <span class="type">[character]</span></td>
 </tr>
 </table>
 </dd>
@@ -394,9 +394,9 @@ parametrization?<br>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>tracer_dt&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>tracer_dt      </tt></td>
 <td>The tendency of the tracer field due to wet deposition.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:,:)]</span></td>
 </tr>
 </table>
@@ -420,36 +420,36 @@ to the local processor.</dd>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>global_source&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>global_source      </tt></td>
 <td>Global emission field.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>start_lon&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>start_lon      </tt></td>
 <td>Longitude of starting point of emission field (in radians).
 This is the westernmost boundary of the global field.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real]</span></td>
+      <span class="type">[real]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>start_lat&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>start_lat      </tt></td>
 <td>Latitude of starting point of emission field (in radians). This
 is the southern boundary of the global field.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real]</span></td>
+      <span class="type">[real]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>lon_resol&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>lon_resol      </tt></td>
 <td>Longitudinal resolution of the emission data (in radians).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real]</span></td>
+      <span class="type">[real]</span></td>
 </tr>
 <tr>
 <td valign="top" align="left">
-<tt>lat_resol&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>lat_resol      </tt></td>
 <td>Latitudinal resolution of the emission data (in radians).<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real]</span></td>
+      <span class="type">[real]</span></td>
 </tr>
 </table>
 </dd>
@@ -459,9 +459,9 @@ is the southern boundary of the global field.<br>
 <table border="0">
 <tr>
 <td valign="top" align="left">
-<tt>data_out&nbsp;&nbsp;&nbsp;</tt></td>
+<tt>data_out      </tt></td>
 <td>Interpolated emission field on the local PE.<br>
-&nbsp;&nbsp;&nbsp;<span class="type">[real,
+      <span class="type">[real,
 dimension(:,:)]</span></td>
 </tr>
 </table>
