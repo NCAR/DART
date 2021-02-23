@@ -116,4 +116,4 @@ References
        `doi:0.1175/1520-0469(1963)020\<0130:DNF\>2.0.CO;2
        <https://doi.org/10.1175/1520-0469(1963)020\<0130:DNF\>2.0.CO;2>`__
 
-.. |Plot of Lorenz 63 attractor| image:: ./images/lorenz_63_thumb.png
+.. |Plot of Lorenz 63 attractor| image:: ../../docs/images/lorenz_63_thumb.png

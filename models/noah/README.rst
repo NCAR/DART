@@ -67,31 +67,27 @@ The scripts assume the directory containing the DART executables is
 ``${DARTDIR}/work``, and assume that the directory containing the NOAH
 executables is ``${NOAHDIR}/Run``.
 
-+----------------------------------------------------------+----------------------------------------------------------------+
-| 1. ` setup_pmo.csh <shell_scripts/setup_pmo.csh>`_       | This script stages the run of                                  |
-|                                                          | `perfect_model_obs                                             |
-|                                                          |  <../../perfect_model_obs/perfect_model_obs.html>`__.          |
-|                                                          | The directory where you run the script is called               |
-|                                                          | ``CENTRALDIR`` and will be the working directory for the       |
-|                                                          | experiment. The required input observation sequence file       |
-|                                                          | must be created in the normal DART way (`one way is to         |
-|                                                          | create synthetic observations                                  |
-|                                                          | <https://dart.ucar.edu/pages/Observations.html#obs_seq_osse>`_ |
-|                                                          | and must exist before running this script. All the             |
-|                                                          | necessary data files and exectuables for a perfect model       |
-|                                                          | experiment get copied to CENTRALDIR so that you may run        | 
-|                                                          | multiple experiments at the same time - in separate            |
-|                                                          | ``CENTRALDIRs``.                                               |
-+----------------------------------------------------------+----------------------------------------------------------------+
-| 2. ` run_pmo.csh <shell_scripts/run_pmo.csh>`_           | very simply - it advances NOAH and applies the observation     |
-|                                                          | operator to put the "perfect" observations in an observation   |
-|                                                          | sequence file that can then be used for an assimilation.       |
-+----------------------------------------------------------+----------------------------------------------------------------+
-| 3. `setup_filter.csh <shell_scripts/setup_filter.csh>`_  | builds upon the work of ``setup_pmo.csh`` and stages a         |
-|                                                          | PRE-EXISTING initial ensemble.                                 |
-+----------------------------------------------------------+----------------------------------------------------------------+
-| 4. `run_filter.csh <shell_scripts/run_filter.csh>`_      | Actually runs the filtering (assimilation) experiment.         |
-+----------------------------------------------------------+----------------------------------------------------------------+
++----------------------------------------------------------+------------------------------------------------------------------------------+
+| 1. `setup_pmo.csh <shell_scripts/setup_pmo.csh>`_        | This script stages the run of                                                |
+|                                                          | :doc:`../../assimilation_code/programs/perfect_model_obs/perfect_model_obs`. |
+|                                                          | The directory where you run the script is called ``CENTRALDIR`` and          |
+|                                                          | will be the working directory for the experiment. The required input         |
+|                                                          | observation sequence file must be created in the normal DART way. This       |
+|                                                          | ``obs_seq.in`` file must exist before running this script. All the           |
+|                                                          | necessary data files and exectuables for a perfect model experiment get      |
+|                                                          | copied to CENTRALDIR so that you may run multiple experiments at the         |
+|                                                          | same time - in separate ``CENTRALDIRs``.                                     |
++----------------------------------------------------------+------------------------------------------------------------------------------+
+| 2. `run_pmo.csh <shell_scripts/run_pmo.csh>`_            | very simply - it advances NOAH and applies the observation operator to       |
+|                                                          | put the "perfect" observations in an observation sequence file that can      |
+|                                                          | then be used for an assimilation.                                            |
++----------------------------------------------------------+------------------------------------------------------------------------------+
+| 3. `setup_filter.csh <shell_scripts/setup_filter.csh>`_  | builds upon the work of ``setup_pmo.csh`` and stages a PRE-EXISTING          |
+|                                                          | initial ensemble.                                                            |
++----------------------------------------------------------+------------------------------------------------------------------------------+
+| 4. `run_filter.csh <shell_scripts/run_filter.csh>`_      | Actually runs the filtering (assimilation) experiment.                       |
++----------------------------------------------------------+------------------------------------------------------------------------------+
+
 
 Generating the initial ensemble
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -313,7 +309,7 @@ All other namelist variables are ignored by DART - but mean something to NOAH.
 |                                     |                                   | information. The default value is        |
 |                                     |                                   | implicitly used by the scripting         | 
 |                                     |                                   | examples. Change at your own risk.       |
-|                                     |                                   |  [default: ``'restart.nc'``]             |
+|                                     |                                   | [default: ``'restart.nc'``]              |
 +-------------------------------------+-----------------------------------+------------------------------------------+
 | khour                               | integer                           | The duration (in hours) of the model     |
 |                                     |                                   | integration. [default: ``1``]            |

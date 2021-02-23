@@ -87,7 +87,7 @@ make_COS_input
 can be used as input for *create_obs_sequence*. The output text file has
 a name based on the input filename. For example:
 
-.. code-block:: unixcode
+.. code-block::
 
   <prompt> ./make_COS_input forward_op_code
    ready to run create_obs_sequence < forward_op_code_COS.in
@@ -101,7 +101,7 @@ make_assim_list
 *make_assim_list* is a follow-on step to *make_COS_input* and simply creates
 the text for the `input.nml:filter_nml:assimilate_these_obs` variable.
 
-.. code-block:: unixcode
+.. code-block::
 
   <prompt> forward_operators > ./make_assim_list forward_op_code
    created forward_op_code_obskind.nml

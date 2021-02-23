@@ -693,7 +693,7 @@ Many CAM initial file variables are already handled in the ``model_mod``. Here
 is a list of others, which may be used in the future. Each would need to have a
 DART ``*KIND*`` associated with it in ``model_mod``.
 
-.. code-block:: fortran
+.. code-block::
 
    Atmos
       CLOUD:       "Cloud fraction" ;

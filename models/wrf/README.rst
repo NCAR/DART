@@ -61,7 +61,7 @@ start with an ampersand ``&`` and terminate with a slash ``/``. Character
 strings that contain a ``/`` must be enclosed in quotes to prevent them from
 prematurely terminating the namelist.
 
-.. code-block:: fortran
+.. code-block::
 
    &model_nml
       default_state_variables     = .true.

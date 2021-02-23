@@ -80,7 +80,7 @@ GITM has been sucessfully tested with DART using the ``gfortran`` compiler,
 version ``4.2.3``. The DART components were built with the following
 ``mkmf.template`` settings.
 
-.. code-block:: perl
+.. code-block::
 
    FC = gfortran
    LD = gfortran
