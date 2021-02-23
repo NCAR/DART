@@ -485,10 +485,15 @@ end subroutine check_namelist_read
 !-----------------------------------------------------------------------
 !> convert integers or strings describing options into integer. 
 !> 
-!> Some namelist items have historically been integers to describe inflation
-!> algorithms or ... which is a terrible thing to do to the users.
-!> This routine allows for backward compatibility and still provides
-!> the option to specify   inf_flavor = 'VARYING_SS_INFLATION' for example.
+!> Some namelist items have historically been integers which do not help describe the
+!> option they are selecting.  They are being converted to descriptive strings.
+!> During a transition period before the integers are deprecated this routine will return 
+!> an integer value if the input string is either an integer or a string.  
+!> For strings, the corresponding integer values are input as a 1-to-1 array with the
+!> valid strings.   On error this routine prints an error message and does not return.
+!> If needed, this routine could be changed to take an optional return code, which if 
+!> present would return to the calling code without printing or calling the error 
+!> handler so the caller can take an alternative code path.
 
 function flex_parser(input,integer_options,string_options,context)
 
