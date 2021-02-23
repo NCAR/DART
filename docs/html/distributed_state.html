@@ -73,9 +73,9 @@ across the ensemble.
 <p>
 The code inside get_state_array will do the minimum amount of communication to 
 get you the indices you need.  For example if
-<p>&nbsp; index = [ 3 4 3 3 4 3]
+<p>  index = [ 3 4 3 3 4 3]
 <p>get_state_array will only do 2 mpi communications and return
-<p>&nbsp;  x = [state(3), state(4), state(3), state(3), state(4), state(3)]
+<p>   x = [state(3), state(4), state(3), state(3), state(4), state(3)]
 <p>
 
 A limited module diagram is shown below. A -> B means A uses B:

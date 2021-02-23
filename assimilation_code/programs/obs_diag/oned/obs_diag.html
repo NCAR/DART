@@ -62,7 +62,7 @@ Similarly, the forward observation operator is applied AFTER any
 posterior inflation. This has always been the case. For a detailed
 look at the relationship between the observation operators and
 inflation, please look at the <a href=
-"../../filter/filter.html#DetailedProgramFlow">Detailed&nbsp;Program&nbsp;Execution
+"../../filter/filter.html#DetailedProgramFlow">Detailed Program Execution
 Flow</a> section of <a href=
 "../../filter/filter.html">filter.html</a>.<br>
 <br>
@@ -121,7 +121,7 @@ the <em class="file">obs_diag_output.nc</em> file: <em class=
 and <a href=
 "../../../../diagnostics/matlab/plot_rank_histogram.m">plot_rank_histogram.m</a>.
 Both of these takes as input a file name and a 'quantity' to plot
-('rmse','spread','totalspread',&nbsp;...) and exhaustively plots
+('rmse','spread','totalspread', ...) and exhaustively plots
 the quantity (for every variable, every region) in a single matlab
 figure window - and creates a series of .ps files with multiple
 pages for each of the figures. The directory gets cluttered with
@@ -179,13 +179,13 @@ horizontal wind is defined as the sum of the spreads of the U and V
 components.</td>
 </tr>
 <tr>
-<td valign="top"><b>totalspread&nbsp;&nbsp;&nbsp;</b></td>
+<td valign="top"><b>totalspread   </b></td>
 <td>The total standard deviation of the estimate. We pool the
 ensemble variance of the observation plus the observation error
 variance and take the square root.</td>
 </tr>
 <tr>
-<td valign="top"><b>NbadDARTQC&nbsp;&nbsp;&nbsp;</b></td>
+<td valign="top"><b>NbadDARTQC   </b></td>
 <td>the number of observations that had a DART QC value (&gt; 1 for
 a prior, &gt; 3 for a posterior)</td>
 </tr>
@@ -410,7 +410,7 @@ empty string ... i.e. <em class="code">''</em>.</p>
 <td>character(len=256), dimension(100)</td>
 <td>An array of names of observation sequence files. These may be
 relative or absolute filenames. If this is set, <em class=
-"code">obs_sequence_list</em> must be set to '&nbsp;'&nbsp;(empty
+"code">obs_sequence_list</em> must be set to ' ' (empty
 string).</td>
 </tr>
 <tr>
@@ -418,11 +418,11 @@ string).</td>
 <td>character(len=256)</td>
 <td>Name of an ascii text file which contains a list of one or more
 observation sequence files, one per line. If this is specified,
-<em class="code">obs_sequence_name</em> must be set to '&nbsp;'.
+<em class="code">obs_sequence_name</em> must be set to ' '.
 Can be created by any method, including sending the output of the
 'ls' command to a file, a text editor, or another program. If this
 is set, <em class="code">obs_sequence_name</em> must be set to
-'&nbsp;' (empty string).</td>
+' ' (empty string).</td>
 </tr>
 <tr>
 <td>bin_width_days, bin_width_seconds</td>

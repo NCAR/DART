@@ -181,7 +181,7 @@ section of code are:
 <td>the observation location</td>
 </tr>
 <tr>
-<td><em class="code">obs_kind_ind&nbsp;</em></td>
+<td><em class="code">obs_kind_ind </em></td>
 <td>the index of the specific observation type</td>
 </tr>
 <tr>
@@ -197,7 +197,7 @@ section of code are:
 The routine must fill in the values of these variables:
 <table>
 <tr>
-<td><em class="code">obs_val&nbsp;</em></td>
+<td><em class="code">obs_val </em></td>
 <td>the computed forward operator value</td>
 </tr>
 <tr>
@@ -235,7 +235,7 @@ section of code are:
 <td>the open unit number positioned ready to read, read-only</td>
 </tr>
 <tr>
-<td><em class="code">obs_def&nbsp;</em></td>
+<td><em class="code">obs_def </em></td>
 <td>the rest of the obs_def derived type for this obs,
 read-write</td>
 </tr>
@@ -282,7 +282,7 @@ section of code are:
 <td>the open unit number positioned ready to write, read-only</td>
 </tr>
 <tr>
-<td><em class="code">obs_def&nbsp;</em></td>
+<td><em class="code">obs_def </em></td>
 <td>the rest of the obs_def derived type for this obs,
 read-only</td>
 </tr>
@@ -319,7 +319,7 @@ The variables available to be passed to subroutines or used in this
 section of code are:
 <table>
 <tr>
-<td><em class="code">obs_def&nbsp;</em></td>
+<td><em class="code">obs_def </em></td>
 <td>the rest of the obs_def derived type for this obs,
 read-write</td>
 </tr>
@@ -450,84 +450,84 @@ Other special obs_def_kind modules as required
 <td><a href="#obs_def_type">obs_def_type</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#init_obs_def">init_obs_def</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_obs_def_location">get_obs_def_location</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#get_obs_def_type_of_obs">get_obs_def_type_of_obs</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_obs_def_time">get_obs_def_time</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#get_obs_def_error_variance">get_obs_def_error_variance</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_obs_def_key">get_obs_def_key</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_obs_def_location">set_obs_def_location</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#set_obs_def_type_of_obs">set_obs_def_type_of_obs</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_obs_def_time">set_obs_def_time</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#set_obs_def_error_variance">set_obs_def_error_variance</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_obs_def_key">set_obs_def_key</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#interactive_obs_def">interactive_obs_def</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#write_obs_def">write_obs_def</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#read_obs_def">read_obs_def</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#get_expected_obs_from_def">get_expected_obs_from_def</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#destroy_obs_def">destroy_obs_def</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#copy_obs_def">copy_obs_def</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#copy_obs_def">assignment(=)</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#get_name_for_type_of_obs">get_name_for_type_of_obs</a></td>
 </tr>
@@ -595,24 +595,24 @@ real(r8),            intent(in)  :: <em class=
 error_variance specified.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>The obs_def that is created</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">location&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">location  </em></td>
 <td>Location for this obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">kind&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">kind  </em></td>
 <td>Observation type for obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">time&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">time  </em></td>
 <td>Time for obs_def</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">error_variance&nbsp;&nbsp;</em></td>
+"code">error_variance  </em></td>
 <td>Error variance of this observation</td>
 </tr>
 </table>
@@ -630,11 +630,11 @@ type(obs_def_type), intent(in)  :: <em class="code">obs_def2</em>
 <p>Copies obs_def2 to obs_def1, overloaded as assignment (=).</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">obs_def1&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def1  </em></td>
 <td>obs_def to be copied into</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_def2&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def2  </em></td>
 <td>obs_def to be copied from</td>
 </tr>
 </table>
@@ -653,11 +653,11 @@ type(obs_def_type), intent(in) :: <em class="code">obs_def</em>
 <p>Returns key from an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>Returns key from an obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 </table>
@@ -677,11 +677,11 @@ type(obs_def_type), intent(in) :: <em class="code">obs_def</em>
 <p>Returns error variance from an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>Error variance from an obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 </table>
@@ -700,11 +700,11 @@ type(obs_def_type), intent(in)   :: <em class="code">obs_def</em>
 <p>Returns the location from an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>Returns location from an obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 </table>
@@ -724,11 +724,11 @@ type(obs_def_type),  intent(in) :: <em class="code">obs_def</em>
 <p>Returns an observation type from an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>Returns the observation type from an obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 </table>
@@ -747,11 +747,11 @@ type(obs_def_type), intent(in) :: <em class="code">obs_def</em>
 <p>Returns time from an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>Returns time from an obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 </table>
@@ -772,12 +772,12 @@ integer, intent(in)            :: <em class=
 <p>Returns an observation name from an observation type.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>Returns name from an observation type</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">obs_kind_ind&nbsp;&nbsp;</em></td>
+"code">obs_kind_ind  </em></td>
 <td>An observation type</td>
 </tr>
 </table>
@@ -796,11 +796,11 @@ type(location_type), intent(in)    :: <em class=
 <p>Set the location in an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">location&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">location  </em></td>
 <td>A location</td>
 </tr>
 </table>
@@ -820,12 +820,12 @@ real(r8), intent(in)              :: <em class=
 <p>Set error variance for an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">error_variance&nbsp;&nbsp;</em></td>
+"code">error_variance  </em></td>
 <td>Error variance</td>
 </tr>
 </table>
@@ -843,11 +843,11 @@ integer,            intent(in)    :: <em class="code">key</em>
 <p>Set the key for an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">key&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">key  </em></td>
 <td>Unique identifier for this observation</td>
 </tr>
 </table>
@@ -866,11 +866,11 @@ integer,            intent(in)    :: <em class="code">kind</em>
 <p>Set the type of observation in an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">kind&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">kind  </em></td>
 <td>An integer observation type</td>
 </tr>
 </table>
@@ -888,11 +888,11 @@ type(time_type), intent(in)       :: <em class="code">time</em>
 <p>Sets time for an observation definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">time&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">time  </em></td>
 <td>Time to set</td>
 </tr>
 </table>
@@ -925,44 +925,44 @@ logical,            intent(out) :: <em class=
 definition.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">key&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">key  </em></td>
 <td>descriptor for observation type</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>The input obs_def</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">obs_kind_ind&nbsp;&nbsp;</em></td>
+"code">obs_kind_ind  </em></td>
 <td>The obs type</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ens_index&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ens_index  </em></td>
 <td>The ensemble member number of this state vector</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">state&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">state  </em></td>
 <td>Model state vector</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">state_time&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">state_time  </em></td>
 <td>Time of the data in the model state vector</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">istatus&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">istatus  </em></td>
 <td>Returned integer describing problems with applying forward
 operator (0 == OK, &gt;0 == error, &lt;0 reserved for sys
 use).</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">assimilate_this_ob&nbsp;&nbsp;</em></td>
+"code">assimilate_this_ob  </em></td>
 <td>Indicates whether to assimilate this obs or not</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">evaluate_this_ob&nbsp;&nbsp;</em></td>
+"code">evaluate_this_ob  </em></td>
 <td>Indicates whether to evaluate this obs or not</td>
 </tr>
 </table>
@@ -989,25 +989,25 @@ character(len=*), optional, intent(in)    :: <em class=
 specified in fform or FORMATTED if fform is not present.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">ifile&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ifile  </em></td>
 <td>File unit open to output file</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>Observation definition to be read</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">key&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">key  </em></td>
 <td>Present if unique identifier key is needed by some obs type.
 Unused by default code.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_val&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_val  </em></td>
 <td>Present if needed to perform operations based on value. Unused
 by default code.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">fform&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">fform  </em></td>
 <td>File format specifier: FORMATTED or UNFORMATTED; default
 FORMATTED (FORMATTED in this case is the human readable/text option
 as opposed to UNFORMATTED which is binary.)</td>
@@ -1027,11 +1027,11 @@ integer,            intent(in)    :: <em class="code">key</em>
 <p>Creates an obs_def via input from standard in.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def to be created</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">key&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">key  </em></td>
 <td>Present if unique identifier key is needed by some obs type.
 Unused by default code.</td>
 </tr>
@@ -1056,20 +1056,20 @@ character(len=*), optional, intent(in) :: <em class=
 specified in fform or FORMATTED if fform is not present.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">ifile&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ifile  </em></td>
 <td>File unit open to output file</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>Observation definition to be written</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">key&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">key  </em></td>
 <td>Present if unique identifier key is needed by some obs type.
 Unused by default code.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">fform&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">fform  </em></td>
 <td>File format specifier: FORMATTED or UNFORMATTED; default
 FORMATTED</td>
 </tr>
@@ -1088,7 +1088,7 @@ type(obs_def_type), intent(inout) :: <em class="code">obs_def</em>
 subcomponents.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">obs_def&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">obs_def  </em></td>
 <td>An obs_def to be released.</td>
 </tr>
 </table>

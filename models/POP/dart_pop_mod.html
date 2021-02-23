@@ -65,7 +65,7 @@ of LANL/POP by creating a <em class=
 converted has the 'advance_to_time' record. The <em class=
 "file">pop_in.DART</em> must be concatenated with the other
 namelists needed by POP into a file called <em class=
-"file">pop_in</em>&nbsp;. We have chosen to store the other
+"file">pop_in</em> . We have chosen to store the other
 namelists (which contain static information) in a file called
 <em class="file">pop_in.part2</em>. Initially, the <em class=
 "code">time_manager_nml</em> is stored in a companion file called
@@ -74,7 +74,7 @@ concatenated into the expected <em class="file">pop_in</em> - then,
 during the course of an assimilation experiment, DART keeps writing
 out a new <em class="code">time_manager_nml</em> with new
 integration information - which gets appended with the static
-information in <em class="file">pop_in.part2</em>&nbsp;</p>
+information in <em class="file">pop_in.part2</em> </p>
 <table border="0" cellpadding="3" width="100%">
 <tr>
 <th align="left">Contents</th>
@@ -82,7 +82,7 @@ information in <em class="file">pop_in.part2</em>&nbsp;</p>
 <th align="left">Description</th>
 </tr>
 <tr><!--contents-->
-<td valign="top">allow_leapyear&nbsp;&nbsp;&nbsp;</td>
+<td valign="top">allow_leapyear   </td>
 <!--  type  -->
 <td valign="top">logical</td>
 <!--descript-->
@@ -90,7 +90,7 @@ information in <em class="file">pop_in.part2</em>&nbsp;</p>
 observations must use a Gregorian calendar. There are pathological
 cases, but if you are doing data assimilation, just use the
 Gregorian calendar. <em class=
-"units">[default:&nbsp;.true.]</em></td>
+"units">[default: .true.]</em></td>
 </tr>
 <tr><!--contents-->
 <td valign="top">stop_count</td>
@@ -98,16 +98,16 @@ Gregorian calendar. <em class=
 <td valign="top">integer</td>
 <!--descript-->
 <td valign="top">the number of model advance steps to take.
-<em class="units">[default:&nbsp;1]</em></td>
+<em class="units">[default: 1]</em></td>
 </tr>
 <tr><!--contents-->
 <td valign="top">stop_option</td>
 <!--  type  -->
-<td valign="top">character(len=64)&nbsp;&nbsp;&nbsp;</td>
+<td valign="top">character(len=64)   </td>
 <!--descript-->
 <td valign="top">The units for the number of model advance steps
 (<em class="code">stop_count</em>) to take. <em class=
-"units">[default:&nbsp;'ndays']</em></td>
+"units">[default: 'ndays']</em></td>
 </tr>
 </table>
 </div>
@@ -135,7 +135,7 @@ Gregorian calendar. <em class=
 not. If <em class="code">.true.</em>, a pointer file is used to
 contain the name of the restart file to be used. DART requires this
 to be <em class="code">.true</em>. <em class=
-"units">[default:&nbsp;.true.]</em></td>
+"units">[default: .true.]</em></td>
 </tr>
 <tr><!--contents-->
 <td valign="top">pointer_filename</td>
@@ -145,7 +145,7 @@ to be <em class="code">.true</em>. <em class=
 <td valign="top">The name of the pointer file. All of the DART
 scripts presume and require the use of the default. Each ensmeble
 member gets its own pointer file. <em class=
-"units">[default:&nbsp;rpointer.ocn.[1-N].restart]</em></td>
+"units">[default: rpointer.ocn.[1-N].restart]</em></td>
 </tr>
 </table>
 </div>
@@ -165,7 +165,7 @@ member gets its own pointer file. <em class=
 <th align="left">Description</th>
 </tr>
 <tr><!--contents-->
-<td valign="top">luse_pointer_files&nbsp;&nbsp;&nbsp;</td>
+<td valign="top">luse_pointer_files   </td>
 <!--  type  -->
 <td valign="top">logical</td>
 <!--descript-->
@@ -173,17 +173,17 @@ member gets its own pointer file. <em class=
 not. If <em class="code">.true.</em>, a pointer file is used to
 contain the name of the restart file to be used. DART requires this
 to be <em class="code">.true</em>. <em class=
-"units">[default:&nbsp;.true.]</em></td>
+"units">[default: .true.]</em></td>
 </tr>
 <tr><!--contents-->
 <td valign="top">pointer_filename</td>
 <!--  type  -->
-<td valign="top">character(len=100)&nbsp;&nbsp;&nbsp;</td>
+<td valign="top">character(len=100)   </td>
 <!--descript-->
 <td valign="top">The name of the pointer file. All of the DART
 scripts presume and require the use of the default. Each ensmeble
 member gets its own pointer file. <em class=
-"units">[default:&nbsp;rpointer.ocn.[1-N].restart]</em></td>
+"units">[default: rpointer.ocn.[1-N].restart]</em></td>
 </tr>
 </table>
 </div>
@@ -197,7 +197,7 @@ member gets its own pointer file. <em class=
 </pre></div>
 <div class="indent1"><!-- Description -->
 <p>The <em class="program">dart_pop_mod:initialize_module()</em>
-routine reads <em class="file">pop_in</em>&nbsp;. There are several
+routine reads <em class="file">pop_in</em> . There are several
 code stubs for future use that may allow for a more fully-supported
 POP namelist implementation. This namelist is one of them. Until
 further notice, the <em class="code">init_ts_nml</em> is completely
@@ -215,24 +215,24 @@ ignored by DART.</p>
 <!--descript-->
 <td valign="top">NOT USED by DART. All T,S information comes from a
 netCDF restart file named <em class="file">pop.r.nc</em> <em class=
-"units">[default:&nbsp;'restart']</em></td>
+"units">[default: 'restart']</em></td>
 </tr>
 <tr><!--contents-->
 <td valign="top">init_ts_file</td>
 <!--  type  -->
-<td valign="top">character(len=100)&nbsp;&nbsp;&nbsp;</td>
+<td valign="top">character(len=100)   </td>
 <!--descript-->
 <td valign="top">NOT USED by DART. All T,S information comes from
 <em class="file">pop.r.nc</em> <em class=
-"units">[default:&nbsp;'pop.r']</em></td>
+"units">[default: 'pop.r']</em></td>
 </tr>
 <tr><!--contents-->
-<td valign="top">init_ts_file_fmt&nbsp;&nbsp;&nbsp;</td>
+<td valign="top">init_ts_file_fmt   </td>
 <!--  type  -->
 <td valign="top">character(len=64)</td>
 <!--descript-->
 <td valign="top">NOT USED by DART. The file format is <em class=
-"code">'nc'</em> <em class="units">[default:&nbsp;'nc']</em></td>
+"code">'nc'</em> <em class="units">[default: 'nc']</em></td>
 </tr>
 </table>
 </div>
@@ -254,15 +254,15 @@ grid, which is cyclic E-W and closed N-S.</p>
 <th align="left">Description</th>
 </tr>
 <tr><!--contents-->
-<td valign="top">ew_boundary_type&nbsp;&nbsp;&nbsp;</td>
+<td valign="top">ew_boundary_type   </td>
 <!--  type  -->
-<td valign="top">character(len=64)&nbsp;&nbsp;&nbsp;</td>
+<td valign="top">character(len=64)   </td>
 <!--descript-->
 <td valign="top">switch to indicate whether the East-West domain is
 cyclic or not. DART/POP has not been tested in a regional
 configuration, so DART requires this to be <em class=
 "code">'cyclic'</em>. <em class=
-"units">[default:&nbsp;'cyclic']</em></td>
+"units">[default: 'cyclic']</em></td>
 </tr>
 </table>
 </div>
@@ -317,7 +317,7 @@ HU                real(r8) value of deepest valid U depth (in cm)
 <td valign="top">switch to indicate whether or not the grids will
 come from an external file or not. DART requires ALL of these to be
 <em class="code">'file'</em>. <em class=
-"units">[default:&nbsp;'file']</em></td>
+"units">[default: 'file']</em></td>
 </tr>
 <tr><!--contents-->
 <td valign="top">horiz_grid_file</td>
@@ -329,7 +329,7 @@ for the horizontal grid. The <strong>dimensions</strong> of the
 grid are read from <em class="file">pop.r.nc</em>. It would have
 been nice to include the actual grid information in the netCDF
 files. <em class=
-"units">[default:&nbsp;'horiz_grid.gx3v5.r8ieee.le']</em></td>
+"units">[default: 'horiz_grid.gx3v5.r8ieee.le']</em></td>
 </tr>
 <tr><!--contents-->
 <td valign="top">vert_grid_file</td>
@@ -341,7 +341,7 @@ for the vertical grid. The file must contain three columns of data
 pertaining to the cell thickness (in cm), the cell center (in
 meters), and the cell bottom (in meters). Again, it would have been
 nice to include the vertical grid information in the netCDF files.
-<em class="units">[default:&nbsp;'vert_grid.gx3v5']</em></td>
+<em class="units">[default: 'vert_grid.gx3v5']</em></td>
 </tr>
 <tr><!--contents-->
 <td valign="top">topography_grid_file</td>
@@ -351,7 +351,7 @@ nice to include the vertical grid information in the netCDF files.
 <td valign="top">The name of the binary file containing the values
 for the topography information. The <strong>dimensions</strong> of
 the grid are read from <em class="file">pop.r.nc</em>. <em class=
-"units">[default:&nbsp;'topography.gx3v5.r8ieee.le']</em></td>
+"units">[default: 'topography.gx3v5.r8ieee.le']</em></td>
 </tr>
 </table>
 </div>
@@ -388,35 +388,35 @@ module has its own discussion of their routines.</p>
 <td><a href="#get_pop_calendar">get_pop_calendar</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_model_time_step">set_model_time_step</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_horiz_grid_dims">get_horiz_grid_dims</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_vert_grid_dim">get_vert_grid_dim</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#read_horiz_grid">read_horiz_grid</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#read_topography">read_topography</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#read_vert_grid">read_vert_grid</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#write_pop_namelist">write_pop_namelist</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#get_pop_restart_filename">get_pop_restart_filename</a></td>
 </tr>
@@ -476,12 +476,12 @@ integer, intent(out) :: <em class="code">Nx, Ny</em>
 latitudes.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">Nx&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">Nx   </em></td>
 <td>the length of the 'i' dimension in the POP restart file. The
 number of longitudes in use.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">Ny&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">Ny   </em></td>
 <td>the length of the 'j' dimension in the POP restart file. The
 number of latitudes in use.</td>
 </tr>
@@ -501,7 +501,7 @@ integer, intent(out) :: <em class="code">Nz</em>
 use.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">Nz&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">Nz   </em></td>
 <td>the length of the 'k' dimension in the POP restart file. The
 number of vertical levels in use.</td>
 </tr>
@@ -525,30 +525,30 @@ record is REQUIRED to be 'ULAT', the second record is REQUIRED to
 be 'ULON'.</strong></p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">nx&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">nx   </em></td>
 <td>The number of longitudes in the grid.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ny&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ny   </em></td>
 <td>The number of latitudes in the grid.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ULAT&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ULAT   </em></td>
 <td>The matrix of latitudes for the UVEL and VVEL variables. Units
 are degrees [-90,90].</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ULON&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ULON   </em></td>
 <td>The matrix of longitudes for the UVEL and VVEL variables. Units
 are degrees. [0,360]</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">TLAT&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">TLAT   </em></td>
 <td>The matrix of latitudes for the SALT and TEMP variables. Units
 are degrees [-90,90].</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">TLON&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">TLON   </em></td>
 <td>The matrix of longitudes for the SALT and TEMP variables. Units
 are degrees. [0,360]</td>
 </tr>
@@ -572,20 +572,20 @@ first record is REQUIRED to be 'KMT'.</strong> 'KMU' is calculated
 from 'KMT'.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">nx&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">nx   </em></td>
 <td>The number of longitudes in the grid.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ny&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ny   </em></td>
 <td>The number of latitudes in the grid.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">KMT&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">KMT   </em></td>
 <td>The matrix containing the lowest valid depth index at grid
 centroids.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">KMU&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">KMU   </em></td>
 <td>The matrix containing the lowest valid depth index at grid
 corners.</td>
 </tr>
@@ -610,15 +610,15 @@ contain three columns of data pertaining to; 1) the cell thickness
 and 3) the cell bottom (in meters).</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">nz&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">nz   </em></td>
 <td>The number of vertical levels.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ZC&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ZC   </em></td>
 <td>The depth (in meters) at the grid centers.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ZG&nbsp;&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ZG   </em></td>
 <td>The depth (in meters) at the grid edges.</td>
 </tr>
 </table>
@@ -645,12 +645,12 @@ if it is not.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
 <td valign="top"><em class=
-"code">model_time&nbsp;&nbsp;&nbsp;</em></td>
+"code">model_time   </em></td>
 <td>The 'valid' time of the current model state.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">adv_to_time&nbsp;&nbsp;&nbsp;</em></td>
+"code">adv_to_time   </em></td>
 <td>The time of the next assimilation.</td>
 </tr>
 </table>
@@ -674,7 +674,7 @@ versions. The filename may be derived from the <em class=
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
 <td valign="top"><em class=
-"code">filename&nbsp;&nbsp;&nbsp;</em></td>
+"code">filename   </em></td>
 <td>The name of the POP restart file.</td>
 </tr>
 </table>

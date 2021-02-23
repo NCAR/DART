@@ -10,15 +10,18 @@
 </head>
 <body>
 <a name="TOP" id="TOP"></a>
-<h1>DART "Jamaica release" Documentation</h1>
-<table border="0" summary="dart header" cellpadding="5">
-<tr>
-<td valign="middle"><img src="../../images/Dartboard7.png" alt=
-"DART project logo" height="70"></td>
-<td>Jump to <a href="../../index.html">DART Documentation Main
-Index</a></td>
-</tr>
-</table>
+<h1>Jamaica</h1>
+<h2>DART Jamaica release documentation</h2>
+<div class="attention">
+<div class="title">
+<p>Attention</p>
+</div>
+<p>Jamaica is a prior release of DART. Its source code is available via the
+<a href="https://github.com/NCAR/DART/tree/Jamaica">DART repository on Github</a>.
+This documentation is preserved merely for reference. See the
+<a href="https://dart.ucar.edu/">DART homepage</a> to learn about the latest
+release.</p>
+</div>
 <!--==================================================================-->
 <a name="OVERVIEW" id="OVERVIEW"></a>
 <h2>Overview of DART</h2>
@@ -30,9 +33,9 @@ compiled with several (many?) Fortran 90 compilers and run on linux
 compute-servers, linux clusters, OSX laptops/desktops, SGI Altix
 clusters, supercomputers running AIX ... a pretty broad range,
 really. You should definitely read the <a href=
-"#customizations">Customizations</a> section.<br>
-<br>
-DART employs a modular programming approach to apply an Ensemble
+"#customizations">Customizations</a> section.</p>
+
+<p>DART employs a modular programming approach to apply an Ensemble
 Kalman Filter which nudges models toward a state that is more
 consistent with information from a set of observations. Models may
 be swapped in and out, as can different algorithms in the Ensemble
@@ -43,9 +46,9 @@ each of the states to generate the model's estimate of the
 observation. Comparing these estimates and their uncertainty to the
 observation and its uncertainty ultimately results in the
 adjustments to the model states. There's much more to it, described
-in detail in the tutorial directory of the package.<br>
-<br>
-DART ultimately creates a few netCDF files containing the model
+in detail in the tutorial directory of the package.</p>
+
+<p>DART ultimately creates a few netCDF files containing the model
 states just before the adjustment (<em class=
 "file">Prior_Diag.nc</em>) and just after the adjustment
 (<em class="file">Posterior_Diag.nc</em>) as well as a file
@@ -56,27 +59,24 @@ portable and contain all the necessary metadata to interpret the
 contents.</p>
 <!--==================================================================-->
 <h2 class="indent1">What's New</h2>
-<p><a href="/DAReS/DART/DART_download">download "jamaica" -- the
-latest release</a><br>
-<br>
-The jamaica release has been tested on several supercomputers,
+<p>The Jamaica release has been tested on several supercomputers,
 including the NCAR IBM machines 'bluevista' and 'blueice', the SGI
 Altix machines 'columbia' and 'origin'. There are
-<strong>many</strong> more changes - much more thoroughly described
-- in the <a href=
-"documentation/html/history/Jamaica_diffs_from_I.html">documentation/html/history/Jamaica_diffs_from_I.html</a>
-document. What follows here is only meant to draw attention to the
-fact that experienced users should really read the change
-document.<br>
-<br>
-The most visible changes in the <b>jamaica</b> release are:</p>
-<h4 class="indent1">Changes in the inflation strategies.</h4>
+<strong>many</strong> more changes - much more thoroughly described in the
+Jamaica_diffs_from_I document. What follows here is only meant to draw
+attention to the fact that experienced users should really read the change
+document.</p>
+
+<p>The most visible changes in the Jamaica release are as follows.</p>
+
+<h3 class="indent1">Changes in the inflation strategies.</h3>
 <p class="indent1">The changes in the inflation mechanism now
 provide the ability to perform inflation in observation-space,
 fixed-state-space, or spatially-varying-state-space in the prior
 and/or posterior with either a deterministic or stochastic
 algorithm.</p>
-<h4 class="indent1">Fundamental changes for parallel behavior</h4>
+
+<h3 class="indent1">Fundamental changes for parallel behavior</h3>
 <p class="indent1">The <strong>optional</strong> use of MPI
 required a complete rewrite of many of the routines that previously
 governed attempts at parallel computations. This resulted in the
@@ -84,9 +84,9 @@ removal of the <em class="code">async = 3</em> method of achieving
 parallel assimilations and model advances. As a consequence,
 <em class="program">assim_region.csh</em>, <em class=
 "program">advance_ens.csh</em>, and <em class=
-"program">filter_server.csh</em> no longer exist.<br>
-<br>
-Some assimilation strategies previously controlled by <em class=
+"program">filter_server.csh</em> no longer exist.</p>
+
+<p>Some assimilation strategies previously controlled by <em class=
 "program">assim_tools_nml</em>, (namely, whether to perform a
 parallel assimilation, how many domains to use, and a few others)
 have been replaced by a new parallel assimilation algorithm.
@@ -95,9 +95,9 @@ by Anderson and Collins that is to appear in the <cite>Journal of
 Atmospheric and Oceanic Technology</cite> and in section 22 of the
 tutorial. Namelist entries <em class="code">do_parallel,
 num_domains</em>, and <em class="code">parallel_command</em> no
-longer exist.<br>
-<br>
-The (optional) MPI implementation allows for very large state
+longer exist.</p>
+
+<p>The (optional) MPI implementation allows for very large state
 vectors - some model configurations (i.e. state vectors too large
 to fit in core) are now possible. And <strong>yes</strong>, it
 scales rather nicely, thank you. There are references throughout
@@ -105,16 +105,16 @@ the documents and code to MPI - keep in mind all the MPI interfaces
 are in one module <em class="file">mpi_utilities_mod.f90</em>. If
 you are NOT using MPI - there is a simple equivalent module named
 <em class="file">null_mpi_utilities_mod.f90</em> which is the
-default.<br>
-<br>
-Using MPI greatly increases the performance for large models and/or
+default.</p>
+
+<p>Using MPI greatly increases the performance for large models and/or
 large numbers of observations. It also greatly
 <strong>decreases</strong> the shell script complexity. The use of
 MPI is enabled by giving <em class="program">mkmf_filter</em> an
-optional argument <em class="unix">-mpi</em>&nbsp;. To learn more
-about DART's implementation of MPI - please refer to <a href=
-"docs/html/mpi_intro.html">DART/docs/html/mpi_intro.html</a>&nbsp;.</p>
-<h4 class="indent1">Vertical localization</h4>
+optional argument <em class="unix">-mpi</em>.</p>
+
+<h3 class="indent1">Vertical localization</h3>
+
 <p class="indent1">It is now possible to perform localization in
 the vertical in 3D models, which necessitated a change in the
 <em class="code">model_mod</em> interface. The <em class=
@@ -126,8 +126,8 @@ replaced by "pass-through" interfaces to routines in <em class=
 some models when performing localization in the vertical. This
 routine provides the ensemble mean so that the same model state is
 used when computing the vertical localization.</p>
-<h4 class="indent1">3D plots of observation locations &amp;
-type</h4>
+<h3 class="indent1">3D plots of observation locations &amp;
+type</h3>
 <p class="indent1">It's more than just eye candy. It is also
 possible to plot (in 3D) the locations of observations by
 processing an observation sequence through <em class=
@@ -151,9 +151,9 @@ some models in DART that come from outside developers and _may_
 contain code segments that require the use of some special compiler
 flags - we are not so draconian as to mandate the use of the
 Fortran 'kind'. In general, the low-order models and all common
-portions of the DART code compile very cleanly.<br>
-<br>
-DART uses the <a href=
+portions of the DART code compile very cleanly.</p>
+
+<p>DART uses the <a href=
 "http://www.unidata.ucar.edu/packages/netcdf/">netCDF</a>
 self-describing data format with a particular metadata convention
 to describe output that is used to analyze the results of
@@ -169,25 +169,24 @@ workstation and a mac laptop running OSX 10.4.9 - but have an
 extensive test network. I've never built nor run DART on a Windows
 machine - so I don't even know if it's possible. If you have run it
 (under Cygwin?) please let me know how it went -- I'm curious.</p>
+
 <h2 class="indent1">What's nice to have</h2>
-<div class="indent1"><strong>ncview</strong>: DART users have used
+<ul>
+<li><strong>ncview</strong>: DART users have used
 <a href=
 "http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a>
 to create graphical displays of output data fields. The 2D
 rendering is good for 'quick-look' type uses, but I wouldn't want
-to publish with it.</div>
-<br>
-<div class="indent1"><strong>NCO</strong>: The <a href=
+to publish with it.</li>
+<li><strong>NCO</strong>: The <a href=
 "http://nco.sourceforge.net">NCO</a> tools are able to perform
 operations on netCDF files like concatenating, slicing, and
-dicing.</div>
-<br>
-<div class="indent1"><strong>Matlab</strong>® A set of <a href=
+dicing.</li>
+<li><strong>Matlab</strong>®: A set of <a href=
 "http://www.mathworks.com/">Matlab®</a> scripts, designed to
 produce graphical diagnostics from DART netCDF output files are
-also part of the DART project.</div>
-<br>
-<div class="indent1"><strong>MPI</strong>: The latest release of
+also part of the DART project.</li>
+<li><strong>MPI</strong>: The latest release of
 the DART system includes an MPI option. MPI stands for 'Message
 Passing Interface', and is both a library and run-time system that
 enables multiple copies of a single program to run in parallel,
@@ -199,7 +198,9 @@ observations, the data assimilation step will run much faster in
 parallel, which requires MPI to be installed and used. However, if
 multiple ensembles of your model fit comfortably (in time and
 memory space) on a single processor, you need read no further about
-MPI.</div>
+MPI.</li>
+</ul>
+
 <h2 class="indent1">Where's the (GUI) interface?</h2>
 <p>DART programs can require three different types of input. First,
 some of the DART programs, those for creating synthetic
@@ -240,11 +241,11 @@ contained in an indented gray box.</div>
 <p>And the contents of a file are enclosed in a box with a
 border:</p>
 <div class="routine">&amp;hypothetical_nml<br>
-&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;output_interval = 1<br>
+  obs_seq_in_file_name = "obs_seq.in",<br>
+  obs_seq_out_file_name = "obs_seq.out",<br>
+  init_time_days = 0,<br>
+  init_time_seconds = 0,<br>
+  output_interval = 1<br>
 &amp;end</div>
 <!--==================================================================-->
 <a name="Installation" id="Installation"></a>
@@ -269,7 +270,7 @@ libraries</a>.</li>
 do not have access to all compilers on all platforms, so there are
 no guarantees. We are interested in your experience building the
 system, so please email me (Tim Hoar)
-thoar&nbsp;'at'&nbsp;ucar&nbsp;'dot'&nbsp;edu (trying to cut down
+thoar 'at' ucar 'dot' edu (trying to cut down
 on the spam).</p>
 <p>After the installation, you might want to peruse the
 following.</p>
@@ -337,57 +338,33 @@ be needed by the makefile template, as described in the <a href=
 <a name="download" id="download"></a>
 <hr>
 <h3>Downloading the distribution.</h3>
-<p><strong>HURRAY</strong>! The DART source code is now distributed
-through an anonymous Subversion server! The <strong>big</strong>
-advantage is the ability to patch or update existing code trees at
-your discretion. Subversion (the client-side app is
-'<strong>svn</strong>') allows you to compare your code tree with
-one on a remote server and selectively update individual files or
-groups of files. Furthermore, now everyone has access to any
-version of any file in the project, which is a huge help for
-developers. I have a brief summary of the svn commands I use most
-posted at: <a href=
-"http://www.image.ucar.edu/~thoar/svn_primer.html">http://www.image.ucar.edu/~thoar/svn_primer.html</a><br>
 
-<br>
-The resources to develop and support DART come from our ability to
-demonstrate our growing user base. We ask that you register at our
-download site <a href=
-"http://www.image.ucar.edu/DAReS/DART/DART_download">http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-and promise that the information will only be used to notify you of
-new DART releases and shown to our sponsers in an aggregated form:
-"Look - we have three users from Tonawanda, NY". After filling in
-the form, you will be directed to a website that has instructions
-on how to download the code.<br>
-<br>
-svn has adopted the strategy that "disk is cheap". In addition to
-downloading the code, it downloads an additional copy of the code
-to store locally (in hidden .svn directories) as well as some
-administration files. This allows svn to perform some commands even
-when the repository is not available. It does double the size of
-the code tree ... so the download is something like 480MB -- pretty
-big. BUT - all future updates are (usually) just the differences,
-so they happen very quickly.<br>
-<br>
-If you follow the instructions on the download site, you should
-wind up with a directory named <em class="file">DART</em>.
+<p>This release of the <a href="https://github.com/NCAR/DART/releases/tag/v6.0.0">
+DART source code can be downloaded</a> as a compressed zip or tar.gz file.
+When extracted, the source tree will begin with a directory
+named <em class="file">DART</em> and will be approximately 221.7 Mb.
 Compiling the code in this tree (as is usually the case) will
-necessitate much more space.<br>
-<br>
-If you cannot use svn, just let me know and I will create a tar
-file for you. svn is so superior to a tar file that a tar file
-should be considered a last resort.<br>
-<br>
-The code tree is very "bushy"; there are many directories of
+necessitate much more space.</p>
+<pre>
+<code>
+$ gunzip DART-6.0.0.tar.gz
+$ tar -xvf DART-6.0.0.tar
+</code>
+</pre>
+
+<p>You should wind up with a directory named <em class="file">DART</em>.</p>
+
+<p>The code tree is very "bushy"; there are many directories of
 support routines, etc. but only a few directories involved with the
 customization and installation of the DART software. If you can
 compile and run ONE of the low-order models, you should be able to
 compile and run ANY of the low-order models. For this reason, we
 can focus on the Lorenz `63 model. Subsequently, the only
 directories with files to be modified to check the installation
-are: &nbsp;<em class="file">DART/mkmf</em>, &nbsp;<em class=
-"file">DART/models/lorenz_63/work</em>, and &nbsp;<em class=
+are:  <em class="file">DART/mkmf</em>,  <em class=
+"file">DART/models/lorenz_63/work</em>, and  <em class=
 "file">DART/matlab</em> (but only for analysis).</p>
+
 <!--==================================================================-->
 <a name="customizations" id="customizations"></a>
 <hr>
@@ -428,8 +405,9 @@ DART executables are provided as part of the standard DART
 software. For more information on <em class="program">mkmf</em> see
 <a href=
 "http://www.gfdl.gov/fms/pubrel/j/atm_dycores/doc/dycore_public_manual.html#mkmf">
-the FMS mkmf description</a>.<br>
-One of the benefits of using <em class="program">mkmf</em> is that
+the FMS mkmf description</a>.</p>
+
+<p>One of the benefits of using <em class="program">mkmf</em> is that
 it also creates an example namelist file for each program. The
 example namelist is called <em class="file">input.nml.<em class=
 "program"><i>program</i>_default</em></em>, so as not to clash with
@@ -445,20 +423,24 @@ or both. This is how you inform the build process of the specifics
 of your system. Our intent is that you copy one that is similar to
 your system into <em class="file">mkmf.template</em> and customize
 it. For the discussion that follows, knowledge of the contents of
-one of these templates (i.e.&nbsp;<em class=
+one of these templates (i.e. <em class=
 "file">mkmf.template.gfortran</em>) is needed. Note that only the
 LAST lines are shown here, the head of the file is just a big
 comment (worth reading, btw).</p>
-<div class="routine">...<br>
-MPIFC = mpif90<br>
-MPILD = mpif90<br>
-FC = gfortran<br>
-LD = gfortran<br>
-NETCDF = /usr/local<br>
-INCS = ${NETCDF}/include<br>
-FFLAGS = -O2 -I$(INCS)<br>
-LIBS = -L${NETCDF}/lib -lnetcdf<br>
-LDFLAGS = -I$(INCS) $(LIBS)<br></div>
+<pre>
+<code>
+MPIFC = mpif90
+MPILD = mpif90
+FC = gfortran
+LD = gfortran
+NETCDF = /usr/local
+INCS = ${NETCDF}/include
+FFLAGS = -O2 -I$(INCS)
+LIBS = -L${NETCDF}/lib -lnetcdf
+LDFLAGS = -I$(INCS) $(LIBS)
+</code>
+</pre>
+
 <p>Essentially, each of the lines defines some part of the
 resulting <em class="file">Makefile</em>. Since <em class=
 "program">make</em> is particularly good at sorting out
@@ -468,22 +450,22 @@ defines the Fortran90 compiler to use, etc. The lines which are
 most likely to need site-specific changes start with <em class=
 "code">FFLAGS</em> and <em class="code">NETCDF</em>, which indicate
 where to look for the netCDF F90 modules and the location of the
-netCDF library and modules.<br>
-<br>
-If you have MPI installed on your system <em class="code">MPIFC,
+netCDF library and modules.</p>
+
+<p>If you have MPI installed on your system <em class="code">MPIFC,
 MPILD</em> dictate which compiler will be used in that instance. If
 you do not have MPI, these variables are of no consequence.</p>
-<a href="netCDF"></a>
+
+
 <h3 class="indent2">NETCDF</h3>
 <p class="indent1">Modifying the <em class="code">NETCDF</em> value
-should be relatively straightforward.<br>
-Change the string to reflect the location of your netCDF
-installation containing <em class="file">netcdf.mod</em> and
+should be relatively straightforward. Change the string to reflect the location
+of your netCDF installation containing <em class="file">netcdf.mod</em> and
 <em class="file">typesizes.mod</em>. The value of the <em class=
 "code">NETCDF</em> variable will be used by the <em class=
 "code">FFLAGS, LIBS,</em> and <em class="code">LDFLAGS</em>
 variables.<br></p>
-<a href="fflags"></a>
+
 <h3 class="indent2">FFLAGS</h3>
 <p class="indent1">Each compiler has different compile flags, so
 there is really no way to exhaustively cover this other than to say
@@ -513,10 +495,16 @@ tutorial.</p>
 "file">work</em> subdirectory under the directory containing code
 for the given model. In the top-level DART directory, change to the
 L63 work directory and list the contents:</p>
-<div class="unix">cd DART/models/lorenz_63/work<br>
-ls -1</div>
+<pre>
+<code>
+$ cd DART/models/lorenz_63/work
+$ ls -1
+</code>
+</pre>
+
 <p>With the result:</p>
 <pre>
+<code>
 Posterior_Diag.nc
 Prior_Diag.nc
 True_State.nc
@@ -551,7 +539,9 @@ perfect_ics
 perfect_restart
 set_def.out
 workshop_setup.csh
+</code>
 </pre>
+
 <p>There are eight <em class="file">mkmf_</em><em class=
 "italic">xxxxxx</em> files for the programs</p>
 <ol>
@@ -586,8 +576,14 @@ generate a <em class="file">Makefile</em> and an <em class=
 "file">input.nml.<em class=
 "program"><i>program</i>_default</em></em> file. It is not supposed
 to compile anything -- <em class="program">make</em> does that:</p>
-<div class="unix">csh mkmf_preprocess<br>
-make</div>
+
+<pre>
+<code>
+$ csh mkmf_preprocess
+$ make
+</code>
+</pre>
+
 <p>The first command generates an appropriate <em class=
 "file">Makefile</em> and the <em class=
 "file">input.nml.preprocess_default</em> file. The second command
@@ -595,18 +591,18 @@ results in the compilation of a series of Fortran90 modules which
 ultimately produces an executable file: <em class=
 "program">preprocess</em>. Should you need to make any changes to
 the <em class="file">DART/mkmf/mkmf.template</em>, you will need to
-regenerate the <em class="file">Makefile</em>.<br>
-<br>
-The <em class="program">preprocess</em> program actually builds
+regenerate the <em class="file">Makefile</em>.</p>
+
+<p>The <em class="program">preprocess</em> program actually builds
 source code to be used by all the remaining modules. It is
 <strong>imperative</strong> to actually <strong>run</strong>
 <em class="program">preprocess</em> before building the remaining
 executables. This is how the same code can assimilate state vector
 'observations' for the Lorenz_63 model and real radar
 reflectivities for WRF without needing to specify a set of radar
-operators for the Lorenz_63 model!<br>
-<br>
-<em class="program">preprocess</em> reads the <em class=
+operators for the Lorenz_63 model!</p>
+
+<p><em class="program">preprocess</em> reads the <em class=
 "code">&amp;preprocess_nml</em> namelist to determine what
 observations and operators to incorporate. For this exercise, we
 will use the values in <em class="file">input.nml</em>. <em class=
@@ -614,33 +610,44 @@ will use the values in <em class="file">input.nml</em>. <em class=
 supposed to build already exist. For this reason, it is necessary
 to remove a couple files (if they exist) before you run the
 preprocessor. It is just a good habit to develop.</p>
-<div class="unix">\rm -f ../../../obs_def/obs_def_mod.f90<br>
-\rm -f ../../../obs_kind/obs_kind_mod.f90<br>
-./preprocess<br>
-ls -l ../../../obs_def/obs_def_mod.f90<br>
-ls -l ../../../obs_kind/obs_kind_mod.f90<br></div>
+
+<pre>
+<code>
+$ \rm -f ../../../obs_def/obs_def_mod.f90
+$ \rm -f ../../../obs_kind/obs_kind_mod.f90
+$ ./preprocess
+$ ls -l ../../../obs_def/obs_def_mod.f90
+$ ls -l ../../../obs_kind/obs_kind_mod.f90
+</code>
+</pre>
+
 <p>This created <em class=
 "file">../../../obs_def/obs_def_mod.f90</em> from <em class=
 "file">../../../obs_kind/DEFAULT_obs_kind_mod.F90</em> and several
 other modules. <em class=
 "file">../../../obs_kind/obs_kind_mod.f90</em> was created
-similarly. Now we can build the rest of the project.<br>
-<br>
-A series of object files for each module compiled will also be left
+similarly. Now we can build the rest of the project.</p>
+
+<p>A series of object files for each module compiled will also be left
 in the work directory, as some of these are undoubtedly needed by
 the build of the other DART components. You can proceed to create
 the other programs needed to work with L63 in DART as follows:</p>
-<div class="unix">csh mkmf_create_obs_sequence<br>
-make<br>
-csh mkmf_create_fixed_network_seq<br>
-make<br>
-csh mkmf_perfect_model_obs<br>
-make<br>
-csh mkmf_filter<br>
-make<br>
-csh mkmf_obs_diag<br>
-make</div>
-<br>
+
+<pre>
+<code>
+$ csh mkmf_create_obs_sequence
+$ make
+$ csh mkmf_create_fixed_network_seq
+$ make
+$ csh mkmf_perfect_model_obs
+$ make
+$ csh mkmf_filter
+$ make
+$ csh mkmf_obs_diag
+$ make
+</code>
+</pre>
+
 <p>The result (hopefully) is that six executables now reside in
 your work directory. The most common problem is that the netCDF
 libraries and include files (particularly <em class=
@@ -779,9 +786,9 @@ observations. There are no actual observations, nor are there any
 times associated with the definition. For spin-up, we are only
 interested in integrating the L63 model, not in generating any
 particular synthetic observations. Begin by creating a minimal
-observation set definition.<br>
-<br>
-In general, for the low-order models, only a single observation set
+observation set definition.</p>
+
+<p>In general, for the low-order models, only a single observation set
 need be defined. Next, the number of individual scalar observations
 (like a single surface pressure observation) in the set is needed.
 To spin-up an initial condition for the L63 model, only a single
@@ -972,8 +979,13 @@ rename and edit the namelist file for <em class=
 "file">input.nml</em> and edit it to look like the following: (just
 worry about the highlighted stuff - and whitespace doesn't
 matter)</p>
-<div class="unix">cp input.nml.perfect_model_obs_default
-input.nml<br></div>
+
+<pre>
+<code>
+cp input.nml.perfect_model_obs_default input.nml
+</code>
+</pre>
+
 <div class="routineIndent1">
 <pre>
 &amp;perfect_model_obs_nml
@@ -1143,7 +1155,12 @@ integrate the model 24,000 steps and output the resulting state in
 the file <em class="file">perfect_restart</em>. Interested parties
 can check the spinup in the <em class="file">True_State.nc</em>
 file.</p>
-<div class="unix">perfect_model_obs</div>
+<pre>
+<code>
+$ perfect_model_obs
+</code>
+</pre>
+
 <a name="ensemblate" id="ensemblate"></a>
 <h3 class="indent1">2. Generate a set of ensemble initial
 conditions.</h3>
@@ -1165,10 +1182,11 @@ the end of the first 24,000 steps to the end of an additional
 24,000 steps and place the final state in <em class=
 "file">perfect_restart</em>. The rest of the namelists in
 <em class="file">input.nml</em> should remain unchanged.</p>
-<div class="routineIndent1">
+
 <pre>
+<code>
 &amp;perfect_model_obs_nml
-   start_from_restart    = <em class="changed">.true.</em>,
+   start_from_restart    = .true.,
    output_restart        = .true.,
    async                 = 0,
    init_time_days        = 0,
@@ -1183,45 +1201,56 @@ the end of the first 24,000 steps to the end of an additional
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
    adv_ens_command       = "./advance_ens.csh"  /
-</pre></div>
-<br>
-<br>
-<div class="unix">cp perfect_restart perfect_ics<br>
-perfect_model_obs</div>
+</code>
+</pre>
+
+<pre>
+<code>
+$ cp perfect_restart perfect_ics
+$ perfect_model_obs
+</code>
+</pre>
+
 <p class="indent1">A <em class="file">True_State.nc</em> file is
 also created. It contains the 'true' state of the integration.</p>
-<h4 class="indent1">Generating the ensemble</h4>
+<h3 class="indent1">Generating the ensemble</h3>
 <p class="indent1">This step (#2 from above) is done with the
 program <em class="program">filter</em>, which also uses the
 Fortran90 namelist mechanism for input. It is now necessary to copy
 the <em class="file">input.nml.filter_default</em> namelist to
 <em class="file">input.nml</em>.</p>
-<div class="indent1">cp input.nml.filter_default
-input.nml<br></div>
+
+<pre>
+<code>
+$ cp input.nml.filter_default
+$ input.nml
+</code>
+</pre>
+
 <p class="indent1">You may also build one master namelist
 containting all the required namelists. Having unused namelists in
 the <em class="file">input.nml</em> does not hurt anything, and it
 has been so useful to be reminded of what is possible that we made
 it an error to NOT have a required namelist. Take a peek at any of
 the other models for examples of a "fully qualified" <em class=
-"file">input.nml</em>.<br>
-<br>
-<em>HINT:</em> if you used <em class="program">svn</em> to get the
+"file">input.nml</em>.</p>
+
+<p><em>HINT:</em> if you used <em class="program">svn</em> to get the
 project, try 'svn revert input.nml' to restore the namelist that
 was distributed with the project - which DOES have all the namelist
 blocks. Just be sure the values match the examples here.</p>
-<div class="routineIndent1">
+
 <pre>
+<code>
 &amp;filter_nml
    async                    = 0,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = <em class="changed">100</em>,
+   ens_size                 = 100,
    start_from_restart       = .false.,
-   output_restart           = <em class="changed">.true.</em>,
+   output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = <em class=
-"changed">"perfect_ics"</em>,
+   restart_in_file_name     = "perfect_ics",
    restart_out_file_name    = "filter_restart",
    init_time_days           = 0,
    init_time_seconds        = 0,
@@ -1229,8 +1258,8 @@ blocks. Just be sure the values match the examples here.</p>
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = <em class="changed">20</em>,
-   num_output_obs_members   = <em class="changed">20</em>,
+   num_output_state_members = 20,
+   num_output_obs_members   = 20,
    output_interval          = 1,
    num_groups               = 1,
    input_qc_threshold       =  4.0,
@@ -1287,8 +1316,7 @@ blocks. Just be sure the values match the examples here.</p>
    write_binary_obs_sequence = .false.  /
 
 &amp;obs_kind_nml
-   assimilate_these_obs_types = <em class=
-"changed">'RAW_STATE_VARIABLE'  /</em>
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'  /
 
 &amp;assim_model_nml
    write_binary_restart_files = .true. /
@@ -1304,7 +1332,9 @@ blocks. Just be sure the values match the examples here.</p>
 &amp;utilities_nml
    TERMLEVEL = 1,
    logfilename = 'dart_log.out'  /
-</pre></div>
+</code>
+</pre>
+
 <p class="indent1">Only the non-obvious(?) entries for <em class=
 "code">filter_nml</em> will be discussed.</p>
 <table border="1" class="indent1">
@@ -1369,9 +1399,15 @@ steps with the final ensemble state written to the <em class=
 restart file <em class="file">filter_restart</em> to <em class=
 "file">filter_ics</em> so that future assimilation experiments can
 be initialized from these spun-up states.</p>
-<div class="unix">filter<br>
-cp perfect_restart perfect_ics<br>
-cp filter_restart filter_ics</div>
+
+<pre>
+<code>
+$ filter
+$ cp perfect_restart perfect_ics
+$ cp filter_restart filter_ics
+</code>
+</pre>
+
 <p class="indent1">The spin-up of the ensemble can be viewed by
 examining the output in the netCDF files <em class=
 "file">True_State.nc</em> generated by <em class=
@@ -1412,7 +1448,7 @@ greater)</td>
 <td># observe state variable 1</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1429,7 +1465,7 @@ greater)</td>
 <td># observe state variable 2</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1446,7 +1482,7 @@ greater)</td>
 <td># observe state variable 3</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>

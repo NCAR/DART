@@ -145,111 +145,111 @@ netCDF
 <td><a href="#file_exist">file_exist</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_unit">get_unit</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#open_file">open_file</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#close_file">close_file</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#timestamp">timestamp</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#register_module">register_module</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#error_handler">error_handler</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#to_upper">to_upper</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#nc_check">nc_check</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#logfileunit">logfileunit</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#nmlfileunit">nmlfileunit</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#initialize_utilities">initialize_utilities</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#finalize_utilities">finalize_utilities</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#dump_unit_attributes">dump_unit_attributes</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#find_namelist_in_file">find_namelist_in_file</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#check_namelist_read">check_namelist_read</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#find_textfile_dims">find_textfile_dims</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#file_to_text">file_to_text</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#is_longitude_between">is_longitude_between</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_next_filename">get_next_filename</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_filename_list">set_filename_list</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_tasknum">set_tasknum</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_output">set_output</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#do_output">do_output</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#ERROR_LEVELS">E_DBG, DEBUG</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#ERROR_LEVELS">E_MSG, MESSAGE</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#ERROR_LEVELS">E_WARN, WARNING</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#ERROR_LEVELS">E_ERR, FATAL</a></td>
 </tr>
 </table>
@@ -268,11 +268,11 @@ character(len=*), intent(in) :: <em class="code">file_name</em>
 false.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>True if file_name exists in working directory.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">file_name&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">file_name  </em></td>
 <td>Name of file to look for.</td>
 </tr>
 </table>
@@ -288,7 +288,7 @@ integer :: <em class="code">get_unit</em>
 <p>Returns an unused unit number for IO.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>An unused unit number.</td>
 </tr>
 </table>
@@ -316,22 +316,22 @@ string is the standard action string for Fortran IO (see F90
 language description).</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>Unit number opened to file fname.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">fname&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">fname  </em></td>
 <td>Name of file to be opened.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">form&nbsp;&nbsp;</em></td>
+"optionalcode">form  </em></td>
 <td>Format: 'formatted' or 'FORMATTED' give formatted, anything
 else is unformatted. Default is formatted.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">action&nbsp;&nbsp;</em></td>
+"optionalcode">action  </em></td>
 <td>Standard fortran string description of requested file open
 action.</td>
 </tr>
@@ -341,7 +341,7 @@ action.</td>
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
  <a name="timestamp" id="timestamp"></a><br>
 <div class="routine"><em class="call">call timestamp(<em class=
-"optionalcode">[string1, string2, string3,] &nbsp;</em>pos)</em>
+"optionalcode">[string1, string2, string3,]  </em>pos)</em>
 <pre>
 character(len=*), optional, intent(in) :: <em class=
 "optionalcode">string1</em>
@@ -359,21 +359,21 @@ and the logfile is closed.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
 <td valign="top"><em class=
-"optionalcode">string1&nbsp;&nbsp;</em></td>
+"optionalcode">string1  </em></td>
 <td>An optional message to be printed.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">string2&nbsp;&nbsp;</em></td>
+"optionalcode">string2  </em></td>
 <td>An optional message to be printed.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">string3&nbsp;&nbsp;</em></td>
+"optionalcode">string3  </em></td>
 <td>An optional message to be printed.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">pos&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">pos  </em></td>
 <td>If 'end' terminates log_file output.</td>
 </tr>
 </table>
@@ -390,7 +390,7 @@ integer, intent(in) :: <em class="code">iunit</em>
 happens.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">iunit&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">iunit  </em></td>
 <td>File unit to be closed.</td>
 </tr>
 </table>
@@ -413,15 +413,15 @@ out. The rev and revdate are deprecated as they are unsupported by
 git.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">src&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">src  </em></td>
 <td>source file name.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">rev&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">rev  </em></td>
 <td>ignored</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">rdate&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">rdate  </em></td>
 <td>ignored</td>
 </tr>
 </table>
@@ -460,43 +460,43 @@ namelist), execution is terminated. The default TERMLEVEL only
 stops for ERRORS.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">level&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">level  </em></td>
 <td>Error severity (message, debug, warning, error). See below for
 specific ations.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">routine&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">routine  </em></td>
 <td>Name of routine generating error.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">text&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">text  </em></td>
 <td>Error message.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">src&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">src  </em></td>
 <td>Source file containing routine generating message.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">rev&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">rev  </em></td>
 <td>Revision number of source file.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">rdate&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">rdate  </em></td>
 <td>Revision date of source file.</td>
 </tr>
 <tr>
-<td valign="top"><em class="optionalcode">aut&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="optionalcode">aut  </em></td>
 <td>Author of routine.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">text2&nbsp;&nbsp;</em></td>
+"optionalcode">text2  </em></td>
 <td>If specified, the second line of text for the error
 message.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">text3&nbsp;&nbsp;</em></td>
+"optionalcode">text3  </em></td>
 <td>If specified, the third line of text for the error
 message.</td>
 </tr>
@@ -529,21 +529,21 @@ through the file for a line containing ONLY the string
 routine returns. Otherwise, a fatal error message is issued.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">namelist&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">namelist  </em></td>
 <td>Name of file assumed to hold the namelist.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">nml_name&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">nml_name  </em></td>
 <td>Name of the namelist to be searched for in the file, for
 instance, filter_nml.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">iunit&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">iunit  </em></td>
 <td>Channel number on which file is opened.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">write_to_logfile_in&nbsp;&nbsp;</em></td>
+"optionalcode">write_to_logfile_in  </em></td>
 <td>When the namelist for the utilities module is read, the logfile
 has not yet been open because its name is in the namelist. If
 errors are found, have to write to standard out. So, when utilities
@@ -583,22 +583,22 @@ end of the file. An error message stating that the namelist started
 but was never terminated is issued.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">iunit&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">iunit  </em></td>
 <td>Channel number on which file is opened.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">iostat_in&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">iostat_in  </em></td>
 <td>Error status return from an attempted read of a namelist from
 this file.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">nml_name&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">nml_name  </em></td>
 <td>The name of the namelist that is being read (for instance
 filter_nml).</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">write_to_logfile_in&nbsp;&nbsp;</em></td>
+"optionalcode">write_to_logfile_in  </em></td>
 <td>When the namelist for the utilities module is read, the logfile
 has not yet been open because its name is in the namelist. If
 errors are found, have to write to standard out. So, when utilities
@@ -687,7 +687,7 @@ on range; they are all converted to a known range by calling
 modulo() first.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>True if lon is between min and max.</td>
 </tr>
 <tr>
@@ -838,17 +838,17 @@ call nc_check(nf90_create(path = trim(ncFileID%fname), cmode = nf90_share, ncid 
 </pre>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">istatus&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">istatus  </em></td>
 <td>The return value from any netCDF call.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">subr_name&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">subr_name  </em></td>
 <td>String name of the current subroutine, used in case of
 error.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">context&nbsp;&nbsp;</em></td>
+"optionalcode">context  </em></td>
 <td>Additional text to be used in the error message, for example to
 indicate which file or which variable is being processed.</td>
 </tr>
@@ -867,7 +867,7 @@ integer, intent(in)               :: <em class="code">tasknum</em>
 task number, which is then prepended to subsequent messages.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">tasknum&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">tasknum  </em></td>
 <td>Task number returned from MPI_Comm_Rank(). MPI task numbers are
 0 based, so for a 4-task job these numbers are 0-3.</td>
 </tr>
@@ -888,7 +888,7 @@ case is controlled by the MPI module initialization code, which
 sets task 0 to .TRUE. and all other tasks to .FALSE.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">doflag&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">doflag  </em></td>
 <td>Sets, on a per-task basis, whether messages are to be written
 to the logfile or standard output. Warnings and errors are always
 output.</td>
@@ -914,7 +914,7 @@ endif
 </pre>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>True if this task should write output.</td>
 </tr>
 </table>
@@ -937,13 +937,13 @@ the namelist and registers this module.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
 <td valign="top"><em class=
-"optionalcode">progname&nbsp;&nbsp;</em></td>
+"optionalcode">progname  </em></td>
 <td>If given, use in the timestamp message in the log file to say
 which program is being started.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"optionalcode">alternatename&nbsp;&nbsp;</em></td>
+"optionalcode">alternatename  </em></td>
 <td>If given, log filename to use instead of the value in the
 namelist. This permits, for example, different programs sharing the
 same input.nml file to have different logs. If not given here and
@@ -974,7 +974,7 @@ integer, intent(in) :: <em class="code">iunit</em>
 error handler with error level message.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">iunit&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">iunit  </em></td>
 <td>Unit about which information is requested.</td>
 </tr>
 </table>
@@ -992,7 +992,7 @@ integer :: <em class="code">E_ERR, FATAL</em>
 <div class="indent1"><!-- Description -->
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">  </em></td>
 <td>Severity levels to be passed to error handler. Levels are
 debug, message, warning and fatal. The namelist parameter TERMLEVEL
 can be used to control at which level program termination should

@@ -53,12 +53,12 @@ observation sequence file if necessary. <em class="removed">Only
 the individual ensemble members <em>forecast</em> values are used -
 the ensemble mean and spread (as individual copies) are completely
 ignored.</em> The individual "<em class=
-"units">prior&nbsp;ensemble&nbsp;member&nbsp;NNNN</em>" copies are
+"units">prior ensemble member NNNN</em>" copies are
 used. As a special case, the "<em class=
-"units">prior&nbsp;ensemble&nbsp;mean</em>" copy is used <em>if and
+"units">prior ensemble mean</em>" copy is used <em>if and
 only if</em> there are no individual ensemble members present (i.e.
 <em class="file">input.nml</em> <em class=
-"code">&amp;filter_nml:num_output_obs_members</em>&nbsp;==&nbsp;<em class="input">0</em>).</p>
+"code">&amp;filter_nml:num_output_obs_members</em> == <em class="input">0</em>).</p>
 <table>
 <tr>
 <th align="left">Dimension</th>
@@ -97,7 +97,7 @@ the evaluation statistics.</td>
 value.</td>
 </tr>
 <tr>
-<td valign="top">forecast_lead&nbsp;&nbsp;</td>
+<td valign="top">forecast_lead  </td>
 <td valign="top">This dimension relates to the amount of time
 between the start of the forecast and the verification.</td>
 </tr>
@@ -134,7 +134,7 @@ terminating the namelist.</p>
 <p>You can specify <strong>either</strong> <em class=
 "code">obs_sequences</em> <strong>or</strong> <em class=
 "code">obs_sequence_list</em> -- not both. One of them has to be an
-empty string ... i.e. <em class="option">'&nbsp;'</em>. 
+empty string ... i.e. <em class="option">' '</em>. 
 <!-- i put the space between the single quotes because otherwise it looks
      like one double quote.  nsc  --></p>
 <div>
@@ -155,7 +155,7 @@ empty string ... i.e. <em class="option">'&nbsp;'</em>.
 <strong>MUST</strong> have an extension that defines the start of
 the forecast (the analysis time). The observation sequence
 filenames must be something like <em class=
-"file">obs_seq.forecast.YYYYMMDDHH</em>&nbsp;. If <em class=
+"file">obs_seq.forecast.YYYYMMDDHH</em> . If <em class=
 "code">obs_sequences</em> is specified, <em class=
 "code">obs_sequence_list</em> must be empty.</td>
 </tr>
@@ -274,8 +274,8 @@ name)<br></li>
 <li>Every execution of <em class="program">obs_seq_verify</em>
 results in one netCDF file that contains the observation being
 verified. If <em class=
-"code">obtype_string&nbsp;=&nbsp;'METAR_U_10_METER_WIND'</em>, and
-<em class="code">netcdf_out&nbsp;=&nbsp;'forecast.nc'</em>; the
+"code">obtype_string = 'METAR_U_10_METER_WIND'</em>, and
+<em class="code">netcdf_out = 'forecast.nc'</em>; the
 resulting filename will be <em class=
 "code">METAR_U_10_METER_WIND_forecast.nc</em>.</li>
 </ul>
@@ -363,7 +363,7 @@ Just to reiterate the example, both namelists for <em class=
 </pre></div>
 <p>The pertinent information from the <em class=
 "file">obsdef_mask.nc</em> file is summarized (from <em class=
-"option">ncdump&nbsp;-v&nbsp;experiment_times,analysis,forecast_lead
+"option">ncdump -v experiment_times,analysis,forecast_lead
 obsdef_mask.nc</em>) as follows:</p>
 <pre>
 verification_times = 148812.75, 148813, 148813.25, 148813.5, 148813.75,

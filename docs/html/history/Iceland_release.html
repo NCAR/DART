@@ -10,27 +10,30 @@
 </head>
 <body>
 <a name="TOP" id="TOP"></a>
-<h1>DART "Iceland release" Documentation</h1>
-<table border="0" summary="dart header" cellpadding="5">
-<tr>
-<td valign="middle"><img src="../../images/Dartboard7.png" alt=
-"DART project logo" height="70"></td>
-<td>Jump to <a href="../../index.html">DART Documentation Main
-Index</a></td>
-</tr>
-</table>
+<h1>Iceland</h1>
+<h2>DART Iceland release documentation</h2>
+<div class="attention">
+<div class="title">
+<p>Attention</p>
+</div>
+<p>Iceland is a prior release of DART. Its source code is available via the
+<a href="https://github.com/NCAR/DART/tree/Iceland">DART repository on Github</a>.
+This documentation is preserved merely for reference. See the
+<a href="https://dart.ucar.edu/">DART homepage</a> to learn about the latest
+release.</p>
+</div>
 <!--==================================================================-->
 <a name="OVERVIEW" id="OVERVIEW"></a>
-<h1>Overview of DART</h1>
+<h2>Overview of DART</h2>
 <p>The Data Assimilation Research Testbed (DART) is designed to
 facilitate the combination of assimilation algorithms, models, and
 observation sets to allow increased understanding of all three. The
 DART programs have been compiled with several Fortran 90 compilers
 and run on a linux compute-server and linux clusters. You should
 definitely read the <a href="#customizations">Customizations</a>
-section.<br>
-<br>
-DART employs a modular programming approach to apply an Ensemble
+section.</p>
+
+<p>DART employs a modular programming approach to apply an Ensemble
 Kalman Filter which nudges models toward a state that is more
 consistent with information from a set of observations. Models may
 be swapped in and out, as can different algorithms in the Ensemble
@@ -41,18 +44,17 @@ each of the states to generate the model's estimate of the
 observation. Comparing these estimates and their uncertainty to the
 observation and its uncertainty ultimately results in the
 adjustments to the model states. Sort of. There's more to it,
-described in detail in the tutorial directory of the package.<br>
-<br>
-DART ultimately creates a few netCDF files containing the model
+described in detail in the tutorial directory of the package.</p>
+
+<p>DART ultimately creates a few netCDF files containing the model
 states just before the adjustment <em class=
 "file">Prior_Diag.nc</em> and just after the adjustment <em class=
 "file">Posterior_Diag.nc</em> as well as a file <em class=
 "file">obs_seq.final</em> with the model estimates of the
 observations. There is a suite of Matlab® functions that facilitate
 exploration of the results.</p>
-<p><a href="/DAReS/DART/DART_download">The latest software release
--- "Iceland".</a></p>
-<p>The <b>Iceland</b> release provides several new models and has a
+
+<p>The Iceland release provides several new models and has a
 greatly expanded capability for <b>real</b> observations which
 required a fundamentally different implementation of the low-level
 routines. It is now required to run a preprocessor on several of
@@ -66,6 +68,7 @@ for every compiler. One very clever colleague also 'built a better
 mousetrap' and figured out how to effectively and robustly read
 namelists, detect errors, and generate meaningful error messages.
 HURRAY!</p>
+
 <p>The Iceland release has also been tested with more compilers in
 an attempt to determine non-portable code elements. It is my
 experience that the largest impediment to portable code is the
@@ -131,11 +134,11 @@ contained in an indented gray box.</div>
 <p>And the contents of a file are enclosed in a box with a
 border:</p>
 <div class="routine">&amp;hypothetical_nml<br>
-&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;output_interval = 1<br>
+  obs_seq_in_file_name = "obs_seq.in",<br>
+  obs_seq_out_file_name = "obs_seq.out",<br>
+  init_time_days = 0,<br>
+  init_time_seconds = 0,<br>
+  output_interval = 1<br>
 &amp;end</div>
 <!--==================================================================-->
 <a name="Installation" id="Installation"></a>
@@ -165,7 +168,7 @@ libraries</a>.</li>
 do not have access to all compilers on all platforms, so there are
 no guarantees. We are interested in your experience building the
 system, so please email me (Tim Hoar)
-thoar&nbsp;'at'&nbsp;ucar&nbsp;'dot'&nbsp;edu (trying to cut down
+thoar 'at' ucar 'dot' edu (trying to cut down
 on the spam).</p>
 <p>After the installation, you might want to peruse the
 following.</p>
@@ -228,16 +231,21 @@ be needed by the makefile template, as described in the <a href=
 <!--==================================================================-->
 <a name="download" id="download"></a>
 <hr>
+
 <h2>Unpacking the distribution.</h2>
-<p>The DART source code is distributed as a compressed tar file
-<a href="/DAReS/DART/DART_download">from our download site</a>.
-When gunzip'ed and untarred, the source tree will begin with a
-directory named <em class="file">DART</em> and will be
-approximately 203 Mb. Compiling the code in this tree (as is
-usually the case) will necessitate much more space.</p>
-<div class="unix">gunzip <em class=
-"file">DART_iceland.tar.gz</em><br>
-tar -xvf <em class="file">DART_iceland.tar</em><br></div>
+<p>This release of the <a href="https://github.com/NCAR/DART/releases/tag/v5.0.0">
+DART source code can be downloaded</a> as a compressed zip or tar.gz file.
+When extracted, the source tree will begin with a directory
+named <em class="file">DART</em> and will be approximately 103.1 Mb.
+Compiling the code in this tree (as is usually the case) will
+necessitate much more space.</p>
+<pre>
+<code>
+$ gunzip DART-5.0.0.tar.gz
+$ tar -xvf DART-5.0.0.tar
+</code>
+</pre>
+
 <p>The code tree is very "bushy"; there are many directories of
 support routines, etc. but only a few directories involved with the
 customization and installation of the DART software. If you can
@@ -245,8 +253,8 @@ compile and run ONE of the low-order models, you should be able to
 compile and run ANY of the low-order models. For this reason, we
 can focus on the Lorenz `63 model. Subsequently, the only
 directories with files to be modified to check the installation
-are: &nbsp;<em class="file">DART/mkmf</em>, &nbsp;<em class=
-"file">DART/models/lorenz_63/work</em>, and &nbsp;<em class=
+are:  <em class="file">DART/mkmf</em>,  <em class=
+"file">DART/models/lorenz_63/work</em>, and  <em class=
 "file">DART/matlab</em> (but only for analysis).</p>
 <!--==================================================================-->
 <a name="customizations" id="customizations"></a>
@@ -288,13 +296,15 @@ DART executables are provided as part of the standard DART
 software. For more information on <em class="program">mkmf</em> see
 <a href=
 "http://www.gfdl.gov/fms/pubrel/j/atm_dycores/doc/dycore_public_manual.html#mkmf">
-the FMS mkmf description</a>.<br>
-One of the benefits of using <em class="program">mkmf</em> is that
+the FMS mkmf description</a>.</p>
+
+<p>One of the benefits of using <em class="program">mkmf</em> is that
 it also creates an example namelist file for each program. The
 example namelist is called <em class="file">input.nml.<em class=
 "program"><i>program</i>_default</em></em>, so as not to clash with
 any exising <em class="file">input.nml</em> that may exist in that
 directory.</p>
+
 <a name="template" id="template"></a>
 <h3 class="indent1">Building and Customizing the 'mkmf.template'
 file</h3>
@@ -309,17 +319,23 @@ contents of one of these templates (i.e. <em class=
 "file">mkmf.template.pgf90.ghotiol</em>) is needed: (note that only
 the LAST lines are shown here, the head of the file is just a big
 comment)</p>
-<div class="routine"># Makefile template for PGI f90<br>
-FC = pgf90<br>
-LD = pgf90<br>
-CPPFLAGS =<br>
-LIST = -Mlist<br>
-NETCDF = /contrib/netcdf-3.5.1-cc-c++-pgif90.5.2-4<br>
-FFLAGS = -O0 -Ktrap=fp -pc 64 -I$(NETCDF)/include<br>
-LIBS = -L$(NETCDF)/lib -lnetcdf<br>
-LDFLAGS = $(LIBS)<br>
-<br>
-...<br></div>
+
+<pre>
+<code>
+# Makefile template for PGI f90
+FC = pgf90
+LD = pgf90
+CPPFLAGS =
+LIST = -Mlist
+NETCDF = /contrib/netcdf-3.5.1-cc-c++-pgif90.5.2-4
+FFLAGS = -O0 -Ktrap=fp -pc 64 -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdf
+LDFLAGS = $(LIBS)
+
+...
+</code>
+</pre>
+
 <p>Essentially, each of the lines defines some part of the
 resulting <em class="file">Makefile</em>. Since <em class=
 "program">make</em> is particularly good at sorting out
@@ -330,7 +346,7 @@ most likely to need site-specific changes start with <em class=
 "code">FFLAGS</em> and <em class="code">NETCDF</em>, which indicate
 where to look for the netCDF F90 modules and the location of the
 netCDF library and modules.</p>
-<a href="netCDF"></a>
+
 <h4 class="indent2">NETCDF</h4>
 <p class="indent1">Modifying the <em class="code">NETCDF</em> value
 should be relatively straightforward.<br>
@@ -340,7 +356,7 @@ installation containing <em class="file">netcdf.mod</em> and
 "code">NETCDF</em> variable will be used by the <em class=
 "code">FFLAGS, LIBS,</em> and <em class="code">LDFLAGS</em>
 variables.<br></p>
-<a href="fflags"></a>
+
 <h4 class="indent2">FFLAGS</h4>
 <p class="indent1">Each compiler has different compile flags, so
 there is really no way to exhaustively cover this other than to say
@@ -371,10 +387,17 @@ customization is needed.</p>
 "file">work</em> subdirectory under the directory containing code
 for the given model. In the top-level DART directory, change to the
 L63 work directory and list the contents:</p>
-<div class="unix">cd DART/models/lorenz_63/work<br>
-ls -1</div>
+<pre>
+<code>
+$ cd DART/models/lorenz_63/work
+$ ls -1
+</code>
+</pre>
+
 <p>With the result:</p>
-<pre>filter_ics
+<pre>
+<code>
+filter_ics
 filter_restart
 input.nml
 mkmf_create_fixed_network_seq
@@ -403,7 +426,10 @@ Posterior_Diag.nc
 Prior_Diag.nc
 set_def.out
 True_State.nc
-workshop_setup.csh</pre>
+workshop_setup.csh
+</code>
+</pre>
+
 <p>There are six <em class="file">mkmf_</em><em class=
 "italic">xxxxxx</em> files for the programs <em class=
 "program">preprocess</em>, <em class=
@@ -430,8 +456,12 @@ generate a <em class="file">Makefile</em> and an <em class=
 "file">input.nml.<em class=
 "program"><i>program</i>_default</em></em> file. It is not supposed
 to compile anything:</p>
-<div class="unix">csh mkmf_preprocess<br>
-make</div>
+<pre>
+<code>
+$ csh mkmf_preprocess
+$ make
+</code>
+</pre>
 <p>The first command generates an appropriate <em class=
 "file">Makefile</em> and the <em class=
 "file">input.nml.preprocess_default</em> file. The second command
@@ -458,11 +488,17 @@ will use the values in <em class="file">input.nml</em>. <em class=
 supposed to build already exist. For this reason, it is necessary
 to remove a couple files (if they exist) before you run the
 preprocessor. It is just a good habit to develop.</p>
-<div class="unix">\rm -f ../../../obs_def/obs_def_mod.f90<br>
-\rm -f ../../../obs_kind/obs_kind_mod.f90<br>
-./preprocess<br>
-ls -l ../../../obs_def/obs_def_mod.f90<br>
-ls -l ../../../obs_kind/obs_kind_mod.f90<br></div>
+
+<pre>
+<code>
+$ \rm -f ../../../obs_def/obs_def_mod.f90
+$ \rm -f ../../../obs_kind/obs_kind_mod.f90
+$ ./preprocess
+$ ls -l ../../../obs_def/obs_def_mod.f90
+$ ls -l ../../../obs_kind/obs_kind_mod.f90
+</code>
+</pre>
+
 <p>This created <em class=
 "file">../../../obs_def/obs_def_mod.f90</em> from <em class=
 "file">../../../obs_kind/DEFAULT_obs_kind_mod.F90</em> and several
@@ -475,17 +511,22 @@ in the work directory, as some of these are undoubtedly needed by
 the build of the other DART components. You can proceed to create
 the other five programs needed to work with L63 in DART as
 follows:</p>
-<div class="unix">csh mkmf_create_obs_sequence<br>
-make<br>
-csh mkmf_create_fixed_network_seq<br>
-make<br>
-csh mkmf_perfect_model_obs<br>
-make<br>
-csh mkmf_filter<br>
-make<br>
-csh mkmf_obs_diag<br>
-make</div>
-<br>
+
+<pre>
+<code>
+$ csh mkmf_create_obs_sequence
+$ make
+$ csh mkmf_create_fixed_network_seq
+$ make
+$ csh mkmf_perfect_model_obs
+$ make
+$ csh mkmf_filter
+$ make
+$ csh mkmf_obs_diag
+$ make
+</code>
+</pre>
+
 <p>The result (hopefully) is that six executables now reside in
 your work directory. The most common problem is that the netCDF
 libraries and include files (particularly <em class=
@@ -599,7 +640,9 @@ sequence definition' file is a two-step procedure involving
 "program">create_fixed_network_seq</em>. After they are both run,
 it is necessary to integrate the model with <em class=
 "program">perfect_model_obs</em>.
+
 <h4 class="indent1">1.1 Create an observation set definition.</h4>
+
 <p><em class="program">create_obs_sequence</em> creates an
 observation set definition, the time-independent part of an
 observation sequence. An observation set definition file only
@@ -610,9 +653,9 @@ observations. There are no actual observations, nor are there any
 times associated with the definition. For spin-up, we are only
 interested in integrating the L63 model, not in generating any
 particular synthetic observations. Begin by creating a minimal
-observation set definition.<br>
-<br>
-In general, for the low-order models, only a single observation set
+observation set definition.</p>
+
+<p>In general, for the low-order models, only a single observation set
 need be defined. Next, the number of individual scalar observations
 (like a single surface pressure observation) in the set is needed.
 To spin-up an initial condition for the L63 model, only a single
@@ -636,6 +679,7 @@ defines the single identity observation of the first state variable
 of the L63 model. The following is a screenshot (much of the
 verbose logging has been left off for clarity), the user input
 looks <em class="input">like this</em>.</p>
+
 <div class="unix">
 <pre>
 [unixprompt]$ <em class="input">./create_obs_sequence</em>
@@ -773,10 +817,12 @@ What is output file name for sequence (  obs_seq.in   is recommended )
  write_obs_seq closed file [blah blah blah]/work/obs_seq.in
 </pre></div>
 <h4>1.3 Initialize the model onto the attractor.</h4>
+
 <p><em class="program">perfect_model_obs</em> can now advance the
 arbitrary initial state for 24,000 timesteps to move it onto the
-attractor.<br>
-<em class="program">perfect_model_obs</em> uses the Fortran90
+attractor.</p>
+
+<p><em class="program">perfect_model_obs</em> uses the Fortran90
 namelist input mechanism instead of (admittedly gory, but
 temporary) interactive input. All of the DART software expects the
 namelists to found in a file called <em class=
@@ -788,81 +834,84 @@ example, each namelist was saved to a unique name. We must now
 rename and edit the namelist file for <em class=
 "program">perfect_model_obs</em>. Copy <em class=
 "file">input.nml.perfect_model_obs_default</em> to <em class=
-"file">input.nml</em> and edit it to look like the following: (just
-worry about the highlighted stuff)</p>
-<div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = <em class=
-"changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1 /<br>
-<br>
-&amp;ensemble_manager_nml<br>
-&nbsp;&nbsp;&nbsp;in_core = .true.,<br>
-&nbsp;&nbsp;&nbsp;single_restart_file_in = .true.,<br>
-&nbsp;&nbsp;&nbsp;single_restart_file_out = .true. /<br>
-<br>
-&amp;assim_tools_nml<br>
-&nbsp;&nbsp;&nbsp;filter_kind = 1,<br>
-&nbsp;&nbsp;&nbsp;cutoff = 0.2,<br>
-&nbsp;&nbsp;&nbsp;sort_obs_inc = .false.,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = -1.0,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate_sd = 0.05,<br>
-&nbsp;&nbsp;&nbsp;sd_lower_bound = 0.05,<br>
-&nbsp;&nbsp;&nbsp;deterministic_cov_inflate = .true.,<br>
-&nbsp;&nbsp;&nbsp;start_from_assim_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;assim_restart_in_file_name =
-'assim_tools_ics',<br>
-&nbsp;&nbsp;&nbsp;assim_restart_out_file_name =
-'assim_tools_restart',<br>
-&nbsp;&nbsp;&nbsp;do_parallel = 0,<br>
-&nbsp;&nbsp;&nbsp;num_domains = 1<br>
-&nbsp;&nbsp;&nbsp;parallel_command = "./assim_filter.csh",<br>
-&nbsp;&nbsp;&nbsp;spread_restoration = .false.,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate_upper_bound = 10000000.0,<br>
-&nbsp;&nbsp;&nbsp;internal_outlier_threshold = -1.0 /<br>
-<br>
-&amp;cov_cutoff_nml<br>
-&nbsp;&nbsp;&nbsp;select_localization = 1 /<br>
-<br>
-&amp;reg_factor_nml<br>
-&nbsp;&nbsp;&nbsp;select_regression = 1,<br>
-&nbsp;&nbsp;&nbsp;input_reg_file = "time_mean_reg"<br>
-&nbsp;&nbsp;&nbsp;save_reg_diagnostics = .false.,<br>
-&nbsp;&nbsp;&nbsp;reg_diagnostics_file = 'reg_diagnostics' /<br>
-<br>
-&amp;obs_sequence_nml<br>
-&nbsp;&nbsp;&nbsp;write_binary_obs_sequence = .false. /<br>
-<br>
-&amp;obs_kind_nml<br>
-&nbsp;&nbsp;&nbsp;assimilate_these_obs_types = <em class=
-"changed">'RAW_STATE_VARIABLE' /</em><br>
-<br>
-&amp;assim_model_nml<br>
-&nbsp;&nbsp;&nbsp;write_binary_restart_files = .true. /<br>
-<br>
-&amp;model_nml<br>
-&nbsp;&nbsp;&nbsp;sigma = 10.0,<br>
-&nbsp;&nbsp;&nbsp;r = 28.0,<br>
-&nbsp;&nbsp;&nbsp;b = 2.6666666666667,<br>
-&nbsp;&nbsp;&nbsp;deltat = 0.01,<br>
-&nbsp;&nbsp;&nbsp;time_step_days = 0,<br>
-&nbsp;&nbsp;&nbsp;time_step_seconds = 3600 /<br>
-<br>
-&amp;utilities_nml<br>
-&nbsp;&nbsp;&nbsp;TERMLEVEL = 1<br>
-&nbsp;&nbsp;&nbsp;logfilename = 'dart_log.out' /<br></div>
-<br>
-For the moment, only two namelists warrant explanation. Each
+"file">input.nml</em> and edit it to look like the following:</p>
+
+<pre>
+<code>
+   &amp;perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .false.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1 /
+
+&amp;ensemble_manager_nml
+   in_core = .true.,
+   single_restart_file_in = .true.,
+   single_restart_file_out = .true. /
+
+&amp;assim_tools_nml
+   filter_kind = 1,
+   cutoff = 0.2,
+   sort_obs_inc = .false.,
+   cov_inflate = -1.0,
+   cov_inflate_sd = 0.05,
+   sd_lower_bound = 0.05,
+   deterministic_cov_inflate = .true.,
+   start_from_assim_restart = .false.,
+   assim_restart_in_file_name =
+'assim_tools_ics',
+   assim_restart_out_file_name =
+'assim_tools_restart',
+   do_parallel = 0,
+   num_domains = 1
+   parallel_command = "./assim_filter.csh",
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 10000000.0,
+   internal_outlier_threshold = -1.0 /
+
+&amp;cov_cutoff_nml
+   select_localization = 1 /
+
+&amp;reg_factor_nml
+   select_regression = 1,
+   input_reg_file = "time_mean_reg"
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = 'reg_diagnostics' /
+
+&amp;obs_sequence_nml
+   write_binary_obs_sequence = .false. /
+
+&amp;obs_kind_nml
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE' /
+
+&amp;assim_model_nml
+   write_binary_restart_files = .true. /
+
+&amp;model_nml
+   sigma = 10.0,
+   r = 28.0,
+   b = 2.6666666666667,
+   deltat = 0.01,
+   time_step_days = 0,
+   time_step_seconds = 3600 /
+
+&amp;utilities_nml
+   TERMLEVEL = 1
+   logfilename = 'dart_log.out' /
+</code>
+</pre>
+
+<p>For the moment, only two namelists warrant explanation. Each
 namelists is covered in detail in the html files accompanying the
-source code for the module.
+source code for the module.</p>
+
 <h3 class="indent1">perfect_model_obs_nml</h3>
 <table border="1" class="indent1">
 <tr>
@@ -945,7 +994,13 @@ integrate the model 24,000 steps and output the resulting state in
 the file <em class="file">perfect_restart</em>. Interested parties
 can check the spinup in the <em class="file">True_State.nc</em>
 file.</p>
-<div class="unix">perfect_model_obs</div>
+
+<pre>
+<code>
+$ perfect_model_obs
+</code>
+</pre>
+
 <a name="ensemblate" id="ensemblate"></a>
 <h3 class="indent1">2. Generate a set of ensemble initial
 conditions.</h3>
@@ -967,21 +1022,31 @@ the end of the first 24,000 steps to the end of an additional
 24,000 steps and place the final state in <em class=
 "file">perfect_restart</em>. The rest of the namelists in
 <em class="file">input.nml</em> should remain unchanged.</p>
-<div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = <em class=
-"changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1 /<br></div>
-<div class="unix">cp perfect_restart perfect_ics<br>
-perfect_model_obs</div>
+
+<pre>
+<code>
+&amp;perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1 /
+</code>
+</pre>
+
+<pre>
+<code>
+$ cp perfect_restart perfect_ics
+$ perfect_model_obs
+</code>
+</pre>
+
 <p class="indent1">A <em class="file">True_State.nc</em> file is
 also created. It contains the 'true' state of the integration.</p>
 <h4 class="indent1">Generating the ensemble</h4>
@@ -998,102 +1063,103 @@ hurt anything. In fact, I generally create a single <em class=
 simply copied the filter namelist block from <em class=
 "file">input.nml.filter_default</em> and inserted it into our
 <em class="file">input.nml</em> for the following example.</p>
-<div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1 /<br>
-<br>
-&amp;filter_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;ens_size = <em class="changed">100</em>,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = 1.0,<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = <em class=
-"changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_in_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_out_name = "obs_seq.final",<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = <em class=
-"changed">"perfect_ics"</em>,<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_obs_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_obs_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;num_output_state_members = <em class=
-"changed">20</em>,<br>
-&nbsp;&nbsp;&nbsp;num_output_obs_members = <em class=
-"changed">20</em>,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1,<br>
-&nbsp;&nbsp;&nbsp;num_groups = 1,<br>
-&nbsp;&nbsp;&nbsp;outlier_threshold = -1.0 /<br>
-<br>
-&amp;ensemble_manager_nml<br>
-&nbsp;&nbsp;&nbsp;in_core = .true.,<br>
-&nbsp;&nbsp;&nbsp;single_restart_file_in = .true.,<br>
-&nbsp;&nbsp;&nbsp;single_restart_file_out = .true. /<br>
-<br>
-&amp;assim_tools_nml<br>
-&nbsp;&nbsp;&nbsp;filter_kind = 1,<br>
-&nbsp;&nbsp;&nbsp;cutoff = 0.2,<br>
-&nbsp;&nbsp;&nbsp;sort_obs_inc = .false.,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = -1.0,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate_sd = 0.05,<br>
-&nbsp;&nbsp;&nbsp;sd_lower_bound = 0.05,<br>
-&nbsp;&nbsp;&nbsp;deterministic_cov_inflate = .true.,<br>
-&nbsp;&nbsp;&nbsp;start_from_assim_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;assim_restart_in_file_name =
-'assim_tools_ics',<br>
-&nbsp;&nbsp;&nbsp;assim_restart_out_file_name =
-'assim_tools_restart',<br>
-&nbsp;&nbsp;&nbsp;do_parallel = 0,<br>
-&nbsp;&nbsp;&nbsp;num_domains = 1<br>
-&nbsp;&nbsp;&nbsp;parallel_command = "./assim_filter.csh",<br>
-&nbsp;&nbsp;&nbsp;spread_restoration = .false.,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate_upper_bound = 10000000.0,<br>
-&nbsp;&nbsp;&nbsp;internal_outlier_threshold = -1.0 /<br>
-<br>
-&amp;cov_cutoff_nml<br>
-&nbsp;&nbsp;&nbsp;select_localization = 1 /<br>
-<br>
-&amp;reg_factor_nml<br>
-&nbsp;&nbsp;&nbsp;select_regression = 1,<br>
-&nbsp;&nbsp;&nbsp;input_reg_file = "time_mean_reg"<br>
-&nbsp;&nbsp;&nbsp;save_reg_diagnostics = .false.,<br>
-&nbsp;&nbsp;&nbsp;reg_diagnostics_file = 'reg_diagnostics' /<br>
-<br>
-&amp;obs_sequence_nml<br>
-&nbsp;&nbsp;&nbsp;write_binary_obs_sequence = .false. /<br>
-<br>
-&amp;obs_kind_nml<br>
-&nbsp;&nbsp;&nbsp;assimilate_these_obs_types = 'RAW_STATE_VARIABLE'
-/<br>
-<br>
-&amp;assim_model_nml<br>
-&nbsp;&nbsp;&nbsp;write_binary_restart_files = .true. /<br>
-<br>
-&amp;model_nml<br>
-&nbsp;&nbsp;&nbsp;sigma = 10.0,<br>
-&nbsp;&nbsp;&nbsp;r = 28.0,<br>
-&nbsp;&nbsp;&nbsp;b = 2.6666666666667,<br>
-&nbsp;&nbsp;&nbsp;deltat = 0.01,<br>
-&nbsp;&nbsp;&nbsp;time_step_days = 0,<br>
-&nbsp;&nbsp;&nbsp;time_step_seconds = 3600 /<br>
-<br>
-&amp;utilities_nml<br>
-&nbsp;&nbsp;&nbsp;TERMLEVEL = 1<br>
-&nbsp;&nbsp;&nbsp;logfilename = 'dart_log.out' /<br></div>
-<br>
+
+<pre>
+<code>
+&amp;perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1 /
+
+&amp;filter_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   ens_size = 100,
+   cov_inflate = 1.0,
+   start_from_restart = .false.,
+   output_restart = .true.,
+   obs_sequence_in_name = "obs_seq.out",
+   obs_sequence_out_name = "obs_seq.final",
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "filter_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   output_obs_ens_mean = .true.,
+   output_obs_ens_spread = .true.,
+   num_output_state_members = 20,
+   num_output_obs_members = 20,
+   output_interval = 1,
+   num_groups = 1,
+   outlier_threshold = -1.0 /
+
+&amp;ensemble_manager_nml
+   in_core = .true.,
+   single_restart_file_in = .true.,
+   single_restart_file_out = .true. /
+
+&amp;assim_tools_nml
+   filter_kind = 1,
+   cutoff = 0.2,
+   sort_obs_inc = .false.,
+   cov_inflate = -1.0,
+   cov_inflate_sd = 0.05,
+   sd_lower_bound = 0.05,
+   deterministic_cov_inflate = .true.,
+   start_from_assim_restart = .false.,
+   assim_restart_in_file_name =
+'assim_tools_ics',
+   assim_restart_out_file_name =
+'assim_tools_restart',
+   do_parallel = 0,
+   num_domains = 1
+   parallel_command = "./assim_filter.csh",
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 10000000.0,
+   internal_outlier_threshold = -1.0 /
+
+&amp;cov_cutoff_nml
+   select_localization = 1 /
+
+&amp;reg_factor_nml
+   select_regression = 1,
+   input_reg_file = "time_mean_reg"
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = 'reg_diagnostics' /
+
+&amp;obs_sequence_nml
+   write_binary_obs_sequence = .false. /
+
+&amp;obs_kind_nml
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'
+/
+
+&amp;assim_model_nml
+   write_binary_restart_files = .true. /
+
+&amp;model_nml
+   sigma = 10.0,
+   r = 28.0,
+   b = 2.6666666666667,
+   deltat = 0.01,
+   time_step_days = 0,
+   time_step_seconds = 3600 /
+
+&amp;utilities_nml
+   TERMLEVEL = 1
+   logfilename = 'dart_log.out' /
+</code>
+</pre>
+
 <p class="indent1">Only the non-obvious(?) entries for <em class=
 "code">filter_nml</em> will be discussed.</p>
 <table border="1;" class="indent">
@@ -1185,9 +1251,15 @@ steps with the final ensemble state written to the <em class=
 restart file <em class="file">filter_restart</em> to <em class=
 "file">filter_ics</em> so that future assimilation experiments can
 be initialized from these spun-up states.</p>
-<div class="unix">filter<br>
-cp perfect_restart perfect_ics<br>
-cp filter_restart filter_ics</div>
+
+<pre>
+<code>
+$ filter
+$ cp perfect_restart perfect_ics
+$ cp filter_restart filter_ics
+</code>
+</pre>
+
 <p class="indent1">The spin-up of the ensemble can be viewed by
 examining the output in the netCDF files <em class=
 "file">True_State.nc</em> generated by <em class=
@@ -1228,7 +1300,7 @@ greater)</td>
 <td># observe state variable 1</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1245,7 +1317,7 @@ greater)</td>
 <td># observe state variable 2</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1262,7 +1334,7 @@ greater)</td>
 <td># observe state variable 3</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1314,18 +1386,24 @@ true state.</h3>
 <p class="indent1">An observation sequence file is now generated by
 running <em class="program">perfect_model_obs</em> with the
 namelist values (unchanged from step 2):</p>
-<div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1 /<br></div>
+
+<pre>
+<code>
+&amp;perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1 /
+</code>
+</pre>
+
 <p class="indent1">This integrates the model starting from the
 state in <em class="file">perfect_ics</em> for 1000 12-hour
 intervals outputting synthetic observations of the three state
@@ -1335,30 +1413,34 @@ variables every 12 hours and producing a netCDF diagnostic file,
 <h3 class="indent1">5. Filtering.</h3>
 <p class="indent1">Finally, <em class="program">filter</em> can be
 run with its namelist set to:</p>
-<div class="routineIndent1">&amp;filter_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;ens_size = 100,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = 1.0,<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = <em class=
-"changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_in_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_out_name = "obs_seq.final",<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = <em class=
-"changed">"filter_ics"</em>,<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_obs_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_obs_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;num_output_state_members = 20,<br>
-&nbsp;&nbsp;&nbsp;num_output_obs_members = 20,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1,<br>
-&nbsp;&nbsp;&nbsp;num_groups = 1,<br>
-&nbsp;&nbsp;&nbsp;outlier_threshold = -1.0 /<br></div>
+
+<pre>
+<code>
+&amp;filter_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   ens_size = 100,
+   cov_inflate = 1.0,
+   start_from_restart = .true.,
+   output_restart = .true.,
+   obs_sequence_in_name = "obs_seq.out",
+   obs_sequence_out_name = "obs_seq.final",
+   restart_in_file_name = "filter_ics",
+   restart_out_file_name = "filter_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   output_obs_ens_mean = .true.,
+   output_obs_ens_spread = .true.,
+   num_output_state_members = 20,
+   num_output_obs_members = 20,
+   output_interval = 1,
+   num_groups = 1,
+   outlier_threshold = -1.0 /
+</code>
+</pre>
+
 <p class="indent1">The large value for the cutoff allows each
 observation to impact all other state variables (see Appendix V for
 localization). <em class="program">filter</em> produces two output

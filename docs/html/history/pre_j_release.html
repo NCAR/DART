@@ -131,11 +131,11 @@ contained in an indented gray box.</div>
 <p>And the contents of a file are enclosed in a box with a
 border:</p>
 <div class="routine">&amp;hypothetical_nml<br>
-&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;output_interval = 1<br>
+  obs_seq_in_file_name = "obs_seq.in",<br>
+  obs_seq_out_file_name = "obs_seq.out",<br>
+  init_time_days = 0,<br>
+  init_time_seconds = 0,<br>
+  output_interval = 1<br>
 &amp;end</div>
 <!--==================================================================-->
 <a name="Installation" id="Installation"></a>
@@ -165,7 +165,7 @@ libraries</a>.</li>
 do not have access to all compilers on all platforms, so there are
 no guarantees. We are interested in your experience building the
 system, so please email me (Tim Hoar)
-thoar&nbsp;'at'&nbsp;ucar&nbsp;'dot'&nbsp;edu (trying to cut down
+thoar 'at' ucar 'dot' edu (trying to cut down
 on the spam).</p>
 <p>After the installation, you might want to peruse the
 following.</p>
@@ -246,8 +246,8 @@ compile and run ONE of the low-order models, you should be able to
 compile and run ANY of the low-order models. For this reason, we
 can focus on the Lorenz `63 model. Subsequently, the only
 directories with files to be modified to check the installation
-are: &nbsp;<em class="file">DART/mkmf</em>, &nbsp;<em class=
-"file">DART/models/lorenz_63/work</em>, and &nbsp;<em class=
+are:  <em class="file">DART/mkmf</em>,  <em class=
+"file">DART/models/lorenz_63/work</em>, and  <em class=
 "file">DART/matlab</em> (but only for analysis).</p>
 <!--==================================================================-->
 <a name="customizations" id="customizations"></a>
@@ -310,17 +310,20 @@ contents of one of these templates (i.e. <em class=
 "file">mkmf.template.pgf90.ghotiol</em>) is needed: (note that only
 the LAST lines are shown here, the head of the file is just a big
 comment)</p>
-<div class="routine"># Makefile template for PGI f90<br>
-FC = pgf90<br>
-LD = pgf90<br>
-CPPFLAGS =<br>
-LIST = -Mlist<br>
-NETCDF = /contrib/netcdf-3.5.1-cc-c++-pgif90.5.2-4<br>
-FFLAGS = -O0 -Ktrap=fp -pc 64 -I$(NETCDF)/include<br>
-LIBS = -L$(NETCDF)/lib -lnetcdf<br>
-LDFLAGS = $(LIBS)<br>
-<br>
-...<br></div>
+<pre>
+<code>
+# Makefile template for PGI f90
+FC = pgf90
+LD = pgf90
+CPPFLAGS =
+LIST = -Mlist
+NETCDF = /contrib/netcdf-3.5.1-cc-c++-pgif90.5.2-4
+FFLAGS = -O0 -Ktrap=fp -pc 64 -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdf
+LDFLAGS = $(LIBS)
+...
+</code>
+</pre>
 <p>Essentially, each of the lines defines some part of the
 resulting <em class="file">Makefile</em>. Since <em class=
 "program">make</em> is particularly good at sorting out
@@ -331,7 +334,6 @@ most likely to need site-specific changes start with <em class=
 "code">FFLAGS</em> and <em class="code">NETCDF</em>, which indicate
 where to look for the netCDF F90 modules and the location of the
 netCDF library and modules.</p>
-<a href="netCDF"></a>
 <h4 class="indent2">NETCDF</h4>
 <p class="indent1">Modifying the <em class="code">NETCDF</em> value
 should be relatively straightforward.<br>
@@ -341,7 +343,6 @@ installation containing <em class="file">netcdf.mod</em> and
 "code">NETCDF</em> variable will be used by the <em class=
 "code">FFLAGS, LIBS,</em> and <em class="code">LDFLAGS</em>
 variables.<br></p>
-<a href="fflags"></a>
 <h4 class="indent2">FFLAGS</h4>
 <p class="indent1">Each compiler has different compile flags, so
 there is really no way to exhaustively cover this other than to say
@@ -375,7 +376,9 @@ L63 work directory and list the contents:</p>
 <div class="unix">cd DART/models/lorenz_63/work<br>
 ls -1</div>
 <p>With the result:</p>
-<pre>filter_ics
+<pre>
+<code>
+filter_ics
 filter_restart
 input.nml
 mkmf_create_fixed_network_seq
@@ -404,7 +407,9 @@ Posterior_Diag.nc
 Prior_Diag.nc
 set_def.out
 True_State.nc
-workshop_setup.csh</pre>
+workshop_setup.csh
+</code>
+</pre>
 <p>There are six <em class="file">mkmf_</em><em class=
 "italic">xxxxxx</em> files for the programs <em class=
 "program">preprocess</em>, <em class=
@@ -459,11 +464,15 @@ will use the values in <em class="file">input.nml</em>. <em class=
 supposed to build already exist. For this reason, it is necessary
 to remove a couple files (if they exist) before you run the
 preprocessor. It is just a good habit to develop.</p>
-<div class="unix">\rm -f ../../../obs_def/obs_def_mod.f90<br>
-\rm -f ../../../obs_kind/obs_kind_mod.f90<br>
-./preprocess<br>
-ls -l ../../../obs_def/obs_def_mod.f90<br>
-ls -l ../../../obs_kind/obs_kind_mod.f90<br></div>
+<pre>
+<code>
+\rm -f ../../../obs_def/obs_def_mod.f90
+\rm -f ../../../obs_kind/obs_kind_mod.f90
+./preprocess
+ls -l ../../../obs_def/obs_def_mod.f90
+ls -l ../../../obs_kind/obs_kind_mod.f90
+</code>
+</pre>
 <p>This created <em class=
 "file">../../../obs_def/obs_def_mod.f90</em> from <em class=
 "file">../../../obs_kind/DEFAULT_obs_kind_mod.F90</em> and several
@@ -476,23 +485,28 @@ in the work directory, as some of these are undoubtedly needed by
 the build of the other DART components. You can proceed to create
 the other five programs needed to work with L63 in DART as
 follows:</p>
-<div class="unix">csh mkmf_create_obs_sequence<br>
-make<br>
-csh mkmf_create_fixed_network_seq<br>
-make<br>
-csh mkmf_perfect_model_obs<br>
-make<br>
-csh mkmf_filter<br>
-make<br>
-csh mkmf_obs_diag<br>
-make</div>
-<br>
+<pre>
+<code>
+csh mkmf_create_obs_sequence
+make
+csh mkmf_create_fixed_network_seq
+make
+csh mkmf_perfect_model_obs
+make
+csh mkmf_filter
+make
+csh mkmf_obs_diag
+make
+</code>
+</pre>
+
 <p>The result (hopefully) is that six executables now reside in
 your work directory. The most common problem is that the netCDF
 libraries and include files (particularly <em class=
 "file">typesizes.mod</em>) are not found. Edit the <em class=
 "file">DART/mkmf/mkmf.template</em>, recreate the <em class=
 "file">Makefile</em>, and try again.</p>
+
 <table border="0" cellpadding="1" width="100%">
 <tr>
 <th>program</th>
@@ -637,87 +651,90 @@ defines the single identity observation of the first state variable
 of the L63 model. The following is a screenshot (much of the
 verbose logging has been left off for clarity), the user input
 looks <em class="input">like this</em>.</p>
-<div class="unix">
+
 <pre>
-[unixprompt]$ <em class="input">./create_obs_sequence</em>
- Initializing the utilities module.
- Trying to read from unit           10
- Trying to open file dart_log.out
+<code>
+[unixprompt]$ ./create_obs_sequence
+Initializing the utilities module.
+Trying to read from unit           10
+Trying to open file dart_log.out
+
+Registering module :
+$source: /home/dart/CVS.REPOS/DART/utilities/utilities_mod.f90,v $
+$revision: 1.18 $
+$date: 2004/06/29 15:16:40 $
+Registration complete.
+
+&amp;UTILITIES_NML
+TERMLEVEL= 2,LOGFILENAME=dart_log.out                                          
+                                                                           
+/
+
+Registering module :
+$source: /home/dart/CVS.REPOS/DART/obs_sequence/create_obs_sequence.f90,v $
+$revision: 1.18 $
+$date: 2004/05/24 15:41:46 $
+Registration complete.
+
+{ ... }
+
+Input upper bound on number of observations in sequence
+10
  
- Registering module :
- $source: /home/dart/CVS.REPOS/DART/utilities/utilities_mod.f90,v $
- $revision: 1.18 $
- $date: 2004/06/29 15:16:40 $
- Registration complete.
- 
- &amp;UTILITIES_NML
- TERMLEVEL= 2,LOGFILENAME=dart_log.out                                          
-                                                                            
- /
- 
- Registering module :
- $source: /home/dart/CVS.REPOS/DART/obs_sequence/create_obs_sequence.f90,v $
- $revision: 1.18 $
- $date: 2004/05/24 15:41:46 $
- Registration complete.
+Input number of copies of data (0 for just a definition)
+0
 
- { ... }
+Input number of quality control values per field (0 or greater)
+0
 
- Input upper bound on number of observations in sequence
-<em class="input">10</em>
- 
- Input number of copies of data (0 for just a definition)
-<em class="input">0</em>
+Input a -1 if there are no more obs 
+0
 
- Input number of quality control values per field (0 or greater)
-<em class="input">0</em>
+Registering module :
+$source$
+$revision: 3169 $
+$date: 2007-12-07 16:40:53 -0700 (Fri, 07 Dec 2007) $
+Registration complete.
 
- input a -1 if there are no more obs 
-<em class="input">0</em>
 
- Registering module :
- $source$
- $revision: 3169 $
- $date: 2007-12-07 16:40:53 -0700 (Fri, 07 Dec 2007) $
- Registration complete.
- 
- 
- Registering module :
- $source$
- $revision: 3169 $
- $date: 2007-12-07 16:40:53 -0700 (Fri, 07 Dec 2007) $
- Registration complete.
- 
- initialize_module obs_kind_nml values are
- 
- -------------- ASSIMILATE_THESE_OBS_TYPES --------------
- RAW_STATE_VARIABLE
- -------------- EVALUATE_THESE_OBS_TYPES --------------
- ------------------------------------------------------
- 
-      Input -1 * state variable index for identity observations
-      OR input the name of the observation kind from table below:
-      OR input the integer index, BUT see documentation...
-                 1 RAW_STATE_VARIABLE
+Registering module :
+$source$
+$revision: 3169 $
+$date: 2007-12-07 16:40:53 -0700 (Fri, 07 Dec 2007) $
+Registration complete.
 
-<em class="input">-1</em>
+initialize_module obs_kind_nml values are
 
- input time in days and seconds
-<em class="input">1 0</em>
+-------------- ASSIMILATE_THESE_OBS_TYPES --------------
+RAW_STATE_VARIABLE
+-------------- EVALUATE_THESE_OBS_TYPES --------------
+------------------------------------------------------
 
- Input error variance for this observation definition
-<em class="input">1000000</em>
+   Input -1 * state variable index for identity observations
+   OR input the name of the observation kind from table below:
+   OR input the integer index, BUT see documentation...
+               1 RAW_STATE_VARIABLE
 
- input a -1 if there are no more obs 
-<em class="input">-1</em>
+-1
 
- Input filename for sequence (  set_def.out   usually works well)
-<em class="input"> set_def.out </em>
- write_obs_seq  opening formatted file set_def.out
- write_obs_seq  closed file set_def.out
-</pre></div>
-<h4 class="indent1">1.2 Create an observation sequence
-definition.</h4>
+Input time in days and seconds
+1 0
+
+Input error variance for this observation definition
+1000000
+
+Input a -1 if there are no more obs 
+-1
+
+Input filename for sequence (  set_def.out   usually works well)
+set_def.out 
+write_obs_seq  opening formatted file set_def.out
+write_obs_seq  closed file set_def.out
+</code>
+</pre>
+
+<h4 class="indent1">1.2 Create an observation sequence definition.</h4>
+
 <p><em class="program">create_fixed_network_seq</em> creates an
 'observation sequence definition' by extending the 'observation set
 definition' with the temporal attributes of the observations.<br>
@@ -741,32 +758,33 @@ observation values present in this file. Just an observation type,
 location, time and the error characteristics. We are going to
 populate the observation sequence with the <em class=
 "program">perfect_model_obs</em> program.</p>
-<div class="unix">
+
 <pre>
-[unixprompt]$ <em class="input">./create_fixed_network_seq</em>
+<code>
+[unixprompt]$ ./create_fixed_network_seq
 
- ...
+...
 
- Registering module :
- $source: /home/dart/CVS.REPOS/DART/obs_sequence/obs_sequence_mod.f90,v $
- $revision: 1.31 $
- $date: 2004/06/29 15:04:37 $
- Registration complete.
- 
- Input filename for network definition sequence (usually  set_def.out  )
-<em class="input">set_def.out</em>
+Registering module :
+$source: /home/dart/CVS.REPOS/DART/obs_sequence/obs_sequence_mod.f90,v $
+$revision: 1.31 $
+$date: 2004/06/29 15:04:37 $
+Registration complete.
 
- ...
+Input filename for network definition sequence (usually  set_def.out  )
+set_def.out
 
- To input a regularly repeating time sequence enter 1
- To enter an irregular list of times enter 2
-<em class="input">1</em>
- Input number of observations in sequence
-<em class="input">1000</em>
- Input time of initial ob in sequence in days and seconds
-<em class="input">1, 0</em>
- Input period of obs in days and seconds
-<em class="input">1, 0</em>
+...
+
+To input a regularly repeating time sequence enter 1
+To enter an irregular list of times enter 2
+1
+Input number of observations in sequence
+1000
+Input time of initial ob in sequence in days and seconds
+1, 0
+Input period of obs in days and seconds
+1, 0
            1
            2
            3
@@ -776,10 +794,12 @@ populate the observation sequence with the <em class=
          999
         1000
 What is output file name for sequence (  obs_seq.in   is recommended )
-<em class="input">obs_seq.in</em>
- write_obs_seq  opening formatted file obs_seq.in
- write_obs_seq closed file [blah blah blah]/work/obs_seq.in
-</pre></div>
+obs_seq.in
+write_obs_seq  opening formatted file obs_seq.in
+write_obs_seq closed file [blah blah blah]/work/obs_seq.in
+</code>
+</pre>
+
 <h4>1.3 Initialize the model onto the attractor.</h4>
 <p><em class="program">perfect_model_obs</em> can now advance the
 arbitrary initial state for 24,000 timesteps to move it onto the
@@ -798,75 +818,78 @@ rename and edit the namelist file for <em class=
 "file">input.nml.perfect_model_obs_default</em> to <em class=
 "file">input.nml</em> and edit it to look like the following: (just
 worry about the highlighted stuff)</p>
-<div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = <em class=
-"changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1 /<br>
-<br>
-&amp;ensemble_manager_nml<br>
-&nbsp;&nbsp;&nbsp;in_core = .true.,<br>
-&nbsp;&nbsp;&nbsp;single_restart_file_in = .true.,<br>
-&nbsp;&nbsp;&nbsp;single_restart_file_out = .true. /<br>
-<br>
-&amp;assim_tools_nml<br>
-&nbsp;&nbsp;&nbsp;filter_kind = 1,<br>
-&nbsp;&nbsp;&nbsp;cutoff = 0.2,<br>
-&nbsp;&nbsp;&nbsp;sort_obs_inc = .false.,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = -1.0,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate_sd = 0.05,<br>
-&nbsp;&nbsp;&nbsp;sd_lower_bound = 0.05,<br>
-&nbsp;&nbsp;&nbsp;deterministic_cov_inflate = .true.,<br>
-&nbsp;&nbsp;&nbsp;start_from_assim_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;assim_restart_in_file_name =
-'assim_tools_ics',<br>
-&nbsp;&nbsp;&nbsp;assim_restart_out_file_name =
-'assim_tools_restart',<br>
-&nbsp;&nbsp;&nbsp;do_parallel = 0,<br>
-&nbsp;&nbsp;&nbsp;num_domains = 1<br>
-&nbsp;&nbsp;&nbsp;parallel_command = "./assim_filter.csh",<br>
-&nbsp;&nbsp;&nbsp;spread_restoration = .false.,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate_upper_bound = 10000000.0,<br>
-&nbsp;&nbsp;&nbsp;internal_outlier_threshold = -1.0 /<br>
-<br>
-&amp;cov_cutoff_nml<br>
-&nbsp;&nbsp;&nbsp;select_localization = 1 /<br>
-<br>
-&amp;reg_factor_nml<br>
-&nbsp;&nbsp;&nbsp;select_regression = 1,<br>
-&nbsp;&nbsp;&nbsp;input_reg_file = "time_mean_reg"<br>
-&nbsp;&nbsp;&nbsp;save_reg_diagnostics = .false.,<br>
-&nbsp;&nbsp;&nbsp;reg_diagnostics_file = 'reg_diagnostics' /<br>
-<br>
-&amp;obs_sequence_nml<br>
-&nbsp;&nbsp;&nbsp;write_binary_obs_sequence = .false. /<br>
-<br>
-&amp;obs_kind_nml<br>
-&nbsp;&nbsp;&nbsp;assimilate_these_obs_types = <em class=
-"changed">'RAW_STATE_VARIABLE' /</em><br>
-<br>
-&amp;assim_model_nml<br>
-&nbsp;&nbsp;&nbsp;write_binary_restart_files = .true. /<br>
-<br>
-&amp;model_nml<br>
-&nbsp;&nbsp;&nbsp;sigma = 10.0,<br>
-&nbsp;&nbsp;&nbsp;r = 28.0,<br>
-&nbsp;&nbsp;&nbsp;b = 2.6666666666667,<br>
-&nbsp;&nbsp;&nbsp;deltat = 0.01,<br>
-&nbsp;&nbsp;&nbsp;time_step_days = 0,<br>
-&nbsp;&nbsp;&nbsp;time_step_seconds = 3600 /<br>
-<br>
-&amp;utilities_nml<br>
-&nbsp;&nbsp;&nbsp;TERMLEVEL = 1<br>
-&nbsp;&nbsp;&nbsp;logfilename = 'dart_log.out' /<br></div>
+
+<pre>
+<code>
+&amp;perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .false.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1 /
+
+&amp;ensemble_manager_nml
+   in_core = .true.,
+   single_restart_file_in = .true.,
+   single_restart_file_out = .true. /
+
+&amp;assim_tools_nml
+   filter_kind = 1,
+   cutoff = 0.2,
+   sort_obs_inc = .false.,
+   cov_inflate = -1.0,
+   cov_inflate_sd = 0.05,
+   sd_lower_bound = 0.05,
+   deterministic_cov_inflate = .true.,
+   start_from_assim_restart = .false.,
+   assim_restart_in_file_name =
+'assim_tools_ics',
+   assim_restart_out_file_name =
+'assim_tools_restart',
+   do_parallel = 0,
+   num_domains = 1
+   parallel_command = "./assim_filter.csh",
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 10000000.0,
+   internal_outlier_threshold = -1.0 /
+
+&amp;cov_cutoff_nml
+   select_localization = 1 /
+
+&amp;reg_factor_nml
+   select_regression = 1,
+   input_reg_file = "time_mean_reg"
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = 'reg_diagnostics' /
+
+&amp;obs_sequence_nml
+   write_binary_obs_sequence = .false. /
+
+&amp;obs_kind_nml
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE' /
+
+&amp;assim_model_nml
+   write_binary_restart_files = .true. /
+
+&amp;model_nml
+   sigma = 10.0,
+   r = 28.0,
+   b = 2.6666666666667,
+   deltat = 0.01,
+   time_step_days = 0,
+   time_step_seconds = 3600 /
+
+&amp;utilities_nml
+   TERMLEVEL = 1
+   logfilename = 'dart_log.out' /
+</code>
+</pre>
 <br>
 For the moment, only two namelists warrant explanation. Each
 namelists is covered in detail in the html files accompanying the
@@ -975,19 +998,24 @@ the end of the first 24,000 steps to the end of an additional
 24,000 steps and place the final state in <em class=
 "file">perfect_restart</em>. The rest of the namelists in
 <em class="file">input.nml</em> should remain unchanged.</p>
-<div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = <em class=
-"changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1 /<br></div>
+
+<pre>
+<code>
+&amp;perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1
+/
+</code>
+</pre>
 <div class="unix">cp perfect_restart perfect_ics<br>
 perfect_model_obs</div>
 <p class="indent1">A <em class="file">True_State.nc</em> file is
@@ -1006,101 +1034,103 @@ hurt anything. In fact, I generally create a single <em class=
 simply copied the filter namelist block from <em class=
 "file">input.nml.filter_default</em> and inserted it into our
 <em class="file">input.nml</em> for the following example.</p>
-<div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1 /<br>
-<br>
-&amp;filter_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;ens_size = <em class="changed">100</em>,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = 1.0,<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = <em class=
-"changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_in_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_out_name = "obs_seq.final",<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = <em class=
-"changed">"perfect_ics"</em>,<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_obs_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_obs_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;num_output_state_members = <em class=
-"changed">20</em>,<br>
-&nbsp;&nbsp;&nbsp;num_output_obs_members = <em class=
-"changed">20</em>,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1,<br>
-&nbsp;&nbsp;&nbsp;num_groups = 1,<br>
-&nbsp;&nbsp;&nbsp;outlier_threshold = -1.0 /<br>
-<br>
-&amp;ensemble_manager_nml<br>
-&nbsp;&nbsp;&nbsp;in_core = .true.,<br>
-&nbsp;&nbsp;&nbsp;single_restart_file_in = .true.,<br>
-&nbsp;&nbsp;&nbsp;single_restart_file_out = .true. /<br>
-<br>
-&amp;assim_tools_nml<br>
-&nbsp;&nbsp;&nbsp;filter_kind = 1,<br>
-&nbsp;&nbsp;&nbsp;cutoff = 0.2,<br>
-&nbsp;&nbsp;&nbsp;sort_obs_inc = .false.,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = -1.0,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate_sd = 0.05,<br>
-&nbsp;&nbsp;&nbsp;sd_lower_bound = 0.05,<br>
-&nbsp;&nbsp;&nbsp;deterministic_cov_inflate = .true.,<br>
-&nbsp;&nbsp;&nbsp;start_from_assim_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;assim_restart_in_file_name =
-'assim_tools_ics',<br>
-&nbsp;&nbsp;&nbsp;assim_restart_out_file_name =
-'assim_tools_restart',<br>
-&nbsp;&nbsp;&nbsp;do_parallel = 0,<br>
-&nbsp;&nbsp;&nbsp;num_domains = 1<br>
-&nbsp;&nbsp;&nbsp;parallel_command = "./assim_filter.csh",<br>
-&nbsp;&nbsp;&nbsp;spread_restoration = .false.,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate_upper_bound = 10000000.0,<br>
-&nbsp;&nbsp;&nbsp;internal_outlier_threshold = -1.0 /<br>
-<br>
-&amp;cov_cutoff_nml<br>
-&nbsp;&nbsp;&nbsp;select_localization = 1 /<br>
-<br>
-&amp;reg_factor_nml<br>
-&nbsp;&nbsp;&nbsp;select_regression = 1,<br>
-&nbsp;&nbsp;&nbsp;input_reg_file = "time_mean_reg"<br>
-&nbsp;&nbsp;&nbsp;save_reg_diagnostics = .false.,<br>
-&nbsp;&nbsp;&nbsp;reg_diagnostics_file = 'reg_diagnostics' /<br>
-<br>
-&amp;obs_sequence_nml<br>
-&nbsp;&nbsp;&nbsp;write_binary_obs_sequence = .false. /<br>
-<br>
-&amp;obs_kind_nml<br>
-&nbsp;&nbsp;&nbsp;assimilate_these_obs_types = 'RAW_STATE_VARIABLE'
-/<br>
-<br>
-&amp;assim_model_nml<br>
-&nbsp;&nbsp;&nbsp;write_binary_restart_files = .true. /<br>
-<br>
-&amp;model_nml<br>
-&nbsp;&nbsp;&nbsp;sigma = 10.0,<br>
-&nbsp;&nbsp;&nbsp;r = 28.0,<br>
-&nbsp;&nbsp;&nbsp;b = 2.6666666666667,<br>
-&nbsp;&nbsp;&nbsp;deltat = 0.01,<br>
-&nbsp;&nbsp;&nbsp;time_step_days = 0,<br>
-&nbsp;&nbsp;&nbsp;time_step_seconds = 3600 /<br>
-<br>
-&amp;utilities_nml<br>
-&nbsp;&nbsp;&nbsp;TERMLEVEL = 1<br>
-&nbsp;&nbsp;&nbsp;logfilename = 'dart_log.out' /<br></div>
+
+<code>
+<pre>
+&amp;perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1 /
+
+&amp;filter_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   ens_size = 100,
+   cov_inflate = 1.0,
+   start_from_restart = .false.,
+   output_restart = .true.,
+   obs_sequence_in_name = "obs_seq.out",
+   obs_sequence_out_name = "obs_seq.final",
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "filter_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   output_obs_ens_mean = .true.,
+   output_obs_ens_spread = .true.,
+   num_output_state_members = 20,
+   num_output_obs_members = 20,
+   output_interval = 1,
+   num_groups = 1,
+   outlier_threshold = -1.0 /
+
+
+&amp;ensemble_manager_nml
+   in_core = .true.,
+   single_restart_file_in = .true.,
+   single_restart_file_out = .true. /
+
+&amp;assim_tools_nml
+   filter_kind = 1,
+   cutoff = 0.2,
+   sort_obs_inc = .false.,
+   cov_inflate = -1.0,
+   cov_inflate_sd = 0.05,
+   sd_lower_bound = 0.05,
+   deterministic_cov_inflate = .true.,
+   start_from_assim_restart = .false.,
+   assim_restart_in_file_name =
+'assim_tools_ics',
+   assim_restart_out_file_name =
+'assim_tools_restart',
+   do_parallel = 0,
+   num_domains = 1
+   parallel_command = "./assim_filter.csh",
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 10000000.0,
+   internal_outlier_threshold = -1.0 /
+
+&amp;cov_cutoff_nml
+   select_localization = 1 /
+
+&amp;reg_factor_nml
+   select_regression = 1,
+   input_reg_file = "time_mean_reg"
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = 'reg_diagnostics' /
+
+&amp;obs_sequence_nml
+   write_binary_obs_sequence = .false. /
+
+&amp;obs_kind_nml
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'
+/
+
+&amp;assim_model_nml
+   write_binary_restart_files = .true. /
+
+&amp;model_nml
+   sigma = 10.0,
+   r = 28.0,
+   b = 2.6666666666667,
+   deltat = 0.01,
+   time_step_days = 0,
+   time_step_seconds = 3600 /
+
+&amp;utilities_nml
+   TERMLEVEL = 1
+   logfilename = 'dart_log.out' /
+</code>
+</pre>
 <br>
 <p class="indent1">Only the non-obvious(?) entries for <em class=
 "code">filter_nml</em> will be discussed.</p>
@@ -1231,7 +1261,7 @@ greater)</td>
 <td># observe state variable 1</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1248,7 +1278,7 @@ greater)</td>
 <td># observe state variable 2</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1265,7 +1295,7 @@ greater)</td>
 <td># observe state variable 3</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1317,18 +1347,23 @@ true state.</h3>
 <p class="indent1">An observation sequence file is now generated by
 running <em class="program">perfect_model_obs</em> with the
 namelist values (unchanged from step 2):</p>
-<div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1 /<br></div>
+
+<pre><code>
+&amp;perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1 /
+</code>
+</pre>
+
 <p class="indent1">This integrates the model starting from the
 state in <em class="file">perfect_ics</em> for 1000 12-hour
 intervals outputting synthetic observations of the three state
@@ -1338,30 +1373,34 @@ variables every 12 hours and producing a netCDF diagnostic file,
 <h3 class="indent1">5. Filtering.</h3>
 <p class="indent1">Finally, <em class="program">filter</em> can be
 run with its namelist set to:</p>
-<div class="routineIndent1">&amp;filter_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;adv_ens_command = "./advance_ens.csh",<br>
-&nbsp;&nbsp;&nbsp;ens_size = 100,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = 1.0,<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = <em class=
-"changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_in_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_out_name = "obs_seq.final",<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = <em class=
-"changed">"filter_ics"</em>,<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_obs_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_obs_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;num_output_state_members = 20,<br>
-&nbsp;&nbsp;&nbsp;num_output_obs_members = 20,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1,<br>
-&nbsp;&nbsp;&nbsp;num_groups = 1,<br>
-&nbsp;&nbsp;&nbsp;outlier_threshold = -1.0 /<br></div>
+
+<pre>
+<code>
+&amp;filter_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   ens_size = 100,
+   cov_inflate = 1.0,
+   start_from_restart = .true.,
+   output_restart = .true.,
+   obs_sequence_in_name = "obs_seq.out",
+   obs_sequence_out_name = "obs_seq.final",
+   restart_in_file_name = "filter_ics",
+   restart_out_file_name = "filter_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   output_obs_ens_mean = .true.,
+   output_obs_ens_spread = .true.,
+   num_output_state_members = 20,
+   num_output_obs_members = 20,
+   output_interval = 1,
+   num_groups = 1,
+   outlier_threshold = -1.0 /
+</code>
+</pre>
+
 <p class="indent1"><em class="program">filter</em> produces two
 output diagnostic files, <em class="file">Prior_Diag.nc</em> which
 contains values of the ensemble mean, ensemble spread, and ensemble

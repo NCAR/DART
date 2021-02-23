@@ -192,7 +192,7 @@ terminating the namelist.</p>
 delete these lines from the namelist, or set them to 0.0, 360.0 and
 -90.0, 90.0.</p>
 <p>The date-time integer arrays in this namelist have the form
-(YYYY,&nbsp;MM,&nbsp;DD,&nbsp;HR,&nbsp;MIN,&nbsp;SEC).</p>
+(YYYY, MM, DD, HR, MIN, SEC).</p>
 <p>The allowable ranges for the region boundaries are: latitude
 [-90.,90], longitude [0.,Inf.]</p>
 <p>You can specify <strong>either</strong> <em class=
@@ -227,14 +227,14 @@ e.g. 'obsdir_001/obs_seq.final' will cause <em class=
 "program">obs_seq_coverage</em> to look for
 'obsdir_002/obs_seq.final', and so on.<br>
 If this is set, <em class="option">obs_sequence_list</em> must be
-set to '&nbsp;'.</td>
+set to ' '.</td>
 </tr>
 <tr>
 <td>obs_sequence_list</td>
 <td>character(len=256)</td>
 <td>Name of an ascii text file which contains a list of one or more
 observation sequence files, one per line. If this is specified,
-<em class="option">obs_sequences</em> must be set to '&nbsp;'. Can
+<em class="option">obs_sequences</em> must be set to ' '. Can
 be created by any method, including sending the output of the 'ls'
 command to a file, a text editor, or another program.</td>
 </tr>
@@ -304,10 +304,10 @@ length of any single forecast.</td>
 <td>integer</td>
 <td>The number of seconds between each verification.
 <ul style="list-style: none;">
-<li>&nbsp;1 h == 3600s</li>
-<li>&nbsp;2 h == 7120s</li>
-<li>&nbsp;3 h == 10800s</li>
-<li>&nbsp;6 h == 21600s</li>
+<li> 1 h == 3600s</li>
+<li> 2 h == 7120s</li>
+<li> 3 h == 10800s</li>
+<li> 6 h == 21600s</li>
 <li>12 h == 43200s</li>
 </ul>
 </td>

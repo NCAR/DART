@@ -242,23 +242,23 @@ latitude.</p>
 <tt>φ<sub>f</sub></tt> that are separated in longitude by
 <tt>Δλ</tt> is<br>
 <br>
-<tt>&nbsp;&nbsp;θ =
+<tt>  θ =
 cos<sup>-1</sup>(sinφ<sub>s</sub>sinφ<sub>f</sub> +
 cosφ<sub>s</sub>cosφ<sub>f</sub>cosΔλ)</tt><br>
 <br>
 Taking the cos of both sides gives<br>
 <br>
-<tt>&nbsp;&nbsp;cosθ = (sinφ<sub>s</sub>sinφ<sub>f</sub> +
+<tt>  cosθ = (sinφ<sub>s</sub>sinφ<sub>f</sub> +
 cosφ<sub>s</sub>cosφ<sub>f</sub>cosΔλ)</tt><br>
 <br>
 Solving for <tt>cosΔλ</tt> gives<br>
 <br>
-<tt>&nbsp;&nbsp;cosΔλ = <sup>(<i>a</i> -
-<i>b</i>&nbsp;sinφ<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i>&nbsp;cosφ<sub>f</sub>)</sub>
+<tt>  cosΔλ = <sup>(<i>a</i> -
+<i>b</i> sinφ<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i> cosφ<sub>f</sub>)</sub>
 =
-<sup><i>a</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;secφ<sub>f</sub>
+<sup><i>a</i></sup><big>/</big><sub><i>c</i></sub> secφ<sub>f</sub>
 -
-<sup><i>b</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;tanφ<sub>f</sub></tt><br>
+<sup><i>b</i></sup><big>/</big><sub><i>c</i></sub> tanφ<sub>f</sub></tt><br>
 
 <br>
 where <tt><i>a</i> = cosθ</tt> , <tt><i>b</i> =
@@ -267,24 +267,24 @@ We want to maximize <tt>Δλ</tt> which implies minimizing
 <tt>cosΔλ</tt> subject to constraints. Taking the derivative with
 respect to <tt>φ<sub>f</sub></tt> gives<br>
 <br>
-<tt>&nbsp;&nbsp;<sup>(<i>d</i>&nbsp;cosΔλ)</sup><big>/</big><sub>(<i>d</i>φ<sub>f</sub>)</sub>
+<tt>  <sup>(<i>d</i> cosΔλ)</sup><big>/</big><sub>(<i>d</i>φ<sub>f</sub>)</sub>
 =
-<sup><i>a</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;secφ<sub>f</sub>&nbsp;tanφ<sub>f</sub>
+<sup><i>a</i></sup><big>/</big><sub><i>c</i></sub> secφ<sub>f</sub> tanφ<sub>f</sub>
 -
-<sup><i>b</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;sec<sup>2</sup>φ<sub>f</sub>
+<sup><i>b</i></sup><big>/</big><sub><i>c</i></sub> sec<sup>2</sup>φ<sub>f</sub>
 = 0</tt><br>
 <br>
 Factoring out <tt>secφ<sub>f</sub></tt> which can never be 0 and
 using the definitions of <tt>sec</tt> and <tt>tan</tt> gives<br>
 <br>
-<tt>&nbsp;&nbsp;<sup>(<i>a</i>&nbsp;sinφ<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i>&nbsp;cosφ<sub>f</sub>)</sub>
+<tt>  <sup>(<i>a</i> sinφ<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i> cosφ<sub>f</sub>)</sub>
 -
-<sup><i>b</i></sup><big>/</big><sub>(<i>c</i>&nbsp;cosφ<sub>f</sub>)</sub>
+<sup><i>b</i></sup><big>/</big><sub>(<i>c</i> cosφ<sub>f</sub>)</sub>
 = 0</tt><br>
 <br>
 Solving in the constrained range from 0 to PI/2 gives<br>
 <br>
-<tt>&nbsp;&nbsp; sinφ<sub>f</sub> =
+<tt>   sinφ<sub>f</sub> =
 <sup><i>b</i></sup><big>/</big><sub><i>a</i></sub> =
 <sup>sinφ<sub>s</sub></sup><big>/</big><sub>cosθ</sub></tt><br>
 <br>
@@ -293,9 +293,9 @@ So knowing base point (<tt>φ<sub>s</sub></tt>,
 distance <tt>θ</tt> we can use the great circle equation to find
 the longitude difference at the greatest separation point<br>
 <br>
-<tt>&nbsp;&nbsp; Δλ = cos<sup>-1</sup><big>(</big><sup>(<i>a</i> -
-(<i>b</i>&nbsp;sinφ<sub>f</sub>))</sup> <big>/</big>
-<sub>(<i>c</i>&nbsp;cosφ<sub>f</sub>)</sub><big>)</big></tt><br>
+<tt>   Δλ = cos<sup>-1</sup><big>(</big><sup>(<i>a</i> -
+(<i>b</i> sinφ<sub>f</sub>))</sup> <big>/</big>
+<sub>(<i>c</i> cosφ<sub>f</sub>)</sub><big>)</big></tt><br>
 <br>
 Note that if the angle between the base point and a pole is less
 than or equal to the central angle, all longitude differences will
@@ -407,128 +407,128 @@ random_seq_mod
 <td><a href="#location_type">location_type</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_close_type">get_close_type</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_location">get_location</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_location">set_location</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#write_location">write_location</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#read_location">read_location</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#interactive_location">interactive_location</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_location_missing">set_location_missing</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#query_location">query_location</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#get_close_maxdist_init">get_close_maxdist_init</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_close_obs_init">get_close_obs_init</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_close_obs">get_close_obs</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_close_obs_destroy">get_close_obs_destroy</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_dist">get_dist</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#LocationDims">LocationDims</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#LocationName">LocationName</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#LocationLName">LocationLName</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#horiz_dist_only">horiz_dist_only</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_is_undef">vert_is_undef</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_is_surface">vert_is_surface</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_is_pressure">vert_is_pressure</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_is_scale_height">vert_is_scale_height</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_is_level">vert_is_level</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_is_height">vert_is_height</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_constants">VERTISUNDEF</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_constants">VERTISSURFACE</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_constants">VERTISLEVEL</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_constants">VERTISPRESSURE</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_constants">VERTISHEIGHT</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#vert_constants">VERTISSCALEHEIGHT</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#equal">operator(==)</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#not_equal">operator(/=)</a></td>
 </tr>
 </table>

@@ -130,11 +130,11 @@ contained in an indented gray box.</div>
 <p>And the contents of a file are enclosed in a box with a
 border:</p>
 <div class="routine">&amp;hypothetical_nml<br>
-&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;output_interval = 1<br>
+  obs_seq_in_file_name = "obs_seq.in",<br>
+  obs_seq_out_file_name = "obs_seq.out",<br>
+  init_time_days = 0,<br>
+  init_time_seconds = 0,<br>
+  output_interval = 1<br>
 &amp;end</div>
 <!--==================================================================-->
 <a name="Installation" id="Installation"></a>
@@ -160,7 +160,7 @@ libraries</a>.</li>
 do not have access to all compilers on all platforms, so there are
 no guarantees. We are interested in your experience building the
 system, so please email me (Tim Hoar)
-thoar&nbsp;'at'&nbsp;ucar&nbsp;'dot'&nbsp;edu (trying to cut down
+thoar 'at' ucar 'dot' edu (trying to cut down
 on the spam).</p>
 <p>After the installation, you might want to peruse the
 following.</p>
@@ -271,9 +271,9 @@ compile and run ONE of the low-order models, you should be able to
 compile and run ANY of the low-order models. For this reason, we
 can focus on the Lorenz `63 model. Subsequently, the only
 directories with files to be modified to check the installation
-are: &nbsp;<em class="file">DART/build_templates</em>,
-&nbsp;<em class="file">DART/models/lorenz_63/work</em>, and
-&nbsp;<em class="file">DART/diagnostics/matlab</em> (but only for
+are:  <em class="file">DART/build_templates</em>,
+ <em class="file">DART/models/lorenz_63/work</em>, and
+ <em class="file">DART/diagnostics/matlab</em> (but only for
 analysis).</p>
 <!--==================================================================-->
 <a name="customizations" id="customizations"></a>
@@ -332,7 +332,7 @@ architecture, or both. This is how you inform the build process of
 the specifics of your system. Our intent is that you copy one that
 is similar to your system into <em class="file">mkmf.template</em>
 and customize it. For the discussion that follows, knowledge of the
-contents of one of these templates (i.e.&nbsp;<em class=
+contents of one of these templates (i.e. <em class=
 "file">mkmf.template.gfortran</em>) is needed. Note that only the
 LAST lines are shown here, the head of the file is just a big
 comment (worth reading, btw).</p>
@@ -1316,7 +1316,7 @@ greater)</td>
 <td># observe state variable 1</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1333,7 +1333,7 @@ greater)</td>
 <td># observe state variable 2</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>
@@ -1350,7 +1350,7 @@ greater)</td>
 <td># observe state variable 3</td>
 </tr>
 <tr>
-<td><em class="input">0 &nbsp; 0</em></td>
+<td><em class="input">0   0</em></td>
 <td># time -- days, seconds</td>
 </tr>
 <tr>

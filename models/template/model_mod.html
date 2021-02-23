@@ -109,73 +109,73 @@ POSSIBLY MANY OTHERS DEPENDING ON MODEL DETAILS
 <td><a href="#get_model_size">get_model_size</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#adv_1step">adv_1step</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_state_meta_data">get_state_meta_data</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#model_interpolate">model_interpolate</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#shortest_time_between_assimilations">shortest_time_between_assimilations</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#static_init_model">static_init_model</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#init_time">init_time</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#init_conditions">init_conditions</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#nc_write_model_atts">nc_write_model_atts</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#nc_write_model_vars">nc_write_model_vars</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#pert_model_copies">pert_model_copies</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_close_obs">get_close_obs</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_close_state">get_close_state</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#convert_vertical_obs">convert_vertical_obs</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#convert_vertical_state">convert_vertical_state</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#read_model_time">read_model_time</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#write_model_time">write_model_time</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#end_model">end_model</a></td>
 </tr>
 </table>
@@ -241,7 +241,7 @@ and it will not be called.)</p>
  <a name="get_state_meta_data" id="get_state_meta_data"></a><br>
 <div class="routine"><em class="call">call get_state_meta_data
 (index_in, location, <em class=
-"optionalcode">[,&nbsp;var_type]</em> )</em>
+"optionalcode">[, var_type]</em> )</em>
 <pre>
 integer,             intent(in)  :: <em class="code">index_in</em>
 type(location_type), intent(out) :: <em class="code">location</em>
@@ -383,7 +383,7 @@ type(time_type), intent(out) :: <em class="code">time</em>
 somehow appropriate for starting up a long integration of the
 model. At present, this is only used if the <em class=
 "program">perfect_model_obs</em> namelist parameter <em class=
-"code">read_input_state_from_file&nbsp;=&nbsp;.false.</em> If this
+"code">read_input_state_from_file = .false.</em> If this
 option should not be used in <em class=
 "program">perfect_model_obs</em>, calling this routine should issue
 a fatal error.</p>
@@ -406,7 +406,7 @@ real(r8), dimension(:), intent(out) :: <em class="code">x</em>
 appropriate initial condition for starting up a long integration of
 the model. At present, this is only used if the <em class=
 "program">perfect_model_obs</em> namelist parameter <em class=
-"code">read_input_state_from_file&nbsp;=&nbsp;.false.</em> If this
+"code">read_input_state_from_file = .false.</em> If this
 option should not be used in <em class=
 "program">perfect_model_obs</em>, calling this routine should issue
 a fatal error.</p>
@@ -466,8 +466,8 @@ be referenced as different domains.</td>
  <a name="nc_write_model_vars" id="nc_write_model_vars"></a><br>
 <div class="routine"><em class="call">call
 nc_write_model_vars(ncFileID, domain_id, state_ens_handle
-<em class="optionalcode">[,&nbsp;memberindex]</em> <em class=
-"optionalcode">[,&nbsp;timeindex]</em>)</em>
+<em class="optionalcode">[, memberindex]</em> <em class=
+"optionalcode">[, timeindex]</em>)</em>
 <pre>
 integer,             intent(in) :: <em class="code">ncFileID</em>
 integer,             intent(in) :: <em class="code">domain_id</em>
@@ -481,7 +481,7 @@ integer, optional,   intent(in) :: <em class=
 <div class="indent1"><!-- Description -->
 <p>This routine may be used to write the model-specific state
 vector (data) to a netCDF file. Only used if <em class=
-"code">model_mod_writes_state_variables&nbsp;=&nbsp;.true.</em><br>
+"code">model_mod_writes_state_variables = .true.</em><br>
 <br>
 Typical sequence for adding new
 dimensions,variables,attributes:</p>
@@ -543,7 +543,7 @@ conditions for spinning up ensembles. If the <em class=
 "code">model_mod</em> does not want to do this, instead allowing
 the default algorithms in <em class="program">filter</em> to take
 effect, <em class=
-"code">interf_provided&nbsp;=&amp;nbps;.false.</em> and the routine
+"code">interf_provided =&amp;nbps;.false.</em> and the routine
 can be trivial. Otherwise, <em class="code">interf_provided</em>
 must be returned as <em class="code">.true.</em></p>
 <table width="100%" border="0" summary="" cellpadding="3">
@@ -574,8 +574,8 @@ on the model-specific implementation.</td>
  <a name="get_close_obs" id="get_close_obs"></a><br>
 <div class="routine"><em class="call">call get_close_obs(gc,
 base_loc, base_type, locs, loc_qtys, loc_types, num_close,
-close_ind <em class="optionalcode">[,&nbsp;dist]
-[,&nbsp;state_handle</em>)</em>
+close_ind <em class="optionalcode">[, dist]
+[, state_handle</em>)</em>
 <pre>
 type(get_close_type),          intent(in)  :: <em class=
 "code">gc</em>
@@ -707,7 +707,7 @@ the state vector about which information is requested.</td>
 <div class="routine"><em class="call">call get_close_state(gc,
 base_loc, base_type, state_loc, state_qtys, state_indx, num_close,
 close_ind <em class=
-"optionalcode">[,&nbsp;dist,&nbsp;state_handle]</em>)</em>
+"optionalcode">[, dist, state_handle]</em>)</em>
 <pre>
 type(get_close_type),          intent(in)    :: <em class=
 "code">gc</em>
@@ -893,7 +893,7 @@ vertical coordinate systems.</td>
 <tr>
 <td valign="top"><em class="code">status</em></td>
 <td>Success or failure of the vertical conversion. If <em class=
-"code">istatus&nbsp;=&nbsp;0</em>, the conversion was a success.
+"code">istatus = 0</em>, the conversion was a success.
 Any other value is a failure.</td>
 </tr>
 </table>
@@ -954,7 +954,7 @@ vertical coordinate systems.</td>
 <tr>
 <td valign="top"><em class="code">status</em></td>
 <td>Success or failure of the vertical conversion. If <em class=
-"code">istatus&nbsp;=&nbsp;0</em>, the conversion was a success.
+"code">istatus = 0</em>, the conversion was a success.
 Any other value is a failure.</td>
 </tr>
 </table>

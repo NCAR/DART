@@ -205,128 +205,128 @@ sort_mod
 <td><a href="#init_ensemble_manager">init_ensemble_manager</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#read_ensemble_restart">read_ensemble_restart</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#write_ensemble_restart">write_ensemble_restart</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_copy">get_copy</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#put_copy">put_copy</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#broadcast_copy">broadcast_copy</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_ensemble_time">set_ensemble_time</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_ensemble_time">get_ensemble_time</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#end_ensemble_manager">end_ensemble_manager</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#duplicate_ens">duplicate_ens</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_my_num_copies">get_my_num_copies</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_my_copies">get_my_copies</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_my_num_vars">get_my_num_vars</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_my_vars">get_my_vars</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_copy_owner_index">get_copy_owner_index</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_var_owner_index">get_var_owner_index</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#all_vars_to_all_copies">all_vars_to_all_copies</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#all_copies_to_all_vars">all_copies_to_all_vars</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#compute_copy_mean">compute_copy_mean</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#compute_copy_mean_sd">compute_copy_mean_sd</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#compute_copy_mean_var">compute_copy_mean_var</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#prepare_to_write_to_vars">prepare_to_write_to_vars</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#prepare_to_write_to_copies">prepare_to_write_to_copies</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#prepare_to_read_from_vars">prepare_to_read_from_vars</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#prepare_to_read_from_copies">prepare_to_read_from_copies</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#prepare_to_update_vars">prepare_to_update_vars</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#prepare_to_update_copies">prepare_to_update_copies</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#print_ens_handle">print_ens_handle</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#map_pe_to_task">map_pe_to_task</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#map_task_to_pe">map_task_to_pe</a></td>
 </tr>
 </table>
@@ -468,8 +468,8 @@ assigned.</td>
 "init_ensemble_manager"></a><br>
 <div class="routine"><em class="call">call
 init_ensemble_manager(ens_handle, num_copies, num_vars <em class=
-"optionalcode">[,&nbsp;distribution_type_in]</em> <em class=
-"optionalcode">[,&nbsp;layout_type]</em>)</em>
+"optionalcode">[, distribution_type_in]</em> <em class=
+"optionalcode">[, layout_type]</em>)</em>
 <pre>
 type(ensemble_type), intent(out) :: <em class=
 "code">ens_handle</em>
@@ -522,8 +522,8 @@ more uniform usage of memory across the nodes.</td>
 <div class="routine"><em class="call">call
 read_ensemble_restart(ens_handle, start_copy, end_copy,
 start_from_restart, file_name <em class=
-"optionalcode">[,&nbsp;init_time]</em> <em class=
-"optionalcode">[,&nbsp;force_single_file]</em>)</em>
+"optionalcode">[, init_time]</em> <em class=
+"optionalcode">[, force_single_file]</em>)</em>
 <pre>
 type(ensemble_type),       intent(inout) :: <em class=
 "code">ens_handle</em>
@@ -601,7 +601,7 @@ which contains all copies.</td>
 "write_ensemble_restart"></a><br>
 <div class="routine"><em class="call">call
 write_ensemble_restart(ens_handle, file_name, start_copy, end_copy
-<em class="optionalcode">[,&nbsp;force_single_file]</em>)</em>
+<em class="optionalcode">[, force_single_file]</em>)</em>
 <pre>
 type(ensemble_type), intent(inout) :: <em class=
 "code">ens_handle</em>
@@ -662,7 +662,7 @@ which contains all copies.</td>
  <a name="get_copy" id="get_copy"></a><br>
 <div class="routine"><em class="call">call get_copy(receiving_pe,
 ens_handle, copy, vars <em class=
-"optionalcode">[,&nbsp;mtime]</em>)</em>
+"optionalcode">[, mtime]</em>)</em>
 <pre>
 integer,                   intent(in)  :: <em class=
 "code">receiving_pe</em>
@@ -717,7 +717,7 @@ PE; vars on all other PEs is unset.</td>
  <a name="put_copy" id="put_copy"></a><br>
 <div class="routine"><em class="call">call put_copy(sending_pe,
 ens_handle, copy, vars <em class=
-"optionalcode">[,&nbsp;mtime]</em>)</em>
+"optionalcode">[, mtime]</em>)</em>
 <pre>
 integer,                   intent(in)    :: <em class=
 "code">sending_pe</em>
@@ -925,7 +925,7 @@ the vars array will be replicated.</td>
 copied.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">duplicate_time &nbsp;</em></td>
+<td valign="top"><em class="code">duplicate_time  </em></td>
 <td>If true, copy the times from ens1 into ens2, else leave ens2
 times unchanged.</td>
 </tr>
@@ -1064,7 +1064,7 @@ cellpadding="3">
 variables of a subset of copies.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">owners_index &nbsp;</em></td>
+<td valign="top"><em class="code">owners_index  </em></td>
 <td>Local storage index for this copy on the owning process.</td>
 </tr>
 </table>
@@ -1096,7 +1096,7 @@ cellpadding="3">
 all copies of subset of variables.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">owners_index &nbsp;</em></td>
+<td valign="top"><em class="code">owners_index  </em></td>
 <td>Local storage index for this variable on the owning
 process.</td>
 </tr>
@@ -1572,54 +1572,54 @@ cellpadding="3">
 <h2>PRIVATE INTERFACES</h2>
 <table summary='private routine list'>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#assign_tasks_to_pes">assign_tasks_to_pes</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#calc_tasks_on_each_node">calc_tasks_on_each_node</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#create_pe_to_task_list">create_pe_to_task_list</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_copy_list">get_copy_list</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_max_num_copies">get_max_num_copies</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_max_num_vars">get_max_num_vars</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_var_list">get_var_list</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#round_robin">round_robin</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#set_up_ens_distribution">set_up_ens_distribution</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#simple_layout">simple_layout</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#sort_task_list">sort_task_list</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#timestamp_message">timestamp_message</a></td>
 </tr>
 </table>
@@ -1778,8 +1778,8 @@ cellpadding="3">
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
  <a name="timestamp_message" id="timestamp_message"></a><br>
 <div class="routine"><em class="call">call timestamp_message(msg
-<em class="optionalcode">[,&nbsp;sync]</em> <em class=
-"optionalcode">[,&nbsp;alltasks]</em>)</em>
+<em class="optionalcode">[, sync]</em> <em class=
+"optionalcode">[, alltasks]</em>)</em>
 <pre>
 character(len=*), intent(in)           :: <em class="code">msg</em>
 logical,          intent(in), optional :: <em class=

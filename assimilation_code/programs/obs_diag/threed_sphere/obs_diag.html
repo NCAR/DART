@@ -56,7 +56,7 @@ Similarly, the forward observation operator is applied AFTER any
 posterior inflation. This has always been the case. For a detailed
 look at the relationship between the observation operators and
 inflation, please look at the <a href=
-"../../filter/filter.html#DetailedProgramFlow">Detailed&nbsp;Program&nbsp;Execution
+"../../filter/filter.html#DetailedProgramFlow">Detailed Program Execution
 Flow</a> section of <a href=
 "../../filter/filter.html">filter.html</a>.<br>
 <br>
@@ -130,7 +130,7 @@ center were created by several Matlab® scripts that query the
 and <a href=
 "../../../../diagnostics/matlab/plot_profile.m">plot_profile.m</a>.
 Both of these takes as input a file name and a 'quantity' to plot
-('rmse','spread','totalspread',&nbsp;...) and exhaustively plots
+('rmse','spread','totalspread', ...) and exhaustively plots
 the quantity (for every variable, every level, every region) in a
 single matlab figure window - and creates a series of .ps files
 with multiple pages for each of the figures. The directory gets
@@ -202,13 +202,13 @@ horizontal wind is defined as the sum of the spreads of the U and V
 components.</td>
 </tr>
 <tr>
-<td valign="top"><b>totalspread&nbsp;&nbsp;&nbsp;</b></td>
+<td valign="top"><b>totalspread   </b></td>
 <td>The total standard deviation of the estimate. We pool the
 ensemble variance of the observation plus the observation error
 variance and take the square root.</td>
 </tr>
 <tr>
-<td valign="top"><b>NbadDARTQC&nbsp;&nbsp;&nbsp;</b></td>
+<td valign="top"><b>NbadDARTQC   </b></td>
 <td>the number of observations that had a DART QC value (&gt; 1 for
 a prior, &gt; 3 for a posterior)</td>
 </tr>
@@ -470,7 +470,7 @@ empty string ... i.e. <em class="code">''</em>.</p>
 <td>character(len=256), dimension(100)</td>
 <td>An array of names of observation sequence files. These may be
 relative or absolute filenames. If this is set, <em class=
-"code">obs_sequence_list</em> must be set to '&nbsp;'&nbsp;(empty
+"code">obs_sequence_list</em> must be set to ' ' (empty
 string).</td>
 </tr>
 <tr>
@@ -478,11 +478,11 @@ string).</td>
 <td>character(len=256)</td>
 <td>Name of an ascii text file which contains a list of one or more
 observation sequence files, one per line. If this is specified,
-<em class="code">obs_sequence_name</em> must be set to '&nbsp;'.
+<em class="code">obs_sequence_name</em> must be set to ' '.
 Can be created by any method, including sending the output of the
 'ls' command to a file, a text editor, or another program. If this
 is set, <em class="code">obs_sequence_name</em> must be set to
-'&nbsp;' (empty string).</td>
+' ' (empty string).</td>
 </tr>
 <tr>
 <td>first_bin_center</td>
@@ -880,7 +880,7 @@ indicate that a different set of criteria were used to calculate
 the metrics. The individual variables also have an extra attribute.
 In the following output, <em class=
 "file">input.nml:obs_diag_nml:trusted_obs</em> was set: <em class=
-"mono">trusted_obs&nbsp;=&nbsp;'RADIOSONDE_TEMPERATURE',&nbsp;'RADIOSONDE_U_WIND_COMPONENT'</em></p>
+"mono">trusted_obs = 'RADIOSONDE_TEMPERATURE', 'RADIOSONDE_U_WIND_COMPONENT'</em></p>
 <pre>
   ...
         float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, plevel, region) ;
@@ -920,12 +920,12 @@ observations 'possible' and 'used' still reflects what was used
 rejected by the outlier threshhold is not explicilty plotted. To
 reinforce this, the text for the observation axis on all graphics
 has been changed to <em class=
-"mono">"o=possible,&nbsp;*=assimilated"</em>. In short, the
+"mono">"o=possible, *=assimilated"</em>. In short, the
 distance between the number of observations possible and the number
 assimilated still reflects the number of observations rejected by
 the outlier threshhold and the number of failed forward observation
 operators.</td>
-<td>&nbsp;&nbsp;<a href=
+<td>  <a href=
 "../../../../docs/images/RAD_T_trusted_bias_evolution.png"><img src="../../../../docs/images/RAD_T_trusted_bias_evolution.png"
 width="600"></a></td>
 </tr>
@@ -985,7 +985,7 @@ containing a list of files (in <em class=
 "code">obs_sequence_list</em>), or you may specify a list of files
 via <em class="code">obs_sequence_name</em>.</p>
 <h3 class="indent1">Example: observation sequence files
-spanning&nbsp;30&nbsp;days.</h3>
+spanning 30 days.</h3>
 <table width="95%">
 <tr>
 <td>In this example, we will be accumulating metrics for 30 days
@@ -998,7 +998,7 @@ to explore the assimilation. By way of an example, we will NOT be
 using outlier observations in the rank histogram. Lets presume that
 all your <em class="file">obs_seq.final</em> files are in
 alphabetically-nice directories:</td>
-<td>&nbsp;&nbsp;<img src=
+<td>  <img src=
 "../../../../docs/images/RankHistogram_matlab.png" width=
 "200"></td>
 </tr>

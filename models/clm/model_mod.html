@@ -275,52 +275,52 @@ vector. The following table explains in detail each entry for
 'clm_variables description'>
 <tbody valign="top">
 <tr>
-<td><strong>Column&nbsp;1</strong></td>
-<td>Variable&nbsp;name&nbsp;&nbsp;</td>
+<td><strong>Column 1</strong></td>
+<td>Variable name  </td>
 <td>This is the CLM variable name as it appears in the CLM netCDF
 file.</td>
 </tr>
 <tr>
-<td><strong>Column&nbsp;2</strong></td>
-<td>DART&nbsp;KIND</td>
+<td><strong>Column 2</strong></td>
+<td>DART KIND</td>
 <td>This is the character string of the corresponding DART
 KIND.</td>
 </tr>
 <tr>
-<td><strong>Column&nbsp;3</strong></td>
+<td><strong>Column 3</strong></td>
 <td>minimum</td>
 <td>If the variable is to be updated in the CLM restart file, this
 specifies the minimum value. If set to 'NA', there is no minimum
 value.</td>
 </tr>
 <tr>
-<td><strong>Column&nbsp;4</strong></td>
+<td><strong>Column 4</strong></td>
 <td>maximum</td>
 <td>If the variable is to be updated in the CLM restart file, this
 specifies the maximum value. If set to 'NA', there is no maximum
 value.</td>
 </tr>
 <tr>
-<td><strong>Column&nbsp;5</strong></td>
+<td><strong>Column 5</strong></td>
 <td>filename</td>
 <td>This specifies which file should be used to obtain the
 variable.<br>
 <em class=
-"code">'restart'</em>&nbsp;=&gt;&nbsp;clm_restart_filename<br>
+"code">'restart'</em> =&gt; clm_restart_filename<br>
 <em class=
-"code">'history'</em>&nbsp;=&gt;&nbsp;clm_history_filename<br>
+"code">'history'</em> =&gt; clm_history_filename<br>
 <em class=
-"code">'vector'&nbsp;</em>&nbsp;=&gt;&nbsp;clm_vector_history_filename</td>
+"code">'vector' </em> =&gt; clm_vector_history_filename</td>
 </tr>
 <tr>
-<td><strong>Column&nbsp;6</strong></td>
+<td><strong>Column 6</strong></td>
 <td>update</td>
 <td>If the variable comes from the restart file, it may be updated
 after the assimilation.<br>
 <em class=
-"code">'UPDATE'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</em>&nbsp;=&gt;
+"code">'UPDATE'      </em> =&gt;
 the variable in the restart file is updated.<br>
-<em class="code">'NO_COPY_BACK'</em>&nbsp;=&gt; the variable in the
+<em class="code">'NO_COPY_BACK'</em> =&gt; the variable in the
 restart file remains unchanged.<br></td>
 </tr>
 </tbody>
@@ -604,64 +604,64 @@ random_seq_mod
 <td><a href="#get_model_size">get_model_size</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#adv_1step">adv_1step</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_state_meta_data">get_state_meta_data</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#model_interpolate">model_interpolate</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_model_time_step">get_model_time_step</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#static_init_model">static_init_model</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#end_model">end_model</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#init_time">init_time</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#init_conditions">init_conditions</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#nc_write_model_atts">nc_write_model_atts</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#nc_write_model_vars">nc_write_model_vars</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#pert_model_state">pert_model_state</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#get_close_maxdist_init">get_close_maxdist_init</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_close_obs_init">get_close_obs_init</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_close_obs">get_close_obs</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#ens_mean_for_model">ens_mean_for_model</a></td>
 </tr>
 </table>
@@ -706,7 +706,7 @@ summary="">
 <td>State vector of length model_size.</td>
 </tr>
 <tr>
-<td><em class="code">time&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">time   </em></td>
 <td>Specifies time of the initial model state.</td>
 </tr>
 </tbody>
@@ -717,7 +717,7 @@ summary="">
  <a name="get_state_meta_data" id="get_state_meta_data"></a><br>
 <div class="routine"><em class="call">call get_state_meta_data
 (index_in, location, <em class=
-"optionalcode">[,&nbsp;var_type]</em> )</em>
+"optionalcode">[, var_type]</em> )</em>
 <pre>
 integer,             intent(in)  :: <em class="code">index_in</em>
 type(location_type), intent(out) :: <em class="code">location</em>
@@ -732,7 +732,7 @@ variable is located.</p>
 summary="">
 <tbody valign="top">
 <tr>
-<td><em class="code">index_in&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">index_in   </em></td>
 <td>Index of state vector element about which information is
 requested.</td>
 </tr>
@@ -773,7 +773,7 @@ summary="">
 <td>A model state vector.</td>
 </tr>
 <tr>
-<td><em class="code">location&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">location   </em></td>
 <td>Location to which to interpolate.</td>
 </tr>
 <tr>
@@ -807,7 +807,7 @@ type(time_type) :: <em class="code">get_model_time_step</em>
 summary="">
 <tbody valign="top">
 <tr>
-<td><em class="code">var&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">var   </em></td>
 <td>Smallest time step of model.</td>
 </tr>
 </tbody>
@@ -849,7 +849,7 @@ model from rest.</p>
 summary="">
 <tbody valign="top">
 <tr>
-<td><em class="code">time&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">time   </em></td>
 <td>Initial model time.</td>
 </tr>
 </tbody>
@@ -869,7 +869,7 @@ for spinning up initial model states.</p>
 summary="">
 <tbody valign="top">
 <tr>
-<td><em class="code">x&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">x   </em></td>
 <td>Initial conditions for state vector.</td>
 </tr>
 </tbody>
@@ -895,7 +895,7 @@ identified by ncFileID.</p>
 summary="">
 <tbody valign="top">
 <tr>
-<td><em class="code">ncFileID&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">ncFileID   </em></td>
 <td>Integer file descriptor to previously-opened netCDF file.</td>
 </tr>
 <tr>
@@ -939,7 +939,7 @@ summary="">
 <td>A model state vector.</td>
 </tr>
 <tr>
-<td><em class="code">copyindex&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">copyindex   </em></td>
 <td>Integer index of copy to be written.</td>
 </tr>
 <tr>
@@ -979,7 +979,7 @@ summary="">
 <td>Perturbed state vector: NOT returned.</td>
 </tr>
 <tr>
-<td><em class="code">interf_provided&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">interf_provided   </em></td>
 <td>Returned false; interface is not implemented.</td>
 </tr>
 </tbody>
@@ -1027,7 +1027,7 @@ subroutine.</p>
  <a name="get_close_obs" id="get_close_obs"></a><br>
 <div class="routine"><em class="call">call get_close_obs(gc,
 base_obs_loc, base_obs_kind, obs, obs_kind, num_close, close_ind
-<em class="optionalcode">[,&nbsp;dist]</em>)</em>
+<em class="optionalcode">[, dist]</em>)</em>
 <pre>
 type(get_close_type), intent(in)  :: <em class="code">gc</em>
 type(location_type),  intent(in)  :: <em class=
@@ -1064,7 +1064,7 @@ real(r8), dimension(:), intent(in) :: <em class=
 summary="">
 <tbody valign="top">
 <tr>
-<td><em class="code">ens_mean&nbsp;&nbsp;&nbsp;</em></td>
+<td><em class="code">ens_mean   </em></td>
 <td>State vector containing the ensemble mean.</td>
 </tr>
 </tbody>
@@ -1082,42 +1082,42 @@ summary="">
 <td><a href="#get_gridsize">get_gridsize</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#clm_to_dart_state_vector">clm_to_dart_state_vector</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#sv_to_restart_file">sv_to_restart_file</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#get_clm_restart_filename">get_clm_restart_filename</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_state_time">get_state_time</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_grid_vertval">get_grid_vertval</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#compute_gridcell_value">compute_gridcell_value</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#gridcell_components">gridcell_components</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#DART_get_var">DART_get_var</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_model_time">get_model_time</a></td>
 </tr>
 </table>

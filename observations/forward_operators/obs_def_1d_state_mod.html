@@ -228,41 +228,41 @@ cov_cutoff_mod
 <td><a href="#write_1d_integral">write_1d_integral</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#read_1d_integral">read_1d_integral</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#interactive_1d_integral">interactive_1d_integral</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#get_expected_1d_integral">get_expected_1d_integral</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_1d_integral">set_1d_integral</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#write_power">write_power</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#read_power">read_power</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#interactive_power">interactive_power</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_expected_power">get_expected_power</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#set_power">set_power</a></td>
 </tr>
 </table>
@@ -282,7 +282,7 @@ the half-width, localization type and number of quadrature points
 for this observation.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">igrkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">igrkey  </em></td>
 <td>Unique integer key associated with the 1d integral observation
 being processed. This is not the same as the key that all types of
 observations have and uniquely distinguishes all observations from
@@ -291,11 +291,11 @@ code for 1d integral observations. It is stored in the obs_def
 derived type, not in the main obs_type definition.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ifile&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ifile  </em></td>
 <td>Unit number on which observation sequence file is open</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">fform&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">fform  </em></td>
 <td>String noting whether file is opened for 'formatted' or
 'unformatted' IO.</td>
 </tr>
@@ -321,16 +321,16 @@ this module to keep track of the associated parameters for this
 observation.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">igrkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">igrkey  </em></td>
 <td>Unique integer key associated with the observation being
 processed.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ifile&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ifile  </em></td>
 <td>Unit number on which observation sequence file is open</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">fform&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">fform  </em></td>
 <td>String noting whether file is opened for 'formatted' or
 'unformatted' IO.</td>
 </tr>
@@ -354,7 +354,7 @@ used by this module to keep track of the associated parameters
 this key.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">igrkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">igrkey  </em></td>
 <td>Unique identifier associated with the created observation
 definition in the obs sequence.</td>
 </tr>
@@ -381,23 +381,23 @@ multiple times to invoke the forward operator code in whatever
 model this has been compiled with.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">state&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">state  </em></td>
 <td>Model state vector (or extended state vector).</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">location&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">location  </em></td>
 <td>Location of this observation.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">igrkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">igrkey  </em></td>
 <td>Unique integer key associated with this observation.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">val&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">val  </em></td>
 <td>Returned value of forward observation operator.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">istatus&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">istatus  </em></td>
 <td>Returns 0 if forward operator was successfully computed, else
 returns a positive value. (Negative values are reserved for system
 use.)</td>
@@ -432,27 +432,27 @@ observation of this type.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
 <td valign="top"><em class=
-"code">integral_half_width&nbsp;&nbsp;</em></td>
+"code">integral_half_width  </em></td>
 <td>Real value setting the half-width of the integral.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">num_eval_pts&nbsp;&nbsp;</em></td>
+"code">num_eval_pts  </em></td>
 <td>Integer, number of evaluation points. 5-20 recommended.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">localize_type&nbsp;&nbsp;</em></td>
+"code">localize_type  </em></td>
 <td>Integer localization type: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped
 Boxcar</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">igrkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">igrkey  </em></td>
 <td>Unique integer key associated with the observation being
 processed.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">istatus&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">istatus  </em></td>
 <td>Return code. 0 means success, any other value is an error</td>
 </tr>
 </table>
@@ -472,7 +472,7 @@ character(len=*), intent(in) :: <em class="code">fform</em>
 with unique identifier key for a power observation type.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">powkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">powkey  </em></td>
 <td>Unique integer key associated with the power observation being
 processed. This is not the same as the key that all types of
 observations have and uniquely distinguishes all observations from
@@ -481,11 +481,11 @@ code for power observations. It is stored in the obs_def derived
 type, not in the main obs_type definition.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ifile&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ifile  </em></td>
 <td>Unit number on which observation sequence file is open</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">fform&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">fform  </em></td>
 <td>String noting whether file is opened for 'formatted' or
 'unformatted' IO.</td>
 </tr>
@@ -509,16 +509,16 @@ created and is used by this module to keep track of the associated
 parameters for this observation.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">powkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">powkey  </em></td>
 <td>Unique integer key associated with the observation being
 processed.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">ifile&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">ifile  </em></td>
 <td>Unit number on which observation sequence file is open</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">fform&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">fform  </em></td>
 <td>String noting whether file is opened for 'formatted' or
 'unformatted' IO.</td>
 </tr>
@@ -540,7 +540,7 @@ module to keep track of the associated parameter, the power, for
 this key.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">powkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">powkey  </em></td>
 <td>Unique identifier associated with the created observation
 definition in the obs sequence.</td>
 </tr>
@@ -566,23 +566,23 @@ compiled with, then raises the result to the specified power
 associated with this powkey.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">state&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">state  </em></td>
 <td>Model state vector (or extended state vector).</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">location&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">location  </em></td>
 <td>Location of this observation.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">powkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">powkey  </em></td>
 <td>Unique integer key associated with this observation.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">val&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">val  </em></td>
 <td>Returned value of forward observation operator.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">istatus&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">istatus  </em></td>
 <td>Returns 0 if forward operator was successfully computed, else
 returns a positive value. (Negative values are reserved for system
 use.)</td>
@@ -612,16 +612,16 @@ and is used when reading in the observation sequence to match the
 corresponding metadata with each observation of this type.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">power_in&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">power_in  </em></td>
 <td>Real value setting the power.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">powkey&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">powkey  </em></td>
 <td>Unique integer key associated with the observation being
 processed.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">istatus&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">istatus  </em></td>
 <td>Return code. 0 means success, any other value is an error</td>
 </tr>
 </table>

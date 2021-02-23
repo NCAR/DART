@@ -3,7 +3,7 @@
 <html>
 <head>
 <meta name="generator" content=
-"HTML Tidy for HTML5 for Apple macOS version 5.6.0"><!-- $Id$ -->
+"HTML Tidy for HTML5 for Apple macOS version 5.6.0"><!--  -->
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>Data Assimilation Research Testbed -- DART</title>
 <link href="../images/dart.ico" rel="shortcut icon">
@@ -24,7 +24,7 @@ cellspacing="0">
 <tr><!-- SIDE NAVIGATION is formatted by navigation.css-->
 <td width="25%" valign="middle">
 <!--#include virtual="../navigation.html" --></td>
-<td width="40" valign="top">&nbsp;</td>
+<td width="40" valign="top"> </td>
 <!-- provides a little space -->
 <td valign="middle">
 <h1 align="center">The Data Assimilation Research Testbed --
@@ -100,7 +100,7 @@ development - if you would like to be a friendly beta-tester please
 send me (Tim Hoar) an email and I'll send you the instructions, as
 long as you promise to provide feedback (good or bad!) so I can
 improve them. My email
-is&nbsp;&nbsp;&nbsp;thoar&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu - minus
+is   thoar @ ucar . edu - minus
 the spaces, naturally.<br>
 <br>
 Minimally, you will need a Fortran90 compiler and the netCDF
@@ -126,7 +126,7 @@ the assimilation step in parallel on hardware with multiple CPUs.
 Note that this is optional; MPI is not required to run DART. If you
 do want to run in parallel then we also require a working MPI
 library and appropriate cluster or SMP hardware. See the <a href=
-"mpi_intro.html">MPI&nbsp;intro</a> for more information on running
+"mpi_intro.html">MPI intro</a> for more information on running
 with the MPI option.<br>
 <br>
 One of the beauties of ensemble data assimilation is that even if
@@ -206,7 +206,7 @@ read what the dates actually are.  but if this nowrap
 thing plus blanks doesn't work we can go back to putting
 nbsp's between the dates -->
 <th nowrap>date
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
+               </th>
 <th>instructions</th>
 <th>most noteable change(s)</th>
 </tr>
@@ -431,12 +431,12 @@ cellspacing="0">
 <td>Glen Romine</td>
 </tr>
 <tr>
-<td>jla&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
-<td>thoar&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
-<td>nancy&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
-<td>hkershaw&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
-<td>raeder&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
-<td>romine&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+<td>jla @ ucar . edu </td>
+<td>thoar @ ucar . edu </td>
+<td>nancy @ ucar . edu </td>
+<td>hkershaw @ ucar . edu </td>
+<td>raeder @ ucar . edu </td>
+<td>romine @ ucar . edu </td>
 </tr>
 </table>
 <!--#include virtual="/common/footernav.html"-->
@@ -470,8 +470,8 @@ use at <a href=
 <td>$Date$</td>
 </tr>
 <tr>
-<td valign="top">Change&nbsp;history:&nbsp;</td>
-<td>try "svn&nbsp;log" or "svn&nbsp;diff"</td>
+<td valign="top">Change history: </td>
+<td>try "svn log" or "svn diff"</td>
 </tr>
 </table>
 <!--==================================================================-->

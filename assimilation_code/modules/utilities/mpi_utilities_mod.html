@@ -232,72 +232,72 @@ mpi  (or mpif.h if mpi module not available)
 "#initialize_mpi_utilities">initialize_mpi_utilities</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href=
 "#finalize_mpi_utilities">finalize_mpi_utilities</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#task_count">task_count</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#my_task_id">my_task_id</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#task_sync">task_sync</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#block_task">block_task</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#restart_task">restart_task</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#array_broadcast">array_broadcast</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#send_to">send_to</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#receive_from">receive_from</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#iam_task0">iam_task0</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#broadcast_send">broadcast_send</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#broadcast_recv">broadcast_recv</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#shell_execute">shell_execute</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#sleep_seconds">sleep_seconds</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#sum_across_tasks">sum_across_tasks</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#get_dart_mpi_comm">get_dart_mpi_comm</a></td>
 </tr>
 <tr>
-<td>&nbsp;</td>
+<td> </td>
 <td><a href="#exit_all">exit_all</a></td>
 </tr>
 </table>
@@ -306,7 +306,7 @@ mpi  (or mpif.h if mpi module not available)
 "initialize_mpi_utilities"></a><br>
 <div class="routine"><em class="call">call
 initialize_mpi_utilities( <em class="optionalcode">[progname]</em>
-<em class="optionalcode">[,&nbsp;alternatename]</em>)</em>
+<em class="optionalcode">[, alternatename]</em>)</em>
 <pre>
 character(len=*), intent(in), optional :: <em class=
 "code">progname</em>
@@ -334,13 +334,13 @@ libraries.</p>
 before calling this routine.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">progname&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">progname  </em></td>
 <td>If given, written to the log file to document which program is
 being started.</td>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">alternatename&nbsp;&nbsp;</em></td>
+"code">alternatename  </em></td>
 <td>If given, use this name as the log file instead of the default
 <em class="code">dart_log.out</em>.</td>
 </tr>
@@ -379,12 +379,12 @@ after calling this routine.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
 <td valign="top"><em class=
-"code">callfinalize&nbsp;&nbsp;</em></td>
+"code">callfinalize  </em></td>
 <td>If false, do not call the <em class="code">MPI_Finalize()</em>
 routine.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">async&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">async  </em></td>
 <td>If the model advance mode (selected by the async namelist value
 in the filter_nml section) requires any synchronization or actions
 at shutdown, this is done. Currently async=4 requires an additional
@@ -406,7 +406,7 @@ Note that MPI task numbers start at 0, but this is a count. So a
 from 0 to 3.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var&nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var  </em></td>
 <td>Total number of MPI tasks in this job.</td>
 </tr>
 </table>
@@ -427,7 +427,7 @@ shared amongst tasks. MPI task numbers start at 0, so valid task id
 numbers for a 4-task job will be 0 to 3.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var   </em></td>
 <td>My unique MPI task id number.</td>
 </tr>
 </table>
@@ -446,7 +446,7 @@ call or the program will hang.</p>
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
  <a name="send_to" id="send_to"></a><br>
 <div class="routine"><em class="call">call send_to(dest_id,
-srcarray <em class="optionalcode">[,&nbsp;time]</em>)</em>
+srcarray <em class="optionalcode">[, time]</em>)</em>
 <pre>
 integer,                   intent(in) :: <em class=
 "code">dest_id</em>
@@ -478,7 +478,7 @@ receive.</p>
 </tr>
 <tr>
 <td valign="top"><em class=
-"code">srcarray&nbsp;&nbsp;&nbsp;</em></td>
+"code">srcarray   </em></td>
 <td>The data to be copied to the receiver.</td>
 </tr>
 <tr>
@@ -526,16 +526,16 @@ to change; MPI has several other non-blocking options for send and
 receive.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">src_id &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">src_id   </em></td>
 <td>The MPI task id of the sender.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">destarray &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">destarray   </em></td>
 <td>The location where the data from the sender is to be
 placed.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">time &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">time   </em></td>
 <td>If specified, receive the time as well.</td>
 </tr>
 </table>
@@ -566,7 +566,7 @@ exit code may or may not be passed back to the calling job
 script.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">exit_code &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">exit_code   </em></td>
 <td>A numeric exit code.</td>
 </tr>
 </table>
@@ -600,12 +600,12 @@ is intent(in) on root, and intent(out) on all other tasks.</p>
 the root array in their own arrays.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">array &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">array   </em></td>
 <td>Array containing data to send to all other tasks, or the
 location in which to receive data.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">root &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">root   </em></td>
 <td>Task ID which will be the data source. All others are
 destinations.</td>
 </tr>
@@ -631,7 +631,7 @@ block surrounded by <em class="code">if (iam_task0()) then ...</em>
 .</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">var &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">var   </em></td>
 <td>Convenience function to easily test and execute code blocks on
 task 0 only.</td>
 </tr>
@@ -692,56 +692,56 @@ only but this routine will be calling <em class=
 "code">intent(inout)</em> to match.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">from &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">from   </em></td>
 <td>Current task ID; the root task for the data broadcast.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">array1 &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">array1   </em></td>
 <td>First data array to be broadcast.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">array2
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, second data array to be broadcast.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">array3
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, third data array to be broadcast.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">array4
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, fourth data array to be broadcast.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">array5
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, fifth data array to be broadcast.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar1
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, first data scalar to be broadcast.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar2
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, second data scalar to be broadcast.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar3
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, third data scalar to be broadcast.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar4
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, fourth data scalar to be broadcast.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar5
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, fifth data scalar to be broadcast.</td>
 </tr>
 </table>
@@ -808,56 +808,56 @@ will occur.</p>
 <em class="code">intent(inout)</em> to match.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">from &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">from   </em></td>
 <td>The task ID for the data broadcast source.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">array1 &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">array1   </em></td>
 <td>First array location to receive data into.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">array2
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, second data array to receive data into.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">array3
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, third data array to receive data into.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">array4
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, fourth data array to receive data into.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">array5
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, fifth data array to receive data into.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar1
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, first data scalar to receive data into.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar2
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, second data scalar to receive data into.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar3
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, third data scalar to receive data into.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar4
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, fourth data scalar to receive data into.</td>
 </tr>
 <tr>
 <td valign="top"><em class="optionalcode">scalar5
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>If given, fifth data scalar to receive data into.</td>
 </tr>
 </table>
@@ -885,11 +885,11 @@ integer, intent(out)                  :: <em class="code">sum</em>
 and is the same for each task.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">addend &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">addend   </em></td>
 <td>Single input value per task to be summed up.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">sum &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">sum   </em></td>
 <td>The sum.</td>
 </tr>
 </table>
@@ -970,17 +970,17 @@ the command to execute and will return the error code. 0 means ok,
 any other number indicates error.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">rc &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">rc   </em></td>
 <td>Return code from the shell exit after the command has been
 executed.</td>
 </tr>
 <tr>
 <td valign="top"><em class="code">execute_string
-&nbsp;&nbsp;</em></td>
+  </em></td>
 <td>Command to be executed by the shell.</td>
 </tr>
 <tr>
-<td valign="top"><em class="code">serialize &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">serialize   </em></td>
 <td>If specified and if .TRUE. run the command from each PE in
 turn, waiting for each to complete before beginning the next. The
 default is .FALSE. and does not require that all tasks call this
@@ -1004,7 +1004,7 @@ minimum time it will sleep. This routine can round up to even
 seconds if a smaller than 1.0 time is given.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">naplength &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">naplength   </em></td>
 <td>Number of seconds to sleep as a real value.</td>
 </tr>
 </table>
@@ -1030,7 +1030,7 @@ MPI_COMM_WORLD. If it is called before MPI is initialized, it
 returns 0.</p>
 <table width="100%" border="0" summary="" cellpadding="3">
 <tr>
-<td valign="top"><em class="code">comm &nbsp;&nbsp;</em></td>
+<td valign="top"><em class="code">comm   </em></td>
 <td>The private DART communicator.</td>
 </tr>
 </table>

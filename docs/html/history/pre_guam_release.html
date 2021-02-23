@@ -94,11 +94,11 @@ contained in an indented gray box.</div>
 <p>And the contents of a file are enclosed in a box with a
 border:</p>
 <div class="routine">&amp;hypothetical_nml<br>
-&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;output_interval = 1<br>
+  obs_seq_in_file_name = "obs_seq.in",<br>
+  obs_seq_out_file_name = "obs_seq.out",<br>
+  init_time_days = 0,<br>
+  init_time_seconds = 0,<br>
+  output_interval = 1<br>
 /</div>
 <!--==================================================================-->
 <a name="Installation" id="Installation"></a>
@@ -130,7 +130,7 @@ libraries</a>.</li>
 do not have access to all compilers on all platforms, so there are
 no guarantees. We are interested in your experience building the
 system, so please email me (Tim Hoar)
-thoar&nbsp;'at'&nbsp;ucar&nbsp;'dot'&nbsp;edu (trying to cut down
+thoar 'at' ucar 'dot' edu (trying to cut down
 on the spam).</p>
 <p>After the installation, you might want to peruse the
 following.</p>
@@ -219,8 +219,8 @@ compile and run ONE of the low-order models, you should be able to
 compile and run ANY of the low-order models. For this reason, we
 can focus on the Lorenz `63 model. Subsequently, the only
 directories with files to be modified to check the installation
-are: &nbsp;<em class="file">DART/mkmf</em>, &nbsp;<em class=
-"file">DART/models/lorenz_63/work</em>, and &nbsp;<em class=
+are:  <em class="file">DART/mkmf</em>,  <em class=
+"file">DART/models/lorenz_63/work</em>, and  <em class=
 "file">DART/matlab</em> (but only for analysis).</p>
 <!--==================================================================-->
 <a name="customizations" id="customizations"></a>
@@ -678,38 +678,38 @@ must now rename and edit the namelist file for <em class=
 "file">input.nml.perfect_model_obs</em> to <em class=
 "file">input.nml</em> and edit it to look like the following:</p>
 <div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = <em class=
+   async = 0,<br>
+   obs_seq_in_file_name = "obs_seq.in",<br>
+   obs_seq_out_file_name = "obs_seq.out",<br>
+   start_from_restart = .false.,<br>
+   output_restart = <em class=
 "changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1<br>
+   restart_in_file_name = "perfect_ics",<br>
+   restart_out_file_name = "perfect_restart",<br>
+   init_time_days = 0,<br>
+   init_time_seconds = 0,<br>
+   output_interval = 1<br>
 &amp;end<br>
 &amp;assim_tools_nml<br>
-&nbsp;&nbsp;&nbsp;prior_spread_correction = .false.,<br>
-&nbsp;&nbsp;&nbsp;filter_kind = 1,<br>
-&nbsp;&nbsp;&nbsp;slope_threshold = 1.0<br>
+   prior_spread_correction = .false.,<br>
+   filter_kind = 1,<br>
+   slope_threshold = 1.0<br>
 &amp;end<br>
 &amp;cov_cutoff_nml<br>
-&nbsp;&nbsp;&nbsp;select_localization = 1<br>
+   select_localization = 1<br>
 &amp;end<br>
 &amp;assim_model_nml<br>
-&nbsp;&nbsp;&nbsp;binary_restart_files = .true.<br>
+   binary_restart_files = .true.<br>
 &amp;end<br>
 &amp;model_nml<br>
-&nbsp;&nbsp;&nbsp;sigma = 10.0,<br>
-&nbsp;&nbsp;&nbsp;r = 28.0,<br>
-&nbsp;&nbsp;&nbsp;b = 2.6666666666667,<br>
-&nbsp;&nbsp;&nbsp;deltat = 0.01<br>
+   sigma = 10.0,<br>
+   r = 28.0,<br>
+   b = 2.6666666666667,<br>
+   deltat = 0.01<br>
 &amp;end<br>
 &amp;utilities_nml<br>
-&nbsp;&nbsp;&nbsp;TERMLEVEL = 1<br>
-&nbsp;&nbsp;&nbsp;logfilename = 'dart_log.out'<br>
+   TERMLEVEL = 1<br>
+   logfilename = 'dart_log.out'<br>
 &amp;end<br></div>
 <br>
 For the moment, only two namelists warrant explanation. Each
@@ -814,17 +814,17 @@ the end of an additional 24,000 steps and place the final state in
 <em class="file">perfect_restart</em>. The rest of the namelists in
 <em class="file">input.nml</em> should remain unchanged.</p>
 <div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = <em class=
+   async = 0,<br>
+   obs_seq_in_file_name = "obs_seq.in",<br>
+   obs_seq_out_file_name = "obs_seq.out",<br>
+   start_from_restart = <em class=
 "changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1<br>
+   output_restart = .true.,<br>
+   restart_in_file_name = "perfect_ics",<br>
+   restart_out_file_name = "perfect_restart",<br>
+   init_time_days = 0,<br>
+   init_time_seconds = 0,<br>
+   output_interval = 1<br>
 &amp;end</div>
 <div class="unix">cp perfect_restart perfect_ics<br>
 perfect_model_obs</div>
@@ -842,65 +842,65 @@ mechanism for input. It is now necessary to copy the <em class=
 hurt anything. In fact, I generally create a single <em class=
 "file">input.nml</em> that has all the namelist blocks in it.</p>
 <div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1<br>
+   async = 0,<br>
+   obs_seq_in_file_name = "obs_seq.in",<br>
+   obs_seq_out_file_name = "obs_seq.out",<br>
+   start_from_restart = .true.,<br>
+   output_restart = .true.,<br>
+   restart_in_file_name = "perfect_ics",<br>
+   restart_out_file_name = "perfect_restart",<br>
+   init_time_days = 0,<br>
+   init_time_seconds = 0,<br>
+   output_interval = 1<br>
 &amp;end<br>
 &amp;assim_tools_nml<br>
-&nbsp;&nbsp;&nbsp;prior_spread_correction = .false.,<br>
-&nbsp;&nbsp;&nbsp;filter_kind = 1,<br>
-&nbsp;&nbsp;&nbsp;slope_threshold = 1.0<br>
+   prior_spread_correction = .false.,<br>
+   filter_kind = 1,<br>
+   slope_threshold = 1.0<br>
 &amp;end<br>
 &amp;cov_cutoff_nml<br>
-&nbsp;&nbsp;&nbsp;select_localization = 1<br>
+   select_localization = 1<br>
 &amp;end<br>
 &amp;assim_model_nml<br>
-&nbsp;&nbsp;&nbsp;binary_restart_files = .true.<br>
+   binary_restart_files = .true.<br>
 &amp;end<br>
 &amp;model_nml<br>
-&nbsp;&nbsp;&nbsp;sigma = 10.0,<br>
-&nbsp;&nbsp;&nbsp;r = 28.0,<br>
-&nbsp;&nbsp;&nbsp;b = 2.6666666666667<br>
-&nbsp;&nbsp;&nbsp;deltat = 0.01<br>
+   sigma = 10.0,<br>
+   r = 28.0,<br>
+   b = 2.6666666666667<br>
+   deltat = 0.01<br>
 &amp;end<br>
 &amp;utilities_nml<br>
-&nbsp;&nbsp;&nbsp;TERMLEVEL = 1<br>
-&nbsp;&nbsp;&nbsp;logfilename = 'dart_log.out'<br>
+   TERMLEVEL = 1<br>
+   logfilename = 'dart_log.out'<br>
 &amp;end<br>
 &amp;reg_factor_nml<br>
-&nbsp;&nbsp;&nbsp;select_regression = 1,<br>
-&nbsp;&nbsp;&nbsp;input_reg_file = "time_mean_reg"<br>
+   select_regression = 1,<br>
+   input_reg_file = "time_mean_reg"<br>
 &amp;end<br>
 &amp;filter_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;ens_size = 20,<br>
-&nbsp;&nbsp;&nbsp;cutoff = 0.20,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = 1.00,<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .false.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = <em class=
+   async = 0,<br>
+   ens_size = 20,<br>
+   cutoff = 0.20,<br>
+   cov_inflate = 1.00,<br>
+   start_from_restart = .false.,<br>
+   output_restart = <em class=
 "changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;num_output_ens_members = <em class=
+   obs_sequence_file_name = "obs_seq.out",<br>
+   restart_in_file_name = "perfect_ics",<br>
+   restart_out_file_name = "filter_restart",<br>
+   init_time_days = 0,<br>
+   init_time_seconds = 0,<br>
+   output_state_ens_mean = .true.,<br>
+   output_state_ens_spread = .true.,<br>
+   num_output_ens_members = <em class=
 "changed">20</em>,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1,<br>
-&nbsp;&nbsp;&nbsp;num_groups = 1,<br>
-&nbsp;&nbsp;&nbsp;confidence_slope = 0.0,<br>
-&nbsp;&nbsp;&nbsp;output_obs_diagnostics = .false.,<br>
-&nbsp;&nbsp;&nbsp;get_mean_reg = .false.,<br>
-&nbsp;&nbsp;&nbsp;get_median_reg = .false.<br>
+   output_interval = 1,<br>
+   num_groups = 1,<br>
+   confidence_slope = 0.0,<br>
+   output_obs_diagnostics = .false.,<br>
+   get_mean_reg = .false.,<br>
+   get_median_reg = .false.<br>
 &amp;end</div>
 <p class="indent1">Only the non-obvious(?) entries for <em class=
 "code">filter_nml</em> will be discussed.</p>
@@ -1069,16 +1069,16 @@ true state.</h3>
 running <em class="program">perfect_model_obs</em> with the
 namelist values (unchanged from step 2):</p>
 <div class="routineIndent1">&amp;perfect_model_obs_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<br>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1<br>
+   async = 0,<br>
+   obs_seq_in_file_name = "obs_seq.in",<br>
+   obs_seq_out_file_name = "obs_seq.out",<br>
+   start_from_restart = .true.,<br>
+   output_restart = .true.,<br>
+   restart_in_file_name = "perfect_ics",<br>
+   restart_out_file_name = "perfect_restart",<br>
+   init_time_days = 0,<br>
+   init_time_seconds = 0,<br>
+   output_interval = 1<br>
 &amp;end</div>
 <p class="indent1">This integrates the model starting from the
 state in <em class="file">perfect_ics</em> for 1000 12-hour
@@ -1090,28 +1090,28 @@ variables every 12 hours and producing a netCDF diagnostic file,
 <p class="indent1">Finally, <em class="program">filter</em> can be
 run with its namelist set to:</p>
 <div class="routineIndent1">&amp;filter_nml<br>
-&nbsp;&nbsp;&nbsp;async = 0,<br>
-&nbsp;&nbsp;&nbsp;ens_size = 20,<br>
-&nbsp;&nbsp;&nbsp;cutoff = <em class="changed">22222222.0</em>,<br>
-&nbsp;&nbsp;&nbsp;cov_inflate = 1.00,<br>
-&nbsp;&nbsp;&nbsp;start_from_restart = <em class=
+   async = 0,<br>
+   ens_size = 20,<br>
+   cutoff = <em class="changed">22222222.0</em>,<br>
+   cov_inflate = 1.00,<br>
+   start_from_restart = <em class=
 "changed">.true.</em>,<br>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,<br>
-&nbsp;&nbsp;&nbsp;obs_sequence_file_name = "obs_seq.out",<br>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "<em class=
+   output_restart = .true.,<br>
+   obs_sequence_file_name = "obs_seq.out",<br>
+   restart_in_file_name = "<em class=
 "changed">filter_ics</em>",<br>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart",<br>
-&nbsp;&nbsp;&nbsp;init_time_days = 0,<br>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,<br>
-&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,<br>
-&nbsp;&nbsp;&nbsp;num_output_ens_members = 20,<br>
-&nbsp;&nbsp;&nbsp;output_interval = 1,<br>
-&nbsp;&nbsp;&nbsp;num_groups = 1,<br>
-&nbsp;&nbsp;&nbsp;confidence_slope = 0.0,<br>
-&nbsp;&nbsp;&nbsp;output_obs_diagnostics = .false.,<br>
-&nbsp;&nbsp;&nbsp;get_mean_reg = .false.,<br>
-&nbsp;&nbsp;&nbsp;get_median_reg = .false.<br>
+   restart_out_file_name = "filter_restart",<br>
+   init_time_days = 0,<br>
+   init_time_seconds = 0,<br>
+   output_state_ens_mean = .true.,<br>
+   output_state_ens_spread = .true.,<br>
+   num_output_ens_members = 20,<br>
+   output_interval = 1,<br>
+   num_groups = 1,<br>
+   confidence_slope = 0.0,<br>
+   output_obs_diagnostics = .false.,<br>
+   get_mean_reg = .false.,<br>
+   get_median_reg = .false.<br>
 &amp;end</div>
 <p class="indent1">The large value for the cutoff allows each
 observation to impact all other state variables (see Appendix V for

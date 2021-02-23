@@ -45,7 +45,7 @@ some graphics from <em class=
 "DART 'bad' QC 3D scatterplot" height="300"></a><br>
 <br>
 The intent is that user input is queried and a series of output
-files -&nbsp;one&nbsp;per&nbsp;assimilation&nbsp;cycle&nbsp;- will
+files - one per assimilation cycle - will
 contain the observations for that cycle. It is hoped this will be
 useful for experiment design or, perhaps, debugging. This routine
 is also the first to use the new <em class=
@@ -144,14 +144,14 @@ e.g. 'obsdir_001/obs_seq.final' will cause <em class=
 "program">obs_seq_to_netcdf</em> to look for
 'obsdir_002/obs_seq.final', and so on.<br>
 If this is specified, 'obs_sequence_list' must be set to
-'&nbsp;'.</td>
+' '.</td>
 </tr>
 <tr>
 <td>obs_sequence_list</td>
 <td>character(len=256)</td>
 <td>Name of an ascii text file which contains a list of one or more
 observation sequence files, one per line. If this is specified,
-'obs_sequence_name' must be set to '&nbsp;'. Can be created by any
+'obs_sequence_name' must be set to ' '. Can be created by any
 method, including sending the output of the 'ls' command to a file,
 a text editor, or another program.</td>
 </tr>
@@ -533,8 +533,8 @@ is defined by the <em class="code">QCMetaData</em> variable.<br>
 The <em class="code">Obs_Type</em> variable is crucial. Each
 observation has an integer code to define the specific ... DART
 observation type. In our example - lets assume that observation
-number 10 (i.e. ObsIndex&nbsp;==&nbsp;10) has an <em class=
-"code">obs_type</em> of 3 [i.e.&nbsp;obs_type(10)&nbsp;=&nbsp;3].
+number 10 (i.e. ObsIndex == 10) has an <em class=
+"code">obs_type</em> of 3 [i.e. obs_type(10) = 3].
 Since <em class="code">ObsTypesMetaData(3) ==
 "RADIOSONDE_SURFACE_PRESSURE"</em>, we know that any/all quantities
 where ObsIndex == 10 pertain to a radiosonde surface pressure
@@ -706,8 +706,8 @@ every time I start Matlab (because it is in my <em class=
 As is standard practice, the instructions for using the Matlab
 scripts <em class="program">plot_obs_netcdf</em> and <em class=
 "program">plot_obs_netcdf_diffs</em> are available by using the
-Matlab 'help' facility (i.e.&nbsp;<em class=
-"input">help&nbsp;plot_obs_netcdf</em>&nbsp;). A quick discussion
+Matlab 'help' facility (i.e. <em class=
+"input">help plot_obs_netcdf</em> ). A quick discussion
 of them here still seems appropriate. If you run the following
 Matlab commands with an <em class="file">obs_sequence_001.nc</em>
 file you cannot possibly have:</p>

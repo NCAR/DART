@@ -10,30 +10,9 @@
 </head>
 <body>
 <a name="TOP" id="TOP"></a>
-<h1>DART Manhattan Release Notes</h1>
-<table border="0" summary="" cellpadding="5">
-<tr>
-<td valign="middle"><img src="../images/Dartboard7.png" alt=
-"DART project logo" height="70"></td>
-<td>Jump to <a href="../index.html">DART Documentation Main
-Index</a></td>
-</tr>
-</table>
-<a href="#Overview">Dart Overview</a> / 
-<!-- <a href="#GettingStarted">Getting Started</a> / -->
-<!-- <a href="#Installation">Installation</a> / -->
-<a href="#CurrentUsers">Notes for Current Users</a> / <a href=
-"#Nonbackward">Non-backwards Compatible Changes</a> / <a href=
-"#NewFeatures">New Features</a> / <a href=
-"#SupportedModels">Supported Models</a> / <a href=
-"#ChangedModels">Changed Models</a> / <a href="#NewFOs">New Forward
-Operators</a> / <a href="#NewObs">New Observations</a> / <a href=
-"#NewDiagnostics">New Diagnostics and Documentation</a> / <a href=
-"#NewUtilities">New Utilities</a> / <a href="#KnownProblems">Known
-Problems</a> / <a href="#Legalese">Terms of Use</a> 
-<!--==================================================================-->
- <a name="Overview" id="Overview"></a>
-<h2>Dart Overview</h2>
+<h1>Manhattan</h1>
+<h2>DART Manhattan release documentation</h2>
+<h2>DART Overview</h2>
 <p>The Data Assimilation Research Testbed (DART) is designed to
 facilitate the combination of assimilation algorithms, models, and
 real (or synthetic) observations to allow increased understanding
@@ -67,7 +46,8 @@ exploration of the results, but the netCDF files are inherently
 portable and contain all the necessary metadata to interpret the
 contents with other analysis programs such as NCL, R, etc.</p>
 <p>To get started running with Lorenz 63 model refer to <a href=
-"Manhattan_getting_started.html">Getting Started</a></p>
+"Manhattan_getting_started.html">Getting Started</a>.</p>
+
 <!--==================================================================-->
 <a name="CurrentUsers" id="CurrentUsers"></a>
 <div class="top">[<a href="#">top</a>]</div>
@@ -312,45 +292,35 @@ information. If your model uses NetCDF file format, you no longer
 need model_to_dart or dart_to_model to translate to a DART format
 file. If your model does not use NetCDF, you can adapt your
 model_to_dart and dart_to_model executables to read and write a
-NetCDF file for DART to use.<br>
-<br>
-The read/write code is part of the core DART routines so no code is
-needed in the model_mod model-specific module. There is a new
-routine <a href="state_structure.html">add_domain()</a> that a
+NetCDF file for DART to use. The read/write code is part of the core DART
+routines so no code is needed in the model_mod model-specific module. There is
+a new routine <a href="state_structure.html">add_domain()</a> that a
 model_mod::static_init_model() can user to define which NetCDF
 variables should be part of the model state, and what DART quantity
 (formerly kind) they correspond to.</li>
-<li style="list-style: none"><br></li>
 <li>DART no longer limits the size of a model state to the size of
 a single MPI task's memory. The state is read in variable by
 variable and distributed across all MPI tasks, so the memory use is
 much smaller than previous versions of DART. One-sided MPI
 communication is used during the computation of forward operator
 values to get required parts of the state from other tasks.</li>
-<li style="list-style: none"><br></li>
 <li>Many of the DART namelists have been simplified, and some items
 have moved to a more specific namelist.</li>
-<li style="list-style: none"><br></li>
 <li>Observation sequence files can include externally computed
 forward operator values which can be used in the assimilation
 instead of calling a forward operator inside DART.</li>
-<li style="list-style: none"><br></li>
 <li>The DART directory structure has been reorganized to make it
 easier to identify the various software tools, modules,
 documentation and tutorials supplied with the system.</li>
-<li style="list-style: none"><br></li>
 <li>The MATLAB® diagnostic routines have been updated to not
 require the MEXNC toolbox. These routines use the built-in NetCDF
 support that comes with MATLAB®.</li>
-<li style="list-style: none"><br></li>
 <li>There is a new Particle Filter type. Please contact us if you
 are interested in using it.</li>
-<li style="list-style: none"><br></li>
 <li>DART can now take subsets of observation types and restrict
 them from impacting certain quantities in the state during the
 assimilation. A tool to simplify constructing the table of
 interactions is provided (obs_impact_tool).</li>
-<li style="list-style: none"><br></li>
 <li>State Structure
 <ul>
 <li>Contains information about dimensions and size of variables in
@@ -360,10 +330,8 @@ information such as <code>get_variable_size()</code>. See the
 details.</li>
 </ul>
 </li>
-<li style="list-style: none"><br></li>
 <li>The POP model_mod now can interpolate Sea Surface Anomaly
 observations.</li>
-<li style="list-style: none"><br></li>
 </ul>
 <!--==================================================================-->
 <a name="SupportedModels" id="SupportedModels"></a>
@@ -490,40 +458,8 @@ model.</li>
 "http://www.wrf-model.org/index.php">WRF model</a>.</li>
 </ul>
 </li>
-<!--
-<li>CESM framework components
+</ul>
 
-<ul><li>DART now supports running CESM components CAM, POP, and CLM under the CESM framework.
-Setup scripts are provided to configure a single or multiple component assimilation.
-See:
-<ul>
-<li>
-<a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/models/CESM/model_mod.html">Website</a> or
-<a href="../../models/CESM/model_mod.html">local file</a> for multi-component assimilation, 
-</li> 
-<li>
-<ul>
-<li>the user's guide for CESM version 1.2:<br />
- <a href="http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide/book1.html">
- http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide/book1.html</a>
-</li> 
-<li>the page that explains how to download the release code:<br />
-  <a href="http://www.cesm.ucar.edu/models/cesm1.2/tags/">
-  http://www.cesm.ucar.edu/models/cesm1.2/tags/</a>
-</li>
-<li>the web page that shows the names of the 'compsets' which are the
-  configurations of the various models:<br />
-   <a href="http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/modelnl/compsets.html">
-   http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/modelnl/compsets.html</a>
-</li>
-<li>list of recent CESM versions:<br />
-    <a href="http://www.cesm.ucar.edu/models/current.html">
-    http://www.cesm.ucar.edu/models/current.html</a>
-</li></ul>
-</li></ul>
-</li>
-<br /> 
---></ul>
 <p>The <em class="file">DART/models/template</em> directory
 contains sample files for adding a new model. See the <a href=
 "http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#adding_a_model">
@@ -553,7 +489,6 @@ tasks change. No quantitative differences in the results but they
 were not bitwise compatible before and they are again now.</li>
 </ul>
 </li>
-<li style="list-style: none"><br></li>
 <li>CAM
 <ul>
 <li>DART/CAM now runs under the CESM framework, so all options
@@ -564,7 +499,6 @@ part of this release. Please contact the <a href=
 interest in this configuration of CAM.</li>
 </ul>
 </li>
-<li style="list-style: none"><br></li>
 <li>Simple Advection Model
 <ul>
 <li>Fixed a bug where the random number generator was being used
@@ -583,22 +517,18 @@ chemistry have been added. See the <a href=
 "../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90">
 obs_kind_mod.f90</a> for a list of the generic quantities now
 available.</li>
-<li style="list-style: none"><br></li>
 <li>New forward operator for Sea Ice (cice) ice thickness
 observations. See the <a href=
 "../../observations/forward_operators/obs_def_cice_mod.f90">obs_def_cice_mod.f90</a>
 file for details.</li>
-<li style="list-style: none"><br></li>
 <li>New forward operator for Carbon Monoxide (CO) Nadir
 observations. See the <a href=
 "../../observations/forward_operators/obs_def_CO_Nadir_mod.f90">obs_def_CO_Nadir_mod.f90</a>
 file for details.</li>
-<li style="list-style: none"><br></li>
 <li>New forward operator for Total Cloud Water in a column
 observations. See the <a href=
 "../../observations/forward_operators/obs_def_cwp_mod.f90">obs_def_cwp_mod.f90</a>
 file for details.</li>
-<li style="list-style: none"><br></li>
 </ul>
 <!--==================================================================-->
 <a name="NewObs" id="NewObs"></a>
@@ -611,29 +541,24 @@ Added an observation converter for Sea Surface Height Anomaly
 observations. Documentation in <a href=
 "../../observations/obs_converters/AVISO/convert_aviso.f90">convert_aviso.f90</a>
 (source).</li>
-<li style="list-style: none"><br></li>
 <li>cice<br>
 Added an obs_sequence converter for Sea Ice observations.
 Documentation in <a href=
 "../../observations/obs_converters/cice/cice_to_obs.html">cice_to_obs.html</a>.</li>
-<li style="list-style: none"><br></li>
 <li>GPSPW<br>
 Added an obs_sequence converter for GPS precipitable water
 observations. Documentation in <a href=
 "../../observations/obs_converters/GPSPW/convert_gpspw.f90">convert_gpspw.f90</a>
 (source).</li>
-<li style="list-style: none"><br></li>
 <li>MODIS<br>
 Added an obs_sequence converter for MODIS FPAR (Fraction of
 Photosynthetically Active Radiation) and LAI (Leaf Area Index)
 obseverations. Documentation in <a href=
 "../../observations/obs_converters/MODIS/MOD15A2_to_obs.html">MOD15A2_to_obs.html</a>.</li>
-<li style="list-style: none"><br></li>
 <li>ok_mesonet<br>
 Added an obs_sequence converter for the Oklahoma Mesonet
 observations. Documentation in <a href=
 "../../observations/obs_converters/ok_mesonet/ok_mesonet.html">ok_mesonet.html</a>.</li>
-<li style="list-style: none"><br></li>
 <li>ROMS<br>
 Added an obs_sequence converter for ROMS ocean data. This converter
 includes externally computed forward operators output from the ROMS
@@ -641,18 +566,15 @@ model using FGAT (First Guess At Time) during the model run.
 Documentation in <a href=
 "../../observations/obs_converters/ROMS/convert_roms_obs.f90">convert_roms_obs.f90</a>
 (source).</li>
-<li style="list-style: none"><br></li>
 <li>SSUSI<br>
 Added an obs_sequence converter for wind profiler observations.
 Documentation in <a href=
 "../../observations/obs_converters/SSUSI/convert_f16_edr_dsk.html">convert_f16_edr_dsk.html</a>.</li>
-<li style="list-style: none"><br></li>
 <li>tropical_cyclone<br>
 Added an obs_sequence converter for ASCII format tropical cyclone
 track observations. Documentation in <a href=
 "../../observations/obs_converters/tropical_cyclone/tc_to_obs.html">
 tc_to_obs.html</a>.</li>
-<li style="list-style: none"><br></li>
 </ul>
 <!--==================================================================-->
 <a name="NewDiagnostics" id="NewDiagnostics"></a>
@@ -673,10 +595,8 @@ dependency on third-party toolboxes. These routines use the
 built-in netCDF support that comes with basic MATLAB® (no other
 toolboxes needed).</li>
 </ul>
-<br>
-But there's always more to add. <strong>Please <a href=
-"http://www2.cisl.ucar.edu/image/software/dart/suggestion-box">let
-us know</a> where we are lacking.</strong> 
+<p>But there's always more to add. <strong>Please let us know where we are
+lacking.</strong></p>
 <!--==================================================================-->
 <a name="NewUtilities" id="NewUtilities"></a>
 <div class="top">[<a href="#">top</a>]</div>
@@ -708,14 +628,13 @@ local file</a></li>
 <div class="top">[<a href="#">top</a>]</div>
 <hr>
 <h2>Known Problems</h2>
-<ul>
-<li>There are many changes in this release and more updates are
+
+<p>There are many changes in this release and more updates are
 expected to come soon. We are not aware of any obvious bugs, but if
 you encounter any unexpected behavior please contact us. Please
 watch the dart-users email list for announcements of updates to the
 release code, and be prepared to do an 'svn update' from time to
-time to get updated files.</li>
-</ul>
+time to get updated files.</p>
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
