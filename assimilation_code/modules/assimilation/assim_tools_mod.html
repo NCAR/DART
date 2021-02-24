@@ -38,7 +38,7 @@ parallel implementation that allows each observation to update all
 state variables that are close to it at the same time is described
 in <a href="#References">Anderson and Collins, 2007</a>.</p>
 <a name="FilterTypes" id="FilterTypes"></a>
-<h4>Filter Types</h4>
+<h2>Filter Types</h2>
 <p>Available observation space filter types include:</p>
 <ul>
 <li>1 = EAKF (Ensemble Adjustment Kalman Filter, see <a href=
@@ -62,7 +62,7 @@ identical to the EnSRF (Ensemble Square Root Filter) described by
 Whitaker and Hamill in 2002. Highly non-gaussian distributions may
 get better results from type=8, Rank Histogram filter.</p>
 <a name="Localization" id="Localization"></a>
-<h4>Localization</h4>
+<h2>Localization</h2>
 <p><em>Localization</em> controls how far the impact of an
 observation extends. The namelist items related to localization are
 spread over several different individual namelists, so we have made
@@ -78,152 +78,165 @@ The same process takes place in 1d models but the details of the
 location module namelist is different.</p>
 <p>The following namelist items related to 3d-sphere localization
 are all found in the <em class="file">input.nml</em> file:</p>
+
 <dl>
-<dt><em>&amp;assim_tools_nml :: cutoff</em><br>
-valid values: 0.0 to infinity</dt>
-<dd>This is the value, in radians, of the half-width of the
-localization radius (this follows the terminology of an early paper
-on localization). For each observation, a state vector item
-increment is computed based on the covariance values. Then a
-multiplier, based on the 'select_localization' setting (see below)
-decreases the increment as the distance between the obs and the
-state vector item increases. In all cases if the distance exceeds
-2*cutoff, the increment is 0.<br>
-<br></dd>
-<dt><em>&amp;cov_cutoff_nml :: select_localization</em><br>
-valid values: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar</dt>
-<dd>Controls the shape of the multiplier function applied to the
-computed increment as the distance increases between the obs and
-the state vector item. Most users use type 1 localization.
-<table border="0" summary="" cellpadding="0">
-<tr>
-<td>
-<ul>
-<li>Type 1 (Gaspari-Cohn) has a value of 1 at 0 distance, 0 at
-2*cutoff, and decreases in an approximation of a gaussian in
-between.<br>
-<br></li>
-<li>Type 2 (Boxcar) is 1 from 0 to 2*cutoff, and then 0 beyond.<br>
-<br></li>
-<li>Type 3 (Ramped Boxcar) is 1 to cutoff and then ramps linearly
-down to 0 at 2*cutoff.</li>
-</ul>
-</td>
-<td><a href="../../../docs/images/cutoff_fig.png"><img src=
-"../../../docs/images/cutoff_fig.png" alt="Shapes of Cutoff curves"
-height="240" border="0"></a><br>
-Click image for larger version.</td>
-</tr>
-</table>
+<dt><code>&amp;assim_tools_nml :: cutoff</code></dt>
+<dd>
+  <details><i>valid values:</i> 0.0 to infinity</details>
+  <p>This is the value, in radians, of the half-width of the
+  localization radius (this follows the terminology of an early paper
+  on localization). For each observation, a state vector item
+  increment is computed based on the covariance values. Then a
+  multiplier, based on the 'select_localization' setting (see below)
+  decreases the increment as the distance between the obs and the
+  state vector item increases. In all cases if the distance exceeds
+  2*cutoff, the increment is 0.</p>
 </dd>
-<dt><em>&amp;location_nml :: horiz_dist_only</em><br>
-valid values: .true., .false.</dt>
-<dd>If set to .true., then the vertical location of all items,
-observations and state vector both, are ignored when computing
-distances between pairs of locations. This has the effect that all
-items within a vertical-cylindrical area are considered the same
-distance away.<br>
-<br>
-If set to .false., then the full 3d separation is computed. Since
-the localization is computed in radians, the 2d distance is easy to
-compute but a scaling factor must be given for the vertical since
-vertical coordinates can be in meters, pressure, or model levels.
-See below for the 'vert_normalization_xxx' namelist items.<br>
-<br></dd>
-<dt><em>&amp;location_nml ::
-vert_normalization_{pressure,height,level,scale_height}</em><br>
-valid values: real numbers, in pascals, meters, index, and value
-respectively</dt>
-<dd>If 'horiz_dist_only' is set to .true., these are ignored. If
-set to .false., these are required. They are the amount of that
-quantity that is equivalent to 1 radian in the horizontal. If the
-model is an earth-based one, then one radian is roughly 6366
-kilometers, so if vert_normalization_height is set to 6366000
-meters, then the localization cutoff will be a perfect sphere. If
-you want to localize over a larger distance in the vertical than
-horizontal, use a larger value. If you want to localize more
-sharply in the vertical, use a smaller number. The type of
-localization used is set by which type of vertical coordinate the
-observations and state vector items have.<br>
-<br>
-If you have observations with different vertical coordinates (e.g.
-pressure and height), or if your observations have a different
-vertical coordinate than your state vector items, or if you want to
-localize in a different type of unit than your normal vertical
-coordinate (e.g. your model uses pressure in the vertical but you
-wish to localize in meters), then you will need to modify or add a
-<em class="code">get_close()</em> routine in your <em class=
-"file">model_mod.f90</em> file. See the discussion in the <a href=
-"../../location/threed_sphere/location_mod.html">location
-module</a> documentation for how to transform vertical coordinates
-before localization.<br>
-<br></dd>
-<dt><em>&amp;assim_tools_nml ::
-adaptive_localization_threshold</em><br>
-valid values: integer counts, or -1 to disable</dt>
-<dd>Used to dynamically shrink the localization cutoff in areas of
-dense observations. If set to something larger than 0, first the
-number of other observations within 2*cutoff is computed. If it is
-larger than this given threshold, the cutoff is decreased
-proportionally so if the observations were evenly distributed in
-space, the number of observations within 2*revised_cutoff would now
-be the threshold value. The cutoff value is computed for each
-observation as it is assimilated, so can be different for each
-one.<br>
-<br></dd>
-<dt><em>&amp;assim_tools_nml :: adaptive_cutoff_floor</em><br>
-valid values: 0.0 to infinity, or -1 to disable</dt>
-<dd>If using adaptive localization (adaptive_localization_threshold
-set to a value greater than 0), then this value can be used to set
-a minimum cutoff distance below which the adaptive code will not
-shrink. Set to -1 to disable. Ignored if not using adaptive
-localization.<br>
-<br></dd>
-<dt><em>&amp;assim_tools_nml ::
-output_localization_diagnostics</em><br>
-valid values: .true., .false.</dt>
-<dd>If .true. and if adaptive localization is on, a single text
-line is printed to a file giving the original cutoff and number of
-observations, and the revised cutoff and new number of counts
-within this smaller cutoff for any observation which has nearby
-observations which exceed the adaptive threshold count.<br>
-<br></dd>
-<dt><em>&amp;assim_tools_nml ::
-localization_diagnostics_file</em><br>
-valid values: text string</dt>
-<dd>Name of the file where the adaptive localization diagnostic
-information is written.<br>
-<br></dd>
-<dt><em>&amp;assim_tools_nml ::
-special_localization_obs_types</em><br>
-valid values: list of 1 or more text strings</dt>
-<dd>The cutoff localization setting is less critical in DART than
-it might be in other situations since during the assimilation DART
-computes the covariances between observations and nearby state
-vector locations and that is the major factor in controlling the
-impact an observation has. For conventional observations
-fine-tuning the cutoff based on observation type is not recommended
-(it is possible to do more harm than good with it). But in certain
-special cases there may be valid reasons to want to change the
-localization cutoff distances drastically for certain kinds of
-observations. This and the following namelist items allow this.<br>
-<br>
-Optional list of observation types (e.g. "RADAR_REFLECTIVITY",
-"AIRS_TEMPERATURE") which will use a different cutoff distance. Any
-observation types not listed here will use the standard cutoff
-distance (set by the 'cutoff' namelist value). This is only
-implemented for the threed_sphere location module (the one used by
-most geophysical models.)<br>
-<br></dd>
-<dt><em>&amp;assim_tools_nml ::
-special_localization_cutoffs</em><br>
-valid values: list of 1 or more real values, 0.0 to infinity</dt>
-<dd>A list of real values, the same length as the list of
-observation types, to be used as the cutoff value for each of the
-given observation types. This is only implemented for the
-threed_sphere location module (the one used by most geophysical
-models.)</dd>
+
+<dt><code>&amp;cov_cutoff_nml :: select_localization</code></dt>
+<dd>
+  <details><i>valid values:</i> 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar</details>
+  <p>Controls the shape of the multiplier function applied to the computed
+  increment as the distance increases between the obs and the state vector item.
+  Most users use type 1 localization.</p>
+
+  <ul>
+  <li>Type 1 (Gaspari-Cohn) has a value of 1 at 0 distance, 0 at
+  2*cutoff, and decreases in an approximation of a gaussian in
+  between.<br>
+  <br></li>
+  <li>Type 2 (Boxcar) is 1 from 0 to 2*cutoff, and then 0 beyond.<br>
+  <br></li>
+  <li>Type 3 (Ramped Boxcar) is 1 to cutoff and then ramps linearly
+  down to 0 at 2*cutoff.</li>
+  </ul>
+
+  <img src= "../../../docs/images/cutoff_fig.png" alt="Shapes of Cutoff curves"
+  width="100%" border="0">
+</dd>
+
+<dt><code>&amp;location_nml :: horiz_dist_only</code></dt>
+<dd>
+  <details><i>valid values:</i> .true., .false.</details>
+  <p>If set to .true., then the vertical location of all items,
+  observations and state vector both, are ignored when computing
+  distances between pairs of locations. This has the effect that all
+  items within a vertical-cylindrical area are considered the same
+  distance away.</p>
+
+  <p>If set to .false., then the full 3d separation is computed. Since
+  the localization is computed in radians, the 2d distance is easy to
+  compute but a scaling factor must be given for the vertical since
+  vertical coordinates can be in meters, pressure, or model levels.
+  See below for the 'vert_normalization_xxx' namelist items.</p>
+</dd>
+
+<dt><code>&amp;location_nml :: vert_normalization_{pressure,height,level,scale_height}</code></dt>
+<dd>
+  <details><i>valid values:</i> real numbers, in pascals, meters, index, and value
+  respectively</details>
+
+  <p>If 'horiz_dist_only' is set to .true., these are ignored. If
+  set to .false., these are required. They are the amount of that
+  quantity that is equivalent to 1 radian in the horizontal. If the
+  model is an earth-based one, then one radian is roughly 6366
+  kilometers, so if vert_normalization_height is set to 6366000
+  meters, then the localization cutoff will be a perfect sphere. If
+  you want to localize over a larger distance in the vertical than
+  horizontal, use a larger value. If you want to localize more
+  sharply in the vertical, use a smaller number. The type of
+  localization used is set by which type of vertical coordinate the
+  observations and state vector items have.</p>
+
+  <p>If you have observations with different vertical coordinates (e.g.
+  pressure and height), or if your observations have a different
+  vertical coordinate than your state vector items, or if you want to
+  localize in a different type of unit than your normal vertical
+  coordinate (e.g. your model uses pressure in the vertical but you
+  wish to localize in meters), then you will need to modify or add a
+  <em class="code">get_close()</em> routine in your <em class=
+  "file">model_mod.f90</em> file. See the discussion in the <a href=
+  "../../location/threed_sphere/location_mod.html">location
+  module</a> documentation for how to transform vertical coordinates
+  before localization.</p>
+</dd>
+
+<dt><code>&amp;assim_tools_nml ::adaptive_localization_threshold</code></dt>
+<dd>
+  <details><i>valid values:</i> integer counts, or -1 to disable</details>
+  <p>Used to dynamically shrink the localization cutoff in areas of
+  dense observations. If set to something larger than 0, first the
+  number of other observations within 2*cutoff is computed. If it is
+  larger than this given threshold, the cutoff is decreased
+  proportionally so if the observations were evenly distributed in
+  space, the number of observations within 2*revised_cutoff would now
+  be the threshold value. The cutoff value is computed for each
+  observation as it is assimilated, so can be different for each
+  one.</p>
+</dd>
+
+<dt><code>&amp;assim_tools_nml :: adaptive_cutoff_floor</code></dt>
+<dd><details><i>valid values:</i> 0.0 to infinity, or -1 to disable</details>
+  <p>If using adaptive localization (adaptive_localization_threshold
+  set to a value greater than 0), then this value can be used to set
+  a minimum cutoff distance below which the adaptive code will not
+  shrink. Set to -1 to disable. Ignored if not using adaptive
+  localization.</p>
+</dd>
+
+<dt><code>&amp;assim_tools_nml :: output_localization_diagnostics</code></dt>
+<dd>
+  <details><i>valid values:</i> .true., .false.</details>
+  <p>If .true. and if adaptive localization is on, a single text
+  line is printed to a file giving the original cutoff and number of
+  observations, and the revised cutoff and new number of counts
+  within this smaller cutoff for any observation which has nearby
+  observations which exceed the adaptive threshold count.</p>
+</dd>
+
+<dt><code>&amp;assim_tools_nml :: localization_diagnostics_file</code></dt>
+<dd>
+  <details><i>valid values:</i> text string</details>
+  <p>Name of the file where the adaptive localization diagnostic
+  information is written.</p>
+</dd>
+
+
+<dt><code>&amp;assim_tools_nml :: special_localization_obs_types</code></dt>
+<dd>
+  <details><i>valid values:</i> list of 1 or more text strings</details>
+  <p>The cutoff localization setting is less critical in DART than
+  it might be in other situations since during the assimilation DART
+  computes the covariances between observations and nearby state
+  vector locations and that is the major factor in controlling the
+  impact an observation has. For conventional observations
+  fine-tuning the cutoff based on observation type is not recommended
+  (it is possible to do more harm than good with it). But in certain
+  special cases there may be valid reasons to want to change the
+  localization cutoff distances drastically for certain kinds of
+  observations. This and the following namelist items allow this.</p>
+
+  <p>Optional list of observation types (e.g. "RADAR_REFLECTIVITY",
+  "AIRS_TEMPERATURE") which will use a different cutoff distance. Any
+  observation types not listed here will use the standard cutoff
+  distance (set by the 'cutoff' namelist value). This is only
+  implemented for the threed_sphere location module (the one used by
+  most geophysical models.)</p>
+</dd>
+
+<dt><code>&amp;assim_tools_nml :: special_localization_cutoffs</code></dt>
+<dd>
+  <details><i>valid values:</i> list of 1 or more real values, 0.0 to infinity</details>
+  <p>A list of real values, the same length as the list of
+  observation types, to be used as the cutoff value for each of the
+  given observation types. This is only implemented for the
+  threed_sphere location module (the one used by most geophysical
+  models.)</p>
+</dd>
 </dl>
+
+<h3>Guidance regarding localization</h3>
+
 <p>There are a large set of options for localization. Individual
 cases may differ but in general the following guidelines might
 help. Most users use the Gaspari-Cohn covariance cutoff type. The
@@ -233,6 +246,7 @@ for subsequent runs. Most localize in the vertical, but tend to use
 large values so as to not disturb vertical structures. Users do not
 generally use adaptive localization, unless their observations are
 very dense in some areas and sparse in others.</p>
+
 <p>The advice for setting good values for the cutoff value is to
 err on the larger side - to estimate for all types of observations
 under all conditions what the farthest feasible impact or
@@ -244,6 +258,7 @@ results this way. The downside of guessing too small is that state
 vector items that should get an impact from an observation won't.
 This might disrupt organized features in a field and the model may
 take more time to recover/reconstruct the feature.</p>
+
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 <!--==================================================================-->
