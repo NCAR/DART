@@ -2,16 +2,15 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! MOPITT_CO_RETRIEVAL, QTY_CO
 ! IASI_CO_RETRIEVAL, QTY_CO
 ! GEO_CO_ASI, QTY_CO
 ! GEO_CO_NAM, QTY_CO
 ! GEO_CO_EUR, QTY_CO
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_mopitt_mod, only : write_mopitt_co, read_mopitt_co, &
@@ -805,8 +804,3 @@ end subroutine write_mopitt_avg_kernels
 end module obs_def_mopitt_mod
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

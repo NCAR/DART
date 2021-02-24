@@ -13,9 +13,9 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
+\rm -f preprocess *.o *.mod Makefile .cppdefs
 
-set MODEL = "utilities test"
+set MODEL = "forward operators test"
 
 @ n = 1
 
@@ -55,50 +55,7 @@ end
 \rm -f *.o *.mod Makefile .cppdefs
 \rm -f input.nml*_default
 
-if ( $#argv == 1 && "$1" == "-mpi" ) then
-  echo "Success: All single task DART programs compiled."
-  echo "Script now compiling MPI parallel versions of the DART programs."
-else if ( $#argv == 1 && "$1" == "-nompi" ) then
-  echo "Success: All single task DART programs compiled."
-  echo "Script is exiting without building the MPI version of the DART programs."
-  exit 0
-else
-  echo ""
-  echo "Success: All single task DART programs compiled."
-  exit 0
-endif
-
-#----------------------------------------------------------------------
-# to disable an MPI parallel version of filter for this model,
-# call this script with the -nompi argument, or if you are never going to
-# build with MPI, add an exit before the entire section above.
-#----------------------------------------------------------------------
-
-#----------------------------------------------------------------------
-# Build the MPI-enabled target(s)
-#----------------------------------------------------------------------
-
-foreach TARGET ( mkmf_* )
-
-   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
-
-   switch ( $TARGET )
-   case error_handler_test:
-      @ n = $n + 1
-      echo
-      echo "---------------------------------------------------"
-      echo "${MODEL} build number ${n} is ${PROG}"
-      \rm -f ${PROG}
-      csh $TARGET || exit $n
-      make        || exit $n
-      breaksw
-   default:
-      breaksw
-   endsw
-end
-
-\rm -f *.o *.mod Makefile .cppdefs
-\rm -f input.nml*_default
-
+echo ""
+echo "Success: All single task DART programs compiled."
+echo ""
 exit 0
-

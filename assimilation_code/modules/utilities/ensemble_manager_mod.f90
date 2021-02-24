@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module ensemble_manager_mod
 
@@ -15,7 +13,7 @@ module ensemble_manager_mod
 ! appropriately abstracted at a higher level of code.
 
 use types_mod,         only : r8, i4, i8,  MISSING_R8
-use utilities_mod,     only : register_module, do_nml_file, do_nml_term, &
+use utilities_mod,     only : do_nml_file, do_nml_term, &
                               error_handler, E_ERR, E_MSG, do_output, &
                               nmlfileunit, find_namelist_in_file,        &
                               check_namelist_read, timestamp, set_output
@@ -46,11 +44,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           allocate_single_copy,       put_single_copy,          get_single_copy,            &
           deallocate_single_copy
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'ensemble_manager_mod.f90'
 
 type ensemble_type
 
@@ -156,14 +150,13 @@ if(.not. present(distribution_type_in)) then
 else
    ! Check for error: only type 1 implemented for now
    if(distribution_type_in /= 1) call error_handler(E_ERR, 'init_ensemble_manager', &
-      'only distribution_type 1 is implemented', source, revision, revdate)
+      'only distribution_type 1 is implemented', source)
    ens_handle%distribution_type = distribution_type_in
 endif
 
 ! First call to init_ensemble_manager must initialize module and read namelist
 if ( .not. module_initialized ) then
    ! Initialize the module with utilities 
-   call register_module(source, revision, revdate)
    module_initialized = .true.
 
    ! Read the namelist entry
@@ -190,8 +183,8 @@ endif
 
 ! Check for error: only layout_types 1 and 2 are implemented
 if (ens_handle%layout_type /= 1 .and. ens_handle%layout_type /=2 ) then
-   call error_handler(E_ERR, 'init_ensemble_manager', 'only layout values 1 (standard), 2 (round-robin) allowed ', &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'init_ensemble_manager', &
+            'only layout values 1 (standard), 2 (round-robin) allowed ', source)
 endif
 
 ! Optional transpose type:
@@ -241,7 +234,7 @@ else
    write(msgstring, *) 'communication_configuration is', communication_configuration
    call error_handler(E_ERR, 'init_ensemble_manager', &
       'communication_configuration must be between 1 and 4', &
-       source, revision, revdate, text2=msgstring)
+       source, text2=msgstring)
 endif
 
 ! initially no data
@@ -287,21 +280,20 @@ integer :: owner, owners_index
 
 ! Error checking
 if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'get_copy', &
-        'last access not var-complete', source, revision, revdate)
+   call error_handler(E_ERR, 'get_copy', 'last access not var-complete', source)
 endif
 
 ! Verify that requested copy exists
 if(copy < 1 .or. copy > ens_handle%num_copies) then
    write(msgstring, *) 'Requested copy: ', copy, ' is > maximum copy: ', ens_handle%num_copies 
-   call error_handler(E_ERR,'get_copy', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'get_copy', msgstring, source)
 endif
 
 ! Make sure that vars has enough space to handle the answer
 if(ens_handle%my_pe == receiving_pe) then !HK I think only the receiver needs the space
    if(size(vars) < ens_handle%num_vars) then
       write(msgstring, *) 'Size of vars: ', size(vars), ' Must be at least ', ens_handle%num_vars
-      call error_handler(E_ERR,'get_copy', msgstring, source, revision, revdate)
+      call error_handler(E_ERR,'get_copy', msgstring, source)
    endif
 endif
 
@@ -358,19 +350,18 @@ integer :: owner, owners_index
 
 ! Error checking
 if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'put_copy', &
-        'last access not var-complete', source, revision, revdate)
+   call error_handler(E_ERR, 'put_copy', 'last access not var-complete', source)
 endif
 
 if(copy < 1 .or. copy > ens_handle%num_copies) then
    write(msgstring, *) 'Requested copy: ', copy, ' is > maximum copy: ', ens_handle%num_copies 
-   call error_handler(E_ERR,'put_copy', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'put_copy', msgstring, source)
 endif
 
 ! Make sure that num_vars has enough space to handle the answer
 if(ens_handle%num_vars < size(vars)) then
    write(msgstring, *) 'Size of vars: ', size(vars), ' Cannot be more than ', ens_handle%num_vars
-   call error_handler(E_ERR,'put_copy', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'put_copy', msgstring, source)
 endif
 
 ! What PE stores this copy and what is its local storage index
@@ -422,19 +413,18 @@ integer :: owner, owners_index
 
 ! Error checking
 if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'broadcast_copy', &
-        'last access not var-complete', source, revision, revdate)
+   call error_handler(E_ERR, 'broadcast_copy', 'last access not var-complete', source)
 endif
 
 if(copy < 1 .or. copy > ens_handle%num_copies) then
    write(msgstring, *) 'Requested copy: ', copy, ' is > maximum copy: ', ens_handle%num_copies 
-   call error_handler(E_ERR,'broadcast_copy', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'broadcast_copy', msgstring, source)
 endif
 
 ! Make sure that arraydata has enough space to handle the answer
 if(size(arraydata) < ens_handle%num_vars) then
    write(msgstring, *) 'Size of arraydata: ', size(arraydata), ' must be at least ', ens_handle%num_vars
-   call error_handler(E_ERR,'broadcast_copy', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'broadcast_copy', msgstring, source)
 endif
 
 ! What PE stores this copy and what is its local storage index
@@ -484,7 +474,7 @@ type(ensemble_type), intent(in) :: ens_handle
 
 !if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
 !   call error_handler(E_ERR, 'prepare_to_read_from_vars', &
- !       'last access not var-complete', source, revision, revdate)
+ !       'last access not var-complete', source)
 !endif
 
 end subroutine prepare_to_read_from_vars
@@ -499,7 +489,7 @@ type(ensemble_type), intent(in) :: ens_handle
 
 !if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
 !   call error_handler(E_ERR, 'prepare_to_read_from_copies', &
-!        'last access not copy-complete', source, revision, revdate)
+!        'last access not copy-complete', source)
 !endif
 
 end subroutine prepare_to_read_from_copies
@@ -515,7 +505,7 @@ type(ensemble_type), intent(inout) :: ens_handle
 
 !if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
 !   call error_handler(E_ERR, 'prepare_to_update_vars', &
- !       'last access not var-complete', source, revision, revdate)
+ !       'last access not var-complete', source)
 !endif
 !ens_handle%valid = VALID_VARS
 
@@ -532,7 +522,7 @@ type(ensemble_type), intent(inout) :: ens_handle
 
 !if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
 !   call error_handler(E_ERR, 'prepare_to_update_copies', &
-!        'last access not copy-complete', source, revision, revdate)
+!        'last access not copy-complete', source)
 !endif
 !ens_handle%valid = VALID_COPIES
 
@@ -550,7 +540,7 @@ type(time_type),     intent(in)    :: mtime
 
 if(indx < 1 .or. indx > ens_handle%my_num_copies) then
    write(msgstring, *) 'indx: ', indx, ' cannot exceed ', ens_handle%my_num_copies
-   call error_handler(E_ERR,'set_ensemble_time', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'set_ensemble_time', msgstring, source)
 endif
 
 ens_handle%time(indx) = mtime
@@ -569,7 +559,7 @@ type(time_type),     intent(out) :: mtime
 
 if(indx < 1 .or. indx > ens_handle%my_num_copies) then
    write(msgstring, *) 'indx: ', indx, ' cannot exceed ', ens_handle%my_num_copies
-   call error_handler(E_ERR,'get_ensemble_time', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'get_ensemble_time', msgstring, source)
 endif
 
 mtime = ens_handle%time(indx)
@@ -609,24 +599,24 @@ logical,             intent(in)             :: duplicate_time
 ! Error checking
 if (ens1%valid /= VALID_VARS .and. ens1%valid /= VALID_BOTH) then
    call error_handler(E_ERR, 'duplicate_ens', &
-        'last access not var-complete for source ensemble', source, revision, revdate)
+        'last access not var-complete for source ensemble', source)
 endif
 
 ! Check to make sure that the ensembles are compatible
 if(ens1%num_copies /= ens2%num_copies) then
    write(msgstring, *) 'num_copies ', ens1%num_copies, ' and ', ens2%num_copies, &
       'must be equal'
-   call error_handler(E_ERR,'duplicate_ens', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'duplicate_ens', msgstring, source)
 endif
 if(ens1%num_vars /= ens2%num_vars) then
    write(msgstring, *) 'num_vars ', ens1%num_vars, ' and ', ens2%num_vars, &
       'must be equal'
-   call error_handler(E_ERR,'duplicate_ens', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'duplicate_ens', msgstring, source)
 endif
 if(ens1%distribution_type /= ens2%distribution_type) then
    write(msgstring, *) 'distribution_type ', ens1%distribution_type, ' and ', &
       ens2%distribution_type, 'must be equal'
-   call error_handler(E_ERR,'duplicate_ens', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'duplicate_ens', msgstring, source)
 endif
 
 ! Duplicate each copy that is stored locally on this process.
@@ -667,7 +657,7 @@ integer,              intent(out) :: copies(:)
 if(size(copies) < ens_handle%my_num_copies) then
    write(msgstring, *) 'Array copies only has size ', size(copies), &
       ' but must be at least ', ens_handle%my_num_copies
-   call error_handler(E_ERR, 'get_my_copies', msgstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_my_copies', msgstring, source)
 endif
 
 copies(1:ens_handle%my_num_copies) = ens_handle%my_copies(1:ens_handle%my_num_copies)
@@ -702,7 +692,7 @@ integer(i8),          intent(out) :: vars(:)
 if(size(vars) < ens_handle%my_num_vars) then
    write(msgstring, *) 'Array vars only has size ', size(vars), &
       ' but must be at least ', ens_handle%my_num_vars
-   call error_handler(E_ERR,'get_my_vars', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'get_my_vars', msgstring, source)
 endif
 
 vars(1:ens_handle%my_num_vars) = ens_handle%my_vars(1:ens_handle%my_num_vars)
@@ -1063,12 +1053,12 @@ endif
 !      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
 !      call error_handler(E_MSG, 'all_vars_to_all_copies', &
 !           'vars & copies both valid, transpose not needed for this task', &
-!            source, revision, revdate, text2=msgstring)
+!            source, text2=msgstring)
 !   endif
 !else if (ens_handle%valid /= VALID_VARS) then
 !   write(msgstring, *) 'ens_handle ', ens_handle%id_num
 !   call error_handler(E_ERR, 'all_vars_to_all_copies', &
-!        'last access not var-complete', source, revision, revdate, &
+!        'last access not var-complete', source, &
 !         text2=msgstring)
 !endif
 
@@ -1239,12 +1229,12 @@ endif
 !      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
 !      call error_handler(E_MSG, 'all_copies_to_all_vars', &
 !           'vars & copies both valid, transpose not needed for this task', &
-!            source, revision, revdate, text2=msgstring)
+!            source, text2=msgstring)
 !   endif
 !else if (ens_handle%valid /= VALID_COPIES) then
 !   write(msgstring, *) 'ens_handle ', ens_handle%id_num
 !   call error_handler(E_ERR, 'all_copies_to_all_vars', &
-!        'last access not copy-complete', source, revision, revdate, &
+!        'last access not copy-complete', source, &
 !         text2=msgstring)
 !endif
 
@@ -1418,7 +1408,7 @@ integer :: num_copies, i
 ! Error checking
 if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
    call error_handler(E_ERR, 'compute_copy_mean', &
-        'last access not copy-complete', source, revision, revdate)
+        'last access not copy-complete', source)
 endif
 
 num_copies = end_copy - start_copy + 1
@@ -1452,7 +1442,7 @@ integer :: num_copies, i
 ! Error checking
 !if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
 !   call error_handler(E_ERR, 'compute_copy_mean_sd', &
-!        'last access not copy-complete', source, revision, revdate)
+!        'last access not copy-complete', source)
 !endif
 
 num_copies = end_copy - start_copy + 1
@@ -1496,7 +1486,7 @@ integer :: num_copies, i
 ! Error checking
 if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
    call error_handler(E_ERR, 'compute_copy_mean_var', &
-        'last access not copy-complete', source, revision, revdate)
+        'last access not copy-complete', source)
 endif
 
 num_copies = end_copy - start_copy + 1
@@ -1599,24 +1589,24 @@ endif
 if (.not. debug .and. .not. print_anyway) return
 
 if (has_label) then
-   call error_handler(E_MSG, 'ensemble handle: ', label, source, revision, revdate)
+   call error_handler(E_MSG, 'ensemble handle: ', label, source)
 endif
 write(msgstring, *) 'handle num: ',          ens_handle%id_num 
-call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'number of    copies: ', ens_handle%num_copies
-call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'number of    vars  : ', ens_handle%num_vars
-call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'number of my_copies: ', ens_handle%my_num_copies
-call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'number of my_vars  : ', ens_handle%my_num_vars
-call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'valid              : ', ens_handle%valid
-call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'distribution_type  : ', ens_handle%distribution_type
-call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'my_pe number       : ', ens_handle%my_pe
-call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 
 ! large task counts crash here when the list length exceeds the buffer length.
 ! break the list up into chunks of 10 to avoid this.
@@ -1624,11 +1614,11 @@ if (allocated(ens_handle%pe_to_task_list)) then
    listlen = size(ens_handle%pe_to_task_list)
    do i=1, listlen, 10
       write(msgstring, *) 'task_to_pe_list    : ', ens_handle%task_to_pe_list(i:min(i+9,listlen))
-      call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+      call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
    enddo
    do i=1, listlen, 10
       write(msgstring, *) 'pe_to_task_list    : ', ens_handle%pe_to_task_list(i:min(i+9,listlen))
-      call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+      call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
    enddo
 endif
 
@@ -1637,7 +1627,7 @@ if (do_contents .and. allocated(ens_handle%copies)) then
    do j = 1, min(ens_handle%my_num_vars, limit_count)
       do i = 1, min(ens_handle%num_copies, limit_count)
          write(msgstring, *) 'ens_handle%copies(i,j) : ', i, j, ens_handle%copies(i,j)
-         call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+         call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
       enddo
    enddo
 endif
@@ -1646,7 +1636,7 @@ if (do_contents .and. allocated(ens_handle%vars)) then
    do j = 1, min(ens_handle%my_num_copies, limit_count)
       do i = 1, min(ens_handle%num_vars, limit_count)
          write(msgstring, *) 'ens_handle%vars(i,j) : ', i, j, ens_handle%vars(i,j)
-         call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+         call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
       enddo
    enddo
 endif
@@ -1670,7 +1660,7 @@ integer,             intent(in)       :: nEns_members
 integer,             intent(inout)    :: layout_type
 
 if (layout_type /= 1 .and. layout_type /=2) call error_handler(E_ERR,'assign_tasks_to_pes', &
-    'not a valid layout_type, must be 1 (standard) or 2 (round-robin)',source,revision,revdate)
+    'not a valid layout_type, must be 1 (standard) or 2 (round-robin)',source)
 
 if (tasks_per_node >= num_pes) then ! all tasks are on one node, don't try to spread them out
    call simple_layout(ens_handle, num_pes)
@@ -1844,7 +1834,7 @@ type(ensemble_type), intent(inout) :: ens_handle
 !if (.not. get_allow_transpose(ens_handle)) then
 !   call error_handler(E_ERR, 'allocate_vars', &
 !      'cannot allocate the vars array because "allow_transpose" is false', &
-!       source, revision, revdate)
+!       source)
 !endif
 
 if(.not. allocated(ens_handle%vars)) &
@@ -1862,7 +1852,7 @@ type(ensemble_type), intent(inout) :: ens_handle
 !if (.not. get_allow_transpose(ens_handle)) then
 !   call error_handler(E_ERR, 'allocate_vars', &
 !      'cannot deallocate the vars array because "allow_transpose" is false', &
-!       source, revision, revdate)
+!       source)
 !endif
 
 if(allocated(ens_handle%vars)) deallocate(ens_handle%vars)
@@ -1947,8 +1937,3 @@ end subroutine get_current_time
 
 end module ensemble_manager_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

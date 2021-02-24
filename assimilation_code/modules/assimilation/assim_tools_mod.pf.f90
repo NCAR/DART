@@ -1,33 +1,29 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !>  A variety of operations required by assimilation.
 module assim_tools_mod
 
 !> \defgroup assim_tools assim_tools_mod
-!> 
+!>
 !> @{
 use      types_mod,       only : r8, i8, digits12, PI, missing_r8
 
 use    options_mod,       only : get_missing_ok_status
 
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
-                                 find_namelist_in_file, register_module, error_handler,   &
+                                 find_namelist_in_file, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
-
 use       sort_mod,       only : index_sort 
-
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
 use obs_sequence_mod,     only : obs_sequence_type, obs_type, get_num_copies, get_num_qc, &
                                  init_obs, get_obs_from_key, get_obs_def, get_obs_values, &
                                  destroy_obs
-   
+
 use          obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_time,    &
                                  get_obs_def_error_variance, get_obs_def_type_of_obs
 
@@ -50,11 +46,11 @@ use         location_mod, only : location_type, get_close_type, query_location, 
                                  get_vertical_localization_coord, get_close_destroy,      &
                                  set_vertical_localization_coord
 
-use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             & 
+use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             &
                                  compute_copy_mean_var, get_var_owner_index,              &
                                  prepare_to_update_copies, map_pe_to_task
 
-use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              & 
+use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              &
                                  sum_across_tasks, task_count, start_mpi_timer,           &
                                  read_mpi_timer, task_sync
 
@@ -109,14 +105,10 @@ integer                :: sec_table_size
 real(r8), allocatable  :: exp_true_correl(:), alpha(:)
 
 ! if adjust_obs_impact is true, read in triplets from the ascii file
-! and fill this 2d impact table. 
+! and fill this 2d impact table.
 real(r8), allocatable  :: obs_impact_table(:,:)
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'assim_tools_mod.pf.f90'
 
 !============================================================================
 
@@ -181,7 +173,7 @@ logical            :: allow_any_impact_values = .false.
 ! "convert_obs" is true by default; in general it seems to
 ! be better for each task to convert the obs vertical before
 ! going into the loop but again this depends on how many
-! obs per task and whether the mean is distributed or 
+! obs per task and whether the mean is distributed or
 ! replicated on each task.
 logical :: convert_all_state_verticals_first = .false.
 logical :: convert_all_obs_verticals_first   = .true.
@@ -201,7 +193,7 @@ logical  :: distribute_mean  = .false.
 
 ! JPOTERJOY: new namelist variables
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
-   spread_restoration, sampling_error_correction,                          & 
+   spread_restoration, sampling_error_correction,                          &
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
    pf_kddm, frac_neff, pf_alpha,                                           &
@@ -223,7 +215,6 @@ integer :: iunit, io, i, j
 integer :: num_special_cutoff, type_index
 logical :: cache_override = .false.
 
-call register_module(source, revision, revdate)
 
 ! do this up front
 module_initialized = .true.
@@ -232,7 +223,7 @@ module_initialized = .true.
 ! in the namelist.  this is to help detect how many items are
 ! actually given in the namelist.
 special_localization_obs_types(:)  = 'null'
-special_localization_cutoffs(:)    =  missing_r8 
+special_localization_cutoffs(:)    =  missing_r8
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "assim_tools_nml", iunit)
@@ -250,7 +241,7 @@ if (task_count() == 1) distribute_mean = .true.
 ! FOR NOW, can only do spread restoration with filter option 1 (need to extend this)
 if(spread_restoration .and. .not. filter_kind == 1) then
    write(msgstring, *) 'cannot combine spread_restoration and filter_kind ', filter_kind
-   call error_handler(E_ERR,'assim_tools_init:', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'assim_tools_init:', msgstring, source)
 endif
 
 ! allocate a list in all cases - even the ones where there is only
@@ -261,7 +252,7 @@ endif
 ! the specific types are autogenerated and always start at 1.  so the
 ! cutoff list is never (0:num_types); it is always (num_types).
 num_types = get_num_types_of_obs()
-allocate(cutoff_list(num_types)) 
+allocate(cutoff_list(num_types))
 cutoff_list(:) = cutoff
 has_special_cutoffs = .false.
 
@@ -274,7 +265,7 @@ do i = 1, MAX_ITEMS
       write(msgstring, *) 'cutoff value', i, ' is uninitialized.'
       call error_handler(E_ERR,'assim_tools_init:', &
                          'special cutoff namelist for types and distances do not match', &
-                         source, revision, revdate, &
+                         source, &
                          text2='kind = '//trim(special_localization_obs_types(i)), &
                          text3=trim(msgstring))
    endif
@@ -288,7 +279,7 @@ do i = 1, num_special_cutoff
    type_index = get_index_for_type_of_obs(special_localization_obs_types(i))
    if (type_index < 0) then
       write(msgstring, *) 'unrecognized TYPE_ in the special localization namelist:'
-      call error_handler(E_ERR,'assim_tools_init:', msgstring, source, revision, revdate, &
+      call error_handler(E_ERR,'assim_tools_init:', msgstring, source, &
                          text2=trim(special_localization_obs_types(i)))
    endif
    cutoff_list(type_index) = special_localization_cutoffs(i)
@@ -366,15 +357,15 @@ real(r8) :: wo(ens_size,ens_handle%my_num_vars), hwo(ens_size,obs_ens_handle%my_
 real(r8) :: w(ens_size), ens_mean, ens_var, ws, ob_info(3)
 integer  :: indx(ens_size)
 
-integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
-integer  :: this_obs_key, obs_mean_index, obs_var_index
-integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
-integer  :: num_close_obs, obs_index, num_close_states
-integer  :: total_num_close_obs, last_num_close_obs, last_num_close_states
+integer :: my_num_obs, i, j, owner, owners_index, my_num_state
+integer :: this_obs_key, obs_mean_index, obs_var_index
+integer :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
+integer :: num_close_obs, obs_index, num_close_states
+integer :: total_num_close_obs, last_num_close_obs, last_num_close_states
 integer :: base_obs_kind, base_obs_type, nth_obs
-integer  :: num_close_obs_cached, num_close_states_cached
-integer  :: num_close_obs_calls_made, num_close_states_calls_made
-integer  :: localization_unit, secs, days, rev_num_close_obs
+integer :: num_close_obs_cached, num_close_states_cached
+integer :: num_close_obs_calls_made, num_close_states_calls_made
+integer :: localization_unit, secs, days, rev_num_close_obs
 integer :: whichvert_obs_in_localization_coord
 integer :: istatus
 integer, allocatable :: close_obs_ind(:)
@@ -386,10 +377,10 @@ integer, allocatable :: my_obs_type(:)
 integer, allocatable :: my_state_kind(:)
 integer, allocatable :: vstatus(:)
 
-character(len = 200)  :: base_loc_text   ! longer than longest location formatting possible
+character(len = 200) :: base_loc_text   ! longer than longest location formatting possible
 
 type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
-type(location_type) :: dummyloc
+type(location_type)  :: dummyloc
 type(location_type), allocatable :: my_obs_loc(:)
 type(location_type), allocatable :: my_state_loc(:)
 
@@ -481,7 +472,7 @@ if (.not. module_initialized) call assim_tools_init()
 call create_mean_window(ens_handle, ENS_MEAN_COPY, distribute_mean)
 
 ! filter kinds 1 and 8 return sorted increments, however non-deterministic
-! inflation can scramble these. the sort is expensive, so help users get better 
+! inflation can scramble these. the sort is expensive, so help users get better
 ! performance by rejecting namelist combinations that do unneeded work.
 if (sort_obs_inc) then
    if(deterministic_inflate(inflate) .and. ((filter_kind == 1) .or. (filter_kind == 8))) then
@@ -489,7 +480,7 @@ if (sort_obs_inc) then
       write(msgstring2, *) 'and deterministic inflation [filter_nml:inf_deterministic = .TRUE.]'
       write(msgstring3, *) 'assim_tools_nml:sort_obs_inc = .TRUE. is not needed and is expensive.'
       call error_handler(E_MSG,'', '')  ! whitespace
-      call error_handler(E_MSG,'WARNING filter_assim:', msgstring, source, revision, revdate, &
+      call error_handler(E_MSG,'WARNING filter_assim:', msgstring, source, &
                          text2=msgstring2,text3=msgstring3)
       call error_handler(E_MSG,'', '')  ! whitespace
       sort_obs_inc = .FALSE.
@@ -512,22 +503,22 @@ local_obs_inflate        = do_obs_inflate(inflate)
 nth_obs = -1
 
 ! Divide ensemble into num_groups groups.
-! make sure the number of groups and ensemble size result in 
-! at least 2 members in each group (to avoid divide by 0) and 
+! make sure the number of groups and ensemble size result in
+! at least 2 members in each group (to avoid divide by 0) and
 ! that the groups all have the same number of members.
 grp_size = ens_size / num_groups
 if ((grp_size * num_groups) /= ens_size) then
    write(msgstring,  *) 'The number of ensemble members must divide into the number of groups evenly.'
    write(msgstring2, *) 'Ensemble size = ', ens_size, '  Number of groups = ', num_groups
    write(msgstring3, *) 'Change number of groups or ensemble size to avoid remainders.'
-   call error_handler(E_ERR,'filter_assim:', msgstring, source, revision, revdate, &
+   call error_handler(E_ERR,'filter_assim:', msgstring, source, &
                          text2=msgstring2,text3=msgstring3)
 endif
 if (grp_size < 2) then
    write(msgstring,  *) 'There must be at least 2 ensemble members in each group.'
    write(msgstring2, *) 'Ensemble size = ', ens_size, '  Number of groups = ', num_groups
    write(msgstring3, *) 'results in < 2 members/group.  Decrease number of groups or increase ensemble size'
-   call error_handler(E_ERR,'filter_assim:', msgstring, source, revision, revdate, &
+   call error_handler(E_ERR,'filter_assim:', msgstring, source, &
                          text2=msgstring2,text3=msgstring3)
 endif
 do group = 1, num_groups
@@ -553,9 +544,9 @@ call get_my_vars(obs_ens_handle, my_obs_indx)
 ! Construct an observation temporary
 call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 
-! Get the locations for all of my observations 
+! Get the locations for all of my observations
 ! HK I would like to move this to before the calculation of the forward operator so you could
-! overwrite the vertical location with the required localization vertical coordinate when you 
+! overwrite the vertical location with the required localization vertical coordinate when you
 ! do the forward operator calculation
 call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, obs_time)
 
@@ -598,7 +589,7 @@ if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
    if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'convert_vertical_state')
 endif
 
-! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING 
+! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING
 ! INCREMENTS. OWNING PE WOULD SHIP IT'S PRIOR TO THIS ONE
 ! BEFORE EACH INCREMENT.
 
@@ -609,7 +600,7 @@ if(local_ss_inflate) then
       obs_mean_index = OBS_PRIOR_MEAN_START + group - 1
       obs_var_index  = OBS_PRIOR_VAR_START  + group - 1
          call compute_copy_mean_var(obs_ens_handle, grp_beg(group), grp_end(group), &
-           obs_mean_index, obs_var_index) 
+           obs_mean_index, obs_var_index)
    end do
 endif
 
@@ -630,7 +621,7 @@ else
 endif
 
 if (close_obs_caching) then
-   ! Initialize last obs and state get_close lookups, to take advantage below 
+   ! Initialize last obs and state get_close lookups, to take advantage below
    ! of sequential observations at the same location (e.g. U,V, possibly T,Q)
    ! (this is getting long enough it probably should go into a subroutine. nsc.)
    last_base_obs_loc           = set_location_missing()
@@ -792,7 +783,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (print_every_nth_obs > 0) nth_obs = mod(i, print_every_nth_obs)
 
    ! If requested, print out a message every Nth observation
-   ! to indicate progress is being made and to allow estimates 
+   ! to indicate progress is being made and to allow estimates
    ! of how long the assim will take.
    if (nth_obs == 0) then
       write(msgstring, '(2(A,I8))') 'Processing observation ', i, &
@@ -918,13 +909,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                   ! gamma is hardcoded as 1.0, so no test is needed here.
                   ens_var_deflate = ens_obs_var / &
                      (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
-                  
+
                   ! If this is inflate_only (i.e. posterior) remove impact of this obs.
                   ! This is simulating independent observation by removing its impact.
                   if(inflate_only .and. &
                         ens_var_deflate               > small .and. &
-                        obs_err_var                   > small .and. & 
-                        obs_err_var - ens_var_deflate > small ) then 
+                        obs_err_var                   > small .and. &
+                        obs_err_var - ens_var_deflate > small ) then
                      r_var = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
                      r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
                   else
@@ -990,7 +981,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Also get qc and inflation information if needed
       ! also a converted vertical coordinate if needed
       !>@todo FIXME see the comment in the broadcast_send() section about
-      !>the cost of sending unneeded values 
+      !>the cost of sending unneeded values
 
       ! JPOTERJOY
       if (filter_kind == 9) then
@@ -1075,7 +1066,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
    else
- 
+
       if (base_obs_loc == last_base_obs_loc) then
          num_close_obs     = last_num_close_obs
          close_obs_ind(:)  = last_close_obs_ind(:)
@@ -1100,6 +1091,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 
    n_close_obs_items(i) = num_close_obs
+    !print*, 'base_obs _oc', base_obs_loc, 'rank ', my_task_id()
+    !call test_close_obs_dist(close_obs_dist, num_close_obs, i)
+    !print*, 'num close ', num_close_obs
 
    ! set the cutoff default, keep a copy of the original value, and avoid
    ! looking up the cutoff in a list if the incoming obs is an identity ob
@@ -1134,11 +1128,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
          if ( output_localization_diagnostics ) then
 
-            ! to really know how many obs are left now, you have to 
-            ! loop over all the obs, again, count how many kinds are 
-            ! going to be assim, and explicitly check the distance and 
+            ! to really know how many obs are left now, you have to
+            ! loop over all the obs, again, count how many kinds are
+            ! going to be assim, and explicitly check the distance and
             ! see if it's closer than the new cutoff ( times 2 ), and
-            ! then do a global sum to get the total.  since this costs, 
+            ! then do a global sum to get the total.  since this costs,
             ! do it only when diagnostics are requested.
 
             ! this does a cross-task sum, so all tasks must make this call.
@@ -1146,8 +1140,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                                               close_obs_dist, cutoff_rev*2.0_r8)
 
 
-            ! GSR output the new cutoff 
-            ! Here is what we might want: 
+            ! GSR output the new cutoff
+            ! Here is what we might want:
             ! time, ob index #, ob location, new cutoff, the assimilate obs count, owner (which process has this ob)
             ! obs_time, obs_val_index, base_obs_loc, cutoff_rev, total_num_close_obs, owner
             ! break up the time into secs and days, and break up the location into lat, lon and height
@@ -1217,7 +1211,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          last_num_close_states    = num_close_states
          last_close_state_ind(:)  = close_state_ind(:)
          last_close_state_dist(:) = close_state_dist(:)
-         num_close_states_calls_made = num_close_states_calls_made + 1 
+         num_close_states_calls_made = num_close_states_calls_made + 1
       endif
    endif
 
@@ -1257,8 +1251,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          varying_ss_inflate    = 0.0_r8
          varying_ss_inflate_sd = 0.0_r8
       endif
-     
-      ! Compute the distance and covariance factor 
+
+      ! Compute the distance and covariance factor
       cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
          base_obs_loc, base_obs_type, my_state_loc(state_index), my_state_kind(state_index))
 
@@ -1273,6 +1267,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       ! If no weight is indicated, no more to do with this state variable
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
+
       if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
 
       ! JPOTERJOY: Perform pf state update
@@ -1391,12 +1386,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                else
                   ens_var_deflate = ens_obs_var
                endif
-                  
+
                ! If this is inflate only (i.e. posterior) remove impact of this obs.
                if(inflate_only .and. &
                      ens_var_deflate               > small .and. &
-                     obs_err_var                   > small .and. & 
-                     obs_err_var - ens_var_deflate > small ) then 
+                     obs_err_var                   > small .and. &
+                     obs_err_var - ens_var_deflate > small ) then
                   r_var  = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
                   r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
                else
@@ -1424,13 +1419,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             ! Match code in obs_space_diags() in filter.f90
             do_adapt_inf_update = .true.
             if (inflate_only) then
-               diff_sd = sqrt(obs_err_var + r_var) 
+               diff_sd = sqrt(obs_err_var + r_var)
                if (diff_sd > 0.0_r8) then
                   outlier_ratio = abs(obs(1) - r_mean) / diff_sd
-                  do_adapt_inf_update = (outlier_ratio <= 3.0_r8) 
+                  do_adapt_inf_update = (outlier_ratio <= 3.0_r8)
                endif
             endif
-            if (do_adapt_inf_update) then   
+            if (do_adapt_inf_update) then
                ens_handle%copies(ENS_INF_COPY, state_index) = varying_ss_inflate
                ens_handle%copies(ENS_INF_SD_COPY, state_index) = varying_ss_inflate_sd
             endif
@@ -1457,8 +1452,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Only have to update obs that have not yet been used
       if(my_obs_indx(obs_index) > i) then
 
-         ! If the forward observation operator failed, no need to 
-         ! update the unassimilated observations 
+         ! If the forward observation operator failed, no need to
+         ! update the unassimilated observations
          if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
 
          ! Compute the distance and the covar_factor
@@ -1672,7 +1667,7 @@ if (close_obs_caching) then
       print *, "Total number of calls avoided to get_close_obs for obs/states:    ", &
                 num_close_obs_cached + num_close_states_cached
       if (num_close_obs_cached+num_close_obs_calls_made+ &
-          num_close_states_cached+num_close_states_calls_made > 0) then 
+          num_close_states_cached+num_close_states_calls_made > 0) then
          print *, "Percent saved: ", 100.0_r8 * &
                    (real(num_close_obs_cached+num_close_states_cached, r8) /  &
                    (num_close_obs_calls_made+num_close_obs_cached +           &
@@ -1748,19 +1743,19 @@ net_a = 0.0_r8
 prior_mean = sum(ens) / ens_size
 prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 
-! If observation space inflation is being done, compute the initial 
+! If observation space inflation is being done, compute the initial
 ! increments and update the inflation factor and its standard deviation
 ! as needed. my_cov_inflate < 0 means don't do any of this.
 if(do_obs_inflate(inflate)) then
    ! If my_cov_inflate_sd is <= 0, just retain current my_cov_inflate setting
-   if(my_cov_inflate_sd > 0.0_r8) & 
+   if(my_cov_inflate_sd > 0.0_r8) &
       ! Gamma set to 1.0 because no distance for observation space
       call update_inflation(inflate, my_cov_inflate, my_cov_inflate_sd, prior_mean, &
          prior_var, ens_size, obs, obs_var, gamma_corr = 1.0_r8)
 
    ! Now inflate the ensemble and compute a preliminary inflation increment
    call inflate_ens(inflate, ens, prior_mean, my_cov_inflate, prior_var)
-   ! Keep the increment due to inflation alone 
+   ! Keep the increment due to inflation alone
    inflate_inc = ens - ens_in
 
    ! Need to recompute variance if non-deterministic inflation (mean is unchanged)
@@ -1778,7 +1773,7 @@ if ((obs_var == 0.0_r8) .and. (prior_var == 0.0_r8)) then
    write(msgstring2, *) 'The observation has 0.0 error variance, and the ensemble members have 0.0 spread.'
    write(msgstring3, *) 'These require inconsistent actions and the algorithm cannot continue.'
    call error_handler(E_ERR, 'obs_increment', msgstring, &
-           source, revision, revdate, text2=msgstring2, text3=msgstring3)
+           source, text2=msgstring2, text3=msgstring3)
 
 else if (obs_var == 0.0_r8) then
 
@@ -1814,10 +1809,9 @@ else
       call obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
    else if(filter_kind == 8) then
       call obs_increment_rank_histogram(ens, ens_size, prior_var, obs, obs_var, obs_inc)
-   else 
+   else
       call error_handler(E_ERR,'obs_increment', &
-                 'Illegal value of filter_kind in assim_tools namelist [1-8 OK]', &
-                 source, revision, revdate)
+              'Illegal value of filter_kind in assim_tools namelist [1-8 OK]', source)
    endif
 endif
 
@@ -1873,7 +1867,7 @@ subroutine obs_increment_ran_kf(ens, ens_size, prior_mean, prior_var, obs, obs_v
 !========================================================================
 !
 ! Forms a random sample of the Gaussian from the update equations.
-! This is very close to what a true 'ENSEMBLE' Kalman Filter would 
+! This is very close to what a true 'ENSEMBLE' Kalman Filter would
 ! look like. Note that outliers, multimodality, etc., get tossed.
 
 integer,   intent(in)  :: ens_size
@@ -1972,7 +1966,7 @@ endif
 !new_ens(9) = -6.894587E-02_r8
 !new_ens(10) = -1.243549E-02_r8
 
-! This has kurtosis of 2.0, verify again 
+! This has kurtosis of 2.0, verify again
 new_ens(1) = -1.789296_r8
 new_ens(2) = -1.523611_r8
 new_ens(3) = -1.271505_r8
@@ -1984,7 +1978,7 @@ new_ens(8) = -0.2598947_r8
 new_ens(9) = -0.1242189_r8
 new_ens(10) = -2.539018E-02_r8
 
-! This has kurtosis of 1.7, verify again 
+! This has kurtosis of 1.7, verify again
 !new_ens(1) = -1.648638_r8
 !new_ens(2) = -1.459415_r8
 !new_ens(3) = -1.272322_r8
@@ -2958,7 +2952,7 @@ endif
 
 !! NOTE: if requested to be returned, correl_out is set further up in the
 !! code, before the sampling error correction, if enabled, is applied.
-!! this means it's returning a different larger value than the correl 
+!! this means it's returning a different larger value than the correl
 !! being returned here.  it's used by the adaptive inflation and so the
 !! inflation will see a slightly different correlation value.  it isn't
 !! clear that this is a bad thing; it means the inflation might be a bit
@@ -3005,7 +2999,7 @@ else if(scorrel >= 0.995_r8) then
    correl = (1.0_r8 - exp_true_correl(sec_table_size)) * fract + exp_true_correl(sec_table_size)
    mean_factor = (1.0_r8 - alpha(sec_table_size)) * fract + alpha(sec_table_size)
 else
-   ! given the ifs above, the floor() computation below for low_indx 
+   ! given the ifs above, the floor() computation below for low_indx
    ! should always result in a value in the range 1 to 199.  but if this
    ! code is compiled with r8=r4 (single precision reals) it turns out
    ! to be possible to get values a few bits below 0 which results in
@@ -3026,7 +3020,7 @@ else
    mean_factor = (high_alpha - low_alpha) * fract + low_alpha
 endif
 
-expected_true_correl = correl 
+expected_true_correl = correl
 
 ! Don't want Monte Carlo interpolation problems to put us outside of a
 ! ratio between 0 and 1 for expected_true_correl / sample_correl
@@ -3036,7 +3030,7 @@ if(expected_true_correl * scorrel <= 0.0_r8) then
 else if(abs(expected_true_correl) > abs(scorrel)) then
    ! If same sign, expected should not be bigger in absolute value
    expected_true_correl = scorrel
-endif 
+endif
 
 end subroutine get_correction_from_table
 
@@ -3048,8 +3042,8 @@ subroutine obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weight
 ! An observation space update that uses a set of boxcar kernels plus two
 ! half-gaussians on the wings to represent the prior distribution. If N is
 ! the ensemble size, 1/(N+1) of the mass is placed between each ensemble
-! member. This is reminiscent of the ranked historgram approach for 
-! evaluating ensembles. The prior distribution on the wings is 
+! member. This is reminiscent of the ranked historgram approach for
+! evaluating ensembles. The prior distribution on the wings is
 ! represented by a half gaussian with mean being the outermost ensemble
 ! member (left or right) and variance being somewhat arbitrarily chosen
 ! as half the total ensemble sample variance. A particle
@@ -3059,7 +3053,7 @@ subroutine obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weight
 ! half is associated with the nearest ensemble member. The updated mass in
 ! each half box is the product of the prior mass and the ensemble weight.
 ! In the wings, the observation likelihood gaussian is convolved with the
-! prior gaussian to get an updated weighted gaussian that is assumed to 
+! prior gaussian to get an updated weighted gaussian that is assumed to
 ! represent the posterior outside of the outermost ensemble members. The
 ! updated ensemble members are chosen so that 1/(N+1) of the updated
 ! mass is between each member and also on the left and right wings. This
@@ -3216,13 +3210,13 @@ end subroutine obs_increment_boxcar
 subroutine obs_increment_rank_histogram(ens, ens_size, prior_var, &
    obs, obs_var, obs_inc)
 !------------------------------------------------------------------------
-! 
+!
 ! Revised 14 November 2008
 !
 ! Does observation space update by approximating the prior distribution by
 ! a rank histogram. Prior and posterior are assumed to have 1/(n+1) probability
 ! mass between each ensemble member. The tails are assumed to be gaussian with
-! a variance equal to sample variance of the entire ensemble and a mean 
+! a variance equal to sample variance of the entire ensemble and a mean
 ! selected so that 1/(n+1) of the mass is in each tail.
 !
 ! The likelihood between the extreme ensemble members is approximated by
@@ -3232,7 +3226,7 @@ subroutine obs_increment_rank_histogram(ens, ens_size, prior_var, &
 ! the likelihood computed at the two ensemble members. If it is false then
 ! the likelihood between two ensemble members is approximated by a line
 ! connecting the values of the likelihood computed at each of the ensemble
-! members (trapezoidal quadrature). 
+! members (trapezoidal quadrature).
 !
 ! Two options are available for approximating the likelihood on the tails.
 ! If gaussian_likelihood_tails is true that the likelihood is assumed to
@@ -3245,7 +3239,7 @@ subroutine obs_increment_rank_histogram(ens, ens_size, prior_var, &
 ! each member and on the tails.
 
 ! This code is still under development. Please contact Jeff Anderson at
-! jla@ucar.edu if you are interested in trying it. 
+! jla@ucar.edu if you are interested in trying it.
 
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: ens(ens_size), prior_var, obs, obs_var
@@ -3305,7 +3299,7 @@ right_sd = prior_sd
 
 if(gaussian_likelihood_tails) then
    !*************** Block to do Gaussian-Gaussian on tail **************
-   ! Compute the product of the obs likelihood gaussian with the priors 
+   ! Compute the product of the obs likelihood gaussian with the priors
    ! Left tail gaussian first
    var_ratio = obs_var / (left_var + obs_var)
    new_var_left = var_ratio * left_var
@@ -3342,7 +3336,7 @@ else
    new_sd_left = left_sd
    new_mean_left = left_mean
    prod_weight_left = like(1)
-   mass(1) = like(1) / (ens_size + 1.0_r8) 
+   mass(1) = like(1) / (ens_size + 1.0_r8)
 
    ! Same for right tail
    new_var_right = right_var
@@ -3359,12 +3353,12 @@ endif
 ! The height of the prior is 1 / ((n+1) width);   multiplying by width leaves 1/(n+1)
 
 ! In prior, have 1/(n+1) mass in each bin, multiply by mean likelihood density
-! to get approximate mass in updated bin 
+! to get approximate mass in updated bin
 do i = 2, ens_size
    mass(i) = like_dense(i) / (ens_size + 1.0_r8)
    ! Height of prior in this bin is mass/width; Only needed for trapezoidal
    ! If two ensemble members are the same, set height to -1 as flag
-   if(x(i) == x(i - 1)) then 
+   if(x(i) == x(i - 1)) then
       height(i) = -1.0_r8
    else
       height(i) = 1.0_r8 / ((ens_size + 1.0_r8) * (x(i) - x(i-1)))
@@ -3448,13 +3442,13 @@ do i = 1, ens_size
                   elseif (adj_r2 >= x(j) .and. adj_r2 <= x(j+1)) then
                      new_ens(i) = adj_r2
                   else
-                     msgstring = 'Did not get a satisfactory quadratic root' 
+                     msgstring = 'Did not get a satisfactory quadratic root'
                      call error_handler(E_ERR, 'obs_increment_rank_histogram', msgstring, &
-                        source, revision, revdate)
+                        source)
                   endif
                endif
                !********* End block for quadratic interpolation *******************
-            
+
             endif
 
             ! Don't need to search lower boxes again
@@ -3498,7 +3492,7 @@ real(r8) :: total_mass_left, total_mass_right, alpha(2)
 if (.not. module_initialized) call assim_tools_init()
 
 call error_handler(E_ERR,'update_ens_from_weight','Routine needs testing.', &
-           source, revision, revdate, text2='Talk to Jeff before using.')
+           source, text2='Talk to Jeff before using.')
 
 ! Do an index sort of the ensemble members
 call index_sort(ens, e_ind, ens_size)
@@ -3617,7 +3611,7 @@ real(digits12) :: x, p, b1, b2, b3, b4, b5, t, density, nx
 ! Convert to a standard normal
 nx = (x_in - mean) / sd
 
-x = abs(nx) 
+x = abs(nx)
 
 
 ! Use formula from Abramowitz and Stegun to approximate
@@ -3716,7 +3710,7 @@ else if(p > p_high) then
    q = sqrt(-2.0_digits12 * log(1.0_digits12 - p))
    x = -(((((c1*q + c2)*q + c3)*q + c4)*q + c5)*q + c6) / &
       ((((d1*q + d2)*q + d3)*q + d4)*q + 1.0_digits12)
-else 
+else
    q = p - 0.5_digits12
    r = q*q
    x = (((((a1*r + a2)*r + a3)*r + a4)*r + a5)*r + a6)*q / &
@@ -3757,7 +3751,7 @@ function revised_distance(orig_dist, newcount, oldcount, base, cutfloor)
  real(r8),            intent(in) :: cutfloor
 
  real(r8)                        :: revised_distance
- 
+
 ! take the ratio of the old and new counts, and revise the
 ! original cutoff distance to match.
 
@@ -3778,7 +3772,7 @@ endif
 
 ! alternatives for different dimensionalities and schemes
 
-! Change the cutoff radius to get the appropriate number 
+! Change the cutoff radius to get the appropriate number
 if (LocationDims == 1) then
    ! linear (be careful of cyclic domains; if > domain, this is
    ! not going to be right)
@@ -3815,7 +3809,7 @@ else if (LocationDims == 3) then
    endif
 else
    call error_handler(E_ERR, 'revised_distance', 'unknown locations dimension, not 1, 2 or 3', &
-      source, revision, revdate)
+      source)
 endif
 
 ! allow user to set a minimum cutoff, so even if there are very dense
@@ -4034,7 +4028,7 @@ select case (filter_kind)
    msgstring = 'Local Particle Filter (Poterjoy)'
  case default 
    call error_handler(E_ERR, 'assim_tools_init:', 'illegal filter_kind value, valid values are 1-9', &
-                      source, revision, revdate)
+                      source)
 end select
 call error_handler(E_MSG, 'assim_tools_init:', 'Selected filter type is '//trim(msgstring))
 
@@ -4057,7 +4051,7 @@ if (has_special_cutoffs) then
 
    do i = 1, num_special_cutoff
       write(msgstring, '(A32,F18.6,F18.6)') special_localization_obs_types(i), &
-            special_localization_cutoffs(i), special_localization_cutoffs(i)*2.0_r8                     
+            special_localization_cutoffs(i), special_localization_cutoffs(i)*2.0_r8
       call error_handler(E_MSG,'assim_tools_init:', msgstring)
    end do
    call error_handler(E_MSG,'assim_tools_init:','all other observation types will use the default cutoff distance')
@@ -4214,8 +4208,3 @@ end subroutine test_close_obs_dist
 
 end module assim_tools_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

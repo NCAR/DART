@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 !-----------------------------------------------------------------------------
 ! DART radar observation module, including the observation operators for the
@@ -29,12 +28,12 @@
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! DOPPLER_RADIAL_VELOCITY, QTY_VELOCITY
 ! RADAR_REFLECTIVITY, QTY_RADAR_REFLECTIVITY
 ! RADAR_CLEARAIR_REFLECTIVITY, QTY_RADAR_REFLECTIVITY
 ! PRECIPITATION_FALL_SPEED, QTY_POWER_WEIGHTED_FALL_SPEED
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
@@ -1127,7 +1126,15 @@ call interpolate(state_handle, ens_size, location, QTY_RADAR_REFLECTIVITY, ref, 
 
 ! If able to get value, QTY_RADAR_REFLECTIVITY is the
 ! the state so you can return here.
-if (any(istatus == 0) ) return
+! Make sure to do apply_ref_limit_to_fwd_op check before "return"ing
+if (any(istatus == 0) ) then
+   if (apply_ref_limit_to_fwd_op) then
+      where ((ref < reflectivity_limit_fwd_op) .and. (istatus == 0))
+         ref = lowest_reflectivity_fwd_op
+      end where
+   endif
+   return
+endif
 
 ! If the user explicitly wanted to interpolate in the field, try to complain
 ! if it could not.  Note that the interp could fail for other reasons.
@@ -1619,8 +1626,3 @@ end module obs_def_radar_mod
 ! END DART PREPROCESS MODULE CODE
 !-----------------------------------------------------------------------------
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module dart_time_io_mod
 
@@ -28,10 +26,7 @@ private
 
 public :: read_model_time, write_model_time
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'dart_time_io_mod.f90'
 
 character(len=512) :: string1, string2, string3
 
@@ -71,8 +66,7 @@ ios = nf90_inq_varid(ncid, "time", VarID)
 if (ios /= NF90_NOERR) then
    write(string1,*)'Expecting to be able to read the model time from a "time" variable'
    write(string2,*)'in file "'//trim(filename)//'"'
-   call error_handler(E_ERR,'read_model_time', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+   call error_handler(E_ERR,'read_model_time',string1,source,text2=string2,text3=string3)
 endif
 
 ios = nf90_inquire_variable(ncid, VarID, xtype=xtype, dimids=dimIDs, ndims=numdims)
@@ -82,7 +76,7 @@ if (numdims > 1) then
    write(string1,*)'Expecting the "time" variable to be a single dimension.'
    write(string2,*)'in file "'//trim(filename)//'"'
    call error_handler(E_ERR,'read_model_time', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+              source, text2=string2, text3=string3)
 endif
 
 if (numdims == 0) then
@@ -117,7 +111,7 @@ if (dart_calendar /= file_calendar ) then
    else
       write(string1,*)'inconsistent calendar types between DART program and input file.'
       write(string2,*)'DART initialized with: ', trim(dart_calendar), ' File uses: ', trim(file_calendar)
-      call error_handler(E_ERR, 'read_model_time:', string1, source,revision, revdate, &
+      call error_handler(E_ERR, 'read_model_time:', string1, source, &
                       text2=string2, text3=string3)
    endif
 endif
@@ -143,7 +137,7 @@ else if ( dart_calendar == 'GREGORIAN' ) then
          write(string1,*)'Unable to interpret time unit attribute. Error status was ',ios
          write(string2,*)'expected "days since YYYY-MM-DD HH:MM:SS", got "'//trim(unitstring)//'"'
          call error_handler(E_ERR, 'read_model_time:', string1, &
-                source, revision, revdate, text2=string2, text3=string3)
+                source, text2=string2, text3=string3)
       endif
    
       ! This is the start of their calendar
@@ -162,7 +156,7 @@ else if ( dart_calendar == 'GREGORIAN' ) then
          write(string1,*)'Unable to interpret time unit attribute. Error status was ',ios
          write(string2,*)'expected "seconds since YYYY-MM-DD HH:MM:SS", got "'//trim(unitstring)//'"'
          call error_handler(E_ERR, 'read_model_time:', string1, &
-                source, revision, revdate, text2=string2, text3=string3)
+                source, text2=string2, text3=string3)
       endif
    
       ! This is the start of their calendar
@@ -174,14 +168,15 @@ else if ( dart_calendar == 'GREGORIAN' ) then
    else
    
       write(string1, *) 'looking for "days since" or "seconds since" in the "units" attribute'
-      call error_handler(E_ERR, 'read_model_time:', 'unable to set base time for gregorian calendar', &
-                         source, revision, revdate, text2=string1, text3=string3)
+      call error_handler(E_ERR, 'read_model_time:', &
+              'unable to set base time for gregorian calendar', &
+              source, text2=string1, text3=string3)
    
    endif
 else
    call error_handler(E_ERR, 'read_model_time:', &
     'calendar type "'//trim(dart_calendar)//'" unsupported by default read_model_time() routine', &
-                      source, revision, revdate, text2=string3)
+                      source, text2=string3)
 endif
 
 !>@todo FIXME: do we really want this to print from any
@@ -239,7 +234,7 @@ ios = nf90_inq_varid(ncid, "time", VarID)
 if (ios /= NF90_NOERR) then
 
    call error_handler(E_MSG, routine, 'no variable "time" found in file', &
-              source, revision, revdate, text2='creating one')
+              source, text2='creating one')
 
    ! begin define mode
    ios = nf90_Redef(ncid)
@@ -296,8 +291,7 @@ if (ios /= NF90_NOERR) then
    else
       write(string1,*) 'calendar type "'//trim(dart_calendar)// &
                        &'" unsupported by default write_model_time() routine'
-      call error_handler(E_ERR, routine, string1, &
-                 source, revision, revdate, text2=string3)
+      call error_handler(E_ERR, routine, string1, source, text2=string3)
    endif
 
    ! end define mode
@@ -319,8 +313,7 @@ if (dart_calendar /= var_calendar ) then
    else
       write(string1,*)'inconsistent calendar types between DART program and input file.'
       write(string2,*)'DART initialized with: ', trim(dart_calendar), ' File uses: ', trim(var_calendar)
-      call error_handler(E_ERR, routine, string1, source, revision, revdate, &
-                      text2=string2, text3=string3)
+      call error_handler(E_ERR, routine, string1, source, text2=string2, text3=string3)
    endif
 endif
 
@@ -340,8 +333,7 @@ endif
 
 if (numdims > 1) then
    write(string1,*)'Expecting the "time" variable to be a single dimension.'
-   call error_handler(E_ERR, routine, string1, &
-              source, revision, revdate, text2=string3)
+   call error_handler(E_ERR, routine, string1, source, text2=string3)
 endif
 
 ios = nf90_inquire_dimension(ncid, dimIDs(1), len=ntimes)
@@ -353,8 +345,7 @@ if (ntimes == 0 .and. time_is_unlimited) then
    ntimes = ntimes + 1
 elseif (ntimes == 0) then
    write(string1,*)'"time" variable has length 0 but is not the unlimited dimension.'
-   call error_handler(E_ERR, routine, string1, &
-              source, revision, revdate, text2=string3)
+   call error_handler(E_ERR, routine, string1, source, text2=string3)
 endif
 
 ! write dart days and seconds files to netcdf file
@@ -367,8 +358,3 @@ end subroutine write_model_time
 !> @}
 end module dart_time_io_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -66,8 +66,8 @@ use xyz_location_mod, only : xyz_location_type, xyz_set_location, xyz_get_locati
                              xyz_get_close_type, xyz_get_close_init, xyz_get_close_destroy, &
                              xyz_find_nearest, xyz_use_great_circle_dist
 
-use    utilities_mod, only : register_module, error_handler,                   &
-                             E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
+use    utilities_mod, only : register_module, error_handler, get_unit,         &
+                             E_ERR, E_WARN, E_MSG, E_ALLMSG, logfileunit,      &
                              do_output, to_upper, nmlfileunit,                 &
                              find_namelist_in_file, check_namelist_read,       &
                              open_file, file_exist, find_textfile_dims,        &
@@ -92,7 +92,6 @@ use     obs_kind_mod, only : get_index_for_quantity,       &
                              QTY_PRESSURE,                 &
                              QTY_DENSITY,                  &
                              QTY_VAPOR_MIXING_RATIO,       &
-                             QTY_2M_VAPOR_MIXING_RATIO,    &
                              QTY_CLOUDWATER_MIXING_RATIO,  &
                              QTY_RAINWATER_MIXING_RATIO,   &
                              QTY_ICE_MIXING_RATIO,         &
@@ -102,7 +101,8 @@ use     obs_kind_mod, only : get_index_for_quantity,       &
                              QTY_GEOPOTENTIAL_HEIGHT,      &
                              QTY_PRECIPITABLE_WATER,       &
                              QTY_SKIN_TEMPERATURE,         &  ! for rttov
-                             QTY_SURFACE_TYPE                 ! for rttov
+                             QTY_SURFACE_TYPE,             &  ! for rttov
+                             QTY_CLOUD_FRACTION               ! for rttov
 
 use mpi_utilities_mod, only: my_task_id, broadcast_minmax
 
@@ -1100,10 +1100,12 @@ end subroutine find_mpas_dims
 !>
 !>       ERROR codes:
 !>
+!>       ISTATUS =  1:  general error for rttov - at least one of the input variables goes wrong
 !>       ISTATUS = 99:  general error in case something terrible goes wrong...
-!>       ISTATUS = 88:  this kind is not in the state vector
 !>       ISTATUS = 81:  Vertical location too high
 !>       ISTATUS = 80:  Vertical location too low
+!>       ISTATUS = 88:  this kind is not in the state vector
+!>       ISTATUS = 89:  tk cannot be computed.
 !>       ISTATUS = 11:  Could not find the closest cell center that contains this lat/lon
 !>       ISTATUS = 12:  Surface obs too far away from model elevation
 !>       ISTATUS = 13:  Missing value in interpolation.
@@ -1116,6 +1118,20 @@ end subroutine find_mpas_dims
 !>       ISTATUS = 101: Internal error; reached end of subroutine without
 !>                      finding an applicable case.
 !>       ISTATUS = 201: Reject observation from user specified pressure level
+!>       ISTATUS = 988: pressure is not monotonically descreased with level.
+!>
+!> Debugging options:
+!> 0: No prints, whatsoever.
+!> 1: Print only when each obs is rejected.
+!> 2: Print the basic info on each obs.
+!> 3: Print the base location of the localization.
+!> 5: Print info on the localized obs and the model grids
+!> 9: Print info on wind updates
+!> 10: Print info on each obs in detail.
+!> 11: Print info on localized states
+!> 12: Print info on each ensemble member in detail.
+!> 13: Print detailed info on triangle and level search
+
 
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
@@ -1167,20 +1183,31 @@ if (cellid < 1) then
    goto 100
 endif
 
+if (debug > 1 .and. do_output()) &
+   print *, 'model_interpolate for obs_kind:',&
+             trim(get_name_for_quantity(obs_kind)),' at ',trim(locstring),' cellid:',cellid
+
+! FIXME see issue #96 - remove all but surface elevation
+! pass surface variables for rttov - it should be ok as these are diagnostic (except for surface elevation).
+if((obs_kind == QTY_SURFACE_PRESSURE) .or. (obs_kind == QTY_SURFACE_ELEVATION)    .or. &
+   (obs_kind == QTY_2M_TEMPERATURE)   .or. (obs_kind == QTY_2M_SPECIFIC_HUMIDITY) .or. &
+   (obs_kind == QTY_SKIN_TEMPERATURE) .or. (obs_kind == QTY_SURFACE_TYPE)         .or. &
+   (obs_kind == QTY_CLOUD_FRACTION)   .or. &
+   (obs_kind == QTY_10M_U_WIND_COMPONENT) .or. (obs_kind == QTY_10M_V_WIND_COMPONENT)) then
+    istatus = 0
+   if ( debug > 1 .and. do_output()) print *, &
+   'model_interpolate: pass sfc_elev_max_diff check for ',trim(get_name_for_quantity(obs_kind))
+else
 ! Reject obs if the station height is far way from the model terrain.
-if(is_vertical(location, "SURFACE").and. sfc_elev_max_diff >= 0) then
+   if(is_vertical(location, "SURFACE").and. sfc_elev_max_diff >= 0) then
    if(abs(llv(3) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
-      ! allow experimentation with always accepting surface altimeters
-      ! by setting this module global variable to .true. at top of file.
-      if (always_assim_surf_altimeters .and. &
-          (obs_kind == QTY_SURFACE_PRESSURE .or. obs_kind == QTY_SURFACE_ELEVATION)) then
-         istatus = 0
-      else
-         istatus = 12
-         if (debug > 10 .and. do_output()) &
-         print*, 'model_interpolate: Skip due to abs(dz) > sfc_elev_max_diff:', llv(3)-zGridFace(1,cellid)
+      istatus = 12
+      if (debug > 0 .and. do_output()) then
+         print*, 'model_interpolate: Skip due to abs(dz) > sfc_elev_max_diff:', &
+         llv(3)-zGridFace(1,cellid), trim(get_name_for_quantity(obs_kind)),' at ',trim(locstring)
          goto 100
       endif
+   endif
    endif
 endif
 
@@ -1214,7 +1241,7 @@ else
          goodkind = .true.
       case (QTY_PRESSURE)   ! surface pressure should be in the state
          goodkind = .true.
-      case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE)   ! Ha: added for rttov
+      case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE, QTY_CLOUD_FRACTION)   
          goodkind = .true.
       case (QTY_SPECIFIC_HUMIDITY, QTY_2M_SPECIFIC_HUMIDITY)
          goodkind = .true.
@@ -1263,7 +1290,7 @@ if (highest_obs_pressure_mb > 0.0) then
    endif
 endif
 
-if (debug > 11 .and. do_output()) then
+if (debug > 9 .and. do_output()) then
   print *, 'high pressure test is passed, ready to interpolate kind ', obs_kind
 endif
 
@@ -1271,7 +1298,7 @@ endif !(.not.surface_obs) then
 
 ! Not prepared to do W interpolation at this time
 if(obs_kind == QTY_VERTICAL_VELOCITY) then
-   if (debug > 4 .and. do_output()) print *, 'model_interpolate: code does not handle vertical velocity yet'
+   if (debug > 0 .and. do_output()) print *, 'model_interpolate: code does not handle vertical velocity yet'
    istatus(:) = 16
    goto 100
 endif
@@ -1286,8 +1313,8 @@ if ((obs_kind == QTY_U_WIND_COMPONENT .or. &
       ! return V
       call compute_u_with_rbf(state_handle, ens_size, location, .FALSE., expected_obs, istatus)
    endif
-   if (debug > 11 .and. do_output()) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus(1), expected_obs(1)
-   if (all(istatus /= 0)) goto 100   ! if everyone has failed, we can exit
+   if (debug > 9 .and. do_output()) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus(1), expected_obs(1)
+   if (all(istatus /= 0)) goto 100   ! if any member has failed, we can exit
 
 else if (obs_kind == QTY_TEMPERATURE) then
    ! need to get potential temp, pressure, qv here, but can
@@ -1300,16 +1327,18 @@ else if (obs_kind == QTY_TEMPERATURE) then
    if (all(istatus /= 0)) goto 100
 
    ! convert pot_temp, density, vapor mixing ratio into sensible temperature
-   expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus(:))
+   expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus) 
 
-   if (debug > 11 .and. do_output()) &
+   if (debug > 9 .and. do_output()) &
       print *, 'model_interpolate: TEMPERATURE ', istatus(1), expected_obs(1), trim(locstring)
+   if ( all(istatus /= 0 ) ) goto 100
 
 else if (obs_kind == QTY_PRESSURE) then
    call  compute_pressure_at_loc(state_handle, ens_size, location, expected_obs, istatus)
 
-   if (debug > 11 .and. do_output()) &
+   if (debug > 9 .and. do_output()) &
       print *, 'model_interpolate: PRESSURE ', istatus(1), expected_obs(1), trim(locstring)
+   if ( all(istatus /= 0 ) ) goto 100
 
 else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
    location_tmp = location
@@ -1319,40 +1348,56 @@ else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
      if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
    enddo
 
-else if (obs_kind == QTY_VAPOR_MIXING_RATIO) then 
-   tvars(1) = get_progvar_index_from_kind(obs_kind)
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
-   expected_obs = values(1, :)
    if ( all(istatus /= 0 ) ) goto 100
 
-   ! Don't accept negative moisture
+else if (obs_kind == QTY_VAPOR_MIXING_RATIO      .or. obs_kind == QTY_2M_SPECIFIC_HUMIDITY   .or. &
+         obs_kind == QTY_CLOUDWATER_MIXING_RATIO .or. obs_kind == QTY_RAINWATER_MIXING_RATIO .or. &
+         obs_kind == QTY_ICE_MIXING_RATIO        .or. obs_kind == QTY_SNOW_MIXING_RATIO      .or. &
+         obs_kind == QTY_GRAUPEL_MIXING_RATIO    .or. obs_kind == QTY_CLOUD_FRACTION       ) then
+   tvars(1) = get_progvar_index_from_kind(obs_kind)
+   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), values(1,:), istatus)
+   expected_obs = values(1, :)
+
+   ! Don't accept negative hydrometeors
    do e = 1, ens_size
-      if(istatus(e) == 0) expected_obs(e) = max(values(1, e),0.0_r8)
+      if(istatus(e) == 0) then
+         expected_obs(e) = max(values(1, e),0.0_r8)
+         if(obs_kind == QTY_CLOUD_FRACTION) expected_obs(e) = min(values(1, e),1.0_r8)
+      endif
    enddo
 
-   if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus(1), expected_obs(1), trim(locstring)
+   if (debug > 9 .and. do_output()) then
+      print *, 'model_interpolate: obs_kind,name,istatus,expected_obs,location =', &
+      obs_kind,trim(get_name_for_quantity(obs_kind)),istatus(1),expected_obs(1),trim(locstring)
+   endif
+   if ( all(istatus /= 0 ) ) goto 100
 
 else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
    tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), values(1,:), istatus)
    expected_obs = values(1, :)
-   if ( all(istatus /= 0 ) ) goto 100
 
    ! compute vapor pressure, then: sh = vp / (1.0 + vp)
    do e = 1, ens_size
       if (istatus(e) == 0) then
          if (expected_obs(e) >= 0.0_r8) then
-            expected_obs(e) = expected_obs(e) / (1.0 + expected_obs(e))
+            expected_obs(e) = expected_obs(e) / (1.0_r8 + expected_obs(e))
          else
             expected_obs(e) = 1.0e-12_r8  
          endif
       endif 
    enddo
+   if ( all(istatus /= 0 ) ) goto 100
 
-   if (debug > 11 .and. do_output()) &
-      print *, 'model_interpolate: SH2 ', istatus(1), expected_obs(1), trim(locstring)
+   if (debug > 9 .and. do_output()) &
+      print *, 'model_interpolate: ', trim(get_name_for_quantity(obs_kind)), istatus(1), &
+                                      expected_obs(1), trim(locstring)
 
+! Only for the variables NOT included in the dart state vector.
+! Anything included in the state_handle should not go into the case right down here.
+! ex. QTY_SURFACE_PRESSURE will be taken care of in the else statement (one further down)
+! as a generic interpolation case thru compute_scalar_with_barycentric
+! because that obs_kind is included in mpas_state_variables in &mpas_vars_nml (e.g. state vector).
 else if (obs_kind == QTY_SURFACE_ELEVATION .or. &
          obs_kind == QTY_SKIN_TEMPERATURE  .or. obs_kind == QTY_SURFACE_TYPE ) then
 
@@ -1368,25 +1413,28 @@ else if (obs_kind == QTY_SURFACE_ELEVATION .or. &
    expected_obs(2:ens_size) = expected_obs(1)
    istatus(2:ens_size) = istatus(1)
 
-   if (debug > 11 .and. do_output()) &
+   if (debug > 9 .and. do_output()) &
       print *, 'model_interpolate: ', trim(get_name_for_quantity(obs_kind)), ' ', istatus(1), &
                                       expected_obs(1), trim(locstring)
+   if ( all(istatus /= 0 ) ) goto 100
 
 else
    ! all other kinds come here.
    ! direct interpolation: kind is in the state vector and no clamping or other conversions needed
 
    tvars(1) = ivar
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), values(1,:), istatus)
    expected_obs = values(1, :)
 
-   if (debug > 11 .and. do_output()) then
+   if (debug > 9 .and. do_output()) &
        print*, 'generic interpolation in compute_scalar_with_barycentric: ', obs_kind, &
                trim(get_name_for_quantity(obs_kind))
+   if (debug > 11 .and. do_output()) then
        do e = 1, ens_size
           print*, 'member ',e, ' istatus(e)=',istatus(e), ', expected_obs(e)=', expected_obs(e)
        enddo
    endif
+   if ( all(istatus /= 0 ) ) goto 100
 
 endif
 
@@ -1404,18 +1452,19 @@ do e = 1, ens_size
        (istatus(e) == 0 .and. expected_obs(e) == MISSING_R8)) then
 
       write(string2,*) 'member ',e,' obs_kind', obs_kind,' value = ', expected_obs(e), &
-                       ' istatus = ', istatus(e), ' cellid:',cellid,' location ', trim(locstring)
-      write(string3,*) 'at location ', trim(locstring)
+                       ' istatus = ', istatus(e), ' cellid:',cellid
+      write(string3,*) trim(locstring)
 
       if (istatus(e) < 0) then
          write(string1,*) 'interp routine returned a negative status which is an illegal value'
       else if (istatus(e) /= 0 .and. expected_obs(e) /= MISSING_R8) then
          write(string1,*) 'interp routine returned a bad status but not a MISSING_R8 value'
+         expected_obs(e) = MISSING_R8  
       else
          write(string1,*) 'interp routine returned a good status but set value to MISSING_R8'
       endif
 
-      call error_handler(E_ERR,'model_interpolate', string1, source,revision,revdate, &
+      call error_handler(E_ALLMSG,'model_interpolate', string1, source,revision,revdate, &
                          text2=string2, text3=string3)
    endif
 
@@ -1424,14 +1473,18 @@ do e = 1, ens_size
    ! fail if one or more of the operands are NaN.
 
    if (.not. expected_obs(e) < 0 .and. .not. expected_obs(e) >= 0) then
-      write(string1,*) 'member ', e, ' expected obs may be NaN: ', expected_obs(e)
-      call error_handler(E_ERR,'model_interpolate', string1, source,revision,revdate)
+      write(string1,*) 'Skip member ', e, ' expected obs may be NaN: ', expected_obs(e), &
+      ' obs_kind', obs_kind,' istatus = ', istatus(e)
+      write(string2,*) 'cellid:',cellid,' location ', trim(locstring)
+      expected_obs(e) = MISSING_R8
+      istatus(e) = 99
+      call error_handler(E_ERR,'model_interpolate', string1, source,revision,revdate,text2=string2)
    endif
 
-   if (debug > 12 .and. do_output()) then
+   if (debug > 11 .and. do_output()) then
       write(string2,*) 'Completed for member ',e,' obs_kind', obs_kind,' expected_obs = ', expected_obs(e)
       write(string3,*) 'istatus = ', istatus(e), ' at ', trim(locstring)
-      call error_handler(E_MSG, 'model_interpolate', string2, source, revision, revdate, text2=string3)
+      call error_handler(E_ALLMSG, 'model_interpolate', string2, source, revision, revdate, text2=string3)
    endif
 enddo
 
@@ -1844,9 +1897,9 @@ if (vertical_localization_on()) then
       call convert_vert_distrib(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
       istatus1 = istat_arr(1)
       base_loc = location_arr(1)
-      if(debug > 5 .and. do_output()) then
+      if(debug > 4 .and. do_output()) then
          call write_location(0,base_loc,charstring=string1)
-         call error_handler(E_MSG, 'get_close_obs: base_loc',string1,source, revision, revdate)
+         call error_handler(E_ALLMSG, 'get_close_obs: base_loc',string1,source, revision, revdate)
      endif
    endif
 endif
@@ -1869,7 +1922,7 @@ if (istatus1 == 0) then
       ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
       ! This should only be necessary for obs priors, as state location information already
       ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
-      if (vertical_localization_on()) then
+      if ((base_which /= VERTISUNDEF) .and.  (vertical_localization_on())) then
           if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
               location_arr(1) = local_obs_loc
               call convert_vert_distrib(state_handle, 1, location_arr, loc_qtys(t_ind), vert_localization_coord, istat_arr)
@@ -1959,10 +2012,12 @@ if (vertical_localization_on()) then
       call convert_vert_distrib(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
       istatus1 = istat_arr(1)
       base_loc = location_arr(1)
-      if(debug > 10 .and. do_output()) then
+      if(debug > 9 .and. do_output()) then
+         print*, 'get_close_state: istatus1 from convert_vert_distrib for base_loc, base_which = ',&
+                  istatus1,base_which
          call write_location(0,base_loc,charstring=string1)
-         call error_handler(E_MSG, 'get_close_state: base_loc',string1,source, revision, revdate)
-     endif
+         call error_handler(E_ALLMSG, 'get_close_state: base_loc',string1,source, revision, revdate)
+      endif
    endif
 endif
 
@@ -1984,13 +2039,17 @@ if (istatus1 == 0) then
       ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
       ! This should only be necessary for obs priors, as state location information already
       ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
-      if (vertical_localization_on()) then
+      if ((base_which /= VERTISUNDEF) .and.  (vertical_localization_on())) then
           if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
               location_arr(1) = local_obs_loc
               call convert_vert_distrib_state(state_handle, 1, location_arr, loc_qtys(t_ind), &
                                               loc_indx(t_ind), vert_localization_coord, istat_arr)
               istatus2 = istat_arr(1)
               locs(t_ind) = location_arr(1)
+              if(istatus2 /= 0 .and. debug > 9 .and. do_output()) then
+                 call write_location(0,local_obs_loc,charstring=string1)
+                 call error_handler(E_ALLMSG, 'get_close_state: local_obs_loc',string1,source, revision, revdate)
+              endif
           else
               istatus2 = 0
           endif
@@ -2183,7 +2242,7 @@ do ivar=1, nfields
    where(dimIDs == TimeDimID) mystart = TimeDimLength  ! pick the latest time
    where(dimIDs == TimeDimID) mycount = 1              ! only use one time
 
-   if ((debug > 10) .and. do_output()) then
+   if ((debug > 0) .and. do_output()) then
       write(*,*)'analysis_file_to_statevector '//trim(varname)//' start = ',mystart(1:ncNdims)
       write(*,*)'analysis_file_to_statevector '//trim(varname)//' count = ',mycount(1:ncNdims)
    endif
@@ -2337,7 +2396,7 @@ PROGVARLOOP : do ivar=1, nfields
    where(dimIDs == TimeDimID) mystart = TimeDimLength
    where(dimIDs == TimeDimID) mycount = 1   ! only the latest one
 
-   if ((debug > 9) .and. do_output()) then
+   if ((debug > 0) .and. do_output()) then
       write(*,*)'statevector_to_analysis_file '//trim(varname)//' start is ',mystart(1:ncNdims)
       write(*,*)'statevector_to_analysis_file '//trim(varname)//' count is ',mycount(1:ncNdims)
    endif
@@ -2593,7 +2652,7 @@ else  ! do the increment process
    avar_u = get_varid_from_varname(anl_domid, 'u')
    call vector_to_prog_var(state_vector, avar_u, lbc_u)
 
-   if (idebug > 4 .and. do_output()) print *, 'MIN/MAX lbc_u before update:',MINVAL(lbc_u),MAXVAL(lbc_u)
+   if (idebug > 9 .and. do_output()) print *, 'MIN/MAX lbc_u before update:',MINVAL(lbc_u),MAXVAL(lbc_u)
    
    if (lbc_update_winds_from_increments) then
    
@@ -2630,7 +2689,7 @@ else  ! do the increment process
 
       enddo IEDGE
 
-      if (idebug > 4 .and. do_output()) print*, 'MIN/MAX delta_u:            ',MINVAL(delta_u),MAXVAL(delta_u)
+      if (idebug > 9 .and. do_output()) print*, 'MIN/MAX delta_u:            ',MINVAL(delta_u),MAXVAL(delta_u)
 
       deallocate(old_lbc_ucell, old_lbc_vcell, delta_u)
 
@@ -2641,7 +2700,7 @@ else  ! do the increment process
       call uv_cell_to_edges(lbc_ucell, lbc_vcell, lbc_u, .true.)
       
    endif
-   if (idebug > 4 .and. do_output()) print *, 'MIN/MAX lbc_u  after update:',MINVAL(lbc_u),MAXVAL(lbc_u)
+   if (idebug > 9 .and. do_output()) print *, 'MIN/MAX lbc_u  after update:',MINVAL(lbc_u),MAXVAL(lbc_u)
    
    ! put lbc_u array data back into the state_vector
    
@@ -2684,7 +2743,7 @@ VARLOOP2: do b_ivar = 1, nvars
    sb_index = get_index_start(anl_domid, a_ivar)
    eb_index = get_index_end  (anl_domid, a_ivar)
 
-   if (idebug > 4 .and. do_output()) print *, 'updating ', trim(bvarname), ' min, max:',&
+   if (idebug > 9 .and. do_output()) print *, 'updating ', trim(bvarname), ' min, max:',&
        minval(state_vector(sb_index:eb_index)), maxval(state_vector(sb_index:eb_index))
        !, ' with length ', eb_index - sb_index + 1
 
@@ -2917,7 +2976,7 @@ call nc_check( nf90_get_var(ncid, VarID, timestring, start = (/ 1, idims(2) /)),
 
 get_analysis_time_ncid = string_to_time(timestring)
 
-if ((debug > 6) .and. do_output()) then
+if ((debug > 0) .and. do_output()) then
    call print_date(get_analysis_time_ncid, 'get_analysis_time:model date')
    call print_time(get_analysis_time_ncid, 'get_analysis_time:model time')
 endif
@@ -3270,8 +3329,8 @@ call nc_get_variable(ncid, 'dcEdge',        dcEdge,        routine)
 call nc_get_variable(ncid, 'zgrid',         zGridFace,     routine)
 call nc_get_variable(ncid, 'cellsOnVertex', cellsOnVertex, routine)
 call nc_get_variable(ncid, 'xland',         xland,         routine)
-call nc_get_variable(ncid, 'seaice',        seaice,        routine)  ! Ha: added for rttov
-call nc_get_variable(ncid, 'skintemp',      skintemp,      routine)  ! Ha: added for rttov
+call nc_get_variable(ncid, 'seaice',        seaice,        routine)
+call nc_get_variable(ncid, 'skintemp',      skintemp,      routine)
 
 dxmax = maxval(dcEdge)  ! max grid resolution in meters
 
@@ -3583,7 +3642,7 @@ call nc_check(nf90_put_var(ncid, VarID, u, start=mystart, count=mycount), &
 
 ! A little sanity check
 
-if ((debug > 9) .and. do_output()) then
+if ((debug > 8) .and. do_output()) then
 
    write(*,*)
    write(*,*) trim(vchar),'       range ',minval(u),     maxval(u)
@@ -4333,7 +4392,7 @@ else if(is_vertical(location, "SURFACE")) then
    ivars(1) = get_progvar_index_from_kind(QTY_SURFACE_PRESSURE)
    if ( ivars(1) >= 0 ) then
 
-     call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, ivars, values, istatus)
+     call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, ivars(1), values(1,:), istatus)
      where (istatus == 0) ploc(:) = values(1,:)
 
    else
@@ -4370,7 +4429,7 @@ else
         source, revision, revdate)
 endif
 
-if(debug > 10 .and. do_output()) then
+if(debug > 9 .and. do_output()) then
    print *, 'compute_pressure_at_loc: base location ',llv(1:3)
    print *, 'compute_pressure_at_loc: istatus, pressure ', istatus(1), ploc(1)
 endif
@@ -4533,7 +4592,7 @@ enddo
 ! if the entire ensemble has missing vertical values we can return now.
 ! otherwise we need to continue to convert the members with good vertical values.
 if (all(zin == missing_r8)) then
-   istatus(:) = 0
+   istatus(:) = 0 
    return
 endif
 
@@ -4573,7 +4632,7 @@ select case (ztypeout)
       endif
    enddo
 
-   if (debug > 11 .and. do_output()) then
+   if (debug > 9 .and. do_output()) then
       write(string2,'("Zk for member 1:", 3F8.2," => ",F8.2)') zk_mid(:,1),zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
@@ -4602,10 +4661,12 @@ select case (ztypeout)
    endif
 
    ! Convert theta, rho, qv into pressure
-   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), zout(:), tk(:), istatus(:))
-   if (debug > 10 .and. do_output()) then
-      write(string2,'("zout [Pa], theta, rho, qv, ier:",3F10.2,F18.8,I3)') zout(1), values(1:3,1),istatus(1)
-      call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+   call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), zout, tk, istatus)
+   if( all(istatus /= 0) ) then
+      if (debug > 1 .and. do_output()) then
+       write(string2,'("Failed in compute_full_pressure in VERTISPRESSURE")')
+       call error_handler(E_ALLMSG, 'convert_vert_distrib',string2,source, revision, revdate)
+      endif
    endif
 
    ! ------------------------------------------------------------
@@ -4644,7 +4705,7 @@ select case (ztypeout)
    enddo
 
    if (debug > 9 .and. do_output()) then
-      write(string2,'("zout_in_height [m]:",F10.2)') zout
+      write(string2,'("zout_in_height [m] for member 1:",F10.2)') zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
 
@@ -4694,10 +4755,12 @@ select case (ztypeout)
        endif
 
        ! Convert surface theta, rho, qv into pressure
-       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
-       if (debug > 9 .and. do_output()) then
-         write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F18.8)') surfp, values(1:3,1)
-         call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+       call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), surfp, tk, istatus)
+       if( all(istatus /= 0) ) then
+          if (debug > 1 .and. do_output()) then
+              write(string2,'("Failed in compute_full_pressure in surfp")')
+              call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+          endif
        endif
 
      endif
@@ -4708,11 +4771,14 @@ select case (ztypeout)
        call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
 
        ! Convert theta, rho, qv into pressure
-       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
-       if (debug > 9 .and. do_output()) then
-         write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
-         call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+       call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), fullp, tk, istatus)
+       if( all(istatus /= 0) ) then
+          if (debug > 1 .and. do_output()) then
+              write(string2,'("Failed in compute_full_pressure in fullp")')
+              call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+          endif
        endif
+
      endif
 
      ! we have what we need now.  figure out the case and set zout to the right values.
@@ -4743,7 +4809,7 @@ select case (ztypeout)
 101 continue
 
      if (debug > 9 .and. do_output()) then
-       write(string2,'("zout_in_scaleheight:",F10.2)') zout
+       write(string2,'("zout_in_scaleheight for member 1:",F10.2)') zout(1)
        call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
      endif
 
@@ -4848,7 +4914,7 @@ enddo
 !> state_indx is i8, intent(in).  
 !> cellid and vert_level are integer, intent(out)
 call find_mpas_indices(state_indx, cellid, vert_level, ndim)
-if (debug > 11 .and. do_output()) print*,'convert_vert_distrib_state: ndim=', ndim
+if (debug > 9 .and. do_output()) print*,'convert_vert_distrib_state: ndim=', ndim
 
 ! the routines below will use zin as the incoming vertical value
 ! and zout as the new outgoing one.  start out assuming failure
@@ -4893,7 +4959,7 @@ select case (ztypeout)
    zout(:) = vert_level
 
    if (debug > 9 .and. do_output()) then
-      write(string2,'("zout_in_level:",F10.2)') zout
+      write(string2,'("zout_in_level for member 1:",F10.2)') zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
    endif
 
@@ -4928,11 +4994,18 @@ select case (ztypeout)
    endif
 
    ! Convert theta, rho, qv into pressure
-   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), zout(:), tk(:), istatus(:))
-   if (debug > 10 .and. do_output()) then
-      write(string2,'("zout_in_p, theta, rho, qv, ier:",3F10.2,F18.8,I3)') zout(1), values(1:3,1),istatus(1)
-      call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
-   endif
+   call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), zout, tk, istatus)
+   if( all(istatus /= 0) ) then
+       if (debug > 1 .and. do_output()) then
+           write(string2,'("Failed in compute_full_pressure")')
+           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+       endif
+   else
+       if (debug > 9 .and. do_output()) then
+           write(string2,'("zout[Pa] for member 1,theta,rho,qv,ier:",3F10.2,F12.8,I5)') zout(1),values(1:3,1),istatus(1)
+           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+       endif
+   endif      ! istatus
 
    ! ------------------------------------------------------------
    ! outgoing vertical coordinate should be 'height' in meters
@@ -4950,7 +5023,7 @@ select case (ztypeout)
    endif
 
    if (debug > 9 .and. do_output()) then
-      write(string2,'("zout_in_height:",F10.2)') zout
+      write(string2,'("zout[m] for member 1:",F10.2)') zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
    endif
 
@@ -4996,18 +5069,25 @@ select case (ztypeout)
 
        ! Get theta, rho, qv at the surface corresponding to the interpolated location
        surfloc(1) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
-       call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus, cellid)
+       call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus)
        if( all(istatus /= 0) ) then
            location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
            return
        endif
 
        ! Convert surface theta, rho, qv into pressure
-       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
-       if (debug > 9 .and. do_output()) then
-         write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F18.8)') surfp, values(1:3,1)
-         call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
-       endif
+       call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), surfp, tk, istatus)
+       if( all(istatus /= 0) ) then
+           if (debug > 1 .and. do_output()) then
+           write(string2,'("Failed in compute_full_pressure")')
+           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+           endif
+       else
+           if (debug > 9 .and. do_output()) then
+           write(string2,'("zout_psfc,theta,rho,qv:",3F10.2,F12.8)') surfp(1), values(1:3,1)
+           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+           endif
+       endif      ! istatus
 
      endif
 
@@ -5017,11 +5097,19 @@ select case (ztypeout)
         call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
 
         ! Convert theta, rho, qv into pressure
-        call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
-        if (debug > 9 .and. do_output()) then
-          write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
-          call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
-        endif
+        call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), fullp, tk, istatus)
+        if( all(istatus /= 0) ) then
+           if (debug > 1 .and. do_output()) then
+           write(string2,'("Failed in compute_full_pressure")')
+           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+           endif
+        else
+           if (debug > 9 .and. do_output()) then
+           write(string2,'("zout [Pa] for member 1,theta,rho,qv:",3F10.2,F12.8)') fullp(1), values(1:3,1)
+           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
+           endif
+        endif      ! istatus
+
      endif
 
      ! we have what we need now.  figure out the case and set zout to the right values.
@@ -5052,7 +5140,7 @@ select case (ztypeout)
 101 continue
 
      if (debug > 9 .and. do_output()) then
-        write(string2,'("zout_in_scaleheight:",F10.2)') zout
+        write(string2,'("zout_in_scaleheight for member 1:",F10.2)') zout(1)
         call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
      endif
 
@@ -5131,6 +5219,8 @@ upper = -1
 if(height < bounds(1)) then
    if(outside_grid_level_tolerance <= 0.0_r8) then
       ier = 998
+      if ((debug > 1) .and. do_output()) print*,'find_height_bounds: height < bounds(1) ', &
+      height, bounds(1)
    else
       ! let points outside the grid but "close enough" use the
       ! bottom level as the height.  hlevel should come back < 1
@@ -5239,7 +5329,7 @@ vert = llv(3)
 verttype = nint(query_location(loc))
 
 ! these first 3 types need no cell/edge location information.
-if ((debug > 10) .and. do_output()) then
+if ((debug > 9) .and. do_output()) then
    write(string2,'("vert, which_vert:",3F20.12,I5)') lon,lat,vert,verttype
    call error_handler(E_MSG, 'find_vert_level',string2,source, revision, revdate)
 endif
@@ -5282,7 +5372,6 @@ endif
 
 ! ok, now we need to know where we are in the grid for heights or pressures
 ! as the vertical coordinate.
-
 
 ! Vertical interpolation for pressure coordinates
 if(verttype == VERTISPRESSURE ) then
@@ -5351,6 +5440,8 @@ if(verttype == VERTISHEIGHT) then
 
    enddo
 
+   if ((debug > 9) .and. do_output()) print*,'find_vert_level is done'
+
    ier = track_ier
    return
 
@@ -5414,8 +5505,8 @@ if(debug > 10 .and. do_output()) &
 where(ier(:) == 0) ier(:) = temp_ier(:)
 
 ! Check for out of the column range
-where(p(:) < pressure(nbounds, :)) ier(:) = 81
-!where(p(:) > pressure(      1, :)) ier(:) = 80
+where(p(:) < pressure(nbounds, :)) ier(:) = 81   ! too high
+!where(p(:) > pressure(      1, :)) ier(:) = 80  ! too low -> just take the lowest level
 
 if(all(ier /= 0)) return
 
@@ -5487,6 +5578,7 @@ do i = 2, nbounds
 
       endif
    enddo
+   if(all(found_level)) return
 enddo
 
 end subroutine find_pressure_bounds
@@ -5510,7 +5602,7 @@ integer  :: offset
 real(r8) :: pt(ens_size), density(ens_size), qv(ens_size), tk(ens_size)
 integer :: e
 
-if(debug > 11 .and. do_output()) print*, 'get_interp_pressure for k = ',lev
+if(debug > 9 .and. do_output()) print*, 'get_interp_pressure for k = ',lev
 
 ! Get the values of potential temperature, density, and vapor
 offset = (cellid - 1) * nlevs + lev - 1
@@ -5531,11 +5623,17 @@ enddo
 
 ! Convert theta, rho, qv into pressure
 call compute_full_pressure(ens_size, pt(:), density(:), qv(:), pressure(:), tk(:), ier) !HK where is tk used?
-
-if((debug > 11) .and. do_output()) then
+if( all(ier/= 0) ) then
+    if (debug > 1 .and. do_output()) then
+        write(string2,'("Failed in compute_full_pressure")')
+        call error_handler(E_ALLMSG, 'get_interp_pressure',string2,source, revision, revdate)
+    endif
+else
+    if((debug > 11) .and. do_output()) then
     write(*,*) 'get_interp_pressure: cellid, lev', cellid, lev
-    write(*,*) 'get_interp_pressure: pt,rho,qv,p,tk', pt, density, qv, pressure, tk
-endif
+    write(*,*) 'get_interp_pressure: theta,rho,qv,p,tk', pt(1), density(1), qv(1), pressure(1), tk(1)
+    endif
+endif   !( all(istatus /= 0) )
 
 end subroutine get_interp_pressure
 
@@ -5647,14 +5745,15 @@ integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: loc !(ens_size)
 integer,             intent(in)  :: n
 integer,             intent(in)  :: ival(n)
-real(r8),            intent(out) :: dval(:, :)
+real(r8),            intent(out) :: dval(n, ens_size)
 integer,             intent(out) :: ier(ens_size)
 integer, optional,   intent(in)  :: this_cellid
 
-real(r8), dimension(3, ens_size) :: fract, lowval, uppval, fdata
+real(r8), dimension(3, ens_size) :: fract, fdata
+real(r8), dimension(ens_size) :: lowval, uppval
 real(r8)    :: weights(3)
 integer     :: c(3), nvert, k, i, nc
-integer(i8) :: index1, low_offset, upp_offset
+integer(i8) :: index1, low_offset, upp_offset, low_state_indx, upp_state_indx
 integer     :: lower(3, ens_size), upper(3,ens_size)
 integer     :: e, e2, thislower, thisupper
 logical     :: did_member(ens_size)
@@ -5688,7 +5787,7 @@ do k=1, n
       ! go around triangle and interpolate in the vertical
       ! c(3) are the cell ids
 
-      low_offset = (c(i)-1) * nvert
+      low_offset = (c(i)-1) * nvert !FIXME low_offset and upp_offset are the same?
       upp_offset = (c(i)-1) * nvert
 
       if( nvert == 1 ) then         ! fields on a surface (1-D, one level, ...)
@@ -5700,18 +5799,19 @@ do k=1, n
 
          did_member(:) = .false.
 
-         do e = 1, ens_size
+         members: do e = 1, ens_size
 
-            if (did_member(e)) cycle
+            if (did_member(e)) cycle members
 
             !> minimize the number of times we call get_state() by
             !> doing all the ensemble members which are between the same
             !> two vertical levels.  this is true most of the time. 
             !> in some cases it could be 2 or 3 different pairs of levels because 
             !> of differences in vertical conversion that depends on per-member fields.
-
-            lowval(i,:) = get_state(index1 + low_offset + lower(i,e)-1, state_handle)
-            uppval(i,:) = get_state(index1 + upp_offset + upper(i,e)-1, state_handle)
+            low_state_indx = index1 + low_offset + lower(i,e)-1
+            lowval(:) = get_state(low_state_indx, state_handle)
+            upp_state_indx = index1 + upp_offset + upper(i,e)-1
+            uppval(:) = get_state(upp_state_indx, state_handle)
 
             thislower = lower(i, e)
             thisupper = upper(i, e)
@@ -5720,11 +5820,11 @@ do k=1, n
             ! upper level numbers are the same.  fract() will vary with member.
             do e2=e, ens_size
                if (thislower == lower(i, e2) .and. thisupper == upper(i, e2)) then
-                  fdata(i, e2) = lowval(i, e2)*(1.0_r8 - fract(i, e2)) + uppval(i, e2)*fract(i, e2)
+                  fdata(i, e2) = lowval(e2)*(1.0_r8 - fract(i, e2)) + uppval(e2)*fract(i, e2)
                   did_member(e2) = .true.
                endif
             enddo
-         enddo  ! end ens_size
+         enddo members
 
       endif                         ! 2-D fields
 
@@ -5951,12 +6051,12 @@ fract = 0.0_r8
 ! need vert index for the vertical level
 call find_vert_level(state_handle, ens_size, loc, nc, c, .true., lower, upper, fract, ier)
 
-if (debug > 10 .and. do_output()) then
-   write(string3,'(A,I5,A,3I10,A,3F7.2)') 'ier = ',ier(1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
+if (debug > 9 .and. do_output()) then
+   write(string3,*) 'ier = ',ier(1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1), ' nc = ', nc
    call error_handler(E_MSG, 'find_vert_indices', string3, source, revision, revdate)
 endif
 
-if (debug > 11 .and. do_output()) then
+if (debug > 12 .and. do_output()) then
   do e = 1, ens_size
    if(ier(e) /= 0) then   
       print *, 'find_vert_indices: e = ', e, ' nc = ', nc, ' ier = ', ier(e)
@@ -6235,7 +6335,7 @@ select case (use_rbf_option)
                          source, revision, revdate)
 end select
 
-! Ha: Check if any of edges are located in the boundary zone.
+! Check if any of edges are located in the boundary zone.
 ! (We will skip the obs if any edges are located there.)
 if (on_boundary_edgelist(edge_list)) then
    nedges = -1
@@ -6295,7 +6395,6 @@ endif
 pointloc = xyz_set_location(lon, lat, 0.0_r8, radius)
 
 call xyz_find_nearest(cc_gc, pointloc, cell_locs, closest_cell, rc)
-!if(debug > 0) print *, 'find_closest_cell_center: rc, closest_cell ', rc, closest_cell   ! SYHA
 
 !> updated xyz_find_nearest to return -1 if outside the volume.
 !> this is a code change so allow -1 returns here.  make sure
@@ -6303,14 +6402,14 @@ call xyz_find_nearest(cc_gc, pointloc, cell_locs, closest_cell, rc)
 !> happen in the regional case.
 
 if (rc /= 0 .or. closest_cell < 0) then
-   if (debug > 8 .or. global_grid) then
+   if (debug > 0 .or. global_grid) then
        print *, 'cannot find nearest cell to lon, lat: ', lon, lat
    endif
    find_closest_cell_center = -1
    return
 endif
 
-if (debug > 11 .and. do_output()) print *, 'find_closest_cell_center: lat/lon closest to cellid, with lat/lonCell: ', &
+if (debug > 9 .and. do_output()) print *, 'find_closest_cell_center: lat/lon closest to cellid, with lat/lonCell: ', &
                           lat, lon, closest_cell, latCell(closest_cell), lonCell(closest_cell)
 
 ! do allow boundary cells to be returned.
@@ -6588,7 +6687,7 @@ call latlon_to_xyz(lat, lon, px, py, pz)
 
 closest_vertex_ll = closest_vertex_xyz(cellid, px, py, pz)
 if ((closest_vertex_ll < 0)  .and. &
-    (debug > 8) .and. do_output()) &
+    (debug > 0) .and. do_output()) &
    print *, 'cannot find nearest vertex to lon, lat: ', lon, lat
 
 end function closest_vertex_ll
@@ -7326,7 +7425,7 @@ end subroutine r3_normalize
 
 !------------------------------------------------------------------
 
-function theta_to_tk (ens_size, theta, rho, qv, istatus_in)
+function theta_to_tk (ens_size, theta, rho, qv, istatus) 
 
 ! Compute sensible temperature [K] from potential temperature [K].
 ! code matches computation done in MPAS model
@@ -7335,33 +7434,56 @@ integer,                       intent(in)  :: ens_size
 real(r8), dimension(ens_size), intent(in)  :: theta    ! potential temperature [K]
 real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
 real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
-integer,  dimension(ens_size), intent(in)  :: istatus_in
+integer,  dimension(ens_size), intent(inout) :: istatus
 real(r8), dimension(ens_size) :: theta_to_tk          ! sensible temperature [K]
 
 ! Local variables
 real(r8), dimension(ens_size) :: theta_m    ! potential temperature modified by qv
 real(r8), dimension(ens_size) :: exner      ! exner function
 real(r8), dimension(ens_size) :: qv_nonzero ! qv >= 0
+integer :: e
 
 qv_nonzero = max(qv,0.0_r8)
 theta_to_tk = missing_r8
 
-where (istatus_in == 0)
+
+if ( debug > 0 .and. do_output()) then
+   if (any(istatus /= 0)) then
+     print *, 'theta_to_tk - nonzero istatus coming in'
+     do e = 1, ens_size
+      if (istatus(e) /= 0) then
+          write(string2, *) 'member ', e, ' incoming istatus = ', istatus(e)
+          call error_handler(E_ALLMSG, 'theta_to_tk',string2,source, revision, revdate)
+      endif  !(istatus(e) /= 0) then
+     enddo   ! ens_size
+   endif
+endif
+where (istatus == 0)
+
    theta_m = (1.0_r8 + 1.61_r8 * qv_nonzero)*theta
    
-   !theta_m = (1.0_r8 + 1.61_r8 * (max(qv, 0.0_r8)))*theta
-   exner = ( (rgas/p0) * (rho*theta_m) )**rcv
+   where (theta_m > 0.0_r8 .and. rho > 0.0_r8)  ! Check if all the input are positive
+
+      exner = ( (rgas/p0) * (rho*theta_m) )**rcv
    
-   ! Temperature [K]
-   theta_to_tk = theta * exner
+      ! Temperature [K]
+      theta_to_tk = theta * exner
+
+   elsewhere
+
+      istatus = 89
+
+   endwhere
+
 endwhere
+
 
 end function theta_to_tk
 
 
 !------------------------------------------------------------------
 
-subroutine compute_full_pressure(ens_size, theta, rho, qv, pressure, tk, istatus_in)
+subroutine compute_full_pressure(ens_size, theta, rho, qv, pressure, tk, istatus)
 
 ! Compute full pressure from the equation of state.
 ! since it has to compute sensible temp along the way,
@@ -7375,20 +7497,35 @@ real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
 real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
 real(r8), dimension(ens_size), intent(out) :: pressure ! full pressure [Pa]
 real(r8), dimension(ens_size), intent(out) :: tk       ! return sensible temperature to caller
-integer,  dimension(ens_size), intent(in)  :: istatus_in
+integer,  dimension(ens_size), intent(inout):: istatus
 
 ! Local variables
 real(r8), dimension(ens_size) :: qv_nonzero
+integer   :: e
 
 pressure = missing_r8
 qv_nonzero = max(qv,0.0_r8)
-tk = theta_to_tk(ens_size, theta, rho, qv_nonzero, istatus_in)
 
-!tk = theta_to_tk(theta, rho, max(qv,0.0_r8))
-where (istatus_in == 0)
+tk = theta_to_tk(ens_size, theta, rho, qv_nonzero, istatus)
+
+where (istatus == 0)       ! We only take non-missing tk here
    pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv_nonzero)
 end where
-if ((debug > 12) .and. do_output()) print *, 't,r,q,p,tk =', theta, rho, qv, pressure, tk
+
+if ( debug > 1 ) then
+   if( any(istatus /= 0) ) then   
+      do e = 1, ens_size
+       if (istatus(e) /= 0) then
+           write(string2,'("Failed in member,istatus,P[Pa],tk,theta,rho,qv:",2I4,4F12.2,F15.6)') &
+           e, istatus(e), pressure(e), tk(e), theta(e), rho(e), qv(e)
+           call error_handler(E_ALLMSG, 'compute_full_pressure',string2,source, revision, revdate)
+       endif  !(istatus(e) /= 0) then
+      enddo   ! ens_size
+  endif       ! debug
+else
+  if ((debug > 12) .and. do_output()) print *, 'compute_full_pressure: theta,r,q,p,tk,istatus =', &
+                                                theta, rho, qv, pressure, tk, istatus
+endif
 
 end subroutine compute_full_pressure
 

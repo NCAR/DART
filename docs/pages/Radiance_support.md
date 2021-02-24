@@ -53,6 +53,12 @@ The RTTOV code and coefficients can be downloaded from this page:
 
 https://www.nwpsaf.eu/site/software/rttov
 
+Be aware that there are more coefficient files available once you download the RTTOV 
+package.  There is a `rtcoef_rttov12/rttov_coef_download.sh` script that assists in 
+the process and you can select specific coefficient files or large batches. 
+There is also a website 
+https://nwp-saf.eumetsat.int/site/software/rttov/download/coefficients/rttov-v12-coefficient-download/
+
 You will need to register for a free account before downloading the code.
 
 You should read the RTTOV user guide carefully as DART primarily acts as a

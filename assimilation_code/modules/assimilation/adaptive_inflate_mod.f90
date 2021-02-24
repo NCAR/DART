@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$ 
 
 !> Operations and storage required for various adaptive inflation algorithms
 
@@ -11,10 +9,9 @@ module adaptive_inflate_mod
 !> \defgroup adaptive_inflate adaptive_inflate_mod
 !> @{
 
-use types_mod,            only : r8, PI, missing_r8
+use types_mod,            only : r8, PI, MISSING_R8
 use time_manager_mod,     only : time_type, get_time
-use utilities_mod,        only : register_module, open_file, close_file, &
-                                 error_handler, E_ERR, E_MSG
+use utilities_mod,        only : open_file, close_file, error_handler, E_ERR, E_MSG
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
 use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, send_minmax_to
@@ -33,13 +30,8 @@ public :: update_inflation,                                 do_obs_inflate,     
           set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy, &
           get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options, &
           print_inflation_restart_filename
-
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+          
+character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 
 ! Manages both observation space and state space inflation
 ! Handles initial values and restarts, diagnostic output, and computations
@@ -89,11 +81,11 @@ character(len=512) :: string1, string2
 ! Flag indicating whether module has been initialized
 logical :: initialized = .false.
 
-!============================================================================
+!===============================================================================
 
 contains
 
-!------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> Accessor functions for adaptive inflate type
 
 function mean_from_restart(inflation)
@@ -105,7 +97,9 @@ mean_from_restart = inflation%mean_from_restart
 
 end function mean_from_restart
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 function sd_from_restart(inflation)
 
@@ -116,7 +110,9 @@ sd_from_restart = inflation%sd_from_restart
 
 end function sd_from_restart
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 function output_inf_restart(inflation)
 
@@ -127,7 +123,10 @@ output_inf_restart = inflation%output_restart
 
 end function
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
+
 function get_inflate_mean(inflation)
 
 type(adaptive_inflate_type) :: inflation
@@ -137,7 +136,10 @@ get_inflate_mean = inflation%inflate
 
 end function
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
+
 function get_inflate_sd(inflation)
 
 type(adaptive_inflate_type) :: inflation
@@ -147,7 +149,10 @@ get_inflate_sd = inflation%sd
 
 end function
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
+
 function get_is_prior(inflation)
 
 type(adaptive_inflate_type) :: inflation
@@ -157,7 +162,10 @@ get_is_prior = inflation%prior
 
 end function get_is_prior
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
+
 function get_is_posterior(inflation)
 
 type(adaptive_inflate_type) :: inflation
@@ -167,7 +175,9 @@ get_is_posterior = inflation%posterior
 
 end function get_is_posterior
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 function do_ss_inflate(inflation)
 
@@ -183,7 +193,9 @@ else
 endif
 
 end function do_ss_inflate
-!------------------------------------------------------------------
+
+
+!-------------------------------------------------------------------------------
 !> Initializes an adaptive_inflate_type 
 
 subroutine adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, &
@@ -211,7 +223,6 @@ integer, save :: salt = 139
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
    initialized = .true.
-   call register_module(source, revision, revdate)
 endif
 
 ! If non-deterministic inflation is being done, need to initialize random sequence.
@@ -225,19 +236,28 @@ if(.not. deterministic) then
 endif
 
 ! Load up the structure first to keep track of all details of this inflation type
-inflate_handle%inflation_flavor   = inf_flavor
+inflate_handle%inflation_flavor     = inf_flavor
 inflate_handle%inflation_sub_flavor = inf_flavor    ! see code below
-inflate_handle%output_restart     = output_inflation
-inflate_handle%deterministic      = deterministic
-inflate_handle%inflate            = inf_initial
-inflate_handle%sd                 = sd_initial
-inflate_handle%inf_lower_bound    = inf_lower_bound
-inflate_handle%inf_upper_bound    = inf_upper_bound
-inflate_handle%sd_lower_bound     = sd_lower_bound
-inflate_handle%sd_max_change      = sd_max_change
+inflate_handle%output_restart       = output_inflation
+inflate_handle%deterministic        = deterministic
+inflate_handle%inflate              = inf_initial
+inflate_handle%sd                   = sd_initial
+inflate_handle%inf_lower_bound      = inf_lower_bound
+inflate_handle%inf_upper_bound      = inf_upper_bound
+inflate_handle%sd_lower_bound       = sd_lower_bound
+inflate_handle%sd_max_change        = sd_max_change
 inflate_handle%allow_missing_in_clm = missing_ok
-inflate_handle%mean_from_restart  = mean_from_restart
-inflate_handle%sd_from_restart    = sd_from_restart
+inflate_handle%mean_from_restart    = mean_from_restart
+inflate_handle%sd_from_restart      = sd_from_restart
+
+!Overwriting the initial value of inflation with 1.0
+!as in other inflation flavors (usually start from 1). 
+!This is required for RTPS because inf_initial(2)
+!is not really the inflation factor but rather the weighting
+!parameter, say alpha: 
+!RTPS: lambda = alpha * (sd_b - sd_a) / sd_a + 1
+!where; sd_b (sd_a): prior (posteriro) spread
+if(inf_flavor == 4) inflate_handle%inflate = 1.0_r8
 
 ! Prior and posterior are intialized to false
 if (trim(label)=='Prior') inflate_handle%prior = .true.
@@ -251,13 +271,13 @@ endif
 ! Cannot support non-determistic inflation and an inf_lower_bound < 1
 if(.not. deterministic .and. inf_lower_bound < 1.0_r8) then
    write(string1, *) 'Cannot have non-deterministic inflation and inf_lower_bound < 1'
-   call error_handler(E_ERR, 'adaptive_inflate_init', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'adaptive_inflate_init', string1, source)
 endif
 
 ! give these distinctive values; if inflation is being used
 ! (e.g. inf_flavor > 0) then they should be set in all cases.
-inflate_handle%minmax_mean(:) = missing_r8
-inflate_handle%minmax_sd(:)   = missing_r8
+inflate_handle%minmax_mean(:) = MISSING_R8
+inflate_handle%minmax_sd(:)   = MISSING_R8
 
 ! State space inflation is read in the IO routine read_state.
 
@@ -268,14 +288,14 @@ if(inf_flavor == 1) then
                         '(i.e. inf_flavor = 1).'
    write(string2, *) 'Please contact dart@ucar.edu if you would like to use ', &
                         'observation space inflation'
-   call error_handler(E_ERR, 'adaptive_inflate_init', &
-      string1, source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'adaptive_inflate_init', string1, source, text2=string2)
 
 endif
 
 end subroutine adaptive_inflate_init
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Returns true if this inflation type indicates observation space inflation
 
 function do_obs_inflate(inflate_handle)
@@ -285,16 +305,17 @@ type(adaptive_inflate_type), intent(in) :: inflate_handle
 
 do_obs_inflate = (inflate_handle%inflation_flavor == 1)
 
+!>@todo I am not sure you can get here given the check in adaptive_inflate_init()
 if (do_obs_inflate) then
   write(string1,  *) 'observation space inflation not suppported (i.e. inf_flavor = 1)'
   write(string2, *) 'please contact dart if you would like to use this functionality'
-  call error_handler(E_ERR, 'do_obs_inflate', &
-     string1, source, revision, revdate, text2=string2)
+  call error_handler(E_ERR, 'do_obs_inflate', string1, source, text2=string2)
 endif
 
 end function do_obs_inflate
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Returns true if this inflation type indicates varying state space inflation
 
 function do_varying_ss_inflate(inflate_handle)
@@ -306,7 +327,8 @@ do_varying_ss_inflate = (inflate_handle%inflation_flavor == 2)
 
 end function do_varying_ss_inflate
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Returns true if this inflation type indicates fixed state space inflation
 
 function do_single_ss_inflate(inflate_handle)
@@ -318,7 +340,8 @@ do_single_ss_inflate = (inflate_handle%inflation_flavor == 3)
 
 end function do_single_ss_inflate
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Returns true if this inflation type indicates posterior relaxion-to-prior-spread
 !> (whitaker & Hamill, 2012)
 
@@ -331,7 +354,8 @@ do_rtps_inflate = (inflate_handle%inflation_flavor == 4)
 
 end function do_rtps_inflate
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> *private* accessor routine for the subtype
 !>
 !> Returns true if this inflation sub type indicates enhanced state space inflation
@@ -347,7 +371,8 @@ do_enhanced_ss_inflate = ((inflate_handle%inflation_flavor == 2) .and. &
 
 end function do_enhanced_ss_inflate
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Returns true if deterministic inflation is indicated
 
 function deterministic_inflate(inflate_handle)
@@ -359,7 +384,8 @@ deterministic_inflate = inflate_handle%deterministic
 
 end function deterministic_inflate
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Make sure the combination of inflation options are legal
 
 subroutine validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
@@ -382,19 +408,19 @@ integer :: i
 character(len=32) :: string(2)
 
 ! for error messages
-string(1) = 'Prior'
+string(1)     = 'Prior'
 string(2) = 'Posterior'
 
 do i = 1, 2
    if(inf_flavor(i) < 0 .or. inf_flavor(i) > 5) then
       write(string1, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, 4, or 5 '
-      call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &
+      call error_handler(E_ERR,'validate_inflate_options', string1, source, &
                                 text2='Inflation type for '//string(i))
    endif
 
    if(inf_damping(i) < 0.0_r8 .or. inf_damping(i) > 1.0_r8) then
       write(string1, *) 'inf_damping=', inf_damping(i), ' Must be 0.0 <= d <= 1.0'
-      call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &
+      call error_handler(E_ERR,'validate_inflate_options', string1, source, &
                                 text2='Inflation damping for '//string(i))
    endif
 end do
@@ -405,18 +431,20 @@ if (inf_flavor(2) > 1) do_posterior_inflate = .true.
 if (do_prior_inflate .or. do_posterior_inflate) output_inflation = .true.
 
 ! Observation space inflation not currently supported
-if(inf_flavor(1) == 1 .or. inf_flavor(2) == 1) call error_handler(E_ERR, 'validate_inflate_options', &
-   'observation space inflation (type 1) not currently supported', source, revision, revdate, &
+if(inf_flavor(1) == 1 .or. inf_flavor(2) == 1) &
+   call error_handler(E_ERR, 'validate_inflate_options', &
+   'observation space inflation (type 1) not currently supported', source, &
    text2='contact DART developers if you are interested in using it.')
 
 ! Relaxation-to-prior-spread (RTPS) is only an option for posterior inflation
-if(inf_flavor(1) == 4) call error_handler(E_ERR, 'validate_inflate_options', &
-   'RTPS inflation (type 4) only supported for Posterior inflation', source, revision, revdate)
+if(inf_flavor(1) == 4) &
+   call error_handler(E_ERR, 'validate_inflate_options', &
+   'RTPS inflation (type 4) only supported for Posterior inflation', source)
 
 ! Cannot select posterior options if not computing posterior
 if(.not. compute_posterior .and. inf_flavor(2) > 0) then
    write(string1, *) 'cannot enable posterior inflation if not computing posterior values'
-   call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &
+   call error_handler(E_ERR,'validate_inflate_options', string1, source, &
                              text2='"compute_posterior" is false; posterior inflation flavor must be 0')
 endif
 
@@ -448,7 +476,7 @@ if (inf_flavor(1) == 5 .or. inf_flavor(2) == 5) then
    do i=1, 2
       if (inf_sd_max_change(i) < 1.0_r8 .or. inf_sd_max_change(i) > 2.0_r8) then
          write(string1, *) 'inf_sd_max_change=', inf_sd_max_change(i), ' Must be 1.0 <= X <= 2.0'
-         call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &
+         call error_handler(E_ERR,'validate_inflate_options', string1, source, &
                                    text2='Inflation stddev max change for '//string(i))
       endif
    enddo
@@ -456,7 +484,8 @@ endif
 
 end subroutine validate_inflate_options
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Inflates subset of ensemble members given mean and inflate
 !> Selects between deterministic and stochastic inflation
 
@@ -464,7 +493,8 @@ subroutine inflate_ens(inflate_handle, ens, mean, inflate, var_in, fsprd, asprd)
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(inout) :: ens(:)
-real(r8),                    intent(in)    :: mean, inflate
+real(r8),                    intent(in)    :: mean 
+real(r8),                    intent(inout) :: inflate
 real(r8), optional,          intent(in)    :: var_in
 real(r8), optional,          intent(in)    :: fsprd, asprd
 
@@ -482,11 +512,12 @@ if(inflate_handle%deterministic) then
    if ( do_rtps_inflate(inflate_handle)) then
       if ( .not. present(fsprd) .or. .not. present(asprd)) then 
          write(string1, *) 'missing arguments for RTPS inflation, should not happen'
-         call error_handler(E_ERR,'inflate_ens',string1,source,revision,revdate) 
+         call error_handler(E_ERR,'inflate_ens',string1,source) 
       endif 
       ! only inflate if spreads are > 0
       if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) &
-          ens = mean + (ens-mean) * ( inflate*((fsprd-asprd)/asprd) + 1.0_r8 )
+          inflate = 1.0_r8 + inflate * ((fsprd-asprd) / asprd) 
+          ens     = mean + (ens-mean) * inflate 
    else 
 
       ! Spread the ensemble out linearly for deterministic
@@ -532,7 +563,8 @@ endif
 
 end subroutine inflate_ens
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> This routine is given information from an inflate type, scalar values for inflate 
 !> and inflate_sd, the ensemble prior_mean and prior_var for an observation, the
 !> ensemble (or group) size, the observed value, observational error variance, 
@@ -585,7 +617,8 @@ if(inflate_sd < inflate_handle%sd_lower_bound) inflate_sd = inflate_handle%sd_lo
 
 end subroutine update_inflation
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Uses one of 2 algorithms in references on DART web site to update the 
 !> distribution of inflation:  Anderson 2007, 2009 or Gharamti 2017
 
@@ -793,12 +826,13 @@ else if (inf_type == GHA2017) then
    
 else
    write(string1, *) 'Internal error, should not happen.  Illegal value for bayes type.'
-   call error_handler(E_ERR, 'bayes_cov_inflate', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'bayes_cov_inflate', string1, source)
 endif
 
 end subroutine bayes_cov_inflate
 
-!------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Used to update density by taking approximate gaussian product
 !> original routine.
 
@@ -828,8 +862,8 @@ compute_new_density = exp(exponent_likelihood + exponent_prior) / &
 end function compute_new_density
 
 
-!------------------------------------------------------------------
-!> new version
+!-------------------------------------------------------------------------------
+!>
 
 function enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, alpha, beta, gamma_corr, lambda)
 
@@ -865,8 +899,7 @@ exp_like = - 0.5_r8 * dist_2 / theta**2
 
 ! write(string1,*)'gamma function not available'
 ! write(string2,*)'when available uncomment block below and recompile'
-! call error_handler(E_ERR, 'enh_compute_new_density', string1, &
-!            source, revision, revdate, text2=string2)
+! call error_handler(E_ERR, 'enh_compute_new_density', string1, source, text2=string2)
 
 ! Compute the updated probability density for lambda
 enh_compute_new_density = beta**alpha / gamma(alpha)  * &
@@ -877,7 +910,7 @@ enh_compute_new_density = beta**alpha / gamma(alpha)  * &
 end function enh_compute_new_density
 
 
-!---------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> original linear_bayes routine
 
 subroutine linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2, gamma, &
@@ -939,7 +972,7 @@ endif
 end subroutine linear_bayes
 
 
-!---------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> enhanced linear bayes
 
 subroutine enh_linear_bayes(dist_2, sigma_p_2, sigma_o_2, &
@@ -1010,7 +1043,9 @@ if(new_cov_inflate <= 0.0_r8 .OR. new_cov_inflate /= new_cov_inflate) new_cov_in
 
 end subroutine enh_linear_bayes
 
-!------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 subroutine solve_quadratic(a, b, c, r1, r2)
 
@@ -1039,9 +1074,11 @@ r2 = (cs / as) / r1
 
 end subroutine solve_quadratic
 
-!----------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Routine to change the Gaussian prior into an inverse gamma (IG).
 !> The Gaussian prior is represented by a mode (:= mean) and a variance; var 
+
 subroutine change_GA_IG(mode, var, beta)
 
 real(r8), intent(in)  :: mode, var
@@ -1077,8 +1114,10 @@ beta = (7.0_r8*var*mode + mode_p(3))/(3.0_r8*var)                               
 
 end subroutine change_GA_IG
 
-!------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Write to log file what kind of inflation is being used.  
+
 subroutine log_inflation_info(inflation_handle, mype, label, single_file)
 
 type(adaptive_inflate_type), intent(in) :: inflation_handle
@@ -1093,7 +1132,7 @@ if (mype /= 0) return
 
 ! if inflation is off, say so and return now
 if (inflation_handle%inflation_flavor <= 0) then
-   call error_handler(E_MSG, trim(label) // ' inflation:', 'None', source, revision, revdate)
+   call error_handler(E_MSG, trim(label) // ' inflation:', 'None', source)
    return
 endif
 
@@ -1139,12 +1178,12 @@ select case(inflation_handle%inflation_flavor)
       akind = ' state-space'
    case default
       write(string1, *) 'Illegal inflation value for ', label
-      call error_handler(E_ERR, 'adaptive_inflate_init', string1, source, revision, revdate)
+      call error_handler(E_ERR, 'adaptive_inflate_init', string1, source)
 end select
 
 ! say what basic kind of inflation was selected.
 write(string1, '(4A)') trim(det), trim(tadapt), trim(sadapt), trim(akind)
-call error_handler(E_MSG, trim(label) // ' inflation:', string1, source, revision, revdate)
+call error_handler(E_MSG, trim(label) // ' inflation:', string1, source)
 
 ! print out details about the type of inflation selected.
 ! inflation flavor 2 has min/max values if from restart,
@@ -1161,7 +1200,7 @@ else
    write(string1,  '(A, 2F8.3)') &
          'inf mean   '//trim(from)//', min/max values: ', inflation_handle%minmax_mean
 endif
-call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source, revision, revdate)
+call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source)
 
 call set_from_string(inflation_handle%sd_from_restart, single_file, from)
 if (nvalues_to_log(inflation_handle, from) == 1) then
@@ -1171,17 +1210,19 @@ else
    write(string1,  '(A, 2F8.3)') &
          'inf stddev '//trim(from)//', min/max values: ', inflation_handle%minmax_sd
 endif
-call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source, revision, revdate)
+call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source)
 
 if (inflation_handle%inflation_sub_flavor == 5) then
    write(string1, '(A, F8.3)') &
             'inf stddev max change: ', inflation_handle%sd_max_change
-   call error_handler(E_MSG, trim(label) // ' inflation:', string1, source, revision, revdate)
+   call error_handler(E_MSG, trim(label) // ' inflation:', string1, source)
 endif
 
 end subroutine log_inflation_info
 
-!-----------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 subroutine set_from_string(from_restart, single_file, from_string)
 logical,          intent(in)  :: from_restart
@@ -1200,7 +1241,9 @@ endif
 
 end subroutine set_from_string
 
-!-----------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 function nvalues_to_log(inflation_handle, from_string)
 type(adaptive_inflate_type), intent(in) :: inflation_handle
@@ -1216,7 +1259,9 @@ endif
 
 end function nvalues_to_log
 
-!-----------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 subroutine print_inflation_restart_filename(inflation_handle, fname, which)
 type(adaptive_inflate_type), intent(in) :: inflation_handle
@@ -1234,16 +1279,17 @@ else
 endif
 
 write(string1,*) trim(which)//' read from restart file: ' // trim(fname)
-call error_handler(E_MSG, trim(label) // ' inflation:', trim(string1), &
-                   source, revision, revdate)
+call error_handler(E_MSG, trim(label) // ' inflation:', trim(string1), source)
 
 end subroutine print_inflation_restart_filename
 
-!-----------------------------------------------------------------------
-! Collect the min and max of inflation on task 0
-! this block handles communicating the min/max local values to PE 0
-! if running with MPI, or just sets the min/max directly if reading
-! from a namelist.
+
+!-------------------------------------------------------------------------------
+!> Collect the min and max of inflation on task 0
+!> this block handles communicating the min/max local values to PE 0
+!> if running with MPI, or just sets the min/max directly if reading
+!> from a namelist.
+
 subroutine get_minmax_task_zero(inflation_handle, ens_handle, ss_inflate_index, ss_inflate_sd_index)
 
 type(adaptive_inflate_type), intent(inout) :: inflation_handle
@@ -1285,7 +1331,9 @@ endif
 
 end subroutine get_minmax_task_zero
 
-!-----------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 subroutine set_inflation_mean_copy(inflation_handle, c)
 type(adaptive_inflate_type), intent(inout) :: inflation_handle
@@ -1295,7 +1343,9 @@ inflation_handle%input_mean_copy = c
 
 end subroutine set_inflation_mean_copy
 
-!-----------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 subroutine set_inflation_sd_copy(inflation_handle, c)
 type(adaptive_inflate_type), intent(inout) :: inflation_handle
@@ -1305,7 +1355,9 @@ inflation_handle%input_sd_copy = c
 
 end subroutine set_inflation_sd_copy
 
-!-----------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 function get_inflation_mean_copy(inflation_handle) result (c)
 type(adaptive_inflate_type), intent(in) :: inflation_handle
@@ -1315,7 +1367,9 @@ c = inflation_handle%input_mean_copy
 
 end function get_inflation_mean_copy
 
-!-----------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!>
 
 function get_inflation_sd_copy(inflation_handle) result (c)
 type(adaptive_inflate_type), intent(in) :: inflation_handle
@@ -1326,16 +1380,11 @@ c = inflation_handle%input_sd_copy
 end function get_inflation_sd_copy
 
 
-!========================================================================
+!===============================================================================
 ! end module adaptive_inflate_mod
-!========================================================================
+!===============================================================================
 
 !> @}
 
 end module adaptive_inflate_mod
 
-! <next few lines under version control, do not edit>
-! $URL$ 
-! $Id$ 
-! $Revision$ 
-! $Date$ 

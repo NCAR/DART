@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module location_mod
 
@@ -15,7 +13,7 @@ module location_mod
 !
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
-use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
+use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            find_namelist_in_file, check_namelist_read, &
                            do_output, do_nml_file, do_nml_term, nmlfileunit, &
                            open_file, close_file, is_longitude_between
@@ -35,12 +33,7 @@ public :: location_type, get_location, set_location, &
           get_vertical_localization_coordinate, set_vertical_localization_coordinate, &
           VERTISSURFACE, VERTISLEVEL, VERTISHEIGHT
 
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'annulus/location_mod.f90'
 
 type location_type
    private
@@ -63,12 +56,12 @@ logical :: ran_seq_init = .false.
 logical, save :: module_initialized = .false.
 character(len=256) :: msgstring
 
-integer,             parameter :: LocationDims = 3
-character(len = 64), parameter :: LocationName = "loc_annulus"
-character(len = 64), parameter :: LocationLName = &
+integer,          parameter :: LocationDims = 3
+character(len=*), parameter :: LocationName = "loc_annulus"
+character(len=*), parameter :: LocationLName = &
                                    "Annulus location: azimuthal angle, radius, and height"
-character(len = 64), parameter :: LocationStorageOrder = 'Azimuth Radius Vertical'
-character(len = 64), parameter :: LocationUnits = 'degrees meters which_vert'
+character(len=*), parameter :: LocationStorageOrder = 'Azimuth Radius Vertical'
+character(len=*), parameter :: LocationUnits = 'degrees meters which_vert'
 
 
 ! really just a placeholder.  there was a comment that this code
@@ -104,7 +97,6 @@ integer :: iunit, io
 ! only do this code once
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 ! Read the namelist entry
@@ -224,7 +216,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if(azm < 0.0_r8 .or. azm > 360.0_r8) then
    write(errstring,*)'azimuthal angle (',azm,') is not within range [0,360]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_single%azm = azm * DEG2RAD
@@ -234,7 +226,7 @@ if(which_vert /= VERTISSURFACE .and. &
    which_vert /= VERTISLEVEL   .and. &
    which_vert /= VERTISHEIGHT  ) then
    write(errstring,*)'which_vert (',which_vert,') must be -1, 1 or 3'
-   call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'set_location', errstring, source)
 endif
 
 set_location_single%which_vert = which_vert
@@ -256,7 +248,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if (size(list) < 4) then
    write(errstring,*)'requires 4 input values'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_array = set_location_single(list(1), list(2), list(3), nint(list(4)))
@@ -313,7 +305,7 @@ select case(attr)
    case default
        call error_handler(E_ERR, 'query_location:', &
           'Only "azm","rad","vloc","which_vert" are legal attributes to request from location', &
-          source, revision, revdate)
+          source)
 end select
 
 end function query_location
@@ -362,8 +354,7 @@ endif
 ! to a file, and you can't have binary format set.
 if (.not. ascii_file_format(fform)) then
    call error_handler(E_ERR, 'write_location', &
-      'Cannot use string buffer with binary format', &
-       source, revision, revdate)
+      'Cannot use string buffer with binary format', source)
 endif
 
 ! format the location to be more human-friendly; meaning
@@ -375,7 +366,7 @@ charlength = 85
 
 if (len(charstring) < charlength) then
    write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
-   call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'write_location', errstring, source)
 endif
 
 write(string1, '(A,F12.8,1X,G15.8,A)') 'Azm(deg)/Radius(m): ',  &
@@ -393,7 +384,7 @@ select case  (loc%which_vert)
       write(charstring, '(A,1X,G15.6,A)') trim(string1), loc%vloc / 1000.0_r8, ' km'
    case default
       write(errstring, *) 'unrecognized key for vertical type: ', loc%which_vert
-      call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'write_location', errstring, source)
 end select
 
 end subroutine write_location
@@ -418,7 +409,7 @@ if (ascii_file_format(fform)) then
 
    if(header /= 'loc3a') then
       write(errstring,*)'Expected location header "loc3a" in input file, got ', header
-      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'read_location', errstring, source)
    endif
    ! Now read the location data value
    read(locfile, *) read_location%azm, read_location%rad, &
@@ -616,7 +607,7 @@ real(r8) :: this_dist
 ! you have to destroy the old gc and init a new one.
 if (size(locs) /= gc%num) then
    write(errstring,*)'locs() array must match one passed to get_close_init()'
-   call error_handler(E_ERR, 'get_close', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_close', errstring, source)
 endif
 
 ! Return list of obs that are within maxdist and their distances
@@ -657,7 +648,7 @@ if ( .not. module_initialized ) call initialize_module
 if ((minl%which_vert /= maxl%which_vert) .or. &
     (minl%which_vert /= loc%which_vert)) then
    write(errstring,*)'which_vert (',loc%which_vert,') must be same in all args'
-   call error_handler(E_ERR, 'is_location_in_region', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'is_location_in_region', errstring, source)
 endif
 
 ! assume failure and return as soon as we are confirmed right.
@@ -704,7 +695,7 @@ select case  (which_vert)
       is_vertical = (VERTISHEIGHT == loc%which_vert)
    case default
       write(msgstring, *) 'unrecognized key for vertical type: ', which_vert
-      call error_handler(E_ERR, 'is_vertical', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'is_vertical', msgstring, source)
 end select
 
 end function is_vertical
@@ -767,8 +758,3 @@ end function get_vertical_localization_coordinate
 
 end module location_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

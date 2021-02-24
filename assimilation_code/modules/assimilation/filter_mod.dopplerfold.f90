@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module filter_mod
 
@@ -30,7 +28,7 @@ use obs_def_utilities_mod, only : set_debug_fwd_op
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                   operator(-), print_time
 
-use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
+use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,       &
                                   logfileunit, nmlfileunit, timestamp,  &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
@@ -100,14 +98,10 @@ public :: filter_sync_keys_time, &
           filter_set_initial_time, &
           filter_main
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'filter_mod.dopplerfold.f90'
 
 ! Some convenient global storage items
-character(len=512)      :: msgstring
+character(len=512)      :: msgstring, string2, string3
 
 integer :: trace_level, timestamp_level
 
@@ -233,8 +227,6 @@ logical :: write_all_stages_at_end = .false.
 character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
                       obs_sequence_out_name = "obs_seq.final",  &
                       adv_ens_command       = './advance_model.csh'
-
-!                  == './advance_model.csh'    -> advance ensemble using a script
 
 ! Inflation namelist entries follow, first entry for prior, second for posterior
 ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space,
@@ -385,12 +377,12 @@ call timestamp_message('Filter start')
 ! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
 if(ens_size < 2) then
    write(msgstring, *) 'ens_size in namelist is ', ens_size, ': Must be > 1'
-   call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'filter_main', msgstring, source)
 endif
 
 ! informational message to log
 write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
-call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
+call error_handler(E_MSG,'filter_main:', msgstring, source)
 
 ! See if smoothing is turned on
 ds = do_smoothing()
@@ -440,7 +432,7 @@ has_cycling = single_file_out
 if (has_cycling .and. write_all_stages_at_end) then
    call error_handler(E_ERR,'filter:', &
          'advancing the model inside filter and writing all state data at end not supported', &
-          source, revision, revdate, text2='delaying write until end only supported when advancing model outside filter', &
+          source, text2='delaying write until end only supported when advancing model outside filter', &
           text3='set "write_all_stages_at_end=.false." to cycle and write data as it is computed')
 endif
 
@@ -509,7 +501,7 @@ else
 endif
 ! don't print if running single task.  transposes don't matter in this case.
 if (task_count() > 1) &
-   call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
+   call error_handler(E_MSG,'filter_main:', msgstring, source)
 
 call set_num_extra_copies(state_ens_handle, num_extras)
 
@@ -519,13 +511,12 @@ call trace_message('After  setting up space for ensembles')
 if(task_count() > model_size) then 
    write(msgstring, *) 'number of MPI processes = ', task_count(), ' while model size = ', model_size
    call error_handler(E_ERR,'filter_main', &
-      'Cannot have number of processes > model size' ,source,revision,revdate, &
-       text2=msgstring)
+      'Cannot have number of processes > model size' ,source, text2=msgstring)
 endif
 
 if(.not. compute_posterior) then
    msgstring = 'skipping computation of posterior forward operators'
-   call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
+   call error_handler(E_MSG,'filter_main:', msgstring, source)
 endif
 
 ! Set a time type for initial time if namelist inputs are not negative
@@ -609,7 +600,7 @@ if(first_obs_seconds > 0 .or. first_obs_days > 0) then
    call delete_seq_head(first_obs_time, seq, all_gone)
    if(all_gone) then
       msgstring = 'All obs in sequence are before first_obs_days:first_obs_seconds'
-      call error_handler(E_ERR,'filter_main',msgstring,source,revision,revdate)
+      call error_handler(E_ERR,'filter_main',msgstring,source)
    endif
 endif
 
@@ -622,7 +613,7 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
    call delete_seq_tail(last_obs_time, seq, all_gone)
    if(all_gone) then
       msgstring = 'All obs in sequence are after last_obs_days:last_obs_seconds'
-      call error_handler(E_ERR,'filter_main',msgstring,source,revision,revdate)
+      call error_handler(E_ERR,'filter_main',msgstring,source)
    endif
 endif
 
@@ -653,9 +644,8 @@ if (get_stage_to_write('input')) then
            call write_augmented_state(state_ens_handle, file_info_input)
         else
            call error_handler(E_ERR,'filter_main', &
-                              'can not insert mean or spread into input files that have multiple time steps',  &
-                              source, revision, revdate, &
-                              text2='please remove "input" from stages_to_write')
+                     'can not insert mean or spread into input files that have multiple time steps',  &
+                     source, text2='please remove "input" from stages_to_write')
         endif
      else ! muti file case
         ! write out input_mean.nc and input_sd.nc if requested
@@ -729,7 +719,7 @@ AdvanceTime : do
       if (.not. has_cycling) then
          call error_handler(E_ERR,'filter:', &
              'advancing the model inside filter and multiple file output not currently supported', &
-             source, revision, revdate, text2='support will be added in subsequent releases', &
+             source, text2='support will be added in subsequent releases', &
              text3='set "single_file_out=.true" for filter to advance the model, or advance the model outside filter')
       endif
 
@@ -1034,7 +1024,8 @@ AdvanceTime : do
    ! (it was applied earlier, this is computing the updated values for
    ! the next cycle.)
 
-   if(do_ss_inflate(post_inflate)) then
+   ! CSS added condition: Don't update posterior inflation if relaxing to prior spread
+   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) then
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
@@ -1273,7 +1264,7 @@ endif
 if(num_output_obs_members > 10000) then
    write(msgstring, *)'output metadata in filter needs obs ensemble size < 10000, not ',&
                       num_output_obs_members
-   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source)
 endif
 
 ! Set up obs ensemble members as requested
@@ -1296,7 +1287,6 @@ end subroutine filter_generate_copy_meta_data
 subroutine filter_initialize_modules_used()
 
 call trace_message('Before filter_initialize_module_used call')
-call register_module(source,revision,revdate)
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
@@ -1392,8 +1382,7 @@ if (input_qc_index < 0) then
       input_qc_index = get_blank_qc_index(seq)
       if (input_qc_index < 0) then
          call error_handler(E_ERR,'filter_setup_obs_sequence', &
-           'error adding blank qc field to sequence; should not happen', &
-            source, revision, revdate)
+           'error adding blank qc field to sequence; should not happen', source)
       endif
    endif
    ! Since we are constructing a dummy QC, label it as such
@@ -1411,8 +1400,7 @@ if (DART_qc_index < 0 .and. my_task == io_task) then
       DART_qc_index = get_blank_qc_index(seq)
       if (DART_qc_index < 0) then
          call error_handler(E_ERR,'filter_setup_obs_sequence', &
-           'error adding blank qc field to sequence; should not happen', &
-            source, revision, revdate)
+           'error adding blank qc field to sequence; should not happen', source)
       endif
    endif
    call set_qc_meta_data(seq, DART_qc_index, dqc_meta_data)
@@ -1441,8 +1429,7 @@ do i = 1, get_num_copies(seq)
 end do
 ! Falling of end means 'observations' not found; die
 call error_handler(E_ERR,'get_obs_copy_index', &
-   'Did not find observation copy with metadata "observation"', &
-      source, revision, revdate)
+   'Did not find observation copy with metadata "observation"', source)
 
 end function get_obs_copy_index
 
@@ -1547,17 +1534,17 @@ end function get_blank_qc_index
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_initial_time(days, seconds, time, read_time_from_file)
+subroutine filter_set_initial_time(days, seconds, dart_time, read_time_from_file)
 
 integer,         intent(in)  :: days, seconds
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 logical,         intent(out) :: read_time_from_file
 
 if(days >= 0) then
-   time = set_time(seconds, days)
+   dart_time = set_time(seconds, days)
    read_time_from_file = .false.
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
    read_time_from_file = .true.
 endif
 
@@ -1565,15 +1552,15 @@ end subroutine filter_set_initial_time
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_window_time(time)
+subroutine filter_set_window_time(dart_time)
 
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 
 
 if(obs_window_days >= 0) then
-   time = set_time(obs_window_seconds, obs_window_days)
+   dart_time = set_time(obs_window_seconds, obs_window_days)
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
 endif
 
 end subroutine filter_set_window_time
@@ -1605,15 +1592,19 @@ do group = 1, num_groups
    if ( do_rtps_inflate(inflate)) then 
       if ( present(SPARE_PRIOR_SPREAD) .and. present(ENS_SD_COPY)) then 
          write(msgstring, *) ' doing RTPS inflation'
-         call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source,revision,revdate)
-         do j = 1, ens_handle%my_num_vars 
+         call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source)
+
+         !Reset the RTPS factor to the given input.nml value
+         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(2)
+
+         do j = 1, ens_handle%my_num_vars
             call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
                ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
                ens_handle%copies(SPARE_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
          end do 
       else 
          write(msgstring, *) 'internal error: missing arguments for RTPS inflation, should not happen'
-         call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source,revision,revdate)
+         call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source)
       endif 
    else 
       do j = 1, ens_handle%my_num_vars
@@ -1686,8 +1677,11 @@ call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 
 ! allocate temp space for sending data only on the task that will
 ! write the obs_seq.final file
-if (my_task == io_task) allocate(obs_temp(num_obs_in_set))
-
+if (my_task == io_task) then
+   allocate(obs_temp(num_obs_in_set))
+else ! TJH: this change became necessary when using Intel 19.0.5 ...
+   allocate(obs_temp(1))
+endif
 
 ! Update the ensemble mean
 call get_copy(io_task, obs_fwd_op_ens_handle, OBS_MEAN_START, obs_temp)
@@ -1733,7 +1727,7 @@ if(my_task == io_task) then
    end do
 endif
 
-if (my_task == io_task) deallocate(obs_temp)
+deallocate(obs_temp)
 
 end subroutine obs_space_diagnostics
 
@@ -2012,7 +2006,7 @@ integer,             intent(in)    :: prior_post
 integer,             intent(in)    :: ens_size
 integer,             intent(in)    :: keys(:) ! I think this is still var size
 
-character*12 :: task
+character(len=12) :: task
 integer :: j, i
 integer :: forward_unit
 
@@ -2055,18 +2049,22 @@ subroutine create_ensemble_from_single_file(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
 
-integer               :: i ! loop variable
+integer               :: i
 logical               :: interf_provided ! model does the perturbing
 logical, allocatable  :: miss_me(:)
+integer               :: partial_state_on_my_task ! the number of elements ON THIS TASK
 
 ! Copy from ensemble member 1 to the other copies
 do i = 1, ens_handle%my_num_vars
    ens_handle%copies(2:ens_size, i) = ens_handle%copies(1, i)  ! How slow is this?
 enddo
 
-! store missing_r8 locations
-if (get_missing_ok_status()) then ! missing_r8 is allowed in the state
-   allocate(miss_me(ens_size))
+! If the state allows missing values, we have to record their locations
+! and restore them in all the new perturbed copies.
+
+if (get_missing_ok_status()) then
+   partial_state_on_my_task = size(ens_handle%copies,2)
+   allocate(miss_me(partial_state_on_my_task))
    miss_me = .false.
    where(ens_handle%copies(1, :) == missing_r8) miss_me = .true.
 endif
@@ -2076,11 +2074,12 @@ if (.not. interf_provided) then
    call perturb_copies_task_bitwise(ens_handle)
 endif
 
-! Put back in missing_r8
+! Restore the missing_r8
 if (get_missing_ok_status()) then
    do i = 1, ens_size
       where(miss_me) ens_handle%copies(i, :) = missing_r8
    enddo
+   deallocate(miss_me)
 endif
 
 end subroutine create_ensemble_from_single_file
@@ -2510,12 +2509,10 @@ do i = 1, nstages
       CASE ('INPUT', 'FORECAST', 'PREASSIM', 'POSTASSIM', 'ANALYSIS', 'OUTPUT')
          call set_stage_to_write(stages(i),.true.)
          write(msgstring,*)"filter will write stage : "//trim(stages(i))
-         call error_handler(E_MSG,'parse_stages_to_write:', &
-                         msgstring,source,revision,revdate)
+         call error_handler(E_MSG,'parse_stages_to_write:',msgstring,source)
       CASE DEFAULT
          write(msgstring,*)"unknown stage : "//trim(stages(i))
-         call error_handler(E_ERR,'parse_stages_to_write:', &
-                            msgstring,source,revision,revdate, &
+         call error_handler(E_ERR,'parse_stages_to_write:',msgstring,source, &
                            text2="currently supported stages include :",&
                            text3="input, forecast, preassim, postassim, analysis, output")
    END SELECT
@@ -2726,6 +2723,7 @@ endif
 
 end subroutine set_copies
 
+
 !==================================================================
 ! TEST FUNCTIONS BELOW THIS POINT
 !------------------------------------------------------------------
@@ -2736,18 +2734,19 @@ type(ensemble_type), intent(in) :: obs_fwd_op_ens_handle
 character(len=*),    intent(in) :: information
 
 character(len=20)  :: task_str !! string to hold the task number
-character(len=129) :: file_obscopies !! output file name
-integer :: i
+character(len=256) :: file_obscopies !! output file name
+integer :: i, iunit
 
 write(task_str, '(i10)') obs_fwd_op_ens_handle%my_pe
 file_obscopies = TRIM('obscopies_' // TRIM(ADJUSTL(information)) // TRIM(ADJUSTL(task_str)))
-open(15, file=file_obscopies, status ='unknown')
+
+iunit = open_file(file_obscopies, 'formatted', 'append')
 
 do i = 1, obs_fwd_op_ens_handle%num_copies - 4
-   write(15, *) obs_fwd_op_ens_handle%copies(i,:)
+   write(iunit, *) obs_fwd_op_ens_handle%copies(i,:)
 enddo
 
-close(15)
+close(iunit)
 
 end subroutine test_obs_copies
 
@@ -2892,8 +2891,3 @@ end subroutine update_observations_radar
 !-------------------------------------------------------------------
 end module filter_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

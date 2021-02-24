@@ -10,10 +10,12 @@ array=( \
         ../noah/work/path_names_model_mod_check
         ../noah/work/path_names_perfect_model_obs )
 
+
+## --skip-worktree and --no-skip-worktree are inverses
 for ff in ${array[@]}; do
     echo $ff
     git checkout -- $ff
-    git update-index --skip-worktree $ff || exit 1
+    git update-index --no-skip-worktree $ff || exit 1
 done
 
 

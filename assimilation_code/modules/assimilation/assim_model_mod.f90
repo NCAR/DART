@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> This module is used to wrap around the basic portions of existing dynamical models to
 !> add capabilities needed by the standard assimilation methods.
@@ -17,8 +15,6 @@ use    types_mod, only : r8
 use time_manager_mod, only : time_type,                                            &
                              operator(<), operator(>), operator(+), operator(-),   &
                              operator(/), operator(*), operator(==), operator(/=)
-
-use utilities_mod, only : register_module
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -52,14 +48,6 @@ public :: static_init_assim_model, &
           read_model_time, &
           write_model_time
 
-!>@todo FIXME ... the documentation for this module is out of date.
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
-
-
 ! Ensure init code is called exactly once
 logical :: module_initialized = .false.
 
@@ -81,7 +69,6 @@ contains
 if (module_initialized) return
 
 ! First thing to do is echo info to logfile ... 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 ! give the model a chance to initialize itself once
@@ -155,8 +142,3 @@ end subroutine end_assim_model
 !
 end module assim_model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

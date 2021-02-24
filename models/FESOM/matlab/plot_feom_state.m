@@ -12,8 +12,6 @@ function h = plot_feom_state(fname, varargin)
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id: plot_feom_state.m 10253 2016-05-05 22:05:01Z thoar $
 
 default_varname    = 'salt';
 default_range      = [];
@@ -105,9 +103,4 @@ string1 = sprintf('%s at level %d (%.1f m)',p.Results.varname,p.Results.level,z(
 title({string1,fname},'Interpreter','none')
 colorbar;
 grid('on')
-
-% <next few lines under version control, do not edit>
-% $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/FEOM/models/FeoM/matlab/plot_feom_state.m $
-% $Revision: 10253 $
-% $Date: 2016-05-06 00:05:01 +0200 (Fri, 06 May 2016) $
 

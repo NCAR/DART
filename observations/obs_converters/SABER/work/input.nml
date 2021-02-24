@@ -23,22 +23,24 @@
 !  time-window.
 
 &convert_saber_nml
-  saber_netcdf_file = '/glade/scratch/nickp/saber_data/SABER_Temp_O3_November2008_v1.07.nc',
-  saber_netcdf_filelist = '',
-  saber_outfile = 'obs_seq.saber_20081120v3',
-  saber_yr = 2008,
-  saber_mon = 11,
-  saber_day = 20,
+  saber_netcdf_file = '/glade/scratch/nickp/saber_data/SABER_Temp_O3_November2008_v1.07.nc'
+  saber_netcdf_filelist = ''
+  saber_outfile = 'obs_seq.saber_20081120v3'
+  saber_yr = 2008
+  saber_mon = 11
+  saber_day = 20
  /
 
 
-
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90',
-   input_files              = '../../../../observations/forward_operators/obs_def_SABER_mod.f90' /
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
+   quantity_files          = '../../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
+   obs_type_files          = '../../../../observations/forward_operators/obs_def_SABER_mod.f90' 
+  /
 
 &obs_kind_nml
  /

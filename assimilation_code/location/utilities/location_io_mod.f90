@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> common routines which can write netcdf arrays no matter which
 !> location module is compiled in.
@@ -40,12 +38,6 @@ private
 public :: nc_write_location_atts, nc_get_location_varids, &
           nc_write_location, nc_write_location_vert,      &
           nc_add_location_atts
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
 
 ! should import these but they don't exist in low order locations mods
 !>@todo define them all here and replicate in the ones which use them.
@@ -380,8 +372,3 @@ end subroutine nc_write_multiple_locations
 
 end module location_io_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

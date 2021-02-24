@@ -43,7 +43,7 @@ from/to a file, and a capability to do a standard input driven interactive
 definition of the observation definition.
 <br>
 <br>
-DART makes a distinction between specific 
+DART makes a distinction between specific
 <em class="unix">observation types</em> and generic
 <em class="unix">observation quantities</em>.  The role of the various
 obs_def input files is to define the mapping between the types and quantities,
@@ -51,16 +51,16 @@ and optionally to provide type-specific processing routines.
 <br>
 <br>
 A single obs_def output module is created by the program
-<em class="unix">preprocess</em> from two kinds of input files. 
-First, a DEFAULT obs_def module (normally called 
+<em class="unix">preprocess</em> from two kinds of input files.
+First, a DEFAULT obs_def module (normally called
 <em class="file">DEFAULT_obs_def_mod.F90</em> and documented
 in this directory) is used as a template into which the preprocessor
 incorporates information from zero or more special obs_def modules (such as
-<em class="file">obs_def_1d_state_mod.f90</em> or 
+<em class="file">obs_def_1d_state_mod.f90</em> or
 <em class="file">obs_def_reanalysis_bufr_mod.f90</em>, also
-documented in this directory).  
+documented in this directory).
 If no special obs_def files are included in the
-preprocessor namelist, a minimal 
+preprocessor namelist, a minimal
 <em class="file">obs_def_mod.f90</em> is created which can only
 support identity forward observation operators.
 <br>
@@ -68,14 +68,14 @@ support identity forward observation operators.
 To add a new observation type which does not fit into any of the
 already-defined obs_def files, a new file should be created in
 the <em class="file">obs_def</em> directory.
-These files are usually named according the the pattern 
+These files are usually named according the the pattern
 <em class="file">obs_def_</em>X<em class="file">_mod.f90</em>,
 where the X is either an instrument name, a data source, or a class
 of observations.  See the existing filenames in that directory for ideas.
 Then this new filename must be listed in the
 <em class="file">input.nml</em> namelist for the model, in the
 <em class="unix">&amp;preprocess_nml</em> section, in the
-<em class="unix">input_files</em> variable.  This variable is a string
+<em class="unix">obs_type_files</em> variable.  This variable is a string
 list type which can contain multiple filenames.  Running the
 <em class="unix">preprocess</em> program will then use the contents
 of the new file to generate the needed output files for use in linking
@@ -91,33 +91,32 @@ observation-specific code for reading, writing, or initializing the
 observation, then the entire contents of the new file is:
 </P>
 <pre>
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! <em>type</em>, <em>quantity</em>, COMMON_CODE
 ! <em>(repeat lines for each type)</em>
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 </pre>
 <P>
 DART will automatically generate all interface code needed for these
-new observation types.  
+new observation types.
 For example, here is a real list:
 </P>
 <pre>
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !VELOCITY,                     QTY_VELOCITY,              COMMON_CODE
 !TRACER_CONCENTRATION,         QTY_TRACER_CONCENTRATION,  COMMON_CODE
 !TRACER_SOURCE,                QTY_TRACER_SOURCE,         COMMON_CODE
 !MEAN_SOURCE,                  QTY_MEAN_SOURCE,           COMMON_CODE
 !SOURCE_PHASE,                 QTY_SOURCE_PHASE,          COMMON_CODE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 </pre>
 <P>
 The first column is the specific observation
 <em class="unix">type</em> and should be unique.  The second column
-is the generic observation <em class="unix">quantity</em> and must match
-the list of known quantities in the
-<em class="file">obs_kind_mod.f90</em>.  (To add a new quantity, the
-<em class="file">assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90</em> file must be edited
-to include a unique integer identifier for the quantity.)
+is the generic observation <em class="unix">quantity</em>.  The quantities
+ available to DART are defined at compile time by <em>preprocess</em> via the
+option 'quantity_files' in the <em>preprocess_nml</em> namelist.
+
 The third column must be the keyword
 <em class="unix">COMMON_CODE</em> which tells the
 <em class="unix">preprocess</em> program to automatically generate
@@ -128,25 +127,25 @@ all necessary interface code for this type.
 
 <P>
 For observation types which have observation-specific routines,
-must interpolate using a combination of other generic quantities, 
+must interpolate using a combination of other generic quantities,
 or require additional observation-specific data to be stored, the
 following format is used:
 </P>
 <pre>
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! <em>type</em>, <em>quantity</em>
 ! <em>(repeat lines for each type/quantity pair)</em>
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 </pre>
 <P>
-DART will need user-supplied interface code for each of the listed types.  
+DART will need user-supplied interface code for each of the listed types.
 For example, here is a real list:
 </P>
 <pre>
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! DOPPLER_RADIAL_VELOCITY, QTY_VELOCITY
 ! RADAR_REFLECTIVITY,      QTY_RADAR_REFLECTIVITY
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 </pre>
 <P>
 In this case, DART needs additional information for how to
@@ -157,7 +156,7 @@ precisely formatted comments, and possibly module code sections:
 <li><pre>
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-</pre> 
+</pre>
 Any fortran use statements for public subroutines or
 variables from other modules should be placed between
 these lines, with comment characters in the first column.
@@ -175,17 +174,17 @@ are available to be called.  This would look like:
 ! use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, &amp;
 !                                  interactive_1d_integral, get_expected_1d_integral
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-</pre> 
+</pre>
 </li>
 
 <li><pre>
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-</pre> 
+</pre>
 These comments must enclose a case statement for
 each defined type that returns the
 expected observation value based on the current values
-of the state vector.  
+of the state vector.
 The code must be in comments,
 with the comment character in the first column.
 <br><br>
@@ -230,9 +229,9 @@ a derived value from them.
 <li><pre>
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 ! END DART PREPROCESS READ_OBS_DEF
-</pre> 
+</pre>
 These comments must enclose a case statement for
-each defined type that reads any additional data 
+each defined type that reads any additional data
 associated with a single observation.
 If there is no information beyond that for the
 basic obs_def type, the case statement must still
@@ -267,9 +266,9 @@ is the global observation sequence number for this observation.
 <li><pre>
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 ! END DART PREPROCESS WRITE_OBS_DEF
-</pre> 
+</pre>
 These comments must enclose a case statement for
-each defined type that writes any additional data 
+each defined type that writes any additional data
 associated with a single observation.
 If there is no information beyond that for the
 basic obs_def type, the case statement must still
@@ -292,7 +291,7 @@ in this section of code are:
 </table>
 <br>
 The usual use of this routine is to write the additional metadata
-for this observation based on the private key 
+for this observation based on the private key
 in the <em class=code>obs_def</em>.  Do not confuse this with
 the key in the subroutine call which is the observation number
 relative to the entire observation sequence file.
@@ -301,7 +300,7 @@ relative to the entire observation sequence file.
 <li><pre>
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
-</pre> 
+</pre>
 These comments must enclose a case statement for
 each defined type that prompts the user for any
 additional data associated
@@ -325,15 +324,15 @@ in this section of code are:
 The DART code will prompt for the rest of the obs_def values
 (location, type, value, error) but any additional metadata needed
 by this observation type should be prompted to, and read from,
-the console (e.g. <em class=code>write(*,*)</em>, and 
-<em class=code>read(*, *)</em>).  The code will generally set the 
+the console (e.g. <em class=code>write(*,*)</em>, and
+<em class=code>read(*, *)</em>).  The code will generally set the
 <em class=code>obs_def%key</em> value as part of setting the metadata.
 </li>
 
 <li><pre>
 ! BEGIN DART PREPROCESS MODULE CODE
 ! END DART PREPROCESS MODULE CODE
-</pre> 
+</pre>
 If the code to process this observation requires
 module data and/or subroutines, then these comments
 must surround the module definitions.  Unlike all the
@@ -350,18 +349,18 @@ unrelated routines and variables in other forward operator files.
 </ol>
 
 <P>
-It is possible to mix automatic code types and user-supplied 
-code types in the same list.  Simply add the COMMON_CODE keyword 
+It is possible to mix automatic code types and user-supplied
+code types in the same list.  Simply add the COMMON_CODE keyword
 on the lines which need no special data or interfaces.
 For example, here is an extract from the 1d state obs_def module,
 where the raw state variable needs only autogenerated code, but
 the 1d integral has user-supplied processing code:
 </P>
 <pre>
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE LIST
 ! RAW_STATE_VARIABLE,    QTY_STATE_VARIABLE, COMMON_CODE
 ! RAW_STATE_1D_INTEGRAL, QTY_1D_INTEGRAL
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE LIST
 
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -370,8 +369,8 @@ the 1d integral has user-supplied processing code:
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-!         case(RAW_STATE_1D_INTEGRAL)                                                         
-!            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)  
+!         case(RAW_STATE_1D_INTEGRAL)
+!            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -394,7 +393,7 @@ module obs_def_1d_state_mod
 
 use        types_mod, only : r8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-use     location_mod, only : location_type, set_location, get_location 
+use     location_mod, only : location_type, set_location, get_location
 use  assim_model_mod, only : interpolate
 use   cov_cutoff_mod, only : comp_cov_factor
 
@@ -409,12 +408,12 @@ end module obs_def_1d_state_mod
 ! END DART PREPROCESS MODULE CODE
 </pre>
 <P>
-See the <a href="obs_def_1d_state_mod.html">obs_def_1d_state_mod</a> 
+See the <a href="obs_def_1d_state_mod.html">obs_def_1d_state_mod</a>
 documentation for more details and examples of each section.  Also see
 <a href="obs_def_wind_speed_mod.f90">obs_def_wind_speed_mod.f90</a> for
 an example of a 3D geophysical forward operator.
 <br> <br>
-In addition to collecting and managing any additional observation 
+In addition to collecting and managing any additional observation
 type-specific code, this module provides the definition of the
 obs_def_type derived type, and a collection of subroutines for creating,
 accessing, and updating this type.  The remainder of this document
@@ -542,7 +541,7 @@ real(r8),            intent(in)  :: <em class=code>error_variance</em>
 
 <P>
 Creates an obs_def type with location, type, time and error_variance
-specified. 
+specified.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -665,7 +664,7 @@ type(obs_def_type), intent(in)   :: <em class=code>obs_def</em>
 <!-- Description -->
 
 <P>
-Returns the location from an observation definition. 
+Returns the location from an observation definition.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -916,7 +915,7 @@ Sets time for an observation definition.
 <br>
 <div class=routine>
 <em class=call> call get_expected_obs_from_def(key, obs_def, obs_kind_ind,
-  ens_index, state, state_time, obs_val, istatus, 
+  ens_index, state, state_time, obs_val, istatus,
   assimilate_this_ob, evaluate_this_ob) </em>
 <pre>
 integer,            intent(in)  :: <em class=code>key</em>
@@ -953,7 +952,7 @@ Compute the observation (forward) operator for a particular obs definition.
 <TR><TD valign=top><em class=code>state_time&nbsp;&nbsp;</em></TD>
     <TD>Time of the data in the model state vector</TD></TR>
 <TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
-    <TD>Returned integer describing problems with applying forward 
+    <TD>Returned integer describing problems with applying forward
         operator (0 == OK, >0 == error, <0 reserved for sys use).</TD></TR>
 <TR><TD valign=top><em class=code>assimilate_this_ob&nbsp;&nbsp;</em></TD>
     <TD>Indicates whether to assimilate this obs or not</TD></TR>
@@ -985,7 +984,7 @@ character(len=*), optional, intent(in)    :: <em class=code>fform</em>
 
 <P>
 Reads an obs_def from file open on channel ifile. Uses format specified
-in fform or FORMATTED if fform is not present. 
+in fform or FORMATTED if fform is not present.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -994,14 +993,14 @@ in fform or FORMATTED if fform is not present.
 <TR><TD valign=top><em class=code>obs_def&nbsp;&nbsp;</em></TD>
     <TD>Observation definition to be read</TD></TR>
 <TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
-    <TD>Present if unique identifier key is needed by some obs type.  
+    <TD>Present if unique identifier key is needed by some obs type.
         Unused by default code.</TD></TR>
 <TR><TD valign=top><em class=code>obs_val&nbsp;&nbsp;</em></TD>
     <TD>Present if needed to perform operations based on value.
         Unused by default code.</TD></TR>
 <TR><TD valign=top><em class=code>fform&nbsp;&nbsp;</em></TD>
     <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED
-         (FORMATTED in this case is the human readable/text 
+         (FORMATTED in this case is the human readable/text
           option as opposed to UNFORMATTED which is binary.)</TD></TR>
 </TABLE>
 
@@ -1024,7 +1023,7 @@ integer,            intent(in)    :: <em class=code>key</em>
 <!-- Description -->
 
 <P>
-Creates an obs_def via input from standard in. 
+Creates an obs_def via input from standard in.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1058,7 +1057,7 @@ character(len=*), optional, intent(in) :: <em class=code>fform</em>
 
 <P>
 Writes an obs_def to file open on channel ifile. Uses format specified
-in fform or FORMATTED if fform is not present. 
+in fform or FORMATTED if fform is not present.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1092,7 +1091,7 @@ type(obs_def_type), intent(inout) :: <em class=code>obs_def</em>
 <!-- Description -->
 
 <P>
-Releases all storage associated with an obs_def and its subcomponents. 
+Releases all storage associated with an obs_def and its subcomponents.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1110,7 +1109,7 @@ Releases all storage associated with an obs_def and its subcomponents.
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<UL><LI>The read_obs_def() and write_obs_def() routines 
+<UL><LI>The read_obs_def() and write_obs_def() routines
 are passed an already-opened file channel/descriptor
 and read to or write from it.
 </UL>

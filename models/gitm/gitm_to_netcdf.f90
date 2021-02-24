@@ -202,7 +202,7 @@ delta_time = gitm_time - epoch_time
 call get_time(delta_time, nsecs, ndays)
 real_time = ndays + (real(nsecs, r8) / 86400.0_r8)
 
-call nc_put_variable(ncid, 'time', 1, real_time)
+call nc_put_variable(ncid, 'time', real_time)
 
 ! close netcdf file
 call nc_close_file(ncid)

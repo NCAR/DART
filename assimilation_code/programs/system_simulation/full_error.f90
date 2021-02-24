@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Correct covariances for fixed ensemble sizes.
 !> See Anderson, J. L., 2011: Localization and Sampling Error Correction
@@ -24,16 +22,10 @@ use random_seq_mod, only : random_seq_type, init_random_seq, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
+character(len=*), parameter :: source = 'full_error.f90'
 
 integer, parameter :: num_times   = 1
 integer, parameter :: num_samples = 100000000
-
 
 ! ---------------
 ! namelist items
@@ -163,7 +155,7 @@ do i = 1, 200
    if(bin_count(i) <= 1) then
       write(errstring, *) 'Bin ', i, ' has ', bin_count(i), ' counts'
       call error_handler(E_ERR,'full_error', errstring, &
-         source, revision, revdate, text2="All bins must have at least 2 counts")
+         source, text2="All bins must have at least 2 counts")
    endif
    
    ! Compute the standard deviation of the true correlations
@@ -243,8 +235,3 @@ end subroutine sample_mean_var
 
 end program full_error
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

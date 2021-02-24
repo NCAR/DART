@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program sampling_error
 
@@ -10,12 +8,6 @@ use      types_mod, only : r8, digits12
 use random_seq_mod, only : random_seq_type, init_random_seq, twod_gaussians
 
 implicit none
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
 
 integer, parameter :: sample_size = 1000000
 type (random_seq_type) :: ran_id

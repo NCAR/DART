@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module location_mod
 
@@ -11,13 +9,12 @@ module location_mod
 ! plus a radius, into cartesian coords.
 
 use      types_mod, only : r8, i8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD
-use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
+use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            E_MSG, open_file, close_file, set_output,       &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
                            check_namelist_read, do_output, do_nml_file,              &
                            do_nml_term, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
-use   obs_kind_mod, only : get_num_types_of_obs, get_name_for_type_of_obs
 use mpi_utilities_mod, only : my_task_id, task_count
 use ensemble_manager_mod, only : ensemble_type
 use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
@@ -38,11 +35,7 @@ public :: location_type, get_location, set_location, &
           set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
           print_get_close_type, find_nearest, set_periodic
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'threed_cartesian/location_mod.f90'
 
 integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc3Dcartesian"
@@ -216,7 +209,6 @@ integer :: iunit, io
 
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 ! Read the namelist entry
@@ -557,7 +549,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if (size(list) < 3) then
    write(errstring,*)'requires 3 input values'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source)
 endif
 
 set_location_array = set_location_single(list(IX), list(IY), list(IZ))
@@ -639,8 +631,7 @@ select case(attr)
       query_location = loc%z
    case default
       call error_handler(E_ERR, 'query_location:', &
-         'Only "X","Y","Z" are legal attributes to request from location', &
-          source, revision, revdate)
+         'Only "X","Y","Z" are legal attributes to request from location', source)
 end select
 
 end function query_location
@@ -683,8 +674,7 @@ endif
 ! to a file, and you can't have binary format set.
 if (.not. ascii_file_format(fform)) then
    call error_handler(E_ERR, 'write_location', &
-      'Cannot use string buffer with binary format', &
-       source, revision, revdate)
+      'Cannot use string buffer with binary format', source)
 endif
 
 ! format the location to be human-friendly
@@ -694,7 +684,7 @@ charlength = 70
 
 if (len(charstring) < charlength) then
    write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
-   call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'write_location', errstring, source)
 endif
 
 ! format into the outout string
@@ -721,7 +711,7 @@ if (ascii_file_format(fform)) then
    read(locfile, '(A8)' ) header
    if(header /= 'loc3Dxyz') then
          write(errstring,*)'Expected location header "loc3Dxyz" in input file, got ', header
-      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'read_location', errstring, source)
    endif
    ! Now read the location data value
    read(locfile, *)read_location%x, read_location%y, read_location%z
@@ -1036,7 +1026,7 @@ this_dist = 1e38_r8                ! something big and positive.
 ! you have to destroy the old gc and init a new one.
 if (size(locs) /= gc%num) then
    write(errstring,*)'locs() array must match one passed to get_close_init()'
-   call error_handler(E_ERR, 'get_close_boxes', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_close_boxes', errstring, source)
 endif
 
 ! If num == 0, no point in going any further.
@@ -1206,14 +1196,11 @@ if (debug > 0) print *, 'widths = ', gc%box%x_width, gc%box%y_width, gc%box%z_wi
 ! FIXME:  compute a sphere of radius maxdist and see how
 ! many boxes in x, y, z that would include.
 if (gc%box%x_width <= 0.0_r8) &
-   call error_handler(E_ERR, 'find_box_ranges', 'x_width <= 0', &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'find_box_ranges', 'x_width <= 0', source)
 if (gc%box%y_width <= 0.0_r8) &
-   call error_handler(E_ERR, 'find_boy_ranges', 'y_width <= 0', &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'find_boy_ranges', 'y_width <= 0', source)
 if (gc%box%z_width <= 0.0_r8) &
-   call error_handler(E_ERR, 'find_boz_ranges', 'z_width <= 0', &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'find_boz_ranges', 'z_width <= 0', source)
 
 gc%box%nboxes_x = aint((gc%maxdist + (gc%box%x_width-1)) / gc%box%x_width)
 gc%box%nboxes_y = aint((gc%maxdist + (gc%box%y_width-1)) / gc%box%y_width)
@@ -1260,7 +1247,7 @@ dist = 1e38_r8                ! something big and positive.
 ! you have to destroy the old gc and init a new one.
 if (size(loc_list) /= gc%num) then
    write(errstring,*)'loc() array must match one passed to get_close_init()'
-   call error_handler(E_ERR, 'find_nearest_boxes', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'find_nearest_boxes', errstring, source)
 endif
 
 ! If num == 0, no point in going any further.
@@ -1390,8 +1377,7 @@ select case (axis)
       max_z_for_periodic = maxlimit
 
    case default
-      call error_handler(E_ERR, 'set_periodic', 'unrecognized axis name', &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'set_periodic', 'unrecognized axis name', source)
 end select
 
 call recompute_periodic()
@@ -1414,7 +1400,7 @@ if (any_periodic) then
        (((ny/2.0_r8)*2.0_r8) /= ny) .or. &
        (((nz/2.0_r8)*2.0_r8) /= nz)) then
       call error_handler(E_ERR, 'locations XYZ', 'If any axes are periodic, all box counts must be even', &
-                         source, revision, revdate)
+                         source)
    endif
 
    if (x_is_periodic) x_periodic = .true.
@@ -1840,12 +1826,12 @@ real(r8), optional, intent(in)    :: close_dist(:)
 ! Do comparisons against full search
 if((num_close /= cnum_close) .and. present(close_dist)) then
    write(errstring, *) 'get_close (', num_close, ') should equal exhaustive search (', cnum_close, ')'
-   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate, &
+   call error_handler(E_ERR, 'get_close_obs', errstring, source, &
                       text2='optional arg "dist" is present; we are computing exact distances', &
                       text3='the exhaustive search should find an identical number of locations')
 else if (num_close < cnum_close) then
    write(errstring, *) 'get_close (', num_close, ') should not be smaller than exhaustive search (', cnum_close, ')'
-   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate, &
+   call error_handler(E_ERR, 'get_close_obs', errstring, source, &
                       text2='optional arg "dist" not present; we are returning a superset of close locations', &
                       text3='the exhaustive search should find an equal or lesser number of locations')
 endif
@@ -1919,8 +1905,3 @@ end subroutine convert_vertical_state
 
 end module location_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

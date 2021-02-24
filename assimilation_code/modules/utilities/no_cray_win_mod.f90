@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Window without cray pointer. Should you point the window at contigous memory?
 module window_mod
@@ -25,12 +23,6 @@ private
 public :: create_mean_window, create_state_window, free_mean_window, &
           free_state_window, data_count, mean_win, state_win, current_win, &
           mean_ens_handle, NO_WINDOW, MEAN_WINDOW, STATE_WINDOW
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
 
 ! mpi window handles
 integer :: state_win   !< window for the forward operator
@@ -192,8 +184,3 @@ end subroutine free_mean_window
 !> @}
 end module window_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

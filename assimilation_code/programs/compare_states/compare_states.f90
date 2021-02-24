@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> program to take 2 netCDF DART diagnostic files and compare
 !> the state variable, or whatever variables are listed in the
@@ -18,7 +16,7 @@
 program compare_states
 
 use     types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,  &
+use utilities_mod, only : error_handler, E_ERR, E_MSG,  &
                           open_file, close_file, get_next_filename,      &
                           find_namelist_in_file, check_namelist_read,    &
                           do_nml_file, do_nml_term, nmlfileunit,         &
@@ -30,11 +28,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'compare_states.f90'
 
 ! variables used to read the netcdf info
 integer, parameter :: maxd = 7
@@ -115,8 +109,7 @@ call get_args_from_string(argline, argcount, argwords)
 
 if (argcount /= 2) then
    msgstring = 'Usage: echo infile1.nc infile2.nc | ./compare_states'
-   call error_handler(E_ERR, 'compare_states', msgstring, &
-                      source, revision, revdate) 
+   call error_handler(E_ERR, 'compare_states', msgstring, source) 
 endif
 
 infile1   = argwords(1)
@@ -131,8 +124,7 @@ else
    ! only if we aren't trying to do all fields in the file.
    if (fieldnames(1) /= '' .and. fieldlist_file /= '') then
       call error_handler(E_ERR,'compare_states', &
-          'cannot specify both fieldnames and fieldlist_file', &
-          source,revision,revdate)
+          'cannot specify both fieldnames and fieldlist_file', source)
    endif
    
    if (fieldlist_file /= '') then
@@ -185,7 +177,7 @@ fieldloop : do i=1, 100000
       if (xtype /= NF90_INT .and. xtype /= NF90_FLOAT .and. xtype /= NF90_DOUBLE) then
          tmpstring = ' not integer, float, or double'
          msgstring = 'skipping variable '//trim(nextfield)//','//trim(tmpstring)
-         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate) 
+         call error_handler(E_MSG, 'compare_states', msgstring, source) 
          cycle fieldloop
       endif
    else
@@ -206,7 +198,7 @@ fieldloop : do i=1, 100000
       else
          msgstring = 'skipping variable '//trim(nextfield)//','//trim(tmpstring)
       endif
-      call error_handler(etype, 'compare_states', msgstring, source, revision, revdate) 
+      call error_handler(etype, 'compare_states', msgstring, source) 
       cycle fieldloop
    endif
    ncrc = nf90_inq_varid(ncinid2, trim(nextfield), invarid2)
@@ -219,7 +211,7 @@ fieldloop : do i=1, 100000
       endif
       msgstring2 = 'but was not found in second file '//trim(infile2)
       call error_handler(etype, 'compare_states', msgstring, &
-                         source, revision, revdate, text2=msgstring2) 
+                         source, text2=msgstring2) 
       cycle fieldloop
    endif
 
@@ -242,7 +234,7 @@ fieldloop : do i=1, 100000
          ' has different numbers of dimensions in the two files'
       call error_handler(E_MSG, 'compare_states', msgstring)
       write(msgstring, *) 'input dimension size ', ndims, ' does not match second file ', odims
-      call error_handler(E_ERR, 'compare_states', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'compare_states', msgstring, source)
    endif
    
    dimlen(:) = 1
@@ -264,7 +256,7 @@ fieldloop : do i=1, 100000
          write(msgstring, *) 'variable ', trim(nextfield), ' has different dimensions in the two files'
          call error_handler(E_MSG, 'compare_states', msgstring)
          write(msgstring, *) 'input dim length ', dimlen(j), ' does not match second file ', odimlen(j)
-         call error_handler(E_ERR, 'compare_states', msgstring, source, revision, revdate)
+         call error_handler(E_ERR, 'compare_states', msgstring, source)
       endif
 
       ! only possible if the unlimited dim is declared but hasn't been written to
@@ -331,18 +323,18 @@ fieldloop : do i=1, 100000
      endif
      if (nitems > 0) then
         write(msgstring, *) 'arrays differ in ', nitems, ' places'
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
         write(msgstring, *) 'min/max file1: ', imin1, imax1
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
         write(msgstring, *) 'min/max file2: ', imin2, imax2
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
         write(msgstring, *) 'delta min/max: ', idelmin, idelmax
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
      else if (.not. only_report_differences) then
         write(msgstring, *) 'arrays same'
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
         write(msgstring, *) 'min/max value: ', imin1, imax1
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
      endif
 
     case default
@@ -382,18 +374,18 @@ fieldloop : do i=1, 100000
      endif
      if (nitems > 0) then
         write(msgstring, *) 'arrays differ in ', nitems, ' places'
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
         write(msgstring, '(A,2(G25.16,1X))') 'Min/Max file1: ', min1, max1
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
         write(msgstring, '(A,2(G25.16,1X))') 'Min/Max file2: ', min2, max2
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
         write(msgstring, '(A,2(G25.16,1X))') 'delta Min/Max: ', delmin, delmax
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
      else if (.not. only_report_differences) then
         write(msgstring, *) 'arrays same'
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
         write(msgstring, *) 'min/max value: ', min1, max1
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        call error_handler(E_MSG, 'compare_states', msgstring, source)
      endif
    end select
 
@@ -421,7 +413,6 @@ contains
 
 subroutine initialize_module
 
-  call register_module(source, revision, revdate)
   module_initialized = .true.
 
 end subroutine initialize_module
@@ -430,8 +421,3 @@ end subroutine initialize_module
 
 end program
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
