@@ -207,7 +207,7 @@ namelist.
 |                                       |                                       | produces standard deviation of a        |
 |                                       |                                       | gaussian distribution with the mean     |
 |                                       |                                       | at the value of the state vector        |
-|                                       |                                       |  element.                               |
+|                                       |                                       | element.                                |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
 | calendar                              | character(len=32)                     | Character string specifying the         |
 |                                       | *[default: 'Gregorian']*              | calendar being used by MPAS.            |

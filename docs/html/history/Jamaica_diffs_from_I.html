@@ -115,7 +115,7 @@ print_every_nth_obs is new and requests that a message be printed
 after every nth observation is assimilated in order to monitor
 progress of large test jobs.<br>
 <br>
-Algorithmically, the obs_increment_???? routines are unchanged but
+Algorithmically, the <code>obs_increment_????</code> routines are unchanged but
 the ensemble mean and variance are passed in as arguments now to
 avoid a redundant computation. The update_from_obs_increment
 routine also has the mean and variance for the observed variable
@@ -684,7 +684,7 @@ files are 'directly' from other developers and had file extensions
 that required the use of special compilation flags. There is now a
 script PBL_1d/shell_scripts/ChangeExtensions.csh that not only
 changes the file extensions (to something the compilers understand
-i.e. F90) it also modifies the path_names_* files appropriately.
+i.e. F90) it also modifies the <code>path_names_*</code> files appropriately.
 The original files had an extension of .F even though they used
 F90-like formatting. .F is generally understood to mean the
 contents of the file abide by the F77 fixed-format syntax ...
