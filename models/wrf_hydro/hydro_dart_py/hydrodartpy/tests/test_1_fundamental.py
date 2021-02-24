@@ -34,7 +34,9 @@ def test_run_experiment(config_dict):
 def test_experiment_results(config_dict, answer_file):
     run_dir = config_dict['experiment']['run_dir']
 
-    # generate outputs
+    # generate answer outputs
+    # Note that this depends very much on the dependencies
+    # of wrfhydropy among other factors.
     # check_files = (
     #     run_dir / ('output/2018081503')).glob(
     #     'analysis_member_00*.2018081503.nc')
@@ -44,6 +46,7 @@ def test_experiment_results(config_dict, answer_file):
     # with open(answer_file, 'w') as out_file:
     #     _ = yaml.dump(answer, out_file)
     # answer_orig = answer
+    # end generate answer outputs
 
     with open(run_dir / answer_file) as in_file:
         answer = yaml.load(in_file, Loader=yaml.FullLoader)

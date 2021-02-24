@@ -52,7 +52,7 @@ fi
 deactivate 2&>1 > /dev/null
 rm -rf $clone_dir
 ncar_pylib -c $py_lib_path $clone_dir
-# The above prints the requsite modules for that env
+# The above prints the requisite modules for that env
 
 if [ ! -z $env_tag ]; then
     sed -i "s/(NPL)/(${env_tag})/" ${clone_dir}/bin/activate
@@ -83,7 +83,7 @@ return 0
 The WRF-Hydro model code. The aim is to keep wrf\_hydro\_dart synched with master on this repo.
 
 ### wrf_hydro_py
-This should boe handled by the install of `hydrodartpy` below. Come here if not or if you need a development install of `wrfhydropy`.
+This should be handled by the install of `hydrodartpy` below. Come here if not or if you need a development install of `wrfhydropy`.
 
 [https://github.com/NCAR/wrf\_hydro\_py](https://github.com/NCAR/wrf\_hydro\_py) Python API and tools for managing and running WRF-Hydro and its inputs and outputs, including ensembles. 
 ```

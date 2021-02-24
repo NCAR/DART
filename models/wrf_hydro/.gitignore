@@ -1,3 +1,7 @@
+../../observations/obs_converters/USGS/work/Makefile
+
+python/*png
+python/*pkl
+
 work/Makefile
 work/create_identity_streamflow_obs
-../../observations/obs_converters/USGS/work/Makefile

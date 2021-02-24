@@ -180,16 +180,8 @@ observation_preparation:
         debug: 1
     exe_cmd: '{cmd} >& converter.stdeo'
     scheduler:
-      # ppn is the number of processors per node. This is required to be correct.
-      ncpus: 36
-      mpiprocs: 36
-      account: 'P48500028'
-      walltime: '00:02'
-      job_name: 'flo_cut_obs_prep' #_{model_start_time_str}'
-      queue: 'regular'
-      email_when: "abe"
-      email_who: ${USER}@ucar.edu    
-
+    interactive:
+      ncpus: 1
           
 ##################################
     

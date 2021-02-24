@@ -13,7 +13,7 @@ cd $test_dir
 
 pytest_cmd="pytest  -s  -vv  --pdb  --exp_yaml $yaml_file  --exp_answer_file $answer_file"
 
-$pytest_cmd
-# $pytest_cmd  --use_existing_build 
+# note you can pass --use_existing_build
+$pytest_cmd "$@"
 
 exit $?

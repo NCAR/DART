@@ -5,7 +5,7 @@ setup(
     version='0.0.1',
     packages=find_packages(),
     package_data={'hydrodartpy': ['core/data/*']},
-    url='https://github.com/NCAR/wrf_hydro_dart',
+    url='https://github.com/NCAR/DART',
     license='MIT',
     install_requires=[
         'wrfhydropy>=0.0.18',
