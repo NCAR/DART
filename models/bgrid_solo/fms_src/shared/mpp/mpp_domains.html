@@ -65,7 +65,7 @@
 <p class="text"><code>mpp_domains_mod</code> is a set of simple
 calls for domain decomposition and domain updates on rectilinear
 grids. It requires the module <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a>, upon which it
+"./mpp.html"></a>, upon which it
 is built.</p>
 <!-- END OVERVIEW -->
 <a name="DESCRIPTION" id="DESCRIPTION"></a> 
@@ -81,7 +81,7 @@ operation in the development of parallel codes.</p>
 
 <p><code>mpp_domains_mod</code> provides a domain decomposition and
 domain update API for <i>rectilinear</i> grids, built on top of the
-<a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a> API
+<a href="./mpp.html"></a> API
 for message passing. Features of <code>mpp_domains_mod</code>
 include:</p>
 
@@ -536,9 +536,8 @@ special treatment of vector fields, specifying
 sent and received into single messages for efficiency. A turnable
 internal buffer area in memory is provided for this purpose by
 <code>mpp_domains_mod</code>. The size of this buffer area can be
-set by the user by calling <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html#mpp_domains_set_stack_size">
-</a>.</dd>
+set by the user by calling mpp_domains_set_stack_size in <a href=
+"./mpp_domains.html">mpp_domains</a>.</dd>
 <dd><br>
 <br></dd>
 </dl>
@@ -724,8 +723,8 @@ guaranteed to produce the identical result irrespective of how the
 domain is decomposed. This method does the sum first along the
 ranks beyond 2, and then calls <a href="#mpp_global_field"></a> to
 produce a global 2D array which is then summed. The default method,
-which is considerably faster, does a local sum followed by <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp.html#mpp_sum"></a> across
+which is considerably faster, does a local sum followed by mpp_sum in <a href=
+"./mpp.html">mpp</a> across
 the domain decomposition.</td>
 </tr>
 </table>
@@ -891,9 +890,9 @@ dimension(2)]</span></td>
 assigned to this 1D domain decomposition. In addition the optional
 argument <code>pos</code> may be used to retrieve the 0-based
 position of the domain local to the calling PE, i.e
-<code>domain%list(pos)%pe</code> is the local PE, as returned by
+<code>domain%list(pos)%pe</code> is the local PE, as returned by mpp_pe in
 <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp.html#mpp_pe"></a>. The 2D
+"./mpp.html">mpp</a>. The 2D
 version of this call is identical to 1D version.</dd>
 <dd><br>
 <br></dd>
@@ -991,7 +990,7 @@ debugging.<br>
 <br>
 <code>mpp_domains_init</code> will call <code>mpp_init</code>, to
 make sure <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a> is
+"./mpp.html"></a> is
 initialized. (Repeated calls to <code>mpp_init</code> do no harm,
 so don't worry if you already called it).</dd>
 <dd><br>
@@ -1124,10 +1123,9 @@ them.</dd>
 must contain the line
 <pre>     use mpp_domains_mod</pre>
 <code>mpp_domains_mod</code> <code>use</code>s <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a>, and therefore
-is subject to the <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp.html#COMPILING%20AND%20LINKING%20SOURCE">
-compiling and linking requirements of that module.</a></dd>
+"./mpp.html"></a>, and therefore
+is subject to the compiling and linking requirements of <a href=
+"./mpp.html">mpp</a>.</dd>
 </dl>
 </div>
 <br>
@@ -1141,10 +1139,9 @@ compiling and linking requirements of that module.</a></dd>
 <dd><code>mpp_domains_mod</code> uses standard f90, and has no
 special requirements. There are some OS-dependent pre-processor
 directives that you might need to modify on non-SGI/Cray systems
-and compilers. The <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp.html#PORTABILITY">portability
-of</a> obviously is a constraint, since this module is built on top
-of it. Contact me, Balaji, SGI/GFDL, with questions.</dd>
+and compilers. The portability, as described in <a href="./mpp.html">mpp</a>
+obviously is a constraint, since this module is built on top of it. Contact me,
+Balaji, SGI/GFDL, with questions.</dd>
 </dl>
 </div>
 <br>

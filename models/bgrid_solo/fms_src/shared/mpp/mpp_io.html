@@ -65,8 +65,8 @@
 <p class="text"><tt>mpp_io_mod</tt>, is a set of simple calls for
 parallel I/O on distributed systems. It is geared toward the
 writing of data in netCDF format. It requires the modules <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html"></a> and
-<a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a>, upon
+"./mpp_domains.html"></a> and
+<a href="./mpp.html"></a>, upon
 which it is built.</p>
 <!-- END OVERVIEW -->
 <a name="DESCRIPTION" id="DESCRIPTION"></a> 
@@ -85,8 +85,8 @@ user codes.</p>
 
 <p>The <tt>mpp_io_mod</tt> parallel I/O API built on top of the
 <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html"></a> and
-<a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a> API
+"./mpp_domains.html"></a> and
+<a href="./mpp.html"></a> API
 for domain decomposition and message passing. Features of
 <tt>mpp_io_mod</tt> include:</p>
 
@@ -540,8 +540,7 @@ The <tt>data</tt> argument for distributed data is expected by
 domain, and will write the data belonging to the <i>compute</i>
 domain, fetching or sending data as required by the parallel I/O
 <a href="#modes">mode</a> specified in the <tt>mpp_open</tt> call.
-This is consistent with our definition of <a href=
-"http:models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html#domains">
+This is consistent with our definition in <a href="./mpp_domains.html">
 domains</a>, where all arrays are expected to be dimensioned on the
 data domain, and all operations performed on the compute
 domain.<br>
@@ -620,8 +619,7 @@ The <tt>data</tt> argument for distributed data is expected by
 domain, and will read the data belonging to the <i>compute</i>
 domain, fetching data as required by the parallel I/O <a href=
 "#modes">mode</a> specified in the <tt>mpp_open</tt> call. This is
-consistent with our definition of <a href=
-"http:models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html#domains">
+consistent with our definition in <a href="./mpp_domains.html">
 domains</a>, where all arrays are expected to be dimensioned on the
 data domain, and all operations performed on the compute
 domain.</dd>
@@ -1157,11 +1155,8 @@ netCDF library (typically something like <tt>-L/usr/local/lib
 <a href="http://www.unidata.ucar.edu/packages/netcdf/guidef">netCDF
 release 3 for fortran</a> is required.<br>
 <br>
-Please also consider the compiling and linking requirements of
-<a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html#linking"></a>
-and <a href=
-"models/bgrid_solo/fms_src/shared/mpp/mpp.html#linking"></a>, which
+Please also consider the compiling and linking requirements of linking as 
+described in <a href="./mpp_domains.html"></a> and <a href= "./mpp.html"></a>, which
 are <tt>use</tt>d by this module.</dd>
 </dl>
 </div>
