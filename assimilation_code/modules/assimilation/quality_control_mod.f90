@@ -262,7 +262,8 @@ logical  :: failed
 ! only if it is still successful (assim or eval, 0 or 1), then check
 ! for failing outlier test.
 
-if ( (outlier_threshold < 0) .or. (.not. good_dart_qc(dart_qc)) ) return
+! If bad QC flag exit here.
+if ( .not. good_dart_qc(dart_qc)) return
 
 error   = obs_prior_mean - obs_val
 diff_sd = sqrt(obs_prior_var + obs_err_var)
@@ -280,6 +281,7 @@ endif
 if (enable_special_outlier_code) then
    failed = failed_outlier(ratio, this_obs_key, obs_seq)
 else 
+   if ( outlier_threshold < 0 ) return ! don't modify dart_qc if no outlier check
    failed = (ratio > outlier_threshold)
 endif
 
@@ -363,6 +365,8 @@ select case (this_obs_type)
       else
          failed_outlier = .false.
       endif
+      ! outlier_threshold < 0 means don't do outlier check.
+      if ( outlier_threshold < 0 ) failed_outlier = .false.
 
 end select
 
