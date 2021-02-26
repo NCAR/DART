@@ -35,6 +35,7 @@
    synonymous_qc_list   = ''
    print_only           = .false.
    gregorian_cal        = .true.
+   external_FO_write_list = 'ALL'
    /
 
 ! SEE THE .HTML FILE FOR MORE DETAILED EXAMPLES AND FULL
