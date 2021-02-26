@@ -1713,34 +1713,14 @@ integer,   intent(in)     :: <em class="code">pe</em>
 integer,   intent(out)    :: <em class="code">var_list(:)</em>
 integer,   intent(out)    :: <em class="code">pes_num_vars</em>
 </pre></div>
-<div class="indent1"><!-- Description -->
+
 <p>Returns a list of the vars stored by process pe when copy
 complete and the number of these vars. var_list must be dimensioned
 large enough to hold all vars. Depends on distribution_type with
 only option 1 currently implemented.</p>
-<table width="100%" border="0" summary="argument description"
-cellpadding="3">
-<tr>
-<td valign="top"><em class="code">num_vars</em></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top"><em class="code">pe</em></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top"><em class="code">var_list(:)</em></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top"><em class="code">pes_num_vars</em></td>
-<td></td>
-</tr>
-</table>
-</div>
-<br>
+
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="get_copy_list" id="get_copy_list"></a><br>
+<a name="get_copy_list" id="get_copy_list"></a><br>
 <div class="routine"><em class="call">call
 get_copy_list(num_copies, pe, copy_list, pes_num_copies)</em>
 <pre>
@@ -1749,32 +1729,12 @@ integer,   intent(in)     :: <em class="code">pe</em>
 integer,   intent(out)    :: <em class="code">copy_list(:)</em>
 integer,   intent(out)    :: <em class="code">pes_num_copies</em>
 </pre></div>
-<div class="indent1"><!-- Description -->
+
 <p>Returns a list of the copies stored by process pe when var
 complete and the number of these copies. copy_list must be
 dimensioned large enough to hold all copies. Depends on
 distribution_type with only option 1 currently implemented.</p>
-<table width="100%" border="0" summary="argument description"
-cellpadding="3">
-<tr>
-<td valign="top"><em class="code">num_copies</em></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top"><em class="code">pe</em></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top"><em class="code">copy_list(:)</em></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top"><em class="code">pes_num_copies</em></td>
-<td></td>
-</tr>
-</table>
-</div>
-<br>
+
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
  <a name="timestamp_message" id="timestamp_message"></a><br>
 <div class="routine"><em class="call">call timestamp_message(msg
@@ -1944,25 +1904,13 @@ integer, intent(out)  :: <em class=
 "code">last_node_task_number</em>
 integer, intent(out)  :: <em class="code">nodes</em>
 </pre></div>
-<div class="indent1"><!-- Description -->
+
 <p>Finds the of number nodes and how many tasks are on the last
 node, given the number of tasks and the tasks_per_node (ptile). The
 total number of tasks is num_pes = task_count() The last node may
 have fewer tasks, for example, if ptile = 16 and the number of mpi
 tasks = 17</p>
-<table width="100%" border="0" summary="argument description"
-cellpadding="3">
-<tr>
-<td valign="top"><em class="code">nodes</em></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top"><em class="code">last_node_task_number</em></td>
-<td></td>
-</tr>
-</table>
-</div>
-<br>
+
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
  <a name="simple_layout" id="simple_layout"></a><br>
 <div class="routine"><em class="call">call
@@ -1975,21 +1923,15 @@ integer,             intent(in)    :: <em class="code">n</em>
 <div class="indent1"><!-- Description -->
 <p>assigns the arrays task_to_pe_list and pe_to_task list for the
 simple layout where my_pe = my_task_id()</p>
-<table width="100%" border="0" summary="argument description"
-cellpadding="3">
-<tr>
-<td valign="top"><em class="code">ens_handle</em></td>
-<td>Handle for an ensemble.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">n</em></td>
-<td></td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="sort_task_list" id="sort_task_list"></a><br>
+
+<dl>
+   <dt>ens_handle</dt>
+   <dd>Handle for an ensemble.</dd>
+   <dt>n</dt>
+   <dd>size</dd>
+</dl>
+
+<a name="sort_task_list" id="sort_task_list"></a><br>
 <div class="routine"><em class="call">call sort_task_list(i, idx,
 n)</em>
 <pre>
@@ -1999,26 +1941,19 @@ integer, intent(inout) :: <em class=
 integer, intent(out)   :: <em class=
 "code">idx(n)</em> ! index of sorted array
 </pre></div>
-<div class="indent1"><!-- Description -->
+
 <p>sorts an array and returns the sorted array, and the index of
 the original array</p>
-<table width="100%" border="0" summary="argument description"
-cellpadding="3">
-<tr>
-<td valign="top"><em class="code">n</em></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top"><em class="code">x(n)</em></td>
-<td></td>
-</tr>
-<tr>
-<td valign="top"><em class="code">idx(n)</em></td>
-<td></td>
-</tr>
-</table>
-</div>
-<br>
+
+<dl>
+   <dt>n</dt>
+   <dd>size</dd>
+   <dt>x(n)</dt>
+   <dd>array to be sorted</dd>
+   <dt>idx(n)</dt>
+   <dd>index of sorted array</dd>
+</dl>
+
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
  <a name="map_pe_to_task" id="map_pe_to_task"></a><br>
 <div class="routine"><em class="call">call

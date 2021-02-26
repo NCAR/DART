@@ -27,6 +27,7 @@ Index</a></td>
 "#PrivateComponents">PRIVATE COMPONENTS</a> / <a href=
 "#Legalese">TERMS OF USE</a>
 <h2>Overview</h2>
+
 <p>DART includes a flexible, powerful, and slightly complicated
 mechanism for incorporating new types of observations. The
 <em class="file">obs_def_ocean_mod</em> module being described here
@@ -62,7 +63,8 @@ support acoustic tomographic observations, which will necessitate
 specific support routines.</p>
 <h3 class="indent1">ocean variable types and their corresponding
 quantities</h3>
-<pre class="indent1">
+<pre>
+<code>
 ! BEGIN DART PREPROCESS KIND LIST
 !SALINITY,                      QTY_SALINITY,              COMMON_CODE
 !TEMPERATURE,                   QTY_TEMPERATURE,           COMMON_CODE
@@ -96,7 +98,9 @@ quantities</h3>
 !SATELLITE_SSH,                 QTY_SEA_SURFACE_HEIGHT,    COMMON_CODE
 !SATELLITE_SSS,                 QTY_SALINITY,              COMMON_CODE
 ! END DART PREPROCESS KIND LIST
+</code>
 </pre>
+
 <p class="indent1">New observation types may be added to this list
 with no loss of generality. Supporting the observations and
 actually <strong>assimilating</strong> them are somewhat different

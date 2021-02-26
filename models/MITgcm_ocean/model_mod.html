@@ -11,7 +11,7 @@
 </head>
 <body>
 <a name="TOP" id="TOP"></a>
-<h1>MODULE MITgcm_ocean</h1>
+<h1>MITgcm_ocean</h1>
 <table border="0" summary="" cellpadding="5">
 <tr>
 <td valign="middle"><img src="../../docs/images/Dartboard7.png"
@@ -944,7 +944,7 @@ mean. No storage is allocated.</p>
 <hr>
 <br>
 <!--==================================================================-->
-<h1>Unique Interface Routines</h1>
+<h2>Unique Interface Routines</h2>
 <!--==================================================================-->
 <br>
 <hr>
@@ -1063,7 +1063,7 @@ packed into a user-derived variable type specifically designed for
 the purpose.</td>
 </tr>
 </table>
-<h3 class="indent1">Example</h3>
+<h3 class="indent1">Metadata example</h3>
 <pre>
 metadata = read_meta('U.0000000024')
  ... or ...
@@ -1180,7 +1180,7 @@ integer, parameter :: Eta_index = 5
 is overloaded to be able to return both 2D and 3D arrays.</td>
 </tr>
 </table>
-<h3 class="indent1">Example</h3>
+<h3 class="indent1">vector_to_prog_var</h3>
 <pre>
 call vector_to_prog_var(statevec,V_index,data_3d)
  - or - 
@@ -1248,7 +1248,7 @@ portion of the snapshot filename. Commonly 'S','T','U','V', or
 filename.</td>
 </tr>
 </table>
-<h3 class="indent1">Examples</h3>
+<h3>Code snippet</h3>
 <pre>
 real(r4), allocatable :: data_2d_array(:,:), data_3d_array(:,:,:)
 ...
@@ -1651,7 +1651,7 @@ distribution with the mean at the value of the state vector
 element.</td>
 </tr>
 </table>
-<h3 class="indent1">Example</h3>
+<h3>Model namelist</h3>
 <pre>
 &amp;model_nml
    assimilation_period_days     = 1, 
@@ -1774,7 +1774,7 @@ Only some of the namelist variables are needed by DART; the rest
 are ignored by DART but could be needed by the ocean model. Here is
 a fragment for a daily assimilation timestep with the model
 dynamics having a much shorter timestep.</p>
-<h3 class="indent1">Example</h3>
+<h3 class="indent1">PARM03 namelist</h3>
 <pre>
 &amp;PARM03
    startTime    =     0.,
@@ -1872,7 +1872,7 @@ values to grid centroids and edges.</td>
 Only some of the namelist variables are needed by DART; the rest
 are ignored by DART but could be needed by the ocean model. Here is
 a fragment for a (NY=225, NX=256, NZ=...) grid</p>
-<h3 class="indent1">Example</h3>
+<h3>PARM04 namelist</h3>
 <pre>
 &amp;PARM04
    phiMin   =     8.4,

@@ -72,12 +72,12 @@ program, the 'mkmf_filter' command needs to be called with the
 scripts instead of the Fortran compiler.<br>
 <br>
 See the <em class="file">quickbuild.csh</em> script in each
-$DART/models/*/work directory for the commands that need to be
-edited to enable the MPI utilities. You will also need to edit the
-$DART/mkmf/mkmf.template file to call the proper version of the MPI
-compile script if it does not have the default name, is not in a
-standard location on the system, or needs additional options set to
-select between multiple Fortran compilers.<br>
+<code>$DART/models/*/work</code> directory for the commands that need
+to be edited to enable the MPI utilities. You will also need to edit
+the <code>$DART/mkmf/mkmf.template</code> file to call the proper
+version of the MPI compile script if it does not have the default
+name, is not in a standard location on the system, or needs
+additional options set to select between multiple Fortran compilers.<br>
 <br>
 MPI programs generally need to be started with a shell script
 called 'mpirun' or 'mpiexec', but they also interact with any batch

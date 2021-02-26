@@ -55,7 +55,7 @@ site</a> for more documentation, including a discussion of the
 capabilities of the assimilation system, a diagram of the entire
 execution cycle, the options and features.</p>
 <a name="ProgramFlow" id="ProgramFlow"></a>
-<h4>Overview of Program Flow</h4>
+<h3>Program Flow</h3>
 <p>The basic execution loop is:</p>
 <ul>
 <li>Read in model initial conditions, observations, set up and
@@ -123,7 +123,7 @@ copies of a model can get very large. A lightly pruned directory
 tree can be browsed in the main <a href=
 "../../../docs/index.html#Directories">index.html</a>. <a name=
 "FilterTypes" id="FilterTypes"></a>
-<h4>Types of Filters available</h4>
+<h3>Types of Filters available</h3>
 <p>The different types of assimilation algorithms (EAKF, ENKF,
 Kernel filter, Particle filter, etc.) are determined by the
 <em class="code">&amp;assim_tools_nml:filter_kind</em> entry,
@@ -133,7 +133,7 @@ Despite having 'filter' in the name, they are assimilation
 algorithms and so are implemented in <em class=
 "file">assim_tools_mod.f90</em>.</p>
 <a name="GettingStarted" id="GettingStarted"></a>
-<h4>Getting Started</h4>
+<h3>Getting Started</h3>
 <p>Running a successful assimilation takes careful diagnostic work
 and experiment iterations to find the best settings for your
 specific case. The basic Kalman filter can be coded in only a
@@ -178,8 +178,8 @@ below, checking each time to see what is the effect on the
 results.</p>
 <p>Suggestions for the most common namelist settings and features
 built into DART for running a successful assimilation include:</p>
-<ul>
-<li>Ensemble Size
+
+<h4>Ensemble Size</h4>
 <p>In practice, ensemble sizes between 20 and 100 seem to work
 best. Fewer than 20-30 members leads to statistical errors which
 are too large. More than 100 members takes longer to run with very
@@ -190,8 +190,8 @@ move forward in time. If you can, start with 50-60 members and then
 experiment with fewer or more once you have a set of baseline
 results to compare it with. The namelist setting for ensemble size
 is <em class="code">&amp;filter_nml :: ens_size</em></p>
-</li>
-<li>Localization
+
+<h4>Localization</h4>
 <p>There are two main advantages to using localization. One is it
 avoids an observation impacting unrelated state variables because
 of spurious correlations. The other is that, especially for large
@@ -202,8 +202,8 @@ to add and using it usually results in a very large performance
 gain. See <a href=
 "../../modules/assimilation/assim_tools_mod.html#Localization">here</a>
 for a discussion of localization-related namelist items.</p>
-</li>
-<li>Inflation
+
+<h4>Inflation</h4>
 <p>Since the filter is run with a number of members which is
 usually small compared to the number of degrees of freedom of the
 model (i.e. the size of the state vector or the number of EOFs
@@ -219,8 +219,8 @@ including spatial and temporal adaptive and damping options, which
 help deal with observations which vary in density over time and
 location. See <a href="#Inflation">here</a> for a discussion of
 inflation-related namelist items.</p>
-</li>
-<li>Outlier Rejection
+
+<h4>Outlier Rejection</h4>
 <p>Outlier rejection can be used to avoid bad observations (ones
 where the value was recorded in error or the processing has an
 error and a non-physical value was generated). It also avoids
@@ -235,8 +235,8 @@ The namelist setting for the number of standard deviations to
 include is <em class="code">&amp;filter_nml ::
 outlier_threshold</em> and we typically suggest starting with a
 value of 3.0.</p>
-</li>
-<li>Sampling Error
+
+<h4>Sampling Error</h4>
 <p>For small ensemble sizes a table of expected statistical error
 distributions can be generated before running DART. Corrections
 accounting for these errors are applied during the assimilation to
@@ -252,10 +252,8 @@ namelist, and <a href=
 "../system_simulation/system_simulation.html">look here</a> for
 instructions on where to find (or how to generate) the auxiliary
 file needed by this code. See Anderson (2011).</p>
-</li>
-</ul>
-<a name="FreeRun" id="FreeRun"></a>
-<h4>Free run/Forecast After Assimilation</h4>
+
+<h3>Free run/Forecast After Assimilation</h3>
 <p>Separate scripting can be done to support forecasts starting
 from the analyzed model states. After filter exits, the models can
 be run freely (with no assimilated data) further forward in time
@@ -270,7 +268,7 @@ combination of all the member states it may not have
 self-consistent features, so using a single member is usually
 preferred.</p>
 <a name="EvalOnly" id="EvalOnly"></a>
-<h4>Evaluating Observations Without Assimilation</h4>
+<h3>Evaluating Observations Without Assimilation</h3>
 <p>Filter can be used to evaluate the accuracy of a single model
 state based on a set of available observations. Either copy or link
 the model state file so there appear to be 2 separate ensemble
@@ -290,7 +288,7 @@ resulting <em class="file">obs_seq.final</em> file to compute the
 difference between the observed values and the predicted values
 from this model state.</p>
 <a name="Verify" id="Verify"></a>
-<h4>Verification/Comparison With and Without Assimilation</h4>
+<h3>Verification/Comparison With and Without Assimilation</h3>
 <p>To compare results of an experiment with and without
 assimilating data, do one run assimilating the observations. Then
 do a second run where all the observation types are moved to the
@@ -304,8 +302,8 @@ space netcdf files can be compared to evaluate the impact of
 assimilating the observations, and the observation diagnostic files
 can also be compared.</p>
 <a name="QCVals" id="QCVals"></a>
-<h4>DART Quality Control Flag added to Output Observation Sequence
-File</h4>
+<h3>DART Quality Control Flag added to Output Observation Sequence
+File</h3>
 <p>The filter adds a quality control field with metadata 'DART
 quality control' to the <em class="file">obs_seq.final</em> file.
 At present, this field can have the following values:</p>
@@ -359,7 +357,7 @@ value is more than the specified number of standard deviations,
 then the observation is not used and the DART quality control field
 is set to 7.</p>
 <a name="Inflation" id="Inflation"></a>
-<h4>Discussion of Inflation Options</h4>
+<h3>Discussion of Inflation Options</h3>
 <p>In pre-Manhattan DART, there were two choices for the basic type
 of inflation: observation-space or state-space. Observation-space
 inflation is no longer supported. (If you are interested in
@@ -410,175 +408,167 @@ controlled by <em class="code">inf_sd_initial_from_restart</em>,
 "code">inf_upper_bound</em>.</p>
 <p>In the namelist each entry has two values. The first is for
 Prior inflation and the second is for Posterior inflation.</p>
+
+
 <dl>
-<dt><em class="code">&amp;filter_nml :: inf_flavor</em><br>
-valid values: 0, 2, 3, 4, 5</dt>
-<dd>Set the type of Prior and Posterior inflation applied to the
-state vector. Values mean:
-<table border="0" cellpadding="3" width="100%" summary=
-'types of inflation'>
-<tr>
-<td>0:</td>
-<td>No inflation (Prior and/or Posterior) and all other inflation
-variables are ignored</td>
-</tr>
-<tr>
-<td>[1:</td>
-<td>Deprecated: Observation space inflation]</td>
-</tr>
-<tr>
-<td>2:</td>
-<td>Spatially-varying state space inflation (gaussian)</td>
-</tr>
-<tr>
-<td>3:</td>
-<td>Spatially-uniform state space inflation (gaussian)</td>
-</tr>
-<tr>
-<td>4:</td>
-<td>Relaxation To Prior Spread (Posterior inflation only)</td>
-</tr>
-<tr>
-<td>5:</td>
-<td>Enhanced Spatially-varying state space inflation (inverse
-gamma)</td>
-</tr>
-</table>
-Spatially-varying state space inflation stores an array of
-inflation values, one for each item in the state vector. If
-time-evolution is enabled each value can evolve independently.
-Spatially-uniform state space inflation uses a single inflation
-value for all items in the state vector. If time-evolution is
-enabled that single value can evolve. See <em>inf_sd_*</em> below
-for control of the time-evolution behavior. Enhanced
-spatially-varying inflation uses an inverse-gamma distribution
-which allows the standard deviation of the inflation to increase or
-decrease through time and may produce better results. In practice
-we recommend starting with no inflation (both values 0). Then try
-inflation type 2 or 5 prior inflation and no inflation (0) for
-posterior. WARNING: even if inf_flavor is not 0, inflation will be
-turned off if <em class="code">inf_damping</em> is set to 0.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml ::
-inf_initial_from_restart</em><br>
-valid values: .true. or .false.</dt>
-<dd>If true, read the inflation values from an inflation restart
-file named <em class="file">input_{prior,post}inf_mean.nc.</em> An
-initial run could be done to let spatially-varying inflation values
-evolve in a spinup phase, and then the saved values can be read
-back in and used as fixed values in further runs. Or if
-time-varying inflation is used, then the restart file from the
-previous job step must be supplied as an input file for the next
-step.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml :: inf_initial</em><br>
-valid values: real numbers, usually 1.0 or slightly larger</dt>
-<dd>If not reading in inflation values from a restart file, the
-initial value to set for the inflation. Generally we recommend
-starting with just slightly above 1.0, maybe 1.02, for a slight
-amount of initial inflation.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml :: inf_lower_bound</em><br>
-valid values: real numbers, usually 1.0 or slightly larger</dt>
-<dd>If inflation is time-evolving (see <em class=
-"code">inf_sd_*</em> below), then this sets the lowest value the
-inflation can evolve to. Setting a number less than one allows for
-deflation but generally in a well-observed system the ensemble
-needs more spread and not less. We recommend a setting of 1.0.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml :: inf_upper_bound</em><br>
-valid values: real numbers, larger than 1.0</dt>
-<dd>If inflation is time-evolving (see <em class=
-"code">inf_sd_*</em> below), then this sets the largest value the
-inflation can evolve to. We recommend a setting of 100.0, although
-if the inflation values reach those levels there is probably a
-problem with the assimilation.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml :: inf_damping</em><br>
-valid values: 0.0 to 1.0</dt>
-<dd>Applies to all state-space inflation types, but most frequently
-used with time-adaptive inflation variants. The difference between
-the current inflation value and 1.0 is multiplied by this factor
-before the next assimilation cycle. So the inflation values are
-pushed towards 1.0, from above or below (if inf_lower_bound allows
-inflation values less than 1.0). A value of 0.0 turns all inflation
-off by forcing the inflation value to 1.0. A value of 1.0 turns
-damping off by leaving the original inflation value unchanged. We
-have had good results in large geophysical models using time- and
-space-adaptive state-space inflation and setting the damping to a
-value of 0.9, which damps slowly.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml ::
-inf_sd_initial_from_restart</em><br>
-valid values: .true. or .false.</dt>
-<dd>If true, read the inflation standard deviation values from an
-restart file named <em class=
-"file">input_{prior,post}inf_sd.nc.</em> See the comments above
-about <em class="code">inflation_initial_from_restart</em>.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml :: inf_sd_initial</em><br>
-valid values: ≤ 0.0 to disable evolution of inflation, &gt; 0.0
-otherwise</dt>
-<dd>The initial value to set for the inflation standard deviation,
-IF not reading in inflation standard deviation values from a file.
-This value (or these values) control whether the inflation values
-evolve with time or not. A negative value or 0.0 prevents the
-inflation values from being updated, so they are constant
-throughout the run. If positive, the inflation values evolve
-through time. We have had good results setting this and <em class=
-"code">inf_sd_lower_bound</em> to 0.6 for large geophysical
-models.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml :: inf_sd_lower_bound</em><br>
-valid values: ≤ 0.0 to disable evolution of inflation, &gt; 0.0
-otherwise</dt>
-<dd>If the setting of <em class="code">inf_sd_initial</em> is ≤ 0
-(to disable time evolution of inflation) then set this to the same
-value.<br>
-<br>
-<!-- em class=code>inf_sd_lower_bound</em> has no effect if 
-   <em class=code>inf_sd_initial &le; 0.0</em>. -->
- Otherwise, the standard deviation of the inflation cannot fall
-below this value. Smaller values will restrict the inflation to
-vary more slowly with time; larger values will allow the inflation
-to adapt more quickly. We have had good results setting this and
-<em class="code">inf_sd_initial</em> to 0.6 for large geophysical
-models. Since the <em class="code">inf_sd_lower_bound</em> is a
-scalar, it is not possible to set different lower bounds for
-different parts of the state vector. 
-<!-- It is not currently supported to start with a spatially varying
-   standard deviation, allow the inflation mean to vary with time,
-   but prevent the standard deviation from evolving with time. -->
- Time-varying inflation with flavor 2 generally results in the
-inflation standard deviation for all state variables shrinking to
-the lower bound and staying there. For flavor 5, the inflation
-standard deviation value is allowed to increase and decrease.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml :: inf_sd_max_change</em><br>
-valid values: 1.0 to 2.0</dt>
-<dd>Used only with the Enhanced inflation (flavor 5). The Enhanced
-inflation algorithm allows the standard deviation to increase as
-well as decrease. The <em class="code">inf_sd_max_change</em>
-controls the maximum increase of the standard deviation in an
-assimilation cycle. A value of 1.0 means it will not increase, a
-value of 2.0 means it can double; a value inbetween sets the
-percentage it can increase, e.g. 1.05 is a limit of 5%. Suggested
-value is 1.05 (max increase of 5% per cycle).<br>
-<br>
-Because the standard deviation for original flavor 2 could never
-increase, setting the <em class="code">inf_sd_initial</em> value
-equal to the <em class="code">inf_sd_lower_bound</em> value
-effectively fixed the standard deviation at a constant value. To
-match the same behavior, if they are equal and Enhanced inflation
-(flavor 5) is used it will also use that fixed value for the
-standard deviation of the inflation. Otherwise the standard
-deviation will adapt as needed during each assimilation cycle.</dd>
-<dd><br></dd>
-<dt><em class="code">&amp;filter_nml :: inf_deterministic</em><br>
-valid values: .true. or .false.</dt>
-<dd>Recommend always using .true..</dd>
-<dd><br></dd>
+<dt><code>&amp;filter_nml :: inf_flavor</code></dt>
+<dd>
+  <details><i>valid values:</i>0, 2, 3, 4, 5</details>
+  <p>Set the type of Prior and Posterior inflation applied to the
+  state vector. Values mean:</p>
+    
+  <ul>
+    <li><b>0:</b> No inflation (Prior and/or Posterior) and all other inflation
+      variables are ignored</li>
+    <li>[<b>1:</b> Deprecated: Observation space inflation]</li>
+    <li><b>2:</b> Spatially-varying state space inflation (gaussian)</li>
+    <li><b>3:</b> Spatially-uniform state space inflation (gaussian)</li>
+    <li><b>4:</b> Relaxation To Prior Spread (Posterior inflation only)</li>
+    <li><b>5:</b> Enhanced Spatially-varying state space inflation (inverse
+      gamma)</li>
+  </ul>
+
+  <p>Spatially-varying state space inflation stores an array of inflation
+  values, one for each item in the state vector. If time-evolution is enabled
+  each value can evolve independently. Spatially-uniform state space inflation
+  uses a single inflation value for all items in the state vector. If
+  time-evolution is enabled that single value can evolve. See
+  <code>inf_sd_*</code> below for control of the time-evolution behavior.
+  Enhanced spatially-varying inflation uses an inverse-gamma distribution which
+  allows the standard deviation of the inflation to increase or decrease
+  through time and may produce better results. In practice we recommend
+  starting with no inflation (both values 0). Then try inflation type 2 or 5
+  prior inflation and no inflation (0) for posterior. WARNING: even if
+  inf_flavor is not 0, inflation will be turned off if
+  <em class="code">inf_damping</em> is set to 0.</p>
+</dd>
+<dt><code>&amp;filter_nml :: inf_initial_from_restart</code>
+<dd>
+  <details><i>valid values:</i> .true. or .false.</details>
+  <p>If true, read the inflation values from an inflation restart
+    file named <em class="file">input_{prior,post}inf_mean.nc.</em> An
+    initial run could be done to let spatially-varying inflation values
+    evolve in a spinup phase, and then the saved values can be read
+    back in and used as fixed values in further runs. Or if
+    time-varying inflation is used, then the restart file from the
+    previous job step must be supplied as an input file for the next
+    step.</p>
+</dd>
+<dt><code>&amp;filter_nml :: inf_initial</code></dt>
+<dd>
+  <details><i>valid values:</i> real numbers, usually 1.0 or slightly larger</details>
+  If not reading in inflation values from a restart file, the
+  initial value to set for the inflation. Generally we recommend
+  starting with just slightly above 1.0, maybe 1.02, for a slight
+  amount of initial inflation.
+</dd>
+
+<dt><code>&amp;filter_nml :: inf_lower_bound</code></dt>
+<dd>
+  <details><i>valid values:</i> real numbers, usually 1.0 or slightly larger</details>
+  <p>If inflation is time-evolving (see <em class= "code">inf_sd_*</em> below),
+  then this sets the lowest value the inflation can evolve to. Setting a number
+  less than one allows for deflation but generally in a well-observed system
+  the ensemble needs more spread and not less. We recommend a setting of 1.0.
+</dd>
+
+<dt><code>&amp;filter_nml :: inf_upper_bound</code></dt>
+<dd>
+  <details><i>valid values:</i> real numbers, larger than 1.0</details>
+  <p>If inflation is time-evolving (see <code>inf_sd_*</code> below), then this
+    sets the largest value the inflation can evolve to. We recommend a setting
+    of 100.0, although if the inflation values reach those levels there is
+    probably a problem with the assimilation.</p>
+</dd>
+
+<dt><code>&amp;filter_nml :: inf_damping</code></dt>
+<dd>
+  <details><i>valid values:</i> 0.0 to 1.0</details>
+  <p>Applies to all state-space inflation types, but most frequently used with
+    time-adaptive inflation variants. The difference between the current
+    inflation value and 1.0 is multiplied by this factor before the next
+    assimilation cycle. So the inflation values are pushed towards 1.0, from
+    above or below (if inf_lower_bound allows inflation values less than 1.0).
+    A value of 0.0 turns all inflation off by forcing the inflation value to
+    1.0. A value of 1.0 turns damping off by leaving the original inflation
+    value unchanged. We have had good results in large geophysical models
+    using time- and space-adaptive state-space inflation and setting the
+    damping to a value of 0.9, which damps slowly.</p>
+</dd>
+
+<dt><code>&amp;filter_nml :: inf_sd_initial_from_restart</code></dt>
+<dd>
+  <details><i>valid values:</i> .true. or .false.</details>
+  <p>If true, read the inflation standard deviation values from an restart file
+    named <code>input_{prior,post}inf_sd.nc.</code> See the comments above
+    about <em class="code">inflation_initial_from_restart</em>.</p>
+</dd>
+
+<dt><code>&amp;filter_nml :: inf_sd_initial</code></dt>
+<dd>
+  <details><i>valid values:</i> ≤ 0.0 to disable evolution of inflation, &gt; 0.0
+    otherwise</details>
+  <p>The initial value to set for the inflation standard deviation,
+    IF not reading in inflation standard deviation values from a file.
+    This value (or these values) control whether the inflation values
+    evolve with time or not. A negative value or 0.0 prevents the
+    inflation values from being updated, so they are constant
+    throughout the run. If positive, the inflation values evolve
+    through time. We have had good results setting this and <em class=
+    "code">inf_sd_lower_bound</em> to 0.6 for large geophysical
+    models.</p>
+</dd>
+
+<dt><code>&amp;filter_nml :: inf_sd_lower_bound</code></dt>
+<dd>
+  <details><i>valid values:</i> ≤ 0.0 to disable evolution of inflation, &gt; 0.0
+    otherwise</details>
+  <p>If the setting of <em class="code">inf_sd_initial</em> is ≤ 0 (to disable
+    time evolution of inflation) then set this to the same value.</p>
+  <p>Otherwise, the standard deviation of the inflation cannot fall
+  below this value. Smaller values will restrict the inflation to
+  vary more slowly with time; larger values will allow the inflation
+  to adapt more quickly. We have had good results setting this and
+  <em class="code">inf_sd_initial</em> to 0.6 for large geophysical
+  models. Since the <em class="code">inf_sd_lower_bound</em> is a
+  scalar, it is not possible to set different lower bounds for
+  different parts of the state vector.</p>
+  <p>Time-varying inflation with flavor 2 generally results in the
+  inflation standard deviation for all state variables shrinking to
+  the lower bound and staying there. For flavor 5, the inflation
+  standard deviation value is allowed to increase and decrease.</p>
+</dd>
+
+<dt><code>&amp;filter_nml :: inf_sd_max_change</code></dt>
+<dd>
+  <details><i>valid values: </i>1.0 to 2.0</details>
+  <p>Used only with the Enhanced inflation (flavor 5). The Enhanced
+  inflation algorithm allows the standard deviation to increase as
+  well as decrease. The <em class="code">inf_sd_max_change</em>
+  controls the maximum increase of the standard deviation in an
+  assimilation cycle. A value of 1.0 means it will not increase, a
+  value of 2.0 means it can double; a value inbetween sets the
+  percentage it can increase, e.g. 1.05 is a limit of 5%. Suggested
+  value is 1.05 (max increase of 5% per cycle).</p>
+  <p>Because the standard deviation for original flavor 2 could never
+  increase, setting the <em class="code">inf_sd_initial</em> value
+  equal to the <em class="code">inf_sd_lower_bound</em> value
+  effectively fixed the standard deviation at a constant value. To
+  match the same behavior, if they are equal and Enhanced inflation
+  (flavor 5) is used it will also use that fixed value for the
+  standard deviation of the inflation. Otherwise the standard
+  deviation will adapt as needed during each assimilation cycle.</p>
+</dd>
+
+<dt><code>&amp;filter_nml :: inf_deterministic</code></dt>
+<dd>
+  <details><i>valid values:</i> .true. or .false.</details>
+  <p>Recommend always using <code>.true.</code>.</p>
+</dd>
 </dl>
+
+<h3>Guidance regarding inflation</h3>
+
 <p>The suggested procedure for testing inflation options is to
 start without any (both <em class="code">inf_flavor</em> values set
 to 0 and <em class="code">inf_damping</em> &gt; 0.). Then enable
@@ -614,7 +604,7 @@ into a single scalar. If that's your result (check your output with
 <tt>ncdump -h</tt>) use the alternate syntax or a more recent
 version of the NCO tools.</p>
 <a name="WhereToModify" id="WhereToModify"></a>
-<h4>Directories expected to be Modified</h4>
+<h3>Directories expected to be Modified</h3>
 <p>DART is distributed as a toolkit/library/facility that can be
 used as-is with the existing models and observations, but is also
 designed so that users can add new models, new observation types
@@ -663,7 +653,7 @@ See the <a href=
 documentation.</dd>
 </dl>
 <a name="DetailedProgramFlow" id="DetailedProgramFlow"></a>
-<h4>Detailed Program Execution Flow</h4>
+<h3>Detailed Program Execution Flow</h3>
 <p>The Manhattan release of DART includes state space output
 expanded from the previous two stages (Prior and Posterior) to up
 to four (input, preassim, postassim, and output). This makes it

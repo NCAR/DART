@@ -70,46 +70,39 @@ terminating the namelist.</p>
    debug = .false.
    /
 </pre></div>
-<br>
-<br>
-<div>
-<table border="0" cellpadding="10" width="100%" summary=
-'namelist description'>
-<thead align="left">
-<tr>
-<th>Item</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr>
-<td>ens_sizes</td>
-<td>integer(200)</td>
-<td>List of ensemble sizes to compute Sampling Error Correction
-tables for. These do not need to be in any particular order.
-Duplicates will be removed and any sizes which already have tables
-computed in the output file will be skipped. The file which comes
-with the system already has tables computed for these ensemble
-sizes:
+
+<h3>Description of each namelist entry</h3>
+
+<dl>
+<dt>ens_sizes</dt>
+<dd>
+<details><i>type: </i>integer(200)</details>
+<p>
+   List of ensemble sizes to compute Sampling Error Correction
+   tables for. These do not need to be in any particular order.
+   Duplicates will be removed and any sizes which already have tables
+   computed in the output file will be skipped. The file which comes
+   with the system already has tables computed for these ensemble
+   sizes:
+</p>
 <pre>
-   ens_sizes = 5, 6, 7, 8, 9, 10, 12, 14, 15, 16, 18, 20,
-              22, 24, 28, 30, 32, 36, 40, 44, 48, 49, 50,
-              52, 56, 60, 64, 70, 72, 80, 84, 88, 90, 96,
-              100, 120, 140, 160, 180, 200
-</pre></td>
-</tr>
-<tr>
-<td>debug</td>
-<td>logical</td>
-<td>If true print out debugging info.</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-</div>
-<br>
-<br>
+<code>
+ens_sizes = 5, 6, 7, 8, 9, 10, 12, 14, 15, 16, 18, 20,
+            22, 24, 28, 30, 32, 36, 40, 44, 48, 49, 50,
+            52, 56, 60, 64, 70, 72, 80, 84, 88, 90, 96,
+            100, 120, 140, 160, 180, 200
+</code>
+</pre>
+</dd>
+<dt>debug</dt>
+<dd>
+<details><i>type: </i>logical</details>
+<p>
+   If true print out debugging info.
+</p>
+</dd>
+</dl>
+
 <!--==================================================================-->
 <a name="Examples" id="Examples"></a>
 <div class="top">[<a href="#">top</a>]</div>
