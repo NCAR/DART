@@ -7,6 +7,10 @@ import warnings
 import yaml
 
 
+this_file = pathlib.Path(__file__)
+repo_dir = this_file.parent.parent.parent.parent.parent.parent
+
+
 # ######################################################
 # Remapping nested values
 # http://sedimental.org/remap.html

@@ -205,9 +205,9 @@ run_experiment:
     src_dir:
     src_copy:
     noise_function_files: [
-    '/glade/u/home/${USER}/dart/DART/models/wrf_hydro/python/perturb/perturb_channel_bucket_only_forcing.py',
-    '/glade/u/home/${USER}/dart/DART/models/wrf_hydro/python/perturb/noise_qBtmVertRunoff_additive_fraction.py',
-    '/glade/u/home/${USER}/dart/DART/models/wrf_hydro/python/perturb/noise_qSfcLatRunoff_additive_fraction.py'
+    'models/wrf_hydro/python/perturb/perturb_channel_bucket_only_forcing.py',
+    'models/wrf_hydro/python/perturb/noise_qBtmVertRunoff_additive_fraction.py',
+    'models/wrf_hydro/python/perturb/noise_qSfcLatRunoff_additive_fraction.py'
     ]
     noise_cmd: 'python perturb_channel_bucket_only_forcing.py --source_forcing_dir FORCING_AnA_channel-only --perturb_forcing_dir FORCING_perturbed --qsfclat_perturb_func noise_qSfcLatRunoff_additive_fraction.py --qbtmvert_perturb_func noise_qBtmVertRunoff_additive_fraction.py'
 

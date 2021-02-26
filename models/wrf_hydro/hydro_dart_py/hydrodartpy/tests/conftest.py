@@ -11,6 +11,9 @@ import yaml
 import hydrodartpy.core.setup_experiment_tools as hdp_tools
 
 
+repo_dir = hdp_tools.repo_dir
+
+
 def if_e_rm(path: pathlib.Path):
     if path.is_file():
         _ = path.unlink()
@@ -122,6 +125,13 @@ def config_file(request, test_dir):
     if 'USGS_daily' in exp_config['observation_preparation'].keys():
         exp_config['observation_preparation']['USGS_daily']['output_dir'] = str(
             all_obs_dir / 'USGS_daily')
+
+    if ('noise_function_files' in
+        exp_config['run_experiment']['perturb_forcing'].keys()):
+        pf = exp_config['run_experiment']['perturb_forcing']
+        nffs = pf['noise_function_files']
+        nffs = [str(repo_dir.joinpath(nff)) for nff in nffs]
+        pf['noise_function_files'] = nffs
 
     test_dir = pathlib.Path(os.getcwd())
     exp_config['dart']['dart_src'] = str(
