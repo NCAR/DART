@@ -839,7 +839,7 @@ if ( obs_def%has_external_FO .and. obs_def%write_external_FO ) then
          source, revision, revdate, text2='observation type '//trim(get_name_for_type_of_obs(obs_def%kind)))
    endif
    if (is_ascii) then
-      write(ifile, 12) obs_def%ens_size, obs_def%external_FO_key
+      write(ifile, 12) obs_def%ens_size, key
       write(ifile, *) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
    else
       write(ifile)    obs_def%ens_size, EXTERNAL_PRIOR_CODE

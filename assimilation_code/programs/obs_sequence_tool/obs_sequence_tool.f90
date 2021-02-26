@@ -35,7 +35,8 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
                              get_obs_key, copy_partial_obs, &
                              delete_obs_from_seq, get_next_obs_from_key, &
                              delete_obs_by_qc, delete_obs_by_copy, &
-                             select_obs_by_location, set_obs_values, set_qc
+                             select_obs_by_location, set_obs_values, set_qc, &
+                             set_obs_seq_precomputed_FOs
 
 implicit none
 
@@ -719,6 +720,9 @@ if (.not. print_only) then
 else
    print*, 'Total number of selected obs in all files :', get_num_key_range(seq_out)
 endif
+
+!setting flag to output precomputed FOs based on namelist
+call set_obs_seq_precomputed_FOs(seq_out,write_external_FOs)
 
 call print_obs_seq(seq_out, filename_out)
 if (.not. print_only) then
