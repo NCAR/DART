@@ -1,1502 +1,927 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-"http://www.w3.org/TR/html4/loose.dtd">
-<html>
-<head>
-<meta name="generator" content=
-"HTML Tidy for HTML5 for Apple macOS version 5.6.0">
-<title>module location_mod (channel)</title>
-<link rel="stylesheet" type="text/css" href=
-"../../../docs/html/doc.css">
-<link href="../../../docs/images/dart.ico" rel="shortcut icon">
-</head>
-<body>
-<a name="TOP" id="TOP"></a>
-<h1>MODULE location_mod (channel)</h1>
-<table border="0" summary="" cellpadding="5">
-<tr>
-<td valign="middle"><img src="../../../docs/images/Dartboard7.png"
-alt="DART project logo" height="70"></td>
-<td>Jump to <a href="../../../docs/index.html">DART Documentation
-Main Index</a></td>
-</tr>
-</table>
-<a href="#Namelist">NAMELIST</a> / <a href=
-"#Interface">INTERFACES</a> / <a href="#FilesUsed">FILES</a> /
-<a href="#References">REFERENCES</a> / <a href="#Errors">ERRORS</a>
-/ <a href="#FuturePlans">PLANS</a> / <a href=
-"#PrivateComponents">PRIVATE COMPONENTS</a> / <a href=
-"#Legalese">TERMS OF USE</a>
-<h2>Overview</h2>
-<p>THIS HAS NOT BEEN UPDATED YET - ONLY COPIED FROM 3D SPHERE
-VERSION</p>
-<p>THIS HAS NOT BEEN UPDATED YET - ONLY COPIED FROM 3D SPHERE
-VERSION</p>
-<p>THIS HAS NOT BEEN UPDATED YET - ONLY COPIED FROM 3D SPHERE
-VERSION</p>
-<p>The DART framework needs to be able to compute distances between
-locations, to pass location information to and from the model
-interface code (model_mod.f90), and to be able to read and write
-location information to files. DART isolates all this location
-information into separate modules so that the main algorithms can
-operate with the same code independent of whether the model uses
-latitude/longitude/height, 1D unit sphere coordinates, cylindrical
-coordinates, etc. DART provides about half a dozen possible
-coordinate systems, and others can be added. The most common one
-for geophysical models is this one: threed_sphere.</p>
-<p>This location module provides a representation of a physical
-location on a 3-D spherical shell, using latitude and longitude
-plus a vertical component with choices of vertical coordinate type
-such as pressure or height in meters. A type that abstracts the
-location is provided along with operators to set, get, read, write,
-and compute distances between locations. This is a member of a
-class of similar location modules that provide the same abstraction
-for different represenations of physical space.</p>
-<h4>Location-independent code</h4>
-<p>All types of location modules define the same module name
-<em class="code">location_mod</em>. Therefore, the DART framework
-and any user code should include a Fortran 90 <em class=
-"code">use</em> statement of <em class="code">location_mod</em>.
-The selection of which location module will be compiled into the
-program is controlled by which source file name is specified in the
-<em class="file">path_names_xxx</em> file, which is used by the
-<em class="file">mkmf_xxx</em> scripts.</p>
-<p>All types of location modules define the same Fortran 90 derived
-type <em class="code">location_type</em>. Programs that need to
-pass location information to subroutines but do not need to
-interpret the contents can declare, receive, and pass this derived
-type around in their code independent of which location module is
-specified at compile time. Model and location-independent utilities
-should be written in this way. However, as soon as the contents of
-the location type needs to be accessed by user code then it becomes
-dependent on the exact type of location module that it is compiled
-with.</p>
-<h4>Usage of distance routines</h4>
-<a name="Distance" id="Distance"></a>
-<p>Regardless of the fact that the distance subroutine names
-include the string 'obs', there is nothing specific to observations
-in these routines. They work to compute distances between any set
-of locations. The most frequent use of these routines in the filter
-code is to compute the distance between a single observation and
-items in the state vector, and also between a single observation
-and other nearby observations. However, any source for locations is
-supported.</p>
-<p>In simpler location modules (like the <em class="file">oned</em>
-version) there is no need for anything other than a brute force
-search between the base location and all available state vector
-locations. However in the case of large geophysical models which
-typically use the <em class="file">threed_sphere</em> locations
-code, the brute-force search time is prohibitive. The location code
-pre-processes all locations into a set of <em>bins</em> and then
-only needs to search the lists of locations in nearby bins when
-looking for locations that are within a specified distance.</p>
-<p>The expected calling sequence of the <em class=
-"code">get_close</em> routines is as follows:</p>
-<pre>
-<em class="code">
-call get_close_maxdist_init()  ! is called before get_close_obs_init()
-call get_close_obs_init()
+MODULE location_mod (channel)
+=============================
 
-call get_close_obs()           ! called many, many times
+Overview
+--------
 
-call get_close_obs_destroy()
-</em>
-</pre>
-<p>In the <em class="file">threed_sphere</em> implementation the
-first routine initializes some data structures, the second one bins
-up the list of locations, and then the third one is called multiple
-times to find all locations within a given radius of some reference
-location, and to optionally compute the exact separation distance
-from the reference location. The last routine deallocates the
-space. See the documentation below for the specific details for
-each routine.</p>
-<p>All 4 of these routines must be present in every location module
-but in most other versions all but <em class=
-"code">get_close_obs()</em> are stubs. In this <em class=
-"file">threed_sphere</em> version of the locations module all are
-fully implemented.</p>
-<h4>Interaction with model_mod.f90 code</h4>
-<a name="ModelMod" id="ModelMod"></a>
-<p>The filter and other DART programs could call the <em class=
-"code">get_close</em> routines directly, but typically do not. They
-declare them (in a <em class="code">use</em> statement) to be in
-the <em class="code">model_mod</em> module, and all model interface
-modules are required to supply them. However in many cases the
-model_mod only needs to contain another <em class="code">use</em>
-statement declaring them to come from the <em class=
-"code">location_mod</em> module. Thus they 'pass through' the
-model_mod but the user does not need to provide a subroutine or any
-code for them.</p>
-<p>However, if the model interface code wants to intercept and
-alter the default behavior of the get_close routines, it is able
-to. Typically the model_mod still calls the location_mod routines
-and then adjusts the results before passing them back to the
-calling code. To do that, the model_mod must be able to call the
-routines in the location_mod which have the same names as the
-subroutines it is providing. To allow the compiler to distinguish
-which routine is to be called where, we use the Fortran 90 feature
-which allows a module routine to be renamed in the use statement.
-For example, a common case is for the model_mod to want to supply
-additions to the get_close_obs() routine only. At the top of the
-model_mod code it would declare:</p>
-<pre>
-<em class="code">
-use location_mod, only :: location_get_close_obs =&gt; get_close_obs,    &amp;
-                          get_close_maxdist_init, get_close_obs_init, &amp;
-                          get_close_obs_destroy
-</em>
-</pre>
-<p>That makes calls to the maxdist_init, init, and destroy routines
-simply pass through to the code in the location_mod, but the
-model_mod must supply a get_close_obs() subroutine. When it wants
-to call the code in the location_mod it calls <em class=
-"code">location_get_close_obs()</em>.</p>
-<p>One use pattern is for the model_mod to call the location
-get_close_obs() routine without the <em class="code">dist</em>
-argument. This returns a list of any potentially close locations
-without computing the exact distance from the base location. At
-this point the list of locations is a copy and the model_mod
-routine is free to alter the list in any way it chooses: it can
-change the locations to make certain types of locations appear
-closer or further away from the base location; it can convert the
-vertical coordinates into a common coordinate type so that calls to
-the <em class="code">get_dist()</em> routine can do full 3d
-distance computations and not just 2d (the vertical coordinates
-must match between the base location and the locations in the list
-in order to compute a 3d distance). Then typically the model_mod
-code loops over the list calling the <em class=
-"code">get_dist()</em> routine to get the actual distances to be
-returned to the calling code. To localize in the vertical in a
-particular unit type, this is the place where the conversion to
-that vertical unit should be done.</p>
-<h4>Horizontal Distance Only</h4>
-<p>If <em>horiz_distance_only</em> is .true. in the namelist, then
-the vertical coordinate is ignored and only the great-circle
-distance between the two locations is computed, as if they were
-both on the surface of the sphere.</p>
-<p>If <em>horiz_distance_only</em> is .false. in the namelist then
-the appropriate normalization constant determines the relative
-impact of vertical and horizontal separation. Since only a single
-localization distance is specified, and the vertical scales might
-have very different distance characteristics, the
-vert_normalization_xxx values can be used to scale the vertical
-appropriately to control the desired influence of observations in
-the vertical.</p>
-<h4>Precomputation for Run-time Search Efficiency</h4>
-<p>For search efficiency all locations are pre-binned. The surface
-of the sphere is divided up into <em>nlon</em> by <em>nlat</em>
-boxes and the index numbers of all items (both state vector entries
-and observations) are stored in the appropriate box. To locate all
-points close to a given location, only the locations listed in the
-boxes within the search radius must be checked. This speeds up the
-computations, for example, when localization controls which state
-vector items are impacted by any given observation. The search
-radius is the localization distance and only those state vector
-items in boxes closer than the radius to the observation location
-are processed.</p>
-<p>The default values have given good performance on many of our
-existing model runs, but for tuning purposes the box counts have
-been added to the namelist to allow adjustment. By default the code
-prints some summary information about how full the average box is,
-how many are empty, and how many items were in the box with the
-largest count. The namelist value <em>output_box_info</em> can be
-set to .true. to get even more information about the box
-statistics. The best performance will be obtained somewhere between
-two extremes; the worst extreme is all the points are located in
-just a few boxes. This degenerates into a (slow) linear search
-through the index list. The other extreme is a large number of
-empty or sparsely filled boxes. The overhead of creating, managing,
-and searching a long list of boxes will impact performance. The
-best performance lies somewhere in the middle, where each box
-contains a reasonable number of values, more or less evenly
-distributed across boxes. The absolute numbers for best performance
-will certainly vary from case to case.</p>
-<p>For latitude, the <em>nlat</em> boxes are distributed evenly
-across the actual extents of the data. (Locations are in radians,
-so the maximum limits are the poles at -PI/2 and +PI/2). For
-longitude, the code automatically determines if the data is spread
-around more than half the sphere, and if so, the boxes are
-distributed evenly across the entire sphere (longitude range 0 to
-2*PI). If the data spans less than half the sphere in longitude,
-the actual extent of the data is determined (including correctly
-handling the cyclic boundary at 0) and the boxes are distributed
-only within the data extent. This simplifies the actual distance
-calculations since the distance from the minimum longitude box to
-the maximum latitude box cannot be shorter going the other way
-around the sphere. 
-<!-- (Computing distances going over the poles still must be considered.) -->
-In practice, for a global model the boxes are evenly distributed
-across the entire surface of the sphere. For local or regional
-models, the boxes are distributed only across the the extent of the
-local grid.</p>
-<p>For efficiency in the case where the boxes span less than half
-the globe, the 3D location module needs to be able to determine the
-greatest longitude difference between a base point at latitude
-<tt>φ<sub>s</sub></tt> and all points that are separated from that
-point by a central angle of <tt>θ</tt>. We might also want to know
-the latitude, <tt>φ<sub>f</sub></tt> , at which the largest
-separation occurs. Note also that an intermediate form below allows
-the computation of the maximum longitude difference at a particular
-latitude.</p>
-<p>The central angle between a point at latitude
-<tt>φ<sub>s</sub></tt> and a second point at latitude
-<tt>φ<sub>f</sub></tt> that are separated in longitude by
-<tt>Δλ</tt> is<br>
-<br>
-<tt>  θ =
-cos<sup>-1</sup>(sinφ<sub>s</sub>sinφ<sub>f</sub> +
-cosφ<sub>s</sub>cosφ<sub>f</sub>cosΔλ)</tt><br>
-<br>
-Taking the cos of both sides gives<br>
-<br>
-<tt>  cosθ = (sinφ<sub>s</sub>sinφ<sub>f</sub> +
-cosφ<sub>s</sub>cosφ<sub>f</sub>cosΔλ)</tt><br>
-<br>
-Solving for <tt>cosΔλ</tt> gives<br>
-<br>
-<tt>  cosΔλ = <sup>(<i>a</i> -
-<i>b</i> sinφ<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i> cosφ<sub>f</sub>)</sub>
-=
-<sup><i>a</i></sup><big>/</big><sub><i>c</i></sub> secφ<sub>f</sub>
--
-<sup><i>b</i></sup><big>/</big><sub><i>c</i></sub> tanφ<sub>f</sub></tt><br>
+THIS HAS NOT BEEN UPDATED YET - ONLY COPIED FROM 3D SPHERE VERSION
 
-<br>
-where <tt><i>a</i> = cosθ</tt> , <tt><i>b</i> =
-sinφ<sub>s</sub></tt> , and <tt><i>c</i> = cosφ<sub>s</sub></tt> .
-We want to maximize <tt>Δλ</tt> which implies minimizing
-<tt>cosΔλ</tt> subject to constraints. Taking the derivative with
-respect to <tt>φ<sub>f</sub></tt> gives<br>
-<br>
-<tt>  <sup>(<i>d</i> cosΔλ)</sup><big>/</big><sub>(<i>d</i>φ<sub>f</sub>)</sub>
-=
-<sup><i>a</i></sup><big>/</big><sub><i>c</i></sub> secφ<sub>f</sub> tanφ<sub>f</sub>
--
-<sup><i>b</i></sup><big>/</big><sub><i>c</i></sub> sec<sup>2</sup>φ<sub>f</sub>
-= 0</tt><br>
-<br>
-Factoring out <tt>secφ<sub>f</sub></tt> which can never be 0 and
-using the definitions of <tt>sec</tt> and <tt>tan</tt> gives<br>
-<br>
-<tt>  <sup>(<i>a</i> sinφ<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i> cosφ<sub>f</sub>)</sub>
--
-<sup><i>b</i></sup><big>/</big><sub>(<i>c</i> cosφ<sub>f</sub>)</sub>
-= 0</tt><br>
-<br>
-Solving in the constrained range from 0 to PI/2 gives<br>
-<br>
-<tt>   sinφ<sub>f</sub> =
-<sup><i>b</i></sup><big>/</big><sub><i>a</i></sub> =
-<sup>sinφ<sub>s</sub></sup><big>/</big><sub>cosθ</sub></tt><br>
-<br>
-So knowing base point (<tt>φ<sub>s</sub></tt>,
-<tt>λ<sub>s</sub></tt>), latitude <tt>φ<sub>f</sub></tt>, and
-distance <tt>θ</tt> we can use the great circle equation to find
-the longitude difference at the greatest separation point<br>
-<br>
-<tt>   Δλ = cos<sup>-1</sup><big>(</big><sup>(<i>a</i> -
-(<i>b</i> sinφ<sub>f</sub>))</sup> <big>/</big>
-<sub>(<i>c</i> cosφ<sub>f</sub>)</sub><big>)</big></tt><br>
-<br>
-Note that if the angle between the base point and a pole is less
-than or equal to the central angle, all longitude differences will
-occur as the pole is approached.</p>
-<!--=====================================================================-->
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-<!--=====================================================================-->
-<a name="Namelist" id="Namelist"></a>
-<div class="top">[<a href="#">top</a>]</div>
-<hr>
-<h2>NAMELIST</h2>
-<p>This namelist is read from the file <em class=
-"file">input.nml</em>. Namelists start with an ampersand '&amp;'
-and terminate with a slash '/'. Character strings that contain a
-'/' must be enclosed in quotes to prevent them from prematurely
-terminating the namelist.</p>
-<div class="namelist">
-<pre>
-&amp;location_nml
-   use_octree      = .false.
-   nboxes          = 1000
-   maxdepth        = 4
-   filled          = 10
-   output_box_info = .false.
-   print_box_level = 0
-   compare_to_correct = .false.
-/
-</pre></div>
-<br>
-<br>
-<p>Items in this namelist either control the way in which distances
-are computed and/or influence the code performance.</p>
-<div>
-<table border="0" cellpadding="10" width="100%" summary=
-'namelist description'>
-<thead align="left">
-<tr>
-<th>Item</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr>
-<td>use_octree</td>
-<td>logical</td>
-<td>There are two variations of search code. For now, this must be
-set to .false.</td>
-</tr>
-<tr>
-<td>nboxes</td>
-<td>integer</td>
-<td>An optimization parameter which controls how many boxes the
-space is divided up into for precomputing nearby points. Larger
-numbers use more memory but may make searching faster if the model
-contains a large grid.</td>
-</tr>
-<tr>
-<td>filled</td>
-<td>integer</td>
-<td>An optimization parameter for the octree code. Set the lower
-item count limit where a box no longer splits.</td>
-</tr>
-<tr>
-<td>output_box_info</td>
-<td>logical</td>
-<td>If true, print more details about the distribution of locations
-across the array of boxes.</td>
-</tr>
-<tr>
-<td>print_box_level</td>
-<td>integer</td>
-<td>If output_box_info is true, controls the amount of output.</td>
-</tr>
-<tr>
-<td>compare_to_correct</td>
-<td>logical</td>
-<td>If true do an exhaustive (and slow) search to ensure the
-results are the same as using optimized search code. Should only be
-used for debugging.</td>
-</tr>
-</tbody>
-</table>
-</div>
-<br>
-<br>
-<!--==================================================================-->
- <a name="Interface" id="Interface"></a>
-<div class="top">[<a href="#">top</a>]</div>
-<hr>
-<h2>OTHER MODULES USED</h2>
-<pre>
-types_mod
-utilities_mod
-random_seq_mod
-</pre>
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-<!--==================================================================-->
-<hr>
-<h2>PUBLIC INTERFACES</h2>
-<table>
-<tr>
-<td><em class="code">use location_mod, only :</em></td>
-<td><a href="#location_type">location_type</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#get_close_type">get_close_type</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#get_location">get_location</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#set_location">set_location</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#write_location">write_location</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#read_location">read_location</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#interactive_location">interactive_location</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#set_location_missing">set_location_missing</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#query_location">query_location</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href=
-"#get_close_maxdist_init">get_close_maxdist_init</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#get_close_obs_init">get_close_obs_init</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#get_close_obs">get_close_obs</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#get_close_obs_destroy">get_close_obs_destroy</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#get_dist">get_dist</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#LocationDims">LocationDims</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#LocationName">LocationName</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#LocationLName">LocationLName</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#horiz_dist_only">horiz_dist_only</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_is_undef">vert_is_undef</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_is_surface">vert_is_surface</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_is_pressure">vert_is_pressure</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_is_scale_height">vert_is_scale_height</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_is_level">vert_is_level</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_is_height">vert_is_height</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_constants">VERTISUNDEF</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_constants">VERTISSURFACE</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_constants">VERTISLEVEL</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_constants">VERTISPRESSURE</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_constants">VERTISHEIGHT</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#vert_constants">VERTISSCALEHEIGHT</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#equal">operator(==)</a></td>
-</tr>
-<tr>
-<td> </td>
-<td><a href="#not_equal">operator(/=)</a></td>
-</tr>
-</table>
-<p>Namelist interface <a href="#Namelist"><em class=
-"code">&amp;location_nml</em></a> must be read from file <em class=
-"file">input.nml</em>.</p>
-<p>A note about documentation style. Optional arguments are
-enclosed in brackets <em class="optionalcode">[like this]</em>.</p>
-<!--===================== DESCRIPTION OF A LOCAL TYPE =====================-->
-<a name="location_type" id="location_type"></a><br>
-<div class="type"><em class="call">type location_type</em>
-<pre>
-   private
-   real(r8) :: lon, lat, vloc
-   integer  :: which_vert
-end type location_type
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Provides an abstract representation of physical location on a
-three-d spherical shell.</p>
-<table border="0" cellpadding="3" width="100%">
-<tr>
-<th align="left">Component</th>
-<th align="left">Description</th>
-</tr>
-<tr>
-<td valign="top">lon</td>
-<td>longitude in radians</td>
-</tr>
-<tr>
-<td valign="top">lat</td>
-<td>latitude in radians</td>
-</tr>
-<tr>
-<td valign="top">vloc</td>
-<td>vertical location, units as selected by which_vert</td>
-</tr>
-<tr>
-<td valign="top">which_vert</td>
-<td>type of vertical location: -2=no specific vert location;
--1=surface; 1=level; 2=pressure; 3=height, 4=scale height</td>
-</tr>
-</table>
-The vertical types have parameters defined for them so they can be
-referenced by name instead of number.</div>
-<br>
-<!--===================== DESCRIPTION OF A LOCAL TYPE =====================-->
- <a name="get_close_type" id="get_close_type"></a><br>
-<div class="type"><em class="call">type get_close_type</em>
-<pre>
-   private
-   integer  :: num
-   real(r8) :: maxdist
-   integer, pointer :: lon_offset(:, :)
-   integer, pointer :: obs_box(:)
-   integer, pointer :: count(:, :)
-   integer, pointer :: start(:, :)
-end type get_close_type
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Provides a structure for doing efficient computation of close
-locations.</p>
-<table border="0" cellpadding="3" width="100%">
-<tr>
-<th align="left">Component</th>
-<th align="left">Description</th>
-</tr>
-<tr>
-<td valign="top">num</td>
-<td>Number of locations in list</td>
-</tr>
-<tr>
-<td valign="top">maxdist</td>
-<td>Threshhold distance. Anything closer is close.</td>
-</tr>
-<tr>
-<td valign="top">lon_offset</td>
-<td>Dimensioned nlon by nlat. For a given offset in longitude boxes
-and difference in latitudes, gives max distance from base box to a
-point in offset box.</td>
-</tr>
-<tr>
-<td valign="top">obs_box</td>
-<td>Dimensioned num. Gives index of what box each location is
-in.</td>
-</tr>
-<tr>
-<td valign="top">count</td>
-<td>Dimensioned nlon by nlat. Number of obs in each box.</td>
-</tr>
-<tr>
-<td valign="top">start</td>
-<td>Dimensioned nlon by nlat. Index in straight storage list where
-obs in each box start.</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="get_location" id="get_location"></a><br>
-<div class="routine"><em class="call">var = get_location(loc)</em>
-<pre>
-real(r8), dimension(3)          :: <em class=
-"code">get_location</em>
-type(location_type), intent(in) :: <em class="code">loc</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Extracts the longitude and latitude (converted to degrees) and
-the vertical location from a location type and returns in a 3
-element real array.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">get_location</em></td>
-<td>The longitude and latitude (in degrees) and vertical
-location</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc</em></td>
-<td>A location type</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="set_location" id="set_location"></a><br>
-<div class="routine"><em class="call">var = set_location(lon, lat,
-vert_loc, which_vert)</em>
-<pre>
-type(location_type)   :: <em class="code">set_location</em>
-real(r8), intent(in)    :: <em class="code">lon</em>
-real(r8), intent(in)    :: <em class="code">lat</em>
-real(r8), intent(in)    :: <em class="code">vert_loc</em>
-integer,  intent(in)    :: <em class="code">which_vert</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns a location type with the input longitude and latitude
-(input in degrees) and the vertical location of type specified by
-which_vert.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">set_location</em></td>
-<td>A location type</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">lon</em></td>
-<td>Longitude in degrees</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">lat</em></td>
-<td>Latitude in degrees</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">vert_loc</em></td>
-<td>Vertical location consistent with which_vert</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">which_vert</em></td>
-<td>The vertical location type</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="write_location" id="write_location"></a><br>
-<div class="routine"><em class="call">call write_location(locfile,
-loc <em class="optionalcode">[, fform, charstring]</em>)</em>
-<pre>
-integer,               intent(in)       :: <em class=
-"code"> locfile </em>
-type(location_type),   intent(in)       :: <em class=
-"code"> loc </em>
-character(len=*), optional, intent(in)  :: <em class=
-"optionalcode"> fform </em>
-character(len=*), optional, intent(out) :: <em class=
-"optionalcode"> charstring </em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Given an integer IO channel of an open file and a location,
-writes the location to this file. The <em class=
-"optionalcode">fform</em> argument controls whether write is
-"FORMATTED" or "UNFORMATTED" with default being formatted. If the
-final <em class="optionalcode">charstring</em> argument is
-specified, the formatted location information is written to the
-character string only, and the <em class="code">locfile</em>
-argument is ignored.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">locfile</em></td>
-<td>the unit number of an open file.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc</em></td>
-<td>location type to be written.</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">fform</em></td>
-<td>Format specifier ("FORMATTED" or "UNFORMATTED"). Default is
-"FORMATTED" if not specified.</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">charstring</em></td>
-<td>Character buffer where formatted location string is written if
-present, and no output is written to the file unit.</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="read_location" id="read_location"></a><br>
-<div class="routine"><em class="call">var = read_location(locfile
-<em class="optionalcode">[, fform]</em>)</em>
-<pre>
-type(location_type)                    :: <em class=
-"code">read_location</em>
-integer, intent(in)                    :: <em class=
-"code">locfile</em>
-character(len=*), optional, intent(in) :: <em class=
-"optionalcode">fform</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Reads a location_type from a file open on channel locfile using
-format <em class="optionalcode">fform</em> (default is
-formatted).</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">read_location</em></td>
-<td>Returned location type read from file</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">locfile</em></td>
-<td>Integer channel opened to a file to be read</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">fform</em></td>
-<td>Optional format specifier ("FORMATTED" or "UNFORMATTED").
-Default "FORMATTED".</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="interactive_location" id="interactive_location"></a><br>
-<div class="routine"><em class="call">call
-interactive_location(location <em class="optionalcode">[,
-set_to_default]</em>)</em>
-<pre>
-type(location_type), intent(out) :: <em class="code">location</em>
-logical, optional, intent(in)    :: <em class=
-"optionalcode">set_to_default</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Use standard input to define a location type. With
-set_to_default true get one with all elements set to 0.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">location</em></td>
-<td>Location created from standard input</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">set_to_default</em></td>
-<td>If true, sets all elements of location type to 0</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="query_location" id="query_location"></a><br>
-<div class="routine"><em class="call">var = query_location(loc
-<em class="optionalcode">[, attr]</em>)</em>
-<pre>
-real(r8)                               :: <em class=
-"code">query_location</em>
-type(location_type), intent(in)        :: <em class="code">loc</em>
-character(len=*), optional, intent(in) :: <em class=
-"optionalcode">attr</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns the value of which_vert, latitude, longitude, or
-vertical location from a location type as selected by the string
-argument attr. If attr is not present or if it is 'WHICH_VERT', the
-value of which_vert is converted to real and returned. Otherwise,
-attr='LON' returns longitude, attr='LAT' returns latitude and
-attr='VLOC' returns the vertical location.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">query_location</em></td>
-<td>Returns longitude, latitude, vertical location, or which_vert
-(converted to real)</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc</em></td>
-<td>A location type</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">attr</em></td>
-<td>Selects 'WHICH_VERT', 'LON', 'LAT' or 'VLOC'</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="set_location_missing" id="set_location_missing"></a><br>
-<div class="routine"><em class="call">var =
-set_location_missing()</em>
-<pre>
-type(location_type) :: <em class="code">set_location_missing</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns a location with all elements set to missing values
-defined in types module.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">set_location_missing</em></td>
-<td>A location with all elements set to missing values</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="get_close_maxdist_init" id=
-"get_close_maxdist_init"></a><br>
-<div class="routine"><em class="call">call
-get_close_maxdist_init(gc,maxdist, <em class=
-"optionalcode">[maxdist_list]</em>)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class="code">gc</em>
-real(r8), intent(in)                :: <em class=
-"code">maxdist</em>
-real(r8), intent(in), optional      :: <em class=
-"optionalcode">maxdist_list(:)</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Sets the threshhold distance. <em class="code">maxdist</em> is
-in units of radians. Anything closer than this is deemed to be
-close. This routine must be called first, before the other
-<em class="code">get_close</em> routines. It allocates space so it
-is necessary to call <em class="code">get_close_obs_destroy</em>
-when completely done with getting distances between locations.</p>
-<p>If the last optional argument is not specified, maxdist applies
-to all locations. If the last argument is specified, it must be a
-list of exactly the length of the number of specific types in the
-obs_kind_mod.f90 file. This length can be queried with the <a href=
-"../../modules/observations/obs_kind_mod.html#get_num_types_of_obs">
-get_num_types_of_obs()</a> function to get count of obs types. It
-allows a different maximum distance to be set per base type when
-get_close() is called.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">gc</em></td>
-<td>Data for efficiently finding close locations.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">maxdist</em></td>
-<td>Anything closer than this number of radians is a close
-location.</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">maxdist</em></td>
-<td>If specified, must be a list of real values. The length of the
-list must be exactly the same length as the number of observation
-types defined in the obs_def_kind.f90 file. (See <a href=
-"../../modules/observations/obs_kind_mod.html#get_num_types_of_obs">
-get_num_types_of_obs()</a> to get count of obs types.) The values
-in this list are used for the obs types as the close distance
-instead of the maxdist argument.</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="get_close_obs_init" id="get_close_obs_init"></a><br>
-<div class="routine"><em class="call">call get_close_obs_init(gc,
-num, obs)</em>
-<pre>
-type(get_close_type),             intent(inout) :: <em class=
-"code">gc</em>
-integer,                          intent(in)    :: <em class=
-"code">num</em>
-type(location_type), dimension(:) intent(in)    :: <em class=
-"code">obs</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Initialize storage for efficient identification of locations
-close to a given location. Allocates storage for keeping track of
-which 'box' each location in the list is in. Must be called after
-<em class="code">get_close_maxdist_init</em>, and the list of
-locations here must be the same as the list of locations passed
-into <em class="code">get_close_obs()</em>. If the list changes,
-<em class="code">get_close_obs_destroy()</em> must be called, and
-both the initialization routines must be called again. It allocates
-space so it is necessary to call <em class=
-"code">get_close_obs_destroy</em> when completely done with getting
-distances between locations.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">gc</em></td>
-<td>Structure that contains data to efficiently find locations
-close to a given location.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">num</em></td>
-<td>The number of locations in the list.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">obs</em></td>
-<td>The locations of each element in the list, not used in 1D
-implementation.</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="get_close_obs" id="get_close_obs"></a><br>
-<div class="routine"><em class="call">call get_close_obs(gc,
-base_obs_loc, base_obs_kind, obs, obs_kind, num_close, close_ind,
-dist)</em>
-<pre>
-type(get_close_type),              intent(in)  :: <em class=
-"code">gc</em>
-type(location_type),               intent(in)  :: <em class=
-"code">base_obs_loc</em>
-integer,                           intent(in)  :: <em class=
-"code">base_obs_kind</em>
-type(location_type), dimension(:), intent(in)  :: <em class=
-"code">obs</em>
-integer,             dimension(:), intent(in)  :: <em class=
-"code">obs_kind</em>
-integer,                           intent(out) :: <em class=
-"code">num_close</em>
-integer,             dimension(:), intent(out) :: <em class=
-"code">close_ind</em>
-real(r8), optional,  dimension(:), intent(out) :: <em class=
-"optionalcode">dist</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Given a single location and a list of other locations, returns
-the indices of all the locations close to the single one along with
-the number of these and the distances for the close ones. The list
-of locations passed in via the <em class="code">obs</em> argument
-must be identical to the list of <em class="code">obs</em> passed
-into the most recent call to <em class=
-"code">get_close_obs_init()</em>. If the list of locations of
-interest changes <em class="code">get_close_obs_destroy()</em> must
-be called and then the two initialization routines must be called
-before using <em class="code">get_close_obs()</em> again.</p>
-<p>If called without the optional <em class=
-"optionalcode">dist</em> argument, all locations that are
-potentially close are returned, which is likely a superset of the
-locations that are within the threshold distance specified in the
-<em class="code">get_close_maxdist_init()</em> call. This can be
-useful to collect a list of potential locations, and then to
-convert all the vertical coordinates into one consistent unit
-(pressure, height in meters, etc), and then the list can be looped
-over, calling get_dist() directly to get the exact distance, either
-including vertical or not depending on the setting of <em class=
-"code">horiz_dist_only</em>.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">gc</em></td>
-<td>Structure to allow efficient identification of locations close
-to a given location.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">base_obs_loc</em></td>
-<td>Single given location.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">base_obs_kind</em></td>
-<td>Kind of the single location.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">obs</em></td>
-<td>List of locations from which close ones are to be found.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">obs_kind</em></td>
-<td>Kind associated with locations in obs list.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">num_close</em></td>
-<td>Number of locations close to the given location.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">close_ind</em></td>
-<td>Indices of those locations that are close.</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">dist</em></td>
-<td>Distance between given location and the close ones identified
-in close_ind.</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="get_close_obs_destroy" id=
-"get_close_obs_destroy"></a><br>
-<div class="routine"><em class="call">call
-get_close_obs_destroy(gc)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class="code">gc</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Releases memory associated with the <em class="code">gc</em>
-derived type. Must be called whenever the list of locations
-changes, and then <em class="code">get_close_maxdist_init</em> and
-<em class="code">get_close_obs_init</em> must be called again with
-the new locations list.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">gc</em></td>
-<td>Data for efficiently finding close locations.</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="get_dist" id="get_dist"></a><br>
-<div class="routine"><em class="call">var = get_dist(loc1, loc2,
-<em class="optionalcode">[, kind1, kind2, no_vert]</em>)</em>
-<pre>
-real(r8)                        :: get_dist
-type(location_type), intent(in) :: <em class="code">loc1</em>
-type(location_type), intent(in) :: <em class="code">loc2</em>
-integer, optional,   intent(in) :: <em class=
-"optionalcode">kind1</em>
-integer, optional,   intent(in) :: <em class=
-"optionalcode">kind2</em>
-logical, optional,   intent(in) :: <em class=
-"optionalcode">no_vert </em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns the distance between two locations in radians. If
-<em class="code">horiz_dist_only</em> is set to .TRUE. in the
-locations namelist, it computes great circle distance on sphere. If
-<em class="code">horiz_dist_only</em> is false, then it computes an
-ellipsoidal distance with the horizontal component as above and the
-vertical distance determined by the types of the locations and the
-normalization constants set by the namelist for the different
-vertical coordinate types. The vertical normalization gives the
-vertical distance that is equally weighted as a horizontal distance
-of 1 radian. If <em class="optionalcode">no_vert</em> is present,
-it overrides the value in the namelist and controls whether
-vertical distance is included or not.</p>
-<p>The kind arguments are not used by the default location code,
-but are available to any user-supplied distance routines which want
-to do specialized calculations based on the kinds associated with
-each of the two locations.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">loc1</em></td>
-<td>First of two locations to compute distance between.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc2</em></td>
-<td>Second of two locations to compute distance between.</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">kind1</em></td>
-<td>DART kind associated with location 1.</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">kind2</em></td>
-<td>DART kind associated with location 2.</td>
-</tr>
-<tr>
-<td valign="top"><em class="optionalcode">no_vert</em></td>
-<td>If true, no vertical component to distance. If false, vertical
-component is included.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">var</em></td>
-<td>distance between loc1 and loc2.</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="vert_is_undef" id="vert_is_undef"></a><br>
-<div class="routine"><em class="call">var = vert_is_undef(loc)</em>
-<pre>
-logical                         :: <em class=
-"code">vert_is_undef</em>
-type(location_type), intent(in) :: <em class="code">loc</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns true if which_vert is set to undefined, else false. The
-meaning of 'undefined' is specific; it means there is no particular
-vertical location associated with this type of measurement; for
-example a column-integrated value.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">vert_is_undef</em></td>
-<td>Returns true if vertical coordinate is set to undefined.</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc</em></td>
-<td>A location type</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="vert_is_surface" id="vert_is_surface"></a><br>
-<div class="routine"><em class="call">var =
-vert_is_surface(loc)</em>
-<pre>
-logical                         :: <em class=
-"code">vert_is_surface</em>
-type(location_type), intent(in) :: <em class="code">loc</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns true if which_vert is for surface, else false.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">vert_is_surface</em></td>
-<td>Returns true if vertical coordinate type is surface</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc</em></td>
-<td>A location type</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="vert_is_pressure" id="vert_is_pressure"></a><br>
-<div class="routine"><em class="call">var =
-vert_is_pressure(loc)</em>
-<pre>
-logical                         :: <em class=
-"code">vert_is_pressure</em>
-type(location_type), intent(in) :: <em class="code">loc</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns true if which_vert is for pressure, else false.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">vert_is_pressure</em></td>
-<td>Returns true if vertical coordinate type is pressure</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc</em></td>
-<td>A location type</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="vert_is_scale_height" id="vert_is_scale_height"></a><br>
-<div class="routine"><em class="call">var =
-vert_is_scale_height(loc)</em>
-<pre>
-logical                         :: <em class=
-"code">vert_is_scale_height</em>
-type(location_type), intent(in) :: <em class="code">loc</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns true if which_vert is for scale_height, else false.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">vert_is_scale_height</em></td>
-<td>Returns true if vertical coordinate type is scale_height</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc</em></td>
-<td>A location type</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="vert_is_level" id="vert_is_level"></a><br>
-<div class="routine"><em class="call">var = vert_is_level(loc)</em>
-<pre>
-logical                         :: <em class=
-"code">vert_is_level</em>
-type(location_type), intent(in) :: <em class="code">loc</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns true if which_vert is for level, else false.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">vert_is_level</em></td>
-<td>Returns true if vertical coordinate type is level</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc</em></td>
-<td>A location type</td>
-</tr>
-</table>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="vert_is_height" id="vert_is_height"></a><br>
-<div class="routine"><em class="call">var =
-vert_is_height(loc)</em>
-<pre>
-logical                         :: <em class=
-"code">vert_is_height</em>
-type(location_type), intent(in) :: <em class="code">loc</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns true if which_vert is for height, else false.</p>
-<table width="100%" border="0" summary="" cellpadding="3">
-<tr>
-<td valign="top"><em class="code">vert_is_height</em></td>
-<td>Returns true if vertical coordinate type is height</td>
-</tr>
-<tr>
-<td valign="top"><em class="code">loc</em></td>
-<td>A location type</td>
-</tr>
-</table>
-</div>
-<br>
-<!--=============== DESCRIPTION OF A ROUTINE =================-->
- <a name="has_vertical_localization" id=
-"has_vertical_localization"></a><br>
-<div class="routine"><em class="call">var =
-has_vertical_localization()</em>
-<pre>
-logical :: has_vertical_localization
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns .TRUE. if the namelist variable <em class=
-"code">horiz_dist_only</em> is .FALSE. meaning that vertical
-separation between locations is going to be computed by <em class=
-"code">get_dist()</em> and by <em class=
-"code">get_close_obs()</em>.</p>
-<p>This routine should perhaps be renamed to something like
-'using_vertical_for_distance' or something similar. The current use
-for it is in the localization code inside filter, but that doesn't
-make this a representative function name. And at least in current
-usage, returning the opposite setting of the namelist item makes
-the code read more direct (fewer double negatives).</p>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="equal" id="equal"></a><br>
-<div class="routine"><em class="call">loc1 == loc2</em>
-<pre>
-type(location_type), intent(in) :: <em class="code">loc1, loc2</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns true if the two location types have identical values,
-else false.</p>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="not_equal" id="not_equal"></a><br>
-<div class="routine"><em class="call">loc1 /= loc2</em>
-<pre>
-type(location_type), intent(in) :: <em class="code">loc1, loc2</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Returns true if the two location types do NOT have identical
-values, else false.</p>
-</div>
-<br>
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
- <a name="vert_constants" id="vert_constants"></a><br>
-<div class="routine">
-<pre>
-<em class="call">integer, parameter :: VERTISUNDEF       = -2</em>
-<em class="call">integer, parameter :: VERTISSURFACE     = -1</em>
-<em class="call">integer, parameter :: VERTISLEVEL       =  1</em>
-<em class="call">integer, parameter :: VERTISPRESSURE    =  2</em>
-<em class="call">integer, parameter :: VERTISHEIGHT      =  3</em>
-<em class="call">integer, parameter :: VERTISSCALEHEIGHT =  4</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>Constant parameters used to differentiate vertical types.</p>
-</div>
-<br>
-<!--=============== DESCRIPTION OF A PUBLIC CONSTANT =================-->
- <a name="LocationDims" id="LocationDims"></a><br>
-<div class="routine">
-<pre>
-<em class="call">integer, parameter :: LocationDims = 3</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>This is a <b>constant</b>. Contains the number of real values in
-a location type. Useful for output routines that must deal
-transparently with many different location modules.</p>
-</div>
-<br>
-<!--=============== DESCRIPTION OF A PUBLIC CONSTANT =================-->
- <a name="LocationName" id="LocationName"></a><br>
-<div class="routine">
-<pre>
-<em class=
-"call">character(len=129), parameter :: LocationName = "loc3Dsphere"</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>This is a <b>constant</b>. A parameter to identify this location
-module in output metadata.</p>
-</div>
-<br>
-<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
- <a name="LocationLName" id="LocationLName"></a><br>
-<div class="routine">
-<pre>
-<em class=
-"call">character(len=129), parameter :: LocationLName = <br>
-       "threed sphere locations: lon, lat, vertical"</em>
-</pre></div>
-<div class="indent1"><!-- Description -->
-<p>This is a <b>constant</b>. A parameter set to "threed sphere
-locations: lon, lat, vertical" used to identify this location
-module in output long name metadata.</p>
-</div>
-<br>
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
- <a name="FilesUsed" id="FilesUsed"></a>
-<div class="top">[<a href="#">top</a>]</div>
-<hr>
-<h2>FILES</h2>
-<table border="0">
-<tr>
-<th>filename</th>
-<th>purpose</th>
-</tr>
-<tr>
-<td>input.nml</td>
-<td>to read the location_mod namelist</td>
-</tr>
-</table>
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
-<a name="References" id="References"></a>
-<div class="top">[<a href="#">top</a>]</div>
-<hr>
-<h2>REFERENCES</h2>
-<ol>
-<li>none</li>
-</ol>
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-<a name="Errors" id="Errors"></a>
-<div class="top">[<a href="#">top</a>]</div>
-<hr>
-<h2>ERROR CODES and CONDITIONS</h2>
-<div class="errors">
-<table border="1" cellspacing="1" cellpadding="10" width="100%">
-<tr>
-<th>Routine</th>
-<th>Message</th>
-<th>Comment</th>
-</tr>
-<tr><!-- routine -->
-<td valign="top">initialize_module</td>
-<!-- message -->
-<td valign="top">nlon must be odd</td>
-<!-- comment -->
-<td valign="top">Tuning parameter for number of longitude boxes
-must be odd for algorithm to function.</td>
-</tr>
-<tr><!-- routine -->
-<td valign="top">get_dist</td>
-<!-- message -->
-<td valign="top">Dont know how to compute vertical distance for
-unlike vertical coordinates</td>
-<!-- comment -->
-<td valign="top">Need same which_vert for distances.</td>
-</tr>
-<tr><!-- routine -->
-<td valign="top">set_location</td>
-<!-- message -->
-<td valign="top">longitude (#) is not within range [0,360]</td>
-<!-- comment -->
-<td valign="top">Is it really a longitude?</td>
-</tr>
-<tr><!-- routine -->
-<td valign="top">set_location</td>
-<!-- message -->
-<td valign="top">latitude (#) is not within range [-90,90]</td>
-<!-- comment -->
-<td valign="top">Is it really a latitude?</td>
-</tr>
-<tr><!-- routine -->
-<td valign="top">set_location</td>
-<!-- message -->
-<td valign="top">which_vert (#) must be one of -2, -1, 1, 2, 3, or
-4</td>
-<!-- comment -->
-<td valign="top">Vertical coordinate type restricted to:<br>
--2 = no specific vertical location<br>
--1 = surface value<br>
-1 = (model) level<br>
-2 = pressure<br>
-3 = height<br>
-4 = scale height<br></td>
-</tr>
-<tr><!-- routine -->
-<td valign="top">read_location</td>
-<!-- message -->
-<td valign="top">Expected location header "loc3d" in input file,
-got ___</td>
-<!-- comment -->
-<td valign="top">Vertical coordinate confusion involving NetCDF
-file.</td>
-</tr>
-<tr><!-- routine -->
-<td valign="top">nc_write_location</td>
-<!-- message -->
-<td valign="top">Various NetCDF-f90 interface error messages</td>
-<!-- comment -->
-<td valign="top">From one of the NetCDF calls in
-nc_write_location</td>
-</tr>
-</table>
-</div>
-<h2>KNOWN BUGS</h2>
-<p>The Hawaii and Workshop versions of this module had an error in
-the approximate distance computation. The available values in the
-lookup table for cosine were insufficient for some cases. This
-manifested itself as potential errors, most commonly for computing
-distances near the poles. For relatively small horizontal
-localizations, this problem only occurred for locations very near
-the pole.</p>
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-<a name="FuturePlans" id="FuturePlans"></a>
-<div class="top">[<a href="#">top</a>]</div>
-<hr>
-<h2>FUTURE PLANS</h2>
-<p>Need to provide more efficient algorithms for getting close
-locations and document the nlon and nlat choices and their impact
-on cost.</p>
-<p>The collection of 'val = vert_is_xxx()' routines should probably
-be replaced by a single call 'val = vert_is(loc, VERTISxxx)'.</p>
-<p>See the note in the 'has_vertical_localization()' about a better
-name for this routine.</p>
-<p>The functions of 'get_close_maxdist_init()' and
-'get_close_obs_init()' appear to be able to be combined into a
-single init routine. This impacts all model_mods, however, since
-they can intercept these routines. Doing this will be a
-non-backwards compatible change.</p>
-<p>The use of 'obs' in all these routine names should probably be
-changed to 'loc' since there is no particular dependence that they
-be observations. They may need to have an associated DART kind, but
-these routines are used for DART state vector entries so it's often
-misleading to call them 'obs'.</p>
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-<a name="PrivateComponents" id="PrivateComponents"></a>
-<div class="top">[<a href="#">top</a>]</div>
-<hr>
-<h2>PRIVATE COMPONENTS</h2>
-<p>N/A</p>
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-<a name="Legalese" id="Legalese"></a>
-<div class="top">[<a href="#">top</a>]</div>
-<hr>
-<h2>Terms of Use</h2>
-<p>DART software - Copyright UCAR. This open source software is
-provided by UCAR, "as is", without charge, subject to all terms of
-use at <a href=
-"http://www.image.ucar.edu/DAReS/DART/DART_download">http://www.image.ucar.edu/DAReS/DART/DART_download</a></p>
-<!--==================================================================-->
-</body>
-</html>
+THIS HAS NOT BEEN UPDATED YET - ONLY COPIED FROM 3D SPHERE VERSION
+
+THIS HAS NOT BEEN UPDATED YET - ONLY COPIED FROM 3D SPHERE VERSION
+
+The DART framework needs to be able to compute distances between locations, to pass location information to and from the
+model interface code (model_mod.f90), and to be able to read and write location information to files. DART isolates all
+this location information into separate modules so that the main algorithms can operate with the same code independent
+of whether the model uses latitude/longitude/height, 1D unit sphere coordinates, cylindrical coordinates, etc. DART
+provides about half a dozen possible coordinate systems, and others can be added. The most common one for geophysical
+models is this one: threed_sphere.
+
+This location module provides a representation of a physical location on a 3-D spherical shell, using latitude and
+longitude plus a vertical component with choices of vertical coordinate type such as pressure or height in meters. A
+type that abstracts the location is provided along with operators to set, get, read, write, and compute distances
+between locations. This is a member of a class of similar location modules that provide the same abstraction for
+different represenations of physical space.
+
+Location-independent code
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+All types of location modules define the same module name ``location_mod``. Therefore, the DART framework and any user
+code should include a Fortran 90 ``use`` statement of ``location_mod``. The selection of which location module will be
+compiled into the program is controlled by which source file name is specified in the ``path_names_xxx`` file, which is
+used by the ``mkmf_xxx`` scripts.
+
+All types of location modules define the same Fortran 90 derived type ``location_type``. Programs that need to pass
+location information to subroutines but do not need to interpret the contents can declare, receive, and pass this
+derived type around in their code independent of which location module is specified at compile time. Model and
+location-independent utilities should be written in this way. However, as soon as the contents of the location type
+needs to be accessed by user code then it becomes dependent on the exact type of location module that it is compiled
+with.
+
+Usage of distance routines
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Regardless of the fact that the distance subroutine names include the string 'obs', there is nothing specific to
+observations in these routines. They work to compute distances between any set of locations. The most frequent use of
+these routines in the filter code is to compute the distance between a single observation and items in the state vector,
+and also between a single observation and other nearby observations. However, any source for locations is supported.
+
+In simpler location modules (like the ``oned`` version) there is no need for anything other than a brute force search
+between the base location and all available state vector locations. However in the case of large geophysical models
+which typically use the ``threed_sphere`` locations code, the brute-force search time is prohibitive. The location code
+pre-processes all locations into a set of *bins* and then only needs to search the lists of locations in nearby bins
+when looking for locations that are within a specified distance.
+
+The expected calling sequence of the ``get_close`` routines is as follows:
+
+::
+
+
+   call get_close_maxdist_init()  ! is called before get_close_obs_init()
+   call get_close_obs_init()
+
+   call get_close_obs()           ! called many, many times
+
+   call get_close_obs_destroy()
+
+In the ``threed_sphere`` implementation the first routine initializes some data structures, the second one bins up the
+list of locations, and then the third one is called multiple times to find all locations within a given radius of some
+reference location, and to optionally compute the exact separation distance from the reference location. The last
+routine deallocates the space. See the documentation below for the specific details for each routine.
+
+All 4 of these routines must be present in every location module but in most other versions all but ``get_close_obs()``
+are stubs. In this ``threed_sphere`` version of the locations module all are fully implemented.
+
+Interaction with model_mod.f90 code
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The filter and other DART programs could call the ``get_close`` routines directly, but typically do not. They declare
+them (in a ``use`` statement) to be in the ``model_mod`` module, and all model interface modules are required to supply
+them. However in many cases the model_mod only needs to contain another ``use`` statement declaring them to come from
+the ``location_mod`` module. Thus they 'pass through' the model_mod but the user does not need to provide a subroutine
+or any code for them.
+
+However, if the model interface code wants to intercept and alter the default behavior of the get_close routines, it is
+able to. Typically the model_mod still calls the location_mod routines and then adjusts the results before passing them
+back to the calling code. To do that, the model_mod must be able to call the routines in the location_mod which have the
+same names as the subroutines it is providing. To allow the compiler to distinguish which routine is to be called where,
+we use the Fortran 90 feature which allows a module routine to be renamed in the use statement. For example, a common
+case is for the model_mod to want to supply additions to the get_close_obs() routine only. At the top of the model_mod
+code it would declare:
+
+::
+
+
+   use location_mod, only :: location_get_close_obs => get_close_obs,    &
+                             get_close_maxdist_init, get_close_obs_init, &
+                             get_close_obs_destroy
+
+That makes calls to the maxdist_init, init, and destroy routines simply pass through to the code in the location_mod,
+but the model_mod must supply a get_close_obs() subroutine. When it wants to call the code in the location_mod it calls
+``location_get_close_obs()``.
+
+One use pattern is for the model_mod to call the location get_close_obs() routine without the ``dist`` argument. This
+returns a list of any potentially close locations without computing the exact distance from the base location. At this
+point the list of locations is a copy and the model_mod routine is free to alter the list in any way it chooses: it can
+change the locations to make certain types of locations appear closer or further away from the base location; it can
+convert the vertical coordinates into a common coordinate type so that calls to the ``get_dist()`` routine can do full
+3d distance computations and not just 2d (the vertical coordinates must match between the base location and the
+locations in the list in order to compute a 3d distance). Then typically the model_mod code loops over the list calling
+the ``get_dist()`` routine to get the actual distances to be returned to the calling code. To localize in the vertical
+in a particular unit type, this is the place where the conversion to that vertical unit should be done.
+
+Horizontal distance only
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+If *horiz_distance_only* is .true. in the namelist, then the vertical coordinate is ignored and only the great-circle
+distance between the two locations is computed, as if they were both on the surface of the sphere.
+
+If *horiz_distance_only* is .false. in the namelist then the appropriate normalization constant determines the relative
+impact of vertical and horizontal separation. Since only a single localization distance is specified, and the vertical
+scales might have very different distance characteristics, the vert_normalization_xxx values can be used to scale the
+vertical appropriately to control the desired influence of observations in the vertical.
+
+Precomputation for run-time search efficiency
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For search efficiency all locations are pre-binned. The surface of the sphere is divided up into *nlon* by *nlat* boxes
+and the index numbers of all items (both state vector entries and observations) are stored in the appropriate box. To
+locate all points close to a given location, only the locations listed in the boxes within the search radius must be
+checked. This speeds up the computations, for example, when localization controls which state vector items are impacted
+by any given observation. The search radius is the localization distance and only those state vector items in boxes
+closer than the radius to the observation location are processed.
+
+The default values have given good performance on many of our existing model runs, but for tuning purposes the box
+counts have been added to the namelist to allow adjustment. By default the code prints some summary information about
+how full the average box is, how many are empty, and how many items were in the box with the largest count. The namelist
+value *output_box_info* can be set to .true. to get even more information about the box statistics. The best performance
+will be obtained somewhere between two extremes; the worst extreme is all the points are located in just a few boxes.
+This degenerates into a (slow) linear search through the index list. The other extreme is a large number of empty or
+sparsely filled boxes. The overhead of creating, managing, and searching a long list of boxes will impact performance.
+The best performance lies somewhere in the middle, where each box contains a reasonable number of values, more or less
+evenly distributed across boxes. The absolute numbers for best performance will certainly vary from case to case.
+
+For latitude, the *nlat* boxes are distributed evenly across the actual extents of the data. (Locations are in radians,
+so the maximum limits are the poles at :math:`-\pi/2` and :math:`+\pi/2`. For longitude, the code automatically determines if the data is
+spread around more than half the sphere, and if so, the boxes are distributed evenly across the entire sphere (longitude
+range :math:`0` to :math:`2\pi`). If the data spans less than half the sphere in longitude, the actual extent of the data is determined
+(including correctly handling the cyclic boundary at :math:`0`) and the boxes are distributed only within the data extent. This
+simplifies the actual distance calculations since the distance from the minimum longitude box to the maximum latitude
+box cannot be shorter going the other way around the sphere. In practice, for a global model the boxes are evenly
+distributed across the entire surface of the sphere. For local or regional models, the boxes are distributed only across
+the the extent of the local grid.
+
+For efficiency in the case where the boxes span less than half the globe, the 3D location module needs to be able to
+determine the greatest longitude difference between a base point at latitude :math:`\phi_s` and all points that are separated from
+that point by a central angle of :math:`\theta`. We might also want to know the latitude, :math:`\phi_f`, at which the largest separation
+occurs. Note also that an intermediate form below allows the computation of the maximum longitude difference at a
+particular latitude.
+
+The central angle between a point at latitude :math:`\phi_s` and a second point at latitude :math:`\phi_f` that are separated in longitude
+by :math:`\Delta\lambda` is:
+
+.. math::
+
+   \theta = cos^{-1}(sin\phi_s sin\phi_f + cos\phi_s cos\phi_f cos\Delta\lambda)
+
+Taking the :math:`cos` of both sides gives:
+
+.. math::
+
+   cos\theta = (sin\phi_s sin\phi_f + cos\phi_s cos\phi_f cos\Delta\lambda)
+
+Solving for :math:`cos\Delta\lambda` gives:
+
+.. math::
+
+   cos\Delta\lambda = \frac{a-bsin\phi_f}{c cos\phi_f}
+
+   cos\Delta\lambda = \frac{a}{c sec\phi_f}-\frac{b}{c tan\phi_f}
+
+where :math:`a = cos\theta`, :math:`b = sin\phi_s`, and :math:`c = cos\phi_s`. We want to maximize :math:`\Delta\lambda` which
+implies minimizing :math:`cos\Delta\lambda` subject to constraints.
+
+Taking the derivative with respect to :math:`\phi_f` gives:
+
+.. math::
+
+   \frac{d cos\Delta\lambda}{d\phi_f} = \frac{a}{c sec\phi_f tan\phi_f}-\frac{b}{c sec^2\phi_f}=0
+
+Factoring out :math:`sec\phi_f` which can never be :math:`0` and using the definitions of :math:`sec` and :math:`tan` gives:
+
+.. math::
+
+   \frac{a sin\phi_f}{c cos\phi_f}-\frac{b}{c cos\phi_f}=0
+
+Solving in the constrained range from :math:`0` to :math:`\pi/2` gives:
+
+.. math::
+
+   sin\phi_f = \frac{b}{a}=\frac{sin\phi_s}{cos\theta}
+
+So knowing base point (:math:`\phi_s`, :math:`\lambda_s`), latitude :math:`\phi_f`, and distance :math:`\theta` we can
+use the great circle equation to find the longitude difference at the greatest separation point:
+
+.. math::
+
+   \Delta\lambda = cos^{-1}\left(\frac{a- b sin\phi_f}{c cos\phi_f}\right)
+
+Note that if the angle between the base point and a pole is less than or equal to the central angle, all longitude
+differences will occur as the pole is approached.
+
+Namelist
+--------
+
+This namelist is read from the file ``input.nml``. Namelists start with an ampersand ``&`` and terminate with a slash ``/``.
+Character strings that contain a ``/`` must be enclosed in quotes to prevent them from prematurely terminating the
+namelist.
+
+::
+
+   &location_nml
+      use_octree      = .false.
+      nboxes          = 1000
+      maxdepth        = 4
+      filled          = 10
+      output_box_info = .false.
+      print_box_level = 0
+      compare_to_correct = .false.
+   /
+
+|
+
+Items in this namelist either control the way in which distances are computed and/or influence the code performance.
+
+ +--------------------+---------+-------------------------------------------------------------------------------------+
+ | Item               | Type    | Description                                                                         |
+ +====================+=========+=====================================================================================+
+ | use_octree         | logical | There are two variations of search code. For now, this must be set to .false.       |
+ +--------------------+---------+-------------------------------------------------------------------------------------+
+ | nboxes             | integer | An optimization parameter which controls how many boxes the space is divided up     |
+ |                    |         | into for precomputing nearby points. Larger numbers use more memory but may make    |
+ |                    |         | searching faster if the model contains a large grid.                                |
+ +--------------------+---------+-------------------------------------------------------------------------------------+
+ | filled             | integer | An optimization parameter for the octree code. Set the lower item count limit where |
+ |                    |         | a box no longer splits.                                                             |
+ +--------------------+---------+-------------------------------------------------------------------------------------+
+ | output_box_info    | logical | If true, print more details about the distribution of locations across the array of |
+ |                    |         | boxes.                                                                              |
+ +--------------------+---------+-------------------------------------------------------------------------------------+
+ | print_box_level    | integer | If output_box_info is true, controls the amount of output.                          |
+ +--------------------+---------+-------------------------------------------------------------------------------------+
+ | compare_to_correct | logical | If true do an exhaustive (and slow) search to ensure the results are the same as    |
+ |                    |         | using optimized search code. Should only be used for debugging.                     |
+ +--------------------+---------+-------------------------------------------------------------------------------------+
+
+|
+
+Other modules used
+------------------
+
+::
+
+   types_mod
+   utilities_mod
+   random_seq_mod
+
+Public interfaces
+-----------------
+
+============================ ======================
+``use location_mod, only :`` location_type
+\                            get_close_type
+\                            get_location
+\                            set_location
+\                            write_location
+\                            read_location
+\                            interactive_location
+\                            set_location_missing
+\                            query_location
+\                            get_close_maxdist_init
+\                            get_close_obs_init
+\                            get_close_obs
+\                            get_close_obs_destroy
+\                            get_dist
+\                            LocationDims
+\                            LocationName
+\                            LocationLName
+\                            horiz_dist_only
+\                            vert_is_undef
+\                            vert_is_surface
+\                            vert_is_pressure
+\                            vert_is_scale_height
+\                            vert_is_level
+\                            vert_is_height
+\                            VERTISUNDEF
+\                            VERTISSURFACE
+\                            VERTISLEVEL
+\                            VERTISPRESSURE
+\                            VERTISHEIGHT
+\                            VERTISSCALEHEIGHT
+\                            operator(==)
+\                            operator(/=)
+============================ ======================
+
+Namelist interface ``&location_nml`` must be read from file ``input.nml``.
+
+A note about documentation style. Optional arguments are enclosed in brackets *[like this]*.
+
+|
+
+.. container:: type
+
+   *type location_type*
+   ::
+
+         private
+         real(r8) :: lon, lat, vloc
+         integer  :: which_vert
+      end type location_type
+
+.. container:: indent1
+
+   Provides an abstract representation of physical location on a three-d spherical shell.
+
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | Component  | Description                                                                                            |
+   +============+========================================================================================================+
+   | lon        | longitude in radians                                                                                   |
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | lat        | latitude in radians                                                                                    |
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | vloc       | vertical location, units as selected by which_vert                                                     |
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | which_vert | type of vertical location: -2=no specific vert location; -1=surface; 1=level; 2=pressure; 3=height,    |
+   |            | 4=scale height                                                                                         |
+   +------------+--------------------------------------------------------------------------------------------------------+
+
+   The vertical types have parameters defined for them so they can be referenced by name instead of number.
+
+|
+
+.. container:: type
+
+   *type get_close_type*
+   ::
+
+         private
+         integer  :: num
+         real(r8) :: maxdist
+         integer, pointer :: lon_offset(:, :)
+         integer, pointer :: obs_box(:)
+         integer, pointer :: count(:, :)
+         integer, pointer :: start(:, :)
+      end type get_close_type
+
+.. container:: indent1
+
+   Provides a structure for doing efficient computation of close locations.
+
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | Component  | Description                                                                                            |
+   +============+========================================================================================================+
+   | num        | Number of locations in list                                                                            |
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | maxdist    | Threshhold distance. Anything closer is close.                                                         |
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | lon_offset | Dimensioned nlon by nlat. For a given offset in longitude boxes and difference in latitudes, gives max |
+   |            | distance from base box to a point in offset box.                                                       |
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | obs_box    | Dimensioned num. Gives index of what box each location is in.                                          |
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | count      | Dimensioned nlon by nlat. Number of obs in each box.                                                   |
+   +------------+--------------------------------------------------------------------------------------------------------+
+   | start      | Dimensioned nlon by nlat. Index in straight storage list where obs in each box start.                  |
+   +------------+--------------------------------------------------------------------------------------------------------+
+
+|
+
+.. container:: routine
+
+   *var = get_location(loc)*
+   ::
+
+      real(r8), dimension(3)          :: get_location
+      type(location_type), intent(in) :: loc
+
+.. container:: indent1
+
+   Extracts the longitude and latitude (converted to degrees) and the vertical location from a location type and returns
+   in a 3 element real array.
+
+   ================ =============================================================
+   ``get_location`` The longitude and latitude (in degrees) and vertical location
+   ``loc``          A location type
+   ================ =============================================================
+
+|
+
+.. container:: routine
+
+   *var = set_location(lon, lat, vert_loc, which_vert)*
+   ::
+
+      type(location_type)   :: set_location
+      real(r8), intent(in)    :: lon
+      real(r8), intent(in)    :: lat
+      real(r8), intent(in)    :: vert_loc
+      integer,  intent(in)    :: which_vert
+
+.. container:: indent1
+
+   Returns a location type with the input longitude and latitude (input in degrees) and the vertical location of type
+   specified by which_vert.
+
+   ================ ============================================
+   ``set_location`` A location type
+   ``lon``          Longitude in degrees
+   ``lat``          Latitude in degrees
+   ``vert_loc``     Vertical location consistent with which_vert
+   ``which_vert``   The vertical location type
+   ================ ============================================
+
+|
+
+.. container:: routine
+
+   *call write_location(locfile, loc [, fform, charstring])*
+   ::
+
+      integer,               intent(in)       ::  locfile
+      type(location_type),   intent(in)       ::  loc
+      character(len=*), optional, intent(in)  ::  fform
+      character(len=*), optional, intent(out) ::  charstring
+
+.. container:: indent1
+
+   Given an integer IO channel of an open file and a location, writes the location to this file. The *fform* argument
+   controls whether write is "FORMATTED" or "UNFORMATTED" with default being formatted. If the final *charstring*
+   argument is specified, the formatted location information is written to the character string only, and the
+   ``locfile`` argument is ignored.
+
+   +--------------+------------------------------------------------------------------------------------------------------+
+   | ``locfile``  | the unit number of an open file.                                                                     |
+   +--------------+------------------------------------------------------------------------------------------------------+
+   | ``loc``      | location type to be written.                                                                         |
+   +--------------+------------------------------------------------------------------------------------------------------+
+   | *fform*      | Format specifier ("FORMATTED" or "UNFORMATTED"). Default is "FORMATTED" if not specified.            |
+   +--------------+------------------------------------------------------------------------------------------------------+
+   | *charstring* | Character buffer where formatted location string is written if present, and no output is written to  |
+   |              | the file unit.                                                                                       |
+   +--------------+------------------------------------------------------------------------------------------------------+
+
+|
+
+.. container:: routine
+
+   *var = read_location(locfile [, fform])*
+   ::
+
+      type(location_type)                    :: read_location
+      integer, intent(in)                    :: locfile
+      character(len=*), optional, intent(in) :: fform
+
+.. container:: indent1
+
+   Reads a location_type from a file open on channel locfile using format *fform* (default is formatted).
+
+   ================= ==============================================================================
+   ``read_location`` Returned location type read from file
+   ``locfile``       Integer channel opened to a file to be read
+   *fform*           Optional format specifier ("FORMATTED" or "UNFORMATTED"). Default "FORMATTED".
+   ================= ==============================================================================
+
+|
+
+.. container:: routine
+
+   *call interactive_location(location [, set_to_default])*
+   ::
+
+      type(location_type), intent(out) :: location
+      logical, optional, intent(in)    :: set_to_default
+
+.. container:: indent1
+
+   Use standard input to define a location type. With set_to_default true get one with all elements set to 0.
+
+   ================ ================================================
+   ``location``     Location created from standard input
+   *set_to_default* If true, sets all elements of location type to 0
+   ================ ================================================
+
+|
+
+.. container:: routine
+
+   *var = query_location(loc [, attr])*
+   ::
+
+      real(r8)                               :: query_location
+      type(location_type), intent(in)        :: loc
+      character(len=*), optional, intent(in) :: attr
+
+.. container:: indent1
+
+   Returns the value of which_vert, latitude, longitude, or vertical location from a location type as selected by the
+   string argument attr. If attr is not present or if it is 'WHICH_VERT', the value of which_vert is converted to real
+   and returned. Otherwise, attr='LON' returns longitude, attr='LAT' returns latitude and attr='VLOC' returns the
+   vertical location.
+
+   ================== =================================================================================
+   ``query_location`` Returns longitude, latitude, vertical location, or which_vert (converted to real)
+   ``loc``            A location type
+   *attr*             Selects 'WHICH_VERT', 'LON', 'LAT' or 'VLOC'
+   ================== =================================================================================
+
+|
+
+.. container:: routine
+
+   *var = set_location_missing()*
+   ::
+
+      type(location_type) :: set_location_missing
+
+.. container:: indent1
+
+   Returns a location with all elements set to missing values defined in types module.
+
+   ======================== ==================================================
+   ``set_location_missing`` A location with all elements set to missing values
+   ======================== ==================================================
+
+|
+
+.. container:: routine
+
+   *call get_close_maxdist_init(gc,maxdist, [maxdist_list])*
+   ::
+
+      type(get_close_type), intent(inout) :: gc
+      real(r8), intent(in)                :: maxdist
+      real(r8), intent(in), optional      :: maxdist_list(:)
+
+.. container:: indent1
+
+   Sets the threshhold distance. ``maxdist`` is in units of radians. Anything closer than this is deemed to be close.
+   This routine must be called first, before the other ``get_close`` routines. It allocates space so it is necessary to
+   call ``get_close_obs_destroy`` when completely done with getting distances between locations.
+
+   If the last optional argument is not specified, maxdist applies to all locations. If the last argument is specified,
+   it must be a list of exactly the length of the number of specific types in the obs_kind_mod.f90 file. This length can
+   be queried with the `get_num_types_of_obs() <../../modules/observations/obs_kind_mod.html#get_num_types_of_obs>`__
+   function to get count of obs types. It allows a different maximum distance to be set per base type when get_close()
+   is called.
+
+   +-------------+-------------------------------------------------------------------------------------------------------+
+   | ``gc``      | Data for efficiently finding close locations.                                                         |
+   +-------------+-------------------------------------------------------------------------------------------------------+
+   | ``maxdist`` | Anything closer than this number of radians is a close location.                                      |
+   +-------------+-------------------------------------------------------------------------------------------------------+
+   | *maxdist*   | If specified, must be a list of real values. The length of the list must be exactly the same length   |
+   |             | as the number of observation types defined in the obs_def_kind.f90 file. (See                         |
+   |             | `get_num_types_of_obs() <../../modules/observations/obs_kind_mod.html#get_num_types_of_obs>`__ to get |
+   |             | count of obs types.) The values in this list are used for the obs types as the close distance instead |
+   |             | of the maxdist argument.                                                                              |
+   +-------------+-------------------------------------------------------------------------------------------------------+
+
+|
+
+.. container:: routine
+
+   *call get_close_obs_init(gc, num, obs)*
+   ::
+
+      type(get_close_type),             intent(inout) :: gc
+      integer,                          intent(in)    :: num
+      type(location_type), dimension(:) intent(in)    :: obs
+
+.. container:: indent1
+
+   Initialize storage for efficient identification of locations close to a given location. Allocates storage for keeping
+   track of which 'box' each location in the list is in. Must be called after ``get_close_maxdist_init``, and the list
+   of locations here must be the same as the list of locations passed into ``get_close_obs()``. If the list changes,
+   ``get_close_obs_destroy()`` must be called, and both the initialization routines must be called again. It allocates
+   space so it is necessary to call ``get_close_obs_destroy`` when completely done with getting distances between
+   locations.
+
+   ======= =====================================================================================
+   ``gc``  Structure that contains data to efficiently find locations close to a given location.
+   ``num`` The number of locations in the list.
+   ``obs`` The locations of each element in the list, not used in 1D implementation.
+   ======= =====================================================================================
+
+|
+
+.. container:: routine
+
+   *call get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, num_close, close_ind, dist)*
+   ::
+
+      type(get_close_type),              intent(in)  :: gc
+      type(location_type),               intent(in)  :: base_obs_loc
+      integer,                           intent(in)  :: base_obs_kind
+      type(location_type), dimension(:), intent(in)  :: obs
+      integer,             dimension(:), intent(in)  :: obs_kind
+      integer,                           intent(out) :: num_close
+      integer,             dimension(:), intent(out) :: close_ind
+      real(r8), optional,  dimension(:), intent(out) :: dist
+
+.. container:: indent1
+
+   Given a single location and a list of other locations, returns the indices of all the locations close to the single
+   one along with the number of these and the distances for the close ones. The list of locations passed in via the
+   ``obs`` argument must be identical to the list of ``obs`` passed into the most recent call to
+   ``get_close_obs_init()``. If the list of locations of interest changes ``get_close_obs_destroy()`` must be called and
+   then the two initialization routines must be called before using ``get_close_obs()`` again.
+
+   If called without the optional *dist* argument, all locations that are potentially close are returned, which is
+   likely a superset of the locations that are within the threshold distance specified in the
+   ``get_close_maxdist_init()`` call. This can be useful to collect a list of potential locations, and then to convert
+   all the vertical coordinates into one consistent unit (pressure, height in meters, etc), and then the list can be
+   looped over, calling get_dist() directly to get the exact distance, either including vertical or not depending on the
+   setting of ``horiz_dist_only``.
+
+   ================= ===================================================================================
+   ``gc``            Structure to allow efficient identification of locations close to a given location.
+   ``base_obs_loc``  Single given location.
+   ``base_obs_kind`` Kind of the single location.
+   ``obs``           List of locations from which close ones are to be found.
+   ``obs_kind``      Kind associated with locations in obs list.
+   ``num_close``     Number of locations close to the given location.
+   ``close_ind``     Indices of those locations that are close.
+   *dist*            Distance between given location and the close ones identified in close_ind.
+   ================= ===================================================================================
+
+|
+
+.. container:: routine
+
+   *call get_close_obs_destroy(gc)*
+   ::
+
+      type(get_close_type), intent(inout) :: gc
+
+.. container:: indent1
+
+   Releases memory associated with the ``gc`` derived type. Must be called whenever the list of locations changes, and
+   then ``get_close_maxdist_init`` and ``get_close_obs_init`` must be called again with the new locations list.
+
+   ====== =============================================
+   ``gc`` Data for efficiently finding close locations.
+   ====== =============================================
+
+|
+
+.. container:: routine
+
+   *var = get_dist(loc1, loc2, [, kind1, kind2, no_vert])*
+   ::
+
+      real(r8)                        :: get_dist
+      type(location_type), intent(in) :: loc1
+      type(location_type), intent(in) :: loc2
+      integer, optional,   intent(in) :: kind1
+      integer, optional,   intent(in) :: kind2
+      logical, optional,   intent(in) :: no_vert
+
+.. container:: indent1
+
+   Returns the distance between two locations in radians. If ``horiz_dist_only`` is set to .TRUE. in the locations
+   namelist, it computes great circle distance on sphere. If ``horiz_dist_only`` is false, then it computes an
+   ellipsoidal distance with the horizontal component as above and the vertical distance determined by the types of the
+   locations and the normalization constants set by the namelist for the different vertical coordinate types. The
+   vertical normalization gives the vertical distance that is equally weighted as a horizontal distance of 1 radian. If
+   *no_vert* is present, it overrides the value in the namelist and controls whether vertical distance is included or
+   not.
+
+   The kind arguments are not used by the default location code, but are available to any user-supplied distance
+   routines which want to do specialized calculations based on the kinds associated with each of the two locations.
+
+   ========= =====================================================================================
+   ``loc1``  First of two locations to compute distance between.
+   ``loc2``  Second of two locations to compute distance between.
+   *kind1*   DART kind associated with location 1.
+   *kind2*   DART kind associated with location 2.
+   *no_vert* If true, no vertical component to distance. If false, vertical component is included.
+   ``var``   distance between loc1 and loc2.
+   ========= =====================================================================================
+
+|
+
+.. container:: routine
+
+   *var = vert_is_undef(loc)*
+   ::
+
+      logical                         :: vert_is_undef
+      type(location_type), intent(in) :: loc
+
+.. container:: indent1
+
+   Returns true if which_vert is set to undefined, else false. The meaning of 'undefined' is specific; it means there is
+   no particular vertical location associated with this type of measurement; for example a column-integrated value.
+
+   ================= ========================================================
+   ``vert_is_undef`` Returns true if vertical coordinate is set to undefined.
+   ``loc``           A location type
+   ================= ========================================================
+
+|
+
+.. container:: routine
+
+   *var = vert_is_surface(loc)*
+   ::
+
+      logical                         :: vert_is_surface
+      type(location_type), intent(in) :: loc
+
+.. container:: indent1
+
+   Returns true if which_vert is for surface, else false.
+
+   =================== ===================================================
+   ``vert_is_surface`` Returns true if vertical coordinate type is surface
+   ``loc``             A location type
+   =================== ===================================================
+
+|
+
+.. container:: routine
+
+   *var = vert_is_pressure(loc)*
+   ::
+
+      logical                         :: vert_is_pressure
+      type(location_type), intent(in) :: loc
+
+.. container:: indent1
+
+   Returns true if which_vert is for pressure, else false.
+
+   ==================== ====================================================
+   ``vert_is_pressure`` Returns true if vertical coordinate type is pressure
+   ``loc``              A location type
+   ==================== ====================================================
+
+|
+
+.. container:: routine
+
+   *var = vert_is_scale_height(loc)*
+   ::
+
+      logical                         :: vert_is_scale_height
+      type(location_type), intent(in) :: loc
+
+.. container:: indent1
+
+   Returns true if which_vert is for scale_height, else false.
+
+   ======================== ========================================================
+   ``vert_is_scale_height`` Returns true if vertical coordinate type is scale_height
+   ``loc``                  A location type
+   ======================== ========================================================
+
+|
+
+.. container:: routine
+
+   *var = vert_is_level(loc)*
+   ::
+
+      logical                         :: vert_is_level
+      type(location_type), intent(in) :: loc
+
+.. container:: indent1
+
+   Returns true if which_vert is for level, else false.
+
+   ================= =================================================
+   ``vert_is_level`` Returns true if vertical coordinate type is level
+   ``loc``           A location type
+   ================= =================================================
+
+|
+
+.. container:: routine
+
+   *var = vert_is_height(loc)*
+   ::
+
+      logical                         :: vert_is_height
+      type(location_type), intent(in) :: loc
+
+.. container:: indent1
+
+   Returns true if which_vert is for height, else false.
+
+   ================== ==================================================
+   ``vert_is_height`` Returns true if vertical coordinate type is height
+   ``loc``            A location type
+   ================== ==================================================
+
+|
+
+.. container:: routine
+
+   *var = has_vertical_localization()*
+   ::
+
+      logical :: has_vertical_localization
+
+.. container:: indent1
+
+   Returns .TRUE. if the namelist variable ``horiz_dist_only`` is .FALSE. meaning that vertical separation between
+   locations is going to be computed by ``get_dist()`` and by ``get_close_obs()``.
+
+   This routine should perhaps be renamed to something like 'using_vertical_for_distance' or something similar. The
+   current use for it is in the localization code inside filter, but that doesn't make this a representative function
+   name. And at least in current usage, returning the opposite setting of the namelist item makes the code read more
+   direct (fewer double negatives).
+
+|
+
+.. container:: routine
+
+   *loc1 == loc2*
+   ::
+
+      type(location_type), intent(in) :: loc1, loc2
+
+.. container:: indent1
+
+   Returns true if the two location types have identical values, else false.
+
+|
+
+.. container:: routine
+
+   *loc1 /= loc2*
+   ::
+
+      type(location_type), intent(in) :: loc1, loc2
+
+.. container:: indent1
+
+   Returns true if the two location types do NOT have identical values, else false.
+
+|
+
+.. container:: routine
+
+   ::
+
+      integer, parameter :: VERTISUNDEF       = -2
+      integer, parameter :: VERTISSURFACE     = -1
+      integer, parameter :: VERTISLEVEL       =  1
+      integer, parameter :: VERTISPRESSURE    =  2
+      integer, parameter :: VERTISHEIGHT      =  3
+      integer, parameter :: VERTISSCALEHEIGHT =  4
+
+.. container:: indent1
+
+   Constant parameters used to differentiate vertical types.
+
+|
+
+.. container:: routine
+
+   ::
+
+      integer, parameter :: LocationDims = 3
+
+.. container:: indent1
+
+   This is a **constant**. Contains the number of real values in a location type. Useful for output routines that must
+   deal transparently with many different location modules.
+
+|
+
+.. container:: routine
+
+   ::
+
+      character(len=129), parameter :: LocationName = "loc3Dsphere"
+
+.. container:: indent1
+
+   This is a **constant**. A parameter to identify this location module in output metadata.
+
+|
+
+.. container:: routine
+
+   ::
+
+      character(len=129), parameter :: LocationLName =
+
+             "threed sphere locations: lon, lat, vertical"
+
+.. container:: indent1
+
+   This is a **constant**. A parameter set to "threed sphere locations: lon, lat, vertical" used to identify this
+   location module in output long name metadata.
+
+|
+
+Files
+-----
+
+========= =================================
+filename  purpose
+========= =================================
+input.nml to read the location_mod namelist
+========= =================================
+
+References
+----------
+
+#. none
+
+Private components
+------------------
+
+N/A
