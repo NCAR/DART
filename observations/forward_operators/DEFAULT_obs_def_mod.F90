@@ -524,6 +524,8 @@ integer             :: obs_key
 real(r8)            :: error_var
 logical             :: use_precomputed_FO
 
+character(len=512) :: string1, string2, string3
+
 ! Load up the assimilate and evaluate status for this observation kind
 assimilate_this_ob = assimilate_this_type_of_obs(obs_kind_ind)
 evaluate_this_ob = evaluate_this_type_of_obs(obs_kind_ind)
@@ -542,9 +544,18 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
    ! if we use them there is no way to compute a consistent posterior.
    ! so the posteriors are always marked as 'failed forward operator'.
    if (use_precomputed_FO) then 
+      if (obs_def%ens_size < ens_size) then
+         write(string1,'(A,1x,I4,1x,A,1x,I4)')'The number of precomputed forward operators (', &
+                      obs_def%ens_size, ') is smaller than the ensemble size of ', ens_size
+         write(string2,*)'observation type '//trim(get_name_for_type_of_obs(obs_def%kind))
+         write(string3,*)'precomputed value(1) ', obs_def%external_FO(1)
+         call error_handler(E_ERR, 'get_expected_obs_from_def', string1, source, &
+                    text2=string2, text3=string3)
+      endif
+
       if (isprior) then
          if ( obs_def%has_external_FO ) then
-            expected_obs(:) = obs_def%external_FO(:) 
+            expected_obs(:) = obs_def%external_FO(1:ens_size) 
             istatus = 0 
          else 
             call error_handler(E_ERR, 'get_expected_obs_from_def', &
@@ -839,7 +850,7 @@ if ( obs_def%has_external_FO .and. obs_def%write_external_FO ) then
          source, revision, revdate, text2='observation type '//trim(get_name_for_type_of_obs(obs_def%kind)))
    endif
    if (is_ascii) then
-      write(ifile, 12) obs_def%ens_size, obs_def%external_FO_key
+      write(ifile, 12) obs_def%ens_size, key
       write(ifile, *) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
    else
       write(ifile)    obs_def%ens_size, EXTERNAL_PRIOR_CODE
