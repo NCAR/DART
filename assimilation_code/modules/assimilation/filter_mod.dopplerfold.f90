@@ -1603,7 +1603,7 @@ do group = 1, num_groups
          call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source)
 
          !Reset the RTPS factor to the given input.nml value
-         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(2)
+         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(POSTERIOR)
 
          do j = 1, ens_handle%my_num_vars
             call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
