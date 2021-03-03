@@ -92,7 +92,7 @@ integer :: qc_index_len        = 0
 ! are written out
 
 integer :: FO_write_types(max_obs_input_types) = MISSING_I
-integer :: num_FO_types_to_write
+integer :: num_FO_types_to_suppress
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -109,7 +109,7 @@ integer  :: first_obs_seconds = -1
 integer  :: last_obs_days     = -1
 integer  :: last_obs_seconds  = -1
 
-character(len=obstypelength) :: external_FO_write_list(max_obs_input_types) = ''
+character(len=obstypelength) :: remove_precomputed_FO_values(max_obs_input_types) = ''
 character(len=obstypelength) :: obs_types(max_obs_input_types) = ''
 logical  :: keep_types = .true.
 
@@ -155,7 +155,7 @@ namelist /obs_sequence_tool_nml/ &
          min_gps_height, edit_copy_metadata, new_copy_index,                 &
          edit_qc_metadata, new_qc_index, synonymous_copy_list,               &
          synonymous_qc_list, edit_copies, edit_qcs, new_copy_metadata,       &
-         new_qc_metadata, new_copy_data, new_qc_data, external_FO_write_list
+         new_qc_metadata, new_copy_data, new_qc_data, remove_precomputed_FO_values
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -206,16 +206,16 @@ else
    restrict_by_obs_type = .true.
 endif
 
-! See if the user wants to write out the precomputed forward operator values 
+! See if the user wants to suppress the precomputed forward operator values 
 ! for any/all observation types with precomputed forward operator values
 
-num_FO_types_to_write = 0
+num_FO_types_to_suppress = 0
 do i = 1, max_obs_input_types
-   if ( len(external_FO_write_list(i)) == 0  .or.  &
-            external_FO_write_list(i)  == "" ) exit
-   num_FO_types_to_write = i
+   if ( len(remove_precomputed_FO_values(i)) == 0  .or.  &
+            remove_precomputed_FO_values(i)  == "" ) exit
+   num_FO_types_to_suppress = i
 enddo
-if (num_FO_types_to_write > 0) call setup_FO_write_list(FO_write_types)
+if (num_FO_types_to_suppress > 0) call setup_FO_suppress_list(FO_write_types)
 
 ! See if the user is restricting the obs locations to be processed, and set up
 ! the values if so.  Note that if any of the values are not missing_r8, all of
@@ -1425,47 +1425,49 @@ endif
 end subroutine set_new_data
 
 
-!---------------------------------------------------------------------
-! Construct list of observation types for writing the precomputed 
-! forward operator (FO) values
+!-------------------------------------------------------------------------------
+! Construct list of observation types whose precomputed forward operator (FO) 
+! values are to be removed.
 
-subroutine setup_FO_write_list(type_list)
+subroutine setup_FO_suppress_list(type_list)
 
 integer, intent(out) :: type_list(:)
 
 integer :: i
 character(len=obstypelength) :: upperstring
 
-LOOP : do i = 1, num_FO_types_to_write
-   upperstring = trim(external_FO_write_list(i))
+LOOP : do i = 1, num_FO_types_to_suppress
+   upperstring = trim(remove_precomputed_FO_values(i))
    call to_upper(upperstring)
 
    if (upperstring == 'ALL') then
       ! If all possible observations with FO values are selected 
-      ! just indicate that by setting num_FO_types_to_write
+      ! just indicate that by setting num_FO_types_to_suppress
       ! to value that is larger than the largest possible
       type_list = 1
-      num_FO_types_to_write = max_obs_input_types + 1
+      num_FO_types_to_suppress = max_obs_input_types + 1
       exit LOOP
    else
       type_list(i) = get_index_for_type_of_obs(upperstring)
       if (type_list(i) < 0) then
-         write(msgstring1,*) 'obs_type "'//trim(external_FO_write_list(i))//'"'
+         write(msgstring1,*) 'obs_type "'//trim(remove_precomputed_FO_values(i))//'"'
          write(msgstring2,*) 'not a valid observation type.'
-         write(msgstring3,*) 'check entries for "external_FO_write_list"'
-         call error_handler(E_ERR,'setup_FO_write_list', msgstring1, source, &
+         write(msgstring3,*) 'check entries for "remove_precomputed_FO_values"'
+         call error_handler(E_ERR,'setup_FO_suppress_list', msgstring1, source, &
                             text2=msgstring2, text3=msgstring3)
       endif
    endif
 enddo LOOP
 
-end subroutine setup_FO_write_list
+end subroutine setup_FO_suppress_list
 
 
-!---------------------------------------------------------------------
-! If the observation type matches one specified in the external_FO_write_list
-! namelist, adjust the metadata for that observation so that write_obs_def()
-! does the right thing.
+!-------------------------------------------------------------------------------
+! If the observation type matches one specified by the remove_precomputed_FO_values 
+! variable, adjust the metadata for that observation so that write_obs_def() 
+! does the right thing. Since read_obs_def() sets the flag to suppress the writing
+! of the precomputed values, this routine must set the flag to enable the writing
+! of the precomputed values.
 
 subroutine set_FO_metadata(obs)
 
@@ -1473,25 +1475,24 @@ type(obs_type), intent(inout) :: obs
 
 type(obs_def_type) :: obs_def
 integer            :: this_obs_type
+logical            :: write_FO_values
 
-logical :: write_external_FOs
-
-write_external_FOs = .false.
+write_FO_values = .true.
 
 call get_obs_def(obs, obs_def)
 this_obs_type = get_obs_def_type_of_obs(obs_def)
 
-! If all types are desired, just match and return - before the 
-! num_FO_types_to_write is used as in index ...
+! If all types are to be suppressed, just match - and avoid using
+! num_FO_types_to_suppress as an index ...
 
-if (num_FO_types_to_write > max_obs_input_types) then
-   write_external_FOs = .true.
-elseif ( any(this_obs_type == FO_write_types(1:num_FO_types_to_write)) ) then
-   write_external_FOs = .true.
+if (num_FO_types_to_suppress > max_obs_input_types) then
+   write_FO_values = .false.
+elseif ( any(this_obs_type == FO_write_types(1:num_FO_types_to_suppress)) ) then
+   write_FO_values = .false.
 endif
 
-if (write_external_FOs) then
-   call set_obs_def_write_external_FO(obs_def,write_external_FOs)
+if (write_FO_values) then
+   call set_obs_def_write_external_FO(obs_def,write_FO_values)
    call set_obs_def(obs,obs_def)
 endif
 
