@@ -8,21 +8,30 @@
 
 program obs_sequence_tool
 
-use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
+use        types_mod, only : r8, missing_r8, metadatalength, obstypelength, &
+                             MISSING_I
+
 use    utilities_mod, only : finalize_utilities, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
-                             do_nml_file, do_nml_term, set_filename_list
+                             do_nml_file, do_nml_term, set_filename_list, &
+                             to_upper
+
 use     location_mod, only : location_type, get_location, set_location, &
                              LocationName !%! , vert_is_height 
-                             ! see comment in select_gps_by_height() for explanation of !%!
+                             ! comment in select_gps_by_height() explains !%!
+
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs, &
                              get_obs_def_location, set_obs_def_write_external_FO
-use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
+
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, &
+                             get_index_for_type_of_obs
+
 use time_manager_mod, only : time_type, operator(>), print_time, set_time, &
                              print_date, set_calendar_type, GREGORIAN
+
 use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
-                             init_obs, assignment(=), get_obs_def, &
+                             init_obs, assignment(=), get_obs_def, set_obs_def, &
                              init_obs_sequence, static_init_obs_sequence, &
                              read_obs_seq_header, read_obs_seq, get_num_obs, &
                              get_first_obs, get_next_obs, &
@@ -35,8 +44,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
                              get_obs_key, copy_partial_obs, &
                              delete_obs_from_seq, get_next_obs_from_key, &
                              delete_obs_by_qc, delete_obs_by_copy, &
-                             select_obs_by_location, set_obs_values, set_qc, &
-                             set_obs_seq_precomputed_FOs
+                             select_obs_by_location, set_obs_values, set_qc
 
 implicit none
 
@@ -57,7 +65,7 @@ logical :: trim_first, trim_last
 character(len=512) :: msgstring1, msgstring2, msgstring3
 
 ! could go into namelist if you wanted runtime control
-integer, parameter      :: print_every = 20000
+integer, parameter :: print_every = 20000
 
 ! specify sizes of allocated arrays; increase and recompile if too small
 integer, parameter :: copy_qc_listlen = 256           ! max number of data or qc copies
@@ -79,6 +87,13 @@ integer :: matching_qc_limit   = 0
 integer :: copy_index_len      = 0
 integer :: qc_index_len        = 0
 
+
+! variables to manage whether or not the precomputed forward operator values
+! are written out
+
+integer :: FO_write_types(max_obs_input_types) = MISSING_I
+integer :: num_FO_types_to_suppress
+
 !----------------------------------------------------------------
 ! Namelist input with default values
 
@@ -94,6 +109,7 @@ integer  :: first_obs_seconds = -1
 integer  :: last_obs_days     = -1
 integer  :: last_obs_seconds  = -1
 
+character(len=obstypelength) :: remove_precomputed_FO_values(max_obs_input_types) = ''
 character(len=obstypelength) :: obs_types(max_obs_input_types) = ''
 logical  :: keep_types = .true.
 
@@ -130,8 +146,6 @@ logical  :: print_only = .false.
 logical  :: gregorian_cal = .true.
 real(r8) :: min_gps_height = missing_r8
 
-logical  :: write_external_FOs
-
 namelist /obs_sequence_tool_nml/ &
          num_input_files, filename_seq, filename_seq_list, filename_out,     &
          first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, &
@@ -141,7 +155,7 @@ namelist /obs_sequence_tool_nml/ &
          min_gps_height, edit_copy_metadata, new_copy_index,                 &
          edit_qc_metadata, new_qc_index, synonymous_copy_list,               &
          synonymous_qc_list, edit_copies, edit_qcs, new_copy_metadata,       &
-         new_qc_metadata, new_copy_data, new_qc_data, write_external_FOs
+         new_qc_metadata, new_copy_data, new_qc_data, remove_precomputed_FO_values
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -191,6 +205,17 @@ if (num_obs_input_types == 0) then
 else
    restrict_by_obs_type = .true.
 endif
+
+! See if the user wants to suppress the precomputed forward operator values 
+! for any/all observation types with precomputed forward operator values
+
+num_FO_types_to_suppress = 0
+do i = 1, max_obs_input_types
+   if ( len(remove_precomputed_FO_values(i)) == 0  .or.  &
+            remove_precomputed_FO_values(i)  == "" ) exit
+   num_FO_types_to_suppress = i
+enddo
+if (num_FO_types_to_suppress > 0) call setup_FO_suppress_list(FO_write_types)
 
 ! See if the user is restricting the obs locations to be processed, and set up
 ! the values if so.  Note that if any of the values are not missing_r8, all of
@@ -382,7 +407,6 @@ if (synonymous_qc_list(1) /= '') then
       matching_qc_limit = i
    enddo
 endif
-
 
 ! end of namelist processing and setup
 
@@ -642,6 +666,9 @@ do i = 1, num_input_files
          obs_out = obs_in
       endif
 
+      ! changing metadata to output precomputed FOs based on namelist
+      call set_FO_metadata(obs_out)
+
 !#!      ! see comment in subroutine code for an explanation
 !#!      call change_obs(obs_out)
 
@@ -659,7 +686,10 @@ do i = 1, num_input_files
             endif
          endif
 
-         obs_in     = next_obs_in   ! essentially records position in seq_out
+         obs_in = next_obs_in   ! essentially records position in seq_out
+
+         !setting flag to output precomputed FOs based on namelist
+         call set_FO_metadata(obs_in)
 
          if (editing_obs) then
             ! copy subset or reordering
@@ -720,9 +750,6 @@ if (.not. print_only) then
 else
    print*, 'Total number of selected obs in all files :', get_num_key_range(seq_out)
 endif
-
-!setting flag to output precomputed FOs based on namelist
-call set_obs_seq_precomputed_FOs(seq_out,write_external_FOs)
 
 call print_obs_seq(seq_out, filename_out)
 if (.not. print_only) then
@@ -1396,6 +1423,81 @@ if (edit_qcs) then
 endif
 
 end subroutine set_new_data
+
+
+!-------------------------------------------------------------------------------
+! Construct list of observation types whose precomputed forward operator (FO) 
+! values are to be removed.
+
+subroutine setup_FO_suppress_list(type_list)
+
+integer, intent(out) :: type_list(:)
+
+integer :: i
+character(len=obstypelength) :: upperstring
+
+LOOP : do i = 1, num_FO_types_to_suppress
+   upperstring = trim(remove_precomputed_FO_values(i))
+   call to_upper(upperstring)
+
+   if (upperstring == 'ALL') then
+      ! If all possible observations with FO values are selected 
+      ! just indicate that by setting num_FO_types_to_suppress
+      ! to value that is larger than the largest possible
+      type_list = 1
+      num_FO_types_to_suppress = max_obs_input_types + 1
+      exit LOOP
+   else
+      type_list(i) = get_index_for_type_of_obs(upperstring)
+      if (type_list(i) < 0) then
+         write(msgstring1,*) 'obs_type "'//trim(remove_precomputed_FO_values(i))//'"'
+         write(msgstring2,*) 'not a valid observation type.'
+         write(msgstring3,*) 'check entries for "remove_precomputed_FO_values"'
+         call error_handler(E_ERR,'setup_FO_suppress_list', msgstring1, source, &
+                            text2=msgstring2, text3=msgstring3)
+      endif
+   endif
+enddo LOOP
+
+end subroutine setup_FO_suppress_list
+
+
+!-------------------------------------------------------------------------------
+! If the observation type matches one specified by the remove_precomputed_FO_values 
+! variable, adjust the metadata for that observation so that write_obs_def() 
+! does the right thing. Since read_obs_def() sets the flag to suppress the writing
+! of the precomputed values, this routine must set the flag to enable the writing
+! of the precomputed values.
+
+subroutine set_FO_metadata(obs)
+
+type(obs_type), intent(inout) :: obs
+
+type(obs_def_type) :: obs_def
+integer            :: this_obs_type
+logical            :: write_FO_values
+
+write_FO_values = .true.
+
+call get_obs_def(obs, obs_def)
+this_obs_type = get_obs_def_type_of_obs(obs_def)
+
+! If all types are to be suppressed, just match - and avoid using
+! num_FO_types_to_suppress as an index ...
+
+if (num_FO_types_to_suppress > max_obs_input_types) then
+   write_FO_values = .false.
+elseif ( any(this_obs_type == FO_write_types(1:num_FO_types_to_suppress)) ) then
+   write_FO_values = .false.
+endif
+
+if (write_FO_values) then
+   call set_obs_def_write_external_FO(obs_def,write_FO_values)
+   call set_obs_def(obs,obs_def)
+endif
+
+end subroutine set_FO_metadata
+
 
 !%! !---------------------------------------------------------------------
 !%! subroutine select_gps_by_height(min_height, seq, all_gone)

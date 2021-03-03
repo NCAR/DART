@@ -122,6 +122,7 @@ prematurely terminating the namelist.
    print_only           = .false.
    gregorian_cal        = .true.
    min_gps_height       = -888888.0
+   remove_precomputed_FO_values = ''
    /
 </pre>
 </div>
@@ -406,6 +407,17 @@ is now set by counting up the number of input filenames specified.  This
 namelist item is ignored and will be removed in future versions of the code.
 </TD></TR>
 
+<TR><TD>remove_precomputed_FO_values</TD>
+    <TD>character(len=32), dimension(500)</TD>
+    <TD>The (case-insensitive) array of observation type names whose 
+precomputed forward operator (FO) values are not wanted.  If any type 
+names are specified, observations matching these types will have their 
+precomputed FO values values removed. The remainder of observation 
+persists, subject to the constraints of <em class=code>keep_types</em>
+and/or any other subsetting options. The default is to keep all 
+precomputed_FO_values.
+</TD></TR>
+
 </TBODY> 
 </TABLE>
 </div>
@@ -432,6 +444,7 @@ Here are details on how to set up common cases using this tool:
 <li><a href="#editdata">Altering the number of Copies or QC values</a>
 <li><a href="#print">Printing only</a>
 <li><a href="#keepval">Subset by Observation or QC Value</a>
+<li><a href="#precomputed">Precomputed Forward Observation Values</a>
 </ul>
 
 <A NAME="merge"></A>
@@ -788,6 +801,35 @@ different types have different units and valid ranges.  For example:
    copy_type          = 'RADIOSONDE_TEMPERATURE',
    min_copy           = 250.0,
    max_copy           = 300.0,
+</pre>
+
+<A NAME="precomputed"></A>
+<h3>Precomputed Forward Observation Values</h3>
+<P>
+Precomputed Forward Observation Values are the result of an external program
+that computes the expected observation values from an ensemble of model states
+and includes these values as part of the observation metadata (see, for example,
+the <em class=code>GSI2DART</em> observation converter).
+By default, any observation with precomputed forward observation (FO) values 
+will have those values simply pass through <em class=code>obs_sequence_tool</em>
+just like any other piece of metadata.  If the precomputed forward observation 
+values for any or all observation types are not wanted, it is possible to 
+remove the precomputed values and retain the rest of the observation. 
+<strong>Important</strong>: observations resulting from 
+<em class=code>perfect_model_obs</em> are <strong>not</strong> 
+precomputed forward observation values!
+</P>
+<pre>
+# keep all precomputed values from all observations with precomputed values (the default):
+   remove_precomputed_FO_values = ''
+
+# remove all precomputed values from all observations with precomputed values:
+   remove_precomputed_FO_values = 'ALL'
+
+# remove all precomputed values for specific observation types (case does not matter):
+# The observations themselves will still be present in the output, given no other
+# subsetting processing.
+   remove_precomputed_FO_values = 'RADIOSONDE_TEMPERATURE', 'AMDAR_U_WIND_COMPONENT' 
 </pre>
 
 <!--==================================================================-->
