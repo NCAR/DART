@@ -30,7 +30,7 @@ public :: update_inflation,                                 do_obs_inflate,     
           set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy, &
           get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options, &
           print_inflation_restart_filename, &
-          PRIOR, POSTERIOR, NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION, &
+          PRIOR_INF, POSTERIOR_INF, NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION, &
           SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD, ENHANCED_SS_INFLATION
 
 character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
@@ -44,10 +44,10 @@ character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 
 ! There are many length 2 variables declared to hold items. Some of them 
 ! refer to the concept of prior and posterior. Those that do can be referenced
-! with the PRIOR and POSTERIOR - which MUST have values 1 and 2, do not change.
+! with the PRIOR_INF and POSTERIOR_INF - which MUST have values 1 and 2, do not change.
 
-integer, parameter :: PRIOR = 1
-integer, parameter :: POSTERIOR = 2
+integer, parameter :: PRIOR_INF = 1
+integer, parameter :: POSTERIOR_INF = 2
 
 !>@todo Eventually the namelist options corresponding to inflation should move from 
 !> filter into this module and then possibly become two different namelists so we
@@ -403,9 +403,9 @@ end function deterministic_inflate
 !> Make sure the combination of inflation options are legal
 
 subroutine validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
-                                    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,  &
-                                    do_prior_inflate, do_posterior_inflate, output_inflation, &
-                                    compute_posterior)
+                    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change, &
+                    do_prior_inflate, do_posterior_inflate, output_inflation, &
+                    compute_posterior)
 
 integer,  intent(in)    :: inf_flavor(2)
 real(r8), intent(inout) :: inf_damping(2)
@@ -426,10 +426,10 @@ do_posterior_inflate = .false.
 output_inflation     = .false.
 
 ! for error messages
-string(PRIOR)     = 'Prior'
-string(POSTERIOR) = 'Posterior'
+string(PRIOR_INF)     = 'Prior'
+string(POSTERIOR_INF) = 'Posterior'
 
-do i = 1, 2
+do i = PRIOR_INF, POSTERIOR_INF
    if(inf_flavor(i) < NO_INFLATION .or. inf_flavor(i) > ENHANCED_SS_INFLATION) then
       write(string1, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, 4, or 5 '
       call error_handler(E_ERR,'validate_inflate_options', string1, source, &
@@ -444,59 +444,67 @@ do i = 1, 2
 end do
 
 ! Check to see if state space inflation is turned on
-if (inf_flavor(PRIOR)     /= NO_INFLATION .and. &
-    inf_flavor(PRIOR)     /= OBS_INFLATION)  do_prior_inflate     = .true.
-if (inf_flavor(POSTERIOR) /= NO_INFLATION .and. &
-    inf_flavor(POSTERIOR) /= OBS_INFLATION)  do_posterior_inflate = .true.
+if (inf_flavor(PRIOR_INF)     /= NO_INFLATION .and. &
+    inf_flavor(PRIOR_INF)     /= OBS_INFLATION)  do_prior_inflate     = .true.
+if (inf_flavor(POSTERIOR_INF) /= NO_INFLATION .and. &
+    inf_flavor(POSTERIOR_INF) /= OBS_INFLATION)  do_posterior_inflate = .true.
 
 if (do_prior_inflate .or. do_posterior_inflate) output_inflation = .true.
 
 ! Observation space inflation not currently supported
-if(inf_flavor(PRIOR) == OBS_INFLATION .or. inf_flavor(POSTERIOR) == OBS_INFLATION) &
+if(inf_flavor(PRIOR_INF) == OBS_INFLATION .or. &
+   inf_flavor(POSTERIOR_INF) == OBS_INFLATION) &
    call error_handler(E_ERR, 'validate_inflate_options', &
    'observation space inflation (type 1) not currently supported', source, &
    text2='contact DART developers if you are interested in using it.')
 
 ! Relaxation-to-prior-spread (RTPS) is only an option for posterior inflation
-if(inf_flavor(PRIOR) == RELAXATION_TO_PRIOR_SPREAD) &
+if(inf_flavor(PRIOR_INF) == RELAXATION_TO_PRIOR_SPREAD) &
    call error_handler(E_ERR, 'validate_inflate_options', &
    'RTPS inflation (type 4) only supported for Posterior inflation', source)
 
 ! Cannot select posterior options if not computing posterior
-if(.not. compute_posterior .and. inf_flavor(POSTERIOR) /= NO_INFLATION) then
+if(.not. compute_posterior .and. inf_flavor(POSTERIOR_INF) /= NO_INFLATION) then
    write(string1, *) 'cannot enable posterior inflation if not computing posterior values'
    call error_handler(E_ERR,'validate_inflate_options', string1, source, &
-                             text2='"compute_posterior" is false; posterior inflation flavor must be 0')
+           text2='"compute_posterior" is false; posterior inflation flavor must be 0')
 endif
 
 ! RTPS needs a single parameter from namelist: inf_initial(2).  
-! Do not read in any files.  Also, no damping.  but warn the user if they try to set different
-! values in the namelist.
-if (inf_flavor(POSTERIOR) == RELAXATION_TO_PRIOR_SPREAD) then
-   if (inf_initial_from_restart(POSTERIOR) .or. inf_sd_initial_from_restart(POSTERIOR)) &
-      call error_handler(E_MSG, 'validate_inflate_options:', &
-         'RTPS inflation (type 4) overrides posterior inflation restart file with value in namelist', &
-         text2='posterior inflation standard deviation value not used in RTPS')
-   inf_initial_from_restart(POSTERIOR) = .false.    ! Get parameter from namelist inf_initial(2), not from file
-   inf_sd_initial_from_restart(POSTERIOR) = .false. ! inf_sd not used in this algorithm
+! Do not read in any files.  Also, no damping.  
+! Warn the user if they try to set different values in the namelist.
+if (inf_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD) then
 
-   if (.not. inf_deterministic(POSTERIOR)) &
-      call error_handler(E_MSG, 'validate_inflate_options:', &
-                        'RTPS inflation (type 4) overrides posterior inf_deterministic with .true.')
-   inf_deterministic(POSTERIOR) = .true.  ! this algorithm is deterministic
+   if ( inf_sd_initial_from_restart(POSTERIOR_INF)) &
+       call error_handler(E_MSG, 'validate_inflate_options:', &
+         'RTPS inflation (type 4) does not use "inf_sd_inifial_from_restart" values.', &
+         text2='values of "sd" in output inflation variables are not meaningful.')
 
-   if (inf_damping(POSTERIOR) /= 1.0_r8) &
+   ! Get parameter from namelist inf_initial(2), not from file
+   ! inf_sd not used in this algorithm
+      inf_initial_from_restart(POSTERIOR_INF) = .false.
+   inf_sd_initial_from_restart(POSTERIOR_INF) = .false.
+
+   if (.not. inf_deterministic(POSTERIOR_INF)) &
+      call error_handler(E_MSG, 'validate_inflate_options:', &
+              'RTPS inflation (type 4) overrides posterior inf_deterministic with .true.')
+   inf_deterministic(POSTERIOR_INF) = .true.  ! this algorithm is deterministic
+
+   if (inf_damping(POSTERIOR_INF) /= 1.0_r8) &
       call error_handler(E_MSG, 'validate_inflate_options:', &
                         'RTPS inflation (type 4) disables posterior inf_damping')
-   inf_damping(POSTERIOR) = 1.0_r8  ! no damping
+   inf_damping(POSTERIOR_INF) = 1.0_r8  ! no damping
 endif
 
 ! enhanced inflation checks - this is before we set the subflavor in the structure.
-if (inf_flavor(PRIOR) == ENHANCED_SS_INFLATION .or. inf_flavor(POSTERIOR) == ENHANCED_SS_INFLATION) then
+if (inf_flavor(PRIOR_INF)     == ENHANCED_SS_INFLATION .or. &
+    inf_flavor(POSTERIOR_INF) == ENHANCED_SS_INFLATION) then
+
    ! check inf_sd_max_change() for valid range
-   do i=PRIOR, POSTERIOR
+   do i=PRIOR_INF, POSTERIOR_INF
       if (inf_sd_max_change(i) < 1.0_r8 .or. inf_sd_max_change(i) > 2.0_r8) then
-         write(string1, *) 'inf_sd_max_change=', inf_sd_max_change(i), ' Must be 1.0 <= X <= 2.0'
+         write(string1, *) 'inf_sd_max_change=', inf_sd_max_change(i), &
+                           ' Must be 1.0 <= X <= 2.0'
          call error_handler(E_ERR,'validate_inflate_options', string1, source, &
                                    text2='Inflation stddev max change for '//string(i))
       endif
@@ -643,8 +651,9 @@ end subroutine update_inflation
 !> Uses one of 2 algorithms in references on DART web site to update the 
 !> distribution of inflation:  Anderson 2007, 2009 or Gharamti 2017
 
-subroutine bayes_cov_inflate(ens_size, inf_type, x_p, sigma_p_2, y_o, sigma_o_2, lambda_mean, lambda_sd, &
-   gamma_corr, sd_lower_bound_in, sd_max_change_in, new_cov_inflate, new_cov_inflate_sd)
+subroutine bayes_cov_inflate(ens_size, inf_type, x_p, sigma_p_2, y_o, sigma_o_2, &
+                 lambda_mean, lambda_sd, gamma_corr, sd_lower_bound_in, &
+                 sd_max_change_in, new_cov_inflate, new_cov_inflate_sd)
 
 integer , intent(in)  :: ens_size, inf_type
 real(r8), intent(in)  :: x_p, sigma_p_2, y_o, sigma_o_2, lambda_mean, lambda_sd
@@ -747,12 +756,12 @@ if (inf_type == AND2009) then
    else
       ! Compute by forcing a Gaussian fit at one positive SD
       ! First compute the new_max value for normalization purposes
-      new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, &
-                                       gamma_corr, new_cov_inflate)
+      new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, &
+                  lambda_mean, lambda_sd, gamma_corr, new_cov_inflate)
    
       ! Find value at a point one OLD sd above new mean value
-      new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma_corr, &
-                                     new_cov_inflate + lambda_sd)
+      new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, &
+                 lambda_mean, lambda_sd, gamma_corr, new_cov_inflate + lambda_sd)
    
       ! If either the numerator or denominator of the following computation 
       ! of 'ratio' is going to be zero (or almost so), return the original incoming
@@ -771,7 +780,8 @@ if (inf_type == AND2009) then
       endif
    
       ! Can now compute the standard deviation consistent with this as
-      ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is lambda_sd (distance from mean)
+      ! sigma = sqrt(-x^2 / (2 ln(r))
+      ! where r is ratio and x is lambda_sd (distance from mean)
       new_cov_inflate_sd = sqrt( -1.0_r8 * lambda_sd_2 / (2.0_r8 * log(ratio)))
    
       ! Prevent an increase in the sd of lambda???
@@ -799,18 +809,19 @@ else if (inf_type == GHA2017) then
       return 
    else
       ! Compute the shape parameter of the prior IG
-      ! This comes from the assumption that the mode of the IG is the mean/mode of the input Gaussian
+      ! This comes from the assumption that the mode of the IG is the mean/mode 
+      ! of the input Gaussian
       shape_old = rate / lambda_mean - 1.0_r8
       if (shape_old <= 2.0_r8) then
          new_cov_inflate_sd = lambda_sd
          return
       endif
    
-      ! Evaluate the exact IG posterior at p1: \lambda_u+\sigma_{\lambda_b} & p2: \lambda_u
-      density_1 = enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, shape_old, &
-                                          rate, gamma_corr, new_cov_inflate+lambda_sd)
-      density_2 = enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, shape_old, &
-                                          rate, gamma_corr, new_cov_inflate)
+      ! Evaluate exact IG posterior at p1: \lambda_u+\sigma_{\lambda_b} & p2: \lambda_u
+      density_1 = enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, &
+                         shape_old, rate, gamma_corr, new_cov_inflate+lambda_sd)
+      density_2 = enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, &
+                         shape_old, rate, gamma_corr, new_cov_inflate)
    
       ! Computational errors check (small numbers + NaNs)
       if (abs(density_1) <= TINY(0.0_r8) .OR. &
@@ -857,9 +868,11 @@ end subroutine bayes_cov_inflate
 !> Used to update density by taking approximate gaussian product
 !> original routine.
 
-function compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, lambda)
+function compute_new_density(dist_2, sigma_p_2, sigma_o_2, &
+                             lambda_mean, lambda_sd, gamma, lambda)
 
-real(r8), intent(in) :: dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, lambda
+real(r8), intent(in) :: dist_2, sigma_p_2, sigma_o_2
+real(r8), intent(in) :: lambda_mean, lambda_sd, gamma, lambda
 real(r8)             :: compute_new_density
 
 real(r8) :: theta_2, theta
@@ -886,7 +899,8 @@ end function compute_new_density
 !-------------------------------------------------------------------------------
 !>
 
-function enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, alpha, beta, gamma_corr, lambda)
+function enh_compute_new_density(dist_2, ens_size, sigma_p_2, sigma_o_2, &
+                                 alpha, beta, gamma_corr, lambda)
 
 ! Used to update density by taking approximate gaussian product
 real(r8), intent(in) :: dist_2
@@ -1035,7 +1049,9 @@ like_prime  = like_bar * deriv_theta * (dist_2 / theta_bar_2 - 1.0_r8) / theta_b
 ! If like_prime goes to 0, can't do anything, so just keep current values
 ! We're dividing by the derivative in the quadratic equation, so this
 ! term better non-zero!
-if(like_prime == 0.0_r8 .OR. abs(like_bar) <= TINY(0.0_r8) .OR. abs(like_prime) <= TINY(0.0_r8) ) then
+if(     like_prime == 0.0_r8 .OR. &
+   abs(like_bar)   <= TINY(0.0_r8) .OR. &
+   abs(like_prime) <= TINY(0.0_r8) ) then
    new_cov_inflate = lambda_mean
    return
 endif
@@ -1060,7 +1076,8 @@ endif
 ! From the selection process above it can be negative
 ! if the positive root is far away from it. 
 ! As such, keep the current factor value
-if(new_cov_inflate <= 0.0_r8 .OR. new_cov_inflate /= new_cov_inflate) new_cov_inflate = lambda_mean
+if(new_cov_inflate <= 0.0_r8 .OR. new_cov_inflate /= new_cov_inflate) &
+   new_cov_inflate = lambda_mean
 
 end subroutine enh_linear_bayes
 
@@ -1164,15 +1181,15 @@ if(inflation_handle%deterministic) then
 else
   det = 'random-noise,'
 endif
-if (inflation_handle%minmax_sd(POSTERIOR) > inflation_handle%sd_lower_bound) then
+if (inflation_handle%minmax_sd(POSTERIOR_INF) > inflation_handle%sd_lower_bound) then
    det = trim(det) // ' variance adaptive,'
 endif
 if (inflation_handle%inf_lower_bound < 1.0_r8) then
    det = trim(det) // ' deflation permitted,'
 endif
-if (inflation_handle%minmax_sd(POSTERIOR) > 0.0_r8) then
+if (inflation_handle%minmax_sd(POSTERIOR_INF) > 0.0_r8) then
   tadapt = ' time-adaptive,'
-   if (inflation_handle%sd_lower_bound < inflation_handle%minmax_sd(POSTERIOR) .or. &
+   if (inflation_handle%sd_lower_bound < inflation_handle%minmax_sd(POSTERIOR_INF) .or. &
        inflation_handle%inflation_sub_flavor == ENHANCED_SS_INFLATION) then
       tadapt = trim(tadapt) // ' time-rate adaptive,'
    endif
@@ -1272,7 +1289,8 @@ character(len=*),            intent(in) :: from_string
 integer :: nvalues_to_log
 
 if ((inflation_handle%inflation_flavor == SINGLE_SS_INFLATION) .or. &
-    (inflation_handle%inflation_flavor == VARYING_SS_INFLATION .and. from_string == 'from namelist')) then
+    (inflation_handle%inflation_flavor == VARYING_SS_INFLATION .and. &
+     from_string == 'from namelist')) then
    nvalues_to_log = 1
 else
    nvalues_to_log = 2
@@ -1311,7 +1329,8 @@ end subroutine print_inflation_restart_filename
 !> if running with MPI, or just sets the min/max directly if reading
 !> from a namelist.
 
-subroutine get_minmax_task_zero(inflation_handle, ens_handle, ss_inflate_index, ss_inflate_sd_index)
+subroutine get_minmax_task_zero(inflation_handle, ens_handle, &
+                       ss_inflate_index, ss_inflate_sd_index)
 
 type(adaptive_inflate_type), intent(inout) :: inflation_handle
 type(ensemble_type),         intent(in)    :: ens_handle
