@@ -1,5 +1,3 @@
-../../observations/obs_converters/USGS/work/Makefile
-
 python/*png
 python/*pkl
 
