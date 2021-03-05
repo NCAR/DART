@@ -110,7 +110,6 @@ or use `develop` in lieu of `install` if you are editing the package source.
 
 ###  WRF-Hydro Domain files in the proper convention 
 Currently these can be obtained via
-1. docker images: https://hub.docker.com/r/wrfhydro/domains/tags/
 1. google drive tool (`wrf_hydro_nwm_public/tests/local/utils/gdrive_download.py`), though one has to know the identifier string for the domain currently.
 1. On cheyenne
 1. By personal contact with NCAR folks. 
