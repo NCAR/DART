@@ -39,4 +39,3 @@ models/wrf_hydro/model_mod.f90
 models/wrf_hydro/noah_hydro_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
-
