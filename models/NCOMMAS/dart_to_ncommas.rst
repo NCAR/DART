@@ -1,306 +1,148 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+PROGRAM ``dart_to_ncommas``
+===========================
 
-<HTML>
-<HEAD>
-<TITLE>program dart_to_ncommas</TITLE>
-<link rel="stylesheet" type="text/css" href="../../docs/html/doc.css" />
-<link href="../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+| ``dart_to_ncommas`` is the program that **updates** a ncommas netCDF-format restart file (usually
+  ``ncommas_restart.nc``) with the state information contained in a DART output/restart file (e.g.
+  ``perfect_ics, filter_ics, ...`` ). Only the CURRENT values in the ncommas restart file will be updated. The DART
+  model time is compared to the time in the ncommas restart file. If the last time in the restart file does not match
+  the DART model time, the program issues an error message and aborts.
+| From the user perspective, most of the time ``dart_to_ncommas`` will be used on DART files that have a header
+  containing one time stamp followed by the model state.
+| The dart_to_ncommas_nml namelist allows ``dart_to_ncommas`` to read the ``assim_model_state_ic`` files that have *two*
+  timestamps in the header. These files are temporarily generated when DART is used to advance the model. One timestamp
+  is the 'advance_to' time, the other is the 'valid_time' of the model state. In this case, a namelist for ncommas
+  (called ``ncommas_in.DART``) is written that contains the ``&time_manager_nml`` settings appropriate to advance
+  ncommas to the time requested by DART. The repository version of the ``advance_model.csh`` script has a section to
+  ensure the proper DART namelist settings for this case.
+| Conditions required for successful execution of ``dart_to_ncommas``:
 
-<H1>PROGRAM <em class=program>dart_to_ncommas</em></H1>
+-  a valid ``input.nml`` namelist file for DART
+-  a valid ``ncommas_vars.nml`` namelist file for ncommas - the same one used to create the DART state vector,
+   naturally,
+-  a DART file (typically ``filter_restart.xxxx`` or ``filter_ics.xxxx``)
+-  a ncommas restart file (typically ``ncommas_restart.nc``).
 
-<table border=0 summary="" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../docs/index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
+Since this program is called repeatedly for every ensemble member, we have found it convenient to link the DART input
+file to the default input filename (``dart_restart``). The same thing goes true for the ncommas output filename
+``ncommas_restart.nc``.
 
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Modules">MODULES</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
+Namelist
+--------
 
-<P>
-   <em class=program>dart_to_ncommas</em> is the program that <strong>updates</strong> 
-   a ncommas netCDF-format restart file (usually <em class=file>ncommas_restart.nc</em>) 
-   with the state information contained in a DART output/restart file 
-   (e.g. <em class=file>perfect_ics, filter_ics, ... </em>).
-   Only the CURRENT values in the ncommas restart file will be updated. 
-   The DART model time is compared to the time in the ncommas restart file. 
-   If the last time in the restart file does not match the DART model time, 
-   the program issues an error message and aborts.
-   <br />
-   <br />
-   From the user perspective, most of the time 
-   <em class=program>dart_to_ncommas</em> will be used on DART files that
-   have a header containing one time stamp followed by the model state.
-   <br />
-   <br />
-   The <a href=#Namelist>dart_to_ncommas_nml</a> namelist allows 
-   <em class=program>dart_to_ncommas</em> to read the 
-   <em class=file>assim_model_state_ic</em> files that have
-   <em class=italic>two</em> timestamps in the header. These files are 
-   temporarily generated when DART is used to advance the model. 
-   One timestamp is the 'advance_to' time, the other is the 'valid_time' 
-   of the model state. In this case, a namelist for ncommas (called 
-   <em class=file>ncommas_in.DART</em>) is written that contains the 
-   <em class=code>&amp;time_manager_nml</em> settings appropriate to 
-   advance ncommas to the time requested by DART. The repository version 
-   of the <em class=program>advance_model.csh</em> script has a section 
-   to ensure the proper DART namelist settings for this case.
-   <br />
-   <br />
-   Conditions required for successful execution of <em class=program>dart_to_ncommas</em>:
-</P>
+This namelist is read from the file ``input.nml``. Namelists start with an ampersand '&' and terminate with a slash '/'.
+Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely terminating the
+namelist.
 
-<UL>
-   <LI>a valid <em class=file>input.nml</em> namelist file for DART</LI>
-   <LI>a valid <em class=file>ncommas_vars.nml</em> namelist file for ncommas - 
-       the same one used to create the DART state vector, naturally,</LI>
-   <LI>a DART file (typically <em class=file>filter_restart.xxxx</em> or
-                              <em class=file>filter_ics.xxxx</em>)</LI>
-   <LI>a ncommas restart file (typically <em class=file>ncommas_restart.nc</em>).</LI>
-</UL>
+::
 
-<P>
-Since this program is called repeatedly for every ensemble member,
-we have found it convenient to link the DART input file
-to the default input filename (<em class=file>dart_restart</em>). The same
-thing goes true for the ncommas output filename <em class=file>ncommas_restart.nc</em>.
-</P>
+   &model_nml
+      ncommas_restart_filename     = 'ncommas_restart.nc';
+      assimilation_period_days     = 1,
+      assimilation_period_seconds  = 0,
+      model_perturbation_amplitude = 0.2,
+      output_state_vector          = .true.,
+      calendar                     = 'Gregorian',
+      debug                        = 0
+   /
 
-<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+| 
 
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
-This namelist is read from the file <em class=file>input.nml</em>.
-Namelists start with an ampersand
-'&amp;' and terminate with a slash '/'.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
-prematurely terminating the namelist.
-</P>
+::
 
-<div class=namelist>
-<pre>
-&amp;model_nml
-   ncommas_restart_filename     = 'ncommas_restart.nc';
-   assimilation_period_days     = 1,
-   assimilation_period_seconds  = 0,
-   model_perturbation_amplitude = 0.2,
-   output_state_vector          = .true.,
-   calendar                     = 'Gregorian',
-   debug                        = 0
-/
-</pre>
-</div>
+   &dart_to_ncommas_nml
+      dart_to_ncommas_input_file = 'dart_restart',
+      advance_time_present   = .false.  
+   /
 
-<br />
+| 
 
-<div class=namelist>
-<pre>
-&amp;dart_to_ncommas_nml
-   dart_to_ncommas_input_file = 'dart_restart',
-   advance_time_present   = .false.  
-/
-</pre>
-</div>
+``dart_to_ncommas_nml`` and ``model_nml`` are always read from a file called ``input.nml``. The full description of the
+``model_nml`` namelist is documented in the `NCOMMAS model_mod <model_mod.html#Namelist>`__.
 
-<br />
-<br />
+.. container::
 
-<P>
-<em class=code>dart_to_ncommas_nml</em> and <em class=code>model_nml</em>
-are always read from a file called <em class=file>input.nml</em>.
-The full description of the <em class=code>model_nml</em> namelist is documented
-in the <a href="model_mod.html#Namelist">NCOMMAS model_mod</a>.
-</P>
+   +----------------------------+--------------------+------------------------------------------------------------------+
+   | Item                       | Type               | Description                                                      |
+   +============================+====================+==================================================================+
+   | dart_to_ncommas_input_file | character(len=128) | The name of the DART file containing the model state to insert   |
+   |                            |                    | into the ncommas restart file.                                   |
+   +----------------------------+--------------------+------------------------------------------------------------------+
+   | advance_time_present       | logical            | If you are converting a DART initial conditions or restart file  |
+   |                            |                    | this should be ``.false.``; these files have a single timestamp  |
+   |                            |                    | describing the valid time of the model state. If ``.true.`` TWO  |
+   |                            |                    | timestamps are expected to be the DART file header. In this      |
+   |                            |                    | case, a namelist for ncommas (called ``ncommas_in.DART``) is     |
+   |                            |                    | created that contains the ``&time_manager_nml`` settings         |
+   |                            |                    | appropriate to advance ncommas to the time requested by DART.    |
+   +----------------------------+--------------------+------------------------------------------------------------------+
 
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
+| 
 
-<TBODY valign=top>
+``ncommas_vars_nml`` is always read from a file called ``ncommas_vars.nml``.
 
-<TR><TD> dart_to_ncommas_input_file </TD>
-    <TD> character(len=128) </TD>
-    <TD>The name of the DART file containing the model state
-to insert into the ncommas restart file.
-</TD></TR>
+.. container::
 
-<TR><TD> advance_time_present </TD>
-    <TD> logical </TD>
-    <TD>If you are converting a DART initial conditions or restart file this
-should be <em class=code>.false.</em>; these files have a single timestamp
-describing the valid time of the model state.  If <em class=code>.true.</em>
-TWO timestamps are expected to be the DART file header.  In this case, a
-namelist for ncommas (called <em class=file>ncommas_in.DART</em>) is created
-that contains the <em class=code>&amp;time_manager_nml</em> settings
-appropriate to advance ncommas to the time requested by DART.
-</TD></TR>
+   +---------------------------------------+---------------------------------------+---------------------------------------+
+   | Item                                  | Type                                  | Description                           |
+   +=======================================+=======================================+=======================================+
+   | ncommas_state_variables               | character(len=NF90_MAX_NAME) ::       | The list of variable names in the     |
+   |                                       | dimension(160)                        | NCOMMAS restart file to use to create |
+   |                                       |                                       | the DART state vector and their       |
+   |                                       |                                       | corresponding DART kind.              |
+   +---------------------------------------+---------------------------------------+---------------------------------------+
 
-</TBODY> 
-</TABLE>
-</div>
+| 
 
-<br />
-<br />
+::
 
-<P>
-<em class=code>ncommas_vars_nml</em> is always read from a file
-called <em class=file>ncommas_vars.nml</em>.
-</P>
+   &ncommas_vars_nml
+      ncommas_state_variables = 'U',   'QTY_U_WIND_COMPONENT',
+                                'V',   'QTY_V_WIND_COMPONENT',
+                                'W',   'QTY_VERTICAL_VELOCITY',
+                                'TH',  'QTY_POTENTIAL_TEMPERATURE',
+                                'DBZ', 'QTY_RADAR_REFLECTIVITY',
+                                'WZ',  'QTY_VERTICAL_VORTICITY',
+                                'PI',  'QTY_EXNER_FUNCTION',
+                                'QV',  'QTY_VAPOR_MIXING_RATIO',
+                                'QC',  'QTY_CLOUDWATER_MIXING_RATIO',
+                                'QR',  'QTY_RAINWATER_MIXING_RATIO',
+                                'QI',  'QTY_ICE_MIXING_RATIO',
+                                'QS',  'QTY_SNOW_MIXING_RATIO',
+                                'QH',  'QTY_GRAUPEL_MIXING_RATIO'
+     /
 
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
+| 
 
-<TBODY valign=top>
+Modules used
+------------
 
-<TR><TD> ncommas_state_variables </TD>
-    <TD> character(len=NF90_MAX_NAME) ::<br />
-         dimension(160)   </TD>
-    <TD>The list of variable names in the NCOMMAS restart file to use to
-create the DART state vector and their corresponding DART kind.
-</TD></TR>
+::
 
-</TBODY> 
-</TABLE>
-</div>
+   assim_model_mod
+   location_mod
+   model_mod
+   null_mpi_utilities_mod
+   obs_kind_mod
+   random_seq_mod
+   time_manager_mod
+   types_mod
+   utilities_mod
 
-<br />
+Files read
+----------
 
-<div class=namelist>
-<pre>
-&amp;ncommas_vars_nml
-   ncommas_state_variables = 'U',   'QTY_U_WIND_COMPONENT',
-                             'V',   'QTY_V_WIND_COMPONENT',
-                             'W',   'QTY_VERTICAL_VELOCITY',
-                             'TH',  'QTY_POTENTIAL_TEMPERATURE',
-                             'DBZ', 'QTY_RADAR_REFLECTIVITY',
-                             'WZ',  'QTY_VERTICAL_VORTICITY',
-                             'PI',  'QTY_EXNER_FUNCTION',
-                             'QV',  'QTY_VAPOR_MIXING_RATIO',
-                             'QC',  'QTY_CLOUDWATER_MIXING_RATIO',
-                             'QR',  'QTY_RAINWATER_MIXING_RATIO',
-                             'QI',  'QTY_ICE_MIXING_RATIO',
-                             'QS',  'QTY_SNOW_MIXING_RATIO',
-                             'QH',  'QTY_GRAUPEL_MIXING_RATIO'
-  /
-</pre>
-</div>
+-  DART initial conditions/restart file; e.g. ``filter_ic``
+-  DART namelist file; ``input.nml``
+-  ncommas namelist file; ``ncommas_vars.nml``
+-  ncommas restart file ``ncommas_restart.nc``
 
-<br />
+Files written
+-------------
 
-<!--==================================================================-->
+-  ncommas restart file; ``ncommas_restart.nc``
+-  ncommas namelist file; ``ncommas_in.DART``
 
-<A NAME="Modules"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>MODULES USED</H2>
-<PRE>
-assim_model_mod
-location_mod
-model_mod
-null_mpi_utilities_mod
-obs_kind_mod
-random_seq_mod
-time_manager_mod
-types_mod
-utilities_mod
-</PRE>
+References
+----------
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
-
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES Read</H2>
-<UL><LI>DART initial conditions/restart file; e.g. <em class=file>filter_ic</em></LI>
-    <LI>DART namelist file; <em class=file>input.nml</em></LI>
-    <LI>ncommas namelist file; <em class=file>ncommas_vars.nml</em></LI>
-    <LI>ncommas restart file <em class=file>ncommas_restart.nc</em></LI>
-</UL>
-
-<H2>FILES Written</H2>
-<UL><LI>ncommas restart file; <em class=file>ncommas_restart.nc</em></LI>
-    <LI>ncommas namelist file; <em class=file>ncommas_in.DART</em></LI>
-</UL>
-
-
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
-
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
-<P>
 none
-</P>
-
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
-<P>
-none - all error messages come from modules that have their own documentation.
-</P>
-
-<H2>KNOWN BUGS</H2>
-<P>
-none
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-None.
-</P>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>

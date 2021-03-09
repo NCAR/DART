@@ -1,362 +1,139 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>PROGRAM OR MODULE name_of_thing</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc.css" />
-<link href="../../images/dart.ico" rel="shortcut icon" />
-</HEAD>
+PROGRM OR MODULE name_of_thing
+==============================
 
-<!--
-This template is appropriate for a file at the level of DART/dir1/here
-To use at another directory level in the tree, all 4 relative references
-(e.g. ../documenation/html/) need to be changed.
--->
+Overview
+--------
 
-<BODY>
-<A NAME="TOP"></A>
-
-<H1>PROGRM OR MODULE name_of_thing</H1>
-
-<table border=0 summary="dart header" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
-
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#ModulesUsed">MODULES USED</A> /
-<A HREF="#Interface">INTERFACES</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-
-<!--==================================================================-->
-<!-- End of standard header info, start of specific info              -->
-<!--==================================================================-->
-
-<H2>Overview</H2>
-
-<P>
 Explain in general terms what this is.
-</P>
 
-<!--==================================================================-->
-<!-- Description of the namelist                                      -->
-<!--==================================================================-->
+Namelist
+--------
 
-<!-- see the html programs in DART/documenation/html/boilerplate to generate this table -->
+DART namelists are always read from file ``input.nml``.
 
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
-DART namelists are
-always read from file <em class=file>input.nml</em>.
-</P>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-</P>
+We adhere to the F90 standard of starting a namelist with an ampersand '&' and terminating with a slash '/' for all our
+namelist input. Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely
+terminating the namelist.
 
-<div class=namelist>
-<pre>
-&amp;NAMELIST_NML 
-   name=value,
-   name=value, 
-   name=value
-/
-</pre>
-</div>
+::
 
-<P>
+   &NAMELIST_NML 
+      name=value,
+      name=value, 
+      name=value
+   /
+
 Any comments about the namelist as a whole.
-</P>
 
-<br />
-<br />
+| 
 
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> 
-</TR>
-</THEAD>
+.. container::
 
-<TBODY valign=top>
-<TR><TD>name</TD>
-    <TD>type</TD>
-    <TD>(often multi-line) description
-    </TD>
-</TR>
-<!-- repeat until done -->
-</TBODY>
-</TABLE>
+   ==== ==== ==============================
+   Item Type Description
+   ==== ==== ==============================
+   name type (often multi-line) description
+   ==== ==== ==============================
 
-</div>
-<br />
+| 
 
-<!--==================================================================-->
+Modules used
+------------
 
-<A NAME="ModulesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>MODULES USED</H2>
-<PRE>
-types_mod
-utilities_mod
-random_seq_mod
-time_manager_mod
-ensemble_manager_mod
-</PRE>
+::
 
-<!--==================================================================-->
+   types_mod
+   utilities_mod
+   random_seq_mod
+   time_manager_mod
+   ensemble_manager_mod
 
-<A NAME="Interface"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PUBLIC INTERFACES</H2>
+Public interfaces
+-----------------
 
-<!-- see the html programs in DART/documenation/html/boilerplate to generate this table -->
+================================== ==================
+*use this_module_name_mod, only :* subr/function name
+\                                  name2
+\                                  name3
+================================== ==================
 
-<TABLE summary='public interfaces'>
-<TR><TD><em class=call>use this_module_name_mod, only : </em></TD>
-                   <TD><A HREF="#tag"> subr/function name  </A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#tag2"> name2 </A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#tag3"> name3 </A></TD></TR>
-<!-- repeat until done -->
-</TABLE>
+A note about documentation style. Optional arguments are enclosed in brackets *[like this]*.
 
-<P>
-   A note about documentation style.
-   Optional arguments are enclosed in brackets
-   <em class=optionalcode>[like this]</em>.
-</P>
+| 
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+.. container:: routine
 
-<!-- see the html programs in DART/documenation/html/boilerplate to generate this table -->
+   *subroutine subroutine1(arg1, [, arg2])*
+   ::
 
-<A NAME="subroutine1"></A>
-<br />
-<div class=routine>
-<em class=call> subroutine subroutine1(arg1, <em class=optionalcode>[, arg2]</em>)</em>
-<pre>
-real(r8),           intent(in) :: <em class=code>arg1</em>
-real(r8), optional, intent(in) :: <em class=optionalcode>arg2</em>
-</pre>
-</div>
+      real(r8),           intent(in) :: arg1
+      real(r8), optional, intent(in) :: arg2
 
-<div class=indent1>
-<!-- Description -->
+.. container:: indent1
 
-<P>
-describe what this subroutine does.
-</P>
+   describe what this subroutine does.
 
-<TABLE width=100% border=0 summary="argument details" cellpadding=3>
-<TBODY valign=top>
-<TR><TD><em class=code> arg1 </em></TD>
-    <TD>Describe arg1.
-    </TD>
-</TR>
-<TR><TD><em class=optionalcode> arg2 </em></TD>
-    <TD>Describe optional arg2.
-    </TD>
-</TR>
-<!-- repeat until done -->
-</TBODY>
-</TABLE>
+   ======== =======================
+   ``arg1`` Describe arg1.
+   *arg2*   Describe optional arg2.
+   ======== =======================
 
-</div>
-<br />
+| 
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+.. container:: routine
 
-<!-- see the html programs in DART/documenation/html/boilerplate to generate this table -->
+   *function function1(arg1)*
+   ::
 
-<A NAME="function1"></A>
-<br />
-<div class=routine>
-<em class=call> function function1(arg1) </em>
-<pre>
-logical,             :: <em class=code>function1</em>
-integer, intent(in)  :: <em class=code>arg1</em>
-</pre>
-</div>
+      logical,             :: function1
+      integer, intent(in)  :: arg1
 
-<div class=indent1>
-<!-- Description -->
+.. container:: indent1
 
-<P>
-Describe function.
-</P>
+   Describe function.
 
-<TABLE width=100% border=0 summary="argument details" cellpadding=3>
-<TBODY valign=top>
-<TR><TD><em class=code> function1 </em></TD>
-    <TD>describe what this function returns
-    </TD></TR>
-<TR><TD><em class=code> arg1 </em></TD>
-    <TD>describe function argument
-    </TD></TR>
-<!-- repeat until done -->
-</TBODY>
-</TABLE>
+   ============= ===================================
+   ``function1`` describe what this function returns
+   ``arg1``      describe function argument
+   ============= ===================================
 
-</div>
-<br />
+| 
 
-<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+.. container:: type
 
-<!-- see the html programs in DART/documenation/html/boilerplate to generate this table -->
+   ::
 
-<A NAME="bob_type"></A>
-<br />
-<div class=type><pre>
-<em class=call>type bob_type</em>
-   private
-   integer :: bob1
-   integer :: bob2
-end type bob_type
-</pre>
-</div>
+      type bob_type
+         private
+         integer :: bob1
+         integer :: bob2
+      end type bob_type
 
-<div class=indent1>
-<!-- Description -->
+.. container:: indent1
 
-<P>
-describe bob
-</P>
+   describe bob
 
-<TABLE border=0 cellpadding=3 width=100% summary='derived type'>
-<THEAD align=left>
-<TR><TH> Component </TH>
-    <TH> Description </TH>
-</TR>
-</THEAD>
+   ========= ==============
+   Component Description
+   ========= ==============
+   bob1      Describe bob1.
+   bob2      Describe bob2.
+   ========= ==============
 
-<TBODY valign=top>
-<TR><TD> bob1 </TD>
-    <TD> Describe bob1.
-    </TD>
-</TR>
+| 
 
-<TR><TD> bob2 </TD>
-    <TD> Describe bob2.
-    </TD>
-</TR>
-<!-- repeat until done -->
-</TBODY>
-</TABLE>
+Files
+-----
 
-</div>
-<br />
-
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
-
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES</H2>
-
-<P>
 describe files used by code
-</P>
 
+References
+----------
 
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
+-  author, title. publication, volume, pages.
+   `doi: nn.yyyy/rest_of_number <http://dx.doi.org/nn.yyyy/rest_of_number>`__
 
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
-<ul>
-<li>author, title.
-<span style="font-style: italic;">publication</span>,
-<span style="font-weight: bold;">volume</span>, pages.<br />
-<a href="http://dx.doi.org/nn.yyyy/rest_of_number"
-target="_blank" >
-doi: nn.yyyy/rest_of_number </a><br />
-</li>
-</ul>
+Private components
+------------------
 
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100% summary='error codes'>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-
-<TBODY valign=top>
-<TR><!-- routine --><TD>subroutine_name</TD>
-    <!-- message --><TD>error message text
-                   </TD>
-    <!-- comment --><TD>what it means to the end user.
-                    </TD>
-</TR>
-<!-- repeat until done -->
-
-</TBODY>
-</TABLE>
-</div>
-
-<H2>KNOWN BUGS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PRIVATE COMPONENTS</H2>
-<P>
 no discussion
-</P>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>

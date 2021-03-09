@@ -1,282 +1,121 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>program obs_loop</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
-<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+program ``obs_loop``
+====================
 
-<H1>program <em class=program>obs_loop</em></H1>
+Overview
+--------
 
-<table border=0 summary="" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
+This program is a template that is intended to be modified by the user to do any desired operations on an observation
+sequence file.
 
-<A HREF="#Usage Notes">USAGE</A> /
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Discussion">DISCUSSION</A> /
-<A HREF="#Building">BUILDING</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
+Usage
+-----
 
-<H2>Overview</H2>
+This program is intended to be used as a template to read in observations from one obs_seq file and write them,
+optionally modified in some way, to another obs_seq file. It can be compiled and run as-is, but it simply makes an exact
+copy of the input file.
 
-<P>
-This program is a template that is intended to be modified by the user
-to do any desired operations on an observation sequence file.
-</P>
+There are comments in the code (search for ``MODIFY HERE`` ) where you can test values, types, times, error values, and
+either modify them or skip copying that observation to the output.
 
-<!--=====================================================================-->
-<!--===================== USAGE NOTES ===================================-->
-<!--=====================================================================-->
+There are build files in ``observations/utilities/oned`` and ``observations/utilities/threed_sphere`` to build the
+``obs_loop`` program.
 
-<A NAME="Usage Notes"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Usage</H2>
+| 
 
-<P>
-This program is intended to be used as a template to read in observations
-from one obs_seq file and write them, optionally modified in some way,
-to another obs_seq file.  It can be compiled and run as-is, but it simply
-makes an exact copy of the input file.
-</P>
-<P>
-There are comments in the code (search for <em class=code> MODIFY HERE </em>)
-where you can test values, types, times, error values, and either modify them
-or skip copying that observation to the output.
-</P>
-<P>
-There are build files in <em class=file>observations/utilities/oned</em> and
-<em class=file>observations/utilities/threed_sphere</em> to build the
-<em class=program>obs_loop</em> program.
-</P>
+Namelist
+--------
 
-<br /><br />
+This namelist is read from the file ``input.nml``. Namelists start with an ampersand '&' and terminate with a slash '/'.
+Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely terminating the
+namelist.
 
-<!--=====================================================================-->
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-<!--=====================================================================-->
+::
 
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Namelist</H2>
-<P>
-This namelist is read from the file <em class=file>input.nml</em>.
-Namelists start with an ampersand
-'&amp;' and terminate with a slash '/'.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
-prematurely terminating the namelist.
-</P>
+   &obs_loop_nml
+      filename_in  = ''
+      filename_out = '' 
+      print_only   = .false.
+      calendar     = 'Gregorian'
+      /
 
-<div class=namelist>
-<pre>
-&amp;obs_loop_nml
-   filename_in  = ''
-   filename_out = '' 
-   print_only   = .false.
-   calendar     = 'Gregorian'
-   /
-</pre>
-</div>
+| 
 
-<br /><br />
-
-<P>
 Items in this namelist set the input and output files.
-</P>
 
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
+.. container::
 
-<TBODY valign=top>
+   +--------------+--------------------+--------------------------------------------------------------------------------+
+   | Item         | Type               | Description                                                                    |
+   +==============+====================+================================================================================+
+   | filename_in  | character(len=256) | Observation sequence file to read                                              |
+   +--------------+--------------------+--------------------------------------------------------------------------------+
+   | filename_out | character(len=256) | Observation sequence file to create and write. If this file exists it will be  |
+   |              |                    | overwritten.                                                                   |
+   +--------------+--------------------+--------------------------------------------------------------------------------+
+   | print_only   | logical            | If .TRUE. then do the work but only print out information about what would be  |
+   |              |                    | written as output without actually creating the output file.                   |
+   +--------------+--------------------+--------------------------------------------------------------------------------+
+   | calendar     | character(len=32)  | The string name of a valid DART calendar type. (See the                        |
+   |              |                    | :doc:`../../modules/utilities/time_manager_mod` documentation for a list of    |
+   |              |                    | valid types.) The setting here does not change what is written to the output   |
+   |              |                    | file; it only changes how the date information is printed to the screen in the |
+   |              |                    | informational messages.                                                        |
+   +--------------+--------------------+--------------------------------------------------------------------------------+
 
-<TR><TD>filename_in</TD>
-    <TD>character(len=256)</TD>
-    <TD>Observation sequence file to read
-</TD></TR>
+| 
 
-<TR><TD>filename_out</TD>
-    <TD>character(len=256)</TD>
-    <TD>Observation sequence file to create and write.  If this
-file exists it will be overwritten.
-</TD></TR>
+Discussion
+----------
 
-<TR><TD>print_only</TD>
-    <TD>logical</TD>
-    <TD>If .TRUE. then do the work but only print out
-information about what would be written as output without
-actually creating the output file.
-</TD></TR>
+See the documentation in the obs_kind and obs_def modules for things you can query about an observation, and how to set
+(overwrite) existing values.
 
-<TR><TD>calendar</TD>
-    <TD>character(len=32)</TD>
-    <TD>The string name of a valid DART calendar type.  (See the
-<a href="../../modules/utilities/time_manager_mod.html">time_manager_mod</a>
-documentation for a list of valid types.)  The setting here does not
-change what is written to the output file; it only changes how the
-date information is printed to the screen in the informational messages.
-</TD></TR>
+| 
 
-</TBODY> 
-</TABLE>
-</div>
+Building
+--------
 
-<br /> <br />
+There are build files in ``observations/utilities/oned`` and ``observations/utilities/threed_sphere`` to build the
+``obs_loop`` program.
 
+The ``preprocess`` program must be built and run first to define what set of observation types will be supported. See
+the :doc:`../../../assimilation_code/programs/preprocess/preprocess` for more details on how to define the list and run
+it. The ``&preprocess_nml`` namelist in the ``input.nml`` file must contain files with definitions for the combined set
+of all observation types which will be encountered over all input obs_seq files.
 
-<!--=====================================================================-->
-<!--===================== DISCUSSION ====================================-->
-<!--=====================================================================-->
+If you have observation types which are not part of the default list in the &preprocess_nml namelist, add them to the
+input.nml file and then either run quickbuild.csh or make and run preprocess and then make the obs_loop tool.
 
-<A NAME="Discussion"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Discussion</H2>
+Usually the directories where executables are built will include a ``quickbuild.csh`` script which builds and runs
+preprocess and then builds the rest of the executables by executing all files with names starting with ``mkmf_``.
 
-<P>
-See the documentation in the obs_kind and obs_def modules for things
-you can query about an observation, and how to set (overwrite) existing
-values.
-</P>
+Files
+-----
 
-<br /> <br />
+========= ==================================
+filename  purpose
+========= ==================================
+input.nml to read the &obs_loop_nml namelist
+========= ==================================
 
-<!--==================================================================-->
+References
+----------
 
-<A NAME="Building"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>BUILDING</H2>
+#. none
 
-<P>
-There are build files in <em class=file>observations/utilities/oned</em> and
-<em class=file>observations/utilities/threed_sphere</em> to build the
-<em class=program>obs_loop</em> program.
-</P>
-<P>
-The <em class=file>preprocess</em> program must be built and run first to define
-what set of observation types will be supported.  See the
-<a href="../../../assimilation_code/programs/preprocess/preprocess.html">preprocess documentation</a>
-for more details on how to define the list and run it.
-The <em class=code>&amp;preprocess_nml</em>
-namelist in the <em class=file>input.nml</em> file must contain files with
-definitions for the combined set of all observation types which 
-will be encountered over all input obs_seq files.
-</P>
-<P>
-If you have observation types which are not part of the default list
-in the &amp;preprocess_nml namelist, add them to the input.nml
-file and then either run quickbuild.csh or make and run preprocess
-and then make the obs_loop tool.
-</P>
-<P>Usually the directories where executables are built will include
-a <em class=file>quickbuild.csh</em> script which builds and runs preprocess 
-and then builds the rest of the executables by executing all files
-with names starting with <em class=file>mkmf_</em>.
-</P>
+Error codes and conditions
+--------------------------
 
+.. container:: errors
 
-<!--==================================================================-->
+   ======== ======= =======
+   Routine  Message Comment
+   ======== ======= =======
+   obs_loop         
+   obs_loop         
+   ======== ======= =======
 
-<pre>
-</pre>
+Future plans
+------------
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
-
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Files</H2>
-<TABLE border=0 >
-<TR><TH>filename</TH>
-    <TH>purpose</TH></TR>
-<TR><TD>input.nml</TD>
-    <TD>to read the &amp;obs_loop_nml namelist</TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
-
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>References</H2>
-<ol>
-<li> none </li>
-</ol>
-
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Error Codes and Conditions</H2>
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-
-<TR><!-- routine --><TD VALIGN=top>obs_loop</TD>
-    <!-- message --><TD VALIGN=top> </TD>
-    <!-- comment --><TD VALIGN=top> </TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>obs_loop</TD>
-    <!-- message --><TD VALIGN=top> </TD>
-    <!-- comment --><TD VALIGN=top> </TD>
-</TR>
-
-</TABLE>
-</div>
-
-<H2>KNOWN BUGS</H2>
-<P>
 none
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Future Plans</H2>
-<P>
-none
-</P>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>

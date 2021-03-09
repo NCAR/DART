@@ -1,215 +1,82 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>program trans_pv_sv</TITLE>
-<link rel="stylesheet" type="text/css" href="../../docs/html/doc.css">
-<link href="../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+PROGRAM ``trans_pv_sv``
+=======================
 
-<center>
-<A HREF="#Modules">MODULES</A> /
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-</center>
+| ``trans_pv_sv`` is responsible for converting the ocean model 'snapshot' files to a DART 'initial conditions' file. In
+  order to do that, the valid time for the snapshot files must be calculated from several pieces of information: the
+  filename contains a timestep index, the ``data``\ ``&PARM03`` namelist contains information about the amount of time
+  per timestep, and the ``data.cal``\ ``&CAL_NML`` namelist contains the start time. Additionally, the grid
+  characteristics must be read from ``data``\ ``&PARM04``. Consequently, the files ``data``, and ``data.cal`` as well as
+  the general ``input.nml`` are needed in addition to the snapshot files.
+| This program has a number of options that are driven from namelists and **one** piece of input read from STDIN: the
+  integer representing the timestep index of the snapshot file set.
 
-<H1>PROGRAM <em class=program>trans_pv_sv</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+Usage
+-----
 
-<P>
-   <em class="program">trans_pv_sv</em> is responsible for converting the ocean
-   model 'snapshot' files to a DART 'initial conditions' file. In order to do that,
-   the valid time for the snapshot files must be calculated from several pieces of
-   information:  the filename contains a timestep index, the 
-   <em class="file">data</em><em class="unix">&amp;PARM03</em> namelist contains
-   information about the amount of time per timestep, and the
-   <em class="file">data.cal</em><em class="unix">&amp;CAL_NML</em>
-   namelist contains the start time. Additionally, the grid characteristics must
-   be read from <em class="file">data</em><em class="unix">&amp;PARM04</em>.
+| The output filename is hardwired to that expected by ``filter``. This example creates an output file named
+  ``assim_model_state_ud`` from the following files in the local directory:
+| ``S.0000000096.data``
+| ``T.0000000096.data``
+| ``U.0000000096.data``
+| ``V.0000000096.data``
+| ``Eta.0000000096.data``
 
-   Consequently, the files
-   <em class="file">data</em>, and <em class="file">data.cal</em> as well as
-   the general <em class="file">input.nml</em> are needed in addition to the snapshot
-   files.
-   <BR>
-   <BR>
-   This program has a number of options that are driven from namelists and 
-   <strong>one</strong> piece of input read from STDIN: the integer representing the
-   timestep index of the snapshot file set. 
-</P>
+.. container:: unix
 
-<H2>Usage</H2>
-<P>
-   The output filename is hardwired to that expected by 
-   <em class="program">filter</em>.
-   This example creates an output file named 
-   <em class="file">assim_model_state_ud</em>
-   from the following files in the local directory:<br><br>
-   <em class="file">S.0000000096.data</em><br>
-   <em class="file">T.0000000096.data</em><br>
-   <em class="file">U.0000000096.data</em><br>
-   <em class="file">V.0000000096.data</em><br>
-   <em class="file">Eta.0000000096.data</em>
-</P>
-<div class="unix">
-./trans_pv_sv &lt; 96
-</div><br>
+   ./trans_pv_sv < 96
 
-<!--==================================================================-->
+| 
 
-<A NAME="Modules"></A>
-<HR>
-<H2>MODULES USED</H2>
-<PRE>
-types_mod
-utilities_mod
-model_mod
-assim_model_mod
-time_manager_mod
-</PRE>
+Modules used
+------------
 
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
+::
 
-<A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>
-This program has no namelist of its own, but some of the underlying modules 
-require namelists. To avoid duplication and, possibly, some inconsistency
-in the documentation, only a list of the required namelists is provided here,
-with a hyperlink to the full documentation for each namelist.
-</P>
+   types_mod
+   utilities_mod
+   model_mod
+   assim_model_mod
+   time_manager_mod
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align="left">Namelist</TH><TH align="left">Primary Purpose</TH></TR>
-<TR><TD><a 
-    href="../../assimilation_code/modules/utilities/utilities_mod.html#Namelist">utilities_nml</a></TD>
-    <TD>set the termination level and file name for the run-time log</TD></TR>
-<TR><TD><a
-    href="../../assimilation_code/modules/assimilation/assim_model_mod.html#Namelist">assim_model_mod_nml</a></TD>
-    <TD>write DART restart files in binary or ASCII</TD></TR>
+Namelist
+--------
 
-<TR><TD><a href="model_mod.html#Namelist">model_nml</a></TD>
-    <TD>write netCDF files with prognostic variables</TD></TR>
+This program has no namelist of its own, but some of the underlying modules require namelists. To avoid duplication and,
+possibly, some inconsistency in the documentation, only a list of the required namelists is provided here, with a
+hyperlink to the full documentation for each namelist.
 
-<TR><TD><a href="model_mod.html#namelist_cal_nml">CAL_NML</a></TD>
-    <TD>determine start time of the ocean model</TD></TR>
++----------------------------------------------------------+----------------------------------------------------------+
+| Namelist                                                 | Primary Purpose                                          |
++==========================================================+==========================================================+
+| `utilities_nml <../../assimilatio                        | set the termination level and file name for the run-time |
+| n_code/modules/utilities/utilities_mod.html#Namelist>`__ | log                                                      |
++----------------------------------------------------------+----------------------------------------------------------+
+| `assim_model_mod_nml <../../assimilation_cod             | write DART restart files in binary or ASCII              |
+| e/modules/assimilation/assim_model_mod.html#Namelist>`__ |                                                          |
++----------------------------------------------------------+----------------------------------------------------------+
+| `model_nml <model_mod.html#Namelist>`__                  | write netCDF files with prognostic variables             |
++----------------------------------------------------------+----------------------------------------------------------+
+| `CAL_NML <model_mod.html#namelist_cal_nml>`__            | determine start time of the ocean model                  |
++----------------------------------------------------------+----------------------------------------------------------+
+| `PARM03 <model_mod.html#namelist_parm03>`__              | the amount of time per model timestep for deciphering    |
+|                                                          | snapshot filenames                                       |
++----------------------------------------------------------+----------------------------------------------------------+
+| `PARM04 <model_mod.html#namelist_parm04>`__              | ocean model grid parameters                              |
++----------------------------------------------------------+----------------------------------------------------------+
 
-<TR><TD><a href="model_mod.html#namelist_parm03">PARM03</a></TD>
-    <TD>the amount of time per model timestep for deciphering snapshot filenames</TD></TR>
+Files
+-----
 
-<TR><TD><a href="model_mod.html#namelist_parm04">PARM04</a></TD>
-    <TD>ocean model grid parameters</TD></TR>
-</TABLE>
+-  input namelist files: ``data, data.cal, input.nml``
+-  input snapshot files: ``[S,T,U,V,Eta].nnnnnnnnnn.[data[,.meta]]``
+-  output initial conditions file: ``assim_model_state_ud``
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
+References
+----------
 
-<A NAME="FilesUsed"></A>
-<HR>
-<H2>FILES</H2>
-<UL>
-    <LI>input namelist files:
-        <em class="file">data, data.cal, input.nml</em></LI>
-    <LI>input snapshot files:
-        <em class="file">[S,T,U,V,Eta].nnnnnnnnnn.[data[,.meta]]</em></LI>
-    <LI>output initial conditions file:
-        <em class="file">assim_model_state_ud</em></LI>
-</UL>
+-  none
 
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
+Private components
+------------------
 
-<A NAME="References"></A>
-<HR>
-<H2>REFERENCES</H2>
-<ul>
-<li> none </li>
-</ul>
-
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-
-<A NAME="Errors"></A>
-<HR>
-<H2>ERROR CODES and CONDITIONS</H2>
-<P>The most common problem is trying to read the Fortran
-direct-access big-endian snapshot files on a little-endian architecture.
-This can manifest itself in very misleading ways. Make sure you have the
-right compiler settings to be able to read these files. There is no one
-error message that indicates the read was unsuccessful.
-<br>
-<br>
-The read takes place in 
-<a href="model_mod.html#read_snapshot">model_mod:read_snapshot()</a>.
-</P>
-
-<div class="errors">
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-
-<TR><!-- routine --><TD VALIGN=top>trans_sv_pv</TD>
-    <!-- message --><TD VALIGN=top>unable to read timestep from stdin.</TD>
-    <!-- comment --><TD VALIGN=top>look at the example in the 'Usage' section.</TD>
-</TR>
-
-</TABLE>
-</div>
-
-<H2>KNOWN BUGS</H2>
-<P>
-There are no known bugs.
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<HR>
-<H2>FUTURE PLANS</H2>
-<P>
-None at this time. Feel free to suggest improvements.
-</P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<HR>
-<H2>PRIVATE COMPONENTS</H2>
-<P>
 N/A
-</P>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<HR>
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>

@@ -1,431 +1,279 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>program wrf_dart_obs_preprocess</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css">
-<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+PROGRAM ``wrf_dart_obs_preprocess``
+===================================
 
-<H1>PROGRAM <em class=program>wrf_dart_obs_preprocess</em></H1>
+Overview
+--------
 
-<table border=0 summary="dart header" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
+Program to preprocess observations, with specific knowledge of the WRF domain.
 
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Modules">MODULES</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
+This program will exclude all observations outside of the given WRF domain. There are options to exclude or increase the
+error values of obs close to the domain boundaries. The program can superob (average) aircraft and satellite wind obs if
+they are too dense.
 
-<H2>Overview</H2>
+This program can read up to 9 additional obs_seq files and merge their data in with the basic obs_sequence file which is
+the main input.
 
-<P>
-Program to preprocess observations, with specific knowledge of the
-WRF domain.
-</P>
-<P>
-This program will exclude all observations outside of the given
-WRF domain.  There are options to exclude or increase the error
-values of obs close to the domain boundaries.  The program can
-superob (average) aircraft and satellite wind obs if they are
-too dense.
-</P>
-<P>
-This program can read up to 9 additional obs_seq files and merge
-their data in with the basic obs_sequence file which is the main input.
-</P>
-<P>
-This program can reject surface observations if the elevation encoded
-in the observation is too different from the wrf surface elevation.
-</P>
-<P>
+This program can reject surface observations if the elevation encoded in the observation is too different from the wrf
+surface elevation.
+
 This program can exclude observations above a specified height or pressure.
-</P>
-<P>
+
 This program can overwrite the incoming Data QC value with another.
-</P>
 
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
+Namelist
+--------
 
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
-This namelist is read from the file <em class=file>input.nml</em>.
-Namelists start with an ampersand
-'&amp;' and terminate with a slash '/'.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
-prematurely terminating the namelist.
-</P>
+This namelist is read from the file ``input.nml``. Namelists start with an ampersand '&' and terminate with a slash '/'.
+Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely terminating the
+namelist.
 
-<div class=namelist>
-<pre>
-&amp;wrf_obs_preproc_nml
+::
 
-  file_name_input          = 'obs_seq.old'
-  file_name_output         = 'obs_seq.new'
-  
-  sonde_extra              = 'obs_seq.rawin'
-  land_sfc_extra           = 'obs_seq.land_sfc'
-  metar_extra              = 'obs_seq.metar'
-  marine_sfc_extra         = 'obs_seq.marine'
-  sat_wind_extra           = 'obs_seq.satwnd'
-  profiler_extra           = 'obs_seq.profiler'
-  gpsro_extra              = 'obs_seq.gpsro'
-  acars_extra              = 'obs_seq.acars'
-  trop_cyclone_extra       = 'obs_seq.tc'
-  
-  overwrite_obs_time       = .false.  
-  
-  obs_boundary             = 0.0
-  increase_bdy_error       = .false.  
-  maxobsfac                = 2.5   
-  obsdistbdy               = 15.0  
-  
-  sfc_elevation_check      = .false.  
-  sfc_elevation_tol        = 300.0  
-  obs_pressure_top         = 0.0  
-  obs_height_top           = 2.0e10  
-  
-  include_sig_data         = .true.   
-  tc_sonde_radii           = -1.0  
-  
-  superob_aircraft         = .false.  
-  aircraft_horiz_int       = 36.0  
-  aircraft_pres_int        = 2500.0  
-  
-  superob_sat_winds        = .false.    
-  sat_wind_horiz_int       = 100.0   
-  sat_wind_pres_int        = 2500.0  
-  
-  overwrite_ncep_satwnd_qc = .false.    
-  overwrite_ncep_sfc_qc    = .false.  
-/
-</pre>
-</div>
+   &wrf_obs_preproc_nml
 
-<br />
-<br />
+     file_name_input          = 'obs_seq.old'
+     file_name_output         = 'obs_seq.new'
+     
+     sonde_extra              = 'obs_seq.rawin'
+     land_sfc_extra           = 'obs_seq.land_sfc'
+     metar_extra              = 'obs_seq.metar'
+     marine_sfc_extra         = 'obs_seq.marine'
+     sat_wind_extra           = 'obs_seq.satwnd'
+     profiler_extra           = 'obs_seq.profiler'
+     gpsro_extra              = 'obs_seq.gpsro'
+     acars_extra              = 'obs_seq.acars'
+     trop_cyclone_extra       = 'obs_seq.tc'
+     
+     overwrite_obs_time       = .false.  
+     
+     obs_boundary             = 0.0
+     increase_bdy_error       = .false.  
+     maxobsfac                = 2.5   
+     obsdistbdy               = 15.0  
+     
+     sfc_elevation_check      = .false.  
+     sfc_elevation_tol        = 300.0  
+     obs_pressure_top         = 0.0  
+     obs_height_top           = 2.0e10  
+     
+     include_sig_data         = .true.   
+     tc_sonde_radii           = -1.0  
+     
+     superob_aircraft         = .false.  
+     aircraft_horiz_int       = 36.0  
+     aircraft_pres_int        = 2500.0  
+     
+     superob_sat_winds        = .false.    
+     sat_wind_horiz_int       = 100.0   
+     sat_wind_pres_int        = 2500.0  
+     
+     overwrite_ncep_satwnd_qc = .false.    
+     overwrite_ncep_sfc_qc    = .false.  
+   /
 
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
+| 
 
-<TBODY valign=top>
-    
-<TR><TD colspan="3"> <strong> Generic parameters: </strong> </TD>
-</TD></TR>
+.. container::
 
-<TR><TD> file_name_input </TD>
-    <TD> character(len=129) </TD>
-    <TD>The input obs_seq file.
-</TD></TR>
+   Item
 
-<TR><TD> file_name_output </TD>
-    <TD> character(len=129) </TD>
-    <TD>The output obs_seq file.
-</TD></TR>
+Type
 
-<TR><TD> sonde_extra, land_sfc_extra, metar_extra, marine_sfc_extra,
- marine_sfc_extra, sat_wind_extra, profiler_extra, gpsro_extra, acars_extra,
- trop_cyclone_extra </TD>
-    <TD> character(len=129) </TD>
-    <TD>The names of additional input obs_seq files, which if they exist, will be
-merged in with the obs from the <em class=file>file_name_input</em> obs_seq file.
-If the files do not exist, they are silently ignored without error.
-</TD></TR>
+Description
 
-<TR><TD> overwrite_obs_time </TD>
-    <TD> logical </TD>
-    <TD>If true, replace the incoming observation time with the analysis time.
-Not recommended.
-</TD></TR>
+**Generic parameters:**
 
-<TR><TD colspan="3"> <strong> Boundary-specific parameters: </strong> </TD>
-</TD></TR>
+file_name_input
 
-<TR><TD> obs_boundary </TD>
-    <TD> real(r8) </TD>
-    <TD>Number of grid points around domain boundary which will be considered the
-new extent of the domain.  Observations outside this smaller area will be excluded.
-</TD></TR>
+character(len=129)
 
-<TR><TD> increase_bdy_error </TD>
-    <TD> logical </TD>
-    <TD>If true, observations near the domain boundary will have their
-observation error increased by <em class=code>maxobsfac</em>.
-</TD></TR>
+The input obs_seq file.
 
-<TR><TD> maxobsfac </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>increase_bdy_error</em> is true, multiply the error
-by a ramped factor.  This item sets the maximum error.
-</TD></TR>
+file_name_output
 
-<TR><TD> obsdistbdy </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>increase_bdy_error</em> is true, this defines the region
-around the boundary (in number of grid points) where the observation error values
-will be altered.  This is ramped, so when you reach the innermost points the
-change in observation error is 0.0.
-</TD></TR>
+character(len=129)
 
-<TR><TD colspan="3"> <strong> Parameters to reduce observation count :</strong> </TD>
-</TD></TR>
+The output obs_seq file.
 
-<TR><TD> sfc_elevation_check </TD>
-    <TD> logical </TD>
-    <TD>If true, check the height of surface observations against the surface
-height in the model. 
-</TD></TR>
+sonde_extra, land_sfc_extra, metar_extra, marine_sfc_extra, marine_sfc_extra, sat_wind_extra, profiler_extra,
+gpsro_extra, acars_extra, trop_cyclone_extra
 
-<TR><TD> sfc_elevation_tol </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>sfc_elevation_check</em> is true, the maximum difference
-between the elevation of a surface observation and the model surface height,
-in meters.  If the difference is larger than this value, the observation is excluded.
-</TD></TR>
+character(len=129)
 
-<TR><TD> obs_pressure_top </TD>
-    <TD> real(r8) </TD>
-    <TD>Observations with a vertical coordinate in pressure which are located
-above this pressure level (i.e. the obs vertical value is smaller than the given
-pressure) will be excluded.
-</TD></TR>
+The names of additional input obs_seq files, which if they exist, will be merged in with the obs from the
+``file_name_input`` obs_seq file. If the files do not exist, they are silently ignored without error.
 
-<TR><TD> obs_height_top </TD>
-    <TD> real(r8) </TD>
-    <TD>Observations with a vertical coordinate in height which are located
-above this height value (i.e. the obs vertical value is larger than the given
-height) will be excluded.
-</TD></TR>
+overwrite_obs_time
 
-<TR><TD colspan="3"> <strong> Radio/Rawinsonde-specific parameters :</strong> </TD>
-</TD></TR>
+logical
 
-<TR><TD> include_sig_data </TD>
-    <TD> logical </TD>
-    <TD>If true, include significant level data from radiosondes.
-</TD></TR>
+If true, replace the incoming observation time with the analysis time. Not recommended.
 
-<TR><TD> tc_sonde_radii </TD>
-    <TD> real(r8) </TD>
-    <TD>If greater than 0.0 remove any sonde observations closer than
-this distance in Kilometers to the center of a Tropical Cyclone.
-</TD></TR>
+**Boundary-specific parameters:**
 
-<TR><TD colspan="3"> <strong> Aircraft-specific parameters :</strong> </TD>
-</TD></TR>
+obs_boundary
 
-<TR><TD> superob_aircraft </TD>
-    <TD> logical </TD>
-    <TD>If true, average all aircraft observations within the given
-radius and output only a single observation.  Any observation that is
-used in computing a superob observation
-is removed from the list and is not used
-in any other superob computation.
-</TD></TR>
+real(r8)
 
-<TR><TD> aircraft_horiz_int </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>superob_aircraft</em> is true,  the horizontal
-distance in Kilometers which defines the superob area.  All other unused
-aircraft observations within this radius will be averaged with the current
-observation.
-</TD></TR>
+Number of grid points around domain boundary which will be considered the new extent of the domain. Observations outside
+this smaller area will be excluded.
 
-<TR><TD> aircraft_vert_int </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>superob_aircraft</em> is true, the vertical
-distance in Pascals which defines the maximum separation for including
-an observation in the superob computation.
-</TD></TR>
+increase_bdy_error
 
-<TR><TD colspan="3"> <strong> Satellite Wind-specific parameters :</strong> </TD>
-</TD></TR>
+logical
 
-<TR><TD> superob_sat_winds </TD>
-    <TD> logical </TD>
-    <TD>If true, average all sat_wind observations within the given
-radius and output only a single observation.  Any observation that is
-used in computing a superob observation
-is removed from the list and is not used
-in any other superob computation.
-</TD></TR>
+If true, observations near the domain boundary will have their observation error increased by ``maxobsfac``.
 
-<TR><TD> sat_wind_horiz_int </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>superob_sat_winds</em> is true,  the horizontal
-distance in Kilometers which defines the superob area.  All other unused
-sat_wind observations within this radius will be averaged with the current
-observation.
-</TD></TR>
+maxobsfac
 
-<TR><TD> sat_wind_vert_int </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>superob_sat_winds</em> is true, the vertical
-distance in Pascals which defines the maximum separation for including
-an observation in the superob computation.
-</TD></TR>
+real(r8)
 
-<TR><TD> overwrite_ncep_satwnd_qc </TD>
-    <TD> logical </TD>
-    <TD>If true, replace the incoming Data QC value in satellite wind
-observations with 2.0.
-</TD></TR>
+If ``increase_bdy_error`` is true, multiply the error by a ramped factor. This item sets the maximum error.
 
-<TR><TD colspan="3"> <strong> Surface Observation-specific parameters :</strong> </TD>
-</TD></TR>
+obsdistbdy
 
-<TR><TD> overwrite_ncep_sfc_qc </TD>
-    <TD> logical </TD>
-    <TD>If true, replace the incoming Data QC value in surface
-observations with 2.0.
-</TD></TR>
+real(r8)
 
-</TBODY> 
-</TABLE>
-</div>
+If ``increase_bdy_error`` is true, this defines the region around the boundary (in number of grid points) where the
+observation error values will be altered. This is ramped, so when you reach the innermost points the change in
+observation error is 0.0.
 
-<br />
-<br />
+**Parameters to reduce observation count :**
 
+sfc_elevation_check
 
-<!--==================================================================-->
+logical
 
-<A NAME="Modules"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>MODULES USED</H2>
-<PRE>
-types_mod
-obs_sequence_mod
-utilities_mod
-obs_kind_mod
-time_manager_mod
-model_mod
-netcdf
-</PRE>
+If true, check the height of surface observations against the surface height in the model.
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
+sfc_elevation_tol
 
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES</H2>
-<UL>
-   <LI>Input namelist ; <em class=file>input.nml</em></LI>
-   <LI>Input WRF state netCDF files; <em class=file>wrfinput_d01,
-   wrfinput_d02, ...</em></LI>
-   <LI>Input obs_seq files (as specified in namelist)</LI>
-   <LI>Output obs_seq file (as specified in namelist)</LI>
-</UL>
+real(r8)
 
-<H3>File formats</H3>
+If ``sfc_elevation_check`` is true, the maximum difference between the elevation of a surface observation and the model
+surface height, in meters. If the difference is larger than this value, the observation is excluded.
 
-<P>This utility can read one or more obs_seq files and combine them
-while doing the rest of the processing.  It uses the standard DART
-observation sequence file format.
-</P>
+obs_pressure_top
 
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
+real(r8)
 
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
-<ul>
-<li> Generously contributed by Ryan Torn. </li>
-</ul>
+Observations with a vertical coordinate in pressure which are located above this pressure level (i.e. the obs vertical
+value is smaller than the given pressure) will be excluded.
 
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
+obs_height_top
 
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
+real(r8)
 
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<THEAD>
-<TR><TH>Routine</TH>
-    <TH>Message</TH>
-    <TH>Comment</TH></TR>
-</THEAD>
+Observations with a vertical coordinate in height which are located above this height value (i.e. the obs vertical value
+is larger than the given height) will be excluded.
 
-<TBODY valign=top>
-<TR><TD>wrf_dart_obs_preprocess</TD>
-    <TD></TD>
-    <TD></TD>
+**Radio/Rawinsonde-specific parameters :**
 
-<TR><TD>wrf_dart_obs_preprocess</TD>
-    <TD></TD>
-    <TD></TD>
+include_sig_data
 
-<TR><TD>wrf_dart_obs_preprocess</TD>
-    <TD></TD>
-    <TD></TD>
+logical
 
-<TR><TD>wrf_dart_obs_preprocess</TD>
-    <TD></TD>
-    <TD></TD>
+If true, include significant level data from radiosondes.
 
-</TBODY>
-</TABLE>
-</div>
+tc_sonde_radii
 
-<H2>KNOWN BUGS</H2>
-<P>
-none
-</P>
+real(r8)
 
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
+If greater than 0.0 remove any sonde observations closer than this distance in Kilometers to the center of a Tropical
+Cyclone.
 
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-none.
-</P>
+**Aircraft-specific parameters :**
 
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
+superob_aircraft
 
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
+logical
 
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
+If true, average all aircraft observations within the given radius and output only a single observation. Any observation
+that is used in computing a superob observation is removed from the list and is not used in any other superob
+computation.
 
-<!--==================================================================-->
+aircraft_horiz_int
 
-</BODY>
-</HTML>
+real(r8)
+
+If ``superob_aircraft`` is true, the horizontal distance in Kilometers which defines the superob area. All other unused
+aircraft observations within this radius will be averaged with the current observation.
+
+aircraft_vert_int
+
+real(r8)
+
+If ``superob_aircraft`` is true, the vertical distance in Pascals which defines the maximum separation for including an
+observation in the superob computation.
+
+**Satellite Wind-specific parameters :**
+
+superob_sat_winds
+
+logical
+
+If true, average all sat_wind observations within the given radius and output only a single observation. Any observation
+that is used in computing a superob observation is removed from the list and is not used in any other superob
+computation.
+
+sat_wind_horiz_int
+
+real(r8)
+
+If ``superob_sat_winds`` is true, the horizontal distance in Kilometers which defines the superob area. All other unused
+sat_wind observations within this radius will be averaged with the current observation.
+
+sat_wind_vert_int
+
+real(r8)
+
+If ``superob_sat_winds`` is true, the vertical distance in Pascals which defines the maximum separation for including an
+observation in the superob computation.
+
+overwrite_ncep_satwnd_qc
+
+logical
+
+If true, replace the incoming Data QC value in satellite wind observations with 2.0.
+
+**Surface Observation-specific parameters :**
+
+overwrite_ncep_sfc_qc
+
+logical
+
+If true, replace the incoming Data QC value in surface observations with 2.0.
+
+| 
+
+Modules used
+------------
+
+::
+
+   types_mod
+   obs_sequence_mod
+   utilities_mod
+   obs_kind_mod
+   time_manager_mod
+   model_mod
+   netcdf
+
+Files
+-----
+
+-  Input namelist ; ``input.nml``
+-  Input WRF state netCDF files; ``wrfinput_d01, wrfinput_d02, ...``
+-  Input obs_seq files (as specified in namelist)
+-  Output obs_seq file (as specified in namelist)
+
+File formats
+~~~~~~~~~~~~
+
+This utility can read one or more obs_seq files and combine them while doing the rest of the processing. It uses the
+standard DART observation sequence file format.
+
+References
+----------
+
+-  Generously contributed by Ryan Torn.

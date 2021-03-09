@@ -1,236 +1,99 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>program dart_to_cam</TITLE>
-<link rel="stylesheet" type="text/css" href="../../docs/html/doc.css" />
-<link href="../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+PROGRAM ``dart_to_cam``
+=======================
 
-<H1>PROGRAM <em class=program>dart_to_cam</em></H1>
+Overview
+--------
 
-<table border=0 summary="" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../docs/index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
+``dart_to_cam`` is the program that reads a DART restart or model advance file (e.g.
+``perfect_ics, filter_ics, assim_model_state_id ...`` ). and overwrites the part of the CAM data in a single CAM restart
+file (usually ``caminput.nc``) which is in the DART state vector. If you have multiple input files, you will need to
+rename the output files as you create them.
 
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Modules">MODULES</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
+The list of variables extracted from the DART state vector and exported to the CAM netCDF file is controlled by the set
+of ``input.nml`` ``&model_nml:state_names_*`` variables.
 
-<H2>Overview</H2>
+If the input is a model advance file, containing 2 timestamps (the current model time and a future time the model should
+run until), this program also creates a separate file named ``times`` that contains three lines: the advance-to time,
+the current model time, and the number of hours to advance. These will need to be extracted and inserted in a CAM
+namelist to indicate to CAM how long to run.
 
-<P>
-   <em class=program>dart_to_cam</em> is the program that reads a DART
-   restart or model advance file 
-   (e.g. <em class=file>perfect_ics, filter_ics, assim_model_state_id ... </em>). 
-   and overwrites the part of the CAM data in a single CAM restart file 
-   (usually <em class=file>caminput.nc</em>) which is in the DART state vector.
-   If you have
-   multiple input files, you will need to rename the output files as you create them.
-</P><P>
-   The list of variables extracted from the DART state vector
-   and exported to the CAM netCDF file
-   is controlled by the set of <em class=file>input.nml</em>
-   <em class=code>&amp;model_nml:state_names_*</em> variables.
-</P><P>
-   If the input is a model advance file, containing 2 timestamps (the current model
-   time and a future time the model should run until), this program also creates
-   a separate file named <em class="file">times</em> that contains three lines:
-   the advance-to time, the current model time, and the number of hours to advance.
-   These will need to be extracted and inserted in a CAM namelist to indicate to
-   CAM how long to run.
-</P><P>
-   This program also updates the <em class=code>date</em> and
-   <em class=code>datesec</em> variables in the CAM netcdf file.
-   Generally these are identical times since the assimilation doesn't
-   change the time of the data, but in case the original file had a
-   different time that was overwritten in the state vector, it will
-   update the time for consistency.
-</P><P>
-   Conditions required for successful execution of <em class=program>dart_to_cam</em>:
-</P>
+This program also updates the ``date`` and ``datesec`` variables in the CAM netcdf file. Generally these are identical
+times since the assimilation doesn't change the time of the data, but in case the original file had a different time
+that was overwritten in the state vector, it will update the time for consistency.
 
-<UL>
-   <LI>a valid <em class=file>input.nml</em> namelist file for DART</LI>
-   <LI>a CAM 'phis' netCDF file [default: <em class=file>cam_phis.nc</em>]</LI>
-   <LI>a DART restart file [default: <em class=file>dart_ics</em>] (read)</LI>
-   <LI>a CAM restart file [default: <em class=file>caminput.nc</em>] (read and written)</LI>
-</UL>
+Conditions required for successful execution of ``dart_to_cam``:
 
-<P>
-Since this program is called repeatedly for every ensemble member,
-we have found it convenient to link the DART input and CAM restart files
-to the default filenames <em class=file>dart_ics</em> and
-<em class=file>caminput.nc</em>).  The output files may be moved
-or relinked as necessary.
-</P>
+-  a valid ``input.nml`` namelist file for DART
+-  a CAM 'phis' netCDF file [default: ``cam_phis.nc``]
+-  a DART restart file [default: ``dart_ics``] (read)
+-  a CAM restart file [default: ``caminput.nc``] (read and written)
 
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST ====================-->
-<!--==================================================================-->
+Since this program is called repeatedly for every ensemble member, we have found it convenient to link the DART input
+and CAM restart files to the default filenames ``dart_ics`` and ``caminput.nc``). The output files may be moved or
+relinked as necessary.
 
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
-This namelist is read from the file <em class=file>input.nml</em>.
-Namelists start with an ampersand
-'&amp;' and terminate with a slash '/'.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
-prematurely terminating the namelist.
-</P>
+Namelist
+--------
 
-<div class=namelist>
-<pre>
-&amp;dart_to_cam_nml
-   dart_to_cam_input_file  = 'dart_ics',
-   dart_to_cam_output_file = 'caminput.nc',
-   advance_time_present    = .true.,
-   /
-</pre>
-</div>
+This namelist is read from the file ``input.nml``. Namelists start with an ampersand '&' and terminate with a slash '/'.
+Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely terminating the
+namelist.
 
-<br />
-<br />
+::
 
+   &dart_to_cam_nml
+      dart_to_cam_input_file  = 'dart_ics',
+      dart_to_cam_output_file = 'caminput.nc',
+      advance_time_present    = .true.,
+      /
 
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
+| 
 
-<TBODY valign=top>
+.. container::
 
-<TR><TD>dart_to_cam_input_file</TD>
-    <TD>character(len=128)</TD>
-    <TD>The name of the DART restart file containing the CAM state. 
-</TD></TR>
+   +-------------------------+--------------------+---------------------------------------------------------------------+
+   | Item                    | Type               | Description                                                         |
+   +=========================+====================+=====================================================================+
+   | dart_to_cam_input_file  | character(len=128) | The name of the DART restart file containing the CAM state.         |
+   +-------------------------+--------------------+---------------------------------------------------------------------+
+   | dart_to_cam_output_file | character(len=128) | The name of the CAM restart netcdf file.                            |
+   +-------------------------+--------------------+---------------------------------------------------------------------+
+   | advance_time_present    | logical            | Set to .false. for DART initial condition and restart files. Use    |
+   |                         |                    | the .true. setting for the files written by filter during a model   |
+   |                         |                    | advance.                                                            |
+   +-------------------------+--------------------+---------------------------------------------------------------------+
 
-<TR><TD>dart_to_cam_output_file</TD>
-    <TD>character(len=128)</TD>
-    <TD>The name of the CAM restart netcdf file.
-</TD></TR>
+| 
 
-<TR><TD>advance_time_present</TD>
-    <TD>logical</TD>
-    <TD>Set to .false. for DART initial condition and restart files.  Use the
-.true. setting for the files written by filter during a model advance.
-</TD></TR>
+Modules used
+------------
 
-</TBODY> 
-</TABLE>
-</div>
+::
 
-<br />
-<br />
+   assim_model_mod.f90
+   types_mod.f90
+   threed_sphere/location_mod.f90
+   model_mod.f90
+   null_mpi_utilities_mod.f90
+   obs_kind_mod.f90
+   random_seq_mod.f90
+   time_manager_mod.f90
+   utilities_mod.f90
 
-<!--==================================================================-->
+Files read
+----------
 
-<A NAME="Modules"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>MODULES USED</H2>
-<PRE>
-assim_model_mod.f90
-types_mod.f90
-threed_sphere/location_mod.f90
-model_mod.f90
-null_mpi_utilities_mod.f90
-obs_kind_mod.f90
-random_seq_mod.f90
-time_manager_mod.f90
-utilities_mod.f90
-</PRE>
+-  DART namelist file; ``input.nml``
+-  DART initial conditions/restart file; e.g. ``dart_ics`` (read)
+-  CAM restart file; ``caminput.nc`` (read and written)
+-  CAM "phis" file specified in ``&model_nml::cam_phis`` (normally ``cam_phis.nc``)
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
+Files written
+-------------
 
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES Read</H2>
-<UL>
-    <LI>DART namelist file; <em class=file>input.nml</em></LI>
-    <LI>DART initial conditions/restart file; e.g. <em class=file>dart_ics</em> (read)</LI>
-    <LI>CAM restart file; <em class=file>caminput.nc</em> (read and written)</LI>
-    <LI>CAM "phis" file specified in <em class=code>&amp;model_nml::cam_phis</em> 
-        (normally <em class=file>cam_phis.nc</em>)</LI>
-</UL>
+-  CAM restart file; ``caminput.nc`` (read and written)
 
-<H2>FILES Written</H2>
-<UL><LI>CAM restart file; <em class=file>caminput.nc</em> (read and written)</LI>
-</UL>
+References
+----------
 
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
-
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
-<P>
 none
-</P>
-
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
-<P>
-none - all error messages come from modules that have their own documentation.
-</P>
-
-<A NAME="Bugs"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>KNOWN BUGS</H2>
-<P>
-none
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-None.
-</P>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>

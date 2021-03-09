@@ -1,1181 +1,734 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>module time_manager_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
-<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
-
-<H1>MODULE time_manager_mod</H1>
-
-<table border=0 summary="" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
-
-<A HREF="#Interface">INTERFACES</A> /
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-
-<H2>Overview</H2>
-
-<P>
-Provides a set of routines to manipulate both time and calendars
-of various types.
-<br>
-<br>
-Time intervals are stored and defined in terms of integer number
-of days and integer seconds.  The minimum time resolution is 1 second.
-Mathematical operations (e.g. addition, subtraction, multiplication) are
-defined on these intervals.  Seconds which roll over 86400 (the number
-of seconds in a day) are converted into days.
-<br>
-<br>
-Calendars interpret time intervals in terms of years, months, days.
-Various calendars commonly in use in the scientific community are
-supported.
-</P>
-
-<!--==================================================================-->
-
-<A NAME="OtherModulesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>OTHER MODULES USED</H2>
-<PRE>
-types_mod
-utilities_mod
-</PRE>
-
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-<!--==================================================================-->
-
-<A NAME="Interface"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PUBLIC INTERFACES</H2>
-
-<TABLE>
-<TR><TD><em class=call>use time_manager_mod, only : </em></TD>
-                   <TD><A HREF="#time_type">time_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(+)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(-)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(*)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(/)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(&gt;)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(&gt;=)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(==)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(/=)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(&lt;)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(&lt;=)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#op_type">operator(//)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#set_time">set_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#set_time_missing">set_time_missing</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#increment_time">increment_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#decrement_time">decrement_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_time">get_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#interval_alarm">interval_alarm</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#repeat_alarm">repeat_alarm</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#cal_type">THIRTY_DAY_MONTHS</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#cal_type">JULIAN</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#cal_type">GREGORIAN</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#cal_type">NOLEAP</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#cal_type">NO_CALENDAR</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#cal_type">GREGORIAN_MARS</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#set_calendar_type">set_calendar_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_calendar_type">get_calendar_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_calendar_string">get_calendar_string</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#set_date">set_date</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_date">get_date</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#increment_date">increment_date</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#decrement_date">decrement_date</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#days_in_month">days_in_month</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#leap_year">leap_year</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#length_of_year">length_of_year</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#days_in_year">days_in_year</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#month_name">month_name</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#julian_day">julian_day</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#time_manager_init">time_manager_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#print_time">print_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#print_date">print_date</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#write_time">write_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#read_time">read_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_time">interactive_time</A></TD></TR>
-</TABLE>
-
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="set_time"></A>
-<br>
-<div class=routine>
-<em class=call> var = set_time(seconds <em class=optionalcode>[,&nbsp;days]</em>) </em>
-<pre>
-type(time_type)               :: <em class=code>set_time</em>
-integer,           intent(in) :: <em class=code>seconds</em>
-integer, optional, intent(in) :: <em class=optionalcode>days</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Fills a time type.  If seconds are &gt; 86400, they are converted
-into the appropriate number of days. Note that seconds are specified first.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>seconds</em></TD>
-    <TD>Number of seconds.  If larger than 86400, they are converted
-        into the appropriate number of days.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>days</em></TD>
-    <TD>Number of days.  Default is 0.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="set_time_missing"></A>
-<br>
-<div class=routine>
-<em class=call> var = set_time_missing() </em>
-<pre>
-type(time_type)                        :: <em class=code>set_time_missing</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Set a time type to a missing value.  The
-resulting time value will cause an error
-if used for an arithmetic operation or if get_time() is called.
-</P>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="increment_time"></A>
-<br>
-<div class=routine>
-<em class=call> var = increment_time(time, seconds <em class=optionalcode>[, days]</em>) </em>
-<pre>
-type(time_type)               :: <em class=code>increment_time</em>
-type(time_type),   intent(in) :: <em class=code>time</em>
-integer,           intent(in) :: <em class=code>seconds</em>
-integer, optional, intent(in) :: <em class=optionalcode>days</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Adds the specified number of seconds and optionally, days, to the
-given time and returns the new time. Increments cannot be negative
-(see decrement_time below).
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>time value to be incremented.</TD></TR>
-<TR><TD valign=top><em class=code>seconds</em></TD>
-    <TD>number of seconds to add to given time.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>days</em></TD>
-    <TD>optionally a number of days to add to the given time.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="decrement_time"></A>
-<br>
-<div class=routine>
-<em class=call> var = decrement_time(time, seconds <em class=optionalcode>[, days]</em>) </em>
-<pre>
-type(time_type)                        :: <em class=code>decrement_time</em>
-type(time_type), intent(in)            :: <em class=code>time</em>
-integer,         intent(in)            :: <em class=code>seconds</em>
-integer,         intent(in), optional  :: <em class=optionalcode>days</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Subtract the specified number of seconds and optionally, days, to the
-given time and returns the new time. Decrements cannot be negative
-(see increment_time above).
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>time value to be decremented.</TD></TR>
-<TR><TD valign=top><em class=code>seconds</em></TD>
-    <TD>number of seconds to subtract from the given time.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>days</em></TD>
-    <TD>optionally a number of days to subtract from the given time.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="interval_alarm"></A>
-<br>
-<div class=routine>
-<em class=call> var = interval_alarm(time, time_interval, alarm, alarm_interval) </em>
-<pre>
-logical                        :: <em class=code>interval_alarm</em>
-type(time_type), intent(in)    :: <em class=code>time</em>
-type(time_type), intent(in)    :: <em class=code>time_interval</em>
-type(time_type), intent(inout) :: <em class=code>alarm</em>
-type(time_type), intent(in)    :: <em class=code>alarm_interval</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
- Supports a commonly used type of test on times for models.  Given the
- current time, and a time for an alarm, determines if this is the closest
- time to the alarm time given a time step of time_interval.  If this
- is the closest time (alarm - time &lt;= time_interval/2), the function
- returns true and the alarm is incremented by the alarm_interval.  Watch
- for problems if the new alarm time is less than time + time_interval.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Current time.</TD></TR>
-<TR><TD valign=top><em class=code>time_interval</em></TD>
-    <TD>Bin size for determining if alarm time is close enough to now.</TD></TR>
-<TR><TD valign=top><em class=code>alarm</em></TD>
-    <TD>When alarm next goes off next. Updated by this routine.</TD></TR>
-<TR><TD valign=top><em class=code>alarm_interval</em></TD>
-    <TD>How often alarm goes off.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="repeat_alarm"></A>
-<br>
-<div class=routine>
-<em class=call> var = repeat_alarm(time, alarm_frequency, alarm_length) </em>
-<pre>
-type(time_type)                :: <em class=code>repeat_alarm</em>
-type(time_type), intent(in)    :: <em class=code>time</em>
-type(time_type), intent(in)    :: <em class=code>alarm_frequency</em>
-type(time_type), intent(in)    :: <em class=code>alarm_length</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Repeat_alarm supports an alarm that goes off with alarm_frequency and
-lasts for alarm_length.  If the nearest occurence of an alarm time
-is less than half an alarm_length from the input time, repeat_alarm
-is true.  For instance, if the alarm_frequency is 1 day, and the
-alarm_length is 2 hours, then repeat_alarm is true from time 2300 on
-day n to time 0100 on day n + 1 for all n.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Current time.</TD></TR>
-<TR><TD valign=top><em class=code>alarm_frequency</em></TD>
-    <TD>How often the alarm goes off.</TD></TR>
-<TR><TD valign=top><em class=code>alarm_length</em></TD>
-    <TD>How long the alarm is true.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="get_calendar_type"></A>
-<br>
-<div class=routine>
-<em class=call> var = get_calendar_type() </em>
-<pre>
-integer :: <em class=code>get_calendar_type</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Returns default calendar type for mapping from time to date.
-Calendar types are public integer parameters that define
-various calendars.  See elsewhere in this file for the list.
-</P>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="set_date"></A>
-<br>
-<div class=routine>
-<em class=call> var = set_date(year, month, day <em class=optionalcode>[, hours, minutes, seconds]</em>)</em>
-<pre>
-type(time_type)                :: <em class=code>set_date</em>
-integer, intent(in)            :: <em class=code>year</em>
-integer, intent(in)            :: <em class=code>month</em>
-integer, intent(in)            :: <em class=code>day</em>
-integer, intent(in), optional  :: <em class=optionalcode>hours</em>
-integer, intent(in), optional  :: <em class=optionalcode>minutes</em>
-integer, intent(in), optional  :: <em class=optionalcode>seconds</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a date interpreted using the current calendar type,
-compute the corresponding time.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>year</em></TD>
-    <TD>Integer year.</TD></TR>
-<TR><TD valign=top><em class=code>month</em></TD>
-    <TD>Integer month number.</TD></TR>
-<TR><TD valign=top><em class=code>day</em></TD>
-    <TD>Integer day number.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>hours</em></TD>
-    <TD>Integer hour. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>minutes</em></TD>
-    <TD>Integer minutes. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>seconds</em></TD>
-    <TD>Integer seconds. Default is 0.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-<A NAME="increment_date"></A>
-<br>
-<div class=routine>
-<em class=call> var = increment_date(time <em class=optionalcode>[, years, months, days, hours, minutes, seconds]</em>)</em>
-<pre>
-type(time_type)                :: <em class=code>increment_date</em>
-type(time_type), intent(in)    :: <em class=code>time</em>
-integer, intent(in), optional  :: <em class=optionalcode>years</em>
-integer, intent(in), optional  :: <em class=optionalcode>months</em>
-integer, intent(in), optional  :: <em class=optionalcode>days</em>
-integer, intent(in), optional  :: <em class=optionalcode>hours</em>
-integer, intent(in), optional  :: <em class=optionalcode>minutes</em>
-integer, intent(in), optional  :: <em class=optionalcode>seconds</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a time and some date increment, compute a new time.
-The interpretation of the date depends on the currently selected
-calendar type.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Current time.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>year</em></TD>
-    <TD>Integer years to add.  Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>month</em></TD>
-    <TD>Integer months to add. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>day</em></TD>
-    <TD>Integer days to add. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>hours</em></TD>
-    <TD>Integer hours to add. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>minutes</em></TD>
-    <TD>Integer minutes to add. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>seconds</em></TD>
-    <TD>Integer seconds to add. Default is 0.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="decrement_date"></A>
-<br>
-<div class=routine>
-<em class=call> var = decrement_date(time <em class=optionalcode>[, years, months, days, hours, minutes, seconds]</em>)</em>
-<pre>
-type(time_type)                :: <em class=code>decrement_date</em>
-type(time_type), intent(in)    :: <em class=code>time</em>
-integer, intent(in), optional  :: <em class=optionalcode>years</em>
-integer, intent(in), optional  :: <em class=optionalcode>months</em>
-integer, intent(in), optional  :: <em class=optionalcode>days</em>
-integer, intent(in), optional  :: <em class=optionalcode>hours</em>
-integer, intent(in), optional  :: <em class=optionalcode>minutes</em>
-integer, intent(in), optional  :: <em class=optionalcode>seconds</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a time and some date decrement, compute a new time.
-The interpretation of the date depends on the currently selected
-calendar type.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Current time.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>year</em></TD>
-    <TD>Integer years to subtract.  Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>month</em></TD>
-    <TD>Integer months to subtract. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>day</em></TD>
-    <TD>Integer days to subtract. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>hours</em></TD>
-    <TD>Integer hours to subtract. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>minutes</em></TD>
-    <TD>Integer minutes to subtract. Default is 0.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>seconds</em></TD>
-    <TD>Integer seconds to subtract. Default is 0.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="days_in_month"></A>
-<br>
-<div class=routine>
-<em class=call> var = days_in_month(time) </em>
-<pre>
-integer                        :: <em class=code>days_in_month</em>
-type(time_type), intent(in)    :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a time, determine the month based on the currently
-selected calendar type and return the
-numbers of days in that month.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Current time.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="leap_year"></A>
-<br>
-<div class=routine>
-<em class=call> var = leap_year(time) </em>
-<pre>
-logical                        :: <em class=code>leap_year</em>
-type(time_type),intent(in)     :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a time, determine if the current year is a leap
-year in the currently selected calendar type.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Current time.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-<A NAME="length_of_year"></A>
-<br>
-<div class=routine>
-<em class=call> var = length_of_year() </em>
-<pre>
-integer                      :: <em class=code>length_of_year</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-For the currently selected calendar type, return the
-number of days in a year if that value is fixed (e.g. there are
-not leap years).  For other calendar types, see 
-<a href="#days_in_year">days_in_year()</a> which takes a time
-argument to determine the current year.
-</P>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="days_in_year"></A>
-<br>
-<div class=routine>
-<em class=call> var = days_in_year(time) </em>
-<pre>
-integer                        :: <em class=code>days_in_year</em>
-type(time_type), intent(in)    :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a time, determine the year based on the currently
-selected calendar type and return the
-numbers of days in that year.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Current time.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="month_name"></A>
-<br>
-<div class=routine>
-<em class=call> var = month_name(n) </em>
-<pre>
-character(len=9)               :: <em class=code>month_name</em>
-integer,         intent(in)    :: <em class=code>n</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Return a character string containing the month name corresponding
-to the given month number.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>n</em></TD>
-    <TD>Month number.  Must be between 1 and 12, inclusive.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="julian_day"></A>
-<br>
-<div class=routine>
-<em class=call> var = julian_day(year, month, day) </em>
-<pre>
-integer                        :: <em class=code>julian_day</em>
-integer,        intent(in)     :: <em class=code>year</em>
-integer,        intent(in)     :: <em class=code>month</em>
-integer,        intent(in)     :: <em class=code>day</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a date in year/month/day format,
-compute the day number from the beginning of the year.  
-The currently selected calendar type must be GREGORIAN.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>year</em></TD>
-    <TD>Year number in the Gregorian calendar.</TD></TR>
-<TR><TD valign=top><em class=code>month</em></TD>
-    <TD>Month number in the Gregorian calendar.</TD></TR>
-<TR><TD valign=top><em class=code>day</em></TD>
-    <TD>Day of month in the Gregorian calendar.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="read_time"></A>
-<br>
-<div class=routine>
-<em class=call> var = read_time(file_unit <em class=optionalcode>[, form, ios_out]</em>) </em>
-<pre>
-type(time_type)                         :: <em class=code>read_time</em>
-integer,          intent(in)            :: <em class=code>file_unit</em>
-character(len=*), intent(in),  optional :: <em class=optionalcode>form</em>
-integer,          intent(out), optional :: <em class=optionalcode>ios_out</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Read a time from the given file unit number.  The unit must already
-be open.  The default format is ascii/formatted.  If an error is
-encountered and ios_out is specified, the error status will be returned
-to the caller; otherwise the error is fatal.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>file_unit</em></TD>
-    <TD>Integer file unit number of an already open file.</TD></TR>
-<TR><TD valign=top><em class=code>form</em></TD>
-    <TD>Format to read the time.  Options are 'formatted' 
-     or 'unformatted'.  Default is 'formatted'.</TD></TR>
-<TR><TD valign=top><em class=code>ios_out</em></TD>
-    <TD>On error, if specified, the error status code is returned here.
-     If not specified, an error calls the standard error_handler and
-     exits.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="get_time"></A>
-<br>
-<div class=routine>
-<em class=call> call get_time(time, seconds <em class=optionalcode>[, days]</em>)</em>
-<pre>
-type(time_type), intent(in)             :: <em class=code>time</em>
-integer,         intent(out)            :: <em class=code>seconds</em>
-integer,         intent(out), optional  :: <em class=optionalcode>days</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Returns days and seconds ( &lt; 86400 ) corresponding to a time.
-If the optional 'days' argument is not given, the days are converted
-to seconds and the total time is returned as seconds.
-Note that seconds preceeds days in the argument list.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Time to convert into seconds and days.</TD></TR>
-<TR><TD valign=top><em class=code>seconds</em></TD>
-    <TD>If days is specified, number of seconds in the current day.
-        Otherwise, total number of seconds in time.</TD></TR>
-<TR><TD valign=top><em class=code>days</em></TD>
-    <TD>If specified, number of days in time.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="set_calendar_type"></A>
-<br>
-<div class=routine>
-<em class=call> call set_calendar_type(mytype)</em>
-or
-<em class=call> call set_calendar_type(calstring)</em>
-<pre>
-integer, intent(in)               :: <em class=code>mytype</em>
- or
-character(len=*), intent(in)      :: <em class=code>calstring</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Selects the current calendar type, for converting between time
-and year/month/day.  The argument can either be one of the predefined
-calendar integer parameter types (see elsewhere in this file for
-the list of types), or a string which matches the name of the
-integer parameters.  The string interface is especially suitable for
-namelist use.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>mytype</em></TD>
-    <TD>Integer parameter to select the calendar type.</TD></TR>
-</TABLE>
-or
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>calstring</em></TD>
-    <TD>Character string to select the calendar type.
-        Valid strings match the names of the integer parameters.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="get_calendar_string"></A>
-<br>
-<div class=routine>
-<em class=call> call get_calendar_string(mystring)</em>
-<pre>
-character(len=*), intent(out)     :: <em class=code>mystring</em>
-</pre>
-</div>
-<!-- for consistency, the arg name should be calstring, i think. -->
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Return the character string corresponding to the
-currently selected calendar type.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>mystring</em></TD>
-    <TD>Character string corresponding to the current calendar type. </TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="get_date"></A>
-<br>
-<div class=routine>
-<em class=call> call get_date(time, year, month, day, hour, minute, second)</em>
-<pre>
-type(time_type), intent(in)       :: <em class=code>time</em>
-integer, intent(out)              :: <em class=code>year</em>
-integer, intent(out)              :: <em class=code>month</em>
-integer, intent(out)              :: <em class=code>day</em>
-integer, intent(out)              :: <em class=code>hour</em>
-integer, intent(out)              :: <em class=code>minute</em>
-integer, intent(out)              :: <em class=code>second</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a time, compute the corresponding date given the
-currently selected calendar type.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Input time. </TD></TR>
-<TR><TD valign=top><em class=code>year</em></TD>
-    <TD>Corresponding calendar year.</TD></TR>
-<TR><TD valign=top><em class=code>month</em></TD>
-    <TD>Corresponding calendar month.</TD></TR>
-<TR><TD valign=top><em class=code>day</em></TD>
-    <TD>Corresponding calendar day.</TD></TR>
-<TR><TD valign=top><em class=code>hour</em></TD>
-    <TD>Corresponding hour.</TD></TR>
-<TR><TD valign=top><em class=code>minute</em></TD>
-    <TD>Corresponding minute.</TD></TR>
-<TR><TD valign=top><em class=code>second</em></TD>
-    <TD>Corresponding second.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="time_manager_init"></A>
-<br>
-<div class=routine>
-<em class=call> call time_manager_init()</em>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Initializes any internal data needed by the time manager code.
-Does not need to be called before using any of the time
-manager routines; it will be called internally before executing
-any of the other routines.
-</P>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="print_time"></A>
-<br>
-<div class=routine>
-<em class=call> call print_time(time <em class=optionalcode>[, str, iunit]</em>)</em>
-<pre>
-type(time_type),  intent(in)           :: <em class=code>time</em>
-character(len=*), intent(in), optional :: <em class=optionalcode>str</em>
-integer,          intent(in), optional :: <em class=optionalcode>iunit</em>
- 
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Print the time as days and seconds.  If the optional str argument
-is specified, print that string as a label.  If iunit is specified, 
-write output to that unit; otherwise write to standard output/terminal.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Time to be printed as days/seconds. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>str</em></TD>
-    <TD>String label to print before days/seconds. Default: 'TIME: '.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>iunit</em></TD>
-    <TD>Unit number to write output on.  Default is standard output/terminal
-        (unit 6).</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="print_date"></A>
-<br>
-<div class=routine>
-<em class=call> call print_date(time <em class=optionalcode>[, str, iunit]</em>)</em>
-<pre>
-type(time_type),  intent(in)           :: <em class=code>time</em>
-character(len=*), intent(in), optional :: <em class=optionalcode>str</em>
-integer,          intent(in), optional :: <em class=optionalcode>iunit</em>
- 
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Print the time as year/month/day/hour/minute/second, as computed
-from the currently selected calendar type.
-If the optional str argument
-is specified, print that string as a label.  If iunit is specified, 
-write output to that unit; otherwise write to standard output/terminal.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Time to be printed as a calendar date/time. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>str</em></TD>
-    <TD>String label to print before date. Default: 'DATE: '.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>iunit</em></TD>
-    <TD>Unit number to write output on.  Default is standard output/terminal
-        (unit 6).</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="write_time"></A>
-<br>
-<div class=routine>
-<em class=call> call write_time(file_unit, time <em class=optionalcode>[, form, ios_out]</em>)</em>
-<pre>
-integer,          intent(in)               :: <em class=code>file_unit</em>
-type(time_type),  intent(in)               :: <em class=code>time</em>
-character(len=*), intent(in),  optional    :: <em class=optionalcode>form</em>
-integer,          intent(out), optional    :: <em class=optionalcode>ios_out</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Write a time to an already open file unit.  The optional 'form'
-argument controls whether it is formatted or unformatted.
-On error, the optional 'ios_out' argument returns the error code; otherwise
-a fatal error is triggered.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>file_unit</em></TD>
-    <TD>Integer unit number for an already open file. </TD></TR>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Time to write to the file. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>form</em></TD>
-    <TD>String format specifier; either 'unformatted' or 'formatted'.
-        Defaults to 'formatted'.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>ios_out</em></TD>
-    <TD>If specified, on error the i/o status error code is returned here.
-        Otherwise, the standard error handler is called and the 
-        program exits. </TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-
-<A NAME="interactive_time"></A>
-<br>
-<div class=routine>
-<em class=call> call interactive_time(time)</em>
-<pre>
-type(time_type), intent(inout) :: <em class=code>time</em>
-</pre>
-</div>
-<!-- FIXME should that not just be intent(out)?  it is not read. -->
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Prompt the user for a time as a calendar date, based on the
-currently selected calendar type. Writes prompt to standard output
-and reads from standard input.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Time type to be returned.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
-
-<A NAME="time_type"></A>
-<br>
-<div class=type>
-<pre>
-<em class=call>type time_type</em>
-   private
-   integer :: seconds
-   integer :: days
-end type time_type
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This type is used to define a time interval.
-</P>
-
-</div>
-<br>
-
-<!--=================== DESCRIPTION OF A PARAMETER ==================-->
-
-<A NAME="cal_type"></A>
-<br>
-<div class=type>
-<pre>
- integer :: <em class=code>NO_CALENDAR</em>
- integer :: <em class=code>GREGORIAN</em>
- integer :: <em class=code>GREGORIAN_MARS</em>
- integer :: <em class=code>JULIAN</em>
- integer :: <em class=code>THIRTY_DAY_MONTHS</em>
- integer :: <em class=code>NOLEAP</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-The public integer parameters which define different calendar types.
-The same names defined as strings can be used to set the calendar type.
-</P>
-
-</div>
-<br>
-
-<!--=================== DESCRIPTION OF AN OPERATOR ==================-->
-
-<A NAME="op_type"></A>
-<br>
-<div class=type>
-<pre>
- <em class=code>operator(+)</em>
- <em class=code>operator(-)</em>
- <em class=code>operator(*)</em>
- <em class=code>operator(/)</em>
- <em class=code>operator(&gt;)</em>
- <em class=code>operator(&gt;=)</em>
- <em class=code>operator(==)</em>
- <em class=code>operator(/=)</em>
- <em class=code>operator(&lt;)</em>
- <em class=code>operator(&lt;=)</em>
- <em class=code>operator(//)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Arithmetic operations are defined for time types, so expressions like
-</P>
-<pre>
-<em class=code>t3 = t1 + t2</em>
-</pre>
-<P>
-can be constructed.  To use these operators, they must be listed
-on the module use statement in the form specified above.
-<br>
-<br>
-Multiplication is one time and one scalar.
-<br>
-<br>
-Division with a single slash is integer, and returns the largest
-integer for which time1 &gt;= time2 * n.  Division with a double slash
-returns a double precision quotient of the two times.
-</P>
-
-</div>
-<br>
-
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
-
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
+MODULE time_manager_mod
+=======================
+
+Overview
+--------
+
+| Provides a set of routines to manipulate both time and calendars of various types.
+| Time intervals are stored and defined in terms of integer number of days and integer seconds. The minimum time
+  resolution is 1 second. Mathematical operations (e.g. addition, subtraction, multiplication) are defined on these
+  intervals. Seconds which roll over 86400 (the number of seconds in a day) are converted into days.
+| Calendars interpret time intervals in terms of years, months, days. Various calendars commonly in use in the
+  scientific community are supported.
+
+Other modules used
+------------------
+
+::
+
+   types_mod
+   utilities_mod
+
+Public interfaces
+-----------------
+
+============================== ===================
+*use time_manager_mod, only :* time_type
+\                              operator(+)
+\                              operator(-)
+\                              operator(*)
+\                              operator(/)
+\                              operator(>)
+\                              operator(>=)
+\                              operator(==)
+\                              operator(/=)
+\                              operator(<)
+\                              operator(<=)
+\                              operator(//)
+\                              set_time
+\                              set_time_missing
+\                              increment_time
+\                              decrement_time
+\                              get_time
+\                              interval_alarm
+\                              repeat_alarm
+\                              THIRTY_DAY_MONTHS
+\                              JULIAN
+\                              GREGORIAN
+\                              NOLEAP
+\                              NO_CALENDAR
+\                              GREGORIAN_MARS
+\                              set_calendar_type
+\                              get_calendar_type
+\                              get_calendar_string
+\                              set_date
+\                              get_date
+\                              increment_date
+\                              decrement_date
+\                              days_in_month
+\                              leap_year
+\                              length_of_year
+\                              days_in_year
+\                              month_name
+\                              julian_day
+\                              time_manager_init
+\                              print_time
+\                              print_date
+\                              write_time
+\                              read_time
+\                              interactive_time
+============================== ===================
+
+| 
+
+.. container:: routine
+
+   *var = set_time(seconds [, days])*
+   ::
+
+      type(time_type)               :: set_time
+      integer,           intent(in) :: seconds
+      integer, optional, intent(in) :: days
+
+.. container:: indent1
+
+   Fills a time type. If seconds are > 86400, they are converted into the appropriate number of days. Note that seconds
+   are specified first.
+
+   =========== ================================================================================================
+   ``seconds`` Number of seconds. If larger than 86400, they are converted into the appropriate number of days.
+   *days*      Number of days. Default is 0.
+   =========== ================================================================================================
+
+| 
+
+.. container:: routine
+
+   *var = set_time_missing()*
+   ::
+
+      type(time_type)                        :: set_time_missing
+
+.. container:: indent1
+
+   Set a time type to a missing value. The resulting time value will cause an error if used for an arithmetic operation
+   or if get_time() is called.
+
+| 
+
+.. container:: routine
+
+   *var = increment_time(time, seconds [, days])*
+   ::
+
+      type(time_type)               :: increment_time
+      type(time_type),   intent(in) :: time
+      integer,           intent(in) :: seconds
+      integer, optional, intent(in) :: days
+
+.. container:: indent1
+
+   Adds the specified number of seconds and optionally, days, to the given time and returns the new time. Increments
+   cannot be negative (see decrement_time below).
+
+   =========== =====================================================
+   ``time``    time value to be incremented.
+   ``seconds`` number of seconds to add to given time.
+   *days*      optionally a number of days to add to the given time.
+   =========== =====================================================
+
+| 
+
+.. container:: routine
+
+   *var = decrement_time(time, seconds [, days])*
+   ::
+
+      type(time_type)                        :: decrement_time
+      type(time_type), intent(in)            :: time
+      integer,         intent(in)            :: seconds
+      integer,         intent(in), optional  :: days
+
+.. container:: indent1
+
+   Subtract the specified number of seconds and optionally, days, to the given time and returns the new time. Decrements
+   cannot be negative (see increment_time above).
+
+   =========== ============================================================
+   ``time``    time value to be decremented.
+   ``seconds`` number of seconds to subtract from the given time.
+   *days*      optionally a number of days to subtract from the given time.
+   =========== ============================================================
+
+| 
+
+.. container:: routine
+
+   *var = interval_alarm(time, time_interval, alarm, alarm_interval)*
+   ::
+
+      logical                        :: interval_alarm
+      type(time_type), intent(in)    :: time
+      type(time_type), intent(in)    :: time_interval
+      type(time_type), intent(inout) :: alarm
+      type(time_type), intent(in)    :: alarm_interval
+
+.. container:: indent1
+
+   Supports a commonly used type of test on times for models. Given the current time, and a time for an alarm,
+   determines if this is the closest time to the alarm time given a time step of time_interval. If this is the closest
+   time (alarm - time <= time_interval/2), the function returns true and the alarm is incremented by the alarm_interval.
+   Watch for problems if the new alarm time is less than time + time_interval.
+
+   ================== ==============================================================
+   ``time``           Current time.
+   ``time_interval``  Bin size for determining if alarm time is close enough to now.
+   ``alarm``          When alarm next goes off next. Updated by this routine.
+   ``alarm_interval`` How often alarm goes off.
+   ================== ==============================================================
+
+| 
+
+.. container:: routine
+
+   *var = repeat_alarm(time, alarm_frequency, alarm_length)*
+   ::
+
+      type(time_type)                :: repeat_alarm
+      type(time_type), intent(in)    :: time
+      type(time_type), intent(in)    :: alarm_frequency
+      type(time_type), intent(in)    :: alarm_length
+
+.. container:: indent1
+
+   Repeat_alarm supports an alarm that goes off with alarm_frequency and lasts for alarm_length. If the nearest
+   occurence of an alarm time is less than half an alarm_length from the input time, repeat_alarm is true. For instance,
+   if the alarm_frequency is 1 day, and the alarm_length is 2 hours, then repeat_alarm is true from time 2300 on day n
+   to time 0100 on day n + 1 for all n.
+
+   =================== =============================
+   ``time``            Current time.
+   ``alarm_frequency`` How often the alarm goes off.
+   ``alarm_length``    How long the alarm is true.
+   =================== =============================
+
+| 
+
+.. container:: routine
+
+   *var = get_calendar_type()*
+   ::
+
+      integer :: get_calendar_type
+
+.. container:: indent1
+
+   Returns default calendar type for mapping from time to date. Calendar types are public integer parameters that define
+   various calendars. See elsewhere in this file for the list.
+
+| 
+
+.. container:: routine
+
+   *var = set_date(year, month, day [, hours, minutes, seconds])*
+   ::
+
+      type(time_type)                :: set_date
+      integer, intent(in)            :: year
+      integer, intent(in)            :: month
+      integer, intent(in)            :: day
+      integer, intent(in), optional  :: hours
+      integer, intent(in), optional  :: minutes
+      integer, intent(in), optional  :: seconds
+
+.. container:: indent1
+
+   Given a date interpreted using the current calendar type, compute the corresponding time.
+
+   ========= ==============================
+   ``year``  Integer year.
+   ``month`` Integer month number.
+   ``day``   Integer day number.
+   *hours*   Integer hour. Default is 0.
+   *minutes* Integer minutes. Default is 0.
+   *seconds* Integer seconds. Default is 0.
+   ========= ==============================
+
+| 
+
+.. container:: routine
+
+   *var = increment_date(time [, years, months, days, hours, minutes, seconds])*
+   ::
+
+      type(time_type)                :: increment_date
+      type(time_type), intent(in)    :: time
+      integer, intent(in), optional  :: years
+      integer, intent(in), optional  :: months
+      integer, intent(in), optional  :: days
+      integer, intent(in), optional  :: hours
+      integer, intent(in), optional  :: minutes
+      integer, intent(in), optional  :: seconds
+
+.. container:: indent1
+
+   Given a time and some date increment, compute a new time. The interpretation of the date depends on the currently
+   selected calendar type.
+
+   ========= =====================================
+   ``time``  Current time.
+   *year*    Integer years to add. Default is 0.
+   *month*   Integer months to add. Default is 0.
+   *day*     Integer days to add. Default is 0.
+   *hours*   Integer hours to add. Default is 0.
+   *minutes* Integer minutes to add. Default is 0.
+   *seconds* Integer seconds to add. Default is 0.
+   ========= =====================================
+
+| 
+
+.. container:: routine
+
+   *var = decrement_date(time [, years, months, days, hours, minutes, seconds])*
+   ::
+
+      type(time_type)                :: decrement_date
+      type(time_type), intent(in)    :: time
+      integer, intent(in), optional  :: years
+      integer, intent(in), optional  :: months
+      integer, intent(in), optional  :: days
+      integer, intent(in), optional  :: hours
+      integer, intent(in), optional  :: minutes
+      integer, intent(in), optional  :: seconds
+
+.. container:: indent1
+
+   Given a time and some date decrement, compute a new time. The interpretation of the date depends on the currently
+   selected calendar type.
+
+   ========= ==========================================
+   ``time``  Current time.
+   *year*    Integer years to subtract. Default is 0.
+   *month*   Integer months to subtract. Default is 0.
+   *day*     Integer days to subtract. Default is 0.
+   *hours*   Integer hours to subtract. Default is 0.
+   *minutes* Integer minutes to subtract. Default is 0.
+   *seconds* Integer seconds to subtract. Default is 0.
+   ========= ==========================================
+
+| 
+
+.. container:: routine
+
+   *var = days_in_month(time)*
+   ::
+
+      integer                        :: days_in_month
+      type(time_type), intent(in)    :: time
+
+.. container:: indent1
+
+   Given a time, determine the month based on the currently selected calendar type and return the numbers of days in
+   that month.
+
+   ======== =============
+   ``time`` Current time.
+   ======== =============
+
+| 
+
+.. container:: routine
+
+   *var = leap_year(time)*
+   ::
+
+      logical                        :: leap_year
+      type(time_type),intent(in)     :: time
+
+.. container:: indent1
+
+   Given a time, determine if the current year is a leap year in the currently selected calendar type.
+
+   ======== =============
+   ``time`` Current time.
+   ======== =============
+
+| 
+
+.. container:: routine
+
+   *var = length_of_year()*
+   ::
+
+      integer                      :: length_of_year
+
+.. container:: indent1
+
+   For the currently selected calendar type, return the number of days in a year if that value is fixed (e.g. there are
+   not leap years). For other calendar types, see days_in_year() which takes a time argument to determine the current
+   year.
+
+| 
+
+.. container:: routine
+
+   *var = days_in_year(time)*
+   ::
+
+      integer                        :: days_in_year
+      type(time_type), intent(in)    :: time
+
+.. container:: indent1
+
+   Given a time, determine the year based on the currently selected calendar type and return the numbers of days in that
+   year.
+
+   ======== =============
+   ``time`` Current time.
+   ======== =============
+
+| 
+
+.. container:: routine
+
+   *var = month_name(n)*
+   ::
+
+      character(len=9)               :: month_name
+      integer,         intent(in)    :: n
+
+.. container:: indent1
+
+   Return a character string containing the month name corresponding to the given month number.
+
+   ===== ==================================================
+   ``n`` Month number. Must be between 1 and 12, inclusive.
+   ===== ==================================================
+
+| 
+
+.. container:: routine
+
+   *var = julian_day(year, month, day)*
+   ::
+
+      integer                        :: julian_day
+      integer,        intent(in)     :: year
+      integer,        intent(in)     :: month
+      integer,        intent(in)     :: day
+
+.. container:: indent1
+
+   Given a date in year/month/day format, compute the day number from the beginning of the year. The currently selected
+   calendar type must be GREGORIAN.
+
+   ========= =======================================
+   ``year``  Year number in the Gregorian calendar.
+   ``month`` Month number in the Gregorian calendar.
+   ``day``   Day of month in the Gregorian calendar.
+   ========= =======================================
+
+| 
+
+.. container:: routine
+
+   *var = read_time(file_unit [, form, ios_out])*
+   ::
+
+      type(time_type)                         :: read_time
+      integer,          intent(in)            :: file_unit
+      character(len=*), intent(in),  optional :: form
+      integer,          intent(out), optional :: ios_out
+
+.. container:: indent1
+
+   Read a time from the given file unit number. The unit must already be open. The default format is ascii/formatted. If
+   an error is encountered and ios_out is specified, the error status will be returned to the caller; otherwise the
+   error is fatal.
+
+   +---------------+-----------------------------------------------------------------------------------------------------+
+   | ``file_unit`` | Integer file unit number of an already open file.                                                   |
+   +---------------+-----------------------------------------------------------------------------------------------------+
+   | ``form``      | Format to read the time. Options are 'formatted' or 'unformatted'. Default is 'formatted'.          |
+   +---------------+-----------------------------------------------------------------------------------------------------+
+   | ``ios_out``   | On error, if specified, the error status code is returned here. If not specified, an error calls    |
+   |               | the standard error_handler and exits.                                                               |
+   +---------------+-----------------------------------------------------------------------------------------------------+
+
+| 
+
+.. container:: routine
+
+   *call get_time(time, seconds [, days])*
+   ::
+
+      type(time_type), intent(in)             :: time
+      integer,         intent(out)            :: seconds
+      integer,         intent(out), optional  :: days
+
+.. container:: indent1
+
+   Returns days and seconds ( < 86400 ) corresponding to a time. If the optional 'days' argument is not given, the days
+   are converted to seconds and the total time is returned as seconds. Note that seconds preceeds days in the argument
+   list.
+
+   =========== =======================================================================================================
+   ``time``    Time to convert into seconds and days.
+   ``seconds`` If days is specified, number of seconds in the current day. Otherwise, total number of seconds in time.
+   ``days``    If specified, number of days in time.
+   =========== =======================================================================================================
+
+| 
+
+.. container:: routine
+
+   *call set_calendar_type(mytype)* or *call set_calendar_type(calstring)*
+   ::
+
+      integer, intent(in)               :: mytype
+       or
+      character(len=*), intent(in)      :: calstring
+
+.. container:: indent1
+
+   Selects the current calendar type, for converting between time and year/month/day. The argument can either be one of
+   the predefined calendar integer parameter types (see elsewhere in this file for the list of types), or a string which
+   matches the name of the integer parameters. The string interface is especially suitable for namelist use.
+
+   ========== ==============================================
+   ``mytype`` Integer parameter to select the calendar type.
+   ========== ==============================================
+
+   or
+
+   ============= ======================================================================================================
+   ``calstring`` Character string to select the calendar type. Valid strings match the names of the integer parameters.
+   ============= ======================================================================================================
+
+| 
+
+.. container:: routine
+
+   *call get_calendar_string(mystring)*
+   ::
+
+      character(len=*), intent(out)     :: mystring
+
+.. container:: indent1
+
+   Return the character string corresponding to the currently selected calendar type.
+
+   ============ ============================================================
+   ``mystring`` Character string corresponding to the current calendar type.
+   ============ ============================================================
+
+| 
+
+.. container:: routine
+
+   *call get_date(time, year, month, day, hour, minute, second)*
+   ::
+
+      type(time_type), intent(in)       :: time
+      integer, intent(out)              :: year
+      integer, intent(out)              :: month
+      integer, intent(out)              :: day
+      integer, intent(out)              :: hour
+      integer, intent(out)              :: minute
+      integer, intent(out)              :: second
+
+.. container:: indent1
+
+   Given a time, compute the corresponding date given the currently selected calendar type.
+
+   ========== =============================
+   ``time``   Input time.
+   ``year``   Corresponding calendar year.
+   ``month``  Corresponding calendar month.
+   ``day``    Corresponding calendar day.
+   ``hour``   Corresponding hour.
+   ``minute`` Corresponding minute.
+   ``second`` Corresponding second.
+   ========== =============================
+
+| 
+
+.. container:: routine
+
+   *call time_manager_init()*
+
+.. container:: indent1
+
+   Initializes any internal data needed by the time manager code. Does not need to be called before using any of the
+   time manager routines; it will be called internally before executing any of the other routines.
+
+| 
+
+.. container:: routine
+
+   *call print_time(time [, str, iunit])*
+   ::
+
+      type(time_type),  intent(in)           :: time
+      character(len=*), intent(in), optional :: str
+      integer,          intent(in), optional :: iunit
+       
+
+.. container:: indent1
+
+   Print the time as days and seconds. If the optional str argument is specified, print that string as a label. If iunit
+   is specified, write output to that unit; otherwise write to standard output/terminal.
+
+   ======== =============================================================================
+   ``time`` Time to be printed as days/seconds.
+   *str*    String label to print before days/seconds. Default: 'TIME: '.
+   *iunit*  Unit number to write output on. Default is standard output/terminal (unit 6).
+   ======== =============================================================================
+
+| 
+
+.. container:: routine
+
+   *call print_date(time [, str, iunit])*
+   ::
+
+      type(time_type),  intent(in)           :: time
+      character(len=*), intent(in), optional :: str
+      integer,          intent(in), optional :: iunit
+       
+
+.. container:: indent1
+
+   Print the time as year/month/day/hour/minute/second, as computed from the currently selected calendar type. If the
+   optional str argument is specified, print that string as a label. If iunit is specified, write output to that unit;
+   otherwise write to standard output/terminal.
+
+   ======== =============================================================================
+   ``time`` Time to be printed as a calendar date/time.
+   *str*    String label to print before date. Default: 'DATE: '.
+   *iunit*  Unit number to write output on. Default is standard output/terminal (unit 6).
+   ======== =============================================================================
+
+| 
+
+.. container:: routine
+
+   *call write_time(file_unit, time [, form, ios_out])*
+   ::
+
+      integer,          intent(in)               :: file_unit
+      type(time_type),  intent(in)               :: time
+      character(len=*), intent(in),  optional    :: form
+      integer,          intent(out), optional    :: ios_out
+
+.. container:: indent1
+
+   Write a time to an already open file unit. The optional 'form' argument controls whether it is formatted or
+   unformatted. On error, the optional 'ios_out' argument returns the error code; otherwise a fatal error is triggered.
+
+   +---------------+-----------------------------------------------------------------------------------------------------+
+   | ``file_unit`` | Integer unit number for an already open file.                                                       |
+   +---------------+-----------------------------------------------------------------------------------------------------+
+   | ``time``      | Time to write to the file.                                                                          |
+   +---------------+-----------------------------------------------------------------------------------------------------+
+   | *form*        | String format specifier; either 'unformatted' or 'formatted'. Defaults to 'formatted'.              |
+   +---------------+-----------------------------------------------------------------------------------------------------+
+   | *ios_out*     | If specified, on error the i/o status error code is returned here. Otherwise, the standard error    |
+   |               | handler is called and the program exits.                                                            |
+   +---------------+-----------------------------------------------------------------------------------------------------+
+
+| 
+
+.. container:: routine
+
+   *call interactive_time(time)*
+   ::
+
+      type(time_type), intent(inout) :: time
+
+.. container:: indent1
+
+   Prompt the user for a time as a calendar date, based on the currently selected calendar type. Writes prompt to
+   standard output and reads from standard input.
+
+   ======== =========================
+   ``time`` Time type to be returned.
+   ======== =========================
+
+| 
+
+.. container:: type
+
+   ::
+
+      type time_type
+         private
+         integer :: seconds
+         integer :: days
+      end type time_type
+
+.. container:: indent1
+
+   This type is used to define a time interval.
+
+| 
+
+.. container:: type
+
+   ::
+
+       integer :: NO_CALENDAR
+       integer :: GREGORIAN
+       integer :: GREGORIAN_MARS
+       integer :: JULIAN
+       integer :: THIRTY_DAY_MONTHS
+       integer :: NOLEAP
+
+.. container:: indent1
+
+   The public integer parameters which define different calendar types. The same names defined as strings can be used to
+   set the calendar type.
+
+| 
+
+.. container:: type
+
+   ::
+
+       operator(+)
+       operator(-)
+       operator(*)
+       operator(/)
+       operator(>)
+       operator(>=)
+       operator(==)
+       operator(/=)
+       operator(<)
+       operator(<=)
+       operator(//)
+
+.. container:: indent1
+
+   Arithmetic operations are defined for time types, so expressions like
+
+   ::
+
+      t3 = t1 + t2
+
+   | can be constructed. To use these operators, they must be listed on the module use statement in the form specified
+     above.
+   | Multiplication is one time and one scalar.
+   | Division with a single slash is integer, and returns the largest integer for which time1 >= time2 \* n. Division
+     with a double slash returns a double precision quotient of the two times.
+
+| 
+
+Namelist
+--------
+
 No namelist is currently defined for the time manager code.
-</P>
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
+Files
+-----
 
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES</H2>
-<UL>
-<li> none </li>
-</UL>
+-  none
 
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
+References
+----------
 
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
-<ol>
-<li> none </li>
-</ol>
+#. none
 
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
+Private components
+------------------
 
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-
-<TR><!-- routine --><TD VALIGN=top></TD>
-    <!-- message --><TD VALIGN=top></TD>
-    <!-- comment --><TD VALIGN=top></TD>
-</TR>
-
-</TABLE>
-</div>
-
-<H2>KNOWN BUGS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PRIVATE COMPONENTS</H2>
-<P>
 N/A
-</P>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>

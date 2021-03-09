@@ -1,486 +1,349 @@
-<!doctype html public "-//ietf//dtd html//en">
-<html>
-<head>
-<!-- $Id$ -->
-<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
-<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
-<title>mkmf user's guide</title>
-</head>
+mkmf
+====
 
-<body>
+Introduction
+------------
 
-<!-- title using title stylespec -->
-<div class="title">
-<h2>mkmf - a tool for making makefiles</h2>
-<hr>
-<tt>mkmf</tt> is a tool written in perl5 that will construct a
-makefile from distributed source. A single executable program is the
-typical result, but I dare say it is extensible to a makefile for any
+``mkmf`` is a tool written in perl version 5 that constructs a makefile from distributed source. ``mkmf`` typically
+produces a makefile that can compile a single executable program. But it is extensible to create a makefile for any
 purpose at all.
 
-<p><tt>Author: Balaji, SGI/GFDL.</tt>
-<hr>
-</div>
+Features of mkmf
+~~~~~~~~~~~~~~~~
 
-<p>Features of <tt>mkmf</tt> include:
+-  It understands dependencies in f90 (``module``\ s and ``use``), the fortran ``include`` statement, and the cpp
+   ``#include`` statement in any type of source.
+-  There are no restrictions on filenames, module names, etc.
+-  It supports the concept of overlays (where source is maintained in layers of directories with a defined precedence).
+-  It can keep track of changes to ``cpp`` flags, and knows when to recompile affected source (i.e, files containing
+   ``#ifdef``\ s that have been changed since the last invocation).
+-  It will run on any unix platform that has perl version 5 installed.
+-  It is free, and released under GPL. GFDL users can copy (or, better still, directly invoke) the file
+   ``/net/vb/public/bin/mkmf``.
 
-<p><ul>
+It can be downloaded via `GitHub <https://github.com/NOAA-GFDL/mkmf>`__. ``mkmf`` is pronounced *make-make-file* or
+*make-m-f* or even *McMuff* (Paul Kushner's suggestion).
 
-<li>It understands dependencies in f90 (<tt>module</tt>s and
-<tt>use</tt>), the fortran <tt>include</tt> statement,
-and the cpp <tt>#include</tt> statement in any type of source;
-<li>There are no restrictions on filenames, module names, etc.;
-<li>It supports the concept of overlays (where source is maintained in
-layers of directories with a defined precedence);
-<li>It can keep track of changes to <tt>cpp</tt> flags, and
-knows when to recompile affected source (i.e, files
-containing <tt>#ifdef</tt>s that have been changed since the
-last invocation);
-<li>It will run on any unix platform that has perl version 5 installed;
-<li>It is free, and released under GPL. GFDL users can copy
-(or, better still, directly invoke) the file
-<tt>/net/vb/public/bin/mkmf</tt>. External users can download the
-source <a href="ftp://ftp.gfdl.gov/pub/vb/mkmf/mkmf">
-                ftp://ftp.gfdl.gov/pub/vb/mkmf/mkmf</a>.
-Current public revision is 4.12.
+Syntax
+------
 
-</ul>
+The calling syntax is:
 
-<p><tt>mkmf</tt> is pronounced <i>make-make-file</i> or
-<i>make-m-f</i> or even <i>McMuff</i> (Paul Kushner's suggestion).
+``mkmf [-a abspath] [-c cppdefs] [-d] [-f] [-m makefile] [-p program] [-t template] [-v] [-w] [-x] [args]``
 
-<p>The calling syntax is:
+#. ``-a abspath`` attaches the ``abspath`` at the *front* of all *relative* paths to sourcefiles.
+#. ``cppdefs`` is a list of ``cpp`` ``#define``\ s to be passed to the source files: affected object files will be
+   selectively removed if there has been a change in this state.
+#. ``-d`` is a debug flag to ``mkmf`` (much more verbose than ``-v``, but probably of use only if you are modifying
+   ``mkmf`` itself).
+#. ``-f`` is a formatting flag to restrict lines in the makefile to 256 characters. This was introduced in response to a
+   customer who wanted to edit his makefiles using ``vi``). Lines longer than that will use continuation lines as
+   needed.
+#. ``makefile`` is the name of the makefile written (default ``Makefile``).
+#. ``template`` is a file containing a list of make macros or commands written to the beginning of the makefile.
+#. ``program`` is the name of the final target (default ``a.out``)
+#. ``-v`` is a verbosity flag to ``mkmf``
+#. ``-w`` generates compile rules which use the \`wrapper' commands MPIFC and MPILD instead of FC and LD. These can then
+   be defined as the mpif90 compile scripts to ease changing between an MPI and non-MPI version.
+#. ``-x`` executes the makefile immediately.
+#. ``args`` are a list of directories and files to be searched for targets and dependencies.
 
-<p><tt>mkmf [-a abspath] [-c cppdefs] [-d] [-f] [-m makefile] [-p program] [-t template] [-v] [-w] [-x] [args]</tt>
+Makefile structure
+------------------
 
-<p><ol>
+A *sourcefile* is any file with a source file suffix (currently ``.F, .F90, .c, .f. .f90``). An *includefile* is any
+file with an include file suffix (currently ``.H, .fh, .h, .inc``). A valid sourcefile can also be an includefile.
 
-<li><tt>-a abspath</tt> attaches the <tt>abspath</tt> at
-the <i>front</i> of all <i>relative</i> paths to sourcefiles;
+Each sourcefile in the list is presumed to produce an object file with the same basename and a ``.o`` extension in the
+current working directory. If more than one sourcefile in the list would produce identically-named object files, only
+the first is used and the rest are discarded. This permits the use of overlays: if ``dir3`` contained the basic source
+code, ``dir2`` contained bugfixes, and ``dir1`` contained mods for a particular run, ``mkmf dir1 dir2 dir3`` would
+create a makefile for correct compilation. Please note that precedence *descends* from left to right. This is the
+conventional order used by compilers when searching for libraries, includes, etc: left to right along the command line,
+with the first match invalidating all subsequent ones. See the Examples section for a closer look at precedence rules.
 
-<li><tt>cppdefs</tt> is a list of <tt>cpp</tt>
-<tt>#define</tt>s to be passed to the source files: affected
-object files will be selectively removed if there has been a change in
-this state;
+The makefile currently runs ``$(FC)`` on fortran files and ``$(CC)`` on C files (unless the ``-w`` flag is specified).
+Flags to the compiler can be set in ``$(FFLAGS)`` or ``$(CFLAGS)``. The final loader step executes ``$(LD)``. Flags to
+the loader can be set in ``$(LDFLAGS)``. Preprocessor flags are used by ``.F``, ``.F90`` and ``.c`` files, and can be
+set in ``$(CPPFLAGS)``. These macros have a default meaning on most systems, and can be modified in the template file.
+The predefined macros can be discovered by running ``make -p``.
 
-<li><tt>-d</tt> is a debug flag to <tt>mkmf</tt> (much
-more verbose than <tt>-v</tt>, but probably of use only if you
-are modifying <tt>mkmf</tt> itself);
+In addition, the macro ``$(CPPDEFS)`` is applied to the preprocessor. This can contain the ``cpp #define``\ s which may
+change from run to run. ``cpp`` options that do not change between compilations should be placed in ``$(CPPFLAGS)``.
 
-<li><tt>-f</tt> is a formatting flag to restrict lines in the
-makefile to 256 characters. This was introduced in response to a
-customer who wanted to edit his makefiles using
-<tt>vi</tt>). Lines longer than that will use continuation
-lines as needed;
-
-<li><tt>makefile</tt> is the name of the makefile written (default
-<tt>Makefile</tt>);
-
-<li><tt>template</tt> is a file containing a list of make
-macros or commands written to the beginning of the makefile;
-
-<li><tt>program</tt> is the name of the final target (default
-<tt>a.out</tt>);
-
-<li><tt>-v</tt> is a verbosity flag to <tt>mkmf</tt>;
-
-<li><tt>-w</tt> generates compile rules which use the `wrapper' commands
-MPIFC and MPILD instead of FC and LD.  These can then be defined as
-the mpif90 compile scripts to ease changing between an MPI and non-MPI
-version;
-
-<li><tt>-x</tt> executes the makefile immediately;
-
-<li><tt>args</tt> are a list of directories and files to be
-searched for targets and dependencies.
-
-</ol>
-
-<p><h4>Makefile structure:</h4>
-
-<p>A <i>sourcefile</i> is any file with a source file suffix
-(currently <tt>.F, .F90, .c, .f. .f90</tt>). An <i>includefile</i> is
-any file with an include file suffix (currently <tt>.H, .fh, .h,
-.inc</tt>). A valid sourcefile can also be an includefile.
-
-<p>Each sourcefile in the list is presumed to produce an object file
-with the same basename and a <tt>.o</tt> extension in the current
-working directory. If more than one sourcefile in the list would produce
-identically-named object files, only the first is used and the rest
-are discarded. This permits the use of overlays: if <tt>dir3</tt>
-contained the basic source code, <tt>dir2</tt> contained bugfixes, and
-<tt>dir1</tt> contained mods for a particular run, <tt>mkmf dir1 dir2
-dir3</tt> would create a makefile for correct compilation. Please note
-that precedence <i>descends</i> from left to right. This is the
-conventional order used by compilers when searching for libraries,
-includes, etc: left to right along the command line, with the first
-match invalidating all subsequent ones. See the <a
-href="#examples">Examples</a> section for a closer look at precedence rules.
-
-<p>The makefile currently runs <tt>$(FC)</tt> on fortran files
-and <tt>$(CC)</tt> on C files (unless the <tt>-w</tt> flag is specified).
-Flags to the compiler can be set
-in <tt>$(FFLAGS)</tt> or <tt>$(CFLAGS)</tt>. The final
-loader step executes <tt>$(LD)</tt>. Flags to the loader can be
-set in <tt>$(LDFLAGS)</tt>.  Preprocessor flags are used by
-<tt>.F</tt>, <tt>.F90</tt> and <tt>.c</tt> files,
-and can be set in <tt>$(CPPFLAGS)</tt>. These macros have a
-default meaning on most systems, and can be modified in the template
-file. The predefined macros can be discovered by running <tt>make
--p</tt>.
-
-<p>In addition, the macro <tt>$(CPPDEFS)</tt> is applied to the
-preprocessor. This can contain the <tt>cpp #define</tt>s which
-may change from run to run. <tt>cpp</tt> options that do not
-change between compilations should be placed in
-<tt>$(CPPFLAGS)</tt>.
-
-<p>If the <tt>-w</tt> flag is given the commands run are
-<tt>$(MPIFC)</tt> on fortran files, <tt>$(MPICC)</tt> on C files,
-and <tt>$(MPILD)</tt> for the loader step. The flags retain their
-same values with or without the <tt>-w</tt> flag. (This is a local
+If the ``-w`` flag is given the commands run are ``$(MPIFC)`` on fortran files, ``$(MPICC)`` on C files, and
+``$(MPILD)`` for the loader step. The flags retain their same values with or without the ``-w`` flag. (This is a local
 addition.)
 
-<p>Includefiles are recursively searched for embedded includes.
+Includefiles are recursively searched for embedded includes.
 
-<p>For <tt>emacs</tt> users, the make target
-<tt>TAGS</tt> is always provided. This creates a TAGS file in
-the current working directory with a cross-reference table linking all
-the sourcefiles. If you don't know about emacs tags, please consult
+For ``emacs`` users, the make target ``TAGS`` is always provided. This creates a TAGS file in the current working
+directory with a cross-reference table linking all the sourcefiles. If you don't know about emacs tags, please consult
 the emacs help files! It is an incredibly useful feature.
 
-<p>The default action for non-existent files is to <tt>touch</tt> them
-(i.e create null files of that name) in the current working directory.
+The default action for non-existent files is to ``touch`` them (i.e create null files of that name) in the current
+working directory.
 
-<p>All the object files are linked to a single executable. It is
-therefore desirable that there be a single main program source among
-the arguments to <tt>mkmf</tt>, otherwise, the loader is likely to
-complain.
+All the object files are linked to a single executable. It is therefore desirable that there be a single main program
+source among the arguments to ``mkmf``, otherwise, the loader is likely to complain.
 
-<p><h4>Treatment of [args]:</h4>
+Treatment of [args]
+-------------------
 
-<p>The argument list <tt>args</tt> is treated sequentially from
-left to right. Arguments can be of three kinds:
+The argument list ``args`` is treated sequentially from left to right. Arguments can be of three kinds:
 
-<p><ul>
-<li>If an argument is a sourcefile, it is added to the list of sourcefiles.
-<li>If an argument is a directory, all the sourcefiles in
-that directory are added to the list of sourcefiles.
-<li>If an argument is a regular file, it is presumed to contain a list
-of sourcefiles. Any line not containing a sourcefile is discarded. If
-the line contains more than one word, the last word on the line should
-be the sourcefile name, and the rest of the line is a file-specific
-compilation command. This may be used, for instance, to provide
-compiler flags specific to a single file in the sourcefile list:
+-  If an argument is a sourcefile, it is added to the list of sourcefiles.
+-  If an argument is a directory, all the sourcefiles in that directory are added to the list of sourcefiles.
+-  If an argument is a regular file, it is presumed to contain a list of sourcefiles. Any line not containing a
+   sourcefile is discarded. If the line contains more than one word, the last word on the line should be the sourcefile
+   name, and the rest of the line is a file-specific compilation command. This may be used, for instance, to provide
+   compiler flags specific to a single file in the sourcefile list.
 
-<p><pre>
-a.f90
-b.f90
-f90 -Oaggress c.f90
-</pre>
-
-<p>This will add <tt>a.f90, b.f90</tt> and <tt>c.f90</tt> to the
-sourcefile list. The first two files will be compiled using the
-generic command <tt>$(FC) $(FFLAGS)</tt>. But when the make requires
-<tt>c.f90</tt> to be compiled, it will be compiled with <tt>f90
--Oaggress</tt>.
-</ul>
-
-<p>The current working directory is always the first (and
-top-precedence) argument, even if <tt>args</tt> is not supplied.
-
-<p><h4>Treatment of [-c cppdefs]:</h4>
-
-<p>The argument <tt>cppdefs</tt> is treated as
-follows. <tt>cppdefs</tt> should contain a comprehensive list
-of the <tt>cpp</tt> <tt>#define</tt>s to be
-preprocessed. This list is compared against the current "state",
-maintained in the file <tt>.cppdefs</tt> in the current
-working directory. If there are any changes to this state,
-<tt>mkmf</tt> will remove all object files
-affected by this change, so that the subsequent <tt>make</tt>
-will recompile those files. Previous versions of <tt>mkmf</tt>
-attempted to <tt>touch</tt> the relevant source, an operation
-that was only possible with the right permissions. The current version
-works even with read-only source.
-
-<p>The file <tt>.cppdefs</tt> is created if it does not exist. If you
-wish to edit it by hand (don't!) it merely contains a list of the
-<tt>cpp</tt> flags separated by blanks, in a single record, with no
-newline at the end.
-
-<p><tt>cppdefs</tt> also sets the <tt>make</tt> macro
-<tt>CPPDEFS</tt>. If this was set in a template file and also
-in the <tt>-c</tt> flag to <tt>mkmf</tt>, the value in
-<tt>-c</tt> takes precedence. Typically, you should set only
-<tt>CPPFLAGS</tt> in the template file, and
-<tt>CPPDEFS</tt> via <tt>mkmf -c</tt>.
-
-<p><h4>Treatment of includefiles:</h4>
-
-<p>Include files are often specified without an explicit path, e.g
-<p><pre>
-#include "config.h"
-</pre>
-
-<p><tt>mkmf</tt> first attempts to locate the includefile in the same
-directory as the source file. If it is not found there, it looks in
-the directories listed as arguments, maintaining the same
-left-to-right precedence as described above.
-
-<p>This follows the behaviour of most f90 compilers: includefiles
-inherit the path to the source, or else follow the order of include
-directories specified from left to right on the <tt>f90</tt> command
-line, with the <tt>-I</tt> flags <i>descending</i> in precedence from
-left to right.
-
-<p>If you have includefiles in a directory <tt>dir</tt> other than
-those listed above, you can specify it yourself by including
-<tt>-Idir</tt> in <tt>$(FFLAGS)</tt> in your template
-file. Includepaths in the template file take precedence over those
-generated by <tt>mkmf</tt>. (I suggest using
-<tt>FFLAGS</tt> for this rather than <tt>CPPFLAGS</tt>
-because fortran <tt>include</tt>s can occur even in source
-requiring no preprocessing).
-
-<a name="examples"></a>
-<br>
-<br>
-<h4>Examples:</h4>
-<ol>
-<li>The template file for the SGI MIPSpro compiler contains:
-<pre>
-FC = f90
-LD = f90
-CPPFLAGS = -macro_expand
-FFLAGS = -d8 -64 -i4 -r8 -mips4 -O3
-LDFLAGS = -64 -mips4 $(LIBS)
-LIST = -listing
-</pre>
-
-The meaning of the various flags may be divined by reading the
-manual. A line defining the <tt>make</tt> macro LIBS, e.g:
-
-<p><pre>
-LIBS = -lmpi
-</pre>
-
-may be added anywhere in the template to have it added to the link
-command line.
-
-<p>
-Sample template files for different OSs and compilers are available in
-the directory <tt>/net/vb/public/bin</tt>.
-
-<p><li>This example illustrates the effective use of <tt>mkmf</tt>'s
-precedence rules. Let the current working directory contain a file
-named <tt>path_names</tt> containing the lines:
-
-<p><pre>
-updates/a.f90
-updates/b.f90
-</pre>
-
-<p>The directory <tt>/home/src/base</tt> contains the files:
-
-<p><pre>
-a.f90
-b.f90
-c.f90
-</pre>
-
-<p>Typing <pre>mkmf path_names /home/src/base</pre> produces the
-following <tt>Makefile</tt>:
-
-<p><pre>
-# Makefile created by mkmf $Id$
+::
 
 
-.DEFAULT:
-	-touch $@
-all: a.out
-c.o: /home/src/base/c.f90
-	$(FC) $(FFLAGS) -c	/home/src/base/c.f90
-a.o: updates/a.f90
-	$(FC) $(FFLAGS) -c	updates/a.f90
-b.o: updates/b.f90
-	$(FC) $(FFLAGS) -c	updates/b.f90
-./c.f90: /home/src/base/c.f90
-	cp /home/src/base/c.f90 .
-./a.f90: updates/a.f90
-	cp updates/a.f90 .
-./b.f90: updates/b.f90
-	cp updates/b.f90 .
-SRC = /home/src/base/c.f90 updates/a.f90 updates/b.f90
-OBJ = c.o a.o b.o
-OFF = /home/src/base/c.f90 updates/a.f90 updates/b.f90
-clean: neat
-	-rm -f .cppdefs $(OBJ) a.out
-neat:
-	-rm -f $(TMPFILES)
-localize: $(OFF)
-	cp $(OFF) .
-TAGS: $(SRC)
-	etags $(SRC)
-tags: $(SRC)
-	ctags $(SRC)
-a.out: $(OBJ)
-	$(LD) $(OBJ) -o a.out $(LDFLAGS)
+   a.f90
+   b.f90
+   f90 -Oaggress c.f90
 
-</pre>
+This will add ``a.f90, b.f90`` and ``c.f90`` to the sourcefile list. The first two files will be compiled using the
+generic command ``$(FC) $(FFLAGS)``. But when the make requires ``c.f90`` to be compiled, it will be compiled with
+``f90 -Oaggress``.
 
-<p>Note that when files of the same name recur in the target list, the
-files in the <tt>updates</tt> directory (specified in
-<tt>path_names</tt>) are used rather than those in the base source
-repository <tt>/home/src/base</tt>.
+The current working directory is always the first (and top-precedence) argument, even if ``args`` is not supplied.
 
-Assume that now you want to test some changes to <tt>c.f90</tt>. You
-don't want to make changes to the base source repository itself prior
-to testing; so you make yourself a local copy.
+Treatment of [-c cppdefs]
+-------------------------
 
-<p><pre>
-make ./c.f90
-</pre>
+The argument ``cppdefs`` is treated as follows. ``cppdefs`` should contain a comprehensive list of the ``cpp``
+``#define``\ s to be preprocessed. This list is compared against the current "state", maintained in the file
+``.cppdefs`` in the current working directory. If there are any changes to this state, ``mkmf`` will remove all object
+files affected by this change, so that the subsequent ``make`` will recompile those files. Previous versions of ``mkmf``
+attempted to ``touch`` the relevant source, an operation that was only possible with the right permissions. The current
+version works even with read-only source.
 
-<p>You didn't even need to know where <tt>c.f90</tt> originally was.
+The file ``.cppdefs`` is created if it does not exist. If you wish to edit it by hand (don't!) it merely contains a list
+of the ``cpp`` flags separated by blanks, in a single record, with no newline at the end.
 
-Now you can make changes to your local copy <tt>./c.f90</tt>. To
-compile using your changed copy, type:
+``cppdefs`` also sets the ``make`` macro ``CPPDEFS``. If this was set in a template file and also in the ``-c`` flag to
+``mkmf``, the value in ``-c`` takes precedence. Typically, you should set only ``CPPFLAGS`` in the template file, and
+``CPPDEFS`` via ``mkmf -c``.
 
-<p><pre>
-mkmf path_names /home/src/base
-make
-</pre>
+Treatment of includefiles
+-------------------------
+
+Include files are often specified without an explicit path, e.g:
+
+::
+
+
+   #include "config.h"
+
+``mkmf`` first attempts to locate the includefile in the same directory as the source file. If it is not found there, it
+looks in the directories listed as arguments, maintaining the same left-to-right precedence as described above.
+
+This follows the behaviour of most f90 compilers: includefiles inherit the path to the source, or else follow the order
+of include directories specified from left to right on the ``f90`` command line, with the ``-I`` flags *descending* in
+precedence from left to right.
+
+If you have includefiles in a directory ``dir`` other than those listed above, you can specify it yourself by including
+``-Idir`` in ``$(FFLAGS)`` in your template file. Includepaths in the template file take precedence over those generated
+by ``mkmf``. (I suggest using ``FFLAGS`` for this rather than ``CPPFLAGS`` because fortran ``include``\ s can occur even
+in source requiring no preprocessing).
+
+Examples
+--------
+
+The template file for the SGI MIPSpro compiler contains:
+
+::
+
+
+   FC = f90
+   LD = f90
+   CPPFLAGS = -macro_expand
+   FFLAGS = -d8 -64 -i4 -r8 -mips4 -O3
+   LDFLAGS = -64 -mips4 $(LIBS)
+   LIST = -listing
+
+The meaning of the various flags may be divined by reading the manual. A line defining the ``make`` macro LIBS, e.g:
+
+::
+
+
+   LIBS = -lmpi
+
+may be added anywhere in the template to have it added to the link command line.
+
+Sample template files for different OSs and compilers are available in the directory ``/net/vb/public/bin``.
+
+This example illustrates the effective use of ``mkmf``'s precedence rules. Let the current working directory contain a
+file named ``path_names`` containing the lines:
+
+::
+
+
+   updates/a.f90
+   updates/b.f90
+
+The directory ``/home/src/base`` contains the files:
+
+::
+
+
+   a.f90
+   b.f90
+   c.f90
+
+Typing ``mkmf path_names /home/src/base`` produces the following ``Makefile``:
+
+::
+
+
+   # Makefile created by mkmf
+
+   .DEFAULT:
+           -touch $@
+   all: a.out
+   c.o: /home/src/base/c.f90
+           $(FC) $(FFLAGS) -c      /home/src/base/c.f90
+   a.o: updates/a.f90
+           $(FC) $(FFLAGS) -c      updates/a.f90
+   b.o: updates/b.f90
+           $(FC) $(FFLAGS) -c      updates/b.f90
+   ./c.f90: /home/src/base/c.f90
+           cp /home/src/base/c.f90 .
+   ./a.f90: updates/a.f90
+           cp updates/a.f90 .
+   ./b.f90: updates/b.f90
+           cp updates/b.f90 .
+   SRC = /home/src/base/c.f90 updates/a.f90 updates/b.f90
+   OBJ = c.o a.o b.o
+   OFF = /home/src/base/c.f90 updates/a.f90 updates/b.f90
+   clean: neat
+           -rm -f .cppdefs $(OBJ) a.out
+   neat:
+           -rm -f $(TMPFILES)
+   localize: $(OFF)
+           cp $(OFF) .
+   TAGS: $(SRC)
+           etags $(SRC)
+   tags: $(SRC)
+           ctags $(SRC)
+   a.out: $(OBJ)
+           $(LD) $(OBJ) -o a.out $(LDFLAGS)
+
+Note that when files of the same name recur in the target list, the files in the ``updates`` directory (specified in
+``path_names``) are used rather than those in the base source repository ``/home/src/base``.
+
+Assume that now you want to test some changes to ``c.f90``. You don't want to make changes to the base source repository
+itself prior to testing; so you make yourself a local copy.
+
+::
+
+
+   $ make ./c.f90
+
+You didn't even need to know where ``c.f90`` originally was.
+
+Now you can make changes to your local copy ``./c.f90``. To compile using your changed copy, type:
+
+::
+
+
+   $ mkmf path_names /home/src/base
+   $ make
 
 The new Makefile looks like this:
 
-<p><pre>
-# Makefile created by mkmf $Id$
+::
 
 
-.DEFAULT:
-	-touch $@
-all: a.out
-c.o: c.f90
-	$(FC) $(FFLAGS) -c	c.f90
-a.o: updates/a.f90
-	$(FC) $(FFLAGS) -c	updates/a.f90
-b.o: updates/b.f90
-	$(FC) $(FFLAGS) -c	updates/b.f90
-./a.f90: updates/a.f90
-	cp updates/a.f90 .
-./b.f90: updates/b.f90
-	cp updates/b.f90 .
-SRC = c.f90 updates/a.f90 updates/b.f90
-OBJ = c.o a.o b.o
-OFF = updates/a.f90 updates/b.f90
-clean: neat
-	-rm -f .cppdefs $(OBJ) a.out
-neat:
-	-rm -f $(TMPFILES)
-localize: $(OFF)
-	cp $(OFF) .
-TAGS: $(SRC)
-	etags $(SRC)
-tags: $(SRC)
-	ctags $(SRC)
-a.out: $(OBJ)
-	$(LD) $(OBJ) -o a.out $(LDFLAGS)
+   # Makefile created by mkmf
 
-</pre>
+   .DEFAULT:
+           -touch $@
+   all: a.out
+   c.o: c.f90
+           $(FC) $(FFLAGS) -c      c.f90
+   a.o: updates/a.f90
+           $(FC) $(FFLAGS) -c      updates/a.f90
+   b.o: updates/b.f90
+           $(FC) $(FFLAGS) -c      updates/b.f90
+   ./a.f90: updates/a.f90
+           cp updates/a.f90 .
+   ./b.f90: updates/b.f90
+           cp updates/b.f90 .
+   SRC = c.f90 updates/a.f90 updates/b.f90
+   OBJ = c.o a.o b.o
+   OFF = updates/a.f90 updates/b.f90
+   clean: neat
+           -rm -f .cppdefs $(OBJ) a.out
+   neat:
+           -rm -f $(TMPFILES)
+   localize: $(OFF)
+           cp $(OFF) .
+   TAGS: $(SRC)
+           etags $(SRC)
+   tags: $(SRC)
+           ctags $(SRC)
+   a.out: $(OBJ)
+           $(LD) $(OBJ) -o a.out $(LDFLAGS)
 
-<p>Note that you are now using your local copy of <tt>c.f90</tt> for
-the compile, since the files in the current working directory always
-take precedence. To revert to using the base copy, just remove the
-local copy and run <tt>mkmf</tt> again.
+Note that you are now using your local copy of ``c.f90`` for the compile, since the files in the current working
+directory always take precedence. To revert to using the base copy, just remove the local copy and run ``mkmf`` again.
 
-<p><li>This illustrates the use of <tt>mkmf -c</tt>:
+This illustrates the use of ``mkmf -c``:
 
-<p><pre>
-mkmf -c "-Dcppflag -Dcppflag2=2 -Dflag3=string ..."
-</pre>
+::
 
-<p>will set <tt>CPPDEFS</tt> to this value, and also save this
-state in the file <tt>.cppdefs</tt>. If the argument to
-<tt>-c</tt> is changed in a subsequent call:
 
-<p><pre>
-mkmf -c "-Dcppflag -Dcppflag2=3 -Dflag3=string ..."
-</pre>
+   $ mkmf -c "-Dcppflag -Dcppflag2=2 -Dflag3=string ..."
 
-<tt>mkmf</tt> will scan the source list for sourcefiles that make
-references to <tt>cppflag2</tt>, and the corresponding object files
-will be removed.
+will set ``CPPDEFS`` to this value, and also save this state in the file ``.cppdefs``. If the argument to ``-c`` is
+changed in a subsequent call:
 
-</ol>
+::
 
-<p>
-<h4>Caveats:</h4>
-<ol>
-<li>In F90, the module name must occur on the same source line as
-the <tt>module</tt> or <tt>use</tt> keyword. That is to
-say, if your code contained:
 
-<p><pre>use &amp;
-<br>   this_module</pre>
+   $ mkmf -c "-Dcppflag -Dcppflag2=3 -Dflag3=string ..."
 
-<p>it would confuse <tt>mkmf</tt>. Similarly, a fortran
-<tt>include</tt> statement must not be split across lines.
+``mkmf`` will scan the source list for sourcefiles that make references to ``cppflag2``, and the corresponding object
+files will be removed.
 
-<p><li>Two <tt>use</tt> statements on the same line is not
-currently recognized, that is:
+Caveats
+-------
 
-<p><pre>use module1; use module2</pre>
+In F90, the module name must occur on the same source line as the ``module`` or ``use`` keyword. That is to say, if your
+code contained:
 
-<p>is to be avoided.
+::
 
-<p><li>I currently provide a default action for files listed as
-dependencies but not found: in this case, I <tt>touch</tt> the
-file, creating a null file of that name in the current directory. I am
-willing to debate the wisdom of this, if you are disturbed. But it is
-currently the least annoying way I've found to take care of a
-situation when cpp <tt>#include</tt>s buried within obsolete
-<tt>ifdef</tt>s ask for files that don't exist:
 
-<p><pre>
-#ifdef obsolete
-#include "nonexistent.h"
-#endif
-</pre>
+   use &
+   this_module
 
-<p><li>If the formatting flag <tt>-f</tt> is used, long lines
-will be broken up at intervals of 256 characters. This can lead to
+it would confuse ``mkmf``. Similarly, a fortran ``include`` statement must not be split across lines.
+
+Two ``use`` statements on the same line is not currently recognized, that is:
+
+::
+
+
+   use module1; use module2
+
+is to be avoided.
+
+``mkmf`` provides a default action for files listed as dependencies but not found. In this case, ``mkmf`` will ``touch``
+the file, creating a null file of that name in the current directory. It is the least annoying way to take care of a
+situation when cpp ``#include``\ s buried within obsolete ``ifdef``\ s ask for files that don't exist:
+
+::
+
+
+   #ifdef obsolete
+   #include "nonexistent.h"
+   #endif
+
+If the formatting flag ``-f`` is used, long lines will be broken up at intervals of 256 characters. This can lead to
 problems if individual paths are longer than 256 characters.
-
-</ol>
-
-<a name="Changes"></a>
-<p>
-<h4>Changes</h4>
-
-The <a href="">RCS log</a> for
-<tt>mkmf</tt> contains a comprehensive list of changes. In the
-unlikely event that you should wish to check out a retro version,
-please get in touch with me, <a href="">Balaji</a>.
-
-<p><h4>TODO:</h4>
-
-<ol>
-<li>An option to write a dependency graph, perhaps in HTML.
-</ol>
-
-<p>Please address all inquires to <a href="">Balaji</a>,
-SGI/GFDL.
-
-<!-- footer using address stylespec -->
-<br><hr>
-<address>
-Author: <a href="">V. Balaji</a>
-<br>Document last modified <!--#exec cmd="echo $LAST_MODIFIED" -->
-</address>
-</body>
-
-<!-- store access stats -->
-<!--#exec cmd="touch stats; chmod 666 stats" -->
-<!--#exec cmd="echo $DOCUMENT_NAME $REMOTE_IDENT@$REMOTE_HOST $HTTP_REFERER $HTTP_REFERER $DATE_LOCAL >> stats" -->
-</html>

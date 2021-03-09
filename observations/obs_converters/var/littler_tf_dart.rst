@@ -1,429 +1,213 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>program littler_tf_dart</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
-<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
-
-<H1>PROGRAM <em class=program>littler_tf_dart</em></H1>
-
-<table border=0 summary="" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
-
-<A HREF="#DataSources">DATA SOURCES</A> /
-<A HREF="#Programs">PROGRAMS</A> / 
-<A HREF="#Modules">MODULES</A> /
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-
-<H2>Overview</H2>
-
-<P>
-   Programs to convert littler data files into DART observation sequence
-   files, and vice versa. The capability of the program is limited to wind and
-   temperature from radiosondes.
-</P>
-
-<P>
-   The littler data files do not contain observation errors. The observation
-   errors are in a separate file called <em class=file>obserr.txt</em>. The
-   littler file generated here has to be preprocessed by the program <em
-   class=file>3dvar_obs.exe</em> before beeing ingested in the WRF 3D-Var
-   system.
-</P>
-
-<!--==================================================================-->
-
-<A NAME="Modules"></A>
-<HR />
-<H2>MODULES USED</H2>
-<PRE>
-types_mod
-obs_sequence_mod
-obs_def_mod
-obs_kind_mod
-location/threed_sphere/location_mod
-time_manager_mod
-utilities_mod
-</PRE>
-
-<H2>MODULES INDIRECTLY USED</H2>
-<PRE>
-assim_model_mod
-models/wrf/model_mod
-models/wrf/module_map_utils
-random_seq_mod
-</PRE>
-
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
-
-<A NAME="Namelist"></A>
-<BR /><HR /><BR />
-<H2>NAMELIST</H2>
-
-<P>
-The program does not have its own namelist. 
-However, an <em class=file>input.nml</em> file is required 
-for the modules used by the program.
-</P>
-
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
-
-<A NAME="FilesUsed"></A>
-<HR />
-<H2>FILES</H2>
-<UL>
-   <LI>input namelist ; <em class=file>input.nml</em>
-   <LI>Input - output observation files; <em class=file>obs_seq.out</em> and
-   <em class=file>little-r.dat</em>
-   <LI>Input - output littler observation error files ; <em
-   class=file>obserr.txt</em>
-</UL>
-
-<H3>File formats</H3>
-
-<P>
-If there are no observation error at a particular pressure level, the default
-value of -1 is written in <em class=file>obserr.txt</em>.
-</P>
-
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
-
-<A NAME="References"></A>
-<HR />
-<H2>REFERENCES</H2>
-<UL>
-<LI><A HREF="http://www.mmm.ucar.edu/wrf/WG4/">3DVAR GROUP PAGE</A>
-</UL>
-
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-
-<A NAME="Errors"></A>
-<HR />
-<H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
-
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-
-<TR><!-- routine --><TD VALIGN=top>littler_tf_dart</TD>
-    <!-- message --><TD VALIGN=top>Did not get all obs</TD>
-    <!-- comment --><TD VALIGN=top>There is observation before dart time (0, 0)
-    or beyond day 200000 in the Gregorian calendar in the <em
-    class=file>obs_seq.out</em> file.</TD></TR>
-
-<TR><!-- routine --><TD VALIGN=top>littler_tf_dart</TD>
-    <!-- message --><TD VALIGN=top>No vertical coordinate.</TD>
-    <!-- comment --><TD VALIGN=top>Only vertical pressure coordinate is
-                                   supported.</TD></TR>
-
-<TR><!-- routine --><TD VALIGN=top>littler_tf_dart</TD>
-    <!-- message --><TD VALIGN=top>Error when reading or writing header of
-                                   sounding.</TD>
-    <!-- comment --><TD VALIGN=top>Problem with littler file.</TD></TR>
-
-<TR><!-- routine --><TD VALIGN=top>littler_tf_dart</TD>
-    <!-- message --><TD VALIGN=top>Error when reading or writing sounding.</TD>
-    <!-- comment --><TD VALIGN=top>Problem with littler file.</TD></TR>
-
-<TR><!-- routine --><TD VALIGN=top>littler_tf_dart</TD>
-    <!-- message --><TD VALIGN=top>Error when reading or writing footer of the
-                                   sounding.</TD>
-    <!-- comment --><TD VALIGN=top>Problem with littler file.</TD></TR>
-
-<TR><!-- routine --><TD VALIGN=top>intplin, intplog</TD>
-    <!-- message --><TD VALIGN=top>arrays xx and yy must have same size</TD>
-    <!-- comment --><TD VALIGN=top>Each x value needs a corresponding y
-                                   value.</TD></TR>
-
-<TR><!-- routine --><TD VALIGN=top>intplin, intplog</TD>
-    <!-- message --><TD VALIGN=top>bad value in yy</TD>
-    <!-- comment --><TD VALIGN=top>It is assumed that the input yy contains rms
-    errors and should not be negative. That should be traced back to the file
-    <em class=file>obserr.txt</em>.</TD></TR>
-
-</TABLE>
-</div>
-
-<H2>KNOWN BUGS</H2>
-<P>
-none
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<HR />
-<H2>FUTURE PLANS</H2>
-<ol>
-<LI>Develop the program to support all observations in DART and WRF 3D-Var.</LI>
-<LI>Use the preprocessor to include the observation list provided by
-obs_kind_mod.</LI>
-</ol>
-
-<!--==================================================================-->
-<!-- Declare all private entities.                                    -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<HR />
-<H2>PRIVATE COMPONENTS</H2>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> call set_str_date(timestring, dart_time)</em>
-<pre>
-type(time_type),   intent(in)  :: <em class=code> dart_time </em>
-character(len=20), intent(out) :: <em class=code> timestring </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-Given a dart_time (seconds, days), returns date as bbbbbbyyyymmddhhmmss, where
-b is a blank space.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> call set_dart_time(tstring, dart_time)</em>
-<pre>
-character(len=20), intent(in)  :: <em class=code> tstring </em>
-type(time_type),   intent(out) :: <em class=code> dart_time </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-Given a date as bbbbbbyyyymmddhhmmss, where b is a blank space, returns the
-dart_time (seconds, days).
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> call StoreObsErr(obs_err_var, pres, plevel, nlev,
-obs_err_std)</em>
-<pre>
-integer,  intent(in)    :: <em class=code> nlev, pres </em>
-real(r8), intent(in)    :: <em class=code> obs_err_var </em>
-integer,  intent(in)    :: <em class=code> plevel(nlev) </em>
-real(r8), intent(inout) :: <em class=code> obs_err_std(nlev) </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-If the incoming pres corresponds exactly to a pressure level in plevel, then
-transfers the incoming obs_err_var into the array obs_err_std at the
-corresponding level.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> level_index = GetClosestLevel(ilev, vlev, nlev)</em>
-<pre>
-integer,  intent(in) :: <em class=code> nlev, ilev </em>
-integer,  intent(in) :: <em class=code> vlev(nlev) </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-Returns the index of the closest level in vlev to the incoming ilev.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> call READ_OBSERR(filein, platform, sensor_name, err, nlevels)</em>
-<pre>
-CHARACTER (LEN=80), intent(in)  :: <em class=code> filein </em>
-CHARACTER (LEN=80), intent(in)  :: <em class=code> platform </em>
-CHARACTER (LEN=80), intent(in   :: <em class=code> sensor_name </em>
-INTEGER,            intent(in)  :: <em class=code> nlevels </em>
-REAL(r8),           intent(out) :: <em class=code> err(nlevels) </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-Read observational error on pressure levels (in hPa) from the incoming
-filein and store the result in the array err. It is assumed that filein has the
-same format as WRF 3D-Var
-<em class=file>obserr.txt</em> file. It reads observational error for a
-specific platform (e.g. RAOBS) and a specific sensor (e.g. WIND SENSOR ERRORS).
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> f_obstype = obstype(line)</em>
-<pre>
-CHARACTER (LEN= 80), intent(in) :: <em class=code> line </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-Read in a line the string present after keyword 'BOGUS', which should be the
-sensor name.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> f_sensor = sensor(line)</em>
-<pre>
-CHARACTER (LEN= 80), intent(in) :: <em class=code> line </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-Read in a line the string present after numbers, which should be the platform
-name.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> val = intplin(x,xx,yy)</em>
-<pre>
-INTEGER,  DIMENSION (:), intent(in) :: <em class=code> xx </em>
-REAL(r8), DIMENSION (:), intent(in) :: <em class=code> yy </em>
-REAL(r8),                intent(in) :: <em class=code> x </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-Do a linear interpolation.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> val = intplog(x,xx,yy)</em>
-<pre>
-INTEGER,  DIMENSION (:), intent(in) :: <em class=code> xx </em>
-REAL(r8), DIMENSION (:), intent(in) :: <em class=code> yy </em>
-REAL(r8),                intent(in) :: <em class=code> x </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-Do a log-linear interpolation.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br />
-<div class=routine>
-<em class=call> index = locate(x,xx)</em>
-<pre>
-INTEGER, DIMENSION (:), intent(in) :: <em class=code> xx </em>
-REAL(r8),               intent(in) :: <em class=code> x </em>
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-Return the index in xx such that xx(index) &lt; x &lt; xx(index+1).
-</P>
-
-</div>
-<br />
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<HR />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>
+PROGRAM ``littler_tf_dart``
+===========================
+
+Overview
+--------
+
+Programs to convert littler data files into DART observation sequence files, and vice versa. The capability of the
+program is limited to wind and temperature from radiosondes.
+
+The littler data files do not contain observation errors. The observation errors are in a separate file called
+``obserr.txt``. The littler file generated here has to be preprocessed by the program ``3dvar_obs.exe`` before beeing
+ingested in the WRF 3D-Var system.
+
+Modules used
+------------
+
+::
+
+   types_mod
+   obs_sequence_mod
+   obs_def_mod
+   obs_kind_mod
+   location/threed_sphere/location_mod
+   time_manager_mod
+   utilities_mod
+
+Modules indirectly used
+-----------------------
+
+::
+
+   assim_model_mod
+   models/wrf/model_mod
+   models/wrf/module_map_utils
+   random_seq_mod
+
+| 
+
+Namelist
+--------
+
+The program does not have its own namelist. However, an ``input.nml`` file is required for the modules used by the
+program.
+
+Files
+-----
+
+-  input namelist ; ``input.nml``
+-  Input - output observation files; ``obs_seq.out`` and ``little-r.dat``
+-  Input - output littler observation error files ; ``obserr.txt``
+
+File formats
+~~~~~~~~~~~~
+
+If there are no observation error at a particular pressure level, the default value of -1 is written in ``obserr.txt``.
+
+References
+----------
+
+-  `3DVAR GROUP PAGE <http://www.mmm.ucar.edu/wrf/WG4/>`__
+
+Private components
+------------------
+
+| 
+
+.. container:: routine
+
+   *call set_str_date(timestring, dart_time)*
+   ::
+
+      type(time_type),   intent(in)  ::  dart_time 
+      character(len=20), intent(out) ::  timestring 
+
+.. container:: indent1
+
+   Given a dart_time (seconds, days), returns date as bbbbbbyyyymmddhhmmss, where b is a blank space.
+
+| 
+
+.. container:: routine
+
+   *call set_dart_time(tstring, dart_time)*
+   ::
+
+      character(len=20), intent(in)  ::  tstring 
+      type(time_type),   intent(out) ::  dart_time 
+
+.. container:: indent1
+
+   Given a date as bbbbbbyyyymmddhhmmss, where b is a blank space, returns the dart_time (seconds, days).
+
+| 
+
+.. container:: routine
+
+   *call StoreObsErr(obs_err_var, pres, plevel, nlev, obs_err_std)*
+   ::
+
+      integer,  intent(in)    ::  nlev, pres 
+      real(r8), intent(in)    ::  obs_err_var 
+      integer,  intent(in)    ::  plevel(nlev) 
+      real(r8), intent(inout) ::  obs_err_std(nlev) 
+
+.. container:: indent1
+
+   If the incoming pres corresponds exactly to a pressure level in plevel, then transfers the incoming obs_err_var into
+   the array obs_err_std at the corresponding level.
+
+| 
+
+.. container:: routine
+
+   *level_index = GetClosestLevel(ilev, vlev, nlev)*
+   ::
+
+      integer,  intent(in) ::  nlev, ilev 
+      integer,  intent(in) ::  vlev(nlev) 
+
+.. container:: indent1
+
+   Returns the index of the closest level in vlev to the incoming ilev.
+
+| 
+
+.. container:: routine
+
+   *call READ_OBSERR(filein, platform, sensor_name, err, nlevels)*
+   ::
+
+      CHARACTER (LEN=80), intent(in)  ::  filein 
+      CHARACTER (LEN=80), intent(in)  ::  platform 
+      CHARACTER (LEN=80), intent(in   ::  sensor_name 
+      INTEGER,            intent(in)  ::  nlevels 
+      REAL(r8),           intent(out) ::  err(nlevels) 
+
+.. container:: indent1
+
+   Read observational error on pressure levels (in hPa) from the incoming filein and store the result in the array err.
+   It is assumed that filein has the same format as WRF 3D-Var ``obserr.txt`` file. It reads observational error for a
+   specific platform (e.g. RAOBS) and a specific sensor (e.g. WIND SENSOR ERRORS).
+
+| 
+
+.. container:: routine
+
+   *f_obstype = obstype(line)*
+   ::
+
+      CHARACTER (LEN= 80), intent(in) ::  line 
+
+.. container:: indent1
+
+   Read in a line the string present after keyword 'BOGUS', which should be the sensor name.
+
+| 
+
+.. container:: routine
+
+   *f_sensor = sensor(line)*
+   ::
+
+      CHARACTER (LEN= 80), intent(in) ::  line 
+
+.. container:: indent1
+
+   Read in a line the string present after numbers, which should be the platform name.
+
+| 
+
+.. container:: routine
+
+   *val = intplin(x,xx,yy)*
+   ::
+
+      INTEGER,  DIMENSION (:), intent(in) ::  xx 
+      REAL(r8), DIMENSION (:), intent(in) ::  yy 
+      REAL(r8),                intent(in) ::  x 
+
+.. container:: indent1
+
+   Do a linear interpolation.
+
+| 
+
+.. container:: routine
+
+   *val = intplog(x,xx,yy)*
+   ::
+
+      INTEGER,  DIMENSION (:), intent(in) ::  xx 
+      REAL(r8), DIMENSION (:), intent(in) ::  yy 
+      REAL(r8),                intent(in) ::  x 
+
+.. container:: indent1
+
+   Do a log-linear interpolation.
+
+| 
+
+.. container:: routine
+
+   *index = locate(x,xx)*
+   ::
+
+      INTEGER, DIMENSION (:), intent(in) ::  xx 
+      REAL(r8),               intent(in) ::  x 
+
+.. container:: indent1
+
+   Return the index in xx such that xx(index) < x < xx(index+1).
+
+| 

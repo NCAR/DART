@@ -1,202 +1,79 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>program rad_3dvar_to_dart</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
-<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+PROGRAM ``rad_3dvar_to_dart``
+=============================
 
-<H1>PROGRAM <em class=program>rad_3dvar_to_dart</em></H1>
+Overview
+--------
 
-<table border=0 summary="" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
+Programs to convert MM5 3D-VAR 2.0 Radar data files into DART observation sequence files. The capability of the program
+is limited to DOPPLER_RADIAL_VELOCITY and RADAR_REFLECTIVITY.
 
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Modules">MODULES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
+Namelist
+--------
 
-<H2>Overview</H2>
+This namelist is read from the file ``input.nml``. Namelists start with an ampersand '&' and terminate with a slash '/'.
+Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely terminating the
+namelist.
 
-<P>
-   Programs to convert MM5 3D-VAR 2.0 Radar data files into DART observation
-   sequence files. The capability of the program is limited to
-   DOPPLER_RADIAL_VELOCITY and RADAR_REFLECTIVITY.
-</P>
+::
 
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
+   &rad_3dvar_to_dart_nml
+      var_file = 'qc_radr_3dvar_2002083100.dat',
+      obs_seq_out_file_name = 'obs_seq.out',
+      calendar_type = 3  
+   /
 
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
-This namelist is read from the file <em class=file>input.nml</em>.
-Namelists start with an ampersand
-'&amp;' and terminate with a slash '/'.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
-prematurely terminating the namelist.
-</P>
+| 
 
-<div class=namelist>
-<pre>
-&amp;rad_3dvar_to_dart_nml
-   var_file = 'qc_radr_3dvar_2002083100.dat',
-   obs_seq_out_file_name = 'obs_seq.out',
-   calendar_type = 3  
-/
-</pre>
-</div>
+.. container::
 
-<br />
-<br />
+   ===================== ================== ==========================================================================
+   Item                  Type               Description
+   ===================== ================== ==========================================================================
+   var_file              character(len=129) This is the name of the file containing MM5 3D-VAR 2.0 Radar observations.
+   obs_seq_out_file_name character(len=129) File name for output observation sequence file.
+   calendar_type         integer            Calendar type. We recommend using 3 (GREGORIAN).
+   ===================== ================== ==========================================================================
 
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
+| 
 
-<TBODY valign=top>
-    
-<TR><TD> var_file </TD>
-    <TD> character(len=129) </TD>
-    <TD>This is the name of the file containing MM5 3D-VAR 2.0 Radar observations.
-</TD></TR>
-<TR><TD> obs_seq_out_file_name </TD>
-    <TD> character(len=129) </TD>
-    <TD>File name for output observation sequence file.
-</TD></TR>
-<TR><TD> calendar_type </TD>
-    <TD> integer </TD>
-    <TD>Calendar type. We recommend using 3 (GREGORIAN).
-</TD></TR>
+Modules directly used
+---------------------
 
-</TBODY> 
-</TABLE>
-</div>
+::
 
-<br />
-<br />
+   types_mod
+   obs_sequence_mod
+   obs_def_mod
+   obs_def/obs_def_radar_mod
+   obs_kind_mod
+   location/threed_sphere/location_mod
+   time_manager_mod
+   utilities_mod
 
+Modules indirectly used
+-----------------------
 
-<!--==================================================================-->
+::
 
-<A NAME="Modules"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>MODULES DIRECTLY USED</H2>
-<PRE>
-types_mod
-obs_sequence_mod
-obs_def_mod
-obs_def/obs_def_radar_mod
-obs_kind_mod
-location/threed_sphere/location_mod
-time_manager_mod
-utilities_mod
-</PRE>
+   assim_model_mod
+   models/wrf/model_mod
+   models/wrf/module_map_utils
+   random_seq_mod
 
-<H2>MODULES INDIRECTLY USED</H2>
-<PRE>
-assim_model_mod
-models/wrf/model_mod
-models/wrf/module_map_utils
-random_seq_mod
-</PRE>
+Files
+-----
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
+-  input namelist ; ``input.nml``
+-  Input observation file; ``qc_radr_3dvar_2002083100.dat``
+-  Output observation file; ``obs_seq.out``
 
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES</H2>
-<UL>
-   <LI>input namelist ; <em class=file>input.nml</em>
-   <LI>Input observation file; <em class=file>qc_radr_3dvar_2002083100.dat</em>
-   <LI>Output observation file; <em class=file>obs_seq.out</em> 
-</UL>
+File formats
+~~~~~~~~~~~~
 
-<H3>File formats</H3>
+``input.nml`` and ``qc_radr_3dvar_2002083100.dat`` are ASCII files. ``obs_seq.out`` is either ASCII or binary, depending
+on the logical write_binary_obs_sequence, which is the namelist entry for obs_sequence_mod.
 
-<P>
-<em class=file>input.nml</em> and <em
-class=file>qc_radr_3dvar_2002083100.dat</em> are ASCII files. <em
-class=file>obs_seq.out</em> is either ASCII or binary, depending on the logical
-write_binary_obs_sequence, which is the namelist entry for obs_sequence_mod.
-</P>
+References
+----------
 
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
-
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
-<UL>
-<LI><A HREF="http://www.mmm.ucar.edu/wrf/WG4/">3DVAR GROUP PAGE</A>
-</UL>
-
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
-<P>
-none
-</P>
-
-<H2>KNOWN BUGS</H2>
-<P>
-none
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<ol>
-<LI>Use the preprocessor to include the observation list 
-    provided by obs_kind_mod.</LI>
-<LI>Add the capability to convert from DART to MM5 3D-VAR 2.0 
-    Radar data file format.</LI>
-</ol>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>
+-  `3DVAR GROUP PAGE <http://www.mmm.ucar.edu/wrf/WG4/>`__

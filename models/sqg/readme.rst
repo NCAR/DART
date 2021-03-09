@@ -1,770 +1,411 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>module model_mod (SQG)</TITLE>
-<link rel="stylesheet" type="text/css" href="../../docs/html/doc.css">
-<link href="../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
-
-<H1>MODULE model_mod (SQG)</H1>
-
-<table border=0 summary="" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../docs/index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
-
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Interface">INTERFACES</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-
-<H2>Overview</H2>
-
-<P>
-This is a uniform PV two-surface QG+1 spectral model contributed
-by Rahul Majahan. 
-</P>
-
-<P>
-The underlying model is described in:
-Hakim, Gregory J., 2000: Role of Nonmodal Growth and Nonlinearity in 
-Cyclogenesis Initial-Value Problems. J. Atmos. Sci., 57, 2951-2967.
-doi: 10.1175/1520-0469(2000)057<2951:RONGAN>2.0.CO;2
-</P>
-
-<!--==================================================================-->
-
-<A NAME="OtherModulesUsed"></A>
-<HR>
-<H2>OTHER MODULES USED</H2>
-<PRE>
-types_mod
-time_manager_mod
-threed_sphere/location_mod
-utilities_mod
-</PRE>
-
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-<!--==================================================================-->
-
-<A NAME="Interface"></A>
-<HR>
-<H2>PUBLIC INTERFACES</H2>
-
-<TABLE>
-<TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
-</TABLE>
-
-<P>
-Optional namelist interface
-<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
-</P>
-
-<P>
-   A note about documentation style.
-   Optional arguments are enclosed in brackets
-   <em class=optionalcode>[like this]</em>.
-</P>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+SQG
+===
 
-<A NAME="get_model_size"></A>
-<br>
-<div class=routine>
-<em class=call>model_size = get_model_size( )</em>
-<pre>
-integer :: <em class=code>get_model_size</em>
-</pre>
-</div>
+Overview
+--------
 
-<div class=indent1>
-<!-- Description -->
+This is a uniform PV two-surface QG+1 spectral model contributed by Rahul Majahan.
 
-<P>
-Returns the length of the model state vector.
-</P>
+The underlying model is described in: Hakim, Gregory J., 2000: Role of Nonmodal Growth and Nonlinearity in Cyclogenesis
+Initial-Value Problems. J. Atmos. Sci., 57, 2951-2967. doi: 10.1175/1520-0469(2000)057<2951:RONGAN>2.0.CO;2
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+Other modules used
+------------------
 
-<TR><TD valign=top><em class=code>model_size</em></TD>
-    <TD>The length of the model state vector.</TD></TR>
+::
 
-</TABLE>
+   types_mod
+   time_manager_mod
+   threed_sphere/location_mod
+   utilities_mod
 
-</div>
-<br>
+Public interfaces
+-----------------
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+======================= ======================
+*use model_mod, only :* get_model_size
+\                       adv_1step
+\                       get_state_meta_data
+\                       model_interpolate
+\                       get_model_time_step
+\                       static_init_model
+\                       end_model
+\                       init_time
+\                       init_conditions
+\                       nc_write_model_atts
+\                       nc_write_model_vars
+\                       pert_model_state
+\                       get_close_maxdist_init
+\                       get_close_obs_init
+\                       get_close_obs
+\                       ens_mean_for_model
+======================= ======================
 
-<A NAME="adv_1step"></A>
-<br>
-<div class=routine>
-<em class=call>call adv_1step(x, time)</em>
-<pre>
-real(r8), dimension(:), intent(inout) :: <em class=code>x</em>
-type(time_type),        intent(in)    :: <em class=code>time</em>
-</pre>
-</div>
+Optional namelist interface ``&model_nml`` may be read from file ``input.nml``.
 
-<div class=indent1>
-<!-- Description -->
+A note about documentation style. Optional arguments are enclosed in brackets *[like this]*.
 
-<P>
-Advances the model for a single time step.
-The time associated with the initial model state is also input
-although it is not used for the computation.
-</P>
+| 
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+.. container:: routine
 
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>State vector of length model_size.</TD></TR>
+   *model_size = get_model_size( )*
+   ::
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Specifies time of the initial model state.</TD></TR>
+      integer :: get_model_size
 
-</TABLE>
+.. container:: indent1
 
-</div>
-<br>
+   Returns the length of the model state vector.
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+   ============== =====================================
+   ``model_size`` The length of the model state vector.
+   ============== =====================================
 
-<A NAME="get_state_meta_data"></A>
-<br>
-<div class=routine>
-<em class=call>call get_state_meta_data (index_in, location, 
-                          <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
-<pre>
-integer,             intent(in)  :: <em class=code>index_in</em>
-type(location_type), intent(out) :: <em class=code>location</em>
-integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
-</pre>
-</div>
+| 
 
-<div class=indent1>
-<!-- Description -->
+.. container:: routine
 
-<P>
-Returns metadata about a given element, indexed by index_in, in the model 
-state vector. The location defines where the state variable is located.
-</P>
+   *call adv_1step(x, time)*
+   ::
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+      real(r8), dimension(:), intent(inout) :: x
+      type(time_type),        intent(in)    :: time
 
-<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Index of state vector element about which information is requested.</TD></TR>
+.. container:: indent1
 
-<TR><TD valign=top><em class=code>location</em></TD>
-    <TD>The location of state variable element.</TD></TR>
+   Advances the model for a single time step. The time associated with the initial model state is also input although it
+   is not used for the computation.
 
-<TR><TD valign=top><em class=optionalcode>var_type</em></TD>
-    <TD>Returns the type (always 1) of the indexed state 
-        variable as an optional argument.</TD></TR>
+   ======== ==========================================
+   ``x``    State vector of length model_size.
+   ``time`` Specifies time of the initial model state.
+   ======== ==========================================
 
-</TABLE>
+| 
 
-</div>
-<br>
+.. container:: routine
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+   *call get_state_meta_data (index_in, location, [, var_type] )*
+   ::
 
-<A NAME="model_interpolate"></A>
-<br>
-<div class=routine>
-<em class=call>call model_interpolate(x, location, itype, obs_val, istatus)</em>
-<pre>
-real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
-type(location_type),    intent(in)  :: <em class=code>location</em>
-integer,                intent(in)  :: <em class=code>itype</em>
-real(r8),               intent(out) :: <em class=code>obs_val</em>
-integer,                intent(out) :: <em class=code>istatus</em>
-</pre>
-</div>
+      integer,             intent(in)  :: index_in
+      type(location_type), intent(out) :: location
+      integer, optional,   intent(out) ::  var_type 
 
-<div class=indent1>
-<!-- Description -->
+.. container:: indent1
 
-<P>
-Given model state, returns the value interpolated to a given location.
-</P>
+   Returns metadata about a given element, indexed by index_in, in the model state vector. The location defines where
+   the state variable is located.
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+   ============ ==================================================================================
+   ``index_in`` Index of state vector element about which information is requested.
+   ``location`` The location of state variable element.
+   *var_type*   Returns the type (always 1) of the indexed state variable as an optional argument.
+   ============ ==================================================================================
 
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>A model state vector.</TD></TR>
+| 
 
-<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Location to which to interpolate.</TD></TR>
+.. container:: routine
 
-<TR><TD valign=top><em class=code>itype</em></TD>
-    <TD> Not used.</TD></TR>
+   *call model_interpolate(x, location, itype, obs_val, istatus)*
+   ::
 
-<TR><TD valign=top><em class=code>obs_val</em></TD>
-    <TD> The interpolated value from the model.</TD></TR>
+      real(r8), dimension(:), intent(in)  :: x
+      type(location_type),    intent(in)  :: location
+      integer,                intent(in)  :: itype
+      real(r8),               intent(out) :: obs_val
+      integer,                intent(out) :: istatus
 
-<TR><TD valign=top><em class=code>istatus</em></TD>
-    <TD>Quality control information, always returned 0.</TD></TR>
+.. container:: indent1
 
-</TABLE>
+   Given model state, returns the value interpolated to a given location.
 
-</div>
-<br>
+   ============ ===============================================
+   ``x``        A model state vector.
+   ``location`` Location to which to interpolate.
+   ``itype``    Not used.
+   ``obs_val``  The interpolated value from the model.
+   ``istatus``  Quality control information, always returned 0.
+   ============ ===============================================
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+| 
 
-<A NAME="get_model_time_step"></A>
-<br>
-<div class=routine>
-<em class=call>var = get_model_time_step()</em>
-<pre>
-type(time_type) :: <em class=code>get_model_time_step</em>
-</pre>
-</div>
+.. container:: routine
 
-<div class=indent1>
-<!-- Description -->
+   *var = get_model_time_step()*
+   ::
 
-<P>
-Returns the time step (forecast length) of the model;
-</P>
+      type(time_type) :: get_model_time_step
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+.. container:: indent1
 
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Smallest time step of model.</TD></TR>
+   Returns the time step (forecast length) of the model;
 
-</TABLE>
+   ======= ============================
+   ``var`` Smallest time step of model.
+   ======= ============================
 
-</div>
-<br>
+| 
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+.. container:: routine
 
-<A NAME="static_init_model"></A>
-<br>
-<div class=routine>
-<em class=call>call static_init_model()</em>
-</div>
+   *call static_init_model()*
 
-<div class=indent1>
-<!-- Description -->
+.. container:: indent1
 
-<P>
-Used for runtime initialization of model; 
-reads namelist, initializes model parameters, etc.
-This is the first call made to the model by any 
-DART-compliant assimilation routine.
-</P>
+   Used for runtime initialization of model; reads namelist, initializes model parameters, etc. This is the first call
+   made to the model by any DART-compliant assimilation routine.
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-</TABLE>
+| 
 
-</div>
-<br>
+.. container:: routine
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+   *call end_model()*
 
-<A NAME="end_model"></A>
-<br>
-<div class=routine>
-<em class=call>call end_model()</em>
-</div>
+.. container:: indent1
 
-<div class=indent1>
-<!-- Description -->
+   A stub.
 
-<P>
-A stub.
-</P>
+| 
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-</TABLE>
+.. container:: routine
 
-</div>
-<br>
+   *call init_time(time)*
+   ::
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+      type(time_type), intent(out) :: time
 
-<A NAME="init_time"></A>
-<br>
-<div class=routine>
-<em class=call>call init_time(time)</em>
-<pre>
-type(time_type), intent(out) :: <em class=code>time</em>
-</pre>
-</div>
+.. container:: indent1
 
-<div class=indent1>
-<!-- Description -->
+   Returns the time at which the model will start if no input initial conditions are to be used. This is used to spin-up
+   the model from rest.
 
-<P>
-Returns the time at which the model will start 
-if no input initial conditions are 
-to be used. This is used to spin-up the model from rest.
-</P>
+   ======== ===================
+   ``time`` Initial model time.
+   ======== ===================
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+| 
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Initial model time.</TD></TR>
+.. container:: routine
 
-</TABLE>
+   *call init_conditions(x)*
+   ::
 
-</div>
-<br>
+      real(r8), dimension(:), intent(out) :: x
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+.. container:: indent1
 
-<A NAME="init_conditions"></A>
-<br>
-<div class=routine>
-<em class=call>call init_conditions(x)</em>
-<pre>
-real(r8), dimension(:), intent(out) :: <em class=code>x</em>
-</pre>
-</div>
+   Returns default initial conditions for the model; generally used for spinning up initial model states.
 
-<div class=indent1>
-<!-- Description -->
+   ===== ====================================
+   ``x`` Initial conditions for state vector.
+   ===== ====================================
 
-<P>
-Returns default initial conditions for the model; 
-generally used for spinning up initial model states.
-</P>
+| 
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+.. container:: routine
 
-<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Initial conditions for state vector.</TD></TR>
+   *ierr = nc_write_model_atts(ncFileID)*
+   ::
 
-</TABLE>
+      integer             :: nc_write_model_atts
+      integer, intent(in) :: ncFileID
 
-</div>
-<br>
+.. container:: indent1
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+   Function to write model specific attributes to a netCDF file. At present, DART is using the NetCDF format to output
+   diagnostic information. This is not a requirement, and models could choose to provide output in other formats. This
+   function writes the metadata associated with the model to a NetCDF file opened to a file identified by ncFileID.
 
-<A NAME="nc_write_model_atts"></A>
-<br>
-<div class=routine>
-<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
-<pre>
-integer             :: <em class=code>nc_write_model_atts</em>
-integer, intent(in) :: <em class=code>ncFileID</em>
-</pre>
-</div>
+   ============ =========================================================
+   ``ncFileID`` Integer file descriptor to previously-opened netCDF file.
+   ``ierr``     Returns a 0 for successful completion.
+   ============ =========================================================
 
-<div class=indent1>
-<!-- Description -->
+| 
 
-<P>
-Function to write model specific attributes to a netCDF file. At present, DART 
-is using the NetCDF format to output diagnostic information. This is not a 
-requirement, and models could choose to provide output in other formats. 
-This function writes the metadata associated with the model to a NetCDF 
-file opened to a file identified by ncFileID.  
-</P>
+.. container:: routine
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+   *ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)*
+   ::
 
-<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
+      integer                            :: nc_write_model_vars
+      integer,                intent(in) :: ncFileID
+      real(r8), dimension(:), intent(in) :: statevec
+      integer,                intent(in) :: copyindex
+      integer,                intent(in) :: timeindex
 
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns a 0 for successful completion.</TD></TR>
+.. container:: indent1
 
-</TABLE>
+   Writes a copy of the state variables to a netCDF file. Multiple copies of the state for a given time are supported,
+   allowing, for instance, a single file to include multiple ensemble estimates of the state.
 
-</div>
-<br>
+   ============= =================================================
+   ``ncFileID``  file descriptor to previously-opened netCDF file.
+   ``statevec``  A model state vector.
+   ``copyindex`` Integer index of copy to be written.
+   ``timeindex`` The timestep counter for the given state.
+   ``ierr``      Returns 0 for normal completion.
+   ============= =================================================
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+| 
 
-<A NAME="nc_write_model_vars"></A>
-<br>
-<div class=routine>
-<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
-<pre>
-integer                            :: <em class=code>nc_write_model_vars</em>
-integer,                intent(in) :: <em class=code>ncFileID</em>
-real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
-integer,                intent(in) :: <em class=code>copyindex</em>
-integer,                intent(in) :: <em class=code>timeindex</em>
-</pre>
-</div>
+.. container:: routine
 
-<div class=indent1>
-<!-- Description -->
+   *call pert_model_state(state, pert_state, interf_provided)*
+   ::
 
-<P>
-Writes a copy of the state variables to a netCDF file. Multiple copies
-of the state for a given time are supported, allowing, for instance,
-a single file to include multiple ensemble estimates of the state.
-</P>
+      real(r8), dimension(:), intent(in)  :: state
+      real(r8), dimension(:), intent(out) :: pert_state
+      logical,                intent(out) :: interf_provided
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+.. container:: indent1
 
-<TR><TD valign=top><em class=code>ncFileID</em></TD>
-    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
+   Given a model state, produces a perturbed model state.
 
-<TR><TD valign=top><em class=code>statevec</em></TD>
-    <TD>A model state vector.</TD></TR>
+   =================== =============================================
+   ``state``           State vector to be perturbed.
+   ``pert_state``      Perturbed state vector: NOT returned.
+   ``interf_provided`` Returned false; interface is not implemented.
+   =================== =============================================
 
-<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD> Integer index of copy to be written.</TD></TR>
+| 
 
-<TR><TD valign=top><em class=code>timeindex</em></TD>
-    <TD>The timestep counter for the given state.</TD></TR>
+.. container:: routine
 
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns 0 for normal completion.</TD></TR>
+   *call get_close_maxdist_init(gc, maxdist)*
+   ::
 
-</TABLE>
+      type(get_close_type), intent(inout) :: gc
+      real(r8),             intent(in)    :: maxdist
 
-</div>
-<br>
+.. container:: indent1
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+   Pass-through to the 3D Sphere locations module. See
+   `get_close_maxdist_init() <../../location/threed_sphere/location_mod.html#get_close_maxdist_init>`__ for the
+   documentation of this subroutine.
 
-<A NAME="pert_model_state"></A>
-<br>
-<div class=routine>
-<em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
-<pre>
-real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
-real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
-logical,                intent(out) :: <em class=code>interf_provided</em>
-</pre>
-</div>
+| 
 
-<div class=indent1>
-<!-- Description -->
+.. container:: routine
 
-<P>
-Given a model state, produces a perturbed model state.
-</P>
+   *call get_close_obs_init(gc, num, obs)*
+   ::
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+      type(get_close_type), intent(inout) :: gc
+      integer,              intent(in)    :: num
+      type(location_type),  intent(in)    :: obs(num)
 
-<TR><TD valign=top><em class=code>state</em></TD>
-    <TD>State vector to be perturbed.</TD></TR>
+.. container:: indent1
 
-<TR><TD valign=top><em class=code>pert_state</em></TD>
-    <TD>Perturbed state vector: NOT returned.</TD></TR>
+   Pass-through to the 3D Sphere locations module. See
+   `get_close_obs_init() <../../location/threed_sphere/location_mod.html#get_close_obs_init>`__ for the documentation of
+   this subroutine.
 
-<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Returned false; interface is not implemented.</TD></TR>
+| 
 
-</TABLE>
+.. container:: routine
 
-</div>
-<br>
+   *call get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, num_close, close_ind [, dist])*
+   ::
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+      type(get_close_type), intent(in)  :: gc
+      type(location_type),  intent(in)  :: base_obs_loc
+      integer,              intent(in)  :: base_obs_kind
+      type(location_type),  intent(in)  :: obs(:)
+      integer,              intent(in)  :: obs_kind(:)
+      integer,              intent(out) :: num_close
+      integer,              intent(out) :: close_ind(:)
+      real(r8), optional,   intent(out) :: dist(:)
 
-<A NAME="get_close_maxdist_init"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_maxdist_init(gc, maxdist)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-real(r8),             intent(in)    :: <em class=code>maxdist</em>
-</pre>
-</div>
+.. container:: indent1
 
-<div class=indent1>
-<!-- Description -->
+   Pass-through to the 3D Sphere locations module. See
+   `get_close_obs() <../../location/threed_sphere/location_mod.html#get_close_obs>`__ for the documentation of this
+   subroutine.
 
-<P>
-Pass-through to the 3D Sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">
-get_close_maxdist_init()</A> for the documentation of this subroutine.
-</P>
+| 
 
-</div>
-<br>
+.. container:: routine
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+   *call ens_mean_for_model(ens_mean)*
+   ::
 
-<A NAME="get_close_obs_init"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_obs_init(gc, num, obs)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-integer,              intent(in)    :: <em class=code>num</em>
-type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
-</pre>
-</div>
+      real(r8), dimension(:), intent(in) :: ens_mean
 
-<div class=indent1>
-<!-- Description -->
+.. container:: indent1
 
-<P>
-Pass-through to the 3D Sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">
-get_close_obs_init()</A> for the documentation of this subroutine.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_obs"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
-  obs, obs_kind, num_close, close_ind
-  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
-<pre>
-type(get_close_type), intent(in)  :: <em class=code>gc</em>
-type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
-integer,              intent(in)  :: <em class=code>base_obs_kind</em>
-type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
-integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
-integer,              intent(out) :: <em class=code>num_close</em>
-integer,              intent(out) :: <em class=code>close_ind(:)</em>
-real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Pass-through to the 3D Sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">
-get_close_obs()</A> for the documentation of this subroutine.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="ens_mean_for_model"></A>
-<br>
-<div class=routine>
-<em class=call>call ens_mean_for_model(ens_mean)</em>
-<pre>
-real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-A NULL INTERFACE in this model.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>State vector containing the ensemble mean.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-
-<A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-</P>
-<div class=namelist>
-<pre>
-&amp;model_nml 
-  output_state_vector = .false.
-  channel_center = 45.0
-  channel_width = 40.0
-  assimilation_period_days = 0
-  assimilation_period_seconds = 21600
-  debug = .false.
-/
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<THEAD align=left>
-<TR><TH>Contents    </TH>
-    <TH>Type        </TH>
-    <TH>Description </TH></TR>
-</THEAD>
-<TBODY valign=top>
-<TR><TD>output_state_vector</TD>
-    <TD>logical</TD>
-    <TD>If .true. write state vector as a 1D array to the diagnostic
-output file.  If .false. break state vector up into fields before
-writing to the outputfile.</TD>
-<TR><TD>channel_center</TD>
-    <TD>real(r8)</TD>
-    <TD>Channel center</TD></TR>
-<TR><TD>channel_width</TD>
-    <TD>real(r8)</TD>
-    <TD>Channel width</TD></TR>
-<TR><TD>assimilation_period_days</TD>
-    <TD>integer</TD>
-    <TD>Number of days for timestep</TD></TR>
-<TR><TD>assimilation_period_seconds</TD>
-    <TD>integer</TD>
-    <TD>Number of seconds for timestep</TD></TR>
-<TR><TD>debug</TD>
-    <TD>logical</TD>
-    <TD>Set to .true. for more output</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
-
-<A NAME="FilesUsed"></A>
-<HR>
-<H2>FILES</H2>
-
-<TABLE border=0 >
-<TR><TH align=left>filename</TH>
-    <TH align=left>purpose</TH></TR>
-<TR><TD>input.nml</TD>
-    <TD>to read the model_mod namelist</TD></TR>
-<TR><TD>preassim.nc</TD>
-    <TD>the time-history of the model state before assimilation</TD></TR>
-<TR><TD>analysis.nc&nbsp;</TD>
-    <TD>the time-history of the model state after assimilation</TD></TR>
-<TR><TD>dart_log.out [default name]</TD>
-    <TD>the run-time diagnostic output</TD></TR>
-<TR><TD>dart_log.nml [default name]</TD>
-    <TD>the record of all the namelists actually USED - 
-        contains the default values</TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
-
-<A NAME="References"></A>
-<HR>
-<H2>REFERENCES</H2>
-
-<P>
-The underlying model is described in:<br />
-Hakim, Gregory J., 2000: Role of Nonmodal Growth and Nonlinearity in 
-Cyclogenesis Initial-Value Problems. J. Atmos. Sci., 57, 2951-2967.
-doi: 10.1175/1520-0469(2000)057<2951:RONGAN>2.0.CO;2
-</P>
-
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-
-<A NAME="Errors"></A>
-<HR>
-<H2>ERROR CODES and CONDITIONS</H2>
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH>
-    <TH>Message</TH>
-    <TH>Comment</TH></TR>
-<TR><!-- routine --><TD VALIGN=top> nc_write_model_atts<BR>
-                                    nc_write_model_vars</TD>
-    <!-- message --><TD VALIGN=top>Various netCDF-f90 interface error messages</TD>
-    <!-- comment --><TD VALIGN=top>From one of the netCDF calls in the named routine</TD>
-</TR>
-</TABLE>
-</div>
-
-<H2>KNOWN BUGS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<HR>
-<H2>FUTURE PLANS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<HR>
-<H2>PRIVATE COMPONENTS</H2>
-<P>
+   A NULL INTERFACE in this model.
+
+   ============ ==========================================
+   ``ens_mean`` State vector containing the ensemble mean.
+   ============ ==========================================
+
+| 
+
+Namelist
+--------
+
+We adhere to the F90 standard of starting a namelist with an ampersand '&' and terminating with a slash '/' for all our
+namelist input.
+
+::
+
+   &model_nml 
+     output_state_vector = .false.
+     channel_center = 45.0
+     channel_width = 40.0
+     assimilation_period_days = 0
+     assimilation_period_seconds = 21600
+     debug = .false.
+   /
+
+.. container:: indent1
+
+   This namelist is read in a file called ``input.nml``
+
+   +-----------------------------+----------+---------------------------------------------------------------------------+
+   | Contents                    | Type     | Description                                                               |
+   +=============================+==========+===========================================================================+
+   | output_state_vector         | logical  | If .true. write state vector as a 1D array to the diagnostic output file. |
+   |                             |          | If .false. break state vector up into fields before writing to the        |
+   |                             |          | outputfile.                                                               |
+   +-----------------------------+----------+---------------------------------------------------------------------------+
+   | channel_center              | real(r8) | Channel center                                                            |
+   +-----------------------------+----------+---------------------------------------------------------------------------+
+   | channel_width               | real(r8) | Channel width                                                             |
+   +-----------------------------+----------+---------------------------------------------------------------------------+
+   | assimilation_period_days    | integer  | Number of days for timestep                                               |
+   +-----------------------------+----------+---------------------------------------------------------------------------+
+   | assimilation_period_seconds | integer  | Number of seconds for timestep                                            |
+   +-----------------------------+----------+---------------------------------------------------------------------------+
+   | debug                       | logical  | Set to .true. for more output                                             |
+   +-----------------------------+----------+---------------------------------------------------------------------------+
+
+| 
+
+Files
+-----
+
+=========================== ===========================================================================
+filename                    purpose
+=========================== ===========================================================================
+input.nml                   to read the model_mod namelist
+preassim.nc                 the time-history of the model state before assimilation
+analysis.nc                 the time-history of the model state after assimilation
+dart_log.out [default name] the run-time diagnostic output
+dart_log.nml [default name] the record of all the namelists actually USED - contains the default values
+=========================== ===========================================================================
+
+References
+----------
+
+| The underlying model is described in:
+| Hakim, Gregory J., 2000: Role of Nonmodal Growth and Nonlinearity in Cyclogenesis Initial-Value Problems. J. Atmos.
+  Sci., 57, 2951-2967. doi: 10.1175/1520-0469(2000)057<2951:RONGAN>2.0.CO;2
+
+Private components
+------------------
+
 N/A
-</P>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<HR>
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>

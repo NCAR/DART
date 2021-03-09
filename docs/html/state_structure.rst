@@ -1,113 +1,55 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>State Structure</TITLE>
-<link rel="stylesheet" type="text/css" href="doc.css" />
-<link href="../images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+State Stucture
+==============
 
-<H1>State Stucture</H1>
+State_structure_mod is a module that holds all the domain, variable, dimension info about the model_mods in the state.
+Note it stores only
 
-<table border=0 summary="" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
-
-State_structure_mod is a module that holds all the domain, variable, dimension 
-info about the model_mods in the state. Note it stores only <em>metadata</em> 
-about the state, not the actual state variables themselves.
-<p>
 It is the foundation for two parts of the code:
-<ul>
-  <li>Read/write state variables from/to netcdf files
-  <li>Calculate DART index from x,y,z variable indices and the inverse: 
-      x,y,z, variable from DART index.
-</ul>
 
-Inside <code>static_init_model</code> a call is made to <code>add_domain</code>.
-This call is <em>required</em> as it communicates to the state structure that a
-new domain has been added to the state.
+-  Read/write state variables from/to netcdf files
+-  Calculate DART index from x,y,z variable indices and the inverse: x,y,z, variable from DART index.
 
-The state structure keeps track of the number of domains in the state. These 
-may be multiple domains in one model_mod, e.g. nested domains in WRF, or 
-multiple model_mods, e.g. POP coupled with CAM.
+Inside ``static_init_model`` a call is made to ``add_domain``. This call is *required* as it communicates to the state
+structure that a new domain has been added to the state. The state structure keeps track of the number of domains in the
+state. These may be multiple domains in one model_mod, e.g. nested domains in WRF, or multiple model_mods, e.g. POP
+coupled with CAM. The minimum amount of information ``add_domain`` needs is model size which means vector of length
+model size has been added to the state. This equivalent to Lanai where the only information filter has is that the model
+is a vector of length model_size. For models with netcdf restart files you supply ``add_domain`` with:
 
-The minimum amount of information <code>add_domain</code> needs is model size 
-which means vector of length model size has been added to the state. This 
-equivalent to Lanai where the only information filter has is that the model is 
-a vector of length model_size.
+-  a netcdf file
+-  the number of variables to read from the file
+-  the name of the variables
+-  Optionally:
 
-For models with netcdf restart files you supply <code>add_domain</code> with:
-<ul>
-<li>a netcdf file
-<li>the number of variables to read from the file
-<li>the name of the variables
-<li> Optionally:
-   <ul>
-   <li> the DART KINDS of the variables
-   <li> clamping upper and lower bounds
-   <li> update/not update this variable
-   </ul>
-</ul>
+   -  the DART KINDS of the variables
+   -  clamping upper and lower bounds
+   -  update/not update this variable
 
-For models that are spun up in perfect_model_obs you can manually describe the 
-variables so you can create netcdf files containing the varibles in the model 
-state, e.g. Temperature, Surface Pressure, etc. There are 3 steps to this 
-process:
-<ol>
-  <li> Supply <code>add_domain</code> with almost the same arguments as you 
-       would for a netcdf file, but skip the first arguement (netcdf filename).
-  <li> For each variable, loop around the required number of dimensions and 
-       call <code>add_dimension_to_variable</code>
-  <li> Call <code>finished_adding_domain</code> to let the state structure 
-       know that you have finished adding dimensions to variables.
-</ol>
+For models that are spun up in perfect_model_obs you can manually describe the variables so you can create netcdf files
+containing the varibles in the model state, e.g. Temperature, Surface Pressure, etc. There are 3 steps to this process:
 
-<h4>DART index</h4>
-To get the dart index for an i,j,k,variable in a domain use:<br>
-<code>get_dart_vector_index(i, j, k, dom_id, var_id)</code>
-<p>
-To get the i,j,k, variable, domain from the dart index use:<br>
-<code>get_model_variable_indices(dart_index, i, j, k, var_id,  dom_id)</code>
-<p>
-<b>Note</b> That (i,j,k) needs to be converted to (lon, lat, lev) or to 
-whatever grid the variable is on. <code>get_dim_name</code> can be used to 
-get the dimension name from i,j,k if needed.
+#. Supply ``add_domain`` with almost the same arguments as you would for a netcdf file, but skip the first arguement
+   (netcdf filename).
+#. For each variable, loop around the required number of dimensions and call ``add_dimension_to_variable``
+#. Call ``finished_adding_domain`` to let the state structure know that you have finished adding dimensions to
+   variables.
 
-<h4> Unlimited Dimensions: IO vs model_mod routines.</h4>
-<P>Some model restart files have an unlimited dimension. For IO purposes, e.g. 
-creating netcdf files, the unlimited dimension is used.  For state structure 
-accessor functions called be the model_mod the unlimited dimension is ignored.
-So if you have a variable TEMPARATURE in your netcdf file, with dimensions 
-(lon, lat, level, time) the IO routines will see a 4D variable, but 
-<code>get_num_dims</code> used in model_mod will return 3D.
-</P>
+DART index
+^^^^^^^^^^
 
-<P><!-- make sure the 'top' is aligned correctly --></P>
+| To get the dart index for an i,j,k,variable in a domain use:
+| ``get_dart_vector_index(i, j, k, dom_id, var_id)``
 
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
+| To get the i,j,k, variable, domain from the dart index use:
+| ``get_model_variable_indices(dart_index, i, j, k, var_id, dom_id)``
 
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
+**Note** That (i,j,k) needs to be converted to (lon, lat, lev) or to whatever grid the variable is on. ``get_dim_name``
+can be used to get the dimension name from i,j,k if needed.
 
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
+Unlimited dimensions: io vs model_mod routines
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-<!--==================================================================-->
-
-</BODY>
-</HTML>
+Some model restart files have an unlimited dimension. For IO purposes, e.g. creating netcdf files, the unlimited
+dimension is used. For state structure accessor functions called be the model_mod the unlimited dimension is ignored. So
+if you have a variable TEMPARATURE in your netcdf file, with dimensions (lon, lat, level, time) the IO routines will see
+a 4D variable, but ``get_num_dims`` used in model_mod will return 3D.

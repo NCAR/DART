@@ -1,753 +1,395 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>module model_mod (pe2lyr)</TITLE>
-<link rel="stylesheet" type="text/css" href="../../docs/html/doc.css">
-<link href="../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
-
-<H1>MODULE model_mod (pe2lyr)</H1>
-
-<table border=0 summary="" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../docs/index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
-
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Interface">INTERFACES</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-
-<H2>Overview</H2>
-
-
-
-<P>
-DART standard interfaces for a two-layer isentropic primitive equation model.
-<br><br>
-The 16 public interfaces are standardized for all DART compliant models.
-These interfaces allow DART to advance the model, get the model state and
-metadata describing this state, find state variables that are close to a 
-given location, and do spatial interpolation for model state variables.
-<br><br>
-This model is a 2-layer, isentropic, primitive equation model on a sphere.
-TODO: add more detail here, including equations, etc.
-<br><br>
-Contact: Jeffrey.S.Whitaker@noaa.gov
-</P>
-
-<!--==================================================================-->
-
-<A NAME="OtherModulesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>OTHER MODULES USED</H2>
-<PRE>
-types_mod
-time_manager_mod
-utilities_mod
-random_seq_mod
-threed_sphere/location_mod
-</PRE>
-
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-<!--==================================================================-->
-
-<A NAME="Interface"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PUBLIC INTERFACES</H2>
-
-<TABLE>
-<TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
-</TABLE>
-
-<P>
-   A note about documentation style.
-   Optional arguments are enclosed in brackets
-   <em class=optionalcode>[like this]</em>.
-</P>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_model_size"></A>
-<br>
-<div class=routine>
-<em class=call>model_size = get_model_size( )</em>
-<pre>
-integer :: <em class=code>get_model_size</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Returns the size of the model as an integer.  For this model
-the default grid size is 96 (lon) by 48 (lat) by 2 levels, and
-3 variables (U, V, Z) at each grid location, for a total size  
-of 27,648.  There are alternative include files which, if included
-at compile time instead of the default file, defines a grid at twice and
-4 times this resolution.  They have corresponding truncation values
-of T63 and T127 (the default grid uses T31).
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>model_size</em></TD>
-    <TD>The length of the model state vector.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="adv_1step"></A>
-<br>
-<div class=routine>
-<em class=call>call adv_1step(x, time)</em>
-<pre>
-real(r8), dimension(:), intent(inout) :: <em class=code>x</em>
-type(time_type),        intent(in)    :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Advances the model for a single time step.
-The time associated with the initial model state is also input
-although it is not used for the computation.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>State vector of length model_size.</TD></TR>
-
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Specifies time of the initial model state.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_state_meta_data"></A>
-<br>
-<div class=routine>
-<em class=call>call get_state_meta_data (index_in, location, 
-                          <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
-<pre>
-integer,             intent(in)  :: <em class=code>index_in</em>
-type(location_type), intent(out) :: <em class=code>location</em>
-integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Returns metadata about a given element, indexed by 
-<em class=code>index_in</em>, in the model state vector.
-The <em class=code>location</em> defines where the state variable is 
-located.
-<br><br>
-For this model, the default grid is a global 
-lat/lon grid, 96 (lon) by 48 (lat)
-by 2 levels.  The variable types are U, V, and Z:
-</P>
-<UL>
-<LI> 1 = TYPE_u
-<LI> 2 = TYPE_v
-<LI> 901 = TYPE_z
-</UL>
-<P>
-Grids at twice and 4 times the resolution can be compiled in instead by
-using one of the alternative header files (see
-<em class=code>resolt31.h</em> (the default), 
-<em class=code>resolt63.h</em>, and
-<em class=code>resolt127.h</em>).
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Index of state vector element about which information is requested.</TD></TR>
-
-<TR><TD valign=top><em class=code>location</em></TD>
-    <TD>The location of state variable element.</TD></TR>
-
-<TR><TD valign=top><em class=optionalcode>var_type</em></TD>
-    <TD>The type of the state variable element.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="model_interpolate"></A>
-<br>
-<div class=routine>
-<em class=call>call model_interpolate(x, location, itype, obs_val, istatus)</em>
-<pre>
-real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
-type(location_type),    intent(in)  :: <em class=code>location</em>
-integer,                intent(in)  :: <em class=code>itype</em>
-real(r8),               intent(out) :: <em class=code>obs_val</em>
-integer,                intent(out) :: <em class=code>istatus</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a state vector, a location, and a model state variable type,
-interpolates the state variable field to that location and returns 
-the value in obs_val. The istatus variable is always returned as 0 (OK).
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>A model state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Location to which to interpolate.</TD></TR>
-
-<TR><TD valign=top><em class=code>itype</em></TD>
-    <TD>Type of state field to be interpolated.</TD></TR>
-
-<TR><TD valign=top><em class=code>obs_val</em></TD>
-    <TD> The interpolated value from the model.</TD></TR>
-
-<TR><TD valign=top><em class=code>istatus</em></TD>
-    <TD>Integer value returning 0 for successful, other values can 
-    be defined for various failures.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_model_time_step"></A>
-<br>
-<div class=routine>
-<em class=call>var = get_model_time_step()</em>
-<pre>
-type(time_type) :: <em class=code>get_model_time_step</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Returns the the time step of the model; the smallest increment
-in time that the model is capable of advancing the state in a given
-implementation.  For this model the default value is 20 minutes (1200 seconds),
-but also comes with header files with times steps of 10 and
-5 minutes (for higher grid resolution and truncation constants).
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Smallest time step of model.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="static_init_model"></A>
-<br>
-<div class=routine>
-<em class=call>call static_init_model()</em>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Used for runtime initialization of a model, for instance calculating
-storage requirements, initializing model parameters, etc.  This is the
-first call made to a model by any DART compliant assimilation routines.
-<br><br>
-In this model, it allocates space for the grid, and
-initializes the grid locations, data values, and various parameters,
-including spherical harmonic weights.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="end_model"></A>
-<br>
-<div class=routine>
-<em class=call>call end_model()</em>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-A stub since the pe2lyr model does no cleanup.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="init_time"></A>
-<br>
-<div class=routine>
-<em class=call>call init_time(time)</em>
-<pre>
-type(time_type), intent(out) :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Returns the time at which the model will start if no input initial
-conditions are to be used.  This model sets the time to 0.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Initial model time.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="init_conditions"></A>
-<br>
-<div class=routine>
-<em class=call>call init_conditions(x)</em>
-<pre>
-real(r8), dimension(:), intent(out) :: <em class=code>x</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Returns default initial conditions for model; generally used for
-spinning up initial model states.  This model sets the default
-state vector based on the initialized fields in the model.
-(TODO: which are what?)
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Initial conditions for state vector.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="nc_write_model_atts"></A>
-<br>
-<div class=routine>
-<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
-<pre>
-integer             :: <em class=code>nc_write_model_atts</em>
-integer, intent(in) :: <em class=code>ncFileID</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This routine writes the model-specific attributes to a netCDF file. 
-This includes coordinate variables and any metadata, but NOT
-the model state vector.
-This model writes out the data as U, V, and Z arrays on a lat/lon/height
-grid, so the attributes are organized in the same way.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
-
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns a 0 for successful completion.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="nc_write_model_vars"></A>
-<br>
-<div class=routine>
-<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
-<pre>
-integer                            :: <em class=code>nc_write_model_vars</em>
-integer,                intent(in) :: <em class=code>ncFileID</em>
-real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
-integer,                intent(in) :: <em class=code>copyindex</em>
-integer,                intent(in) :: <em class=code>timeindex</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This routine writes the model-specific state vector (data) to a netCDF file. 
-This model writes out the data as U, V, and Z arrays on a lat/lon/height
-grid.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ncFileID</em></TD>
-    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
-
-<TR><TD valign=top><em class=code>statevec</em></TD>
-    <TD>A model state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD> Integer index of copy to be written.</TD></TR>
-
-<TR><TD valign=top><em class=code>timeindex</em></TD>
-    <TD>The timestep counter for the given state.</TD></TR>
-
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns 0 for normal completion.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="pert_model_state"></A>
-<br>
-<div class=routine>
-<em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
-<pre>
-real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
-real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
-logical,                intent(out) :: <em class=code>interf_provided</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a model state vector, perturbs this vector. Used to generate initial
-conditions for spinning up ensembles. This model has no code to generate
-these values, so it returns <em class=code>interf_provided</em> as .false.
-and the default algorithms in filter are then used by the calling code.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>state</em></TD>
-    <TD>State vector to be perturbed.</TD></TR>
-
-<TR><TD valign=top><em class=code>pert_state</em></TD>
-    <TD>Perturbed state vector</TD></TR>
-
-<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Returned false; interface is not implemented.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_maxdist_init"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_maxdist_init(gc, maxdist)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-real(r8),             intent(in)    :: <em class=code>maxdist</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-In distance computations any two locations closer than the
-given <em class=code>maxdist</em> will be considered close
-by the <em class=code>get_close_obs()</em> routine.
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">
-get_close_maxdist_init()</A> for the documentation of this subroutine.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>gc&nbsp;&nbsp;</em></TD>
-    <TD>The get_close_type which stores precomputed information
-        about the locations to speed up searching</TD></TR>
-
-<TR><TD valign=top><em class=code>maxdist&nbsp;&nbsp;</em></TD>
-    <TD>Anything closer than this will be considered close.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_obs_init"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_obs_init(gc, num, obs)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-integer,              intent(in)    :: <em class=code>num</em>
-type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">
-get_close_obs_init()</A> for the documentation of this subroutine.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_obs"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
-  obs, obs_kind, num_close, close_ind
-  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
-<pre>
-type(get_close_type), intent(in)  :: <em class=code>gc</em>
-type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
-integer,              intent(in)  :: <em class=code>base_obs_kind</em>
-type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
-integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
-integer,              intent(out) :: <em class=code>num_close</em>
-integer,              intent(out) :: <em class=code>close_ind(:)</em>
-real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a location and kind, compute the distances to all other locations 
-in the <em class=code>obs</em> list.  The return values are the number
-of items which are within maxdist of the base, the index numbers in the 
-original obs list, and optionally the distances.  The <em class=code>gc</em>
-contains precomputed information to speed the computations.
-<br><br>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">
-get_close_obs()</A> for the documentation of this subroutine.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="ens_mean_for_model"></A>
-<br>
-<div class=routine>
-<em class=call>call ens_mean_for_model(ens_mean)</em>
-<pre>
-real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Stub only. Not needed by this model.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>State vector containing the ensemble mean.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-
-<P>
+pe2lyr
+======
+
+Overview
+--------
+
+| DART standard interfaces for a two-layer isentropic primitive equation model.
+| The 16 public interfaces are standardized for all DART compliant models. These interfaces allow DART to advance the
+  model, get the model state and metadata describing this state, find state variables that are close to a given
+  location, and do spatial interpolation for model state variables.
+| This model is a 2-layer, isentropic, primitive equation model on a sphere. TODO: add more detail here, including
+  equations, etc.
+| Contact: Jeffrey.S.Whitaker@noaa.gov
+
+Other modules used
+------------------
+
+::
+
+   types_mod
+   time_manager_mod
+   utilities_mod
+   random_seq_mod
+   threed_sphere/location_mod
+
+Public interfaces
+-----------------
+
+======================= ======================
+*use model_mod, only :* get_model_size
+\                       adv_1step
+\                       get_state_meta_data
+\                       model_interpolate
+\                       get_model_time_step
+\                       static_init_model
+\                       end_model
+\                       init_time
+\                       init_conditions
+\                       nc_write_model_atts
+\                       nc_write_model_vars
+\                       pert_model_state
+\                       get_close_maxdist_init
+\                       get_close_obs_init
+\                       get_close_obs
+\                       ens_mean_for_model
+======================= ======================
+
+A note about documentation style. Optional arguments are enclosed in brackets *[like this]*.
+
+| 
+
+.. container:: routine
+
+   *model_size = get_model_size( )*
+   ::
+
+      integer :: get_model_size
+
+.. container:: indent1
+
+   Returns the size of the model as an integer. For this model the default grid size is 96 (lon) by 48 (lat) by 2
+   levels, and 3 variables (U, V, Z) at each grid location, for a total size of 27,648. There are alternative include
+   files which, if included at compile time instead of the default file, defines a grid at twice and 4 times this
+   resolution. They have corresponding truncation values of T63 and T127 (the default grid uses T31).
+
+   ============== =====================================
+   ``model_size`` The length of the model state vector.
+   ============== =====================================
+
+| 
+
+.. container:: routine
+
+   *call adv_1step(x, time)*
+   ::
+
+      real(r8), dimension(:), intent(inout) :: x
+      type(time_type),        intent(in)    :: time
+
+.. container:: indent1
+
+   Advances the model for a single time step. The time associated with the initial model state is also input although it
+   is not used for the computation.
+
+   ======== ==========================================
+   ``x``    State vector of length model_size.
+   ``time`` Specifies time of the initial model state.
+   ======== ==========================================
+
+| 
+
+.. container:: routine
+
+   *call get_state_meta_data (index_in, location, [, var_type] )*
+   ::
+
+      integer,             intent(in)  :: index_in
+      type(location_type), intent(out) :: location
+      integer, optional,   intent(out) ::  var_type 
+
+.. container:: indent1
+
+   | Returns metadata about a given element, indexed by ``index_in``, in the model state vector. The ``location``
+     defines where the state variable is located.
+   | For this model, the default grid is a global lat/lon grid, 96 (lon) by 48 (lat) by 2 levels. The variable types are
+     U, V, and Z:
+
+   -  1 = TYPE_u
+   -  2 = TYPE_v
+   -  901 = TYPE_z
+
+   Grids at twice and 4 times the resolution can be compiled in instead by using one of the alternative header files
+   (see ``resolt31.h`` (the default), ``resolt63.h``, and ``resolt127.h``).
+
+   ============ ===================================================================
+   ``index_in`` Index of state vector element about which information is requested.
+   ``location`` The location of state variable element.
+   *var_type*   The type of the state variable element.
+   ============ ===================================================================
+
+| 
+
+.. container:: routine
+
+   *call model_interpolate(x, location, itype, obs_val, istatus)*
+   ::
+
+      real(r8), dimension(:), intent(in)  :: x
+      type(location_type),    intent(in)  :: location
+      integer,                intent(in)  :: itype
+      real(r8),               intent(out) :: obs_val
+      integer,                intent(out) :: istatus
+
+.. container:: indent1
+
+   Given a state vector, a location, and a model state variable type, interpolates the state variable field to that
+   location and returns the value in obs_val. The istatus variable is always returned as 0 (OK).
+
+   ============ ===========================================================================================
+   ``x``        A model state vector.
+   ``location`` Location to which to interpolate.
+   ``itype``    Type of state field to be interpolated.
+   ``obs_val``  The interpolated value from the model.
+   ``istatus``  Integer value returning 0 for successful, other values can be defined for various failures.
+   ============ ===========================================================================================
+
+| 
+
+.. container:: routine
+
+   *var = get_model_time_step()*
+   ::
+
+      type(time_type) :: get_model_time_step
+
+.. container:: indent1
+
+   Returns the the time step of the model; the smallest increment in time that the model is capable of advancing the
+   state in a given implementation. For this model the default value is 20 minutes (1200 seconds), but also comes with
+   header files with times steps of 10 and 5 minutes (for higher grid resolution and truncation constants).
+
+   ======= ============================
+   ``var`` Smallest time step of model.
+   ======= ============================
+
+| 
+
+.. container:: routine
+
+   *call static_init_model()*
+
+.. container:: indent1
+
+   | Used for runtime initialization of a model, for instance calculating storage requirements, initializing model
+     parameters, etc. This is the first call made to a model by any DART compliant assimilation routines.
+   | In this model, it allocates space for the grid, and initializes the grid locations, data values, and various
+     parameters, including spherical harmonic weights.
+
+| 
+
+.. container:: routine
+
+   *call end_model()*
+
+.. container:: indent1
+
+   A stub since the pe2lyr model does no cleanup.
+
+| 
+
+.. container:: routine
+
+   *call init_time(time)*
+   ::
+
+      type(time_type), intent(out) :: time
+
+.. container:: indent1
+
+   Returns the time at which the model will start if no input initial conditions are to be used. This model sets the
+   time to 0.
+
+   ======== ===================
+   ``time`` Initial model time.
+   ======== ===================
+
+| 
+
+.. container:: routine
+
+   *call init_conditions(x)*
+   ::
+
+      real(r8), dimension(:), intent(out) :: x
+
+.. container:: indent1
+
+   Returns default initial conditions for model; generally used for spinning up initial model states. This model sets
+   the default state vector based on the initialized fields in the model. (TODO: which are what?)
+
+   ===== ====================================
+   ``x`` Initial conditions for state vector.
+   ===== ====================================
+
+| 
+
+.. container:: routine
+
+   *ierr = nc_write_model_atts(ncFileID)*
+   ::
+
+      integer             :: nc_write_model_atts
+      integer, intent(in) :: ncFileID
+
+.. container:: indent1
+
+   This routine writes the model-specific attributes to a netCDF file. This includes coordinate variables and any
+   metadata, but NOT the model state vector. This model writes out the data as U, V, and Z arrays on a lat/lon/height
+   grid, so the attributes are organized in the same way.
+
+   ============ =========================================================
+   ``ncFileID`` Integer file descriptor to previously-opened netCDF file.
+   ``ierr``     Returns a 0 for successful completion.
+   ============ =========================================================
+
+| 
+
+.. container:: routine
+
+   *ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)*
+   ::
+
+      integer                            :: nc_write_model_vars
+      integer,                intent(in) :: ncFileID
+      real(r8), dimension(:), intent(in) :: statevec
+      integer,                intent(in) :: copyindex
+      integer,                intent(in) :: timeindex
+
+.. container:: indent1
+
+   This routine writes the model-specific state vector (data) to a netCDF file. This model writes out the data as U, V,
+   and Z arrays on a lat/lon/height grid.
+
+   ============= =================================================
+   ``ncFileID``  file descriptor to previously-opened netCDF file.
+   ``statevec``  A model state vector.
+   ``copyindex`` Integer index of copy to be written.
+   ``timeindex`` The timestep counter for the given state.
+   ``ierr``      Returns 0 for normal completion.
+   ============= =================================================
+
+| 
+
+.. container:: routine
+
+   *call pert_model_state(state, pert_state, interf_provided)*
+   ::
+
+      real(r8), dimension(:), intent(in)  :: state
+      real(r8), dimension(:), intent(out) :: pert_state
+      logical,                intent(out) :: interf_provided
+
+.. container:: indent1
+
+   Given a model state vector, perturbs this vector. Used to generate initial conditions for spinning up ensembles. This
+   model has no code to generate these values, so it returns ``interf_provided`` as .false. and the default algorithms
+   in filter are then used by the calling code.
+
+   =================== =============================================
+   ``state``           State vector to be perturbed.
+   ``pert_state``      Perturbed state vector
+   ``interf_provided`` Returned false; interface is not implemented.
+   =================== =============================================
+
+| 
+
+.. container:: routine
+
+   *call get_close_maxdist_init(gc, maxdist)*
+   ::
+
+      type(get_close_type), intent(inout) :: gc
+      real(r8),             intent(in)    :: maxdist
+
+.. container:: indent1
+
+   In distance computations any two locations closer than the given ``maxdist`` will be considered close by the
+   ``get_close_obs()`` routine. Pass-through to the 3-D sphere locations module. See
+   `get_close_maxdist_init() <../../location/threed_sphere/location_mod.html#get_close_maxdist_init>`__ for the
+   documentation of this subroutine.
+
+   =========== =================================================================================================
+   ``gc``      The get_close_type which stores precomputed information about the locations to speed up searching
+   ``maxdist`` Anything closer than this will be considered close.
+   =========== =================================================================================================
+
+| 
+
+.. container:: routine
+
+   *call get_close_obs_init(gc, num, obs)*
+   ::
+
+      type(get_close_type), intent(inout) :: gc
+      integer,              intent(in)    :: num
+      type(location_type),  intent(in)    :: obs(num)
+
+.. container:: indent1
+
+   Pass-through to the 3-D sphere locations module. See
+   `get_close_obs_init() <../../location/threed_sphere/location_mod.html#get_close_obs_init>`__ for the documentation of
+   this subroutine.
+
+| 
+
+.. container:: routine
+
+   *call get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, num_close, close_ind [, dist])*
+   ::
+
+      type(get_close_type), intent(in)  :: gc
+      type(location_type),  intent(in)  :: base_obs_loc
+      integer,              intent(in)  :: base_obs_kind
+      type(location_type),  intent(in)  :: obs(:)
+      integer,              intent(in)  :: obs_kind(:)
+      integer,              intent(out) :: num_close
+      integer,              intent(out) :: close_ind(:)
+      real(r8), optional,   intent(out) :: dist(:)
+
+.. container:: indent1
+
+   | Given a location and kind, compute the distances to all other locations in the ``obs`` list. The return values are
+     the number of items which are within maxdist of the base, the index numbers in the original obs list, and
+     optionally the distances. The ``gc`` contains precomputed information to speed the computations.
+   | Pass-through to the 3-D sphere locations module. See
+     `get_close_obs() <../../location/threed_sphere/location_mod.html#get_close_obs>`__ for the documentation of this
+     subroutine.
+
+| 
+
+.. container:: routine
+
+   *call ens_mean_for_model(ens_mean)*
+   ::
+
+      real(r8), dimension(:), intent(in) :: ens_mean
+
+.. container:: indent1
+
+   Stub only. Not needed by this model.
+
+   ============ ==========================================
+   ``ens_mean`` State vector containing the ensemble mean.
+   ============ ==========================================
+
+| 
+
 This model currently has no values settable by namelist.
-</P>
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
+Files
+-----
 
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES</H2>
-<UL><LI>The model source is in pe2lyr_mod.f90, and the spherical
-harmonic code is in spharmt_mod.f90.   The various resolution settings
-are in resolt31.h, resolt63.h, and resolt127.h.
-</UL>
+-  The model source is in pe2lyr_mod.f90, and the spherical harmonic code is in spharmt_mod.f90. The various resolution
+   settings are in resolt31.h, resolt63.h, and resolt127.h.
 
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
+References
+----------
 
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
-<P>
-Zou, X., Barcilon, A., Navon, I.M., Whitaker, J., Cacuci, D.G.. 1993:
-An Adjoint Sensitivity Study of Blocking in a Two-Layer Isentropic Model.
-Monthly Weather Review: Vol. 121, No. 10, pp. 2833-2857.
-</P>
+Zou, X., Barcilon, A., Navon, I.M., Whitaker, J., Cacuci, D.G.. 1993: An Adjoint Sensitivity Study of Blocking in a
+Two-Layer Isentropic Model. Monthly Weather Review: Vol. 121, No. 10, pp. 2833-2857.
 
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
+Private components
+------------------
 
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
-
-<P>
 N/A
-</P>
-
-<H2>KNOWN BUGS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PRIVATE COMPONENTS</H2>
-<P>
-N/A
-</P>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>

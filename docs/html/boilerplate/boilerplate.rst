@@ -1,420 +1,198 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>PROGRAM OR MODULE name_of_thing</TITLE>
-<link rel="stylesheet" type="text/css" href="../../html/doc.css" />
-<link href="../../images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+PROGRM OR MODULE name_of_thing
+==============================
 
-<H1>PROGRM OR MODULE name_of_thing</H1>
+Overview
+--------
 
-<table border=0 summary="dart header" cellpadding=5>
-<tr>
-    <td valign=middle>
-    <img src="../../images/Dartboard7.png" alt="DART project logo" height=70 />
-    </td>
-    <td>Jump to <a href="../../index.html">DART Documentation Main Index</a></td>
-</tr>
-</table>
+This is the place for the general description of the module or program or whatever.
 
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#ModulesUsed">MODULES USED</A> /
-<A HREF="#Interface">INTERFACES</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
+overview issues, how/when/why to use this thing, etc.
 
-<H2>Overview</H2>
+more stuff about code, usage, etc.
 
-<P>
-   This is the place for the general description of the module
-   or program or whatever.
-</P>
-<P>
-   overview issues, how/when/why to use this thing, etc.
-</P>
-<P>
-   more stuff about code, usage, etc.
-</P>
+Namelist
+--------
 
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
+DART namelists are always read from file ``input.nml``.
 
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
-DART namelists are
-always read from file <em class=file>input.nml</em>.
-</P>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from
-prematurely terminating the namelist.
-</P>
+We adhere to the F90 standard of starting a namelist with an ampersand '&' and terminating with a slash '/' for all our
+namelist input. Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely
+terminating the namelist.
 
-<div class=namelist>
-<pre>
-&amp;NAMELIST_NML 
-   name=value,
-   name=value, 
-   name=value
-/
-</pre>
-</div>
+::
 
-<br />
-<br />
+   &NAMELIST_NML 
+      name=value,
+      name=value, 
+      name=value
+   /
 
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> 
-</TR>
-</THEAD>
+| 
 
-<TBODY valign=top>
-<TR><TD>name</TD>
-    <TD>type</TD>
-    <TD>(often multi-line) description
-    </TD>
-</TR>
-<!-- repeat until done -->
-</TBODY>
-</TABLE>
+.. container::
 
-</div>
-<br />
+   ==== ==== ==============================
+   Item Type Description
+   ==== ==== ==============================
+   name type (often multi-line) description
+   ==== ==== ==============================
 
-<!--==================================================================-->
+| 
 
-<A NAME="Interface"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>OTHER MODULES USED</H2>
-<PRE>
-types_mod
-model_mod
-assim_tools_mod
-time_manager_mod
-fms_mod
-</PRE>
+Other modules used
+------------------
 
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-<!--==================================================================-->
+::
 
-<A NAME="Interface"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PUBLIC INTERFACES</H2>
+   types_mod
+   model_mod
+   assim_tools_mod
+   time_manager_mod
+   fms_mod
 
-<TABLE summary='interface list'>
-<TR><TD><em class=call>use xxxxxxx, only : </em></TD>
-                   <TD><A HREF="#yyypubtype1">yyypubtype1</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">yyyroutine1</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">yyyroutine2</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">yyyroutine3</A></TD></TR>
-</TABLE>
+Public interfaces
+-----------------
 
-<P>
-   A note about documentation style.
-   Optional arguments are enclosed in brackets
-   <em class=optionalcode>[like this]</em>.
-</P>
+===================== ===========
+*use xxxxxxx, only :* yyypubtype1
+\                     yyyroutine1
+\                     yyyroutine2
+\                     yyyroutine3
+===================== ===========
 
-<!-- replicate sections below as needed -->
+A note about documentation style. Optional arguments are enclosed in brackets *[like this]*.
 
-<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
-<A NAME="yyypubtype1"></A>
-<br>
-<div class=routine>
-<pre>
-<em class=call>type location_type</em>
-   private
-   real(r8) :: x
-end type location_type
-</pre>
-</div>
+| 
 
-<div class=indent1><!-- Description -->
+.. container:: routine
 
-<P>The location type is essential to the fabric of the universe.
-   If we don't know where we are, how do we know which exit to take?
-</P>
+   ::
 
-<TABLE border=0 cellpadding=3 width=100% summary='argument details'>
-<THEAD align=left>
-<TR><TH> Component </TH>
-    <TH> Description </TH>
-</TR>
-</THEAD>
+      type location_type
+         private
+         real(r8) :: x
+      end type location_type
 
-<TBODY valign=top>
-<TR><TD> x </TD>
-    <TD> is the nondimensional distance [0,1] </TD>
-</TR>
-</TBODY>
-</TABLE>
+.. container:: indent1
 
-</div>
-<br>
+   The location type is essential to the fabric of the universe. If we don't know where we are, how do we know which
+   exit to take?
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+   ========= ====================================
+   Component Description
+   ========= ====================================
+   x         is the nondimensional distance [0,1]
+   ========= ====================================
 
-<A NAME="yyyroutine1"></A>
-<br>
-<div class=routine>
-<em class=call>subroutine yyyroutine1( var1, var2, var3
-               <em class=optionalcode>[,&nbsp;global]</em>)</em>
-<pre>
-type(time_type),          intent(in)    :: <em class=code> var1 </em>
-real(r8), dimension(:),   intent(inout) :: <em class=code> var2 </em>
-real(r8), dimension(:,:), intent(out)   :: <em class=code> var3 </em>
-real(r8), optional,       intent(in)    :: <em class=optionalcode> global </em>
-</pre>
-</div>
+| 
 
-<div class=indent1><!-- Description -->
+.. container:: routine
 
-<P>
-   Returns the resolution of compute domain for either the
-   current processor or the global domain.
-   <br><br>
-   This is the best thing since sliced bread. All you have to do is 
-   throw some arguments in the call and the subroutine automatically 
-   slices, dices and makes julienne fries. <em>But wait!</em> There's more!
-</P>
+   *subroutine yyyroutine1( var1, var2, var3 [, global])*
+   ::
 
-<TABLE width=100% border=0 summary="" cellpadding=3 summary='argument details'>
-<TBODY valign=top>
-<TR><TD><em class=code>var1</em></TD>
-    <TD>is the number of spark plugs in a '67 Cuda.</TD>
-</TR>
-<TR><TD><em class=code>var2</em></TD>
-    <TD>is used for both input and output. Upon input, this contains the furlongs 
-        per weekday for every vertical level. Upon exit, we now have the number of 
-        spotted gobies per square hectare at that level. </TD>
-</TR>
-<TR><TD><em class=code>var3</em></TD>
-    <TD>The leftmost dimension pertains to the number of feet in an orange-footed 
-        brush fowl, indiginous to Australia. The next dimension is the number of 
-        feathers on said fowl, naturally.</TD>
-</TR>
-<TR><TD><em class=optionalcode>global</em></TD>
-    <TD>is really, REALLY useful in certain situations.</TD>
-</TR>
-</TBODY>
-</TABLE>
+      type(time_type),          intent(in)    ::  var1 
+      real(r8), dimension(:),   intent(inout) ::  var2 
+      real(r8), dimension(:,:), intent(out)   ::  var3 
+      real(r8), optional,       intent(in)    ::  global 
 
-<P>
+.. container:: indent1
+
+   | Returns the resolution of compute domain for either the current processor or the global domain.
+   | This is the best thing since sliced bread. All you have to do is throw some arguments in the call and the
+     subroutine automatically slices, dices and makes julienne fries. *But wait!* There's more!
+
+   +----------+----------------------------------------------------------------------------------------------------------+
+   | ``var1`` | is the number of spark plugs in a '67 Cuda.                                                              |
+   +----------+----------------------------------------------------------------------------------------------------------+
+   | ``var2`` | is used for both input and output. Upon input, this contains the furlongs per weekday for every vertical |
+   |          | level. Upon exit, we now have the number of spotted gobies per square hectare at that level.             |
+   +----------+----------------------------------------------------------------------------------------------------------+
+   | ``var3`` | The leftmost dimension pertains to the number of feet in an orange-footed brush fowl, indiginous to      |
+   |          | Australia. The next dimension is the number of feathers on said fowl, naturally.                         |
+   +----------+----------------------------------------------------------------------------------------------------------+
+   | *global* | is really, REALLY useful in certain situations.                                                          |
+   +----------+----------------------------------------------------------------------------------------------------------+
+
    notes would go here
-</P>
 
-</div>
-<br>
+| 
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+.. container:: routine
 
-<A NAME="yyyroutine2"></A>
-<br>
-<div class=routine>
-<em class=call> function yyyroutine2( var1, var2, var3,
-               <em class=optionalcode>[,bob]</em> )</em>
-<pre>
-type(time_type),          intent(in)  :: <em class=code> var1 </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> var2 </em>
-real(r8), dimension(:,:), intent(in)  :: <em class=code> var3 </em>
-real(r8), optional,       intent(in)  :: <em class=optionalcode> bob </em>
-integer, dimension(size(var2))        :: <em class=code> yyyroutine2 </em>
-</pre>
-</div>
+   *function yyyroutine2( var1, var2, var3, [,bob] )*
+   ::
 
-<div class=indent1><!-- Description -->
+      type(time_type),          intent(in)  ::  var1 
+      real(r8), dimension(:),   intent(in)  ::  var2 
+      real(r8), dimension(:,:), intent(in)  ::  var3 
+      real(r8), optional,       intent(in)  ::  bob 
+      integer, dimension(size(var2))        ::  yyyroutine2 
 
-<P>
-   Returns the resolution of compute domain for either the current 
-   processor or the global domain.  All input variables are not changed. 
-   Otherwise, this would be a subroutine.
-   <br><br>
-   This is the second-best thing since sliced bread. All you have to do is 
-   throw some arguments in the call and the function automatically 
-   deep fries.
-</P>
+.. container:: indent1
 
-<TABLE width=100% border=0 summary="" cellpadding=3 summary='argument details'>
-<TBODY valign=top>
-<TR><TD><em class=code>var1</em></TD>
-    <TD>the first time you changed your oil.</TD></TR>
+   | Returns the resolution of compute domain for either the current processor or the global domain. All input variables
+     are not changed. Otherwise, this would be a subroutine.
+   | This is the second-best thing since sliced bread. All you have to do is throw some arguments in the call and the
+     function automatically deep fries.
 
-<TR><TD><em class=code>var2</em></TD>
-    <TD>miles between every oil change you've ever done. Don't lie.</TD></TR>
+   +----------------+----------------------------------------------------------------------------------------------------+
+   | ``var1``       | the first time you changed your oil.                                                               |
+   +----------------+----------------------------------------------------------------------------------------------------+
+   | ``var2``       | miles between every oil change you've ever done. Don't lie.                                        |
+   +----------------+----------------------------------------------------------------------------------------------------+
+   | ``var3``       | the distances you've ridden. Each row corresponds to the hour-of-day, each column is a different   |
+   |                | day-of-the-week.                                                                                   |
+   +----------------+----------------------------------------------------------------------------------------------------+
+   | *bob*          | mean time between failures. in msec.                                                               |
+   +----------------+----------------------------------------------------------------------------------------------------+
+   | ``yyroutine2`` | number of gray hairs as a function of time. in kilohairs.                                          |
+   +----------------+----------------------------------------------------------------------------------------------------+
 
-<TR><TD><em class=code>var3</em></TD>
-    <TD>the distances you've ridden. Each row corresponds to the hour-of-day,
-        each column is a different day-of-the-week.</TD></TR>
-
-<TR><TD><em class=optionalcode>bob</em></TD>
-    <TD>mean time between failures. in msec.</TD></TR>
-
-<TR><TD><em class=code>yyroutine2</em></TD>
-    <TD>number of gray hairs as a function of time. in kilohairs.</TD></TR>
-</TBODY>
-</TABLE>
-
-<P>
    notes would go here
-</P>
 
-</div>
-<br>
+| 
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
+Files
+-----
 
-<A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES</H2>
-<P>This is the place to discuss the files that are associated with
-   this module. They could be input files, output files, data files,
-   shell scripts ... anything.
-</P>
+This is the place to discuss the files that are associated with this module. They could be input files, output files,
+data files, shell scripts ... anything.
 
-<TABLE border=0  summary='files used'>
-<THEAD align=left>
-<TR><TH>filename</TH>
-    <TH>purpose</TH>
-</TR>
-</THEAD>
+=========================== ===========================================================================
+filename                    purpose
+=========================== ===========================================================================
+inputfile1                  to read some input
+input.nml                   to read namelists
+preassim.nc                 the time-history of the model state before assimilation
+analysis.nc                 the time-history of the model state after assimilation
+dart_log.out [default name] the run-time diagnostic output
+dart_log.nml [default name] the record of all the namelists actually USED - contains the default values
+=========================== ===========================================================================
 
-<TBODY>
-<TR><TD>inputfile1</TD>
-    <TD>to read some input </TD></TR>
-<TR><TD>input.nml</TD>
-    <TD>to read namelists</TD></TR>
-<TR><TD>preassim.nc</TD>
-    <TD>the time-history of the model state before assimilation</TD></TR>
-<TR><TD>analysis.nc&nbsp;</TD>
-    <TD>the time-history of the model state after assimilation</TD></TR>
-<TR><TD>dart_log.out [default name]</TD>
-    <TD>the run-time diagnostic output</TD></TR>
-<TR><TD>dart_log.nml [default name]</TD>
-    <TD>the record of all the namelists actually USED - 
-        contains the default values</TD></TR>
-</TBODY>
-</TABLE>
+References
+----------
 
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
+-  Anderson, J., T. Hoar, K. Raeder, H. Liu, N. Collins, R. Torn, and A. Arellano, 2009:
+   The Data Assimilation Research Testbed: A Community Facility. Bull. Amer. Meteor. Soc., 90, 1283-1296.
+   `DOI: 10.1175/2009BAMS2618.1 <http://dx.doi.org/10.1175%2F2009BAMS2618.1>`__
 
-<A NAME="References"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
-<ul>
-<li>Anderson,&nbsp;J., T.&nbsp;Hoar, K.&nbsp;Raeder, H.&nbsp;Liu, 
-    N.&nbsp;Collins, R.&nbsp;Torn, and A.&nbsp;Arellano, 2009:<br>
-    The Data Assimilation Research Testbed: A Community Facility. 
-    <span style="font-style: italic;">Bull. Amer. Meteor. Soc.</span>,
-    <span style="font-weight: bold;">90</span>, 1283-1296.<br>
-    <a href="http://dx.doi.org/10.1175%2F2009BAMS2618.1">DOI: 10.1175/2009BAMS2618.1</a></li>
-</ul>
-<ul>
-<li> none </li>
-</ul>
+-  none
 
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
+Private components
+------------------
 
-<A NAME="Errors"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100% summary='error codes'>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-
-<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
-    <!-- message --><TD VALIGN=top>size of [argument] is incorrect</TD>
-    <!-- comment --><TD VALIGN=top>The size of [argument] must be 1 and 4</TD></TR>
-
-<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
-    <!-- message --><TD VALIGN=top>yyyyy</TD>
-    <!-- comment --><TD VALIGN=top>bad judgement<BR>
-                        What were you thinking?</TD></TR>
-
-</TABLE>
-</div>
-
-<H2>KNOWN BUGS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-none at this time
-</P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PRIVATE COMPONENTS</H2>
-<P>
 N/A
-</P>
-<P>
-   Any routines or 'local' variables of interest may be discussed here.
-   There are generally lots of 'internal' functions that make life simpler,
-   but you don't want to make them available outside the scope of the
-   current module. This is the place to point them out, if you like.
-</P>
-<div class=routine>
-<pre>
-type location_type
-   private
-   real(r8) :: x
-end type location_type</pre>
-</div>
 
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
+Any routines or 'local' variables of interest may be discussed here. There are generally lots of 'internal' functions
+that make life simpler, but you don't want to make them available outside the scope of the current module. This is the
+place to point them out, if you like.
 
-<A NAME="Legalese"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>Terms of Use</H2>
+.. container:: routine
 
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
+   ::
 
-<!--==================================================================-->
-
-</BODY>
-</HTML>
+      type location_type
+         private
+         real(r8) :: x
+      end type location_type
