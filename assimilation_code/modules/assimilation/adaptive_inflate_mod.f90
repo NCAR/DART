@@ -1181,7 +1181,7 @@ if(inflation_handle%deterministic) then
 else
   det = 'random-noise,'
 endif
-if (inflation_handle%minmax_sd(POSTERIOR_INF) > inflation_handle%sd_lower_bound) then
+if (inflation_handle%minmax_sd(2) > inflation_handle%sd_lower_bound) then
    det = trim(det) // ' variance adaptive,'
 endif
 if (inflation_handle%inf_lower_bound < 1.0_r8) then
@@ -1427,4 +1427,3 @@ end function get_inflation_sd_copy
 !> @}
 
 end module adaptive_inflate_mod
-
