@@ -1187,7 +1187,7 @@ endif
 if (inflation_handle%inf_lower_bound < 1.0_r8) then
    det = trim(det) // ' deflation permitted,'
 endif
-if (inflation_handle%minmax_sd(POSTERIOR_INF) > 0.0_r8) then
+if (inflation_handle%minmax_sd(2) > 0.0_r8) then
   tadapt = ' time-adaptive,'
    if (inflation_handle%sd_lower_bound < inflation_handle%minmax_sd(POSTERIOR_INF) .or. &
        inflation_handle%inflation_sub_flavor == ENHANCED_SS_INFLATION) then
