@@ -234,10 +234,12 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
                       obs_sequence_out_name = "obs_seq.final",  &
                       adv_ens_command       = './advance_model.csh'
 
-! The inflation flavor parameters are defined in adaptive_inflate_mod.
-! It is an open question as to whether or not we should 'use' the 
-! integer parameters for PRIOR_INF and POSTERIOR_INF from adaptive_inflate_mod
-! to index these 'length 2' arrays.
+! The inflation algorithm variables are defined in adaptive_inflate_mod.
+! We use the integer parameters for PRIOR_INF and POSTERIOR_INF from 
+! adaptive_inflate_mod to index these 'length 2' arrays.
+! To support more flexible methods of specifying the inflation algorithm,
+! inf_flavor must be a character string whose value is converted to an
+! integer to be backward compatible. 
 
 character(len=32) :: inf_flavor(2)         = (/ 'none', 'none' /)
 logical  :: inf_initial_from_restart(2)    = .false.
@@ -402,6 +404,9 @@ allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
+! inf_flavor from the namelist is now a character string.  
+! the inflation-related subroutines require an integer so the
+! variable inflation_flavor is added and is type integer.
 inflation_flavor = set_inflation_flavor(inf_flavor)
 
 call validate_inflate_options(inflation_flavor, inf_damping, inf_initial_from_restart, &
