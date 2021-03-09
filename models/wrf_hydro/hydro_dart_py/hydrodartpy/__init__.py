@@ -3,6 +3,7 @@ from .core import setup_dart
 from .core.get_ensemble_time import *
 from .core.setup_experiment import *
 from .core.advance_ensemble import advance_ensemble
+from .core.run_filter_experiment import run_filter_experiment
 from .core import setup_experiment_tools
 from .core import setup_initial_ens
 from .core import setup_obs_prep
