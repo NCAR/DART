@@ -477,7 +477,7 @@ if (inf_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD) then
 
    if ( inf_sd_initial_from_restart(POSTERIOR_INF)) &
        call error_handler(E_MSG, 'validate_inflate_options:', &
-         'RTPS inflation (type 4) does not use "inf_sd_inifial_from_restart" values.', &
+         'RTPS inflation (type 4) does not use "inf_sd_initial_from_restart" values.', &
          text2='values of "sd" in output inflation variables are not meaningful.')
 
    ! Get parameter from namelist inf_initial(2), not from file
