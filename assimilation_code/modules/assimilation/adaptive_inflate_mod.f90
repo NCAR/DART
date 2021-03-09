@@ -1189,7 +1189,7 @@ if (inflation_handle%inf_lower_bound < 1.0_r8) then
 endif
 if (inflation_handle%minmax_sd(2) > 0.0_r8) then
   tadapt = ' time-adaptive,'
-   if (inflation_handle%sd_lower_bound < inflation_handle%minmax_sd(POSTERIOR_INF) .or. &
+   if (inflation_handle%sd_lower_bound < inflation_handle%minmax_sd(2) .or. &
        inflation_handle%inflation_sub_flavor == ENHANCED_SS_INFLATION) then
       tadapt = trim(tadapt) // ' time-rate adaptive,'
    endif
