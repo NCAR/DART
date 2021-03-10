@@ -67,16 +67,20 @@ public :: get_unit, &
           find_first_occurrence, &
           array_dump, &
           dump_unit_attributes, &
-          ! lowest level routines
+          ! lowest level routines follow.
+          ! these need to be cautious about logging, error handlers, etc
           initialize_utilities, &
           finalize_utilities, &
           register_module, &
           find_namelist_in_file, &
           check_namelist_read, &
-          flex_parser, &
+          ! this should follow string_to_logical
+          get_value_from_string, &
           do_nml_file, &
           do_nml_term, &
           log_it, &
+          ! these two routines should move up to after get_value_from_string
+          ! they shouldn't be grouped with these other low level routines.
           interactive_r, &
           interactive_i
 
@@ -481,11 +485,11 @@ call error_handler(E_ERR, 'check_namelist_read', msgstring1, source)
 
 end subroutine check_namelist_read
 
-
 !-----------------------------------------------------------------------
+! TODO: the next 2 routines belong right after the string_to_logical function.
 !> convert integers or strings describing options into integer. 
 !> 
-!> Some namelist items have historically been integers which do not help describe the
+!> Some input items have historically been integers which do not help describe the
 !> option they are selecting.  They are being converted to descriptive strings.
 !> During a transition period before the integers are deprecated this routine will return 
 !> an integer value if the input string is either an integer or a string.  
@@ -495,13 +499,13 @@ end subroutine check_namelist_read
 !> present would return to the calling code without printing or calling the error 
 !> handler so the caller can take an alternative code path.
 
-function flex_parser(input,integer_options,string_options,context)
+function get_value_from_string(input,integer_options,string_options,context)
 
 character(len=*), intent(in) :: input                 ! value from namelist, eg
 integer,          intent(in) :: integer_options(:)    ! possible integer values
 character(len=*), intent(in) :: string_options(:)     ! matching string values
 character(len=*), intent(in), optional :: context 
-integer                      :: flex_parser
+integer                      :: get_value_from_string
 
 character(len=len_trim(input)) :: uppercase
 character(len=len(string_options)) :: possibility
@@ -509,20 +513,20 @@ integer :: ios, iopt, candidate
 
 if ( .not. module_initialized ) call initialize_utilities
 
-flex_parser = MISSING_I
+get_value_from_string = MISSING_I
 
 ! Try to read the input as an ASCII-coded integer ( i.e. '3') 
 
 read(input,*,iostat=ios) candidate
 if (ios == 0) then
 
-   flex_parser = candidate
+   get_value_from_string = candidate
 
    ! Check for valid value
-   if (any(integer_options == flex_parser)) then
+   if (any(integer_options == get_value_from_string)) then
       return
    else
-      call flex_parser_error(input, integer_options, string_options, context)
+      call get_value_error(input, integer_options, string_options, context)
    endif
 endif
 
@@ -531,7 +535,7 @@ endif
 if (size(integer_options) /= size(string_options)) then
    write(msgstring2,*)'size(integer_options) =',size(integer_options), &
                   ' /= size( string_options) =',size( string_options)
-   call error_handler(E_ERR,'flex_parser',msgstring2,source,text2=context)
+   call error_handler(E_ERR,'get_value_from_string',msgstring2,source,text2=context)
 endif
 
 uppercase = trim(input)
@@ -543,22 +547,22 @@ LOOP : do iopt = 1,size(integer_options)
    call to_upper(possibility)
 
    if (uppercase == possibility) then
-      flex_parser = integer_options(iopt)
+      get_value_from_string = integer_options(iopt)
       exit LOOP
    endif
 
 enddo LOOP
 
-if (flex_parser == MISSING_I) &
-   call flex_parser_error(input, integer_options, string_options, context)
+if (get_value_from_string == MISSING_I) &
+   call get_value_error(input, integer_options, string_options, context)
 
-end function flex_parser
+end function get_value_from_string
 
 
 !-----------------------------------------------------------------------
-!> report any errors from the flex_parser routine
+!> report any errors from the get_value_from_string routine
 
-subroutine flex_parser_error(input, integer_options, string_options, whofrom)
+subroutine get_value_error(input, integer_options, string_options, whofrom)
 
 character(len=*),           intent(in) :: input
 integer,                    intent(in) :: integer_options(:)
@@ -576,19 +580,24 @@ endif
 write(msgstring2,*)'input is "'//trim(input)//'"'
 write(msgstring3,*)'valid values are the following integers or matching character strings:'
 
-call error_handler(E_MSG, 'flex_parser', msgstring1, source, &
+call error_handler(E_MSG, 'get_value_from_string', msgstring1, source, &
            text2=msgstring2, text3=msgstring3)
 
 do iopt = 1,size(integer_options)
    write(string1,*) integer_options(iopt), ' = "'//trim(string_options(iopt))//'"' 
-   call error_handler(E_MSG,'flex_parser',string1)
+   call error_handler(E_MSG,'get_value_from_string',string1)
 enddo
 
 ! Repeat the leading message (as an E_ERR) to help delineate the problem.
-call error_handler(E_ERR, 'flex_parser', msgstring1, source)
+call error_handler(E_ERR, 'get_value_from_string', msgstring1, source)
 
-end subroutine flex_parser_error
+end subroutine get_value_error
 
+!----------------------------------------------------------------------
+! TODO: next pull request, put interactive_r and interactive_i after
+! these routines, just before array_1d_dump.
+! they don't belong in the debug section at the end of this file.
+!----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
 !> if trying to write an unformatted string, like "write(*,*)"
@@ -2125,6 +2134,8 @@ end select
 
 end function string_to_logical
 
+
+
 !-----------------------------------------------------------------------
 !> dump the contents of a 1d array with a max of N items per line.
 !> optional arguments allow the caller to restrict the output to 
@@ -2899,6 +2910,9 @@ call error_handler(E_MSG, 'dump_unit_attributes', string1, source)
 
 end subroutine output_unit_attribs
 
+! TODO: these next 2 routines should move to after the get_value_from_string
+! routine.  they aren't debug routines which is what routines in this section are.
+
 !----------------------------------------------------------------------
 !> prompt for a real value, optionally setting min and/or max limits
 !> loops until valid value input.
@@ -2986,7 +3000,6 @@ else ! anything goes ... cannot check
 endif
 
 end function interactive_i
-
 
 !=======================================================================
 ! End of utilities_mod

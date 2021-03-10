@@ -29,7 +29,7 @@ use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), o
                                   operator(-), print_time
 
 use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,                         &
-                                  logfileunit, nmlfileunit, timestamp, flex_parser,           &
+                                  logfileunit, nmlfileunit, timestamp, get_value_from_string, &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
                                   set_multiple_filename_lists, find_textfile_dims
@@ -2798,9 +2798,9 @@ character(len=32) :: string_options(7) = (/ 'NO_INFLATION              ',&
                                             'RTPS                      ',&
                                             'ENHANCED_SS_INFLATION     ' /)
 
-flavors(PRIOR_INF)     = flex_parser(flavor_string(PRIOR_INF),     &
+flavors(PRIOR_INF)     = get_value_from_string(flavor_string(PRIOR_INF),     &
                           int_options, string_options, 'input_nml:inf_flavor(1)')
-flavors(POSTERIOR_INF) = flex_parser(flavor_string(POSTERIOR_INF), &
+flavors(POSTERIOR_INF) = get_value_from_string(flavor_string(POSTERIOR_INF), &
                           int_options, string_options, 'input_nml:inf_flavor(2)')
 
 end function set_inflation_flavor
