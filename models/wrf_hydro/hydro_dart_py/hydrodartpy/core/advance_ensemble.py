@@ -81,7 +81,9 @@ def advance_ensemble(
                 for mm in member_dirs
             ]
 
-    e.run(n_concurrent=n_concurrent, teams_dict=teams_dict)
+    e.run(n_concurrent=n_concurrent,
+          teams=(teams_dict is not None),
+          teams_dict=teams_dict)
 
     # Prep the next
     if n_concurrent > 1:
