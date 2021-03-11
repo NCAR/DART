@@ -1426,13 +1426,13 @@ New models
       to configure a single or multiple component assimilation. See:
 
       -  `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/CESM/model_mod.html>`__ or
-         :doc:`../../models/CESM/model_mod` for multi-component assimilation,
+         :doc:`../../models/CESM/readme` for multi-component assimilation,
       -  `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/cam/model_mod.html>`__ or
-         :doc:`../../models/cam/model_mod` for CAM single component assimilation
+         :doc:`../../models/cam/readme` for CAM single component assimilation
       -  `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/POP/model_mod.html>`__ or
-         :doc:`../../models/POP/model_mod` for POP single component assimilation
+         :doc:`../../models/POP/readme` for POP single component assimilation
       -  `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/clm/model_mod.html>`__ or
-         :doc:`../../models/clm/model_mod` for CLM single component assimilation
+         :doc:`../../models/clm/readme` for CLM single component assimilation
 
       Documentation for the model:
 
@@ -1449,17 +1449,17 @@ New models
 
    -  DART interface documentation for the MPAS Atmosphere component:
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/mpas_atm/model_mod.html>`__ or
-      :doc:`../../models/mpas_atm/model_mod`.
+      :doc:`../../models/mpas_atm/readme`.
    -  DART interface documentation for the MPAS Ocean component:
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/mpas_ocn/model_mod.html>`__ or
-      :doc:`../../models/mpas_ocn/model_mod`.
+      :doc:`../../models/mpas_ocn/readme`.
    -  Documentation for the model: `MPAS <http://mpas-dev.github.io/>`__.
 
 -  NOAH Land Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/noah/model_mod.html>`__ or
-      :doc:`../../models/noah/model_mod`.
+      :doc:`../../models/noah/readme`.
    -  Documentation for the model: `The Community NOAH Land Surface Model
       (LSM) <http://www.ral.ucar.edu/research/land/technology/lsm.php>`__.
 
@@ -1467,28 +1467,28 @@ New models
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/NAAPS/model_mod.html>`__ or
-      :doc:`../../models/NAAPS/model_mod`.
+      :doc:`../../models/NAAPS/readme`.
    -  Documentation for the model: `NRL/Monterery Aerosol Model <http://www.nrlmry.navy.mil/aerosol_web>`__.
 
 -  GITM Global Ionosphere Thermosphere Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/GITM/model_mod.html>`__ or
-      :doc:`../../models/GITM/model_mod`.
+      :doc:`../../models/GITM/readme`.
    -  Documentation for the model: `GITM Web Pages <http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM>`__.
 
 -  NOGAPS Global Atmosphere Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/NOGAPS/model_mod.html>`__ or
-      :doc:`../../models/NOGAPS/model_mod`.
+      :doc:`../../models/NOGAPS/readme`.
    -  Documentation for the model: `NOGAPS <http://www.srh.noaa.gov/ssd/nwpmodel/html/nogover.htm>`__.
 
 -  SQG Surface Quasi-Geostrophic Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/SQG/model_mod.html>`__ or
-      :doc:`../../models/SQG/model_mod`.
+      :doc:`../../models/SQG/readme`.
    -  Documentation for the model: `Paper on SQG
       model <http://dx.doi.org/10.1175/1520-0469(2000)057%3C2951:RONGAN%3E2.0.CO%3B2>`__.
 

@@ -3,7 +3,7 @@ PROGRAM ``gitm_blocks_to_netcdf``
 
 | The `Global Ionosphere Thermosphere Model (GITM) <http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM>`__ is a
   3-dimensional spherical code that models the Earth's thermosphere and ionosphere system using a stretched grid in
-  latitude and altitude. For a fuller description of using GITM within DART, please see the :doc:`./model_mod`.
+  latitude and altitude. For a fuller description of using GITM within DART, please see the :doc:`./readme`.
 | ``gitm_blocks_to_netcdf`` is the program that reads GITM restart files (i.e. ``b?????.rst``) and creates a DART
   output/restart file (e.g. ``perfect_ics, filter_ics, ...``).
 | The list of variables used to create the DART state vector are specified in the ``input.nml`` file.

@@ -1457,7 +1457,7 @@ New features
 
    -  See details on the features of the CAM/DART system
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/cam/model_mod.html>`__ or
-      :doc:`../../../models/cam/model_mod`.
+      :doc:`../../../models/cam/readme`.
 
 -  Boxcar Kernel Filter Option
 
@@ -1554,7 +1554,7 @@ New models
 
    -  DART interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/POP/model_mod.html>`__ or
-      :doc:`../../../models/POP/model_mod`. Documentation for the model itself `in
+      :doc:`../../../models/POP/readme`. Documentation for the model itself `in
       CESM <http://www.cesm.ucar.edu/models/ccsm2.0.1/pop/>`__ and `stand-alone version from Los
       Alamos <http://climate.lanl.gov/Models/POP/>`__.
 
@@ -1562,14 +1562,14 @@ New models
 
    -  DART interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/NCOMMAS/model_mod.html>`__ or
-      :doc:`../../../models/NCOMMAS/model_mod`. Documentation for the model itself from NSSL, Norman, OK. is at
+      :doc:`../../../models/NCOMMAS/readme`. Documentation for the model itself from NSSL, Norman, OK. is at
       `NCOMMAS <http://code.google.com/p/enkf-nssl-commas>`__.
 
 -  COAMPS Atmosphere Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/coamps_next/model_mod.html>`__ or
-      :doc:`../../../models/coamps_nest/model_mod`. Documentation for the model itself is at
+      :doc:`../../../models/coamps_nest/readme`. Documentation for the model itself is at
       `COAMPS <http://www.nrlmry.navy.mil/coamps-web/web/home>`__. The original version of the COAMPS interface code and
       scripts was contributed by Tim Whitcomb, NRL, Monterey. An updated version was contributed by Alex Reinecke, NRL,
       Monterey.
@@ -1591,21 +1591,21 @@ New models
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/AM2/model_mod.html>`__ or
-      :doc:`../../../models/AM2/model_mod`. The GFDL atmosphere model documentation is at
+      :doc:`../../../models/AM2/readme`. The GFDL atmosphere model documentation is at
       `AM2 <http://data1.gfdl.noaa.gov/~arl/pubrel/m/am2/doc/>`__.
 
 -  MIT Global Ocean Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/MITgcm_ocean/model_mod.html>`__ or
-      :doc:`../../../models/MITgcm_ocean/model_mod`. The `ocean
+      :doc:`../../../models/MITgcm_ocean/readme`. The `ocean
       component <http://paoc2001.mit.edu/cmi/development/ocean.htm>`__ of the MIT global model suite.
 
 -  Simple Advection Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/simple_avection/model_mod.html>`__ or
-      :doc:`../../../models/simple_avection/model_mod`. A simple model of advecting tracers such as CO.
+      :doc:`../../../models/simple_avection/readme`. A simple model of advecting tracers such as CO.
 
 -  Global/Planet WRF
 
@@ -1615,7 +1615,7 @@ New models
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/TIEgcm/model_mod.html>`__ or
-      :doc:`../../../models/TIEgcm/model_mod`. Documentation for the thermosphere and ionosphere model from the NCAR HAO
+      :doc:`../../../models/TIEgcm/readme`. Documentation for the thermosphere and ionosphere model from the NCAR HAO
       (High Altitude Observatory) Division is at `TIEgcm <http://cism.hao.ucar.edu/models_tiegcm.html>`__.
 
 The ``DART/models/template`` directory contains sample files for adding a new model. See `this
@@ -1733,7 +1733,7 @@ New observation types/sources
 -  Hurricane/Tropical Storm Vortex Position
    Storm location, minimum central pressure, and maximum windspeed. Currently only implemented in the WRF model_mod
    interface code. Code `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/model_mod.html>`__
-   or :doc:`../../../models/wrf/model_mod`.
+   or :doc:`../../../models/wrf/readme`.
 
 All the observation converters have moved to their own top level directory ``observations``. See the overview
 documentation

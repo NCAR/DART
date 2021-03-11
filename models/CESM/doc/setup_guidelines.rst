@@ -107,7 +107,7 @@ Cross-component assimilation (aka "strongly coupled")
 |                             | will use code in this models/CESM directory.                                          |
 +-----------------------------+---------------------------------------------------------------------------------------+
 
-:doc:`../../cam-fv/model_mod`
+:doc:`../../cam-fv/readme`
 
 $dart/models/{cesm components} organization
 -------------------------------------------

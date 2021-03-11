@@ -263,69 +263,69 @@ DART `classic <http://www.image.ucar.edu/DAReS/DART/classic/index.html>`__
 
 -  **9var**
 
-   -  DART interface documentation for the :doc:`../../models/9var/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/9var/readme` model.
 
 -  **bgrid_solo**
 
-   -  DART interface documentation for the :doc:`../../models/bgrid_solo/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/bgrid_solo/readme` model.
 
 -  **cam-fv**
 
-   -  DART interface documentation for the :doc:`../../models/cam-fv/model_mod` global atmospheric model.
+   -  DART interface documentation for the :doc:`../../models/cam-fv/readme` global atmospheric model.
    -  Documentation for the `CAM model <http://www.cesm.ucar.edu/models/atm-cam/>`__.
 
 -  **cice (NEW)**
 
-   -  DART interface documentation for the :doc:`../../models/cice/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/cice/readme` model.
    -  Documentation for the `CICE model <http://www.cesm.ucar.edu/models/ccsm4.0/cice/>`__.
 
 -  **cm1 (NEW)**
 
-   -  DART interface documentation for the :doc:`../../models/cm1/model_mod`.
+   -  DART interface documentation for the :doc:`../../models/cm1/readme`.
    -  Documentation for the `CM1 model <http://www2.mmm.ucar.edu/people/bryan/cm1/>`__.
 
 -  **forced_lorenz_96**
 
-   -  DART interface documentation for the :doc:`../../models/forced_lorenz_96/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/forced_lorenz_96/readme` model.
 
 -  **lorenz_63**
 
-   -  DART interface documentation for the :doc:`../../models/lorenz_63/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/lorenz_63/readme` model.
 
 -  **lorenz_84**
 
-   -  DART interface documentation for the :doc:`../../models/lorenz_84/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/lorenz_84/readme` model.
 
 -  **lorenz_96**
 
-   -  DART interface documentation for the :doc:`../../models/lorenz_96/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/lorenz_96/readme` model.
 
 -  **lorenz_04**
 
-   -  DART interface documentation for the :doc:`../../models/lorenz_04/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/lorenz_04/readme` model.
 
 -  **mpas_atm** (NetCDF overwrite not supported for update_u_from_reconstruct = .true. )
 
-   -  DART interface documentation for the :doc:`../../models/mpas_atm/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/mpas_atm/readme` model.
    -  Documentation for the `MPAS model <https://mpas-dev.github.io/atmosphere/atmosphere.html>`__.
 
 -  **POP**
 
-   -  DART interface documentation for the :doc:`../../models/POP/model_mod` global ocean model.
+   -  DART interface documentation for the :doc:`../../models/POP/readme` global ocean model.
    -  Documentation for the `POP model <http://www.cesm.ucar.edu/models/ccsm2.0/pop/>`__.
 
 -  **ROMS (NEW)**
 
-   -  DART interface documentation for the :doc:`../../models/ROMS/model_mod` regional ocean model.
+   -  DART interface documentation for the :doc:`../../models/ROMS/readme` regional ocean model.
    -  Documentation for the `ROMS model <https://www.myroms.org/>`__.
 
 -  **simple_advection**
 
-   -  DART interface documentation for the :doc:`../../models/simple_advection/model_mod` model.
+   -  DART interface documentation for the :doc:`../../models/simple_advection/readme` model.
 
 -  **wrf**
 
-   -  DART interface documentation for the :doc:`../../models/wrf/model_mod` regional forecast model.
+   -  DART interface documentation for the :doc:`../../models/wrf/readme` regional forecast model.
    -  Documentation for the `WRF model <http://www.wrf-model.org/index.php>`__.
 
 The ``DART/models/template`` directory contains sample files for adding a new model. See the `Adding a
