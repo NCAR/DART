@@ -117,33 +117,21 @@ possible. If you are interested in running *bgrid_solo*, *cam-fv*, or testing
 the *NCEP/prep_bufr* observation converter, you will need these files. These
 files are available at:
 
-+-------------------+------+--------------------------------------------------+
-| Release           | Size | Filename                                         |
-+===================+======+==================================================+
-| “Manhattan”       | 189M | `Manhattan_large_fil                             |
-|                   |      | es.tar.gz <https://www.image.ucar.edu/pub/DART/R |
-|                   |      | elease_datasets/Manhattan_large_files.tar.gz>`__ |
-+-------------------+------+--------------------------------------------------+
-| “wrf-chem.r13172” | 141M | `wrf-chem.r13172_large_files.tar                 |
-|                   |      | .gz <https://www.image.ucar.edu/pub/DART/Release |
-|                   |      | _datasets/wrf-chem.r13172_large_files.tar.gz>`__ |
-+-------------------+------+--------------------------------------------------+
-| “Lanai”           | 158M | `Lanai_large                                     |
-|                   |      | _files.tar.gz <https://www.image.ucar.edu/pub/DA |
-|                   |      | RT/Release_datasets/Lanai_large_files.tar.gz>`__ |
-+-------------------+------+--------------------------------------------------+
-| “Kodiak”          | 158M | `Kodiak_large_                                   |
-|                   |      | files.tar.gz <https://www.image.ucar.edu/pub/DAR |
-|                   |      | T/Release_datasets/Kodiak_large_files.tar.gz>`__ |
-+-------------------+------+--------------------------------------------------+
-| “Jamaica”         | 32M  | `Jamaica_large_f                                 |
-|                   |      | iles.tar.gz <https://www.image.ucar.edu/pub/DART |
-|                   |      | /Release_datasets/Jamaica_large_files.tar.gz>`__ |
-+-------------------+------+--------------------------------------------------+
-| “Hawaii”          | 32M  | `Hawaii_large_                                   |
-|                   |      | files.tar.gz <https://www.image.ucar.edu/pub/DAR |
-|                   |      | T/Release_datasets/Hawaii_large_files.tar.gz>`__ |
-+-------------------+------+--------------------------------------------------+
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| Release           | Size | Filename                                                                                                                         |
++===================+======+==================================================================================================================================+
+| “Manhattan”       | 189M | `Manhattan_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Manhattan_large_files.tar.gz>`__             |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “wrf-chem.r13172” | 141M | `wrf-chem.r13172_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/wrf-chem.r13172_large_files.tar.gz>`__ |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “Lanai”           | 158M | `Lanai_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Lanai_large_files.tar.gz>`__                     |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “Kodiak”          | 158M | `Kodiak_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Kodiak_large_files.tar.gz>`__                   |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “Jamaica”         | 32M  | `Jamaica_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Jamaica_large_files.tar.gz>`__                 |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “Hawaii”          | 32M  | `Hawaii_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Hawaii_large_files.tar.gz>`__                   |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
 
 Download the appropriate tar file and untar it into your DART repository. Ignore
 any warnings about ``tar: Ignoring unknown extended header keyword``.
@@ -187,156 +175,96 @@ over any bumps in the process.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Releases
+
+   guide/Manhattan_release
+   guide/Lanai_release
+   guide/history/Kodiak_release
+   guide/history/Jamaica_release
+   guide/history/Iceland_release
+   guide/history/hawaii_release
+   guide/history/Guam_release
+   guide/history/Fiji_release
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Models
+
+   models/9var/readme
+   models/am2/readme
+   models/bgrid_solo/readme
+   models/cam-fv/readme
+   models/CESM/readme
+   models/cice/readme
+   models/clm/readme
+   models/cm1/readme
+   models/coamps_nest/readme
+   models/coamps/readme
+   models/ECHAM/readme
+   models/FESOM/readme
+   models/gitm/readme
+   models/ikeda/readme
+   models/LMDZ/readme
+   models/lorenz_04/readme
+   models/lorenz_63/readme
+   models/lorenz_84/readme
+   models/lorenz_96/readme
+   models/lorenz_96_2scale/readme
+   models/forced_lorenz_96/readme
+   models/MITgcm_ocean/readme
+   models/mpas_atm/readme
+   models/mpas_ocn/readme
+   models/NCOMMAS/readme
+   models/noah/readme
+   models/PBL_1d/readme
+   models/pe2lyr/readme
+   models/POP/readme
+   models/ROMS/readme
+   models/rose/readme
+   models/simple_advection/readme
+   models/sqg/readme
+   models/tiegcm/readme
+   models/wrf_hydro/readme
+   models/wrf/readme
+
+.. toctree::
+   :maxdepth: 2
    :caption: Guide
 
-   guide/Lanai_diffs_from_Kodiak
-   guide/filter_async_modes
-   guide/DART_LAB/DART_LAB
-   guide/404
-   guide/distributed_state
-   guide/Manhattan_release
    guide/Manhattan_getting_started
    guide/rma
    guide/Manhattan_diffs_from_Lanai
    guide/forward_operator
-   guide/Lanai_release
    guide/boilerplate/boilerplate
    guide/boilerplate/template
    guide/vertical_conversion
-   guide/history/Iceland_release
-   guide/history/Fiji_release
-   guide/history/pre_j_release
-   guide/history/Kodiak_release
-   guide/history/PostI_diffs_from_I
-   guide/history/Jamaica_release
-   guide/history/Guam_release
-   guide/history/Jamaica_diffs_from_I
-   guide/history/I_diffs_from_workshop
-   guide/history/pre_hawaii_release
-   guide/history/hawaii_release
-   guide/history/pre_guam_release
-   guide/history/Post_Iceland_release
    guide/bitwise_considerations
    guide/mpi_intro
    guide/netcdf_inflation_files
    guide/state_structure
+   guide/filter_async_modes
+   guide/distributed_state
 
 .. toctree::
    :maxdepth: 2
-   :caption: Build templates
+   :caption: History
 
-   build_templates/mkmf
+   guide/Lanai_diffs_from_Kodiak   
+   guide/history/Jamaica_diffs_from_I
+   guide/history/pre_j_release
+   guide/history/PostI_diffs_from_I
+   guide/history/Post_Iceland_release
+   guide/history/I_diffs_from_workshop
+   guide/history/pre_hawaii_release
+   guide/history/pre_guam_release
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Root
-   
-   copyright
-   changelog
 
 .. toctree::
    :maxdepth: 2
    :caption: Theory
 
    theory/index
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Models
-
-   models/LMDZ/readme
-   models/ECHAM/readme
-   models/null_model/readme
-   models/coamps_nest/readme
-   models/POP/dart_pop_mod
-   models/POP/readme
-   models/pe2lyr/readme
-   models/lorenz_63/readme
-   models/9var/readme
-   models/gitm/netcdf_to_gitm_blocks
-   models/gitm/gitm_blocks_to_netcdf
-   models/gitm/readme
-   models/simple_advection/readme
-   models/lorenz_96/readme
-   models/ikeda/readme
-   models/coamps/readme
-   models/PBL_1d/readme
-   models/ROMS/readme
-   models/lorenz_84/readme
-   models/mpas_ocn/model_to_dart
-   models/mpas_ocn/readme
-   models/template/readme
-   models/cam-fv/readme
-   models/sqg/readme
-   models/rose/readme
-   models/mpas_atm/mpas_dart_obs_preprocess
-   models/mpas_atm/readme
-   models/forced_lorenz_96/readme
-   models/wrf/WRF_DART_utilities/replace_wrf_fields
-   models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
-   models/wrf/readme
-   models/utilities/default_readme
-   models/cam-old/cam_to_dart
-   models/cam-old/readme
-   models/cam-old/dart_to_cam
-   models/cice/readme
-   models/am2/readme
-   models/cm1/readme
-   models/lorenz_04/readme
-   models/CESM/doc/setup_guidelines
-   models/CESM/readme
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_radon
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_sulfur_hex
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_driver
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_carbon_aerosol
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_utilities
-   models/bgrid_solo/fms_src/atmos_shared/vert_advection/vert_advection
-   models/bgrid_solo/fms_src/shared/time_manager/time_manager
-   models/bgrid_solo/fms_src/shared/field_manager/field_manager
-   models/bgrid_solo/fms_src/shared/horiz_interp/horiz_interp
-   models/bgrid_solo/fms_src/shared/fms/fms
-   models/bgrid_solo/fms_src/shared/constants/constants
-   models/bgrid_solo/fms_src/shared/platform/platform
-   models/bgrid_solo/fms_src/shared/utilities/utilities
-   models/bgrid_solo/fms_src/shared/tracer_manager/tracer_manager
-   models/bgrid_solo/fms_src/shared/mpp/mpp_domains
-   models/bgrid_solo/fms_src/shared/mpp/mpp_io
-   models/bgrid_solo/fms_src/shared/mpp/mpp
-   models/bgrid_solo/fms_src/shared/fft/fft
-   models/bgrid_solo/fms_src/shared/sat_vapor_pres/sat_vapor_pres
-   models/bgrid_solo/fms_src/shared/topography/topography
-   models/bgrid_solo/fms_src/shared/topography/gaussian_topog
-   models/bgrid_solo/fms_src/shared/diag_manager/diag_manager
-   models/bgrid_solo/fms_src/shared/diag_manager/diag_table_tk
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_polar_filter
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_halo
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_horiz
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_cold_start
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_prog_var
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_diagnostics
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_integrals
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_change_grid
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_masks
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_vert
-   models/bgrid_solo/fms_src/atmos_bgrid/driver/solo/atmosphere
-   models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core
-   models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core_driver
-   models/bgrid_solo/fms_src/atmos_param/hs_forcing/hs_forcing
-   models/bgrid_solo/fms_src/atmos_solo/atmos_model
-   models/bgrid_solo/readme
-   models/noah/readme
-   models/FESOM/readme
-   models/NCOMMAS/dart_to_ncommas
-   models/NCOMMAS/readme
-   models/NCOMMAS/ncommas_to_dart
-   models/wrf_hydro/readme
-   models/tiegcm/readme
-   models/lorenz_96_2scale/readme
-   models/MITgcm_ocean/trans_pv_sv
-   models/MITgcm_ocean/trans_sv_pv
-   models/MITgcm_ocean/readme
-   models/MITgcm_ocean/create_ocean_obs
-   models/clm/readme
+   guide/DART_LAB/DART_LAB
 
 .. toctree::
    :maxdepth: 2
@@ -448,3 +376,78 @@ over any bumps in the process.
    observations/obs_converters/AIRS/AIRS
    observations/obs_converters/AVISO/AVISO
    
+.. toctree::
+   :maxdepth: 2
+   :caption: Misc
+
+   models/null_model/readme
+   models/NCOMMAS/dart_to_ncommas
+   models/NCOMMAS/ncommas_to_dart
+   models/POP/dart_pop_mod
+   models/mpas_ocn/model_to_dart
+   models/mpas_atm/mpas_dart_obs_preprocess
+   models/CESM/doc/setup_guidelines
+   models/template/readme
+   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_radon
+   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_sulfur_hex
+   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_driver
+   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_carbon_aerosol
+   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_utilities
+   models/bgrid_solo/fms_src/atmos_shared/vert_advection/vert_advection
+   models/bgrid_solo/fms_src/shared/time_manager/time_manager
+   models/bgrid_solo/fms_src/shared/field_manager/field_manager
+   models/bgrid_solo/fms_src/shared/horiz_interp/horiz_interp
+   models/bgrid_solo/fms_src/shared/fms/fms
+   models/bgrid_solo/fms_src/shared/constants/constants
+   models/bgrid_solo/fms_src/shared/platform/platform
+   models/bgrid_solo/fms_src/shared/utilities/utilities
+   models/bgrid_solo/fms_src/shared/tracer_manager/tracer_manager
+   models/bgrid_solo/fms_src/shared/mpp/mpp_domains
+   models/bgrid_solo/fms_src/shared/mpp/mpp_io
+   models/bgrid_solo/fms_src/shared/mpp/mpp
+   models/bgrid_solo/fms_src/shared/fft/fft
+   models/bgrid_solo/fms_src/shared/sat_vapor_pres/sat_vapor_pres
+   models/bgrid_solo/fms_src/shared/topography/topography
+   models/bgrid_solo/fms_src/shared/topography/gaussian_topog
+   models/bgrid_solo/fms_src/shared/diag_manager/diag_manager
+   models/bgrid_solo/fms_src/shared/diag_manager/diag_table_tk
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_polar_filter
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_halo
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_horiz
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_cold_start
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_prog_var
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_diagnostics
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_integrals
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_change_grid
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_masks
+   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_vert
+   models/bgrid_solo/fms_src/atmos_bgrid/driver/solo/atmosphere
+   models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core
+   models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core_driver
+   models/bgrid_solo/fms_src/atmos_param/hs_forcing/hs_forcing
+   models/bgrid_solo/fms_src/atmos_solo/atmos_model
+   models/wrf/WRF_DART_utilities/replace_wrf_fields
+   models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
+   models/gitm/netcdf_to_gitm_blocks
+   models/gitm/gitm_blocks_to_netcdf
+   models/utilities/default_readme
+   models/cam-old/cam_to_dart
+   models/cam-old/readme
+   models/cam-old/dart_to_cam
+   models/MITgcm_ocean/trans_pv_sv
+   models/MITgcm_ocean/create_ocean_obs
+   models/MITgcm_ocean/trans_sv_pv
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Build templates
+
+   build_templates/mkmf
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Root
+   
+   copyright
+   changelog
+   guide/404
