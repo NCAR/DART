@@ -443,9 +443,9 @@ Private components
 
 N/A
 
-.. |image1| image:: ../../../../docs/images/lorenz_63_rmse_evolution.png
+.. |image1| image:: ../../../../guide/images/lorenz_63_rmse_evolution.png
    :width: 300px
-   :target: ../../../../docs/images/lorenz_63_rmse_evolution.png
-.. |image2| image:: ../../../../docs/images/lorenz_63_rank_histogram.png
+   :target: ../../../../guide/images/lorenz_63_rmse_evolution.png
+.. |image2| image:: ../../../../guide/images/lorenz_63_rank_histogram.png
    :width: 300px
-   :target: ../../../../docs/images/lorenz_63_rank_histogram.png
+   :target: ../../../../guide/images/lorenz_63_rank_histogram.png

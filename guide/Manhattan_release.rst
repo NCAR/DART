@@ -20,7 +20,7 @@ algorithms in the Ensemble Kalman Filter. The method requires running multiple i
 ensemble of states. A forward operator appropriate for the type of observation being assimilated is applied to each of
 the states to generate the model's estimate of the observation. Comparing these estimates and their uncertainty to the
 observation and its uncertainty ultimately results in the adjustments to the model states. See the
-:doc:`../DART_LAB/DART_LAB` demos or read more :doc:`../tutorial/index`.
+:doc:`DART_LAB/DART_LAB` demos or read more :doc:`../theory/index`.
 
 DART diagnostic output can be written that contains the model state before and after the adjustment, along with the
 ensemble mean and standard deviation, and prior or posterior inflation values if inflation is enabled. There is also a

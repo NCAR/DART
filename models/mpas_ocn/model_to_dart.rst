@@ -10,7 +10,7 @@ Overview
   routines are currently designed to use the LAST timestep. If the Time dimension of length 3, we use the third
   timestep. A warning message is issued and indicates exactly the time being used.
 | ``input.nml``\ ``&mpas_vars_nml`` defines the list of MPAS variables used to build the DART state vector. This
-  namelist is more fully described in the :doc:`./model_mod` documentation. For example:
+  namelist is more fully described in the :doc:`./readme` documentation. For example:
 
 ::
 

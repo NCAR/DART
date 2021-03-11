@@ -10,7 +10,7 @@ Overview
 Tropical Cyclone data created by the 'Automated Tropical Cyclone Forecast (ATCF) System' can be converted into DART
 observations of the storm center location, minimum sea level pressure, and maximum wind speed. Several of the options
 can be customized at runtime by setting values in a Fortran namelist. See the namelist section below for more details.
-In the current release of DART only the :doc:`../../../models/wrf/model_mod` has forward operator code to generate
+In the current release of DART only the :doc:`../../../models/wrf/readme` has forward operator code to generate
 expected obs values for these vortex observations.
 
 `This webpage <http://www.ral.ucar.edu/hurricanes/realtime/index.php#about_atcf_data_files>`__ documents many things

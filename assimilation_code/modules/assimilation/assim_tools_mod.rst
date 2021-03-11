@@ -506,5 +506,5 @@ Private components
 
 N/A
 
-.. |Shapes of Cutoff curves| image:: ../../../docs/images/cutoff_fig.png
+.. |Shapes of Cutoff curves| image:: ../../../guide/images/cutoff_fig.png
    :width: 100.0%

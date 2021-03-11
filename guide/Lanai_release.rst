@@ -126,7 +126,7 @@ After the installation, you might want to peruse the following.
 
 You should *absolutely* run the DARTLAB interactive tutorial (if you have Matlab available) and look at the DARTLAB
 presentation slides `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Lanai/DART_LAB/DART_LAB.html>`__ or
-:doc:`../DART_LAB/DART_LAB` in the ``DART_LAB`` directory, and then take the tutorial in the ``DART/tutorial``
+:doc:`DART_LAB/DART_LAB` in the ``DART_LAB`` directory, and then take the tutorial in the ``DART/tutorial``
 directory.
 
 Requirements: an F90 compiler
@@ -1361,7 +1361,7 @@ New features
       multi-step runs to start with the 'read inflation values from a file' option set to .true. for all steps instead
       of having to change the namelist after the first cycle. See the documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/adaptive_inflate/fill_inflation_restart.html>`__ or
-      :doc:`../../assimilation_code/programs/fill_inflation_restart` for more details.
+      :doc:`../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart` for more details.
 
 -  New location module options
 
@@ -1375,7 +1375,7 @@ New features
       -  2D annulus coordinate system
 
       See the documentation `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/location/location_mod.html>`__ or
-      :doc:`../../location/location_mod` for more details.
+      :doc:`../assimilation_code/location/location_mod` for more details.
 
 -  Missing values in state
 
@@ -1426,13 +1426,12 @@ New models
       to configure a single or multiple component assimilation. See:
 
       -  `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/CESM/model_mod.html>`__ or
-         :doc:`../../models/CESM/readme` for multi-component assimilation,
-      -  `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/cam/model_mod.html>`__ or
-         :doc:`../../models/cam/readme` for CAM single component assimilation
+         :doc:`../models/CESM/readme` for multi-component assimilation,
+      -  `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/cam/model_mod.html>`__ 
       -  `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/POP/model_mod.html>`__ or
-         :doc:`../../models/POP/readme` for POP single component assimilation
+         :doc:`../models/POP/readme` for POP single component assimilation
       -  `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/clm/model_mod.html>`__ or
-         :doc:`../../models/clm/readme` for CLM single component assimilation
+         :doc:`../models/clm/readme` for CLM single component assimilation
 
       Documentation for the model:
 
@@ -1449,46 +1448,44 @@ New models
 
    -  DART interface documentation for the MPAS Atmosphere component:
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/mpas_atm/model_mod.html>`__ or
-      :doc:`../../models/mpas_atm/readme`.
+      :doc:`../models/mpas_atm/readme`.
    -  DART interface documentation for the MPAS Ocean component:
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/mpas_ocn/model_mod.html>`__ or
-      :doc:`../../models/mpas_ocn/readme`.
+      :doc:`../models/mpas_ocn/readme`.
    -  Documentation for the model: `MPAS <http://mpas-dev.github.io/>`__.
 
 -  NOAH Land Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/noah/model_mod.html>`__ or
-      :doc:`../../models/noah/readme`.
+      :doc:`../models/noah/readme`.
    -  Documentation for the model: `The Community NOAH Land Surface Model
       (LSM) <http://www.ral.ucar.edu/research/land/technology/lsm.php>`__.
 
 -  NAAPS Aerosol Model
 
    -  Dart interface documentation
-      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/NAAPS/model_mod.html>`__ or
-      :doc:`../../models/NAAPS/readme`.
+      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/NAAPS/model_mod.html>`__ 
    -  Documentation for the model: `NRL/Monterery Aerosol Model <http://www.nrlmry.navy.mil/aerosol_web>`__.
 
 -  GITM Global Ionosphere Thermosphere Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/GITM/model_mod.html>`__ or
-      :doc:`../../models/GITM/readme`.
+      :doc:`../models/gitm/readme`.
    -  Documentation for the model: `GITM Web Pages <http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM>`__.
 
 -  NOGAPS Global Atmosphere Model
 
    -  Dart interface documentation
-      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/NOGAPS/model_mod.html>`__ or
-      :doc:`../../models/NOGAPS/readme`.
+      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/NOGAPS/model_mod.html>`__ 
    -  Documentation for the model: `NOGAPS <http://www.srh.noaa.gov/ssd/nwpmodel/html/nogover.htm>`__.
 
 -  SQG Surface Quasi-Geostrophic Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/SQG/model_mod.html>`__ or
-      :doc:`../../models/SQG/readme`.
+      :doc:`../models/sqg/readme`.
    -  Documentation for the model: `Paper on SQG
       model <http://dx.doi.org/10.1175/1520-0469(2000)057%3C2951:RONGAN%3E2.0.CO%3B2>`__.
 
@@ -1528,16 +1525,16 @@ New observation types/forward operators
    ``obs_kind/obs_kind_mod.f90`` for a list of the generic kinds now available.
 -  New forward operator for total precipitable water. It loops over model levels to compute the accumulated value. See
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/obs_converters/tpw/tpw.html>`__ or
-   :doc:`../../observations/obs_converters/tpw/tpw`.
+   :doc:`../observations/obs_converters/tpw/tpw`.
 -  New forward operator for COSMOS ground moisture observations. See
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html>`__
-   or :doc:`../../observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs`.
+   or :doc:`../observations/obs_converters/COSMOS/COSMOS_to_obs`.
 -  New forward operator for MIDAS total electron count observations. See
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/MIDAS/MIDAS.html>`__ or
-   :doc:`../../observations/MIDAS/MIDAS`.
+   :doc:`../observations/obs_converters/MIDAS/MIDAS_to_obs`.
 -  Added example of how to set additional metadata in an observation to the *obs_def_1d_state_mod.f90* file.
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/forward_operators/observations/forward_operators/obs_def_1d_state_mod.html>`__
-   or :doc:`../../obs_def_observations/forward_operators/obs_def_1d_state_mod`.
+   or :doc:`../observations/forward_operators/obs_def_1d_state_mod`.
 
 New observation types/sources
 -----------------------------
@@ -1546,59 +1543,59 @@ New observation types/sources
    Added a converter for wind profiler data to the set of existing MADIS converters. More scripting support in the MADIS
    obs converters; more error checks added to the rawin converter. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/MADIS/MADIS.html>`__
-   or :doc:`../../observations/observations/obs_converters/MADIS/MADIS`.
+   or :doc:`../observations/obs_converters/MADIS/MADIS`.
 -  Ameriflux
    Added an obs_sequence converter for Ameriflux land observations of latent heat flux, sensible heat flux, net
    ecosystem production). Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/obs_converters/Ameriflux/level4_to_obs.html>`__
-   or :doc:`../../observations/obs_converters/Ameriflux/level4_to_obs`.
+   or :doc:`../observations/obs_converters/Ameriflux/level4_to_obs`.
 -  MODIS
    Added an obs_sequence converter for MODIS snow coverage measurements. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/obs_converters/snow/snow_to_obs.html>`__ or
-   :doc:`../../observations/obs_converters/snow/snow_to_obs`.
+   :doc:`../observations/obs_converters/snow/snow_to_obs`.
 -  COSMOS
    Added an obs_sequence converter for COSMOS ground moisture observations. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html>`__
-   or :doc:`../../observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs`.
+   or :doc:`../observations/obs_converters/COSMOS/COSMOS_to_obs`.
 -  MIDAS
    Added an obs_sequence converter for MIDAS observations of Total Electron Count. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/obs_converters/MIDAS/MIDAS_to_obs.html>`__ or
-   :doc:`../../observations/obs_converters/MIDAS/MIDAS_to_obs`.
+   :doc:`../observations/obs_converters/MIDAS/MIDAS_to_obs`.
 -  GPS
    Updated scripts for the GPS converter; added options to convert data from multiple satellites. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/gps/gps.html>`__ or
-   :doc:`../../observations/observations/obs_converters/gps/gps`.
+   :doc:`../observations/obs_converters/gps/gps`.
 -  wrf_dart_obs_preprocess
    Added processing for wind profiler observation to the wrf_dart_obs_preprocess program. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html>`__
-   or :doc:`../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess`.
+   or :doc:`../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess`.
 -  AIRS
    Fix BUG in AIRS converter - the humidity obs are accumulated across the layers and so the best location for them is
    the layer midpoint and not on the edges (levels) as the temperature obs are. Also fixed off-by-one error where the
    converter would make one more obs above the requested top level. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/AIRS/AIRS.html>`__
-   or :doc:`../../observations/observations/obs_converters/AIRS/AIRS`.
+   or :doc:`../observations/obs_converters/AIRS/AIRS`.
 -  GTS
    Made gts_to_dart converter create separate obs types for surface dewpoint vs obs aloft because they have different
    vertical coordinates. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/GTSPP/GTSPP.html>`__
-   or :doc:`../../observations/observations/obs_converters/GTSPP/GTSPP`.
+   or :doc:`../observations/obs_converters/GTSPP/GTSPP`.
 -  Tape Archive scripts
    Converted mss commands to hpss commands for a couple observation converter shell scripts (inc AIRS).
 -  Evenly distributed obs
    New matlab code to generate evenly spaced observations on the surface of a sphere (e.g. the globe). Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/even_sphere/README>`__ or `local
-   file <../../observations/even_sphere/README>`__.
+   file <../observations/even_sphere/README>`__.
 -  observation utilities
    Added obs_loop.f90 example file in obs_sequence directory; example template for how to construct special purpose
    obs_sequence tools. Documentation (source)
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/obs_sequence/obs_loop.f90>`__ or `local
-   file <../../obs_sequence/obs_loop.f90>`__.
+   file <../obs_sequence/obs_loop.f90>`__.
 -  PREPBUFR
    Change the default in the script for the prepbufr converter so it will swap bytes, since all machines except ibms
    will need this now. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
-   or :doc:`../../observations/observations/obs_converters/NCEP/prep_bufr/prep_bufr`.
+   or :doc:`../observations/obs_converters/NCEP/prep_bufr/prep_bufr`.
 
 New diagnostics and documentation
 ---------------------------------

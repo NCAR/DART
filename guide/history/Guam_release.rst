@@ -27,7 +27,7 @@ these programs.
 
 The Guam release has also been tested with more compilers in an attempt to determine non-portable code elements. It is
 my experience that the largest impediment to portable code is the reliance on the compiler to autopromote ``real``
-variables to one flavor or another. :doc:`.//DART/PrecisionNotes`. Using the F90 "kind" allows for much more flexible
+variables to one flavor or another. Using the F90 "kind" allows for much more flexible
 code, in that the use of interface procedures is possible only when two routines do not have identical sets of input
 arguments -- something that happens when the compiler autopromotes 32bit reals to 64bit reals, for example.
 

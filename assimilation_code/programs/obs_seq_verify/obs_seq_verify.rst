@@ -69,58 +69,55 @@ namelist.
 You can specify **either** ``obs_sequences`` **or** ``obs_sequence_list`` -- not both. One of them has to be an empty
 string ... i.e. *' '*.
 
-.. container::
 
-   +-------------------+------------------------------------+-----------------------------------------------------------+
-   | Item              | Type                               | Description                                               |
-   +===================+====================================+===========================================================+
-   | obs_sequences     | character(len=256), dimension(500) | Names of the observation sequence files - each of which   |
-   |                   |                                    | **MUST** have an extension that defines the start of the  |
-   |                   |                                    | forecast (the analysis time). The observation sequence    |
-   |                   |                                    | filenames must be something like                          |
-   |                   |                                    | ``obs_seq.forecast.YYYYMMDDHH`` . If ``obs_sequences`` is |
-   |                   |                                    | specified, ``obs_sequence_list`` must be empty.           |
-   +-------------------+------------------------------------+-----------------------------------------------------------+
-   | obs_sequence_list | character(len=256)                 | Name of an ascii text file which contains a list of one   |
-   |                   |                                    | or more observation sequence files, one per line. The     |
-   |                   |                                    | observation sequence filenames **MUST** have an extension |
-   |                   |                                    | that defines the start of the forecast (the analysis      |
-   |                   |                                    | time). The observation sequence filenames must be         |
-   |                   |                                    | something like ``obs_seq.forecast.YYYYMMDDHH``.           |
-   |                   |                                    | ``obs_sequence_list`` can be created by any method,       |
-   |                   |                                    | including sending the output of the 'ls' command to a     |
-   |                   |                                    | file, a text editor, or another program. If               |
-   |                   |                                    | ``obs_sequence_list`` is specified, ``obs_sequences``     |
-   |                   |                                    | must be empty.                                            |
-   +-------------------+------------------------------------+-----------------------------------------------------------+
-   | station_template  | character(len=256)                 | The name of the netCDF file created by                    |
-   |                   |                                    | :doc:`../../../assi                                       |
-   |                   |                                    | milation_code/programs/obs_seq_coverage/obs_seq_coverage` |
-   |                   |                                    | that contains the verification network description.       |
-   +-------------------+------------------------------------+-----------------------------------------------------------+
-   | netcdf_out        | character(len=256)                 | The base portion of the filename of the file that will    |
-   |                   |                                    | contain the forecast quantities. Since each observation   |
-   |                   |                                    | type of interest is processed with a separate run of      |
-   |                   |                                    | ``obs_seq_verify``, the observation type string is used   |
-   |                   |                                    | to create a unique output filename.                       |
-   +-------------------+------------------------------------+-----------------------------------------------------------+
-   | calendar          | character(len=129)                 | The type of the calendar used to interpret the dates.     |
-   +-------------------+------------------------------------+-----------------------------------------------------------+
-   | obtype_string     | character(len=32)                  | The observation type string that will be verified. The    |
-   |                   |                                    | character string must match one of the standard DART      |
-   |                   |                                    | observation types. This will be the name of the variable  |
-   |                   |                                    | in the netCDF file, and will also be used to make a       |
-   |                   |                                    | unique netCDF file name.                                  |
-   +-------------------+------------------------------------+-----------------------------------------------------------+
-   | print_every       | integer                            | Print run-time information for every ``"print_every"``    |
-   |                   |                                    | *n*-th observation.                                       |
-   +-------------------+------------------------------------+-----------------------------------------------------------+
-   | verbose           | logical                            | Print extra run-time information.                         |
-   +-------------------+------------------------------------+-----------------------------------------------------------+
-   | debug             | logical                            | Print a frightening amount of run-time information.       |
-   +-------------------+------------------------------------+-----------------------------------------------------------+
++-------------------+------------------------------------+------------------------------------------------------------------------------+
+| Item              | Type                               | Description                                                                  |
++===================+====================================+==============================================================================+
+| obs_sequences     | character(len=256), dimension(500) | Names of the observation sequence files - each of which                      |
+|                   |                                    | **MUST** have an extension that defines the start of the                     |
+|                   |                                    | forecast (the analysis time). The observation sequence                       |
+|                   |                                    | filenames must be something like                                             |
+|                   |                                    | ``obs_seq.forecast.YYYYMMDDHH`` . If ``obs_sequences`` is                    |
+|                   |                                    | specified, ``obs_sequence_list`` must be empty.                              |
++-------------------+------------------------------------+------------------------------------------------------------------------------+
+| obs_sequence_list | character(len=256)                 | Name of an ascii text file which contains a list of one                      |
+|                   |                                    | or more observation sequence files, one per line. The                        |
+|                   |                                    | observation sequence filenames **MUST** have an extension                    |
+|                   |                                    | that defines the start of the forecast (the analysis                         |
+|                   |                                    | time). The observation sequence filenames must be                            |
+|                   |                                    | something like ``obs_seq.forecast.YYYYMMDDHH``.                              |
+|                   |                                    | ``obs_sequence_list`` can be created by any method,                          |
+|                   |                                    | including sending the output of the 'ls' command to a                        |
+|                   |                                    | file, a text editor, or another program. If                                  |
+|                   |                                    | ``obs_sequence_list`` is specified, ``obs_sequences``                        |
+|                   |                                    | must be empty.                                                               |
++-------------------+------------------------------------+------------------------------------------------------------------------------+
+| station_template  | character(len=256)                 | The name of the netCDF file created by                                       |
+|                   |                                    | :doc:`../../../assimilation_code/programs/obs_seq_coverage/obs_seq_coverage` |
+|                   |                                    | that contains the verification network description.                          |
++-------------------+------------------------------------+------------------------------------------------------------------------------+
+| netcdf_out        | character(len=256)                 | The base portion of the filename of the file that will                       |
+|                   |                                    | contain the forecast quantities. Since each observation                      |
+|                   |                                    | type of interest is processed with a separate run of                         |
+|                   |                                    | ``obs_seq_verify``, the observation type string is used                      |
+|                   |                                    | to create a unique output filename.                                          |
++-------------------+------------------------------------+------------------------------------------------------------------------------+
+| calendar          | character(len=129)                 | The type of the calendar used to interpret the dates.                        |
++-------------------+------------------------------------+------------------------------------------------------------------------------+
+| obtype_string     | character(len=32)                  | The observation type string that will be verified. The                       |
+|                   |                                    | character string must match one of the standard DART                         |
+|                   |                                    | observation types. This will be the name of the variable                     |
+|                   |                                    | in the netCDF file, and will also be used to make a                          |
+|                   |                                    | unique netCDF file name.                                                     |
++-------------------+------------------------------------+------------------------------------------------------------------------------+
+| print_every       | integer                            | Print run-time information for every ``"print_every"``                       |
+|                   |                                    | *n*-th observation.                                                          |
++-------------------+------------------------------------+------------------------------------------------------------------------------+
+| verbose           | logical                            | Print extra run-time information.                                            |
++-------------------+------------------------------------+------------------------------------------------------------------------------+
+| debug             | logical                            | Print a frightening amount of run-time information.                          |
++-------------------+------------------------------------+------------------------------------------------------------------------------+
 
-| 
 
 Other modules used
 ------------------
@@ -406,9 +403,9 @@ References
    `The Centre for Australian Weather and Climate Research - Forecast Verification Issues, Methods and
    FAQ <http://www.cawcr.gov.au/projects/verification/>`__
 
-.. |verify schematic| image:: ../../../docs/images/obs_seq_verify_diagram.png
+.. |verify schematic| image:: ../../../guide/images/obs_seq_verify_diagram.png
    :width: 50.0%
-.. |verify variable| image:: ../../../docs/images/verify_variable_shape.png
+.. |verify variable| image:: ../../../guide/images/verify_variable_shape.png
    :width: 75.0%
-.. |Example 1| image:: ../../../docs/images/verification_48hrX6hr.png
+.. |Example 1| image:: ../../../guide/images/verification_48hrX6hr.png
    :width: 75.0%

@@ -413,7 +413,7 @@ New Models
    Add a new directory in the ``models`` subdirectory. Copy (recursively, e.g. ``cp -r``) the contents of the
    ``template`` directory and modify from there. Note that the ``model_mod.f90`` file in the template dir is appropriate
    for small models; for large geophysical models see the ``full_model_mod.f90`` file and also examine other model
-   directories for ideas. See additional documentation in the :doc:`../../../models/template/model_mod` documentation,
+   directories for ideas. See additional documentation in the :doc:`../../../models/template/readme` documentation,
    and the `DART web pages <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#adding_a_model>`__ on adding
    new models.
 New Observation Platforms

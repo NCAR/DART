@@ -12,8 +12,8 @@ Started Guide <https://dart.ucar.edu/pages/Getting_Started.html>`__.
 | |spaghetti_square| | |assim_anim| |
 +--------------------+--------------+
 
-.. |spaghetti_square| image:: ./guide/_static/DARTspaghettiSquare.gif
-.. |assim_anim| image:: ./guide/_static/science_nuggets/AssimAnim.gif
+.. |spaghetti_square| image:: ./guide/images/DARTspaghettiSquare.gif
+.. |assim_anim| image:: ./guide/images/science_nuggets/AssimAnim.gif
 
 
 A Matlab-based introduction is in the ``guide/DART_LAB`` directory.
@@ -190,7 +190,6 @@ over any bumps in the process.
    :caption: Guide
 
    guide/Lanai_diffs_from_Kodiak
-   guide/index
    guide/filter_async_modes
    guide/DART_LAB/DART_LAB
    guide/404
@@ -233,7 +232,6 @@ over any bumps in the process.
    :caption: Root
    
    copyright
-   readme
    changelog
 
 .. toctree::
@@ -258,11 +256,6 @@ over any bumps in the process.
    models/gitm/netcdf_to_gitm_blocks
    models/gitm/gitm_blocks_to_netcdf
    models/gitm/readme
-   models/gitm/testdata1/header
-   models/gitm/testdata1/b0004
-   models/gitm/testdata1/b0003
-   models/gitm/testdata1/b0002
-   models/gitm/testdata1/b0001
    models/simple_advection/readme
    models/lorenz_96/readme
    models/ikeda/readme

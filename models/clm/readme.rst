@@ -1024,6 +1024,6 @@ Private components
 
 N/A
 
-.. |CLM gridcell breakdown| image:: ../../docs/images/clm_landcover.jpg
+.. |CLM gridcell breakdown| image:: ../../guide/images/clm_landcover.jpg
    :height: 250px
    :target: http://www.cesm.ucar.edu/models/clm/surface.heterogeneity.html

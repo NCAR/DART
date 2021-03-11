@@ -7,7 +7,7 @@ Overview
 .. container::
 
    The script diag_table_tk is a GUI written in Perl/Tk for building diagnostics tables, which are used by the
-   :doc:`./models/bgrid_solo/fms_src/shared/diag_manager/diag_manager` for run-time specification of diagnostics.
+   :doc:`diag_manager` for run-time specification of diagnostics.
 
 .. container::
 

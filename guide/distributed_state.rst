@@ -76,4 +76,4 @@ mpi and non-mpi filter. This is taken care of automatically when you run quickbu
   no_cray_win_mod.f90 is the default since some versions of gfortran (4.9.0) do not support cray pointers. These
   different modules will go away when we swap to MPI 3.
 
-.. |image1| image:: ../Graphs/window.gv.svg
+.. |image1| image:: Graphs/window.gv.svg

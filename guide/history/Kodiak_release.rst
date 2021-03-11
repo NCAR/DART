@@ -125,7 +125,7 @@ After the installation, you might want to peruse the following.
 
 You should *absolutely* run the DART_LAB interactive tutorial (if you have Matlab available) and look at the DART_LAB
 presentation slides `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/DART_LAB/DART_LAB.html>`__ or
-:doc:`../../DART_LAB/DART_LAB` in the ``DART_LAB`` directory, and then take the tutorial in the ``DART/tutorial``
+:doc:`../DART_LAB/DART_LAB` in the ``DART_LAB`` directory, and then take the tutorial in the ``DART/tutorial``
 directory.
 
 Requirements: an F90 compiler
@@ -374,14 +374,14 @@ preprocessor. (The ``quickbuild.csh`` script will do this for you automatically.
 
    ::
 
-      $ \rm -f ../../../obs_def/obs_def_mod.f90
-      $ \rm -f ../../../obs_kind/obs_kind_mod.f90
+      $ \rm -f ../../obs_def/obs_def_mod.f90
+      $ \rm -f ../../obs_kind/obs_kind_mod.f90
       $ ./preprocess
-      $ ls -l ../../../obs_def/obs_def_mod.f90
-      $ ls -l ../../../obs_kind/obs_kind_mod.f90
+      $ ls -l ../../obs_def/obs_def_mod.f90
+      $ ls -l ../../obs_kind/obs_kind_mod.f90
 
-This created ``../../../obs_def/obs_def_mod.f90`` from ``../../../obs_kind/DEFAULT_obs_kind_mod.F90`` and several other
-modules. ``../../../obs_kind/obs_kind_mod.f90`` was created similarly. Now we can build the rest of the project.
+This created ``../../obs_def/obs_def_mod.f90`` from ``../../obs_kind/DEFAULT_obs_kind_mod.F90`` and several other
+modules. ``../../obs_kind/obs_kind_mod.f90`` was created similarly. Now we can build the rest of the project.
 
 A series of object files for each module compiled will also be left in the work directory, as some of these are
 undoubtedly needed by the build of the other DART components. You can proceed to create the other programs needed to
@@ -1176,10 +1176,10 @@ every time you start up Matlab.
       Posterior_Diag.nc  Prior_Diag.nc  True_State.nc
 
 
-      >>path('../../../matlab',path)
-      >>path('../../../diagnostics/matlab',path)
+      >>path('../../matlab',path)
+      >>path('../../diagnostics/matlab',path)
       >>which plot_ens_err_spread
-      ../../../matlab/plot_ens_err_spread.m
+      ../../matlab/plot_ens_err_spread.m
       >>help plot_ens_err_spread
 
         DART : Plots summary plots of the ensemble error and ensemble spread.
@@ -1260,7 +1260,7 @@ spread (via rank histogram bins, too), etc. What kind of relation between spread
 There are many more options for inflation, including spatially and temporarily varying values, with and without damping.
 See the discussion of all inflation-related namelist items
 `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/filter/filter.html#Inflation>`__ or `local
-file <../../../filter/filter.html#Inflation>`__.
+file <../../filter/filter.html#Inflation>`__.
 
 Synthetic observations
 ----------------------
@@ -1300,25 +1300,22 @@ Changes in the Kodiak release which are *not* backwards compatible with the Jama
    replaced by two items that allow the inflation values and the standard deviation to be read in separately. The new
    namelist items are ``inf_initial_from_file`` and ``inf_sd_initial_from_file``. See the filter namelist documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/filter/filter.html#Namelist>`__ or `local
-   file <../../../filter/filter.html#Namelist>`__ for more details.
+   file <../../filter/filter.html#Namelist>`__ for more details.
 
 #. The WRF/DART converter program used to be called ``dart_tf_wrf``, had no namelist, and you entered ``T`` or ``F`` to
    indicate which direction you were converting. Now we have ``dart_to_wrf`` and ``wrf_to_dart`` (documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/models/wrf/WRF_DART_utilities/dart_to_wrf.html>`__
-   or :doc:`../../../models/wrf/models/wrf/WRF_DART_utilities/dart_to_wrf`) each with a namelist to control various
-   options.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/models/wrf/WRF_DART_utilities/dart_to_wrf.html>`__)
+   each with a namelist to control various options.
 
 #. The CAM/DART converter programs used to be called ``trans_sv_pv`` and ``trans_pv_sv``, with no namelists, and with
    several specialized variants (e.g. ``trans_pv_sv_time0``). Now we have ``cam_to_dart`` (documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/cam/cam_to_dart.html>`__ or
-   :doc:`../../../models/cam/cam_to_dart`) and ``dart_to_cam`` (documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/cam/dart_to_cam.html>`__ or
-   :doc:`../../../models/cam/dart_to_cam`) each with a namelist to control various options.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/cam/cam_to_dart.html>`__ ) and ``dart_to_cam`` (documentation
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/cam/dart_to_cam.html>`__ ) each with a namelist to control various options.
 
 #. The ``obs_def_radar_mod.f90`` radar observation module was completely rewritten and the namelist has changed
    substantially. See the module documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/forward_operators/obs_def_radar_mod.html>`__
-   or :doc:`../../../observations/forward_operators/obs_def_radar_mod` for details. For example, the defaults for the
+   or :doc:`../../observations/forward_operators/obs_def_radar_mod` for details. For example, the defaults for the
    old code were:
 
    ::
@@ -1359,7 +1356,7 @@ Changes in the Kodiak release which are *not* backwards compatible with the Jama
    are put into the state vector. The order of the field names in the list sets the order of the fields in the state
    vector. See the WRF model_mod documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/model_mod.html#Namelist>`__ or `local
-   file <../../../models/wrf/model_mod.html#Namelist>`__ for details. Although they haven't been removed from the
+   file <../../models/wrf/model_mod.html#Namelist>`__ for details. Although they haven't been removed from the
    namelist, the following items have no effect on the code anymore:
 
    -  num_moist_vars
@@ -1374,7 +1371,7 @@ Changes in the Kodiak release which are *not* backwards compatible with the Jama
 #. The code in ``filter.f90`` was corrected to match the documentation for how the namelist item ``input_qc_threshold``
    is handled. (See filter namelist documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/filter/filter.html#Namelist>`__ or `local
-   file <../../../filter/filter.html#Namelist>`__.) In the Jamaica release, observations with incoming data QC values
+   file <../../filter/filter.html#Namelist>`__.) In the Jamaica release, observations with incoming data QC values
    greater than or equal to the namelist setting were discarded. Now only incoming data QC values greater than the
    ``input_qc_threshold`` are discarded (values equal to the threshold are now kept).
 
@@ -1382,7 +1379,7 @@ Changes in the Kodiak release which are *not* backwards compatible with the Jama
    documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__
    or
-   :doc:`../../../assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`.
+   :doc:`../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`.
 
 #. The prepbufr observation converter was located in the ``DART/ncep_obs`` directory in the last release. It has been
    moved to be with the other programs that convert various types of observation files into DART format. It is now
@@ -1391,7 +1388,7 @@ Changes in the Kodiak release which are *not* backwards compatible with the Jama
 #. The sampling error correction generator program in ``DART/system_simulation`` now has a namelist &full_error_nml. See
    the documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/system_simulation/system_simulation.html>`__
-   or :doc:`../../../assimilation_code/programs/system_simulation/system_simulation` for more details. Tables for 40
+   or :doc:`../../assimilation_code/programs/system_simulation/system_simulation` for more details. Tables for 40
    common ensemble sizes are pregenerated in the ``DART/system_simulation/final_full_precomputed_tables`` directory, and
    instructions for generating tables for other ensemble sizes are given.
 
@@ -1415,7 +1412,7 @@ Changes in the Kodiak release which are *not* backwards compatible with the Jama
 #. The GPS Radio Occultation observation forward operator code now requires a namelist, ``&obs_def_gps_nml``. See the
    GPS documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/forward_operators/obs_def_gps_mod.html#Namelist>`__
-   or `local file <../../../observations/forward_operators/obs_def_gps_mod.html#Namelist>`__ for details on what to add.
+   or `local file <../../observations/forward_operators/obs_def_gps_mod.html#Namelist>`__ for details on what to add.
    All ``input.nml`` files in the repository have had this added if they have the GPS module in their
    ``&preprocess_nml`` namelist.
 
@@ -1429,26 +1426,26 @@ New features
       that region is no longer observed the inflation is not recomputed. Inflation damping shrinks the inflation values
       and compensates for this. See the inflation documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/filter/filter.html#Inflation>`__ or `local
-      file <../../../filter/filter.html#Inflation>`__ for more details and paper references.
+      file <../../filter/filter.html#Inflation>`__ for more details and paper references.
 
 -  Sampling Error Correction
 
    -  Compensates for the numbers of ensembles being small compared to the number of degrees of freedom in the system.
       See the last item in this section of the documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/filter/filter.html#GettingStarted>`__ or `local
-      file <../../../filter/filter.html#GettingStarted>`__ for more details.
+      file <../../filter/filter.html#GettingStarted>`__ for more details.
 
 -  Adaptive Localization and Localization Diagnostics
 
    -  See a discussion of localization-related issues
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assim_tools/assim_tools_mod.html#Localization>`__
-      or `local file <../../../assim_tools/assim_tools_mod.html#Localization>`__.
+      or `local file <../../assim_tools/assim_tools_mod.html#Localization>`__.
 
 -  Scale height vertical localization option in 3d models
 
    -  See a discussion of specifying vertical localization in terms of scale height
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/location/threed_sphere/location_mod.html#Namelist>`__
-      or `local file <../../../location/threed_sphere/location_mod.html#Namelist>`__. See the `Wikipedia
+      or `local file <../../location/threed_sphere/location_mod.html#Namelist>`__. See the `Wikipedia
       page <http://en.wikipedia.org/wiki/Scale_height>`__ for a discussion of how scale height is defined. Note that
       there is no support in the diagnostic Matlab routines for observations using scale height as the vertical
       coordinate.
@@ -1456,26 +1453,25 @@ New features
 -  CAM supports FV code, PBS scripting
 
    -  See details on the features of the CAM/DART system
-      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/cam/model_mod.html>`__ or
-      :doc:`../../../models/cam/readme`.
+      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/cam/model_mod.html>`__ .
 
 -  Boxcar Kernel Filter Option
 
    -  See how to select this filter option in the namelist
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assim_tools/assim_tools_mod.html#FilterTypes>`__
-      or `local file <../../../assim_tools/assim_tools_mod.html#FilterTypes>`__.
+      or `local file <../../assim_tools/assim_tools_mod.html#FilterTypes>`__.
 
 -  Option for "undefined vertical location" for obs using the 3d sphere locations
 
    -  See how to specify this option when creating observations
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/location/threed_sphere/location_mod.html>`__ or
-      :doc:`../../../location/threed_sphere/location_mod`.
+      :doc:`../../assimilation_code/location/threed_sphere/location_mod`.
 
 -  Schedule module for repeated time intervals
 
    -  See documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/modules/utilities/schedule_mod.html>`__
-      or :doc:`../../../assimilation_code/modules/utilities/schedule_mod`.
+      or :doc:`../../assimilation_code/modules/utilities/schedule_mod`.
 
 -  Support for 2 different Mars calendars in time manager
 
@@ -1488,14 +1484,13 @@ New features
 
    -  See the "Get Expected Obs From Def" section of the obs_def documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/forward_operators/observations/forward_operators/obs_def_mod.html>`__
-      or :doc:`../../../observations/forward_operators/observations/forward_operators/obs_def_mod` for details on how to
-      use these values. This change is fully backwards-compatible with existing forward operator code.
+      for details on how to use these values. This change is fully backwards-compatible with existing forward operator code.
 
 -  Option to output all echo of namelist values to a separate log file
 
    -  See the utilities module documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/modules/utilities/utilities_mod.html#Namelist>`__
-      or `local file <../../../assimilation_code/modules/utilities/utilities_mod.html#Namelist>`__ for how to select
+      or `local file <../../assimilation_code/modules/utilities/utilities_mod.html#Namelist>`__ for how to select
       where the contents of all namelists are output.
 
 -  Large file support for netCDF
@@ -1507,31 +1502,31 @@ New features
 
    -  See the Localization section of the assim_tools documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assim_tools/assim_tools_mod.html#Localization>`__
-      or `local file <../../../assim_tools/assim_tools_mod.html#Localization>`__ for details.
+      or `local file <../../assim_tools/assim_tools_mod.html#Localization>`__ for details.
 
 -  Option to localize with different distances based on observation type
 
    -  See the Localization section of the assim_tools documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assim_tools/assim_tools_mod.html#Localization>`__
-      or `local file <../../../assim_tools/assim_tools_mod.html#Localization>`__ for details.
+      or `local file <../../assim_tools/assim_tools_mod.html#Localization>`__ for details.
 
 -  The error handler can take up to 3 lines of text so you can give more informative error messages on exit
 
    -  See the utilities module documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/modules/utilities/utilities_mod.html#Interface>`__
-      or `local file <../../../assimilation_code/modules/utilities/utilities_mod.html#Interface>`__ for details.
+      or `local file <../../assimilation_code/modules/utilities/utilities_mod.html#Interface>`__ for details.
 
 -  Option to output ensemble mean in restart file format when filter exits
 
    -  See the filter program namelist documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/filter/filter.html#Namelist>`__ or `local
-      file <../../../filter/filter.html#Namelist>`__ for details.
+      file <../../filter/filter.html#Namelist>`__ for details.
 
 -  The start of a suite of forecast verification and evaluation tools
 
    -  See the verification tool documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/obs_sequence/assimilation_code/programs/obs_seq_verify/obs_seq_verify.html>`__
-      or :doc:`../../../obs_sequence/assimilation_code/programs/obs_seq_verify/obs_seq_verify` for details.
+      or :doc:`../../assimilation_code/programs/obs_seq_verify/obs_seq_verify` for details.
 
 -  Performance improvement in the internal transposes for very large state vectors. all_vars_to_all_copies() now has a
    single receiver and multiple senders, which is much faster than the converse.
@@ -1554,7 +1549,7 @@ New models
 
    -  DART interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/POP/model_mod.html>`__ or
-      :doc:`../../../models/POP/readme`. Documentation for the model itself `in
+      :doc:`../../models/POP/readme`. Documentation for the model itself `in
       CESM <http://www.cesm.ucar.edu/models/ccsm2.0.1/pop/>`__ and `stand-alone version from Los
       Alamos <http://climate.lanl.gov/Models/POP/>`__.
 
@@ -1562,14 +1557,14 @@ New models
 
    -  DART interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/NCOMMAS/model_mod.html>`__ or
-      :doc:`../../../models/NCOMMAS/readme`. Documentation for the model itself from NSSL, Norman, OK. is at
+      :doc:`../../models/NCOMMAS/readme`. Documentation for the model itself from NSSL, Norman, OK. is at
       `NCOMMAS <http://code.google.com/p/enkf-nssl-commas>`__.
 
 -  COAMPS Atmosphere Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/coamps_next/model_mod.html>`__ or
-      :doc:`../../../models/coamps_nest/readme`. Documentation for the model itself is at
+      :doc:`../../models/coamps_nest/readme`. Documentation for the model itself is at
       `COAMPS <http://www.nrlmry.navy.mil/coamps-web/web/home>`__. The original version of the COAMPS interface code and
       scripts was contributed by Tim Whitcomb, NRL, Monterey. An updated version was contributed by Alex Reinecke, NRL,
       Monterey.
@@ -1591,21 +1586,21 @@ New models
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/AM2/model_mod.html>`__ or
-      :doc:`../../../models/AM2/readme`. The GFDL atmosphere model documentation is at
+      :doc:`../../models/am2/readme`. The GFDL atmosphere model documentation is at
       `AM2 <http://data1.gfdl.noaa.gov/~arl/pubrel/m/am2/doc/>`__.
 
 -  MIT Global Ocean Model
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/MITgcm_ocean/model_mod.html>`__ or
-      :doc:`../../../models/MITgcm_ocean/readme`. The `ocean
+      :doc:`../../models/MITgcm_ocean/readme`. The `ocean
       component <http://paoc2001.mit.edu/cmi/development/ocean.htm>`__ of the MIT global model suite.
 
 -  Simple Advection Model
 
    -  Dart interface documentation
-      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/simple_avection/model_mod.html>`__ or
-      :doc:`../../../models/simple_avection/readme`. A simple model of advecting tracers such as CO.
+      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/simple_advection/model_mod.html>`__ or
+      :doc:`../../models/simple_advection/readme`. A simple model of advecting tracers such as CO.
 
 -  Global/Planet WRF
 
@@ -1615,7 +1610,7 @@ New models
 
    -  Dart interface documentation
       `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/TIEgcm/model_mod.html>`__ or
-      :doc:`../../../models/TIEgcm/readme`. Documentation for the thermosphere and ionosphere model from the NCAR HAO
+      :doc:`../../models/tiegcm/readme`. Documentation for the thermosphere and ionosphere model from the NCAR HAO
       (High Altitude Observatory) Division is at `TIEgcm <http://cism.hao.ucar.edu/models_tiegcm.html>`__.
 
 The ``DART/models/template`` directory contains sample files for adding a new model. See `this
@@ -1630,9 +1625,8 @@ Changed models
    -  The WRF fields in the DART state vector are namelist settable, with the order of the names in the namelist
       controlling the order in the state vector. No assumptions are made about number of moist variables; all WRF fields
       must be listed explicitly. The conversion tools dart_to_wrf and wrf_to_dart (Documented here
-      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/models/wrf/WRF_DART_utilities/dart_to_wrf.html>`__
-      or :doc:`../../../models/wrf/models/wrf/WRF_DART_utilities/dart_to_wrf`) use this same namelist, so it is simpler
-      to avoid mismatches between the DART restart files and what the WRF model_mod is expecting.
+      `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/models/wrf/WRF_DART_utilities/dart_to_wrf.html>`__ )
+      use this same namelist, so it is simpler to avoid mismatches between the DART restart files and what the WRF model_mod is expecting.
    -  Support for the single column version of WRF has been incorporated into the standard WRF model_mod.
    -  advance_model.csh script reworked by Josh Hacker, Ryan Torn, and Glen Romine to add function and simplify the
       script. It now supports a restart-file-per-member, simplifies the time computations by using the advance_time
@@ -1678,68 +1672,59 @@ New observation types/sources
 -  MADIS
    Converters for METAR, Mesonet, Rawinsondes, ACARS, Marine, and Satellite Wind observations. Optionally output
    moisture obs as specific humidity, relative humidity, and/or dewpoint obs. Documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/MADIS/MADIS.html>`__
-   or :doc:`../../../observations/observations/obs_converters/MADIS/MADIS`.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/MADIS/MADIS.html>`__ .
 -  SSEC
    Convert Satellite Wind obs to DART format. Documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/SSEC/SSEC.html>`__
-   or :doc:`../../../observations/observations/obs_converters/SSEC/SSEC`.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/SSEC/SSEC.html>`__ .
 -  AIRS
    Satellite observed Temperature and Moisture obs. Documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/AIRS/AIRS.html>`__
-   or :doc:`../../../observations/observations/obs_converters/AIRS/AIRS`.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/AIRS/AIRS.html>`__ .
 -  QUIKscat
    Satellite observed surface winds. Documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/quikscat/quikscat.html>`__ or
-   :doc:`../../../observations/quikscat/quikscat`.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/quikscat/quikscat.html>`__ .
 -  GTSPP
    Ocean obs. Documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/GTSPP/GTSPP.html>`__
-   or :doc:`../../../observations/observations/obs_converters/GTSPP/GTSPP`.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/GTSPP/GTSPP.html>`__ .
 -  WOD
    World Ocean Database (currently 2009) Temperature and Salinity obs. Documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/WOD/WOD.html>`__
-   or :doc:`../../../observations/observations/obs_converters/WOD/WOD`.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/observations/obs_converters/WOD/WOD.html>`__ .
 -  CODAR
    High frequency radar obs of ocean surface velocity. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/obs_def/obs_def_ocean_mod.f90>`__ or `local
-   file <../../../obs_def/obs_def_ocean_mod.f90>`__.
+   file <../../obs_def/obs_def_ocean_mod.f90>`__.
 -  VAR
    Little-r and radar obs. Documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/obs_converters/var/var.html>`__ or
-   :doc:`../../../observations/obs_converters/var/var`.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/obs_converters/var/var.html>`__ .
 -  Text
    Reads text data files, a good template for converting obs stored in files without some kind of data library format
    (netCDF, HDF, etc). Documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/obs_converters/observations/obs_converters/text/text_to_obs.html>`__
-   or :doc:`../../../observations/obs_converters/observations/obs_converters/text/text_to_obs`.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/obs_converters/observations/obs_converters/text/text_to_obs.html>`__ .
 -  Altimeter
    Altimeter observation type available from a variety of sources. Forward operator code
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/obs_def/obs_def_altimeter_mod.f90>`__ or `local
-   file <../../../obs_def/obs_def_altimeter_mod.f90>`__.
+   file <../../obs_def/obs_def_altimeter_mod.f90>`__.
 -  Dewpoint
    Dewpoint observation type available from a variety of sources. Forward operator code
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/obs_def/obs_def_dewpoint_mod.f90>`__ or `local
-   file <../../../obs_def/obs_def_dewpoint_mod.f90>`__.
+   file <../../obs_def/obs_def_dewpoint_mod.f90>`__.
 -  Dropsonde
    Dropsonde observation type available to allow these observations to be distinguished from standard Radiosondes. Type
    defined in code
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/obs_def/obs_def_reanalysis_bufr_mod.f90>`__ or
-   `local file <../../../obs_def/obs_def_reanalysis_bufr_mod.f90>`__.
+   `local file <../../obs_def/obs_def_reanalysis_bufr_mod.f90>`__.
 -  TES Radiances
    TES satellite radiance observations of Mars. Forward operator code
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/obs_def/obs_def_TES_nadir_mod.f90>`__ or `local
-   file <../../../obs_def/obs_def_TES_nadir_mod.f90>`__.
+   file <../../obs_def/obs_def_TES_nadir_mod.f90>`__.
 -  Hurricane/Tropical Storm Vortex Position
    Storm location, minimum central pressure, and maximum windspeed. Currently only implemented in the WRF model_mod
    interface code. Code `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/model_mod.html>`__
-   or :doc:`../../../models/wrf/readme`.
+   or :doc:`../../models/wrf/readme`.
 
 All the observation converters have moved to their own top level directory ``observations``. See the overview
 documentation
-`Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/obs_converters/observations.html>`__ or
-:doc:`../../../observations/obs_converters/observations` for general information on creating observation files for use
-in the ensemble assimilation system.
+`Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/obs_converters/observations.html>`__ for
+general information on creating observation files for use in the ensemble assimilation system.
 
 The GPS forward operators aren't new with this release, but the code has been revised several times. In particular,
 there is a new namelist to set the maximum number of GPS obs supported in a single execution of filter or the obs diag
@@ -1747,9 +1732,9 @@ program. Generally the default value is large enough for anything less than a co
 month or longer of diagnostics for a time series you can easily exceed the compiled in maximum. See the GPS
 documentation for creating GPS observation files
 `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/GPS/gps.html>`__ or
-:doc:`../../../observations/GPS/gps`, and the forward operator documentation
+:doc:`../../observations/obs_converters/gps/gps`, and the forward operator documentation
 `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/forward_operators/obs_def_gps_mod.html>`__
-or :doc:`../../../observations/forward_operators/obs_def_gps_mod`. There are also heavily revised scripts which download
+or :doc:`../../observations/forward_operators/obs_def_gps_mod`. There are also heavily revised scripts which download
 and convert multiple days of GPS obs at a time, with options to delete downloaded files automatically. The scripts are
 able to download GPS RO observations from any of about seven available satellites (in addition to the COSMIC array) from
 the CDAAC web site.
@@ -1757,7 +1742,7 @@ the CDAAC web site.
 There are two modules to set observation error values when creating new observation sequence files. One contains the
 default values used by NCEP, and the other contains the values used by ECMWF. See the README file
 `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/observations/obs_error/README>`__ or `local
-file <../../../observations/obs_error/README>`__ for more details.
+file <../../observations/obs_error/README>`__ for more details.
 
 The radar module was completely overhauled and the namelist changed substantially. See the item above in the
 non-backward compatible changes section for details.
@@ -1782,32 +1767,30 @@ But there's always more to add. **Please let us know where we are lacking.**
 Other new stuff:
 
 -  There is now a main ``index.html`` file
-   (`Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/index.html>`__ or :doc:`../../../docs/index`) in
+   (`Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/index.html>`__) in
    the DART distribution to quickly guide you to any of the documentation for the routines or modules.
 -  DART_LAB
    Interactive Matlab GUI experiments and Powerpoint presentation of fundamental assimilation concepts
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/docs/DART_LAB/DART_LAB.html>`__ or
-   :doc:`../../../docs/DART_LAB/DART_LAB`.
+   :doc:`../DART_LAB/DART_LAB`.
 -  link_obs.m
    Allows one to view multiple observation attributes simultaneously and dynamically select subsets of observations in
    one view and have those same obs highlighted in the other views. Commonly called 'data brushing'. Matlab source
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/link_obs.m>`__ or `local
-   file <../../../diagnostics/matlab/link_obs.m>`__.
+   file <../../diagnostics/matlab/link_obs.m>`__.
 -  obs_diag
    The ``obs_diag`` program has undergone extensive revision. User-defined levels for all coordinate
    (height/pressure/etc), arbitrary number of regions, the inclusion of separate copies for all DART QC values, can
    creates rank histograms from the ``obs_seq.final`` files, if possible, and more. See the documentation
-   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/obs_diag/oned/obs_diag.html%20assimilation_code/programs/obs_diag/threed_cartesian/obs_diag.html%20assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__
-   or
-   :doc:`../../../assimilation_code/programs/obs_diag/oned/obs_diag.html%20assimilation_code/programs/obs_diag/threed_cartesian/obs_diag.html%20assimilation_code/programs/obs_diag/threed_sphere/obs_diag`.
+   `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/obs_diag/oned/obs_diag.html%20assimilation_code/programs/obs_diag/threed_cartesian/obs_diag.html%20assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__ .
 -  Comparing two (or more) experiments
    Matlab scripts to compare **multiple** (not just two) ``obs_diag_output.nc`` files on the same graphic to allow for
    easy examination of experiment attributes (rmse, biases, etc.). Some new utilities for subsetting observation
    sequence files in order to make fair comparisons are described below. Matlab source for ``two_experiments_profile.m``
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/two_experiments_profile.m>`__
-   or `local file <../../../diagnostics/matlab/two_experiments_profile.m>`__ and ``two_experiments_evolution.m``
+   or `local file <../../diagnostics/matlab/two_experiments_profile.m>`__ and ``two_experiments_evolution.m``
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/two_experiments_evolution.m>`__
-   or `local file <../../../diagnostics/matlab/two_experiments_evolution.m>`__.
+   or `local file <../../diagnostics/matlab/two_experiments_evolution.m>`__.
 -  netCDF and Matlab
    The DART Matlab routines no longer depend on 4 third-party toolboxes; we are down to just
    `mexnc <http://mexcdf.sourceforge.net/downloads/>`__ and `snctools <http://mexcdf.sourceforge.net/downloads/>`__.
@@ -1821,7 +1804,7 @@ Other new stuff:
    WRF is now fully supported for all the Matlab interfaces that are used in the demos. This predominantly includes the
    state-space tools in the ``DART/matlab`` directory like ``plot_total_err``. The ``map_wrf.m`` script
    (`Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/matlab/map_wrf.m>`__ or `local
-   file <../../../models/wrf/matlab/map_wrf.m>`__) can finally plot WRF fields now that the required metadata is part of
+   file <../../models/wrf/matlab/map_wrf.m>`__) can finally plot WRF fields now that the required metadata is part of
    the ``Posterior_Diag.nc``, ``Prior_Diag.nc``, and (not required) ``True_State.nc`` files. It's a small step to
    augment this routine to make publication-quality figures of WRF fields.
 -  Regression tests for WRF
@@ -1829,14 +1812,14 @@ Other new stuff:
    test case. The data files are on a web server because they are too large to add to the repository. The README files
    in each directory gives instructions on how to download them.
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/regression>`__ or `local
-   file <../../../models/wrf/regression>`__.
+   file <../../models/wrf/regression>`__.
 -  Other New Model Support
    The ``simple_advection`` and ``MITgcm_ocean`` are fully supported in the Matlab diagnostics.
 -  Better execution traces
    Optional detailed execution trace messages from filter by setting the namelist variable ``trace_execution``. See the
    details of the filter namelist
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/filter/filter.html>`__ or
-   :doc:`../../../filter/filter` .
+   :doc:`../../assimilation_code/programs/filter/filter` .
 -  ``input.nml`` contents saved
    The contents of the ``input.nml`` namelist file are now preserved in the ``True_State.nc``, ``Prior_Diag.nc``, and
    ``Posterior_Diag.nc`` diagnostic files in variable ``inputnml``.
@@ -1845,7 +1828,7 @@ Other new stuff:
 -  Better error checking in ``open_file()``
    Better error checking in the ``utilities_mod`` subroutine ``open_file()``. See documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/modules/utilities/utilities_mod.html#open_file>`__
-   or `local file <../../../assimilation_code/modules/utilities/utilities_mod.html#open_file>`__.
+   or `local file <../../assimilation_code/modules/utilities/utilities_mod.html#open_file>`__.
 -  In the DART code tree, individual html pages have links back to the index page, the namelists are moved up to be more
    prominent, and have other minor formatting improvements.
 -  The following Matlab observation-space diagnostic routines have been **removed**:
@@ -1867,81 +1850,81 @@ Other new stuff:
    |                             | observation density and number of observations assimilated. Matlab source             |
    |                             | `Website <https://s                                                                   |
    |                             | vn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/plot_profile.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/plot_profile.m>`__.                       |
+   |                             | or `local file <../../diagnostics/matlab/plot_profile.m>`__.                          |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | plot_rmse_xxx_profile.m     | plots the vertical profile of the rmse and any quantity for any copy with an overlay  |
    |                             | of the observation density and number of observations assimilated. Matlab source      |
    |                             | `Website <https://svn-dares-                                                          |
    |                             | dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/plot_rmse_xxx_profile.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/plot_rmse_xxx_profile.m>`__.              |
+   |                             | or `local file <../../diagnostics/matlab/plot_rmse_xxx_profile.m>`__.                 |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | plot_bias_xxx_profile.m     | plots the vertical profile of the bias and any quantity for any copy with an overlay  |
    |                             | of the observation density and number of observations assimilated. Matlab source      |
    |                             | `Website <https://svn-dares-                                                          |
    |                             | dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/plot_bias_xxx_profile.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/plot_bias_xxx_profile.m>`__.              |
+   |                             | or `local file <../../diagnostics/matlab/plot_bias_xxx_profile.m>`__.                 |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | two_experiments_profile.m   | plots the vertical profile of any quantity for any copy for multiple experiments with |
    |                             | an overlay of the observation density and number of observations assimilated in each  |
    |                             | experiment. Matlab source                                                             |
    |                             | `Website <https://svn-dares-da                                                        |
    |                             | rt.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/two_experiments_profile.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/two_experiments_profile.m>`__.            |
+   |                             | or `local file <../../diagnostics/matlab/two_experiments_profile.m>`__.               |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | plot_evolution.m            | plots the temporal evolution of any quantity for any copy with an overlay of the      |
    |                             | observation density and number of observations assimilated. Matlab source             |
    |                             | `Website <https://svn                                                                 |
    |                             | -dares-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/plot_evolution.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/plot_evolution.m>`__.                     |
+   |                             | or `local file <../../diagnostics/matlab/plot_evolution.m>`__.                        |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | plot_rmse_xxx_evolution.m   | plots the temporal evolution of the rmse and any quantity for any copy with an        |
    |                             | overlay of the observation density and number of observations assimilated. Matlab     |
    |                             | source                                                                                |
    |                             | `Website <https://svn-dares-da                                                        |
    |                             | rt.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/plot_rmse_xxx_evolution.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/plot_rmse_xxx_evolution.m>`__.            |
+   |                             | or `local file <../../diagnostics/matlab/plot_rmse_xxx_evolution.m>`__.               |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | two_experiments_evolution.m | plots the temporal evolution for any quantity for any copy for multiple experiements  |
    |                             | with an overlay of the observation density and number of observations assimilated in  |
    |                             | each experiment. Matlab source                                                        |
    |                             | `Website <https://svn-dares-dart                                                      |
    |                             | .cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/two_experiments_evolution.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/two_experiments_evolution.m>`__.          |
+   |                             | or `local file <../../diagnostics/matlab/two_experiments_evolution.m>`__.             |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | read_obs_netcdf.m           | reads a netCDF format observation sequence file. Simply need a single copy and a      |
    |                             | single qc - no actual observation required. Matlab source                             |
    |                             | `Website <https://svn-                                                                |
    |                             | dares-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/read_obs_netcdf.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/read_obs_netcdf.m>`__.                    |
+   |                             | or `local file <../../diagnostics/matlab/read_obs_netcdf.m>`__.                       |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | plot_obs_netcdf.m           | reads and plots the locations and values of any copy of the observations in a DART    |
    |                             | netCDF format observation sequence file. Matlab source                                |
    |                             | `Website <https://svn-                                                                |
    |                             | dares-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/plot_obs_netcdf.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/plot_obs_netcdf.m>`__.                    |
+   |                             | or `local file <../../diagnostics/matlab/plot_obs_netcdf.m>`__.                       |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | plot_obs_netcdf_diffs.m     | reads and plots the locations and the difference of any two copies of the             |
    |                             | observations in a DART netCDF format observation sequence file. Matlab source         |
    |                             | `Website <https://svn-dares-                                                          |
    |                             | dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/plot_obs_netcdf_diffs.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/plot_obs_netcdf_diffs.m>`__.              |
+   |                             | or `local file <../../diagnostics/matlab/plot_obs_netcdf_diffs.m>`__.                 |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | plot_wind_vectors.m         | reads and plots the wind vectors of the observations in a DART netCDF format          |
    |                             | observation sequence file (created by ``obs_seq_to_netcdf``, documentation            |
    |                             | `Website <https://svn-dares-dart.cgd.ucar.edu/DART/re                                 |
    |                             | leases/Kodiak/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__ |
-   |                             | or :doc:`../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf`)    |
+   |                             | or :doc:`../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf`)       |
    |                             | Matlab source                                                                         |
    |                             | `Website <https://svn-da                                                              |
    |                             | res-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/plot_wind_vectors.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/plot_wind_vectors.m>`__.                  |
+   |                             | or `local file <../../diagnostics/matlab/plot_wind_vectors.m>`__.                     |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | link_obs.m                  | data brushing tool. Explores many facets of the observations simultaneously. Multiple |
    |                             | plots allow groups of observations to be selected in one view and the corresponding   |
    |                             | observations are indicated in all the other views. Matlab source                      |
    |                             | `Website <https                                                                       |
    |                             | ://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/link_obs.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/link_obs.m>`__.                           |
+   |                             | or `local file <../../diagnostics/matlab/link_obs.m>`__.                              |
    +-----------------------------+---------------------------------------------------------------------------------------+
    | plot_rank_histogram.m       | If the individual ensemble member observation values were output from ``filter``      |
    |                             | (selected by namelist option in the filter namelist) into the ``obs_seq.final`` file, |
@@ -1954,7 +1937,7 @@ Other new stuff:
    |                             | web page. Matlab source                                                               |
    |                             | `Website <https://svn-dare                                                            |
    |                             | s-dart.cgd.ucar.edu/DART/releases/Kodiak/diagnostics/matlab/plot_rank_histogram.m>`__ |
-   |                             | or `local file <../../../diagnostics/matlab/plot_rank_histogram.m>`__.                |
+   |                             | or `local file <../../diagnostics/matlab/plot_rank_histogram.m>`__.                   |
    +-----------------------------+---------------------------------------------------------------------------------------+
 
 New utilities
@@ -1966,38 +1949,38 @@ New utilities
    non-local operator. But all core observation data such as location, time, type, QC, observation value and error will
    be converted. This allows for variety of new diagnostics. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__
-   or :doc:`../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf`.
+   or :doc:`../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf`.
 -  obs_seq_coverage
    A step towards determining what locations and quantities are repeatedly observed during a specific time interval.
    This may be used to determine a network of observations that will be used to verify forecasts. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/obs_sequence/assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html>`__
-   or :doc:`../../../obs_sequence/assimilation_code/programs/obs_seq_coverage/obs_seq_coverage`.
+   or :doc:`../../assimilation_code/programs/obs_seq_coverage/obs_seq_coverage`.
 -  obs_selection
    An optional companion routine to ``obs_seq_coverage``. This thins the observation sequence files to contain just the
    desired set of observations to use in the forecast step. This speeds performance by avoiding the cost of evaluating
    observations that will not be used in the verification. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/obs_sequence/assimilation_code/programs/obs_selection/obs_selection.html>`__
-   or :doc:`../../../obs_sequence/assimilation_code/programs/obs_selection/obs_selection`.
+   or :doc:`../../assimilation_code/programs/obs_selection/obs_selection`.
 -  obs_seq_verify
    is a companion routine to ``obs_seq_coverage``. This creates a netCDF file with variables that should make the
    calculation of skill scores, etc. easier. It creates variables of the form:
    ``METAR_U_10_METER_WIND(analysisT, stations, levels, copy, nmembers, forecast_lead)``
    Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/obs_sequence/assimilation_code/programs/obs_seq_verify/obs_seq_verify.html>`__
-   or :doc:`../../../obs_sequence/assimilation_code/programs/obs_seq_verify/obs_seq_verify`.
+   or :doc:`../../assimilation_code/programs/obs_seq_verify/obs_seq_verify`.
 -  Select common observation subsets
    A tool that operates on two (will be extended to more) ``obs_seq.final`` files which were output from two different
    runs of filter. Assumes the same ``obs_seq.out`` input file was used in both cases. Outputs two new
    ``obs_seq.final.new`` files containing only the observations which were assimilated in both experiments. It allows
    for a fair comparision with the diagnostic tools. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/obs_common_subset/obs_common_subset.html>`__
-   or :doc:`../../../assimilation_code/programs/obs_common_subset/obs_common_subset`.
+   or :doc:`../../assimilation_code/programs/obs_common_subset/obs_common_subset`.
 -  Restart File tool
    Generic tool that works on any DART restart file. It is compiled with the corresponding model_mod which tells it how
    large the state vector is. It can alter the timestamps on the data, add or remove model advance times, split a single
    file into 1-per-ensemble or the reverse, and can be used to convert between ASCII and binary formats. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/restart_file_tool/restart_file_tool.html>`__
-   or :doc:`../../../assimilation_code/programs/restart_file_tool/restart_file_tool`.
+   or :doc:`../../assimilation_code/programs/restart_file_tool/restart_file_tool`.
 -  Advance Time tool
    A generic utility for adding intervals to a Gregorian calendar date and printing out the new date, including handling
    leap year and month and year rollovers. An earlier version of this program was taken from the WRF distribution. This
@@ -2006,7 +1989,7 @@ New utilities
    compiler-independent manner, and outputs in various formats depending on what is requested via additional flags.
    Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/advance_time/advance_time.html>`__
-   or :doc:`../../../assimilation_code/programs/advance_time/advance_time`.
+   or :doc:`../../assimilation_code/programs/advance_time/advance_time`.
 -  WRF observation preprocessor tool
    Observation preprocessor which is WRF aware, contributed by Ryan Torn. Will select obs only within the WRF domain,
    will superob, will select only particular obs types based on the namelist. Source is in the
@@ -2018,10 +2001,10 @@ New utilities
    ``get_state_meta_data()`` routine from the corresponding model interface code in ``model_mod.f90`` (see subroutine
    documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/model_mod.html#get_state_meta_data>`__ or
-   `local file <../../../models/model_mod.html#get_state_meta_data>`__) and compute the metric based only on those
+   `local file <../../models/model_mod.html#get_state_meta_data>`__) and compute the metric based only on those
    values. Tool documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/closest_member_tool/closest_member_tool.html>`__
-   or :doc:`../../../assimilation_code/programs/closest_member_tool/closest_member_tool`.
+   or :doc:`../../assimilation_code/programs/closest_member_tool/closest_member_tool`.
 -  Fill Inflation restart file tool
    Simple tool that creates an inflation restart file with constant initial inflation and standard deviation values.
    Often the first step of a multi-step assimilation job differs in the namelist only for how the initial inflation
@@ -2029,19 +2012,19 @@ New utilities
    start from a restart file as all subsequent job steps do and allows the use of a single ``input.nml`` file.
    Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/adaptive_inflate/fill_inflation_restart.html>`__
-   or :doc:`../../../adaptive_inflate/fill_inflation_restart`.
+   or :doc:`../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart`.
 -  Replace WRF fields tool
    WRF-specific tool that copies netCDF variables from one file to another. The field must exist in the target file and
    the data will be overwritten by data from the source file. Field names to be copied can be specified directly in the
    namelist or can be listed in a separate file. Missing fields can be ignored or cause the program to stop with a fatal
    error depending on namelist settings. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/models/wrf/WRF_DART_utilities/replace_wrf_fields.html>`__
-   or :doc:`../../../models/wrf/WRF_DART_utilities/replace_wrf_fields`.
+   or :doc:`../../models/wrf/WRF_DART_utilities/replace_wrf_fields`.
 -  model_mod Verification/Check tool
    Tool to help when creating a new model interface file (usually named ``model_mod.f90``). Calls routines to help with
    debugging. Documentation
    `Website <https://svn-dares-dart.cgd.ucar.edu/DART/releases/Kodiak/assimilation_code/programs/model_mod_check/model_mod_check.html%20models/POP/model_mod_check.html>`__
-   or :doc:`../../../assimilation_code/programs/model_mod_check/model_mod_check.html%20models/POP/model_mod_check`.
+   or :doc:`../../assimilation_code/programs/model_mod_check/model_mod_check`.
 
 Minor items:
 

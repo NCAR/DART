@@ -67,7 +67,7 @@ Quickstart guide to running
    specified assimilation window. If the model needs to be advanced, it then
 #. creates a set of run-time directories, one for each task. A single task may be responsible for advancing more than
    one TIEGCM instance. If so, each instance is done serially, one after another. See the documentation for
-   :doc:`../../docs/html/filter_async_modes`.
+   :doc:`../../guide/filter_async_modes`.
 #. Copy the required information into that directory.
 #. Update the TIEGCM restart file with the most current DART-modified state and convey the desired forecast stopping
    time to TIEGCM via the unique ``tiegcm.nml`` for this ensemble member.
@@ -764,7 +764,7 @@ TIEGCM public routines
 .. container:: indent1
 
    This function is **only** used by
-   :doc:`../../assimilation_code/programs/model_mod_check/model_mod_check.html%20models/POP/model_mod_check` and can be
+   :doc:`../../assimilation_code/programs/model_mod_check/model_mod_check` and can be
    modified to suit your needs. ``test_interpolate()`` exercises ``model_interpolate()``, ``get_state_meta_data()``,
    ``static_init_model()`` and a host of supporting routines.
 

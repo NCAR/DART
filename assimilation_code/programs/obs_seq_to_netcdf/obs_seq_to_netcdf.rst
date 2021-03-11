@@ -681,11 +681,11 @@ Private components
 
 N/A
 
-.. |DART observation 3D scatterplot| image:: ../../../docs/images/plot_obs_netcdf_fig1.png
+.. |DART observation 3D scatterplot| image:: ../../../guide/images/plot_obs_netcdf_fig1.png
    :height: 300px
-   :target: ../../../docs/images/plot_obs_netcdf_fig1.png
-.. |DART 'bad' QC 3D scatterplot| image:: ../../../docs/images/plot_obs_netcdf_fig2.png
+   :target: ../../../guide/images/plot_obs_netcdf_fig1.png
+.. |DART 'bad' QC 3D scatterplot| image:: ../../../guide/images/plot_obs_netcdf_fig2.png
    :height: 300px
-   :target: ../../../docs/images/plot_obs_netcdf_fig2.png
-.. |DART assimilation schedule| image:: ../../../docs/images/schedule.png
+   :target: ../../../guide/images/plot_obs_netcdf_fig2.png
+.. |DART assimilation schedule| image:: ../../../guide/images/schedule.png
    :height: 200px

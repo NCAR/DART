@@ -14,7 +14,7 @@ the writing of data in netCDF format.
    `<TT>mpp_io</TT> <http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/shared/mpp/models/bgrid_solo/fms_src/shared/mpp/mpp_io.html>`__.
    A single group of calls to the <TT>diag_manager_mod</TT> interfaces provides data to disk at any number of sampling
    and/or averaging intervals specified at run-time. Run-time specification of diagnostics are input through the
-   diagnostics table, which is described in the :doc:`./models/bgrid_solo/fms_src/shared/diag_manager/diag_table_tk`
+   diagnostics table, which is described in the :doc:`diag_table_tk`
    documentation.
    <B>Features of <TT>diag_manager_mod</TT> include:</B> Simple, minimal API.
    Run-time choice of diagnostics.

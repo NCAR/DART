@@ -82,7 +82,7 @@ After the installation, you might want to peruse the following.
 -  And another one on synthetic observations.
 
 You should *absolutely* run the DARTLAB interactive tutorial (if you have Matlab available) and look at the DARTLAB
-presentation slides Website :doc:`../../docs/DART_LAB/DART_LAB` in the ``DART_LAB`` directory, and then take the
+presentation slides Website :doc:`DART_LAB/DART_LAB` in the ``DART_LAB`` directory, and then take the
 tutorial in the ``DART/tutorial`` directory.
 
 Requirements: an F90 compiler

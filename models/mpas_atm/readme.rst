@@ -625,6 +625,6 @@ References
 The Data Assimilation section in the MPAS documentation found at
 http://mpas-dev.github.io.
 
-.. |MPAS_grid_structure| image:: ../../docs/images/MPAS_grid_structure.png
+.. |MPAS_grid_structure| image:: ../../guide/images/MPAS_grid_structure.png
 
-.. |WindDA_options| image:: ../../docs/images/MPAS_WindDA_options.png
+.. |WindDA_options| image:: ../../guide/images/MPAS_WindDA_options.png

@@ -982,7 +982,7 @@ Changes to the perfect_model_obs_nml are :
 +------------------------------------------------------------------------------+
 
 Ancient history
-===============
+---------------
 
 To see previous history, use:
 

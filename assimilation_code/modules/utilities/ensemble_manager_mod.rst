@@ -1290,9 +1290,9 @@ Finds the of number nodes and how many tasks are on the last node, given the num
 
    N/A
 
-.. |communication pattern| image:: ../../../docs/images/comm_pattern96.png
+.. |communication pattern| image:: ../../../guide/images/comm_pattern96.png
    :width: 400px
-   :target: ../../../docs/images/comm_pattern96.png
-.. |communication pattern 2| image:: ../../../docs/images/comm_pattern512.png
+   :target: ../../../guide/images/comm_pattern96.png
+.. |communication pattern 2| image:: ../../../guide/images/comm_pattern512.png
    :width: 400px
-   :target: ../../../docs/images/comm_pattern512.png
+   :target: ../../../guide/images/comm_pattern512.png

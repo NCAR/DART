@@ -109,144 +109,140 @@ The allowable ranges for the region boundaries are: latitude [-90.,90], longitud
 You can specify **either** *obs_sequences* **or** *obs_sequence_list* -- not both. One of them has to be an empty string
 ... i.e. *''*.
 
-.. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | obs_sequences                         | character(len=256)                    | Name of the observation sequence      |
-   |                                       |                                       | file(s).                              |
-   |                                       |                                       | This may be a relative or absolute    |
-   |                                       |                                       | filename. If the filename contains a  |
-   |                                       |                                       | '/', the filename is considered to be |
-   |                                       |                                       | comprised of everything to the right, |
-   |                                       |                                       | and a directory structure to the      |
-   |                                       |                                       | left. The directory structure is then |
-   |                                       |                                       | queried to see if it can be           |
-   |                                       |                                       | incremented to handle a sequence of   |
-   |                                       |                                       | observation files. The default        |
-   |                                       |                                       | behavior of ``obs_seq_coverage`` is   |
-   |                                       |                                       | to look for additional files to       |
-   |                                       |                                       | include until the files are exhausted |
-   |                                       |                                       | or an ``obs_seq.final`` file is found |
-   |                                       |                                       | that contains observations beyond the |
-   |                                       |                                       | timeframe of interest.                |
-   |                                       |                                       | e.g. 'obsdir_001/obs_seq.final' will  |
-   |                                       |                                       | cause ``obs_seq_coverage`` to look    |
-   |                                       |                                       | for 'obsdir_002/obs_seq.final', and   |
-   |                                       |                                       | so on.                                |
-   |                                       |                                       | If this is set, *obs_sequence_list*   |
-   |                                       |                                       | must be set to ' '.                   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_sequence_list                     | character(len=256)                    | Name of an ascii text file which      |
-   |                                       |                                       | contains a list of one or more        |
-   |                                       |                                       | observation sequence files, one per   |
-   |                                       |                                       | line. If this is specified,           |
-   |                                       |                                       | *obs_sequences* must be set to ' '.   |
-   |                                       |                                       | Can be created by any method,         |
-   |                                       |                                       | including sending the output of the   |
-   |                                       |                                       | 'ls' command to a file, a text        |
-   |                                       |                                       | editor, or another program.           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_of_interest                       | character(len=32), dimension(:)       | These are the observation types that  |
-   |                                       |                                       | will be verified. It is an array of   |
-   |                                       |                                       | character strings that must match the |
-   |                                       |                                       | standard DART observation types.      |
-   |                                       |                                       | Simply add as many or as few          |
-   |                                       |                                       | observation types as you need. Could  |
-   |                                       |                                       | be 'METAR_U_10_METER_WIND',           |
-   |                                       |                                       | 'METAR_V_10_METER_WIND',..., for      |
-   |                                       |                                       | example.                              |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | textfile_out                          | character(len=256)                    | The name of the file that will        |
-   |                                       |                                       | contain the observation definitions   |
-   |                                       |                                       | of the verfication observations. Only |
-   |                                       |                                       | the metadata from the observations    |
-   |                                       |                                       | (location, time, obs_type) are        |
-   |                                       |                                       | preserved in this file. They are in   |
-   |                                       |                                       | no particular order.                  |
-   |                                       |                                       | :doc:`../../../assimilation_code/     |
-   |                                       |                                       | programs/obs_selection/obs_selection` |
-   |                                       |                                       | will use this file as a 'mask' to     |
-   |                                       |                                       | extract the real observations from    |
-   |                                       |                                       | the candidate observation sequence    |
-   |                                       |                                       | files.                                |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | netcdf_out                            | character(len=256)                    | The name of the file that will        |
-   |                                       |                                       | contain the observation definitions   |
-   |                                       |                                       | of the unique locations that match    |
-   |                                       |                                       | **any** of the verification times.    |
-   |                                       |                                       | This file is used in conjunction with |
-   |                                       |                                       | :doc:`../../../assimilation_code/pr   |
-   |                                       |                                       | ograms/obs_seq_verify/obs_seq_verify` |
-   |                                       |                                       | to reorder the ``obs_seq.forecast``   |
-   |                                       |                                       | into a structure that will facilitate |
-   |                                       |                                       | calculating the statistics and scores |
-   |                                       |                                       | of the forecasts.                     |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | calendar                              | character(len=129)                    | The type of the calendar used to      |
-   |                                       |                                       | interpret the dates.                  |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | first_analysis                        | integer, dimension(6)                 | The start time of the first forecast. |
-   |                                       |                                       | Also known as the analysis time of    |
-   |                                       |                                       | the first forecast. The six integers  |
-   |                                       |                                       | are: year, month, day, hour, hour,    |
-   |                                       |                                       | minute, second -- in that order.      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | last_analysis                         | integer, dimension(6)                 | The start time of the last forecast.  |
-   |                                       |                                       | The six integers are: year, month,    |
-   |                                       |                                       | day, hour, hour, minute, second -- in |
-   |                                       |                                       | that order. This needs to be a        |
-   |                                       |                                       | perfect multiple of the               |
-   |                                       |                                       | *verification_interval_seconds* from  |
-   |                                       |                                       | the start of *first_analysis*.        |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | forecast_length_days                  | integer                               | both values are used to determine the |
-   | forecast_length_seconds               |                                       | **total** length of any single        |
-   |                                       |                                       | forecast.                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | verification_interval_seconds         | integer                               | The number of seconds between each    |
-   |                                       |                                       | verification.                         |
-   |                                       |                                       |                                       |
-   |                                       |                                       | -  1 h == 3600s                       |
-   |                                       |                                       | -  2 h == 7120s                       |
-   |                                       |                                       | -  3 h == 10800s                      |
-   |                                       |                                       | -  6 h == 21600s                      |
-   |                                       |                                       | -  12 h == 43200s                     |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | temporal_coverage_percent             | real                                  | While it is possible to specify that  |
-   |                                       |                                       | you do not need an observation at     |
-   |                                       |                                       | **every** time, it makes the most     |
-   |                                       |                                       | sense. This is not actually           |
-   |                                       |                                       | **required** to be 100% but 100%      |
-   |                                       |                                       | results in the most robust            |
-   |                                       |                                       | comparison.                           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lonlim1                               | real                                  | Westernmost longitude of desired      |
-   |                                       |                                       | region.                               |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lonlim2                               | real                                  | Easternmost longitude of desired      |
-   |                                       |                                       | region. *If this value is*\ **less    |
-   |                                       |                                       | than**\ *the westernmost value, it    |
-   |                                       |                                       | defines a region that spans the prime |
-   |                                       |                                       | meridian.* It is perfectly acceptable |
-   |                                       |                                       | to specify lonlim1 = 330 , lonlim2 =  |
-   |                                       |                                       | 50 to identify a region like          |
-   |                                       |                                       | "Africa".                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | latlim1                               | real                                  | Southernmost latitude of desired      |
-   |                                       |                                       | region.                               |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | latlim2                               | real                                  | Northernmost latitude of desired      |
-   |                                       |                                       | region.                               |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | verbose                               | logical                               | Print extra run-time information.     |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | debug                                 | logical                               | Enable debugging messages. May        |
-   |                                       |                                       | generate a lot of output.             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
 
-| 
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| Item                                  | Type                                  | Description                                                              |
++=======================================+=======================================+==========================================================================+
+| obs_sequences                         | character(len=256)                    | Name of the observation sequence                                         |
+|                                       |                                       | file(s).                                                                 |
+|                                       |                                       | This may be a relative or absolute                                       |
+|                                       |                                       | filename. If the filename contains a                                     |
+|                                       |                                       | '/', the filename is considered to be                                    |
+|                                       |                                       | comprised of everything to the right,                                    |
+|                                       |                                       | and a directory structure to the                                         |
+|                                       |                                       | left. The directory structure is then                                    |
+|                                       |                                       | queried to see if it can be                                              |
+|                                       |                                       | incremented to handle a sequence of                                      |
+|                                       |                                       | observation files. The default                                           |
+|                                       |                                       | behavior of ``obs_seq_coverage`` is                                      |
+|                                       |                                       | to look for additional files to                                          |
+|                                       |                                       | include until the files are exhausted                                    |
+|                                       |                                       | or an ``obs_seq.final`` file is found                                    |
+|                                       |                                       | that contains observations beyond the                                    |
+|                                       |                                       | timeframe of interest.                                                   |
+|                                       |                                       | e.g. 'obsdir_001/obs_seq.final' will                                     |
+|                                       |                                       | cause ``obs_seq_coverage`` to look                                       |
+|                                       |                                       | for 'obsdir_002/obs_seq.final', and                                      |
+|                                       |                                       | so on.                                                                   |
+|                                       |                                       | If this is set, *obs_sequence_list*                                      |
+|                                       |                                       | must be set to ' '.                                                      |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| obs_sequence_list                     | character(len=256)                    | Name of an ascii text file which                                         |
+|                                       |                                       | contains a list of one or more                                           |
+|                                       |                                       | observation sequence files, one per                                      |
+|                                       |                                       | line. If this is specified,                                              |
+|                                       |                                       | *obs_sequences* must be set to ' '.                                      |
+|                                       |                                       | Can be created by any method,                                            |
+|                                       |                                       | including sending the output of the                                      |
+|                                       |                                       | 'ls' command to a file, a text                                           |
+|                                       |                                       | editor, or another program.                                              |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| obs_of_interest                       | character(len=32), dimension(:)       | These are the observation types that                                     |
+|                                       |                                       | will be verified. It is an array of                                      |
+|                                       |                                       | character strings that must match the                                    |
+|                                       |                                       | standard DART observation types.                                         |
+|                                       |                                       | Simply add as many or as few                                             |
+|                                       |                                       | observation types as you need. Could                                     |
+|                                       |                                       | be 'METAR_U_10_METER_WIND',                                              |
+|                                       |                                       | 'METAR_V_10_METER_WIND',..., for                                         |
+|                                       |                                       | example.                                                                 |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| textfile_out                          | character(len=256)                    | The name of the file that will                                           |
+|                                       |                                       | contain the observation definitions                                      |
+|                                       |                                       | of the verfication observations. Only                                    |
+|                                       |                                       | the metadata from the observations                                       |
+|                                       |                                       | (location, time, obs_type) are                                           |
+|                                       |                                       | preserved in this file. They are in                                      |
+|                                       |                                       | no particular order.                                                     |
+|                                       |                                       | :doc:`../../../assimilation_code/programs/obs_selection/obs_selection`   |
+|                                       |                                       | will use this file as a 'mask' to                                        |
+|                                       |                                       | extract the real observations from                                       |
+|                                       |                                       | the candidate observation sequence                                       |
+|                                       |                                       | files.                                                                   |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| netcdf_out                            | character(len=256)                    | The name of the file that will                                           |
+|                                       |                                       | contain the observation definitions                                      |
+|                                       |                                       | of the unique locations that match                                       |
+|                                       |                                       | **any** of the verification times.                                       |
+|                                       |                                       | This file is used in conjunction with                                    |
+|                                       |                                       | :doc:`../../../assimilation_code/programs/obs_seq_verify/obs_seq_verify` |
+|                                       |                                       | to reorder the ``obs_seq.forecast``                                      |
+|                                       |                                       | into a structure that will facilitate                                    |
+|                                       |                                       | calculating the statistics and scores                                    |
+|                                       |                                       | of the forecasts.                                                        |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| calendar                              | character(len=129)                    | The type of the calendar used to                                         |
+|                                       |                                       | interpret the dates.                                                     |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| first_analysis                        | integer, dimension(6)                 | The start time of the first forecast.                                    |
+|                                       |                                       | Also known as the analysis time of                                       |
+|                                       |                                       | the first forecast. The six integers                                     |
+|                                       |                                       | are: year, month, day, hour, hour,                                       |
+|                                       |                                       | minute, second -- in that order.                                         |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| last_analysis                         | integer, dimension(6)                 | The start time of the last forecast.                                     |
+|                                       |                                       | The six integers are: year, month,                                       |
+|                                       |                                       | day, hour, hour, minute, second -- in                                    |
+|                                       |                                       | that order. This needs to be a                                           |
+|                                       |                                       | perfect multiple of the                                                  |
+|                                       |                                       | *verification_interval_seconds* from                                     |
+|                                       |                                       | the start of *first_analysis*.                                           |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| forecast_length_days                  | integer                               | both values are used to determine the                                    |
+| forecast_length_seconds               |                                       | **total** length of any single                                           |
+|                                       |                                       | forecast.                                                                |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| verification_interval_seconds         | integer                               | The number of seconds between each                                       |
+|                                       |                                       | verification.                                                            |
+|                                       |                                       |                                                                          |
+|                                       |                                       | -  1 h == 3600s                                                          |
+|                                       |                                       | -  2 h == 7120s                                                          |
+|                                       |                                       | -  3 h == 10800s                                                         |
+|                                       |                                       | -  6 h == 21600s                                                         |
+|                                       |                                       | -  12 h == 43200s                                                        |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| temporal_coverage_percent             | real                                  | While it is possible to specify that                                     |
+|                                       |                                       | you do not need an observation at                                        |
+|                                       |                                       | **every** time, it makes the most                                        |
+|                                       |                                       | sense. This is not actually                                              |
+|                                       |                                       | **required** to be 100% but 100%                                         |
+|                                       |                                       | results in the most robust                                               |
+|                                       |                                       | comparison.                                                              |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| lonlim1                               | real                                  | Westernmost longitude of desired                                         |
+|                                       |                                       | region.                                                                  |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| lonlim2                               | real                                  | Easternmost longitude of desired                                         |
+|                                       |                                       | region. *If this value is*\ **less                                       |
+|                                       |                                       | than**\ *the westernmost value, it                                       |
+|                                       |                                       | defines a region that spans the prime                                    |
+|                                       |                                       | meridian.* It is perfectly acceptable                                    |
+|                                       |                                       | to specify lonlim1 = 330 , lonlim2 =                                     |
+|                                       |                                       | 50 to identify a region like                                             |
+|                                       |                                       | "Africa".                                                                |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| latlim1                               | real                                  | Southernmost latitude of desired                                         |
+|                                       |                                       | region.                                                                  |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| latlim2                               | real                                  | Northernmost latitude of desired                                         |
+|                                       |                                       | region.                                                                  |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| verbose                               | logical                               | Print extra run-time information.                                        |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
+| debug                                 | logical                               | Enable debugging messages. May                                           |
+|                                       |                                       | generate a lot of output.                                                |
++---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
 
 For example:
 
@@ -571,13 +567,13 @@ References
 -  none - but this seems like a good place to start: `The Centre for Australian Weather and Climate Research - Forecast
    Verification Issues, Methods and FAQ <http://www.cawcr.gov.au/projects/verification/>`__
 
-.. |forecast evaluation schematic| image:: ../../../docs/images/forecasting_diagram.png
+.. |forecast evaluation schematic| image:: ../../../guide/images/forecasting_diagram.png
    :width: 90.0%
-.. |verification icon| image:: ../../../docs/images/verification_time_icon.png
+.. |verification icon| image:: ../../../guide/images/verification_time_icon.png
    :width: 3.0%
-.. |simple forecast| image:: ../../../docs/images/simple_forecast.png
+.. |simple forecast| image:: ../../../guide/images/simple_forecast.png
    :width: 60.0%
-.. |coverage timetable| image:: ../../../docs/images/obs_seq_coverage_diagram.png
+.. |coverage timetable| image:: ../../../guide/images/obs_seq_coverage_diagram.png
    :width: 100.0%
-.. |Example 1| image:: ../../../docs/images/verification_48hrX6hr.png
+.. |Example 1| image:: ../../../guide/images/verification_48hrX6hr.png
    :width: 75.0%

@@ -32,10 +32,10 @@ Options for parallelism both in DART and in the model advances
   files. IC are 'initial condition' files, UD are 'updated' files.
 | |image7|
 
-.. |image1| image:: ../images/async0.gif
-.. |image2| image:: ../images/async2a.gif
-.. |image3| image:: ../images/async2_v1.gif
-.. |image4| image:: ../images/async2_v2.gif
-.. |image5| image:: ../images/async2_wfiles.gif
-.. |image6| image:: ../images/async4.gif
-.. |image7| image:: ../images/async4_wfiles.gif
+.. |image1| image:: images/async0.gif
+.. |image2| image:: images/async2a.gif
+.. |image3| image:: images/async2_v1.gif
+.. |image4| image:: images/async2_v2.gif
+.. |image5| image:: images/async2_wfiles.gif
+.. |image6| image:: images/async4.gif
+.. |image7| image:: images/async4_wfiles.gif

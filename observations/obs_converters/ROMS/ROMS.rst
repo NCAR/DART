@@ -149,9 +149,9 @@ The origin of the input observation files used by ROMS are completely unknown to
 Programs
 --------
 
--  :doc:`../convert_roms_obs`
+-  ``convert_roms_obs``
 -  :doc:`../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf`
--  :doc:`../../../assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`
+-  :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`
 -  :doc:`../../../assimilation_code/programs/preprocess/preprocess`
 -  :doc:`../../../assimilation_code/programs/advance_time/advance_time`
 

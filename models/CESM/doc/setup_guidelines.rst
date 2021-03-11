@@ -196,7 +196,7 @@ Output directory
 ----------------
 
 CESM's short term archiver (st_archive) is controlled by its ``env_archive.xml``. DART's setup scripts modify that file
-to archive DART output along with CESM's. (See the :doc:`../../../docs/html/rma` for a description of DART's output).
+to archive DART output along with CESM's. (See the :doc:`../../../guide/rma` for a description of DART's output).
 DART's output is archived in ``$arch_dir/dart/{hist,rest,logs,...}``, where arch_dir is defined in
 ``setup_{hybrid,advanced}``, ``hist`` contains all of the state space and observation space output, and ``rest``
 contains the inflation restart files.
@@ -230,13 +230,13 @@ There are, no doubt, things missing from these lists, so don't struggle too long
 
 Useful terms found in this web page.
 
-.. |CAM+DART flowchart| image:: ../../../docs/images/science_nuggets/CAM_only.png
+.. |CAM+DART flowchart| image:: ../../../guide/images/science_nuggets/CAM_only.png
    :width: 300px
    :height: 400px
-.. |POP+DART flowchart| image:: ../../../docs/images/science_nuggets/POP_only.png
+.. |POP+DART flowchart| image:: ../../../guide/images/science_nuggets/POP_only.png
    :width: 550px
    :height: 400px
-.. |Multi-component flowchart| image:: ../../../docs/images/science_nuggets/multi-component.png
+.. |Multi-component flowchart| image:: ../../../guide/images/science_nuggets/multi-component.png
    :height: 400px
-.. |Cross-component flowchart| image:: ../../../docs/images/science_nuggets/cross-component.png
+.. |Cross-component flowchart| image:: ../../../guide/images/science_nuggets/cross-component.png
    :height: 400px

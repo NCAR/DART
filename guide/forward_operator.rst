@@ -46,4 +46,4 @@ Model_mod routines no longer get an array containing the state. The state is acc
 where x is the state at index i. ``state_handle`` is passed from above. During model_interpolate ``get_state`` returns
 an array. Durring ``get_state`` returns a single value (the mean state).
 
-.. |image1| image:: ../Graphs/forward_operator.gv.svg
+.. |image1| image:: Graphs/forward_operator.gv.svg

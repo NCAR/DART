@@ -537,13 +537,13 @@ Please note:
    variables are NOT having a rank histogram variable preserved in the ``obs_diag_output.nc`` file - IFF it is possible
    to calculate a rank histogram in the first place.
 
-+----------+----------------------------------------------------------------------------------------------------------+
-| |image9| | `Instructions for viewing the rank histogram with                                                        |
-|          | ncview <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#ncview_histogram>`__.               |
-+----------+----------------------------------------------------------------------------------------------------------+
-| |        | `Instructions for viewing the rank histogram with                                                        |
-| image10| | Matlab <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#mat_obs>`__.                        |
-+----------+----------------------------------------------------------------------------------------------------------+
++-----------+----------------------------------------------------------------------------------------------------------+
+| |image9|  | `Instructions for viewing the rank histogram with                                                        |
+|           | ncview <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#ncview_histogram>`__.               |
++-----------+----------------------------------------------------------------------------------------------------------+
+| |image10| | `Instructions for viewing the rank histogram with                                                        |
+|           | Matlab <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#mat_obs>`__.                        |
++-----------+----------------------------------------------------------------------------------------------------------+
 
 "trusted" observation types
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -746,48 +746,48 @@ Private components
 
 N/A
 
-.. |image1| image:: ../../../../docs/images/obs_diag_evolution_example.png
+.. |image1| image:: ../../../../guide/images/obs_diag_evolution_example.png
    :width: 300px
-   :target: ../../../../docs/images/obs_diag_evolution_example.png
-.. |image2| image:: ../../../../docs/images/obs_diag_profile_example.png
+   :target: ../../../../guide/images/obs_diag_evolution_example.png
+.. |image2| image:: ../../../../guide/images/obs_diag_profile_example.png
    :width: 300px
-   :target: ../../../../docs/images/obs_diag_profile_example.png
-.. |image3| image:: ../../../../docs/images/RankHistogram_ncview.png
+   :target: ../../../../guide/images/obs_diag_profile_example.png
+.. |image3| image:: ../../../../guide/images/RankHistogram_ncview.png
    :width: 200px
-   :target: ../../../../docs/images/RankHistogram_ncview.png
-.. |image4| image:: ../../../../docs/images/RankHistogram_matlab.png
+   :target: ../../../../guide/images/RankHistogram_ncview.png
+.. |image4| image:: ../../../../guide/images/RankHistogram_matlab.png
    :width: 200px
-   :target: ../../../../docs/images/RankHistogram_matlab.png
-.. |image5| image:: ../../../../docs/images/RankHistogram_ncview.png
+   :target: ../../../../guide/images/RankHistogram_matlab.png
+.. |image5| image:: ../../../../guide/images/RankHistogram_ncview.png
    :width: 200px
-   :target: ../../../../docs/images/RankHistogram_ncview.png
-.. |image6| image:: ../../../../docs/images/RankHistogram_matlab.png
+   :target: ../../../../guide/images/RankHistogram_ncview.png
+.. |image6| image:: ../../../../guide/images/RankHistogram_matlab.png
    :width: 200px
-   :target: ../../../../docs/images/RankHistogram_matlab.png
-.. |image7| image:: ../../../../docs/images/RankHistogram_ncview.png
+   :target: ../../../../guide/images/RankHistogram_matlab.png
+.. |image7| image:: ../../../../guide/images/RankHistogram_ncview.png
    :width: 200px
-   :target: ../../../../docs/images/RankHistogram_ncview.png
-.. |image8| image:: ../../../../docs/images/RankHistogram_matlab.png
+   :target: ../../../../guide/images/RankHistogram_ncview.png
+.. |image8| image:: ../../../../guide/images/RankHistogram_matlab.png
    :width: 200px
-   :target: ../../../../docs/images/RankHistogram_matlab.png
-.. |image9| image:: ../../../../docs/images/RankHistogram_ncview.png
+   :target: ../../../../guide/images/RankHistogram_matlab.png
+.. |image9| image:: ../../../../guide/images/RankHistogram_ncview.png
    :width: 200px
-   :target: ../../../../docs/images/RankHistogram_ncview.png
-.. |image10| image:: ../../../../docs/images/RankHistogram_matlab.png
+   :target: ../../../../guide/images/RankHistogram_ncview.png
+.. |image10| image:: ../../../../guide/images/RankHistogram_matlab.png
    :width: 200px
-   :target: ../../../../docs/images/RankHistogram_matlab.png
-.. |image11| image:: ../../../../docs/images/RAD_T_trusted_bias_evolution.png
+   :target: ../../../../guide/images/RankHistogram_matlab.png
+.. |image11| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
    :width: 600px
-   :target: ../../../../docs/images/RAD_T_trusted_bias_evolution.png
-.. |image12| image:: ../../../../docs/images/RAD_T_trusted_bias_evolution.png
+   :target: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
+.. |image12| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
    :width: 600px
-   :target: ../../../../docs/images/RAD_T_trusted_bias_evolution.png
-.. |image13| image:: ../../../../docs/images/RAD_T_trusted_bias_evolution.png
+   :target: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
+.. |image13| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
    :width: 600px
-   :target: ../../../../docs/images/RAD_T_trusted_bias_evolution.png
-.. |image14| image:: ../../../../docs/images/RankHistogram_matlab.png
+   :target: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
+.. |image14| image:: ../../../../guide/images/RankHistogram_matlab.png
    :width: 200px
-.. |image15| image:: ../../../../docs/images/RankHistogram_matlab.png
+.. |image15| image:: ../../../../guide/images/RankHistogram_matlab.png
    :width: 200px
-.. |image16| image:: ../../../../docs/images/RankHistogram_matlab.png
+.. |image16| image:: ../../../../guide/images/RankHistogram_matlab.png
    :width: 200px

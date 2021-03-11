@@ -94,19 +94,19 @@ Convert_cosmic_gps_cdf
 Convert_cosmic_ionosphere
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-| Each profile is interpolated to a set of desired levels that are specified at run time. During the conversion process,
-  each profile is checked for negative values of electron density above the minimum desired level. If negative values
-  are found, the entire profile is discarded. If an observation sequence file already exists, the converter will simply
-  add the new observations to it. Multiple profiles may be converted in a single execution, so it is easy to consolidate
-  all the profiles for a single day into a single observation sequence file, for example.
-| ``convert_cosmic_ionosphere`` reads the namelist ``&convert_cosmic_ionosphere_nml`` from the file ``input.nml``.
-| The original observation times are preserved in the conversion process. If it is desired to subset the observation
-  sequence file such that observations too far away from desired assimilation times are rejected, a separate
-  post-processing step using the :doc:`./obs_sequence_tool` is required. A script will be necessary to take a start
-  date, an end date, an assimilation time step, and a desired time 'window' - and strip out the unwanted observations
-  from a series of observation sequence files.
-| There are multiple ways of specifying the observation error variance at run time. They are implemented in a routine
-  named ``electron_density_error()`` and are selected by the namelist variable ``observation_error_method``.
+Each profile is interpolated to a set of desired levels that are specified at run time. During the conversion process,
+each profile is checked for negative values of electron density above the minimum desired level. If negative values
+are found, the entire profile is discarded. If an observation sequence file already exists, the converter will simply
+add the new observations to it. Multiple profiles may be converted in a single execution, so it is easy to consolidate
+all the profiles for a single day into a single observation sequence file, for example.
+``convert_cosmic_ionosphere`` reads the namelist ``&convert_cosmic_ionosphere_nml`` from the file ``input.nml``.
+The original observation times are preserved in the conversion process. If it is desired to subset the observation
+sequence file such that observations too far away from desired assimilation times are rejected, a separate
+post-processing step using the :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool` is required. A script will be necessary to take a start
+date, an end date, an assimilation time step, and a desired time 'window' - and strip out the unwanted observations
+from a series of observation sequence files.
+There are multiple ways of specifying the observation error variance at run time. They are implemented in a routine
+named ``electron_density_error()`` and are selected by the namelist variable ``observation_error_method``.
 
 =============== =====================================================================================
 'constant'       a scalar value for all observations
