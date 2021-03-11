@@ -1,10 +1,4 @@
---- layout: default ---
+404 Error
+=========
 
-.. container::
-
-   .. rubric:: 404
-      :name: section
-
-   **Page not found :(**
-
-   The requested page could not be found.
+The requested page could not be found.
