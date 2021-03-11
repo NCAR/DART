@@ -72,12 +72,13 @@ def parallel_process_day(arg_dict):
 def create_usgs_daily_obs_seq(config):
 
     # Global information...
+    daily_dict = config['observation_preparation']['USGS_daily']
 
-    input_dir = config['observation_preparation']['USGS_daily']['input_dir']
-    output_dir = config['observation_preparation']['USGS_daily']['output_dir']
+    input_dir = daily_dict['input_dir']
+    output_dir = daily_dict['output_dir']
 
-    end_day = config['observation_preparation']['USGS_daily']['end_date']
-    start_day = config['observation_preparation']['USGS_daily']['start_date']
+    end_day = daily_dict['end_date']
+    start_day = daily_dict['start_date']
     delta = end_day - start_day
     dates_all = [start_day + datetime.timedelta(days=dd) for dd in range(delta.days+1)]
 
@@ -102,7 +103,7 @@ def create_usgs_daily_obs_seq(config):
     link_files_list = [input_nml_file, hydro_nlst, gages_list_file]
 
     # Identify obs or not...
-    if config['observation_preparation']['USGS_daily']['identity_obs']:
+    if daily_dict['identity_obs']:
 
         converter = dart_compile.models__wrf_hydro__work.exes['create_identity_streamflow_obs'].name
 
@@ -123,8 +124,12 @@ def create_usgs_daily_obs_seq(config):
     link_files_list = [output_dir / pathlib.Path(file).name for file in link_files_list]
     the_converter = output_dir / pathlib.Path(converter)
 
-    exe_cmd = config['observation_preparation']['USGS_daily']['exe_cmd']
-    ncores = config['observation_preparation']['USGS_daily']['scheduler']['mpiprocs']
+    exe_cmd = daily_dict['exe_cmd']
+
+    if daily_dict['scheduler'] is not None and daily_dict['scheduler'] != 'None':
+        ncores = daily_dict['scheduler']['mpiprocs']
+    elif daily_dict['interactive'] is not None:
+        ncores = daily_dict['interactive']['ncpus']
 
     if ncores > 1:
 

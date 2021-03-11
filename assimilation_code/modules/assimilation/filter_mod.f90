@@ -28,8 +28,8 @@ use obs_def_utilities_mod, only : set_debug_fwd_op
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                   operator(-), print_time
 
-use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,       &
-                                  logfileunit, nmlfileunit, timestamp,  &
+use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,                         &
+                                  logfileunit, nmlfileunit, timestamp, get_value_from_string, &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
                                   set_multiple_filename_lists, find_textfile_dims
@@ -57,16 +57,19 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
                                   adaptive_inflate_type, set_inflation_mean_copy ,    &
                                   log_inflation_info, set_inflation_sd_copy,          &
                                   get_minmax_task_zero, do_rtps_inflate,              &
-                                  validate_inflate_options
+                                  validate_inflate_options, PRIOR_INF, POSTERIOR_INF, &
+                                  NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION,  &
+                                  SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD,    &
+                                  ENHANCED_SS_INFLATION
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
 
-use smoother_mod,          only : smoother_read_restart, advance_smoother,                    &
-                                  smoother_gen_copy_meta_data, smoother_write_restart,        &
-                                  init_smoother, do_smoothing, smoother_mean_spread,          &
-                                  smoother_assim,                                             &
-                                  smoother_ss_diagnostics, smoother_end, set_smoother_trace
+use smoother_mod,          only : smoother_read_restart, advance_smoother,             &
+                                  smoother_gen_copy_meta_data, smoother_write_restart, &
+                                  init_smoother, do_smoothing, smoother_mean_spread,   &
+                                  smoother_assim, smoother_ss_diagnostics,             &
+                                  smoother_end, set_smoother_trace
 
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
@@ -101,7 +104,7 @@ public :: filter_sync_keys_time, &
 character(len=*), parameter :: source = 'filter_mod.f90'
 
 ! Some convenient global storage items
-character(len=512)      :: msgstring, string2, string3
+character(len=512)      :: msgstring
 
 integer :: trace_level, timestamp_level
 
@@ -193,12 +196,15 @@ logical  :: distributed_state = .true. ! Default to do state complete forward op
 !> ens1d1 ens1d2, ens1d1 ens2d2, etc   i like the latter better.
 character(len=256) ::  input_state_files(MAX_FILES) = '' 
 character(len=256) :: output_state_files(MAX_FILES) = '' 
+
 ! Name of files containing a list of {input,output} restart files, 1 file per domain
 character(len=256) ::  input_state_file_list(MAX_NUM_DOMS) = '' 
 character(len=256) :: output_state_file_list(MAX_NUM_DOMS) = ''
+
 ! Read in a single file and perturb this to create an ensemble
 logical  :: perturb_from_single_instance = .false.
 real(r8) :: perturbation_amplitude       = 0.2_r8
+
 ! File options.  Single vs. Multiple.  really 'unified' or 'combination' vs 'individual'
 logical  :: single_file_in  = .false. ! all copies read  from 1 file
 logical  :: single_file_out = .false. ! all copies written to 1 file
@@ -228,10 +234,14 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
                       obs_sequence_out_name = "obs_seq.final",  &
                       adv_ens_command       = './advance_model.csh'
 
-! Inflation namelist entries follow, first entry for prior, second for posterior
-! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space,
-! 4: rtps (relax to prior spread), 5: enhanced state space
-integer  :: inf_flavor(2)                  = 0
+! The inflation algorithm variables are defined in adaptive_inflate_mod.
+! We use the integer parameters for PRIOR_INF and POSTERIOR_INF from 
+! adaptive_inflate_mod to index these 'length 2' arrays.
+! To support more flexible methods of specifying the inflation algorithm,
+! inf_flavor must be a character string whose value is converted to an
+! integer to be backward compatible. 
+
+character(len=32) :: inf_flavor(2)         = (/ 'none', 'none' /)
 logical  :: inf_initial_from_restart(2)    = .false.
 logical  :: inf_sd_initial_from_restart(2) = .false.
 logical  :: inf_deterministic(2)           = .true.
@@ -302,14 +312,16 @@ namelist /filter_nml/ async,     &
    allow_missing_clm
 
 
+integer :: inflation_flavor(2)
+
 !----------------------------------------------------------------
 
 contains
 
 !----------------------------------------------------------------
 !> The code does not use %vars arrays except:
-!> * Task 0 still writes the obs_sequence file, so there is a transpose (copies to vars) and
-!> sending the obs_fwd_op_ens_handle%vars to task 0. Keys is also size obs%vars.
+!> * Task 0 still writes the obs_sequence file, so there is a transpose (copies to vars)
+!>   and sending the obs_fwd_op_ens_handle%vars to task 0. Keys is also size obs%vars.
 !> * If you read dart restarts state_ens_handle%vars is allocated.
 !> * If you write dart diagnostics state_ens_handle%vars is allocated.
 !> * If you are not doing distributed forward operators state_ens_handle%vars is allocated
@@ -389,30 +401,57 @@ allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
-call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
+! inf_flavor from the namelist is now a character string.  
+! the inflation-related subroutines require an integer so the
+! variable inflation_flavor is added and is type integer.
+inflation_flavor = set_inflation_flavor(inf_flavor)
+
+call validate_inflate_options(inflation_flavor, inf_damping, inf_initial_from_restart, &
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
    do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
-   inf_sd_initial_from_restart(1), output_inflation, inf_deterministic(1),            &
-   inf_initial(1), inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1),         &
-   inf_sd_lower_bound(1), inf_sd_max_change(1), state_ens_handle,                     &
-   allow_missing, 'Prior')
+call adaptive_inflate_init(prior_inflate, &
+                           inflation_flavor(PRIOR_INF), &
+                           inf_initial_from_restart(PRIOR_INF), & 
+                           inf_sd_initial_from_restart(PRIOR_INF), &
+                           output_inflation, &
+                           inf_deterministic(PRIOR_INF), &
+                           inf_initial(PRIOR_INF), &
+                           inf_sd_initial(PRIOR_INF), &
+                           inf_lower_bound(PRIOR_INF), &
+                           inf_upper_bound(PRIOR_INF), &
+                           inf_sd_lower_bound(PRIOR_INF), &
+                           inf_sd_max_change(PRIOR_INF), &
+                           state_ens_handle, &
+                           allow_missing, 'Prior')
 
-call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
-   inf_sd_initial_from_restart(2), output_inflation, inf_deterministic(2),            &
-   inf_initial(2),  inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2),        &
-   inf_sd_lower_bound(2), inf_sd_max_change(2), state_ens_handle,                     &
-   allow_missing, 'Posterior')
+call adaptive_inflate_init(post_inflate, &
+                           inflation_flavor(POSTERIOR_INF), &
+                           inf_initial_from_restart(POSTERIOR_INF), &
+                           inf_sd_initial_from_restart(POSTERIOR_INF), &
+                           output_inflation, &
+                           inf_deterministic(POSTERIOR_INF), &
+                           inf_initial(POSTERIOR_INF), &
+                           inf_sd_initial(POSTERIOR_INF), &
+                           inf_lower_bound(POSTERIOR_INF), &
+                           inf_upper_bound(POSTERIOR_INF), &
+                           inf_sd_lower_bound(POSTERIOR_INF), &
+                           inf_sd_max_change(POSTERIOR_INF), &
+                           state_ens_handle, &
+                           allow_missing, 'Posterior')
 
 if (do_output()) then
-   if (inf_flavor(1) > 0 .and. inf_damping(1) < 1.0_r8) then
-      write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', inf_damping(1), ' will be used'
+   if (inflation_flavor(PRIOR_INF) > NO_INFLATION .and. &
+            inf_damping(PRIOR_INF) < 1.0_r8) then
+      write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', &
+                                      inf_damping(PRIOR_INF), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
-   if (inf_flavor(2) > 0 .and. inf_damping(2) < 1.0_r8) then
-      write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', inf_damping(2), ' will be used'
+   if (inflation_flavor(POSTERIOR_INF) > NO_INFLATION .and. &
+            inf_damping(POSTERIOR_INF) < 1.0_r8) then
+      write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', &
+                                      inf_damping(POSTERIOR_INF), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
 endif
@@ -506,7 +545,8 @@ call trace_message('After  setting up space for ensembles')
 
 ! Don't currently support number of processes > model_size
 if(task_count() > model_size) then 
-   write(msgstring, *) 'number of MPI processes = ', task_count(), ' while model size = ', model_size
+   write(msgstring, *) 'number of MPI processes = ', task_count(), &
+                       ' while model size = ', model_size
    call error_handler(E_ERR,'filter_main', &
       'Cannot have number of processes > model size' ,source, text2=msgstring)
 endif
@@ -693,7 +733,8 @@ AdvanceTime : do
    ! This will synch the loop here and allow everybody to exit
    ! Need to clean up and have a broadcast that just sends a single integer???
    ! PAR For now, can only broadcast real arrays
-   call filter_sync_keys_time(state_ens_handle, key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
+   call filter_sync_keys_time(state_ens_handle, key_bounds, num_obs_in_set, &
+                              curr_ens_time, next_ens_time)
 
    if(key_bounds(1) < 0) then
       call trace_message('No more obs to assimilate, exiting main loop', 'filter:', -1)
@@ -731,7 +772,7 @@ AdvanceTime : do
       call all_copies_to_all_vars(state_ens_handle)
 
       call advance_state(state_ens_handle, ens_size, next_ens_time, async, &
-                   adv_ens_command, tasks_per_model_advance, file_info_output, file_info_input)
+              adv_ens_command, tasks_per_model_advance, file_info_output, file_info_input)
 
       call all_vars_to_all_copies(state_ens_handle)
 
@@ -762,9 +803,12 @@ AdvanceTime : do
    ! Create an ensemble for the observations from this time plus
    ! obs_error_variance, observed value, key from sequence, global qc,
    ! then mean for each group, then variance for each group
-   call init_ensemble_manager(obs_fwd_op_ens_handle, TOTAL_OBS_COPIES, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
+   call init_ensemble_manager(obs_fwd_op_ens_handle, TOTAL_OBS_COPIES, &
+                              int(num_obs_in_set,i8), 1, transpose_type_in = 2)
+
    ! Also need a qc field for copy of each observation
-   call init_ensemble_manager(qc_ens_handle, ens_size, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
+   call init_ensemble_manager(qc_ens_handle, ens_size, &
+                              int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
    ! Allocate storage for the keys for this number of observations
    allocate(keys(num_obs_in_set)) ! This is still var size for writing out the observation sequence
@@ -800,13 +844,14 @@ AdvanceTime : do
    if(do_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
 
-      if (inf_damping(1) /= 1.0_r8) then
+      if (inf_damping(PRIOR_INF) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(1) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
+            inf_damping(PRIOR_INF) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
 
-      call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
+      call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, &
+                                   ENS_MEAN_COPY)
 
       ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -816,7 +861,8 @@ AdvanceTime : do
 
    ! if relaxation-to-prior-spread inflation, save the prior spread in SPARE_PRIOR_SPREAD
    if ( do_rtps_inflate(post_inflate) ) &
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, SPARE_PRIOR_SPREAD)
+      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, &
+                                   SPARE_PRIOR_SPREAD)
 
    call     trace_message('Before computing prior observation values')
    call timestamp_message('Before computing prior observation values')
@@ -828,10 +874,11 @@ AdvanceTime : do
    ! allocate() space for the prior qc copy
    call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
 
-   call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
-     seq, keys, obs_val_index, input_qc_index, &
-     OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, &
-     OBS_MEAN_START, OBS_VAR_START, isprior=.true., prior_qc_copy=prior_qc_copy)
+   call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
+           qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
+           OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+           OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
+           isprior=.true., prior_qc_copy=prior_qc_copy)
 
    call timestamp_message('After  computing prior observation values')
    call     trace_message('After  computing prior observation values')
@@ -865,11 +912,11 @@ AdvanceTime : do
    ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
    ! Do prior observation space diagnostics and associated quality control
    call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
-      seq, keys, PRIOR_DIAG, num_output_obs_members, in_obs_copy+1, &
-      obs_val_index, OBS_KEY_COPY, &                                 ! new
-      prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
-      OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)
+           seq, keys, PRIOR_DIAG, num_output_obs_members, in_obs_copy+1, &
+           obs_val_index, OBS_KEY_COPY, &
+           prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
+           OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
+           OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)
    call trace_message('After  observation space diagnostics')
 
 
@@ -916,10 +963,10 @@ AdvanceTime : do
 
       call trace_message('Before posterior inflation damping')
 
-      if (inf_damping(2) /= 1.0_r8) then
+      if (inf_damping(POSTERIOR_INF) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(2) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
+            inf_damping(POSTERIOR_INF) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
 
       call trace_message('After  posterior inflation damping')
@@ -961,10 +1008,11 @@ AdvanceTime : do
       call trace_message('Before posterior inflation applied to state')
 
       if (do_rtps_inflate(post_inflate)) then   
-         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY, &
-                                      SPARE_PRIOR_SPREAD, ENS_SD_COPY)
+         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
+                       ENS_MEAN_COPY, SPARE_PRIOR_SPREAD, ENS_SD_COPY)
       else
-         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
+         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
+                       ENS_MEAN_COPY)
       endif
 
       ! Recompute the mean or the mean and spread as required for diagnostics
@@ -984,10 +1032,11 @@ AdvanceTime : do
       ! and obs_values.  ens_size is the number of regular ensemble members,
       ! not the number of copies
    
-       call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
-        seq, keys, obs_val_index, input_qc_index, &
-        OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, &
-        OBS_MEAN_START, OBS_VAR_START, isprior=.false., prior_qc_copy=prior_qc_copy)
+       call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
+                qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
+                OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+                OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
+                isprior=.false., prior_qc_copy=prior_qc_copy)
    
       call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
    
@@ -1005,12 +1054,11 @@ AdvanceTime : do
       ! Write posterior observation space diagnostics
       ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
       call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
-         seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
-         obs_val_index, OBS_KEY_COPY, &                             ! new
-         posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
-         OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-         OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)
-   
+              seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
+              obs_val_index, OBS_KEY_COPY, &
+              posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
+              OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
+              OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)
    
       call trace_message('After  posterior obs space diagnostics')
    else
@@ -1026,16 +1074,17 @@ AdvanceTime : do
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
-      if ((inf_sd_initial(2) >= 0.0_r8) .or. inf_sd_initial_from_restart(2)) then
+      if ((inf_sd_initial(POSTERIOR_INF) >= 0.0_r8) .or. &
+           inf_sd_initial_from_restart(POSTERIOR_INF)) then
 
          call     trace_message('Before computing posterior state space inflation')
          call timestamp_message('Before computing posterior state space inflation')
 
-         call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, ens_size, num_groups, &
-            obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
-            POST_INF_COPY, POST_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-            OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
-            OBS_VAR_END, inflate_only = .true.)
+         call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
+                 ens_size, num_groups, obs_val_index, post_inflate, &
+                 ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
+                 OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, &
+                 OBS_VAR_START, OBS_VAR_END, inflate_only = .true.)
 
          call timestamp_message('After  computing posterior state space inflation')
          call     trace_message('After  computing posterior state space inflation')
@@ -1132,9 +1181,10 @@ if (write_all_stages_at_end) then
    call     trace_message('Before writing all state restart files at end')
    call timestamp_message('Before writing all state restart files at end')
 
-   file_info_all = combine_file_info( (/file_info_input, file_info_mean_sd, file_info_forecast, &
-                                        file_info_preassim, file_info_postassim, file_info_analysis, &
-                                        file_info_output/) )
+   file_info_all = combine_file_info( &
+                    (/file_info_input, file_info_mean_sd, file_info_forecast, &
+                      file_info_preassim, file_info_postassim, file_info_analysis, &
+                      file_info_output/) )
 
    call write_state(state_ens_handle, file_info_all)
 
@@ -1201,8 +1251,10 @@ subroutine filter_generate_copy_meta_data(seq, in_obs_copy, &
 
 type(obs_sequence_type),     intent(inout) :: seq
 integer,                     intent(in)    :: in_obs_copy
-integer,                     intent(out)   :: prior_obs_mean_index, posterior_obs_mean_index
-integer,                     intent(out)   :: prior_obs_spread_index, posterior_obs_spread_index
+integer,                     intent(out)   :: prior_obs_mean_index
+integer,                     intent(out)   :: posterior_obs_mean_index
+integer,                     intent(out)   :: prior_obs_spread_index
+integer,                     intent(out)   :: posterior_obs_spread_index
 logical,                     intent(in)    :: do_post
 
 ! Figures out the strings describing the output copies for the three output files.
@@ -1592,7 +1644,7 @@ do group = 1, num_groups
          call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source)
 
          !Reset the RTPS factor to the given input.nml value
-         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(2)
+         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(POSTERIOR_INF)
 
          do j = 1, ens_handle%my_num_vars
             call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
@@ -2338,13 +2390,13 @@ endif
 CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
                        PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
 
-! CSS If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation (inf_flavor = 4)
-!  then we need an extra copy to hold (save) the prior ensemble spread
-!   ENS_SD_COPY will be overwritten with the posterior spread before
-!   applying the inflation algorithm; hence we must save the prior ensemble spread in a different copy
-if ( inf_flavor(2) == 4 ) then ! CSS
+! If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation
+! then we need an extra copy to hold (save) the prior ensemble spread
+! ENS_SD_COPY will be overwritten with the posterior spread before
+! applying the inflation algorithm; must save the prior ensemble spread in a different copy
+if ( inflation_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD ) then
    SPARE_PRIOR_SPREAD = next_copy_number(cnum)
-endif 
+endif
 
 num_copies = cnum
 
@@ -2399,16 +2451,16 @@ else
 endif
 
 if ( do_prior_inflate ) then
-   if ( inf_initial_from_restart(1)    ) &
+   if ( inf_initial_from_restart(PRIOR_INF)    ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
-   if ( inf_sd_initial_from_restart(1) ) &
+   if ( inf_sd_initial_from_restart(PRIOR_INF) ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
 endif
 
 if ( do_posterior_inflate ) then
-   if ( inf_initial_from_restart(2)    ) &
+   if ( inf_initial_from_restart(POSTERIOR_INF)    ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
-   if ( inf_sd_initial_from_restart(2) ) &
+   if ( inf_sd_initial_from_restart(POSTERIOR_INF) ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
@@ -2709,6 +2761,49 @@ if (output_inflation) then
 endif
 
 end subroutine set_copies
+
+
+!-------------------------------------------------------------------------------
+!> The infl_flavor namelist is a string, and specifies the inflation algorithm.
+!> The character string can either be the name associated with the type of inflation
+!> or the integer associated with the type of inflation. The string names of the
+!> inflation algorithms is based on what is declared in the adaptive_inflate_mod.f90
+!> which is repeated here for reference. 
+!>
+!> NO_INFLATION               = 0
+!> OBS_INFLATION              = 1    observation-space inflation (deprecated)
+!> VARYING_SS_INFLATION       = 2    spatially-varying state-space inflation
+!> SINGLE_SS_INFLATION        = 3    spatially-constant state-space inflation
+!> RELAXATION_TO_PRIOR_SPREAD = 4    (available only with posterior inflation)
+!> ENHANCED_SS_INFLATION      = 5    Inverse Gamma version of VARYING_SS_INFLATION
+
+function set_inflation_flavor(flavor_string) result(flavors)
+
+character(len=*), intent(in)  :: flavor_string(2)
+integer                       :: flavors(2)
+
+integer :: int_options(7) = (/ NO_INFLATION,               &
+                               OBS_INFLATION,              &
+                               VARYING_SS_INFLATION,       &
+                               SINGLE_SS_INFLATION,        &
+                               RELAXATION_TO_PRIOR_SPREAD, &
+                               RELAXATION_TO_PRIOR_SPREAD, &
+                               ENHANCED_SS_INFLATION       /)
+
+character(len=32) :: string_options(7) = (/ 'NO_INFLATION              ',&
+                                            'OBS_INFLATION             ',&
+                                            'VARYING_SS_INFLATION      ',&
+                                            'SINGLE_SS_INFLATION       ',&
+                                            'RELAXATION_TO_PRIOR_SPREAD',&
+                                            'RTPS                      ',&
+                                            'ENHANCED_SS_INFLATION     ' /)
+
+flavors(PRIOR_INF)     = get_value_from_string(flavor_string(PRIOR_INF),     &
+                          int_options, string_options, 'input_nml:inf_flavor(1)')
+flavors(POSTERIOR_INF) = get_value_from_string(flavor_string(POSTERIOR_INF), &
+                          int_options, string_options, 'input_nml:inf_flavor(2)')
+
+end function set_inflation_flavor
 
 
 !==================================================================

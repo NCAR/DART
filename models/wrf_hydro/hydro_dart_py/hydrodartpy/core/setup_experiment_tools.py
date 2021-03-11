@@ -7,6 +7,10 @@ import warnings
 import yaml
 
 
+this_file = pathlib.Path(__file__)
+repo_dir = this_file.parent.parent.parent.parent.parent.parent
+
+
 # ######################################################
 # Remapping nested values
 # http://sedimental.org/remap.html
@@ -40,6 +44,17 @@ def visit_abs_paths(path, key, value):
     # will both be desired as pathlib.PosixPath objects.
     if key in config_abs_paths_list and type(value) is not dict:
         return key, pathlib.PosixPath(value)
+    else:
+        return True
+
+
+def visit_abs_paths_to_str(path, key, value):
+    if value is None:
+        return True
+    # Making a bet that the same keys at different hierarchical levels
+    # will both be desired as pathlib.PosixPath objects.
+    if key in config_abs_paths_list and type(value) is not dict:
+        return key, str(value)
     else:
         return True
 

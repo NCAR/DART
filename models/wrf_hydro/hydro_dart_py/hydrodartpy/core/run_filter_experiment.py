@@ -425,13 +425,10 @@ def advance_ensemble(
 
 
 # ############################################################################
-def run_filter_experiment(
-    run_dir: pathlib.Path,
-    experiment_dir: pathlib.Path
-):
+def run_filter_experiment(run_dir: pathlib.Path):
 
     print(major_delim)
-    print("Starting run_filter_experiment.py")
+    print("Starting run_filter_experiment(.py)")
 
     # Establish the configuration
     config_file = sorted(
@@ -621,10 +618,11 @@ def run_filter_experiment(
 
         prev_ens_time, curr_ens_time = hydrodartpy.get_ensemble_time(run_dir, model_adv_hr)
 
+    return 0
+
 
 if __name__ == "__main__":
 
     run_dir = pathlib.Path(os.getcwd())
-    experiment_dir = pathlib.Path(run_dir)
-    run_filter_experiment(run_dir, experiment_dir)
+    run_filter_experiment(run_dir)
     sys.exit(0)
