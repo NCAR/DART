@@ -398,15 +398,22 @@ Prior state, before observations are assimilated (the most
 frequently used case), or it can be applied to the Posterior
 state, after assimilation.  
 See <a href="http://dx.doi.org/10.1175/JTECH2049.1" target="_blank">Anderson (2007)</a>, 
-<a href="http://dx.doi.org/10.1111/j.1600-0870.2008.00361.x" target="_blank">Anderson (2009)</a>.
+<a href="http://dx.doi.org/10.1111/j.1600-0870.2008.00361.x" target="_blank">Anderson (2009)</a>. 
+Historically, inflation was first introduced to address sampling errors (the fact
+that we are limited to a small ensemble size).
+Latest research (e.g., <a href="https://doi.org/10.1175/MWR-D-18-0389.1" target="_blank">El Gharamti et al. (2019)</a>) 
+suggests that prior and posterior inflation can be used to address different issues
+in the filtering problem. Prior inflation is able to address issues in the forecast 
+step such as model errors while posterior inflation can help mitigate sampling errors 
+in the analysis step.   
 <br />
 
 </P> <P>
 Inflation values can vary in space and time,
 depending on the specified namelist values.
 Even though we talk
-about a single inflation value, the inflation has
-a gaussian distribution with a mean and standard deviation.
+about a single inflation value, the inflation has a 
+probability density distribution with a mean and standard deviation.
 We use the mean value when we inflate, 
 and the standard deviation indicates how sure of the value we are. 
 Larger standard deviation values mean "less sure" 
@@ -463,12 +470,12 @@ The first is for Prior inflation and the second is for Posterior inflation.
    </table>
    Spatially-varying state space inflation stores an array of inflation values,
    one for each item in the state vector.  
-   If time-evolution is enabled each value can evolve independently.  
+   If time-evolution is enabled, each value can evolve independently.  
    Spatially-uniform state space inflation uses a single inflation value for 
    all items in the state vector.
-   If time-evolution is enabled that single value can evolve.
+   If time-evolution is enabled, that single value can evolve.
    See <em>inf_sd_*</em> below for control of the time-evolution behavior.
-   Enhanced spatially-varying inflation
+   Enhanced spatially-varying inflation (see <a href="https://doi.org/10.1175/MWR-D-17-0187.1" target="_blank">El Gharamti (2018)</a>)
    uses an inverse-gamma distribution which allows the standard 
    deviation of the inflation to increase or decrease through time and may produce
    better results. 
@@ -497,13 +504,14 @@ The first is for Prior inflation and the second is for Posterior inflation.
    maybe 1.02, for a slight amount of initial inflation.</dd><br />
    
    <dt><em class=code>&amp;filter_nml :: inf_lower_bound</em><br />
-       valid values: real numbers, usually 1.0 or slightly larger</dt>
+       valid values: real numbers, usually 1.0</dt>
    <dd>
    If inflation is time-evolving (see <em class=code>inf_sd_*</em> below),
    then this sets the lowest value the inflation can evolve to.
    Setting a number less than one allows for deflation but generally
    in a well-observed system the ensemble needs more spread and not less.
-   We recommend a setting of 1.0.</dd><br />
+   We recommend a setting of 1.0 for <em class=code>inf_flavor=2,3</em> 
+   and a setting of 0.0 for <em class=code>inf_flavor=5</em>.</dd><br />
    
    <dt><em class=code>&amp;filter_nml :: inf_upper_bound</em><br />
        valid values: real numbers, larger than 1.0 </dt>
@@ -532,7 +540,7 @@ The first is for Prior inflation and the second is for Posterior inflation.
    <dt><em class=code>&amp;filter_nml :: inf_sd_initial_from_restart</em><br />
        valid values: .true. or .false.</dt>
    <dd>
-   If true, read the inflation standard deviation values from an restart file named
+   If true, read the inflation standard deviation values from a restart file named
    <em class=file>input_{prior,post}inf_sd.nc.</em>
    See the comments above about <em class=code>inflation_initial_from_restart</em>.</dd><br />
    
@@ -611,6 +619,26 @@ The first is for Prior inflation and the second is for Posterior inflation.
    Recommend always using .true..</dd><br />
 
 </dl>
+
+<P>
+ATTENTION: Relaxation to prior spread (aka RTPS, i.e., <em class=code>inf_flavor=4</em>) is a 
+spatially varying posterior inflation algorithm. Thus, you cannot set the first entry of the inflation 
+flavor to 4. The code will exit with an error messge. Unlike all other flavors, RTPS does 
+not use files to handle inflation in time. So, if the user supplies <em class=file>input_postinf_{mean,sd}.nc</em>, 
+these will be <b>ignored</b>. The ONLY namelist option that RTPS uses (other than <em class=code>inf_flavor=4</em>)
+is the second entry of the <em class=code>inf_initial</em>. This value is technically not the 
+posterior inflation value but rather a <i>weighting</i> factor (denoted by &alpha; in 
+<a href="https://doi.org/10.1175/MWR-D-11-00276.1" target="_blank">Whitaker and Hamill (2012)</a>) 
+that is used to relax the posterior spread to the prior spread. For instance, if &alpha;=0.3
+then the inflated posterior spread is as follows: 70% of the analysis spread plus
+30% of the prior spread. If &alpha;=1.0, then the inflated posterior spread is simply set 
+to the prior spread. Using &alpha;, RTPS calculates the effective posterior inflation <i>under the hood</i>
+and writes out the inflation values to the user. These can be looked at for diagnostic purposes. 
+The algorithm disregards them for the next data assimilation cycle. In short, RTPS is 
+adaptive in time but unlike flavors 2, 3 and 5 it has no memory. 
+The recommendation is to set the second entry of <em class=code>inf_initial</em>
+to any number between 0.0 and 1.0.     
+</P>
 
 <P>
 The suggested procedure for testing inflation options 
@@ -942,9 +970,42 @@ doi: 10.1175/2010MWR3253.1</a>
 <li>Anderson, J. L., 2011:
 Localization and Sampling Error Correction
 in Ensemble Kalman Filter Data Assimilation. 
-Submitted for publication, Jan 2011.  
-Contact author.</li>
-
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">140</span>, 2359-2371.<br />
+<a href="https://doi.org/10.1175/MWR-D-11-00013.1"
+target="_blank" >
+doi: 10.1175/MWR-D-11-00013.1</a>
+<br />
+</li>
+<li>El Gharamti, M., K. Raeder, J. Anderson, and X. Wang, 2019:
+Comparing Adaptive Prior and Posterior Inflation for 
+Ensemble Filters Using an Atmospheric General Circulation Model.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">147</span>, 2535-2553.<br />
+<a href="https://doi.org/10.1175/MWR-D-18-0389.1"
+target="_blank" >
+doi: 10.1175/MWR-D-18-0389.1</a>
+<br />
+</li>
+<li>El Gharamti, M., 2018:
+Enhanced Adaptive Inflation Algorithm for Ensemble Filters.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">146</span>, 623-640.<br />
+<a href="https://doi.org/10.1175/MWR-D-17-0187.1"
+target="_blank" >
+doi: 10.1175/MWR-D-17-0187.1</a>
+<br />
+</li>
+<li>Whitaker, J. and T. Hamill, 2012:
+Evaluating Methods to Account for System Errors in Ensemble 
+Data Assimilation.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">140</span>, 3078-3089.<br />
+<a href="https://doi.org/10.1175/MWR-D-11-00276.1"
+target="_blank" >
+doi: 10.1175/MWR-D-11-00276.1</a>
+<br />
+</li>
 </ul>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
