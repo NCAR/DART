@@ -523,6 +523,7 @@ type(time_type)     :: obs_time
 integer             :: obs_key
 real(r8)            :: error_var
 logical             :: use_precomputed_FO
+integer             :: copy
 
 character(len=512) :: string1, string2, string3
 
@@ -555,7 +556,9 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
 
       if (isprior) then
          if ( obs_def%has_external_FO ) then
-            expected_obs(:) = obs_def%external_FO(1:ens_size) 
+            do copy = 1, ens_size
+               expected_obs(copy) = obs_def%external_FO(copy_indices(copy))
+            enddo
             istatus = 0 
          else 
             call error_handler(E_ERR, 'get_expected_obs_from_def', &
