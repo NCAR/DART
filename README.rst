@@ -1,104 +1,84 @@
-Welcome to the Data Assimilation Research Testbed (DART)
-========================================================
+Welcome to the Data Assimilation Research Testbed
+=================================================
 
-Extensive on-line documentation is available at the GitHub project web pages:
-https://dart.ucar.edu/ or in the GitHub `repository <guide/>`__. Quick-start
-instructions for the impatient can be found `below <#QuickStart>`__, while more
-detailed setup instructions and other topics such as a brief introduction to
-data assimilation, the history of DART, etc. are covered in the `DART Getting
-Started Guide <https://dart.ucar.edu/pages/Getting_Started.html>`__.
+The Data Assimilation Research Testbed (DART) is an open-source, freely
+available community facility for ensemble data assimilation (DA). [1]_ DART is
+developed and maintained by the `Data Assimilation Research Section
+(DAReS) <https://dart.ucar.edu/about/>`_ at the `National Center
+for Atmospheric Research (NCAR) <https://ncar.ucar.edu>`_.
 
-+--------------------+--------------+
-| |spaghetti_square| | |assim_anim| |
-+--------------------+--------------+
++------------------------------+------------------------------+
+| |spaghetti_square|           | |assim_anim|                 |
++------------------------------+------------------------------+
 
-.. |spaghetti_square| image:: ./guide/images/DARTspaghettiSquare.gif
-.. |assim_anim| image:: ./guide/images/science_nuggets/AssimAnim.gif
+Ensemble Data Assimilation
+--------------------------
 
+Ensemble DA is a technique for combining observations with numerical models
+to estimate the state of a physical system.
 
-A Matlab-based introduction is in the ``guide/DART_LAB`` directory.
-There are a set of PDF presentations along with hands-on Matlab exercises.
-This starts with a very basic introduction to data assimilation and covers
-several fundamental algorithms in the system. A more exhaustive tutorial for
-data assimilation with DART is in PDF format at
-`guide/tutorial <guide/tutorial/index.html>`__.
+It enables modelers, observational scientists, and geophysicists to:
 
-The DART Manhattan release documentation is on the web:
-http://www.image.ucar.edu/DAReS/DART/Manhattan/documentation/html/Manhattan_release.html
-and in the repository at:
-`guide/html/Manhattan_release.html <guide/html/Manhattan_release.html>`__
+- Generate initial conditions for forecasts.
+- Create a retrospective estimate of the state of a system, a practice known as
+  producing a *reanalysis*.
+- Assess the relative value of specific observations on forecast skill, a
+  practice known as conducting an *observing system experiment (OSE)*.
+- Estimate the value of hypothetical observations in order to inform the design
+  of an observing system, a practice known as conducting an *observing system
+  simulation experiment (OSSE)*. 
+- Determine a model's systematic bias in estimating the state of a system, a
+  practice known as diagnosing *model error*.
 
-There is a mailing list where we summarize updates to the DART repository and
-notify users about recent bug fixes. It is not generally used for discussion so
-it’s a low-traffic list. To subscribe to the list, click on
-`Dart-users <http://mailman.ucar.edu/mailman/listinfo/dart-users>`__. If you use
-WRF, there is also a
-`Wrfdart-users <http://mailman.ucar.edu/mailman/listinfo/wrfdart-users>`__.
+The DART software environment makes it easy to explore a variety of data
+assimilation methods and observations with different numerical models. It
+provides powerful, flexible DA tools that are easy to use and customize to
+support efficient and reliable DA applications. While DART is primarily
+oriented for DA research, it has also been used in operational settings.
 
-The Manhattan release is new and currently supports only a subset of the models.
-We will port over any requested model so contact us if yours is not on the list.
-In the meantime, we suggest you check out our ‘classic’ release of DART which is
-the Lanai release plus additional development features. All new development will
-be based on the Manhattan release but the ‘classic’ release will remain for
-those models which already have the necessary features.
+DART includes:
 
-For information on adding models and observation types or guidance on models
-already using DART, contact DAReS staff by emailing dart@ucar.edu.
+- A comprehensive tutorial introducing the concepts of ensemble DA.
+- Extensive documentation of its source code.
+- Interfaces to a variety of models and observation sets that can be used to
+  introduce new users or graduate students to ensemble DA.
 
-Thank you.
+DART is also designed to facilitate the combination of assimilation algorithms,
+models, and real or synthetic observations to allow increased
+understanding of all three. It provides a framework for developing, testing,
+and distributing advances in ensemble DA to a broad community of users by
+removing the implementation-specific peculiarities of one-off DA systems.
 
-DART source code tree
----------------------
+These tools are intended for use by the full range of geosciencies community:
+beginners and experts; students and teachers; national centers and university
+research labs.
 
-The top level DART source code tree contains the following directories and
-files:
+Organization of the documentation
+---------------------------------
 
-+------------------------+------------------------------------------------------------+
-| Directory              | Purpose                                                    |
-+========================+============================================================+
-| ``assimilation_code/`` | assimilation tools and programs                            |
-+------------------------+------------------------------------------------------------+
-| ``build_templates/``   | Configuration files for installation                       |
-+------------------------+------------------------------------------------------------+
-| ``developer_tests/``   | regression testing                                         |
-+------------------------+------------------------------------------------------------+
-| ``diagnostics/``       | routines to diagnose assimilation performance              |
-+------------------------+------------------------------------------------------------+
-| ``guide/``             | General documentation and DART_LAB tutorials               |
-+------------------------+------------------------------------------------------------+
-| ``models/``            | the interface routines for the models                      |
-+------------------------+------------------------------------------------------------+
-| ``observations/``      | routines for converting observations and forward operators |
-+------------------------+------------------------------------------------------------+
-| ``theory/``            | pedagogical material discussing data assimilation theory   |
-+------------------------+------------------------------------------------------------+
-| **Files**              | **Purpose**                                                |
-+------------------------+------------------------------------------------------------+
-| ``changelog.rst``      | Brief summary of recent changes                            |
-+------------------------+------------------------------------------------------------+
-| ``copyright.rst``      | terms of use and copyright information                     |
-+------------------------+------------------------------------------------------------+
-| ``readme.rst``         | Basic Information about DART                               |
-+------------------------+------------------------------------------------------------+
+Because of DART's extensive scope, this documentation is detailed and
+carefully organized, enabling you to easily find the information you need. If
+you have any questions or suggestions for improvements, please contact DAReS
+staff by emailing dart@ucar.edu.
 
-Bug reports and feature requests
---------------------------------
+The documentation is partitioned into three parts:
 
-Use the GitHub `issue tracker <https://github.com/NCAR/DART/issues>`__ to submit
-a bug or request a feature.
+- a user guide that explains how to install DART and perform data assimilation
+- source code documentation that provides a detailed description of the
+  programs and modules in the repository
+- a comprehensive description of data assimilation theory
 
-Citing DART
+Manhattan Release
+-----------------
+
+The Manhattan release is new and currently supports only a subset of the
+models. DAReS staff will port over any requested model. Email dart@ucar.edu
+if yours is not on the list.
+
+For more information on this release, see :doc:`guide/Manhattan_release`.
+
+Quick-start
 -----------
-
-Cite DART using the following text:
-
-   The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2019).
-   Boulder, Colorado: UCAR/NCAR/CISL/DAReS. http://doi.org/10.5065/D6WQ0202
-
-Update the DART version and year as appropriate.
-
-Quick-start for the impatient
------------------------------
 
 1. fork the NCAR/DART repo
 2. clone your (new) fork to your machine - this will set up a remote named
@@ -151,27 +131,84 @@ Go into ``models/lorenz_63/work`` and run *quickbuild.csh*.
    $ cd models/lorenz_63/work
    $ ./quickbuild.csh
 
-If it compiles, *:tada:*! Run this series of commands to do a very basic test:
+If it compiles, run this series of commands to do a very basic test:
 
 .. code-block::
 
    $ ./perfect_model_obs
    $ ./filter
 
-If that runs, *:tada:* again! Finally, if you have Matlab installed on your
-system add ‘$DART/diagnostics/matlab’ to your matlab search path and run the
-‘plot_total_err’ diagnostic script while in the ``models/lorenz_63/work``
+If that runs and you have Matlab installed on your system add
+``DART/diagnostics/matlab`` to your matlab search path and run the
+``plot_total_err`` diagnostic script while in the ``models/lorenz_63/work``
 directory. If the output plots and looks reasonable (error level stays around 2
-and doesn’t grow unbounded) you’re great! Congrats.
+and doesn’t grow unbounded) you have successfully installed DART and completed
+your first assimilation with it.
 
 If you are planning to run one of the larger models and want to use the Lorenz
 63 model as a test, run ``./quickbuild.csh -mpi``. It will build filter and any
-other MPI-capable executables with MPI. *The* ``mpif90`` 
-*command you use must have been built with the same version of the compiler as you are using.*
+other MPI-capable executables with MPI.
+
+.. important::
+
+   The ``mpif90`` command you use must have been built with the same version of
+   the compiler as you are using.
 
 If any of these steps fail or you don’t know how to do them, go to the DART
 project web page listed above for very detailed instructions that should get you
 over any bumps in the process.
+
+Citing DART
+-----------
+
+Cite DART using the following text:
+
+   The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2019).
+   Boulder, Colorado: UCAR/NCAR/CISL/DAReS. http://doi.org/10.5065/D6WQ0202
+
+Update the DART version and year as appropriate.
+
+References
+----------
+
+.. [1] Anderson, J. L., T. Hoar, K. Raeder, H. Liu, N. Collins, R. Torn and A.
+       Arellano, 2009 The Data Assimilation Research Testbed: A Community 
+       Facility. *Bulletin of the American Meteorological Society*, **90**,
+       1283-1296, `doi:10.1175/2009BAMS2618.1
+       <http://dx.doi.org/10.1175/2009BAMS2618.1>`_
+
+.. |spaghetti_square| image:: ./guide/images/DARTspaghettiSquare.gif
+   :width: 100%
+
+.. |assim_anim| image:: ./guide/images/science_nuggets/AssimAnim.gif
+   :width: 100%
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Getting started
+
+   guide/system-requirements
+   guide/fortran-compiler
+   guide/locating-netcdf-library
+   guide/downloading-dart
+   guide/compiling-dart
+   guide/verifying-installation
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Intermediate topics
+
+   guide/assimilation-complex-model
+   guide/mpi_intro
+   guide/filters
+   guide/inflation
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Diagnostics
+
+   guide/how-does-output-differ-from-input-increments
+   guide/matlab-observation-space
 
 .. toctree::
    :maxdepth: 2
@@ -229,6 +266,14 @@ over any bumps in the process.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Contributing and Community
+
+   guide/contributors-guide
+   guide/requesting-features-reporting-bugs
+   guide/mailing-list
+
+.. toctree::
+   :maxdepth: 2
    :caption: Guide
 
    guide/Manhattan_getting_started
@@ -239,7 +284,6 @@ over any bumps in the process.
    guide/boilerplate/template
    guide/vertical_conversion
    guide/bitwise_considerations
-   guide/mpi_intro
    guide/netcdf_inflation_files
    guide/state_structure
    guide/filter_async_modes

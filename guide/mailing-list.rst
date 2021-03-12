@@ -1,0 +1,10 @@
+Mailing list
+============
+
+DAReS staff send periodic updates to DART users. These updates summarize
+changes to the DART repository, including recent bug fixes.
+
+The mailing list is not generally used for discussion so emails are infrequent.
+
+To subscribe to the DART users mailing list, see
+`Dart-users <http://mailman.ucar.edu/mailman/listinfo/dart-users>`__.

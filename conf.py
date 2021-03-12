@@ -22,7 +22,7 @@ author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
 release = '9.9.0'
-master_doc = 'readme'
+master_doc = 'README'
 
 # -- General configuration ---------------------------------------------------
 
