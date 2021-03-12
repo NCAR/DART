@@ -1,0 +1,46 @@
+{
+  "_args": [
+    [
+      "@ncar/icomoon@1.0.10",
+      "/home/circleci/project"
+    ]
+  ],
+  "_from": "@ncar/icomoon@1.0.10",
+  "_id": "@ncar/icomoon@1.0.10",
+  "_inBundle": false,
+  "_integrity": "sha512-KzDW73u9C7SToRz0Kipr6y9SBiLeAkny0ZBS1Lq03AtL3m9WcDBlNEWAtfrBH6P61ofBg8pKzzUfO68Lz68yHQ==",
+  "_location": "/@ncar/icomoon",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "version",
+    "registry": true,
+    "raw": "@ncar/icomoon@1.0.10",
+    "name": "@ncar/icomoon",
+    "escapedName": "@ncar%2ficomoon",
+    "scope": "@ncar",
+    "rawSpec": "1.0.10",
+    "saveSpec": null,
+    "fetchSpec": "1.0.10"
+  },
+  "_requiredBy": [
+    "/"
+  ],
+  "_resolved": "https://npm.pkg.github.com/download/@ncar/icomoon/1.0.10/a4e46e1102c3abbded3dc3a75b3294a110882a72cc1e913cc52ff20762c617c9",
+  "_spec": "1.0.10",
+  "_where": "/home/circleci/project",
+  "bugs": {
+    "url": "https://github.com/ncar/icomoon/issues"
+  },
+  "description": "NPM package of custom icomoon icons.",
+  "homepage": "https://github.com/NCAR/icomoon#readme",
+  "license": "UNLICENSED",
+  "name": "@ncar/icomoon",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/@ncar"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ncar/icomoon.git"
+  },
+  "version": "1.0.10"
+}

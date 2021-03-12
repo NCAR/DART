@@ -1,0 +1,165 @@
+@font-face {
+  font-family: 'icomoon';
+  src:
+    url('fonts/icomoon.ttf?7z0hs8') format('truetype'),
+    url('fonts/icomoon.woff?7z0hs8') format('woff'),
+    url('fonts/icomoon.svg?7z0hs8#icomoon') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+[class^="icon-"], [class*=" icon-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'icomoon' !important;
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-about-programs:before {
+  content: "\e92a";
+}
+.icon-advocacy:before {
+  content: "\e900";
+}
+.icon-air-quality:before {
+  content: "\e901";
+}
+.icon-climate:before {
+  content: "\e902";
+}
+.icon-computational-resources:before {
+  content: "\e903";
+}
+.icon-contact-us:before {
+  content: "\e904";
+}
+.icon-data-assimilation:before {
+  content: "\e905";
+}
+.icon-data-software-services:before {
+  content: "\e906";
+}
+.icon-diversity-inclusion:before {
+  content: "\e907";
+}
+.icon-documents:before {
+  content: "\e908";
+}
+.icon-earth-system-sciences:before {
+  content: "\e909";
+}
+.icon-education-training:before {
+  content: "\e90a";
+}
+.icon-fellowships:before {
+  content: "\e90b";
+}
+.icon-field-campaigns:before {
+  content: "\e90c";
+}
+.icon-governance:before {
+  content: "\e90d";
+}
+.icon-honors-awards:before {
+  content: "\e90e";
+}
+.icon-internships:before {
+  content: "\e90f";
+}
+.icon-management:before {
+  content: "\e910";
+}
+.icon-models:before {
+  content: "\e911";
+}
+.icon-observations:before {
+  content: "\e913";
+}
+.icon-opportunities:before {
+  content: "\e914";
+}
+.icon-org-chart:before {
+  content: "\e915";
+}
+.icon-our-history .path1:before {
+  content: "\e916";
+  color: rgb(35, 31, 32);
+}
+.icon-our-history .path2:before {
+  content: "\e917";
+  margin-left: -0.873046875em;
+  color: rgb(0, 0, 0);
+}
+.icon-our-history .path3:before {
+  content: "\e918";
+  margin-left: -0.873046875em;
+  color: rgb(0, 0, 0);
+}
+.icon-our-labs:before {
+  content: "\e919";
+}
+.icon-our-leadership:before {
+  content: "\e91a";
+}
+.icon-our-staff:before {
+  content: "\e91b";
+}
+.icon-partnerships:before {
+  content: "\e91c";
+}
+.icon-photo-gallery:before {
+  content: "\e92c";
+}
+.icon-press-room:before {
+  content: "\e91d";
+}
+.icon-science-visits:before {
+  content: "\e91e";
+}
+.icon-scientific-program-support:before {
+  content: "\e91f";
+}
+.icon-specs:before {
+  content: "\e920";
+}
+.icon-sun:before {
+  content: "\e922";
+}
+.icon-symbol-ncar:before {
+  content: "\e912";
+}
+.icon-symbol-nsf:before {
+  content: "\e92b";
+}
+.icon-symbol-ucar:before {
+  content: "\e923";
+}
+.icon-tech-transfers:before {
+  content: "\e921";
+}
+.icon-university-collaboration:before {
+  content: "\e924";
+}
+.icon-water:before {
+  content: "\e925";
+}
+.icon-weather:before {
+  content: "\e926";
+}
+.icon-what-we-do:before {
+  content: "\e927";
+}
+.icon-what-we-offer:before {
+  content: "\e928";
+}
+.icon-where-we-focus:before {
+  content: "\e929";
+}
