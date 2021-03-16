@@ -212,6 +212,14 @@ References
 
 .. toctree::
    :maxdepth: 2
+   :caption: Theory
+
+   theory/readme
+   theory/conditional-probability-bayes-theorem
+   guide/DART_LAB/DART_LAB
+
+.. toctree::
+   :maxdepth: 2
    :caption: Releases
 
    guide/Manhattan_release
@@ -301,14 +309,6 @@ References
    guide/history/I_diffs_from_workshop
    guide/history/pre_hawaii_release
    guide/history/pre_guam_release
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Theory
-
-   theory/index
-   guide/DART_LAB/DART_LAB
 
 .. toctree::
    :maxdepth: 2
