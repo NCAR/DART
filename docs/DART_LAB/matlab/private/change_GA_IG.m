@@ -8,7 +8,6 @@ function beta = change_GA_IG(mode, var)
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% DART $Id$
 
 % Computation savers 
 var_p    = zeros(1, 3); 
@@ -36,7 +35,3 @@ beta = (7*var*mode + mode_p(3))/(3*var)                               + ...
        EE^(1/3)/3 + mode_p(2)*(var_p(2) + 14*var*mode_p(2) + ...
        mode_p(4)) / (3*var_p(2)*EE^(1/3));
    
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$

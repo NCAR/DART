@@ -4,8 +4,6 @@ function enh_density = enh_compute_new_density(dist_2, sigma_p_2, sigma_o_2, alp
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% DART $Id$
-
 
 % Compute probability of this lambda being correct
 exp_prior = - beta / lambda;
@@ -22,7 +20,3 @@ exp_like = - 0.5 * dist_2 / theta^2;
 enh_density = beta^alpha / gamma(alpha) * lambda^(- alpha - 1) / ... 
               (sqrt(2.0 * pi) * theta) * exp(exp_like + exp_prior);
           
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$
