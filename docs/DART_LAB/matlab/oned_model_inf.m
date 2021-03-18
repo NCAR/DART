@@ -1386,10 +1386,15 @@ fclose(logfileid);
                     handles.inflation = str2double(get(handles.ui_edit_fixed_inflation,'String'));
                     
                 case 'Adaptive Inflation'
+                    % Here, only stick to one algorithm (Gaussian; flavor 2). Users may manually 
+                    % switch between 'Gaussian' [Anderson 2009] and 'Gamma'
+                    % [El Gharamti 2018]. The GUI option is only available
+                    % in the Lorenz'96 section. 
                     [lambda, handles.adap_inf_Std] = ...
                         update_inflate(mean(ens), var(ens), observation, obs_error_sd^2, inf_prior, ...
-                        handles.inflation, handles.adap_inf_Min, handles.adap_inf_Max, ...
-                        1, handles.adap_inf_Std, handles.adap_inf_Std_Min);
+                        handles.inflation, handles.adap_inf_Std, handles.adap_inf_Min, handles.adap_inf_Max, ...
+                        1, handles.adap_inf_Std_Min, handles.ens_size, 'Gaussian');
+                    
                     % Damping is placed unusually here to obtain a less messy code
                     % It won't matter because it's a single variable case!
                     handles.inflation = 1.0 + handles.adap_inf_Damp * ( lambda - 1.0 );
