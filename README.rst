@@ -202,12 +202,24 @@ References
    guide/mpi_intro
    guide/filters
    guide/inflation
+   guide/controlling-files-output
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Observations
+
+   guide/obs-seq-file
 
 .. toctree::
    :maxdepth: 2
    :caption: Diagnostics
 
+   guide/checking-your-assimilation
+   guide/computing-filter-increments
    guide/how-does-output-differ-from-input-increments
+   guide/dart-missing-data-value
+   guide/dart-quality-control
+   guide/examining-obs-seq-final
    guide/matlab-observation-space
 
 .. toctree::
