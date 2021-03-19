@@ -1,7 +1,7 @@
 <!doctype html><html lang=en-us><head><meta charset=utf-8><title>Model for Prediction across Scales</title><meta name=viewport content="width=device-width,initial-scale=1"><meta name=viewport content="width=device-width,initial-scale=1,maximum-scale=1"><meta name=author content="DAReS"><meta name=generator content="Hugo 0.80.0"><link rel=stylesheet href=https://dart.ucar.edu/css/bootstrap.min.css><link rel=stylesheet href=https://dart.ucar.edu/font-awesome/css/font-awesome.min.css><link rel=stylesheet href=https://dart.ucar.edu/icomoon/style.css><link href=https://dart.ucar.edu/scss/style.min.css rel=stylesheet><link rel="shortcut icon" href=https://dart.ucar.edu/images/favicon.png type=image/x-icon><link rel=icon href=https://dart.ucar.edu/images/favicon.ico type=image/x-icon></head><body><nav class="navbar navbar-expand-lg site-navigation"><div class=container><a class=navbar-brand href=https://ncar.ucar.edu/who-we-are/funding><img src=https://dart.ucar.edu/images/NSF_4-Color_bitmap_Logo.png alt=logo></a>
 <a class=navbar-second-brand href=/><img src=https://dart.ucar.edu/images/logo-wordmark-dark-dart-full.png alt=logo></a>
 <button class="navbar-toggler collapsed" type=button data-toggle=collapse data-target=#sitenavbar>
-<span class=icon-bar></span><span class=icon-bar></span><span class=icon-bar></span></button><div class="collapse navbar-collapse" id=sitenavbar><ul class="navbar-nav ml-auto main-nav"><li class=nav-item><a class=nav-link href=https://dart.ucar.edu/>Home</a></li><li class=nav-item><a class=nav-link href=https://dart.ucar.edu/about>About</a></li><li class=nav-item><a class=nav-link href=https://dart.ucar.edu/research>Research</a></li><li class=nav-item><a class=nav-link href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li class=nav-item><a class="nav-link btn btn-sm btn-primary btn-sm-rounded" href=https://dart.ucar.edu/software><span class=btn-area><span data-text="Get DART">Get DART</span></span></a></li></ul></div></div></nav><main><section class=site-project-single-section><div class=container><div class=row><div class="col-lg-8 mx-auto"><div class=site-project-single><h1>Model for Prediction across Scales</h1><div class=site-project-single-description><p>Data assimilation for MPAS is available as an ensemble Kalman filter (EnKF)
+<span class=icon-bar></span><span class=icon-bar></span><span class=icon-bar></span></button><div class="collapse navbar-collapse" id=sitenavbar><ul class="navbar-nav ml-auto main-nav"><li class=nav-item><a class=nav-link href=https://dart.ucar.edu/>Home</a></li><li class=nav-item><a class=nav-link href=https://dart.ucar.edu/about>About</a></li><li class=nav-item><a class=nav-link href=https://dart.ucar.edu/research>Research</a></li><li class=nav-item><a class=nav-link href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li class=nav-item><a class="nav-link btn btn-sm btn-primary btn-sm-rounded" href=https://dart.ucar.edu/software><span class=btn-area><span data-text="Get DART">Get DART</span></span></a></li></ul></div></div></nav><main><section class=site-project-single-section><div class=container><div class=row><div class="col-lg-9 mx-auto"><div class=site-project-single><h1>Model for Prediction across Scales</h1><div class=site-project-single-description><p>Data assimilation for MPAS is available as an ensemble Kalman filter (EnKF)
 implemented through <a href=http://dart.ucar.edu>Data Assimilation Research Testbed</a></p><p>This work is done in a collaborative effort between the
 <a href=http://www.mmm.ucar.edu>Mesoscale and Microscale Meteorology (MMM)</a>
 Division and the DART development team. DART support for both MPAS-Atmosphere
@@ -14,9 +14,9 @@ built on MPAS&rsquo;s unstructured centroidal Voronoi mesh,
 and does not regrid to latitude-longitude grids. In MPAS, the finite-volume
 approach based on a C-grid staggering retains prognostic equations for mass
 at the center of finite-volume cells and for the normal component of velocity
-(<strong><i>u</i></strong>) at the faces (or edges in 2D) of the cells.
-The normal component of velocity (<strong><i>u</i></strong>) at cell edges is then used to
-reconstruct zonal and meridional winds at cell centers (<strong><i>V</i></strong>)
+(u) at the faces (or edges in 2D) of the cells.
+The normal component of velocity (u) at cell edges is then used to
+reconstruct zonal and meridional winds at cell centers (V)
 using radial basis functions (RBFs).
 To avoid the singularity issue on the poles, the cartesian coordinate is employed.</p><p>The forward operators on the unstructured grid mesh are constructed as follows.
 The dual of the Voronoi mesh, or the triangular mesh (shown as dashed lines in the
@@ -24,7 +24,7 @@ figure), is used to search the closest cell center to an arbitrary (or observati
 point, then find three cell centers of the triangle enclosing the desired point.
 Mass fields are then horizontally interpolated from the cell centers to the observation
 location using a barycentric (e.g., area-weighted) interpolation.</p><p>While the observed wind quantities are zonal and meridional winds, the normal
-component of velocity (<i>u</i>) is the only prognostic wind variable in MPAS,
+component of velocity (u) is the only prognostic wind variable in MPAS,
 we thus implement a couple of different ways of assimilating wind observations.
 The options determine which wind variables are used in the forward operator to
 compute expected observation values; how the horizontal interpolation is computed
