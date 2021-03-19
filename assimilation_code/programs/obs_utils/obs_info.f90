@@ -710,7 +710,7 @@ if (present(avg_day) .and. present(avg_sec)) then
    avg_day = aday
    avg_sec = asec
 else if (present(avg_sec)) then
-   avg_sec = asec
+   call get_time(avg_time, avg_sec)
 endif
 
 if (present(avg_string)) then
