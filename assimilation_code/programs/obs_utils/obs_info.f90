@@ -69,6 +69,7 @@ end type
 ! an array to hold counts for each obs type.
 ! also one for all obs types.
 type(obs_info_type) :: oinfo(max_defined_types_of_obs)
+type(obs_info_type) :: identity_obs
 type(obs_info_type) :: all_obs
 
 type(location_type) :: location
@@ -143,6 +144,7 @@ do fnum = 1, num_input_files
    do i=1, max_defined_types_of_obs
       call initialize(oinfo(i))
    enddo
+   call initialize(identity_obs)
    call initialize(all_obs)
    
    ! single pass algorithm (unlike other obs tools).
@@ -193,7 +195,11 @@ do fnum = 1, num_input_files
          obs_time = get_obs_def_time(this_obs_def)
    
          call update(all_obs, obs_time)
-         call update(oinfo(obs_type_ind), obs_time)
+         if (obs_type_ind < 0) then
+            call update(identity_obs, obs_time)
+         else
+            call update(oinfo(obs_type_ind), obs_time)
+         endif
    
          call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
    
@@ -222,11 +228,24 @@ do fnum = 1, num_input_files
                                              trim(get_name_for_type_of_obs(i))//", ", &
                                              oinfo(i)%count, ", ", trim(mid_string)
       else
-         write(ounit, '(A,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
+         write(ounit, '(A32,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
          call print_date(oinfo(i)%first_time, '.  First obs:', ounit)
          call print_date(oinfo(i)%last_time,  '.   Last obs:', ounit)
       endif
    enddo ALLTYPES
+   if (identity_obs%count > 0) then
+      if (counts_only) then
+         call compute_times(identity_obs%first_time, identity_obs%last_time, avg_string=mid_string)
+         write(ounit, '(A,I8,A,A36,I8,2A)') "'"//trim(filename_in(fnum))//"', ", &
+                                             -1, ", ", &
+                                             "IDENTITY_OBSERVATIONS"//", ", &
+                                             identity_obs%count, ", ", trim(mid_string)
+      else
+         write(ounit, '(A32,I8)') "IDENTITY_OBSERVATIONS", identity_obs%count
+         call print_date(identity_obs%first_time, '.  First obs:', ounit)
+         call print_date(identity_obs%last_time,  '.   Last obs:', ounit)
+      endif
+   endif
    
    call destroy_obs_sequence(seq_in)
    call destroy_obs(     obs_in )
@@ -680,20 +699,28 @@ character(len=*), intent(out), optional :: avg_string
 
 type(time_type)  :: avg_time
 integer          :: yr, mo, dy, hr, mn, sc
+integer          :: aday, asec
 character(len=9) :: mon_name
 
 avg_time = (first_time + last_time) / 2
 
+call get_time(avg_time, asec, aday)
+
 if (present(avg_day) .and. present(avg_sec)) then
-   call get_time(avg_time, avg_sec, avg_day)
+   avg_day = aday
+   avg_sec = asec
 else if (present(avg_sec)) then
-   call get_time(avg_time, avg_sec)
+   avg_sec = asec
 endif
 
 if (present(avg_string)) then
-   call get_date(avg_time, yr,mo,dy,hr,mn,sc)
-   mon_name = month_name(mo) 
-   write(avg_string, "(I2.2,'-',A3,'-',I4,' ',I2.2,':',I2.2,':',I2.2 )") dy, mon_name, yr, hr, mn, sc 
+   if (cal) then
+      call get_date(avg_time, yr,mo,dy,hr,mn,sc)
+      mon_name = month_name(mo) 
+      write(avg_string, "(I2.2,'-',A3,'-',I4,' ',I2.2,':',I2.2,':',I2.2 )") dy, mon_name, yr, hr, mn, sc 
+   else 
+      write(avg_string, "('day ', I8, ',', ' sec ', I8)") aday, asec
+   endif
 endif
 
 end subroutine compute_times
