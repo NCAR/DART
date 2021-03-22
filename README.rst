@@ -214,6 +214,7 @@ References
    :maxdepth: 2 
    :caption: Observation Converters
 
+   observations/obs_converters/README
    observations/obs_converters/GOES/README
 
 .. toctree::
