@@ -211,6 +211,12 @@ References
    guide/obs-seq-file
 
 .. toctree::
+   :maxdepth: 2 
+   :caption: Observation Converters
+
+   observations/obs_converters/GOES/README
+
+.. toctree::
    :maxdepth: 2
    :caption: Diagnostics
 
