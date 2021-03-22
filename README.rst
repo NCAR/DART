@@ -217,6 +217,7 @@ References
    observations/obs_converters/README
    observations/obs_converters/GOES/README
    observations/obs_converters/GMI/README
+   observations/obs_converters/MPD/README
 
 .. toctree::
    :maxdepth: 2
