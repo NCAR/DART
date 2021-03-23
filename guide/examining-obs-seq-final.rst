@@ -17,7 +17,7 @@ If there are no changes in the model state after assimilation, then examine the
     
    Then rerun ``filter`` to regenerate an ``obs_seq.final`` file in ASCII. For 
    an explanation of the contents of your ``obs_seq.final`` file, see
-   :doc:`obs-seq-file`.
+   :doc:`detailed-structure-obs-seq`.
 
 2. If you are using many observations, run the ``obs_diag`` program appropriate
    for your model. The :doc:`matlab-observation-space` will help to summarize

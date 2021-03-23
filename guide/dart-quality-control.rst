@@ -3,7 +3,7 @@ DART quality control field
 
 For failing observations, the DART quality control (QC) field may indicate the
 reason. To learn more about how to intepret the QC field, see
-:doc:`obs-seq-file`.
+:doc:`detailed-structure-obs-seq`.
 
 `How to locate the different values in an obs_seq.final file. <Observations.md#obs_seq_overview>`__
 
