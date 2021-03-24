@@ -79,8 +79,8 @@ The model_to_dart namelist includes:
 
 | 
 
-Two more namelists need to be mentioned. The `model_nml <model_mod.html#Namelist>`__ namelist specifies the MPAS
-analysis file to be used as the source. The `mpas_vars_nml <model_mod.html#mpas_vars_nml>`__ namelist specifies the MPAS
+Two more namelists need to be mentioned. The `model_nml <readme.html#Namelist>`__ namelist specifies the MPAS
+analysis file to be used as the source. The `mpas_vars_nml <readme.html#mpas_vars_nml>`__ namelist specifies the MPAS
 variables that will comprise the DART state vector.
 
 For example:
