@@ -23,8 +23,8 @@ Programs
 ``create_obs_radar_sequence`` generates one or more sets of synthetic radar observations. Change into the ``work``
 subdirectory and run ``quickbuild.csh`` to build this program.
 
-Many DART users working with radar observations are using the WRF Weather and Research Forecast model. See the `WRF
-tests directory <../../../models/wrf/regression/Radar/README>`__ for pointers to data to run a radar test case.
+Many DART users working with radar observations are using the WRF Weather and Research Forecast model. See the WRF
+tests directory in ``DART/models/wrf/regression/Radar/`` for pointers to data to run a radar test case.
 
 In addition to the programs available in the DART distribution, the following external program produces DART observation
 sequence files:
