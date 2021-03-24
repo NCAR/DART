@@ -71,180 +71,73 @@ namelist.
      overwrite_ncep_sfc_qc    = .false.  
    /
 
-| 
-
-.. container::
-
-   Item
-
-Type
-
-Description
-
-**Generic parameters:**
-
-file_name_input
-
-character(len=129)
-
-The input obs_seq file.
-
-file_name_output
-
-character(len=129)
-
-The output obs_seq file.
-
-sonde_extra, land_sfc_extra, metar_extra, marine_sfc_extra, marine_sfc_extra, sat_wind_extra, profiler_extra,
-gpsro_extra, acars_extra, trop_cyclone_extra
-
-character(len=129)
-
-The names of additional input obs_seq files, which if they exist, will be merged in with the obs from the
-``file_name_input`` obs_seq file. If the files do not exist, they are silently ignored without error.
-
-overwrite_obs_time
-
-logical
-
-If true, replace the incoming observation time with the analysis time. Not recommended.
-
-**Boundary-specific parameters:**
-
-obs_boundary
-
-real(r8)
-
-Number of grid points around domain boundary which will be considered the new extent of the domain. Observations outside
-this smaller area will be excluded.
-
-increase_bdy_error
-
-logical
-
-If true, observations near the domain boundary will have their observation error increased by ``maxobsfac``.
-
-maxobsfac
-
-real(r8)
-
-If ``increase_bdy_error`` is true, multiply the error by a ramped factor. This item sets the maximum error.
-
-obsdistbdy
-
-real(r8)
-
-If ``increase_bdy_error`` is true, this defines the region around the boundary (in number of grid points) where the
-observation error values will be altered. This is ramped, so when you reach the innermost points the change in
-observation error is 0.0.
-
-**Parameters to reduce observation count :**
-
-sfc_elevation_check
-
-logical
-
-If true, check the height of surface observations against the surface height in the model.
-
-sfc_elevation_tol
-
-real(r8)
-
-If ``sfc_elevation_check`` is true, the maximum difference between the elevation of a surface observation and the model
-surface height, in meters. If the difference is larger than this value, the observation is excluded.
-
-obs_pressure_top
-
-real(r8)
-
-Observations with a vertical coordinate in pressure which are located above this pressure level (i.e. the obs vertical
-value is smaller than the given pressure) will be excluded.
-
-obs_height_top
-
-real(r8)
-
-Observations with a vertical coordinate in height which are located above this height value (i.e. the obs vertical value
-is larger than the given height) will be excluded.
-
-**Radio/Rawinsonde-specific parameters :**
-
-include_sig_data
-
-logical
-
-If true, include significant level data from radiosondes.
-
-tc_sonde_radii
-
-real(r8)
-
-If greater than 0.0 remove any sonde observations closer than this distance in Kilometers to the center of a Tropical
-Cyclone.
-
-**Aircraft-specific parameters :**
-
-superob_aircraft
-
-logical
-
-If true, average all aircraft observations within the given radius and output only a single observation. Any observation
-that is used in computing a superob observation is removed from the list and is not used in any other superob
-computation.
-
-aircraft_horiz_int
-
-real(r8)
-
-If ``superob_aircraft`` is true, the horizontal distance in Kilometers which defines the superob area. All other unused
-aircraft observations within this radius will be averaged with the current observation.
-
-aircraft_vert_int
-
-real(r8)
-
-If ``superob_aircraft`` is true, the vertical distance in Pascals which defines the maximum separation for including an
-observation in the superob computation.
-
-**Satellite Wind-specific parameters :**
-
-superob_sat_winds
-
-logical
-
-If true, average all sat_wind observations within the given radius and output only a single observation. Any observation
-that is used in computing a superob observation is removed from the list and is not used in any other superob
-computation.
-
-sat_wind_horiz_int
-
-real(r8)
-
-If ``superob_sat_winds`` is true, the horizontal distance in Kilometers which defines the superob area. All other unused
-sat_wind observations within this radius will be averaged with the current observation.
-
-sat_wind_vert_int
-
-real(r8)
-
-If ``superob_sat_winds`` is true, the vertical distance in Pascals which defines the maximum separation for including an
-observation in the superob computation.
-
-overwrite_ncep_satwnd_qc
-
-logical
-
-If true, replace the incoming Data QC value in satellite wind observations with 2.0.
-
-**Surface Observation-specific parameters :**
-
-overwrite_ncep_sfc_qc
-
-logical
-
-If true, replace the incoming Data QC value in surface observations with 2.0.
-
-| 
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Item**                                                      | **Type**           | **Description**                                                                                                                                                                                                                                          |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Generic parameters:                                           |                    |                                                                                                                                                                                                                                                          |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| file_name_input                                               | character(len=129) | The input obs_seq file.                                                                                                                                                                                                                                  |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| file_name_output                                              | character(len=129) | The output obs_seq file.                                                                                                                                                                                                                                 |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| | sonde_extra, land_sfc_extra,                                | character(len=129) | The names of additional input obs_seq files, which if they exist, will be merged in with the obs from the file_name_input obs_seq file. If the files do not exist, they are silently ignored without error.                                              |
+| | metar_extra,                                                |                    |                                                                                                                                                                                                                                                          |
+| | marine_sfc_extra, sat_wind_extra,                           |                    |                                                                                                                                                                                                                                                          |
+| | profiler_extra, gpsro_extra,                                |                    |                                                                                                                                                                                                                                                          |
+| | acars_extra, trop_cyclone_extra                             |                    |                                                                                                                                                                                                                                                          |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| overwrite_obs_time                                            | logical            | If true, replace the incoming observation time with the analysis time. Not recommended.                                                                                                                                                                  |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Boundary-specific parameters:**                             |                    |                                                                                                                                                                                                                                                          |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| obs_boundary                                                  | real(r8)           | Number of grid points around domain boundary which will be considered the new extent of the domain. Observations outside this smaller area will be excluded.                                                                                             |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| increase_bdy_error                                            | logical            | If true, observations near the domain boundary will have their observation error increased by maxobsfac.                                                                                                                                                 |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| maxobsfac                                                     | real(r8)           | If increase_bdy_error is true, multiply the error by a ramped factor. This item sets the maximum error.                                                                                                                                                  |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| obsdistbdy                                                    | real(r8)           | If increase_bdy_error is true, this defines the region around the boundary (in number of grid points) where the observation error values will be altered. This is ramped, so when you reach the innermost points the change in observation error is 0.0. |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Parameters to reduce observation count :**                  |                    |                                                                                                                                                                                                                                                          |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| sfc_elevation_check                                           | logical            | If true, check the height of surface observations against the surface height in the model.                                                                                                                                                               |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| sfc_elevation_tol                                             | real(r8)           | If sfc_elevation_check is true, the maximum difference between the elevation of a surface observation and the model surface height, in meters. If the difference is larger than this value, the observation is excluded.                                 |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| obs_pressure_top                                              | real(r8)           | Observations with a vertical coordinate in pressure which are located above this pressure level (i.e. the obs vertical value is smaller than the given pressure) will be excluded.                                                                       |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| obs_height_top                                                | real(r8)           | Observations with a vertical coordinate in height which are located above this height value (i.e. the obs vertical value is larger than the given height) will be excluded.                                                                              |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ** Radio/Rawinsonde-specific parameters :**                   |                    |                                                                                                                                                                                                                                                          |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| include_sig_data                                              | logical            | If true, include significant level data from radiosondes.                                                                                                                                                                                                |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| tc_sonde_radii                                                | real(r8)           | If greater than 0.0 remove any sonde observations closer than this distance in Kilometers to the center of a Tropical Cyclone.                                                                                                                           |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Aircraft-specific parameters :                                |                    |                                                                                                                                                                                                                                                          |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| superob_aircraft                                              | logical            | If true, average all aircraft observations within the given radius and output only a single observation. Any observation that is used in computing a superob observation is removed from the list and is not used in any other superob computation.      |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| aircraft_horiz_int                                            | real(r8)           | If superob_aircraft is true, the horizontal distance in Kilometers which defines the superob area. All other unused aircraft observations within this radius will be averaged with the current observation.                                              |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| aircraft_vert_int                                             | real(r8)           | If superob_aircraft is true, the vertical distance in Pascals which defines the maximum separation for including an observation in the superob computation.                                                                                              |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Satellite Wind-specific parameters :**                      |                    |                                                                                                                                                                                                                                                          |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| superob_sat_winds                                             | logical            | If true, average all sat_wind observations within the given radius and output only a single observation. Any observation that is used in computing a superob observation is removed from the list and is not used in any other superob computation.      |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| sat_wind_horiz_int                                            | real(r8)           | If superob_sat_winds is true, the horizontal distance in Kilometers which defines the superob area. All other unused sat_wind observations within this radius will be averaged with the current observation.                                             |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| sat_wind_vert_int                                             | real(r8)           | If superob_sat_winds is true, the vertical distance in Pascals which defines the maximum separation for including an observation in the superob computation.                                                                                             |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| overwrite_ncep_satwnd_qc                                      | logical            | If true, replace the incoming Data QC value in satellite wind observations with 2.0.                                                                                                                                                                     |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Surface Observation-specific parameters :**                 |                    |                                                                                                                                                                                                                                                          |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| overwrite_ncep_sfc_qc                                         | logical            | If true, replace the incoming Data QC value in surface observations with 2.0.                                                                                                                                                                            |
++---------------------------------------------------------------+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+ 
+
+ 
 
 Modules used
 ------------
