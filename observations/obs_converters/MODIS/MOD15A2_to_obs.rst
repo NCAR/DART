@@ -273,3 +273,17 @@ Decisions you might need to make
 See the general discussion in the :doc:`../../../guide/creating-obs-seq-real` page about what options are
 available for the things you need to specify. These include setting a time, specifying an expected error, setting a
 location, and an observation type.
+
+
+Future plans
+------------
+
+- Support for the data records without the header, as created by
+  the Global Tool.
+- The work that remains is to get the IGBP landcover code for the site and
+  incorporate that into the observation metadata. I *almost* have
+  everything I need. Once that happens, the forward observation operator
+  can be made to be much more accurate by only using model landunits
+  that have the right landcover class.
+
+
