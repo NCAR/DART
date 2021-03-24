@@ -79,7 +79,7 @@ terminating the namelist.
 
 | 
 
-The full description of the ``model_nml`` namelist is documented in the `gitm model_mod <model_mod.html#Namelist>`__,
+The full description of the ``model_nml`` namelist is documented in the `gitm model_mod <readme.html#Namelist>`__,
 but the most important variable for ``gitm_blocks_to_netcdf`` is repeated here.
 
 +---------------------------------------+---------------------------------------+---------------------------------------+
@@ -94,7 +94,7 @@ but the most important variable for ``gitm_blocks_to_netcdf`` is repeated here.
 |                                       |                                       | the DART state vector and their       |
 |                                       |                                       | corresponding DART kind. The default  |
 |                                       |                                       | list is specified in                  |
-|                                       |                                       | `model_mod.nml <model_mod.nml>`__     |
+|                                       |                                       | model_mod.nml                         |
 +---------------------------------------+---------------------------------------+---------------------------------------+
 
 Modules used
