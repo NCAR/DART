@@ -285,4 +285,23 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
    |                   |                        | Nth row. e.g. 4 == keep only every 4th row.                |         |
    +-------------------+------------------------+------------------------------------------------------------+---------+
 
-| 
+|
+
+Known Bugs
+~~~~~~~~~~
+
+Earlier versions of this converter mistakenly put the moisture obs
+at level heights, in the same location as the temperature observations.
+The moisture observations are in fact an integrated value across the
+distance between two levels.
+This means the location was shifted 1/2 level in the vertical from 
+the center of the layer.  The fixed converter outputs the location
+at the center, in log space, of each layer.
+
+
+Future Plans
+~~~~~~~~~~~~
+If a more accurate moisture observation was needed, the observation value
+could be computed by actually integrating multiple values between the levels.
+At this point it doesn't seem necessary.
+ 
