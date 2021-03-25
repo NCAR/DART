@@ -295,6 +295,7 @@ References
 .. toctree::
    :maxdepth: 2
    :caption: Releases
+   :hidden:
 
    guide/Manhattan_release
    guide/Lanai_release
@@ -393,6 +394,7 @@ References
 .. toctree::
    :maxdepth: 2
    :caption: History
+   :hidden:
 
    guide/Lanai_diffs_from_Kodiak   
    guide/history/Jamaica_diffs_from_I
@@ -474,6 +476,7 @@ References
 .. toctree::
    :maxdepth: 2
    :caption: Forward Operators
+   :hidden:
 
    observations/forward_operators/obs_def_gps_mod
    observations/forward_operators/obs_def_dew_point_mod
