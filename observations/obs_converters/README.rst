@@ -261,7 +261,7 @@ converters) include:
 -  `DWL <DWL/dwl_to_obs.html>`__
 -  `GMI <GMI/README.html>`__
 -  `GOES <GOES/README.html>`__
--  `GPSPW <GPSPW/README>`__
+-  `GPSPW <GPSPW/README.html>`__
 -  GRACE
 -  `GSI2DART <GSI2DART/README>`__
 -  `GTSPP <GTSPP/GTSPP.html>`__

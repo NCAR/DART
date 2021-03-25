@@ -230,6 +230,7 @@ References
    observations/obs_converters/AIRS/README
    observations/obs_converters/CHAMP/work/README
    observations/obs_converters/CONAGUA/README
+   observations/obs_converters/GPSPW/README
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
 
