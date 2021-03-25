@@ -1,8 +1,7 @@
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
+#########
+Obs Error
+#########
+
 
 This directory is where to add modules that compute/set the
 observational errors for different types of real-world observations.
@@ -43,7 +42,3 @@ without changing the code.
 
 Thanks to Ryan Torn for the idea and initial contributions.
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
