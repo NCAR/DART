@@ -255,6 +255,7 @@ converters) include:
 -  `Aviso+/CMEMS <AVISO/AVISO.html>`__
 -  `Ameriflux <Ameriflux/level4_to_obs.html>`__
 -  `CHAMP <CHAMP/work/README.html>`__
+-  `cice <cice/cice_to_obs.html>`__
 -  CNOFS
 -  `CONAGUA <CONAGUA/README.html>`__
 -  `COSMOS <COSMOS/COSMOS_to_obs.html>`__
@@ -276,7 +277,6 @@ converters) include:
 -  `SST <SST/SST.html>`__
 -  `SSUSI <SSUSI/convert_f16_edr_dsk.html>`__
 -  `WOD <WOD/WOD.html>`__
--  `cice <cice/cice_to_obs.html>`__
 -  `gnd_gps_vtec <gnd_gps_vtec/README.html>`__
 -  `GPS <gps/gps.html>`__
 -  `ok_mesonet <ok_mesonet/ok_mesonet.html>`__

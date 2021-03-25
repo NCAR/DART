@@ -210,7 +210,7 @@ Tools and Information Center provides binaries for several common
 platforms as well as source code should you need to build your own.
 
 HDF4 CF CONVERSION TOOLKIT
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The HDF-EOS Tools and Information Center provides the `HDF4 CF
 CONVERSION TOOLKIT <http://hdfeos.org/software/h4cflib.php>`__

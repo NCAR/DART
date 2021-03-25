@@ -224,18 +224,49 @@ References
    :caption: Observation Converters
 
    observations/obs_converters/README
-   observations/obs_converters/GOES/README
-   observations/obs_converters/GMI/README
-   observations/obs_converters/MPD/README
+   observations/obs_converters/AIRS/AIRS
    observations/obs_converters/AIRS/README
+   observations/obs_converters/AVISO/AVISO
+   observations/obs_converters/Ameriflux/level4_to_obs
    observations/obs_converters/CHAMP/work/README
+   observations/obs_converters/cice/cice_to_obs
    observations/obs_converters/CONAGUA/README
+   observations/obs_converters/COSMOS/COSMOS_to_obs
+   observations/obs_converters/COSMOS/COSMOS_development
+   observations/obs_converters/DWL/dwl_to_obs
+   observations/obs_converters/GMI/README
+   observations/obs_converters/GOES/README
    observations/obs_converters/GPSPW/README
    observations/obs_converters/GSI2DART/readme
+   observations/obs_converters/GTSPP/GTSPP
+   observations/obs_converters/MADIS/MADIS
+   observations/obs_converters/MIDAS/MIDAS_to_obs
+   observations/obs_converters/MODIS/readme
+   observations/obs_converters/MODIS/MOD15A2_to_obs
+   observations/obs_converters/MPD/README
+   observations/obs_converters/NCEP/prep_bufr/prep_bufr
+   observations/obs_converters/NCEP/ascii_to_obs/create_real_obs
    observations/obs_converters/ROMS/ROMS
+   observations/obs_converters/SSEC/SSEC
+   observations/obs_converters/SST/SST
+   observations/obs_converters/SSUSI/convert_f16_edr_dsk
+   observations/obs_converters/WOD/WOD
+   observations/obs_converters/gnd_gps_vtec/README
+   observations/obs_converters/gps/gps
+   observations/obs_converters/ok_mesonet/ok_mesonet
+   observations/obs_converters/quikscat/QuikSCAT
+   
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
-   observations/obs_converters/gnd_gps_vtec/README
+   observations/obs_converters/radar/radar
+   observations/obs_converters/snow/snow_to_obs
+   observations/obs_converters/text/text_to_obs
+   observations/obs_converters/tpw/tpw
+   observations/obs_converters/tropical_cyclone/tc_to_obs
+   observations/obs_converters/var/littler_tf_dart
+   observations/obs_converters/var/rad_3dvar_to_dart
+   observations/obs_converters/var/var
+   
 
 .. toctree::
    :maxdepth: 2
