@@ -231,8 +231,11 @@ References
    observations/obs_converters/CHAMP/work/README
    observations/obs_converters/CONAGUA/README
    observations/obs_converters/GPSPW/README
+   observations/obs_converters/GSI2DART/readme
+   observations/obs_converters/ROMS/ROMS
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
+   observations/obs_converters/gnd_gps_vtec/README
 
 .. toctree::
    :maxdepth: 2
@@ -427,10 +430,8 @@ References
    observations/obs_converters/SSEC/SSEC
    observations/obs_converters/GTSPP/GTSPP
    observations/obs_converters/gps/gps
-   observations/obs_converters/GSI2DART/readme
    observations/obs_converters/WOD/WOD
    observations/obs_converters/tpw/tpw
-   observations/obs_converters/ROMS/ROMS
    observations/obs_converters/COSMOS/COSMOS_to_obs
    observations/obs_converters/COSMOS/COSMOS_development
    observations/obs_converters/var/littler_tf_dart

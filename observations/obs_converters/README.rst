@@ -263,7 +263,7 @@ converters) include:
 -  `GOES <GOES/README.html>`__
 -  `GPSPW <GPSPW/README.html>`__
 -  GRACE
--  `GSI2DART <GSI2DART/README>`__
+-  `GSI2DART <GSI2DART/readme.html>`__
 -  `GTSPP <GTSPP/GTSPP.html>`__
 -  `MADIS <MADIS/MADIS.html>`__
 -  `MIDAS <MIDAS/MIDAS_to_obs.html>`__
@@ -271,13 +271,13 @@ converters) include:
 -  `MPD <MPD/README.html>`__
 -  `NCEP (prepbufr->ascii) <NCEP/prep_bufr/prep_bufr.html>`__
 -  `NCEP (ascii->obs_seq) <NCEP/ascii_to_obs/create_real_obs.html>`__
--  `ROMS <ROMS/ROMS.htm>`__
+-  `ROMS <ROMS/ROMS.html>`__
 -  `SSEC <SSEC/SSEC.html>`__
 -  `SST <SST/SST.html>`__
 -  `SSUSI <SSUSI/convert_f16_edr_dsk.html>`__
 -  `WOD <WOD/WOD.html>`__
 -  `cice <cice/cice_to_obs.html>`__
--  `gnd_gps_vtec <gnd_gps_vtec/README>`__
+-  `gnd_gps_vtec <gnd_gps_vtec/README.html>`__
 -  `GPS <gps/gps.html>`__
 -  `ok_mesonet <ok_mesonet/ok_mesonet.html>`__
 -  `QuikSCAT <quikscat/QuikSCAT.html>`__
