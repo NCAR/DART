@@ -569,3 +569,11 @@ entered as input (to ``obs_levels``), a rather uninformative run-time error is g
      message:  INVALID NAMELIST ENTRY:  / in namelist convert_cosmic_ionosphere_nml
 
 Your error may be different if ``obs_levels`` is not the last namelist item before the slash '/'
+
+Known Bugs
+----------
+
+Some COSMIC files seem to have internal times which differ from the times encoded in the filenames by as much
+as 2-3 minutes. If it is important to get all the observations within a particular time window files with
+filenames from a few minutes before and after the window should be converted. Times really outside the window 
+can be excluded in a separate step using the :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`.

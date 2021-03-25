@@ -5,7 +5,7 @@ Overview
 --------
 
 The Weather Research and Forecasting Hydrologic Model 
-(`WRF-Hydro <http://www.ral.ucar.edu/projects/wrf_hydro/overview>`_ )
+(`WRF-Hydro <http://www.ral.ucar.edu/projects/wrf_hydro/overview>`_)
 is a community modeling system and framework for hydrologic modeling and model
 coupling. WRF-Hydro is configured to use the Noah-MP Land Surface Model to 
 simulate land surface processes. Combined with DART, the facility is called

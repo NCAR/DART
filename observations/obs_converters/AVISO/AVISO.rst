@@ -25,7 +25,7 @@ Service <http://marine.copernicus.eu/about-us/about-your-copernicus-marine-servi
   ``Geosat Follow On`` platforms.
 | The DART observation TYPE corresponding to each of these platforms are ``J1_SEA_SURFACE_ANOMALY``,
   ``EN_SEA_SURFACE_ANOMALY``, and ``GFO_SEA_SURFACE_ANOMALY``, respectively and are defined in
-  `obs_def_ocean_mod.f90 <../../forward_operators/obs_def_ocean_mod.f90>`__.
+  `obs_def_ocean_mod.f90 <../../forward_operators/obs_def_ocean_mod.html>`__.
 | Fred wrote a python script (``shell_scripts/convert_aviso.py``) to repeatedly call ``convert_aviso`` and decided it
   was easiest to simply provide the input file name as a command line argument and always have the output file have the
   name ``obs_seq.aviso``. As such, there is no input namelist specifically for these parameters, but other DART modules

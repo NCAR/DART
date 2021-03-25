@@ -267,3 +267,31 @@ References
 
 -  Assimilation of GPS Radio Occultation Data for Numerical Weather Prediction, Kuo,Y.H., Sokolovskiy,S.V., Anthes,R.A.,
    Vendenberghe,F., Terrestrial Atm and Ocn Sciences, Vol 11, pp157-186, 2000.
+
+
+Error codes and conditions
+--------------------------
+
+
++------------------------+---------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------+
+|         Routine        |                                     Message                                     |                                                              Comment                                                             |
++========================+=================================================================================+==================================================================================================================================+
+| initialize_module      | initial allocation failed for gps observation data, itemcount = (max_gpsro_obs) | Need to increase max_gpsro_obs count in namelist                                                                                 |
++------------------------+---------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------+
+| gpskey_out_of_range    | gpskey (key#) exceeds max_radial_gps_obs (maxval)                               | The number of GPS observations exceeds the array size allocated in the module. Need to increase max_gpsro_obs count in namelist. |
++------------------------+---------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------+
+| read_gpsro_ref         | Expected header 'gpsroref' in input file                                        | The format of the input obs_seq file is not consistent.                                                                          |
++------------------------+---------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------+
+| get_expected_gpsro_ref | vertical location must be height; gps obs key #                                 | GPS observations must have vertical coordinates of height                                                                        |
++------------------------+---------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------+
+
+Future Plans
+------------
+
+- The current code first bins the very densely-sampled vertical profile into 200 bins, and then interpolates 
+  the requested vertical location from that. The original profiles have been plotted and are smooth; 
+  there appears to be no need to pre-bin the ata.
+
+- The local operator needs no additional auxiliary data. The observation files would be much smaller if the
+  local operator observation was a separate type without aux data, and only the non-local operator observation
+  types would need the ray direction, the curvature, etc.

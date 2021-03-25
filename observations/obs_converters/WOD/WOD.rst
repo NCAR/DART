@@ -160,3 +160,15 @@ Errors and known bugs
 The code for setting observation error variances is using fixed values, and we are not certain if they are correct.
 Incoming QC values larger than 0 are suspect, but it is not clear if they really signal unusable values or whether there
 are some codes we should accept.
+
+Future Plans
+------------
+
+- This converter is currently being used on WOD09 data, but the standard files generally stop with early 2009 data.
+  There are subsequent additional new obs files available from the download site.
+
+- The fractional-time field, and sometimes the day-of-month field in a small percentage of the obs have bad values. 
+  The program currently discards these obs, but it may be possible to recover the original good day number and/or time of
+  day. There is a subroutine at the end of the *wod_to_obs.f90* file which contains all the reject/accept/correction 
+  information for the year, month, day, time fields. To accept or correct the times on more obs, edit this subroutine
+  and make the necessary changes.

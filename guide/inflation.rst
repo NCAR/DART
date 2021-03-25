@@ -25,7 +25,7 @@ observations declines. So there is also an option to damp inflation through time
 models using damped inflation has been a successful strategy.
 
 The following namelist items which control inflation are found in the ``input.nml`` file, in the &filter_nml namelist.
-The detailed descriptions are in the `namelist <../../modules/assimilation/filter_mod.html#Namelist>`__ page. Here we
+The detailed descriptions are in the `filter_mod <../assimilation_code/modules/assimilation/filter_mod.html#Namelist>`__ page. Here we
 try to give some basic advice about commonly used values and suggestions for where to start. Spatial variation is
 controlled by ``inf_flavor``, which also controls whether there's any inflation, ``inf_initial_from_restart``, and
 ``inf_initial``, as described below. Time variation is controlled by ``inf_sd_initial_from_restart``,

@@ -144,4 +144,14 @@ these namelist items.
    |                  |                    | cell in a particular row. e.g. 5 == keep every 5th cell.                   |
    +------------------+--------------------+----------------------------------------------------------------------------+
 
-| 
+|
+
+Future Plans
+~~~~~~~~~~~~
+
+1. There is one bit of error-checking that did not survive the conversion from F77 to F90. I need to restore the check that the HDF file being read is a 'Level 2B' product.
+2. There is a lot of error-checking that is not being done. I need to bulletproof the code more.
+3. We need namelist options to select something other than the highest-ranked ambiguity.
+4. We need namelist options to select more QC flags - not just the ones with the 'perfect' QC value of 0
+5. Add an option to leave the observations as speed and direction instead of converting them to U,V components. This is a natural implementation of the instrument error characteristics. However, it would require writing a specialized forward operator in order to assimilate obs of this type (speed, direction), and there is still a numerical problem with trying to do the statistics required during the assimilation of a cyclic direction value.
+ 

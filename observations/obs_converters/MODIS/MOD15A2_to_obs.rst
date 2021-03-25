@@ -55,8 +55,8 @@ The DART workflow is usually:
    :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`
 
 For some models (CLM, for example), it is required to reorganize the observation sequence files into a series of files
-that contains ONLY the observations for each assimilation. This can be achieved with the `makedaily.sh <makedaily.sh>`__
-script.
+that contains ONLY the observations for each assimilation. This can be achieved with the 
+``DART/observations/obs_converters/MODIS/shell_scripts/makedaily.sh`` script.
 
 Namelist
 --------
@@ -270,6 +270,20 @@ to indicate where changes will be likely to need to be made.
 Decisions you might need to make
 --------------------------------
 
-See the general discussion in the `obs_converters/README.md <../README.md#Decisions>`__ page about what options are
+See the general discussion in the :doc:`../../../guide/creating-obs-seq-real` page about what options are
 available for the things you need to specify. These include setting a time, specifying an expected error, setting a
 location, and an observation type.
+
+
+Future plans
+------------
+
+- Support for the data records without the header, as created by
+  the Global Tool.
+- The work that remains is to get the IGBP landcover code for the site and
+  incorporate that into the observation metadata. I *almost* have
+  everything I need. Once that happens, the forward observation operator
+  can be made to be much more accurate by only using model landunits
+  that have the right landcover class.
+
+

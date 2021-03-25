@@ -15,6 +15,9 @@ versions of each of the following:
 - `PathScale Fortran compiler <https://en.wikipedia.org/wiki/PathScale>`_
 
 Since recompiling the code is a necessity to experiment with different
-models, there are no DART binaries to distribute. If you are unfamiliar
-with Fortran and/or wonder why we would choose this language, see Why
-Fortran? for more information.
+models, there are no DART binaries to distribute. 
+
+..
+  If you are unfamiliar
+  with Fortran and/or wonder why we would choose this language, see Why
+  Fortran? for more information.

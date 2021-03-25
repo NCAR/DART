@@ -8,14 +8,15 @@ Conditional probability
 -----------------------
 
 Most real-world events involve uncertainty because the occurence of a specific
-outcome isn't guaranteed. You can sense in these hypothetical situations:
+outcome isn't guaranteed. You can sense that in situations in which these are
+possible outcomes:
 
 - your flight departs on time
 - you keep your New Year's resolution
 - your car needs repairs in the next 6 months
 
-that the stated outcomes aren't guaranteed. There is a chance that the opposite
-outcome occurs.
+there is a chance that the opposite outcome might occur. Describing such
+situations accurately requires making probabilistic statements.
 
 In mathematical notation, the probability of an event, :math:`A`, is denoted by
 :math:`P(A)`. If the event :math:`A` means that your flight departs on time,
@@ -84,7 +85,7 @@ the posterior, :math:`P(A|B)`. The theorem is:
 
     posterior = \frac{likelihood \times prior}{normalization}
 
-or
+or:
 
 .. math::
 
@@ -99,7 +100,7 @@ Prior
 You can estimate the probability of a carbon monoxide exposure event in your
 house, :math:`P(A)`, by dividing the number of carbon monoxide exposure events
 that occur annually in houses by the total number of houses in the United
-States, which is 140 million houses.
+States, which is 140 million houses:
 
 .. math::
 
@@ -110,7 +111,7 @@ Likelihood
 
 You can estimate the probability your detector sets off its alarm given that
 there is a carbon monoxide exposure event in your house, :math:`P(B|A)`, since
-you know the error rate of the detector, 0.1%.
+you know the error rate of the detector, 0.1%:
 
 .. math::
 

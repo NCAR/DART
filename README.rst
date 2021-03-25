@@ -203,12 +203,32 @@ References
    guide/filters
    guide/inflation
    guide/Radiance_support
+   guide/controlling-files-output
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Observations
+
+   guide/preprocess-program
+   guide/introduction-obs-seq-file
+   guide/detailed-structure-obs-seq
+   guide/creating-obs-seq-synthetic
+   guide/creating-obs-seq-real
+   guide/available-observation-converters
+   guide/manipulating-with-obs-sequence-tool
+   guide/difference-between-type-and-quantity
+   guide/adding-support-new-type
 
 .. toctree::
    :maxdepth: 2
    :caption: Diagnostics
 
+   guide/checking-your-assimilation
+   guide/computing-filter-increments
    guide/how-does-output-differ-from-input-increments
+   guide/dart-missing-data-value
+   guide/dart-quality-control
+   guide/examining-obs-seq-final
    guide/matlab-observation-space
 
 .. toctree::

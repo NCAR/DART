@@ -23,7 +23,7 @@ This overview includes these subsections:
 -  Description of Inflation Options
 -  Detailed Program Flow
 
-See the `DART web site <http://www.image.ucar.edu/DAReS/DART>`__ for more documentation, including a discussion of the
+See :doc:`../../../README` for more documentation, including a discussion of the
 capabilities of the assimilation system, a diagram of the entire execution cycle, the options and features.
 
 Program flow

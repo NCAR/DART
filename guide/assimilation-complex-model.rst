@@ -63,7 +63,7 @@ There are two main advantages to using localization. One is it avoids an observa
 because of spurious correlations. The other is that, especially for large models, it improves run-time performance
 because only points within the localization radius need to be considered. Because of the way the parallelization was
 implemented in DART, localization was easy to add and using it usually results in a very large performance gain. See
-`here <../../modules/assimilation/assim_tools_mod.html#Localization>`__ for a discussion of localization-related
+`here <../assimilation_code/modules/assimilation/assim_tools_mod.html#Localization>`__ for a discussion of localization-related
 namelist items.
 
 Inflation
@@ -97,7 +97,7 @@ Corrections accounting for these errors are applied during the assimilation to i
 improve the assimilation results. The namelist item to enable this option is
 ``&assim_tools_nml :: sampling_error_correction``. Additionally you will need to have the precomputed correction file
 ``sampling_error_correction_table.nc``, in the run directory. See the description of the namelist item in the
-`&assim_tools_nml <../../modules/assimilation/assim_tools_mod.html#Namelist>`__ namelist, and
+`&assim_tools_nml <../assimilation_code/modules/assimilation/assim_tools_mod.html#Namelist>`__ namelist, and
 :doc:`../assimilation_code/programs/system_simulation/system_simulation` for instructions on where to find (or how to generate) the auxiliary file
 needed by this code. See Anderson (2011).
 
