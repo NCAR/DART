@@ -254,7 +254,7 @@ converters) include:
 -  AURA (uses a combination of IDL and Fortran)
 -  `Aviso+/CMEMS <AVISO/AVISO.html>`__
 -  `Ameriflux <Ameriflux/level4_to_obs.html>`__
--  `CHAMP <CHAMP/work/README>`__
+-  `CHAMP <CHAMP/work/README.html>`__
 -  CNOFS
 -  `CONAGUA <README>`__
 -  `COSMOS <COSMOS/COSMOS_to_obs.html>`__
@@ -295,7 +295,7 @@ There are also a couple utilities of note:
 -  `Even Sphere <even_sphere/README.html>`__ - a utility for generating
    evenly-spaced observation locations that can then be used in a
    perfect model experiment.
--  `obs_error <obs_error/README>`__ - modules that specify observation
+-  `obs_error <obs_error/README.html>`__ - modules that specify observation
    errors based on what is used by ECMWF and NCEP
 
 In addition the following external program produces DART observation

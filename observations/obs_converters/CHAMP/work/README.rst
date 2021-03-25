@@ -1,8 +1,5 @@
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
+CHAMP
+=====
 
 This is just a modification of a standard "text" converter that comes with DART.
 
@@ -24,7 +21,3 @@ demonstrate the format and is not to be used for real experiments.
 
 Alexey Morozov alexeymor at google mail 5/22/13
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
