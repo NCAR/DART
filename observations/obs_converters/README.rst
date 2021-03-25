@@ -256,7 +256,7 @@ converters) include:
 -  `Ameriflux <Ameriflux/level4_to_obs.html>`__
 -  `CHAMP <CHAMP/work/README.html>`__
 -  CNOFS
--  `CONAGUA <README>`__
+-  `CONAGUA <CONAGUA/README.html>`__
 -  `COSMOS <COSMOS/COSMOS_to_obs.html>`__
 -  `DWL <DWL/dwl_to_obs.html>`__
 -  `GMI <GMI/README.html>`__
