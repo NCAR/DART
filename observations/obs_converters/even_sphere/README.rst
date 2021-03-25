@@ -1,8 +1,6 @@
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
+===========
+Even Sphere
+===========
 
 Generate a series of synthetic observations located at roughly
 evenly distributed locations on a sphere.  At each location
@@ -35,9 +33,11 @@ DART:
 build the following executables and have these files
 in the current directory:
 
- ./create_obs_sequence
- ./create_fixed_network_seq
- input.nml
+.. code-block:: text
+
+   ./create_obs_sequence
+   ./create_fixed_network_seq
+   input.nml
 
 (if these executables were compiled for a specific model,
 then if that model needs any other input files at startup
@@ -62,20 +62,15 @@ DETAILS on generating points evenly distributed on a sphere:
 
 this is the algorithm (i believe) that's being used:
 
-dlong := pi*(3-sqrt(5))  /* ~2.39996323 */
-dz    := 2.0/N
-long := 0
-z    := 1 - dz/2
-for k := 0 .. N-1
-    r    := sqrt(1-z*z)
-    node[k] := (cos(long)*r, sin(long)*r, z)
-    z    := z - dz
-    long := long + dlong
+.. code-block:: text
 
-(there's example code, in the 'My Golden Section Spiral' paragraph, 
-in Python, here: http://www.xsi-blog.com/archives/115 )
+  dlong := pi*(3-sqrt(5))  /* ~2.39996323 */
+  dz    := 2.0/N
+  long := 0
+  z    := 1 - dz/2
+  for k := 0 .. N-1
+      r    := sqrt(1-z*z)
+      node[k] := (cos(long)*r, sin(long)*r, z)
+      z    := z - dz
+      long := long + dlong
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

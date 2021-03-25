@@ -267,7 +267,7 @@ converters) include:
 -  `GTSPP <GTSPP/GTSPP.html>`__
 -  `MADIS <MADIS/MADIS.html>`__
 -  `MIDAS <MIDAS/MIDAS_to_obs.html>`__
--  `MODIS <MODIS/MOD15A2_to_obs.htm>`__
+-  `MODIS <MODIS/MOD15A2_to_obs.html>`__
 -  `MPD <MPD/README.html>`__
 -  `NCEP (prepbufr->ascii) <NCEP/prep_bufr/prep_bufr.html>`__
 -  `NCEP (ascii->obs_seq) <NCEP/ascii_to_obs/create_real_obs.html>`__
@@ -292,7 +292,7 @@ converters) include:
 
 There are also a couple utilities of note:
 
--  `even_sphere <even_sphere/README>`__ - a utility for generating
+-  `Even Sphere <even_sphere/README.html>`__ - a utility for generating
    evenly-spaced observation locations that can then be used in a
    perfect model experiment.
 -  `obs_error <obs_error/README>`__ - modules that specify observation

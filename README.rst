@@ -228,6 +228,7 @@ References
    observations/obs_converters/GMI/README
    observations/obs_converters/MPD/README
    observations/obs_converters/AIRS/README
+   observations/obs_converters/even_sphere/README
 
 .. toctree::
    :maxdepth: 2
