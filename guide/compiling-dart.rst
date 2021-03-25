@@ -35,7 +35,7 @@ Shell scripts that execute the *mkmf* command for all standard DART
 executables are provided with the standard DART distribution. For more
 information on the `mkmf <https://github.com/NOAA-GFDL/mkmf>`__ tool
 please see the `mkmf
-documentation <https://extranet.gfdl.noaa.gov/~vb/mkmf.html>`__.
+documentation <https://github.com/NOAA-GFDL/mkmf>`__.
 
 Building and Customizing the ‘mkmf.template’ file
 =================================================
