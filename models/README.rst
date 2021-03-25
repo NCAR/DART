@@ -1,11 +1,60 @@
+Supported Models
+================
 
-<span id="TOP" class="anchor"></span>
+DART supported models:
 
-![DARTlogo](https://github.com/NCAR/DART/blob/Manhattan/docs/images/Dartboard7.png)
+- :doc:`9var/readme`
+- :doc:`am2/readme`
+- :doc:`bgrid_solo/readme`
+- :doc:`cam-fv/readme`
+- :doc:`CESM/readme`
+- :doc:`cice/readme`
+- :doc:`clm/readme`
+- :doc:`cm1/readme`
+- :doc:`coamps_nest/readme`
+- :doc:`coamps/readme`
+- :doc:`ECHAM/readme`
+- :doc:`FESOM/readme`
+- :doc:`gitm/readme`
+   - :doc:`gitm/netcdf_to_gitm_blocks`
+   - :doc:`gitm/gitm_blocks_to_netcdf`
+- :doc:`ikeda/readme`
+- :doc:`LMDZ/readme`
+- :doc:`lorenz_04/readme`
+- :doc:`lorenz_63/readme`
+- :doc:`lorenz_84/readme`
+- :doc:`lorenz_96/readme`
+- :doc:`lorenz_96_2scale/readme`
+- :doc:`forced_lorenz_96/readme`
+- :doc:`MITgcm_ocean/readme`
+- :doc:`mpas_atm/readme`
+   - :doc:`mpas_atm/mpas_dart_obs_preprocess`
+   - :doc:`mpas_ocn/readme`
+- :doc:`mpas_ocn/model_to_dart`
+- :doc:`NCOMMAS/readme`
+- :doc:`noah/readme`
+- :doc:`null_model/readme`
+- :doc:`PBL_1d/readme`
+- :doc:`pe2lyr/readme`
+- :doc:`POP/readme`
+- :doc:`POP/dart_pop_mod`
+- :doc:`ROMS/readme`
+- :doc:`rose/readme`
+- :doc:`simple_advection/readme`
+- :doc:`sqg/readme`
+- :doc:`tiegcm/readme`
+- :doc:`wrf_hydro/readme`
+- :doc:`wrf/readme`
+-   :doc:`wrf/WRF_DART_utilities/replace_wrf_fields`
+-   :doc:`wrf/WRF_DART_utilities/wrf_dart_obs_preprocess`
 
-## This document is really quite out-of-date. TJH 22 Apr 2020
+Hints for porting a new model to DART:
+--------------------------------------
 
-## Hints for porting a new model to DART:
+.. warning::
+ 
+   This document is really quite out-of-date. TJH 22 Apr 2020
+
 
 copy this template directory into a DART/models/xxx
 directory for your new model.
@@ -22,69 +71,72 @@ then rename full_model_mod.f90 to model_mod.f90 and start there.
 edit all the work/path_names_* files and change models/template/xxx
 to use the name of the directory for your model.
 
-try ./quickbuild.csh and everything should compile at this point.
+try ``./quickbuild.csh`` and everything should compile at this point.
 
 the required subroutines are these:
-```
-public :: get_model_size,         &
-          adv_1step,              &
-          get_state_meta_data,    &
-          model_interpolate,      &
-          get_model_time_step,    &
-          end_model,              &
-          static_init_model,      &
-          init_time,              &
-          init_conditions,        &
-          nc_write_model_atts,    &
-          nc_write_model_vars,    &
-          pert_model_state,       &          
-          get_close_maxdist_init, &
-          get_close_obs_init,     &
-          get_close_obs,          &
-          ens_mean_for_model
-```
+
+.. code-block:: text
+
+   public :: get_model_size,         &
+             adv_1step,              &
+             get_state_meta_data,    &
+             model_interpolate,      &
+             get_model_time_step,    &
+             end_model,              &
+             static_init_model,      &
+             init_time,              &
+             init_conditions,        &
+             nc_write_model_atts,    &
+             nc_write_model_vars,    &
+             pert_model_state,       &          
+             get_close_maxdist_init, &
+             get_close_obs_init,     &
+             get_close_obs,          &
+             ens_mean_for_model
 
 in addition, model_mod can contain subroutines that are used
 for other utility programs and we recommend at least the following
 routines be added to `model_mod.f90`:
-```
-public :: model_file_to_dart_vector, &     ! converter
-          dart_vector_to_model_file, &     ! converter
-          get_gridsize,              &     ! called by everyone
-          get_model_filename,        &     ! called by both (set_model_filename?)
-          get_state_time,            &     ! model_to_sv, static_init_model
-          set_state_time  !(?)             ! sv_to_model, trans_time
-```
+
+.. code-block:: text
+
+   public :: model_file_to_dart_vector, &     ! converter
+             dart_vector_to_model_file, &     ! converter
+             get_gridsize,              &     ! called by everyone
+             get_model_filename,        &     ! called by both (set_model_filename?)
+             get_state_time,            &     ! model_to_sv, static_init_model
+             set_state_time  !(?)             ! sv_to_model, trans_time
+
 
 edit the model mod and fill in the routines in this order:
 
-1. `static_init_model()` - make it read in the grid information
-  and the number of variables that will be in the state vector
- (fill in the progvar derived type).   fill in the model_size
-  variable.  as part of this work, fill in the `get_gridsize()`
-  code.
+1. ``static_init_model()`` - make it read in the grid information
+   and the number of variables that will be in the state vector
+   (fill in the progvar derived type).   fill in the model_size
+   variable.  as part of this work, fill in the ``get_gridsize()``
+   code.
 
-  after number 1 is done, `get_model_size()` and 
-  `get_model_time_step()` from the template should be ok as-is.
+  after number 1 is done, ``get_model_size()`` and 
+  ``get_model_time_step()`` from the template should be ok as-is.
 
 2. model_file_to_dart_vector() - given a model data file, read in
-  the fields and put them into the 1D DART state vector.  make
-  sure the order and values match the progvar array.  
+   the fields and put them into the 1D DART state vector.  make
+   sure the order and values match the progvar array.  
 
 3. dart_vector_to_model_file() - do the reverse of the previous step.
 
-4. `get_state_meta_data()` - given an index number into the state vector
+4. ``get_state_meta_data()`` - given an index number into the state vector
     return the location and type.  the code which loops over the
     progvar should already do the type, but code to compute what
     lon, lat, and vertical (for a 3d model) or x location (1d)
     corresponds to this item must be written.
 
-5. `model_interpolate()` - given a location (lon/lat/vert in 3d, x in 1d)
+5. ``model_interpolate()`` - given a location (lon/lat/vert in 3d, x in 1d)
    and a state QTY_xxx kind, return the interpolated value the field
    has at that location.   this is probably one of the routines that
    will take the most code to write.
 
-6. `nc_write_model_atts(), nc_write_model_vars()` - when `filter` runs
+6. ``nc_write_model_atts(), nc_write_model_vars()`` - when ``filter`` runs
    it calls these routines to output model data into a netcdf diagnostic
    file which is unrelated to the model data files.  it is possible to
    have the ensemble data just be dumped as a single 1D vector but
@@ -95,36 +147,42 @@ edit the model mod and fill in the routines in this order:
    then optionally some or all of the individual ensemble members.
 
 for now, ignore these routines:
-```
+
+.. code-block:: text
+
    get_close_maxdist_init()
    get_close_obs_init()
    get_close_obs()
    ens_mean_for_model()
    end_model()
-```
  
 if you have data in a dart initial condition/restart file, then you
 can ignore these routines:
-```
+
+.. code-block:: text
+
    init_time()
    init_conditions()
-```
+
 otherwise, have them return an initial time and an initial default
 ensemble state.
 
 if your model is NOT subroutine callable, you can ignore this routine:
-```
+.. code-block:: text
+
    adv_1step()
-```
+
 otherwise have it call the interface to your model and add the files
 necessary to build your model to all the `work/path_names_*` files.
 add the model source to a src/ directory.
 
 if you want to let filter add gaussian noise to a single state vector
 to generate an ensemble, you can ignore this routine
-```
+
+.. code-block:: text
+
    pert_model_state()
-```
+
 otherwise fill in code that does whatever perturbation makes sense
 to have an initial ensemble of states.  in some cases that means
 adding a different range of values to each different field in the
@@ -137,13 +195,13 @@ during this process to check your implementation.
 
 the general flow is:
 
-   1) `./model_to_dart` - read model data and convert it into a dart state vector file
-   2) `./create_obs_sequence` - make a file with a single observation in it
-   3) `./perfect_model_obs` - should interpolate a value for the obs
-   4) `./dart_to_model` - convert the dart vector back into a model data file
+   1) ``./model_to_dart`` - read model data and convert it into a dart state vector file
+   2) ``./create_obs_sequence`` - make a file with a single observation in it
+   3) ``./perfect_model_obs`` - should interpolate a value for the obs
+   4) ``./dart_to_model`` - convert the dart vector back into a model data file
 
    5) generate an ensemble of states, or set 'start_from_restart' to .false.
-   6) run `./filter` with the single observation 
+   6) run ``./filter`` with the single observation 
    7) look at the preassim.nc and analysis.nc files
         diff them with ncdiff:  ncdiff analysis.nc preassim.nc Innov.nc
         plot it, with ncview if possible:  ncview Innov.nc

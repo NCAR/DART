@@ -305,9 +305,17 @@ References
    guide/history/Guam_release
    guide/history/Fiji_release
 
+
 .. toctree::
    :maxdepth: 2
    :caption: Models
+
+   models/README
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Models
+   :hidden:
 
    models/9var/readme
    models/am2/readme
@@ -322,6 +330,8 @@ References
    models/ECHAM/readme
    models/FESOM/readme
    models/gitm/readme
+   models/gitm/netcdf_to_gitm_blocks
+   models/gitm/gitm_blocks_to_netcdf
    models/ikeda/readme
    models/LMDZ/readme
    models/lorenz_04/readme
@@ -332,12 +342,16 @@ References
    models/forced_lorenz_96/readme
    models/MITgcm_ocean/readme
    models/mpas_atm/readme
+   models/mpas_atm/mpas_dart_obs_preprocess
    models/mpas_ocn/readme
+   models/mpas_ocn/model_to_dart
    models/NCOMMAS/readme
    models/noah/readme
+   models/null_model/readme
    models/PBL_1d/readme
    models/pe2lyr/readme
    models/POP/readme
+   models/POP/dart_pop_mod
    models/ROMS/readme
    models/rose/readme
    models/simple_advection/readme
@@ -345,6 +359,11 @@ References
    models/tiegcm/readme
    models/wrf_hydro/readme
    models/wrf/readme
+   models/wrf/WRF_DART_utilities/replace_wrf_fields
+   models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
+   models/template/readme
+   models/utilities/default_readme
+
 
 .. toctree::
    :maxdepth: 2
@@ -387,6 +406,7 @@ References
 .. toctree::
    :maxdepth: 2
    :caption: Assimilation code
+   :hidden:
 
    assimilation_code/location/channel/location_mod
    assimilation_code/location/location_mod
@@ -445,6 +465,7 @@ References
 .. toctree::
    :maxdepth: 2
    :caption: Developer tests
+   :hidden:
 
    developer_tests/location/location_mod
    developer_tests/forward_operators/readme
@@ -452,7 +473,7 @@ References
 
 .. toctree::
    :maxdepth: 2
-   :caption: Observations
+   :caption: Forward Operators
 
    observations/forward_operators/obs_def_gps_mod
    observations/forward_operators/obs_def_dew_point_mod
@@ -467,14 +488,13 @@ References
    :maxdepth: 2
    :caption: Misc
 
-   models/null_model/readme
-   models/NCOMMAS/dart_to_ncommas
-   models/NCOMMAS/ncommas_to_dart
-   models/POP/dart_pop_mod
-   models/mpas_ocn/model_to_dart
-   models/mpas_atm/mpas_dart_obs_preprocess
+   
    models/CESM/doc/setup_guidelines
-   models/template/readme
+   
+.. toctree::
+   :caption: Bgrid_solo
+   :hidden:   
+   
    models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_radon
    models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_sulfur_hex
    models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_driver
@@ -513,21 +533,25 @@ References
    models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core_driver
    models/bgrid_solo/fms_src/atmos_param/hs_forcing/hs_forcing
    models/bgrid_solo/fms_src/atmos_solo/atmos_model
-   models/wrf/WRF_DART_utilities/replace_wrf_fields
-   models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
-   models/gitm/netcdf_to_gitm_blocks
-   models/gitm/gitm_blocks_to_netcdf
-   models/utilities/default_readme
+   
+.. toctree::   
+   :caption: non-compiling models
+   :hidden:
+         
    models/cam-old/cam_to_dart
    models/cam-old/readme
    models/cam-old/dart_to_cam
    models/MITgcm_ocean/trans_pv_sv
    models/MITgcm_ocean/create_ocean_obs
    models/MITgcm_ocean/trans_sv_pv
+   models/NCOMMAS/dart_to_ncommas
+   models/NCOMMAS/ncommas_to_dart
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Build templates
+   :hidden:
 
    build_templates/mkmf
 
