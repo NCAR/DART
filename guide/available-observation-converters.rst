@@ -13,21 +13,21 @@ Each directory has at least one converter:
 -  `cice <../observations/obs_converters/cice/cice_to_obs.html>`__
 -  `COSMOS <../observations/obs_converters/COSMOS/COSMOS_to_obs.html>`__
 -  `DWL <../observations/obs_converters/DWL/dwl_to_obs.html>`__
--  `GOES <../observations/obs_converters/GOES/README.md>`__
--  `GPSPW <../observations/obs_converters/GPSPW/README>`__
--  `GSI2DART <../observations/obs_converters/GSI2DART/README>`__
+-  `GOES <../observations/obs_converters/GOES/README.html>`__
+-  `GPSPW <../observations/obs_converters/GPSPW/README.html>`__
+-  `GSI2DART <../observations/obs_converters/GSI2DART/README.html>`__
 -  `GTSPP <../observations/obs_converters/GTSPP/GTSPP.html>`__
 -  `MADIS <../observations/obs_converters/MADIS/MADIS.html>`__
 -  `MIDAS <../observations/obs_converters/MIDAS/MIDAS_to_obs.html>`__
 -  `MODIS <../observations/obs_converters/MODIS/MOD15A2_to_obs.htm>`__
 -  `NCEP (prepbufr -> ascii) <../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
 -  `NCEP (ascii -> obs_seq) <../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html>`__
--  `ROMS <../observations/obs_converters/ROMS/ROMS.htm>`__
+-  `ROMS <../observations/obs_converters/ROMS/ROMS.html>`__
 -  `SSEC <../observations/obs_converters/SSEC/SSEC.html>`__
 -  `SST <../observations/obs_converters/SST/SST.html>`__
 -  `SSUSI <../observations/obs_converters/SSUSI/convert_f16_edr_dsk.html>`__
 -  `WOD <../observations/obs_converters/WOD/WOD.html>`__
--  `gnd_gps_vtec <../observations/obs_converters/gnd_gps_vtec/README>`__
+-  `gnd_gps_vtec <../observations/obs_converters/gnd_gps_vtec/README.html>`__
 -  `GPS <../observations/obs_converters/gps/gps.html>`__
 -  `ok_mesonet <../observations/obs_converters/ok_mesonet/ok_mesonet.html>`__
 -  `QuikSCAT <../observations/obs_converters/quikscat/QuikSCAT.html>`__
