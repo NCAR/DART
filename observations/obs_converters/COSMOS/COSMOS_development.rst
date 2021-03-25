@@ -13,7 +13,7 @@ Trial COSMOS text file to DART converter
   also available from the data portal. The **Level 2 Data** is most suited for use with DART, but does not currently
   have a correction for the amount of hydrogen in the atmospheric volume near the probe. To this end, Rafael Rosolem has
   a separate data stream. ``COSMOS_development`` reads Rafaels data streams and converts them to DART observation
-  sequence files. **Since these data streams are not widespread, we recommend using :doc:`./COSMOS_to_obs`.**
+  sequence files. **Since these data streams are not widespread, we recommend using** :doc:`./COSMOS_to_obs`.
 | The workflow is usually:
 
 #. `get the site metadata <http://cosmos.hwr.arizona.edu/Probes/probemap.php>`__ and enter it in the ``input.nml``
@@ -33,8 +33,8 @@ Data sources
 
 The COSMOS data portal can be found at: http://cosmos.hwr.arizona.edu/Probes/probemap.php The development observation
 data for each station is generally not available. The metadata for each station (location, height, etc) is also
-available from the data portal. The **Level 2 Data** is most suited for use with DART. **We recommend using
-:doc:`./COSMOS_to_obs`.** An example of the development observation data follows:
+available from the data portal. The **Level 2 Data** is most suited for use with DART. We recommend using
+:doc:`./COSMOS_to_obs`. An example of the development observation data follows:
 
 ::
 
@@ -280,3 +280,9 @@ References
 -  Franz, T.E, M. Zreda, R. Rosolem, T.P.A. Ferre, 2012: Field validation of cosmic-ray soil moisture probe using a
    distributed sensor network. Vadose Zone Journal (in press),
    `doi:10.2136/vzj2012.0046 <http://dx.doi.org/10.2136/vzj2012.0046>`__
+
+Future Plans
+------------
+
+- Implement a routine to automatically determine the column indices of the columns of interest.
+- Implement a QC encoding that reflects the uncertainty of the measurement. Presently, all Level 2 data have an incoming QC of 1.
