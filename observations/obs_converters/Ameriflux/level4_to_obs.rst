@@ -95,103 +95,38 @@ Data sources
 
 | The data was acquired from http://cdiac.ornl.gov/ftp/ameriflux/data/Level4/Sites_ByName
 | and have names like
-  ``USBar2004_L4_h.txt, USHa12004_L4_h.txt, USNR12004_L4_h.txt, USSP32004_L4_h.txt, USSRM2004_L4_h.txt, USWCr2004_L4_h.txt, USWrc2004_L4_h.txt, ...``
+|  ``USBar2004_L4_h.txt, USHa12004_L4_h.txt, USNR12004_L4_h.txt``, 
+|  ``USSP32004_L4_h.txt, USSRM2004_L4_h.txt, USWCr2004_L4_h.txt, USWrc2004_L4_h.txt, ...``
 | The Level 4 products in question are ASCII files of comma-separated values taken every 30 minutes for an entire year.
   The first line is a comma-separated list of column descriptors, all subsequent lines are comma-separated numerical
   values. The converter presently searches for the columns pertaining to *NEE_or_fMDS*, *H_f*, *LE_f*, their
   corresponding quality control fields, and those columns pertaining to the time of the observation. These values are
   mapped as follows:
 
-Level 4 units
++---------------+------------------+--------------------------+--------------------------+---------------------------+------------+
+| Level 4 units | Level 4 variable | description              | DART type                | DART kind                 | DART units |
++===============+==================+==========================+==========================+===========================+============+
+| W/m^2         | LE_f             | Latent Heat Flux         | TOWER_LATENT_HEAT_FLUX   | QTY_LATENT_HEAT_FLUX      | W/m^2      |
++---------------+------------------+--------------------------+--------------------------+---------------------------+------------+
+| [0-3]         | LE_fqc           | QC for LE_f              | N/A                      | N/A                       | same       |
++---------------+------------------+--------------------------+--------------------------+---------------------------+------------+
+| W/m^2         | H_f              | Sensible Heat Flux       | TOWER_SENSIBLE_HEAT_FLUX | QTY_SENSIBLE_HEAT_FLUX    | W/m^2      |
++---------------+------------------+--------------------------+--------------------------+---------------------------+------------+
+| [0-3]         | H_fqc            | QC for H_f               | N/A                      | N/A                       | same       |
++---------------+------------------+--------------------------+--------------------------+---------------------------+------------+
+| umolCO2/m^2/s | NEE_or_fMDS      | Net Ecosystem Production | TOWER_NETC_ECO_EXCHANGE  | QTY_NET_CARBON_PRODUCTION | gC/m^2/s   |
++---------------+------------------+--------------------------+--------------------------+---------------------------+------------+
+| [0-3]         | NEE_or_fMDSqc    | QC for NEE_or_fMDS       | N/A                      | N/A                       | same       |
++---------------+------------------+--------------------------+--------------------------+---------------------------+------------+
 
-Level 4 variable
 
-description
 
-DART type
-
-DART kind
-
-DART units
-
-W/m^2
-
-LE_f
-
-Latent Heat Flux
-
-TOWER_LATENT_HEAT_FLUX
-
-QTY_LATENT_HEAT_FLUX
-
-W/m^2
-
-[0-3]
-
-LE_fqc
-
-QC for LE_f
-
-N/A
-
-N/A
-
-same
-
-W/m^2
-
-H_f
-
-Sensible Heat Flux
-
-TOWER_SENSIBLE_HEAT_FLUX
-
-QTY_SENSIBLE_HEAT_FLUX
-
-W/m^2
-
-[0-3]
-
-H_fqc
-
-QC for H_f
-
-N/A
-
-N/A
-
-same
-
-umolCO2/m^2/s
-
-NEE_or_fMDS
-
-Net Ecosystem Production
-
-TOWER_NETC_ECO_EXCHANGE
-
-QTY_NET_CARBON_PRODUCTION
-
-gC/m^2/s
-
-[0-3]
-
-NEE_or_fMDSqc
-
-QC for NEE_or_fMDS
-
-N/A
-
-N/A
-
-same
 
 The ``LE_fqc``, ``H_fqc``, and ``NEE_or_fMDSqc`` variables use the following convention:
 
    0 = original, 1 = category A (most reliable), 2 = category B (medium), 3 = category C (least reliable). (Refer to
    Reichstein et al. 2005 Global Change Biology for more information)
 
-| 
 
 I am repeating the AmeriFlux `Data Fair-Use Policy <http://ameriflux.lbl.gov/Data/Pages/DataUsagePolicy.aspx>`__ because
 I believe it is important to be a good scientific citizen:
@@ -236,6 +171,6 @@ to indicate where changes will be likely to need to be made.
 Decisions you might need to make
 --------------------------------
 
-See the discussion in the `obs_converters/README.md <../README.md#Decisions>`__ page about what options are available
+See the discussion in the :doc:`../../../guide/creating-obs-seq-real` page about what options are available
 for the things you need to specify. These include setting a time, specifying an expected error, setting a location, and
 an observation type.
