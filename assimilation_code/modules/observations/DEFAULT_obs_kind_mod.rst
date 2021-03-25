@@ -21,7 +21,7 @@ Overview
   preprocess program, ``obs_kind_mod.f90``. The latter file is overwritten each time preprocess runs, deleting any hand
   editing done on that file.
 | The rest of this documentation describes the special formatting that is included in the DEFAULT_obs_kind_mod in order
-  to guide the preprocess program. Two sections of code are inserted into the DEFAULT_obs_def_kind module from each of
+  to guide the preprocess program. Two sections of code are inserted into the DEFAULT_obs_def module from each of
   the special obs_def modules that are requested. The insertion point for each section is denoted by a special comment
   line that must be included VERBATIM in DEFAULT_obs_kind_mod. These special comment lines and their significance are:
 
