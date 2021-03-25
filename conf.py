@@ -49,7 +49,8 @@ html_theme = 'sphinx_rtd_theme'
 html_show_sphinx = False
 html_logo = 'guide/_static/ncar-dart-logo-navy.svg'
 html_theme_options = {
-    'logo_only': True
+    'logo_only': True,
+    'includehidden': False
 }
 
 # Add any paths that contain templates here, relative to this directory.

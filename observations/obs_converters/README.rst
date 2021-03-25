@@ -239,8 +239,8 @@ type of locations used in the model.
 
 .. _programs:
 
-PROGRAMS
----------
+Converter programs
+==================
 
 The *DART/observations/obs_converters* directory contains a variety of
 converter programs to read various external formats and convert the
