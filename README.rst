@@ -201,7 +201,7 @@ References
    guide/mpi_intro
    guide/filters
    guide/inflation
-   guide/Radiance_support
+   Radiances <guide/Radiance_support>
    guide/controlling-files-output
 
 .. toctree::
