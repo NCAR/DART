@@ -290,6 +290,7 @@ References
    theory/readme
    theory/conditional-probability-bayes-theorem
    guide/DART_LAB/DART_LAB
+   WRF-DART Tutorial <models/wrf/tutorial/README>
 
 .. toctree::
    :maxdepth: 2
