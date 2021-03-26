@@ -28,7 +28,6 @@ text file, ``obs_seq.final``, with the model estimates of the observations. Ther
 facilitate exploration of the results, but the netCDF files are inherently portable and contain all the necessary
 metadata to interpret the contents with other analysis programs such as NCL, R, etc.
 
-To get started running with Lorenz 63 model refer to :doc:`./Manhattan_getting_started`.
 
 Notes for current users
 -----------------------

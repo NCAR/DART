@@ -37,7 +37,24 @@ extensions = [
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*',
+        'guide/Lanai_release.rst',
+        'guide/history/Kodiak_release.rst',
+        'guide/history/Jamaica_release.rst',
+        'guide/history/Iceland_release.rst',
+        'guide/history/hawaii_release.rst',
+        'guide/history/Guam_release.rst',
+        'guide/history/Fiji_release.rst',
+        'guide/Lanai_diffs_from_Kodiak.rst',   
+        'guide/history/Jamaica_diffs_from_I.rst',
+        'guide/history/pre_j_release.rst',
+        'guide/history/PostI_diffs_from_I.rst',
+        'guide/history/Post_Iceland_release.rst',
+        'guide/history/I_diffs_from_workshop.rst',
+        'guide/history/pre_hawaii_release.rst',
+        'guide/history/pre_guam_release.rst',
+        'guide/Manhattan_getting_started.rst'
+]
 
 
 # -- Options for HTML output -------------------------------------------------

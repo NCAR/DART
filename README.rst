@@ -75,7 +75,6 @@ The Manhattan release is new and currently supports only a subset of the
 models. DAReS staff will port over any requested model. Email dart@ucar.edu
 if yours is not on the list.
 
-For more information on this release, see :doc:`guide/Manhattan_release`.
 
 Quick-start
 -----------
@@ -294,19 +293,6 @@ References
 
 .. toctree::
    :maxdepth: 2
-   :caption: Releases
-   :hidden:
-
-   guide/Manhattan_release
-   guide/Lanai_release
-   guide/history/Kodiak_release
-   guide/history/Jamaica_release
-   guide/history/Iceland_release
-   guide/history/hawaii_release
-   guide/history/Guam_release
-   guide/history/Fiji_release
-
-
 .. toctree::
    :maxdepth: 2
    :caption: Models
@@ -391,19 +377,6 @@ References
    guide/filter_async_modes
    guide/distributed_state
 
-.. toctree::
-   :maxdepth: 2
-   :caption: History
-   :hidden:
-
-   guide/Lanai_diffs_from_Kodiak   
-   guide/history/Jamaica_diffs_from_I
-   guide/history/pre_j_release
-   guide/history/PostI_diffs_from_I
-   guide/history/Post_Iceland_release
-   guide/history/I_diffs_from_workshop
-   guide/history/pre_hawaii_release
-   guide/history/pre_guam_release
 
 .. toctree::
    :maxdepth: 2
@@ -490,10 +463,10 @@ References
 .. toctree::
    :maxdepth: 2
    :caption: Misc
-
    
+   Release Notes <guide/Manhattan_release>
    models/CESM/doc/setup_guidelines
-   
+
 .. toctree::
    :caption: Bgrid_solo
    :hidden:   
