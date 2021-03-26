@@ -1021,6 +1021,27 @@ References
 `CLM User's Guide <http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf>`__ is an
 excellent reference for CLM.
 
+Error codes and conditions
+--------------------------
+
++---------------------+---------------------------------------------+---------------------------------------------------+
+|       Routine       |                   Message                   |                      Comment                      |
++=====================+=============================================+===================================================+
+| nc_write_model_atts | Various netCDF-f90 interface error messages | From one of the netCDF calls in the named routine |
+| nc_write_model_vars |                                             |                                                   |
++---------------------+---------------------------------------------+---------------------------------------------------+
+
+Future plans
+------------
+
+Almost too many to list.
+
+#. Implement a robust update_snow() routine that takes the modified SWE and repartitions it into the respective snow layers in a manner that works with both CLM4 and CLM4.5. This may mean modifying the clm_variables list to contain SNOWDP, H2OSOI_LIQ, H2OSOI_ICE, T_SOISNO, and others that may not be in the UPDATE list.
+#. Implement a fast way to get the quantities needed for the calculation of radiative transfer models - needs a whole column of CLM variables, redundant if multiple frequencies are used.
+#. Figure out what to do when one or more of the ensemble members does not have snow/leaves/etc. when the observation indicates there should be. Ditto for removing snow/leaves/etc. when the observation indicates otherwise.
+#. Right now, the soil moisture observation operator is used by the COSMOS code to calculate the expected neutron intensity counts. This is the right idea, however, the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2 ... I have not checked to see if they are, in fact, identical. This brings up a bigger issue in that the soil moisture observation operator would also be used to calculate whatever a TDT probe or ??? would measure. What units are they in? Can one operator support both?
+
+
 Private components
 ------------------
 
