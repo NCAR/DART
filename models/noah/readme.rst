@@ -68,7 +68,7 @@ The scripts assume the directory containing the DART executables is
 executables is ``${NOAHDIR}/Run``.
 
 +----------------------------------------------------------+------------------------------------------------------------------------------+
-| 1. `setup_pmo.csh <shell_scripts/setup_pmo.csh>`_        | This script stages the run of                                                |
+| 1. ``shell_scripts/setup_pmo.csh``                       | This script stages the run of                                                |
 |                                                          | :doc:`../../assimilation_code/programs/perfect_model_obs/perfect_model_obs`. |
 |                                                          | The directory where you run the script is called ``CENTRALDIR`` and          |
 |                                                          | will be the working directory for the experiment. The required input         |
@@ -78,14 +78,14 @@ executables is ``${NOAHDIR}/Run``.
 |                                                          | copied to CENTRALDIR so that you may run multiple experiments at the         |
 |                                                          | same time - in separate ``CENTRALDIRs``.                                     |
 +----------------------------------------------------------+------------------------------------------------------------------------------+
-| 2. `run_pmo.csh <shell_scripts/run_pmo.csh>`_            | very simply - it advances NOAH and applies the observation operator to       |
+| 2. ``shell_scripts/run_pmo.csh``                         | very simply - it advances NOAH and applies the observation operator to       |
 |                                                          | put the "perfect" observations in an observation sequence file that can      |
 |                                                          | then be used for an assimilation.                                            |
 +----------------------------------------------------------+------------------------------------------------------------------------------+
-| 3. `setup_filter.csh <shell_scripts/setup_filter.csh>`_  | builds upon the work of ``setup_pmo.csh`` and stages a PRE-EXISTING          |
+| 3. ``shell_scripts/setup_filter.csh``                    | builds upon the work of ``setup_pmo.csh`` and stages a PRE-EXISTING          |
 |                                                          | initial ensemble.                                                            |
 +----------------------------------------------------------+------------------------------------------------------------------------------+
-| 4. `run_filter.csh <shell_scripts/run_filter.csh>`_      | Actually runs the filtering (assimilation) experiment.                       |
+| 4. ``shell_scripts/run_filter.csh``                      | Actually runs the filtering (assimilation) experiment.                       |
 +----------------------------------------------------------+------------------------------------------------------------------------------+
 
 
