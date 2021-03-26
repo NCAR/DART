@@ -37,7 +37,7 @@ DART supported models:
 - :doc:`PBL_1d/readme`
 - :doc:`pe2lyr/readme`
 - :doc:`POP/readme`
-- :doc:`POP/dart_pop_mod`
+   - :doc:`POP/dart_pop_mod`
 - :doc:`ROMS/readme`
 - :doc:`rose/readme`
 - :doc:`simple_advection/readme`
@@ -45,8 +45,8 @@ DART supported models:
 - :doc:`tiegcm/readme`
 - :doc:`wrf_hydro/readme`
 - :doc:`wrf/readme`
--   :doc:`wrf/WRF_DART_utilities/replace_wrf_fields`
--   :doc:`wrf/WRF_DART_utilities/wrf_dart_obs_preprocess`
+   - :doc:`wrf/WRF_DART_utilities/replace_wrf_fields`
+   - :doc:`wrf/WRF_DART_utilities/wrf_dart_obs_preprocess`
 
 Hints for porting a new model to DART:
 --------------------------------------
