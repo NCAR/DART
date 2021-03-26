@@ -347,7 +347,7 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
 .. container:: indent1
 
    Pass-through to the 1-D locations module. See
-   `get_close_maxdist_init() <../../location/oned/location_mod.html#get_close_maxdist_init>`__ for the documentation of
+   :doc:`get_close_maxdist_init() <../../assimilation_code/location/oned/location_mod>` for the documentation of
    this subroutine.
 
 | 
@@ -364,7 +364,7 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
 .. container:: indent1
 
    Pass-through to the 1-D locations module. See
-   `get_close_obs_init() <../../location/oned/location_mod.html#get_close_obs_init>`__ for the documentation of this
+   :doc:`get_close_obs_init() <../../assimilation_code/location/oned/location_mod>` for the documentation of this
    subroutine.
 
 | 

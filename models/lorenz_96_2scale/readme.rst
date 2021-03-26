@@ -25,7 +25,7 @@ Vannitsem and Toth (2002), [6]_ Roulston and Smith (2003), [7]_ and Wilks
 
 The Lorenz 96 2-scale model has a ``work/workshop_setup.csh`` script that 
 compiles and runs an example. This example may be explored in the
-`DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__
+:doc:`DART tutorial <../../theory/readme>`
 and is intended to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
 
