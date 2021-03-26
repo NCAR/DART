@@ -56,7 +56,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*
         'guide/Manhattan_getting_started.rst',
         'guide/bitwise_considerations.rst',
         'guide/rma.rst',
-        'guide/vertical_conversion.rst'
+        'guide/vertical_conversion.rst',
+        'guide/boilerplate/boilerplate.rst',    
+        'guide/boilerplate/template.rst'     
+        
 ]
 
 

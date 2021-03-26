@@ -367,8 +367,6 @@ References
 
    guide/Manhattan_diffs_from_Lanai
    guide/forward_operator
-   guide/boilerplate/boilerplate
-   guide/boilerplate/template     
    guide/netcdf_inflation_files
    guide/state_structure
    guide/filter_async_modes
