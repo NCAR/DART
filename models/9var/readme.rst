@@ -26,7 +26,7 @@ settable by altering the namelist.
 
 The 9-variable model has a ``work/workshop_setup.csh`` script that compiles 
 and runs an example. This example is referenced in Sections 7 and 10 of the
-`DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__
+:doc:`DART_tutorial <../../../theory/readme>`
 and is intended to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
 

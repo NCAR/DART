@@ -49,12 +49,18 @@ Notes from Cecilia M. Bitz on 14 May 2016
   ``model_mod.f90`` and ``input.nml``.
 - Not sure about ``QTY_TRACERARRAY_CATS``
 - Model mod assumes that the grid is identical to POP
-- Leaving this part but it may be unneeded in CICE ``INTERFACE
-  vector_to_prog_var MODULE PROCEDURE vector_to_2d_prog_var
-  MODULE PROCEDURE vector_to_3d_prog_var END INTERFACE``
+- Leaving this part but it may be unneeded in CICE
+  
+  .. code-block:: fortran
+
+    INTERFACE vector_to_prog_var 
+      MODULE PROCEDURE vector_to_2d_prog_var
+      MODULE PROCEDURE vector_to_3d_prog_var 
+    END INTERFACE
+    
 - Not used in pop so of course not used now in CICE either, why? ``subroutine
   vector_to_3d_prog_var(x, varindex,
-  data_3d_array) subroutine get_gridsize(num_x, num_y, num_z)``
+  data_3d_array)`` ``subroutine get_gridsize(num_x, num_y, num_z)``
 - Come back here, some changes made below but need to look line-by-line still
   ``subroutine get_state_meta_data(state_handle, index_in, location,
   var_type)``
@@ -67,9 +73,15 @@ Fortran Files
 - ``model_mod_check.f90``
 - ``dart_cice_mod.f90`` Should it have a get_cat_dim?
 - ``model_mod.f90`` I do not understand this part, but appears in clm too:
-  ``INTERFACE vector_to_prog_var MODULE PROCEDURE vector_to_1d_prog_var ! this
-  is in clm MODULE PROCEDURE vector_to_2d_prog_var ! this is in pop MODULE
-  PROCEDURE vector_to_3d_prog_var ! this is in pop END INTERFACE``
+
+  .. code-block:: fortran
+  
+     INTERFACE vector_to_prog_var 
+        MODULE PROCEDURE vector_to_1d_prog_var ! this is in clm 
+        MODULE PROCEDURE vector_to_2d_prog_var ! this is in pop
+        MODULE PROCEDURE vector_to_3d_prog_var ! this is in pop 
+    END INTERFACE
+    
 - ``test_dipole_interp.f90`` Also trivial, nothing to change?
 - ``rma-cice/location/`` Has a bunch of subdirs each with a location_mod.f90
 
