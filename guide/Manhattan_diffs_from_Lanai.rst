@@ -96,7 +96,7 @@ The vertical conversion of observation locations is done before the assimilation
 namelist options.
 
 In Lanai this calculation is done in the assimilation as part of ``get_close_obs`` if a model_mod does vertical
-conversion. See :doc:`./vertical_conversion` for details about this change. Note that not all models do vertical
+conversion. Note that not all models do vertical
 conversion or even have a concept of vertical location, but every model_mod must have the following routines:
 
 ::

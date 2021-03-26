@@ -196,7 +196,7 @@ Output directory
 ----------------
 
 CESM's short term archiver (st_archive) is controlled by its ``env_archive.xml``. DART's setup scripts modify that file
-to archive DART output along with CESM's. (See the :doc:`../../../guide/rma` for a description of DART's output).
+to archive DART output along with CESM's.
 DART's output is archived in ``$arch_dir/dart/{hist,rest,logs,...}``, where arch_dir is defined in
 ``setup_{hybrid,advanced}``, ``hist`` contains all of the state space and observation space output, and ``rest``
 contains the inflation restart files.
