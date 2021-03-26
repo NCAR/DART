@@ -14,6 +14,7 @@ Overview
    "The Coupled Ocean/Atmosphere Mesoscale Prediction System (COAMPS) has been developed by the Marine Meteorology
    Division (MMD) of the Naval Research Laboratory (NRL). The atmospheric components of COAMPS, described below, are
    used operationally by the U.S. Navy for short-term numerical weather prediction for various regions around the world.
+
    The atmospheric portion of COAMPS represents a complete three-dimensional data assimilation system comprised of data
    quality control, analysis, initialization, and forecast model components. Features include a globally relocatable
    grid, user-defined grid resolutions and dimensions, nested grids, an option for idealized or real-time simulations,
@@ -21,6 +22,7 @@ Overview
    includes predictive equations for the momentum, the non-dimensional pressure perturbation, the potential temperature,
    the turbulent kinetic energy, and the mixing ratios of water vapor, clouds, rain, ice, grauple, and snow, and
    contains advanced parameterizations for boundary layer processes, precipitation, and radiation.
+
    The distributed version of the COAMPS code that can be downloaded from the web site has been designed to use the
    message-passing interface (MPI), OpenMP directives, and horizontal domain decomposition to achieve parallelism. The
    code is capable of executing efficiently across vector, parallel, or symmetric muti-processor (SMP) machines by
