@@ -11,7 +11,7 @@ The Data Assimilation Research Testbed (DART) is designed to facilitate the comb
 models, and real (or synthetic) observations to allow increased understanding of all three. The DART programs are highly
 portable, having been compiled with many Fortran 90 compilers and run on linux compute-servers, linux clusters, OSX
 laptops/desktops, SGI Altix clusters, supercomputers running AIX, and more. Read the
-`Customizations <https://www.image.ucar.edu/DAReS/DART/DART2_Starting.php#customizations>`__ section for help in
+:doc:`./compiling-dart` section for help in
 building on new platforms.
 
 DART employs a modular programming approach to apply an Ensemble Kalman Filter which adjusts model values toward a state
@@ -257,8 +257,7 @@ Supported models
 ----------------
 
 Currently we support the models listed below. There are several new models that have been added that are not on the
-Lanai Release including CM1, CICE, and ROMS. Any previously supported models not on this list are still supported in
-DART `classic <http://www.image.ucar.edu/DAReS/DART/classic/index.html>`__
+Lanai Release including CM1, CICE, and ROMS. 
 
 -  **9var**
 
@@ -327,9 +326,7 @@ DART `classic <http://www.image.ucar.edu/DAReS/DART/classic/index.html>`__
    -  DART interface documentation for the :doc:`../../models/wrf/readme` regional forecast model.
    -  Documentation for the `WRF model <http://www.wrf-model.org/index.php>`__.
 
-The ``DART/models/template`` directory contains sample files for adding a new model. See the `Adding a
-Model <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#adding_a_model>`__ section of the DART web pages for
-more help on adding a new model.
+The ``DART/models/template`` directory contains sample files for adding a new model. 
 
 Changed models
 --------------
@@ -360,27 +357,27 @@ New observation types/forward operators
 ---------------------------------------
 
 -  Many new observation types related to land and atmospheric chemistry have been added. See the
-   `obs_kind_mod.f90 <../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90>`__ for a list of the
+   ``obs_kind_mod.f90`` for a list of the
    generic quantities now available.
 -  New forward operator for Sea Ice (cice) ice thickness observations. See the
-   `obs_def_cice_mod.f90 <../../observations/forward_operators/obs_def_cice_mod.f90>`__ file for details.
+   ``obs_def_cice_mod.f90`` file for details.
 -  New forward operator for Carbon Monoxide (CO) Nadir observations. See the
-   `obs_def_CO_Nadir_mod.f90 <../../observations/forward_operators/obs_def_CO_Nadir_mod.f90>`__ file for details.
+   ``obs_def_CO_Nadir_mod.f90`` file for details.
 -  New forward operator for Total Cloud Water in a column observations. See the
-   `obs_def_cwp_mod.f90 <../../observations/forward_operators/obs_def_cwp_mod.f90>`__ file for details.
+   ``obs_def_cwp_mod.f90`` file for details.
 
 New observation types/sources
 -----------------------------
 
 -  AVISO
    Added an observation converter for Sea Surface Height Anomaly observations. Documentation in
-   `convert_aviso.f90 <../../observations/obs_converters/AVISO/convert_aviso.f90>`__ (source).
+   ``convert_aviso.f90`` (source).
 -  cice
    Added an obs_sequence converter for Sea Ice observations. Documentation in
    :doc:`../../observations/obs_converters/cice/cice_to_obs`.
 -  GPSPW
    Added an obs_sequence converter for GPS precipitable water observations. Documentation in
-   `convert_gpspw.f90 <../../observations/obs_converters/GPSPW/convert_gpspw.f90>`__ (source).
+   ``convert_gpspw.f90`` (source).
 -  MODIS
    Added an obs_sequence converter for MODIS FPAR (Fraction of Photosynthetically Active Radiation) and LAI (Leaf Area
    Index) obseverations. Documentation in :doc:`../../observations/obs_converters/MODIS/MOD15A2_to_obs`.
@@ -390,7 +387,7 @@ New observation types/sources
 -  ROMS
    Added an obs_sequence converter for ROMS ocean data. This converter includes externally computed forward operators
    output from the ROMS model using FGAT (First Guess At Time) during the model run. Documentation in
-   `convert_roms_obs.f90 <../../observations/obs_converters/ROMS/convert_roms_obs.f90>`__ (source).
+   ``convert_roms_obs.f90`` (source).
 -  SSUSI
    Added an obs_sequence converter for wind profiler observations. Documentation in
    :doc:`../../observations/obs_converters/SSUSI/convert_f16_edr_dsk`.
@@ -400,11 +397,6 @@ New observation types/sources
 
 New diagnostics and documentation
 ---------------------------------
-
-| **Better Web Pages.** We've put a lot of effort into expanding our documentation. For example, please check out `the
-  MATLAB diagnostics section <http://www.image.ucar.edu/DAReS/DART/DART2_Diagnostics.php#mat_obs>`__ or the pages
-  outlining the `observation sequence file
-  contents <http://www.image.ucar.edu/DAReS/DART/DART2_Observations.php#obs_seq_overview>`__.
 
 -  The MATLAB® diagnostic routines have been updated to remove the dependency on third-party toolboxes. These routines
    use the built-in netCDF support that comes with basic MATLAB® (no other toolboxes needed).
@@ -418,11 +410,9 @@ This section describes updates and changes to the tutorial materials, scripting,
 Lanai release.
 
 -  ``obs_impact_tool`` please refer to
-   `Website <https://www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/obs_impact_tool/obs_impact_tool.html>`__
    or :doc:`../../assimilation_code/programs/obs_impact_tool/obs_impact_tool`
 -  ``gen_sampling_error_table`` now computes sampling error correction tables for any ensemble size.
 -  ``compute_error``
-   `Website <https://www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/compute_error/compute_error.html>`__
    or :doc:`../../assimilation_code/programs/compute_error/compute_error`
 
 Known problems

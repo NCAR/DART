@@ -364,7 +364,6 @@ References
    :maxdepth: 2
    :caption: Guide
 
-   guide/Manhattan_getting_started
    guide/rma
    guide/Manhattan_diffs_from_Lanai
    guide/forward_operator
