@@ -118,7 +118,7 @@ Files read
 ----------
 
 -  MPAS analysis file; ``mpas_analysis.nc``
--  DART namelist file; `input.nml <work/input.nml>`__
+-  DART namelist file; ``input.nml``
 
 Files written
 -------------
