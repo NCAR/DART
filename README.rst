@@ -466,48 +466,6 @@ References
    Release Notes <guide/Manhattan_release>
    models/CESM/doc/setup_guidelines
 
-.. toctree::
-   :caption: Bgrid_solo
-   :hidden:   
-   
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_radon
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_sulfur_hex
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_driver
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_carbon_aerosol
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_utilities
-   models/bgrid_solo/fms_src/atmos_shared/vert_advection/vert_advection
-   models/bgrid_solo/fms_src/shared/time_manager/time_manager
-   models/bgrid_solo/fms_src/shared/field_manager/field_manager
-   models/bgrid_solo/fms_src/shared/horiz_interp/horiz_interp
-   models/bgrid_solo/fms_src/shared/fms/fms
-   models/bgrid_solo/fms_src/shared/constants/constants
-   models/bgrid_solo/fms_src/shared/platform/platform
-   models/bgrid_solo/fms_src/shared/utilities/utilities
-   models/bgrid_solo/fms_src/shared/tracer_manager/tracer_manager
-   models/bgrid_solo/fms_src/shared/mpp/mpp_domains
-   models/bgrid_solo/fms_src/shared/mpp/mpp_io
-   models/bgrid_solo/fms_src/shared/mpp/mpp
-   models/bgrid_solo/fms_src/shared/fft/fft
-   models/bgrid_solo/fms_src/shared/sat_vapor_pres/sat_vapor_pres
-   models/bgrid_solo/fms_src/shared/topography/topography
-   models/bgrid_solo/fms_src/shared/topography/gaussian_topog
-   models/bgrid_solo/fms_src/shared/diag_manager/diag_manager
-   models/bgrid_solo/fms_src/shared/diag_manager/diag_table_tk
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_polar_filter
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_halo
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_horiz
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_cold_start
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_prog_var
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_diagnostics
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_integrals
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_change_grid
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_masks
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_vert
-   models/bgrid_solo/fms_src/atmos_bgrid/driver/solo/atmosphere
-   models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core
-   models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core_driver
-   models/bgrid_solo/fms_src/atmos_param/hs_forcing/hs_forcing
-   models/bgrid_solo/fms_src/atmos_solo/atmos_model
    
 .. toctree::   
    :caption: non-compiling models
