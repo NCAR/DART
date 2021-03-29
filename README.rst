@@ -195,19 +195,42 @@ References
 
 .. toctree::
    :maxdepth: 2
-   :caption: Intermediate topics
+   :caption: What is data assimilation?
+
+   guide/introduction-ensemble-da
+   guide/lorenz-63-model
+   guide/da-in-dart-with-lorenz-63
+
+.. toctree::
+   :maxdepth: 2
+   :caption: What is DART?
+
+   guide/what-is-dart
+   guide/benefits-of-using-dart
+   guide/brief-history-of-dart
+   guide/high-level-da-workflows
+   guide/dart-design-philosophy
+   guide/important-capabilities-dart
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Run DART with your model
 
    guide/assimilation-complex-model
    guide/mpi_intro
    guide/filters
    guide/inflation
-   Radiances <guide/Radiance_support>
+   guide/required-model-mod-routines
+   guide/suggestions-for-a-simple-model
+   guide/suggestions-for-a-complex-model
+   guide/how-to-test-your-model-mod-routines
    guide/controlling-files-output
 
 .. toctree::
    :maxdepth: 2
    :caption: Observations
 
+   guide/adding-your-observations-to-dart
    guide/preprocess-program
    guide/introduction-obs-seq-file
    guide/detailed-structure-obs-seq
@@ -217,6 +240,7 @@ References
    guide/manipulating-with-obs-sequence-tool
    guide/difference-between-type-and-quantity
    guide/adding-support-new-type
+   Radiances <guide/Radiance_support>
 
 .. toctree::
    :maxdepth: 2 
