@@ -17,8 +17,8 @@ A list of all the DART QC values can be found in the QC table.
    obs_val and an *istatus = 0*. If the forward operator code returns different
    istatus values for different error types, you can set
    *&filter_nml::output_forward_op_errors = .true.* and rerun *filter* to see
-   exactly what error istatus codes are being set. See `the filter
-   webpage <../../assimilation_code/programs/filter/filter.html>`__ for more
+   exactly what error istatus codes are being set. See
+   :doc:`../assimilation_code/modules/assimilation/filter_mod` for more
    information on how to use the ‘output_forward_op_errors’ option. Negative
    istatus values are reserved for the system, *istatus = 0* is success, and any
    positive value indicates a failed forward operator. The code is free to use

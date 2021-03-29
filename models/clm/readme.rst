@@ -28,64 +28,64 @@ scripts are not intended to be a 'black box'; you will have to read and understa
 purpose. They are heavily commented -- in keeping with their origins as a set of notes. If you would like to offer
 suggestions on how to improve those notes - please send them to dart@ucar.edu - we'd love to hear them.
 
-+-------------------------------------------------------------------+------------------------------------------------------------+
-| Script                                                            | Description                                                |
-+===================================================================+============================================================+
-| `CESM1_1_1_setup_pmo <shell_scripts/CESM1_1_1_setup_pmo>`__       || runs a single instance of CLM to harvest synthetic        |
-|                                                                   || observations for an OSSE or "perfect model" experiment.   |
-|                                                                   || It requires a single CLM state from a previous experiment |
-|                                                                   || and uses a specified DATM stream for forcing. This        |
-|                                                                   || parallels an assimilation experiment in that in the       |
-|                                                                   || multi-instance setting each CLM instance may use (should  |
-|                                                                   || use?) a unique DATM forcing. This script has almost       |
-|                                                                   || nothing to do with DART. There is one (trivial) section   |
-|                                                                   || that records some configuration information in the DART   |
-|                                                                   || setup script, but that's about it. This script should     |
-|                                                                   || initially be run without DART to ensure a working CESM    |
-|                                                                   || environment.                                              |
-|                                                                   || As of (V7195) 3 October 2014, this script demonstrates    |
-|                                                                   || how to create 'vector'-based CLM history files (which     |
-|                                                                   || requires a bugfix) and has an option to use a bugfixed    |
-|                                                                   || snow grain-size code.                                     |
-|                                                                   || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
-|                                                                   || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
-+-------------------------------------------------------------------+------------------------------------------------------------+
-| `CESM1_2_1_setup_pmo <shell_scripts/CESM1_2_1_setup_pmo>`__       || Is functionally identical to ``CESM1_1_1_setup_pmo`` but  |
-|                                                                   || is appropriate for the the CESM 1_2_1 release, which      |
-|                                                                   || supports both CLM 4 and CLM 4.5.                          |
-+-------------------------------------------------------------------+------------------------------------------------------------+
-| `CESM1_1_1_setup_hybrid <shell_scripts/CESM1_1_1_setup_hybrid>`__ || runs a multi-instance CLM experiment and can be used to   |
-|                                                                   || perform a free run or 'open loop' experiment. By default, |
-|                                                                   || each CLM instance uses a unique DATM forcing. This script |
-|                                                                   || also has almost nothing to do with DART. There is one     |
-|                                                                   || (trivial) section that records some configuration         |
-|                                                                   || information in the DART setup script, but that's about    |
-|                                                                   || it. This script should initially be run without DART to   |
-|                                                                   || ensure a working CESM.                                    |
-|                                                                   || As of (V7195) 3 October 2014, this script demonstrates    |
-|                                                                   || how to create 'vector'-based CLM history files (which     |
-|                                                                   || requires a bugfix) and has an option to use a bugfixed    |
-|                                                                   || snow grain-size code.                                     |
-|                                                                   || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
-|                                                                   || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
-+-------------------------------------------------------------------+------------------------------------------------------------+
-| `CESM1_2_1_setup_hybrid <shell_scripts/CESM1_2_1_setup_hybrid>`__ || Is functionally identical to ``CESM1_1_1_setup_hybrid``   |
-|                                                                   || but is appropriate for the the CESM 1_2_1 release, which  |
-|                                                                   || supports both CLM 4 and CLM 4.5.                          |
-+-------------------------------------------------------------------+------------------------------------------------------------+
-| `CESM_DART_config <shell_scripts/CESM_DART_config>`__             || augments a CESM case with the bits and pieces required to |
-|                                                                   || run DART. When either ``CESM1_?_1_setup_pmo`` or          |
-|                                                                   || ``CESM1_?_1_setup_hybrid`` gets executed,                 |
-|                                                                   || ``CESM_DART_config`` gets copied to the CESM "caseroot"   |
-|                                                                   || directory. It is designed such that you can execute it at |
-|                                                                   || any time during a CESM experiment. When you do execute    |
-|                                                                   || it, it will build the DART executables and copy them into |
-|                                                                   || the CESM "bld" directory, stage the run-time configurable |
-|                                                                   || ``input.nml`` in the "caseroot" directory, etc. and also  |
-|                                                                   || *modifies* the CESM ``case.run`` script to call the DART  |
-|                                                                   || scripts for assimilation or to harvest synthetic          |
-|                                                                   || observations.                                             |
-+-------------------------------------------------------------------+------------------------------------------------------------+
++------------------------------------------+------------------------------------------------------------+
+| Script                                   | Description                                                |
++==========================================+============================================================+
+| ``shell_scripts/CESM1_1_1_setup_pmo``    || runs a single instance of CLM to harvest synthetic        |
+|                                          || observations for an OSSE or "perfect model" experiment.   |
+|                                          || It requires a single CLM state from a previous experiment |
+|                                          || and uses a specified DATM stream for forcing. This        |
+|                                          || parallels an assimilation experiment in that in the       |
+|                                          || multi-instance setting each CLM instance may use (should  |
+|                                          || use?) a unique DATM forcing. This script has almost       |
+|                                          || nothing to do with DART. There is one (trivial) section   |
+|                                          || that records some configuration information in the DART   |
+|                                          || setup script, but that's about it. This script should     |
+|                                          || initially be run without DART to ensure a working CESM    |
+|                                          || environment.                                              |
+|                                          || As of (V7195) 3 October 2014, this script demonstrates    |
+|                                          || how to create 'vector'-based CLM history files (which     |
+|                                          || requires a bugfix) and has an option to use a bugfixed    |
+|                                          || snow grain-size code.                                     |
+|                                          || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
+|                                          || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
++------------------------------------------+------------------------------------------------------------+
+| ``shell_scripts/CESM1_2_1_setup_pmo``    || Is functionally identical to ``CESM1_1_1_setup_pmo`` but  |
+|                                          || is appropriate for the the CESM 1_2_1 release, which      |
+|                                          || supports both CLM 4 and CLM 4.5.                          |
++------------------------------------------+------------------------------------------------------------+
+| ``shell_scripts/CESM1_1_1_setup_hybrid`` || runs a multi-instance CLM experiment and can be used to   |
+|                                          || perform a free run or 'open loop' experiment. By default, |
+|                                          || each CLM instance uses a unique DATM forcing. This script |
+|                                          || also has almost nothing to do with DART. There is one     |
+|                                          || (trivial) section that records some configuration         |
+|                                          || information in the DART setup script, but that's about    |
+|                                          || it. This script should initially be run without DART to   |
+|                                          || ensure a working CESM.                                    |
+|                                          || As of (V7195) 3 October 2014, this script demonstrates    |
+|                                          || how to create 'vector'-based CLM history files (which     |
+|                                          || requires a bugfix) and has an option to use a bugfixed    |
+|                                          || snow grain-size code.                                     |
+|                                          || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
+|                                          || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
++------------------------------------------+------------------------------------------------------------+
+| ``shell_scripts/CESM1_2_1_setup_hybrid`` || Is functionally identical to ``CESM1_1_1_setup_hybrid``   |
+|                                          || but is appropriate for the the CESM 1_2_1 release, which  |
+|                                          || supports both CLM 4 and CLM 4.5.                          |
++------------------------------------------+------------------------------------------------------------+
+| ``shell_scripts/CESM_DART_config``       || augments a CESM case with the bits and pieces required to |
+|                                          || run DART. When either ``CESM1_?_1_setup_pmo`` or          |
+|                                          || ``CESM1_?_1_setup_hybrid`` gets executed,                 |
+|                                          || ``CESM_DART_config`` gets copied to the CESM "caseroot"   |
+|                                          || directory. It is designed such that you can execute it at |
+|                                          || any time during a CESM experiment. When you do execute    |
+|                                          || it, it will build the DART executables and copy them into |
+|                                          || the CESM "bld" directory, stage the run-time configurable |
+|                                          || ``input.nml`` in the "caseroot" directory, etc. and also  |
+|                                          || *modifies* the CESM ``case.run`` script to call the DART  |
+|                                          || scripts for assimilation or to harvest synthetic          |
+|                                          || observations.                                             |
++------------------------------------------+------------------------------------------------------------+
 
 In addition to the script above, there are a couple scripts that will either perform an assimilation
 (``assimilate.csh``) or harvest observations for a perfect model experiment
