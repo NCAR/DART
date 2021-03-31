@@ -65,80 +65,26 @@ valuable advice on how to customize the *mkmf* template file if needed.
    FFLAGS = -O2 $(INCS)
    LDFLAGS = $(FFLAGS) $(LIBS)
 
-+-------------------------------------------+--------------------------+
-| variable                                  | value                    |
-+===========================================+==========================+
-| FC                                        | the Fortran compiler     |
-+-------------------------------------------+--------------------------+
-| LD                                        | the name of the loader;  |
-|                                           | typically, the same as   |
-|                                           | the Fortran compiler     |
-+-------------------------------------------+--------------------------+
-| MPIFC                                     | the MPI Fortran          |
-|                                           | compiler; see `the DART  |
-|                                           | MPI                      |
-|                                           | intro                    |
-|                                           | duction <dart_mpi.md>`__ |
-|                                           | for more info            |
-+-------------------------------------------+--------------------------+
-| MPILD                                     | the MPI loader; see `the |
-|                                           | DART MPI                 |
-|                                           | intro                    |
-|                                           | duction <dart_mpi.md>`__ |
-|                                           | for more info            |
-+-------------------------------------------+--------------------------+
-| NETCDF                                    | the location of your     |
-|                                           | root netCDF              |
-|                                           | installation, which is   |
-|                                           | assumed to contain       |
-|                                           | ``netcdf.mod`` and       |
-|                                           | ``typesizes.mod`` in the |
-|                                           | include subdirectory.    |
-|                                           | Note that the value of   |
-|                                           | the NETCDF variable will |
-|                                           | be used by the "INCS"    |
-|                                           | and "LIBS" variables.    |
-+-------------------------------------------+--------------------------+
-| INCS                                      | the includes passed to   |
-|                                           | the compiler during      |
-|                                           | compilation. Note you    |
-|                                           | may need to change this  |
-|                                           | if your netCDF includes  |
-|                                           | ``netcdf.mod`` and       |
-|                                           | ``typesizes.mod`` are    |
-|                                           | not in the standard      |
-|                                           | location under the       |
-|                                           | ``include`` subdirectory |
-|                                           | of NETCDF.               |
-+-------------------------------------------+--------------------------+
-| LIBS                                      | the libraries passed to  |
-|                                           | "FC" (or "MPIFC") during |
-|                                           | compilation. Note you    |
-|                                           | may need to change this  |
-|                                           | if the netCDF libraries  |
-|                                           | ``libnetcdf`` and        |
-|                                           | ``libnetcdff`` are not   |
-|                                           | in the standard location |
-|                                           | under the "lib"          |
-|                                           | subdirectory of NETCDF.  |
-+-------------------------------------------+--------------------------+
-| FFLAGS                                    | the Fortran flags passed |
-|                                           | to "FC" (or "MPIFC")     |
-|                                           | during compilation.      |
-|                                           | There are often flags    |
-|                                           | used for optimized code  |
-|                                           | versus debugging code.   |
-|                                           | See your particular      |
-|                                           | compiler’s documentation |
-|                                           | for more information.    |
-+-------------------------------------------+--------------------------+
-| LDFLAGS                                   | the linker flags passed  |
-|                                           | to *LD* during           |
-|                                           | compilation. See your    |
-|                                           | particular linker’s      |
-|                                           | documentation for more   |
-|                                           | information.             |
-+-------------------------------------------+--------------------------+
+
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| FC      | the Fortran compiler                                                                                                                                                                                                             |
++=========+==================================================================================================================================================================================================================================+
+| LD      | the name of the loader; typically, the same as the Fortran compiler                                                                                                                                                              |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| MPIFC   | the MPI Fortran compiler; see the :doc:`DART MPI introduction <mpi_intro>` for more info                                                                                                                                         |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| MPILD   | the MPI loader; see the :doc:`DART MPI introduction <mpi_intro>` for more info                                                                                                                                                   |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| NETCDF  | the location of your root netCDF installation, which is assumed to contain netcdf.mod and typesizes.mod in the include subdirectory. Note that the value of the NETCDF variable will be used by the “INCS” and “LIBS” variables. |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| INCS    | the includes passed to the compiler during compilation. Note you may need to change this if your netCDF includes netcdf.mod and typesizes.mod are not in the standard location under the include subdirectory of NETCDF.         |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| LIBS    | the libraries passed to “FC” (or “MPIFC”) during compilation. Note you may need to change this if the netCDF libraries libnetcdf and libnetcdff are not in the standard location under the “lib” subdirectory of NETCDF.         |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| FFLAGS  | the Fortran flags passed to “FC” (or “MPIFC”) during compilation. There are often flags used for optimized code versus debugging code. See your particular compiler’s documentation for more information.                        |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| LDFLAGS | the linker flags passed to LD during compilation. See your particular linker’s documentation for more information.                                                                                                               |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Customizing the path names files
 ================================
