@@ -4,17 +4,17 @@ Creating an obs_seq file from real observations
 Real observations come in a mind-boggling diversity of formats. We have
 converters for many formats in the ``DART/observations/obs_converters``
 directory. The documentation for that directory is listed in the
-`README.md <../../observations/obs_converters/README.md>`__.
+`README.rst <../observations/obs_converters/README.html>`__.
 
 The converters are designed to work on one input file format and create (or add
 to) an output observation sequence. It may be desirable to post-process multiple
 observation sequence files with the
-`obs_sequence_tool <../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__
+`obs_sequence_tool <../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__
 … to select for timeframe, geographic region, etc.
 
 Many of the formats require their own libraries (like HDF), and require intimate
-knowledge of the data format to extract the portions required for the `DART
-observation sequence file <#obs_seq_overview>`__. Please feel free to browse the
+knowledge of the data format to extract the portions required for the :doc:`DART
+observation sequence file <detailed-structure-obs-seq>`. Please feel free to browse the
 converters and their companion documentation. Feel free to donate converters for
 formats we don’t already support! We like that kind of stuff.
 
@@ -198,7 +198,7 @@ Observations of a real-world system usually are distributed with a
 year/month/day, hour/min/seconds timestamp. There are routines in DART to
 convert back and forth between the (day-number/seconds) format and a variety of
 (year/month/day) calendars. See `the time manager
-documentation <../../assimilation_code/modules/utilities/time_manager_mod.html#time_type>`__
+documentation <../assimilation_code/modules/utilities/time_manager_mod.html#time_type>`__
 for more details on how DART stores time information and the types of available
 calendars. Some climate models which do long runs (100s or 1000s of years) use a
 modified calendar for simplicity in computation, e.g. months which always have
@@ -232,13 +232,13 @@ The instrument error is generally supplied by the instrument maker. Sadly, it is
 frequently surprisingly difficult to find these values. For the
 representativeness error, a set of artificial observations could be generated
 with the
-`perfect_model_obs <../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__
+`perfect_model_obs <../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__
 program and an assimilation experiment could be run to generate an estimate of
 the error in the model. In practice however most people make an educated guess
 on the values of the error and then start with a larger than expected value and
 decrease it based on the results of running some test assimilations. For these
 tests the namelist for the `outlier
-threshold <../../assimilation_code/programs/filter/filter.html#Namelist>`__
+threshold <../assimilation_code/programs/filter/filter.html#Namelist>`__
 should be disabled by setting it to -1 (the default value is 3). This value
 controls whether the observation is rejected because the observed value is too
 far from the ensemble mean.
@@ -259,7 +259,7 @@ spread includes contributions from both the ensemble variance and the
 observational error variance, so it can be adjusted by changing the error values
 on the incoming observations. There are other ways to adjust the ensemble
 spread, including
-`inflation <../../assimilation_code/programs/filter/filter.html#Inflation>`__,
+:doc:`inflation <inflation>`,
 so the observation error is not the only factor to consider.
 
 One last recommendation: if possible, the Prior forward operator values should
@@ -283,7 +283,7 @@ single underlying generic ‘kind’, which controls what forward operator code 
 called inside the model, e.g. QTY_TEMPERATURE, QTY_DENSITY, etc.
 
 See the
-`observations/forward_operators/obs_def_mod.html <https://www.image.ucar.edu/DAReS/DART/Manhattan/observations/forward_operators/obs_def_mod.html>`__
+`observations/forward_operators/obs_def_mod <../observations/forward_operators/obs_def_mod.html>`__
 for more details on how to use and add new DART types. The DART
 ``obs_kind_mod.f90`` defines a list of already defined observation types, and
 users can either use existing observation types in ‘obs_def_xxx_mod.f90’ files,
@@ -296,8 +296,8 @@ Observation locations
 
 The two most common choices for specifying the location of an observation are
 the
-`threed_sphere <../../assimilation_code/location/threed_sphere/location_mod.html>`__
-and the `oned <../../assimilation_code/location/oned/location_mod.html>`__
+`threed_sphere <../assimilation_code/location/threed_sphere/location_mod.html>`__
+and the `oned <../assimilation_code/location/oned/location_mod.html>`__
 locations. For observations of a real-world system, the 3D Sphere is generally
 the best choice. For low-order, 1D models, the 1D locations are the most
 commonly used. The observation locations need to match the type of locations
