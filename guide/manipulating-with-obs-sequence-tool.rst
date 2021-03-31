@@ -2,7 +2,7 @@ Manipulating obs_seq files with the obs_sequence_tool
 =====================================================
 
 First and foremost, check out the
-`obs_sequence_tool.html <../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__
+`obs_sequence_tool.html <../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__
 document for detailed information and examples.
 
 *obs_sequence_tool* is the primary tool for manipulating observation sequence
