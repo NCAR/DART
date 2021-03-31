@@ -14,7 +14,7 @@ forecasts of chaotic systems with real observations.
 Models supported by DART
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-A full list of models can be found `here <Models.md>`__, but in brief the models
+A full list of models can be found :doc:`here <../models/README>`, but in brief the models
 supported by DART include:
 
 ============ ============== ================ ==============
@@ -52,7 +52,6 @@ team for more information. The versions listed as “Lanai” will be ported to 
 Manhattan version of DART depending on the needs of the user community as well
 as the availablity of resources on the DART team.
 
-` <#obsConverters>`__
 
 Observation converters provided by DART
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,145 +65,72 @@ process easier for the user. Under the directory
 of which has at least one observation converter. The list of these directories
 is as follows:
 
-+----------------------------+-------------------+----------------------------+
-| Observation                | Directory         | Format                     |
-+============================+===================+============================+
-| `Atmospheric Infrared      | AIRS              | HDF-EOS                    |
-| Sounder <http              |                   |                            |
-| s://airs.jpl.nasa.gov/>`__ |                   |                            |
-| satellite retrievals       |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| `Avi                       | Aviso             | netCDF                     |
-| so <https://www.aviso.alti |                   |                            |
-| metry.fr/en/home.html>`__: |                   |                            |
-| satellite derived sea      |                   |                            |
-| surface height             |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Level 4 Flux Tower data    | Ameriflux         | Comma-separated text       |
-| from                       |                   |                            |
-| `AmeriFlux <ht             |                   |                            |
-| tp://ameriflux.lbl.gov>`__ |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Level 2 soil moisture from | COSMOS            | Fixed-width text           |
-| `COSMOS <http://c          |                   |                            |
-| osmos.hwr.arizona.edu/>`__ |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Doppler wind lidar         | DWL               | ASCII text                 |
-+----------------------------+-------------------+----------------------------+
-| GPS retrievals of          | GPSPW             | netCDF                     |
-| precipitable water         |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| GSI observation file       | GSI2DART          | Fortran binary             |
-+----------------------------+-------------------+----------------------------+
-| Global                     | GTSPP             | netCDF                     |
-| Temperature-Salinity       |                   |                            |
-| Profile Program            |                   |                            |
-| (`G                        |                   |                            |
-| TSPP <http://www.nodc.noaa |                   |                            |
-| .gov/GTSPP/index.html>`__) |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Meteorological             | MADIS             | netCDF                     |
-| Assimilation Data Ingest   |                   |                            |
-| System                     |                   |                            |
-| (`MADIS <h                 |                   |                            |
-| ttp://madis.noaa.gov/>`__) |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| `                          | MIDAS             | netCDF                     |
-| MIDAS <https://www.science |                   |                            |
-| direct.com/science/article |                   |                            |
-| /pii/S0273117712001135>`__ |                   |                            |
-| ionospheric obs            |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| `MODIS <https:             | MODIS             | Comma-separated text       |
-| //modis.gsfc.nasa.gov/>`__ |                   |                            |
-| satellite retrievals       |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| `NCEP                      | NCEP/prep_bufr    | PREPBUFR                   |
-| PREPBUFR <h                |                   |                            |
-| ttps://www.emc.ncep.noaa.g |                   |                            |
-| ov/mmb/data_processing/pre |                   |                            |
-| pbufr.doc/document.htm>`__ |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| NCEP ASCII observations    | NCEP/ascii_to_obs | NCEP text files            |
-+----------------------------+-------------------+----------------------------+
-| `ROMS <h                   | ROMS              | netCDF                     |
-| ttps://www.myroms.org/>`__ |                   |                            |
-| verification observations  |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Satellite winds from       | SSEC              | ASCII text                 |
-| `SSEC <https://w           |                   |                            |
-| ww.ssec.wisc.edu/data/>`__ |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Sea surface temperature    | SST               | netCDF                     |
-+----------------------------+-------------------+----------------------------+
-| Special Sensor Ultraviolet | SSUSI             | netCDF                     |
-| Spectrographic Imager      |                   |                            |
-| (`SSUSI <http              |                   |                            |
-| s://ssusi.jhuapl.edu/>`__) |                   |                            |
-| retrievals                 |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| World Ocean Database       | WOD               | World Ocean Database       |
-| (`WOD <h                   |                   | packed ASCII               |
-| ttp://www.nodc.noaa.gov/OC |                   |                            |
-| 5/WOD09/pr_wod09.html>`__) |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| `National Snow and Ice     | cice              | Binary sea ice             |
-| Data                       |                   |                            |
-| Cen                        |                   |                            |
-| ter <http://nsidc.org/>`__ |                   |                            |
-| sea ice obs                |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| VTEC                       | gnd_gps_vtec      | ASCII text                 |
-| `                          |                   |                            |
-| Madrigal <http://millstone |                   |                            |
-| hill.haystack.mit.edu/>`__ |                   |                            |
-| upper atmospheric obs      |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| GPS obs from               | gps               | netCDF                     |
-| `COSMIC <http              |                   |                            |
-| ://www.cosmic.ucar.edu>`__ |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Oklahoma                   | ok_mesonet        | Oklahoma Mesonet MDF files |
-| `Mesonet <h                |                   |                            |
-| ttp://www.mesonet.org/>`__ |                   |                            |
-| MDF obs                    |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| `QuikSCAT <http:           | quikscat          | HDF 4                      |
-| //winds.jpl.nasa.gov/missi |                   |                            |
-| ons/quikscat/index.cfm>`__ |                   |                            |
-| scatterometer winds        |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Radar reflectivity/radial  | Radar             | WSR-88D (NEXRAD)           |
-| velocity obs               |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| `MODIS Snowcover           | snow              | General text               |
-| Fraction <htt              |                   |                            |
-| ps://modis.gsfc.nasa.gov/d |                   |                            |
-| ata/dataprod/mod10.php>`__ |                   |                            |
-| obs                        |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Text file                  | Text              | General text               |
-| (e.g. spreadsheet) obs     |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Total precipitable water   | tpw               | HDF-EOS                    |
-| from AQUA                  |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| Automated Tropical Cyclone | Tropical Cyclones | Fixed width text           |
-| Forecast                   |                   |                            |
-| (`ATCF <https://www.nrlm   |                   |                            |
-| ry.navy.mil/atcf_web/>`__) |                   |                            |
-| obs                        |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| `LITT                      | var               | little-r                   |
-| LE_R <http://www2.mmm.ucar |                   |                            |
-| .edu/mm5/On-Line-Tutorial/ |                   |                            |
-| little_r/little_r.html>`__ |                   |                            |
-| obs                        |                   |                            |
-+----------------------------+-------------------+----------------------------+
-| `MM5 <http://              | var               | MM5 3D-VAR 2.0 Radar data  |
-| www2.mmm.ucar.edu/mm5/>`__ |                   | files                      |
-| 3D-VAR radar obs           |                   |                            |
-+----------------------------+-------------------+----------------------------+
+
+
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Observation                                                                                          | Directory         | Format                            |
++======================================================================================================+===================+===================================+
+| `Atmospheric Infrared Sounder <https://airs.jpl.nasa.gov/>`__ satellite retrievals                   | AIRS              | HDF-EOS                           |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `Aviso <https://www.aviso.altimetry.fr/en/home.html>`__: satellite derived sea surface height        | Aviso             | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Level 4 Flux Tower data from `AmeriFlux <http://ameriflux.lbl.gov/>`__                               | Ameriflux         | Comma-separated text              |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Level 2 soil moisture from `COSMOS <http://cosmos.hwr.arizona.edu/>`__                               | COSMOS            | Fixed-width text                  |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Doppler wind lidar                                                                                   | DWL               | ASCII text                        |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| GPS retrievals of precipitable water                                                                 | GPSPW             | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| GSI observation file                                                                                 | GSI2DART          | Fortran binary                    |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Global Temperature-Salinity Profile Program (`GTSPP <http://www.nodc.noaa.gov/GTSPP/index.html>`__)  | GTSPP             | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Meteorological Assimilation Data Ingest System (`MADIS <http://madis.noaa.gov/>`__)                  | MADIS             | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `MIDAS <https://www.sciencedirect.com/science/article/pii/S0273117712001135>`__ ionospheric obs      | MIDAS             | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `MODIS <https://modis.gsfc.nasa.gov/>`__ satellite retrievals                                        | MODIS             | Comma-separated text              |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `NCEP PREPBUFR <https://www.emc.ncep.noaa.gov/mmb/data_processing/prepbufr.doc/document.htm>`__      | NCEP/prep_bufr    | PREPBUFR                          |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| NCEP ASCII observations                                                                              | NCEP/ascii_to_obs | NCEP text files                   |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `ROMS <https://www.myroms.org/>`__ verification observations                                         | ROMS              | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Satellite winds from `SSEC <https://www.ssec.wisc.edu/data/>`__                                      | SSEC              | ASCII text                        |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Sea surface temperature                                                                              | SST               | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Special Sensor Ultraviolet Spectrographic Imager `(SSUSI) <https://ssusi.jhuapl.edu/>`__ retrievals  | SSUSI             | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| World Ocean Database `(WOD) <http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html>`__                    | WOD               | World Ocean Database packed ASCII |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `National Snow and Ice Data Center <http://nsidc.org/>`__ sea ice obs                                | cice              | Binary sea ice                    |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| VTEC `Madrigal <http://millstone hill.haystack.mit.edu/>`__ upper atmospheric obs                    | gnd_gps_vtec      | ASCII text                        |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| GPS obs from `COSMIC <http://www.cosmic.ucar.edu/>`__                                                | gps               | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Oklahoma `Mesonet <http://www.mesonet.org/>`__ MDF obs                                               | ok_mesonet        | Oklahoma Mesonet MDF files        |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `QuikSCAT <http://winds.jpl.nasa.gov/missions/quikscat/index.cfm>`__ scatterometer winds             | quikscat          | HDF 4                             |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Radar reflectivity/radial velocity obs                                                               | Radar             | WSR-88D (NEXRAD)                  |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `MODIS <https://modis.gsfc.nasa.gov/data/dataprod/mod10.php>`__ Snowcover Fraction obs               | snow              | General text                      |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Text file (e.g. spreadsheet) obs                                                                     | Text              | General text                      |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Total precipitable water from AQUA                                                                   | tpw               | HDF-EOS                           |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| Automated Tropical Cyclone Forecast (`ATCF <https://www.nrlmry.navy.mil/atcf_web/>`__) obs           | Tropical Cyclones | Fixed width text                  |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `LITTLE_R <http://www2.mmm.ucar.edu/mm5/On-Line-Tutorial/little_r/little_r.html>`__ obs              | var               | little-r                          |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `MM5 <http://www2.mmm.ucar.edu/mm5/>`__ 3D-VAR radar obs                                             | var               | MM5 3D-VAR 2.0 Radar data files   |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+
 
 Data assimilation algorithms available in DART
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -345,10 +271,12 @@ section):
 +--------------------+----------------------------+----------------------------+
 
 DART also offers the ability to correct for sampling errors. DART’s localization
-and sampling error correction algorithm is described in > > **Anderson, J.L.**,
-2012. Localization and Sampling Error Correction in Ensemble Kalman Filter Data
-Assimilation. *Monthly Weather Review*, 140, 2359–2371.
-https://doi.org/10.1175/MWR-D-11-00013.1
+and sampling error correction algorithm is described in 
+
+  **Anderson, J.L.**,
+  2012. Localization and Sampling Error Correction in Ensemble Kalman Filter Data
+  Assimilation. *Monthly Weather Review*, 140, 2359–2371.
+  https://doi.org/10.1175/MWR-D-11-00013.1
 
 This behavior can be turned on or off via the *sampling_error_correction* in
 ``input.nml`` under the “assim_tools_nml” section. The following covariance
