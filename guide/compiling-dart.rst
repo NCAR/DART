@@ -165,46 +165,25 @@ Currently, DART executables are built in a ``work`` subdirectory under
 the directory containing code for the given model. The Lorenz_63 model
 has seven ``mkmf_xxxxxx`` files for the following programs:
 
-+-----------------------------------+-----------------------------------+
-| Program                           | Purpose                           |
-+===================================+===================================+
-| `preproces                        | creates custom source code for    |
-| s <../../assimilation_code/progra | just the observations of interest |
-| ms/preprocess/preprocess.html>`__ |                                   |
-+-----------------------------------+-----------------------------------+
-| `cre                              | specify a (set) of observation    |
-| ate_obs_sequence <../../assimilat | characteristics taken by a        |
-| ion_code/programs/create_obs_sequ | particular (set of) instruments   |
-| ence/create_obs_sequence.html>`__ |                                   |
-+-----------------------------------+-----------------------------------+
-| `create_fixed_netwo               | specify the temporal attributes   |
-| rk_seq <../../assimilation_code/p | of the observation sets           |
-| rograms/create_fixed_network_seq/ |                                   |
-| create_fixed_network_seq.html>`__ |                                   |
-+-----------------------------------+-----------------------------------+
-| `perfect_model_obs <../../assim   | spinup and generate "true state"  |
-| ilation_code/programs/perfect_mod | for synthetic observation         |
-| el_obs/perfect_model_obs.html>`__ | experiments                       |
-+-----------------------------------+-----------------------------------+
-| `filter <../../assimilation_cod   | perform data assimilation         |
-| e/programs/filter/filter.html>`__ | analysis                          |
-+-----------------------------------+-----------------------------------+
-| `obs_diag <../../a                | creates observation-space         |
-| ssimilation_code/programs/obs_dia | diagnostic files in netCDF format |
-| g/threed_sphere/obs_diag.html>`__ | to support visualization and      |
-|                                   | quantification.                   |
-+-----------------------------------+-----------------------------------+
-| `obs_sequence_tool <../../assim   | manipulates observation sequence  |
-| ilation_code/programs/obs_sequenc | files. This tool is not generally |
-| e_tool/obs_sequence_tool.html>`__ | required (particularly for        |
-|                                   | low-order models) but can be used |
-|                                   | to combine observation sequences  |
-|                                   | or convert from ASCII to binary   |
-|                                   | or vice-versa. Since this is a    |
-|                                   | rather specialized routine, we    |
-|                                   | will not cover its use further in |
-|                                   | this document.                    |
-+-----------------------------------+-----------------------------------+
+
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Program                                                                                                                  | Purpose                                                                                                                                                                                                                                                                                                         |
++==========================================================================================================================+=================================================================================================================================================================================================================================================================================================================+
+|`preprocess   <../assimilation_code/programs/preprocess/preprocess.html>`__                                               | creates custom source code for just the observations of interest                                                                                                                                                                                                                                                |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`create_obs_sequence <../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html>`__                      | specify a (set) of observation characteristics taken by a particular (set of) instruments                                                                                                                                                                                                                       |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`create_fixed_network_seq <../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html>`__       | specify the temporal attributes of the observation sets                                                                                                                                                                                                                                                         |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`perfect_model_obs <../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__                            | spinup and generate “true state” for synthetic observation experiments                                                                                                                                                                                                                                          |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`filter <../assimilation_code/programs/filter/filter.html>`__                                                             | perform data assimilation analysis                                                                                                                                                                                                                                                                              |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`obs_diag <../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__                                         | creates observation-space diagnostic files in netCDF format to support visualization and quantification.                                                                                                                                                                                                        |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`obs_sequence_tool <../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__                            | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
 
 As mentioned above, ``quickbuild.csh`` is a script that will build every
 executable in the directory. There is an optional argument that will
