@@ -19,7 +19,7 @@ Each directory has at least one converter:
 -  `GTSPP <../observations/obs_converters/GTSPP/GTSPP.html>`__
 -  `MADIS <../observations/obs_converters/MADIS/MADIS.html>`__
 -  `MIDAS <../observations/obs_converters/MIDAS/MIDAS_to_obs.html>`__
--  `MODIS <../observations/obs_converters/MODIS/MOD15A2_to_obs.htm>`__
+-  `MODIS <../observations/obs_converters/MODIS/MOD15A2_to_obs.html>`__
 -  `NCEP (prepbufr -> ascii) <../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
 -  `NCEP (ascii -> obs_seq) <../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html>`__
 -  `ROMS <../observations/obs_converters/ROMS/ROMS.html>`__
@@ -57,15 +57,15 @@ files:
    DART (Data Assimilation Research Testbed) formats.
 
 For generating synthetic observations, see the
-`create_obs_sequence <../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html>`__
+`create_obs_sequence <../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html>`__
 program documentation. You can also generate observation files based on text
-input. See the `text_to_obs <text/text_to_obs.html>`__ program documentation. Or
+input. See the `text_to_obs <../observations/obs_converters/text/text_to_obs.html>`__ program documentation. Or
 for simulating a large complex observing system, you can use the DART library
 routines in a Fortran program to compute the observation information and have
 the DART routines write the output file.
 
 See the
-`perfect_model <../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__
+`perfect_model <../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__
 program documentation on how to run a model with a set of observations that have
 only locations, types, and times, and have the forward operators compute the
 observation values.
