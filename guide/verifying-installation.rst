@@ -11,9 +11,9 @@ Verifying installation
 The Lorenz model is notoriously sensitive to very small changes; in
 fact, the story of Lorenz discovering this sensitivity is a classic in
 the annals of the study of chaos, which in turn was instrumental in the
-development of data assimilation as a field of study. See `The Lorenz 63
-model: what is it and why should we care? <#Lorenz63>`__ or `What is
-data assimilation? <#WhatIsDA>`__ for more information.
+development of data assimilation as a field of study. See :doc:`The Lorenz 63
+model: what is it and why should we care? <lorenz-63-model>` or :doc:`What is
+data assimilation? <introduction-ensemble-da>` for more information.
 
 This sensitivity is of practical interest for verifying these results.
 The initial conditions files and observations sequences are provided in
@@ -99,18 +99,18 @@ Congratulations! You have now successfully configured DART and are ready
 to begin the next phase of your interaction with DART. You may wish to
 learn more about:
 
--  `What is data assimilation? <#WhatIsDA>`__ — a brief introduction to
+-  :doc:`What is data assimilation? <introduction-ensemble-da>` — a brief introduction to
    ensemble data assimilation. This section includes more information
    about the Lorenz 63 model and how to configure the ``input.nml`` file
    to play with DA experiments in DART using the Lorenz 63 model.
--  `What is DART? <#WhatIsDART>`__ — This section includes more
+-  :doc:`What is DART? <what-is-dart>` — This section includes more
    information about DART and a basic flow chart of the overall DART
    workflow.
--  `How do I run DART with my model? <#RunWithMyModel>`__
--  `How do I add my observations to DART? <#RunWithMyObs>`__
--  `How would I use DART for teaching students and/or
-   myself? <#DartForEducation>`__
--  `How can I contribute to DART? <#ContributeToDart>`__
+-  :doc:`How do I run DART with my model? <required-model-mod-routines>`
+-  :doc:`How do I add my observations to DART? <adding-your-observations-to-dart>`
+-  :doc:`How would I use DART for teaching students and/or
+   myself? <../theory/readme>`
+-  :doc:`How can I contribute to DART? <contributors-guide>`
 
 .. note:: 
 
