@@ -166,15 +166,15 @@ this may be possible with a Fortran function call, but for higher-order
 models, this is typically done outside of DART’s execution control.
 However, the assimilation itself is conducted the same way for **all**
 models. For this reason, here we focus solely on the Lorenz 63 model. If
-so desired, see `The Lorenz 63 model: what is it and why should we
-care? <#Lorenz63>`__ for more information on this simple yet
-surprisingly relevant model. See `A high-level workflow of DA in
-DART <#dartWorkflow>`__ for further information regarding the DART
+so desired, see :doc:`The Lorenz 63 model: what is it and why should we
+care? <lorenz-63-model>` for more information on this simple yet
+surprisingly relevant model. See :doc:`A high-level workflow of DA in
+DART <high-level-da-workflows>` for further information regarding the DART
 workflow if you prefer to do so before building the code.
 
 There are seven separate, stand-alone programs that are typically
 necessary for the end-to-end execution of a DART experiment; see below
-or the `What is DART? <#WhatIsDART>`__ section for more information on
+or the :doc:`What is DART? <what-is-dart>` section for more information on
 these programs and their interactions. All DART programs are compiled
 the same way, and each model directory has a directory called ``work``
 that has the components necessary to build the executables.
