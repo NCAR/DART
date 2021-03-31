@@ -30,32 +30,29 @@ releases after islands in alphabetical order in the following sequence:
 |                    |                            | observation capability     |
 +--------------------+----------------------------+----------------------------+
 | Iceland            | 23 Nov 2005                | Huge expansion of real     |
-|                    |                            | observation capability,    |
-|                    |                            | more                       |
+|                    |                            | observation capability     |
 +--------------------+----------------------------+----------------------------+
 | Post-Iceland       | 20 Jun 2006                | Observation-space adaptive |
-|                    |                            | inflation, more            |
+|                    |                            | inflation                  |
 +--------------------+----------------------------+----------------------------+
 | Pre-J              | 02 Oct 2006                | Updated scalable filter    |
 |                    |                            | algorithm                  |
 +--------------------+----------------------------+----------------------------+
 | Jamaica            | 12 Apr 2007                | Vertical localization,     |
-|                    |                            | extensive MPI testing,     |
-|                    |                            | more                       |
+|                    |                            | extensive MPI testing      |
 +--------------------+----------------------------+----------------------------+
 | Kodiak             | 30 Jun 2011                | New obs types, new         |
 |                    |                            | diagnostics, new           |
-|                    |                            | utilities, much more       |
+|                    |                            | utilities                  |
 +--------------------+----------------------------+----------------------------+
 | Lanai              | 13 Dec 2013                | Support for many new       |
 |                    |                            | models, chemistry/aerosol  |
 |                    |                            | types, new diagnostics,    |
-|                    |                            | new utilities, much more   |
+|                    |                            | new utilities              |
 +--------------------+----------------------------+----------------------------+
 | Manhattan          | 15 May 2017                | Native netCDF support,     |
 |                    |                            | better                     |
-|                    |                            | scaling/performance, much  |
-|                    |                            | more                       |
+|                    |                            | scaling/performance        |
 +--------------------+----------------------------+----------------------------+
 
 In September 2009, DART was featured on the cover of the Bulletin of the
