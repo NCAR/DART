@@ -109,8 +109,8 @@ input to all other DART programs. In the OSE case, however, the user must
 provide an **obs converter** that will output a ``obs_seq.out`` file. There are
 many DART utilities to make this process easier, but for the OSE case the
 ``obs_seq.out`` file is ultimately the user’s responsibility (to avoid
-duplicating effort, see the list of existing observation types in `Important
-capabilities of DART <#dartCapabilities>`__). Here, the option to run with one
+duplicating effort, see the list of existing observation types in :doc:`Important
+capabilities of DART <important-capabilities-dart>`). Here, the option to run with one
 file for each ensemble member is demonstrated. There are *k* ensemble members
 used as input to *filter*, which also outputs *k* members for the prior and
 posterior. The ``obs_seq.final`` and ``obs_diag_output.nc`` are used in the same
