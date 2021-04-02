@@ -71,9 +71,8 @@ The documentation is partitioned into three parts:
 Manhattan Release
 -----------------
 
-The Manhattan release is new and currently supports only a subset of the
-models. DAReS staff will port over any requested model. Email dart@ucar.edu
-if yours is not on the list.
+DART releases are named based on the major version number.   The current version, 9.x.x,  is the Manhattan release. 
+Email dart@ucar.edu for advice if you are interested in a model which has not been converted from the previous Lanai release.
 
 
 Quick-start
