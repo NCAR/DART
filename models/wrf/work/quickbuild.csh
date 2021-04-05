@@ -22,7 +22,7 @@
 set MODEL = "wrf"
 
 # programs which have the option of building with MPI:
-set MPI_TARGETS = "filter perfect_model_obs model_mod_check wakeup_filter closest_member_tool perturb_single_instance"
+set MPI_TARGETS = "filter perfect_model_obs model_mod_check wakeup_filter closest_member_tool perturb_single_instance fill_inflation_restart"
 
 # set default (override with -mpi or -nompi):
 #  0 = build without MPI, 1 = build with MPI

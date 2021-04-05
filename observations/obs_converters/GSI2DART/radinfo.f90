@@ -15,9 +15,10 @@ integer(i_kind) :: jpch_rad ! number of channels*sat
 integer(i_kind),allocatable,dimension(:):: nuchan ! satellite channel
 
 ! namelist variables
-integer(i_kind) :: npred = 12       ! number of radiance biases predictors
+integer(i_kind) :: npred = 7        ! number of radiance biases predictors
 logical :: adp_anglebc   = .false.  ! logical to turn off or on the variational radiance angle bias correction
 logical :: emiss_bc      = .false.  ! logical to turn off or on the emissivity predictor
+integer(i_kind) :: angord = 4       ! order for angle bias correction
 
 contains
 

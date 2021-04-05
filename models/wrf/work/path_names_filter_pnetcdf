@@ -5,6 +5,8 @@ assimilation_code/modules/assimilation/adaptive_inflate_mod.f90
 assimilation_code/modules/assimilation/arestart_pnetcdf_mod.f90
 assimilation_code/modules/assimilation/assim_model_mod.f90
 assimilation_code/modules/assimilation/assim_tools_mod.f90
+assimilation_code/modules/assimilation/radinfo.f90
+assimilation_code/modules/assimilation/radiance_bias_mod.f90
 assimilation_code/modules/assimilation/cov_cutoff_mod.f90
 assimilation_code/modules/assimilation/obs_model_mod.f90
 assimilation_code/modules/assimilation/reg_factor_mod.f90

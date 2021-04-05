@@ -142,7 +142,7 @@ subroutine get_satobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x
   character(len=20) ::  sat_type
   character(len=10), intent(in) ::  datestring
 
-  integer(i_kind) nobs_max, iunit, iunit2,iflag, nobs, n, nsat, i,jpchstart,indxsat
+  integer(i_kind) nobs_max, iunit, iunit2,iflag, nobs, n, nsat, i,jpchstart,indxsat, nn
   integer(i_kind) npred_radiag,iflag2
   logical twofiles,fexist1,fexist2,lretrieval,lverbose
   real(r_kind) :: errorlimit,errorlimit2
@@ -265,25 +265,65 @@ subroutine get_satobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x
 !!       a higher polynomial version of the angle dependent bias correction (if
 !!       and when it is moved into part of the varbc)
 !!         x_biaspred(1,nobs) = data_chan1(n)%bifix! fixed angle dependent bias
-         x_biaspred(1,nobs) = data_chan1(n)%bifix(1) ! fixed angle dependent bias
-         x_biaspred(2,nobs) = data_chan1(n)%bicons ! constant bias correction
-         x_biaspred(3,nobs) = data_chan1(n)%biang ! scan angle bias correction
-         x_biaspred(4,nobs) = data_chan1(n)%biclw ! CLW bias correction
-         x_biaspred(5,nobs) = data_chan1(n)%bilap2 ! square lapse rate bias corr
-         x_biaspred(6,nobs) = data_chan1(n)%bilap ! lapse rate bias correction
-         if (npred == 7) then
-           x_biaspred(7,nobs) = data_chan1(n)%bicos ! node*cos(lat) bias correction for SSMIS
-           x_biaspred(8,nobs) = data_chan1(n)%bisin ! sin(lat) bias correction for SSMIS                    
-         endif
-         if (emiss_bc) x_biaspred(9,nobs) = data_chan1(n)%biemis
+!        x_biaspred(1,nobs) = data_chan1(n)%bifix(1) ! fixed angle dependent bias
+!        x_biaspred(2,nobs) = data_chan1(n)%bicons ! constant bias correction
+!        x_biaspred(3,nobs) = data_chan1(n)%biang ! scan angle bias correction
+!        x_biaspred(4,nobs) = data_chan1(n)%biclw ! CLW bias correction
+!        x_biaspred(5,nobs) = data_chan1(n)%bilap2 ! square lapse rate bias corr
+!        x_biaspred(6,nobs) = data_chan1(n)%bilap ! lapse rate bias correction
+!        if (npred == 7) then
+!          x_biaspred(7,nobs) = data_chan1(n)%bicos ! node*cos(lat) bias correction for SSMIS
+!          x_biaspred(8,nobs) = data_chan1(n)%bisin ! sin(lat) bias correction for SSMIS                    
+!        endif
+!        if (emiss_bc) x_biaspred(9,nobs) = data_chan1(n)%biemis
 
-         if (adp_anglebc) then
-            x_biaspred( 1,nobs)  = data_chan1(n)%bifix(5) ! fixed angle dependent bias correction
-            x_biaspred(npred-2,nobs)  = data_chan1(n)%bifix(1) ! 4th order scan angle (predictor)
-            x_biaspred(npred-1,nobs)  = data_chan1(n)%bifix(2) ! 3rd order scan angle (predictor)
-            x_biaspred(npred,nobs)  = data_chan1(n)%bifix(3) ! 2nd order scan angle (predictor)
-            x_biaspred(npred+1,nobs)    = data_chan1(n)%bifix(4) ! 1st order scan angle (predictor)
-         endif
+!        if (adp_anglebc) then
+!           x_biaspred( 1,nobs)  = data_chan1(n)%bifix(5) ! fixed angle dependent bias correction
+!           x_biaspred(npred-2,nobs)  = data_chan1(n)%bifix(1) ! 4th order scan angle (predictor)
+!           x_biaspred(npred-1,nobs)  = data_chan1(n)%bifix(2) ! 3rd order scan angle (predictor)
+!           x_biaspred(npred,nobs)  = data_chan1(n)%bifix(3) ! 2nd order scan angle (predictor)
+!           x_biaspred(npred+1,nobs)    = data_chan1(n)%bifix(4) ! 1st order scan angle (predictor)
+!        endif
+
+! from radinfo: radiance bias correction terms are as follows:
+!  pred(1,:)  = global offset
+!  pred(2,:)  = zenith angle predictor, is not used and set to zero now
+!  pred(3,:)  = cloud liquid water predictor for clear-sky microwave radiance assimilation
+!  pred(4,:)  = square of temperature laps rate predictor
+!  pred(5,:)  = temperature laps rate predictor
+!  pred(6,:)  = cosinusoidal predictor for SSMI/S ascending/descending bias
+!  pred(7,:)  = sinusoidal predictor for SSMI/S
+!  pred(8,:)  = emissivity sensitivity predictor for land/sea differences
+!  pred(9,:)  = fourth order polynomial of angle bias correction
+!  pred(10,:) = third order polynomial of angle bias correction
+!  pred(11,:) = second order polynomial of angle bias correction
+!  pred(12,:) = first order polynomial of angle bias correction
+!        if (lupd_satbiasc) then ! bias predictors only used if lupd_satbiasc=T
+            x_biaspred(1,nobs) = data_chan1(n)%bicons ! constant bias correction
+            x_biaspred(2,nobs) = data_chan1(n)%biang ! scan angle bias correction
+            x_biaspred(3,nobs) = data_chan1(n)%biclw ! CLW bias correction
+            x_biaspred(4,nobs) = data_chan1(n)%bilap2 ! square lapse rate bias corr
+            x_biaspred(5,nobs) = data_chan1(n)%bilap ! lapse rate bias correction
+            x_biaspred(6,nobs) = data_chan1(n)%bicos ! node*cos(lat) bias correction for SSMIS
+            x_biaspred(7,nobs) = data_chan1(n)%bisin ! sin(lat) bias correction for SSMIS                    
+            if (emiss_bc) then
+               x_biaspred(8,nobs) = data_chan1(n)%biemis
+               nn = 9
+            else
+               nn = 8
+            endif
+
+            if (adp_anglebc) then
+               x_biaspred(nn  ,nobs)   = data_chan1(n)%bifix(1) ! 4th order scan angle (predictor)
+               x_biaspred(nn+1,nobs)  = data_chan1(n)%bifix(2) ! 3rd order scan angle (predictor)
+               x_biaspred(nn+2,nobs)  = data_chan1(n)%bifix(3) ! 2nd order scan angle (predictor)
+               x_biaspred(nn+3,nobs)  = data_chan1(n)%bifix(4) ! 1st order scan angle (predictor)
+            endif
+            x_biaspred(npred+1,nobs) = data_chan1(n)%bifix(5) ! CSS bug fix. fixed angle dependent bias
+!        else
+!           x_biaspred(:,nobs) =zero ! lupd_satbiasc=F, don't need bias predictors
+!        endif
+
 
       enddo chan
      enddo

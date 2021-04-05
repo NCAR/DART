@@ -70,6 +70,10 @@ use distributed_state_mod, only : create_mean_window, free_mean_window
 
 use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 
+use radiance_bias_mod,    only : numiter, lupd_satbiasc, nobs_sat, &
+                                 radiance_bias_init, radiance_bias_finalize, &
+                                 apply_biascorr, update_biascorr ! CSS added dependency to this module
+
 implicit none
 private
 
@@ -194,6 +198,7 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    distribute_mean, close_obs_caching,                                     &
    adjust_obs_impact, obs_impact_filename, allow_any_impact_values,        &
    convert_all_state_verticals_first, convert_all_obs_verticals_first
+   
 
 !============================================================================
 
@@ -392,6 +397,13 @@ integer(i8)    :: t_limit(Ntimers)  ! limit on number printed
 real(digits12), allocatable :: elapse_array(:)
 
 integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
+
+! Begin CSS variables for bias correction
+integer :: niter
+logical :: lastiter
+real(r8), allocatable :: prior_obs_ens(:,:)
+real(digits12) :: base_rad, elapsed_rad
+! End CSS
 
 ! timing disabled by default
 timing(:)  = .false.
@@ -601,6 +613,45 @@ if (has_special_cutoffs) then
 else
    call get_close_init(gc_obs, my_num_obs, 2.0_r8*cutoff, my_obs_loc)
 endif
+! -------------------------
+! Begin CSS bias correction
+! -------------------------
+! Initialize variational bias correction.  
+! This subroutine will read the namelist and set lupd_satbiasc and nobs_sat. 
+! It will also read the prior bias correction coefficients and initialize many variables within radiance_bias_mod
+call radiance_bias_init(obs_seq,obs_ens_handle,keys,OBS_GLOBAL_QC_COPY)
+if ( lupd_satbiasc .and. nobs_sat > 0 ) then
+   ! need to save the prior ensemble
+   allocate( prior_obs_ens(1:ens_size,my_num_obs))
+   prior_obs_ens(1:ens_size, :) = obs_ens_handle%copies(1:ens_size, :)
+endif
+! -------------------------
+! End CSS bias correction
+! -------------------------
+
+do niter = 1,numiter ! CSS start loop over number of iterations for updating bias correction coefficients
+
+   ! -------------------------
+   ! Begin CSS bias correction
+   ! -------------------------
+   lastiter = niter == numiter
+
+   ! For niter > 1, obs (obs_ens_handle) have changed through OBS_UPDATE (obs updating priors through joint state)
+   ! So, we need to reset the ob priors back to their original values. Should NOT need to recompute the original mean.
+   ! Then, we need to update the radiance priors based on the new bias correction coefficients
+   if (nobs_sat > 0 .and. lupd_satbiasc ) then
+      call start_mpi_timer(base_rad)
+      write(msgstring, '(A,1x,I2,1x,A,I2)') 'Starting iteration ', niter, ' of ', numiter
+      call error_handler(E_MSG,'filter_assim: ',msgstring)
+      if ( niter > 1 ) then
+         obs_ens_handle%copies(1:ens_size, :) = prior_obs_ens(1:ens_size, :) ! reset priors to their original values
+         ! apply bias correction to radiance obs with latest estimate of bias coeffs (already done for first iteration)
+         call apply_biascorr(obs_seq,obs_ens_handle,ens_size)
+      endif
+   endif
+   ! ------
+   ! End CSS
+   ! ------
 
 if (close_obs_caching) then
    ! Initialize last obs and state get_close lookups, to take advantage below
@@ -640,7 +691,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! If requested, print out a message every Nth observation
    ! to indicate progress is being made and to allow estimates
    ! of how long the assim will take.
-   if (nth_obs == 0) then
+   if ( lastiter .and. nth_obs == 0) then ! CSS only print on last iteration
       write(msgstring, '(2(A,I8))') 'Processing observation ', i, &
                                          ' of ', obs_ens_handle%num_vars
       if (print_timestamps == 0) then
@@ -900,7 +951,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                                        total_num_close_obs, base_obs_loc, &
                                        adaptive_cutoff_floor*2.0_r8) / 2.0_r8
 
-         if ( output_localization_diagnostics ) then
+         if ( output_localization_diagnostics .and. lastiter ) then ! CSS only output last iteration through
 
             ! to really know how many obs are left now, you have to
             ! loop over all the obs, again, count how many kinds are
@@ -934,7 +985,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       endif
 
-   else if (output_localization_diagnostics) then
+   else if (output_localization_diagnostics .and. lastiter ) then ! CSS only output last iteration through
 
       ! if you aren't adapting but you still want to know how many obs are within the
       ! localization radius, set the diag output.  this could be large, use carefully.
@@ -956,6 +1007,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
    ! Now everybody updates their close states
    ! Find state variables on my process that are close to observation being assimilated
+   if ( lastiter ) then ! CSS only update state on last iteration
    if (.not. close_obs_caching) then
       if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
       call get_close_state(gc_state, base_obs_loc, base_obs_type, &
@@ -987,6 +1039,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          last_close_state_dist(:) = close_state_dist(:)
          num_close_states_calls_made = num_close_states_calls_made + 1
       endif
+   endif
+   else 
+      num_close_states = 0 ! CSS setting this = 0 skips state update
    endif
 
    n_close_state_items(i) = num_close_states
@@ -1159,7 +1214,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       obs_index = close_obs_ind(j)
 
       ! Only have to update obs that have not yet been used
-      if(my_obs_indx(obs_index) > i) then
+      if(my_obs_indx(obs_index) > i .or. (lupd_satbiasc .and. nobs_sat > 0) ) then ! CSS added 2nd condition. For updating radiance bias correction coefficients, to mimic NOAA EnSRF, let this observation update a previously-assimilated observation for bias correction purposes. Shouldn't hurt anything else.
 
          ! If the forward observation operator failed, no need to
          ! update the unassimilated observations
@@ -1227,6 +1282,39 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       call read_timer(t_base(MLOOP), msgstring, elapsed = elapse_array(i))
    endif
 end do SEQUENTIAL_OBS
+
+   ! ---------
+   ! Begin CSS satellite bias correction update.
+   ! ---------
+   if (nobs_sat > 0 .and. lupd_satbiasc) then
+      elapsed_rad = read_mpi_timer(base_rad)
+      write(msgstring, '(A,1x,I2,1x,A,I2,1x,A,1x,F12.4,1x,A)') 'Done with iteration ', niter, ' of ', numiter,', which took ',elapsed_rad,' seconds'
+      call error_handler(E_MSG,'filter_assim: ',msgstring)
+      ! make sure posterior perturbations still have zero mean as in NOAA's EnSRF; as they note, "roundoff errors can accumulate"
+     !do j = 1,obs_ens_handle%my_num_vars
+     !   obs_ens_handle%copies(1:ens_size, j) = obs_ens_handle%copies(1:ens_size, j) - &
+     !      sum(obs_ens_handle%copies(1:ens_size, j),1)/(ens_size-1)
+     !enddo
+      ! Update bias correction. This routine first gathers all radiance obs on all processors before updating the coefficients
+      call update_biascorr(int(niter,i8),obs_seq, obs_ens_handle, keys, obs_val_index, OBS_PRIOR_MEAN_START, ens_size, OBS_GLOBAL_QC_COPY)
+   endif
+   ! ---------
+   ! End CSS satellite bias correction update.
+   ! ---------
+
+end do ! CSS end loop over numiter for bias correction
+
+! ---------
+! CSS Begin
+! ---------
+if ( lupd_satbiasc ) then
+   ! add bias correction increment to the prior and output bias correction coefficient file
+   call radiance_bias_finalize ! okay to call even if nobs_sat == 0
+   if (nobs_sat > 0 ) deallocate(prior_obs_ens)
+end if
+! ---------
+! CSS End
+! ---------
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
 if(local_single_ss_inflate) then

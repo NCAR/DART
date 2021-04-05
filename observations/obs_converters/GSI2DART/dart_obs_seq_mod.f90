@@ -11,14 +11,15 @@ use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, in
                               destroy_obs, destroy_obs_sequence
 use       obs_def_mod, only : set_obs_def_location, set_obs_def_error_variance, &
                               set_obs_def_type_of_obs, set_obs_def_time, set_obs_def_key, &
-                              obs_def_type, set_obs_def_external_FO, destroy_obs_def
+                              obs_def_type, set_obs_def_external_FO, destroy_obs_def, &
+			      set_obs_def_bc_predictors
 use   obs_def_gps_mod, only : set_gpsro_ref
 use         types_mod, only : obstypelength
 use      obs_kind_mod
 use      location_mod, only : location_type, set_location, VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
 use  time_manager_mod, only : time_type, set_date, set_time, set_calendar_type, GREGORIAN, &
                               increment_time, decrement_time, get_time
-use           radinfo, only : nuchan
+use           radinfo, only : nuchan, npred
 use     utilities_mod, only : to_upper, error_handler, E_ERR, E_MSG
 
 implicit none
@@ -58,14 +59,15 @@ subroutine dart_obs_seq (datestring,                              &
    integer                 :: year, month, day, hour, days, seconds
    integer                 :: gps_key = 0
    real(r_kind)            :: gnx, gny, gnz, ds, htop, rfict
-   real(r_kind)            :: lat, lon, vloc, obsv, oerr
-   real(r_kind)            :: this_mean, this_stdv, this_variance, test_val
+   real(r_kind)            :: lat, lon, vloc, obsv, oerr, bias_amount
    real(r_kind)            :: qc_val(2)
    real(r_kind)            :: missing_val  = -888888.000
    real(r_kind),allocatable  :: ens_copy(:)
 
    logical                 :: write_external
    logical                 :: has_external = .true.
+   logical                 :: output_bias_preds = .true. ! CSS added, should really go in namelist
+   real(r_kind)            :: these_bias_preds(npred+2)  ! CSS added
 
    ! Number of obs to process
    num_obs = nobs_end - nobs_start + 1
@@ -89,6 +91,8 @@ subroutine dart_obs_seq (datestring,                              &
 
    ! Initialize some values
    ens_copy(:) = missing_val
+      qc_val(1)  = 1.0  ! For Input GSI QC
+      qc_val(2)  = 0.0  ! For DART QC, not used if write_prior_copies == .false.
 
 ! Initialize an obs_sequence structure
    call init_obs_sequence(seq, num_copies, num_qc, num_obs)  ! Last entry can be > num_obs (e.g., max_num_obs) but that wastes memory
@@ -127,10 +131,6 @@ subroutine dart_obs_seq (datestring,                              &
 
    first_obs = .true.
    obsloop: do i = nobs_start, nobs_end
-
-      ! Initialize QC values inside the loop, because we might modify these values later if modify_dart_qc_flag_for_big_ob_error = true
-      qc_val(1)  = 1.0  ! For Input GSI QC
-      qc_val(2)  = 0.0  ! For DART QC, not used if write_prior_copies == .false.
 
       ! Find out if the ob is a conventional ob or radiance
       if ( i > nobs_conv + nobs_oz ) then
@@ -213,25 +213,6 @@ subroutine dart_obs_seq (datestring,                              &
          ens_copy(ens_size+2) = ensmean_ob(i)
       endif
 
-      ! modify QC flag if really big observation error
-      ! note that obs_sprd_prior(i) also has spread information but it is safer to compute the spread 
-      ! from exactly what is going into the obs_seq file
-      modify_dart_qc_flag_for_big_ob_error = .false. ! for now this doesn't work properly. so force to false.
-      if ( modify_dart_qc_flag_for_big_ob_error ) then
-         if ( write_prior_copies ) then
-            call compute_mean_std(ens_size,ens_copy(6:num_copies:2),this_mean,this_stdv) ! Calculate prior mean/stddev
-         else
-            call compute_mean_std(ens_size,ens_copy(2:ens_size+1),this_mean,this_stdv)
-         endif
-         this_variance = this_stdv * this_stdv ! get into variance
-         test_val = variance_coef * this_variance
-         if ( oerr .gt. test_val ) then
-       !    print *, sqrt(oerr), this_stdv, vloc*0.01
-            qc_val(1) = 10.0
-            if ( write_prior_copies ) qc_val(2) = 7.0 ! tell DART/obs_diag this observation failed the outlier check so obs_diag won't process
-         endif
-      endif
-
       location = set_location(lon, lat, vloc, which_vert)
 
       call set_obs_def_location(obs_def, location)
@@ -262,6 +243,17 @@ subroutine dart_obs_seq (datestring,                              &
       !if ( .not. write_external ) then
       !  if ( obskind == GPSRO_REFRACTIVITY ) cycle obsloop
       !endif
+
+      if ( is_sat .and. convert_sat ) then
+         
+         if ( output_bias_preds ) then
+          ! biaspreds(npred+1,nobs_sat)
+            bias_amount = (ensmean_ob(i)-ensmean_obnobc(i))
+            these_bias_preds(1:npred+1) = biaspreds(1:npred+1,i-nobs_conv-nobs_oz)
+            these_bias_preds(npred+2) = bias_amount
+            call set_obs_def_bc_predictors(obs_def, .true. , npred, these_bias_preds)
+         endif
+      endif
 
       call set_obs_def_error_variance(obs_def, oerr)  ! oerr is the ob error variance
       !call set_obs_def_key(obs_def, key)
@@ -366,7 +358,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
      if(obstype == 280 .or. obstype == 282)  obs_kind = MARINE_SFC_U_WIND_COMPONENT
      if(obstype == 281 .or. obstype == 284  .or. obstype == 287 )  obs_kind = LAND_SFC_U_WIND_COMPONENT
      if(obstype == 288                    )  obs_kind = MESONET_U_WIND_COMPONENT
-     if(obstype >= 240 .and. obstype <= 259) obs_kind = SAT_U_WIND_COMPONENT
+     if(obstype >= 240 .and. obstype <= 260) obs_kind = SAT_U_WIND_COMPONENT
      ! 285 is QSCAT
      if(obstype == 285                    )  obs_kind = QKSWND_U_WIND_COMPONENT
      ! 289 is WINDSAT, 290 is ASCAT, 291 is OSCAT
@@ -386,7 +378,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
      if(obstype == 280 .or. obstype == 282)  obs_kind = MARINE_SFC_V_WIND_COMPONENT
      if(obstype == 281 .or. obstype == 284 .or. obstype == 287 )  obs_kind = LAND_SFC_V_WIND_COMPONENT
      if(obstype == 288                    )  obs_kind = MESONET_V_WIND_COMPONENT ! CSS added
-     if(obstype >= 240 .and. obstype <= 259) obs_kind = SAT_V_WIND_COMPONENT
+     if(obstype >= 240 .and. obstype <= 260) obs_kind = SAT_V_WIND_COMPONENT
      ! 285 is QSCAT
      if(obstype == 285                    )  obs_kind = QKSWND_V_WIND_COMPONENT
      ! 289 is WINDSAT, 290 is ASCAT, 291 is OSCAT
@@ -429,7 +421,7 @@ subroutine radiance_to_dart_obs_kind(obtype, channel, obs_kind, which_vert, obs_
    
    ! Be careful about upper/lower case.  Make sure this matches the obs_def
    obs_kind     = get_index_for_type_of_obs(this_string)    ! from obs_kind_mod
-   obs_quantity = QTY_TEMPERATURE ! QTY_RADIANCE
+   obs_quantity = QTY_BRIGHTNESS_TEMPERATURE !QTY_TEMPERATURE ! QTY_RADIANCE
    which_vert   = VERTISPRESSURE
 
 end subroutine radiance_to_dart_obs_kind
