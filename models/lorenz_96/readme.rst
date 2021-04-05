@@ -55,7 +55,7 @@ location, and does spatial interpolation for model state variables.
 
 The Lorenz 96 model has a ``work/workshop_setup.csh`` script that compiles and 
 runs an example.  This example is referenced at various points in the
-`DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__
+:doc:`DART tutorial <../../theory/readme>`
 and is intended to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
 Be aware that the ``input.nml`` file is modified by the ``workshop_setup.csh``
@@ -63,7 +63,7 @@ script.
 
 There are also some excellent Matlab tools to explore the behavior of the 
 Lorenz 96 model, namely ``run_lorenz_96.m`` and ``run_lorenz_96_inf.m``, both of 
-which are part of the `DART_LAB Tutorial. <https://dart.ucar.edu/pages/dart_lab.html>`__
+which are part of the :doc:`DART_LAB Tutorial. <../../guide/DART_LAB/DART_LAB>`
 
 Namelist
 --------

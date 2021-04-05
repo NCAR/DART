@@ -4,13 +4,16 @@ pe2lyr
 Overview
 --------
 
-| DART standard interfaces for a two-layer isentropic primitive equation model.
-| The 16 public interfaces are standardized for all DART compliant models. These interfaces allow DART to advance the
-  model, get the model state and metadata describing this state, find state variables that are close to a given
-  location, and do spatial interpolation for model state variables.
-| This model is a 2-layer, isentropic, primitive equation model on a sphere. TODO: add more detail here, including
-  equations, etc.
-| Contact: Jeffrey.S.Whitaker@noaa.gov
+DART standard interfaces for a two-layer isentropic primitive equation model.
+
+The 16 public interfaces are standardized for all DART compliant models. These interfaces allow DART to advance the
+model, get the model state and metadata describing this state, find state variables that are close to a given
+location, and do spatial interpolation for model state variables.
+
+This model is a 2-layer, isentropic, primitive equation model on a sphere. TODO: add more detail here, including
+equations, etc.
+
+Contact: Jeffrey.S.Whitaker@noaa.gov
 
 Other modules used
 ------------------

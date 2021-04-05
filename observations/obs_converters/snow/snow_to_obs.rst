@@ -72,3 +72,16 @@ namelist.
 | debug           | logical            | If set to .true. the converter will print out more information as it does   |
 |                 |                    | the conversion.                                                             |
 +-----------------+--------------------+-----------------------------------------------------------------------------+
+
+
+Known Bugs
+^^^^^^^^^^
+This program is hardcoded to read only northern hemisphere data. It should handle global values.
+
+
+Future Plans
+^^^^^^^^^^^^
+This program should use the HDF-EOS libraries to read the native MODIS granule files. Right now the ascii intermediate files contain no metadata, so if the namelist values don't match the actual division of the globe, bad things will happen.
+
+
+

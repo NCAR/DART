@@ -45,13 +45,13 @@ in 3D space, but spread along the linear attractor lines.
 
 The Lorenz 63 model has a ``work/workshop_setup.csh`` script that compiles and 
 runs an example.  This example is referenced at various points in the 
-`DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__  
+:doc:`DART tutorial <../../theory/readme>` 
 and is intended to provide insight into model/assimilation behavior. 
 The example **may or may not** result in good (*or even decent!*) results!
 
 ``run_lorenz_63.m`` is an excellent Matlab tool to explore the behavior of the
 Lorenz 63 model. It is part of the 
-`DART_LAB Tutorial. <https://dart.ucar.edu/pages/dart_lab.html>`__
+:doc:`DART_LAB Tutorial. <../../guide/DART_LAB/DART_LAB>`
 
 
 Namelist

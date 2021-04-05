@@ -30,7 +30,7 @@ experiment. Running DART is complicated. It is **strongly** recommended that you
 become very familiar with running DART before you attempt a ROMS-DART
 assimilation experiment. Running ROMS-DART takes expertise in both areas.
 
-We recommend working through the `DART tutorial <https://dart.ucar.edu/pages/Tutorial.html>`_
+We recommend working through the :doc:`DART tutorial <../../theory/readme>`
 to learn the concepts of ensemble data assimilation and the capabilities of DART.
 
 The ROMS code is not distributed with DART, it can be obtained from the `ROMS website <https://www.myroms.org>`_.

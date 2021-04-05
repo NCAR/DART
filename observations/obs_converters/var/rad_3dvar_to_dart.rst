@@ -76,4 +76,4 @@ on the logical write_binary_obs_sequence, which is the namelist entry for obs_se
 References
 ----------
 
--  `3DVAR GROUP PAGE <http://www.mmm.ucar.edu/wrf/WG4/>`__
+-  `3DVAR GROUP PAGE <https://www.mmm.ucar.edu/wrf-administration>`__

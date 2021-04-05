@@ -65,3 +65,35 @@ Errors
 The code for setting observation error variances is using fixed values, and we are not certain if they are correct.
 Incoming QC values larger than 0 are suspect, but it is not clear if they really signal unusable values or whether there
 are some codes we should accept.
+
+Known Bugs
+----------
+
+The netCDF files - as distributed - have NaN values to indicate "MISSING".
+This makes it exceptionally hard to read or work with, as almost everything
+will core dump when trying to perform any math with NaNs.
+``convert_f16_edr_dsk.f90`` tries to count how many values are missing. If the
+NaN has not been replaced with a numerically valid MISSING value, the following
+FATAL ERROR is generated (by the Intel compiler, with debug and traceback enabled):
+
+
+.. container:: unix 
+
+  ::
+
+     set_nml_output Echo NML values to log file only
+     Trying to open namelist log dart_log.nml
+     forrtl: error (65): floating invalid
+     Image              PC                Routine            Line        Source             
+     convert_f16_edr_d  000000000051717D  MAIN__                    143  convert_f16_edr_dsk.f90
+     convert_f16_edr_d  0000000000409B3C  Unknown               Unknown  Unknown
+     libc.so.6          0000003101E1ED5D  Unknown               Unknown  Unknown
+     convert_f16_edr_d  0000000000409A39  Unknown               Unknown  Unknown
+     Abort (core dumped)
+
+
+The solution is to replace the NaN values with a viable MISSING value using
+the ``shell_scripts/netcdf_manip.csh`` script.
+It relies on the netCDF Operators, freely available 
+http://nco.sourceforge.net
+

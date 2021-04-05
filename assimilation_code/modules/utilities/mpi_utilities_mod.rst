@@ -660,7 +660,7 @@ References
 ----------
 
 -  MPI: The Complete Reference; Snir, Otto, Huss-Lederman, Walker, Dongarra; MIT Press, 1996, ISBN 0-262-69184-1
--  ```http://www-unix.mcs.anl.gov/mpi/`` <http://www-unix.mcs.anl.gov/mpi/>`__
+-  `http://www-unix.mcs.anl.gov/mpi/ <http://www-unix.mcs.anl.gov/mpi/>`__
 
 Private components
 ------------------

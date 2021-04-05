@@ -4,23 +4,25 @@ MITgcm_ocean
 Overview
 --------
 
-| The `MIT ocean GCM <http://mitgcm.org/>`__ version 'checkpoint59a' is the foundation of this directory. It was
-  modified by Ibrahim Hoteit of Scripps for his use, and so it differs from the original distribution.
-| Since the model is highly parallelized, it can be compiled with a target number of processors in mind. From DART's
-  perspective, the most logical strategy is to run ``filter`` or ``perfect_model_obs`` with **async=4**: advance the
-  model in parallel ... one ensemble member after another. In this mode, the same set of processors are used for the
-  data assimilation. The performance of the parallel assimilation algorithm has been tested up through 64 processors,
-  and should scale well beyond that - but it remains to be quantified. The scaling for the ocean model is unknown to me,
-  but Ibrahim routinely runs with many more than 64 processors.
-| As for all DART experiments, the overall design for an experiment is this: the DART program ``filter`` will read the
-  initial conditions file, the observation sequence file, and the DART namelist to decide whether or not to advance the
-  ocean model. All of the control of the execution of the ocean model is done by DART directly. If the model needs to be
-  advanced, ``filter`` makes a call to the shell to execute the script ``advance_model.csh``. ``advance_model.csh`` is
-  ENTIRELY responsible for getting all the input files, data files, namelists, etc. into a temporary directory, running
-  the model, and copying the results back to the parent directory (which we call CENTRALDIR). The whole process hinges
-  on setting the ocean model namelist values such that it is doing a cold start for every model advance.
+The `MIT ocean GCM <http://mitgcm.org/>`__ version 'checkpoint59a' is the foundation of this directory. It was
+modified by Ibrahim Hoteit of Scripps for his use, and so it differs from the original distribution.
 
-| 
+Since the model is highly parallelized, it can be compiled with a target number of processors in mind. From DART's
+perspective, the most logical strategy is to run ``filter`` or ``perfect_model_obs`` with **async=4**: advance the
+model in parallel ... one ensemble member after another. In this mode, the same set of processors are used for the
+data assimilation. The performance of the parallel assimilation algorithm has been tested up through 64 processors,
+and should scale well beyond that - but it remains to be quantified. The scaling for the ocean model is unknown to me,
+but Ibrahim routinely runs with many more than 64 processors.
+
+As for all DART experiments, the overall design for an experiment is this: the DART program ``filter`` will read the
+initial conditions file, the observation sequence file, and the DART namelist to decide whether or not to advance the
+ocean model. All of the control of the execution of the ocean model is done by DART directly. If the model needs to be
+advanced, ``filter`` makes a call to the shell to execute the script ``advance_model.csh``. ``advance_model.csh`` is
+ENTIRELY responsible for getting all the input files, data files, namelists, etc. into a temporary directory, running
+the model, and copying the results back to the parent directory (which we call CENTRALDIR). The whole process hinges
+on setting the ocean model namelist values such that it is doing a cold start for every model advance.
+
+
 
 Observations
 ^^^^^^^^^^^^

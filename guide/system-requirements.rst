@@ -7,8 +7,8 @@ Unix/Linux operating systems with little to no change. At this point we have no
 plans to port DART to Windows machines, although Windows 10
 users may be interested in the free `Windows Subsystem For Linux
 <https://docs.microsoft.com/en-us/windows/wsl/about>`_
-which allows developers to "run a GNU/Linux environment &mdash; including most
-command-line tools, utilities, and applications &mdash; directly on Windows,
+which allows developers to "run a GNU/Linux environment -- including most
+command-line tools, utilities, and applications -- directly on Windows,
 unmodified, without the overhead of a virtual machine" (see
 https://docs.microsoft.com/en-us/windows/wsl/about for more details)
 

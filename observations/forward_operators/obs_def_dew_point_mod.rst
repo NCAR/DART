@@ -65,3 +65,12 @@ References
 ----------
 
 #. Bolton, David, 1980: The Computation of Equivalent Potential Temperature. Monthly Weather Review, 108, 1046-1053.
+
+Error codes and conditions
+--------------------------
+
++------------------------+-----------------------------------------------------------+----------------------------------------+
+|         Routine        |                          Message                          |                 Comment                |
++========================+===========================================================+========================================+
+| get_expected_dew_point | 'key has to be 1 (upper levels) or 2 (2-meter), got ',key | The input value of key is not allowed. |
++------------------------+-----------------------------------------------------------+----------------------------------------+

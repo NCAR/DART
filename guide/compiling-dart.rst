@@ -35,7 +35,7 @@ Shell scripts that execute the *mkmf* command for all standard DART
 executables are provided with the standard DART distribution. For more
 information on the `mkmf <https://github.com/NOAA-GFDL/mkmf>`__ tool
 please see the `mkmf
-documentation <https://extranet.gfdl.noaa.gov/~vb/mkmf.html>`__.
+documentation <https://github.com/NOAA-GFDL/mkmf>`__.
 
 Building and Customizing the ‘mkmf.template’ file
 =================================================
@@ -65,80 +65,26 @@ valuable advice on how to customize the *mkmf* template file if needed.
    FFLAGS = -O2 $(INCS)
    LDFLAGS = $(FFLAGS) $(LIBS)
 
-+-------------------------------------------+--------------------------+
-| variable                                  | value                    |
-+===========================================+==========================+
-| FC                                        | the Fortran compiler     |
-+-------------------------------------------+--------------------------+
-| LD                                        | the name of the loader;  |
-|                                           | typically, the same as   |
-|                                           | the Fortran compiler     |
-+-------------------------------------------+--------------------------+
-| MPIFC                                     | the MPI Fortran          |
-|                                           | compiler; see `the DART  |
-|                                           | MPI                      |
-|                                           | intro                    |
-|                                           | duction <dart_mpi.md>`__ |
-|                                           | for more info            |
-+-------------------------------------------+--------------------------+
-| MPILD                                     | the MPI loader; see `the |
-|                                           | DART MPI                 |
-|                                           | intro                    |
-|                                           | duction <dart_mpi.md>`__ |
-|                                           | for more info            |
-+-------------------------------------------+--------------------------+
-| NETCDF                                    | the location of your     |
-|                                           | root netCDF              |
-|                                           | installation, which is   |
-|                                           | assumed to contain       |
-|                                           | ``netcdf.mod`` and       |
-|                                           | ``typesizes.mod`` in the |
-|                                           | include subdirectory.    |
-|                                           | Note that the value of   |
-|                                           | the NETCDF variable will |
-|                                           | be used by the "INCS"    |
-|                                           | and "LIBS" variables.    |
-+-------------------------------------------+--------------------------+
-| INCS                                      | the includes passed to   |
-|                                           | the compiler during      |
-|                                           | compilation. Note you    |
-|                                           | may need to change this  |
-|                                           | if your netCDF includes  |
-|                                           | ``netcdf.mod`` and       |
-|                                           | ``typesizes.mod`` are    |
-|                                           | not in the standard      |
-|                                           | location under the       |
-|                                           | ``include`` subdirectory |
-|                                           | of NETCDF.               |
-+-------------------------------------------+--------------------------+
-| LIBS                                      | the libraries passed to  |
-|                                           | "FC" (or "MPIFC") during |
-|                                           | compilation. Note you    |
-|                                           | may need to change this  |
-|                                           | if the netCDF libraries  |
-|                                           | ``libnetcdf`` and        |
-|                                           | ``libnetcdff`` are not   |
-|                                           | in the standard location |
-|                                           | under the "lib"          |
-|                                           | subdirectory of NETCDF.  |
-+-------------------------------------------+--------------------------+
-| FFLAGS                                    | the Fortran flags passed |
-|                                           | to "FC" (or "MPIFC")     |
-|                                           | during compilation.      |
-|                                           | There are often flags    |
-|                                           | used for optimized code  |
-|                                           | versus debugging code.   |
-|                                           | See your particular      |
-|                                           | compiler’s documentation |
-|                                           | for more information.    |
-+-------------------------------------------+--------------------------+
-| LDFLAGS                                   | the linker flags passed  |
-|                                           | to *LD* during           |
-|                                           | compilation. See your    |
-|                                           | particular linker’s      |
-|                                           | documentation for more   |
-|                                           | information.             |
-+-------------------------------------------+--------------------------+
+
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| FC      | the Fortran compiler                                                                                                                                                                                                             |
++=========+==================================================================================================================================================================================================================================+
+| LD      | the name of the loader; typically, the same as the Fortran compiler                                                                                                                                                              |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| MPIFC   | the MPI Fortran compiler; see the :doc:`DART MPI introduction <mpi_intro>` for more info                                                                                                                                         |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| MPILD   | the MPI loader; see the :doc:`DART MPI introduction <mpi_intro>` for more info                                                                                                                                                   |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| NETCDF  | the location of your root netCDF installation, which is assumed to contain netcdf.mod and typesizes.mod in the include subdirectory. Note that the value of the NETCDF variable will be used by the “INCS” and “LIBS” variables. |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| INCS    | the includes passed to the compiler during compilation. Note you may need to change this if your netCDF includes netcdf.mod and typesizes.mod are not in the standard location under the include subdirectory of NETCDF.         |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| LIBS    | the libraries passed to “FC” (or “MPIFC”) during compilation. Note you may need to change this if the netCDF libraries libnetcdf and libnetcdff are not in the standard location under the “lib” subdirectory of NETCDF.         |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| FFLAGS  | the Fortran flags passed to “FC” (or “MPIFC”) during compilation. There are often flags used for optimized code versus debugging code. See your particular compiler’s documentation for more information.                        |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| LDFLAGS | the linker flags passed to LD during compilation. See your particular linker’s documentation for more information.                                                                                                               |
++---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Customizing the path names files
 ================================
@@ -166,15 +112,15 @@ this may be possible with a Fortran function call, but for higher-order
 models, this is typically done outside of DART’s execution control.
 However, the assimilation itself is conducted the same way for **all**
 models. For this reason, here we focus solely on the Lorenz 63 model. If
-so desired, see `The Lorenz 63 model: what is it and why should we
-care? <#Lorenz63>`__ for more information on this simple yet
-surprisingly relevant model. See `A high-level workflow of DA in
-DART <#dartWorkflow>`__ for further information regarding the DART
+so desired, see :doc:`The Lorenz 63 model: what is it and why should we
+care? <lorenz-63-model>` for more information on this simple yet
+surprisingly relevant model. See :doc:`A high-level workflow of DA in
+DART <high-level-da-workflows>` for further information regarding the DART
 workflow if you prefer to do so before building the code.
 
 There are seven separate, stand-alone programs that are typically
 necessary for the end-to-end execution of a DART experiment; see below
-or the `What is DART? <#WhatIsDART>`__ section for more information on
+or the :doc:`What is DART? <what-is-dart>` section for more information on
 these programs and their interactions. All DART programs are compiled
 the same way, and each model directory has a directory called ``work``
 that has the components necessary to build the executables.
@@ -219,46 +165,25 @@ Currently, DART executables are built in a ``work`` subdirectory under
 the directory containing code for the given model. The Lorenz_63 model
 has seven ``mkmf_xxxxxx`` files for the following programs:
 
-+-----------------------------------+-----------------------------------+
-| Program                           | Purpose                           |
-+===================================+===================================+
-| `preproces                        | creates custom source code for    |
-| s <../../assimilation_code/progra | just the observations of interest |
-| ms/preprocess/preprocess.html>`__ |                                   |
-+-----------------------------------+-----------------------------------+
-| `cre                              | specify a (set) of observation    |
-| ate_obs_sequence <../../assimilat | characteristics taken by a        |
-| ion_code/programs/create_obs_sequ | particular (set of) instruments   |
-| ence/create_obs_sequence.html>`__ |                                   |
-+-----------------------------------+-----------------------------------+
-| `create_fixed_netwo               | specify the temporal attributes   |
-| rk_seq <../../assimilation_code/p | of the observation sets           |
-| rograms/create_fixed_network_seq/ |                                   |
-| create_fixed_network_seq.html>`__ |                                   |
-+-----------------------------------+-----------------------------------+
-| `perfect_model_obs <../../assim   | spinup and generate "true state"  |
-| ilation_code/programs/perfect_mod | for synthetic observation         |
-| el_obs/perfect_model_obs.html>`__ | experiments                       |
-+-----------------------------------+-----------------------------------+
-| `filter <../../assimilation_cod   | perform data assimilation         |
-| e/programs/filter/filter.html>`__ | analysis                          |
-+-----------------------------------+-----------------------------------+
-| `obs_diag <../../a                | creates observation-space         |
-| ssimilation_code/programs/obs_dia | diagnostic files in netCDF format |
-| g/threed_sphere/obs_diag.html>`__ | to support visualization and      |
-|                                   | quantification.                   |
-+-----------------------------------+-----------------------------------+
-| `obs_sequence_tool <../../assim   | manipulates observation sequence  |
-| ilation_code/programs/obs_sequenc | files. This tool is not generally |
-| e_tool/obs_sequence_tool.html>`__ | required (particularly for        |
-|                                   | low-order models) but can be used |
-|                                   | to combine observation sequences  |
-|                                   | or convert from ASCII to binary   |
-|                                   | or vice-versa. Since this is a    |
-|                                   | rather specialized routine, we    |
-|                                   | will not cover its use further in |
-|                                   | this document.                    |
-+-----------------------------------+-----------------------------------+
+
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Program                                                                                                                  | Purpose                                                                                                                                                                                                                                                                                                         |
++==========================================================================================================================+=================================================================================================================================================================================================================================================================================================================+
+|`preprocess   <../assimilation_code/programs/preprocess/preprocess.html>`__                                               | creates custom source code for just the observations of interest                                                                                                                                                                                                                                                |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`create_obs_sequence <../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html>`__                      | specify a (set) of observation characteristics taken by a particular (set of) instruments                                                                                                                                                                                                                       |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`create_fixed_network_seq <../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html>`__       | specify the temporal attributes of the observation sets                                                                                                                                                                                                                                                         |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`perfect_model_obs <../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__                            | spinup and generate “true state” for synthetic observation experiments                                                                                                                                                                                                                                          |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`filter <../assimilation_code/programs/filter/filter.html>`__                                                             | perform data assimilation analysis                                                                                                                                                                                                                                                                              |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`obs_diag <../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__                                         | creates observation-space diagnostic files in netCDF format to support visualization and quantification.                                                                                                                                                                                                        |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|`obs_sequence_tool <../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__                            | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
++--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
 
 As mentioned above, ``quickbuild.csh`` is a script that will build every
 executable in the directory. There is an optional argument that will

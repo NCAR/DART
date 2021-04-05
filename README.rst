@@ -71,11 +71,9 @@ The documentation is partitioned into three parts:
 Manhattan Release
 -----------------
 
-The Manhattan release is new and currently supports only a subset of the
-models. DAReS staff will port over any requested model. Email dart@ucar.edu
-if yours is not on the list.
+DART releases are named based on the major version number.   The current version, 9.x.x,  is the Manhattan release. 
+Email dart@ucar.edu for advice if you are interested in a model which has not been converted from the previous Lanai release.
 
-For more information on this release, see :doc:`guide/Manhattan_release`.
 
 Quick-start
 -----------
@@ -196,36 +194,139 @@ References
 
 .. toctree::
    :maxdepth: 2
-   :caption: Intermediate topics
+   :caption: What is data assimilation?
+
+   guide/introduction-ensemble-da
+   guide/lorenz-63-model
+   guide/da-in-dart-with-lorenz-63
+
+.. toctree::
+   :maxdepth: 2
+   :caption: What is DART?
+
+   guide/what-is-dart
+   guide/benefits-of-using-dart
+   guide/brief-history-of-dart
+   guide/high-level-da-workflows
+   guide/dart-design-philosophy
+   guide/important-capabilities-dart
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Run DART with your model
 
    guide/assimilation-complex-model
    guide/mpi_intro
    guide/filters
    guide/inflation
+   guide/required-model-mod-routines
+   guide/suggestions-for-a-simple-model
+   guide/suggestions-for-a-complex-model
+   guide/how-to-test-your-model-mod-routines
+   guide/controlling-files-output
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Observations
+
+   guide/adding-your-observations-to-dart
+   guide/preprocess-program
+   guide/introduction-obs-seq-file
+   guide/detailed-structure-obs-seq
+   guide/creating-obs-seq-synthetic
+   guide/creating-obs-seq-real
+   guide/available-observation-converters
+   guide/manipulating-with-obs-sequence-tool
+   guide/difference-between-type-and-quantity
+   guide/adding-support-new-type
+   Radiances <guide/Radiance_support>
+
+.. toctree::
+   :maxdepth: 2 
+   :caption: Observation Converters
+
+   observations/obs_converters/README
+
+
+.. toctree::
+   :hidden:
+
+   observations/obs_converters/AIRS/AIRS
+   observations/obs_converters/AIRS/README
+   observations/obs_converters/AVISO/AVISO
+   observations/obs_converters/Ameriflux/level4_to_obs
+   observations/obs_converters/CHAMP/work/README
+   observations/obs_converters/cice/cice_to_obs
+   observations/obs_converters/CONAGUA/README
+   observations/obs_converters/COSMOS/COSMOS_to_obs
+   observations/obs_converters/COSMOS/COSMOS_development
+   observations/obs_converters/DWL/dwl_to_obs
+   observations/obs_converters/GMI/README
+   observations/obs_converters/GOES/README
+   observations/obs_converters/GPSPW/README
+   observations/obs_converters/GSI2DART/readme
+   observations/obs_converters/GTSPP/GTSPP
+   observations/obs_converters/MADIS/MADIS
+   observations/obs_converters/MIDAS/MIDAS_to_obs
+   observations/obs_converters/MODIS/readme
+   observations/obs_converters/MODIS/MOD15A2_to_obs
+   observations/obs_converters/MPD/README
+   observations/obs_converters/NCEP/prep_bufr/prep_bufr
+   observations/obs_converters/NCEP/ascii_to_obs/create_real_obs
+   observations/obs_converters/ROMS/ROMS
+   observations/obs_converters/SSEC/SSEC
+   observations/obs_converters/SST/SST
+   observations/obs_converters/SSUSI/convert_f16_edr_dsk
+   observations/obs_converters/WOD/WOD
+   observations/obs_converters/gnd_gps_vtec/README
+   observations/obs_converters/gps/gps
+   observations/obs_converters/ok_mesonet/ok_mesonet
+   observations/obs_converters/quikscat/QuikSCAT
+   observations/obs_converters/even_sphere/README
+   observations/obs_converters/obs_error/README
+   observations/obs_converters/radar/radar
+   observations/obs_converters/snow/snow_to_obs
+   observations/obs_converters/text/text_to_obs
+   observations/obs_converters/tpw/tpw
+   observations/obs_converters/tropical_cyclone/tc_to_obs
+   observations/obs_converters/var/littler_tf_dart
+   observations/obs_converters/var/rad_3dvar_to_dart
+   observations/obs_converters/var/var
+   
 
 .. toctree::
    :maxdepth: 2
    :caption: Diagnostics
 
+   guide/checking-your-assimilation
+   guide/computing-filter-increments
    guide/how-does-output-differ-from-input-increments
+   guide/dart-missing-data-value
+   guide/dart-quality-control
+   guide/examining-obs-seq-final
    guide/matlab-observation-space
 
 .. toctree::
    :maxdepth: 2
-   :caption: Releases
+   :caption: Theory
 
-   guide/Manhattan_release
-   guide/Lanai_release
-   guide/history/Kodiak_release
-   guide/history/Jamaica_release
-   guide/history/Iceland_release
-   guide/history/hawaii_release
-   guide/history/Guam_release
-   guide/history/Fiji_release
+   theory/readme
+   theory/conditional-probability-bayes-theorem
+   guide/DART_LAB/DART_LAB
+   WRF-DART Tutorial <models/wrf/tutorial/README>
+
+.. toctree::
+   :maxdepth: 2
+.. toctree::
+   :maxdepth: 2
+   :caption: Models
+
+   models/README
 
 .. toctree::
    :maxdepth: 2
    :caption: Models
+   :hidden:
 
    models/9var/readme
    models/am2/readme
@@ -240,6 +341,8 @@ References
    models/ECHAM/readme
    models/FESOM/readme
    models/gitm/readme
+   models/gitm/netcdf_to_gitm_blocks
+   models/gitm/gitm_blocks_to_netcdf
    models/ikeda/readme
    models/LMDZ/readme
    models/lorenz_04/readme
@@ -250,12 +353,16 @@ References
    models/forced_lorenz_96/readme
    models/MITgcm_ocean/readme
    models/mpas_atm/readme
+   models/mpas_atm/mpas_dart_obs_preprocess
    models/mpas_ocn/readme
+   models/mpas_ocn/model_to_dart
    models/NCOMMAS/readme
    models/noah/readme
+   models/null_model/readme
    models/PBL_1d/readme
    models/pe2lyr/readme
    models/POP/readme
+   models/POP/dart_pop_mod
    models/ROMS/readme
    models/rose/readme
    models/simple_advection/readme
@@ -263,6 +370,11 @@ References
    models/tiegcm/readme
    models/wrf_hydro/readme
    models/wrf/readme
+   models/wrf/WRF_DART_utilities/replace_wrf_fields
+   models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
+   models/template/readme
+   models/utilities/default_readme
+
 
 .. toctree::
    :maxdepth: 2
@@ -276,43 +388,18 @@ References
    :maxdepth: 2
    :caption: Guide
 
-   guide/Manhattan_getting_started
-   guide/rma
    guide/Manhattan_diffs_from_Lanai
    guide/forward_operator
-   guide/boilerplate/boilerplate
-   guide/boilerplate/template
-   guide/vertical_conversion
-   guide/bitwise_considerations
    guide/netcdf_inflation_files
    guide/state_structure
    guide/filter_async_modes
    guide/distributed_state
 
-.. toctree::
-   :maxdepth: 2
-   :caption: History
-
-   guide/Lanai_diffs_from_Kodiak   
-   guide/history/Jamaica_diffs_from_I
-   guide/history/pre_j_release
-   guide/history/PostI_diffs_from_I
-   guide/history/Post_Iceland_release
-   guide/history/I_diffs_from_workshop
-   guide/history/pre_hawaii_release
-   guide/history/pre_guam_release
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Theory
-
-   theory/index
-   guide/DART_LAB/DART_LAB
 
 .. toctree::
    :maxdepth: 2
    :caption: Assimilation code
+   :hidden:
 
    assimilation_code/location/channel/location_mod
    assimilation_code/location/location_mod
@@ -371,6 +458,7 @@ References
 .. toctree::
    :maxdepth: 2
    :caption: Developer tests
+   :hidden:
 
    developer_tests/location/location_mod
    developer_tests/forward_operators/readme
@@ -378,7 +466,8 @@ References
 
 .. toctree::
    :maxdepth: 2
-   :caption: Observations
+   :caption: Forward Operators
+   :hidden:
 
    observations/forward_operators/obs_def_gps_mod
    observations/forward_operators/obs_def_dew_point_mod
@@ -388,103 +477,33 @@ References
    observations/forward_operators/DEFAULT_obs_def_mod
    observations/forward_operators/obs_def_mod
    observations/forward_operators/obs_def_rttov_mod
-   observations/obs_converters/SSEC/SSEC
-   observations/obs_converters/GTSPP/GTSPP
-   observations/obs_converters/gps/gps
-   observations/obs_converters/GSI2DART/readme
-   observations/obs_converters/WOD/WOD
-   observations/obs_converters/tpw/tpw
-   observations/obs_converters/ROMS/ROMS
-   observations/obs_converters/COSMOS/COSMOS_to_obs
-   observations/obs_converters/COSMOS/COSMOS_development
-   observations/obs_converters/var/littler_tf_dart
-   observations/obs_converters/var/rad_3dvar_to_dart
-   observations/obs_converters/var/var
-   observations/obs_converters/tropical_cyclone/tc_to_obs
-   observations/obs_converters/Ameriflux/level4_to_obs
-   observations/obs_converters/cice/cice_to_obs
-   observations/obs_converters/DWL/dwl_to_obs
-   observations/obs_converters/MIDAS/MIDAS_to_obs
-   observations/obs_converters/SST/SST
-   observations/obs_converters/MODIS/MOD15A2_to_obs
-   observations/obs_converters/MODIS/readme
-   observations/obs_converters/NCEP/prep_bufr/prep_bufr
-   observations/obs_converters/NCEP/ascii_to_obs/create_real_obs
-   observations/obs_converters/SSUSI/convert_f16_edr_dsk
-   observations/obs_converters/ok_mesonet/ok_mesonet
-   observations/obs_converters/snow/snow_to_obs
-   observations/obs_converters/text/text_to_obs
-   observations/obs_converters/radar/radar
-   observations/obs_converters/MADIS/MADIS
-   observations/obs_converters/quikscat/QuikSCAT
-   observations/obs_converters/AIRS/AIRS
-   observations/obs_converters/AVISO/AVISO
    
 .. toctree::
    :maxdepth: 2
    :caption: Misc
-
-   models/null_model/readme
-   models/NCOMMAS/dart_to_ncommas
-   models/NCOMMAS/ncommas_to_dart
-   models/POP/dart_pop_mod
-   models/mpas_ocn/model_to_dart
-   models/mpas_atm/mpas_dart_obs_preprocess
+   
+   Release Notes <guide/Manhattan_release>
    models/CESM/doc/setup_guidelines
-   models/template/readme
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_radon
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_sulfur_hex
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_driver
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_carbon_aerosol
-   models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_utilities
-   models/bgrid_solo/fms_src/atmos_shared/vert_advection/vert_advection
-   models/bgrid_solo/fms_src/shared/time_manager/time_manager
-   models/bgrid_solo/fms_src/shared/field_manager/field_manager
-   models/bgrid_solo/fms_src/shared/horiz_interp/horiz_interp
-   models/bgrid_solo/fms_src/shared/fms/fms
-   models/bgrid_solo/fms_src/shared/constants/constants
-   models/bgrid_solo/fms_src/shared/platform/platform
-   models/bgrid_solo/fms_src/shared/utilities/utilities
-   models/bgrid_solo/fms_src/shared/tracer_manager/tracer_manager
-   models/bgrid_solo/fms_src/shared/mpp/mpp_domains
-   models/bgrid_solo/fms_src/shared/mpp/mpp_io
-   models/bgrid_solo/fms_src/shared/mpp/mpp
-   models/bgrid_solo/fms_src/shared/fft/fft
-   models/bgrid_solo/fms_src/shared/sat_vapor_pres/sat_vapor_pres
-   models/bgrid_solo/fms_src/shared/topography/topography
-   models/bgrid_solo/fms_src/shared/topography/gaussian_topog
-   models/bgrid_solo/fms_src/shared/diag_manager/diag_manager
-   models/bgrid_solo/fms_src/shared/diag_manager/diag_table_tk
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_polar_filter
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_halo
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_horiz
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_cold_start
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_prog_var
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_diagnostics
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_integrals
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_change_grid
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_masks
-   models/bgrid_solo/fms_src/atmos_bgrid/tools/bgrid_vert
-   models/bgrid_solo/fms_src/atmos_bgrid/driver/solo/atmosphere
-   models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core
-   models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core_driver
-   models/bgrid_solo/fms_src/atmos_param/hs_forcing/hs_forcing
-   models/bgrid_solo/fms_src/atmos_solo/atmos_model
-   models/wrf/WRF_DART_utilities/replace_wrf_fields
-   models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
-   models/gitm/netcdf_to_gitm_blocks
-   models/gitm/gitm_blocks_to_netcdf
-   models/utilities/default_readme
+
+   
+.. toctree::   
+   :caption: non-compiling models
+   :hidden:
+         
    models/cam-old/cam_to_dart
    models/cam-old/readme
    models/cam-old/dart_to_cam
    models/MITgcm_ocean/trans_pv_sv
    models/MITgcm_ocean/create_ocean_obs
    models/MITgcm_ocean/trans_sv_pv
+   models/NCOMMAS/dart_to_ncommas
+   models/NCOMMAS/ncommas_to_dart
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Build templates
+   :hidden:
 
    build_templates/mkmf
 

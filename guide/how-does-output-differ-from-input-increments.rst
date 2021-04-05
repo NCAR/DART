@@ -1,6 +1,5 @@
-##############################################
-Increments: How does output differ from input?
-##############################################
+Computing filter increments using a complex model
+===================================================
 
 The innovations to the model state are easy to derive. Use the `NCO
 Operator <http://nco.sourceforge.net/>`__ *ncdiff* to difference the two DART
@@ -24,7 +23,7 @@ image. It should be possible to get a sense of the magnitude of the innovations
 as a function of time.
 
 Example from a model of intermediate complexity: the bgrid model
-================================================================
+----------------------------------------------------------------
 
 I ran a perfect model experiment with the bgrid model in the DART-default
 configuration and turned on some adaptive inflation for this example. To fully

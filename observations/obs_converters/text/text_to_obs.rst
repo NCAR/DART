@@ -58,6 +58,6 @@ to indicate where changes will be likely to need to be made.
 Decisions you might need to make
 --------------------------------
 
-See the discussion in the `obs_converters/README.md <../README.md#Decisions>`__ page about what options are available
+See the discussion in the :doc:`../../../guide/creating-obs-seq-real` page about what options are available
 for the things you need to specify. These include setting a time, specifying an expected error, setting a location, and
 an observation type.

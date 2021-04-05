@@ -41,8 +41,8 @@ Overview
 Quickstart guide to running
 ---------------------------
 
-| It is important to understand basic DART nomenclature and mechanisms. Please take the time to read and run the `DART
-  tutorial <../../tutorial/index.pdf>`__.
+| It is important to understand basic DART nomenclature and mechanisms. Please take the time to read and run the 
+  :doc:`DART tutorial <../../theory/readme>`.
 | Both ``run_filter.csh`` and ``run_perfect_model_obs.csh`` are heavily internally commented. Please read and understand
   the scripts. The overall process is to
 

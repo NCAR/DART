@@ -272,6 +272,17 @@ namelist.
 Decisions you might need to make
 --------------------------------
 
-See the general discussion in the `obs_converters/README.md <../README.md#Decisions>`__ page about what options are
+See the general discussion in the :doc:`../../../guide/creating-obs-seq-real` page about what options are
 available for the things you need to specify. These include setting a time, specifying an expected error, setting a
 location, and an observation type.
+
+
+Known Bugs
+----------
+
+I do not believe ``sst_to_obs`` will work correctly
+if given multiple files in ``sst_netcdf_filelist``.
+The number of observation used to declare the length of the output 
+observation sequence is based on a single file ... yet seems to be used 
+by many. I have not tested this configuration, since the scripting does 
+not use the ``sst_netcdf_filelist`` mechanism.

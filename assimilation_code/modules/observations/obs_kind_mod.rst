@@ -54,7 +54,22 @@ Multiple name-value pairs can be specified for a quantity but are not required. 
 ``! QTY_TEMPERATURE units="K" minval=0.0``. Comments are allowed between quantity definitions or on the same line as the
 definition. The code snippet below shows acceptable formats for quantity definitions
 
-``! BEGIN DART PREPROCESS QUANTITY DEFINITIONS ! ! Formats accepted: ! ! QTY_string ! QTY_string name=value ! QTY_string name=value name2=value2 ! ! QTY_string ! comments ! ! ! comment ! ! END DART PREPROCESS QUANTITY DEFINITIONS``
+::
+
+  ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
+  ! 
+  ! Formats accepted: 
+  ! 
+  ! QTY_string 
+  ! QTY_string name=value 
+  ! QTY_string name=value name2=value2 
+  ! 
+  ! QTY_string ! comments 
+  ! 
+  ! 
+  ! comment 
+  ! 
+  ! END DART PREPROCESS QUANTITY DEFINITIONS
 
 Implementation details
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -350,7 +365,7 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
    type.
 
    ================ =========================================================================
-   ``var``\ </ TD>  Returns true if this entry in the obs_type_type table is to be evaluated.
+   ``var``          Returns true if this entry in the obs_type_type table is to be evaluated.
    ``obs_type_ind`` An integer index into the obs_type_type table.
    ================ =========================================================================
 
@@ -372,7 +387,7 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
    to return the generic quantity associated with this type.
 
    ================ =========================================================================
-   ``var``\ </ TD>  Returns the integer GENERIC quantity index associated with this obs type.
+   ``var``          Returns the integer GENERIC quantity index associated with this obs type.
    ``obs_type_ind`` An integer index into the obs_type_type table.
    ================ =========================================================================
 

@@ -96,3 +96,9 @@ Modules used
    obs_def_ocean_mod
    obs_kind_mod
    netcdf
+
+Known Bugs
+----------
+
+Does not have correct code for setting observation error variance yet. Also, not sure if the incoming data qc is strict enough.
+

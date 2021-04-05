@@ -282,7 +282,7 @@ code:
    ! END DART PREPROCESS MODULE CODE
 
 | See the :doc:`./obs_def_1d_state_mod` documentation for more details and examples of each section. Also see
-  `obs_def_wind_speed_mod.f90 <obs_def_wind_speed_mod.f90>`__ for an example of a 3D geophysical forward operator.
+  ``obs_def_wind_speed_mod.f90`` for an example of a 3D geophysical forward operator.
 | In addition to collecting and managing any additional observation type-specific code, this module provides the
   definition of the obs_def_type derived type, and a collection of subroutines for creating, accessing, and updating
   this type. The remainder of this document describes the subroutines provided by this module.
@@ -757,6 +757,27 @@ References
 ----------
 
 -  none
+
+
+Error codes and conditions
+--------------------------
+
++---------------------------+----------------------------------------------------------+---------------------------------------------------------------------------------------------+
+|          Routine          |                          Message                         |                                           Comment                                           |
++===========================+==========================================================+=============================================================================================+
+| get_expected_obs_from_def | Attempt to evaluate undefined observation type           | An observation type for which no forward operator has been defined is an error.             |
++---------------------------+----------------------------------------------------------+---------------------------------------------------------------------------------------------+
+| read_obs_def              | Expected header "obdef" in input file                    | The format of the input file is not consistent.                                             |
++---------------------------+----------------------------------------------------------+---------------------------------------------------------------------------------------------+
+| read_obs_def              | Expected kind header "kind " in input file               | The format of the input file is not consistent.                                             |
++---------------------------+----------------------------------------------------------+---------------------------------------------------------------------------------------------+
+| read_obs_def              | Attempt to read for undefined obs_kind index             | Reading for an observation type for which no forward operator has been defined is an error. |
++---------------------------+----------------------------------------------------------+---------------------------------------------------------------------------------------------+
+| write_obs_def             | Attempt to write for undefined obs_kind index            | Writing for an observation type for which no forward operator has been defined is an error. |
++---------------------------+----------------------------------------------------------+---------------------------------------------------------------------------------------------+
+| interactive_obs_def       | Attempt to interactively create undefined obs_kind index | Creating an observation type for which no forward operator has been defined is an error.    |
++---------------------------+----------------------------------------------------------+---------------------------------------------------------------------------------------------+
+
 
 Private components
 ------------------

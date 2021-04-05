@@ -1,2 +1,0 @@
-module bgrid_integrals
-======================

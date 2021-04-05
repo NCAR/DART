@@ -3,7 +3,7 @@ PROGRAM ``netcdf_to_gitm_blocks``
 
 | The `Global Ionosphere Thermosphere Model (GITM) <http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM>`__ is a
   3-dimensional spherical code that models the Earth's thermosphere and ionosphere system using a stretched grid in
-  latitude and altitude. For a fuller description of using GITM within DART, please see the :doc:`./readme`.
+  latitude and altitude. For a fuller description of using GITM within DART, please see the :doc:`./readme` documentation.
 | ``netcdf_to_gitm_blocks`` is the program that updates the GITM restart files (i.e. ``b?????.rst``) with the
   information from a DART output/restart file (e.g. ``perfect_ics, filter_ics, ...``).
 | The list of variables used to create the DART state vector are specified in the ``input.nml`` file.
@@ -91,7 +91,7 @@ terminating the namelist.
 
 | 
 
-The full description of the ``model_nml`` namelist is documented in the `gitm model_mod <model_mod.html#Namelist>`__,
+The full description of the ``model_nml`` namelist is documented in the `gitm model_mod <readme.html#Namelist>`__,
 but the most important variable for ``netcdf_to_gitm_blocks`` is repeated here.
 
 +---------------------------------------+---------------------------------------+---------------------------------------+
@@ -106,7 +106,7 @@ but the most important variable for ``netcdf_to_gitm_blocks`` is repeated here.
 |                                       |                                       | the DART state vector and their       |
 |                                       |                                       | corresponding DART kind. The default  |
 |                                       |                                       | list is specified in                  |
-|                                       |                                       | `model_mod.nml <model_mod.nml>`__     |
+|                                       |                                       | model_mod.nml                         |
 +---------------------------------------+---------------------------------------+---------------------------------------+
 
 Modules used

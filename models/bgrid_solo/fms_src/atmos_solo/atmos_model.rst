@@ -1,2 +1,0 @@
-program atmos_model
-===================

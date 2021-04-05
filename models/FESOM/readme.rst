@@ -126,7 +126,7 @@ it shouldn’t be difficult to add new tools following the present ones. A
 fortran toolbox post-processes the FESOM outputs and visualization is done
 using `Generic Mapping Tools (GMT) <https://www.soest.hawaii.edu/gmt/>`__. DART
 post-processed netCDF outputs are visualized using `FERRET
-<https://ferretop.pmel.noaa.gov/Ferret/>`__. Please see the expanded
+<https://ferret.pmel.noaa.gov/Ferret/>`__. Please see the expanded
 description inside each source file.
 
 ========= ========================== ===========================================================================

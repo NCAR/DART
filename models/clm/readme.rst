@@ -4,152 +4,160 @@ CLM
 Overview
 --------
 
-| This is the DART interface to the Community Land Model (CLM). It is run as part of the `Community Earth System Model
-  (CESM) <http://www.cesm.ucar.edu/models/cesm1.1/>`__ framework. It is **strongly** recommended that you become
-  familiar with running a multi-instance experiment in CESM **before** you try to run DART/CLM. The DART/CLM facility
-  uses language and concepts that should be familiar to CESM users. The DART/CLM capability is entirely dependent on the
-  multi-instance capability of CESM, first supported in its entirety in CESM1.1.1. Consequently, this version or newer
-  is required to run CLM/DART. The `CLM User's
-  Guide <http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf>`__ is an excellent
-  reference for CLM. *As of (V7195) 3 October 2014, CESM1.2.1 is also supported.*
-| DART uses the multi-instance capability of CESM, which means that DART is not responsible for advancing the model.
-  This GREATLY simplifies the traditional DART workflow, but it means *CESM has to stop and write out a restart file
-  every time an assimilation is required*. The multi-instance capability is very new to CESM and we are in close
-  collaboration with the CESM developers to make using DART with CESM as easy as possible. While we strive to keep DART
-  requirements out of the model code, there are a few SourceMods needed to run DART from within CESM. Appropriate
-  SourceMods for each CESM version are available at http://www.image.ucar.edu/pub/DART/CESM and should be unpacked into
-  your HOME directory. They will create a ``~/cesm_?_?_?`` directory with the appropriate SourceMods structure. The
-  ensuing scripts require these SourceMods and expect them to be in your HOME directory.
-| Our notes on how to set up, configure, build, and run CESM for an assimilation experiment evolved into scripts. These
-  scripts are not intended to be a 'black box'; you will have to read and understand them and modify them to your own
-  purpose. They are heavily commented -- in keeping with their origins as a set of notes. If you would like to offer
-  suggestions on how to improve those notes - please send them to dart@ucar.edu - we'd love to hear them.
+This is the DART interface to the Community Land Model (CLM). It is run as part of the `Community Earth System Model
+(CESM) <http://www.cesm.ucar.edu/models/cesm1.1/>`__ framework. It is **strongly** recommended that you become
+familiar with running a multi-instance experiment in CESM **before** you try to run DART/CLM. The DART/CLM facility
+uses language and concepts that should be familiar to CESM users. The DART/CLM capability is entirely dependent on the
+multi-instance capability of CESM, first supported in its entirety in CESM1.1.1. Consequently, this version or newer
+is required to run CLM/DART. The `CLM User's
+Guide <http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf>`__ is an excellent
+reference for CLM. *As of (V7195) 3 October 2014, CESM1.2.1 is also supported.*
+  
+  
+DART uses the multi-instance capability of CESM, which means that DART is not responsible for advancing the model.
+This GREATLY simplifies the traditional DART workflow, but it means *CESM has to stop and write out a restart file
+every time an assimilation is required*. The multi-instance capability is very new to CESM and we are in close
+collaboration with the CESM developers to make using DART with CESM as easy as possible. While we strive to keep DART
+requirements out of the model code, there are a few SourceMods needed to run DART from within CESM. Appropriate
+SourceMods for each CESM version are available at http://www.image.ucar.edu/pub/DART/CESM and should be unpacked into
+your HOME directory. They will create a ``~/cesm_?_?_?`` directory with the appropriate SourceMods structure. The
+ensuing scripts require these SourceMods and expect them to be in your HOME directory.
 
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| Script                                                    | Description                                               |
-+===========================================================+===========================================================+
-| `C                                                        | runs a single instance of CLM to harvest synthetic        |
-| ESM1_1_1_setup_pmo <shell_scripts/CESM1_1_1_setup_pmo>`__ | observations for an OSSE or "perfect model" experiment.   |
-|                                                           | It requires a single CLM state from a previous experiment |
-|                                                           | and uses a specified DATM stream for forcing. This        |
-|                                                           | parallels an assimilation experiment in that in the       |
-|                                                           | multi-instance setting each CLM instance may use (should  |
-|                                                           | use?) a unique DATM forcing. This script has almost       |
-|                                                           | nothing to do with DART. There is one (trivial) section   |
-|                                                           | that records some configuration information in the DART   |
-|                                                           | setup script, but that's about it. This script should     |
-|                                                           | initially be run without DART to ensure a working CESM    |
-|                                                           | environment.                                              |
-|                                                           | As of (V7195) 3 October 2014, this script demonstrates    |
-|                                                           | how to create 'vector'-based CLM history files (which     |
-|                                                           | requires a bugfix) and has an option to use a bugfixed    |
-|                                                           | snow grain-size code.                                     |
-|                                                           | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
-|                                                           | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| `C                                                        | Is functionally identical to ``CESM1_1_1_setup_pmo`` but  |
-| ESM1_2_1_setup_pmo <shell_scripts/CESM1_2_1_setup_pmo>`__ | is appropriate for the the CESM 1_2_1 release, which      |
-|                                                           | supports both CLM 4 and CLM 4.5.                          |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| `CESM1_1                                                  | runs a multi-instance CLM experiment and can be used to   |
-| _1_setup_hybrid <shell_scripts/CESM1_1_1_setup_hybrid>`__ | perform a free run or 'open loop' experiment. By default, |
-|                                                           | each CLM instance uses a unique DATM forcing. This script |
-|                                                           | also has almost nothing to do with DART. There is one     |
-|                                                           | (trivial) section that records some configuration         |
-|                                                           | information in the DART setup script, but that's about    |
-|                                                           | it. This script should initially be run without DART to   |
-|                                                           | ensure a working CESM.                                    |
-|                                                           | As of (V7195) 3 October 2014, this script demonstrates    |
-|                                                           | how to create 'vector'-based CLM history files (which     |
-|                                                           | requires a bugfix) and has an option to use a bugfixed    |
-|                                                           | snow grain-size code.                                     |
-|                                                           | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
-|                                                           | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| `CESM1_2                                                  | Is functionally identical to ``CESM1_1_1_setup_hybrid``   |
-| _1_setup_hybrid <shell_scripts/CESM1_2_1_setup_hybrid>`__ | but is appropriate for the the CESM 1_2_1 release, which  |
-|                                                           | supports both CLM 4 and CLM 4.5.                          |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| `CESM_DART_config <shell_scripts/CESM_DART_config>`__     | augments a CESM case with the bits and pieces required to |
-|                                                           | run DART. When either ``CESM1_?_1_setup_pmo`` or          |
-|                                                           | ``CESM1_?_1_setup_hybrid`` gets executed,                 |
-|                                                           | ``CESM_DART_config`` gets copied to the CESM "caseroot"   |
-|                                                           | directory. It is designed such that you can execute it at |
-|                                                           | any time during a CESM experiment. When you do execute    |
-|                                                           | it, it will build the DART executables and copy them into |
-|                                                           | the CESM "bld" directory, stage the run-time configurable |
-|                                                           | ``input.nml`` in the "caseroot" directory, etc. and also  |
-|                                                           | *modifies* the CESM ``case.run`` script to call the DART  |
-|                                                           | scripts for assimilation or to harvest synthetic          |
-|                                                           | observations.                                             |
-+-----------------------------------------------------------+-----------------------------------------------------------+
+Our notes on how to set up, configure, build, and run CESM for an assimilation experiment evolved into scripts. These
+scripts are not intended to be a 'black box'; you will have to read and understand them and modify them to your own
+purpose. They are heavily commented -- in keeping with their origins as a set of notes. If you would like to offer
+suggestions on how to improve those notes - please send them to dart@ucar.edu - we'd love to hear them.
+
++------------------------------------------+------------------------------------------------------------+
+| Script                                   | Description                                                |
++==========================================+============================================================+
+| ``shell_scripts/CESM1_1_1_setup_pmo``    || runs a single instance of CLM to harvest synthetic        |
+|                                          || observations for an OSSE or "perfect model" experiment.   |
+|                                          || It requires a single CLM state from a previous experiment |
+|                                          || and uses a specified DATM stream for forcing. This        |
+|                                          || parallels an assimilation experiment in that in the       |
+|                                          || multi-instance setting each CLM instance may use (should  |
+|                                          || use?) a unique DATM forcing. This script has almost       |
+|                                          || nothing to do with DART. There is one (trivial) section   |
+|                                          || that records some configuration information in the DART   |
+|                                          || setup script, but that's about it. This script should     |
+|                                          || initially be run without DART to ensure a working CESM    |
+|                                          || environment.                                              |
+|                                          || As of (V7195) 3 October 2014, this script demonstrates    |
+|                                          || how to create 'vector'-based CLM history files (which     |
+|                                          || requires a bugfix) and has an option to use a bugfixed    |
+|                                          || snow grain-size code.                                     |
+|                                          || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
+|                                          || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
++------------------------------------------+------------------------------------------------------------+
+| ``shell_scripts/CESM1_2_1_setup_pmo``    || Is functionally identical to ``CESM1_1_1_setup_pmo`` but  |
+|                                          || is appropriate for the the CESM 1_2_1 release, which      |
+|                                          || supports both CLM 4 and CLM 4.5.                          |
++------------------------------------------+------------------------------------------------------------+
+| ``shell_scripts/CESM1_1_1_setup_hybrid`` || runs a multi-instance CLM experiment and can be used to   |
+|                                          || perform a free run or 'open loop' experiment. By default, |
+|                                          || each CLM instance uses a unique DATM forcing. This script |
+|                                          || also has almost nothing to do with DART. There is one     |
+|                                          || (trivial) section that records some configuration         |
+|                                          || information in the DART setup script, but that's about    |
+|                                          || it. This script should initially be run without DART to   |
+|                                          || ensure a working CESM.                                    |
+|                                          || As of (V7195) 3 October 2014, this script demonstrates    |
+|                                          || how to create 'vector'-based CLM history files (which     |
+|                                          || requires a bugfix) and has an option to use a bugfixed    |
+|                                          || snow grain-size code.                                     |
+|                                          || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
+|                                          || http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
++------------------------------------------+------------------------------------------------------------+
+| ``shell_scripts/CESM1_2_1_setup_hybrid`` || Is functionally identical to ``CESM1_1_1_setup_hybrid``   |
+|                                          || but is appropriate for the the CESM 1_2_1 release, which  |
+|                                          || supports both CLM 4 and CLM 4.5.                          |
++------------------------------------------+------------------------------------------------------------+
+| ``shell_scripts/CESM_DART_config``       || augments a CESM case with the bits and pieces required to |
+|                                          || run DART. When either ``CESM1_?_1_setup_pmo`` or          |
+|                                          || ``CESM1_?_1_setup_hybrid`` gets executed,                 |
+|                                          || ``CESM_DART_config`` gets copied to the CESM "caseroot"   |
+|                                          || directory. It is designed such that you can execute it at |
+|                                          || any time during a CESM experiment. When you do execute    |
+|                                          || it, it will build the DART executables and copy them into |
+|                                          || the CESM "bld" directory, stage the run-time configurable |
+|                                          || ``input.nml`` in the "caseroot" directory, etc. and also  |
+|                                          || *modifies* the CESM ``case.run`` script to call the DART  |
+|                                          || scripts for assimilation or to harvest synthetic          |
+|                                          || observations.                                             |
++------------------------------------------+------------------------------------------------------------+
 
 In addition to the script above, there are a couple scripts that will either perform an assimilation
-(`assimilate.csh <shell_scripts/assimilate.csh>`__) or harvest observations for a perfect model experiment
-(`perfect_model.csh <shell_scripts/perfect_model.csh>`__). These scripts are designed to work on several compute
+(``assimilate.csh``) or harvest observations for a perfect model experiment
+(``perfect_model.csh``). These scripts are designed to work on several compute
 platforms although they require configuration, mainly to indicate the location of the DART observation sequence files on
 your system.
 
 Pertinent details of the CLM gridcell
 -------------------------------------
 
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| |CLM gridcell breakdown|                                  | "The land surface is represented by 5 primary sub-grid    |
-|                                                           | land cover types (landunits: glacier, lake, wetland,      |
-|                                                           | urban, vegetated) in each grid cell. The vegetated        |
-|                                                           | portion of a grid cell is further divided into patches of |
-|                                                           | plant functional types, each with its own leaf and stem   |
-|                                                           | area index and canopy height. Each subgrid land cover     |
-|                                                           | type and PFT patch is a separate column for energy and    |
-|                                                           | water calculations." -- CLM documentation.                |
-|                                                           | The only location information available is at the         |
-|                                                           | gridcell level. All landunits, columns, and PFTs in that  |
-|                                                           | gridcell have the same location. This has ramifications   |
-|                                                           | for the forward observation operators. If the observation |
-|                                                           | metadata has information about land use/land cover, it    |
-|                                                           | can be used to select only those patches that are         |
-|                                                           | appropriate. Otherwise, an area-weighted average of ALL   |
-|                                                           | patches in the gridcell is used to calculate the          |
-|                                                           | observation value for that location.                      |
-+-----------------------------------------------------------+-----------------------------------------------------------+
+|CLM gridcell breakdown|                              
+
+"The land surface is represented by 5 primary sub-grid    
+land cover types (landunits: glacier, lake, wetland,      
+urban, vegetated) in each grid cell. The vegetated        
+portion of a grid cell is further divided into patches of 
+plant functional types, each with its own leaf and stem   
+area index and canopy height. Each subgrid land cover     
+type and PFT patch is a separate column for energy and    
+water calculations." -- *CLM documentation*.                
+
+The only location information available is at the         
+gridcell level. All landunits, columns, and PFTs in that  
+gridcell have the same location. This has ramifications   
+for the forward observation operators. If the observation 
+metadata has information about land use/land cover, it    
+can be used to select only those patches that are         
+appropriate. Otherwise, an area-weighted average of ALL   
+patches in the gridcell is used to calculate the          
+observation value for that location.                      
+
 
 A word about forward observation operators
 ------------------------------------------
 
-| "Simple" observations like snowcover fraction come directly from the DART state. It is possible to configure the CLM
-  history files to contain the CLM estimates of some quantities (mostly flux tower observations e.g, net ecosystem
-  production, sensible heat flux, latent heat flux) that are very complicated combinations of portions of the CLM state.
-  The forward observation operators for these flux tower observations read these quantities from the CLM ``.h1.``
-  history file. The smaller the CLM gridcell, the more likely it seems that these values will agree with point
-  observations.
-| The prior and posterior values for these will naturally be identical as the history file is unchanged by the
-  assimilation. Configuring the CLM user_nl_clm files to output the desired quantities must be done at the first
-  execution of CLM. As soon as CONTINUE_RUN=TRUE, the namelist values for history file generation are ignored. Because
-  the history file creation is very flexible, some additional information must be passed to DART to construct the
-  filename of the ``.h1.`` history file needed for any particular time.
+"Simple" observations like snowcover fraction come directly from the DART state. It is possible to configure the CLM
+history files to contain the CLM estimates of some quantities (mostly flux tower observations e.g, net ecosystem
+production, sensible heat flux, latent heat flux) that are very complicated combinations of portions of the CLM state.
+The forward observation operators for these flux tower observations read these quantities from the CLM ``.h1.``
+history file. The smaller the CLM gridcell, the more likely it seems that these values will agree with point
+observations.
+
+The prior and posterior values for these will naturally be identical as the history file is unchanged by the
+assimilation. Configuring the CLM user_nl_clm files to output the desired quantities must be done at the first
+execution of CLM. As soon as CONTINUE_RUN=TRUE, the namelist values for history file generation are ignored. Because
+the history file creation is very flexible, some additional information must be passed to DART to construct the
+filename of the ``.h1.`` history file needed for any particular time.
 
 Major changes as of (v7195) 3 october 2014
 ------------------------------------------
 
-| The DART state vector may be constructed in a much more flexible way. Variables from two different CLM history files
-  may also be incorporated directly into the DART state - which should GREATLY speed up the forward observation
-  operators - and allow the observation operators to be constructed in a more flexible manner so that they can be used
-  by any model capable of providing required inputs. It is now possible to read some variables from the restart file,
-  some variables from a traditional history file, and some from a 'vector-based' history file that has the same
-  structure (gridcell/landunit/column/pft) as the restart file. This should allow more accurate forward observation
-  operators since the quantities are not gridcell-averaged a priori.
-| Another namelist item has been added ``clm_vector_history_filename`` to support the concept that two history files can
-  be supported. My intent was to have the original history file (required for grid metadata) and another for support of
-  vector-based quantities in support of forward observation operators. Upon reflection, I'm not sure I need two
-  different history files - BUT - I'm sure there will be a situation where it comes in handy.
-| The new namelist specification of what goes into the DART state vector includes the ability to specify if the quantity
-  should have a lower bound, upper bound, or both, what file the variable should be read from, and if the variable
-  should be modified by the assimilation or not. **Only variables in the CLM restart file will be candidates for
-  updating.** No CLM history files are modified. **It is important to know that the variables in the DART diagnostic
-  files ``preassim.nc`` and ``analysis.nc`` will contain the unbounded versions of ALL the variables specied in
-  ``clm_variables``.**
-| The example ``input.nml`` ``model_nml`` demonstrates how to construct the DART state vector. The following table
-  explains in detail each entry for ``clm_variables``:
+The DART state vector may be constructed in a much more flexible way. Variables from two different CLM history files
+may also be incorporated directly into the DART state - which should GREATLY speed up the forward observation
+operators - and allow the observation operators to be constructed in a more flexible manner so that they can be used
+by any model capable of providing required inputs. It is now possible to read some variables from the restart file,
+some variables from a traditional history file, and some from a 'vector-based' history file that has the same
+structure (gridcell/landunit/column/pft) as the restart file. This should allow more accurate forward observation
+operators since the quantities are not gridcell-averaged a priori.
+
+Another namelist item has been added ``clm_vector_history_filename`` to support the concept that two history files can
+be supported. My intent was to have the original history file (required for grid metadata) and another for support of
+vector-based quantities in support of forward observation operators. Upon reflection, I'm not sure I need two
+different history files - BUT - I'm sure there will be a situation where it comes in handy.
+
+The new namelist specification of what goes into the DART state vector includes the ability to specify if the quantity
+should have a lower bound, upper bound, or both, what file the variable should be read from, and if the variable
+should be modified by the assimilation or not. **Only variables in the CLM restart file will be candidates for
+updating.** No CLM history files are modified. **It is important to know that the variables in the DART diagnostic
+files ``preassim.nc`` and ``analysis.nc`` will contain the unbounded versions of ALL the variables specied in
+``clm_variables``.**
+The example ``input.nml`` ``model_nml`` demonstrates how to construct the DART state vector. The following table
+explains in detail each entry for ``clm_variables``:
 
 .. container::
 
@@ -159,38 +167,38 @@ Major changes as of (v7195) 3 october 2014
    Variable name DART KIND minimum  maximum  filename update
    ============= ========= ======== ======== ======== ========
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | **Column 1**                          | Variable name                         | This is the CLM variable name as it   |
-   |                                       |                                       | appears in the CLM netCDF file.       |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | **Column 2**                          | DART KIND                             | This is the character string of the   |
-   |                                       |                                       | corresponding DART KIND.              |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | **Column 3**                          | minimum                               | If the variable is to be updated in   |
-   |                                       |                                       | the CLM restart file, this specifies  |
-   |                                       |                                       | the minimum value. If set to 'NA',    |
-   |                                       |                                       | there is no minimum value.            |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | **Column 4**                          | maximum                               | If the variable is to be updated in   |
-   |                                       |                                       | the CLM restart file, this specifies  |
-   |                                       |                                       | the maximum value. If set to 'NA',    |
-   |                                       |                                       | there is no maximum value.            |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | **Column 5**                          | filename                              | This specifies which file should be   |
-   |                                       |                                       | used to obtain the variable.          |
-   |                                       |                                       | ``'restart'`` => clm_restart_filename |
-   |                                       |                                       | ``'history'`` => clm_history_filename |
-   |                                       |                                       | ``'vector'`` =>                       |
-   |                                       |                                       | clm_vector_history_filename           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | **Column 6**                          | update                                | If the variable comes from the        |
-   |                                       |                                       | restart file, it may be updated after |
-   |                                       |                                       | the assimilation.                     |
-   |                                       |                                       | ``'UPDATE'`` => the variable in the   |
-   |                                       |                                       | restart file is updated.              |
-   |                                       |                                       | ``'NO_COPY_BACK'`` => the variable in |
-   |                                       |                                       | the restart file remains unchanged.   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +---------------------------------------+---------------------------------------+----------------------------------------+
+   | **Column 1**                          | Variable name                         || This is the CLM variable name as it   |
+   |                                       |                                       || appears in the CLM netCDF file.       |
+   +---------------------------------------+---------------------------------------+----------------------------------------+
+   | **Column 2**                          | DART KIND                             || This is the character string of the   |
+   |                                       |                                       || corresponding DART KIND.              |
+   +---------------------------------------+---------------------------------------+----------------------------------------+
+   | **Column 3**                          | minimum                               || If the variable is to be updated in   |
+   |                                       |                                       || the CLM restart file, this specifies  |
+   |                                       |                                       || the minimum value. If set to 'NA',    |
+   |                                       |                                       || there is no minimum value.            |
+   +---------------------------------------+---------------------------------------+----------------------------------------+
+   | **Column 4**                          | maximum                               || If the variable is to be updated in   |
+   |                                       |                                       || the CLM restart file, this specifies  |
+   |                                       |                                       || the maximum value. If set to 'NA',    |
+   |                                       |                                       || there is no maximum value.            |
+   +---------------------------------------+---------------------------------------+----------------------------------------+
+   | **Column 5**                          | filename                              || This specifies which file should be   |
+   |                                       |                                       || used to obtain the variable.          |
+   |                                       |                                       || ``'restart'`` => clm_restart_filename |
+   |                                       |                                       || ``'history'`` => clm_history_filename |
+   |                                       |                                       || ``'vector'`` =>                       |
+   |                                       |                                       || clm_vector_history_filename           |
+   +---------------------------------------+---------------------------------------+----------------------------------------+
+   | **Column 6**                          | update                                || If the variable comes from the        |
+   |                                       |                                       || restart file, it may be updated after |
+   |                                       |                                       || the assimilation.                     |
+   |                                       |                                       || ``'UPDATE'`` => the variable in the   |
+   |                                       |                                       || restart file is updated.              |
+   |                                       |                                       || ``'NO_COPY_BACK'`` => the variable in |
+   |                                       |                                       || the restart file remains unchanged.   |
+   +---------------------------------------+---------------------------------------+----------------------------------------+
 
 The following are only meant to be examples - they are not scientifically validated. Some of these that are UPDATED are
 probably diagnostic quantities, Some of these that should be updated may be marked NO_COPY_BACK. There are multiple
@@ -280,101 +288,95 @@ namelist.
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | clm_restart_filename                  | character(len=256)                    | this is the filename of the CLM       |
-   |                                       |                                       | restart file. The DART scripts        |
-   |                                       |                                       | resolve linking the specific CLM      |
-   |                                       |                                       | restart file to this generic name.    |
-   |                                       |                                       | This file provides the elements used  |
-   |                                       |                                       | to make up the DART state vector. The |
-   |                                       |                                       | variables are in their original       |
-   |                                       |                                       | landunit, column, and PFT-based       |
-   |                                       |                                       | representations.                      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | clm_history_filename                  | character(len=256)                    | this is the filename of the CLM       |
-   |                                       |                                       | ``.h0.`` history file. The DART       |
-   |                                       |                                       | scripts resolve linking the specific  |
-   |                                       |                                       | CLM history file to this generic      |
-   |                                       |                                       | name. Some of the metadata needed for |
-   |                                       |                                       | the DART/CLM interfaces is contained  |
-   |                                       |                                       | only in this history file, so it is   |
-   |                                       |                                       | needed for all DART routines.         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | clm_vector_history_filename           | character(len=256)                    | this is the filename of a second CLM  |
-   |                                       |                                       | history file. The DART scripts        |
-   |                                       |                                       | resolve linking the specific CLM      |
-   |                                       |                                       | history file to this generic name.    |
-   |                                       |                                       | The default setup scripts actually    |
-   |                                       |                                       | create 3 separate CLM history files,  |
-   |                                       |                                       | the ``.h2.`` ones are linked to this  |
-   |                                       |                                       | filename. It is possible to create    |
-   |                                       |                                       | this history file at the same         |
-   |                                       |                                       | resolution as the restart file, which |
-   |                                       |                                       | should make for better forward        |
-   |                                       |                                       | operators. It is only needed if some  |
-   |                                       |                                       | of the variables specified in         |
-   |                                       |                                       | ``clm_variables`` come from this      |
-   |                                       |                                       | file.                                 |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_state_vector                   | logical                               | If .true. write state vector as a 1D  |
-   |                                       |                                       | array to the DART diagnostic output   |
-   |                                       |                                       | files. If .false. break state vector  |
-   |                                       |                                       | up into variables before writing to   |
-   |                                       |                                       | the output files.                     |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | assimilation_period_days,             | integer                               | Combined, these specify the width of  |
-   | assimilation_period_seconds           |                                       | the assimilation window. The current  |
-   |                                       |                                       | model time is used as the center time |
-   |                                       |                                       | of the assimilation window. All       |
-   |                                       |                                       | observations in the assimilation      |
-   |                                       |                                       | window are assimilated. BEWARE: if    |
-   |                                       |                                       | you put observations that occur       |
-   |                                       |                                       | before the beginning of the           |
-   |                                       |                                       | assimilation_period, DART will error  |
-   |                                       |                                       | out because it cannot move the model  |
-   |                                       |                                       | 'back in time' to process these       |
-   |                                       |                                       | observations.                         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | model_perturbation_amplitude          | real(r8)                              | Required by the DART interfaces, but  |
-   |                                       |                                       | not used by CLM.                      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | calendar                              | character(len=32)                     | string specifying the calendar to use |
-   |                                       |                                       | with DART. The CLM dates will be      |
-   |                                       |                                       | interpreted with this same calendar.  |
-   |                                       |                                       | For assimilations with real           |
-   |                                       |                                       | observations, this should be          |
-   |                                       |                                       | 'Gregorian'.                          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | debug                                 | integer                               | Set to 0 (zero) for minimal output.   |
-   |                                       |                                       | Successively higher values generate   |
-   |                                       |                                       | successively more output. Not all     |
-   |                                       |                                       | values are important, however. It     |
-   |                                       |                                       | seems I've only used values           |
-   |                                       |                                       | [3,6,7,8]. Go figure.                 |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | *clm_state_variables*                 | character(:,6)                        | Strings that identify the CLM         |
-   | clm_variables                         |                                       | variables, their DART kind, the min & |
-   |                                       |                                       | max values, what file to read from,   |
-   |                                       |                                       | and whether or not the file should be |
-   |                                       |                                       | updated after the assimilation. *Only |
-   |                                       |                                       | CLM variable names in the CLM restart |
-   |                                       |                                       | file are valid.* The DART kind must   |
-   |                                       |                                       | be one found in the                   |
-   |                                       |                                       | ``DART/assimilation_code/mo           |
-   |                                       |                                       | dules/observations/obs_kind_mod.f90`` |
-   |                                       |                                       | AFTER it gets built by                |
-   |                                       |                                       | ``preprocess``. Most of the land      |
-   |                                       |                                       | observation kinds are specified by    |
-   |                                       |                                       | ``DART/observations/for               |
-   |                                       |                                       | ward_operators/obs_def_land_mod.f90`` |
-   |                                       |                                       | and                                   |
-   |                                       |                                       | ``DART/observations/forwa             |
-   |                                       |                                       | rd_operators/obs_def_tower_mod.f90``, |
-   |                                       |                                       | so they should be specified in the    |
-   |                                       |                                       | preprocess_nml:input_files variable.  |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
+   | Item                                  | Type                                  | Description                             |
+   +=======================================+=======================================+=========================================+
+   | clm_restart_filename                  | character(len=256)                    | | this is the filename of the CLM       |
+   |                                       |                                       | | restart file. The DART scripts        |
+   |                                       |                                       | | resolve linking the specific CLM      |
+   |                                       |                                       | | restart file to this generic name.    |
+   |                                       |                                       | | This file provides the elements used  |
+   |                                       |                                       | | to make up the DART state vector. The |
+   |                                       |                                       | | variables are in their original       |
+   |                                       |                                       | | landunit, column, and PFT-based       |
+   |                                       |                                       | | representations.                      |
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
+   | clm_history_filename                  | character(len=256)                    | | this is the filename of the CLM       |
+   |                                       |                                       | | ``.h0.`` history file. The DART       |
+   |                                       |                                       | | scripts resolve linking the specific  |
+   |                                       |                                       | | CLM history file to this generic      |
+   |                                       |                                       | | name. Some of the metadata needed for |
+   |                                       |                                       | | the DART/CLM interfaces is contained  |
+   |                                       |                                       | | only in this history file, so it is   |
+   |                                       |                                       | | needed for all DART routines.         |
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
+   | clm_vector_history_filename           | character(len=256)                    | | this is the filename of a second CLM  |
+   |                                       |                                       | | history file. The DART scripts        |
+   |                                       |                                       | | resolve linking the specific CLM      |
+   |                                       |                                       | | history file to this generic name.    |
+   |                                       |                                       | | The default setup scripts actually    |
+   |                                       |                                       | | create 3 separate CLM history files,  |
+   |                                       |                                       | | the ``.h2.`` ones are linked to this  |
+   |                                       |                                       | | filename. It is possible to create    |
+   |                                       |                                       | | this history file at the same         |
+   |                                       |                                       | | resolution as the restart file, which |
+   |                                       |                                       | | should make for better forward        |
+   |                                       |                                       | | operators. It is only needed if some  |
+   |                                       |                                       | | of the variables specified in         |
+   |                                       |                                       | | ``clm_variables`` come from this      |
+   |                                       |                                       | | file.                                 |
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
+   | output_state_vector                   | logical                               | | If .true. write state vector as a 1D  |
+   |                                       |                                       | | array to the DART diagnostic output   |
+   |                                       |                                       | | files. If .false. break state vector  |
+   |                                       |                                       | | up into variables before writing to   |
+   |                                       |                                       | | the output files.                     |
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
+   | | assimilation_period_days,           | integer                               | | Combined, these specify the width of  |
+   | | assimilation_period_seconds         |                                       | | the assimilation window. The current  |
+   |                                       |                                       | | model time is used as the center time |
+   |                                       |                                       | | of the assimilation window. All       |
+   |                                       |                                       | | observations in the assimilation      |
+   |                                       |                                       | | window are assimilated. BEWARE: if    |
+   |                                       |                                       | | you put observations that occur       |
+   |                                       |                                       | | before the beginning of the           |
+   |                                       |                                       | | assimilation_period, DART will error  |
+   |                                       |                                       | | out because it cannot move the model  |
+   |                                       |                                       | | 'back in time' to process these       |
+   |                                       |                                       | | observations.                         |
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
+   | model_perturbation_amplitude          | real(r8)                              | | Required by the DART interfaces, but  |
+   |                                       |                                       | | not used by CLM.                      |
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
+   | calendar                              | character(len=32)                     | | string specifying the calendar to use |
+   |                                       |                                       | | with DART. The CLM dates will be      |
+   |                                       |                                       | | interpreted with this same calendar.  |
+   |                                       |                                       | | For assimilations with real           |
+   |                                       |                                       | | observations, this should be          |
+   |                                       |                                       | | 'Gregorian'.                          |
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
+   | debug                                 | integer                               | | Set to 0 (zero) for minimal output.   |
+   |                                       |                                       | | Successively higher values generate   |
+   |                                       |                                       | | successively more output. Not all     |
+   |                                       |                                       | | values are important, however. It     |
+   |                                       |                                       | | seems I've only used values           |
+   |                                       |                                       | | [3,6,7,8]. Go figure.                 |
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
+   | clm_variables                         | character(:,6)                        | | Strings that identify the CLM         |
+   |                                       |                                       | | variables, their DART kind, the min & |
+   |                                       |                                       | | max values, what file to read from,   |
+   |                                       |                                       | | and whether or not the file should be |
+   |                                       |                                       | | updated after the assimilation.       |
+   |                                       |                                       | | The DART kind must be one found in    |
+   |                                       |                                       | | ``obs_kind_mod.f90``                  |
+   |                                       |                                       | | AFTER it gets built by                |
+   |                                       |                                       | | ``preprocess``. Most of the land      |
+   |                                       |                                       | | observation kinds are specified by    |
+   |                                       |                                       | | ``obs_def_land_mod.f90`` and          |
+   |                                       |                                       | | ``obs_def_tower_mod.f90``             |
+   |                                       |                                       | | so they should be specified in the    |
+   |                                       |                                       | | preprocess_nml:input_files variable.  |
+   +---------------------------------------+---------------------------------------+-----------------------------------------+
 
 | 
 
@@ -388,25 +390,25 @@ namelist.
 
 .. container::
 
-   +-------------+--------------------+---------------------------------------------------------------------------------+
-   | Item        | Type               | Description                                                                     |
-   +=============+====================+=================================================================================+
-   | casename    | character(len=256) | this is the name of the CESM case. It is used by the forward observation        |
-   |             |                    | operators to help construct the filename of the CLM ``.h1.`` history files for  |
-   |             |                    | the flux tower observations. When the ``input.nml`` gets staged in the CASEROOT |
-   |             |                    | directory by ``CESM_DART_config``, the appropriate value should automatically   |
-   |             |                    | be inserted.                                                                    |
-   +-------------+--------------------+---------------------------------------------------------------------------------+
-   | hist_nhtfrq | integer            | this is the same value as in the CLM documentation. A negative value indicates  |
-   |             |                    | the number of hours contained in the ``.h1.`` file. This value is needed to     |
-   |             |                    | constuct the right ``.h1.`` filename. When the ``input.nml`` gets staged in the |
-   |             |                    | CASEROOT directory by ``CESM_DART_config``, the appropriate value should        |
-   |             |                    | automatically be inserted. Due to the large number of ways of specifying the    |
-   |             |                    | CLM history file information, the correct value here is very dependent on how   |
-   |             |                    | the case was configured. You would be wise to check it.                         |
-   +-------------+--------------------+---------------------------------------------------------------------------------+
-   | debug       | logical            | Set to .false. for minimal output.                                              |
-   +-------------+--------------------+---------------------------------------------------------------------------------+
+   +-------------+--------------------+-----------------------------------------------------------------------------------+
+   | Item        | Type               | Description                                                                       |
+   +=============+====================+===================================================================================+
+   | casename    | character(len=256) | | this is the name of the CESM case. It is used by the forward observation        |
+   |             |                    | | operators to help construct the filename of the CLM ``.h1.`` history files for  |
+   |             |                    | | the flux tower observations. When the ``input.nml`` gets staged in the CASEROOT |
+   |             |                    | | directory by ``CESM_DART_config``, the appropriate value should automatically   |
+   |             |                    | | be inserted.                                                                    |
+   +-------------+--------------------+-----------------------------------------------------------------------------------+
+   | hist_nhtfrq | integer            | | this is the same value as in the CLM documentation. A negative value indicates  |
+   |             |                    | | the number of hours contained in the ``.h1.`` file. This value is needed to     |
+   |             |                    | | constuct the right ``.h1.`` filename. When the ``input.nml`` gets staged in the |
+   |             |                    | | CASEROOT directory by ``CESM_DART_config``, the appropriate value should        |
+   |             |                    | | automatically be inserted. Due to the large number of ways of specifying the    |
+   |             |                    | | CLM history file information, the correct value here is very dependent on how   |
+   |             |                    | | the case was configured. You would be wise to check it.                         |
+   +-------------+--------------------+-----------------------------------------------------------------------------------+
+   | debug       | logical            | Set to .false. for minimal output.                                                |
+   +-------------+--------------------+-----------------------------------------------------------------------------------+
 
 Other modules used (directly)
 -----------------------------
@@ -1019,11 +1021,32 @@ References
 `CLM User's Guide <http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf>`__ is an
 excellent reference for CLM.
 
+Error codes and conditions
+--------------------------
+
++---------------------+---------------------------------------------+---------------------------------------------------+
+|       Routine       |                   Message                   |                      Comment                      |
++=====================+=============================================+===================================================+
+| nc_write_model_atts | Various netCDF-f90 interface error messages | From one of the netCDF calls in the named routine |
+| nc_write_model_vars |                                             |                                                   |
++---------------------+---------------------------------------------+---------------------------------------------------+
+
+Future plans
+------------
+
+Almost too many to list.
+
+#. Implement a robust update_snow() routine that takes the modified SWE and repartitions it into the respective snow layers in a manner that works with both CLM4 and CLM4.5. This may mean modifying the clm_variables list to contain SNOWDP, H2OSOI_LIQ, H2OSOI_ICE, T_SOISNO, and others that may not be in the UPDATE list.
+#. Implement a fast way to get the quantities needed for the calculation of radiative transfer models - needs a whole column of CLM variables, redundant if multiple frequencies are used.
+#. Figure out what to do when one or more of the ensemble members does not have snow/leaves/etc. when the observation indicates there should be. Ditto for removing snow/leaves/etc. when the observation indicates otherwise.
+#. Right now, the soil moisture observation operator is used by the COSMOS code to calculate the expected neutron intensity counts. This is the right idea, however, the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2 ... I have not checked to see if they are, in fact, identical. This brings up a bigger issue in that the soil moisture observation operator would also be used to calculate whatever a TDT probe or ??? would measure. What units are they in? Can one operator support both?
+
+
 Private components
 ------------------
 
 N/A
 
 .. |CLM gridcell breakdown| image:: ../../guide/images/clm_landcover.jpg
-   :height: 250px
+   :height: 600px
    :target: http://www.cesm.ucar.edu/models/clm/surface.heterogeneity.html

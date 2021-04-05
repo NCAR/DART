@@ -259,3 +259,18 @@ namelist.
 +---------------------------------------+---------------------------------------+---------------------------------------+
 
 | 
+
+Known Bugs
+----------
+
+The input files are daily; be cautious of time bin boundaries at the start and end of the day.
+
+
+Future Plans
+------------
+
+- This program should use the HDF-EOS libraries to read the native MODIS granule files.
+
+- This program could loop over arbitrary numbers of days by using the time manager calendar functions to increment
+  the bins across month and year boundaries; it could also use the schedule module to define the bins.
+
