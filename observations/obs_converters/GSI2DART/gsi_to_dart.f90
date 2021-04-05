@@ -4,13 +4,13 @@ use kinds
 use mpisetup
 use params, only : datestring, datapath, convert_conv, lie_about_ob_times, recenter_about_mean_prior, &
                    convert_sat, sattypes_rad, dsis, sattypes_oz,dsis, ens_size, obs_seq_out_filename, &
-                   nsats_rad,nsats_oz,nsatmax_rad,nsatmax_oz, modify_dart_qc_flag_for_big_ob_error, &
+                   nsats_rad,nsats_oz,nsatmax_rad,nsatmax_oz, &
                    obsprd_prior, ensmean_obnobc, ensmean_ob, ob, oberrvar, oberrvar_orig, &
                    obloclon, obloclat, obpress, obtime, biaspreds, anal_ob, stattype, indxsat, &
                    obtype, obsmod_cleanup, write_FO_for_these_obs_types, write_prior_copies, &
-                   exclude_these_obs_types, output_option, anal_ob_chunk, variance_coef
+                   exclude_these_obs_types, output_option, anal_ob_chunk
 
-use           radinfo, only : radinfo_read, radinfo_clean
+use           radinfo, only : radinfo_read, radinfo_clean,npred, adp_anglebc, angord, emiss_bc
 use       mpi_readobs, only : mpi_getobs
 use  dart_obs_seq_mod, only : dart_obs_seq, set_debug
 use     utilities_mod, only : find_namelist_in_file, check_namelist_read
@@ -37,7 +37,7 @@ namelist /gsi_to_dart_nml/ ens_size, &
    write_FO_for_these_obs_types, write_prior_copies, &
    exclude_these_obs_types, output_option, obs_seq_out_filename, &
    lie_about_ob_times, recenter_about_mean_prior, debug, &
-   modify_dart_qc_flag_for_big_ob_error, variance_coef
+   npred,adp_anglebc,angord,emiss_bc
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -63,6 +63,11 @@ call mpi_barrier(mpi_comm_world,ierr)
 call find_namelist_in_file("input.nml", "gsi_to_dart_nml", unitnml)
 read(unitnml, nml = gsi_to_dart_nml, iostat = io)
 call check_namelist_read(unitnml, io, "gsi_to_dart_nml")
+
+! Update npred based on namelist variables
+if ( adp_anglebc ) npred = npred + angord
+if ( emiss_bc )    npred = npred + 1
+if ( nproc == 0 ) write(*,fmt='(a,i,a)') 'There are ',npred,' total bias correction predictors'
 
 ! Pass the debug value to the dart_obs_seq_mod
 call set_debug(debug)

@@ -16,7 +16,9 @@
    debug                        = .false.
    lie_about_ob_times           = .false.
    recenter_about_mean_prior    = .true.
-   variance_coef                = 1000.0
-   modify_dart_qc_flag_for_big_ob_error = .false.
+   npred                        = 7
+   adp_anglebc                  = .true.
+   angord                       = 4,
+   emiss_bc                     = .true.
   /
 

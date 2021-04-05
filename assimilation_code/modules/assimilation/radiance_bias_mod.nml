@@ -1,0 +1,12 @@
+&radiance_bias_nml
+   lupd_satbiasc = .false.,      ! main switch to turn on/off bias correction update
+   numiter = 1,                  ! number of iterations for the bias correction update
+   bias_correction_source = 'gsi', ! source of bias correction coefficients/predictors ('gsi' only option for now)
+   biasvar = 0.1,                ! error variance for bias correction coefficients
+   npred = 7                     ! number of predictors
+   adp_anglebc = .true.          ! whether to use scan angle predictors indivdually (true) or collectively (false). Really just a GSI option.
+   angord = 4,                   ! angle order for scan angle predictors 
+   use_edges = .false.,          ! whether to use edges of radiance scans
+   emiss_bc = .true.,            ! whether to use surface emissivity as a bias correction predictor in GSI context
+   newpc4pred = .false.          ! whether an "enhanced" bias correction is used in the context of variational minimization. keep as false.
+ /
