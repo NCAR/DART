@@ -1,7 +1,7 @@
 Community Earth System Model 
 ============================
-See FIXME
 
+See FIXME
 
 Preliminaries
 -------------
@@ -10,7 +10,7 @@ If you found your way to this file without reading the DART ''getting started'' 
 or tutorial, please read those first. 
 $DART/README.rst is a good place to find pointers to them. 
 This document gives specific help in setting up a CESM+DART assimilation for the first time. 
-Also see the ../{your_model(s)}/readme.rst documentation 
+Also see the ../{your_model(s)}/readme.html documentation 
 about the code-level interfaces and namelist values.
 
 CESM 
@@ -19,10 +19,11 @@ CESM
 CESM is a software framework for setting up and running a combination of models,
 each designed to represent a part of the Earth system.
 Each component model (CAM, CLM, POP, CICE, ...) contributes in one of 3 modes:
+
 - *active*; the model state evolves in time based on its own calculations
-- *data*; the model simply reads data from external sources and sends 
-  representations of it to the other components.
+- *data*; the model simply reads data from external sources and sends representations of it to the other components.
 - *stub*; the model does not interact with the other components.
+
 The components influence each other only by passing fluxes and interface field values through the coupler. 
 The combination chosen for a given application is called a ``compset``.
 
@@ -50,12 +51,12 @@ They share both the CESM and DART environments,
 but differ somewhat for practical and historical reasons.
 
 Single-component assimilation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The first, and simplest, consists of assimilating relevant observations into one active component. 
 The other components may be active, data, or stub. 
 Each of these assimilations is handled by one of the $DART/models interfaces
-(cam-fv, POP, clm, ..., see, for example the `cam-fv readme <../cam-fv/readme.rst>`_
+(cam-fv, POP, clm, ..., see, for example the `cam-fv readme <../cam-fv/readme.html>`_
 
 .. :ref:`cam_fv_doc`)
 
@@ -79,7 +80,7 @@ The sea surface temperature forcing of the atmosphere is provided by a data ocea
 ==================== ====================
 
 Multi-component assimilation (often called ''weakly coupled'')
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +-----------------------------+-----------------------------------------------------+
 | |Multi-component flowchart| | It's also possible to assimilate observations       |
@@ -100,7 +101,7 @@ Multi-component assimilation (often called ''weakly coupled'')
 +-----------------------------+-----------------------------------------------------+
 
 Cross-component assimilation (often called ''strongly coupled'')
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +-----------------------------+-----------------------------------------------------+
 | |Cross-component flowchart| | Work is underway to enable the assimilation         |
@@ -140,8 +141,6 @@ before building the case.
 CESM2
 ~~~~~
 
-.. ^^^^^
-
 CESM2 has several helpful features (compared to CESM1), from DART's perspective.
 
 -  ''Multi-driver'' capability enables the efficient ensemble hindcasts which DART needs.
@@ -172,8 +171,7 @@ DART
 
 | DART's manhattan release includes the change to filter setting input and output filenames,
   instead of the user setting them in namelists. 
-  See `stages <https://dart-documentation.readthedocs.io/en/latest/assimilation_code/programs/filter/filter.html
-  Detailed program execution flow>`_
+  See `stages <../../assimilation_code/programs/filter/filter.html#detailed-program-execution-flow>`__.
   The assimilate.csh  of the model interface can rename these files into the CESM file format:
 | $case.$component{_$instance}.$filetype.$date.nc.
 | DART's file names are used as new filetypes, just like CESM's existing filetypes; ''r'', ''h0'', ... 
@@ -185,9 +183,9 @@ $DART/models/{cesm components} organization
 
 .. container:: keepspace
 
-   ========================          ===================================================================
+   ================================= ==================================================================================
    PATHNAMES                         NOTES
-   ========================          ===================================================================
+   ================================= ==================================================================================
    \                        
    $DART/models/**cam-fv**/          An interface for the CAM-FV dynamical core (CAM-SE will be available in 2021)
    ...model_mod.\*                   The fortran interface between CAM-FV and DART
@@ -230,7 +228,7 @@ $DART/models/{cesm components} organization
    ......run_perfect_model_obs.csh   Script to run a perfect model observation job.
          ...
    \
-   ================================= ==========================================================
+   ================================= ==================================================================================
 
 .. warning::
    Experience on a variety of machines has shown that it is a very good idea

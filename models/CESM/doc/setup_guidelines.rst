@@ -5,9 +5,9 @@ CESM+DART setup overview
 ------------------------
 
 If you found your way to this file without reading more basic DART help files, 
-please read those first. $DART/README.rst is a good place to find pointers to those files. 
-Then see ../readme.rst for an overview of DART's interfaces to CESM.
-Finally, see the ../../{your_cesm_component(s)}/readme.rst documentation about
+please read those first. `<../../README.html>`__ is a good place to find pointers to those files. 
+Then see `<../readme.rst>` for an overview of DART's interfaces to CESM.
+Finally, see the ../../{your_cesm_component(s)}/readme.html documentation about
 the code-level interfaces and namelist values for various CESM component models.
 This document gives specific help in setting up a CESM+DART assimilation
 for the first time. 
@@ -23,6 +23,7 @@ The overall strategy is to set up an environment where;
    * CESM is set up as a ''B'' component set configuration 
      (''fully coupled'' = active atmosphere, ocean, land, and possibly others)
    * a separate assimilation can be run using each component model interface for which there are observations.
+
 Each CESM hindcast advances all of the active components model states,
 which are then used by the several ``filter`` programs.
 So you will need to build separate filters in the models/{your_CESM_component_models}/work directories.
@@ -79,7 +80,7 @@ Output directory
 
 CESM's short term archiver (case.st_archive) is controlled by its ``env_archive.xml``. 
 DART's setup scripts modify that file to archive DART output along with CESM's. 
-(See the :doc:`../../../guide/rma` for a description of DART's output).
+(See the `<../../../guide/rma.html>`_ for a description of DART's output).
 DART's output is archived in ``$arch_dir/esp/{hist,rest,logs,...}``, where arch_dir is defined in
 ``setup_{hybrid,advanced}``, ``hist`` contains all of the state space and observation space output, and ``rest``
 contains the inflation restart files.

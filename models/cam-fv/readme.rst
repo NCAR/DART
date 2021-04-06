@@ -5,7 +5,7 @@ Overview
 --------
 
 The larger context of the Community Earth System Model and DART interactions
-is described in the `CESM readme <../CESM/readme.rst>`_
+is described in the `CESM readme <../CESM/readme.html>`_
 This document focuses on the several `atmospheric models <http://www2.cesm.ucar.edu/models>`__
 that have been developed or adapted to run in the CESM environment. 
 They are named according to their dynamical core ("dycore").
@@ -16,12 +16,14 @@ It has also provided an interface to CAM-SE on an as-needed basis,
 but we expect to make that a continuously supported interface in 2021.
 An interface to MPAS is being developed (contact us about the current status).
 
+.. _1 degree reanalysis wiki: <https://github.com/NCAR/DART/wiki/1-degree,-CAM6,-ensemble-reanalysis-for-CESM-experiments-(2011-thru-2019):-DATM,-hindcasts,-model-evaluation>
+
 The flexibility of the DART environment has led to its use
 by graduate students, post-graduates, and scientists at universities and
 research labs to conduct data assimilation research. Others are using the
 products of data assimilation (analyses), which were produced here at NCAR
 using CESM+DART, to conduct related research. 
-The latest reanalysis is described in the DART `wiki 
+The latest reanalysis is described in the DART `1 degree reanalysis wiki`_
 <https://github.com/NCAR/DART/wiki/1-degree,-CAM6,-ensemble-reanalysis-for-CESM-experiments-(2011-thru-2019):-DATM,-hindcasts,-model-evaluation>`__.
 The variety of research can be sampled on the DART  
 `Publications <https://dart.ucar.edu/pages/Publications.html>`__ page.
@@ -54,7 +56,7 @@ with two independent main characteristics. CESM labels these as:
      model domain vary with those choices. 
    - The combinations of parameterizations and vertical grids are named: CAM3.5,
      CAM5, CAM#, ... WACCM, WACCM#, WACCM-X, CAM-Chem.  
-   - The compset is specified as described in the `CESM readme <../CESM/readme.rst>`_.
+   - The compset is specified as described in the `CESM readme <../CESM/readme.html>`_.
 
 "ensemble", "multi-instance", and "multidriver"
 
@@ -113,10 +115,10 @@ Reanalyses
 ~~~~~~~~~~
 
 There have been two large-scale reanalysis efforts using CAM-FV and DART. 
-The `**CAM6 Data Assimilation Research Testbed (DART) Reanalysis**
-    <https://github.com/NCAR/DART/wiki/1-degree,-CAM6,-ensemble-reanalysis-for-CESM-experiments-(2011-thru-2019):-DATM,-hindcasts,-model-evaluation>`__
+The **CAM6 Data Assimilation Research Testbed (DART) Reanalysis**
 is archived in the NCAR Research Data Archive 
 `DS345.0 <https://rda.ucar.edu/datasets/ds345.0/#!description>`__ .
+(See the `1 degree reanalysis wiki`_ ).
 It contains just under 120Tb (yes Tb) of data:
 
    These CAM6+DART Reanalysis data 
@@ -133,10 +135,10 @@ It contains just under 120Tb (yes Tb) of data:
    
    
 An earlier, more limited dataset can be found in the 
-`**Ensemble of Atmospheric Forcing Files from a CAM4-FV Reanalysis**
-   <https://github.com/NCAR/DART/wiki/2-degree-DATM-ensemble-for-CESM-experiments-(1998-thru-2010)>`__
+`**Ensemble of Atmospheric Forcing Files from a CAM4-FV Reanalysis** 
+<https://github.com/NCAR/DART/wiki/2-degree-DATM-ensemble-for-CESM-experiments-(1998-thru-2010)>`__
 is archived in the NCAR Research Data Archive 
-`DS199.1 <https://rda.ucar.edu/datasets/ds199.1/#!description>`__ .
+`DS199.1 <https://rda.ucar.edu/datasets/ds199.1/>`__ .
 It contains about 1.5Tb of data:
 
    This dataset contains files that are an ensemble of 'coupler history' 
@@ -230,7 +232,8 @@ Setup Scripts
 Unlike pre-Manhattan versions of DART-CAM, CESM (CAM) runs using its normal scripts, 
 then stops and calls a DART script, which does the desired assimilation tasks, 
 then returns to the CESM run script for the next model advance. See the CESM
-interface documentation in ``../CESM/readme.rst`` for more general information about
+interface documentation in the `CESM readme <../CESM/readme.html>`_
+for more general information about
 running DART with CESM. Due to the complexity of the CESM software environment,
 the versions of CESM which can be used for assimilation are more restricted than
 previously. Each supported CESM version has similar, but unique, sets of setup
@@ -572,11 +575,6 @@ The reasons initial files are used instead of restart files include:
 #. There is no need for exact restart performance because filter alters the model state,
    making exact restarts impossible.
 
-.. Can't tell (in atom) whether this works.
-.. It definitely doesn't work in the table, above.
-.. _Perturbed:
-.. |Perturbed| :ref:`Perturbed <Perturbed>`
-
 Inflation
 ~~~~~~~~~
 
@@ -601,6 +599,10 @@ If you don't have restart files, set ``*initial_from_restart`` to .false.
 and assimilate.csh will create inflation restart files
 using the values in ``inf_initial`` and ``inf_sd_initial``.
 
+.. Can't tell (in atom) whether this works.
+.. It definitely doesn't work in the table, above.
+.. _Perturbed:
+
 Perturbed Ensemble
 ~~~~~~~~~~~~~~~~~~
 
@@ -612,7 +614,7 @@ which need their own restart files.
 If there is no suitable initial ensemble for starting the ensemble hindcast,
 one can be generated from a single model state
 by linking it into suitably named files 
-(see `link_ens_to_single.csh <../CESM/shell_scripts/link_ens_to_single.csh>`_)
+(see ../CESM/shell_scripts/link_ens_to_single.csh)
 running the first ensemble hindcast, 
 and then telling DART to perturb each member before the first assimilation.
 
@@ -649,7 +651,7 @@ you will need to change to the 'continuing' mode,
 where CAM will not perform all of its startup procedures 
 and DART will use the most recently created ensemble.
 
-.. code-block:: fortran
+.. code-block::
 
    model_mod_nml:
       custom_routine_to_generate_ensemble = .true.
@@ -703,7 +705,7 @@ Observations at one level can affect model variables at other levels
 if the localization is broad enough.
 The effective vertical localization can be calculated by
 
-.. code-block:: fortran
+.. code-block::
 
    cutoff * 2 * vert_normalization_{your_vert_coord} 
 
@@ -716,8 +718,8 @@ to decide which should be excluded.
 
 Minimum Recommended Values to Control Assimilation Near the Model Top.
 
-+---------------+------------------+----------------------------+-----------------------------+
-| div24del2flag | Diffusion levels | model_damping_ends_at_level | no_obs_assim_above_level   |
++---------------+------------------+-----------------------------+-----------------------------+
+| div24del2flag | Diffusion levels | model_damping_ends_at_level | no_obs_assim_above_level    |
 +===============+==================+=============================+=============================+
 | CAM: 2        | 2                | 2                           | (2; depends on localization)|
 +---------------+------------------+-----------------------------+-----------------------------+
@@ -825,6 +827,7 @@ Nitty gritty: Efficiency and Issues to Address
 ----------------------------------------------
 
 .. code-block:: bash
+
    .. WARNING::
 
       Experience on a variety of machines has shown that it is a very good idea
