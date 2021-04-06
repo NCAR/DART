@@ -144,193 +144,193 @@ prematurely terminating the namelist.
 Description of each namelist entry
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| Item                                  | Type                                  | Description                           |
-+=======================================+=======================================+=======================================+
-| default_state_variables               | logical                               | If *.true.*, the dart state vector    |
-|                                       |                                       | contains the fields U, V, W, PH, T,   |
-|                                       |                                       | MU, in that order, and only those.    |
-|                                       |                                       | Any values listed in the              |
-|                                       |                                       | *wrf_state_variables* namelist item   |
-|                                       |                                       | will be ignored.                      |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| wrf_state_variables                   | character(:, 5)                       | A 2D array of strings, 5 per wrf      |
-|                                       |                                       | array to be added to the dart state   |
-|                                       |                                       | vector. If *default_state_variables*  |
-|                                       |                                       | is *.true.*, this is ignored. When    |
-|                                       |                                       | *.false.*, this list of array names   |
-|                                       |                                       | controls which arrays and the order   |
-|                                       |                                       | that they are added to the state      |
-|                                       |                                       | vector. The 5 strings are:            |
-|                                       |                                       |                                       |
-|                                       |                                       | #. WRF field name - must match netcdf |
-|                                       |                                       |    name exactly                       |
-|                                       |                                       | #. DART KIND name - must match a      |
-|                                       |                                       |    valid DART QTY_xxx exactly         |
-|                                       |                                       | #. TYPE_NN - will hopefully be        |
-|                                       |                                       |    obsolete, but for now NN should    |
-|                                       |                                       |    match the field name.              |
-|                                       |                                       | #. the string UPDATE. at some future  |
-|                                       |                                       |    point, non-updatable fields may    |
-|                                       |                                       |    become part of the state vector.   |
-|                                       |                                       | #. A numeric string listing the       |
-|                                       |                                       |    domain numbers this array is part  |
-|                                       |                                       |    of. The specical string 999 means  |
-|                                       |                                       |    all domains. For example, '12'     |
-|                                       |                                       |    means domains 1 and 2, '13' means  |
-|                                       |                                       |    1 and 3.                           |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| wrf_state_bounds                      | character(:, 4)                       | A 2D array of strings, 4 per wrf      |
-|                                       |                                       | array. During the copy of data to and |
-|                                       |                                       | from the wrf netcdf file, variables   |
-|                                       |                                       | listed here will have minimum and     |
-|                                       |                                       | maximum values enforced. The 4        |
-|                                       |                                       | strings are:                          |
-|                                       |                                       |                                       |
-|                                       |                                       | #. WRF field name - must match netcdf |
-|                                       |                                       |    name exactly                       |
-|                                       |                                       | #. Minimum -- specified as a string   |
-|                                       |                                       |    but must be a numeric value (e.g.  |
-|                                       |                                       |    '0.1') Can be 'NULL' to allow any  |
-|                                       |                                       |    minimum value.                     |
-|                                       |                                       | #. Maximum -- specified as a string   |
-|                                       |                                       |    but must be a numeric value (e.g.  |
-|                                       |                                       |    '0.1') Can be 'NULL' to allow any  |
-|                                       |                                       |    maximum value.                     |
-|                                       |                                       | #. Action -- valid strings are        |
-|                                       |                                       |    'CLAMP', 'FAIL'. 'FAIL' means if a |
-|                                       |                                       |    value is found outside the range,  |
-|                                       |                                       |    the code fails with an error.      |
-|                                       |                                       |    'CLAMP' simply sets the out of     |
-|                                       |                                       |    range values to the given minimum  |
-|                                       |                                       |    or maximum without error.          |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| num_domains                           | integer                               | Total number of WRF domains,          |
-|                                       |                                       | including nested domains.             |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| calendar_type                         | integer                               | Calendar type. Should be 3            |
-|                                       |                                       | (GREGORIAN) for WRF.                  |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| assimilation_period_seconds           | integer                               | The time (in seconds) between         |
-|                                       |                                       | assimilations. This is modified if    |
-|                                       |                                       | necessary to be an integer multiple   |
-|                                       |                                       | of the underlying model timestep.     |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| periodic_x                            | logical                               | If *.true.*, the grid is periodic in  |
-|                                       |                                       | longitude, and points above the last  |
-|                                       |                                       | grid cell and points below the first  |
-|                                       |                                       | grid cell are wrapped. Note this is   |
-|                                       |                                       | not the same as a grid which crosses  |
-|                                       |                                       | the prime meridian. WRF handles that  |
-|                                       |                                       | with an offset in longitude and       |
-|                                       |                                       | points beyond the last grid index are |
-|                                       |                                       | outside the domain.                   |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| periodic_y                            | logical                               | Used for the Single Column Model to   |
-|                                       |                                       | make the grid wrap in Y (see scm      |
-|                                       |                                       | below). This is NOT the same as       |
-|                                       |                                       | wrapping in latitude (see polar       |
-|                                       |                                       | below).                               |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| polar                                 | logical                               | If *.true.*, points at the poles are  |
-|                                       |                                       | wrapped across the grid. It is not    |
-|                                       |                                       | clear this is a good idea since the   |
-|                                       |                                       | grid is degnerate here.               |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| scm                                   | logical                               | If *.true.* the Single Column Model   |
-|                                       |                                       | is assumed. The grid is a single      |
-|                                       |                                       | vertical column, and there are 9      |
-|                                       |                                       | cells arranged in a 3x3 grid. See the |
-|                                       |                                       | WRF documentation for more            |
-|                                       |                                       | information on this configuration.    |
-|                                       |                                       | *periodic_x* and *periodic_y* should  |
-|                                       |                                       | also be *.true.* in this case.        |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| sfc_elev_max_diff                     | real(r8)                              | If > 0, the maximum difference, in    |
-|                                       |                                       | meters, between an observation marked |
-|                                       |                                       | as a 'surface obs' as the vertical    |
-|                                       |                                       | type (with the surface elevation, in  |
-|                                       |                                       | meters, as the numerical vertical     |
-|                                       |                                       | location), and the surface elevation  |
-|                                       |                                       | as defined by the model. Observations |
-|                                       |                                       | further away from the surface than    |
-|                                       |                                       | this threshold are rejected and not   |
-|                                       |                                       | assimilated. If the value is          |
-|                                       |                                       | negative, this test is skipped.       |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| allow_obs_below_vol                   | logical                               | If *.false.* then if an observation   |
-|                                       |                                       | with a vertical coordinate of         |
-|                                       |                                       | pressure or height (i.e. not a        |
-|                                       |                                       | surface observation) is below the     |
-|                                       |                                       | lowest 3d sigma level, it is outside  |
-|                                       |                                       | the field volume and the              |
-|                                       |                                       | interpolation routine rejects it. If  |
-|                                       |                                       | this is set to *.true.* and the       |
-|                                       |                                       | observation is above the surface      |
-|                                       |                                       | elevation but below the lowest field  |
-|                                       |                                       | volume level, the code will           |
-|                                       |                                       | extrapolate downward from data values |
-|                                       |                                       | at levels 1 and 2.                    |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| center_search_half_length             | real(r8)                              | The model_mod now contains two        |
-|                                       |                                       | schemes for searching for a vortex    |
-|                                       |                                       | center location. If the **old**       |
-|                                       |                                       | scheme is compiled in, then this and  |
-|                                       |                                       | the center_spline_grid_scale namelist |
-|                                       |                                       | items are used. (Search code for      |
-|                                       |                                       | 'use_old_vortex'.) Half length (in    |
-|                                       |                                       | meters) of a square box for searching |
-|                                       |                                       | the vortex center.                    |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| center_spline_grid_scale              | integer                               | The model_mod now contains two        |
-|                                       |                                       | schemes for searching for a vortex    |
-|                                       |                                       | center location. If the **old**       |
-|                                       |                                       | scheme is compiled in, then this and  |
-|                                       |                                       | the center_search_half_length         |
-|                                       |                                       | namelist items are used. (Search code |
-|                                       |                                       | for 'use_old_vortex'.) Ratio of       |
-|                                       |                                       | refining grid for                     |
-|                                       |                                       | spline-interpolation in determining   |
-|                                       |                                       | the vortex center.                    |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| circulation_pres_level                | real(r8)                              | The model_mod now contains two        |
-|                                       |                                       | schemes for searching for a vortex    |
-|                                       |                                       | center location. If the **new**       |
-|                                       |                                       | scheme is compiled in, then this and  |
-|                                       |                                       | the circulation_radius namelist items |
-|                                       |                                       | are used. (Search code for            |
-|                                       |                                       | 'use_old_vortex'.) Pressure, in       |
-|                                       |                                       | pascals, of the level at which the    |
-|                                       |                                       | circulation is computed when          |
-|                                       |                                       | searching for the vortex center.      |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| circulation_radius                    | real(r8)                              | The model_mod now contains two        |
-|                                       |                                       | schemes for searching for a vortex    |
-|                                       |                                       | center location. If the **new**       |
-|                                       |                                       | scheme is compiled in, then this and  |
-|                                       |                                       | the circulation_pres_level namelist   |
-|                                       |                                       | items are used. (Search code for      |
-|                                       |                                       | 'use_old_vortex'.) Radius, in meters, |
-|                                       |                                       | of the circle over which the          |
-|                                       |                                       | circulation calculation is done when  |
-|                                       |                                       | searching for the vortex center.      |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| vert_localization_coord               | integer                               | Vertical coordinate for vertical      |
-|                                       |                                       | localization.                         |
-|                                       |                                       |                                       |
-|                                       |                                       | -  1 = model level                    |
-|                                       |                                       | -  2 = pressure (in pascals)          |
-|                                       |                                       | -  3 = height (in meters)             |
-|                                       |                                       | -  4 = scale height (unitless)        |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| allow_perturbed_ics                   | logical                               | *allow_perturbed_ics* should not be   |
-|                                       |                                       | used in most cases. It is provided    |
-|                                       |                                       | only as a means to create a tiny      |
-|                                       |                                       | ensemble for non-advancing tests.     |
-|                                       |                                       | Creating an initial ensemble is       |
-|                                       |                                       | covered in the WRF-DART tutorial      |
-|                                       |                                       | in ``./tutorial/README.md``           |
-+---------------------------------------+---------------------------------------+---------------------------------------+
++---------------------------------------+-------------------+---------------------------------------+
+| Item                                  | Type              | Description                           |
++=======================================+===================+=======================================+
+| default_state_variables               | logical           | If *.true.*, the dart state vector    |
+|                                       |                   | contains the fields U, V, W, PH, T,   |
+|                                       |                   | MU, in that order, and only those.    |
+|                                       |                   | Any values listed in the              |
+|                                       |                   | *wrf_state_variables* namelist item   |
+|                                       |                   | will be ignored.                      |
++---------------------------------------+-------------------+---------------------------------------+
+| wrf_state_variables                   | character(:, 5)   | A 2D array of strings, 5 per wrf      |
+|                                       |                   | array to be added to the dart state   |
+|                                       |                   | vector. If *default_state_variables*  |
+|                                       |                   | is *.true.*, this is ignored. When    |
+|                                       |                   | *.false.*, this list of array names   |
+|                                       |                   | controls which arrays and the order   |
+|                                       |                   | that they are added to the state      |
+|                                       |                   | vector. The 5 strings are:            |
+|                                       |                   |                                       |
+|                                       |                   | #. WRF field name - must match netcdf |
+|                                       |                   |    name exactly                       |
+|                                       |                   | #. DART KIND name - must match a      |
+|                                       |                   |    valid DART QTY_xxx exactly         |
+|                                       |                   | #. TYPE_NN - will hopefully be        |
+|                                       |                   |    obsolete, but for now NN should    |
+|                                       |                   |    match the field name.              |
+|                                       |                   | #. the string UPDATE. at some future  |
+|                                       |                   |    point, non-updatable fields may    |
+|                                       |                   |    become part of the state vector.   |
+|                                       |                   | #. A numeric string listing the       |
+|                                       |                   |    domain numbers this array is part  |
+|                                       |                   |    of. The specical string 999 means  |
+|                                       |                   |    all domains. For example, '12'     |
+|                                       |                   |    means domains 1 and 2, '13' means  |
+|                                       |                   |    1 and 3.                           |
++---------------------------------------+-------------------+---------------------------------------+
+| wrf_state_bounds                      | character(:, 4)   | A 2D array of strings, 4 per wrf      |
+|                                       |                   | array. During the copy of data to and |
+|                                       |                   | from the wrf netcdf file, variables   |
+|                                       |                   | listed here will have minimum and     |
+|                                       |                   | maximum values enforced. The 4        |
+|                                       |                   | strings are:                          |
+|                                       |                   |                                       |
+|                                       |                   | #. WRF field name - must match netcdf |
+|                                       |                   |    name exactly                       |
+|                                       |                   | #. Minimum -- specified as a string   |
+|                                       |                   |    but must be a numeric value (e.g.  |
+|                                       |                   |    '0.1') Can be 'NULL' to allow any  |
+|                                       |                   |    minimum value.                     |
+|                                       |                   | #. Maximum -- specified as a string   |
+|                                       |                   |    but must be a numeric value (e.g.  |
+|                                       |                   |    '0.1') Can be 'NULL' to allow any  |
+|                                       |                   |    maximum value.                     |
+|                                       |                   | #. Action -- valid strings are        |
+|                                       |                   |    'CLAMP', 'FAIL'. 'FAIL' means if a |
+|                                       |                   |    value is found outside the range,  |
+|                                       |                   |    the code fails with an error.      |
+|                                       |                   |    'CLAMP' simply sets the out of     |
+|                                       |                   |    range values to the given minimum  |
+|                                       |                   |    or maximum without error.          |
++---------------------------------------+-------------------+---------------------------------------+
+| num_domains                           | integer           | Total number of WRF domains,          |
+|                                       |                   | including nested domains.             |
++---------------------------------------+-------------------+---------------------------------------+
+| calendar_type                         | integer           | Calendar type. Should be 3            |
+|                                       |                   | (GREGORIAN) for WRF.                  |
++---------------------------------------+-------------------+---------------------------------------+
+| assimilation_period_seconds           | integer           | The time (in seconds) between         |
+|                                       |                   | assimilations. This is modified if    |
+|                                       |                   | necessary to be an integer multiple   |
+|                                       |                   | of the underlying model timestep.     |
++---------------------------------------+-------------------+---------------------------------------+
+| periodic_x                            | logical           | If *.true.*, the grid is periodic in  |
+|                                       |                   | longitude, and points above the last  |
+|                                       |                   | grid cell and points below the first  |
+|                                       |                   | grid cell are wrapped. Note this is   |
+|                                       |                   | not the same as a grid which crosses  |
+|                                       |                   | the prime meridian. WRF handles that  |
+|                                       |                   | with an offset in longitude and       |
+|                                       |                   | points beyond the last grid index are |
+|                                       |                   | outside the domain.                   |
++---------------------------------------+-------------------+---------------------------------------+
+| periodic_y                            | logical           | Used for the Single Column Model to   |
+|                                       |                   | make the grid wrap in Y (see scm      |
+|                                       |                   | below). This is NOT the same as       |
+|                                       |                   | wrapping in latitude (see polar       |
+|                                       |                   | below).                               |
++---------------------------------------+-------------------+---------------------------------------+
+| polar                                 | logical           | If *.true.*, points at the poles are  |
+|                                       |                   | wrapped across the grid. It is not    |
+|                                       |                   | clear this is a good idea since the   |
+|                                       |                   | grid is degnerate here.               |
++---------------------------------------+-------------------+---------------------------------------+
+| scm                                   | logical           | If *.true.* the Single Column Model   |
+|                                       |                   | is assumed. The grid is a single      |
+|                                       |                   | vertical column, and there are 9      |
+|                                       |                   | cells arranged in a 3x3 grid. See the |
+|                                       |                   | WRF documentation for more            |
+|                                       |                   | information on this configuration.    |
+|                                       |                   | *periodic_x* and *periodic_y* should  |
+|                                       |                   | also be *.true.* in this case.        |
++---------------------------------------+-------------------+---------------------------------------+
+| sfc_elev_max_diff                     | real(r8)          | If > 0, the maximum difference, in    |
+|                                       |                   | meters, between an observation marked |
+|                                       |                   | as a 'surface obs' as the vertical    |
+|                                       |                   | type (with the surface elevation, in  |
+|                                       |                   | meters, as the numerical vertical     |
+|                                       |                   | location), and the surface elevation  |
+|                                       |                   | as defined by the model. Observations |
+|                                       |                   | further away from the surface than    |
+|                                       |                   | this threshold are rejected and not   |
+|                                       |                   | assimilated. If the value is          |
+|                                       |                   | negative, this test is skipped.       |
++---------------------------------------+-------------------+---------------------------------------+
+| allow_obs_below_vol                   | logical           | If *.false.* then if an observation   |
+|                                       |                   | with a vertical coordinate of         |
+|                                       |                   | pressure or height (i.e. not a        |
+|                                       |                   | surface observation) is below the     |
+|                                       |                   | lowest 3d sigma level, it is outside  |
+|                                       |                   | the field volume and the              |
+|                                       |                   | interpolation routine rejects it. If  |
+|                                       |                   | this is set to *.true.* and the       |
+|                                       |                   | observation is above the surface      |
+|                                       |                   | elevation but below the lowest field  |
+|                                       |                   | volume level, the code will           |
+|                                       |                   | extrapolate downward from data values |
+|                                       |                   | at levels 1 and 2.                    |
++---------------------------------------+-------------------+---------------------------------------+
+| center_search_half_length             | real(r8)          | The model_mod now contains two        |
+|                                       |                   | schemes for searching for a vortex    |
+|                                       |                   | center location. If the **old**       |
+|                                       |                   | scheme is compiled in, then this and  |
+|                                       |                   | the center_spline_grid_scale namelist |
+|                                       |                   | items are used. (Search code for      |
+|                                       |                   | 'use_old_vortex'.) Half length (in    |
+|                                       |                   | meters) of a square box for searching |
+|                                       |                   | the vortex center.                    |
++---------------------------------------+-------------------+---------------------------------------+
+| center_spline_grid_scale              | integer           | The model_mod now contains two        |
+|                                       |                   | schemes for searching for a vortex    |
+|                                       |                   | center location. If the **old**       |
+|                                       |                   | scheme is compiled in, then this and  |
+|                                       |                   | the center_search_half_length         |
+|                                       |                   | namelist items are used. (Search code |
+|                                       |                   | for 'use_old_vortex'.) Ratio of       |
+|                                       |                   | refining grid for                     |
+|                                       |                   | spline-interpolation in determining   |
+|                                       |                   | the vortex center.                    |
++---------------------------------------+-------------------+---------------------------------------+
+| circulation_pres_level                | real(r8)          | The model_mod now contains two        |
+|                                       |                   | schemes for searching for a vortex    |
+|                                       |                   | center location. If the **new**       |
+|                                       |                   | scheme is compiled in, then this and  |
+|                                       |                   | the circulation_radius namelist items |
+|                                       |                   | are used. (Search code for            |
+|                                       |                   | 'use_old_vortex'.) Pressure, in       |
+|                                       |                   | pascals, of the level at which the    |
+|                                       |                   | circulation is computed when          |
+|                                       |                   | searching for the vortex center.      |
++---------------------------------------+-------------------+---------------------------------------+
+| circulation_radius                    | real(r8)          | The model_mod now contains two        |
+|                                       |                   | schemes for searching for a vortex    |
+|                                       |                   | center location. If the **new**       |
+|                                       |                   | scheme is compiled in, then this and  |
+|                                       |                   | the circulation_pres_level namelist   |
+|                                       |                   | items are used. (Search code for      |
+|                                       |                   | 'use_old_vortex'.) Radius, in meters, |
+|                                       |                   | of the circle over which the          |
+|                                       |                   | circulation calculation is done when  |
+|                                       |                   | searching for the vortex center.      |
++---------------------------------------+-------------------+---------------------------------------+
+| vert_localization_coord               | integer           | Vertical coordinate for vertical      |
+|                                       |                   | localization.                         |
+|                                       |                   |                                       |
+|                                       |                   | -  1 = model level                    |
+|                                       |                   | -  2 = pressure (in pascals)          |
+|                                       |                   | -  3 = height (in meters)             |
+|                                       |                   | -  4 = scale height (unitless)        |
++---------------------------------------+-------------------+---------------------------------------+
+| allow_perturbed_ics                   | logical           | *allow_perturbed_ics* should not be   |
+|                                       |                   | used in most cases. It is provided    |
+|                                       |                   | only as a means to create a tiny      |
+|                                       |                   | ensemble for non-advancing tests.     |
+|                                       |                   | Creating an initial ensemble is       |
+|                                       |                   | covered in the WRF-DART tutorial      |
+|                                       |                   | in ``./tutorial/README.md``           |
++---------------------------------------+-------------------+---------------------------------------+
 
 The following items used to be in the WRF namelist but have been removed. The
 first 4 are no longer needed, and the last one was moved to the

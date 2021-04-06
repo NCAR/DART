@@ -549,18 +549,18 @@ Interface routine descriptions
      given location (e.g. the observation is below the lowest model level, above the top level, or 'dry'), interp_val is
      returned as 0.0 and istatus = 1.
 
-   +-----------------------------------------------------------+-----------------------------------------------------------+
-   | ``x``                                                     | A model state vector.                                     |
-   +-----------------------------------------------------------+-----------------------------------------------------------+
-   | ``location``                                              | Location to which to interpolate.                         |
-   +-----------------------------------------------------------+-----------------------------------------------------------+
-   | ``itype``                                                 | Integer indexing which type of observation is desired.    |
-   +-----------------------------------------------------------+-----------------------------------------------------------+
-   | ``obs_val``                                               | The interpolated value from the model.                    |
-   +-----------------------------------------------------------+-----------------------------------------------------------+
-   | ``istatus``                                               | Integer flag indicating the success of the interpolation. |
-   |                                                           | success == 0, failure == anything else                    |
-   +-----------------------------------------------------------+-----------------------------------------------------------+
+   +---------------+-----------------------------------------------------------+
+   | ``x``         | A model state vector.                                     |
+   +---------------+-----------------------------------------------------------+
+   | ``location``  | Location to which to interpolate.                         |
+   +---------------+-----------------------------------------------------------+
+   | ``itype``     | Integer indexing which type of observation is desired.    |
+   +---------------+-----------------------------------------------------------+
+   | ``obs_val``   | The interpolated value from the model.                    |
+   +---------------+-----------------------------------------------------------+
+   | ``istatus``   | Integer flag indicating the success of the interpolation. |
+   |               | success == 0, failure == anything else                    |
+   +---------------+-----------------------------------------------------------+
 
 | 
 

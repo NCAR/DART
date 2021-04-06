@@ -100,36 +100,36 @@ There are two programs - both require the list of GITM variables to use in the
 DART state vector: the ``&model_nml:gitm_state_variables`` variable in the
 ``input.nml`` file.
 
-+--------------------------------------+--------------------------------------+
-| ``gitm_to_dart.f90``                 | converts a set of GITM restart files |
-|                                      | (there is one restart file per       |
-|                                      | block) *bxxxx.rst* into a            |
-|                                      | DART-compatible file normally called |
-|                                      | *dart_ics* . We usually wind up      |
-|                                      | linking to this static filename.     |
-+--------------------------------------+--------------------------------------+
-| ``dart_to_gitm.f90``                 | inserts the DART output into         |
-|                                      | existing GITM restart files. There   |
-|                                      | are two different types of DART      |
-|                                      | output files, so there is a namelist |
-|                                      | option to specify if the DART file   |
-|                                      | has two time records or just one. If |
-|                                      | there are two, the first one is the  |
-|                                      | 'advance_to' time, followed by the   |
-|                                      | 'valid_time' of the ensuing state.   |
-|                                      | If there is just one, it is the      |
-|                                      | 'valid_time' of the ensuing state.   |
-|                                      | *dart_to_gitm* determines the GITM   |
-|                                      | restart file name from the           |
-|                                      | *input.nml*                          |
-|                                      | *model_nml:gitm_restart_dirname*. If |
-|                                      | the DART file contains an            |
-|                                      | 'advance_to' time, *dart_to_gitm*    |
-|                                      | creates a                            |
-|                                      | *DART_GITM_time_control.txt* file    |
-|                                      | which can be used to control the     |
-|                                      | length of the GITM integration.      |
-+--------------------------------------+--------------------------------------+
++-------------------------+--------------------------------------+
+| ``gitm_to_dart.f90``    | converts a set of GITM restart files |
+|                         | (there is one restart file per       |
+|                         | block) *bxxxx.rst* into a            |
+|                         | DART-compatible file normally called |
+|                         | *dart_ics* . We usually wind up      |
+|                         | linking to this static filename.     |
++-------------------------+--------------------------------------+
+| ``dart_to_gitm.f90``    | inserts the DART output into         |
+|                         | existing GITM restart files. There   |
+|                         | are two different types of DART      |
+|                         | output files, so there is a namelist |
+|                         | option to specify if the DART file   |
+|                         | has two time records or just one. If |
+|                         | there are two, the first one is the  |
+|                         | 'advance_to' time, followed by the   |
+|                         | 'valid_time' of the ensuing state.   |
+|                         | If there is just one, it is the      |
+|                         | 'valid_time' of the ensuing state.   |
+|                         | *dart_to_gitm* determines the GITM   |
+|                         | restart file name from the           |
+|                         | *input.nml*                          |
+|                         | *model_nml:gitm_restart_dirname*. If |
+|                         | the DART file contains an            |
+|                         | 'advance_to' time, *dart_to_gitm*    |
+|                         | creates a                            |
+|                         | *DART_GITM_time_control.txt* file    |
+|                         | which can be used to control the     |
+|                         | length of the GITM integration.      |
++-------------------------+--------------------------------------+
 
 Simple Test
 -----------
@@ -260,9 +260,9 @@ Description of Each Term in the Namelist
 |                                     |                                   |   messages                               |
 |                                     |                                   | - ``> 5`` provides ALL run-time messages |
 +-------------------------------------+-----------------------------------+------------------------------------------+
-| gitm_state_variables                | character(len=NF90_MAX_NAME)::    | The table that relates the GITM          |
-|                                     | dimension(160)                    | variables to use to build the DART state |
-|                                     |                                   | vector, and the corresponding DART kinds |
+| gitm_state_variables                | character                         | The table that relates the GITM          |
+|                                     | (len=NF90_MAX_NAME)::             | variables to use to build the DART state |
+|                                     | dimension(160)                    | vector, and the corresponding DART kinds |
 |                                     |                                   | for those variables.                     |
 +-------------------------------------+-----------------------------------+------------------------------------------+
 
