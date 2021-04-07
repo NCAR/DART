@@ -90,129 +90,129 @@ from *perfect_model_obs*
 There are some namelist settings that control what files are output. Depending on the settings for
 *input.nml&filter_nml:stages_to_write* and others …
 
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| from *filter*                                                           |                     |                     |
-+=========================================================================+=====================+=====================+
-| ``forecast_member_####.nc``                                             | 1 timestep          | the ensemble        |
-|                                                                         |                     | forecast, each      |
-|                                                                         |                     | ensemble member is  |
-|                                                                         |                     | a separate file     |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``forecast_[mean,sd].nc``                                               | 1 timestep          | the mean and        |
-|                                                                         |                     | standard deviation  |
-|                                                                         |                     | (spread) of the     |
-|                                                                         |                     | ensemble forecast   |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``forecast_priorinf_[mean,sd].nc``                                      | 1 timestep          | the prior inflation |
-|                                                                         |                     | information before  |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``forecast_postinf_[mean,sd].nc``                                       | 1 timestep          | the posterior       |
-|                                                                         |                     | inflation           |
-|                                                                         |                     | information before  |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``preassim_member_####.nc``                                             | 1 timestep          | the model states    |
-|                                                                         |                     | after any prior     |
-|                                                                         |                     | inflation but       |
-|                                                                         |                     | before assimilation |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``preassim_[mean,sd].nc``                                               | 1 timestep          | the mean and        |
-|                                                                         |                     | standard deviation  |
-|                                                                         |                     | (spread) of the     |
-|                                                                         |                     | ensemble after any  |
-|                                                                         |                     | prior inflation but |
-|                                                                         |                     | before assimilation |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``preassim_priorinf_[mean,sd].nc``                                      | 1 timestep          | the prior inflation |
-|                                                                         |                     | information before  |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``preassim_postinf_[mean,sd].nc``                                       | 1 timestep          | the posterior       |
-|                                                                         |                     | inflation           |
-|                                                                         |                     | information before  |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``postassim_member_####.nc``                                            | 1 timestep          | the model states    |
-|                                                                         |                     | after assimilation  |
-|                                                                         |                     | but before          |
-|                                                                         |                     | posterior inflation |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``postassim_[mean,sd].nc``                                              | 1 timestep          | the mean and        |
-|                                                                         |                     | standard deviation  |
-|                                                                         |                     | (spread) of the     |
-|                                                                         |                     | ensemble after      |
-|                                                                         |                     | assimilation but    |
-|                                                                         |                     | before posterior    |
-|                                                                         |                     | inflation           |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``postassim_priorinf_[mean,sd].nc``                                     | 1 timestep          | the (new) prior     |
-|                                                                         |                     | inflation           |
-|                                                                         |                     | information after   |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``postassim_postinf_[mean,sd].nc``                                      | 1 timestep          | the (new) posterior |
-|                                                                         |                     | inflation           |
-|                                                                         |                     | information after   |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``analysis_member_####.nc``                                             | 1 timestep          | the model states    |
-|                                                                         |                     | after assimilation  |
-|                                                                         |                     | and after any       |
-|                                                                         |                     | posterior inflation |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``analysis_[mean,sd].nc``                                               | 1 timestep          | the mean and        |
-|                                                                         |                     | standard deviation  |
-|                                                                         |                     | (spread) of the     |
-|                                                                         |                     | ensemble after      |
-|                                                                         |                     | assimilation and    |
-|                                                                         |                     | after posterior     |
-|                                                                         |                     | inflation           |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``analysis_priorinf_[mean,sd].nc``                                      | 1 timestep          | the (new) prior     |
-|                                                                         |                     | inflation           |
-|                                                                         |                     | information after   |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``analysis_postinf_[mean,sd].nc``                                       | 1 timestep          | the (new) posterior |
-|                                                                         |                     | inflation           |
-|                                                                         |                     | information after   |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``output_[mean,sd].nc``                                                 | 1 timestep          | the mean and spread |
-|                                                                         |                     | of the posterior    |
-|                                                                         |                     | ensemble            |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``output_priorinf_[mean,sd].nc``                                        | 1 timestep          | the (new) prior     |
-|                                                                         |                     | inflation           |
-|                                                                         |                     | information after   |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``output_priorinf_[mean,sd].nc``                                        | 1 timestep          | the (new) posterior |
-|                                                                         |                     | inflation           |
-|                                                                         |                     | information after   |
-|                                                                         |                     | assimilation        |
-+-------------------------------------------------------------------------+---------------------+---------------------+
-| ``obs_seq.final``                                                       |                     | the model estimates |
-|                                                                         |                     | of the observations |
-|                                                                         |                     | (an integral part   |
-|                                                                         |                     | of the data         |
-|                                                                         |                     | assimilation        |
-|                                                                         |                     | process)            |
-+-------------------------------------------------------------------------+---------------------+---------------------+
++--------------------------------------+---------------------+---------------------+
+| from *filter*                        |                     |                     |
++======================================+=====================+=====================+
+| ``forecast_member_####.nc``          | 1 timestep          | the ensemble        |
+|                                      |                     | forecast, each      |
+|                                      |                     | ensemble member is  |
+|                                      |                     | a separate file     |
++--------------------------------------+---------------------+---------------------+
+| ``forecast_[mean,sd].nc``            | 1 timestep          | the mean and        |
+|                                      |                     | standard deviation  |
+|                                      |                     | (spread) of the     |
+|                                      |                     | ensemble forecast   |
++--------------------------------------+---------------------+---------------------+
+| ``forecast_priorinf_[mean,sd].nc``   | 1 timestep          | the prior inflation |
+|                                      |                     | information before  |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``forecast_postinf_[mean,sd].nc``    | 1 timestep          | the posterior       |
+|                                      |                     | inflation           |
+|                                      |                     | information before  |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``preassim_member_####.nc``          | 1 timestep          | the model states    |
+|                                      |                     | after any prior     |
+|                                      |                     | inflation but       |
+|                                      |                     | before assimilation |
++--------------------------------------+---------------------+---------------------+
+| ``preassim_[mean,sd].nc``            | 1 timestep          | the mean and        |
+|                                      |                     | standard deviation  |
+|                                      |                     | (spread) of the     |
+|                                      |                     | ensemble after any  |
+|                                      |                     | prior inflation but |
+|                                      |                     | before assimilation |
++--------------------------------------+---------------------+---------------------+
+| ``preassim_priorinf_[mean,sd].nc``   | 1 timestep          | the prior inflation |
+|                                      |                     | information before  |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``preassim_postinf_[mean,sd].nc``    | 1 timestep          | the posterior       |
+|                                      |                     | inflation           |
+|                                      |                     | information before  |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``postassim_member_####.nc``         | 1 timestep          | the model states    |
+|                                      |                     | after assimilation  |
+|                                      |                     | but before          |
+|                                      |                     | posterior inflation |
++--------------------------------------+---------------------+---------------------+
+| ``postassim_[mean,sd].nc``           | 1 timestep          | the mean and        |
+|                                      |                     | standard deviation  |
+|                                      |                     | (spread) of the     |
+|                                      |                     | ensemble after      |
+|                                      |                     | assimilation but    |
+|                                      |                     | before posterior    |
+|                                      |                     | inflation           |
++--------------------------------------+---------------------+---------------------+
+| ``postassim_priorinf_[mean,sd].nc``  | 1 timestep          | the (new) prior     |
+|                                      |                     | inflation           |
+|                                      |                     | information after   |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``postassim_postinf_[mean,sd].nc``   | 1 timestep          | the (new) posterior |
+|                                      |                     | inflation           |
+|                                      |                     | information after   |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``analysis_member_####.nc``          | 1 timestep          | the model states    |
+|                                      |                     | after assimilation  |
+|                                      |                     | and after any       |
+|                                      |                     | posterior inflation |
++--------------------------------------+---------------------+---------------------+
+| ``analysis_[mean,sd].nc``            | 1 timestep          | the mean and        |
+|                                      |                     | standard deviation  |
+|                                      |                     | (spread) of the     |
+|                                      |                     | ensemble after      |
+|                                      |                     | assimilation and    |
+|                                      |                     | after posterior     |
+|                                      |                     | inflation           |
++--------------------------------------+---------------------+---------------------+
+| ``analysis_priorinf_[mean,sd].nc``   | 1 timestep          | the (new) prior     |
+|                                      |                     | inflation           |
+|                                      |                     | information after   |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``analysis_postinf_[mean,sd].nc``    | 1 timestep          | the (new) posterior |
+|                                      |                     | inflation           |
+|                                      |                     | information after   |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``output_[mean,sd].nc``              | 1 timestep          | the mean and spread |
+|                                      |                     | of the posterior    |
+|                                      |                     | ensemble            |
++--------------------------------------+---------------------+---------------------+
+| ``output_priorinf_[mean,sd].nc``     | 1 timestep          | the (new) prior     |
+|                                      |                     | inflation           |
+|                                      |                     | information after   |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``output_priorinf_[mean,sd].nc``     | 1 timestep          | the (new) posterior |
+|                                      |                     | inflation           |
+|                                      |                     | information after   |
+|                                      |                     | assimilation        |
++--------------------------------------+---------------------+---------------------+
+| ``obs_seq.final``                    |                     | the model estimates |
+|                                      |                     | of the observations |
+|                                      |                     | (an integral part   |
+|                                      |                     | of the data         |
+|                                      |                     | assimilation        |
+|                                      |                     | process)            |
++--------------------------------------+---------------------+---------------------+
 
-+----------------------------------------------------------------------------------+-----------------------------------+
-| from both                                                                        |                                   |
-+==================================================================================+===================================+
-| ``dart_log.out``                                                                 | the ‘important’ run-time output   |
-|                                                                                  | (each run of *filter* appends to  |
-|                                                                                  | this file; remove it or start at  |
-|                                                                                  | the bottom to see the latest      |
-|                                                                                  | values)                           |
-+----------------------------------------------------------------------------------+-----------------------------------+
-| ``dart_log.nml``                                                                 | the input parameters used for an  |
-|                                                                                  | experiment                        |
-+----------------------------------------------------------------------------------+-----------------------------------+
++---------------------+-----------------------------------+
+| from both           |                                   |
++=====================+===================================+
+| ``dart_log.out``    | the ‘important’ run-time output   |
+|                     | (each run of *filter* appends to  |
+|                     | this file; remove it or start at  |
+|                     | the bottom to see the latest      |
+|                     | values)                           |
++---------------------+-----------------------------------+
+| ``dart_log.nml``    | the input parameters used for an  |
+|                     | experiment                        |
++---------------------+-----------------------------------+
 
 In the case when ``single_file_out = .true.``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -229,116 +229,116 @@ from *perfect_model_obs*
 There are some namelist settings that control what files are output. Depending on the settings for ``input.nml
 &filter_nml:stages_to_write`` and others.
 
-+---------------------------------------------------------------------------+--------------------+--------------------+
-| from *filter*                                                             |                    |                    |
-+===========================================================================+====================+====================+
-| ``filter_input.nc``                                                       | 1 timestep         | The starting       |
-|                                                                           |                    | condition of the   |
-|                                                                           |                    | experiment. All    |
-|                                                                           |                    | ensemble members,  |
-|                                                                           |                    | [optionally] the   |
-|                                                                           |                    | input mean and     |
-|                                                                           |                    | standard deviation |
-|                                                                           |                    | (spread),          |
-|                                                                           |                    | [optionally] the   |
-|                                                                           |                    | prior inflation    |
-|                                                                           |                    | values,            |
-|                                                                           |                    | [optionally] the   |
-|                                                                           |                    | posterior          |
-|                                                                           |                    | inflation values   |
-+---------------------------------------------------------------------------+--------------------+--------------------+
-| ``forecast.nc``                                                           | N timesteps        | The ensemble       |
-|                                                                           |                    | forecast. All      |
-|                                                                           |                    | ensemble members,  |
-|                                                                           |                    | the mean and       |
-|                                                                           |                    | standard deviation |
-|                                                                           |                    | (spread), the      |
-|                                                                           |                    | prior inflation    |
-|                                                                           |                    | values, the        |
-|                                                                           |                    | posterior          |
-|                                                                           |                    | inflation values   |
-+---------------------------------------------------------------------------+--------------------+--------------------+
-| ``preassim.nc``                                                           | N timesteps        | After any prior    |
-|                                                                           |                    | inflation but      |
-|                                                                           |                    | before             |
-|                                                                           |                    | assimilation. All  |
-|                                                                           |                    | ensemble members,  |
-|                                                                           |                    | the mean and       |
-|                                                                           |                    | standard deviation |
-|                                                                           |                    | (spread) of the    |
-|                                                                           |                    | ensemble, the      |
-|                                                                           |                    | prior inflation    |
-|                                                                           |                    | values, the        |
-|                                                                           |                    | posterior          |
-|                                                                           |                    | inflation values   |
-+---------------------------------------------------------------------------+--------------------+--------------------+
-| ``postassim.nc``                                                          | N timesteps        | After assimilation |
-|                                                                           |                    | but before         |
-|                                                                           |                    | posterior          |
-|                                                                           |                    | inflation. All     |
-|                                                                           |                    | ensemble members,  |
-|                                                                           |                    | the mean and       |
-|                                                                           |                    | standard deviation |
-|                                                                           |                    | (spread) of the    |
-|                                                                           |                    | ensemble, the      |
-|                                                                           |                    | (new) prior        |
-|                                                                           |                    | inflation values,  |
-|                                                                           |                    | the (new)          |
-|                                                                           |                    | posterior          |
-|                                                                           |                    | inflation values   |
-+---------------------------------------------------------------------------+--------------------+--------------------+
-| ``analysis.nc``                                                           | N timesteps        | After assimilation |
-|                                                                           |                    | and after any      |
-|                                                                           |                    | posterior          |
-|                                                                           |                    | inflation. All     |
-|                                                                           |                    | ensemble members,  |
-|                                                                           |                    | the mean and       |
-|                                                                           |                    | standard deviation |
-|                                                                           |                    | (spread) of the    |
-|                                                                           |                    | ensemble, the      |
-|                                                                           |                    | (new) prior        |
-|                                                                           |                    | inflation values,  |
-|                                                                           |                    | the (new)          |
-|                                                                           |                    | posterior          |
-|                                                                           |                    | inflation values   |
-+---------------------------------------------------------------------------+--------------------+--------------------+
-| ``filter_output.nc``                                                      | 1 timestep         | After assimilation |
-|                                                                           |                    | and after any      |
-|                                                                           |                    | posterior          |
-|                                                                           |                    | inflation. All     |
-|                                                                           |                    | ensemble members,  |
-|                                                                           |                    | the mean and       |
-|                                                                           |                    | standard deviation |
-|                                                                           |                    | (spread) of the    |
-|                                                                           |                    | ensemble, the      |
-|                                                                           |                    | (new) prior        |
-|                                                                           |                    | inflation values,  |
-|                                                                           |                    | the (new)          |
-|                                                                           |                    | posterior          |
-|                                                                           |                    | inflation values   |
-+---------------------------------------------------------------------------+--------------------+--------------------+
-| ``obs_seq.final``                                                         |                    | the model          |
-|                                                                           |                    | estimates of the   |
-|                                                                           |                    | observations (an   |
-|                                                                           |                    | integral part of   |
-|                                                                           |                    | the data           |
-|                                                                           |                    | assimilation       |
-|                                                                           |                    | process)           |
-+---------------------------------------------------------------------------+--------------------+--------------------+
++------------------------+--------------------+--------------------+
+| from *filter*          |                    |                    |
++========================+====================+====================+
+| ``filter_input.nc``    | 1 timestep         | The starting       |
+|                        |                    | condition of the   |
+|                        |                    | experiment. All    |
+|                        |                    | ensemble members,  |
+|                        |                    | [optionally] the   |
+|                        |                    | input mean and     |
+|                        |                    | standard deviation |
+|                        |                    | (spread),          |
+|                        |                    | [optionally] the   |
+|                        |                    | prior inflation    |
+|                        |                    | values,            |
+|                        |                    | [optionally] the   |
+|                        |                    | posterior          |
+|                        |                    | inflation values   |
++------------------------+--------------------+--------------------+
+| ``forecast.nc``        | N timesteps        | The ensemble       |
+|                        |                    | forecast. All      |
+|                        |                    | ensemble members,  |
+|                        |                    | the mean and       |
+|                        |                    | standard deviation |
+|                        |                    | (spread), the      |
+|                        |                    | prior inflation    |
+|                        |                    | values, the        |
+|                        |                    | posterior          |
+|                        |                    | inflation values   |
++------------------------+--------------------+--------------------+
+| ``preassim.nc``        | N timesteps        | After any prior    |
+|                        |                    | inflation but      |
+|                        |                    | before             |
+|                        |                    | assimilation. All  |
+|                        |                    | ensemble members,  |
+|                        |                    | the mean and       |
+|                        |                    | standard deviation |
+|                        |                    | (spread) of the    |
+|                        |                    | ensemble, the      |
+|                        |                    | prior inflation    |
+|                        |                    | values, the        |
+|                        |                    | posterior          |
+|                        |                    | inflation values   |
++------------------------+--------------------+--------------------+
+| ``postassim.nc``       | N timesteps        | After assimilation |
+|                        |                    | but before         |
+|                        |                    | posterior          |
+|                        |                    | inflation. All     |
+|                        |                    | ensemble members,  |
+|                        |                    | the mean and       |
+|                        |                    | standard deviation |
+|                        |                    | (spread) of the    |
+|                        |                    | ensemble, the      |
+|                        |                    | (new) prior        |
+|                        |                    | inflation values,  |
+|                        |                    | the (new)          |
+|                        |                    | posterior          |
+|                        |                    | inflation values   |
++------------------------+--------------------+--------------------+
+| ``analysis.nc``        | N timesteps        | After assimilation |
+|                        |                    | and after any      |
+|                        |                    | posterior          |
+|                        |                    | inflation. All     |
+|                        |                    | ensemble members,  |
+|                        |                    | the mean and       |
+|                        |                    | standard deviation |
+|                        |                    | (spread) of the    |
+|                        |                    | ensemble, the      |
+|                        |                    | (new) prior        |
+|                        |                    | inflation values,  |
+|                        |                    | the (new)          |
+|                        |                    | posterior          |
+|                        |                    | inflation values   |
++------------------------+--------------------+--------------------+
+| ``filter_output.nc``   | 1 timestep         | After assimilation |
+|                        |                    | and after any      |
+|                        |                    | posterior          |
+|                        |                    | inflation. All     |
+|                        |                    | ensemble members,  |
+|                        |                    | the mean and       |
+|                        |                    | standard deviation |
+|                        |                    | (spread) of the    |
+|                        |                    | ensemble, the      |
+|                        |                    | (new) prior        |
+|                        |                    | inflation values,  |
+|                        |                    | the (new)          |
+|                        |                    | posterior          |
+|                        |                    | inflation values   |
++------------------------+--------------------+--------------------+
+| ``obs_seq.final``      |                    | the model          |
+|                        |                    | estimates of the   |
+|                        |                    | observations (an   |
+|                        |                    | integral part of   |
+|                        |                    | the data           |
+|                        |                    | assimilation       |
+|                        |                    | process)           |
++------------------------+--------------------+--------------------+
 
-+------------------------------------------------------------------------------------------------+---------------------+
-| from both                                                                                      |                     |
-+================================================================================================+=====================+
-| ``dart_log.out``                                                                               | the ‘important’     |
-|                                                                                                | run-time output     |
-|                                                                                                | (each run of        |
-|                                                                                                | *filter* appends to |
-|                                                                                                | this file; remove   |
-|                                                                                                | it or start at the  |
-|                                                                                                | bottom to see the   |
-|                                                                                                | latest values)      |
-+------------------------------------------------------------------------------------------------+---------------------+
-| ``dart_log.nml``                                                                               | the input           |
-|                                                                                                | parameters used for |
-|                                                                                                | an experiment       |
-+------------------------------------------------------------------------------------------------+---------------------+
++-----------------------+---------------------+
+| from both             |                     |
++=======================+=====================+
+| ``dart_log.out``      | the ‘important’     |
+|                       | run-time output     |
+|                       | (each run of        |
+|                       | *filter* appends to |
+|                       | this file; remove   |
+|                       | it or start at the  |
+|                       | bottom to see the   |
+|                       | latest values)      |
++-----------------------+---------------------+
+| ``dart_log.nml``      | the input           |
+|                       | parameters used for |
+|                       | an experiment       |
++-----------------------+---------------------+

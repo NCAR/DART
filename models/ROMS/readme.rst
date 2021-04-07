@@ -227,40 +227,40 @@ The example *input.nml* *model_nml* demonstrates how to construct the DART state
 vector. The following table explains in detail each entry for the *variables*
 namelist item:
 
-+-----------------------------------+-----------------------------------+
-| Variable name                     | This is the ROMS variable name as |
-|                                   | it appears in the ROMS netCDF     |
-|                                   | file.                             |
-+-----------------------------------+-----------------------------------+
-| DART QUANTITY                     | This is the character string of   |
-|                                   | the corresponding DART QUANTITY.  |
-|                                   | The complete list of possible     |
-|                                   | DART QUANTITY values is available |
-|                                   | in the ``obs_def_mod``            |
-|                                   | that is built by ``preprocess``.  |
-+-----------------------------------+-----------------------------------+
-| minimum                           | If the variable is to be updated  |
-|                                   | in the ROMS restart file, this    |
-|                                   | specifies the minimum value. If   |
-|                                   | set to 'NA', there is no minimum  |
-|                                   | value.                            |
-+-----------------------------------+-----------------------------------+
-| maximum                           | If the variable is to be updated  |
-|                                   | in the ROMS restart file, this    |
-|                                   | specifies the maximum value. If   |
-|                                   | set to 'NA', there is no maximum  |
-|                                   | value.                            |
-+-----------------------------------+-----------------------------------+
-| update                            | The updated variable may or may   |
-|                                   | not be written to the ROMS        |
-|                                   | restart file.                     |
-|                                   | *'UPDATE'*  means the variable in |
-|                                   | the restart file is updated. This |
-|                                   | is case-insensitive.              |
-|                                   | *'NO_COPY_BACK'*  (or anything    |
-|                                   | else) means the variable in the   |
-|                                   | restart file remains unchanged.   |
-+-----------------------------------+-----------------------------------+
++----------------+-----------------------------------+
+| Variable name  | This is the ROMS variable name as |
+|                | it appears in the ROMS netCDF     |
+|                | file.                             |
++----------------+-----------------------------------+
+| DART QUANTITY  | This is the character string of   |
+|                | the corresponding DART QUANTITY.  |
+|                | The complete list of possible     |
+|                | DART QUANTITY values is available |
+|                | in the ``obs_def_mod``            |
+|                | that is built by ``preprocess``.  |
++----------------+-----------------------------------+
+| minimum        | If the variable is to be updated  |
+|                | in the ROMS restart file, this    |
+|                | specifies the minimum value. If   |
+|                | set to 'NA', there is no minimum  |
+|                | value.                            |
++----------------+-----------------------------------+
+| maximum        | If the variable is to be updated  |
+|                | in the ROMS restart file, this    |
+|                | specifies the maximum value. If   |
+|                | set to 'NA', there is no maximum  |
+|                | value.                            |
++----------------+-----------------------------------+
+| update         | The updated variable may or may   |
+|                | not be written to the ROMS        |
+|                | restart file.                     |
+|                | *'UPDATE'*  means the variable in |
+|                | the restart file is updated. This |
+|                | is case-insensitive.              |
+|                | *'NO_COPY_BACK'*  (or anything    |
+|                | else) means the variable in the   |
+|                | restart file remains unchanged.   |
++----------------+-----------------------------------+
 
 Namelist
 --------
