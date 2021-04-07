@@ -16,6 +16,17 @@ body {font-family: Roboto, Arial, Helvetica, sans-serif; font-weight:400; color:
     overflow: visible !important;
 }
 
+
+div.section thead, th
+{
+  background-color: #FFFFFF;    
+}
+
+div.section tr.row-odd
+{
+  background-color: #FFFFFF;    
+}
+
 footer div[role=contentinfo] { color: #616161; }
 
 a {color: #007FA3; }
