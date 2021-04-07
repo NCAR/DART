@@ -7,7 +7,7 @@ Overview
 This program creates an observation sequence file using values read from standard input. It is typically used to create
 synthetic observations, or shorter sequences of observations (although there is no limit on the number of observations).
 For creating observation sequence files directly from large, real-world observation datasets, see the
-`observations <../../../observations/obs_converters/README.md>`__ directory.
+`observations <../../../observations/obs_converters/README.rst>`__ directory.
 
 This program can be run interactively (input from a terminal), or input files can be created with a text editor, perl or
 matlab script, or any other convenient method, and then run with standard input redirected from this file. The latter
