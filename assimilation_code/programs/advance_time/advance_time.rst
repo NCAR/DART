@@ -25,8 +25,8 @@ Overview
 Usage
 -----
 
-Interface identical to ``advance_cymdh``, except for reading the arg line from standard input, to be more portable since
-iargc() is nonstandard across different fortran implementations.
+Interface identical to the ``wrf/WRF_DART_utilities/advance_cymdh``, except for reading the arg line from standard input, 
+to be more portable since ``iargc()`` is nonstandard across different fortran implementations.
 
 -  default numeric increment is hours
 -  has accuracy down to second
