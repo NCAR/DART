@@ -64,11 +64,11 @@ namelist.
    +---------------------------------------+---------------------------------------+---------------------------------------+
    | Item                                  | Type                                  | Description                           |
    +=======================================+=======================================+=======================================+
-   | input_restart_files                   | character(len=256),dimension(ens_size | An array of filenames each containing |
-   |                                       | x num_domains)                        | a list DART restart data.             |
+   | input_restart_files                   | character(len=256),                   | An array of filenames each containing |
+   |                                       | dimension(ens_size x num_domains)     | a list DART restart data.             |
    +---------------------------------------+---------------------------------------+---------------------------------------+
-   | input_restart_file_list               | char                                  | A file containing a list of filenames |
-   |                                       | acter(len=256),dimension(num_domains) | for DART restart data, one for each   |
+   | input_restart_file_list               | character(len=256),                   | A file containing a list of filenames |
+   |                                       | dimension(num_domains)                | for DART restart data, one for each   |
    |                                       |                                       | domain.                               |
    +---------------------------------------+---------------------------------------+---------------------------------------+
    | output_file_name                      | character(len=256)                    | This is a file containing the member  |

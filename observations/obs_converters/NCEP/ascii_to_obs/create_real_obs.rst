@@ -114,124 +114,124 @@ namelist.
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | year, month, day                      | integer                               | Beginning year, month, day of the     |
-   |                                       |                                       | observation period.                   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | tot_days                              | integer                               | Total days in the observation period. |
-   |                                       |                                       | The converter cannot cross month      |
-   |                                       |                                       | boundaries.                           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | max_num                               | integer                               | Maximum observation number for the    |
-   |                                       |                                       | current one day files.                |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | select_obs                            | integer                               | Controls whether to select a subset   |
-   |                                       |                                       | of observations from the NCEP BUFR    |
-   |                                       |                                       | decoded daily ascii files.            |
-   |                                       |                                       |                                       |
-   |                                       |                                       | -  0 = All observations are selected. |
-   |                                       |                                       | -  1 = Select observations using the  |
-   |                                       |                                       |    logical parameters below.          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | daily_file                            | logical                               | Controls timespan of observations in  |
-   |                                       |                                       | each obs_seq file:                    |
-   |                                       |                                       |                                       |
-   |                                       |                                       | -  true = 24 hour spans (3:01Z to     |
-   |                                       |                                       |    3:00Z of the next day). Filenames  |
-   |                                       |                                       |    have the form obs_seqYYYYMMDD.     |
-   |                                       |                                       | -  false = 6 hour spans (3:01Z to     |
-   |                                       |                                       |    9:00Z, 9:01Z to 15:00Z, 15:01Z to  |
-   |                                       |                                       |    21:00Z, and 21:01Z to 3:00Z of the |
-   |                                       |                                       |    next day. Filenames have the form  |
-   |                                       |                                       |    obs_seqYYYYMMDDHH, where HH is 06, |
-   |                                       |                                       |    12, 18, and 24.                    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | ObsBase                               | character(len=129)                    | Path that contains the decoded NCEP   |
-   |                                       |                                       | BUFR daily observation files. To work |
-   |                                       |                                       | with the example scripts this should  |
-   |                                       |                                       | be 'temp_obs.', or if it includes a   |
-   |                                       |                                       | pathname then it should end with a    |
-   |                                       |                                       | '/temp_obs.'                          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | include_specific_humidity,            | logical                               | Controls which moisture observations  |
-   | include_relative_humidity,            |                                       | are created. The default is to create |
-   | include_dewpoint                      |                                       | only specific humidity obs, but any,  |
-   |                                       |                                       | all, or none can be requested. Set to |
-   |                                       |                                       | .TRUE. to output that obs type,       |
-   |                                       |                                       | .FALSE. skips it.                     |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | ADPUPA                                | logical                               | Select the NCEP type ADPUPA           |
-   |                                       |                                       | observations which includes land and  |
-   |                                       |                                       | ship launched radiosondes and pibals  |
-   |                                       |                                       | as well as a few profile dropsonde.   |
-   |                                       |                                       | This involves, at 00Z and 12Z, about  |
-   |                                       |                                       | 650 - 1000 stations, and at 06Z and   |
-   |                                       |                                       | 18Z (which are mostly pibals), about  |
-   |                                       |                                       | 150 - 400 stations.                   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | AIRCFT                                | logical                               | Select the NCEP type AIRCFT           |
-   |                                       |                                       | observations, which includes          |
-   |                                       |                                       | commercial, some military and         |
-   |                                       |                                       | reconnaissance reports. They are      |
-   |                                       |                                       | flight level reports.                 |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | AIRCAR                                | logical                               | Select the NCEP type AIRCAR           |
-   |                                       |                                       | observations, which includes data     |
-   |                                       |                                       | from aircraft takeoff and landings.   |
-   |                                       |                                       | Sometimes referred to as ACARS obs.   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | SATEMP                                | logical                               | Select the NCEP type SATEMP           |
-   |                                       |                                       | observations, which includes NESDIS   |
-   |                                       |                                       | ATOVS virtual temperature soundings.  |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | SFCSHP                                | logical                               | Select the NCEP type SFCSHP           |
-   |                                       |                                       | observations, which includes surface  |
-   |                                       |                                       | marine (ship, buoy, c-man) reports.   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | ADPSFC                                | logical                               | Select the NCEP type ADPSFC           |
-   |                                       |                                       | observations, which includes surface  |
-   |                                       |                                       | land synoptic station reports.        |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | SATWND                                | logical                               | Select the NCEP type SATWND           |
-   |                                       |                                       | observations, which includes winds    |
-   |                                       |                                       | derived from satellite cloud drift    |
-   |                                       |                                       | analysis.                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_U                                 | logical                               | Select u-component of wind            |
-   |                                       |                                       | observations.                         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_V                                 | logical                               | Select v-component of wind            |
-   |                                       |                                       | observations.                         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_T                                 | logical                               | Select temperature observations.      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_PS                                | logical                               | Select surface pressure observations. |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_QV                                | logical                               | Select specific humidity              |
-   |                                       |                                       | observations.                         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lon1                                  | real                                  | Western longitude bound of            |
-   |                                       |                                       | observations to keep.                 |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lon2                                  | real                                  | Eastern longitude bound of            |
-   |                                       |                                       | observations to keep. Can be less     |
-   |                                       |                                       | than lon1 if region crosses prime     |
-   |                                       |                                       | meridian.                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lat1                                  | real                                  | Lower latitude bound of observations  |
-   |                                       |                                       | to keep.                              |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lat2                                  | real                                  | upper latitude bound of observations  |
-   |                                       |                                       | to keep.                              |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_time                              | logical                               | If .true. use the full time in the    |
-   |                                       |                                       | input data. To force all observation  |
-   |                                       |                                       | times in the output to the synoptic   |
-   |                                       |                                       | time (e.g. 0Z, 6Z, 12Z, or 18Z) set   |
-   |                                       |                                       | this to .false. (not recommended).    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +------------------------------+-----------------------+---------------------------------------+
+   | Item                         | Type                  | Description                           |
+   +==============================+=======================+=======================================+
+   | year, month, day             | integer               | Beginning year, month, day of the     |
+   |                              |                       | observation period.                   |
+   +------------------------------+-----------------------+---------------------------------------+
+   | tot_days                     | integer               | Total days in the observation period. |
+   |                              |                       | The converter cannot cross month      |
+   |                              |                       | boundaries.                           |
+   +------------------------------+-----------------------+---------------------------------------+
+   | max_num                      | integer               | Maximum observation number for the    |
+   |                              |                       | current one day files.                |
+   +------------------------------+-----------------------+---------------------------------------+
+   | select_obs                   | integer               | Controls whether to select a subset   |
+   |                              |                       | of observations from the NCEP BUFR    |
+   |                              |                       | decoded daily ascii files.            |
+   |                              |                       |                                       |
+   |                              |                       | -  0 = All observations are selected. |
+   |                              |                       | -  1 = Select observations using the  |
+   |                              |                       |    logical parameters below.          |
+   +------------------------------+-----------------------+---------------------------------------+
+   | daily_file                   | logical               | Controls timespan of observations in  |
+   |                              |                       | each obs_seq file:                    |
+   |                              |                       |                                       |
+   |                              |                       | -  true = 24 hour spans (3:01Z to     |
+   |                              |                       |    3:00Z of the next day). Filenames  |
+   |                              |                       |    have the form obs_seqYYYYMMDD.     |
+   |                              |                       | -  false = 6 hour spans (3:01Z to     |
+   |                              |                       |    9:00Z, 9:01Z to 15:00Z, 15:01Z to  |
+   |                              |                       |    21:00Z, and 21:01Z to 3:00Z of the |
+   |                              |                       |    next day. Filenames have the form  |
+   |                              |                       |    obs_seqYYYYMMDDHH, where HH is 06, |
+   |                              |                       |    12, 18, and 24.                    |
+   +------------------------------+-----------------------+---------------------------------------+
+   | ObsBase                      | character(len=129)    | Path that contains the decoded NCEP   |
+   |                              |                       | BUFR daily observation files. To work |
+   |                              |                       | with the example scripts this should  |
+   |                              |                       | be 'temp_obs.', or if it includes a   |
+   |                              |                       | pathname then it should end with a    |
+   |                              |                       | '/temp_obs.'                          |
+   +------------------------------+-----------------------+---------------------------------------+
+   | include_specific_humidity,   | logical               | Controls which moisture observations  |
+   | include_relative_humidity,   |                       | are created. The default is to create |
+   | include_dewpoint             |                       | only specific humidity obs, but any,  |
+   |                              |                       | all, or none can be requested. Set to |
+   |                              |                       | .TRUE. to output that obs type,       |
+   |                              |                       | .FALSE. skips it.                     |
+   +------------------------------+-----------------------+---------------------------------------+
+   | ADPUPA                       | logical               | Select the NCEP type ADPUPA           |
+   |                              |                       | observations which includes land and  |
+   |                              |                       | ship launched radiosondes and pibals  |
+   |                              |                       | as well as a few profile dropsonde.   |
+   |                              |                       | This involves, at 00Z and 12Z, about  |
+   |                              |                       | 650 - 1000 stations, and at 06Z and   |
+   |                              |                       | 18Z (which are mostly pibals), about  |
+   |                              |                       | 150 - 400 stations.                   |
+   +------------------------------+-----------------------+---------------------------------------+
+   | AIRCFT                       | logical               | Select the NCEP type AIRCFT           |
+   |                              |                       | observations, which includes          |
+   |                              |                       | commercial, some military and         |
+   |                              |                       | reconnaissance reports. They are      |
+   |                              |                       | flight level reports.                 |
+   +------------------------------+-----------------------+---------------------------------------+
+   | AIRCAR                       | logical               | Select the NCEP type AIRCAR           |
+   |                              |                       | observations, which includes data     |
+   |                              |                       | from aircraft takeoff and landings.   |
+   |                              |                       | Sometimes referred to as ACARS obs.   |
+   +------------------------------+-----------------------+---------------------------------------+
+   | SATEMP                       | logical               | Select the NCEP type SATEMP           |
+   |                              |                       | observations, which includes NESDIS   |
+   |                              |                       | ATOVS virtual temperature soundings.  |
+   +------------------------------+-----------------------+---------------------------------------+
+   | SFCSHP                       | logical               | Select the NCEP type SFCSHP           |
+   |                              |                       | observations, which includes surface  |
+   |                              |                       | marine (ship, buoy, c-man) reports.   |
+   +------------------------------+-----------------------+---------------------------------------+
+   | ADPSFC                       | logical               | Select the NCEP type ADPSFC           |
+   |                              |                       | observations, which includes surface  |
+   |                              |                       | land synoptic station reports.        |
+   +------------------------------+-----------------------+---------------------------------------+
+   | SATWND                       | logical               | Select the NCEP type SATWND           |
+   |                              |                       | observations, which includes winds    |
+   |                              |                       | derived from satellite cloud drift    |
+   |                              |                       | analysis.                             |
+   +------------------------------+-----------------------+---------------------------------------+
+   | obs_U                        | logical               | Select u-component of wind            |
+   |                              |                       | observations.                         |
+   +------------------------------+-----------------------+---------------------------------------+
+   | obs_V                        | logical               | Select v-component of wind            |
+   |                              |                       | observations.                         |
+   +------------------------------+-----------------------+---------------------------------------+
+   | obs_T                        | logical               | Select temperature observations.      |
+   +------------------------------+-----------------------+---------------------------------------+
+   | obs_PS                       | logical               | Select surface pressure observations. |
+   +------------------------------+-----------------------+---------------------------------------+
+   | obs_QV                       | logical               | Select specific humidity              |
+   |                              |                       | observations.                         |
+   +------------------------------+-----------------------+---------------------------------------+
+   | lon1                         | real                  | Western longitude bound of            |
+   |                              |                       | observations to keep.                 |
+   +------------------------------+-----------------------+---------------------------------------+
+   | lon2                         | real                  | Eastern longitude bound of            |
+   |                              |                       | observations to keep. Can be less     |
+   |                              |                       | than lon1 if region crosses prime     |
+   |                              |                       | meridian.                             |
+   +------------------------------+-----------------------+---------------------------------------+
+   | lat1                         | real                  | Lower latitude bound of observations  |
+   |                              |                       | to keep.                              |
+   +------------------------------+-----------------------+---------------------------------------+
+   | lat2                         | real                  | upper latitude bound of observations  |
+   |                              |                       | to keep.                              |
+   +------------------------------+-----------------------+---------------------------------------+
+   | obs_time                     | logical               | If .true. use the full time in the    |
+   |                              |                       | input data. To force all observation  |
+   |                              |                       | times in the output to the synoptic   |
+   |                              |                       | time (e.g. 0Z, 6Z, 12Z, or 18Z) set   |
+   |                              |                       | this to .false. (not recommended).    |
+   +------------------------------+-----------------------+---------------------------------------+
 
 | 
 

@@ -112,8 +112,8 @@ You can only specify **either** ``obs_sequence_name`` **or** ``obs_sequence_list
    |                                       |                                       | in degrees.                           |
    +---------------------------------------+---------------------------------------+---------------------------------------+
    | lonlim2                               | real                                  | Easternmost longitude of the region   |
-   |                                       |                                       | in degrees. *If this value            |
-   |                                       |                                       | is*\ **less than**\ *the westernmost  |
+   |                                       |                                       | in degrees. *If this value is         |
+   |                                       |                                       | **less** **than** the westernmost     |
    |                                       |                                       | value, it defines a region that spans |
    |                                       |                                       | the prime meridian.* It is perfectly  |
    |                                       |                                       | acceptable to specify lonlim1 = 330 , |
@@ -558,31 +558,21 @@ Here is the pruned run-time output. Note that multiple input observation sequenc
        --------------------------------------
        Finished ... at YYYY MM DD HH MM SS = 
                        2009  5 15  9  2 56
-       $url: http://subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.f90 $
-       $revision: 4272 $
-       $date: 2010-02-12 14:26:40 -0700 (Fri, 12 Feb 2010) $
        --------------------------------------
 
-Matlab helper functions
-~~~~~~~~~~~~~~~~~~~~~~~
+Matlab setup
+~~~~~~~~~~~~
 
-| DART uses the `snctools <http://mexcdf.sourceforge.net/>`__ set of functions. Our m-file
-  ``DART/diagnostics/matlab/``\ ``read_obs_netcdf`` uses the ``snctools`` toolbox.
-| You will need the 'normal' ``DART/matlab`` functions available to Matlab, so be sure your MATLABPATH is set such that
-  you have access to ``get_copy_index`` as well as ``nc_varget`` and ...
-| This generally means your MATLABPATH should look something like:
+| You will need the 'normal' ``DART/diagnostics/matlab`` functions available to Matlab, 
+  so be sure your MATLABPATH is set such that you have access to ``plot_obs_netcdf``
+| You can do this with the following Matlab command :
 
-.. container:: routine
+.. container:: unix
 
    ::
 
-      addpath('replace_this_with_the_real_path_to/DART/matlab')
-      addpath('replace_this_with_the_real_path_to/DART/diagnostics/matlab')
-      addpath('some_other_netcdf_install_dir/mexnc','-BEGIN')
-      addpath('some_other_netcdf_install_dir/snctools')
+      >> addpath('replace_this_with_the_real_path_to/DART/diagnostics/matlab')
 
-| On my systems, I've bundled those last 2 commands into a function called ``ncstartup.m`` which is run every time I
-  start Matlab (because it is in my ``~/matlab/startup.m``)
 | As is standard practice, the instructions for using the Matlab scripts ``plot_obs_netcdf`` and
   ``plot_obs_netcdf_diffs`` are available by using the Matlab 'help' facility (i.e. *help plot_obs_netcdf* ). A quick
   discussion of them here still seems appropriate. If you run the following Matlab commands with an

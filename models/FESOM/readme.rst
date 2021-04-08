@@ -70,52 +70,52 @@ Shell scripts are written in bash for LSF queuing system. They should be
 modified to work with others such as SLURM. FESOM executables are called
 externally detached from DART therefore no need for an advance model.
 
-+------------------------------------------------------------------+---------------+-----------------------------------+
-| Script                                                           | Queue         | Definition                        |
-+==================================================================+===============+===================================+
-| **environment.load**                                             | serial        | Includes environment variables,   |
-|                                                                  |               | relevant directories, experiment  |
-|                                                                  |               | specifications. This file is      |
-|                                                                  |               | sourced by every other script     |
-|                                                                  |               | below.                            |
-+------------------------------------------------------------------+---------------+-----------------------------------+
-| **experiment.launch**                                            | serial        | Main script which modifies        |
-|                                                                  |               | ``ensemble.sh`` and calls         |
-|                                                                  |               | ``ensemble.${EXPINFO}.sh``. An    |
-|                                                                  |               | experiment-specific summary which |
-|                                                                  |               | should be modified before         |
-|                                                                  |               | launching the scripts.            |
-+------------------------------------------------------------------+---------------+-----------------------------------+
-| **ensemble.sh**                                                  | serial        | Calls and submits                 |
-|                                                                  |               | ``initialize.template``,          |
-|                                                                  |               | ``advance_model.template``        |
-|                                                                  |               | ``check_ensemble.sh`` one after   |
-|                                                                  |               | the other.                        |
-+------------------------------------------------------------------+---------------+-----------------------------------+
-| **initialize.template**                                          | serial        | Called only once at the beginning |
-|                                                                  |               | of the experiment. Sets the       |
-|                                                                  |               | experiment directory, copies      |
-|                                                                  |               | initial ensemble, namelists.      |
-+------------------------------------------------------------------+---------------+-----------------------------------+
-| **advance_model.template**                                       | parallel      | Submits a job array for all       |
-|                                                                  |               | ensemble members.                 |
-+------------------------------------------------------------------+---------------+-----------------------------------+
-| **check_ensemble.sh**                                            | serial        | Checks if the forwarding for all  |
-|                                                                  |               | members is finished. If so, first |
-|                                                                  |               | calls ``filter.template`` and     |
-|                                                                  |               | then calls ``finalize.sh`` to     |
-|                                                                  |               | conclude current assimilation     |
-|                                                                  |               | cycle.                            |
-+------------------------------------------------------------------+---------------+-----------------------------------+
-| **filter.template**                                              | parallel      | Runs the filter to perform the    |
-|                                                                  |               | assimilation.                     |
-+------------------------------------------------------------------+---------------+-----------------------------------+
-| **finalize.sh**                                                  | serial        | Checks if the whole experiment is |
-|                                                                  |               | finished. If so, stops.           |
-|                                                                  |               | Otherwise, resubmits              |
-|                                                                  |               | ``ensemble.${EXPINFO}.sh`` for    |
-|                                                                  |               | the next assimilation cycle.      |
-+------------------------------------------------------------------+---------------+-----------------------------------+
++-----------------------------+---------------+-----------------------------------+
+| Script                      | Queue         | Definition                        |
++=============================+===============+===================================+
+| **environment.load**        | serial        | Includes environment variables,   |
+|                             |               | relevant directories, experiment  |
+|                             |               | specifications. This file is      |
+|                             |               | sourced by every other script     |
+|                             |               | below.                            |
++-----------------------------+---------------+-----------------------------------+
+| **experiment.launch**       | serial        | Main script which modifies        |
+|                             |               | ``ensemble.sh`` and calls         |
+|                             |               | ``ensemble.${EXPINFO}.sh``. An    |
+|                             |               | experiment-specific summary which |
+|                             |               | should be modified before         |
+|                             |               | launching the scripts.            |
++-----------------------------+---------------+-----------------------------------+
+| **ensemble.sh**             | serial        | Calls and submits                 |
+|                             |               | ``initialize.template``,          |
+|                             |               | ``advance_model.template``        |
+|                             |               | ``check_ensemble.sh`` one after   |
+|                             |               | the other.                        |
++-----------------------------+---------------+-----------------------------------+
+| **initialize.template**     | serial        | Called only once at the beginning |
+|                             |               | of the experiment. Sets the       |
+|                             |               | experiment directory, copies      |
+|                             |               | initial ensemble, namelists.      |
++-----------------------------+---------------+-----------------------------------+
+| **advance_model.template**  | parallel      | Submits a job array for all       |
+|                             |               | ensemble members.                 |
++-----------------------------+---------------+-----------------------------------+
+| **check_ensemble.sh**       | serial        | Checks if the forwarding for all  |
+|                             |               | members is finished. If so, first |
+|                             |               | calls ``filter.template`` and     |
+|                             |               | then calls ``finalize.sh`` to     |
+|                             |               | conclude current assimilation     |
+|                             |               | cycle.                            |
++-----------------------------+---------------+-----------------------------------+
+| **filter.template**         | parallel      | Runs the filter to perform the    |
+|                             |               | assimilation.                     |
++-----------------------------+---------------+-----------------------------------+
+| **finalize.sh**             | serial        | Checks if the whole experiment is |
+|                             |               | finished. If so, stops.           |
+|                             |               | Otherwise, resubmits              |
+|                             |               | ``ensemble.${EXPINFO}.sh`` for    |
+|                             |               | the next assimilation cycle.      |
++-----------------------------+---------------+-----------------------------------+
 
 Diagnostics
 ~~~~~~~~~~~

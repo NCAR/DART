@@ -6,7 +6,7 @@ Overview
 
 Provides a set of routines to generate a regular pattern of time windows. This module is only used for converting
 observation sequences files to netCDF format. If it stands the test of time, it will likely be used to create an
-assimilation schedule independent of the observation sequence file. Wouldn't that be nice ...
+assimilation schedule independent of the observation sequence file. 
 
 Namelist
 --------
@@ -29,9 +29,6 @@ namelist.
      /
 
 | 
-
-Controls various aspects of filter. The inflation control variables are all dimensioned 2, the first value being for the
-prior inflation and the second being for the posterior inflation.
 
 The default values will cause (pretty much) all possible observations to be put into one output file.
 

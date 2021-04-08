@@ -68,5 +68,5 @@ Here are some of the many benefits of using DART:
 7. Finally, and perhaps most importantly, DART **has world-class support**
    available from the DART team at NCAR. A talented team of dedicated software
    engineers and data assimilation scientists work together to continually
-   improve DART and support user needs. See the `About us <About_Us.md>`__ for
+   improve DART and support user needs. See the `About page <https://dart.ucar.edu/about/>`__ for
    more information about the DART team.

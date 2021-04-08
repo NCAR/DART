@@ -33,7 +33,9 @@ Specifically, the outlier test computes the difference between the observation v
 then computes a standard deviation by taking the square root of the sum of the observation error variance and the prior
 ensemble variance for the observation. If the difference between the ensemble mean and the observation value is more
 than the specified number of standard deviations then the observation is not used. This can be an effective way to
-discard clearly erroneous observation values. A commonly used value is 3. -1 disables this check.
+discard clearly erroneous observation values. A commonly used value is 3. To assimilate all possible observations, 
+a value of -1 can be used, but may result in 'chasing bad observations' and _prevents_ the calculation of the number 
+of observations that are grossly inconsistent with the ensemble; a useful indicator of *filter divergence*.
 
 There is an option to add code to this module to specialize the outlier threshold routine. For example, it is possible
 to allow all observations of one type to be assimilated regardless of the outlier value, and enforce the outlier
@@ -83,26 +85,26 @@ Items in this namelist control whether an observation is assimilated or not.
 
 .. container::
 
-   +-----------------------------+---------+----------------------------------------------------------------------------+
-   | Item                        | Type    | Description                                                                |
-   +=============================+=========+============================================================================+
-   | input_qc_threshold          | integer | Numeric value indicating whether this observation is considered "good      |
-   |                             |         | quality" and should be assimilated, or whether it is suspect because of    |
-   |                             |         | previous quality control processes. This value would have been set when    |
-   |                             |         | the observation was created and added to the observation sequence file.    |
-   |                             |         | Observations with an incoming QC value larger than this threshold are      |
-   |                             |         | rejected and not assimilated.                                              |
-   +-----------------------------+---------+----------------------------------------------------------------------------+
-   | outlier threshold           | integer | This numeric value defines the maximum number of standard deviations an    |
-   |                             |         | observation value can be away from the ensemble forward operator mean and  |
-   |                             |         | still be assimilated. Setting it to the value -1 disables this check.      |
-   +-----------------------------+---------+----------------------------------------------------------------------------+
-   | enable_special_outlier_code | logical | Setting this value to .TRUE. will call a subroutine ``failed_outlier()``   |
-   |                             |         | instead of using the default code. The user can then customize the tests   |
-   |                             |         | in this subroutine, for example to accept all observations of a particular |
-   |                             |         | type, or use different numerical thresholds for different observation      |
-   |                             |         | types or locations.                                                        |
-   +-----------------------------+---------+----------------------------------------------------------------------------+
+   +-----------------------------+----------+----------------------------------------------------------------------------+
+   | Item                        | Type     | Description                                                                |
+   +=============================+==========+============================================================================+
+   | input_qc_threshold          | real(r8) | Numeric value indicating whether this observation is considered "good      |
+   |                             |          | quality" and should be assimilated, or whether it is suspect because of    |
+   |                             |          | previous quality control processes. This value would have been set when    |
+   |                             |          | the observation was created and added to the observation sequence file.    |
+   |                             |          | Observations with an incoming QC value larger than this threshold are      |
+   |                             |          | rejected and not assimilated.                                              |
+   +-----------------------------+----------+----------------------------------------------------------------------------+
+   | outlier threshold           | real(r8) | This numeric value defines the maximum number of standard deviations an    |
+   |                             |          | observation value can be away from the ensemble forward operator mean and  |
+   |                             |          | still be assimilated. Setting it to the value -1 disables this check.      |
+   +-----------------------------+----------+----------------------------------------------------------------------------+
+   | enable_special_outlier_code | logical  | Setting this value to .TRUE. will call a subroutine ``failed_outlier()``   |
+   |                             |          | instead of using the default code. The user can then customize the tests   |
+   |                             |          | in this subroutine, for example to accept all observations of a particular |
+   |                             |          | type, or use different numerical thresholds for different observation      |
+   |                             |          | types or locations.                                                        |
+   +-----------------------------+----------+----------------------------------------------------------------------------+
 
 | 
 

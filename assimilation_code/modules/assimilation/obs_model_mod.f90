@@ -29,7 +29,7 @@ use io_filenames_mod,     only : file_info_type
 implicit none
 private
 
-public :: move_ahead, advance_state, set_obs_model_trace, have_members
+public :: move_ahead, advance_state, set_obs_model_trace
 
 character(len=*), parameter :: source = 'obs_model_mod.f90'
 

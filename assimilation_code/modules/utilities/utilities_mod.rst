@@ -39,9 +39,9 @@ The namelist controls how the logging, namelist, messages, and general utility r
    |                |                    | means only errors terminate. Setting this to 3 means even errors do not      |
    |                |                    | cause an exit (which is not a good idea).                                    |
    +----------------+--------------------+------------------------------------------------------------------------------+
-   | logfilename    | character(len=129) | File to which the log messages are written.                                  |
+   | logfilename    | character(len=256) | File to which the log messages are written.                                  |
    +----------------+--------------------+------------------------------------------------------------------------------+
-   | nmlfilename    | character(len=129) | File to which the namelist output is written. Can be the same name as the    |
+   | nmlfilename    | character(len=256) | File to which the namelist output is written. Can be the same name as the    |
    |                |                    | logfile.                                                                     |
    +----------------+--------------------+------------------------------------------------------------------------------+
    | module_details | logical            | Each source code module can write out the repository version number and      |
