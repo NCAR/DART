@@ -45,11 +45,11 @@ DART supported models:
 Hints for porting a new model to DART:
 --------------------------------------
 
-Copy the template directory into a DART/models/xxx
-directory for your new model.
+Copy the contents of the ``DART/models/template`` directory 
+into a ``DART/models/xxx`` directory for your new model.
 
-If the coordinate system for the model is 1d, you're ok as-is.
-If model coordinates are 3d, edit the work/path_names_* files
+If the coordinate system for the model is 1D, you're ok as-is.
+If model coordinates are 3D, edit the work/path_names_* files
 and change location/oned/* to location/threed_sphere/*
 
 If your model is closer to the simpler examples (e.g. lorenz),
@@ -86,23 +86,21 @@ The required subroutines are these:
              write_model_time
 
 
-If needed, model_mod can contain subroutines that are used
-for other utility programs.
+If needed, model_mod can contain additional subroutines that are used
+for any model-specific utility programs.  No routines other than
+these will be called by programs in the DART distribution.
 
-Edit the model_mod and fill in the routines in this order:
+Edit the model_mod and fill in these routines:
 
-1. ``static_init_model()`` - make it read in the grid information
-   and the number of variables that will be in the state vector
-   (fill in the progvar derived type).   fill in the model_size
-   variable.  
+#. ``static_init_model()`` - make it read in any grid information
+   and the number of variables that will be in the state vector.
+   Fill in the model_size variable.    Now ``get_model_size()`` and 
+   ``get_model_time_step()`` from the template should be ok as-is.
 
-  after number 1 is done, ``get_model_size()`` and 
-  ``get_model_time_step()`` from the template should be ok as-is.
+#. ``get_state_meta_data()`` - given an index number into the state vector 
+   return the location and kind.
 
-2. ``get_state_meta_data()`` - given an index number into the state vector
-    return the location and kind.
-
-3. ``model_interpolate()`` - given a location (lon/lat/vert in 3d, x in 1d)
+#. ``model_interpolate()`` - given a location (lon/lat/vert in 3d, x in 1d)
    and a state QTY_xxx kind, return the interpolated value the field
    has at that location.   this is probably one of the routines that
    will take the most code to write.
@@ -132,6 +130,7 @@ Otherwise, have them return an initial time and an initial default
 ensemble state.
 
 If your model is NOT subroutine callable, you can ignore this routine:
+
 .. code-block:: text
 
    adv_1step()
@@ -141,7 +140,7 @@ necessary to build your model to all the `work/path_names_*` files.
 Add any needed model source files to a src/ directory.
 
 If you want to let filter add gaussian noise to a single state vector
-to generate an ensemble, you can ignore this routine
+to generate an ensemble, you can ignore this routine:
 
 .. code-block:: text
 
@@ -152,35 +151,56 @@ to have an initial ensemble of states.  in some cases that means
 adding a different range of values to each different field in the
 state vector.
 
-At this point you should have enough code to test and run simple
-experiments.  The `model_mod_check` utility program can be used 
-during this process to check your implementation.
+At this point you should have enough code to start testing with
+the ``model_mod_check`` program.  It is a stand-alone utility
+that calls many of the model_mod interface routines and should
+be easier to debug than some of the other DART programs.
+
+
+Once you have that program working you should have enough code
+to test and run simple experiments.
 
 
 The general flow is:
 
-   1) ``./create_obs_sequence`` - make a file with a single observation in it
-   2) ``./perfect_model_obs`` - should interpolate a value for the obs
+#. ``./create_obs_sequence`` - make a file with a single observation in it
 
-   3) generate an ensemble of states, or set 'perturb_from_single_instance' to .true.
-   4) run ``./filter`` with the single observation 
-   5) look at the preassim.nc and analysis.nc files
-        diff them with ncdiff:  ncdiff analysis.nc preassim.nc Innov.nc
-        plot it, with ncview if possible:  ncview Innov.nc
-        the difference between the two is the impact of that single observation
-        see if it's at the right location and if the differences seem reasonable
+#. ``./perfect_model_obs`` - should interpolate a value for the obs
+
+#. generate an ensemble of states, or set 'perturb_from_single_instance' to .true.
+
+#. run ``./filter`` with the single observation 
+
+#. Look at the preassim.nc and analysis.nc files
+   Diff them with:
+
+   .. code-block:: text
+
+      ncdiff:  ncdiff analysis.nc preassim.nc Innov.nc
+
+   plot it, with ncview if possible:  
+
+   .. code-block:: text
+
+      ncview Innov.nc
+
+   The difference between the two is the impact of that single observation
+   see if it's at the right location and if the differences seem reasonable
+
 
 If your model data cannot be output in NetCDF file format, or cannot
 be directly converted to NetCDF file format with the ncgen program,
 there are 2 additional steps:
 
-   1a) model_to_dart - read your native format and output data in NetCDF format
-   5a) dart_to_model - write the updated data back to the native file format
+* ``model_to_dart`` - read your native format and output data in NetCDF format
+
+* ``dart_to_model`` - write the updated data back to the native file format
 
 
 More details on each of these 5 steps follows.
 
-1a) model_to_dart
+Running ``model_to_dart`` if needed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If your model data is not stored in NetCDF file format, a program to
 convert your data from the model to NetCDF is needed.  It needs to
@@ -189,7 +209,8 @@ variables with the field names, and appropriate dimensions if these
 are multi-dimensional fields (e.g. 2d or 3d).  If the data is ASCII,
 the generic NetCDF utility ncgen may be helpful.
 
-1) create_obs_sequence
+Running ``create_obs_sequence``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can make a synthetic observation (or a series of them) with this
 interactive program and use them for testing.  Before running make sure
@@ -212,10 +233,12 @@ give it something like 10% of the expected data value.  Later on
 this is going to matter a lot, but for testing the interpolation of
 a single synthetic obs, this will do.
 
-For an output filename, it suggests 'seq_def.out' but in this case,
+For an output filename, it suggests 'set_def.out' but in this case
 tell it 'obs_seq.in'.
 
-2) perfect_model_obs
+
+Running ``perfect_model_obs``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Make sure the NetCDF file with your input data matches the input name 
 in the input.nml file, the &perfect_model_obs_nml namelist.  
@@ -229,7 +252,8 @@ You can check to see what the interpolated value is.  if it's right, congratulat
 If not, debug the interpolation code in the model_mod.f90 file.
 
 
-3) running from a single input state
+Using a single input state
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the &filter_nml namelist, set 'perturb_from_single_instance' to .true.
 this tells filter that you have not generated N initial conditions,
@@ -245,7 +269,9 @@ supply N files instead of one.  You may need to set the
 down to something smaller than 0.2 for these tests - 0.00001 is a good
 first guess for adding small perturbations to a state.
 
-4) filter
+
+Running ``filter``
+~~~~~~~~~~~~~~~~~~
 
 Set the ens_size to something small for testing - between 4 and 10 is
 usually a good range.  Make sure your observation type is in the
@@ -256,7 +282,8 @@ NetCDF diagnostic files.  The most useful for diagnosis will
 be comparing preassim.nc and analysis.nc.
 
 
-5) diagnostics
+Diagnostics
+~~~~~~~~~~~
 
 Run 'ncdiff analysis.nc preassim.nc differences.nc' and use
 your favorite netcdf plotting tool to see if there are any differences
@@ -272,7 +299,8 @@ distance.  If it isn't in the right location, look at your get_state_meta_data()
 code.  If it doesn't have a reasonable value, look at your model_interpolate() code.
 
 
-5a) dart_to_model
+Running ``dart_to_model`` if needed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 After you have run filter, the files named in the 'output_state_files' namelist
 item will contain the changed values.  If your model is reading NetCDF format
