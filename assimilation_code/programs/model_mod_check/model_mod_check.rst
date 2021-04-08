@@ -19,7 +19,7 @@ namelist.
 
 ::
 
-   &model_mod_check 
+   &model_mod_check_nml
       num_ens               = 1
       single_file           = .FALSE.
       input_state_files     = 'null'
@@ -57,208 +57,203 @@ namelist.
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | num_ens                               | integer                               | Provided for future use. Must be 1.   |
-   |                                       |                                       | Ultimately, The number of ensemble    |
-   |                                       |                                       | members you would like to read in for |
-   |                                       |                                       | testing.                              |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | single_file                           | logical                               | If .TRUE. all members are stored in a |
-   |                                       |                                       | single restart file.                  |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | input_state_files(:)                  | character(len=256)                    | The name(s) of the NetCDF file(s)     |
-   |                                       |                                       | containing the model states, one per  |
-   |                                       |                                       | domain. If num_ens > 1 and not        |
-   |                                       |                                       | single_file, specify a filename for   |
-   |                                       |                                       | each ensemble member (num_ens). If    |
-   |                                       |                                       | you have both multiple ensemble       |
-   |                                       |                                       | members in separate files AND         |
-   |                                       |                                       | multiple domains, specify all the     |
-   |                                       |                                       | ensemble member filenames for domain  |
-   |                                       |                                       | 1, then all the ensemble member       |
-   |                                       |                                       | filenames for domain 2, etc.          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_state_files(:)                 | character(len=256)                    | The name(s) of the output NetCDF      |
-   |                                       |                                       | file(s) for testing IO, one per       |
-   |                                       |                                       | domain. If num_ens > 1 and not        |
-   |                                       |                                       | single_file, specify a filename for   |
-   |                                       |                                       | each ensemble member (num_ens). If    |
-   |                                       |                                       | you have both multiple ensemble       |
-   |                                       |                                       | members in separate files AND         |
-   |                                       |                                       | multiple domains, specify all the     |
-   |                                       |                                       | ensemble member filenames for domain  |
-   |                                       |                                       | 1, then all the ensemble member       |
-   |                                       |                                       | filenames for domain 2, etc.          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | all_metadata_file                     | character(len=256)                    | Test 6 produces an exhaustive list of |
-   |                                       |                                       | metadata for EVERY element in the     |
-   |                                       |                                       | DART state vector. The metadata get   |
-   |                                       |                                       | written to this file name.            |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | x_ind                                 | integer(i8)                           | An integer index into the DART state  |
-   |                                       |                                       | vector. This will be used to test the |
-   |                                       |                                       | metadata routines. Answers questions  |
-   |                                       |                                       | about location, what variable type is |
-   |                                       |                                       | stored there, etc.                    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | loc_of_interest                       | real(r8), dimension(3)                | The lat/lon/level for a               |
-   |                                       |                                       | **particular** location. Used in Test |
-   |                                       |                                       | 4, the single-point interpolation     |
-   |                                       |                                       | test. Indirectly tests the routine to |
-   |                                       |                                       | find the closest gridpoint.           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | quantity_of_interest                  | character(len=32)                     | Specifies the QUANTITY of the model   |
-   |                                       |                                       | state to use in Tests 4, 5, and 7.    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_dlon                      | real(r8)                              | The distance (measured in degrees) on |
-   |                                       |                                       | the longitude interpolation grid.     |
-   |                                       |                                       | Ignored if interpolating with         |
-   |                                       |                                       | cartesian coordinates. Used in Test   |
-   |                                       |                                       | 5.                                    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_dlat                      | real(r8)                              | The distance (measured in degrees) on |
-   |                                       |                                       | the latitude interpolation grid.      |
-   |                                       |                                       | Ignored if interpolating with         |
-   |                                       |                                       | cartesian coordinates. Used in Test   |
-   |                                       |                                       | 5.                                    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_dvert                     | real(r8)                              | The distance (measured in             |
-   |                                       |                                       | interp_vertcoord) on the vertical     |
-   |                                       |                                       | interpolation grid. Ignored if        |
-   |                                       |                                       | interpolating with cartesian          |
-   |                                       |                                       | coordinates. Used in Test 5.          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_lonrange                  | real(r8)                              | The range of y to be tested with      |
-   |                                       |                                       | model_interpolate, with spacing       |
-   |                                       |                                       | ``interp_test_dlon``. Ignored if      |
-   |                                       |                                       | interpolating with cartesian          |
-   |                                       |                                       | coordinates. Used in Test 5.          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_latrange                  | real(r8)                              | The range of y to be tested with      |
-   |                                       |                                       | model_interpolate, with spacing       |
-   |                                       |                                       | ``interp_test_dlat``. Ignored if      |
-   |                                       |                                       | interpolating with cartesian          |
-   |                                       |                                       | coordinates. Used in Test 5.          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_vertrange                 | real(r8)                              | The range in the vertical direction   |
-   |                                       |                                       | to be tested with model_interpolate,  |
-   |                                       |                                       | with spacing ``interp_test_dvert``.   |
-   |                                       |                                       | Ignored if interpolating with         |
-   |                                       |                                       | cartesian coordinates. Used in Test   |
-   |                                       |                                       | 5.                                    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_dx                        | real(r8)                              | The interval on the x axis of the     |
-   |                                       |                                       | interpolation grid. This is used in   |
-   |                                       |                                       | Test 5 for models with                |
-   |                                       |                                       | threed_cartesian coordinates.         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_dy                        | real(r8)                              | The interval on the y axis of the     |
-   |                                       |                                       | interpolation grid. This is used in   |
-   |                                       |                                       | Test 5 for models with                |
-   |                                       |                                       | threed_cartesian coordinates.         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_dz                        | real(r8)                              | The interval on the z axis of the     |
-   |                                       |                                       | interpolation grid. This is used in   |
-   |                                       |                                       | Test 5 for models with                |
-   |                                       |                                       | threed_cartesian coordinates.         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_xrange                    | real(r8)                              | The range of x to be tested with      |
-   |                                       |                                       | model_interpolate in Test 5, with     |
-   |                                       |                                       | spacing ``interp_test_dx``.           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_yrange                    | real(r8)                              | The range of y to be tested with      |
-   |                                       |                                       | model_interpolate in Test 5, with     |
-   |                                       |                                       | spacing ``interp_test_dy``.           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_zrange                    | real(r8)                              | The range in the vertical direction   |
-   |                                       |                                       | to be tested with model_interpolate   |
-   |                                       |                                       | in Test 5, with spacing               |
-   |                                       |                                       | ``interp_test_dz``.                   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | interp_test_vertcoord                 | character(len=32)                     | Specifies the vertical coordinate     |
-   |                                       |                                       | system to use during the              |
-   |                                       |                                       | interpolation tests. Valid values     |
-   |                                       |                                       | are:                                  |
-   |                                       |                                       | 'VERTISHE                             |
-   |                                       |                                       | IGHT','VERTISPRESSURE','VERTISLEVEL', |
-   |                                       |                                       | and 'VERTISSCALEHEIGHT'.              |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | test1thru                             | integer                               | If ``test1thru > 0``, specifies the   |
-   |                                       |                                       | last test to be performed. All tests  |
-   |                                       |                                       | get performed sequentially. If        |
-   |                                       |                                       | ``test1thru < 0``, ``run_tests`` is   |
-   |                                       |                                       | used to specify the tests to perform. |
-   |                                       |                                       |                                       |
-   |                                       |                                       | +------+--------------------------+   |
-   |                                       |                                       | | test | summary                  |   |
-   |                                       |                                       | +======+==========================+   |
-   |                                       |                                       | | 0    | Mandatory. Tests         |   |
-   |                                       |                                       | |      | ``static_init_model()``  |   |
-   |                                       |                                       | |      | by calling               |   |
-   |                                       |                                       | |      | ``stat                   |   |
-   |                                       |                                       | |      | ic_init_assim_model()``. |   |
-   |                                       |                                       | |      | Reads ``input.nml``      |   |
-   |                                       |                                       | |      | ``&model_nml``           |   |
-   |                                       |                                       | +------+--------------------------+   |
-   |                                       |                                       | | 1    | Tests                    |   |
-   |                                       |                                       | |      | ``get_model_size()`` and |   |
-   |                                       |                                       | |      | reports on the makeup of |   |
-   |                                       |                                       | |      | the DART state vector.   |   |
-   |                                       |                                       | +------+--------------------------+   |
-   |                                       |                                       | | 2    | Reads and writes a       |   |
-   |                                       |                                       | |      | restart file.            |   |
-   |                                       |                                       | +------+--------------------------+   |
-   |                                       |                                       | | 3    | Tests                    |   |
-   |                                       |                                       | |      | `                        |   |
-   |                                       |                                       | |      | `get_state_meta_data()`` |   |
-   |                                       |                                       | |      | for a single index into  |   |
-   |                                       |                                       | |      | the DART state. Helps    |   |
-   |                                       |                                       | |      | determine if the state   |   |
-   |                                       |                                       | |      | vector is constructed    |   |
-   |                                       |                                       | |      | correctly.               |   |
-   |                                       |                                       | +------+--------------------------+   |
-   |                                       |                                       | | 4    | Tests                    |   |
-   |                                       |                                       | |      | ``model_interpolate()``  |   |
-   |                                       |                                       | |      | for a single point.      |   |
-   |                                       |                                       | +------+--------------------------+   |
-   |                                       |                                       | | 5    | Tests                    |   |
-   |                                       |                                       | |      | ``model_interpolate()``  |   |
-   |                                       |                                       | |      | for a range of           |   |
-   |                                       |                                       | |      | interpolation points.    |   |
-   |                                       |                                       | +------+--------------------------+   |
-   |                                       |                                       | | 6    | Long, expensive test to  |   |
-   |                                       |                                       | |      | return the metadata for  |   |
-   |                                       |                                       | |      | every element of the     |   |
-   |                                       |                                       | |      | state vector. May be     |   |
-   |                                       |                                       | |      | useful to decide on      |   |
-   |                                       |                                       | |      | known locations for      |   |
-   |                                       |                                       | |      | subsequent testing.      |   |
-   |                                       |                                       | +------+--------------------------+   |
-   |                                       |                                       | | 7    | Find the closest         |   |
-   |                                       |                                       | |      | gridpoint to a known     |   |
-   |                                       |                                       | |      | location.                |   |
-   |                                       |                                       | +------+--------------------------+   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | run_tests(:)                          | integer                               | Specifies a list of tests to be       |
-   |                                       |                                       | performed. Same test numbers as       |
-   |                                       |                                       | described in test1thru. There are     |
-   |                                       |                                       | some dependencies. Tests 4 and 5      |
-   |                                       |                                       | require a valid model state - which   |
-   |                                       |                                       | is read by Test 2. If a required test |
-   |                                       |                                       | is not specified, the required test   |
-   |                                       |                                       | is enabled and run. A value of -1     |
-   |                                       |                                       | means that ``test1thru`` will be      |
-   |                                       |                                       | used.                                 |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | verbose                               | logical                               | Print extra info about the            |
-   |                                       |                                       | ``model_mod_check`` run. This is only |
-   |                                       |                                       | used for more reporting during Test   |
-   |                                       |                                       | 5. Be warned - it will generate       |
-   |                                       |                                       | several lines of output for each      |
-   |                                       |                                       | point in the test!                    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +------------------------+------------------------+----------------------------------------------+
+   | Item                   | Type                   | Description                                  |
+   +========================+========================+==============================================+
+   | num_ens                | integer                | Provided for future use. Must be 1.          |
+   |                        |                        | Ultimately, The number of ensemble           |
+   |                        |                        | members you would like to read in for        |
+   |                        |                        | testing.                                     |
+   +------------------------+------------------------+----------------------------------------------+
+   | single_file            | logical                | If .TRUE. all members are stored in a        |
+   |                        |                        | single restart file.                         |
+   +------------------------+------------------------+----------------------------------------------+
+   | input_state_files(:)   | character(len=256)     | The name(s) of the NetCDF file(s)            |
+   |                        |                        | containing the model states, one per         |
+   |                        |                        | domain. If num_ens > 1 and not               |
+   |                        |                        | single_file, specify a filename for          |
+   |                        |                        | each ensemble member (num_ens). If           |
+   |                        |                        | you have both multiple ensemble              |
+   |                        |                        | members in separate files AND                |
+   |                        |                        | multiple domains, specify all the            |
+   |                        |                        | ensemble member filenames for domain         |
+   |                        |                        | 1, then all the ensemble member              |
+   |                        |                        | filenames for domain 2, etc.                 |
+   +------------------------+------------------------+----------------------------------------------+
+   | output_state_files(:)  | character(len=256)     | The name(s) of the output NetCDF             |
+   |                        |                        | file(s) for testing IO, one per              |
+   |                        |                        | domain. If num_ens > 1 and not               |
+   |                        |                        | single_file, specify a filename for          |
+   |                        |                        | each ensemble member (num_ens). If           |
+   |                        |                        | you have both multiple ensemble              |
+   |                        |                        | members in separate files AND                |
+   |                        |                        | multiple domains, specify all the            |
+   |                        |                        | ensemble member filenames for domain         |
+   |                        |                        | 1, then all the ensemble member              |
+   |                        |                        | filenames for domain 2, etc.                 |
+   +------------------------+------------------------+----------------------------------------------+
+   | all_metadata_file      | character(len=256)     | Test 6 produces an exhaustive list of        |
+   |                        |                        | metadata for EVERY element in the            |
+   |                        |                        | DART state vector. The metadata get          |
+   |                        |                        | written to this file name.                   |
+   +------------------------+------------------------+----------------------------------------------+
+   | x_ind                  | integer(i8)            | An integer index into the DART state         |
+   |                        |                        | vector. This will be used to test the        |
+   |                        |                        | metadata routines. Answers questions         |
+   |                        |                        | about location, what variable type is        |
+   |                        |                        | stored there, etc.                           |
+   +------------------------+------------------------+----------------------------------------------+
+   | loc_of_interest        | real(r8), dimension(3) | The lat/lon/level for a                      |
+   |                        |                        | **particular** location. Used in Test        |
+   |                        |                        | 4, the single-point interpolation            |
+   |                        |                        | test. Indirectly tests the routine to        |
+   |                        |                        | find the closest gridpoint.                  |
+   +------------------------+------------------------+----------------------------------------------+
+   | quantity_of_interest   | character(len=32)      | Specifies the QUANTITY of the model          |
+   |                        |                        | state to use in Tests 4, 5, and 7.           |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_dlon       | real(r8)               | The distance (measured in degrees) on        |
+   |                        |                        | the longitude interpolation grid.            |
+   |                        |                        | Ignored if interpolating with                |
+   |                        |                        | cartesian coordinates. Used in Test 5.       |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_dlat       | real(r8)               | The distance (measured in degrees) on        |
+   |                        |                        | the latitude interpolation grid.             |
+   |                        |                        | Ignored if interpolating with                |
+   |                        |                        | cartesian coordinates. Used in Test 5.       |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_dvert      | real(r8)               | The distance (measured in                    |
+   |                        |                        | interp_vertcoord) on the vertical            |
+   |                        |                        | interpolation grid. Ignored if               |
+   |                        |                        | interpolating with cartesian                 |
+   |                        |                        | coordinates. Used in Test 5.                 |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_lonrange   | real(r8)               | The range of y to be tested with             |
+   |                        |                        | model_interpolate, with spacing              |
+   |                        |                        | ``interp_test_dlon``. Ignored if             |
+   |                        |                        | interpolating with cartesian                 |
+   |                        |                        | coordinates. Used in Test 5.                 |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_latrange   | real(r8)               | The range of y to be tested with             |
+   |                        |                        | model_interpolate, with spacing              |
+   |                        |                        | ``interp_test_dlat``. Ignored if             |
+   |                        |                        | interpolating with cartesian                 |
+   |                        |                        | coordinates. Used in Test 5.                 |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_vertrange  | real(r8)               | The range in the vertical direction          |
+   |                        |                        | to be tested with model_interpolate,         |
+   |                        |                        | with spacing ``interp_test_dvert``.          |
+   |                        |                        | Ignored if interpolating with                |
+   |                        |                        | cartesian coordinates. Used in Test 5.       |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_dx         | real(r8)               | The interval on the x axis of the            |
+   |                        |                        | interpolation grid. This is used in          |
+   |                        |                        | Test 5 for models with                       |
+   |                        |                        | threed_cartesian coordinates.                |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_dy         | real(r8)               | The interval on the y axis of the            |
+   |                        |                        | interpolation grid. This is used in          |
+   |                        |                        | Test 5 for models with                       |
+   |                        |                        | threed_cartesian coordinates.                |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_dz         | real(r8)               | The interval on the z axis of the            |
+   |                        |                        | interpolation grid. This is used in          |
+   |                        |                        | Test 5 for models with                       |
+   |                        |                        | threed_cartesian coordinates.                |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_xrange     | real(r8)               | The range of x to be tested with             |
+   |                        |                        | model_interpolate in Test 5, with            |
+   |                        |                        | spacing ``interp_test_dx``.                  |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_yrange     | real(r8)               | The range of y to be tested with             |
+   |                        |                        | model_interpolate in Test 5, with            |
+   |                        |                        | spacing ``interp_test_dy``.                  |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_zrange     | real(r8)               | The range in the vertical direction          |
+   |                        |                        | to be tested with model_interpolate          |
+   |                        |                        | in Test 5, with spacing                      |
+   |                        |                        | ``interp_test_dz``.                          |
+   +------------------------+------------------------+----------------------------------------------+
+   | interp_test_vertcoord  | character(len=32)      | Specifies the vertical coordinate            |
+   |                        |                        | system to use during the                     |
+   |                        |                        | interpolation tests. Valid values            |
+   |                        |                        | are: 'VERTISHEIGHT',                         |
+   |                        |                        |      'VERTISPRESSURE',                       |
+   |                        |                        |      'VERTISLEVEL', and                      |
+   |                        |                        |      'VERTISSCALEHEIGHT'.                    |
+   +------------------------+------------------------+----------------------------------------------+
+   | test1thru              | integer                | If ``test1thru > 0``, specifies the          |
+   |                        |                        | last test to be performed. All tests         |
+   |                        |                        | get performed sequentially. If               |
+   |                        |                        | ``test1thru < 0``, ``run_tests`` is          |
+   |                        |                        | used to specify the tests to perform.        |
+   |                        |                        |                                              |
+   |                        |                        | +------+--------------------------------+    |
+   |                        |                        | | test | summary                        |    |
+   |                        |                        | +======+================================+    |
+   |                        |                        | | 0    | Mandatory. Tests               |    |
+   |                        |                        | |      | ``static_init_model()``        |    |
+   |                        |                        | |      | by calling                     |    |
+   |                        |                        | |      | ``static_init_assim_model()``. |    |
+   |                        |                        | |      | Reads ``input.nml``            |    |
+   |                        |                        | |      | ``&model_nml``                 |    |
+   |                        |                        | +------+--------------------------------+    |
+   |                        |                        | | 1    | Tests                          |    |
+   |                        |                        | |      | ``get_model_size()`` and       |    |
+   |                        |                        | |      | reports on the makeup of       |    |
+   |                        |                        | |      | the DART state vector.         |    |
+   |                        |                        | +------+--------------------------------+    |
+   |                        |                        | | 2    | Reads and writes a             |    |
+   |                        |                        | |      | restart file.                  |    |
+   |                        |                        | +------+--------------------------------+    |
+   |                        |                        | | 3    | Tests                          |    |
+   |                        |                        | |      | ``get_state_meta_data()``      |    |
+   |                        |                        | |      | for a single index into        |    |
+   |                        |                        | |      | the DART state. Helps          |    |
+   |                        |                        | |      | determine if the state         |    |
+   |                        |                        | |      | vector is constructed          |    |
+   |                        |                        | |      | correctly.                     |    |
+   |                        |                        | +------+--------------------------------+    |
+   |                        |                        | | 4    | Tests                          |    |
+   |                        |                        | |      | ``model_interpolate()``        |    |
+   |                        |                        | |      | for a single point.            |    |
+   |                        |                        | +------+--------------------------------+    |
+   |                        |                        | | 5    | Tests                          |    |
+   |                        |                        | |      | ``model_interpolate()``        |    |
+   |                        |                        | |      | for a range of                 |    |
+   |                        |                        | |      | interpolation points.          |    |
+   |                        |                        | +------+--------------------------------+    |
+   |                        |                        | | 6    | Long, expensive test to        |    |
+   |                        |                        | |      | return the metadata for        |    |
+   |                        |                        | |      | every element of the           |    |
+   |                        |                        | |      | state vector. May be           |    |
+   |                        |                        | |      | useful to decide on            |    |
+   |                        |                        | |      | known locations for            |    |
+   |                        |                        | |      | subsequent testing.            |    |
+   |                        |                        | +------+--------------------------------+    |
+   |                        |                        | | 7    | Find the closest               |    |
+   |                        |                        | |      | gridpoint to a known           |    |
+   |                        |                        | |      | location.                      |    |
+   |                        |                        | +------+--------------------------------+    |
+   +------------------------+------------------------+----------------------------------------------+
+   | run_tests(:)           | integer                | Specifies a list of tests to be              |
+   |                        |                        | performed. Same test numbers as              |
+   |                        |                        | described in test1thru. There are            |
+   |                        |                        | some dependencies. Tests 4 and 5             |
+   |                        |                        | require a valid model state - which          |
+   |                        |                        | is read by Test 2. If a required test        |
+   |                        |                        | is not specified, the required test          |
+   |                        |                        | is enabled and run. A value of -1            |
+   |                        |                        | means that ``test1thru`` will be             |
+   |                        |                        | used.                                        |
+   +------------------------+------------------------+----------------------------------------------+
+   | verbose                | logical                | Print extra info about the                   |
+   |                        |                        | ``model_mod_check`` run. This is only        |
+   |                        |                        | used for more reporting during Test 5.       |
+   |                        |                        | Be warned - it will generate                 |
+   |                        |                        | several lines of output for each             |
+   |                        |                        | point in the test!                           |
+   +------------------------+------------------------+----------------------------------------------+
 
 A more typical namelist for a single ensemble member for a model with an outer grid and a single nested grid is shown
 below.
