@@ -66,24 +66,24 @@ The required subroutines are these:
 
 .. code-block:: text
 
-public :: get_model_size, &
-          get_state_meta_data,  &
-          model_interpolate, &
-          shortest_time_between_assimilations, &
-          static_init_model, &
-          init_conditions,    &
-          adv_1step, &
-          nc_write_model_atts, &
-          pert_model_copies, &
-          nc_write_model_vars, &
-          init_time, &
-          get_close_obs, &
-          get_close_state, &
-          end_model, &
-          convert_vertical_obs, &
-          convert_vertical_state, &
-          read_model_time, &
-          write_model_time
+   public :: get_model_size, &
+             get_state_meta_data,  &
+             model_interpolate, &
+             shortest_time_between_assimilations, &
+             static_init_model, &
+             init_conditions,    &
+             adv_1step, &
+             nc_write_model_atts, &
+             pert_model_copies, &
+             nc_write_model_vars, &
+             init_time, &
+             get_close_obs, &
+             get_close_state, &
+             end_model, &
+             convert_vertical_obs, &
+             convert_vertical_state, &
+             read_model_time, &
+             write_model_time
 
 
 If needed, model_mod can contain subroutines that are used
@@ -181,6 +181,7 @@ there are 2 additional steps:
 More details on each of these 5 steps follows.
 
 1a) model_to_dart
+
 If your model data is not stored in NetCDF file format, a program to
 convert your data from the model to NetCDF is needed.  It needs to
 read your model data in whatever format it uses and create NetCDF
@@ -189,6 +190,7 @@ are multi-dimensional fields (e.g. 2d or 3d).  If the data is ASCII,
 the generic NetCDF utility ncgen may be helpful.
 
 1) create_obs_sequence
+
 You can make a synthetic observation (or a series of them) with this
 interactive program and use them for testing.  Before running make sure
 the observation types you want to use are in the input.nml file in the
@@ -214,6 +216,7 @@ For an output filename, it suggests 'seq_def.out' but in this case,
 tell it 'obs_seq.in'.
 
 2) perfect_model_obs
+
 Make sure the NetCDF file with your input data matches the input name 
 in the input.nml file, the &perfect_model_obs_nml namelist.  
 Make sure the input obs_sequence is still set to 'obs_seq.in'.
@@ -227,6 +230,7 @@ If not, debug the interpolation code in the model_mod.f90 file.
 
 
 3) running from a single input state
+
 In the &filter_nml namelist, set 'perturb_from_single_instance' to .true.
 this tells filter that you have not generated N initial conditions,
 that you are only going to supply one and it needs to perturb that
@@ -242,6 +246,7 @@ down to something smaller than 0.2 for these tests - 0.00001 is a good
 first guess for adding small perturbations to a state.
 
 4) filter
+
 Set the ens_size to something small for testing - between 4 and 10 is
 usually a good range.  Make sure your observation type is in the
 'assimilate_these_obs_types' list and not in the evaluate list.
@@ -252,6 +257,7 @@ be comparing preassim.nc and analysis.nc.
 
 
 5) diagnostics
+
 Run 'ncdiff analysis.nc preassim.nc differences.nc' and use
 your favorite netcdf plotting tool to see if there are any differences
 between the 2 files.  For modules using a regular lat/lon grid 'ncview'
@@ -267,6 +273,7 @@ code.  If it doesn't have a reasonable value, look at your model_interpolate() c
 
 
 5a) dart_to_model
+
 After you have run filter, the files named in the 'output_state_files' namelist
 item will contain the changed values.  If your model is reading NetCDF format
 it can ingest these directly.  If not, an additional step is needed to copy
