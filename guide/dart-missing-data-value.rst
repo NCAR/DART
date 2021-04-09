@@ -1,7 +1,7 @@
 DART missing data value
 =======================
 
-If all the prior and posterior mean values are -888888.0, which is the DART
+If all the prior and posterior mean values are -888888.0 (which is the DART
 "missing data" value), those observations were not assimilated.
 
 .. note::
