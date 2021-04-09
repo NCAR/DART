@@ -35,7 +35,24 @@ Multiple name-value pairs can be specified for a quantity but are not required. 
 ``! QTY_TEMPERATURE units="K" minval=0.0``. Comments are allowed between quantity definitions or on the same line as the
 definition. The code snippet below shows acceptable formats for quantity definitions
 
-``! BEGIN DART PREPROCESS QUANTITY DEFINITIONS ! ! Formats accepted: ! ! QTY_string ! QTY_string name=value ! QTY_string name=value name2=value2 ! ! QTY_string ! comments ! ! ! comment ! ! END DART PREPROCESS QUANTITY DEFINITIONS``
+.. container :: routine
+
+   ::
+
+      ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
+      !
+      ! Formats accepted:
+      !
+      ! QTY_string 
+      ! QTY_string name=value 
+      ! QTY_string name=value name2=value2 
+      ! 
+      ! QTY_string ! comments 
+      ! 
+      ! ! comment
+      ! 
+      ! END DART PREPROCESS QUANTITY DEFINITIONS  
+
 
 | The output files produced by preprocess are named ``assimilation_code/modules/observations/obs_kind_mod.f90`` and
   ``observations/forward_operators/obs_def_mod.f90``, but can be renamed by namelist control if needed. Be aware that if
