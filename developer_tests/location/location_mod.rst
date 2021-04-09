@@ -23,16 +23,15 @@ by selecting the proper version in your path_names_xxx file you can compile your
    plus a vertical coordinate which can be meters, pressure, model level, surface, or no specific vertical location.
 -  :doc:`../../assimilation_code/location/oned/location_mod`:
    The most frequently used for small models (e.g. the Lorenz family). It has a cyclic domain from 0 to 1.
--  others:
-
-   -  :doc:`../../assimilation_code/location/threed_cartesian/location_mod`: A full 3D X,Y,Z coordinate system.
-   -  column: no x,y but 1d height, pressure, or model level for vertical.
-   -  annulus: a hollow 3d cylinder with azimuth, radius, and depth.
-   -  twod: a periodic 2d domain with x,y coordinates between 0 and 1.
-   -  twod_sphere: a 2d shell with latitude, longitude pairs.
-   -  threed: a periodic 3d domain with x,y,z coordinates between 0 and 1.
-   -  :doc:`../../assimilation_code/location/channel/location_mod`: a 3d domain periodic in x, limited in y, and
-      unlimited z.
+-  :doc:`../../assimilation_code/location/threed_cartesian/location_mod`:
+    A full 3D X,Y,Z coordinate system.
+-  :doc:`../../assimilation_code/location/channel/location_mod`:
+   a 3d domain periodic in x, limited in y, and unlimited z.
+-  column: no x,y but 1d height, pressure, or model level for vertical.
+-  annulus: a hollow 3d cylinder with azimuth, radius, and depth.
+-  twod: a periodic 2d domain with x,y coordinates between 0 and 1.
+-  twod_sphere: a 2d shell with latitude, longitude pairs.
+-  threed: a periodic 3d domain with x,y,z coordinates between 0 and 1.
 
 Other schemes can be added, as needed by the models. Possible ideas are a non-periodic version of the 1d, 2d cartesian
 versions. Email `dart at ucar.edu <mailto:dart@ucar.edu>`__ if you have a different coordinate scheme which we might
