@@ -64,7 +64,7 @@ Namelist
 When you run preprocess, the namelist is read from the file ``input.nml`` in the directory where preprocess is run.
 
 Namelists start with an ampersand '&' and terminate with a slash '/'. Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+enclosed in quotes to prevent them from prematurely terminating the namelist. These are the defaults:
 
 ::
 
@@ -84,59 +84,50 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | input_obs_def_mod_file                | character(len=256)                    | Path name of the template obs def     |
-   |                                       |                                       | module to be preprocessed. The        |
-   |                                       |                                       | default is                            |
-   |                                       |                                       | ``../../../observations/forward       |
-   |                                       |                                       | _operators/DEFAULT_obs_def_mod.F90``. |
-   |                                       |                                       | This file must have the appropriate   |
-   |                                       |                                       | commented lines indicating where the  |
-   |                                       |                                       | different parts of the input special  |
-   |                                       |                                       | obs definition modules are to be      |
-   |                                       |                                       | inserted.                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_obs_def_mod_file               | character(len=256)                    | Path name of output obs def module to |
-   |                                       |                                       | be created by preprocess. The default |
-   |                                       |                                       | is                                    |
-   |                                       |                                       | ``../../../observations               |
-   |                                       |                                       | /forward_operators/obs_def_mod.f90``. |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | input_obs_qty_mod_file                | character(len=256)                    | Path name of input obs quantity file  |
-   |                                       |                                       | to be preprocessed. The default path  |
-   |                                       |                                       | name is                               |
-   |                                       |                                       | ``.                                   |
-   |                                       |                                       | ./../../assimilation_code/modules/obs |
-   |                                       |                                       | ervations/DEFAULT_obs_kind_mod.F90``. |
-   |                                       |                                       | This file must have the appropriate   |
-   |                                       |                                       | commented lines indicating where the  |
-   |                                       |                                       | different quantity modules are to be  |
-   |                                       |                                       | inserted.                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_obs_qty_mod_file               | character(len=256)                    | Path name of output obs quantity      |
-   |                                       |                                       | module to be created by preprocess.   |
-   |                                       |                                       | The default is                        |
-   |                                       |                                       | ``../../../assimilation_code/mod      |
-   |                                       |                                       | ules/observations/obs_kind_mod.f90``. |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_type_files                        | character(len=256)(:)                 | A list of files containing            |
-   |                                       |                                       | observation definitions for the type  |
-   |                                       |                                       | of observations you want to use with  |
-   |                                       |                                       | DART. The maximum number of files is  |
-   |                                       |                                       | limited to MAX_OBS_TYPE_FILES = 1000. |
-   |                                       |                                       | The DART obs_def files are in         |
-   |                                       |                                       | ``observations/f                      |
-   |                                       |                                       | orward_operators/obs_def_*.mod.f90``. |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | overwrite_output                      | logical                               | By defualt, preprocess will overwrite |
-   |                                       |                                       | the existing obs_kind_mod.f90 and     |
-   |                                       |                                       | obs_def_mod.f90 files. Set            |
-   |                                       |                                       | overwrite_output = .false. if you     |
-   |                                       |                                       | want to preprocess to not overwrite   |
-   |                                       |                                       | existing files.                       |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +-------------------------+-----------------------+-------------------------------------------------------------------------------+
+   | Item                    | Type                  | Description                                                                   |
+   +=========================+=======================+===============================================================================+
+   | input_obs_def_mod_file  | character(len=256)    | Path name of the template observation definition module                       |
+   |                         |                       | to be preprocessed. The default is                                            |
+   |                         |                       | ``../../../observations/forward_operators/DEFAULT_obs_def_mod.F90``.          |
+   |                         |                       | This file must have the appropriate                                           |
+   |                         |                       | commented lines indicating where the                                          |
+   |                         |                       | different parts of the input special                                          |
+   |                         |                       | obs definition modules are to be                                              |
+   |                         |                       | inserted.                                                                     |
+   +-------------------------+-----------------------+-------------------------------------------------------------------------------+
+   | output_obs_def_mod_file | character(len=256)    | Path name of output observation definition module                             |
+   |                         |                       | to be created by preprocess. The default is                                   |
+   |                         |                       | ``../../../observations/forward_operators/obs_def_mod.f90``.                  |
+   +-------------------------+-----------------------+-------------------------------------------------------------------------------+
+   | input_obs_qty_mod_file  | character(len=256)    | Path name of input obs quantity file                                          |
+   |                         |                       | to be preprocessed. The default path name is                                  |
+   |                         |                       | ``../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90``. |
+   |                         |                       | This file must have the appropriate                                           |
+   |                         |                       | commented lines indicating where the                                          |
+   |                         |                       | different quantity modules are to be                                          |
+   |                         |                       | inserted.                                                                     |
+   +-------------------------+-----------------------+-------------------------------------------------------------------------------+
+   | output_obs_qty_mod_file | character(len=256)    | Path name of output obs quantity                                              |
+   |                         |                       | module to be created by preprocess.                                           |
+   |                         |                       | The default is                                                                |
+   |                         |                       | ``../../../assimilation_code/modules/observations/obs_kind_mod.f90``.         |
+   +-------------------------+-----------------------+-------------------------------------------------------------------------------+
+   | obs_type_files          | character(len=256)(:) | A list of files containing                                                    |
+   |                         |                       | observation definitions for the type                                          |
+   |                         |                       | of observations you want to use with                                          |
+   |                         |                       | DART. The maximum number of files is                                          |
+   |                         |                       | limited to MAX_OBS_TYPE_FILES = 1000.                                         |
+   |                         |                       | The DART obs_def files are in                                                 |
+   |                         |                       | ``observations/forward_operators/obs_def_*.mod.f90``.                         |
+   +-------------------------+-----------------------+-------------------------------------------------------------------------------+
+   | overwrite_output        | logical               | By default, preprocess will overwrite                                         |
+   |                         |                       | the existing obs_kind_mod.f90 and                                             |
+   |                         |                       | obs_def_mod.f90 files. Set                                                    |
+   |                         |                       | ``overwrite_output = .false.`` if you                                         |
+   |                         |                       | want to preprocess to not overwrite                                           |
+   |                         |                       | existing files.                                                               |
+   +-------------------------+-----------------------+-------------------------------------------------------------------------------+
 
 | 
 
@@ -160,7 +151,7 @@ Files
 -  output_obs_qty_mod_file, specified by namelist; usually ``obs_kind_mod.f90``.
 -  obs_type_files, specified by namelist; usually files like ``obs_def_reanalysis_bufr_mod.f90``.
 -  quantity_files, specified by namelist; usually files like ``atmosphere_quantities_mod.f90``.
--  namelistfile
+-  namelistfile; ``input.nml``
 
 References
 ----------
