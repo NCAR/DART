@@ -512,5 +512,5 @@ References
    :caption: Root
    
    copyright
-   changelog <CHANGELOG>
+   Changelog <CHANGELOG>
    guide/404
