@@ -374,110 +374,109 @@ filter_nml
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | single_file_in                        | logical                               | True means that all of the restart    |
-   |                                       |                                       | and inflation information is read     |
-   |                                       |                                       | from a single NetCDF file. False      |
-   |                                       |                                       | means that you must specify an        |
-   |                                       |                                       | input_state_file_list and DART will   |
-   |                                       |                                       | be expecting                          |
-   |                                       |                                       | input_{priorinf,postinf}_{mean,sd}.nc |
-   |                                       |                                       | files for inflation.                  |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | single_file_out                       | logical                               | True means that all of the restart    |
-   |                                       |                                       | and inflation information is written  |
-   |                                       |                                       | to a single NetCDF file. False means  |
-   |                                       |                                       | that you must specify a               |
-   |                                       |                                       | output_state_files and DART will be   |
-   |                                       |                                       | output files specified in the list.   |
-   |                                       |                                       | Inflation files will be written in    |
-   |                                       |                                       | the form                              |
-   |                                       |                                       | i                                     |
-   |                                       |                                       | nput_{priorinf,postinf}_{mean,sd}.nc. |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | input_state_files                     | character array                       | This is used for single file input    |
-   |                                       |                                       | for low order models. For multiple    |
-   |                                       |                                       | domains you can specify a file for    |
-   |                                       |                                       | each domain. When specifying a list   |
-   |                                       |                                       | single_file_in, single_file_out must  |
-   |                                       |                                       | be set to .true.                      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_state_files                    | character array                       | This is used for single file input    |
-   |                                       |                                       | for low order models. For multiple    |
-   |                                       |                                       | domains you can specify a file for    |
-   |                                       |                                       | each domain. When specifying a list   |
-   |                                       |                                       | single_file_in, single_file_out must  |
-   |                                       |                                       | be set to .true.                      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | input_state_file_list                 | character array                       | A list of files containing input      |
-   |                                       |                                       | model restarts. For multiple domains  |
-   |                                       |                                       | you can specify a file for each       |
-   |                                       |                                       | domain. When specifying a list        |
-   |                                       |                                       | single_file_in, single_file_out must  |
-   |                                       |                                       | be set to .false.                     |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_state_file_list                | character array                       | A list of files containing output     |
-   |                                       |                                       | model restarts. For multiple domains  |
-   |                                       |                                       | you can specify a file for each       |
-   |                                       |                                       | domain. When specifying a list        |
-   |                                       |                                       | single_file_in, single_file_out must  |
-   |                                       |                                       | be set to .false.                     |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | stages_to_write                       | character array                       | Controls which stages to write.       |
-   |                                       |                                       | Currently there are four options:     |
-   |                                       |                                       |                                       |
-   |                                       |                                       | -  ``input`` -- writes input mean and |
-   |                                       |                                       |    sd only                            |
-   |                                       |                                       | -  ``preassim`` -- before             |
-   |                                       |                                       |    assimilation, before prior         |
-   |                                       |                                       |    inflation is applied               |
-   |                                       |                                       | -  ``postassim`` -- after             |
-   |                                       |                                       |    assimilation, before posterior     |
-   |                                       |                                       |    inflation is applied               |
-   |                                       |                                       | -  ``output`` -- final output for     |
-   |                                       |                                       |    filter which includes clamping and |
-   |                                       |                                       |    inflation                          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | write_all_stages_at_end               | logical                               | True means output all stages at the   |
-   |                                       |                                       | end of filter. This is more memory    |
-   |                                       |                                       | intensive but requires less time. For |
-   |                                       |                                       | larger models IO begins to dominate   |
-   |                                       |                                       | the overall cost of the assimilation, |
-   |                                       |                                       | so writting all stages at the end     |
-   |                                       |                                       | writes more files in parallel,        |
-   |                                       |                                       | reducing the IO time. Filenames are   |
-   |                                       |                                       | defined in ``output_state_files``.    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_restarts                       | logical                               | True means output a restart file(s).  |
-   |                                       |                                       | Filenames are defined in              |
-   |                                       |                                       | ``output_state_files``.               |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_mean                           | logical                               | True means output a restart file      |
-   |                                       |                                       | which contains the ensemble mean for  |
-   |                                       |                                       | the stages that have been turned on   |
-   |                                       |                                       | in ``stages_to_write``. The file name |
-   |                                       |                                       | will have the stage with ``_mean``    |
-   |                                       |                                       | appended.                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_sd                             | logical                               | True means output a restart file      |
-   |                                       |                                       | which contains the ensemble standard  |
-   |                                       |                                       | deviation for the stages that have    |
-   |                                       |                                       | been turned on in                     |
-   |                                       |                                       | ``stages_to_write``. The file name    |
-   |                                       |                                       | will have the stage with ``_sd``      |
-   |                                       |                                       | appended.                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | perturb_from_single_instance          | logical                               | Read a single file and perturb this   |
-   |                                       |                                       | to create an ensemble                 |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | perturbation_amplitude                | float                                 | Perturbation amplitude                |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | distribute_state                      | logical                               | True keeps the state distributed      |
-   |                                       |                                       | across all tasks throughout the       |
-   |                                       |                                       | entire execution of filter.           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +----------------------------------+--------------------------+----------------------------------------+
+   | Item                             | Type                     | Description                            |
+   +==================================+==========================+========================================+
+   | single_file_in                   | logical                  | True means that all of the restart     |
+   |                                  |                          | and inflation information is read      |
+   |                                  |                          | from a single NetCDF file. False       |
+   |                                  |                          | means that you must specify an         |
+   |                                  |                          | input_state_file_list and DART will    |
+   |                                  |                          | be expecting                           |
+   |                                  |                          | input_{priorinf,postinf}_{mean,sd}.nc  |
+   |                                  |                          | files for inflation.                   |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | single_file_out                  | logical                  | True means that all of the restart     |
+   |                                  |                          | and inflation information is written   |
+   |                                  |                          | to a single NetCDF file. False means   |
+   |                                  |                          | that you must specify a                |
+   |                                  |                          | output_state_files and DART will be    |
+   |                                  |                          | output files specified in the list.    |
+   |                                  |                          | Inflation files will be written in     |
+   |                                  |                          | the form                               |
+   |                                  |                          | input_{priorinf,postinf}_{mean,sd}.nc. |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | input_state_files                | character array          | This is used for single file input     |
+   |                                  |                          | for low order models. For multiple     |
+   |                                  |                          | domains you can specify a file for     |
+   |                                  |                          | each domain. When specifying a list    |
+   |                                  |                          | single_file_in, single_file_out must   |
+   |                                  |                          | be set to .true.                       |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | output_state_files               | character array          | This is used for single file input     |
+   |                                  |                          | for low order models. For multiple     |
+   |                                  |                          | domains you can specify a file for     |
+   |                                  |                          | each domain. When specifying a list    |
+   |                                  |                          | single_file_in, single_file_out must   |
+   |                                  |                          | be set to .true.                       |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | input_state_file_list            | character array          | A list of files containing input       |
+   |                                  |                          | model restarts. For multiple domains   |
+   |                                  |                          | you can specify a file for each        |
+   |                                  |                          | domain. When specifying a list         |
+   |                                  |                          | single_file_in, single_file_out must   |
+   |                                  |                          | be set to .false.                      |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | output_state_file_list           | character array          | A list of files containing output      |
+   |                                  |                          | model restarts. For multiple domains   |
+   |                                  |                          | you can specify a file for each        |
+   |                                  |                          | domain. When specifying a list         |
+   |                                  |                          | single_file_in, single_file_out must   |
+   |                                  |                          | be set to .false.                      |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | stages_to_write                  | character array          | Controls which stages to write.        |
+   |                                  |                          | Currently there are four options:      |
+   |                                  |                          |                                        |
+   |                                  |                          | -  ``input`` -- writes input mean and  |
+   |                                  |                          |    sd only                             |
+   |                                  |                          | -  ``preassim`` -- before              |
+   |                                  |                          |    assimilation, before prior          |
+   |                                  |                          |    inflation is applied                |
+   |                                  |                          | -  ``postassim`` -- after              |
+   |                                  |                          |    assimilation, before posterior      |
+   |                                  |                          |    inflation is applied                |
+   |                                  |                          | -  ``output`` -- final output for      |
+   |                                  |                          |    filter which includes clamping and  |
+   |                                  |                          |    inflation                           |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | write_all_stages_at_end          | logical                  | True means output all stages at the    |
+   |                                  |                          | end of filter. This is more memory     |
+   |                                  |                          | intensive but requires less time. For  |
+   |                                  |                          | larger models IO begins to dominate    |
+   |                                  |                          | the overall cost of the assimilation,  |
+   |                                  |                          | so writting all stages at the end      |
+   |                                  |                          | writes more files in parallel,         |
+   |                                  |                          | reducing the IO time. Filenames are    |
+   |                                  |                          | defined in ``output_state_files``.     |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | output_restarts                  | logical                  | True means output a restart file(s).   |
+   |                                  |                          | Filenames are defined in               |
+   |                                  |                          | ``output_state_files``.                |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | output_mean                      | logical                  | True means output a restart file       |
+   |                                  |                          | which contains the ensemble mean for   |
+   |                                  |                          | the stages that have been turned on    |
+   |                                  |                          | in ``stages_to_write``. The file name  |
+   |                                  |                          | will have the stage with ``_mean``     |
+   |                                  |                          | appended.                              |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | output_sd                        | logical                  | True means output a restart file       |
+   |                                  |                          | which contains the ensemble standard   |
+   |                                  |                          | deviation for the stages that have     |
+   |                                  |                          | been turned on in                      |
+   |                                  |                          | ``stages_to_write``. The file name     |
+   |                                  |                          | will have the stage with ``_sd``       |
+   |                                  |                          | appended.                              |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | perturb_from_single_instance     | logical                  | Read a single file and perturb this    |
+   |                                  |                          | to create an ensemble                  |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | perturbation_amplitude           | float                    | Perturbation amplitude                 |
+   +----------------------------------+--------------------------+----------------------------------------+
+   | distribute_state                 | logical                  | True keeps the state distributed       |
+   |                                  |                          | across all tasks throughout the        |
+   |                                  |                          | entire execution of filter.            |
+   +----------------------------------+--------------------------+----------------------------------------+
 
 **NetCDF reads and writes:**
 
