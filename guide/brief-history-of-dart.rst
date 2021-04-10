@@ -56,14 +56,13 @@ releases after islands in alphabetical order in the following sequence:
 +--------------------+----------------------------+----------------------------+
 
 In September 2009, DART was featured on the cover of the Bulletin of the
-American Meteorological Society:
+American Meteorological Society (BAMS):
 
 |BAMS-cover400|
 
-The September 2009 issue of BAMS can be found
-`here <https://journals.ametsoc.org/toc/bams/90/9>`__, while the DART article
-can be found directly
-`here <https://journals.ametsoc.org/doi/full/10.1175/2009BAMS2618.1>`__.
+To access the issue, see the 
+`September 2009 issue here <https://journals.ametsoc.org/view/journals/bams/90/9/1520-0477-90_9_fmi.xml>`__. To read the DART article
+directly see the `article here <https://journals.ametsoc.org/doi/full/10.1175/2009BAMS2618.1>`__.
 
 On the `Publications <https://dart.ucar.edu/publications/>`__ page there are over 40 example
 publications that use DART, although there are many additional publications

@@ -112,9 +112,8 @@ You can only specify **either** ``obs_sequence_name`` **or** ``obs_sequence_list
    |                                       |                                       | in degrees.                           |
    +---------------------------------------+---------------------------------------+---------------------------------------+
    | lonlim2                               | real                                  | Easternmost longitude of the region   |
-   |                                       |                                       | in degrees. *If this value is         |
-   |                                       |                                       | **less** **than** the westernmost     |
-   |                                       |                                       | value, it defines a region that spans |
+   |                                       |                                       | in degrees. *If ``lonlim2 < lonlim1`` |
+   |                                       |                                       | , it defines a region that spans      |
    |                                       |                                       | the prime meridian.* It is perfectly  |
    |                                       |                                       | acceptable to specify lonlim1 = 330 , |
    |                                       |                                       | lonlim2 = 50 to identify a region     |

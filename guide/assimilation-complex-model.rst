@@ -142,13 +142,14 @@ this field can have the following values:
 
 == =====================================================================================================================
 0: Observation was assimilated successfully
-1: Observation was evaluated only but not used in the assimilation
+1: Observation was evaluated (as specified in namelist) and not used in the assimilation
 2: The observation was used but one or more of the posterior forward observation operators failed
-3: The observation was evaluated only but not used AND one or more of the posterior forward observation operators failed
+3: The observation was evaluated AND one or more of the posterior forward observation operators failed
 4: One or more prior forward observation operators failed so the observation was not used
 5: The observation was not used because it was not selected in the namelist to be assimilated or evaluated
 6: The prior quality control value was too high so the observation was not used.
 7: Outlier test failed (see below)
+8: Vertical conversion failed
 == =====================================================================================================================
 
 The outlier test computes the difference between the observation value and the prior ensemble mean. It then computes a

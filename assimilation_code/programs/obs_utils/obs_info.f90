@@ -66,9 +66,9 @@ type obs_info_type
    type(time_type) :: last_time
 end type
 
-! in spite of the name, this is the number of specific types.
+! an array to hold counts for each obs type.
 ! also one for all obs types.
-type(obs_info_type) :: oinfo(0:max_defined_types_of_obs)
+type(obs_info_type) :: oinfo(max_defined_types_of_obs)
 type(obs_info_type) :: all_obs
 
 type(location_type) :: location
@@ -140,7 +140,7 @@ endif
 do fnum = 1, num_input_files
 
    ! initialize the bookkeeping structures
-   do i=0, max_defined_types_of_obs
+   do i=1, max_defined_types_of_obs
       call initialize(oinfo(i))
    enddo
    call initialize(all_obs)
@@ -213,7 +213,7 @@ do fnum = 1, num_input_files
    endif
    
    ! print out the results
-   ALLTYPES: do i=0, max_defined_types_of_obs
+   ALLTYPES: do i=1, max_defined_types_of_obs
       if (oinfo(i)%count == 0) cycle ALLTYPES
       if (counts_only) then
          call compute_times(oinfo(i)%first_time, oinfo(i)%last_time, avg_string=mid_string)
@@ -321,7 +321,7 @@ integer                 :: type_count(max_defined_types_of_obs), identity_count
 
 
 ! Initialize input obs_types
-do i = 0, max_defined_types_of_obs
+do i = 1, max_defined_types_of_obs
    type_count(i) = 0
 enddo
 identity_count = 0
@@ -395,7 +395,7 @@ write(msgstring, *) 'Number of obs processed  :          ', size_seq_in
 call error_handler(E_MSG, '', msgstring)
 write(msgstring, *) '---------------------------------------------------------'
 call error_handler(E_MSG, '', msgstring)
-do i = 0, max_defined_types_of_obs
+do i = 1, max_defined_types_of_obs
    if (type_count(i) > 0) then 
       write(msgstring, '(a32,i8,a)') trim(get_name_for_type_of_obs(i)), &
                                      type_count(i), ' obs'

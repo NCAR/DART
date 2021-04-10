@@ -31,7 +31,7 @@ PowerPC chipset : Absoft Pro Fortran 9.0
       [~/DART/utilities] % f90 PrecisionCheck.f90
       [~/DART/utilities] % ./a.out
        
-       This explores the use of the intrinisc SELECTED_[REAL,INT]_KIND() functions
+       This explores the use of the intrinsic SELECTED_[REAL,INT]_KIND() functions
        and the interplay with the compiler options. You are encouraged to use the
        "autopromotion" flags on your compiler and compare the results.
        
@@ -89,7 +89,7 @@ PowerPC chipset : Absoft Pro Fortran 9.0 : "-dp"
       [~/DART/utilities] % f90 -dp PrecisionCheck.f90
       [~/DART/utilities] % ./a.out
        
-       This explores the use of the intrinisc SELECTED_[REAL,INT]_KIND() functions
+       This explores the use of the intrinsic SELECTED_[REAL,INT]_KIND() functions
        and the interplay with the compiler options. You are encouraged to use the
        "autopromotion" flags on your compiler and compare the results.
        
@@ -147,7 +147,7 @@ PowerPC chipset : Absoft Pro Fortran 9.0 : "-n113"
       [~/DART/utilities] % f90 -N113 PrecisionCheck.f90
       [~/DART/utilities] % ./a.out
        
-       This explores the use of the intrinisc SELECTED_[REAL,INT]_KIND() functions
+       This explores the use of the intrinsic SELECTED_[REAL,INT]_KIND() functions
        and the interplay with the compiler options. You are encouraged to use the
        "autopromotion" flags on your compiler and compare the results.
        

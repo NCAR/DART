@@ -11,7 +11,7 @@ import subprocess
 import uuid
 import warnings
 
-from wrfhydropy import get_git_revision_hash
+from wrfhydropy.core.model import get_git_revision_hash
 from wrfhydropy.core.ensemble_tools import get_ens_dotfile_end_datetime
 
 from wrfhydropy import Job, Scheduler
