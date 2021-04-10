@@ -1,5 +1,5 @@
-CESM Atmospheric Models
-=======================
+Atmospheric Models in CESM 
+==========================
 
 Overview
 --------
@@ -16,15 +16,16 @@ It has also provided an interface to CAM-SE on an as-needed basis,
 but we expect to make that a continuously supported interface in 2021.
 An interface to MPAS is being developed (contact us about the current status).
 
-.. _1 degree reanalysis wiki: <https://github.com/NCAR/DART/wiki/1-degree,-CAM6,-ensemble-reanalysis-for-CESM-experiments-(2011-thru-2019):-DATM,-hindcasts,-model-evaluation>
+.. |CAM6_Rean| replace:: 1 degree reanalysis wiki
+.. _CAM6_Rean: https://github.com/NCAR/DART/wiki/1-degree,-CAM6,-ensemble-reanalysis-for-CESM-experiments-(2011-thru-2019):-DATM,-hindcasts,-model-evaluation
 
 The flexibility of the DART environment has led to its use
 by graduate students, post-graduates, and scientists at universities and
 research labs to conduct data assimilation research. Others are using the
 products of data assimilation (analyses), which were produced here at NCAR
 using CESM+DART, to conduct related research. 
-The latest reanalysis is described in the DART `1 degree reanalysis wiki`_
-<https://github.com/NCAR/DART/wiki/1-degree,-CAM6,-ensemble-reanalysis-for-CESM-experiments-(2011-thru-2019):-DATM,-hindcasts,-model-evaluation>`__.
+The latest reanalysis is described in the DART |CAM6_Rean|_
+
 The variety of research can be sampled on the DART  
 `Publications <https://dart.ucar.edu/pages/Publications.html>`__ page.
 
@@ -48,7 +49,7 @@ with two independent main characteristics. CESM labels these as:
    refers to the vertical grid **and** the parameterizations --
    the formulation of the subgridscale physics -- as well as the combination
    of active, data, or stub model components. These parameterizations 
-   encompass the equations describing physical processes such as convection,
+   consist of the equations describing physical processes such as convection,
    radiation, and chemistry.
    
    - The vertical grid is determined by the needs of the chosen
@@ -58,7 +59,7 @@ with two independent main characteristics. CESM labels these as:
      CAM5, CAM#, ... WACCM, WACCM#, WACCM-X, CAM-Chem.  
    - The compset is specified as described in the `CESM readme <../CESM/readme.html>`_.
 
-"ensemble", "multi-instance", and "multidriver"
+**ensemble, multi-instance, and multidriver**
 
    These are essentially synonyms referring to multiple, closely related models 
    or model states.  "Ensemble" is DART's vocabulary, while "multi-instance"
@@ -67,12 +68,13 @@ with two independent main characteristics. CESM labels these as:
    which coordinates the running of all of the model components.
    Similarly, DART ensemble "members" are the same as CESM "instances".
 
-"CASE", "CASEROOT"
+**CASE, CASEROOT**
 
-   Running a setup script creates a CESM "CASE" (the name of your experiment)
+   Running a DART setup script creates a CESM "CASE" (the name of your experiment)
    in the "CASEROOT" directory (from where jobs will be controlled and launched),
    both of which are defined in the setup script.  There will also be a run directory
-   named $CASEROOT in your scratch space (usually).
+   named $CASEROOT in your scratch space (usually), where the fortran executables 
+   can also be found ($scratch/$CASEROOT/bld).
    
 
 `Setup Scripts`_ describes how to specify these and other choices 
@@ -118,7 +120,7 @@ There have been two large-scale reanalysis efforts using CAM-FV and DART.
 The **CAM6 Data Assimilation Research Testbed (DART) Reanalysis**
 is archived in the NCAR Research Data Archive 
 `DS345.0 <https://rda.ucar.edu/datasets/ds345.0/#!description>`__ .
-(See the `1 degree reanalysis wiki`_ ).
+(See the |CAM6_Rean|_ ).
 It contains just under 120Tb (yes Tb) of data:
 
    These CAM6+DART Reanalysis data 
@@ -178,10 +180,9 @@ COSMIC
    radio occultation signals.
 
 AIRS
-   Retrievals (http://airs.jpl.nasa.gov/) 
-   from infrared soundings from the AQUA satellite (http://aqua.nasa.gov/)
+   Retrievals from `infrared soundings <http://airs.jpl.nasa.gov/>`_  
+   from the `AQUA satellite <http://aqua.nasa.gov/>`_
    They are thinned by a factor of 90 to make their density comparable to the radiosonde network.
-      
 
 +----------------------+----------------------------------------+--------------------------+--------+
 | Observation or       |                                        |                          | Data   |
@@ -206,10 +207,6 @@ Sample sets of observations, which can be used with CAM+DART assimilations, can
 be found at http://www.image.ucar.edu/pub/DART/Obs_sets/ of which the NCEP BUFR
 observations are the most widely used.
 
-FIXME:
-The DART interfaces to CAM and many of the other CESM components have been
-integrated with the CESM setup and run scripts.
-
 The CAM-FV DART Interface
 =========================
 
@@ -220,7 +217,7 @@ location, and do spatial interpolation for a variety of variables required by
 observational operators.
 Your choices for how the assimilation (not the hindcast) will happen 
 are defined in the ``cam-fv/work/input.nml`` file. 
-In that file, the ``model_mod_nml`` namelist lets you control the interaction with CAM-FV.
+In that file, the ``model_nml`` namelist lets you control the interaction with CAM-FV.
 The CAM-FV, which DART will interact with, is defined by the setup scripts,
 as described next.
 
@@ -237,7 +234,7 @@ for more general information about
 running DART with CESM. Due to the complexity of the CESM software environment,
 the versions of CESM which can be used for assimilation are more restricted than
 previously. Each supported CESM version has similar, but unique, sets of setup
-scripts and CESM SourceMods. Those generally do not affect the
+scripts and CESM `SourceMods`_. Those generally do not affect the
 ``cam-fv/model_mod.f90`` interface. 
 
 The primary purpose of a setup script is to *set up* a CESM "CASE"
@@ -249,9 +246,12 @@ They are roughly in order of complexity, which is the order in which
 you might want to use them.
 The indenting shows which scripts are used by, or associated with, another script.
 
+.. FIXME; code-block with no argument colors random words in the descriptions.
+   What's a better format that code-block?  Table doesn't work well because of indenting limits.
+
 .. code-block::
 
-   cesm2_1/                             Directory containing scripts developed for CESM2_1
+   cesm2_1/                              Directory containing scripts developed for CESM2_1
        spinup_single                     Setup a single instance (member) CAM-FV case to advance a model state 
                                          some months to a desired date.
        setup_hybrid                      Basic script to set up an assimilation case.
@@ -282,8 +282,9 @@ The scripts  in cesm#_# will handle, for that CESM version;
 Physics variants of other dycores are handled in other "model" interfaces,
 such as models/cam-se.
 
-.. _SourceMods: 
 .. _reanalysis: https://github.com/kdraeder/cesm}{github.com/kdraeder/cesm
+
+.. _SourceMods: 
 
 SourceMods
 ~~~~~~~~~~
@@ -303,14 +304,14 @@ Namelists
 
 DART assembles the namelists for all of the relevant modules
 into a single namelist file; ``models/cam-fv/input.nml``.
-This section focuses on ``model_mod_nml``,
+This section focuses on ``model_nml``,
 but others are referenced, as needed.
 Namelists start with an ampersand ``&`` and terminate with a slash ``/``. 
 Character strings that contain a ``/`` must be enclosed in quotes to prevent them 
 from prematurely terminating the namelist.
 Text outside of the &.../ pairs is ignored.
 
-Here's a list of the model_mod_nml variables and default values.
+Here's a list of the model_nml variables and default values.
 More detailed descriptions follow in a table and subsections.
 
 .. code-block:: fortran
@@ -492,17 +493,18 @@ enable DART to compute forward operators (expected observation values) efficient
 The derived quantities are often overwritten when the model runs
 the next timestep, so the work DART does to update them is wasted work.
 The standard state vector contains the following fields,
-as entered into the ``input.nml:model_mod_nml`` namelist.
+as entered into the ``input.nml:model_nml`` namelist.
 
 .. code-block:: fortran
    
-   state_variables  = 'T',     'QTY_TEMPERATURE',         'NA', 'NA', 'UPDATE'
-                       'US',    'QTY_U_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
-                       'VS',    'QTY_V_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
-                       'Q',     'QTY_SPECIFIC_HUMIDITY',   'NA', 'NA', 'UPDATE'
-                       'CLDLIQ','QTY_CLOUD_LIQUID_WATER',  'NA', 'NA', 'UPDATE'
-                       'CLDICE','QTY_CLOUD_ICE',           'NA', 'NA', 'UPDATE'
-                       'PS',    'QTY_SURFACE_PRESSURE',    'NA', 'NA', 'UPDATE'
+   state_variables  = 
+         'T',     'QTY_TEMPERATURE',         'NA', 'NA', 'UPDATE'
+         'US',    'QTY_U_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
+         'VS',    'QTY_V_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
+         'Q',     'QTY_SPECIFIC_HUMIDITY',   'NA', 'NA', 'UPDATE'
+         'CLDLIQ','QTY_CLOUD_LIQUID_WATER',  'NA', 'NA', 'UPDATE'
+         'CLDICE','QTY_CLOUD_ICE',           'NA', 'NA', 'UPDATE'
+         'PS',    'QTY_SURFACE_PRESSURE',    'NA', 'NA', 'UPDATE'
 
 Any tracers or chemicals ("constituents" in CESM's vocabulary), 
 which are needed for a given study and exist in the initial files, 
@@ -598,9 +600,9 @@ and "dart.rh.cam_output_priorinf_sd" in them, so that assimilate.csh will find t
 If you don't have restart files, set ``*initial_from_restart`` to .false.
 and assimilate.csh will create inflation restart files
 using the values in ``inf_initial`` and ``inf_sd_initial``.
+You will need to run the assimilation for some days in order to allow the inflation values
+to equilibrate with the observation network and model ensemble spread.
 
-.. Can't tell (in atom) whether this works.
-.. It definitely doesn't work in the table, above.
 .. _Perturbed:
 
 Perturbed Ensemble
@@ -614,7 +616,7 @@ which need their own restart files.
 If there is no suitable initial ensemble for starting the ensemble hindcast,
 one can be generated from a single model state
 by linking it into suitably named files 
-(see ../CESM/shell_scripts/link_ens_to_single.csh)
+(see ../CESM/shell_scripts/link_ens_to_single.csh),
 running the first ensemble hindcast, 
 and then telling DART to perturb each member before the first assimilation.
 
@@ -637,7 +639,7 @@ For example,
       perturb_from_single_instance = .true.
       perturbation_amplitude         (ignored, because model_mod defines it)
 
-   model_mod_nml:
+   model_nml:
       custom_routine_to_generate_ensemble = .true.
       fields_to_perturb                   = 'QTY_TEMPERATURE'
       perturbation_amplitude              = 0.1
@@ -651,16 +653,17 @@ you will need to change to the 'continuing' mode,
 where CAM will not perform all of its startup procedures 
 and DART will use the most recently created ensemble.
 
-.. code-block::
+.. code-block:: fortran
 
-   model_mod_nml:
+   ! model_nml:
       custom_routine_to_generate_ensemble = .true.
       fields_to_perturb                   = ''   (Turns off perturbations)
       perturbation_amplitude              = 0.1  (Ignored.  Can change to 0.0_r8 for consistency)
 
-   CESM's env_run.xml:
+   ! CESM's env_run.xml:
        <entry id="CONTINUE_RUN" value="TRUE">
 
+.. FIXME the ! allow it to be 'lexed' as fortran, but the ' confuses the syntax highlighting.
 
 Combining multiple cycles into one job
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -674,9 +677,9 @@ To request 2 hours to run 8 assimilation cycles, in $CASEROOT run commands:
 
 .. code-block:: csh
 
-   > ./xmlchange DATA_ASSIMILATION_CYCLES=8
-    > ./xmlchange --subgroup case.run --id JOB_WALLCLOCK_TIME      --val 2:00:00
-    > ./xmlchange --subgroup case.run --id USER_REQUESTED_WALLTIME --val 2:00
+ =  ./xmlchange DATA_ASSIMILATION_CYCLES=8
+   ./xmlchange --subgroup case.run --id JOB_WALLCLOCK_TIME      --val 2:00:00
+   ./xmlchange --subgroup case.run --id USER_REQUESTED_WALLTIME --val 2:00
 
 
 .. _Diffusion:
@@ -718,17 +721,30 @@ to decide which should be excluded.
 
 Minimum Recommended Values to Control Assimilation Near the Model Top.
 
-+---------------+------------------+-----------------------------+-----------------------------+
-| div24del2flag | Diffusion levels | model_damping_ends_at_level | no_obs_assim_above_level    |
-+===============+==================+=============================+=============================+
-| CAM: 2        | 2                | 2                           | (2; depends on localization)|
-+---------------+------------------+-----------------------------+-----------------------------+
-| WACCM: 2      | 3                | 3                           | (3; depends on localization)|
-+---------------+------------------+-----------------------------+-----------------------------+
-| CAM  4, 24    | 3                | 3                           | (3; depends on localization)|
-+---------------+------------------+-----------------------------+-----------------------------+
-| WACCM: 4, 24  | 4                | 4                           | (4; depends on localization)|
-+---------------+------------------+-----------------------------+-----------------------------+
+.. FIXME Sphinx renders a cell that is 2 rows deep as 1 row deep,
+   even if there is text in both rows.
+   +-----+
+   | one | 
+   | two | 
+   +-----+
+   yields
+   ___________
+   | one two |
+   -----------
+   So I can't split model_damping_ends_at_level or Diffusion levels i
+   onto 2 lines to make the table narrower.
+
++---------------+------------------+-----------------------------+------------------------------+
+| div24del2flag | Diffusion levels | model_damping_ends_at_level | no_obs_assim_above_level     |
++===============+==================+=============================+==============================+
+| CAM: 2        | 2                | 2                           | (2; depends on localization) |
++---------------+------------------+-----------------------------+------------------------------+
+| WACCM: 2      | 3                | 3                           | (3; depends on localization) |
++---------------+------------------+-----------------------------+------------------------------+
+| CAM  4, 24    | 3                | 3                           | (3; depends on localization) |
++---------------+------------------+-----------------------------+------------------------------+
+| WACCM: 4, 24  | 4                | 4                           | (4; depends on localization) |
++---------------+------------------+-----------------------------+------------------------------+
 
 WACCM
 ~~~~~
@@ -746,11 +762,11 @@ to use with WACCM, but a good place to start includes
 .. code-block:: fortran
 
    use_log_vertical_scale          = .true.
-    use_variable_mean_mass          = .true.
-    vertical_localization_coord     = 'SCALEHEIGHT'
-    vert_normalization_scale_height = 1.5
-    cutoff = 0.15
-    no_obs_assim_above_level        = 4,
+   use_variable_mean_mass          = .true.
+   vertical_localization_coord     = 'SCALEHEIGHT'
+   vert_normalization_scale_height = 1.5
+   cutoff                          = 0.15
+   no_obs_assim_above_level        = 4,
    
 
 In any case, make the following changes (or similar) to convert from a CAM setup
@@ -759,11 +775,11 @@ to a WACCM setup in ``setup_hybrid``:
 .. code-block:: csh
 
    setenv compset     FWHIST
-    setenv resolution  f19_f19  
-    setenv refcase     {the CASE name of the initial condition file(s) (differs from this assimilation)}
-    setenv refyear     {\                                           }
-    setenv refmon      { >{the date of the initial condition file(s)}
-    setenv refday      {/                                           }
+   setenv resolution  f19_f19  
+   setenv refcase     {the CASE name of the initial condition file(s) (differs from this assimilation)}
+   setenv refyear     {\                                           }
+   setenv refmon      { >{the date of the initial condition file(s)}
+   setenv refday      {/                                           }
 
 If there are problems with instability in the WACCM foreasts, try changing some
 of the following parameters in either the setup script or input.nml.
@@ -807,7 +823,7 @@ of the following parameters in either the setup script or input.nml.
    .. code-block:: csh
 
       echo " nsplit         = 16 "                             >> ${fname}
-       echo " nspltvrm       =  4 "                             >> ${fname}
+      echo " nspltvrm       =  4 "                             >> ${fname}
 
 -  Reduce ``inf_damping`` from the default value of ``0.9`` in ``input.nml``:
 
@@ -855,9 +871,9 @@ before each hindcast by:
    * replacing the cime/src/drivers/mct/cime_config/buildnml with the one in the `SourceMods`_ tar file.
      
 -  ISSUE: Improve this page
-   * Add links and references to this document.
-   * Publications web page.
-   * CAM-chem; link?  More description?
+    * Add links and references to this document.
+    * Publications web page.
+    * CAM-chem; link?  More description?
 
 -  ISSUE?; ``model_interpolate`` assumes that obs with a vertical location have
    2 horizontal locations too. The state vector may have fields for which this

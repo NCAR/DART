@@ -1,8 +1,6 @@
 Community Earth System Model 
 ============================
 
-See FIXME
-
 Preliminaries
 -------------
 
@@ -26,6 +24,8 @@ Each component model (CAM, CLM, POP, CICE, ...) contributes in one of 3 modes:
 
 The components influence each other only by passing fluxes and interface field values through the coupler. 
 The combination chosen for a given application is called a ``compset``.
+A compset is assembled using CESM's ``create_newcase`` and ``case.setup`` scripts,
+which create a new "CASE" in the "CASEROOT" directory.
 
 CESM uses the term 'fully coupled' to refer to a compset 
 which has an active atmosphere and ocean, regardless of other components.  
@@ -82,41 +82,54 @@ The sea surface temperature forcing of the atmosphere is provided by a data ocea
 Multi-component assimilation (often called ''weakly coupled'')
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+-----------------------------+-----------------------------------------------------+
-| |Multi-component flowchart| | It's also possible to assimilate observations       |
-|                             | into multiple active components, but                |
-|                             | restricting the impact of observations              |
-|                             | to only ''their own'' component. So in a            |
-|                             | ''coupled'' CESM with active CAM and POP,           |
-|                             | atmospheric observations change only the CAM        |
-|                             | model state while oceanic observations change       |
-|                             | only the POP model state. This mode uses multiple   |
-|                             | *DART* model interfaces (cam-fv and POP in this     |
-|                             | example) to make a filter for each model.           |
-|                             | This mode uses scripts found in the                 |
-|                             | CESM/shell_scripts directory.                       |
-|                             | This does not require a models/CESM/model_mod.f90,  |              
-|                             | since it uses a separate filter for each component  |
-|                             | (cam-fv, POP, ...).                                 |
-+-----------------------------+-----------------------------------------------------+
++-----------------------------------------------+-----------------------------------+
+| |Multi-component flowchart|                   | It's also possible to assimilate  |
+|                                               | observations into multiple active |
+|                                               | components, but restricting the   |
+|                                               | impact of observations to only    |
+|                                               | ''their own'' component. So in a  |
+|                                               | ''coupled'' CESM with active CAM  |
+|                                               | and POP, atmospheric observations |
+|                                               | change only the CAM model state   |
+|                                               | while oceanic observations change |
+|                                               | only the POP model state. This    |
+|                                               | mode uses multiple *DART* model   |
+|                                               | interfaces (cam-fv and POP in     |
+|                                               | this example) to make a filter    |
+|                                               | for each model.  This mode uses   |
+|                                               | scripts found in the              |
+|                                               | CESM/shell_scripts directory.     |
+|                                               | This does not require a           |
+|                                               | models/CESM/model_mod.f90,        |
+|                                               | since it uses a separate filter   |
+|                                               | for each component                |
+|                                               | (cam-fv, POP, ...).               |
++-----------------------------------------------+-----------------------------------+
 
 Cross-component assimilation (often called ''strongly coupled'')
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+-----------------------------+-----------------------------------------------------+
-| |Cross-component flowchart| | Work is underway to enable the assimilation         |
-|                             | of all observations into multiple active            |
-|                             | CESM components. So observations of the atmosphere  |
-|                             | would directly change the POP state variables and   |
-|                             | observations of the ocean would change the CAM state|
-|                             | variables without interaction through the coupler.  |
-|                             | Some unresolved issues include defining the         |
-|                             | ''distance'' between an observation in the          |
-|                             | atmosphere and a grid point in the ocean            |
-|                             | (for localization), and how frequently to assimilate|
-|                             | in CAM versus POP. This mode                        |
-|                             | will use code in this models/CESM directory.        |
-+-----------------------------+-----------------------------------------------------+
++-----------------------------------------------+-----------------------------------+
+| |Cross-component flowchart|                   | Work is underway to enable the    |
+|                                               | assimilation of all observations  |
+|                                               | into multiple active CESM         |
+|                                               | components. So observations of    |
+|                                               | the atmosphere would directly     |
+|                                               | change the POP state variables    |
+|                                               | and observations of the ocean     |
+|                                               | would change the CAM state        |
+|                                               | variables without interaction     |
+|                                               | through the coupler.  Some        |
+|                                               | unresolved issues include         |
+|                                               | defining the ''distance'' between |
+|                                               | an observation in the atmosphere  |
+|                                               | and a grid point in the ocean     |
+|                                               | (for localization), and how       |
+|                                               | frequently to assimilate          |
+|                                               | in CAM versus POP. This mode      |
+|                                               | will use code in this             |
+|                                               | models/CESM directory.            |
++-----------------------------------------------+-----------------------------------+
 
 .. note::
 
@@ -129,7 +142,8 @@ SourceMods
 Since the ability to use DART has not been completely integrated into CESM testing, 
 it is necessary to use some CESM fortran subroutines which have been modified for use with DART. 
 These must be provided to CESM through the SourceMods mechanism. 
-SourceMods for selected versions of CESM are available from [FIXME; WHERE?]. 
+SourceMods for selected versions of CESM are available as described in the readme.html
+pages of the component model interfaces ($DART/models/{cam-fv,clm,...}.
 This release of DART focuses on selected CESM versions from CESM2 (June, 2017) and later. 
 Using this DART with other CESM versions will quite possibly fail,
 in which case existing SourceMods can often be used as a template 
@@ -152,7 +166,7 @@ CESM2 has several helpful features (compared to CESM1), from DART's perspective.
    ($CASEROOT/env_archive.xml), so that DART modifications to the short term archiver are more straight-forward.
 -  The creation of a new component class, ''External System Processing'' (''esp''), of which DART is the first
    instance, integrates DART more fully into the CESM development, testing, and running environment. 
-   This is similar to the atm class, which has CAM as an instance. 
+   This is similar to the atm class, which has CAM-FV as an instance. 
    This will help make DART available in the most recent tagged CESM
    versions which have the most recent CESM component versions.
 -  Reduced number of subroutines in DART's SourceMods.

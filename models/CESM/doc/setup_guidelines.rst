@@ -5,8 +5,8 @@ CESM+DART setup overview
 ------------------------
 
 If you found your way to this file without reading more basic DART help files, 
-please read those first. `<../../README.html>`__ is a good place to find pointers to those files. 
-Then see `<../readme.rst>` for an overview of DART's interfaces to CESM.
+please read those first. `<../../../README.html>`__ is a good place to find pointers to those files. 
+Then see `<../readme.html>`__ for an overview of DART's interfaces to CESM.
 Finally, see the ../../{your_cesm_component(s)}/readme.html documentation about
 the code-level interfaces and namelist values for various CESM component models.
 This document gives specific help in setting up a CESM+DART assimilation
@@ -52,8 +52,8 @@ Some of the steps can be skipped if you have a suitable replacement, as noted.
     Input.nml will be copied to the $CASEROOT directory and used by assimilate.csh.
     That copy can be modified for whichever cycles will be run next.
 #.  Build the DART executables using quickbuild.csh.
-#.  Follow the directions in CESM/shell_scripts/*setup* to set up the CESM case and integrate DART into it.
-    We recommend a tiny ensemble to start with, to more quickly test whether everything is in order.
+#.  Follow the directions in CESM/shell_scripts/\*setup\* to set up the CESM case and integrate DART into it.
+    The DART team recommends a tiny ensemble to start with, to more quickly test whether everything is in order.
 #.  Choose a start date for your assimilation. Choosing/creating the initial ensemble is a complicated issue.
 
     -  It's simpler for CAM assimilations. If you don't have an initial state and/or ensemble for this date, build a
@@ -80,25 +80,13 @@ Output directory
 
 CESM's short term archiver (case.st_archive) is controlled by its ``env_archive.xml``. 
 DART's setup scripts modify that file to archive DART output along with CESM's. 
-(See the `<../../../guide/rma.html>`_ for a description of DART's output).
+(See the `<../../../guide/controlling-files-output.html>`_ for a description of DART's output).
 DART's output is archived in ``$arch_dir/esp/{hist,rest,logs,...}``, where arch_dir is defined in
 ``setup_{hybrid,advanced}``, ``hist`` contains all of the state space and observation space output, and ``rest``
 contains the inflation restart files.
 
 The cam-XX assimilate.csh script may make a copy of its obs_seq.final files in a scratch space
 ($scratch/$case/Obs_seqs) which won't be removed by assimilate.csh.
-
-Helpful hints
--------------
-
-Space requirements
-------------------
-
-Space requirements (Gb per ensemble member) for several CAM resolutions.
-
-| 
-
-There are, no doubt, things missing from these lists, so don't struggle too long before contacting dart'at'ucar.edu.
 
 Shell_scripts for building and running multi-component assimilations
 --------------------------------------------------------------------
@@ -111,19 +99,23 @@ but can serve as a template for multi-component assimilations.
    * set up, stage, and build a single-instance, B compset configuration of CESM. 
    * The initial state can come from any single member of a reference case.
    * Synthetic observations are harvested from the CESM model states.
+
  CESM1_1_1_setup_hybrid   
    * Set up, stage, and build an ensemble assimilation 
    * using a B compset configuration of CESM.
    * The initial states come from a single, multi-instance, reference case
+
  CESM1_1_1_setup_special
    * Same as CESM1_1_1_setup_hybrid, but the initial states for the 5 active models 
    * come from up to 5 sources:
    * The ICs source directories need to be updated.
+
  CESM1_1_1_setup_initial
    * Same as CESM1_1_1_setup_hybrid, but fewer comments and error checks.
 
  CESM1_2_1_setup_pmo
    * Same as CESM1_2_1_setup_hybrid, but for _pmo.
+
  CESM1_2_1_setup_hybrid
    * Same as CESM1_1_1_setup_hybrid, but updated to accommodate CESM's wave and land ice models.
    * (DART has no interfaces for those components).  Somewhat different handling of SourceMods.
@@ -143,24 +135,64 @@ but can serve as a template for multi-component assimilations.
    * Can call the assimilate.csh script for each component which will be used for assimilation.
    * See [component]_assimilate.csh below (which were derived from 
      $DART/models/[component]/shell_scripts/.../assimilate.csh
+
  cam_assimilate.csh
    * Sets up and runs filter for CAM and related observations.
    * Uses cam_to_dart and dart_to_cam, which are not used in the Manhattan release and later.
+
  clm_assimilate.csh 
    * similar to cam_assimilate.csh
+
  pop_assimilate.csh
    * similar to cam_assimilate.csh
 
  no_assimilate.csh
    * The script used as a placeholder in the CESM run scripts when a case is set up.
+
  cam_no_assimilate.csh
    * The CAM no_assimilate script needs to make an initial file available for the next CAM hindcast.
 
  run_perfect_model_obs.csh
    * Batch script to run perfect_model_obs for POP (only!)
+
  CLM_convert_restarts.csh
    * Converts 'old' CLM restart files to whatever resolution you like.
+
  link_ens_to_single.csh
    * Helper script to generate a virtual ensemble from a single instance (member).
+
  st_archive.sh
    * A CESM archiving script, modified to handle DART output files.
+
+Helpful hints
+-------------
+
+You will probably want to use your computer resources efficiently.
+In addition to the Tips and Warnings in `<../readme.html>`__,
+The DART team recommends:
+
+   + Experiment with a single instance CASE to learn the smallest number of nodes
+     on which it will run reliably.  Strange andor nonreproducible errors often
+     are the result of giving insufficient memory to the job.
+     (node = several to dozens of central processing units which share memory
+     in ways that allow very fast communication).  Build the multi-instance case
+     using that number of nodes per instance.  This has 2 benefits; it minimizes queue 
+     wait times, and it minimizes internode communication, which can increase exponentially 
+     with the number of nodes used.
+   + Carefully select the output to be saved and the archiving frequency.  
+     Output from large ensemble, large model assimilations can quickly fill 
+     the available disk space, resulting in an ugly ending to your job, 
+     from which it is time consuming to recover; 
+     discarding the partial files and keeping the output needed for evaluation
+     and restarting the assimilation.
+   + Evaluate the output frequently to determine whether it is worthwhile to continue.
+     Looking at the model output in its gridded form can be useful, 
+     but the DART team has learned that you can do a much more thorough and efficient evaluation 
+     in "observation space", using 
+     `obs_diag <../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`_ 
+     and scripts in "$DART/diagnostics/matlab" described in the 
+     `Observation Space <https://dart-documentation.readthedocs.io/en/latest/guide/matlab-observation-space.html>`_
+
+
+There are, no doubt, things missing from these lists, so don't struggle too long before contacting dart'at'ucar.edu.
+
