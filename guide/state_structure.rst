@@ -1,8 +1,8 @@
 State Stucture
 ==============
 
-State_structure_mod is a module that holds all the domain, variable, dimension info about the model_mods in the state.
-Note it stores only
+state_structure_mod is a module that holds all the domain, variable, dimension info about the model_mods in the state.
+Note it stores only **metadata** about the state, not the actual state variables themselves.
 
 It is the foundation for two parts of the code:
 
@@ -51,5 +51,5 @@ Unlimited dimensions: io vs model_mod routines
 
 Some model restart files have an unlimited dimension. For IO purposes, e.g. creating netcdf files, the unlimited
 dimension is used. For state structure accessor functions called be the model_mod the unlimited dimension is ignored. So
-if you have a variable TEMPARATURE in your netcdf file, with dimensions (lon, lat, level, time) the IO routines will see
+if you have a variable TEMPERATURE in your netcdf file, with dimensions (lon, lat, level, time) the IO routines will see
 a 4D variable, but ``get_num_dims`` used in model_mod will return 3D.
