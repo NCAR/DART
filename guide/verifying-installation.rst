@@ -88,6 +88,10 @@ calculate the error in the assimilation:
                           var: 'state'
                      var_inds: [1 2 3]       
 
+
+|lorenz_63_total_err|
+|lorenz_63_ens_time_series|
+
 From the above ``plot_ens_time_series`` graphic, you can see the
 individual green ensemble members becoming more constrained with less
 spread as time evolves. If your figures look similar to these, you
@@ -118,3 +122,10 @@ learn more about:
    did not work for you as intended or were confusing, please contact the DART
    software development team at dart@ucar.edu. We value your input to make
    getting started as smooth as possible for new DART users!
+
+
+.. |lorenz_63_total_err| image:: images/lorenz_63_total_err.png
+   :width: 100%
+
+.. |lorenz_63_ens_time_series| image:: images/lorenz_63_ens_time_series.png
+   :width: 100%
