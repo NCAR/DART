@@ -122,53 +122,34 @@ to use your own plotting routines.
 +-----------------+---------------------------------------------------------------------------------------------------+
 
 The DART QC flag is intended to provide information about whether the observation was assimilated, evaluated only,
-whether the assimilation resulted in a 'good' observation, etc. *DART QC values lower than*\ **2**\ *indicate the prior
-and posteriors are OK.* DART QC values higher than **3** were **not** assimilated or evaluated. Here is the table that
+whether the assimilation resulted in a 'good' observation, etc. 
+*DART QC values lower than* \ **2**\  *indicate the prior and posteriors are OK.* 
+DART QC values higher than **3** were **not** assimilated or evaluated. Here is the table that
 should explain things more fully:
 
-DART QC flag value
-
-meaning
-
-0
-
-observation assimilated
-
-1
-
-observation evaluated only (because of namelist settings)
-
-2
-
-assimilated, but the posterior forward operator failed
-
-3
-
-evaluated only, but the posterior forward operator failed
-
-4
-
-prior forward operator failed
-
-5
-
-not used because observation type not listed in namelist
-
-6
-
-rejected because incoming observation QC too large
-
-7
-
-rejected because of a failed outlier threshold test
-
-*8*
-
-*vertical conversion failed*
-
-9+
-
-reserved for future use
++--------------------+------------------------------------------------------------------+
+| DART QC flag value | meaning                                                          +
++====================+==================================================================+
+| 0                  | observation assimilated                                          +
++--------------------+------------------------------------------------------------------+
+| 1                  | observation evaluated only (because of namelist settings)        +
++--------------------+------------------------------------------------------------------+
+| 2                  | assimilated, but the posterior forward operator failed           +
++--------------------+------------------------------------------------------------------+
+| 3                  | evaluated only, but the posterior forward operator failed        +
++--------------------+------------------------------------------------------------------+
+| 4                  | prior forward operator failed                                    +
++--------------------+------------------------------------------------------------------+
+| 5                  | not used because observation type not listed in namelist         +
++--------------------+------------------------------------------------------------------+
+| 6                  | rejected because incoming observation QC too large               +
++--------------------+------------------------------------------------------------------+
+| 7                  | rejected because of a failed outlier threshold test              +
++--------------------+------------------------------------------------------------------+
+| *8*                | *vertical conversion failed*                                     +
++--------------------+------------------------------------------------------------------+
+| 9+                 | reserved for future use                                          +
++--------------------+------------------------------------------------------------------+
 
 What is new in the Manhattan release
 ------------------------------------
