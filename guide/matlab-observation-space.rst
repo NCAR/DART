@@ -21,6 +21,8 @@ on the same axis.
 
 |plot evolution example|
 
+----------------------------------------
+
 `plot_profile.m <https://raw.githubusercontent.com/NCAR/DART/master/diagnostics/matlab/plot_profile.m>`__
 plots the spatial and temporal average of any specified quantity as a function
 of height. The number of observations possible and used are plotted on the same
@@ -43,6 +45,8 @@ same as ``plot_profile.m`` with an overlay of **rmse**.
 `plot_bias_xxx_profile.m <https://raw.githubusercontent.com/NCAR/DART/master/diagnostics/matlab/plot_bias_xxx_profile.m>`__
 same as ``plot_profile.m`` with an overlay of **bias**.
 
+----------------------------------------
+
 `two_experiments_evolution.m <https://raw.githubusercontent.com/NCAR/DART/master/diagnostics/matlab/two_experiments_evolution.m>`__
 same as ``plot_evolution.m`` but will overlay multiple (more than two, actually)
 experiments (i.e. multiple ``obs_diag_output.nc`` files) on the same axis. A
@@ -59,6 +63,8 @@ separate figure is created for each region in the ``obs_diag_output.nc`` file.
    two_experiments_evolution(files, titles,{'ACARS_TEMPERATURE'}, qtty, prpo, levelind)
 
 |two experiments evolution example|
+
+----------------------------------------
 
 `two_experiments_profile.m <https://raw.githubusercontent.com/NCAR/DART/master/diagnostics/matlab/two_experiments_profile.m>`__
 same as ``plot_profile.m`` but will overlay multiple (more than two, actually)
@@ -77,6 +83,8 @@ multiple axes on a single figure.
 
 |two experiments profile example|
 
+----------------------------------------
+
 `plot_rank_histogram.m <https://raw.githubusercontent.com/NCAR/DART/master/diagnostics/matlab/plot_rank_histogram.m>`__ will
 create rank histograms for any variable that has that information present in
 ``obs_diag_output.nc``.
@@ -88,6 +96,8 @@ create rank histograms for any variable that has that information present in
    plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
 
 |rank hist matlab example|
+
+----------------------------------------
 
 You may also convert observation sequence files to netCDF by using
 :doc:`../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf`. All
@@ -129,6 +139,8 @@ observation values. A second axis will also plot the QC values if desired.
 
 |plot obs netcdf example|
 
+----------------------------------------
+
 `plot_obs_netcdf_diffs.m <https://raw.githubusercontent.com/NCAR/DART/master/diagnostics/matlab/plot_obs_netcdf_diffs.m>`__
 creates a 3D scatterplot of the difference between two ‘copies’ of an
 observation.
@@ -149,6 +161,8 @@ observation.
 
 |plot obs netcdf diffs example|
 
+----------------------------------------
+
 `plot_wind_vectors.m <https://raw.githubusercontent.com/NCAR/DART/master/diagnostics/matlab/private/plot_wind_vectors.m>`__
 creates a 2D ‘quiver’ plot of a wind field. This function is in the
 ``matlab/private`` directory - but if you want to use it, you can move it out.
@@ -167,19 +181,33 @@ I find it has very little practical value.
 
 |plot wind vectors example|
 
+----------------------------------------
+
 `link_obs.m <https://raw.githubusercontent.com/NCAR/DART/master/diagnostics/matlab/link_obs.m>`__ creates multiple figures
 that have linked attributes. This is my favorite function. Click on the little
-paintbrush icon in any of the figure frames and select all the observations with
-DART ``QC == 4`` in one window, and those same observations are highlighted in all
+paintbrush icon in any of the figure frames and select some observations with
+"DART quality control == 7" in one window, and those same observations are highlighted in all
 the other windows (for example). The 3D scatterplot can be rotated around with
 the mouse to really pinpoint exactly where the observations are getting
-rejected, for example. All the images are links to larger versions - the image
-on the right has the MATLAB® call. If the data browser (the spreadsheet-like
-panel) is open, the selected observations get highlighted there too.
+rejected, for example. If the data browser (the spreadsheet-like panel) is open, 
+the selected observations get highlighted there too.
+
+.. code-block::
+
+  fname         = 'obs_epoch_001.nc';
+  ObsTypeString = 'RADIOSONDE_TEMPERATURE';
+  ObsCopyString = 'NCEP BUFR observation';
+  CopyString    = 'prior ensemble mean';
+  QCString      = 'DART quality control';
+  region        = [220 300 20 60 -Inf Inf];
+  global obsmat;
+  link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, region)
 
 |link obs example frame 2|
 |link obs example frame 1|
 |link obs example frame 0|
+
+----------------------------------------
 
 .. |plot evolution example| image:: images/science_nuggets/plot_evolution_example.png
    :width: 100%
