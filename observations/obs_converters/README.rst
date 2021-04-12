@@ -55,7 +55,7 @@ is not in the repository, please `email the DART
 group <mailto:dart@ucar.edu>`__.
 
 
-DATA SOURCES AND FORMATS
+Data Sources and Formats
 ------------------------
 
 See the various subdirectories here, which generally include information
@@ -105,17 +105,18 @@ Another good option is SST/oi_sst_to_obs.f90
 +-----------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 
-DECISIONS YOU MIGHT NEED TO MAKE
---------------------------------
+Decisions You May Need to Make
+------------------------------
 
 Time
 ~~~~
 
-Time enters into the assimilation system in 3 places: the timestamp of
+Time enters into the assimilation system in 3 places: the time of
 the state vector data (the current model time when this data was
-produced), the time of each observation, and the minimum time period the
-model should be called to advance (the assimilation window size). The
-internal timestepping of the model is unrelated to any of these times
+produced), the time of each observation, and the assimilation window
+length. The window length is set by the model-dependent routine
+``shortest_time_between_assimilations()``.  
+The internal timestepping of the model is unrelated to any of these times
 and is outside the scope of the assimilation system.
 
 The basic time type in DART is a pair of integers; one for the day
@@ -235,6 +236,113 @@ locations. For observations of a real-world system, the 3D Sphere is
 generally the best choice. For low-order, 1D models, the 1D locations
 are the most commonly used. The observation locations need to match the
 type of locations used in the model.
+
+
+
+Converting a series of observations
+-----------------------------------
+
+If you are running a series of assimilation steps you may
+need a separate observation sequence (obs_seq) file per step.  
+The suggested process is to create the first few files by hand to check
+the resulting obs_seq files and then write scripts (python, shell) 
+to automate the creation of the remainder of the files.  
+The following are some of the considerations to take 
+into account when creating scripts for a series of obs_seq files.
+
+Looping in Time
+~~~~~~~~~~~~~~~
+
+Often observations are distributed in files that contain observations
+from a particular time period, e.g. a file per day or per week.
+The output obs_seq files need to include observations from the same
+time period as the assimilation window; how often the assimilation
+is stopped and the model is advanced in time.  The conversion process
+can either convert all the observations from an input file into a single
+output file and in a subsequent step break the file into the required
+time ranges, or the conversion process can extract and convert only
+the observations required for a single output file and loop multiple
+times over the same input file.
+
+Generally earth system models use calendar dates, including months,
+days, years, hours, minutes and seconds.
+The ``advance_time`` program is very useful in adding or subtracting time periods
+from calendar dates taking into account changing months and years,
+accounting for leap days, etc.
+
+Observation conversion programs usually take one of two strategies
+for their input and output filenames.
+
+* Have fixed input and output filenames for the converter. 
+  Have the script make symbolic links from the actual filenames to the
+  fixed names for the files for each conversion run.
+
+* Have a Fortran namelist variable that sets the input and output 
+  filenames for the converter.  Have the script generate or edit the
+  namelist file (e.g. with the `sed` stream editor) to set the actual
+  filenames for each conversion run.
+
+Generally it is a good idea to encode the date information in the
+output filename so each file is guarenteed to be unique.
+This can also make it simpler at filter runtime to generate the
+required input observation sequence filenames using a program
+like ``advance_time``.
+
+
+Multiple Observation Files
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is common that an assimilation will want to use observations
+from different sources.  Generally it is easier to convert observations
+from each source separately and then merge them together with the
+``obs_sequence_tool``.  
+
+Creating filenames and directory names which follow a pattern 
+that can be generated with the ``advance_time`` program makes this easier to do.  
+
+The ``obs_sequence_tool`` can read the input filenames from a separate ascii file. 
+This makes generating the filenames easy from a script; it can
+simply concatinate the input filenames echo'd to an ascii file and
+then run the obs_sequence_tool.  The output file can either be set
+by using ``sed`` on the namelist, or a fixed output filename can be used
+and then the file renamed after the tool has run.
+
+
+Conversion Run Time for Large File Counts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If 100s of files need to be generated and a supercomputer or other multiple-CPU
+resource is available, batch files which convert multiple files at the same time
+can be a large time savings.  Care must be taken that each conversion has its own
+settings and unique filenames. Often a separate working directory from other
+conversions running at the same time simplifies the scripting needed.
+
+
+Verification
+~~~~~~~~~~~~
+
+Observations taken from real-world sources can have missing values, illegal
+values, missing files, duplicated data, etc.  The list is as long as your
+imagination.  It can be very useful to write or adapt programs like ``obs_info``
+to print out the first and last obs times in a file, the count of each obs type, etc.
+Especially for observations which are close to the start/end of a month or year,
+it is easy to find truncated data files.  
+
+If converting a large number of files it is also common for computer system
+failures to occur at random times.  File systems fill up, batch jobs exit early,
+power glitches stop programs before they finish.  Look for anomolous observation
+counts, unexpected first and last times of obs in a file, missing files, files
+with many fewer bytes than others, and anything else you can think of.
+
+
+Output Formats
+~~~~~~~~~~~~~~
+
+There are options to write output obs_seq files in binary, which are roughly
+half the size of ascii files.  However it greatly increases the effort to
+examine the contents of a file for problems.  Generally we have used the ascii
+format. It is portable between systems of different "endians" (order of bytes
+in a multi-byte number) and can be browsed much more easily.
 
 
 .. _programs:
