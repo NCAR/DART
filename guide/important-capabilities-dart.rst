@@ -199,12 +199,7 @@ section):
 +-----------+-----------------------------+----------------------------------+
 
 DART also offers the ability to correct for sampling errors. DART’s localization
-and sampling error correction algorithm is described in 
-
-  **Anderson, J.L.**,
-  2012. Localization and Sampling Error Correction in Ensemble Kalman Filter Data
-  Assimilation. *Monthly Weather Review*, 140, 2359–2371.
-  https://doi.org/10.1175/MWR-D-11-00013.1
+and sampling error correction algorithm is described in **Anderson, J.L.**, 2012 [11]_
 
 This behavior can be turned on or off via the *sampling_error_correction* in
 ``input.nml`` under the “assim_tools_nml” section. The following covariance
