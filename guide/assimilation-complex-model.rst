@@ -19,7 +19,7 @@ uses a questionnaire to guide you through the questions you'll need to answer
 in order to get a data assimilation system working.
 
 Is your model appropriate for any kind of DA?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If your model isn't chaotic, you don't need DA. You run the model, you look at
 the difference between the prediction and the observations, and you invert the
@@ -31,7 +31,7 @@ There are internal feedbacks and non-linear behaviors that make it difficult
 to adjust the inputs to make the outputs better match the observations.
 
 What is your model state?
-~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 "Model state" has a specific definition that can be the source of much
 confusion if you are running a model and haven't though about DA before.
@@ -54,7 +54,7 @@ diagnostic routines or are of interest on their own. Generally
 these aren't considered part of the model state.
 
 How is your model execution controlled?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In general, larger and more complex models have an environment they
 are expecting to run within.  This environment includes scripts to control
@@ -75,7 +75,7 @@ New or adjusted scripting is generally required to include the DA process
 in the overall execution flow.
 
 Are you able to start and stop your model at specific times?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The DA process is generally a cycle of running the model for a certain 
 amount of model time, then running the DA filter to adjust the model 
@@ -105,7 +105,7 @@ from a separate model.  If cycling the forcing files may need to be
 updated periodically outside of the DA system.
 
 What coordinate system is used by your model?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Coordinate systems use a series of numbers to describe the
 relationship in space between parts of the model state and
@@ -125,7 +125,7 @@ space and the output must be translated into a physical space
 before DA can be done.
 
 What file format is used for model restart files?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 DART reads and writes NetCDF file format.  Many earth-system models
 already use this format.  If the model does not, converter programs
@@ -134,7 +134,7 @@ self-describing format with metadata that allows DART to read and
 process model data without additional configuration files.
 
 What quantities are in the model state?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 DART defines a "Quantity" as the fundamental physical object
 a value is measuring.  Examples are Temperature, Pressure,
@@ -142,7 +142,7 @@ Salinity, etc.  Each value in a model state must be
 associated with a defined quantity.
 
 What observations are you intending to assimilate?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Any observation you intend to assimilate requires a method to
 compute an "expected value" based on the model state.  Often
@@ -161,7 +161,7 @@ cannot be computed or is not in some way a function of the model
 state, the observations cannot be assimilated.
 
 How are you going to generate your initial ensemble?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Most models don't have an existing ensemble of states ready
 for ingestion into an ensemble DA system. Options for generating
