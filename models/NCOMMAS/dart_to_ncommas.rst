@@ -1,6 +1,14 @@
 PROGRAM ``dart_to_ncommas``
 ===========================
 
+.. attention::
+
+   ``NCOMMAS`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
+   using ``NCOMMAS`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
+   Until that time, you should consider this documentation as out-of-date.
+
+
+
 | ``dart_to_ncommas`` is the program that **updates** a ncommas netCDF-format restart file (usually
   ``ncommas_restart.nc``) with the state information contained in a DART output/restart file (e.g.
   ``perfect_ics, filter_ics, ...`` ). Only the CURRENT values in the ncommas restart file will be updated. The DART

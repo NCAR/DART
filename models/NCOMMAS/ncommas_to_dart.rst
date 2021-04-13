@@ -1,6 +1,14 @@
 PROGRAM ``ncommas_to_dart``
 ===========================
 
+.. attention::
+
+   ``NCOMMAS`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
+   using ``NCOMMAS`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
+   Until that time, you should consider this documentation as out-of-date.
+
+
+
 | ``ncommas_to_dart`` is the program that reads a ncommas restart file (usually ``ncommas_restart.nc``) and creates a
   DART state vector file (e.g. ``perfect_ics, filter_ics, ...`` ).
 | The list of variables used to create the DART state vector are specified in the ``ncommas_vars.nml`` file.
