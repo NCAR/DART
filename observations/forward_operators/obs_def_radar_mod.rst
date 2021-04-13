@@ -325,171 +325,171 @@ namelist.
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | apply_ref_limit_to_obs                | logical                               | If .TRUE. replace all reflectivity    |
-   |                                       |                                       | values less than                      |
-   |                                       |                                       | "reflectivity_limit_obs" with         |
-   |                                       |                                       | "lowest_reflectivity_obs" value. If   |
-   |                                       |                                       | .FALSE. leave all values as-is.       |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | reflectivity_limit_obs                | real(r8)                              | The threshold value. Observed         |
-   |                                       |                                       | reflectivity values less than this    |
-   |                                       |                                       | threshold will be set to the          |
-   |                                       |                                       | "lowest_reflectivity_obs" value.      |
-   |                                       |                                       | Units are dBZ.                        |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lowest_reflectivity_obs               | real(r8)                              | The 'set-to' value. Observed          |
-   |                                       |                                       | reflectivity values less than the     |
-   |                                       |                                       | threshold will be set to this value.  |
-   |                                       |                                       | Units are dBZ.                        |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | apply_ref_limit_to_fwd_op             | logical                               | Same as "apply_ref_limit_to_obs", but |
-   |                                       |                                       | for the forward operator.             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | reflectivity_limit_fwd_op             | real(r8)                              | Same as "reflectivity_limit_obs", but |
-   |                                       |                                       | for the forward operator values.      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lowest_reflectivity_fwd_op            | real(r8)                              | Same as "lowest_reflectivity_obs",    |
-   |                                       |                                       | but for the forward operator values.  |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | max_radial_vel_obs                    | integer                               | Maximum number of observations of     |
-   |                                       |                                       | this type to support at run time.     |
-   |                                       |                                       | This is combined total of all obs_seq |
-   |                                       |                                       | files, for example the observation    |
-   |                                       |                                       | diagnostic program potentially opens  |
-   |                                       |                                       | multiple obs_seq.final files, or the  |
-   |                                       |                                       | obs merge program can also open       |
-   |                                       |                                       | multiple obs files.                   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | allow_wet_graupel                     | logical                               | It is difficult to predict/diagnose   |
-   |                                       |                                       | whether graupel/hail has a wet or dry |
-   |                                       |                                       | surface. Even when the temperature is |
-   |                                       |                                       | above freezing, evaporation and/or    |
-   |                                       |                                       | absorption can still result in a dry  |
-   |                                       |                                       | surface. This issue is important      |
-   |                                       |                                       | because the reflectivity from graupel |
-   |                                       |                                       | with a wet surface is significantly   |
-   |                                       |                                       | greater than that from graupel with a |
-   |                                       |                                       | dry surface. Currently, the user has  |
-   |                                       |                                       | two options for how to compute        |
-   |                                       |                                       | graupel reflectivity. If              |
-   |                                       |                                       | allow_wet_graupel is .false. (the     |
-   |                                       |                                       | default), then graupel is always      |
-   |                                       |                                       | assumed to be dry. If                 |
-   |                                       |                                       | allow_wet_graupel is .true., then     |
-   |                                       |                                       | graupel is assumed to be wet (dry)    |
-   |                                       |                                       | when the temperature is above (below) |
-   |                                       |                                       | freezing. A consequence is that a     |
-   |                                       |                                       | sharp gradient in reflectivity will   |
-   |                                       |                                       | be produced at the freezing level. In |
-   |                                       |                                       | the future, it might be better to     |
-   |                                       |                                       | provide the option of having a        |
-   |                                       |                                       | transition layer.                     |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | microphysics_type                     | integer                               | If the state vector contains the      |
-   |                                       |                                       | reflectivity or the power weighted    |
-   |                                       |                                       | fall speed, interpolate directly from |
-   |                                       |                                       | those regardless of the setting of    |
-   |                                       |                                       | this item. If the state vector does   |
-   |                                       |                                       | not contain the fields, this value    |
-   |                                       |                                       | should be set to be compatible with   |
-   |                                       |                                       | whatever microphysical scheme is      |
-   |                                       |                                       | being used by the model. If the model |
-   |                                       |                                       | is using a different microphysical    |
-   |                                       |                                       | scheme but has compatible fields to   |
-   |                                       |                                       | the ones listed below, setting this   |
-   |                                       |                                       | value will select the scheme to use.  |
-   |                                       |                                       |                                       |
-   |                                       |                                       | -  1 = Kessler scheme.                |
-   |                                       |                                       | -  2 = Lin et al. microphysics        |
-   |                                       |                                       | -  3 = User selected scheme where 10  |
-   |                                       |                                       |    cm reflectivity and power weighted |
-   |                                       |                                       |    fall velocity are expected in the  |
-   |                                       |                                       |    state vector (failure if not       |
-   |                                       |                                       |    found)                             |
-   |                                       |                                       | -  4 = User selected scheme where     |
-   |                                       |                                       |    only power weighted fall velocity  |
-   |                                       |                                       |    is expected (failure if not found) |
-   |                                       |                                       | -  5 = User selected scheme where     |
-   |                                       |                                       |    only reflectivity is expected      |
-   |                                       |                                       |    (failure if not found)             |
-   |                                       |                                       | -  -1 = ASSUME FALL VELOCITY IS ZERO, |
-   |                                       |                                       |    allows over-riding the failure     |
-   |                                       |                                       |    modes above if reflectivity and/or |
-   |                                       |                                       |    fall velocity are not available    |
-   |                                       |                                       |    but a result is desired for        |
-   |                                       |                                       |    testing purposes only.             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | allow_dbztowt_conv                    | logical                               | Flag to enable use of the dbztowt     |
-   |                                       |                                       | routine where reflectivity is         |
-   |                                       |                                       | available, but not the power-weighted |
-   |                                       |                                       | fall velocity. This scheme uses       |
-   |                                       |                                       | emperical relations between           |
-   |                                       |                                       | reflectivity and fall velocity, with  |
-   |                                       |                                       | poor accuracy for highly reflective,  |
-   |                                       |                                       | low density particles (such as water  |
-   |                                       |                                       | coated snow aggregates). Expect       |
-   |                                       |                                       | questionable accuracy in radial       |
-   |                                       |                                       | velocity from the forward operator    |
-   |                                       |                                       | with high elevation angles where ice  |
-   |                                       |                                       | is present in the model state.        |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | dielectric_factor                     | real(r8)                              | According to Smith (1984), there are  |
-   |                                       |                                       | two choices for the dielectric factor |
-   |                                       |                                       | depending on how the snow particle    |
-   |                                       |                                       | sizes are specified. If melted        |
-   |                                       |                                       | raindrop diameters are used, then the |
-   |                                       |                                       | factor is 0.224. If equivalent ice    |
-   |                                       |                                       | sphere diameters are used, then the   |
-   |                                       |                                       | factor is 0.189. The default is set   |
-   |                                       |                                       | to use the common convention of       |
-   |                                       |                                       | melted raindrop diameters.            |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | n0_rain                               | real(r8)                              | Intercept parameters (m^-4) for size  |
-   |                                       |                                       | distributions of each hydrometeor.    |
-   |                                       |                                       | The default of 8.0e6 is for the Lin   |
-   |                                       |                                       | et al. microphysics scheme with the   |
-   |                                       |                                       | Hobbs settings for graupel/hail. (The |
-   |                                       |                                       | Hobbs graupel settings are also the   |
-   |                                       |                                       | default for the Lin scheme in WRF 2.2 |
-   |                                       |                                       | and 3.0.)                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | n0_graupel                            | real(r8)                              | Intercept parameters (m^-4) for size  |
-   |                                       |                                       | distributions of each hydrometeor.    |
-   |                                       |                                       | The default of 4.0e6 is for the Lin   |
-   |                                       |                                       | et al. microphysics scheme with the   |
-   |                                       |                                       | Hobbs settings for graupel/hail. (The |
-   |                                       |                                       | Hobbs graupel settings are also the   |
-   |                                       |                                       | default for the Lin scheme in WRF 2.2 |
-   |                                       |                                       | and 3.0.)                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | n0_snow                               | real(r8)                              | Intercept parameters (m^-4) for size  |
-   |                                       |                                       | distributions of each hydrometeor.    |
-   |                                       |                                       | The default of 3.0e6 is for the Lin   |
-   |                                       |                                       | et al. microphysics scheme with the   |
-   |                                       |                                       | Hobbs settings for graupel/hail. (The |
-   |                                       |                                       | Hobbs graupel settings are also the   |
-   |                                       |                                       | default for the Lin scheme in WRF 2.2 |
-   |                                       |                                       | and 3.0.)                             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | rho_rain                              | real(r8)                              | Density (kg m^-3) of each hydrometeor |
-   |                                       |                                       | type. The default of 1000.0 is for    |
-   |                                       |                                       | the Lin et al. microphysics scheme    |
-   |                                       |                                       | with the Hobbs setting for            |
-   |                                       |                                       | graupel/hail.                         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | rho_graupel                           | real(r8)                              | Density (kg m^-3) of each hydrometeor |
-   |                                       |                                       | type. The default of 400.0 is for the |
-   |                                       |                                       | Lin et al. microphysics scheme with   |
-   |                                       |                                       | the Hobbs setting for graupel/hail.   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | rho_snow                              | real(r8)                              | Density (kg m^-3) of each hydrometeor |
-   |                                       |                                       | type. The default of 100.0 is for the |
-   |                                       |                                       | Lin et al. microphysics scheme with   |
-   |                                       |                                       | the Hobbs setting for graupel/hail.   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +-----------------------------+------------+---------------------------------------+
+   | Item                        | Type       | Description                           |
+   +=============================+============+=======================================+
+   | apply_ref_limit_to_obs      | logical    | If .TRUE. replace all reflectivity    |
+   |                             |            | values less than                      |
+   |                             |            | "reflectivity_limit_obs" with         |
+   |                             |            | "lowest_reflectivity_obs" value. If   |
+   |                             |            | .FALSE. leave all values as-is.       |
+   +-----------------------------+------------+---------------------------------------+
+   | reflectivity_limit_obs      | real(r8)   | The threshold value. Observed         |
+   |                             |            | reflectivity values less than this    |
+   |                             |            | threshold will be set to the          |
+   |                             |            | "lowest_reflectivity_obs" value.      |
+   |                             |            | Units are dBZ.                        |
+   +-----------------------------+------------+---------------------------------------+
+   | lowest_reflectivity_obs     | real(r8)   | The 'set-to' value. Observed          |
+   |                             |            | reflectivity values less than the     |
+   |                             |            | threshold will be set to this value.  |
+   |                             |            | Units are dBZ.                        |
+   +-----------------------------+------------+---------------------------------------+
+   | apply_ref_limit_to_fwd_op   | logical    | Same as "apply_ref_limit_to_obs", but |
+   |                             |            | for the forward operator.             |
+   +-----------------------------+------------+---------------------------------------+
+   | reflectivity_limit_fwd_op   | real(r8)   | Same as "reflectivity_limit_obs", but |
+   |                             |            | for the forward operator values.      |
+   +-----------------------------+------------+---------------------------------------+
+   | lowest_reflectivity_fwd_op  | real(r8)   | Same as "lowest_reflectivity_obs",    |
+   |                             |            | but for the forward operator values.  |
+   +-----------------------------+------------+---------------------------------------+
+   | max_radial_vel_obs          | integer    | Maximum number of observations of     |
+   |                             |            | this type to support at run time.     |
+   |                             |            | This is combined total of all obs_seq |
+   |                             |            | files, for example the observation    |
+   |                             |            | diagnostic program potentially opens  |
+   |                             |            | multiple obs_seq.final files, or the  |
+   |                             |            | obs merge program can also open       |
+   |                             |            | multiple obs files.                   |
+   +-----------------------------+------------+---------------------------------------+
+   | allow_wet_graupel           | logical    | It is difficult to predict/diagnose   |
+   |                             |            | whether graupel/hail has a wet or dry |
+   |                             |            | surface. Even when the temperature is |
+   |                             |            | above freezing, evaporation and/or    |
+   |                             |            | absorption can still result in a dry  |
+   |                             |            | surface. This issue is important      |
+   |                             |            | because the reflectivity from graupel |
+   |                             |            | with a wet surface is significantly   |
+   |                             |            | greater than that from graupel with a |
+   |                             |            | dry surface. Currently, the user has  |
+   |                             |            | two options for how to compute        |
+   |                             |            | graupel reflectivity. If              |
+   |                             |            | allow_wet_graupel is .false. (the     |
+   |                             |            | default), then graupel is always      |
+   |                             |            | assumed to be dry. If                 |
+   |                             |            | allow_wet_graupel is .true., then     |
+   |                             |            | graupel is assumed to be wet (dry)    |
+   |                             |            | when the temperature is above (below) |
+   |                             |            | freezing. A consequence is that a     |
+   |                             |            | sharp gradient in reflectivity will   |
+   |                             |            | be produced at the freezing level. In |
+   |                             |            | the future, it might be better to     |
+   |                             |            | provide the option of having a        |
+   |                             |            | transition layer.                     |
+   +-----------------------------+------------+---------------------------------------+
+   | microphysics_type           | integer    | If the state vector contains the      |
+   |                             |            | reflectivity or the power weighted    |
+   |                             |            | fall speed, interpolate directly from |
+   |                             |            | those regardless of the setting of    |
+   |                             |            | this item. If the state vector does   |
+   |                             |            | not contain the fields, this value    |
+   |                             |            | should be set to be compatible with   |
+   |                             |            | whatever microphysical scheme is      |
+   |                             |            | being used by the model. If the model |
+   |                             |            | is using a different microphysical    |
+   |                             |            | scheme but has compatible fields to   |
+   |                             |            | the ones listed below, setting this   |
+   |                             |            | value will select the scheme to use.  |
+   |                             |            |                                       |
+   |                             |            | -  1 = Kessler scheme.                |
+   |                             |            | -  2 = Lin et al. microphysics        |
+   |                             |            | -  3 = User selected scheme where 10  |
+   |                             |            |    cm reflectivity and power weighted |
+   |                             |            |    fall velocity are expected in the  |
+   |                             |            |    state vector (failure if not       |
+   |                             |            |    found)                             |
+   |                             |            | -  4 = User selected scheme where     |
+   |                             |            |    only power weighted fall velocity  |
+   |                             |            |    is expected (failure if not found) |
+   |                             |            | -  5 = User selected scheme where     |
+   |                             |            |    only reflectivity is expected      |
+   |                             |            |    (failure if not found)             |
+   |                             |            | -  -1 = ASSUME FALL VELOCITY IS ZERO, |
+   |                             |            |    allows over-riding the failure     |
+   |                             |            |    modes above if reflectivity and/or |
+   |                             |            |    fall velocity are not available    |
+   |                             |            |    but a result is desired for        |
+   |                             |            |    testing purposes only.             |
+   +-----------------------------+------------+---------------------------------------+
+   | allow_dbztowt_conv          | logical    | Flag to enable use of the dbztowt     |
+   |                             |            | routine where reflectivity is         |
+   |                             |            | available, but not the power-weighted |
+   |                             |            | fall velocity. This scheme uses       |
+   |                             |            | emperical relations between           |
+   |                             |            | reflectivity and fall velocity, with  |
+   |                             |            | poor accuracy for highly reflective,  |
+   |                             |            | low density particles (such as water  |
+   |                             |            | coated snow aggregates). Expect       |
+   |                             |            | questionable accuracy in radial       |
+   |                             |            | velocity from the forward operator    |
+   |                             |            | with high elevation angles where ice  |
+   |                             |            | is present in the model state.        |
+   +-----------------------------+------------+---------------------------------------+
+   | dielectric_factor           | real(r8)   | According to Smith (1984), there are  |
+   |                             |            | two choices for the dielectric factor |
+   |                             |            | depending on how the snow particle    |
+   |                             |            | sizes are specified. If melted        |
+   |                             |            | raindrop diameters are used, then the |
+   |                             |            | factor is 0.224. If equivalent ice    |
+   |                             |            | sphere diameters are used, then the   |
+   |                             |            | factor is 0.189. The default is set   |
+   |                             |            | to use the common convention of       |
+   |                             |            | melted raindrop diameters.            |
+   +-----------------------------+------------+---------------------------------------+
+   | n0_rain                     | real(r8)   | Intercept parameters (m^-4) for size  |
+   |                             |            | distributions of each hydrometeor.    |
+   |                             |            | The default of 8.0e6 is for the Lin   |
+   |                             |            | et al. microphysics scheme with the   |
+   |                             |            | Hobbs settings for graupel/hail. (The |
+   |                             |            | Hobbs graupel settings are also the   |
+   |                             |            | default for the Lin scheme in WRF 2.2 |
+   |                             |            | and 3.0.)                             |
+   +-----------------------------+------------+---------------------------------------+
+   | n0_graupel                  | real(r8)   | Intercept parameters (m^-4) for size  |
+   |                             |            | distributions of each hydrometeor.    |
+   |                             |            | The default of 4.0e6 is for the Lin   |
+   |                             |            | et al. microphysics scheme with the   |
+   |                             |            | Hobbs settings for graupel/hail. (The |
+   |                             |            | Hobbs graupel settings are also the   |
+   |                             |            | default for the Lin scheme in WRF 2.2 |
+   |                             |            | and 3.0.)                             |
+   +-----------------------------+------------+---------------------------------------+
+   | n0_snow                     | real(r8)   | Intercept parameters (m^-4) for size  |
+   |                             |            | distributions of each hydrometeor.    |
+   |                             |            | The default of 3.0e6 is for the Lin   |
+   |                             |            | et al. microphysics scheme with the   |
+   |                             |            | Hobbs settings for graupel/hail. (The |
+   |                             |            | Hobbs graupel settings are also the   |
+   |                             |            | default for the Lin scheme in WRF 2.2 |
+   |                             |            | and 3.0.)                             |
+   +-----------------------------+------------+---------------------------------------+
+   | rho_rain                    | real(r8)   | Density (kg m^-3) of each hydrometeor |
+   |                             |            | type. The default of 1000.0 is for    |
+   |                             |            | the Lin et al. microphysics scheme    |
+   |                             |            | with the Hobbs setting for            |
+   |                             |            | graupel/hail.                         |
+   +-----------------------------+------------+---------------------------------------+
+   | rho_graupel                 | real(r8)   | Density (kg m^-3) of each hydrometeor |
+   |                             |            | type. The default of 400.0 is for the |
+   |                             |            | Lin et al. microphysics scheme with   |
+   |                             |            | the Hobbs setting for graupel/hail.   |
+   +-----------------------------+------------+---------------------------------------+
+   | rho_snow                    | real(r8)   | Density (kg m^-3) of each hydrometeor |
+   |                             |            | type. The default of 100.0 is for the |
+   |                             |            | Lin et al. microphysics scheme with   |
+   |                             |            | the Hobbs setting for graupel/hail.   |
+   +-----------------------------+------------+---------------------------------------+
 
 | 
 
