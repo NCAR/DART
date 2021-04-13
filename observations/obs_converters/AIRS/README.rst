@@ -1,13 +1,12 @@
 AIRS
 =====
 
-Before you begin:
+.. caution:: 
 
-Installing the libraries needed to read these files can be fairly
-troublesome. The NASA Earthdata Data Access Services website is the
-`download
-site <https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads>`__
-for the necessary libraries.
+   Before you begin: Installing the libraries needed to read these files can be
+   fairly troublesome. The NASA Earthdata Data Access Services website is the
+   `download site <https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads>`__
+   for the necessary libraries.
 
 
 Atmospheric Infrared Sounder (AIRS)
