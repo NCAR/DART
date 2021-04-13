@@ -26,7 +26,7 @@ DART supported models:
 - :doc:`forced_lorenz_96/readme`
 - :doc:`MITgcm_ocean/readme`
 - :doc:`mpas_atm/readme`
-- :doc:`mpas_ocn/model_to_dart`
+- :doc:`mpas_ocn/readme`
 - :doc:`NCOMMAS/readme`
 - :doc:`noah/readme`
 - :doc:`null_model/readme`
@@ -172,13 +172,13 @@ The general flow is:
 #. run ``./filter`` with the single observation 
 
 #. Look at the preassim.nc and analysis.nc files
-   Diff them with:
+   Diff them with ``ncdiff``:
 
    .. code-block:: text
 
-      ncdiff:  ncdiff analysis.nc preassim.nc Innov.nc
+      ncdiff analysis.nc preassim.nc Innov.nc
 
-   plot it, with ncview if possible:  
+   plot it, with ``ncview`` if possible:  
 
    .. code-block:: text
 

@@ -1,12 +1,19 @@
 MPAS OCN
 ========
 
+.. attention::
+
+   ``mpas_ocn`` was being developed with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
+   using ``mpas_ocn`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
+   Until that time, you should consider this documentation as out-of-date.
+
+
 Overview
 --------
 
 | The **MPAS OCN** interface for **Data Assimilation Research Testbed (DART)** is under development.
 | Since MPAS OCN uses netcdf files for their restart mechanism, a namelist-controlled set of variables is used to build
-  the DART state vector. Each variable must also correspond to a DART "KIND"; required for the DART interpolate
+  the DART state vector. Each variable must also correspond to a DART "QUANTITY"; required for the DART interpolate
   routines. For example:
 
 ::
