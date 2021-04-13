@@ -1,6 +1,13 @@
 GITM
 ====
 
+.. attention::
+
+   ``GITM`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
+   using ``GITM`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
+   Until that time, you should consider this documentation as out-of-date.
+
+
 Overview
 --------
 
@@ -20,9 +27,14 @@ process.
 The normal procedure of building GITM creates some resource files that are
 subsequently needed by DART - just to compile. These include:
 
-#. ``GITM/src/ModSize.f90``
-#. ``GITM/src/ModTime.f90`` and, for example,
-#. ``GITM/src/ModEarth.f90``
+#. ``models/gitm/GITM2/src/ModConstants.f90``
+#. ``models/gitm/GITM2/src/ModEarth.f90``
+#. ``models/gitm/GITM2/src/ModKind.f90``
+#. ``models/gitm/GITM2/src/ModOrbital.f90``
+#. ``models/gitm/GITM2/src/ModSize.f90``
+#. ``models/gitm/GITM2/src/ModTime.f90``
+#. ``models/gitm/GITM2/src/time_routines.f90``
+
 
 GITM uses binary files for their restart mechanisms, so no metadata is available
 to confirm the number and order of fields in the file. Care must be used to make
