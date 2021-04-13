@@ -15,7 +15,7 @@ as described in Anderson et al. (2004). [1]_
 All of that code remains in the directories under the
 ``DARTHOME/models/bgrid_solo`` directory, however, much of the capability has
 been disabled by code modification. What is left is a dry dynamical core for a
-model with no dirunal cycle at equinox with forcing described in Held and Suarez
+model with no diurnal cycle at equinox with forcing described in Held and Suarez
 (1994). [2]_
 
 The default settings are for a model with a 60x30 horizontal grid and 5 vertical
