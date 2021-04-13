@@ -86,18 +86,18 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !#endif
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+ ! end block
+ !#endif
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 
 ! allow global sum to be computed for integers, r4, and r8s
@@ -105,6 +105,14 @@ interface sum_across_tasks
    module procedure sum_across_tasks_int4
    module procedure sum_across_tasks_int8
    module procedure sum_across_tasks_real
+end interface
+
+! CSS added for mpi_allreduce for integers, r4, and r8s
+interface send_sum_to_all
+   module procedure send_sum_to_all_int4
+   module procedure send_sum_to_all_int8
+   module procedure send_sum_to_all_real
+   module procedure send_sum_to_all_real_2d
 end interface
 
 !   ---- private data for mpi_utilities ----
@@ -124,7 +132,8 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           sum_across_tasks, get_dart_mpi_comm, datasize, send_minmax_to,     &
           get_from_fwd, get_from_mean, broadcast_minmax, broadcast_flag,     &
           start_mpi_timer, read_mpi_timer, send_sum_to,                      &
-          all_reduce_min_max  ! deprecated, replace by broadcast_minmax
+          send_sum_to_all, all_reduce_min_max  ! deprecated, replace by broadcast_minmax
+                                               ! CSS added send_sum_to_all
 
 character(len=*), parameter :: source = 'mpi_utilities_mod.f90'
 
@@ -1425,6 +1434,72 @@ call mpi_reduce(local_val(:), global_val(:), size(global_val), datasize, MPI_SUM
                 task, get_dart_mpi_comm(), errcode)
 
 end subroutine send_sum_to
+
+! CSS added these subroutines
+!> Sum array items across all tasks and send
+!> results in an array of same size to ALL TASKS.
+subroutine send_sum_to_all_int4(local_val, global_val)
+   integer, intent(in)  :: local_val(:)  !! addend vals on each task
+   integer, intent(out) :: global_val(:) !! results returned on all tasks
+
+   integer :: errcode
+
+   if ( .not. module_initialized ) then
+      write(errstring, *) 'initialize_mpi_utilities() must be called first'
+      call error_handler(E_ERR,'send_sum_to_all', errstring, source, revision, revdate)
+   endif
+
+   call mpi_allreduce(local_val(:), global_val(:), size(global_val), MPI_INTEGER, MPI_SUM, &
+                     get_dart_mpi_comm(), errcode)
+end subroutine send_sum_to_all_int4
+
+subroutine send_sum_to_all_int8(local_val, global_val)
+   integer(i8), intent(in)  :: local_val(:)  !! addend vals on each task
+   integer(i8), intent(out) :: global_val(:) !! results returned on all tasks
+
+   integer :: errcode
+
+   if ( .not. module_initialized ) then
+      write(errstring, *) 'initialize_mpi_utilities() must be called first'
+      call error_handler(E_ERR,'send_sum_to_all', errstring, source, revision, revdate)
+   endif
+
+   call mpi_allreduce(local_val(:), global_val(:), size(global_val), longinttype, MPI_SUM, &
+                     get_dart_mpi_comm(), errcode)
+end subroutine send_sum_to_all_int8
+
+subroutine send_sum_to_all_real(local_val, global_val)
+   real(r8), intent(in)  :: local_val(:)  !! addend vals on each task
+   real(r8), intent(out) :: global_val(:) !! results returned on all tasks
+
+   integer :: errcode
+
+   if ( .not. module_initialized ) then
+      write(errstring, *) 'initialize_mpi_utilities() must be called first'
+      call error_handler(E_ERR,'send_sum_to_all', errstring, source, revision, revdate)
+   endif
+
+   call mpi_allreduce(local_val(:), global_val(:), size(global_val), datasize, MPI_SUM, &
+                     get_dart_mpi_comm(), errcode)
+end subroutine send_sum_to_all_real
+
+subroutine send_sum_to_all_real_2d(local_val, global_val)
+   real(r8), intent(in)  :: local_val(:,:)  !! addend vals on each task
+   real(r8), intent(out) :: global_val(:,:) !! results returned on all tasks
+
+   integer :: errcode
+
+   if ( .not. module_initialized ) then
+      write(errstring, *) 'initialize_mpi_utilities() must be called first'
+      call error_handler(E_ERR,'send_sum_to_all', errstring, source, revision, revdate)
+   endif
+
+   call mpi_allreduce(local_val(:,:), global_val(:,:), size(global_val), datasize, MPI_SUM, &
+                     get_dart_mpi_comm(), errcode)
+end subroutine send_sum_to_all_real_2d
+
+
+! End CSS
 
 !-----------------------------------------------------------------------------
 

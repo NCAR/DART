@@ -28,14 +28,15 @@ use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,   
                                  compute_copy_mean, all_copies_to_all_vars, get_copy, map_task_to_pe
 
 use mpi_utilities_mod,    only : my_task_id, sum_across_tasks, task_count, start_mpi_timer, &
-                                 read_mpi_timer, array_broadcast, task_sync
+                                 read_mpi_timer, array_broadcast, task_sync, send_sum_to_all
 
 use quality_control_mod, only : good_dart_qc
 
 use radinfo, only: adp_anglebc, emiss_bc, use_edges, newpc4pred, angord, & 
                     jpch_rad, nusis, nuchan, npred, predx, inew_rad, varA, ostats, &
                     gsi_variable_init, init_rad, init_rad_vars, radinfo_write, radinfo_read
-use mpi ! CSS ... the GSI EnSRF has an explicit mpi_reduce, DART doesn't have a proper wrapper
+!use mpi ! CSS ... the GSI EnSRF has an explicit mpi_allreduce, DART didn't have a proper wrapper
+         !             initially, but send_sum_to_all was added in mpi_utilities_mod to fix that.
 
 
 implicit none
@@ -389,7 +390,8 @@ subroutine map_to_gsi_satinfo
    enddo
 
    ! now get indxsat1 across all processors and store in indxsat
-   call mpi_allreduce(indxsat1,indxsat,int(nobs_sat),mpi_integer,mpi_sum,mpi_comm_world,ierr)
+   call send_sum_to_all(indxsat1,indxsat)
+!  call mpi_allreduce(indxsat1,indxsat,int(nobs_sat),mpi_integer,mpi_sum,mpi_comm_world,ierr)
 
    elapsed = read_mpi_timer(base_rad)
    if (my_task_id() == 0 ) then
@@ -470,10 +472,11 @@ subroutine update_biascorr_gsi(niter)
    ! Code taken directly from GSI/enkf/radbias.f90 with minor modifications
    use types_mod, only : i_kind =>i8, r_kind =>r8, r_double =>digits12  ! CSS added
 
-   integer :: nproc, numproc, mpi_realkind ! CSS added this line and next 3
+   integer :: nproc, numproc, mpi_realkind ! CSS added this line and next 4
    real(r_kind) :: two = 2.0_r_kind
    real(r_kind) :: r10 = 10.0_r_kind
    real(r_kind) :: zero = 0.0_r_kind
+   real(r_double) :: elapsed ! CSS replaced mpi_wtime with DART mpi calls below
 
    integer(i_kind) i,m,i1,i2,nn,n
    real(r_kind) increment(npred),biaserrvar,a(npred,npred),atmp(npred,npred)
@@ -493,11 +496,11 @@ subroutine update_biascorr_gsi(niter)
    nproc = my_task_id()
    numproc = task_count()
   !if (r_kind == r_double) then
-   if (r8 == digits12) then
-      mpi_realkind = mpi_real8
-   else ! if (r_kind == r_single) then
-      mpi_realkind = mpi_real4
-   endif
+!  if (r8 == digits12) then ! No need to define mpi_realkind if using send_sum_to_all rather than explicit mpi_allreduce
+!     mpi_realkind = mpi_real8
+!  else ! if (r_kind == r_single) then
+!     mpi_realkind = mpi_real4
+!  endif
 
    ! these routines only need to be called once
    if ( niter .eq. 1 ) then
@@ -507,7 +510,8 @@ subroutine update_biascorr_gsi(niter)
    ! End CSS
 
    ! below code taken directly from GSI/enkf/radbias.f90 with very minor modifications
-  if (nproc == 0) t1 = mpi_wtime() ! do this loop in parallel (a chunk of channels/sensors on each processor).
+! if (nproc == 0) t1 = mpi_wtime() ! do this loop in parallel (a chunk of channels/sensors on each processor).
+  if (nproc == 0) call start_mpi_timer(t1) ! CSS do this loop in parallel (a chunk of channels/sensors on each processor).
   i1 = nproc*real(jpch_rad/numproc) + 1
   i2 = (nproc+1)*real(jpch_rad/numproc)
   if (nproc == numproc-1) i2 = jpch_rad
@@ -623,9 +627,13 @@ subroutine update_biascorr_gsi(niter)
    deallocate(biaspredtmp)
    deallocate(obinc)
   enddo
-  if (nproc == 0)  print *,'time to update bias correction on root',mpi_wtime()-t1,'secs'
-  t1 = mpi_wtime()
-  call mpi_allreduce(deltapredx1,deltapredx,int(npred*jpch_rad),mpi_realkind,mpi_sum,mpi_comm_world,ierr) ! CSS added int
+! if (nproc == 0)  print *,'time to update bias correction on root',mpi_wtime()-t1,'secs'
+  elapsed = read_mpi_timer(t1) ! CSS
+  if (nproc == 0)  print *,'time to update bias correction on root',elapsed,'secs' ! CSS
+! t1 = mpi_wtime()
+  call start_mpi_timer(t1) ! CSS
+  call send_sum_to_all(deltapredx1,deltapredx)
+! call mpi_allreduce(deltapredx1,deltapredx,int(npred*jpch_rad),mpi_realkind,mpi_sum,mpi_comm_world,ierr) ! CSS added int
   if (niter == numiter .and. newpc4pred) then
      ! distribute updated varA to all processors.
      buffertmp=zero
@@ -634,13 +642,16 @@ subroutine update_biascorr_gsi(niter)
        buffertmp(n,i) = varA(n,i)
      enddo
      enddo
-     call mpi_allreduce(buffertmp,varA,int(jpch_rad*npred),mpi_realkind,mpi_sum,mpi_comm_world,ierr) ! CSS added int
+     call send_sum_to_all(buffertmp,varA)
+!    call mpi_allreduce(buffertmp,varA,int(jpch_rad*npred),mpi_realkind,mpi_sum,mpi_comm_world,ierr) ! CSS added int
      ! update ostats
      do i=1,jpch_rad
         ostats(i) = numobspersat(i)
      enddo
   endif
-  if (nproc == 0) print *,'time in update_biascorr mpi_allreduce on root = ',mpi_wtime()-t1
+! if (nproc == 0) print *,'time in update_biascorr mpi_allreduce on root = ',mpi_wtime()-t1
+  elapsed = read_mpi_timer(t1) ! CSS
+  if (nproc == 0) print *,'time in update_biascorr mpi_allreduce on root = ',elapsed ! CSS
   !CSS added below for diagnostics
 ! if (nproc == 0) then
 !    do nn=1,nobs_sat
