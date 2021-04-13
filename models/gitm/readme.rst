@@ -3,10 +3,13 @@ GITM
 
 .. attention::
 
-   ``GITM`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
-   using ``GITM`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
+   ``GITM`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated.
+   If you are interested in using ``GITM`` with more recent versions of DART, contact DAReS 
+   staff to assess the feasibility of an update.
    Until that time, you should consider this documentation as out-of-date.
 
+   A preliminary Manhattan-compliant interface to GITM exists and has been used for science 
+   applications but has not yet been released for public use.
 
 Overview
 --------
