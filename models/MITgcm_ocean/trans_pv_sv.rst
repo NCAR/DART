@@ -1,6 +1,13 @@
 PROGRAM ``trans_pv_sv``
 =======================
 
+.. attention::
+
+   ``MITgcm_ocean`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
+   using ``MITgcm_ocean`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
+   Until that time, you should consider this documentation as out-of-date.
+
+
 | ``trans_pv_sv`` is responsible for converting the ocean model 'snapshot' files to a DART 'initial conditions' file. In
   order to do that, the valid time for the snapshot files must be calculated from several pieces of information: the
   filename contains a timestep index, the ``data``\ ``&PARM03`` namelist contains information about the amount of time
