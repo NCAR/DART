@@ -1,6 +1,14 @@
 CLM
 ===
 
+.. attention::
+
+   ``CLM`` has a private development branch with some features that are delaying its integration with the rest
+   of the public DART repository.  Until that time, you should consider this documentation as out-of-date.
+   There are several groups that are successfully using recent versions of CLM and recent versions of DART.  
+   If you are interested in using ``CLM`` with more recent versions of DART, contact DAReS staff.
+
+
 Overview
 --------
 
