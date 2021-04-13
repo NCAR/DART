@@ -128,27 +128,27 @@ DART QC values higher than **3** were **not** assimilated or evaluated. Here is 
 should explain things more fully:
 
 +--------------------+------------------------------------------------------------------+
-| DART QC flag value | meaning                                                          +
+| DART QC flag value | meaning                                                          |
 +====================+==================================================================+
-| 0                  | observation assimilated                                          +
+| 0                  | observation assimilated                                          |
 +--------------------+------------------------------------------------------------------+
-| 1                  | observation evaluated only (because of namelist settings)        +
+| 1                  | observation evaluated only (because of namelist settings)        |
 +--------------------+------------------------------------------------------------------+
-| 2                  | assimilated, but the posterior forward operator failed           +
+| 2                  | assimilated, but the posterior forward operator failed           |
 +--------------------+------------------------------------------------------------------+
-| 3                  | evaluated only, but the posterior forward operator failed        +
+| 3                  | evaluated only, but the posterior forward operator failed        |
 +--------------------+------------------------------------------------------------------+
-| 4                  | prior forward operator failed                                    +
+| 4                  | prior forward operator failed                                    |
 +--------------------+------------------------------------------------------------------+
-| 5                  | not used because observation type not listed in namelist         +
+| 5                  | not used because observation type not listed in namelist         |
 +--------------------+------------------------------------------------------------------+
-| 6                  | rejected because incoming observation QC too large               +
+| 6                  | rejected because incoming observation QC too large               |
 +--------------------+------------------------------------------------------------------+
-| 7                  | rejected because of a failed outlier threshold test              +
+| 7                  | rejected because of a failed outlier threshold test              |
 +--------------------+------------------------------------------------------------------+
-| *8*                | *vertical conversion failed*                                     +
+| *8*                | *vertical conversion failed*                                     |
 +--------------------+------------------------------------------------------------------+
-| 9+                 | reserved for future use                                          +
+| 9+                 | reserved for future use                                          |
 +--------------------+------------------------------------------------------------------+
 
 What is new in the Manhattan release
