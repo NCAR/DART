@@ -5,39 +5,34 @@ PROGRAM ``create_ocean_obs``
 sequence file. The interim ASCII file is a simple 'whitespace separated' table where each row is an observation and each
 column is specific information about the observation.
 
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| column number | quantity                 | description                                                             |
-+===============+==========================+=========================================================================+
-| 1             | longitude (in degrees)   | longitude of the observation                                            |
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| 2             | latitude (in degrees)    | latitude of the observation                                             |
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| 3             | depth (in meters)        | depth of the observation                                                |
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| 4             | observation value        | such as it is ...                                                       |
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| 5             | vertical coordinate flag | see                                                                     |
-|               |                          | `location_mod:location_type <../../assim                                |
-|               |                          | ilation_code/location/threed_sphere/location_mod.html#location_type>`__ |
-|               |                          | for a full explanation. The short explanation is that *surface == -1*,  |
-|               |                          | and *depth == 3* There is a pathological difference between a surface   |
-|               |                          | observation and an observation with a depth of zero.                    |
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| 6             | observation variance     | good luck here ...                                                      |
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| 7             | Quality Control flag     | integer value passed through to DART. There is a namelist parameter for |
-|               |                          | ``filter`` to ignore any observation with a QC value <=                 |
-|               |                          | `input_qc_thre                                                          |
-|               |                          | shold <../../assimilation_code/programs/filter/filter.html#Namelist>`__ |
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| 8             | obs_kind_name            | a character string that must match a string in                          |
-|               |                          | :do                                                                     |
-|               |                          | c:`../../observations/forward_operators/obs_def_MITgcm_ocean_model_mod` |
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| 9             | startDate_1              | the year-month-date of the observation (YYYYMMDD format)                |
-+---------------+--------------------------+-------------------------------------------------------------------------+
-| 10            | startDate_2              | the hour-minute-second of the observation (HHMMSS format)               |
-+---------------+--------------------------+-------------------------------------------------------------------------+
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| column number | quantity                 | description                                                                                                         |
++===============+==========================+=====================================================================================================================+
+| 1             | longitude (in degrees)   | longitude of the observation                                                                                        |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| 2             | latitude (in degrees)    | latitude of the observation                                                                                         |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| 3             | depth (in meters)        | depth of the observation                                                                                            |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| 4             | observation value        | such as it is ...                                                                                                   |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| 5             | vertical coordinate flag | There is a pathological difference between a surface observation and an observation with a depth of zero. See       |
+|               |                          | `location_mod:location_type <../../assimilation_code/location/threed_sphere/location_mod.html#location_type>`__     |
+|               |                          | for a full explanation. The short explanation is that *surface == -1*, and *depth == 3*                             |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| 6             | observation variance     | good luck here ...                                                                                                  |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| 7             | Quality Control flag     | integer value passed through to DART. There is a namelist parameter for                                             |
+|               |                          | ``filter`` to ignore any observation with a QC value <=                                                             |
+|               |                          | `input_qc_threshold <../../assimilation_code/programs/filter/filter.html#Namelist>`__                               |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| 8             | obs_kind_name            | a character string that must match a string in                                                                      |
+|               |                          | :doc:`../../observations/forward_operators/obs_def_ocean_mod`                                                       |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| 9             | startDate_1              | the year-month-date of the observation (YYYYMMDD format)                                                            |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
+| 10            | startDate_2              | the hour-minute-second of the observation (HHMMSS format)                                                           |
++---------------+--------------------------+---------------------------------------------------------------------------------------------------------------------+
 
 For example:
 
