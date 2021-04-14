@@ -178,9 +178,9 @@ namelist.
    |                        |                        | system to use during the                     |
    |                        |                        | interpolation tests. Valid values            |
    |                        |                        | are: 'VERTISHEIGHT',                         |
-   |                        |                        |      'VERTISPRESSURE',                       |
-   |                        |                        |      'VERTISLEVEL', and                      |
-   |                        |                        |      'VERTISSCALEHEIGHT'.                    |
+   |                        |                        | 'VERTISPRESSURE',                            |
+   |                        |                        | 'VERTISLEVEL', and                           |
+   |                        |                        | 'VERTISSCALEHEIGHT'.                         |
    +------------------------+------------------------+----------------------------------------------+
    | test1thru              | integer                | If ``test1thru > 0``, specifies the          |
    |                        |                        | last test to be performed. All tests         |
