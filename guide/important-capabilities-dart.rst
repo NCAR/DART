@@ -198,13 +198,14 @@ section):
 |           | state-space (inverse gamma) |                                  |
 +-----------+-----------------------------+----------------------------------+
 
-DART also offers the ability to correct for sampling errors. DART’s localization
-and sampling error correction algorithm is described in **Anderson, J.L.**, 2012 [11]_
+DART has the ability to correct for sampling errors in the regression 
+caused by finite ensemble sizes. DART’s sampling error correction algorithm
+(and localization algorithm) is described in **Anderson, J.L.**, 2012 [11]_
+Sampling error correction can be turned on or off via the *sampling_error_correction* 
+variable in the ``input.nml`` under the “assim_tools_nml” section. 
 
-This behavior can be turned on or off via the *sampling_error_correction* in
-``input.nml`` under the “assim_tools_nml” section. The following covariance
-localization options are available (set by *select_localization* in
-``input.nml`` under the “cov_cutoff_nml” section):
+The following covariance localization options are available 
+(set by *select_localization* in ``input.nml`` under the “cov_cutoff_nml” section):
 
 +--------+----------------------------+----------------------------------+
 | Loc #  | Localization type          | References                       |
