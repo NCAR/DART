@@ -87,50 +87,31 @@ namelist.
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | input_atcf_file                       | character(len=256)                    | Name of the input ascii text file in  |
-   |                                       |                                       | ATCF format.                          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | fileformat                            | character(len=128)                    | Currently only supports 'b-deck' but  |
-   |                                       |                                       | if other format strings are added,    |
-   |                                       |                                       | can switch at runtime between reading |
-   |                                       |                                       | different varieties of ATCF file      |
-   |                                       |                                       | formats.                              |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_out_file                          | character(len=256)                    | Name of the output observation        |
-   |                                       |                                       | sequence file to create.              |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | append_to_existing_file               | logical                               | If .false., this program will         |
-   |                                       |                                       | overwrite an existing file. If .true. |
-   |                                       |                                       | and if a file already exists with the |
-   |                                       |                                       | same name the newly converted         |
-   |                                       |                                       | observations will be appended to that |
-   |                                       |                                       | file. Useful if you have multiple     |
-   |                                       |                                       | small input files that you want to    |
-   |                                       |                                       | concatenate into a single output      |
-   |                                       |                                       | file. However, there is no code to    |
-   |                                       |                                       | check for duplicated observations. If |
-   |                                       |                                       | this is .true. and you run the        |
-   |                                       |                                       | converter twice you will get          |
-   |                                       |                                       | duplicate observations in the file    |
-   |                                       |                                       | which is bad. (It will affect the     |
-   |                                       |                                       | quality of your assimilation          |
-   |                                       |                                       | results.) Use with care.              |
-   |                                       |                                       | You can concatenate multiple obs      |
-   |                                       |                                       | sequence files as a postprocessing    |
-   |                                       |                                       | step with the                         |
-   |                                       |                                       | :doc                                  |
-   |                                       |                                       | :`../../../assimilation_code/programs |
-   |                                       |                                       | /obs_sequence_tool/obs_sequence_tool` |
-   |                                       |                                       | which comes with DART and is in fact  |
-   |                                       |                                       | built by the quickbuild.csh script in |
-   |                                       |                                       | the TC converter work directory.      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | debug                                 | logical                               | Set to .true. to print out more       |
-   |                                       |                                       | details during the conversion         |
-   |                                       |                                       | process.                              |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +--------------------------+---------------------+---------------------------------------------------------------------------------+
+   | Item                     | Type                | Description                                                                     |
+   +==========================+=====================+=================================================================================+
+   | input_atcf_file          | character(len=256)  | Name of the input ascii text file in ATCF format.                               |
+   +--------------------------+---------------------+---------------------------------------------------------------------------------+
+   | fileformat               | character(len=128)  | Currently only supports 'b-deck' but if other format strings                    |
+   |                          |                     | are added, can switch at runtime between reading                                |
+   |                          |                     | different varieties of ATCF file formats.                                       |
+   +--------------------------+---------------------+---------------------------------------------------------------------------------+
+   | obs_out_file             | character(len=256)  | Name of the output observation sequence file to create.                         |
+   +--------------------------+---------------------+---------------------------------------------------------------------------------+
+   | append_to_existing_file  | logical             | If .false., this program will overwrite an existing file. If .true.             |
+   |                          |                     | and if a file already exists with the same name the newly converted             |
+   |                          |                     | observations will be appended to that file. Useful if you have multiple         |
+   |                          |                     | small input files that you want to concatenate into a single output             |
+   |                          |                     | file. However, there is no code to check for duplicated observations. If        |
+   |                          |                     | this is .true. and you run the converter twice you will get duplicate           |
+   |                          |                     | observations in the file which is bad. (It will affect the quality of           |
+   |                          |                     | your assimilation results.) Use with care.  You can concatenate multiple        |
+   |                          |                     | obs sequence files as a postprocessing step with the                            |
+   |                          |                     | :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`  |
+   |                          |                     | which comes with DART and is built by the quickbuild.csh script in              |
+   |                          |                     | the TC converter work directory.                                                |
+   +--------------------------+---------------------+---------------------------------------------------------------------------------+
+   | debug                    | logical             | Set to .true. to print out more details during the conversion process.          |
+   +--------------------------+---------------------+---------------------------------------------------------------------------------+
 
 | 
