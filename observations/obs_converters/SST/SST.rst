@@ -160,66 +160,34 @@ namelist.
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Contents                              | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | sst_netcdf_file                       | character(len=256)                    | Name of the (usually subsetted)       |
-   |                                       |                                       | netcdf data file. This may be a       |
-   |                                       |                                       | relative or absolute filename. If you |
-   |                                       |                                       | run the scripts 'as is', this will be |
-   |                                       |                                       | something like:                       |
-   |                                       |                                       | ``../ObsData/SST/nwaSST/2010/         |
-   |                                       |                                       | 20101231120000-NCEI-L4_GHRSST-SSTblen |
-   |                                       |                                       | d-AVHRR_OI-GLOB-v02.0-fv02.0_NWA.nc`` |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | sst_netcdf_filelist                   | character(len=256)                    | Name of the file that contains a list |
-   |                                       |                                       | of (usually subsetted) data files,    |
-   |                                       |                                       | one per line. **You may not specify   |
-   |                                       |                                       | both sst_netcdf_file AND              |
-   |                                       |                                       | sst_netcdf_filelist.** One of them    |
-   |                                       |                                       | must be empty.                        |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | sst_out_file                          | character(len=256)                    | Name of the output observation        |
-   |                                       |                                       | sequence file.                        |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | subsample_intv                        | integer                               | It is possible to 'thin' the          |
-   |                                       |                                       | observations. ``subsample_intv``      |
-   |                                       |                                       | allows one to take every Nth          |
-   |                                       |                                       | observation.                          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | sst_rep_error                         | real                                  | In DART the observation error         |
-   |                                       |                                       | variance can be thought of as having  |
-   |                                       |                                       | two components, an instrument error   |
-   |                                       |                                       | and a representativeness error. In    |
-   |                                       |                                       | ``sst_to_obs`` the instrument error   |
-   |                                       |                                       | is specified in the netCDF file by    |
-   |                                       |                                       | the variable ``analysis_error``. The  |
-   |                                       |                                       | representativeness error is specified |
-   |                                       |                                       | by ``sst_rep_error``, which is        |
-   |                                       |                                       | specified as a standard deviation.    |
-   |                                       |                                       | These two values are added together   |
-   |                                       |                                       | and squared and used as the           |
-   |                                       |                                       | observation error variance. **Note:** |
-   |                                       |                                       | This algorithm maintains backwards    |
-   |                                       |                                       | compatibility, but is technically not |
-   |                                       |                                       | the right way to combine these two    |
-   |                                       |                                       | quantities. If they both specified    |
-   |                                       |                                       | variance, adding them together and    |
-   |                                       |                                       | then taking the square root would     |
-   |                                       |                                       | correctly specify a standard          |
-   |                                       |                                       | deviation. Variances add, standard    |
-   |                                       |                                       | deviations do not. Since the true     |
-   |                                       |                                       | observation error variance (in        |
-   |                                       |                                       | general) is not known, we are content |
-   |                                       |                                       | to live with an algorithm that        |
-   |                                       |                                       | produces useful observation error     |
-   |                                       |                                       | variances. If your research comes to  |
-   |                                       |                                       | a more definitive conclusion, please  |
-   |                                       |                                       | let us know.                          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | debug                                 | logical                               | Print extra information during the    |
-   |                                       |                                       | ``sst_to_obs`` execution.             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +----------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | Contents             | Type                | Description                                                                                              |
+   +======================+=====================+==========================================================================================================+
+   | sst_netcdf_file      | character(len=256)  | Name of the (usually subsetted) netcdf data file. This may be a relative or absolute filename.           |
+   |                      |                     | If you run the scripts 'as is', this will be something like:                                             |
+   |                      |                     | ``../ObsData/SST/nwaSST/2010/20101231120000-NCEI-L4_GHRSST-SSTblend-AVHRR_OI-GLOB-v02.0-fv02.0_NWA.nc``  |
+   +----------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | sst_netcdf_filelist  | character(len=256)  | Name of the file that contains a list of (usually subsetted) data files, one per line.                   |
+   |                      |                     | **You may not specify both sst_netcdf_file AND sst_netcdf_filelist.** One of them must be empty.         |
+   +----------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | sst_out_file         | character(len=256)  | Name of the output observation sequence file.                                                            |
+   +----------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | subsample_intv       | integer             | It is possible to 'thin' the observations. ``subsample_intv`` allows one to take every Nth observation.  |
+   +----------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | sst_rep_error        | real                | In DART the observation error variance can be thought of as having two components, an instrument error   |
+   |                      |                     | and a representativeness error. In ``sst_to_obs`` the instrument error is specified in the netCDF        |
+   |                      |                     | file by the variable ``analysis_error``. The representativeness error is specified by                    |
+   |                      |                     | ``sst_rep_error``, which is specified as a standard deviation.  These two values are added together      |
+   |                      |                     | and squared and used as the observation error variance. **Note:**  This algorithm maintains backwards    |
+   |                      |                     | compatibility, but is technically not the right way to combine these two quantities. If they both        |
+   |                      |                     | specified variance, adding them together and then taking the square root would correctly specify         |
+   |                      |                     | a standard deviation. Variances add, standard deviations do not. Since the true observation error        |
+   |                      |                     | variance (in general) is not known, we are content to live with an algorithm that produces useful        |
+   |                      |                     | observation error variances. If your research comes to a more definitive conclusion,                     |
+   |                      |                     | please let us know.                                                                                      |
+   +----------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | debug                | logical             | Print extra information during the ``sst_to_obs`` execution.                                             |
+   +----------------------+---------------------+----------------------------------------------------------------------------------------------------------+
 
 oi_sst_to_obs namelist
 ----------------------
@@ -240,34 +208,23 @@ namelist.
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Contents                              | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | input_file                            | character(len=256)                    | Name of the input netcdf data file.   |
-   |                                       |                                       | This may be a relative or absolute    |
-   |                                       |                                       | filename. If you run the scripts 'as  |
-   |                                       |                                       | is', this will be something like:     |
-   |                                       |                                       | ``../ObsData/SST/nwaSST/2010/         |
-   |                                       |                                       | 20101231120000-NCEI-L4_GHRSST-SSTblen |
-   |                                       |                                       | d-AVHRR_OI-GLOB-v02.0-fv02.0_NWA.nc`` |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | output_file_base                      | character(len=256)                    | Partial filename for the output file. |
-   |                                       |                                       | The date and time are appended to     |
-   |                                       |                                       | ``output_file_base`` to construct a   |
-   |                                       |                                       | unique filename reflecting the time   |
-   |                                       |                                       | of the observations in the file.      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | subsample_intv                        | integer                               | It is possible to 'thin' the          |
-   |                                       |                                       | observations. ``subsample_intv``      |
-   |                                       |                                       | allows one to take every Nth          |
-   |                                       |                                       | observation.                          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | sst_error_std                         | real                                  | This is the total observation error   |
-   |                                       |                                       | standard deviation.                   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | debug                                 | logical                               | Print extra information during the    |
-   |                                       |                                       | ``oi_sst_to_obs`` execution.          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +-------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | Contents          | Type                | Description                                                                                              |
+   +===================+=====================+==========================================================================================================+
+   | input_file        | character(len=256)  | Name of the input netcdf data file. This may be a relative or absolute                                   |
+   |                   |                     | filename. If you run the scripts 'as is', this will be something like:                                   |
+   |                   |                     | ``../ObsData/SST/nwaSST/2010/20101231120000-NCEI-L4_GHRSST-SSTblend-AVHRR_OI-GLOB-v02.0-fv02.0_NWA.nc``  |
+   +-------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | output_file_base  | character(len=256)  | Partial filename for the output file.  The date and time are appended to ``output_file_base``            |
+   |                   |                     | to construct a unique filename reflecting the time of the observations in the file.                      |
+   +-------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | subsample_intv    | integer             | It is possible to 'thin' the observations. ``subsample_intv``                                            |
+   |                   |                     | allows one to take every Nth observation.                                                                |
+   +-------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | sst_error_std     | real                | This is the total observation error standard deviation.                                                  |
+   +-------------------+---------------------+----------------------------------------------------------------------------------------------------------+
+   | debug             | logical             | Print extra information during the ``oi_sst_to_obs`` execution.                                          |
+   +-------------------+---------------------+----------------------------------------------------------------------------------------------------------+
 
 Decisions you might need to make
 --------------------------------
