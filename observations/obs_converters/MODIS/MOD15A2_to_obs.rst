@@ -198,41 +198,33 @@ Format
 -  Rows of QC data are interleaved with measurement data as indicated in Column 6.
 -  Note that values may contain embedded periods, dashes, and underscores (".,-, \_").
 
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| **Column Number**                     | **Column Description**                | **Example Values**                    |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| 1                                     | Unique row identifier                 | MOD15A2.A2000049.f                    |
-|                                       |                                       | n_ruyakuts.005.2006268205917.Fpar_1km |
-|                                       |                                       | MOD15A2.A2000049.                     |
-|                                       |                                       | fn_ruyakuts.005.2006268205917.Lai_1km |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| 2                                     | MODIS Land Product Code               | MOD15A2                               |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| 3                                     | MODIS Acquisition Date                | A2000049 ( ?this is an 8 day average) |
-|                                       | A(YYYYDDD)                            | What does 49 indicate? start? middle? |
-|                                       |                                       | end?                                  |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| 4                                     | SiteID                                | fn_ustnwalk,                          |
-|                                       | Each site is assigned a unique ID.    | L                                     |
-|                                       | `Click                                | at47.61666667Lon12.58333333Samp7Line7 |
-|                                       | Here <ftp://daac.ornl.gov/d           |                                       |
-|                                       | ata/modis_ascii_subsets/MODIS_Subset_ |                                       |
-|                                       | Sites_Information_Collection5.csv>`__ |                                       |
-|                                       | to get Site name information from     |                                       |
-|                                       | SiteID                                |                                       |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| 5                                     | MODIS Processing Date (YYYYDDDHHMMSS) | 2006269073558                         |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| 6                                     | Product Scientific Data Set (Band):   | MOD15A2: FparExtra_QC, FparLai_QC,    |
-|                                       | Indicates type of values to follow.   | FparStdDev_1km, Fpar_1km,             |
-|                                       | Specific values vary by Product. Data | LaiStdDev_1km, Lai_1km                |
-|                                       | quality information are interleaved.  |                                       |
-+---------------------------------------+---------------------------------------+---------------------------------------+
-| 7 to N                                | Data values of type as specified.     | QC: 00100001,01100001,01100001, ...   |
-|                                       | Number of data columns as given in    | Measurement:                          |
-|                                       | Column 4. Definition of QC component  | 2,2,1,1,1,1,1,0,0,0,1,1,0,0, to N     |
-|                                       | values vary by Scientific Data Set.   |                                       |
-+---------------------------------------+---------------------------------------+---------------------------------------+
++-------------+---------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+| **Column**  | **Column Description**                                                                                        | **Example Values**                                      |
++-------------+---------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+| 1           | Unique row identifier                                                                                         | MOD15A2.A2000049.fn_ruyakuts.005.2006268205917.Fpar_1km |
+|             |                                                                                                               | MOD15A2.A2000049.fn_ruyakuts.005.2006268205917.Lai_1km  |
++-------------+---------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+| 2           | MODIS Land Product Code                                                                                       | MOD15A2                                                 |
++-------------+---------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+| 3           | MODIS Acquisition Date                                                                                        | A2000049 ( ?this is an 8 day average)                   |
+|             | A(YYYYDDD)                                                                                                    | What does 49 indicate? start? middle? end?              |
++-------------+---------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+| 4           | SiteID                                                                                                        | fn_ustnwalk,                                            |
+|             | Each site is assigned a unique ID.                                                                            |                                                         |
+|             | To get the Site name information from SiteID,                                                                 | Lat47.61666667Lon12.58333333Samp7Line7                  |
+|             | `click here <ftp://daac.ornl.gov/data/modis_ascii_subsets/MODIS_Subset_Sites_Information_Collection5.csv>`__  |                                                         |
++-------------+---------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+| 5           | MODIS Processing Date (YYYYDDDHHMMSS)                                                                         | 2006269073558                                           |
++-------------+---------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+| 6           | Product Scientific Data Set (Band):                                                                           | MOD15A2: FparExtra_QC, FparLai_QC,                      |
+|             | Indicates type of values to follow.                                                                           | FparStdDev_1km, Fpar_1km,                               |
+|             | Specific values vary by Product. Data                                                                         | LaiStdDev_1km, Lai_1km                                  |
+|             | quality information are interleaved.                                                                          |                                                         |
++-------------+---------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+| 7 to N      | Data values of type as specified.                                                                             | QC: 00100001,01100001,01100001, ...                     |
+|             | Number of data columns as given in                                                                            | Measurement:                                            |
+|             | Column 4. Definition of QC component values vary by Scientific Data Set                                       | 2,2,1,1,1,1,1,0,0,0,1,1,0,0, to N                       |
++-------------+---------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
 
 QC flags are binary-coded ascii strings e.g., 10011101 bits 5,6,7 (the last three) are decoded as follows:
 
@@ -287,3 +279,7 @@ Future plans
   that have the right landcover class.
 
 
+PROGRAM ``MOD15A2_to_obs``
+==========================
+
+MODIS land product subsets (collection 5) to DART observation sequence converter
