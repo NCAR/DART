@@ -185,8 +185,8 @@ supported observation types before compiling the source code.
            "Wind_River           " ;
          }
 
-   The observation sequence files will look something like the following, the attributes in yellow are the information
-   from ``COSMIC_parlist.nc``:
+   The observation sequence files will look something like the following, the attributes on the "cosmic" record are the information
+   from ``COSMIC_parlist.nc`` (in their closes 64-bit real representation):
 
    .. container:: unix
 
@@ -211,12 +211,9 @@ supported observation types before compiling the source code.
          kind
                    20
 
-      .. container::
-
-         cosmic 0.88500000000000001 5.84099999999999966E-002 336.95696938999998 0.31918025877000000 161.98621864285701
-         129.14558984999999 55.311849408000000 3.8086191933000002 1
-
-      ::
+         cosmic 0.88500000000000001    5.84099999999999966E-002    336.95696938999998    0.31918025877000000 
+                 161.98621864285701     129.14558984999999         55.311849408000000     3.8086191933000002
+                       1
 
           77340     150034
             1225.0000000000000

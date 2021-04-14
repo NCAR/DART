@@ -1,6 +1,14 @@
 SQG
 ===
 
+
+.. attention::
+
+   ``sqg`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
+   using ``sqg`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
+   Until that time, you should consider this documentation as out-of-date.
+
+
 Overview
 --------
 

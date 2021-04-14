@@ -109,7 +109,7 @@ needed to perform an experiment.
 Build the DART executables.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you have not already, see :doc:`getting started <../../../README>` to
+If you have not already, see :doc:`Getting Started <../../../README>` to
 download the DART software package. Set an environment variable
 *DART_DIR* to point to your base DART directory. How to do this will
 depend on which shell you are using.
@@ -135,7 +135,7 @@ might need for an experiment with that model.
 
 1. It is assumed you have successfully configured the
    ``$DART_DIR/build_templates/mkmf.template`` file for your system. If
-   not, you will need to do so now. See the :doc:`getting started <../../../README>`
+   not, you will need to do so now. See the :doc:`Getting Started <../../../README>`
    for more detail, if necessary.
 
 2. [OPTIONAL] Modify the DART code to use 32bit reals. Most WRF/DART
@@ -266,8 +266,8 @@ about building these packages.
 
 .. note::
 	
- For consistency and to avoid
- compiler you use for NetCDF. Likewise MPI should use the same compiler.
+ For consistency and to avoid errors, you should build WRF, WPS, WRFDA, and DART with the
+ same compiler you use for NetCDF. Likewise MPI should use the same compiler.
  You will need the location of the WRF and WRFDA builds to customize the
  *params.csh* script in the next step.
 

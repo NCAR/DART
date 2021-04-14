@@ -1,6 +1,9 @@
 Assimilation in a complex model
 ===============================
 
+Introduction
+------------
+
 Running a successful assimilation takes careful diagnostic work and experiment
 iterations to find the best settings for your specific case.
 
@@ -10,6 +13,179 @@ choices to compensate for sampling errors, model bias, observation error, lack
 of model forecast divergence, variations in observation density in space and
 time, random correlations, etc. There are tools built into DART to deal with
 most of these problems but it takes careful work to apply them correctly.
+
+This document guides you through the process of using DART with your model. It
+uses a questionnaire to guide you through the questions you'll need to answer
+in order to get a data assimilation system working.
+
+Is your model appropriate for any kind of DA?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If your model isn't chaotic, you don't need DA. You run the model, you look at
+the difference between the prediction and the observations, and you invert the
+equations inside the model to compute what different inputs would have
+produced outputs closer to the observations.
+
+Chaotic models don't have a simple relationship between inputs and outputs.
+There are internal feedbacks and non-linear behaviors that make it difficult
+to adjust the inputs to make the outputs better match the observations.
+
+What is your model state?
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+"Model state" has a specific definition that can be the source of much
+confusion if you are running a model and haven't though about DA before.
+Formally, it is the minimal set of variables that must be saved when a model
+stops so it can be restarted again exactly.
+
+At first glance this means all the variables on the right side of
+the equals sign for the governing equations of the system.  However
+many models which have not been designed with DA in mind may have
+no clear time when all parts of the model are at a consistent time.
+For example, some variables may be 1/2 timestep ahead or behind others.
+Or some derived variables may be expensive to compute and so are
+precomputed and stored and not recomputed. If the DA process changes
+the state variables all derived variables must be recomputed before
+proceeding.
+
+Restart files often store many more variables than the minimal set
+needed to restart the model. Often other variables are used in 
+diagnostic routines or are of interest on their own. Generally
+these aren't considered part of the model state.
+
+How is your model execution controlled?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In general, larger and more complex models have an environment they
+are expecting to run within.  This environment includes scripts to control
+the execution parameters or input parameter files, how many processors are
+used in a parallel system, how the tasks are distributed over the hardware,
+how an execution is expected to run in model time, and what variables are
+written to the output files.
+
+For DA, there must, at a minimum, be a way to control how long the model 
+runs before it writes out the results and exits.  
+
+For large models, the DA filter process is a large parallel program
+generally requiring a multi-processor supercomputer or cluster.  Many
+models themselves are large parallel programs, so there can be issues
+with how the switch between model and DA process is done.
+
+New or adjusted scripting is generally required to include the DA process
+in the overall execution flow.
+
+Are you able to start and stop your model at specific times?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The DA process is generally a cycle of running the model for a certain 
+amount of model time, then running the DA filter to adjust the model 
+state before continuing.
+
+These two steps happen over and over as observations are available to
+guide the adjustments to the model state.
+
+Models may be written with the assumption that startup costs are
+only done once and then the model runs for a long period of time.  
+When used with DA models are generally started and stopped after 
+running a relatively short amount of model time.  If model startup 
+time is long this can result in unacceptably slow performance.
+
+A small amount of round-off error is often introduced when a model 
+writes restart files before stopping.  So running a model N timesteps 
+forward vs. running N/2, stopping, writing restart files, starting, 
+reading restart files, and finishing the last N/2 timesteps will 
+usually not result in identical values.
+
+The goal is to minimize the differences.  This can require small or
+large changes to make the model behave as expected with repeated 
+starting and stopping.
+
+Some models include external forcing, for example boundary conditions
+from a separate model.  If cycling the forcing files may need to be
+updated periodically outside of the DA system.
+
+What coordinate system is used by your model?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Coordinate systems use a series of numbers to describe the
+relationship in space between parts of the model state and
+where observations are located.  In Earth-system models,
+often a latitude-longitude-vertical coordinate system
+is used.  X,Y,Z Cartesian coordinates are also used to describe
+3D space.  Other options include cyclindrical or spherical coordinates,
+and unit-line, -square or -cube coordinates with cyclical boundaries.
+
+Only a single coordinate system can be selected and it applies to
+both the model state locations as well as the observations.
+
+If the model coordinate system is based on some other space
+it may be necessary to transform it into physical coordinates
+before running DA.  For example, some models compute in spectral
+space and the output must be translated into a physical space
+before DA can be done.
+
+What file format is used for model restart files?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+DART reads and writes NetCDF file format.  Many earth-system models
+already use this format.  If the model does not, converter programs
+from the native format to NetCDF and back are needed.  NetCDF is a
+self-describing format with metadata that allows DART to read and
+process model data without additional configuration files.
+
+What quantities are in the model state?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+DART defines a "Quantity" as the fundamental physical object
+a value is measuring.  Examples are Temperature, Pressure,
+Salinity, etc.  Each value in a model state must be 
+associated with a defined quantity.
+
+What observations are you intending to assimilate?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Any observation you intend to assimilate requires a method to
+compute an "expected value" based on the model state.  Often
+the observation is of the same quantity as exists in the model
+state, so computing the expected value is a direct process.
+
+Other times the expected value is a function of quantities in
+the model state, and code called a "forward operator" uses
+one or more quantities from the model state and computes the
+expected value.
+
+If the model state does not contain quantities that are needed
+to compute an expected value, auxiliary data values can be read
+and used to compute the expected value.  But if the expected value
+cannot be computed or is not in some way a function of the model
+state, the observations cannot be assimilated.
+
+How are you going to generate your initial ensemble?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Most models don't have an existing ensemble of states ready
+for ingestion into an ensemble DA system. Options for generating
+the initial ensemble include adding random perturbations to a 
+single variable in a single state, perturbing forcing variables
+differently for each ensemble member, or perturbing the entire state.
+
+For models which have a lot of error growth, it may be enough to
+add a very small amount of noise to a single variable in the state
+to generate an ensemble of states and then run them forward in time
+with the model to generate states which have sufficient differences.
+
+For models with slower error growth, larger perturbations may be
+needed, a longer model advance time before starting assimilation, 
+or perturbations of forcing or boundary files may be needed.
+
+The goal is to generate a set of model states which are different
+but contain internally-consistent values.  
+
+An ensemble of states without sufficient differences (spread) will
+reject assimilating observations.
+
+General advice
+--------------
 
 If you are adding a new model or a new observation type, you should assimilate
 exactly one observation, with no model advance, with inflation turned off, with

@@ -1,6 +1,13 @@
 TIEGCM
 ======
 
+.. attention::
+
+   ``TIEGCM`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
+   using ``TIEGCM`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
+   Until that time, you should consider this documentation as out-of-date.
+
+
 Overview
 --------
 
@@ -13,6 +20,7 @@ Overview
   thermospheric and ionospheric parameters by taking advantage of the coupling of plasma and neutral constituents
   described in TIEGCM. DART/TIEGCM's demonstrated capability to infer under-observed thermospheric parameters from
   abundant electron density observations has important implications for the future of upper atmosphere research.
+
 | DART is designed so that the TIEGCM source code can be used with no modifications, as DART runs TIEGCM as a completely
   separate executable. The TIEGCM source code and restart files are **not** included in DART, so you must obtain them
   from the NCAR High Altitude Observatory (`download website <http://www.hao.ucar.edu/modeling/tgcm/download.php>`__).
@@ -27,6 +35,7 @@ Overview
   need not to be updated.) It is required to associate the TIEGCM variable name with a 'generic' DART counterpart (e.g.,
   ``NE`` is ``QTY_ELECTRON_DENSITY``). The composition of the DART state vector and which variables get updated in the
   TIEGCM primary file are under complete user control.
+
 | In the course of a filtering experiment, it is necessary to make a short forecast with TIEGCM. DART writes out an
   ancillary file with the information necessary to advance TIEGCM to the required time. The DART script
   ``advance_model.csh`` reads this information and modifies the TIEGCM namelist ``tiegcm.nml`` such that TIEGCM runs
@@ -113,180 +122,100 @@ namelist.
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | output_state_vector                   | logical                               | If .true. write state vector as a 1D  |
-   |                                       |                                       | array to the DART diagnostic output   |
-   |                                       |                                       | files. If .false. break state vector  |
-   |                                       |                                       | up into variables before writing to   |
-   |                                       |                                       | the output files.                     |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | tiegcm_restart_file_name              | character(len=256)                    | The TIEGCM restart file name.         |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | tiegcm_secondary_file_name            | character(len=256)                    | The TIEGCM secondary file name.       |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | tiegcm_namelist_file_name             | character(len=256)                    | The TIEGCM namelist file name.        |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | assimilation_period_seconds           | integer                               | This specifies the width of the       |
-   |                                       |                                       | assimilation window. The current      |
-   |                                       |                                       | model time is used as the center time |
-   |                                       |                                       | of the assimilation window. All       |
-   |                                       |                                       | observations in the assimilation      |
-   |                                       |                                       | window are assimilated. BEWARE: if    |
-   |                                       |                                       | you put observations that occur       |
-   |                                       |                                       | before the beginning of the           |
-   |                                       |                                       | assimilation_period, DART will error  |
-   |                                       |                                       | out because it cannot move the model  |
-   |                                       |                                       | 'back in time' to process these       |
-   |                                       |                                       | observations.                         |
-   |                                       |                                       | ``assimilation_period_seconds`` must  |
-   |                                       |                                       | be an integer number of TIEGCM        |
-   |                                       |                                       | dynamical timesteps (as specified by  |
-   |                                       |                                       | tiegcm.nml:STEP) AND be able to be    |
-   |                                       |                                       | expressed by tiegcm.nml:STOP. Since   |
-   |                                       |                                       | STOP has three components:            |
-   |                                       |                                       | day-of-year, hour, and minute, the    |
-   |                                       |                                       | ``assimilation_period_seconds`` must  |
-   |                                       |                                       | be an integer number of minutes.      |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | estimate_f10_7                        | logical                               | Switch to specify that the f10.7      |
-   |                                       |                                       | index should be estimated by          |
-   |                                       |                                       | augmenting the DART state vector with |
-   |                                       |                                       | a scalar. The location of the f10.7   |
-   |                                       |                                       | index is taken to be longitude of     |
-   |                                       |                                       | local noon and latitude zero.         |
-   |                                       |                                       | WARNING: this is provided with no     |
-   |                                       |                                       | guarantees. Please read the comments  |
-   |                                       |                                       | in ``model_mod.f90`` and act          |
-   |                                       |                                       | accordingly.                          |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | debug                                 | integer                               | Set to 0 (zero) for minimal output.   |
-   |                                       |                                       | Successively larger values generate   |
-   |                                       |                                       | successively more output.             |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | variables                             | character(:,6)                        | Strings that identify the TIEGCM      |
-   |                                       |                                       | variables, their DART kind, the min & |
-   |                                       |                                       | max values, what file to read from,   |
-   |                                       |                                       | and whether or not the file should be |
-   |                                       |                                       | updated after the assimilation. The   |
-   |                                       |                                       | DART kind must be one found in the    |
-   |                                       |                                       | ``DART/assimilation_code/mo           |
-   |                                       |                                       | dules/observations/obs_kind_mod.f90`` |
-   |                                       |                                       | AFTER it gets built by                |
-   |                                       |                                       | ``preprocess``. Most of the upper     |
-   |                                       |                                       | atmosphere observation kinds are      |
-   |                                       |                                       | specified by                          |
-   |                                       |                                       | ``DART/observations/forward_o         |
-   |                                       |                                       | perators/obs_def_upper_atm_mod.f90``, |
-   |                                       |                                       | so it should be specified in the      |
-   |                                       |                                       | ``preprocess_nml``:``input_files``    |
-   |                                       |                                       | variable. Since TIEGCM has an entire  |
-   |                                       |                                       | class of variables (all the variables |
-   |                                       |                                       | that end in ``_NM``) that are simply  |
-   |                                       |                                       | 1 dynamical timestep behind the       |
-   |                                       |                                       | variables at the output time, it is   |
-   |                                       |                                       | **imperative** that these variables   |
-   |                                       |                                       | be specified to occur AFTER their     |
-   |                                       |                                       | counterparts in the DART namelist.    |
-   |                                       |                                       | This will ensure that the most        |
-   |                                       |                                       | current variables are used in the     |
-   |                                       |                                       | calculation of the forward            |
-   |                                       |                                       | observation operators.                |
-   |                                       |                                       |                                       |
-   |                                       |                                       | +----------------+----------------+   |
-   |                                       |                                       | | ``va           | Specifies the  |   |
-   |                                       |                                       | | riables(:,1)`` | TIEGCM         |   |
-   |                                       |                                       | |                | variable name  |   |
-   |                                       |                                       | |                | in the netCDF  |   |
-   |                                       |                                       | |                | file.          |   |
-   |                                       |                                       | +----------------+----------------+   |
-   |                                       |                                       | | ``va           | Specifies the  |   |
-   |                                       |                                       | | riables(:,2)`` | DART kind for  |   |
-   |                                       |                                       | |                | that variable. |   |
-   |                                       |                                       | +----------------+----------------+   |
-   |                                       |                                       | | ``va           | Specifies a    |   |
-   |                                       |                                       | | riables(:,3)`` | minimum bound  |   |
-   |                                       |                                       | |                | (if any) for   |   |
-   |                                       |                                       | |                | that variable. |   |
-   |                                       |                                       | +----------------+----------------+   |
-   |                                       |                                       | | ``va           | Specifies a    |   |
-   |                                       |                                       | | riables(:,4)`` | maximum bound  |   |
-   |                                       |                                       | |                | (if any) for   |   |
-   |                                       |                                       | |                | that variable. |   |
-   |                                       |                                       | +----------------+----------------+   |
-   |                                       |                                       | | ``va           | Specifies what |   |
-   |                                       |                                       | | riables(:,5)`` | file the       |   |
-   |                                       |                                       | |                | variable       |   |
-   |                                       |                                       | |                | should come    |   |
-   |                                       |                                       | |                | from. The only |   |
-   |                                       |                                       | |                | valid          |   |
-   |                                       |                                       | |                | possibilies    |   |
-   |                                       |                                       | |                | are "restart", |   |
-   |                                       |                                       | |                | "secondary",   |   |
-   |                                       |                                       | |                | or             |   |
-   |                                       |                                       | |                | "calculate".   |   |
-   |                                       |                                       | |                | "restart" will |   |
-   |                                       |                                       | |                | read from      |   |
-   |                                       |                                       | |                | whatever file  |   |
-   |                                       |                                       | |                | is specified   |   |
-   |                                       |                                       | |                | by             |   |
-   |                                       |                                       | |                | `              |   |
-   |                                       |                                       | |                | `tiegcm_restar |   |
-   |                                       |                                       | |                | t_file_name``. |   |
-   |                                       |                                       | |                | "secondary"    |   |
-   |                                       |                                       | |                | will read from |   |
-   |                                       |                                       | |                | whatever file  |   |
-   |                                       |                                       | |                | is specified   |   |
-   |                                       |                                       | |                | by             |   |
-   |                                       |                                       | |                | ``t            |   |
-   |                                       |                                       | |                | iegcm_secondar |   |
-   |                                       |                                       | |                | y_file_name``. |   |
-   |                                       |                                       | |                | "calculate"    |   |
-   |                                       |                                       | |                | will call a    |   |
-   |                                       |                                       | |                | vari           |   |
-   |                                       |                                       | |                | able-dependent |   |
-   |                                       |                                       | |                | function --    |   |
-   |                                       |                                       | |                | see            |   |
-   |                                       |                                       | |                | ``m            |   |
-   |                                       |                                       | |                | odel_mod.f90`` |   |
-   |                                       |                                       | |                | :``tiegcm_to_d |   |
-   |                                       |                                       | |                | art_vector()`` |   |
-   |                                       |                                       | |                | for the        |   |
-   |                                       |                                       | |                | ``c            |   |
-   |                                       |                                       | |                | reate_vtec()`` |   |
-   |                                       |                                       | |                | example.       |   |
-   |                                       |                                       | +----------------+----------------+   |
-   |                                       |                                       | | ``va           | Specifies if   |   |
-   |                                       |                                       | | riables(:,6)`` | the variable   |   |
-   |                                       |                                       | |                | should be      |   |
-   |                                       |                                       | |                | updated in the |   |
-   |                                       |                                       | |                | TIEGCM restart |   |
-   |                                       |                                       | |                | file. The      |   |
-   |                                       |                                       | |                | value may be   |   |
-   |                                       |                                       | |                | "UPDATE" or    |   |
-   |                                       |                                       | |                | anything else. |   |
-   |                                       |                                       | |                | If **and only  |   |
-   |                                       |                                       | |                | if** the       |   |
-   |                                       |                                       | |                | variable comes |   |
-   |                                       |                                       | |                | from the       |   |
-   |                                       |                                       | |                | restart file   |   |
-   |                                       |                                       | |                | **and**        |   |
-   |                                       |                                       | |                | ``va           |   |
-   |                                       |                                       | |                | riables(:,6)`` |   |
-   |                                       |                                       | |                | == "UPDATE"    |   |
-   |                                       |                                       | |                | will the       |   |
-   |                                       |                                       | |                | variable be    |   |
-   |                                       |                                       | |                | modified in    |   |
-   |                                       |                                       | |                | the TIEGCM     |   |
-   |                                       |                                       | |                | restart file.  |   |
-   |                                       |                                       | |                | No variables   |   |
-   |                                       |                                       | |                | in the         |   |
-   |                                       |                                       | |                | secondary file |   |
-   |                                       |                                       | |                | are EVER       |   |
-   |                                       |                                       | |                | modified.      |   |
-   |                                       |                                       | +----------------+----------------+   |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +-------------------------------+----------------------+---------------------------------------+
+   | Item                          | Type                 | Description                           |
+   +===============================+======================+=======================================+
+   | output_state_vector           | logical              | If .true. write state vector as a 1D  |
+   |                               |                      | array to the DART diagnostic output   |
+   |                               |                      | files. If .false. break state vector  |
+   |                               |                      | up into variables before writing to   |
+   |                               |                      | the output files.                     |
+   +-------------------------------+----------------------+---------------------------------------+
+   | tiegcm_restart_file_name      | character(len=256)   | The TIEGCM restart file name.         |
+   +-------------------------------+----------------------+---------------------------------------+
+   | tiegcm_secondary_file_name    | character(len=256)   | The TIEGCM secondary file name.       |
+   +-------------------------------+----------------------+---------------------------------------+
+   | tiegcm_namelist_file_name     | character(len=256)   | The TIEGCM namelist file name.        |
+   +-------------------------------+----------------------+---------------------------------------+
+   | assimilation_period_seconds   | integer              | This specifies the width of the       |
+   |                               |                      | assimilation window. The current      |
+   |                               |                      | model time is used as the center time |
+   |                               |                      | of the assimilation window. All       |
+   |                               |                      | observations in the assimilation      |
+   |                               |                      | window are assimilated. BEWARE: if    |
+   |                               |                      | you put observations that occur       |
+   |                               |                      | before the beginning of the           |
+   |                               |                      | assimilation_period, DART will error  |
+   |                               |                      | out because it cannot move the model  |
+   |                               |                      | 'back in time' to process these       |
+   |                               |                      | observations.                         |
+   |                               |                      | ``assimilation_period_seconds`` must  |
+   |                               |                      | be an integer number of TIEGCM        |
+   |                               |                      | dynamical timesteps (as specified by  |
+   |                               |                      | tiegcm.nml:STEP) AND be able to be    |
+   |                               |                      | expressed by tiegcm.nml:STOP. Since   |
+   |                               |                      | STOP has three components:            |
+   |                               |                      | day-of-year, hour, and minute, the    |
+   |                               |                      | ``assimilation_period_seconds`` must  |
+   |                               |                      | be an integer number of minutes.      |
+   +-------------------------------+----------------------+---------------------------------------+
+   | estimate_f10_7                | logical              | Switch to specify that the f10.7      |
+   |                               |                      | index should be estimated by          |
+   |                               |                      | augmenting the DART state vector with |
+   |                               |                      | a scalar. The location of the f10.7   |
+   |                               |                      | index is taken to be longitude of     |
+   |                               |                      | local noon and latitude zero.         |
+   |                               |                      | WARNING: this is provided with no     |
+   |                               |                      | guarantees. Please read the comments  |
+   |                               |                      | in ``model_mod.f90`` and act          |
+   |                               |                      | accordingly.                          |
+   +-------------------------------+----------------------+---------------------------------------+
+   | debug                         | integer              | Set to 0 (zero) for minimal output.   |
+   |                               |                      | Successively larger values generate   |
+   |                               |                      | successively more output.             |
+   +-------------------------------+----------------------+---------------------------------------+
+   | variables                     | character(:,6)       | Strings that identify the TIEGCM      |
+   |                               |                      | variables, their DART kind, the min & |
+   |                               |                      | max values, what file to read from,   |
+   |                               |                      | and whether or not the file should be |
+   |                               |                      | updated after the assimilation. A     |
+   |                               |                      | complete list is found in below.      |
+   +-------------------------------+----------------------+---------------------------------------+
+
+   +--------------------+-------------------------------------------------------------------------------+
+   | Variable           | Description                                                                   |
+   +====================+===============================================================================+
+   | ``variables(:,1)`` | Specifies the TIEGCM variable name in the netCDF file.                        |
+   +--------------------+-------------------------------------------------------------------------------+
+   | ``variables(:,2)`` | Specifies the DART kind for that variable.                                    |
+   +--------------------+-------------------------------------------------------------------------------+
+   | ``variables(:,3)`` | Specifies a minimum bound (if any) for that variable.                         |
+   +--------------------+-------------------------------------------------------------------------------+
+   | ``variables(:,4)`` | Specifies a maximum bound (if any) for that variable.                         |
+   +--------------------+-------------------------------------------------------------------------------+
+   | ``variables(:,5)`` | Specifies what file the variable should come from. The only valid possibilies |
+   |                    | are "restart", "secondary", or "calculate". "restart" will read from whatever |
+   |                    | file is specified by ` `tiegcm_restart_file_name``. "secondary" will read     |
+   |                    | from whatever file is specified by ``tiegcm_secondar y_file_name``.           |
+   |                    | "calculate" will call a variable-dependent function --                        |
+   |                    | see ``model_mod.f90`` :``tiegcm_to_dart_vector()`` for                        |
+   |                    | the ``create_vtec()`` example.                                                |
+   +--------------------+-------------------------------------------------------------------------------+
+   | ``variables(:,6)`` | Specifies if the variable should be updated in the TIEGCM restart file.       |
+   |                    | The value may be "UPDATE" or anything else. If **and only if** the variable   |
+   |                    | comes from the restart file **and** ``variables(:,6)`` == "UPDATE"            |
+   |                    | will the variable be modified in the TIEGCM restart file.                     |
+   |                    | No variables in the secondary file are EVER modified.                         |
+   +--------------------+-------------------------------------------------------------------------------+
+
+The DART kind must be one found in the ``DARTHOME/assimilation_code/modules/observations/obs_kind_mod.f90`` *after* it 
+gets built by ``preprocess``. Most of the upper atmosphere observation kinds are specified by 
+``DART/observations/forward_operators/obs_def_upper_atm_mod.f90``, so it should be specified in the 
+``preprocess_nml``:``input_files`` variable. Since TIEGCM has an entire class of variables 
+(all the variables that end in ``_NM``) that are simply 1 dynamical timestep behind the variables at the output time, 
+it is **imperative** that these variables be specified to occur AFTER their counterparts in the DART namelist.
+This will ensure that the most current variables are used in the calculation of the forward observation operators. 
+
 
 Other modules used
 ------------------

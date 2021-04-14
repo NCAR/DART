@@ -4,14 +4,17 @@ WRF
 Overview
 --------
 
-DART interface module for the WRF model. This page documents the details of the
+
+DART interface module for the Weather Research and Forecasting
+`(WRF) <https://www.mmm.ucar.edu/weather-research-and-forecasting-model>`__
+model. This page documents the details of the
 module compiled into DART that interfaces with the WRF data in the state vector.
 
 WRF+DART Tutorial
 -----------------
 
 **There is additional overview and tutorial documentation for running a WRF/DART
-assimilation in** ``./tutorial/README.md`` **.**
+assimilation in** :doc:`./tutorial/README`
 
 Please work through the tutorial in order to learn how to run WRF and DART.
 
@@ -328,9 +331,9 @@ Description of each namelist entry
 |                                       |                   | only as a means to create a tiny      |
 |                                       |                   | ensemble for non-advancing tests.     |
 |                                       |                   | Creating an initial ensemble is       |
-|                                       |                   | covered in the WRF-DART tutorial      |
-|                                       |                   | in ``./tutorial/README.md``           |
+|                                       |                   | covered in :doc:`./tutorial/README`   |
 +---------------------------------------+-------------------+---------------------------------------+
+
 
 The following items used to be in the WRF namelist but have been removed. The
 first 4 are no longer needed, and the last one was moved to the
