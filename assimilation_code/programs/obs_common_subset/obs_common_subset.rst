@@ -23,10 +23,10 @@ to add or remove observation types from the ``assimilate_these_obs_types`` or ``
 items for different experiments. The output observation sequence files will still contain an identical list of
 observations, with some marked with a DART QC indicating 'not assimilated because of namelist control'.
 
-See the `two experiment diagnostic
-plot <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#obs_diagnostics>`__ documentation for Matlab scripts
-supplied with DART to directly compare the observation diagnostic output from multiple experiments (it does more than
-two, the script has a poor name).
+See the :doc:`"two_experiment" diagnostic plots in <../../../guide/matlab-observation-space>`
+documentation for Matlab scripts
+supplied with DART to directly compare the observation diagnostic output from multiple experiments
+(it does more than two, the script has a poor name).
 
 This is one of a set of tools which operate on observation sequence files. For a more general purpose tool see the
 :doc:`../obs_sequence_tool/obs_sequence_tool`, and for a more flexible selection tool see the obs_selection_tool.
