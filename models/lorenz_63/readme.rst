@@ -26,7 +26,9 @@ The system of equations for Lorenz 63 is:
 .. math::
 
    \frac{dx}{dt} = \sigma(y-x)
+   
    \frac{dy}{dt} = x(r-z)-y
+   
    \frac{dz}{dt} = xy-bz
 
 and, within DART, the constants have default values of:
