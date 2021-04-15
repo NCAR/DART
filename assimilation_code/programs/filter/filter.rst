@@ -74,8 +74,7 @@ Specifically in the modules directory there is a ``filter_mod.f90`` which contai
 program. Each model has a separate directory under DART/models, and under each model is a work directory where the code
 is compiled and can be run for testing. Generally when a full-size experiment is done the executables are copied to a
 different location - e.g. scratch space on a large filesystem - since the data files for 10s to 100s of copies of a
-model can get very large. A lightly pruned directory tree can be browsed in the main
-`index.html <../../../docs/index.html#Directories>`__.
+model can get very large.
 
 Directories expected to be modified
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
