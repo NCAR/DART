@@ -133,7 +133,7 @@ Cross-component assimilation (often called ''strongly coupled'')
 
 .. note::
 
-   See `setup guidlines <./doc/setup_guidelines.html>`__ for details about setting up assimilations using
+   See :doc:`setup guidelines <./doc/setup_guidelines>` for details about setting up assimilations using
    observations of multiple Earth system components.
 
 SourceMods

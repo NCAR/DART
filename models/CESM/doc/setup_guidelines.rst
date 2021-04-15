@@ -5,8 +5,8 @@ CESM+DART setup overview
 ------------------------
 
 If you found your way to this file without reading more basic DART help files, 
-please read those first. `<../../../README.html>`__ is a good place to find pointers to those files. 
-Then see `<../readme.html>`__ for an overview of DART's interfaces to CESM.
+please read those first. :doc:`Getting Started <../../../README>` is a good place to find pointers to those files. 
+Then see :doc:`CESM<../readme>` for an overview of DART's interfaces to CESM.
 Finally, see the ../../{your_cesm_component(s)}/readme.html documentation about
 the code-level interfaces and namelist values for various CESM component models.
 This document gives specific help in setting up a CESM+DART assimilation
