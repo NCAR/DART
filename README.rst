@@ -227,6 +227,7 @@ References
    guide/controlling-files-output
    guide/vertical-conversion
    guide/data-management-issues
+   assimilation_code/programs/readme
 
 .. toctree::
    :maxdepth: 2

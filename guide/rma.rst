@@ -90,7 +90,7 @@ For Posterior_Diag.nc:
 -  **The number of ensemble members specifed** in filter_nml (num_output_state_members):
    postassim_member_####.nc
 
-The ``num_output_state_members`` are not written separately from the restarts. Note that restarts will have been clamped
+The ``num_output_state_members`` are now written separately from the restarts. Note that restarts will have been clamped
 if any clamping is applied (given as an arguement to add_domain). This is *different* to Posterior_Diag.nc which
 contains unclamped values. Note also that there are 2 more "stages" which might be output, in addition to the preassim
 and postassim discussed here.
