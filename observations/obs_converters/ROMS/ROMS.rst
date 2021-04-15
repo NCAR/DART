@@ -243,8 +243,8 @@ to be able to convert from the integer value of the obs_provenance to th DART ty
                           "blended satellite SST (temperature)",    "SATELLITE_BLENDED_SST"
      /
 
-A complete list of DART observation TYPES is available in
-`obs_def_ocean_mod.f90 <../../forward_operators/obs_def_ocean_mod.f90>`__
+A complete list of DART observation TYPES for oceans is described in
+:doc:`../../forward_operators/obs_def_ocean_mod`
 
 Any or all of the DART observation types that appear in the second column of ``type_translations`` must also be
 designated as observations that have precomputed forward operators. This is done by setting the
