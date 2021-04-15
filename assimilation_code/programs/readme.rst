@@ -1,5 +1,5 @@
-Programs
-========
+Programs included with DART
+===========================
 
 This list of programs is separated into groups which have similar functionality.
 Within each group they are sorted  by the order
