@@ -5,7 +5,8 @@ Overview
 --------
 
 GTSPP (Global Temperature-Salinity Profile Program) data measures vertical profiles of ocean temperature and salinity.
-The `GTPSS home page <http://www.nodc.noaa.gov/GTSPP/index.html>`__ has detailed information about the repository,
+The `GTPSS home page <https://www.ncei.noaa.gov/products/global-temperature-and-salinity-profile-programme>`__ 
+has detailed information about the repository,
 observations, and datasets. The programs in this directory convert from the netcdf files found in the repository into
 DART observation sequence (obs_seq) file format.
 
@@ -13,7 +14,7 @@ Data sources
 ------------
 
 Data from the GTSPP can be downloaded interactively from
-`here <http://www.nodc.noaa.gov/cgi-bin/gtspp/gtsppform01.cgi>`__. It is delivered in
+`the GTSPP data server <http://www.nodc.noaa.gov/cgi-bin/gtspp/gtsppform01.cgi>`__. It is delivered in
 `netCDF <http://www.unidata.ucar.edu/software/netcdf>`__ file format, one vertical profile per netCDF file.
 
 Currently each vertical profile is stored in a separate file, so converting a months's worth of observations involves
