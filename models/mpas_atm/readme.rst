@@ -462,7 +462,7 @@ Conversions
 A Welcome Development
 ~~~~~~~~~~~~~~~~~~~~~
 
-MPAS files no longer beed to be converted to DART formatted files, they can be
+MPAS files no longer need to be converted to DART formatted files, they can be
 read in directly from a input file list!
 
 Analysis File NetCDF header
