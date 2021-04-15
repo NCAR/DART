@@ -133,7 +133,7 @@ Cross-component assimilation (often called ''strongly coupled'')
 
 .. note::
 
-   See ./doc/setup_guidelines.rst for details about setting up assimilations using
+   See `setup guidlines <./doc/setup_guidelines.html>`_for details about setting up assimilations using
    observations of multiple Earth system components.
 
 SourceMods
@@ -284,4 +284,3 @@ $DART/models/{cesm components} organization
    :height: 400px
 .. |Cross-component flowchart| image:: ../../guide/images/science_nuggets/cross-component.png
    :height: 300px
-
