@@ -7,7 +7,7 @@ Overview
 MIDAS netCDF file to DART observation converter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Alex Chartier (University of Bath, UK) is the point-of-contact for this effort.
+Alex Chartier (University of Bath, UK) contributed the code.
 
    "MIDAS runs in Matlab. The raw observations come from GPS receivers as RINEX files, but we can't use them directly
    just yet ... Currently, the 'slant' (satellite-to-receiver path) observations are inverted by MIDAS to make vertical,
@@ -16,9 +16,8 @@ Alex Chartier (University of Bath, UK) is the point-of-contact for this effort.
 Data sources
 ------------
 
-| Contact Alex for MIDAS observations.
-| Alex writes out netCDF files that may be converted to DART observation sequence files. The netCDF files have a pretty
-  simple format.
+The original files have been converted to netCDF files that are then converted to DART 
+observation sequence files. The netCDF files have a pretty simple format:
 
 ::
 
