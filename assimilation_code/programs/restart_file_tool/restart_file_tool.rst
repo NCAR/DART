@@ -1,8 +1,7 @@
 PROGRAM ``restart_file_tool``
 =============================
 
-Overview
---------
+.. attention::
 
-This tool still exists in the "Classic" release of DART but is no longer needed in the "Manhattan" release. DART initial
-condition and restart files are now in NetCDF format and any standard NetCDF tool can be used to manipulate them.
+   ``restart_file_tool`` works with versions of DART *before* Manhattan (9.x.x) but is no longer needed. DART initial
+   condition and restart files are now in NetCDF format and any standard NetCDF tool can be used to manipulate them.
