@@ -1,5 +1,5 @@
 
-Data Management in DART	
+Data management in DART	
 =======================
 
 One of the more challenging aspects of an ensemble Data Assimilation (DA) system 
@@ -30,10 +30,10 @@ program in DART, called ``filter``, and what options exist for memory layout
 and management.
 
 
-Ensembles of Data
+Ensembles of data
 -----------------
 
-State Data
+State data
 ~~~~~~~~~~
 
 * N ensemble members times X items in the state vector, always resident.
@@ -49,7 +49,7 @@ within a single run of filter.
 * O observations times N ensemble members for the Forward Operator results
 * O observations times N ensemble members for the QC results
 
-Delayed Writing Option
+Delayed writing option
 ~~~~~~~~~~~~~~~~~~~~~~
 
 If selected in the namelist, up to P phases (input, forecast, preassim, postassim,
@@ -57,11 +57,11 @@ analysis, output) of the state data are stored in memory and written out at the 
 of filter.
 
 
-Filter Run Phases
+Filter run phases
 -----------------
 
-FO computation, Prior and Posterior
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+FO computation, prior and posterior
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Run-time options include allocating spaces for two layouts and transposing
 between them, or running distributed in 'all copies' mode.
@@ -76,8 +76,8 @@ Runtime option to either replicate the model state ensemble mean on each MPI tas
 or run with that ensemble fully distributed.
 
 
-Ensemble Memory Usage/Layout
-----------------------------
+Ensemble memory usage and layout
+--------------------------------
 
 Transposable
 ~~~~~~~~~~~~
@@ -105,5 +105,3 @@ Replicated
 The same data array is replicated on each MPI task:
 
 * X items per task
-
-

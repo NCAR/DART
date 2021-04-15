@@ -1,18 +1,16 @@
-Working with Collaborators on Porting New Models
+Working with collaborators on porting new models
 ================================================
 
-The DART team often collaborates with other groups to
-help write the interface code to a new model.  
-The fastest way to get started is to meet, either virtually
-or in person, to discussr what is involved
-in supporting a different model.
+The DART team often collaborates with other groups to help write the interface
+code to a new model. The most efficient way to get started is to meet with
+DAReS staff either virtually or in person, to discuss what is involved in
+supporting a different model.
 
-If part of the team is not yet familiar with Data Assimilation (DA)
-we recommend they review the introductory material <here> and
-also look at either DartLab or the DART tutorial.
+If part of your team isn't familiar with data assimilation yet, you should
+review the introductory material in this documentation and and also look at
+work through the concepts in the :doc:`/theory/readme`.
 
-
-Goals of Using DART
+Goals of using DART
 -------------------
 
 DART is the Data Assimilation Research Testbed.  It is a collection of 
@@ -29,33 +27,30 @@ DART is often used for the following types of projects:
 - Using both a new model and new observations with DART
 - Using DART to teach DA
 
-Everything on this "possible goals" list except adding support
-for a new model can generally be done by a single user with minimal 
-help from the DART team. Therefore the following discussion will
-focus only on adding a new model to DART.
-
+Everything on this "possible goals" list except adding support for a new model
+can generally be done by a single user with minimal help from the DART team.
+Therefore this discussion focuses only on adding a new model to DART.
 
 Should I consider using DART?
 -----------------------------
 
-DART is an ensemble-based DA system.  It makes multiple runs of a model
-with slightly different inputs and uses the statistical distribution of 
-the results to decide how to adjust the model state to be more consistent 
-with the observations.
+DART is an ensemble-based DA system. It makes multiple runs of a model with
+slightly different inputs and uses the statistical distribution of the results
+to decide how to adjust the model state to be more consistent with the
+observations.
 
-The advantage of ensemble systems is that no changes to the model
-itself are required.  The disadvantage is that multiple runs of the
-model are needed and this can be computationally expensive.
+The advantage of ensemble systems is that no changes to the model itself are
+required. The disadvantage is that multiple runs of the model are needed and
+this can be computationally expensive.
 
 Simple models can be added to DART with a single person effort, but
 larger, more complex models can require multiple person-months with
 support from the DART team to add the interfaces and scripts needed 
 to perform a large-scale DA experiment.
 
-The DART code is in Fortran.  The supporting scripts and tools are
-a mix of shell and python.  The model can be written in any language;
+The DART code is in Fortran. The supporting scripts and tools are
+a mix of shell scripts and python. The model can be written in any language;
 it will only be run and the input and output files will be used by DART.
-
 
 Things to discuss before beginning
 ----------------------------------
@@ -63,13 +58,14 @@ Things to discuss before beginning
 Is your model appropriate for any kind of DA?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If the model is deterministic instead of chaotic, you don't need DA.
-You run the model, you look at the difference between the prediction and
-the observations, and you invert the equations inside the model to compute
-what different inputs would have produced outputs closer to the observations.
+If your model isn't chaotic, you don't need data assimilation.
+In non-chaotic models, you can improve your predictions by running the model, 
+examining the difference between the prediction and the observations, inverting
+the equations inside the model to compute how different inputs would have
+produced outputs closer to the observations.
 
 Chaotic models do not have a simple relationship between inputs and
-outputs.  There are internal feedbacks and non-linear behaviors that make
+outputs. There are internal feedbacks and non-linear behaviors that make
 it difficult to adjust the inputs to make the outputs better match the
 observations.  
 
@@ -147,7 +143,7 @@ Some models include external forcing, for example boundary conditions
 from a separate model.  If cycling the forcing files may need to be
 updated periodically outside of the DA system.
 
-What Coordinate System is used by your model?
+What coordinate system is used by your model?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Coordinate systems use a series of numbers to describe the
@@ -176,7 +172,7 @@ from the native format to NetCDF and back are needed.  NetCDF is a
 self-describing format with metadata that allows DART to read and
 process model data without additional configuration files.
 
-What Quantities are in the model state?
+What quantities are in the model state?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 DART defines a "Quantity" as the fundamental physical object
@@ -184,7 +180,7 @@ a value is measuring.  Examples are Temperature, Pressure,
 Salinity, etc.  Each value in a model state must be 
 associated with a defined quantity.
 
-What Observations are you intending to assimilate?
+What observations are you intending to assimilate?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Any observation you intend to assimilate requires a method to
@@ -284,7 +280,7 @@ for whether they want to control the impact of observations on parts
 of the model state and this can be adjusted based on code added to the
 model-specific parts of getting close observations and model state.
 
-Vertical Issues
+Vertical issues
 ~~~~~~~~~~~~~~~
 
 Most Earth System models use Latitude and Longitude for horizontal
@@ -322,5 +318,3 @@ The ``models/template`` directory has files that can be used to start
 porting code to support a new model, but we also recommend looking at
 the existing supported models and reusing code from them if possible.
 Models with similar grid types or vertical coordiates are good candidates.
-
-

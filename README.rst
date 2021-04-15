@@ -215,6 +215,7 @@ References
    :maxdepth: 2
    :caption: Run DART with your model
 
+   guide/advice-for-new-collaborators
    guide/assimilation-complex-model
    guide/mpi_intro
    guide/filters
@@ -224,6 +225,8 @@ References
    guide/suggestions-for-a-complex-model
    guide/how-to-test-your-model-mod-routines
    guide/controlling-files-output
+   guide/vertical-conversion
+   guide/data-management-issues
 
 .. toctree::
    :maxdepth: 2
