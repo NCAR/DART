@@ -10,7 +10,8 @@ Data sources
 ------------
 
 The observation files can be obtained from the Oklahoma Mesonet archive using urls of the format:
-http://www.mesonet.org/index.php/dataMdfMts/dataController/getFile/YYYYMMDDHHMM/mdf/TEXT where YYYYMMDDHHMM is the date
+``http://www.mesonet.org/index.php/dataMdfMts/dataController/getFile/YYYYMMDDHHMM/mdf/TEXT``
+where YYYYMMDDHHMM is the date
 and time of the desired set of observations. Files are available every 5 minutes.
 
 If you are located outside of Oklahoma or are going to use this for a non-research purpose see this web page for
