@@ -126,13 +126,7 @@ Changes in the Manhattan release (15 May 2015) which are *not* backwards compati
 
 #. The tutorial files have moved to *DART/docs/tutorial directory*
 
-#. The program ``fill_inflation_restart`` is OBSOLETE since DART inflation files are now in NetCDF format. Now inflation
-   files can be filled using ``ncap2``. Here is an example using version 4.4.2 or later of the NCO tools:
-
-   ::
-
-        ncap2 -s "T=1.0;U=1.0;V=1.0" wrfinput_d01 prior_inf.nc'
-        ncap2 -s "T=0.6;U=0.6;V=0.6" wrfinput_d01 prior_sd.nc'
+#. The program ``fill_inflation_restart`` can be used to create initial inflation restart files for the first assimilation step in a multi-step assimilation.  This allows the scripting to treat the first step the same as subsequent steps for inflation file motion and namelist settings.
 
 #. The default flags in the mkmf_template.XXX files have been updated to be more consistent with current compiler
    versions.
