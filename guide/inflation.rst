@@ -13,8 +13,17 @@ first.) The rest of this discussion applies to state-space inflation.
   (2007) <http://dx.doi.org/10.1175/JTECH2049.1>`__, `Anderson
   (2009) <http://dx.doi.org/10.1111/j.1600-0870.2008.00361.x>`__.
 
+Historically, inflation was first introduced to address sampling errors (the fact
+that we are limited to a small ensemble size).
+Latest research, e.g. `El Gharamti et al. (2019) <https://doi.org/10.1175/MWR-D-18-0389.1>`__ 
+suggests that prior and posterior inflation can be used to address different issues
+in the filtering problem. Prior inflation is able to address issues in the forecast 
+step such as model errors while posterior inflation can help mitigate sampling errors 
+in the analysis step. 
+
+
 Inflation values can vary in space and time, depending on the specified namelist values. Even though we talk about a
-single inflation value, the inflation has a gaussian distribution with a mean and standard deviation. We use the mean
+single inflation value, the inflation has a probability density with a mean and standard deviation. We use the mean
 value when we inflate, and the standard deviation indicates how sure of the value we are. Larger standard deviation
 values mean "less sure" and the inflation value can increase more quickly with time. Smaller values mean "more sure" and
 the time evolution will be slower since we are more confident that the mean (inflation value) is correct.
@@ -46,13 +55,37 @@ In the namelist each entry has two values. The first is for Prior inflation and 
    -  **5:** Enhanced Spatially-varying state space inflation (inverse gamma)
 
    Spatially-varying state space inflation stores an array of inflation values, one for each item in the state vector.
-   If time-evolution is enabled each value can evolve independently. Spatially-uniform state space inflation uses a
-   single inflation value for all items in the state vector. If time-evolution is enabled that single value can evolve.
+   If time-evolution is enabled, each value can evolve independently. Spatially-uniform state space inflation uses a
+   single inflation value for all items in the state vector. If time-evolution is enabled, that single value can evolve.
    See ``inf_sd_*`` below for control of the time-evolution behavior. Enhanced spatially-varying inflation uses an
    inverse-gamma distribution which allows the standard deviation of the inflation to increase or decrease through time
-   and may produce better results. In practice we recommend starting with no inflation (both values 0). Then try
+   and may produce better results (see `El Gharamti (2018) <https://doi.org/10.1175/MWR-D-17-0187.1>`__). 
+   In practice we recommend starting with no inflation (both values 0). Then try
    inflation type 2 or 5 prior inflation and no inflation (0) for posterior. WARNING: even if inf_flavor is not 0,
    inflation will be turned off if ``inf_damping`` is set to 0.
+
+   .. important::
+   
+       Relaxation to prior spread (aka RTPS, i.e., ``inf_flavor=4``) is a 
+       spatially varying **posterior** inflation algorithm.  
+
+
+   When using RTPS you cannot set the prior inflation 
+   flavor to 4. The code will exit with an error messge. Unlike all other flavors, RTPS does 
+   not use files to handle inflation in time. So, if the user supplies ``input_postinf_{mean,sd}.nc``, 
+   these will be **ignored**. The ONLY namelist option that RTPS uses (other than ``inf_flavor=4``)
+   is the second entry of ``inf_initial``. This value is technically not the 
+   posterior inflation value but rather a *weighting* factor (denoted by :math:`{\alpha}`; in 
+   `Whitaker and Hamill (2012) <https://doi.org/10.1175/MWR-D-11-00276.1>`__)
+   that is used to relax the posterior spread to the prior spread. For instance, if :math:`{\alpha}=0.3`
+   then the inflated posterior spread is as follows: 70% of the analysis spread plus
+   30% of the prior spread. If :math:`{\alpha}=1.0`, then the inflated posterior spread is simply set 
+   to the prior spread. Using :math:`{\alpha}`, RTPS calculates the effective posterior inflation *under the hood*
+   and writes out the inflation values to the user. These can be looked at for diagnostic purposes. 
+   The algorithm disregards them for the next data assimilation cycle. In short, RTPS is 
+   adaptive in time but unlike flavors 2, 3 and 5 it has no memory. 
+   The recommendation is to set the second entry of ``inf_initial``
+   to any number between 0.0 and 1.0.     
 
 ``&filter_nml :: inf_initial_from_restart``
    *valid values:* .true. or .false.
