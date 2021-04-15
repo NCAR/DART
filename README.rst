@@ -517,4 +517,8 @@ References
    
    copyright
    Changelog <CHANGELOG>
+
+.. toctree::
+   :hidden:
+
    guide/404
