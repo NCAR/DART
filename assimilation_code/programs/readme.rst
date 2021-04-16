@@ -164,13 +164,13 @@ obs_seq_to_netcdf
    Compare fields in two NetCDF files and print out the min and max values from each file and of
    the difference between the two files.
 
-`compute_error/compute_error <compute_error/compute_error.html>`_
+`compute_error <compute_error/compute_error.html>`_
    Compute the time-mean ensemble error and spread in the same manner as the DART MATLAB diagnostic
    routine ``plot_total_err``; in state space from true_state.nc and preassim.nc (or analysis.nc).
  
-`closest_member_tool/closest_member_tool <closest_member_tool/closest_member_tool.html>`_
+`closest_member_tool <closest_member_tool/closest_member_tool.html>`_
    Prints out a sorted order of which ensemble members are 'closest' to the mean, 
-   where 'close' is selectable by namelist option.
+   where the method for computing the 'close' metric is selectable by namelist option.
  
 Historical and Deprecated
 -------------------------
@@ -185,10 +185,10 @@ system_simulation/system_simulation
    observations with a given correlation to a state variable using an 
    N member ensemble to compute the correlations.
 
-`restart_file_tool/restart_file_tool <restart_file_tool/restart_file_tool.html>`_
+`restart_file_tool <restart_file_tool/restart_file_tool.html>`_
    Deprecated, since in Manhattan all DART initial and restart files are in NetCDF format.
  
-`wakeup_filter/wakeup_filter <wakeup_filter/wakeup_filter.html>`_
+`wakeup_filter <wakeup_filter/wakeup_filter.html>`_
    For use in the "async=4" case where both the main filter program and the hindcast model are MPI programs. 
    The main MPI job script runs each of the model advances for the ensemble members, 
    and then runs this program to restart the filter program.
