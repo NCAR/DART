@@ -16,7 +16,7 @@ In that case, you the programs you're looking for are probably in `Assimilation 
 `preprocess <preprocess/preprocess.html>`_
    Program to insert observation specific code into DART before filter or perfect_model_obs is compiled.
  
-`fill_inflation_restart/fill_inflation_restart <fill_inflation_restart/fill_inflation_restart.html>`_
+`fill_inflation_restart <fill_inflation_restart/fill_inflation_restart.html>`_
    Create inflation restart files with constant values taken from ``fill_inflation_restart_nml``.
 
 `obs_impact_tool/obs_impact_tool <obs_impact_tool/obs_impact_tool.html>`_
