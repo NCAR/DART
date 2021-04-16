@@ -23,7 +23,7 @@ In that case, you the programs you're looking for are probably in `Assimilation 
    Construct a table that is read by filter at run-time to localize the
    impact of sets of observation types on sets of state vector quantities.
  
-`model_mod_check/model_mod_check <model_mod_check/model_mod_check.html>`_
+`model_mod_check <model_mod_check/model_mod_check.html>`_
    "Hackable" program to test some of the more fundamental routines in any ``model_mod``, 
    especially a new one.
 
