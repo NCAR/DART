@@ -34,5 +34,7 @@ A collection of standalone programs for simulating various properties of ensembl
 -  ``sys_sim501.f90``
 -  ``sys_sim502.f90``
 
-** Talk to Jeff Anderson about the programs in this directory.**
+.. note::
+
+   Talk to Jeff Anderson about the programs in this directory.
 
