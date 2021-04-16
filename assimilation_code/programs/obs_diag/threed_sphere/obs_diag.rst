@@ -727,47 +727,34 @@ Private components
 N/A
 
 .. |image1| image:: ../../../../guide/images/obs_diag_evolution_example.png
-   :width: 300px
-   :target: ../../../../guide/images/obs_diag_evolution_example.png
+   :width: 600px
 .. |image2| image:: ../../../../guide/images/obs_diag_profile_example.png
-   :width: 300px
-   :target: ../../../../guide/images/obs_diag_profile_example.png
+   :width: 600px
 .. |image3| image:: ../../../../guide/images/RankHistogram_ncview.png
-   :width: 200px
-   :target: ../../../../guide/images/RankHistogram_ncview.png
+   :width: 600px
 .. |image4| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 200px
-   :target: ../../../../guide/images/RankHistogram_matlab.png
+   :width: 600px
 .. |image5| image:: ../../../../guide/images/RankHistogram_ncview.png
-   :width: 200px
-   :target: ../../../../guide/images/RankHistogram_ncview.png
+   :width: 600px
 .. |image6| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 200px
-   :target: ../../../../guide/images/RankHistogram_matlab.png
+   :width: 600px
 .. |image7| image:: ../../../../guide/images/RankHistogram_ncview.png
-   :width: 200px
-   :target: ../../../../guide/images/RankHistogram_ncview.png
+   :width: 600px
 .. |image8| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 200px
-   :target: ../../../../guide/images/RankHistogram_matlab.png
+   :width: 600px
 .. |image9| image:: ../../../../guide/images/RankHistogram_ncview.png
-   :width: 200px
-   :target: ../../../../guide/images/RankHistogram_ncview.png
+   :width: 600px
 .. |image10| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 200px
-   :target: ../../../../guide/images/RankHistogram_matlab.png
+   :width: 600px
 .. |image11| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
    :width: 600px
-   :target: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
 .. |image12| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
    :width: 600px
-   :target: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
 .. |image13| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
    :width: 600px
-   :target: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
 .. |image14| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 200px
+   :width: 600px
 .. |image15| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 200px
+   :width: 600px
 .. |image16| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 200px
+   :width: 600px
