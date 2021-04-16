@@ -13,7 +13,7 @@ except for ``preprocess``, because you're using an existing model interface
 and have the observation sequence files.
 In that case, you the programs you're looking for are probably in `Assimilation Programs`_.
  
-`preprocess/preprocess <preprocess/preprocess.html>`_
+`preprocess <preprocess/preprocess.html>`_
    Program to insert observation specific code into DART before filter or perfect_model_obs is compiled.
  
 `fill_inflation_restart/fill_inflation_restart <fill_inflation_restart/fill_inflation_restart.html>`_
