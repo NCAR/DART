@@ -16,11 +16,51 @@ output of ``git log``
 
    0[1011] machine:dartGIT % git log > full_git_log.txt
 
-A reminder that since many files were moved or renamed, the best way to
-get the complete log is to use ``git log --follow`` for information on
+A reminder that since many files were moved or renamed, the best way to get the complete log is to use ``git log --follow`` for information on
 individual files.
 
 The changes are now listed with the most recent at the top.
+
+**April X 2021 :: preprocess, inflation options, external FO outout, wrf-hyrdo, AMSU-A, DART_LAB Tag X**
+
+- New features
+
+  -  Updated ``preprocess``.   
+     Dart no longer requires a hard coded list of integers for DART quantities in 
+     DEFAULT_obs_kind_mod.F90. New quantities are added using quantity files which
+     contain a list of QTY_NAMEs.
+     ``preprocess`` reads quantity files specified in ``&preprocess_nml::quantity_files`` 
+     and  manages the integer representation of quanities (also known as kinds) in DART.
+     ``processess`` is backwards compatible with existing DEFAULT_obs_kind_mod.F90s
+     which have hardcoded integers and their corresponding ``&preprocess_nml`` options.  
+  -  Inflation options in ``&filter_nml`` can be given as strings. The inflation 
+     string options and corresponding integer values are given below. 
+ 
+       .. code-block::
+        
+        NO_INFLATION                        0
+        OBS_INFLATION                       1    
+        VARYING_SS_INFLATION                2    
+        SINGLE_SS_INFLATION                 3    
+        RELAXATION_TO_PRIOR_SPREAD or RTPS  4    
+        ENHANCED_SS_INFLATION               5   
+   
+  - External forward operators can be selectively written out by observation type. 
+  - Updated wrf-hydro interface from **James McCreight**  
+  - AMSU-A radiance observation converter 
+  - POP CESM2.1 scripts  use the unzipped CAM reanalysis files available on
+    the Research Data Archive (RDA). 
+  - Enhanced adpative inflation added to DART_LAB.    
+  
+- Bug fixes
+
+  -  External forward operators now use the correct ensemble members when ``distributed_state=false``.
+  -  The obs_sequence_tool now writes out external forward operator values. Thanks to **Chris Riedel** 
+     reporting this and providing the original bug-fix.
+   
+- Removed
+
+  -   Doxygen directory.
 
 **Oct 29 2020 :: radiance support, MPAS, obs converters Tag: v9.9.0**
 
@@ -130,7 +170,7 @@ The changes are now listed with the most recent at the top.
 .. _email Dr. Mizzi: mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry
 
 
-Nov 20 2019 :: FESOM,NOAH-MP model support, better testing Tag: v9.8.0
+**Nov 20 2019 :: FESOM,NOAH-MP model support, better testing Tag: v9.8.0**
 
 -  first release entirely from GIT
 
