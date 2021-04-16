@@ -27,7 +27,7 @@ In that case, you the programs you're looking for are probably in `Assimilation 
    "Hackable" program to test some of the more fundamental routines in any ``model_mod``, 
    especially a new one.
 
-`perturb_single_instance/perturb_single_instance <perturb_single_instance/perturb_single_instance.html>`_
+`perturb_single_instance <perturb_single_instance/perturb_single_instance.html>`_
    Generate an ensemble of perturbed ensemble member restart files.
    (Alternatively, you might perturb the model state using ``model_nml`` variables).
  
