@@ -37,7 +37,7 @@ In that case, you the programs you're looking for are probably in `Assimilation 
 Creating Observation Sequence Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:doc:obs_utils/create_obs_grid
+obs_utils/create_obs_grid
    Create a set of observations located on a regular grid.  Obs have no data values.
 
 :doc:`create_fixed_network_seq <create_fixed_network_seq/create_fixed_network_seq>` 
