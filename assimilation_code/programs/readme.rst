@@ -124,21 +124,12 @@ Assimilation Programs
 `filter <filter/filter.html>`_
    Main Fortran program for driving ensemble filter assimilations.
 
-filter/filter.separate_seq
-   Like filter, but each task updates its own sequence in obs_space_diagnostics.
-   Included here just for future reference.
-
 `advance_time <advance_time/advance_time.html>`_
    Provides a shell-scripting-friendly way to increment and decrement calendar dates and times.
  
 `integrate_model <integrate_model/integrate_model.html>`_
    Generic main program which advances a single ensemble member in ``perfect_model_obs`` 
    or the serial or parallel version of the ``filter`` program.
-
-`integrate_model/integrate_model_parallel <integrate_model/integrate_model.html>`_
-   Generic main program which advances a single
-   ensemble member in ``perfect_model_obs`` or the serial ``
-   or parallel version of the ``filter`` program.``
 
 Evaluating Results
 -----------------------------------
@@ -147,10 +138,11 @@ obs_diag
    Reads obs_seq.final files, calculates statistics, and writes them to NetCDF files 
    for use by Matlab (or other) plotting scripts.
    There are separate versions for models with different coordinate systems:
-   `1D <obs_diag/oned/obs_diag.html>`_,
-   `3D cartesian <obs_diag/threed_cartesian/obs_diag.html>`_,
-   `3D spherical <obs_diag/threed_sphere/obs_diag.html>`_, and 
-   3D spherical with streamflow.
+
+   - `1D <obs_diag/oned/obs_diag.html>`_
+   - `3D Cartesian <obs_diag/threed_cartesian/obs_diag.html>`_
+   - `3D spherical <obs_diag/threed_sphere/obs_diag.html>`_
+   - 3D spherical with streamflow.
    
 obs_seq_to_netcdf
    Extracts the observation components from observation sequence files and writes out
@@ -178,12 +170,6 @@ Historical and Deprecated
 `system_simulation <system_simulation/system_simulation.html>`_
    A collection of standalone programs for simulating various properties of ensembles.
    Talk to Jeff Anderson about the programs in this directory.
-
-system_simulation/system_simulation
-   This program begins attempts to analyze the value of particular 
-   observations. Begin by trying to determine the value of 
-   observations with a given correlation to a state variable using an 
-   N member ensemble to compute the correlations.
 
 `restart_file_tool <restart_file_tool/restart_file_tool.html>`_
    Deprecated, since in Manhattan all DART initial and restart files are in NetCDF format.
