@@ -211,44 +211,33 @@ the selected observations get highlighted there too.
 
 .. |plot evolution example| image:: images/science_nuggets/plot_evolution_example.png
    :width: 100%
-   :target: images/science_nuggets/plot_evolution_example.png
 
 .. |plot profile example| image:: images/science_nuggets/plot_profile_example.png
    :width: 100%
-   :target: images/science_nuggets/plot_profile_example.png
 
 .. |two experiments evolution example| image:: images/science_nuggets/two_experiments_evolution_example.png
    :width: 100%
-   :target: images/science_nuggets/two_experiments_evolution_example.png
 
 .. |two experiments profile example| image:: images/science_nuggets/two_experiments_profile_example.png
    :width: 100%
-   :target: images/science_nuggets/two_experiments_profile_example.png
 
 .. |rank hist matlab example| image:: images/science_nuggets/rank_hist_matlab_example.png
    :width: 100%
-   :target: images/science_nuggets/rank_hist_matlab_example.png
 
 .. |plot obs netcdf example| image:: images/science_nuggets/plot_obs_netcdf_example.png
    :width: 100%
-   :target: images/science_nuggets/plot_obs_netcdf_example.png
 
 .. |plot obs netcdf diffs example| image:: images/science_nuggets/plot_obs_netcdf_diffs_example.png
    :width: 100%
-   :target: images/science_nuggets/plot_obs_netcdf_diffs_example.png
 
 .. |plot wind vectors example| image:: images/science_nuggets/plot_wind_vectors_example.png
    :width: 100%
-   :target: images/science_nuggets/plot_wind_vectors_example.png
 
 .. |link obs example frame 2| image:: images/science_nuggets/link_obs_example_F2.png
    :width: 100%
-   :target: images/science_nuggets/link_obs_example_F2.png
 
 .. |link obs example frame 1| image:: images/science_nuggets/link_obs_example_F1.png
    :width: 100%
-   :target: images/science_nuggets/link_obs_example_F1.png
 
 .. |link obs example frame 0| image:: images/science_nuggets/link_obs_example_F0.png
    :width: 100%
-   :target: images/science_nuggets/link_obs_example_F0.png
