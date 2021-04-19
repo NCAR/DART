@@ -3,20 +3,24 @@ Creating an obs_seq file from real observations
 
 Real observations come in a mind-boggling diversity of formats. We have
 converters for many formats in the ``DART/observations/obs_converters``
-directory. The documentation for that directory is listed in the
-`README.rst <../observations/obs_converters/README.html>`__.
+directory. The documentation for that directory is listed in
+:doc:`../observations/obs_converters/README`.
 
 The converters are designed to work on one input file format and create (or add
 to) an output observation sequence. It may be desirable to post-process multiple
 observation sequence files with the
-`obs_sequence_tool <../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__
-… to select for timeframe, geographic region, etc.
+:doc:`../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool` to
+select for timeframe, geographic region, etc.
 
 Many of the formats require their own libraries (like HDF), and require intimate
 knowledge of the data format to extract the portions required for the :doc:`DART
-observation sequence file <detailed-structure-obs-seq>`. Please feel free to browse the
-converters and their companion documentation. Feel free to donate converters for
-formats we don’t already support! We like that kind of stuff.
+observation sequence file <detailed-structure-obs-seq>`.
+
+You should feel free to browse the converters and their companion
+documentation. If you create a new observation coverter for a format that DART
+doesn't already support, please follow the :doc:`contributors-guide` to add 
+your code to DART. These types of contributions are greatly appreciated by 
+DAReS staff and by the geoscience community!
 
 The DART framework enforces a clean separation between observations and the
 models used for assimilation. The same observations can be used in any model
@@ -46,9 +50,9 @@ and for data in a 3D spherical coordinate system. All the programs in the
 module is being used.
 
 With the myriad of observation file formats, HDF, Grib, BUFR, netCDF, … we
-simply have not had the time nor need to support all of them. The converters are
-a work in progress. There are currently about 10 other observation sources and
-types which we are in the process of collecting information and conversion
+simply have not had the time nor need to support all of them. The converters
+are a work in progress. There are currently about 10 other observation sources
+and types which we are in the process of collecting information and conversion
 programs for and which will eventually be added to this directory. In the
 meantime, if you have converters for data or interest in something that is not
 in the repository, please email the DART group. Your best bet is to contact our
@@ -68,8 +72,8 @@ system, but instead are fabricated to have a known value, or have values
 computed by running a model, possibly with a fixed amount of simulated noise
 added. These observations can be used for testing, determining the sensitivity
 of the model to assimilation, and for designing new observation systems. The
-DART system includes several ways to create synthetic observations. See the
-`Programs <#Programs>`__ section below for more details.
+DART system includes several ways to create synthetic observations. For more 
+information, see :doc:`creating-obs-seq-synthetic`.
 
 The DART framework enforces a clean separation between observations and the
 models they are assimilated into. The same observations can be used in any model
@@ -102,7 +106,7 @@ There are currently some additional observation sources and types which we are
 in the process of collecting information and conversion programs for and which
 will eventually be added to this directory. In the meantime, if you have
 converters for data or interest in something that is not in the repository,
-please `email the DART group <mailto:dart@ucar.edu>`__.
+please contact DAReS staff by emailing dart@ucar.edu.
 
 Data sources and formats
 ------------------------
@@ -117,8 +121,8 @@ may be able to adapt one of the existing converters here for your own use.
 Formats read by the existing converters include netCDF, HDF, little-r, text,
 Prepbufr, amongst others.
 
-See the `Programs <#Programs>`__ section below for a list of the current
-converter programs.
+For a list of the current converter programs, see
+:doc:`available-observation-converters`.
 
 If you have looked and none of the existing converters are right for your data,
 here are some suggestions for where to start creating a new converter. Create a
@@ -197,13 +201,14 @@ assimilated into these systems do not need to use a calendar.
 Observations of a real-world system usually are distributed with a
 year/month/day, hour/min/seconds timestamp. There are routines in DART to
 convert back and forth between the (day-number/seconds) format and a variety of
-(year/month/day) calendars. See `the time manager
-documentation <../assimilation_code/modules/utilities/time_manager_mod.html#time_type>`__
-for more details on how DART stores time information and the types of available
-calendars. Some climate models which do long runs (100s or 1000s of years) use a
-modified calendar for simplicity in computation, e.g. months which always have
-30 days, or no leap years. When trying to assimilate real observations into
-these models there may be calendar issues to solve.
+(year/month/day) calendars. For more details on how DART stores time
+information and the types of available calendars, see
+:doc:`../assimilation_code/modules/utilities/time_manager_mod`.
+
+Some climate models which do long runs (100s or 1000s of years) use a modified
+calendar for simplicity in computation, e.g. months which always have 30 days,
+or no leap years. When trying to assimilate real observations into these models
+there may be calendar issues to solve.
 
 The smallest resolvable unit of time in DART is a second. To model a system
 which operates on sub-second time scales the time can be scaled up by some
@@ -230,18 +235,20 @@ are combined and specified as a single value, which we frequently call the
 
 The instrument error is generally supplied by the instrument maker. Sadly, it is
 frequently surprisingly difficult to find these values. For the
-representativeness error, a set of artificial observations could be generated
+representativeness error, you can generate a set of artificial observations
 with the
-`perfect_model_obs <../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__
-program and an assimilation experiment could be run to generate an estimate of
-the error in the model. In practice however most people make an educated guess
-on the values of the error and then start with a larger than expected value and
-decrease it based on the results of running some test assimilations. For these
-tests the namelist for the `outlier
-threshold <../assimilation_code/programs/filter/filter.html#Namelist>`__
-should be disabled by setting it to -1 (the default value is 3). This value
-controls whether the observation is rejected because the observed value is too
-far from the ensemble mean.
+:doc:`../assimilation_code/programs/perfect_model_obs/perfect_model_obs`
+and then run an assimilation experiment to generate an estimate of the error in
+the model.
+
+In practice, however, most people make an educated guess on the values of the
+error and then start with a larger than expected value and decrease it based on
+the results of running some test assimilations.
+
+For these tests, the namelist for the outlier threshold in the ``filter_nml``
+namelist of ``input.nml`` should be disabled by setting it to -1 (the default
+value is 3). This value controls whether the observation is rejected because
+the observed value is too far from the ensemble mean.
 
 If the diagnostics show that the difference between the mean of the forward
 operators and the observed value is consistently smaller than the specified
@@ -250,16 +257,16 @@ large reduces the impact of an observation on the state. If the specified
 observation error is too small it is likely the observation will be rejected
 when the outlier threshold is enabled, and the observation will not be
 assimilated. It is important to look at the output observation sequence files
-after an assimilation to see how many observations were assimilated or rejected,
-and also at the RMSE (`root mean squared
+after an assimilation to see how many observations were assimilated or
+rejected, and also at the RMSE (`root mean squared
 error <http://www.wikipedia.org/wiki/RMSE>`__) versus the total spread. DART
 includes Matlab diagnostic routines to create these types of plots. The
 observation RMSE and total spread should be roughly commensurate. The total
 spread includes contributions from both the ensemble variance and the
-observational error variance, so it can be adjusted by changing the error values
-on the incoming observations. There are other ways to adjust the ensemble
-spread, including
-:doc:`inflation <inflation>`,
+observational error variance, so it can be adjusted by changing the error
+values on the incoming observations.
+
+There are other ways to adjust the ensemble spread, including :doc:`inflation`,
 so the observation error is not the only factor to consider.
 
 One last recommendation: if possible, the Prior forward operator values should
@@ -282,27 +289,28 @@ e.g. RADIOSONDE_TEMPERATURE, ARGO_SALINITY, etc. Each type is associated with a
 single underlying generic ‘kind’, which controls what forward operator code is
 called inside the model, e.g. QTY_TEMPERATURE, QTY_DENSITY, etc.
 
-See the
-`observations/forward_operators/obs_def_mod <../observations/forward_operators/obs_def_mod.html>`__
-for more details on how to use and add new DART types. The DART
-``obs_kind_mod.f90`` defines a list of already defined observation types, and
-users can either use existing observation types in ‘obs_def_xxx_mod.f90’ files,
-or define their own. Be aware that ``obs_kind_mod.f90`` is autogenerated by
-*preprocess*, so until you configure and run *preprocess*, ``obs_kind_mod.f90``
-will not exist.
+For more details on how to use and add new DART types, see the 
+:doc:`../observations/forward_operators/obs_def_mod`.
+
+The DART ``obs_kind_mod.f90`` defines a list of already defined observation
+types, and users can either use existing observation types in
+‘obs_def_xxx_mod.f90’ files, or define their own. Be aware that
+``obs_kind_mod.f90`` is autogenerated by the
+:doc:`/assimilation_code/programs/preprocess/preprocess`, so until you
+configure and run ``preprocess``, ``obs_kind_mod.f90`` will not exist.
 
 Observation locations
 ~~~~~~~~~~~~~~~~~~~~~
 
 The two most common choices for specifying the location of an observation are
-the
-`threed_sphere <../assimilation_code/location/threed_sphere/location_mod.html>`__
-and the `oned <../assimilation_code/location/oned/location_mod.html>`__
-locations. For observations of a real-world system, the 3D Sphere is generally
-the best choice. For low-order, 1D models, the 1D locations are the most
-commonly used. The observation locations need to match the type of locations
-used in the model in that you cannot read observations on a unit circle (1D)
-when using models that require 3D Sphere locations.
+the :doc:`../assimilation_code/location/threed_sphere/location_mod` and the
+:doc:`../assimilation_code/location/oned/location_mod` locations.
+
+For observations of a real-world system, the 3D Sphere is generally the best
+choice. For low-order, 1D models, the 1D locations are the most commonly used.
+The observation locations need to match the type of locations used in the model
+in that you cannot read observations on a unit circle (1D) when using models
+that require 3D Sphere locations.
 
 The choice of the vertical coordinate system may also be important. For the 3D
 Sphere, the vertical coordinate system choices are:
