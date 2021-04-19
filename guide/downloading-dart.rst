@@ -9,7 +9,7 @@ Go to https://github.com/NCAR/DART and clone the repository or get the
 ZIP file according to your preference. See the `github help page on
 cloning <https://help.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository>`_
 for more information on how to clone a repository. Take note of the
-directory you installed into, which is referred to as *DARTHOME* throughout 
+directory you installed into, which is referred to as ``DART`` throughout 
 this documentation.
 
 .. note::

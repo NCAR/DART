@@ -41,14 +41,14 @@ Building and Customizing the ‘mkmf.template’ file
 =================================================
 
 A series of templates for different compilers/architectures can be found
-in the ``DARTHOME/build_templates`` directory and have names with
+in the ``DART/build_templates`` directory and have names with
 extensions that identify the compiler, the architecture, or both. This
 is how you inform the build process of the specifics of your system.
 **Our intent is that you copy one that is similar to your system into** 
-``DARTHOME/build_templates/mkmf.template`` **and customize it.**
+``DART/build_templates/mkmf.template`` **and customize it.**
 
 For the discussion that follows, knowledge of the contents of one of these
-templates (e.g. ``DARTHOME/build_templates/mkmf.template.intel.linux``)
+templates (e.g. ``DART/build_templates/mkmf.template.intel.linux``)
 is needed. Note that only the LAST lines of the file are shown here. The
 first portion of the file is a large comment block that provides
 valuable advice on how to customize the *mkmf* template file if needed.
@@ -91,7 +91,7 @@ Customizing the path names files
 
 Several ``path_names_*`` files are provided in the "work" directory for
 each specific model. In this case, the directory of interest is
-``DARTHOME/models/lorenz_63/work`` (see the next section). Since each
+``DART/models/lorenz_63/work`` (see the next section). Since each
 model comes with its own set of files, the ``path_names_*`` files
 typically need no customization. However, modifying these files will be
 required if you wish to add your model to DART. See `How do I run DART
@@ -150,7 +150,7 @@ program:
 
 .. code-block:: bash
 
-   $ cd DARTHOME/models/lorenz_63/work
+   $ cd DART/models/lorenz_63/work
    $ ./mkmf_preprocess
    $ make
    $ ./preprocess
@@ -196,7 +196,7 @@ above for the lorenz_63 model:
 
 .. code-block:: bash
 
-   $ cd DARTHOME/models/lorenz_63/work
+   $ cd DART/models/lorenz_63/work
    $ ./quickbuild.csh
 
 The result (hopefully) is that seven executables now reside in your work
@@ -206,6 +206,6 @@ directory.
           files were not found in the specified location(s). The second most
           common problem is that the netCDF libraries were built with a
           different compiler than the one used for DART. Find (or compile) a 
-          compatible netCDF library, edit the ``DARTHOME/build_templates/mkmf.template``
+          compatible netCDF library, edit the ``DART/build_templates/mkmf.template``
           to point to the correct locations of the includes and library files,
           recreate the ``Makefile``\ s, and try again.

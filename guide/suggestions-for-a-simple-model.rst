@@ -21,7 +21,7 @@ initialization and meta data routines:
 +------------------------------+---------------------------------------------------------------------------------------+
 
 If you have *more than a single type of variable* in the state vector (for example, “concentration”, “wind”, etc. as in
-the ``DARTHOME/models/simple_advection`` model):
+the ``DART/models/simple_advection`` model):
 
 +------------------------------+---------------------------------------------------------------------------------------+
 | Routine # / name             | Suggested implementation                                                              |

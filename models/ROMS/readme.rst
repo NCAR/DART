@@ -42,7 +42,7 @@ would be worthwhile to become familiar with that capability of ROMS.
 DART calls these 'precomputed forward operators'. DART can also use observations
 from the `World Ocean Database <https://www.nodc.noaa.gov/OC5/indprod.html>`_ -
 WOD. The conversion from the WOD formats to the DART observation sequence format
-is accomplished by the converters in the ``DARTHOME/observations/obs_converters/WOD``
+is accomplished by the converters in the ``DART/observations/obs_converters/WOD``
 directory.
 
 The DART forward operators require interpolation from the ROMS terrain-following
@@ -92,7 +92,7 @@ steps:
    file and a verification observation file.
 #. Convert all the verification observation files into a single DART
    observation sequence file with the
-   ``convert_roms_obs.f90`` program in ``DARTHOME/observations/obs_converters/ROMS/``.
+   ``convert_roms_obs.f90`` program in ``DART/observations/obs_converters/ROMS/``.
 #. Run filter to assimilate the data (DART will read and update the ROMS files
    directly - no conversion is necessary.)
 #. Update the control files for ROMS in preparation for the next model

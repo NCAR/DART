@@ -10,7 +10,7 @@ DART interacts with the Lorenz 63 model to perform data assimilation.
 The input.nml namelist
 ----------------------
 
-The ``DARTHOME/models/lorenz_63/work/input.nml`` file is the Lorenz model
+The ``DART/models/lorenz_63/work/input.nml`` file is the Lorenz model
 *namelist*, which is a standard Fortran method for passing parameters from a
 text file into a program without needing to recompile. There are many sections
 within this file that drive the behavior of DART while using the Lorenz 63 model
@@ -37,7 +37,7 @@ The Lorenz 63 model code
 ------------------------
 
 The Lorenz 63 model code, which is under
-``DARTHOME/models/lorenz_63/model_mod.f90``, contains the lines:
+``DART/models/lorenz_63/model_mod.f90``, contains the lines:
 
 ::
 
@@ -132,7 +132,7 @@ Therefore, in order to conduct our new experiment, we will need to regenerate
 the DART observation sequence files.
 
 To change the time-step, change the ``input.nml`` file in
-``DARTHOME/models/lorenz_63/work`` to the following:
+``DART/models/lorenz_63/work`` to the following:
 
 ::
 
@@ -183,7 +183,7 @@ documentation.
 Let's now run the DART program *create_obs_sequence* to create the observation
 template that we will later replicate in time:
 
-   # Make sure you are in the DARTHOME/models/lorenz_63/work directory
+   # Make sure you are in the DART/models/lorenz_63/work directory
    ./create_obs_sequence
 
 The program *create_obs_sequence* will ask for the number of observations. Since
@@ -279,7 +279,7 @@ input. The interactive program ``create_fixed_network_seq`` is a helper tool
 that can be used to generate a DART observation sequence file made of a set of
 regularly repeating observations.
 
-   # Make sure you are in the DARTHOME/models/lorenz_63/work directory
+   # Make sure you are in the DART/models/lorenz_63/work directory
    ./create_fixed_network_seq
 
 We want to use the default ``set_def.out`` file, so press return. We also want a
@@ -366,7 +366,7 @@ and generate the observations as well as create the "perfect" model trajectory.
 the observations. Once noise is added (to represent observational uncertainty),
 the output is written to ``obs_seq.out``.
 
-   | # Make sure you are in the DARTHOME/models/lorenz_63/work directory
+   | # Make sure you are in the DART/models/lorenz_63/work directory
    | ./perfect_model_obs
 
 The output should look like the following:
@@ -449,7 +449,7 @@ states, use the ensemble to estimate the prior distribution, compare to the
 "expected" observation of each member, and update the model state according to
 Bayes' rule.
 
-   # Make sure you are in the DARTHOME/models/lorenz_63/work directory ./filter
+   # Make sure you are in the DART/models/lorenz_63/work directory ./filter
 
 ::
 
