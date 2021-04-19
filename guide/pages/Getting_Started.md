@@ -93,12 +93,12 @@ with the documentation served through GitHub Pages at
 
 Go to https://github.com/NCAR/DART and clone the repository or get the ZIP file
 according to your preference. Take note of the directory you installed into,
-which is referred to as *DARTHOME* below.
+which is referred to as *DART* below.
 
 :exclamation: *IMPORTANT*: If you are interested in contributing to DART,
 see [How can I contribute to DART?](#ContributeToDart) for more information.
 
-Your `DARTHOME` directory will now contain the latest release of DART.
+Your `DART` directory will now contain the latest release of DART.
 
 Go into the `build_templates` subdirectory and copy over the closest `mkmf.template.<compiler system>` file into `mkmf.template`.
 
@@ -127,7 +127,7 @@ to keep the repository as small as possible. These files are available at:
 | "Hawaii"           |   32M  | [Hawaii_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Hawaii_large_files.tar.gz) |
 
 If so desired, download the appropriate tar file and untar it into your
-`DARTHOME` directory. Ignore any warnings about
+`DART` directory. Ignore any warnings about
 ```
 tar: Ignoring unknown extended header keyword
 ```
@@ -145,12 +145,12 @@ Run this series of commands to do a very basic test:
 > ./filter  
 
 If that runs, *:tada:* again!  Finally, if you have Matlab installed on
-your system add '$DARTHOME/diagnostics/matlab' to your matlab search path with
+your system add '$DART/diagnostics/matlab' to your matlab search path with
 the command
 
 > addpath('path_to_dart/diagnostics/matlab','-BEGIN')  
 
-replacing `path_to_dart` with your actual DARTHOME installation directory.
+replacing `path_to_dart` with your actual DART installation directory.
 
 In Matlab, run the `plot_total_err` diagnostic script while in the
 `models/lorenz_63/work` directory.  If the output plots and looks
@@ -361,7 +361,7 @@ Go to https://github.com/NCAR/DART and clone the repository or get the ZIP file
 according to your preference. See the
 [github help page on cloning](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository)
 for more information on how to clone a repository. Take note of the directory
-you installed into,  which is referred to as *DARTHOME* below.
+you installed into,  which is referred to as *DART* below.
 
 :exclamation: *IMPORTANT*: If you are interested in contributing to DART,
 see [How can I contribute to DART?](#ContributeToDart) for more information.
@@ -369,7 +369,7 @@ In short, you will need to be familiar with the
 [GitHub workflow](https://guides.github.com/introduction/flow/).
 
 Unzip or clone the distribution in your desired directory, which we refer to as
-"DARTHOME" in this document. Compiling the code in this tree (as is usually the
+"DART" in this document. Compiling the code in this tree (as is usually the
 case) may require a large amount of additional disk space (up to the 1 Gb
 required for DART), so be aware of any disk quota restrictions before
 continuing.
@@ -415,13 +415,13 @@ see the [mkmf documentation](https://extranet.gfdl.noaa.gov/~vb/mkmf.html).
 #### Building and Customizing the 'mkmf.template' file
 
 A series of templates for different compilers/architectures can be found in
-the *DARTHOME/build_templates* directory and have names with extensions
+the *DART/build_templates* directory and have names with extensions
 that identify the compiler, the architecture, or both. This is how you
 inform the build process of the specifics of your system. **Our intent
 is that you copy one that is similar to your system into
-`DARTHOME/build_templates/mkmf.template` and customize it.** For the
+`DART/build_templates/mkmf.template` and customize it.** For the
 discussion that follows, knowledge of the contents of one of these
-templates (e.g. `DARTHOME/build_templates/mkmf.template.intel.linux`) is
+templates (e.g. `DART/build_templates/mkmf.template.intel.linux`) is
 needed. Note that only the LAST lines of the file are shown here.
 The first portion of the file is a large comment block that provides valuable
 advice on how to customize the *mkmf* template file if needed.
@@ -457,7 +457,7 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 
 Several `path_names_*`  files are provided in the "work" directory for
 each specific model. In this case, the directory of interest is
-`DARTHOME/models/lorenz_63/work` (see the next section). Since each model comes
+`DART/models/lorenz_63/work` (see the next section). Since each model comes
 with its own set of files, the `path_names_*` files typically need no
 customization. However, modifying these files will be required if you wish to
 add your model to DART. See [How do I run DART with my model?](#RunWithMyModel)
@@ -512,7 +512,7 @@ makes the *preprocess* program, runs *preprocess* to generate the Fortran
 observation code, runs *mkmf* to make a `Makefile` for *obs_diag*, then makes the
 *obs_diag* program:
 
-> cd DARTHOME/models/lorenz_63/work  
+> cd DART/models/lorenz_63/work  
 > ./mkmf_preprocess  
 > make  
 > ./preprocess  
@@ -546,7 +546,7 @@ information on using DART with MPI.
 Running `quickbuild.csh` will compile all the executables mentioned above for
 the lorenz_63 model:
 
-> cd DARTHOME/models/lorenz_63/work  
+> cd DART/models/lorenz_63/work  
 > ./quickbuild.csh
 
 The result (hopefully) is that seven executables now reside in your work
@@ -556,7 +556,7 @@ directory.
 include files were not found in the specified location(s). The second most
 common problem is that the netCDF libraries were built with a different
 compiler than the one used for DART. Find (or compile) a compatible netCDF
-library, edit the `DARTHOME/build_templates/mkmf.template` to point to the
+library, edit the `DART/build_templates/mkmf.template` to point to the
 correct locations of the includes and library files, recreate the `Makefile`s,
 and try again.
 
@@ -564,7 +564,7 @@ and try again.
 
 ### Checking the build &mdash; running something.
 
-The `DARTHOME/models/lorenz_63/work` directory is distributed with input files
+The `DART/models/lorenz_63/work` directory is distributed with input files
 ready to run a simple experiment: use 20 ensemble members to assimilate
 observations "every 6 hours" for 50 days. Simply run the programs
 *perfect_model_obs* and *filter* to generate the results to compare against
@@ -652,9 +652,9 @@ in large differences. Your results should start out looking VERY SIMILAR and
 may diverge with time.
 
 The simplest way to determine if the installation is successful is to run some
-of the functions available in `DARTHOME/diagnostics/matlab/`. Usually, we
-launch MATLAB from the `DARTHOME/models/lorenz_63/work` directory and use the
-MATLAB *addpath* command to make the `DARTHOME/matlab/` functions available for
+of the functions available in `DART/diagnostics/matlab/`. Usually, we
+launch MATLAB from the `DART/models/lorenz_63/work` directory and use the
+MATLAB *addpath* command to make the `DART/matlab/` functions available for
 execution in any working directory.
 
 In the case of this Lorenz model, we know the "true" (by definition) state of
@@ -671,7 +671,7 @@ calculate the error in the assimilation:
 <pre>
 <code>
 
-[unix prompt] cd DARTHOME/models/lorenz_63/work
+[unix prompt] cd DART/models/lorenz_63/work
 [unix prompt] matlab -nodesktop
 (lots of startup messages I'm skipping)
 
@@ -981,7 +981,7 @@ assimilation.
 
 #### The input.nml namelist
 
-The `DARTHOME/models/lorenz_63/work/input.nml` file is the Lorenz model *namelist*,
+The `DART/models/lorenz_63/work/input.nml` file is the Lorenz model *namelist*,
 which is a standard Fortran method for passing parameters from a text file
 into a program without needing to recompile. There are many sections within
 this file that drive the behavior of DART while using the Lorenz 63 model
@@ -1007,7 +1007,7 @@ in the 1963 paper to create the classic butterfly attractor.
 #### The Lorenz 63 model code
 
 The Lorenz 63 model code, which is under
-`DARTHOME/models/lorenz_63/model_mod.f90`, contains the lines:
+`DART/models/lorenz_63/model_mod.f90`, contains the lines:
 
 ~~~
 subroutine comp_dt(x, dt)
@@ -1097,7 +1097,7 @@ now need observations every 36 minutes.
 Therefore, in order to conduct our new experiment, we will need to regenerate
 the DART observation sequence files.
 
-To change the time-step, change the `input.nml` file in `DARTHOME/models/lorenz_63/work` to the following:
+To change the time-step, change the `input.nml` file in `DART/models/lorenz_63/work` to the following:
 
 ~~~
 &model_nml
@@ -1145,7 +1145,7 @@ the corresponding program's documentation.
 Let's now run the DART program *create_obs_sequence* to create the
 observation template that we will later replicate in time:
 
-> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory
+> \# Make sure you are in the DART/models/lorenz_63/work directory
 > ./create_obs_sequence  
 
 The program *create_obs_sequence* will ask for the number of observations.
@@ -1240,7 +1240,7 @@ input. The interactive program  `create_fixed_network_seq` is a helper tool
 that can be used to generate a DART observation sequence file made of a set of
 regularly repeating observations.
 
-> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory
+> \# Make sure you are in the DART/models/lorenz_63/work directory
 > ./create_fixed_network_seq  
 
 We want to use the default `set_def.out` file, so press return. We also want a
@@ -1325,7 +1325,7 @@ and generate the observations as well as create the "perfect" model trajectory.
 the observations. Once noise is added (to represent observational uncertainty),
 the output is written to `obs_seq.out`.
 
-> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory  
+> \# Make sure you are in the DART/models/lorenz_63/work directory  
 > ./perfect_model_obs  
 
 The output should look like the following:
@@ -1405,7 +1405,7 @@ use the ensemble to estimate the prior distribution, compare to the "expected"
 observation of each member, and update the model state according to Bayes'
 rule.
 
-> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory
+> \# Make sure you are in the DART/models/lorenz_63/work directory
 > ./filter  
 
 ~~~
@@ -1930,7 +1930,7 @@ Given a way to compute the expected observation value from the model
 state, in theory any and all observations can be assimilated by DART through the
 `obs_seq.out` file. In practice this means a user-defined observation converter
 is required. DART provides many observation converters to make this process
-easier for the user. Under the directory `DARTHOME/observations/obs_converters`
+easier for the user. Under the directory `DART/observations/obs_converters`
 there are multiple subdirectories, each of which has at least one observation
 converter. The list of these directories is as follows:
 
@@ -2067,7 +2067,7 @@ complex):
 There are 18 Fortran subroutines necessary to implement in
 order to successfully integrate a model in DART. You will place these routines
 in your `model_mod.f90` in a subdirectory with the name of your model in
-`DARTHOME/models`. There is often a sensible default implementation that can be
+`DART/models`. There is often a sensible default implementation that can be
 used for each of these routines. For example, in the case of a model that
 starts at a time of "0", for the required routine **init_time()** the following
 code will use this default implementation:
@@ -2083,7 +2083,7 @@ keyword "only" in order to avoid including the default behavior for all
 subroutines contained in that module (in this example `default_model_mod`).
 
 The following table lists each of the 18 routines, their default modules
-relative to `DARTHOME`, and the default behavior. If the default behavior is
+relative to `DART`, and the default behavior. If the default behavior is
 not desired, see the section [How to add a "simple" model](#simpleModel) for a
 model that DART can advance, or [How to add a "complex" model](#complexModel)
 for a model that is advanced externally from DART.
@@ -2130,7 +2130,7 @@ your initialization and meta data routines:
 
 If you have *more than a single type of variable* in the state vector (for
 example, "concentration", "wind", etc. as in the
-`DARTHOME/models/simple_advection` model):
+`DART/models/simple_advection` model):
 
 | Routine # / name | Suggested implementation  |
 | :----------    | :------------------------------   |
@@ -2202,10 +2202,10 @@ is typically  9. **model_interpolate()**.
 
 The program `model_mod_check.f90` can be used to test the routines individually
 before running them with *filter*. Add a `mkmf_model_mod_check` and
-`path_names_model_mod_check` to your `DARTHOME/models/your_model/work`
+`path_names_model_mod_check` to your `DART/models/your_model/work`
 subdirectory. You might find it helpful to consult another model matching your
 model type (simple or complex). See the documentation for `model_mod_check` in
-`DARTHOME/assimilation_code/programs/model_mod_check` for more information on
+`DART/assimilation_code/programs/model_mod_check` for more information on
 the tests available.
 
 ----
@@ -2275,18 +2275,18 @@ measure the same *quantity*.
 A single obs_def output module is created by the program *preprocess* from two
 kinds of input files. First, a DEFAULT obs_def module (normally called
 `DEFAULT_obs_def_mod.F90` and documented in the
-`DARTHOME/observations/forward_operators` directory) is used as a template into
+`DART/observations/forward_operators` directory) is used as a template into
 which the preprocessor incorporates information from zero or more special
 obs_def modules (for example, `obs_def_1d_state_mod.f90` or
 `obs_def_reanalysis_bufr_mod.f90`) as documented in the
-`DARTHOME/observations/forward_operators` directory. If no special obs_def
+`DART/observations/forward_operators` directory. If no special obs_def
 files are included in the preprocessor namelist, a minimal `obs_def_mod.f90` is
 created which can only support identity forward observation operators.
 
 <span id="newQUANTITIES" class="anchor"></span> [](#newQUANTITIES)
 #### Adding a new observation *quantity*
 
-The `DARTHOME/assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90` file
+The `DART/assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90` file
 must be edited to include a unique integer identifier for the quantity.
 There are two, sometimes three places in the file that require modification.
 The first is in the table of existing NAME-value pairs and the second is perhaps
@@ -2302,14 +2302,14 @@ make sure you increase *max_defined_quantities*.
 <span id="newTYPES" class="anchor"></span> [](#newTYPES)
 #### Adding a new observation *type*
 
-The observation support modules are in the `DARTHOME/observations/forward_operators` directory.
+The observation support modules are in the `DART/observations/forward_operators` directory.
 If the observation type logically belongs in an existing observation module, it should be 
 fairly obvious how to add support for a new observation type. Feel free to use ideas from other
 modules - look around!
 
 To add a new observation *type* which does not fit into any of the already-defined 
 obs_def files, a new file should be created in the
-`DARTHOME/observations/forward_operators` directory.
+`DART/observations/forward_operators` directory.
 These files are usually named according the the pattern `obs_def_X_mod.f90`,
 where the *X* is either an instrument name, a data source, or a class of
 observations. See the existing filenames in that directory for ideas. This new
@@ -2390,7 +2390,7 @@ COMMON_CODE in the third column.
 
 :dart: *NOTE*: if interested, you can reference the `obs_def_wind_speed_mod.f90`
 "get_expected_wind_speed()" function for an example of a non-COMMON_CODE
-observation type. The operator is in the `DARTHOME/observations/forward_operators`
+observation type. The operator is in the `DART/observations/forward_operators`
 directory.
 
 In the non-COMMON_CODE case, DART needs additional information for how to process
@@ -2669,7 +2669,7 @@ end module obs_def_1d_state_mod
 See the `obs_def_1d_state_mod.f90` documentation for more details and examples
 of each section. Also see `obs_def_wind_speed_mod.f90` "get_expected_wind_speed()"
 for an example of a 3D geophysical forward operator. Both operators are in the
-`DARTHOME/observations/forward_operators` directory.
+`DART/observations/forward_operators` directory.
 
 <span id="obsSeqFile" class="anchor"></span> [](#obsSeqFile)
 
@@ -2697,7 +2697,7 @@ Formats read by the existing converters include netCDF, HDF, LITTLE_R, text,
 PREPBUFR, and many others. The section
 [Observation converters provided by DART](#obsConverters) lists the converters
 that are already available for DART and the formats of the files. The directory
-of the observation converters is `DARTHOME/observations/obs_converters`.
+of the observation converters is `DART/observations/obs_converters`.
 
 If you have looked and none of the existing converters are right for your data,
 here are some suggestions for where to start creating a new converter. Create a

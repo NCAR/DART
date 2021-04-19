@@ -2,11 +2,11 @@
 #### Building and Customizing the 'mkmf.template' file
 
 A series of templates for different compilers/architectures can be found in
-the *DARTHOME/build_templates* directory and have names with extensions
+the *DART/build_templates* directory and have names with extensions
 that identify the compiler, the architecture, or both. This is how you
 inform the build process of the specifics of your system. **Our intent
 is that you copy one that is similar to your system into
-`DARTHOME/build_templates/mkmf.template` and customize it.**
+`DART/build_templates/mkmf.template` and customize it.**
 
 Go into the `build_templates` subdirectory and copy over the closest `mkmf.template.<compiler system>` file into `mkmf.template`.
 

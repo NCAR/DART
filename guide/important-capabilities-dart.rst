@@ -61,7 +61,7 @@ theory any and all observations can be assimilated by DART through the
 ``obs_seq.out`` file. In practice this means a user-defined observation
 converter is required. DART provides many observation converters to make this
 process easier for the user. Under the directory
-``DARTHOME/observations/obs_converters`` there are multiple subdirectories, each
+``DART/observations/obs_converters`` there are multiple subdirectories, each
 of which has at least one observation converter. The list of these directories
 is as follows:
 

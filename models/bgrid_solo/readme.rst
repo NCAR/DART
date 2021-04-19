@@ -13,7 +13,7 @@ The Bgrid model was originally configured as a comprehensive atmospheric model
 as described in Anderson et al. (2004). [1]_
 
 All of that code remains in the directories under the
-``DARTHOME/models/bgrid_solo`` directory, however, much of the capability has
+``DART/models/bgrid_solo`` directory, however, much of the capability has
 been disabled by code modification. What is left is a dry dynamical core for a
 model with no diurnal cycle at equinox with forcing described in Held and Suarez
 (1994). [2]_
@@ -36,7 +36,7 @@ Some examples of ways in which this model can be configured and modified to test
 DART assimilation capabilities are documented in Anderson et al. (2005). [3]_
 
 Several programs that generate interesting observation sequences are available
-in the ``DARTHOME/models/bgrid_solo`` directory. These programs take
+in the ``DART/models/bgrid_solo`` directory. These programs take
 interactive user input and create a text file that can be piped into program
 ``create_obs_sequence`` to create obs_sequence files. These can serve as
 examples for users who are interested in designing their own custom obs_sequence

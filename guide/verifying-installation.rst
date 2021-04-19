@@ -27,10 +27,10 @@ Your results should start out looking VERY SIMILAR and may diverge with
 time.
 
 The simplest way to determine if the installation is successful is to
-run some of the functions available in ``DARTHOME/diagnostics/matlab/``.
-Usually, we launch MATLAB from the ``DARTHOME/models/lorenz_63/work``
+run some of the functions available in ``DART/diagnostics/matlab/``.
+Usually, we launch MATLAB from the ``DART/models/lorenz_63/work``
 directory and use the MATLAB *addpath* command to make the
-``DARTHOME/matlab/`` functions available for execution in any working
+``DART/matlab/`` functions available for execution in any working
 directory.
 
 In the case of this Lorenz model, we know the "true" (by definition)
@@ -42,7 +42,7 @@ calculate the error in the assimilation:
 
 .. code-block:: bash
 
-   $ cd DARTHOME/models/lorenz_63/work
+   $ cd DART/models/lorenz_63/work
    $  matlab -nodesktop
    (Skipping startup messages)
 

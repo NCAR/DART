@@ -208,7 +208,7 @@ namelist.
    |                    | No variables in the secondary file are EVER modified.                         |
    +--------------------+-------------------------------------------------------------------------------+
 
-The DART kind must be one found in the ``DARTHOME/assimilation_code/modules/observations/obs_kind_mod.f90`` *after* it 
+The DART kind must be one found in the ``DART/assimilation_code/modules/observations/obs_kind_mod.f90`` *after* it 
 gets built by ``preprocess``. Most of the upper atmosphere observation kinds are specified by 
 ``DART/observations/forward_operators/obs_def_upper_atm_mod.f90``, so it should be specified in the 
 ``preprocess_nml``:``input_files`` variable. Since TIEGCM has an entire class of variables 
