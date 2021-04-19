@@ -4,34 +4,99 @@ WOD Observations
 Overview
 --------
 
-| The WOD (World Ocean Database) data is a collection of data from various sources, combined into a single format with
-  uniform treatment. The `WOD 2009 page <http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html>`__ has detailed information
-  about the repository, observations, and datasets. The programs in this directory convert from the packed ASCII files
-  found in the repository into DART observation sequence (obs_seq) file format.
-| There are 2 sets of available files - the raw observations, and the observations binned onto standard levels. The
-  recommended datasets are the ones on standard levels. The raw data can be very dense in the vertical and are not truly
-  independent observations. This leads to too much certainty in the updated values during the assimilation.
+The World Ocean Database (WOD) is a collection of data from various sources,
+combined into a single format with uniform treatment. WOD is created by the 
+National Centers for Environmental Information (NCEI) of the National Oceanic
+and Atmospheric Administration (NOAA).
+
+An updated version of the dataset is released approximately every four years.
+It was first produced in 1994 and has been released in 1998, 2001, 2005, 2009,
+2013 and 2018.
+
+The `WOD website <https://www.ncei.noaa.gov/products/world-ocean-atlas>`__ has
+detailed information about the repository, observations, and datasets. The
+programs in this directory convert from the packed ASCII files found in the
+repository into DART observation sequence (obs_seq) file format.
+
+There are two sets of available files: the raw observations and the
+observations binned onto standard levels.
+
+.. note::
+
+   DAReS staff recommend using the datasets on standard levels for
+   assimilation. The raw data can be very dense in the vertical and are not
+   truly independent observations. The correlation between nearby observations
+   leads to too much certainty in the updated values during the assimilation.
 
 Data sources
 ------------
 
-Data from the WOD09 can be downloaded interactively from links on `this
-page <http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html>`__. One suggestion is to pick the 'sorted by year link' and
-download the files (you can select multiple years at once) for each data type for the years of interest. Make sure to
-select the standard level versions of each dataset.
+Use already existing obs_seq files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-UCAR/NCAR users with access to the DSS data repository can download WOD09 files from
-`here <http://dss.ucar.edu/datazone/dsszone/ds285.0/#WOD09>`__. A UCAR DSS userid is required to access this page. The
-files to use are named "yearly_*_STD.tar".
+NCAR staff have prepared datasets already converted to DART's obs_seq file 
+format for the World Ocean Database 2013 (WOD13) and the World Ocean Database
+2009 (WOD09).
 
-Requested citation if you use this data:
+WOD13
+~~~~~
 
-::
+The already-converted WOD13 dataset comprises data from 2005-01-01 to
+2016-12-31 and was created by *Fred Castruccio*. Thanks Fred! The files are
+stored in the following directory on GLADE:
 
-   Johnson, D.R., T.P. Boyer, H.E. Garcia, R.A. Locarnini, O.K. Baranova, and M.M. Zweng, 
-   2009. World Ocean Database 2009 Documentation. Edited by Sydney Levitus. NODC 
-   Internal Report 20, NOAA Printing Office, Silver Spring, MD, 175 pp.  
-   Available at http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html. 
+.. code-block::
+
+   /glade/p/cisl/dares/Observations/WOD13
+
+The subdirectories are formatted in ``YYYYMM`` order and contain the
+following observation types:
+
++--------------------------------------+--------------------------------------+
+| FLOAT_SALINITY                       | FLOAT_TEMPERATURE                    |
++--------------------------------------+--------------------------------------+
+| DRIFTER_SALINITY                     | DRIFTER_TEMPERATURE                  |
++--------------------------------------+--------------------------------------+
+| GLIDER_SALINITY                      | GLIDER_TEMPERATURE                   |
++--------------------------------------+--------------------------------------+
+| MOORING_SALINITY                     | MOORING_TEMPERATURE                  |
++--------------------------------------+--------------------------------------+
+| BOTTLE_SALINITY                      | BOTTLE_TEMPERATURE                   |
++--------------------------------------+--------------------------------------+
+| CTD_SALINITY                         | CTD_TEMPERATURE                      |
++--------------------------------------+--------------------------------------+
+| XCTD_SALINITY                        | XCTD_TEMPERATURE                     |
++--------------------------------------+--------------------------------------+
+| APB_SALINITY                         | APB_TEMPERATURE                      |
++--------------------------------------+--------------------------------------+
+| XBT_TEMPERATURE                      |                                      |
++--------------------------------------+--------------------------------------+
+
+If you use WOD13, please cite Boyer et al. (2013). [1]_
+
+WOD09
+~~~~~
+
+The already-converted WOD09 dataset, which comprises data from 1960-01-01 to
+2008-12-31, is stored in the following directory on GLADE:
+
+.. code-block::
+
+   /glade/p/cisl/dares/Observations/WOD09
+
+If you use WOD09, please cite Johnson et al. (2009). [2]_ 
+
+Download WOD from NCEI
+^^^^^^^^^^^^^^^^^^^^^^
+
+Data from each of the WOD releases can be downloaded interactively from the 
+`WOD website <https://www.ncei.noaa.gov/products/world-ocean-atlas>`__.
+
+Download WOD from NCAR
+^^^^^^^^^^^^^^^^^^^^^^
+
+WOD09 can also be downloaded from NCAR's `research data archive (RDA) dataset 
+285.0 <https://rda.ucar.edu/datasets/ds285.0/>`__.
 
 Programs
 --------
@@ -172,3 +237,17 @@ Future Plans
   day. There is a subroutine at the end of the *wod_to_obs.f90* file which contains all the reject/accept/correction 
   information for the year, month, day, time fields. To accept or correct the times on more obs, edit this subroutine
   and make the necessary changes.
+
+References
+----------
+
+.. [1] Boyer, T.P., J. I. Antonov, O. K. Baranova, C. Coleman, H. E. Garcia,
+       A. Grodsky, D. R. Johnson, R. A. Locarnini, A. V. Mishonov, T.D.
+       O'Brien, C.R. Paver, J.R. Reagan, D. Seidov, I. V. Smolyar, and M. M.
+       Zweng, 2013: World Ocean Database 2013, NOAA Atlas NESDIS 72, S.
+       Levitus, Ed., A. Mishonov, Technical Ed.; Silver Spring, MD, 209 pp., `doi:10.7289/V5NZ85MT <http://doi.org/10.7289/V5NZ85MT>`_.
+
+.. [2] Johnson, D.R., T.P. Boyer, H.E. Garcia, R.A. Locarnini, O.K. Baranova,
+       and M.M. Zweng,  2009. World Ocean Database 2009 Documentation. Edited
+       by Sydney Levitus. NODC Internal Report 20, NOAA Printing Office, Silver
+       Spring, MD, 175 pp., http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html.
