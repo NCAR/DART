@@ -377,7 +377,7 @@ References
    models/wrf/WRF_DART_utilities/replace_wrf_fields
    models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
    models/template/readme
-   models/utilities/default_readme
+   models/utilities/default_model_mod
 
 
 .. toctree::
@@ -453,7 +453,7 @@ References
    assimilation_code/modules/assimilation/assim_readme
    assimilation_code/modules/assimilation/assim_tools_mod
    assimilation_code/modules/assimilation/cov_cutoff_mod
-   assimilation_code/modules/assimilation/obs_readme
+   assimilation_code/modules/assimilation/obs_model_mod
    assimilation_code/modules/assimilation/reg_factor_mod
    assimilation_code/modules/assimilation/adaptive_inflate_mod
    assimilation_code/modules/assimilation/quality_control_mod
