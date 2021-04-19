@@ -45,8 +45,9 @@ Simple model workflow with an OSSE
 ----------------------------------
 
 The first example DA workflow is for a model that can be advanced by DART with
-all ensemble members stored in a single file running an OSSE:
-
+all ensemble members stored in a single file running an OSSE.
+Details of the executables mentioned below can be found in
+:doc:`Programs included in DART <../assimilation_code/programs/readme>`.
 |simple_model_workflow|
 
 .. |simple_model_workflow| image:: images/simple_model_workflow.jpg
@@ -86,7 +87,10 @@ Complex model workflow with an OSE
 The second workflow is for a complex model with all ensemble members stored in
 separate files running an OSE. In this case, DART will only operate on one model
 output at a time. External programs will advance the model states, generate the
-observations, and call DART again. The following diagram in shows the high-level
+observations, and call DART again.  Details of DART's internal programs,
+which are mentioned below, can be found in
+:doc:`Programs included in DART <../assimilation_code/programs/readme>`.
+The following diagram in shows the high-level
 DART flow in this case:
 
 |DART_workflow|

@@ -49,6 +49,16 @@ below are intended to compensate for ensemble members getting too close to each
 other. Then one by one enable or tune each of the items below, checking each
 time to see what is the effect on the results.
 
+Next attempts
+------------------
+
+:doc:`High-level data assimilation workflows <high-level-da-workflows>`
+gives an overview of a variety of complete assimilation experiments,
+including the programs which need to be run and their input and output.
+
+Important features of assimilations
+-----------------------------------
+
 Suggestions for the most common namelist settings and features built into DART
 for running a successful assimilation include:
 
@@ -82,7 +92,8 @@ to the ensemble being 'over-confident', or having too little spread. More observ
 This characteristic can worsen with time, leading to ensemble collapse to a single solution. Inflation increases the
 spread of the members in a systematic way to overcome this problem. There are several sophisticated options on
 inflation, including spatial and temporal adaptive and damping options, which help deal with observations which vary in
-density over time and location. See here for a discussion of inflation-related namelist items.
+density over time and location. 
+See :doc:`Inflation <inflation>` for a discussion of inflation-related namelist items.
 
 Outlier rejection
 ^^^^^^^^^^^^^^^^^
@@ -104,7 +115,8 @@ improve the assimilation results. The namelist item to enable this option is
 ``&assim_tools_nml :: sampling_error_correction``. Additionally you will need to have the precomputed correction file
 ``sampling_error_correction_table.nc``, in the run directory. See the description of the namelist item in the
 `&assim_tools_nml <../assimilation_code/modules/assimilation/assim_tools_mod.html#Namelist>`__ namelist, and
-:doc:`../assimilation_code/programs/system_simulation/system_simulation` for instructions on where to find (or how to generate) the auxiliary file
+:doc:`../assimilation_code/programs/gen_sampling_err_table/gen_sampling_err_table` 
+for instructions on where to find (or how to generate) the auxiliary file
 needed by this code. See Anderson (2011).
 
 Free run/forecast after assimilation

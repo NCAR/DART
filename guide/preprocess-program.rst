@@ -1,8 +1,9 @@
 How DART supports different types of observations: the preprocess program
 =========================================================================
 
-DART's ``preprocess`` program actually writes the source code that supports
-observations. This source code is then used by all the remaining modules.
+DART's :doc:`preprocess program <../assimilation_code/programs/preprocess/preprocess>`
+actually writes the source code that supports
+observations. This source code is then used by other modules.
 
 The rationale for ``preprocess``
 --------------------------------
