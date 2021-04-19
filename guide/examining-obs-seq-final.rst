@@ -19,6 +19,7 @@ If there are no changes in the model state after assimilation, then examine the
    an explanation of the contents of your ``obs_seq.final`` file, see
    :doc:`detailed-structure-obs-seq`.
 
-2. If you are using many observations, run the ``obs_diag`` program appropriate
+2. If you are using many observations, run the 
+   :doc:`obs_diag <../assimilation_code/programs/readme>` program appropriate
    for your model. The :doc:`matlab-observation-space` will help to summarize
    your output and to explore what is going on.

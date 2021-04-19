@@ -35,7 +35,7 @@ In that case, you the programs you're looking for are probably in `Assimilation 
    which corrects covariances based on small sample size statistics.
  
 Creating Observation Sequence Files
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 
 obs_utils/create_obs_grid
    Create a set of observations located on a regular grid.  Obs have no data values.
@@ -52,7 +52,7 @@ obs_utils/obs_timejitter
    Creates a short andor synthetic observation sequence file using values read from standard input.
  
 Querying Observation Sequence Files
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 
 obs_utils/obs_info
    Summarize obs types, times, counts found in observation sequence file(s).
@@ -73,7 +73,7 @@ obs_total_error
    You can get more information by running the obs_diag program.
 
 Changing Observation Sequence Files
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 
 :doc:`obs_keep_a_few <obs_keep_a_few/obs_keep_a_few>`
    Creates an output observation sequence file that is shorter than the input obs_seq file.

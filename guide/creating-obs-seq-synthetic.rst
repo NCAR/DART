@@ -16,6 +16,10 @@ directly from the modular nature of the DART programming philosophy.
    the model state and specified error distribution at the requested times and
    locations.
 
+These programs are described in 
+:doc:`Programs included in DART <../assimilation_code/programs/readme>`.
+
+
 Example: generating observations for the Lorenz ’63 model.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

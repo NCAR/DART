@@ -27,6 +27,9 @@ observation:
    short time window, such as a second or two when you know there are
    observations available.
 
+These programs are described in the 
+:doc:`Programs directory <../assimilation_code/programs/readme>`.
+
 Configuring your run so that filter does a single assimilation and exits
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

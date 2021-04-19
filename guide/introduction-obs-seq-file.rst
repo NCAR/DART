@@ -85,7 +85,8 @@ the ensemble mean or gauge how many of the real-world observations are actually
 being assimilated. These diagnostics are known as observation-space
 diagnostics.
 
-DART provides :doc:`matlab-observation-space` for you use to quickly assess the
+DART provides :doc:`programs obs_diag <../assimilation_code/programs/readme>`
+and :doc:`matlab-observation-space` for you use to quickly assess the
 performance of your experiment.
 
 .. note::

@@ -69,7 +69,7 @@ computed by running a model, possibly with a fixed amount of simulated noise
 added. These observations can be used for testing, determining the sensitivity
 of the model to assimilation, and for designing new observation systems. The
 DART system includes several ways to create synthetic observations. See the
-`Programs <#Programs>`__ section below for more details.
+:doc:`Synthetic observations section <creating-obs-seq-synthetic>` section for details.
 
 The DART framework enforces a clean separation between observations and the
 models they are assimilated into. The same observations can be used in any model
@@ -117,8 +117,7 @@ may be able to adapt one of the existing converters here for your own use.
 Formats read by the existing converters include netCDF, HDF, little-r, text,
 Prepbufr, amongst others.
 
-See the `Programs <#Programs>`__ section below for a list of the current
-converter programs.
+See the current list of :doc:`converter programs <available-observation-converters>`
 
 If you have looked and none of the existing converters are right for your data,
 here are some suggestions for where to start creating a new converter. Create a
