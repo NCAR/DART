@@ -66,14 +66,15 @@ diagnostics, so ``obs_diag`` simply skips them.
 
 The figures in sections 1 and 2 were created by Matlab® scripts that
 query the ``obs_diag_output.nc`` file:
-`DART/diagnostics/matlabplot_evolution.m <../../../../diagnostics/matlab/plot_evolution.m>`__ and
-`plot_profile.m <../../../../diagnostics/matlab/plot_profile.m>`__. Both of these takes as input a file name and a
-'quantity' to plot ('rmse','spread','totalspread', ...) and exhaustively plots the quantity (for every variable, every
-level, every region) in a single matlab figure window - and creates a series of .ps files with multiple pages for each
-of the figures. The directory gets cluttered with them. The rank histogram information in ``obs_diag_output.nc`` can 
-easily be plotted with
-`ncview (left) <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__, a free third-party piece of software or with
-`plot_rank_histogram.m (right) <../../../../diagnostics/matlab/plot_rank_histogram.m>`__.
+``DART/diagnostics/matlab/plot_evolution.m`` and
+``plot_profile.m``. Both of these takes as input a file name and a
+'quantity' to plot ('rmse','spread','totalspread', ...) and exhaustively plots 
+the quantity (for every variable, every level, every region) in a single matlab 
+figure window - and creates a series of .ps files with multiple pages for each
+of the figures. The directory gets cluttered with them. The rank histogram 
+information in ``obs_diag_output.nc`` can easily be plotted with
+`ncview <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__ (left), 
+a free third-party piece of software or with ``plot_rank_histogram.m`` (right).
 See the `Rank histograms`_ section for more information and links to instructions.
 
 ``obs_diag`` can be configured to compare the ensemble estimates against the 'observation' copy or the 'truth' copy
@@ -743,8 +744,8 @@ portion of the run-time output:
 | Please note that none of the 'horizontal_wind' variables will have a rank histogram, so they are not written to the
   netCDF file. ANY variable that does not have a rank histogram with some observations will NOT have a rank histogram
   variable in the netCDF file.
-| Now that you have the ``obs_diag_output.nc``, you can explore it with `plot_profile.m, plot_bias_xxx_profile.m, or
-  plot_rmse_xxx_profile.m <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#mat_obs>`__, and look at the
+| Now that you have the ``obs_diag_output.nc``, you can explore it with ``plot_profile.m, plot_bias_xxx_profile.m, or
+  plot_rmse_xxx_profile.m``,
   rank histograms with `ncview <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__ or ``plot_rank_histogram.m``.
 
 References
