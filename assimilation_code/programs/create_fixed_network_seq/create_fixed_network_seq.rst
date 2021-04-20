@@ -18,7 +18,7 @@ by the namelist options in `obs_sequence_mod <../../modules/observations/obs_seq
 
 Any data values or quality control flags associated with the input set are replicated to the output, but this program is
 typically used with perfect model experiments to create observations without data, which are then filled in by running
-:doc:`../../../assimilation_code/programs/perfect_model_obs/perfect_model_obs`.
+:doc:`../perfect_model_obs/perfect_model_obs`.
 
 Modules used
 ------------

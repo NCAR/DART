@@ -37,20 +37,21 @@ In that case, you the programs you're looking for are probably in `Assimilation 
 Creating Observation Sequence Files
 -----------------------------------
 
-obs_utils/create_obs_grid
-   Create a set of observations located on a regular grid.  Obs have no data values.
-
+:doc:`create_obs_sequence <create_obs_sequence/create_obs_sequence>`
+   Creates a short andor synthetic observation sequence file using values read from standard input.
+ 
 :doc:`create_fixed_network_seq <create_fixed_network_seq/create_fixed_network_seq>` 
    Reads observation sequence file information from standard input 
    and replicates it multiple times in a second observation sequence file, at user specified dates. 
  
+obs_utils/create_obs_grid
+   Create a set of observations located on a regular grid.  
+   Obs have no data values, but they are time ordered.
+
 obs_utils/obs_timejitter
    Randomly perturb the times of the observations in a (usually) set_def.out file.
    Writes the results to (usually) obs_seq.in.
 
-:doc:`create_obs_sequence <create_obs_sequence/create_obs_sequence>`
-   Creates a short andor synthetic observation sequence file using values read from standard input.
- 
 Querying Observation Sequence Files
 -----------------------------------
 
@@ -81,8 +82,8 @@ Changing Observation Sequence Files
 :doc:`obs_selection <obs_selection/obs_selection>`
    Extracts observations out of one or more obs_sequence files
    according to a  list of observation types, times, and locations.
-   The list is usually created by :doc:`obs_seq_coverage/obs_seq_coverage`, 
-   but can be an observation sequence file,
+   The list is usually created by :doc:`obs_seq_coverage <obs_seq_coverage/obs_seq_coverage>`, 
+   but can be an observation sequence file.
  
 :doc:`obs_sequence_tool <obs_sequence_tool/obs_sequence_tool>`
    Subsets, combines, or alters observations from one or more observation sequence files 
