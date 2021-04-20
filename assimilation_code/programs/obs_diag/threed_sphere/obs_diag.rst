@@ -33,14 +33,6 @@ spreads are used to calculate the diagnostics. If the ``input.nml``:``filter_nml
 included. In this case, the ``obs_seq.final`` file contains enough information to calculate a rank histograms, verify
 forecasts, etc. The ensemble means are still used for many other calculations.
 
-|image1|
-
-|image2|
-
-|image3|
-
-|image4|
-
 Since this program is fundamentally interested in the response as a function of region, there are three versions of this
 program; one for each of the ``oned, threed_sphere, or threed_cartesian`` location modules (``location_mod.f90``). It
 did not make sense to ask the ``lorenz_96`` model what part of North America you'd like to investigate or how you would
@@ -51,18 +43,39 @@ input variables pertaining to longitude are used.
 Identity observations (only possible from "perfect model experiments") are already explored with state-space
 diagnostics, so ``obs_diag`` simply skips them.
 
-``obs_diag`` is designed to explore the effect of the assimilation in three ways; 1) as a function of time for a
-particular variable and level (this is the figure on the left), 2) as a time-averaged vertical profile (figure in the
-middle), and sometimes 3) in terms of a rank histogram - "Where does the actual observation rank relative to the rest of
-the ensemble?" (figures on the right). The figures on the left and center were created by several Matlab® scripts that
+``obs_diag`` is designed to explore the effect of the assimilation in three ways: 
+---------------------------------------------------------------------------------
+
+1) as a function of time for a particular variable and level 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+|image1|
+
+2) as a time-averaged vertical profile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+|image2|
+
+3) and in terms of a rank histogram - 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"Where does the actual observation rank relative to the rest of the ensemble?"
+
++-------------+------------+
+|  |image3|   |  |image4|  |
++-------------+------------+
+
+The figures in sections 1 and 2 were created by Matlab® scripts that
 query the ``obs_diag_output.nc`` file:
-*DART/diagnostics/matlab/*\ `plot_evolution.m <../../../../diagnostics/matlab/plot_evolution.m>`__ and
-`plot_profile.m <../../../../diagnostics/matlab/plot_profile.m>`__. Both of these takes as input a file name and a
-'quantity' to plot ('rmse','spread','totalspread', ...) and exhaustively plots the quantity (for every variable, every
-level, every region) in a single matlab figure window - and creates a series of .ps files with multiple pages for each
-of the figures. The directory gets cluttered with them. The rank histogram information can easily be plotted with
-`ncview <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__, a free third-party piece of software or with
-`plot_rank_histogram.m <../../../../diagnostics/matlab/plot_rank_histogram.m>`__.
+``DART/diagnostics/matlab/plot_evolution.m`` and
+``plot_profile.m``. Both of these takes as input a file name and a
+'quantity' to plot ('rmse','spread','totalspread', ...) and exhaustively plots 
+the quantity (for every variable, every level, every region) in a single matlab 
+figure window - and creates a series of .ps files with multiple pages for each
+of the figures. The directory gets cluttered with them. The rank histogram 
+information in ``obs_diag_output.nc`` can easily be plotted with
+`ncview <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__ (left), 
+a free third-party piece of software or with ``plot_rank_histogram.m`` (right).
+See the `Rank histograms`_ section for more information and links to instructions.
 
 ``obs_diag`` can be configured to compare the ensemble estimates against the 'observation' copy or the 'truth' copy
 based on the setting of the ``use_zero_error_obs`` namelist variable.
@@ -518,10 +531,10 @@ Please note:
    to calculate a rank histogram in the first place.
 
 +-----------+----------------------------------------------------------------------------------------------------------+
-| |image9|  | `Instructions for viewing the rank histogram with                                                        |
+| |image3|  | `Instructions for viewing the rank histogram with                                                        |
 |           | ncview <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#ncview_histogram>`__.               |
 +-----------+----------------------------------------------------------------------------------------------------------+
-| |image10| | `Instructions for viewing the rank histogram with                                                        |
+| |image4|  | `Instructions for viewing the rank histogram with                                                        |
 |           | Matlab <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#mat_obs>`__.                        |
 +-----------+----------------------------------------------------------------------------------------------------------+
 
@@ -579,7 +592,7 @@ the following output, ``input.nml:obs_diag_nml:trusted_obs`` was set:
      ...
 
 +---------------------------------------------------------------------------------------------------------+-----------+
-| The Matlab scripts try to ensure that the trusted observation graphics clarify that the metrics plotted | |image13| |
+| The Matlab scripts try to ensure that the trusted observation graphics clarify that the metrics plotted | |image5|  |
 | are somehow 'different' than the normal processing stream. Some text is added to indicate that the      |           |
 | values include the outlying observations. **IMPORTANT:** The interpretation of the number of            |           |
 | observations 'possible' and 'used' still reflects what was used **in the assimilation!** The number of  |           |
@@ -633,12 +646,11 @@ Example: observation sequence files spanning 30 days
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +---------------------------------------------------------------------------------------------------------+-----------+
-| In this example, we will be accumulating metrics for 30 days over the entire globe. The                 | |image16| |
-| ``obs_diag_output.nc`` file will have exactly ONE timestep in it (so it won't be much use for the       |           |
-| ``plot_evolution`` functions) - but the ``plot_profile`` functions and the ``plot_rank_histogram``      |           |
-| function will be used to explore the assimilation. By way of an example, we will NOT be using outlier   |           |
-| observations in the rank histogram. Lets presume that all your ``obs_seq.final`` files are in           |           |
-| alphabetically-nice directories:                                                                        |           |
+| In this example, we will be accumulating metrics for 30 days. The ``obs_diag_output.nc`` file will have | |image4|  |
+| exactly ONE timestep in it (so it won't be much use for the ``plot_evolution`` functions) - but the     |           |
+| ``plot_profile`` functions and the ``plot_rank_histogram`` function will be used to explore the         |           |
+| assimilation. By way of an example, we will NOT be using outlier observations in the rank histogram.    |           |
+| Lets presume that all your ``obs_seq.final`` files are in alphabetically-nice directories:              |           |
 +---------------------------------------------------------------------------------------------------------+-----------+
 
 ::
@@ -712,8 +724,8 @@ portion of the run-time output:
 | Please note that none of the 'horizontal_wind' variables will have a rank histogram, so they are not written to the
   netCDF file. ANY variable that does not have a rank histogram with some observations will NOT have a rank histogram
   variable in the netCDF file.
-| Now that you have the ``obs_diag_output.nc``, you can explore it with `plot_profile.m, plot_bias_xxx_profile.m, or
-  plot_rmse_xxx_profile.m <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#mat_obs>`__, and look at the
+| Now that you have the ``obs_diag_output.nc``, you can explore it with ``plot_profile.m, plot_bias_xxx_profile.m, or
+  plot_rmse_xxx_profile.m``,
   rank histograms with `ncview <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__ or ``plot_rank_histogram.m``.
 
 References
@@ -734,27 +746,5 @@ N/A
    :width: 600px
 .. |image4| image:: ../../../../guide/images/RankHistogram_matlab.png
    :width: 600px
-.. |image5| image:: ../../../../guide/images/RankHistogram_ncview.png
-   :width: 600px
-.. |image6| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 600px
-.. |image7| image:: ../../../../guide/images/RankHistogram_ncview.png
-   :width: 600px
-.. |image8| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 600px
-.. |image9| image:: ../../../../guide/images/RankHistogram_ncview.png
-   :width: 600px
-.. |image10| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 600px
-.. |image11| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
-   :width: 600px
-.. |image12| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
-   :width: 600px
-.. |image13| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
-   :width: 600px
-.. |image14| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 600px
-.. |image15| image:: ../../../../guide/images/RankHistogram_matlab.png
-   :width: 600px
-.. |image16| image:: ../../../../guide/images/RankHistogram_matlab.png
+.. |image5| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
    :width: 600px
