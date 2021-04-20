@@ -36,7 +36,8 @@ The changes are now listed with the most recent at the top.
   - POP CESM2.1 scripts use the unzipped CAM reanalysis files available on
     the Research Data Archive (RDA). 
   - Enhanced adaptive inflation added to DART_LAB.    
-  
+  - Documentation converted to reStructuredText and available online. 
+
 - Bug fixes
 
   -  External forward operators now use the correct ensemble members when 
