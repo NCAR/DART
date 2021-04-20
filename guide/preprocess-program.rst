@@ -50,23 +50,7 @@ observations and operators are supported.
 .. warning::
    
    If you want to add another ``obs_def`` module, you **must** rerun
-   ``preprocess`` and recompile the rest of your project. ``preprocess`` is
-   designed to abort if the files it is supposed to build already exist. For
-   this reason, you need to remove a couple files (if they exist) before you
-   run the preprocessor. Removing these files is a good habit to develop,
-   however they are automatically removed if you use the DART
-   ``quickbuild.csh`` script.
-
-This is a code snippet from an example ``quickbuild.csh`` script that removes 
-the ``obs_def_mod`` and ``obs_kind_mod`` source files before preprocess is run.
-
-.. code-block::
-
-   \rm -f ../../../observations/forward_operators/obs_def_mod.f90
-   \rm -f ../../../observations/forward_operators/obs_kind_mod.f90
-   ./preprocess
-   ls -l ../../../observations/forward_operators/obs_def_mod.f90
-   ls -l ../../../observations/forward_operators/obs_kind_mod.f90
+   ``preprocess`` and recompile the rest of your project. ``preprocess``
 
 Example ``preprocess`` namelist
 -------------------------------
@@ -78,8 +62,9 @@ As an example, if a ``preprocess_nml`` namelist in ``input.nml`` looks like:
    &preprocess_nml
        input_obs_kind_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
        output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+       quantity_files           = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90',
        input_obs_def_mod_file   = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
-       input_files              = '../../../observations/forward_operators/obs_def_gps_mod.f90',
+       obs_type_files           = '../../../observations/forward_operators/obs_def_gps_mod.f90',
                                   '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
                                   '../../../observations/forward_operators/obs_def_GWD_mod.f90',
                                   '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
