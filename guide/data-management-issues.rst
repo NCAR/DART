@@ -46,7 +46,7 @@ Allocated and deallocated if looping over multiple assimilation windows
 within a single run of filter.
 
 * Only observations within the current assimilation window, O
-* O observations times N ensemble members for the Forward Operator results
+* O observations times N ensemble members for the Forward Operator (FO) results
 * O observations times N ensemble members for the QC results
 
 Delayed writing option
