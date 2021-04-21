@@ -43,7 +43,7 @@ and process DART observation sequence files.
 specific observation **TYPES** with corresponding (generic) observation
 **QUANTITIES**.
 
-The list of ``obs_def`` and `` obs_quantity`` module source codes are contained in the
+The list of ``obs_def`` and ``obs_quantity`` module source codes are contained in the
 ``&preprocess_nml`` namelist in ``input.nml``. These modules determine what
 observations and operators are supported.
 
