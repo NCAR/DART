@@ -10,6 +10,7 @@ Ice Model. Its code base and capabilities have grown as a result of continued
 development by the broader geosciences community, an effort organized by the
 CICE Consortium.
 
+Dr. Cecilia Bitz implemented support for the CICE model (as part of CESM) in DART.
 The DART model interface was developed to work with CICE's dynamical core on an
 Arakawa B-grid. [1]_ When CICE is coupled to POP in CESM, the ocean and sea ice
 grids are identical.
@@ -27,15 +28,10 @@ According to the CICE manual:
 
 Hence, in the DART interface:
 
-- U, V are at grid cell corners
-- T, h, hs, and the various scalar quantities are at grid cell centers
+- ``U``, ``V`` are at grid cell corners
+- ``T``, ``h``, ``hs``, and the various scalar quantities are at grid cell centers
 
-Development Notes
------------------
-
-Dr. Cecilia Bitz implemented support for the CICE model (as part of CESM) in DART.
-
-CICE is under active development to work with other grids, such as the
+CICE is under development to work with other grids, such as the
 unstructured grid in MPAS and the C-grid in MOM.
 
 Namelist
