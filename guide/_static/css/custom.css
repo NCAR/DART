@@ -57,7 +57,7 @@ pre.highlight span[class^="prompt"] {
 @font-face{font-family:Poppins;font-style:normal;font-weight:700;src:url("../fonts/Poppins/Poppins-Bold.ttf") format("truetype")}
 
 @font-face{font-family:Roboto;font-style:normal;font-weight:400;src:url("../fonts/Roboto/Roboto-Regular.ttf") format("truetype")}
-@font-face{font-family:Roboto;font-style:italic;font-weight:400;src:url("../fonts/Roboto/Roboto-RegularItalic.ttf") format("truetype")}
+@font-face{font-family:Roboto;font-style:italic;font-weight:400;src:url("../fonts/Roboto/Roboto-Italic.ttf") format("truetype")}
 @font-face{font-family:Roboto;font-style:normal;font-weight:700;src:url("../fonts/Roboto/Roboto-Bold.ttf") format("truetype")}
 @font-face{font-family:Roboto;font-style:italic;font-weight:700;src:url("../fonts/Roboto/Roboto-BoldItalic.ttf") format("truetype")}
 
