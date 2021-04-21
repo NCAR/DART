@@ -842,12 +842,13 @@ of the following parameters in either the setup script or input.nml.
 Nitty gritty: Efficiency and Issues to Address
 ----------------------------------------------
 
-.. code-block:: bash
 
-   .. WARNING::
+.. warning::
 
-      Experience on a variety of machines has shown that it is a very good idea
-       to make sure your run-time environment has the following:
+   Experience on a variety of machines has shown that it is a very good idea
+   to make sure your run-time environment has the following:
+
+   .. code-block:: bash
 
        limit stacksize unlimited
        limit datasize unlimited
