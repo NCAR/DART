@@ -4,30 +4,34 @@ PROGRAM ``obs_seq_to_netcdf``
 Overview
 --------
 
-| ``obs_seq_to_netcdf`` is a routine to extract the observation components from observation sequence files and write out
-  netCDF files that can be easily digested by other applications. This routine will allow you to plot the spatial
-  distribution of the observations and be able to discern which observations were assimilated or rejected, for example.
-  Here are some graphics from ``DART/diagnostics/matlab/``\ ``plot_obs_netcdf.m``.
-| |DART observation 3D scatterplot| |DART 'bad' QC 3D scatterplot|
-| The intent is that user input is queried and a series of output files - one per assimilation cycle - will contain the
-  observations for that cycle. It is hoped this will be useful for experiment design or, perhaps, debugging. This
-  routine is also the first to use the new ``schedule_mod`` module which will ultimately control the temporal aspects of
-  the assimilations (i.e. the assimilation schedule).
-| There is also a facility for exploring the spatial distributions of quantities like bias between the ensemble mean and
-  the observations: ``DART/diagnostics/matlab/``\ ``plot_obs_netcdf_diffs.m``.
-| Required namelist interfaces ``&obs_seq_to_netcdf`` and ``&schedule_nml`` are read from file ``input.nml``.
+``obs_seq_to_netcdf`` is a routine to extract the observation components from observation sequence files and write out
+netCDF files that can be easily digested by other applications. This routine will allow you to plot the spatial
+distribution of the observations and be able to discern which observations were assimilated or rejected, for example.
+Here are some graphics from ``DART/diagnostics/matlab/plot_obs_netcdf.m``.
+
+|DART observation 3D scatterplot| |DART 'bad' QC 3D scatterplot|
+
+The intent is that user input is queried and a series of output files - one per assimilation cycle - will contain the
+observations for that cycle. It is hoped this will be useful for experiment design or, perhaps, debugging. This
+routine is also the first to use the new ``schedule_mod`` module which will ultimately control the temporal aspects of
+the assimilations (i.e. the assimilation schedule).
+
+There is also a facility for exploring the spatial distributions of quantities like bias between the ensemble mean and
+the observations: ``DART/diagnostics/matlab/plot_obs_netcdf_diffs.m``.
+Required namelist interfaces ``&obs_seq_to_netcdf`` and ``&schedule_nml`` are read from file ``input.nml``.
 
 What's on the horizon ..
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-| ``obs_seq_to_netcdf`` is a step toward encoding our observations in netCDF files.
-| *The dependence on the ``threed_sphere/location_mod.f90`` has been removed. This program will work with any
-  ``location_mod.f90``.* Also, this program no longer tries to construct 'wind' observations from horizontal components
-  since the program really should be faithful to preserving exactly what is in the input file. i.e. We're not making
-  stuff up.
-| There are several Matlab scripts that understand how to read and plot observation data in netcdf format. See the
-  ``link_obs.m`` script that creates several linked figures with the ability to 'brush' data in one view and have those
-  selected data (and attributes) get highlighted in the other views.
+``obs_seq_to_netcdf`` is a step toward encoding our observations in netCDF files.
+*The dependence on the* ``threed_sphere/location_mod.f90`` *has been removed. This program will work with any*
+``location_mod.f90``. Also, this program no longer tries to construct 'wind' observations from horizontal components
+since the program really should be faithful to preserving exactly what is in the input file. i.e. We're not making
+stuff up.
+
+There are several Matlab scripts that understand how to read and plot observation data in netcdf format. See the
+``link_obs.m`` script that creates several linked figures with the ability to 'brush' data in one view and have those
+selected data (and attributes) get highlighted in the other views.
 
 Namelist
 --------
@@ -49,7 +53,6 @@ namelist.
       verbose    = .false.  
    /
 
-| 
 
 The allowable ranges for the region boundaries are: latitude [-90.,90], longitude [0.,360.] ... but it is possible to
 specify a region that spans the dateline by specifying the ``lonlim2`` to be less than ``lonlim1``.
@@ -58,76 +61,76 @@ You can only specify **either** ``obs_sequence_name`` **or** ``obs_sequence_list
 
 .. container::
 
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | Item                                  | Type                                  | Description                           |
-   +=======================================+=======================================+=======================================+
-   | obs_sequence_name                     | character(len=256)                    | Name of an observation sequence       |
-   |                                       |                                       | file(s). This may be a relative or    |
-   |                                       |                                       | absolute filename. If the filename    |
-   |                                       |                                       | contains a '/', the filename is       |
-   |                                       |                                       | considered to be comprised of         |
-   |                                       |                                       | everything to the right, and a        |
-   |                                       |                                       | directory structure to the left. The  |
-   |                                       |                                       | directory structure is then queried   |
-   |                                       |                                       | to see if it can be incremented to    |
-   |                                       |                                       | handle a sequence of observation      |
-   |                                       |                                       | files. The default behavior of        |
-   |                                       |                                       | ``obs_seq_to_netcdf`` is to look for  |
-   |                                       |                                       | additional files to include until the |
-   |                                       |                                       | files are exhausted or an             |
-   |                                       |                                       | ``obs_seq.final`` file is found that  |
-   |                                       |                                       | contains observations beyond the      |
-   |                                       |                                       | timeframe of interest.                |
-   |                                       |                                       | e.g. 'obsdir_001/obs_seq.final' will  |
-   |                                       |                                       | cause ``obs_seq_to_netcdf`` to look   |
-   |                                       |                                       | for 'obsdir_002/obs_seq.final', and   |
-   |                                       |                                       | so on.                                |
-   |                                       |                                       | If this is specified,                 |
-   |                                       |                                       | 'obs_sequence_list' must be set to '  |
-   |                                       |                                       | '.                                    |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_sequence_list                     | character(len=256)                    | Name of an ascii text file which      |
-   |                                       |                                       | contains a list of one or more        |
-   |                                       |                                       | observation sequence files, one per   |
-   |                                       |                                       | line. If this is specified,           |
-   |                                       |                                       | 'obs_sequence_name' must be set to '  |
-   |                                       |                                       | '. Can be created by any method,      |
-   |                                       |                                       | including sending the output of the   |
-   |                                       |                                       | 'ls' command to a file, a text        |
-   |                                       |                                       | editor, or another program.           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | append_to_netcdf                      | logical                               | This gives control over whether to    |
-   |                                       |                                       | overwrite or append to an existing    |
-   |                                       |                                       | netcdf output file. It is envisioned  |
-   |                                       |                                       | that you may want to combine multiple |
-   |                                       |                                       | observation sequence files into one   |
-   |                                       |                                       | netcdf file (i.e.                     |
-   |                                       |                                       | ``append_to_netcdf=.true.``) to       |
-   |                                       |                                       | explore the effects on data coverage, |
-   |                                       |                                       | etc. The default behavior is to       |
-   |                                       |                                       | create a new ``obs_epoch_xxx.nc``     |
-   |                                       |                                       | file with every execution.            |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lonlim1                               | real                                  | Westernmost longitude of the region   |
-   |                                       |                                       | in degrees.                           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | lonlim2                               | real                                  | Easternmost longitude of the region   |
-   |                                       |                                       | in degrees. *If ``lonlim2 < lonlim1`` |
-   |                                       |                                       | , it defines a region that spans      |
-   |                                       |                                       | the prime meridian.* It is perfectly  |
-   |                                       |                                       | acceptable to specify lonlim1 = 330 , |
-   |                                       |                                       | lonlim2 = 50 to identify a region     |
-   |                                       |                                       | like "Africa".                        |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | latlim1                               | real                                  | Southernmost latitude of the region   |
-   |                                       |                                       | in degrees.                           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | latlim2                               | real                                  | Northernmost latitude of the region   |
-   |                                       |                                       | in degrees.                           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | verbose                               | logical                               | Print extra info about the            |
-   |                                       |                                       | obs_seq_to_netcdf run.                |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
+   +---------------------------------------+---------------------------------------+------------------------------------------+
+   | Item                                  | Type                                  | Description                              |
+   +=======================================+=======================================+==========================================+
+   | obs_sequence_name                     | character(len=256)                    | Name of an observation sequence          |
+   |                                       |                                       | file(s). This may be a relative or       |
+   |                                       |                                       | absolute filename. If the filename       |
+   |                                       |                                       | contains a '/', the filename is          |
+   |                                       |                                       | considered to be comprised of            |
+   |                                       |                                       | everything to the right, and a           |
+   |                                       |                                       | directory structure to the left. The     |
+   |                                       |                                       | directory structure is then queried      |
+   |                                       |                                       | to see if it can be incremented to       |
+   |                                       |                                       | handle a sequence of observation         |
+   |                                       |                                       | files. The default behavior of           |
+   |                                       |                                       | ``obs_seq_to_netcdf`` is to look for     |
+   |                                       |                                       | additional files to include until the    |
+   |                                       |                                       | files are exhausted or an                |
+   |                                       |                                       | ``obs_seq.final`` file is found that     |
+   |                                       |                                       | contains observations beyond the         |
+   |                                       |                                       | timeframe of interest.                   |
+   |                                       |                                       | e.g. 'obsdir_001/obs_seq.final' will     |
+   |                                       |                                       | cause ``obs_seq_to_netcdf`` to look      |
+   |                                       |                                       | for 'obsdir_002/obs_seq.final', and      |
+   |                                       |                                       | so on.                                   |
+   |                                       |                                       | If this is specified,                    |
+   |                                       |                                       | 'obs_sequence_list' must be set to '     |
+   |                                       |                                       | '.                                       |
+   +---------------------------------------+---------------------------------------+------------------------------------------+
+   | obs_sequence_list                     | character(len=256)                    | Name of an ascii text file which         |
+   |                                       |                                       | contains a list of one or more           |
+   |                                       |                                       | observation sequence files, one per      |
+   |                                       |                                       | line. If this is specified,              |
+   |                                       |                                       | 'obs_sequence_name' must be set to '     |
+   |                                       |                                       | '. Can be created by any method,         |
+   |                                       |                                       | including sending the output of the      |
+   |                                       |                                       | 'ls' command to a file, a text           |
+   |                                       |                                       | editor, or another program.              |
+   +---------------------------------------+---------------------------------------+------------------------------------------+
+   | append_to_netcdf                      | logical                               | This gives control over whether to       |
+   |                                       |                                       | overwrite or append to an existing       |
+   |                                       |                                       | netcdf output file. It is envisioned     |
+   |                                       |                                       | that you may want to combine multiple    |
+   |                                       |                                       | observation sequence files into one      |
+   |                                       |                                       | netcdf file (i.e.                        |
+   |                                       |                                       | ``append_to_netcdf=.true.``) to          |
+   |                                       |                                       | explore the effects on data coverage,    |
+   |                                       |                                       | etc. The default behavior is to          |
+   |                                       |                                       | create a new ``obs_epoch_xxx.nc``        |
+   |                                       |                                       | file with every execution.               |
+   +---------------------------------------+---------------------------------------+------------------------------------------+
+   | lonlim1                               | real                                  | Westernmost longitude of the region      |
+   |                                       |                                       | in degrees.                              |
+   +---------------------------------------+---------------------------------------+------------------------------------------+
+   | lonlim2                               | real                                  | Easternmost longitude of the region      |
+   |                                       |                                       | in degrees. *If* ``lonlim2 < lonlim1``   |
+   |                                       |                                       | *, it defines a region that spans        |
+   |                                       |                                       | the prime meridian.* It is perfectly     |
+   |                                       |                                       | acceptable to specify ``lonlim1 = 330`` ,|
+   |                                       |                                       | ``lonlim2 = 50`` to identify a region    |
+   |                                       |                                       | like "Africa".                           |
+   +---------------------------------------+---------------------------------------+------------------------------------------+
+   | latlim1                               | real                                  | Southernmost latitude of the region      |
+   |                                       |                                       | in degrees.                              |
+   +---------------------------------------+---------------------------------------+------------------------------------------+
+   | latlim2                               | real                                  | Northernmost latitude of the region      |
+   |                                       |                                       | in degrees.                              |
+   +---------------------------------------+---------------------------------------+------------------------------------------+
+   | verbose                               | logical                               | Print extra info about the               |
+   |                                       |                                       | obs_seq_to_netcdf run.                   |
+   +---------------------------------------+---------------------------------------+------------------------------------------+
 
 The schedule namelist
 ~~~~~~~~~~~~~~~~~~~~~
@@ -316,8 +319,8 @@ Related Matlab functions
 Discussion of obs_epoch_xxx.nc structure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`This might be a good time to review the basic observation sequence file
-structure. <http://www.image.ucar.edu/DAReS/DART/DART2_Observations.php#obs_seq_overview>`__ The only thing missing in
+:doc:`This might be a good time to review the basic observation sequence file
+structure. <../../../guide/detailed-structure-obs-seq>` The only thing missing in
 the netcdf files is the 'shared' metadata for observations (e.g. GPS occultations). The observation locations, values,
 qc flags, error variances, etc., are all preserved in the netCDF files. The intent is to provide everything you need to
 make sensible plots of the observations. Some important aspects are highlighted.
