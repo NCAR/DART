@@ -1,3 +1,7 @@
+.. role:: bolditalic
+  :class: bolditalic
+
+
 program ``obs_seq_coverage``
 ============================
 
@@ -224,8 +228,8 @@ You can specify **either** *obs_sequences* **or** *obs_sequence_list* -- not bot
 |                                       |                                       | region.                                                                  |
 +---------------------------------------+---------------------------------------+--------------------------------------------------------------------------+
 | lonlim2                               | real                                  | Easternmost longitude of desired                                         |
-|                                       |                                       | region. *If this value is*\ **less                                       |
-|                                       |                                       | than**\ *the westernmost value, it                                       |
+|                                       |                                       | region. *If this value is* :bolditalic:`less                             |
+|                                       |                                       | than` *the westernmost value, it                                         |
 |                                       |                                       | defines a region that spans the prime                                    |
 |                                       |                                       | meridian.* It is perfectly acceptable                                    |
 |                                       |                                       | to specify lonlim1 = 330 , lonlim2 =                                     |
@@ -577,3 +581,4 @@ References
    :width: 100.0%
 .. |Example 1| image:: ../../../guide/images/verification_48hrX6hr.png
    :width: 75.0%
+
