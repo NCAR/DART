@@ -7,7 +7,7 @@ Overview/usage
 Main program for observation-space diagnostics for the models with 1D locations. 18 quantities are calculated for each
 region for each temporal bin specified by user input. The result of the code is a netCDF file that contains the 18
 quantities of the prior (aka 'guess') and posterior (aka 'analysis') estimates as a function of time and region as well
-as all the metadata to create meaningful figures. **The 1D version of ``obs_diag`` has defaults that automatically set
+as all the metadata to create meaningful figures. **The 1D version of** ``obs_diag`` **has defaults that automatically set
 the first and last bin center based on the first and last observation time in the set of observations being processed.**
 This is different behavior than the 3D versions.
 
@@ -123,8 +123,8 @@ to use your own plotting routines.
 
 The DART QC flag is intended to provide information about whether the observation was assimilated, evaluated only,
 whether the assimilation resulted in a 'good' observation, etc. 
-*DART QC values lower than* \ **2**\  *indicate the prior and posteriors are OK.* 
-DART QC values higher than **3** were **not** assimilated or evaluated. Here is the table that
+DART QC values **<2** indicate the prior and posteriors are OK.
+DART QC values **>3** were **not** assimilated or evaluated. Here is the table that
 should explain things more fully:
 
 +--------------------+------------------------------------------------------------------+
@@ -146,7 +146,7 @@ should explain things more fully:
 +--------------------+------------------------------------------------------------------+
 | 7                  | rejected because of a failed outlier threshold test              |
 +--------------------+------------------------------------------------------------------+
-| *8*                | *vertical conversion failed*                                     |
+| 8                  | vertical conversion failed                                       |
 +--------------------+------------------------------------------------------------------+
 | 9+                 | reserved for future use                                          |
 +--------------------+------------------------------------------------------------------+

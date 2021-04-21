@@ -155,8 +155,8 @@ averages of the above quantities are also stored in the netCDF file. Normally, i
 - the amount of time to skip is under namelist control.
 
 The DART QC flag is intended to provide information about whether the observation was assimilated, evaluated only,
-whether the assimilation resulted in a 'good' observation, etc. *DART QC values lower than*\ **2**\ *indicate the prior
-and posteriors are OK.* DART QC values higher than **3** were **not** assimilated or evaluated. Here is the table that
+whether the assimilation resulted in a 'good' observation, etc. DART QC values **<2** indicate the prior
+and posteriors are OK. DART QC values **>3** were **not** assimilated or evaluated. Here is the table that
 should explain things more fully:
 
 +--------------------+------------------------------------------------------------------+
@@ -178,7 +178,7 @@ should explain things more fully:
 +--------------------+------------------------------------------------------------------+
 | 7                  | rejected because of a failed outlier threshold test              |
 +--------------------+------------------------------------------------------------------+
-| *8*                | *vertical conversion failed*                                     |
+| 8                  | vertical conversion failed                                       |
 +--------------------+------------------------------------------------------------------+
 | 9+                 | reserved for future use                                          |
 +--------------------+------------------------------------------------------------------+
