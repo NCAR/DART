@@ -37,20 +37,20 @@ and process DART observation sequence files.
    radar reflectivities for WRF without needing to specify a set of radar
    operators for the Lorenz_63 model.
 
-``preprocess`` combines multiple ``obs_def`` modules into one
+``preprocess`` combines multiple ``obs_def`` and ``obs_quantity`` modules into one
 ``obs_def_mod.f90`` that is then used by the rest of DART. Additionally, a new
 ``obs_kind_mod.f90`` is built that will provide support for associating the
 specific observation **TYPES** with corresponding (generic) observation
 **QUANTITIES**.
 
-The list of ``obs_def`` module source codes is contained in the
+The list of ``obs_def`` and `` obs_quantity`` module source codes are contained in the
 ``&preprocess_nml`` namelist in ``input.nml``. These modules determine what
 observations and operators are supported.
 
 .. warning::
    
    If you want to add another ``obs_def`` module, you **must** rerun
-   ``preprocess`` and recompile the rest of your project. ``preprocess``
+   ``preprocess`` and recompile the rest of your project.
 
 Example ``preprocess`` namelist
 -------------------------------
