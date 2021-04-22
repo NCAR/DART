@@ -42,6 +42,10 @@ input variables pertaining to longitude are used.
 
 Identity observations (only possible from "perfect model experiments") are already explored with state-space
 diagnostics, so ``obs_diag`` simply skips them.
+The notable exception to this is a program specifically written
+for streamflow observations taken at gauge locations as represented by the 'channel-only' configuration of WRF-Hydro.
+There is a separage program *DART/assimilation_code/programs/obs_diag/threed_sphere/streamflow_obs_diag.f90* 
+specifically for those observations, since the model is designed to run **at** the USGS gauge locations.
 
 ``obs_diag`` is designed to explore the effect of the assimilation in three ways: 
 ---------------------------------------------------------------------------------
