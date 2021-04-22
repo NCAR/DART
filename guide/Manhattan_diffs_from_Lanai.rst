@@ -56,10 +56,6 @@ The programs filter and perfect_model_obs now read/write directly from NetCDF fi
 called during ``static_init_model``. It can be called multiple times in static_model_mod, e.g. once for each NetCDF file
 that contains state variables. There are three ways to add a domain:
 
--  **From Blank** : This is for small models such as lorenz_96 and no NetCDF restarts
-
-   -  ``dom_id = add_domain(model_size)``
-
 -  **From File** : This is for models which have NetCDF restart files
 
    -  ``dom_id = add_domain(template_file, num_vars, var_names, ... )``
@@ -67,8 +63,12 @@ that contains state variables. There are three ways to add a domain:
 -  **From Spec** : Creates a skeleton structure for a domain ( currently only used in bgrid_solo )
 
    -  ``dom_id = add_domain(num_vars, var_names, ... )``
-      ``call add_dimension_to_variable(dom_id, var_id, dim_nam, dim_size)``
-      ``call finished_adding_domain``
+   -  ``call add_dimension_to_variable(dom_id, var_id, dim_nam, dim_size)``
+   -  ``call finished_adding_domain``
+
+-  **From Blank** : This is for small models such as lorenz_96 and no NetCDF restarts
+
+   -  ``dom_id = add_domain(model_size)``
 
 For models without NetCDF restarts, use ``add_domain(model_size)``. This is the minimum amount of information needed by
 DART to create a netdcf file. For models with NetCDF restarts use ``add_domain(info_file, num_vars, var_names)`` which
