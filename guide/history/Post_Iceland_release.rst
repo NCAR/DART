@@ -1,8 +1,11 @@
-DART "Iceland release" Documentation
-====================================
-
 DART "post-Iceland release" Documentation
 =========================================
+
+.. attention::
+
+   **post-Iceland** was released in June of 2006. 
+   This documentation is preserved merely for reference. See the
+   `DART homepage <https://dart.ucar.edu/>`__ to learn about the latest release.
 
 Overview of DART
 ================

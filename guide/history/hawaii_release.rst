@@ -6,7 +6,7 @@ DART Hawaii release documentation
 
 .. attention::
 
-   Hawaii is a prior release of DART. Its source code is available via the `DART repository on
+   **Hawaii** was released in February of 2005. Its source code is available via the `DART repository on
    Github <https://github.com/NCAR/DART/tree/Hawaii>`__. This documentation is preserved merely for reference. See the
    `DART homepage <https://dart.ucar.edu/>`__ to learn about the latest release.
 

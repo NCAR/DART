@@ -6,7 +6,7 @@ DART Kodiak release documentation
 
 .. attention::
 
-   Kodiak is a prior release of DART. Its source code is available via the `DART repository on
+   **Kodiak** was released in June of 2011. Its source code is available via the `DART repository on
    Github <https://github.com/NCAR/DART/tree/Kodiak>`__. This documentation is preserved merely for reference. See the
    `DART homepage <https://dart.ucar.edu/>`__ to learn about the latest release.
 

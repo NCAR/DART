@@ -1,6 +1,13 @@
 DART "pre_hawaii release" Documentation
 =======================================
 
+.. attention::
+
+   **pre_hawaii** was released in December of 2004.
+   This documentation is preserved merely for reference. See the
+   `DART homepage <https://dart.ucar.edu/>`__ to learn about the latest release.
+
+
 Overview of DART
 ================
 

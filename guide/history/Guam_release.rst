@@ -6,7 +6,7 @@ DART Guam release documentation
 
 .. attention::
 
-   Guam is a prior release of DART. Its source code is available via the `DART repository on
+   **Guam** was released in August of 2004. Its source code is available via the `DART repository on
    Github <https://github.com/NCAR/DART/tree/Guam>`__. This documentation is preserved merely for reference. See the
    `DART homepage <https://dart.ucar.edu/>`__ to learn about the latest release.
 

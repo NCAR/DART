@@ -6,7 +6,7 @@ DART Jamaica release documentation
 
 .. attention::
 
-   Jamaica is a prior release of DART. Its source code is available via the `DART repository on
+   **Jamaica** was released in April of 2007. Its source code is available via the `DART repository on
    Github <https://github.com/NCAR/DART/tree/Jamaica>`__. This documentation is preserved merely for reference. See the
    `DART homepage <https://dart.ucar.edu/>`__ to learn about the latest release.
 

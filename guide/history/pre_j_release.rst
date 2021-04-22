@@ -1,6 +1,13 @@
 DART "pre_j release" Documentation
 ==================================
 
+.. attention::
+
+   **pre-j** was released in October of 2006.
+   This documentation is preserved merely for reference. See the
+   `DART homepage <https://dart.ucar.edu/>`__ to learn about the latest release.
+
+
 Overview of DART
 ================
 

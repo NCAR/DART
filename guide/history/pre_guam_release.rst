@@ -1,6 +1,13 @@
 DART "pre_guam release" Documentation
 =====================================
 
+.. attention::
+
+   **pre_guam** was released in 2004.
+   This documentation is preserved merely for reference. See the
+   `DART homepage <https://dart.ucar.edu/>`__ to learn about the latest release.
+
+
 Overview of DART
 ================
 
@@ -9,7 +16,6 @@ models, and observation sets to allow increased understanding of all three. The 
 the Intel 7.1 Fortran compiler and run on a linux compute-server. If your system is different, you will definitely need
 to read the Customizations section.
 
-`The latest software release -- "pre_guam" <DART_pre_guam.tar.gz>`__\ [22 Mb -- .tar.gz]
 
 DART programs can require three different types of input. First, some of the DART programs, those for creating synthetic
 observational datasets, require interactive input from the keyboard. For simple cases, this interactive input can be
