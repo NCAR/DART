@@ -4,25 +4,34 @@ MODULE ``obs_def_rttov_mod``
 Overview
 --------
 
-| DART RTTOV observation module, including the observation operators for the two primary RTTOV-observation types --
-  visible/infrared radiances and microwave radiances/brightness temperatures.
-| This module acts as a pass-through for RTTOV version 12.3. For more information, see `the RTTOV
-  site <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
-| DART supports both RTTOV-direct for visible/infrared/microwave as well as RTTOV-scatt for microwave computations. The
-  code, in principle, supports all features of version 12.3 as a pass-through from the model to RTTOV, includes
-  aerosols, trace gases, clouds, and atmospheric variables. The code also includes directly specifying scattering
-  properties.
-| However, a model may not have all of the variables necessary for these functions depending on your model's setup.
-| For example, DART can use any of the RTTOV clw or ice schemes, but the WRF model is not directly compatible with the
-  IR default cloud classification of marine/continental stratus/cumulus clean/dirty. We also offer a simple
-  classification based on maximum vertical velocity in the column and land type, but due to lack of aerosol information,
-  WRF/DART cannot differentiate between clean and dirty cumulus. This may have some impact on the forward calculations -
-  but in experience the difference in cloud phase (ice versus water) makes a much larger difference.
-| Trace gases and aerosols may be important for actual observation system experiments using visible/infrared; this may
-  depend on the precise frequencies you wish to use. Although a model may not have the necessary inputs by itself,
-  although the defaults in RTTOV based on climatology can be used. The impact on the quality of the results should be
-  investigated.
-| Known issues:
+DART RTTOV observation module, including the observation operators for the two primary 
+RTTOV-observation types -- visible/infrared radiances and microwave 
+radiances/brightness temperatures.
+
+This module acts as a pass-through for RTTOV version 12.3. For more information, 
+see `the RTTOV site <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
+
+DART supports both RTTOV-direct for visible/infrared/microwave as well as RTTOV-scatt 
+for microwave computations. The code, in principle, supports all features of version 12.3 
+as a pass-through from the model to RTTOV, includes aerosols, trace gases, clouds, and 
+atmospheric variables. The code also includes directly specifying scattering properties.
+
+However, a model may not have all of the variables necessary for these functions 
+depending on your model's setup.  For example, DART can use any of the RTTOV clw or ice 
+schemes, but the WRF model is not directly compatible with the IR default cloud 
+classification of marine/continental stratus/cumulus clean/dirty. We also offer a simple
+classification based on maximum vertical velocity in the column and land type, but due to 
+lack of aerosol information, WRF/DART cannot differentiate between clean and dirty cumulus. 
+This may have some impact on the forward calculations - but in experience the difference 
+in cloud phase (ice versus water) makes a much larger difference.  Trace gases and aerosols 
+may be important for actual observation system experiments using visible/infrared; this may
+depend on the precise frequencies you wish to use.
+
+Although a model may not have the necessary inputs by itself,
+the defaults in RTTOV based on climatology can be used.
+The impact on the quality of the results should be investigated.
+
+Known issues:
 
 -  DART does not yet provide any type of bias correction
 -  Cross-channel error correlations are not yet supported. A principal component approach has been discussed. For now,
@@ -31,10 +40,9 @@ Overview
    number of ensemble members. Using the maximum peak of the weighting function or the cloud-top may be appropriate.
    There are also other potential approaches being investigated.
 
-| 
 | Author and Contact information:
 
--  DART Code: Jeff Steward, jsteward at ucar.edu
+-  DART Code: Jeff Steward
 -  Original DART/RTTOV work: Nancy Collins, Johnny Hendricks
 
 Backward compatibility note
