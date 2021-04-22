@@ -1,5 +1,5 @@
-PROGRM OR MODULE name_of_thing
-==============================
+PROGRAM OR MODULE name_of_thing
+===============================
 
 Overview
 --------

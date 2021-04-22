@@ -1,14 +1,20 @@
 DART quality control field
 ==========================
 
-For failing observations, the DART quality control (QC) field may indicate the
-reason. To learn more about how to intepret the QC field, see
-:doc:`detailed-structure-obs-seq`.
+DART has a quality control (QC) field in the *obs_seq.final* file
+to report on the status of the assimilation of the variable. The most
+common reason for exploring the DART QC value is to help determine
+if the observation was assimilated (or evaluated) - or if the observation
+was rejected or ...
 
-`How to locate the different values in an obs_seq.final file. <Observations.md#obs_seq_overview>`__
+To learn more about how to intepret the QC field as well as
+other values in an observation sequence file,
+see :doc:`detailed-structure-obs-seq`.
+The ‘DART QC’ field is usually the second of the 2 “quality control” copies.
 
-The ‘DART QC’ field is usually the second of the 2 “quality control” copies.)
-A list of all the DART QC values can be found in the QC table.
+A list of all the DART QC values can be found in the QC table in
+:doc:`../assimilation_code/modules/assimilation/quality_control_mod`.
+
 
 -  If the DART QC values are 4, the forward operators have failed. Look at the
    *model_interpolate()* routine in your model_mod.f90 file, or the forward
@@ -37,6 +43,9 @@ A list of all the DART QC values can be found in the QC table.
    now and rerun. In general, this is not the optimal strategy as the number of
    observations inconsistent with the ensemble is a very powerful indicator of
    the success or failure of the assimilation.
+
+-  If the DART QC values are 8, it was not possible to convert the observation
+   to the required vertical coordinate system.
 
 If the prior and posterior values in the ``obs_seq.final`` are not -888888.0 but
 are identical, your obs are being assimilated but are having no impact.
