@@ -19,5 +19,5 @@ name of the input and the output
 The work/Density_3deg_02_335.ascii is truncated to 2 datapoints to
 demonstrate the format and is not to be used for real experiments.
 
-Alexey Morozov alexeymor at google mail 5/22/13
+Author: Alexey Morozov
 
