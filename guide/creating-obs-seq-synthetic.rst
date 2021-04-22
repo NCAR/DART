@@ -1,8 +1,9 @@
-Creating an obs_seq file from synthetic observations
-====================================================
+Creating an obs_seq file of synthetic observations
+==================================================
 
 There are several steps to create an observation sequence file, which follows
 directly from the modular nature of the DART programming philosophy.
+This procedure may be used to create synthetic observations from *any model*.
 
 1. Decide what observations you want to investigate and edit the
    ``input.nml&obs_kind_nml`` block.
@@ -19,9 +20,14 @@ directly from the modular nature of the DART programming philosophy.
 These programs are described in 
 :doc:`Programs included in DART <../assimilation_code/programs/readme>`.
 
-
 Example: generating observations for the Lorenz ’63 model.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+While this procedure works with any model, the responses in 'create_obs_sequence'
+will vary based on what observations are supported. You should not expect the
+responses for observations for L63 can be used to produce radar observations from WRF,
+for example. When compiled with support for radar observations, *create_obs_sequence*
+**will** prompt you for the required metadata.
 
 1) There are no ‘real’ observations for the Lorenz ’63 model, so the appropriate
 namelist settings are:
