@@ -42,7 +42,7 @@ system documentation or find an example of a successful MPI program compile comm
 DART use of MPI
 ~~~~~~~~~~~~~~~
 
-To run in parallel, only the DART 'filter' program (and possibly the companion 'wakeup_filter' program) need be
+To run in parallel, only the DART 'filter' program (possibly the companion 'wakeup_filter' program), and the 'GSI2DART' observation converter need to be
 compiled with the MPI scripts. All other DART executables should be compiled with a standard F90 compiler and are not
 MPI enabled. (And note again that 'filter' can still be built as a single executable like previous releases of DART;
 using MPI and running in parallel is simply an additional option.) To build a parallel version of the 'filter'
