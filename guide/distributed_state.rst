@@ -1,9 +1,8 @@
 Distributed State
 =================
 
-The key part of RMA DART is having a state that is physically distributed across processors. The location in memory of
-any part of the state vector (which processor and where in memory on that processor) is completely under the control of
-filter, not model_mod.
+The key part of DART is having a state that is physically distributed across processors. The location in memory of
+any part of the state vector (which processor and where in memory on that processor) is completely under the control of filter, not model_mod. This improvement was released in, and was the major reason for, Manhattan.
 
 Implications of this:
 
