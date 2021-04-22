@@ -148,7 +148,7 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | ``perturb_from_single_instance = .false.``| 
 +------------------------------+---------------------+-------------------------------------------+
 | stages_to_write              | character(len=10),  | Controls diagnostic and restart output.   |
-|                              | dimension(4)        | Valid values are: 'input', 'forecast',    |
+|                              | dimension(6)        | Valid values are: 'input', 'forecast',    |
 |                              |                     | 'preassim', 'postassim', 'analysis',      |
 |                              |                     | 'output', and 'null'. Input is            |
 |                              |                     | case-insensitive.                         |
@@ -177,9 +177,9 @@ prior inflation and the second controls the posterior inflation.
 +------------------------------+---------------------+-------------------------------------------+
 | num_output_state_members     | integer             | Number of ensemble members to be included |
 |                              |                     | in the state diagnostic output for stages |
-|                              |                     | 'forecast',                               |
-|                              |                     | 'preassim', 'postassim' and 'analysis'.   |
-|                              |                     | ``output_members`` must be ``.true.``     |
+|                              |                     | 'forecast', 'preassim', 'postassim' and   |
+|                              |                     | 'analysis'.  ``output_members`` must be   |
+|                              |                     | ``.true.``                                |
 +------------------------------+---------------------+-------------------------------------------+
 | output_mean                  | logical             | ``.true.`` means output the ensemble mean |
 |                              |                     | in any stage that is enabled.             |
@@ -189,8 +189,8 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | that is enabled.                          |
 +------------------------------+---------------------+-------------------------------------------+
 | write_all_stages_at_end      | logical             | For most cases this should be             |
-|                              |                     | ``.false.`` and data will be output as it |
-|                              |                     | is generated for the 'preassim',          |
+|                              |                     | ``.false.``; data will be output as it is |
+|                              |                     | generated for the 'forecast', 'preassim', |
 |                              |                     | 'postassim', and 'analysis' diagnostics,  |
 |                              |                     | and then restart data will be output at   |
 |                              |                     | the end. However, if I/O time dominates   |
@@ -204,7 +204,8 @@ prior inflation and the second controls the posterior inflation.
 | compute_posterior            | logical             | If ``.false.``, skip computing posterior  |
 |                              |                     | forward operators and do not write        |
 |                              |                     | posterior values in the obs_seq.final     |
-|                              |                     | file. Saves time and memory. Posterior    |
+|                              |                     | file. Those are rarely worth examining.   |
+|                              |                     | Saves time and memory. Posterior          |
 |                              |                     | inflation is not possible. For backwards  |
 |                              |                     | compatibility the default ``.true.``      |
 +------------------------------+---------------------+-------------------------------------------+
@@ -224,10 +225,12 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | ``&assim_tools_mod :: distributed_mean``. |
 +------------------------------+---------------------+-------------------------------------------+
 | async                        | integer             | Controls method for advancing model:      |
-|                              |                     | | 0 is subroutine call                    |
-|                              |                     | | 2 is shell command                      |
-|                              |                     | | 4 is mpi-job script                     |
-|                              |                     | | Ignored if filter is not controlling    |
+|                              |                     |                                           |
+|                              |                     |   * 0       is subroutine call            |
+|                              |                     |   * 2       is shell command              |
+|                              |                     |   * 4       is mpi-job script             |
+|                              |                     |                                           |
+|                              |                     | Ignored if filter is not controlling      |
 |                              |                     | the model advance, e.g. in CESM, WRF, etc |
 +------------------------------+---------------------+-------------------------------------------+
 | adv_ens_command              | character(len=256)  | Command sent to shell if async is 2.      |
@@ -298,8 +301,9 @@ prior inflation and the second controls the posterior inflation.
 | inf_damping                  | real(r8),           | Damping factor for inflation mean values. |
 |                              | dimension(2)        | The difference between the current        |
 |                              |                     | inflation value and 1.0 is multiplied by  |
-|                              |                     | this factor before the next assimilation  |
-|                              |                     | cycle. The value should be between 0.0    |
+|                              |                     | this factor and added to 1.0 to provide   |
+|                              |                     | the next inflation mean.                  |
+|                              |                     | The value should be between 0.0           |
 |                              |                     | and 1.0. Setting a value of 0.0 is full   |
 |                              |                     | damping, which in fact turns off all      |
 |                              |                     | inflation by fixing the inflation         |
@@ -319,7 +323,7 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | inf_sd_initial this should also be        |
 |                              |                     | negative to preserve the setting.         |
 +------------------------------+---------------------+-------------------------------------------+
-| inf_sd_max_change            | real(r8),           | For inflation type 5 (enhanced inflation),|
+| inf_sd_max_change            | real(r8),           | For ``inf_flavor`` 5 (enhanced inflation),|
 |                              | dimension(2)        | controls the maximum change of the        |
 |                              |                     | inflation standard deviation when         |
 |                              |                     | adapting for the next assimilation cycle. |
@@ -406,7 +410,9 @@ Inflation Options
 -----------------
 
 The value for the ``inf_flavor`` is a character string. For backwards compatiblity
-(it use to be an integer code), the specification of the integer is still supported.
+(it was an integer code), the specification of the integer is still supported.
+Inflation values (for flavors other than 0) will be time-varying
+only if ``inf_sd_initial`` > 0.
 
 +--------------------------------+---------------------------------------------------------+
 | inflation option               | description                                             |
@@ -435,6 +441,9 @@ The value for the ``inf_flavor`` is a character string. For backwards compatibli
 
 
 .. _pert_model_copies:
+
+Create an initial ensemble from a single file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If the default ``pert_model_copies`` routine is used, random noise values drawn from a 
 gaussian distribution with the standard deviation specified by ``perturbation_amplitude`` 
