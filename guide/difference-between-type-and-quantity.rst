@@ -17,8 +17,10 @@ DART defines two observation TYPEs:
 
 and relates both of these TYPES to a single QUANTITY: QTY_U_WIND_COMPONENT.
 
-Thus TYPE and QUANTITY have a many to one relationship. This distinction
-enables you to evaluate observation platforms independently of one another.
+Thus TYPE and QUANTITY have a many-to-one relationship. This distinction
+enables you to assimilate or evaluate observation platforms independently 
+of one another with a single observation sequence file; 
+reducing the possibility of error.
 
 The forward observation operators are implemented based on observation
 QUANTITY. When requested, the model generates a QTY_U_WIND_COMPONENT, it
