@@ -111,11 +111,13 @@ New Assimilation Algorithms
 Detailed program execution flow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Manhattan release of DART includes state space output expanded from the previous two stages (Prior and Posterior) to
-up to four (input, preassim, postassim, and output). This makes it possible to examine the states with and without
-either kind of inflation, as described below. In addition, the state space vectors are each written to a separate NetCDF
-file: ``${stage}_mean.nc, ${stage}_sd.nc, ${stage}_member_####.nc`` . The detailed execution flow inside the filter
-program is:
+The Manhattan release of DART includes state space output expanded from the 
+previous two stages (Prior and Posterior) to up to six (input, forecast, preassim, 
+postassim, analysis, and output). This makes it possible to examine the states with 
+and without either kind of inflation, as described below. In addition, the state 
+space vectors are each written to a separate NetCDF file: 
+``${stage}_mean.nc, ${stage}_sd.nc, ${stage}_member_####.nc`` .
+The detailed execution flow inside the filter program is:
 
 -  Read in observations.
 -  Read in state vectors from model netcdf restart files.
@@ -198,7 +200,7 @@ scripts to suit the user's needs.
 -  input observation sequence file; from ``&filter_nml :: obs_sequence_in_name``
 -  output observation sequence file; from ``&filter_nml :: obs_sequence_out_name``
 -  output state space diagnostics files; ``${stage}_mean.nc, ${stage}_sd.nc,`` where stage =
-   {input,preassim,postassim,output}
+   {input,forecast,preassim,postassim,analysis,output}
 -  input state space inflation data (if enabled); from ``input_{prior,post}inf_{mean,sd}.nc.``
 -  output state space inflation data (if enabled); to ``${stage}_{prior,post}inf_{mean,sd}.nc.``, where stage ≠ "input"
 -  input.nml, to read &filter_nml

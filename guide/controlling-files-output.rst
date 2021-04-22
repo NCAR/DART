@@ -11,8 +11,10 @@ These options are controlled by three settings in the ``filter_nml`` namelist
 in ``input.nml``:
 
 - ``stages_to_write`` specifies the stages during an assimilation cycle during
-  which state files are output. The possible stages are ``'preassim'``,
-  ``'postassim'``, ``'analysis'`` and ``'forecast'``.
+  which state files may be output. The possible stages are 
+  ``'input'``, ``'forecast'``, ``'preassim'``,
+  ``'postassim'``, ``'analysis'`` and ``'output'``. The input strings are
+  case-insensitive, but the corresponding output files are always lowercase.
 - ``single_file_in`` specifies how input state files are structured. If 
   ``.true.`` the state of all ensemble members is expected to be read from
   single file. If  ``.false.`` the state of each ensemble member expected to 

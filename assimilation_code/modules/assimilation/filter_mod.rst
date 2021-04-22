@@ -148,9 +148,10 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | ``perturb_from_single_instance = .false.``| 
 +------------------------------+---------------------+-------------------------------------------+
 | stages_to_write              | character(len=10),  | Controls diagnostic and restart output.   |
-|                              | dimension(4)        | Valid values are: 'input', 'preassim',    |
-|                              |                     | 'postassim', 'analysis', 'output',        |
-|                              |                     | and 'null'.                               |
+|                              | dimension(4)        | Valid values are: 'input', 'forecast',    |
+|                              |                     | 'preassim', 'postassim', 'analysis',      |
+|                              |                     | 'output', and 'null'. Input is            |
+|                              |                     | case-insensitive.                         |
 +------------------------------+---------------------+-------------------------------------------+
 | single_file_out              | logical             | ``.true.`` means all ensemble members are |
 |                              |                     | written to a single netCDF file.          |
@@ -176,6 +177,7 @@ prior inflation and the second controls the posterior inflation.
 +------------------------------+---------------------+-------------------------------------------+
 | num_output_state_members     | integer             | Number of ensemble members to be included |
 |                              |                     | in the state diagnostic output for stages |
+|                              |                     | 'forecast',                               |
 |                              |                     | 'preassim', 'postassim' and 'analysis'.   |
 |                              |                     | ``output_members`` must be ``.true.``     |
 +------------------------------+---------------------+-------------------------------------------+

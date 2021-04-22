@@ -425,17 +425,24 @@ filter_nml
    |                                  |                          | be set to .false.                      |
    +----------------------------------+--------------------------+----------------------------------------+
    | stages_to_write                  | character array          | Controls which stages to write.        |
-   |                                  |                          | Currently there are four options:      |
+   |                                  |                          | Case-insensitive input.                |
+   |                                  |                          | Currently there are six options:       |
    |                                  |                          |                                        |
    |                                  |                          | -  ``input`` -- writes input mean and  |
    |                                  |                          |    sd only                             |
+   |                                  |                          | -  ``forecast`` -- before              |
+   |                                  |                          |    assimilation, before prior          |
+   |                                  |                          |    inflation is applied                |
    |                                  |                          | -  ``preassim`` -- before              |
    |                                  |                          |    assimilation, before prior          |
    |                                  |                          |    inflation is applied                |
    |                                  |                          | -  ``postassim`` -- after              |
    |                                  |                          |    assimilation, before posterior      |
    |                                  |                          |    inflation is applied                |
-   |                                  |                          | -  ``output`` -- final output for      |
+   |                                  |                          | -  ``analysis`` -- after               |
+   |                                  |                          |    assimilation, after posterior       |
+   |                                  |                          |    inflation is applied                |
+   |                                  |                          | -  ``output`` -- final output from     |
    |                                  |                          |    filter which includes clamping and  |
    |                                  |                          |    inflation                           |
    +----------------------------------+--------------------------+----------------------------------------+

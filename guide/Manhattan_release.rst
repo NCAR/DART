@@ -89,8 +89,9 @@ Changes in the Manhattan release (15 May 2015) which are *not* backwards compati
    -  ``[var]_priorinf_{mean,sd}.nc`` (if prior inflation is turned on)
    -  ``[var]_postinf_{mean,sd}.nc`` (if posterior inflation is turned on)
 
-   We also now have options for writing files at four stages of the assimilation cycle:
-   ``'input', 'preassim', 'postassim', 'output'``. This is set in the &filter_nml namelist with stages_to_write.
+   We also now have options for writing files at six stages of the assimilation cycle:
+   ``'input', 'forecast', 'preassim', 'postassim', 'analysis', 'output'``.
+   This is set in the &filter_nml namelist with stages_to_write.
 
 #. New model_mod.f90 required routines:
 

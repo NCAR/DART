@@ -124,8 +124,8 @@ compatible with the Lanai release (13 Dec 2013):
       - *\[var\]_priorinf_{mean,sd}.nc* (if prior inflation is turned on)
       - *\[var\]_postinf_{mean,sd}.nc* (if posterior inflation is turned on)
       
-    We also now have options for writing files at four stages of the
-    assimilation cycle: `'input', 'preassim', 'postassim', 'output'`.
+    We also now have options for writing files at six stages of the
+    assimilation cycle: `'input', 'forecast', 'preassim', 'postassim', 'analysis', 'output'`.
     This is set in the \&filter_nml namelist with ```stages_to_write```.
 
 3.  New `model_mod.f90` required routines:  
