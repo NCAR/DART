@@ -17,7 +17,7 @@ AmeriFlux level 4 data to DART observation sequence converter
 .. warning::
 
    There was a pretty severe bug in the converter that swapped latent heat flux and sensible heat flux. The bug was
-   present through revision 7200. It has been corrected in all subsequent versions.
+   present through revision 7200. It was corrected on 30 Dec 2016. 
 
 The workflow is usually:
 
