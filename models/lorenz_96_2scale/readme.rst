@@ -33,7 +33,7 @@ Development History
 ~~~~~~~~~~~~~~~~~~~
 
 This DART model interface was developed by Josh Hacker as an adaptation of 
-Tim Hoar's Lorenz 96 implementation. The 2-scale model is the second model
+the Lorenz 96 implementation. The 2-scale model is the second model
 described in Lorenz (1996).
 
 Quick Start
