@@ -4,13 +4,12 @@ MODULE ``obs_def_gps_mod``
 Overview
 --------
 
-DART GPS Radio Occultation observation module, including the observation operators for both local and non-local
-refractivity computations.
+DART GPS Radio Occultation observation module, including the observation operators 
+for both local and non-local refractivity computations.
 
-Author and Contact information:
+Author information:
 
--  GPS Science: Hui Liu, hliu at ncar.edu
--  DART Code: Nancy Collins, nancy at ucar.edu
+-  Dr. Hui Liu
 
 Namelist
 --------
