@@ -4,10 +4,13 @@ MODULE obs_def_dew_point_mod
 Overview
 --------
 
-| Provides a subroutine to calculate the dew point temperature from model temperature, specific humidity, and pressure.
-| Revision 2801 implements a more robust method (based on Bolton's Approximation) for calculating dew point. This has
-  been further revised to avoid a numerical instability that could lead to failed forward operators for dewpoints almost
-  exactly 0 C.
+Provides a subroutine to calculate the dew point temperature from model temperature, 
+specific humidity, and pressure.
+
+Revision 2801 (April 2007) implements a more robust method (based on Bolton's 
+Approximation) for calculating dew point. This has been further revised to 
+avoid a numerical instability that could lead to failed forward operators for 
+dewpoints almost exactly 0 C.
 
 Other modules used
 ------------------
