@@ -87,11 +87,11 @@ namelist.
 
 | 
 
-Particular options to be aware of are: async, ens_size, cutoff (localization radius), 
-inflation flavor, outlier_threshold, restart filenames (including inflation), 
-obs_sequence_in_name, horiz_dist_only, binary or ascii controls for observation 
+Particular options to be aware of are: ens_size, cutoff (localization radius), 
+inflation flavor, outlier_threshold, input and output state filenames, 
+obs_sequence_in_name, horiz_dist_only, and the binary or ascii controls for observation 
 sequence file formats. Some of these important items are located in other namelists, 
-but all are in the same input.nml file.
+but all are in the same *input.nml* file.
 
 The inflation control variables are all dimensioned 2, the first value controls the 
 prior inflation and the second controls the posterior inflation.
