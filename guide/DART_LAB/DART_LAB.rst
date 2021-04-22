@@ -15,12 +15,12 @@ DART tutorial presentations
 
 Here are the PDF files for the presentation part of the tutorial:
 
--  `Section 1: <presentation/DART_LAB_Section01.pdf>`__ The basics in 1D.
--  `Section 2: <presentation/DART_LAB_Section02.pdf>`__ How should observations of a state variable impact an unobserved
-   state variable? Multivariate assimilation.
--  `Section 3: <presentation/DART_LAB_Section03.pdf>`__ Sampling error and localization.
--  `Section 4: <presentation/DART_LAB_Section04.pdf>`__ The Ensemble Kalman Filter (Perturbed Observations).
--  `Section 5: <presentation/DART_LAB_Section05.pdf>`__ Adaptive Inflation.
+- :download:`Section 1: <presentation/DART_LAB_Section01.pdf>` The basics in 1D.
+- :download:`Section 2: <presentation/DART_LAB_Section02.pdf>` How should observations of a state variable impact an unobserved 
+  state variable? Multivariate assimilation.
+- :download:`Section 3: <presentation/DART_LAB_Section03.pdf>` Sampling error and localization.
+- :download:`Section 4: <presentation/DART_LAB_Section04.pdf>` The Ensemble Kalman Filter (Perturbed Observations).
+- :download:`Section 5: <presentation/DART_LAB_Section05.pdf>` Adaptive Inflation.
 
 Matlab hands-on exercises
 -------------------------
