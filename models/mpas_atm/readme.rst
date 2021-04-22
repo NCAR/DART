@@ -471,7 +471,9 @@ Analysis File NetCDF header
 The header of an MPAS analysis file is presented below - simply for context.
 Keep in mind that **many** variables have been removed for clarity. Also keep
 in mind that the multi-dimensional arrays listed below have the dimensions
-reversed from the Fortran convention.
+reversed from the Fortran convention. **Note:** the variables marked
+'available in dart' are available as metadata variables in DART. Just to be
+perfectly clear, they are not 'state'.
 
 .. code-block:: bash
 
