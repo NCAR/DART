@@ -27,8 +27,8 @@ DART remains the top choice for scientists, educators, and mathematicians
 seeking mature and robust ensemble DA solutions without reinventing the wheel.
 Here are some of the many benefits of using DART:
 
-1. DART is **freely available, open source, and released under the**\ `Apache
-   2.0 License <https://www.apache.org/licenses/LICENSE-2.0>`__\ **.** In short
+1. DART is **freely available, open source, and released under the**
+   `Apache 2.0 License <https://www.apache.org/licenses/LICENSE-2.0>`__ **.** In short
    this means that you are granted a copyright license stating you are free to
    use, modify, and redistribute any derivative works derived from the DART
    system provided that you maintain the license and copyright information. Of
