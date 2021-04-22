@@ -1,3 +1,8 @@
+.. role:: bolditalic
+  :class: bolditalic
+
+
+
 Computing filter increments using a complex model
 ===================================================
 
@@ -116,7 +121,7 @@ observation values and create an ``obs_seq.out`` file to run through
 This is an exploration of the ``preassim.nc`` file. Note that I selected the
 ‘**t**’ field, turned the coastlines ‘off’ under the ‘Opts’ button, used the
 ‘Repl’ instead of ‘Bi-lin’ (to more faithfully represent the model resolution),
-*navigated to copy 23 of 24 (in this case, the*\ **inflation mean**\ *)* select
+*navigated to copy 23 of 24 (in this case, the* :bolditalic:`inflation mean` *)* select
 the **inflation mean variable of your choice** and advanced to the last
 timestep. The image plot is pretty boring, but does indicate that the inflation
 values are restricted to where I put the observations. Right-clicking on the
@@ -127,7 +132,7 @@ This is an exploration of the ``Innov.nc`` file as created by *ncdiff*. Note
 that the titles are somewhat misleading because they reflect information from
 the first file given to *ncdiff*. This time I left the rendering as ‘Bi-lin’
 (which obfuscates the model resolution), *navigated to copy 1 of 24 (in this
-case, the*\ **ensemble mean**\ *)* selected the **t_mean** variable and advanced
+case, the* :bolditalic:`ensemble mean` *)* selected the **t_mean** variable and advanced
 to the 6th timestep. Right-click on the ‘Range’ button to reset the colorbar.
 The image plot confirms that the innovations are restricted to a local region.
 Clicking on any location generates a time series.
