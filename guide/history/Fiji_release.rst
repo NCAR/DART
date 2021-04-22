@@ -6,7 +6,7 @@ DART Fiji release documentation
 
 .. attention::
 
-   Fiji is a prior release of DART. Its source code is available via the `DART repository on
+   Fiji is a prior release of DART (from 2004). Its source code is available via the `DART repository on
    Github <https://github.com/NCAR/DART/tree/Fiji>`__. This documentation is preserved merely for reference. See the
    `DART homepage <https://dart.ucar.edu/>`__ for information on the latest release.
 

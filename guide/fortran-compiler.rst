@@ -17,7 +17,6 @@ versions of each of the following:
 Since recompiling the code is a necessity to experiment with different
 models, there are no DART binaries to distribute. 
 
-..
-  If you are unfamiliar
-  with Fortran and/or wonder why we would choose this language, see Why
-  Fortran? for more information.
+If you are unfamiliar with Fortran and/or wonder why we would choose this language, 
+see the :doc:`Why Fortran? <./dart-design-philosophy>` discussion for more information.
+
