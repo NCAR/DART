@@ -177,6 +177,13 @@ In the namelist each entry has two values. The first is for Prior inflation and 
 Guidance regarding inflation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+First and foremost, if you are using one of the temporally-varying inflation options, 
+save the entire series of inflation files to explore how inflation evolves through time.
+As part of the workflow, you have to take the output of one assimilation cycle and rename
+it to be the input for the next assimilation cycle. That is the time to make a copy 
+that has a unique name - usually with some sort of date or timestamp. This also makes
+it possible to restart an experiment.
+
 The suggested procedure for testing inflation options is to start without any (both ``inf_flavor`` values set to 0 and
 ``inf_damping`` > 0.). Then enable Prior state space, spatially-varying inflation, with no Posterior inflation (set
 ``inf_flavor`` to [2, 0]). Then try damped inflation (set ``inf_damping`` to 0.9 and set ``inf_sd_initial`` and
@@ -184,6 +191,11 @@ The suggested procedure for testing inflation options is to start without any (b
 ``_{prior,post}inf_{mean,sd}`` in their names. These NetCDF files can be viewed with common tools (we often use
 `ncview <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__ ). Expected inflation values are generally in the 1
 to 30 range; if values grow much larger than this it usually indicates a problem with the assimilation.
+
+:doc:`../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart` 
+may be used to create netCDF files with initial values such that the 
+input.nml settings for reading from file vs. reading from namelist can stay constant 
+throughout the entire experiment.
 
 It is possible to set inflation values in an existing netCDF file by using one of the standard NCO utilities like
 "``ncap2``" on a copy of a restart file. Inflation mean and sd values look exactly like restart values, arranged by
