@@ -13,11 +13,14 @@ called localization. The standard DART algorithms allow users to specify a local
 horizontal (and optionally vertical) distance between the observation and the state variable. The localization is a
 value between 0 and 1 and multiplies the regression coefficient when updating state ensemble members.
 
-Sometimes, it may be desirable to do an additional localization that is a function of the type of observation and the
-state vector quantity. This program allows users to construct a table that is read by filter at run-time to localize the
-impact of sets of observation types on sets of state vectorquantities. Users can create named sets of observation types
-and sets of state vector quantities and specify a localization for the impact of the specified observation types on the
-state vector quantities.
+Sometimes, it may be desirable to do an additional localization that is a function of the 
+type of observation and the
+state vector quantity. This program allows users to construct a table that is read by 
+filter at run-time to localize the
+impact of sets of observation types on sets of state vector quantities. Users can create 
+named sets of observation types
+and sets of state vector quantities and specify a localization for the impact of the 
+specified observation types on the state vector quantities.
 
 An example would be to create a subset of observations of tracer concentration for a variety of tracers, and a subset of
 dynamic state variable quantities like temperatures and wind components. It has been common to set this localization
@@ -27,11 +30,13 @@ between 0 and 1 to be specified.
 This tool allows related collections of observation types and state vector quantities to be named and then express the
 relationship of the named groups to each other in a concise way. It can also define relationships by exceptions.
 
-All the listed observation types and state vector quantities must be known by the system. If they are not, look at the
-&preprocess_nml :: input_items namelist which specifies which obs_def_xxx_mod.f90 files are included, which is where
-observation types are defined. Quantities are defined in
-``assimilation_code/modules/observations/DEFAULT_obs_kinds_mod.F90``. (Note you must add new quantities in 2 places if
-you do alter this file.)
+All the listed observation types and state vector quantities must be known by the system.
+If they are not, look at the
+&preprocess_nml :: input_items namelist which specifies which *obs_def_xxx_mod.f90* files 
+are included, which is where observation types are defined.
+Quantities for different regimes (atmosphere, ocean, land, etc.) are defined in
+``assimilation_code/modules/observations/xxx_quantities_mod.f90`` and explained in
+:doc:`../../modules/observations/obs_kind_mod`
 
 Format of the input file can be any combination of these types of sections:
 
