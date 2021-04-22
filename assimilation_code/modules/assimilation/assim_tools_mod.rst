@@ -183,7 +183,6 @@ namelist.
       rectangular_quadrature            = .true.
       gaussian_likelihood_tails         = .false.
       close_obs_caching                 = .true.
-      allow_missing_in_clm              = .false.
       adjust_obs_impact                 = .false.
       obs_impact_filename               = ""
       allow_any_impact_values           = .false.
@@ -321,16 +320,6 @@ Description of each namelist entry
    Should remain .TRUE. unless you are using specialized_localization_cutoffs. In that case to get accurate results, set
    it to .FALSE.. This also needs to be .FALSE. if you have a get_close_obs() routine in your model_mod file that uses
    the types/kinds of the obs to adjust the distances.
-
-``allow_missing_in_clm``
-   *type:* logical
-
-   If true, missing values (MISSING_R8 as defined in the types_mod.f90 file) are allowed in the state vector. Model
-   interpolation routines must be written to recognize this value and fail the interpolation. During assimilation any
-   state vector items where one or more of the ensemble members are missing will be skipped and their values will be
-   unchanged by the assimilation. The system currently has limited support for this option; the CLM model has been
-   tested and is known to work. If your model would benefit from setting missing values in the state vector, contact
-   DAReS staff by emailing dart@ucar.edu.
 
 ``adjust_obs_impact``
    *type:* logical
