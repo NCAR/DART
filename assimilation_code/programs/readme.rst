@@ -76,15 +76,6 @@ obs_total_error
 Changing Observation Sequence Files
 -----------------------------------
 
-:doc:`obs_keep_a_few <obs_keep_a_few/obs_keep_a_few>`
-   Creates an output observation sequence file that is shorter than the input obs_seq file.
- 
-:doc:`obs_selection <obs_selection/obs_selection>`
-   Extracts observations out of one or more obs_sequence files
-   according to a  list of observation types, times, and locations.
-   The list is usually created by :doc:`obs_seq_coverage <obs_seq_coverage/obs_seq_coverage>`, 
-   but can be an observation sequence file.
- 
 :doc:`obs_sequence_tool <obs_sequence_tool/obs_sequence_tool>`
    Subsets, combines, or alters observations from one or more observation sequence files 
    and optionally writes them into a single output obs_seq file.
@@ -101,9 +92,18 @@ obs_utils/obs_remove_dups
    Removes duplicate observations from an obs_seq file, which involves a complete sort
    by time, location, observation type, then variance.
  
+:doc:`obs_selection <obs_selection/obs_selection>`
+   Extracts observations out of one or more obs_sequence files
+   according to a  list of observation types, times, and locations.
+   The list is usually created by :doc:`obs_seq_coverage <obs_seq_coverage/obs_seq_coverage>`, 
+   but can be an observation sequence file.
+ 
 :doc:`obs_common_subset <obs_common_subset/obs_common_subset>`
    Select the subset of observations, which were successfully assimilated, 
    from two or more assimilation cases (which used the same obs_seq.out file).
+ 
+:doc:`obs_keep_a_few <obs_keep_a_few/obs_keep_a_few>`
+   Creates an output observation sequence file that is shorter than the input obs_seq file.
  
 :doc:`obs_seq_verify <obs_seq_verify/obs_seq_verify>`
    Reorders the observations from a forecast run of DART into a structure 
