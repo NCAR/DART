@@ -10,7 +10,7 @@ Implications of this:
 -  The model_mod never gets a whole state vector to use. So no whole vector for a forward operator, and no whole vector
    for the mean.
 -  The model_mod can not make any assumptions about the order of elements in the state.
-   Currently, filter is ordering variables in the order they are listed in add_domain and with the dimenion order of the
+   Currently, filter is ordering variables in the order they are listed in add_domain and with the dimension order of the
    netcdf file. This is what is happening in most model_mod converters (model_to_dart, dart_to_model). However CAM and
    bgrid_solo rearrange the state in Lanai. These model_mods (and converters) have been changed to not rearrage the
    state.
