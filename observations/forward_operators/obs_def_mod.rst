@@ -4,27 +4,33 @@ MODULE obs_def_mod
 Overview
 --------
 
-| The DART Fortran90 derived type ``obs_def`` provide an abstraction of the definition of an observation. An observation
-  sequence ``obs_seq`` at a higher level is composed of observation definitions associated with observed values. For
-  now, the basic operations required to implement an observation definition are an ability to compute a forward operator
-  given the model state vector, the ability to read/write the observation definition from/to a file, and a capability to
-  do a standard input driven interactive definition of the observation definition.
-| DART makes a distinction between specific ``observation types`` and generic ``observation quantities``. The role of
-  the various obs_def input files is to define the mapping between the types and quantities, and optionally to provide
-  type-specific processing routines.
-| A single obs_def output module is created by the program ``preprocess`` from two kinds of input files. First, a
-  DEFAULT obs_def module (normally called ``DEFAULT_obs_def_mod.F90`` and documented in this directory) is used as a
-  template into which the preprocessor incorporates information from zero or more special obs_def modules (such as
-  ``obs_def_1d_state_mod.f90`` or ``obs_def_reanalysis_bufr_mod.f90``, also documented in this directory). If no special
-  obs_def files are included in the preprocessor namelist, a minimal ``obs_def_mod.f90`` is created which can only
-  support identity forward observation operators.
-| To add a new observation type which does not fit into any of the already-defined obs_def files, a new file should be
-  created in the ``obs_def`` directory. These files are usually named according the the pattern
-  ``obs_def_``\ X\ ``_mod.f90``, where the X is either an instrument name, a data source, or a class of observations.
-  See the existing filenames in that directory for ideas. Then this new filename must be listed in the ``input.nml``
-  namelist for the model, in the ``&preprocess_nml`` section, in the ``obs_type_files`` variable. This variable is a
-  string list type which can contain multiple filenames. Running the ``preprocess`` program will then use the contents
-  of the new file to generate the needed output files for use in linking to the rest of the DART system.
+The DART Fortran90 derived type ``obs_def`` provide an abstraction of the definition of an observation. An observation
+sequence ``obs_seq`` at a higher level is composed of observation definitions associated with observed values. For
+now, the basic operations required to implement an observation definition are an ability to compute a forward operator
+given the model state vector, the ability to read/write the observation definition from/to a file, and a capability to
+do a standard input driven interactive definition of the observation definition.
+
+DART makes a distinction between specific ``observation types`` and generic ``observation quantities``. The role of
+the various obs_def input files is to define the mapping between the types and quantities, and optionally to provide
+type-specific processing routines.
+
+A single obs_def output module is created by the program ``preprocess`` from two kinds of input files. First, a
+DEFAULT obs_def module (normally called ``DEFAULT_obs_def_mod.F90`` and documented in this directory) is used as a
+template into which the preprocessor incorporates information from zero or more special obs_def modules (such as
+``obs_def_1d_state_mod.f90`` or ``obs_def_reanalysis_bufr_mod.f90``, also documented in this directory). If no special
+obs_def files are included in the preprocessor namelist, a minimal ``obs_def_mod.f90`` is created which can only
+support identity forward observation operators.
+
+New Observation Types
+~~~~~~~~~~~~~~~~~~~~~
+
+To add a new observation type which does not fit into any of the already-defined obs_def files, a new file should be
+created in the ``obs_def`` directory. These files are usually named according the the pattern
+``obs_def_``\ X\ ``_mod.f90``, where the X is either an instrument name, a data source, or a class of observations.
+See the existing filenames in that directory for ideas. Then this new filename must be listed in the ``input.nml``
+namelist for the model, in the ``&preprocess_nml`` section, in the ``obs_type_files`` variable. This variable is a
+string list type which can contain multiple filenames. Running the ``preprocess`` program will then use the contents
+of the new file to generate the needed output files for use in linking to the rest of the DART system.
 
 Simple observations
 ~~~~~~~~~~~~~~~~~~~
