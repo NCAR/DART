@@ -133,7 +133,8 @@ A small amount of round-off error is often introduced when a model
 writes restart files before stopping.  So running a model N timesteps 
 forward vs. running N/2, stopping, writing restart files, starting, 
 reading restart files, and finishing the last N/2 timesteps will 
-usually not result in identical values.
+may not result in identical values. Large changes suggest that the
+model is not a good candidate for a cycling DA system.
 
 The goal is to minimize the differences.  This can require small or
 large changes to make the model behave as expected with repeated 
