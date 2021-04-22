@@ -329,3 +329,10 @@ The choice of the vertical coordinate system may have ramifications for vertical
 localization, depending on your model’s ability to convert from one coordinate
 system to another. ``VERTISUNDEF`` is typically used for column-integrated
 quantities. ``VERTISLEVEL`` only makes sense for synthetic observations.
+
+When observations are declared to be ``VERTISSURFACE`` or ``VERTISUNDEF``
+it is not possible to compute a vertical distance between the observation and
+anything else. Consequently, the distance between that observation and everything
+else (state, other observations) is strictly a horizontal distance, and the observation
+will impact the entire column (all levels) within the horizontal localization radius.
+
