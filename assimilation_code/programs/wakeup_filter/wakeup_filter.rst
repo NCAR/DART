@@ -1,6 +1,12 @@
 PROGRAM ``wakeup_filter``
 =========================
 
+.. attention::
+
+  ``wakeup_filter`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
+  using ``wakeup_filter`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
+  Until that time, you should consider this documentation as out-of-date.
+
 Overview
 --------
 
