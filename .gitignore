@@ -25,6 +25,12 @@ check_me.nc
 check_me_interptest.*
 *.orig
 
+# sphinx build folder
+_build
+
+# python directories
+__pycache__
+
 # RTTOV coefficient files
 
 mietable*
