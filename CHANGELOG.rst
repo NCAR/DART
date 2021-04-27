@@ -14,7 +14,7 @@ output of ``git log``
 
 ::
 
-   0[1011] machine:dartGIT % git log > full_git_log.txt
+   0[1011] machine:DART % git log > full_git_log.txt
 
 A reminder that since many files were moved or renamed, the best way to 
 get the complete log is to use ``git log --follow`` for information on
@@ -22,7 +22,7 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**April 26 2021 :: preprocess, inflation options, external FO output, 
+**April 27 2021 :: preprocess, inflation options, external FO output, 
 wrf-hydro, AMSU-A, DART_LAB Tag: v9.10.0**
 
 *New features*
