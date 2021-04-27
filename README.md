@@ -22,7 +22,7 @@ DART is available through GitHub. To download the latest version of DART:
 ```
 git clone https://github.com/NCAR/DART.git
 cd DART
-git checkout tags/v9.10.0 -b v9.10.0
+git checkout tags/v9.10.0 -b v9.10.0-branch
 ```
 
 #### Citing DART
