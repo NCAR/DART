@@ -12,12 +12,24 @@ for more information on how to clone a repository. Take note of the
 directory you installed into, which is referred to as ``DART`` throughout 
 this documentation.
 
+To checkout the latest release of DART:
+
+.. code:: 
+
+   git clone https://github.com/NCAR/DART.git
+   cd DART
+   git checkout tags/v9.10.0 -b v9.10.0-branch
+
+If you have forked the DART repository, replace ``NCAR`` with your
+Github username.
+
 .. note::
 
    If you are interested in contributing to DART, see the
    :doc:`contributors-guide` for more information. In short, you
    will need to be familiar with the
    `GitHub workflow <https://guides.github.com/introduction/flow/>`_.
+
 
 Unzip or clone the distribution in your desired directory, which we refer to as
 ``DART`` in this document. Compiling the code in this tree (as is usually the

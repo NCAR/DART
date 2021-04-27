@@ -80,13 +80,21 @@ Quick-start
 
 1. fork the NCAR/DART repo
 2. clone your (new) fork to your machine - this will set up a remote named
-   ‘origin’
+   ‘origin’. To clone DART and checkout the latest release, use
+
+.. code::
+
+   git clone https://github.com/USERNAME/DART.git
+   cd DART
+   git checkout tags/v9.10.0 -b v9.10.0-branch
+
+where `USERNAME` is your GitHub username. 
+
 3. create a remote to point back to the NCAR/DART repo … convention dictates
    that this remote should be called ‘upstream’
-4. check out the appropriate branch
-5. Download one of the tar files (listed below) of ‘large’ files so you can test
+4. Download one of the tar files (listed below) of ‘large’ files so you can test
    your DART installation.
-6. If you want to issue a PR, create a feature branch and push that to your fork
+5. If you want to issue a PR, create a feature branch and push that to your fork
    and issue the PR.
 
 There are several large files that are needed to run some of the tests and
