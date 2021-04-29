@@ -22,8 +22,14 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**April 29 2021 :: change default GitHub branch. Tag: v9.10.1**
+
+- Replaced the default branch ("Manhattan") with "main".
+  "main" is now the latest and stable version.
+  The HEAD of "main" will be the source of releases using the vX.Y.Z format.
+
 **April 27 2021 :: preprocess, inflation options, external FO output, 
-wrf-hydro, AMSU-A, DART_LAB Tag: v9.10.0**
+wrf-hydro, AMSU-A, DART_LAB. Tag: v9.10.0**
 
 *New features*
 
