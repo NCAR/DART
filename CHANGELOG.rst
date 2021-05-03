@@ -14,13 +14,91 @@ output of ``git log``
 
 ::
 
-   0[1011] machine:dartGIT % git log > full_git_log.txt
+   0[1011] machine:DART % git log > full_git_log.txt
 
-A reminder that since many files were moved or renamed, the best way to
+A reminder that since many files were moved or renamed, the best way to 
 get the complete log is to use ``git log --follow`` for information on
 individual files.
 
 The changes are now listed with the most recent at the top.
+
+**April 29 2021 :: change default GitHub branch. Tag: v9.10.1**
+
+- Replaced the default branch ("Manhattan") with "main".
+  "main" is now the latest and stable version.
+  The HEAD of "main" will be the source of releases using the vX.Y.Z format.
+
+**April 27 2021 :: preprocess, inflation options, external FO output, 
+wrf-hydro, AMSU-A, DART_LAB. Tag: v9.10.0**
+
+*New features*
+
+-  Updated ``preprocess``:
+
+   -  Integers for quantities (kinds) are created and 
+      managed by preprocess instead of through a list of integers in 
+      ``DEFAULT_obs_kind_mod.F90``.
+   -  Quantities are defined by name in files: ``xxx_quantities_mod.f90``.
+   -  ``preprocess`` is backwards compatible with existing (v9.9.0)
+      ``DEFAULT_obs_kind_mod.F90`` files and corresponding ``&preprocess_nml`` options.  
+
+-  Inflation algorithm options in ``&filter_nml`` can be given as strings. 
+
+-  External forward operators can be selectively written out by observation type in
+   ``obs_sequence_tool``.
+
+-  Updated wrf-hydro interface from **James McCreight**. 
+
+-  Added ``AIRS/convert_amsu_L1.f90`` and ``amsua_bt_mod.f90`` to support converting 
+   AMSUA brightness temperatures to obs_seq.
+
+-  ``AIRS/airs_JPL_mod.f90`` strictly supports HDF-EOS2 (not HDF-EOS5) and is only 
+   used for Level 2 (i.e. retrievals of) temperature and humidity observations.
+
+-  POP CESM2.1 scripts use the unzipped CAM reanalysis files available on
+   the Research Data Archive (RDA). 
+
+-  Enhanced adaptive inflation added to DART_LAB.   
+
+-  Improved support for RTPS: output posterior inflation files now contain posterior
+   inflation values when using RTPS. 
+
+-  Improved support for RTTOV in MPAS:
+
+   -  ``loc_sea`` variable used to create sfc, 2m, 10m 
+      locations relative to model surface elevation. 
+   -  new error code for pressure *not* monotonically decreasing with level.
+   -  QTY_CLOUD_FRACTION added. 
+
+-  ``E_CONTINUE`` added to allow programs continue after throwing an error. Used in 
+   developer tests.
+-  Support for more Flux Tower observations (``obs_def_tower_mod.f90``)
+-  Expanded support for netcdf in ``netcdf_utilities_mod``.
+-  Documentation converted to reStructuredText and available online. Reorganization
+   of directories to support this: docs -> guide, docs/tutorial -> theory.
+
+*Bug fixes*
+
+-  Check for monotonically decreasing pressure from TOA down to surface in
+   ``obs_def_rttov_mod.f90`` now checks for greater than or *equal* to previous 
+   level.
+-  External forward operators now use the correct ensemble members when 
+   ``distributed_state=false``.
+-  The ``obs_sequence_tool`` now writes out external forward operator values. 
+   Thanks to **Chris Riedel** for reporting this and providing the 
+   original bug-fix.
+-  ``obs_def_radar_mod.f90`` now correctly applies ``apply_ref_limit_to_fwd_op``
+   when QTY_RADAR_REFLECTIVITY is in the state. Thanks to **Craig Schwartz** for 
+   providing the bug-fix.   
+-  ``quality_control_mod.f90`` now correctly handles ``enable_special_outlier = .true.``
+   Thanks to **Craig Schwartz** for providing the bug-fix.
+
+
+*Removed*
+
+-   Doxygen directory.
+-   Removed svn logging variables and ``register_module`` for cleaner log 
+    messages. The svn info has not been used since DART moved to Git. 
 
 **Oct 29 2020 :: radiance support, MPAS, obs converters Tag: v9.9.0**
 
@@ -130,7 +208,7 @@ The changes are now listed with the most recent at the top.
 .. _email Dr. Mizzi: mailto:mizzi@ucar.edu,dart@ucar.edu?subject=WRF-Chem/DART%20inquiry
 
 
-Nov 20 2019 :: FESOM,NOAH-MP model support, better testing Tag: v9.8.0
+**Nov 20 2019 :: FESOM,NOAH-MP model support, better testing Tag: v9.8.0**
 
 -  first release entirely from GIT
 
