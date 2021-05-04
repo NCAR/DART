@@ -7,7 +7,7 @@ program convert_amsu_L1
 ! Program to convert the AMSU/A 'AIRABRAD' brightness temperatures 
 ! from netCDF to a DART observation sequence file.
 !
-! See the REAMDE.md in this directory for more informaiton, but the
+! See the REAMDE.rst in this directory for more information, but the
 ! data citation information for the dataset is 
 !
 ! Title: AIRS/Aqua L1B AMSU (A1/A2) geolocated and calibrated brightness temperatures V005
@@ -23,9 +23,7 @@ program convert_amsu_L1
 use         types_mod, only : r8, deg2rad, PI
 
 use  obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
-                              init_obs_sequence, read_obs_seq, &
                               static_init_obs_sequence, destroy_obs_sequence, &
-                              set_copy_meta_data, set_qc_meta_data, &
                               print_obs_seq_summary, get_num_obs
 
 use    utilities_mod, only : initialize_utilities, &
@@ -41,7 +39,8 @@ use amsua_netCDF_support_mod, only : initialize_amsua_netcdf, &
                                      read_amsua_bt_netCDF_granule, &
                                      make_obs_sequence, &
                                      combine_sequences, &
-                                     max_possible_obs
+                                     max_possible_obs, &
+                                     append_or_create
 
 implicit none
 
@@ -80,23 +79,18 @@ namelist /convert_amsu_L1_nml/ l1_files, l1_file_list, &
 ! Declare local parameters
 ! ----------------------------------------------------------------------
 
-! one observation data value and one quality control value
-integer, parameter :: NUM_COPIES = 1
-integer, parameter :: NUM_QC     = 1
-
-integer                  :: io, iunit, ifile, i
+integer                  :: io, iunit, ifile
 integer                  :: filecount
 integer                  :: max_num
 integer                  :: num_inserted
 type(amsua_bt_granule)   :: granule
 type(obs_sequence_type)  :: big_sequence, small_sequence
 logical                  :: use_channels(AMSUA_BT_CHANNEL) = .false.
-logical                  :: file_exist
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'convert_amsu_L1.f90'
 
-character(len=512) :: string1, string2
+character(len=512) :: string1
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
@@ -136,25 +130,7 @@ max_num = max_possible_obs(filecount, cross_track_thin, along_track_thin, use_ch
 
 ! either read existing obs_seq or create a new one
 
-inquire(file=outputfile, exist=file_exist)
-
-if ( file_exist .and. append_output ) then
-  call read_obs_seq(outputfile, 0, 0, max_num, big_sequence)
-  write(string1,*)'Appending to "'//trim(outputfile)//'"'
-  write(string2,*)'Initially has ',get_num_obs(big_sequence),' observations.'
-else
-  call init_obs_sequence(big_sequence, NUM_COPIES, NUM_QC, max_num)
-  do i = 1, NUM_COPIES
-    call set_copy_meta_data(big_sequence, i, 'observation')
-  end do
-  do i = 1, NUM_QC
-    call set_qc_meta_data(big_sequence, i, 'QC')
-  end do
-  write(string1,*)'Creating "'//trim(outputfile)//'" from scratch.'
-  write(string2,*)'Initially has ',get_num_obs(big_sequence),' observations.'
-endif
-
-if (verbose > 0) call error_handler(E_MSG,source,string1,text2=string2)
+call append_or_create(append_output,outputfile,max_num,big_sequence)
 
 ! read from netCDF file into a derived type that holds all the information
 ! convert derived type information to DART sequence for that file
@@ -186,11 +162,21 @@ if (verbose > 0) then
    call print_obs_seq_summary(big_sequence)
 endif
 
+! DISCUSSION
+! There is some discussion in the group about whether this program should
+! error out or continue if there are no observations in the sequence.
+! If used in a batch job, maybe you're OK with not having an output observation
+! sequence for this collection of files -OR- you might want to know that there
+! are no viable observations for a particular collection of files.
+! If you want to allow this program to exit without returning an error code, 
+! change E_ERR to E_MSG in the following call to error_handler().
+
 ! Write the sequence to a disk file
 if ( get_num_obs(big_sequence) > 0 )  then
    call write_obs_seq(big_sequence, outputfile) 
 else
-   call error_handler(E_ERR,'NO OBSERVATIONS TO WRITE',source)
+   call error_handler(E_ERR,'NO OBSERVATIONS TO WRITE',source, &
+              text2='see the DISCUSSION comment in the source to exit without error.')
 endif
 
 ! release the sequence memory

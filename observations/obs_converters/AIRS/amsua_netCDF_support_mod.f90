@@ -15,9 +15,10 @@ use  time_manager_mod, only : time_type, get_date, set_date,            &
                               operator(+)
 
 use  obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
-                              set_obs_values, obs_sequence_type,              &
+                              set_obs_values, obs_sequence_type, get_num_obs, &
                               obs_type, set_copy_meta_data, set_qc_meta_data, &
-                              print_obs_seq_summary, get_first_obs, get_next_obs
+                              print_obs_seq_summary, get_first_obs, get_next_obs, &
+                              read_obs_seq
 
 use      location_mod, only : location_type, VERTISUNDEF, &
                               set_location, get_location
@@ -61,6 +62,7 @@ public :: initialize_amsua_netcdf, &
           define_amsua_variables, &
           fill_amsua_variables, &
           max_possible_obs, &
+          append_or_create, &
           combine_sequences
 
 character(len=*), parameter :: source = 'amsua_netCDF_support_mod.f90'
@@ -136,7 +138,8 @@ if ( AMSUA_BT_WARMPRTA12  /= WARMPRTA12  ) mismatch = .true.
 if ( AMSUA_BT_WARMPRTA2   /= WARMPRTA2   ) mismatch = .true.
 
 if (mismatch) then
-   call error_handler(E_ERR,'initialize_amsua_netcdf','assumptions wrong',source)
+   call error_handler(E_ERR,'initialize_amsua_netcdf','assumptions wrong',source,&
+              text2='dimensions in file do not match expected dimensions')
 endif
 
 end subroutine initialize_amsua_netcdf
@@ -1202,6 +1205,45 @@ combine_sequences = num_inserted
 
 end function combine_sequences
 
+
+!-------------------------------------------------------------------------------
+!> either read existing obs_seq or create a new one
+
+subroutine append_or_create(append_output, outputfile, max_num, seq)
+
+logical,                 intent(in)  :: append_output
+character(len=*),        intent(in)  :: outputfile
+integer,                 intent(in)  :: max_num
+type(obs_sequence_type), intent(out) :: seq
+
+logical :: file_exist
+integer :: i
+
+! one observation data value and one quality control value
+integer, parameter :: NUM_COPIES = 1
+integer, parameter :: NUM_QC     = 1
+
+inquire(file=outputfile, exist=file_exist)
+
+if ( file_exist .and. append_output ) then
+  call read_obs_seq(outputfile, 0, 0, max_num, seq)
+  write(string1,*)'Appending to "'//trim(outputfile)//'"'
+  write(string2,*)'Initially has ',get_num_obs(seq),' observations.'
+else
+  call init_obs_sequence(seq, NUM_COPIES, NUM_QC, max_num)
+  do i = 1, NUM_COPIES
+    call set_copy_meta_data(seq, i, 'observation')
+  end do
+  do i = 1, NUM_QC
+    call set_qc_meta_data(seq, i, 'QC')
+  end do
+  write(string1,*)'Creating "'//trim(outputfile)//'" from scratch.'
+  write(string2,*)'Initially has ',get_num_obs(seq),' observations.'
+endif
+
+if (verbosity > 0) call error_handler(E_MSG,source,string1,text2=string2)
+
+end subroutine append_or_create
 
 !-------------------------------------------------------------------------------
 
