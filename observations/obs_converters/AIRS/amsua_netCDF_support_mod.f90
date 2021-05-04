@@ -763,6 +763,10 @@ endif
 
 scanloop:  do iscan=1,size(swath%Latitude,2) ! AKA GEOTRACK
 
+
+   if (iscan /= 10) cycle scanloop ! TJH DEBUG 
+
+
    ! if we're going to subset rows, we will cycle here
    if (scan_thin > 0) then
       if (modulo(iscan, scan_thin) /= 0) cycle scanloop
@@ -778,6 +782,8 @@ scanloop:  do iscan=1,size(swath%Latitude,2) ! AKA GEOTRACK
 
    ! columns are across-track, varying faster than rows.
    pixloop:  do ipix=1,size(swath%Latitude,1) ! AKA GEOXTRACK
+
+      if (ipix /= 20) cycle pixloop ! TJH DEBUG 
 
       ! if we're going to subset columns, ditto
       if (xtrack_thin > 0) then
@@ -829,6 +835,8 @@ scanloop:  do iscan=1,size(swath%Latitude,2) ! AKA GEOTRACK
          ! FIXME ... there is a '_FillValue' 
          obs_value = swath%brightness_temp(ichan,ipix,iscan)
          if (obs_value < 0.0_r8) cycle channel_loop
+
+         write(*,*)'TJH debug Tb is ',obs_value
 
          obs_err = swath%brightness_temp_err(ichan,ipix,iscan)
 
