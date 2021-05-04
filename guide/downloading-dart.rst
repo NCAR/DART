@@ -17,8 +17,6 @@ To checkout the latest release of DART:
 .. code:: 
 
    git clone https://github.com/NCAR/DART.git
-   cd DART
-   git checkout -b v9.10.0-branch tags/v9.10.0 
 
 If you have forked the DART repository, replace ``NCAR`` with your
 Github username.

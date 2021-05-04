@@ -85,8 +85,6 @@ Quick-start
 .. code::
 
    git clone https://github.com/USERNAME/DART.git
-   cd DART
-   git checkout -b v9.10.0-branch tags/v9.10.0 
 
 where `USERNAME` is your GitHub username. 
 
