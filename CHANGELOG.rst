@@ -22,6 +22,16 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 4 2021 :: issue and pull request templates.  Tag: v9.10.2**
+
+*Github changes*
+
+- Templates for pull requests, bug reports and feature requests
+
+*Documenation updates*
+
+- Removed outdated instructions for checking out a tag
+
 **April 29 2021 :: change default GitHub branch. Tag: v9.10.1**
 
 - Replaced the default branch ("Manhattan") with "main".
