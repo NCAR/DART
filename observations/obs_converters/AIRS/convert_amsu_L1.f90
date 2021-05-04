@@ -23,9 +23,12 @@ program convert_amsu_L1
 use         types_mod, only : r8, deg2rad, PI
 
 use  obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
-                              static_init_obs_sequence, destroy_obs_sequence
+                              init_obs_sequence, read_obs_seq, &
+                              static_init_obs_sequence, destroy_obs_sequence, &
+                              set_copy_meta_data, set_qc_meta_data, &
+                              print_obs_seq_summary, get_num_obs
 
-use    utilities_mod, only : initialize_utilities, register_module, &
+use    utilities_mod, only : initialize_utilities, &
                              error_handler, finalize_utilities, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, set_filename_list, &
@@ -36,7 +39,9 @@ use     amsua_bt_mod, only : amsua_bt_granule
 use amsua_netCDF_support_mod, only : initialize_amsua_netcdf, &
                                      channel_list_to_indices, &
                                      read_amsua_bt_netCDF_granule, &
-                                     make_obs_sequence
+                                     make_obs_sequence, &
+                                     combine_sequences, &
+                                     max_possible_obs
 
 implicit none
 
@@ -59,35 +64,45 @@ real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
 character(len=8) :: channel_list(AMSUA_BT_CHANNEL) = 'null'
 integer  :: cross_track_thin = 0
 integer  :: along_track_thin = 0
+logical  :: append_output = .true.
+integer  :: verbose = 0  ! 0 is quiet, 3 is lots of output
 
 namelist /convert_amsu_L1_nml/ l1_files, l1_file_list, &
                                outputfile, &
                                lon1, lon2, lat1, lat2, &
                                channel_list, &
                                cross_track_thin, &
-                               along_track_thin
+                               along_track_thin, &
+                               append_output, &
+                               verbose
 
 ! ----------------------------------------------------------------------
 ! Declare local parameters
 ! ----------------------------------------------------------------------
 
-integer                  :: io, iunit, ifile
+! one observation data value and one quality control value
+integer, parameter :: NUM_COPIES = 1
+integer, parameter :: NUM_QC     = 1
+
+integer                  :: io, iunit, ifile, i
 integer                  :: filecount
+integer                  :: max_num
+integer                  :: num_inserted
 type(amsua_bt_granule)   :: granule
-type(obs_sequence_type)  :: seq
+type(obs_sequence_type)  :: big_sequence, small_sequence
 logical                  :: use_channels(AMSUA_BT_CHANNEL) = .false.
+logical                  :: file_exist
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'convert_amsu_L1.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+
+character(len=512) :: string1, string2
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
 ! ----------------------------------------------------------------------
 
 call initialize_utilities('convert_amsu_L1')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 !----------------------------------------------------------------------
@@ -107,31 +122,81 @@ if (do_nml_term()) write(    *      , nml=convert_amsu_L1_nml)
 filecount = set_filename_list(l1_files, l1_file_list, "convert_amsu_L1")
 
 ! use the first file to initialize the module
-call initialize_amsua_netcdf(l1_files(1))
+call initialize_amsua_netcdf(l1_files(1),verbose)
 
 ! FIXME ... maybe ... are all the files guaranteed to have the
 ! same channels - I think so.
 call channel_list_to_indices(channel_list, use_channels)
 
-! for each input file
+! Figure out how many (more) observations there may be in the output.
+! It is impossible to predict how the lat/lon subsetting may affect this
+! number, but the thinning and channels can be taken into account.
+
+max_num = max_possible_obs(filecount, cross_track_thin, along_track_thin, use_channels)
+
+! either read existing obs_seq or create a new one
+
+inquire(file=outputfile, exist=file_exist)
+
+if ( file_exist .and. append_output ) then
+  call read_obs_seq(outputfile, 0, 0, max_num, big_sequence)
+  write(string1,*)'Appending to "'//trim(outputfile)//'"'
+  write(string2,*)'Initially has ',get_num_obs(big_sequence),' observations.'
+else
+  call init_obs_sequence(big_sequence, NUM_COPIES, NUM_QC, max_num)
+  do i = 1, NUM_COPIES
+    call set_copy_meta_data(big_sequence, i, 'observation')
+  end do
+  do i = 1, NUM_QC
+    call set_qc_meta_data(big_sequence, i, 'QC')
+  end do
+  write(string1,*)'Creating "'//trim(outputfile)//'" from scratch.'
+  write(string2,*)'Initially has ',get_num_obs(big_sequence),' observations.'
+endif
+
+if (verbose > 0) call error_handler(E_MSG,source,string1,text2=string2)
+
+! read from netCDF file into a derived type that holds all the information
+! convert derived type information to DART sequence for that file
+! combine that sequence to the output sequence
+! release the file sequence memory in preparation for creating it new next iteration
+
 do ifile = 1,filecount
 
-   ! read from HDF file into a derived type that holds all the information
    call read_amsua_bt_netCDF_granule(l1_files(ifile), granule)   
 
-   ! convert derived type information to DART sequence
-   call make_obs_sequence(seq, granule, lon1, lon2, lat1, lat2, &
+   call make_obs_sequence(small_sequence, granule, lon1, lon2, lat1, lat2, &
                           use_channels, along_track_thin, cross_track_thin)
 
-   ! write the sequence to a disk file
-   call write_obs_seq(seq, outputfile) 
- 
-   ! release the sequence memory
-   call destroy_obs_sequence(seq)
+   num_inserted = combine_sequences(small_sequence, big_sequence, l1_files(ifile))
+
+   if (verbose > 2) then
+      call print_obs_seq_summary(small_sequence)
+   elseif (verbose > 1) then
+      write(string1,*)trim(l1_files(ifile))//' added ',num_inserted,' observations.'
+      call error_handler(E_MSG,string1,'')
+   endif
+
+   call destroy_obs_sequence(small_sequence)
 
 enddo
 
-call error_handler(E_MSG, source, 'Finished successfully.',source,revision,revdate)
+! Report on the current status of the entire observation sequence
+if (verbose > 0) then
+   call print_obs_seq_summary(big_sequence)
+endif
+
+! Write the sequence to a disk file
+if ( get_num_obs(big_sequence) > 0 )  then
+   call write_obs_seq(big_sequence, outputfile) 
+else
+   call error_handler(E_ERR,'NO OBSERVATIONS TO WRITE',source)
+endif
+
+! release the sequence memory
+call destroy_obs_sequence(big_sequence)
+
+call error_handler(E_MSG, source, 'Finished successfully.',source)
 call finalize_utilities()
 
 end program convert_amsu_L1
