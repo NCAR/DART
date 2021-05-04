@@ -22,6 +22,8 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 4 2021 :: fix AMSUA converter bug. Tag: v9.10.2**
+
 **April 29 2021 :: change default GitHub branch. Tag: v9.10.1**
 
 - Replaced the default branch ("Manhattan") with "main".
