@@ -4,9 +4,12 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# loop, calling ./create_fixed_network_seq to create separate
-# files for each time period.  edit the values below to change
-# the dates and intervals.
+# Call ./create_fixed_network_seq to create a separate file for each time period.  
+# Edit the values below to change the dates and intervals.
+# It makes 1 file/day, single time per file.
+# It assumes that create_fixed_network does not need model specific input files.
+# It requires a set_def.out file (usually created by create_obs_sequence).
+
 
 @ month = 8
 @ day   = 1
