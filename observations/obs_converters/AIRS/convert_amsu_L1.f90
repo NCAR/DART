@@ -44,16 +44,16 @@ use amsua_netCDF_support_mod, only : initialize_amsua_netcdf, &
 
 implicit none
 
-! ----------------------------------------------------------------------
-! Declare namelist parameters
-! ----------------------------------------------------------------------
-        
 integer, parameter :: MAXFILES = 512
 integer, parameter :: AMSUA_BT_CHANNEL = 15
 
+! ----------------------------------------------------------------------
+! Declare namelist parameters
+! ----------------------------------------------------------------------
+
 character(len=256) :: l1_files(MAXFILES) = ''
 character(len=256) :: l1_file_list       = ''
-character(len=256) :: outputfile         = ''
+character(len=256) :: outputfile         = 'obs_seq.amsua'
 
 real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lon2 = 360.0_r8,  &   !  upper longitude bound 

@@ -1112,20 +1112,20 @@ integer, intent(in) :: xtrack_thin
 logical, intent(in) :: channels(:)
 integer :: max_possible_obs
 
-integer :: shrinkage, num_channels, ichan
-
-shrinkage    = 1  ! no thinning
+integer :: thin_factor, num_channels, ichan
 
 num_channels = 0
 do ichan = 1, size(channels)
    if (channels(ichan)) num_channels = num_channels + 1
 enddo
 
-if (  scan_thin > 0) shrinkage = shrinkage *   scan_thin 
-if (xtrack_thin > 0) shrinkage = shrinkage * xtrack_thin
+thin_factor    = 1  ! no thinning
+
+if (  scan_thin > 0) thin_factor = thin_factor *   scan_thin 
+if (xtrack_thin > 0) thin_factor = thin_factor * xtrack_thin
 
 max_possible_obs = AMSUA_BT_GEOXTRACK * AMSUA_BT_GEOTRACK * num_channels * &
-                   num_files / shrinkage
+                   num_files / thin_factor
 
 end function max_possible_obs
 

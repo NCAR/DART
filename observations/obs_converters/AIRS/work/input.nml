@@ -47,10 +47,20 @@
 # channel_list       = 'A1-1','A1-13'
 # channel_list       = 50.3,89
 
-&convert_amsu_L1_nml
-   l1_files           = '../data/AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.nc',
+   l1_files           = '../data/AIRS.2019.06.22.230.L1B.AMSU_Rad.v5.0.0.0.G19174110442.nc'
+                        '../data/AIRS.2019.06.22.231.L1B.AMSU_Rad.v5.0.0.0.G19174110415.nc'
+                        '../data/AIRS.2019.06.22.232.L1B.AMSU_Rad.v5.0.0.0.G19174110442.nc'
+                        '../data/AIRS.2019.06.22.233.L1B.AMSU_Rad.v5.0.0.0.G19174110414.nc'
+                        '../data/AIRS.2019.06.22.234.L1B.AMSU_Rad.v5.0.0.0.G19174110442.nc'
+                        '../data/AIRS.2019.06.22.235.L1B.AMSU_Rad.v5.0.0.0.G19174110442.nc'
+                        '../data/AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.nc'
                         '../data/AIRS.2019.06.22.237.L1B.AMSU_Rad.v5.0.0.0.G19174110446.nc'
-   l1_file_list       = ''
+                        '../data/AIRS.2019.06.22.238.L1B.AMSU_Rad.v5.0.0.0.G19174110427.nc'
+                        '../data/AIRS.2019.06.22.239.L1B.AMSU_Rad.v5.0.0.0.G19174110745.nc'
+
+&convert_amsu_L1_nml
+   l1_files           = ''
+   l1_file_list       = 'three_input_files.txt'
    outputfile         = 'obs_seq.amsua'
    append_output      = .false.
    channel_list       = 3,15
