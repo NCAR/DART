@@ -22,7 +22,20 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**May 4 2021 :: fix AMSUA converter bug. Tag: v9.10.2**
+**May 6 2021 :: fix AMSUA converter bug. Tag: v9.10.3**
+
+- AIRS/convert_amsu_L1.f90 correctly handles multiple input files 
+- separated AIRS/README, convert_amsu_L1, and convert_airs_L2 documentation
+
+**May 4 2021 :: issue and pull request templates.  Tag: v9.10.2**
+
+*Github changes*
+
+- Templates for pull requests, bug reports and feature requests
+
+*Documentation updates*
+
+- Removed outdated instructions for checking out a tag
 
 **April 29 2021 :: change default GitHub branch. Tag: v9.10.1**
 

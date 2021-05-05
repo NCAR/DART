@@ -21,8 +21,6 @@ DART is available through GitHub. To download the latest version of DART:
 
 ```
 git clone https://github.com/NCAR/DART.git
-cd DART
-git checkout -b v9.10.0-branch tags/v9.10.0 
 ```
 
 #### Citing DART
