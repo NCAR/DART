@@ -73,13 +73,6 @@ else if ($?PBS_NODEFILE) then
    setenv MP_DEBUG_NOTIMEOUT yes
    setenv          LAUNCHCMD mpiexec_mpt
 
-   echo "jobname        : $JOBNAME"
-   echo "numcpus        : $NUMCPUS"
-   echo "numtasks       : $NUMTASKS"
-   echo "numnodes       : $NUMNODES"
-   echo "tasks_per_node : $NUMTASKS_PERNODE"
-   echo " "
-
 else if ($?LSB_HOSTS) then
 
    # LSF environment variables:
@@ -98,6 +91,15 @@ else if ($?LSB_HOSTS) then
 
 endif
 
+if ($?JOBNAME) then
+   echo "jobname        : $JOBNAME"
+   echo "numcpus        : $NUMCPUS"
+   echo "numtasks       : $NUMTASKS"
+   echo "numnodes       : $NUMNODES"
+   echo "tasks_per_node : $NUMTASKS_PERNODE"
+   echo " "
+endif
+
 # ==============================================================================
 # Block 0: Set command environment
 # ==============================================================================
@@ -110,13 +112,12 @@ echo "`date` -- BEGIN CAM_ASSIMILATE"
 set nonomatch      # suppress "rm" warnings if wildcard does not match anything
 
 setenv CASEROOT $1
+cd ${CASEROOT}
 
 # CESM uses C indexing on loops; cycle = [0,....,$DATA_ASSIMILATION_CYCLES - 1]
 # "Fix" that here, so the rest of the script isn't confusing.
 
 @ cycle = $2 + 1
-
-cd ${CASEROOT}
 
 setenv scomp                     `./xmlquery COMP_ATM      --value`
 setenv CASE                      `./xmlquery CASE          --value`
@@ -125,7 +126,6 @@ setenv CAM_DYCORE                `./xmlquery CAM_DYCORE    --value`
 setenv EXEROOT                   `./xmlquery EXEROOT       --value`
 setenv RUNDIR                    `./xmlquery RUNDIR        --value`
 setenv archive                   `./xmlquery DOUT_S_ROOT   --value`
-setenv TOTALPES                  `./xmlquery TOTALPES      --value`
 setenv CONT_RUN                  `./xmlquery CONTINUE_RUN  --value`
 setenv CHECK_TIMING              `./xmlquery CHECK_TIMING  --value`
 setenv DATA_ASSIMILATION_CYCLES  `./xmlquery DATA_ASSIMILATION_CYCLES --value`
@@ -220,7 +220,8 @@ echo "`date` -- BEGIN COPY BLOCK"
 if (  -e   ${CASEROOT}/input.nml ) then
 
    sed -e "/#/d;/^\!/d;/^[ ]*\!/d" \
-       -e '1,1i\WARNING: Changes to this file will be ignored. \n Edit \$CASEROOT/input.nml instead.\n\n\n' \
+       -e '1i\WARNING: Changes to this file will be ignored.' \
+       -e '1i\         Edit \$CASEROOT/input.nml instead.\n\n\n' \
        ${CASEROOT}/input.nml >! input.nml  || exit 10
 else
    echo "ERROR ... DART required file ${CASEROOT}/input.nml not found ... ERROR"
@@ -872,6 +873,11 @@ while ($l < $#line)
    @ l++
 end
 
+# CAM starts from the initial file name specified in atm_in:ncdata,
+# but writes an initial file at the end which has a CESM convention name.
+# That file needs to be linked to the namelist file name.
+# The first cycle link is made by state_cesm_files.
+# The subsequent links are made here.
 set member = 1
 while ( ${member} <= ${ensemble_size} )
 
@@ -1031,9 +1037,3 @@ echo "`date` -- END CAM_ASSIMILATE"
 wait
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
-

@@ -77,12 +77,12 @@
 
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
-   input_state_files          = "caminput.nc"
+   input_state_files          = "cam_initial.nc"
    init_time_days             = -1
    init_time_seconds          = -1
 
    write_output_state_to_file = .true.
-   output_state_files         = "perfect_restart.nc"
+   output_state_files         = "true_state.nc"
 
    obs_seq_in_file_name       = "obs_seq.in"
    obs_seq_out_file_name      = "obs_seq.out"
