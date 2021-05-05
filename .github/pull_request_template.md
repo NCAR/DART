@@ -25,3 +25,9 @@ Please describe any tests you ran to verify your changes.
 - [ ] Updated changelog entry
 - [ ] Documentation updated
 - [ ] Version tag 
+
+## Testing Datasets
+
+- [ ] Dataset needed for testing available upon request
+- [ ] Dataset download instructions included
+- [ ] No dataset needed
