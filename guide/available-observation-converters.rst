@@ -7,7 +7,7 @@ into the format required by DART.
 
 Each directory has at least one converter:
 
--  ``AIRS``: :doc:`/observations/obs_converters/AIRS/AIRS`
+-  ``AIRS``: :doc:`/observations/obs_converters/AIRS/README`
 -  ``Aviso+/CMEMS``: :doc:`../observations/obs_converters/AVISO/AVISO`
 -  ``Ameriflux``: :doc:`../observations/obs_converters/Ameriflux/level4_to_obs`
 -  ``cice``: :doc:`../observations/obs_converters/cice/cice_to_obs`

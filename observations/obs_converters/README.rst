@@ -357,8 +357,8 @@ observations into the format required by DART.
 The current list of converters (some directories contain multiple
 converters) include:
 
--  `AIRS <AIRS/AIRS.html>`__ `atmospheric variables <AIRS/AIRS.html>`__
-   and `AMSUA radiances <AIRS/README.html>`__
+-  `AIRS <AIRS/README.html>`__ `atmospheric variables <AIRS/convert_airs_L2.html>`__
+   and `AMSUA radiances <AIRS/convert_amsu_L1.html>`__
 -  AURA (uses a combination of IDL and Fortran)
 -  `Aviso+/CMEMS <AVISO/AVISO.html>`__
 -  `Ameriflux <Ameriflux/level4_to_obs.html>`__
