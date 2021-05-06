@@ -205,9 +205,14 @@ CHANNELS: do ichannel = 1,size(channel_list)
          exit CHANNELS
       case default
          write(string1,*)'<'//trim(channel_list(ichannel))//'> is not a valid channel declaration'
-         call error_handler(E_ERR,'channel_list_to_indices','unknown channel input')
+         call error_handler(E_ERR,'channel_list_to_indices','unknown channel input', &
+                    source,text2=trim(channel_list(ichannel)))
     end select
 enddo CHANNELS
+
+if (all(use_channels .eqv. .false.)) then
+   call error_handler(E_ERR,'channel_list_to_indices','no valid input channels',source) 
+endif
 
 ! FIXME ... print a summary of the channels and frequences being used
 
