@@ -746,7 +746,7 @@ observations into the format required by DART.
 
 Each directory has at least one converter:
 
-  - [AIRS](AIRS/AIRS.html) <!-- AURA -->
+  - [AIRS](AIRS/README.html) <!-- AURA -->
   - [Aviso+/CMEMS](AVISO/AVISO.html)
   - [Ameriflux](Ameriflux/level4_to_obs.html) <!-- CHAMP --> <!-- CNOFS -->
   - [COSMOS](COSMOS/COSMOS_to_obs.html)
