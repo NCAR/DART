@@ -1,4 +1,4 @@
-PROGRAM ``convert_airs_L2`` 
+Program ``convert_airs_L2`` 
 ===========================
 
 .. caution:: 
@@ -8,6 +8,7 @@ PROGRAM ``convert_airs_L2``
    `download site <https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads>`__
    for the necessary libraries. An example build script (`AIRS/Build_HDF-EOS.sh`)
    is intended to provide some guidance.
+
 
 Overview
 --------
@@ -73,7 +74,8 @@ each file, one at a time, which is run on the machine where you want the data.
 convert_airs_L2.f90
 -------------------
 
-The ``convert_airs_L2`` converter outputs temperature observations at the 
+The ``convert_airs_L2`` converter is for **temperature and moisture retrievals** from
+the L2 data. The temperature observations are at the 
 corresponding vertical pressure levels. However, the moisture obs are the mean for 
 the layer, so the location in the vertical is the midpoint, in log space, of the 
 current layer and the layer above it. There is an alternative computation for the 

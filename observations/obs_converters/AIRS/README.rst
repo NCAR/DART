@@ -11,9 +11,9 @@ AIRS and AMSU
 
 This directory covers two observation converters:
 
-- :doc:`./convert_airs_L2` 
+- :doc:`./convert_airs_L2` for temperature and moisture retrievals.
 
-- :doc:`./convert_amsu_L1`
+- :doc:`./convert_amsu_L1` for radiances.
 
 Both converters are in the AIRS directory because of the complicated history
 of the data used to create the AIRS L2 product (which includes some AMSU observations).
