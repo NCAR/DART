@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # https://www2.cisl.ucar.edu/software/dart/download
-#
-# DART $Id$
 
 # ==============================================================================
 # Call create_obs_sequence to convert a text file of obs locations and types
@@ -146,9 +144,4 @@ end
 rm create_fixed_input
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

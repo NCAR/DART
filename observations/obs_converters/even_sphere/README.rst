@@ -15,7 +15,7 @@ They takes a number of vertical levels and a total number of points,
 and generate a roughly evenly distributed set of observations
 across the entire globe.  Note that the number of obs
 will be the number of points times the number of vertical levels.  
-``Even_sphere.m`` also takes observation error variances 
+``even_sphere.m`` also takes observation error variances 
 and includes them in the observation templates.
 
 Here there are also scripts (run_fixed_network_*.csh) which use the
@@ -41,10 +41,13 @@ and ``create_fixed_network_seq`` programs:
 
 A. building them in the models/template/work directory 
 B. using the ones which were built in models/your_model/work directory 
-   by quick_build.csh. 
+   by *quickbuild.csh*. 
 
 Choice A uses programs which have no model specific file dependencies,
-but may involve more separate steps than B:
+but may involve more separate steps than B.
+
+A
+~~~~~~
 
 1. Build the programs in template/work
 2. Link (or copy) these files to the directory 
@@ -69,7 +72,9 @@ but may involve more separate steps than B:
    These call create_fixed_network_seq, which creates an ``obs_seq.in`` file
    for each specified date.
 
-\(B)
+B
+~~~~~~
+
 This choice may involve fewer steps, *if*\ there is a model specific script
 which combines the steps in A).  
 See `the cam-fv example <models/cam-fv/shell_scripts/synth_obs_locs_to_seqs.csh>`_.
