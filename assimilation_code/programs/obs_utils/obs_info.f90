@@ -241,7 +241,7 @@ do fnum = 1, num_input_files
                                              "IDENTITY_OBSERVATIONS"//", ", &
                                              identity_obs%count, ", ", trim(mid_string)
       else
-         write(ounit, '(A32,I8)') "IDENTITY_OBSERVATIONS", identity_obs%count
+         write(ounit, '(A32,I8)') "IDENTITY_OBSERVATIONS          ", identity_obs%count
          call print_date(identity_obs%first_time, '.  First obs:', ounit)
          call print_date(identity_obs%last_time,  '.   Last obs:', ounit)
       endif
