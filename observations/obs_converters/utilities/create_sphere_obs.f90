@@ -52,7 +52,7 @@ type(obs_type)          :: obs, prev_obs
 type(obs_def_type)      :: obs_def
 logical                 :: first_obs
 
-! These default levels are standard radiosonde reporting pressures.
+! These default levels are standard radiosonde reporting pressures in hectopascals.
 real(r8), parameter :: default_levels(DEF_LEVELS) = (/ 1000.0_r8, 950.0_r8, 900.0_r8, 850.0_r8, 800.0_r8,  &
                                                         750.0_r8, 700.0_r8, 650.0_r8, 600.0_r8, 550.0_r8,  &
                                                         500.0_r8, 400.0_r8, 300.0_r8, 200.0_r8, 150.0_r8  /)
@@ -177,5 +177,4 @@ call write_obs_seq(seq, 'even_sphere_seq.in')
 call finalize_utilities('create_sphere_obs')
 
 end program create_sphere_obs
-
 
