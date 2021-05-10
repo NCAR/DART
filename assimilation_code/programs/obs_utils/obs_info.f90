@@ -85,11 +85,11 @@ character(len=256)   :: filename_in(MAX_IN_FILES) = ''
 character(len=256)   :: filelist_in = ''
 character(len=32)    :: calendar = 'Gregorian'
 logical              :: filenames_from_terminal = .false.
-logical              :: counts_only = .false.
+logical              :: csv_style_output = .false.
 character(len=256)   :: output_file = ''
 
 
-namelist /obs_info_nml/ filename_in, filelist_in, counts_only, &
+namelist /obs_info_nml/ filename_in, filelist_in, csv_style_output, &
                         calendar, filenames_from_terminal, output_file
 
 !----------------------------------------------------------------
@@ -158,7 +158,7 @@ do fnum = 1, num_input_files
       call error_handler(E_ERR,'obs_info',msgstring)
    endif
    
-   if (.not. counts_only) then
+   if (.not. csv_style_output) then
       write(msgstring,  *) '--------------------------------------------------'
       write(msgstring1, *) 'Starting to process input sequence file: '
       write(msgstring2, *)  trim(filename_in(fnum))
@@ -172,7 +172,7 @@ do fnum = 1, num_input_files
    call validate_obs_seq_time(seq_in, filename_in(fnum))
    
    ! blank line
-   if (.not. counts_only) call error_handler(E_MSG,' ',' ')
+   if (.not. csv_style_output) call error_handler(E_MSG,' ',' ')
    
    ! Initialize individual observation variables
    call init_obs(     obs_in,  num_copies_in, num_qc_in)
@@ -213,7 +213,7 @@ do fnum = 1, num_input_files
       call error_handler(E_MSG,'obs_info', msgstring)
    endif
    
-   if (.not. counts_only) then
+   if (.not. csv_style_output) then
       write(ounit, *) 'Totals for all obs types:'
       write(ounit, *) '  Count: ', all_obs%count
       call print_date(all_obs%first_time, '.  First obs:', ounit)
@@ -223,7 +223,7 @@ do fnum = 1, num_input_files
    ! print out the results
    ALLTYPES: do i=1, max_defined_types_of_obs
       if (oinfo(i)%count == 0) cycle ALLTYPES
-      if (counts_only) then
+      if (csv_style_output) then
          call compute_times(oinfo(i)%first_time, oinfo(i)%last_time, avg_string=mid_string)
          write(ounit, '(A,I8,A,A36,I8,2A)') "'"//trim(filename_in(fnum))//"', ", &
                                              i, ", ", &
@@ -236,7 +236,7 @@ do fnum = 1, num_input_files
       endif
    enddo ALLTYPES
    if (identity_obs%count > 0) then
-      if (counts_only) then
+      if (csv_style_output) then
          call compute_times(identity_obs%first_time, identity_obs%last_time, avg_string=mid_string)
          write(ounit, '(A,I8,A,A36,I8,2A)') "'"//trim(filename_in(fnum))//"', ", &
                                              -1, ", ", &
@@ -254,7 +254,7 @@ do fnum = 1, num_input_files
    call destroy_obs(next_obs_in )
    
    ! blank line only if not doing the CSV output
-   if (.not. counts_only) call error_handler(E_MSG,' ',' ')
+   if (.not. csv_style_output) call error_handler(E_MSG,' ',' ')
 
 enddo
 
