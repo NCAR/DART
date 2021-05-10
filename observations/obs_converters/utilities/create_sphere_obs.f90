@@ -39,7 +39,7 @@ use       obs_err_mod, only : rawin_temp_error, rawin_wind_error
 
 
 integer  :: iunit, io, ntypes
-real(r8) :: x, y, z, lat, lon, inc, off, r, phi, deglon, deglat
+real(r8) :: x, y, z, lat, lon, inc, off, r, phi, deglon, deglat, t_err, w_err
 integer  :: num_obs, ob, lvl, nlvls
 
 integer, parameter :: MAX_LEVELS = 40
@@ -154,16 +154,19 @@ do ob = 1, number_of_locations
 
       call set_obs_def_location(obs_def, set_location(deglon, deglat, obs_levels(lvl)*100.0_r8, VERTISPRESSURE))
    
-      call set_obs_def_error_variance(obs_def, rawin_temp_error(obs_levels(lvl)))
+      t_err = rawin_temp_error(obs_levels(lvl))
+      call set_obs_def_error_variance(obs_def, t_err)
       call set_obs_def_type_of_obs(obs_def, RADIOSONDE_TEMPERATURE)
       call set_obs_def(obs, obs_def)  
       call add_obs_to_seq(seq, obs, time_obs, prev_obs, prev_time, first_obs)
    
-      call set_obs_def_error_variance(obs_def, rawin_wind_error(obs_levels(lvl)))
+      w_err = rawin_wind_error(obs_levels(lvl))
+      call set_obs_def_error_variance(obs_def, w_err)
       call set_obs_def_type_of_obs(obs_def, RADIOSONDE_U_WIND_COMPONENT)
       call set_obs_def(obs, obs_def) 
       call add_obs_to_seq(seq, obs, time_obs, prev_obs, prev_time, first_obs)
    
+      call set_obs_def_error_variance(obs_def, w_err)
       call set_obs_def_type_of_obs(obs_def, RADIOSONDE_V_WIND_COMPONENT)
       call set_obs_def(obs, obs_def) 
       call add_obs_to_seq(seq, obs, time_obs, prev_obs, prev_time, first_obs)
