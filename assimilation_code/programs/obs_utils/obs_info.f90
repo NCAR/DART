@@ -4,6 +4,7 @@
 
 !> print out information about observation sequence file(s).
 !> summarizes obs types, times, counts.
+!>@todo FIXME This routine should use print_obs_seq_summary. 
 
 program obs_info
 
@@ -74,7 +75,6 @@ type(obs_info_type) :: all_obs
 
 type(location_type) :: location
 integer :: obs_type_ind
-character(len=256) :: string
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -158,10 +158,11 @@ do fnum = 1, num_input_files
       call error_handler(E_ERR,'obs_info',msgstring)
    endif
    
-   write(msgstring, *) 'Starting to process input sequence file: '
-   write(msgstring1,*)  trim(filename_in(fnum))
+   write(msgstring,  *) '--------------------------------------------------'
+   write(msgstring1, *) 'Starting to process input sequence file: '
+   write(msgstring2, *)  trim(filename_in(fnum))
    call error_handler(E_MSG,'obs_info',msgstring, &
-                      text2=msgstring1)
+                      text2=msgstring1, text3=msgstring2)
    
    call read_obs_seq(filename_in(fnum), 0, 0, 0, seq_in)
    
@@ -215,7 +216,6 @@ do fnum = 1, num_input_files
       write(ounit, *) '  Count: ', all_obs%count
       call print_date(all_obs%first_time, '.  First obs:', ounit)
       call print_date(all_obs%last_time,  '.   Last obs:', ounit)
-      write(ounit, *) '---------------------------------------------------------'
    endif
    
    ! print out the results
@@ -251,6 +251,9 @@ do fnum = 1, num_input_files
    call destroy_obs(     obs_in )
    call destroy_obs(next_obs_in )
    
+   ! blank line
+   call error_handler(E_MSG,' ',' ')
+
 enddo
 
 call shutdown()
@@ -319,124 +322,6 @@ else
 endif
 
 end subroutine update
-
-!---------------------------------------------------------------------
-subroutine print_obs_seq(seq_in, filename)
-
-! you can get more info by running the obs_diag program, but this
-! prints out a quick table of obs types and counts, overall start and
-! stop times, and metadata strings and counts.
-
-type(obs_sequence_type), intent(in) :: seq_in
-character(len=*),        intent(in) :: filename
-
-type(obs_type)          :: obs, next_obs
-type(obs_def_type)      :: this_obs_def
-logical                 :: is_there_one, is_this_last
-integer                 :: size_seq_in
-integer                 :: i
-integer                 :: this_obs_type
-integer                 :: type_count(max_defined_types_of_obs), identity_count
-
-
-! Initialize input obs_types
-do i = 1, max_defined_types_of_obs
-   type_count(i) = 0
-enddo
-identity_count = 0
-
-! make sure there are obs left to process before going on.
-! num_obs should be ok since we just constructed this seq so it should
-! have no unlinked obs.  if it might for some reason, use this instead:
-! size_seq_in = get_num_key_range(seq_in)     !current size of seq_in
-
-size_seq_in = get_num_obs(seq_in)
-if (size_seq_in == 0) then
-   msgstring = 'Obs_seq file '//trim(filename)//' is empty.'
-   call error_handler(E_MSG,'obs_info',msgstring)
-   return
-endif
-
-! Initialize individual observation variables 
-call init_obs(     obs, get_num_copies(seq_in), get_num_qc(seq_in))
-call init_obs(next_obs, get_num_copies(seq_in), get_num_qc(seq_in))
-
-! blank line
-call error_handler(E_MSG,'',' ')
-
-write(msgstring,*) 'Processing sequence file ', trim(filename)
-call error_handler(E_MSG,'',msgstring)
-
-call print_metadata(seq_in, filename)
-
-!-------------------------------------------------------------
-! Start to process obs from seq_in
-!--------------------------------------------------------------
-is_there_one = get_first_obs(seq_in, obs)
-
-if ( .not. is_there_one )  then
-   write(msgstring,*)'no first observation in ',trim(filename)
-   call error_handler(E_MSG,'obs_info', msgstring)
-endif
-
-! process it here
-is_this_last = .false.
-
-call get_obs_def(obs, this_obs_def)
-call print_time(get_obs_def_time(this_obs_def), ' First timestamp: ')
-! does not work with NO_CALENDAR
-if (cal) call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
-
-ObsLoop : do while ( .not. is_this_last)
-
-   call get_obs_def(obs, this_obs_def)
-   this_obs_type = get_obs_def_type_of_obs(this_obs_def)
-   if (this_obs_type < 0) then
-      identity_count = identity_count + 1
-   else
-      type_count(this_obs_type) = type_count(this_obs_type) + 1
-   endif
-!   print *, 'obs type index = ', this_obs_type
-!   if(this_obs_type > 0)print *, 'obs name = ', get_name_for_type_of_obs(this_obs_type)
-
-   call get_next_obs(seq_in, obs, next_obs, is_this_last)
-   if (.not. is_this_last) then 
-      obs = next_obs
-   else
-      call print_time(get_obs_def_time(this_obs_def), '  Last timestamp: ')
-      if (cal) call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
-   endif
-
-enddo ObsLoop
-
-
-write(msgstring, *) 'Number of obs processed  :          ', size_seq_in
-call error_handler(E_MSG, '', msgstring)
-write(msgstring, *) '---------------------------------------------------------'
-call error_handler(E_MSG, '', msgstring)
-do i = 1, max_defined_types_of_obs
-   if (type_count(i) > 0) then 
-      write(msgstring, '(a32,i8,a)') trim(get_name_for_type_of_obs(i)), &
-                                     type_count(i), ' obs'
-      call error_handler(E_MSG, '', msgstring)
-   endif
-enddo
-if (identity_count > 0) then 
-   write(msgstring, '(a32,i8,a)') 'Identity observations', &
-                                  identity_count, ' obs'
-   call error_handler(E_MSG, '', msgstring)
-endif
-
-! another blank line
-call error_handler(E_MSG, '', ' ')
-
-! Time to clean up
-
-call destroy_obs(     obs)
-call destroy_obs(next_obs)
-
-end subroutine print_obs_seq
-
 
 !---------------------------------------------------------------------
 subroutine validate_obs_seq_time(seq, filename)
@@ -541,46 +426,6 @@ if (obs_count /= size_seq) then
 endif
 
 end subroutine validate_obs_seq_time
-
-
-!---------------------------------------------------------------------
-subroutine print_metadata(seq, fname)
-
-!
-! print out the metadata strings, trimmed
-!
-
-type(obs_sequence_type),    intent(in) :: seq
-character(len=*), optional, intent(in) :: fname
-
-integer :: num_copies , num_qc, i
-character(len=metadatalength) :: str
-
-num_copies = get_num_copies(seq)
-num_qc     = get_num_qc(    seq)
-
-if ( num_copies < 0 .or. num_qc < 0 ) then
-   write(msgstring3,*)' illegal copy or obs count in file '//trim(fname)
-   call error_handler(E_ERR, 'obs_info', msgstring3, source)
-endif
-
-MetaDataLoop : do i=1, num_copies
-   str = get_copy_meta_data(seq,i)
-
-   write(msgstring,*)'Data Metadata: ',trim(str)
-   call error_handler(E_MSG, '', msgstring)
-
-enddo MetaDataLoop
-
-QCMetaData : do i=1, num_qc
-   str = get_qc_meta_data(seq,i)
-
-   write(msgstring,*)'  QC Metadata: ', trim(str)
-   call error_handler(E_MSG, '', msgstring)
-
-enddo QCMetaData
-
-end subroutine print_metadata
 
 
 !---------------------------------------------------------------------
