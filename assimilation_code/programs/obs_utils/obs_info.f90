@@ -158,11 +158,13 @@ do fnum = 1, num_input_files
       call error_handler(E_ERR,'obs_info',msgstring)
    endif
    
-   write(msgstring,  *) '--------------------------------------------------'
-   write(msgstring1, *) 'Starting to process input sequence file: '
-   write(msgstring2, *)  trim(filename_in(fnum))
-   call error_handler(E_MSG,'obs_info',msgstring, &
-                      text2=msgstring1, text3=msgstring2)
+   if (.not. counts_only) then
+      write(msgstring,  *) '--------------------------------------------------'
+      write(msgstring1, *) 'Starting to process input sequence file: '
+      write(msgstring2, *)  trim(filename_in(fnum))
+      call error_handler(E_MSG,'obs_info',msgstring, &
+                         text2=msgstring1, text3=msgstring2)
+   endif
    
    call read_obs_seq(filename_in(fnum), 0, 0, 0, seq_in)
    
@@ -170,7 +172,7 @@ do fnum = 1, num_input_files
    call validate_obs_seq_time(seq_in, filename_in(fnum))
    
    ! blank line
-   call error_handler(E_MSG,' ',' ')
+   if (.not. counts_only) call error_handler(E_MSG,' ',' ')
    
    ! Initialize individual observation variables
    call init_obs(     obs_in,  num_copies_in, num_qc_in)
@@ -251,8 +253,8 @@ do fnum = 1, num_input_files
    call destroy_obs(     obs_in )
    call destroy_obs(next_obs_in )
    
-   ! blank line
-   call error_handler(E_MSG,' ',' ')
+   ! blank line only if not doing the CSV output
+   if (.not. counts_only) call error_handler(E_MSG,' ',' ')
 
 enddo
 
