@@ -1,18 +1,27 @@
-AIRS
-=====
+AIRS and AMSU
+=============
 
 .. caution:: 
 
    Before you begin: Installing the libraries needed to read these files can be
    fairly troublesome. The NASA Earthdata Data Access Services website is the
    `download site <https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads>`__
-   for the necessary libraries.
+   for the necessary libraries. An example build script (`AIRS/Build_HDF-EOS.sh`)
+   is intended to provide some guidance.
 
+This directory covers two observation converters:
 
-Atmospheric Infrared Sounder (AIRS)
---------------------------------------
+- :doc:`./convert_airs_L2` for temperature and moisture retrievals.
 
-Please read the `AIRS <AIRS.html>`__ document.
+- :doc:`./convert_amsu_L1` for radiances.
+
+Both converters are in the AIRS directory because of the complicated history
+of the data used to create the AIRS L2 product (which includes some AMSU observations).
+Since both datasets are HDF - it was believed that some of the routines could be
+used by both converters. Alas, that has not proven to be the case.
+
+Atmospheric Infrared Sounder (AIRS) Level 2 observations 
+--------------------------------------------------------
 
 The `AIRS <http://airs.jpl.nasa.gov/>`__ instrument is an Atmospheric
 Infrared Sounder flying on the `Aqua <http://aqua.nasa.gov>`__
@@ -26,52 +35,13 @@ moisture profiles, land and ocean surface temperatures, surface
 emissivity, cloud fraction, cloud top height, and ozone burden in the
 atmosphere.
 
-AIRS DATA SOURCES
------------------
 
-Access to the web pages where the AIRS data are stored is available by
-`registering <https://airs.jpl.nasa.gov/data/registration>`__ as a data
-user.
+Advanced Microwave Sounding Unit (AMSU-A) L1B Brightness Temperatures 
+---------------------------------------------------------------------
 
-There are two products this converter can be used on: AIRX2RET, which is
-the L2 standard retrieval product using AIRS IR and AMSU (without-HSB);
-and AIRS2RET, which is the L2 standard retrieval product using AIRS
-IR-only.
-
-More detailed information on the `AIRS2RET data
-product <http://disc.sci.gsfc.nasa.gov/AIRS/data-holdings/by-data-product-v5/airsL2_Std_AIRS_only.shtml>`__
-and the `AIRX2RET data
-product <http://disc.sci.gsfc.nasa.gov/AIRS/data-holdings/by-data-product/airsL2_Std.shtml>`__
-is available from the nasa web pages.
-
-The data is distributed in `HDF-4 <http://www.hdfgroup.org>`__ format,
-using some additional conventions for metadata called
-`HDF-EOS <http://hdfeos.org/software.php>`__. There is a basic library
-for accessing data in hdf files, and a variety of `generic
-tools <http://www.hdfgroup.org/products/index.html>`__ that work with
-hdf files. The specific library we use is the
-`HDF-EOS2 <http://hdfeos.org/software/library.php#HDF-EOS2>`__ The web
-page has a link to specific build instructions. Also, see
-`Build <#build>`__ on this page for very specific instructions for
-getting the required software and building it. If you find more recent
-instructions online, use those. But in the absence of anything else,
-it’s someplace to start.
-
-Besides the programs in this directory, a variety of `specific
-tools <http://disc.sci.gsfc.nasa.gov/AIRS/tools.shtml>`__ targeted at
-AIRS data are available to help read and browse the data. General
-information on using hdf in the earth sciences is available
-`here <http://eosweb.larc.nasa.gov/HBDOCS/hdf.html>`__.
-
-Specific information on the AIRS support in DART is further explained in
-``AIRS.html``.
-
-L1B AMSU-A Brightness Temperatures
------------------------------------
-
-This directory contains the code to convert the L1B AMSU-A Brightness
-Temperatures in HDF-EOS2 format to the DART observation sequence file
-format.
+The *DART/observations/obs_converters/AIRS* directory contains the code 
+to convert the L1B AMSU-A Brightness Temperatures in HDF-EOS2 format to 
+the DART observation sequence file format.
 
 There is a little bit of confusing history to be aware of for AMSU/A:
 
@@ -81,96 +51,20 @@ AMSU/A was flown on NOAA 15-17. It is also on the Aqua satellite (that
 also houses AIRS) as well as the European MetOp. It has been replaced by
 ATMS on NOAA-20.
 
-As you can imagine, you need to download each satellite’s data in a
-different way. Also, just for your information, AMSU/B has been replaced
-on newer satellites by MHS and HSB, but especially MHS is almost
-identical.
+Dependencies
+------------
 
-Be aware that if the RTTOV namelist option ``use_zeeman = .true.``
-certain metadata must be available in the observation. This is not fully
-implemented in the AMSU-A observation converter. For more information,
-please see GitHub Issue 99 “`AIRS AMSUA observation converter … Zeeman
-coefficients and channels <https://github.com/NCAR/DART/issues/99>`__”
-
-Instructions to download the AIRABRAD dataset
----------------------------------------------
-
-The datset of interest is: “AIRS/Aqua L1B AMSU (A1/A2) geolocated and
-calibrated brightness temperatures V005 (AIRABRAD) at GES DISC” The
-*short name* for this dataset is ‘AIRABRAD’
-
-The introductory paragraph for the dataset is:
-
-   Version 5 is the current version of the data set.tmospheric Infrared
-   Sounder (AIRS) is a grating spectrometer (R = 1200) aboard the second
-   Earth Observing System (EOS) polar-orbiting platform, EOS Aqua. In
-   combination with the Advanced Microwave Sounding Unit (AMSU) and the
-   Humidity Sounder for Brazil (HSB), AIRS constitutes an innovative
-   atmospheric sounding group of visible, infrared, and microwave
-   sensors. The AMSU-A instrument is co-aligned with AIRS so that
-   successive blocks of 3 x 3 AIRS footprints are contained within one
-   AMSU-A footprint. AMSU-A is primarily a temperature sounder that
-   provides atmospheric information in the presence of clouds, which can
-   be used to correct the AIRS infrared measurements for the effects of
-   clouds. This is possible because non-precipitating clouds are for the
-   most part transparent to microwave radiation, in contrast to visible
-   and infrared radiation which are strongly scattered and absorbed by
-   clouds. AMSU-A1 has 13 channels from 50 - 90 GHz and AMSU-A2 has 2
-   channels from 23 - 32 GHz. The AIRABRAD_005 products are stored in
-   files (often referred to as “granules”) that contain 6 minutes of
-   data, 30 footprints across track by 45 lines along track.
-
-The citation information for this dataset is:
-
-   Title: AIRS/Aqua L1B AMSU (A1/A2) geolocated and calibrated
-   brightness temperatures V005 Version: 005 Creator: AIRS project
-   Publisher: Goddard Earth Sciences Data and Information Services
-   Center (GES DISC) Release Date: 2007-07-26T00:00:00.000Z Linkage:
-   https://disc.gsfc.nasa.gov/datacollection/AIRABRAD_005.html
-
-`README.AIRABRAD.pdf <https://docserver.gesdisc.eosdis.nasa.gov/repository/Mission/AIRS/3.3_ScienceDataProductDocumentation/3.3.4_ProductGenerationAlgorithms/README.AIRABRAD.pdf>`__
-
-.. _instructions-to-download-the-airabrad-dataset-1:
-
-Instructions to download the AIRABRAD dataset
----------------------------------------------
-
-1. Go to https://earthdata.nasa.gov
-2. Log in (or create an account if necessary)
-3. Search for AIRABRAD
-4. Scroll down past datasets to “Matching results.”
-
--  Follow the link to “AIRS/Aqua L1B AMSU (A1/A2) geolocated and
-   calibrated brightness temperatures V005 (AIRABRAD) at GES DISC”
-
-4. You should now be at
-   ‘https://cmr.earthdata.nasa.gov/search/concepts/C1243477366-GES_DISC.html’
-   (unless they’ve changed the site).
-
--  Select the ‘Download data’ tab
--  Select ‘Earthdata search’
--  Select the AIRS link under ‘Matching datasets’ (I have not tested the
-   NRT products)
-
-5. You can now select ‘Granule filters’ to choose your start and end
-   dates.
-6. Select the granules you want, then click ‘download all’ and ‘download
-   data’
-7. Click download access script
-8. Follow the instructions on that page to download the data.
-
-| Each granule is about 560K and has names like:
-| ``AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf``
-
-Build
-^^^^^^
-
-Because the data are distributed in HDF-EOS format, and the RTTOV
-libraries require HDF5 (incompatible with HDF-EOS) a two-step conversion
-is necessary. The data must be converted from HDF to netCDF (which can
-be done without HDF5) and then the netCDF files can be converted to DART
-radiance observation format - which is the part that requires
-``obs_def_rttov_mod.f90``, which is the part that requires HDF5.
+Both *convert_airs_L2* and *convert_amsu_L1* require the HDF-EOS libraries.
+*convert_amsu_L1* also requires HDF5 support because of
+the RTTOV libraries. HDF5 is incompatible with HDF-EOS, so a two-step 
+conversion is necessary for the AMSU observations. 
+The data must be converted from HDF to netCDF 
+(which can be done without HDF5) and then the netCDF files can be 
+converted to DART radiance observation format - which requires
+``obs_def_rttov_mod.f90``, which depends on HDF5.  To simplify things,
+An example build script (*DART/observations/obs_converters/AIRS/Build_HDF-EOS.sh*)
+is supplied and may provide some guidance on downloading and building
+the libraries required by NASA.
 
 The NASA Earthdata Data Access Services website is the `download
 site <https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads>`__,
@@ -194,8 +88,8 @@ Similarly for HDF-EOS5 Release v5.1.16:
 -  hdf5-1.8.19.tar.gz
 -  szip-2.1.1.tar.gz
 
-DART provides a script ``BUILD_HDF-EOS.sh`` that may help provide
-support for these libraries. You *will* have to modify it for your
+*BUILD_HDF-EOS.sh* may help you build these libraries. 
+You *will* have to modify it for your
 system, and you *probably will* have to iterate on that process. The
 script takes the stance that if you have to build HDF4, HDF-EOS, HDF5 …
 you might as well build HDF-EOS5 too. The HDF-EOS5 is entirely optional.
@@ -241,24 +135,3 @@ familiar with them. DART also has a build script:
 ``AIRS/shell_scripts/Build_HDF_to_netCDF.csh`` that you can customize
 after you read the ``INSTALL`` document.
 
-Actually converting to netCDF
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-While the converter creates very nice netCDF files, there are two global
-attributes that are exceedingly large and uninformative. Should you want
-to remove them, I suggest using the ``ncatted`` command from
-`NCO <http://nco.sourceforge.net/nco.html>`__.
-
-::
-
-   h4tonccf_nc4 AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf bob.nc
-   ncatted -a coremetadata,global,d,,, -a StructMetadata_0,global,d,,, bob.nc bill.nc
-
-The DART ``L1_AMSUA_to_netcdf.f90`` program
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Before I became aware of ``h4tonccf_nc4``, I was in the process of
-writing my own converter ``L1_AMSUA_to_netcdf.f90``. *It is not
-finished.* Furthermore, at this stage, I don’t know which variables are
-needed to be a viable DART observation sequence file, and I don’t see
-the point in converting EVERYTHING.

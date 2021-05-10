@@ -72,6 +72,8 @@ is as follows:
 +======================================================================================================+===================+===================================+
 | `Atmospheric Infrared Sounder <https://airs.jpl.nasa.gov/>`__ satellite retrievals                   | AIRS              | HDF-EOS                           |
 +------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
+| `Advanced Microwave Sounding Unit <https://aqua.nasa.gov/content/amsu>`__ brightness temperatures    | AIRS              | netCDF                            |
++------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
 | `Aviso <https://www.aviso.altimetry.fr/en/home.html>`__: satellite derived sea surface height        | Aviso             | netCDF                            |
 +------------------------------------------------------------------------------------------------------+-------------------+-----------------------------------+
 | Level 4 Flux Tower data from `AmeriFlux <http://ameriflux.lbl.gov/>`__                               | Ameriflux         | Comma-separated text              |
