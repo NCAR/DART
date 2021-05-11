@@ -4,6 +4,15 @@
 
 !> print out information about observation sequence file(s).
 !> summarizes obs types, times, counts.
+!>
+!> If 'csv_style_output = .true.' and 'output_file="summary.csv"', 
+!> the resulting comma-separated-values file
+!> can be trivially read into matlab with:
+!>
+!> X = readtable('summary.csv')
+!>
+!> The first line of the output file describes the columns.
+!>
 !>@todo FIXME This routine should use print_obs_seq_summary. 
 
 program obs_info
@@ -128,8 +137,12 @@ if (output_file /= '') then
    ounit = open_file(output_file, action='write')
    write(msgstring, *) 'Output counts will be written to text file: '
    write(msgstring1,*)  trim(output_file)
-   call error_handler(E_MSG,'obs_info',msgstring, &
-                      text2=msgstring1)
+   call error_handler(E_MSG,'obs_info',msgstring, text2=msgstring1)
+
+   if (csv_style_output) then
+      ! The first row of the csv file describes the columns.
+      write(ounit,'(''Filename, ObsTypeInteger, ObsType, Count, AverageTime'')')
+   endif
 else
    ounit = 0
 endif
@@ -225,10 +238,9 @@ do fnum = 1, num_input_files
       if (oinfo(i)%count == 0) cycle ALLTYPES
       if (csv_style_output) then
          call compute_times(oinfo(i)%first_time, oinfo(i)%last_time, avg_string=mid_string)
-         write(ounit, '(A,I8,A,A36,I8,2A)') "'"//trim(filename_in(fnum))//"', ", &
-                                             i, ", ", &
-                                             trim(get_name_for_type_of_obs(i))//", ", &
-                                             oinfo(i)%count, ", ", trim(mid_string)
+         write(ounit, '(A,'','',I8,'','',A36,'','',I8,'','',A)') &
+               trim(filename_in(fnum)), i, trim(get_name_for_type_of_obs(i)), &
+               oinfo(i)%count, trim(mid_string)
       else
          write(ounit, '(A32,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
          call print_date(oinfo(i)%first_time, '.  First obs:', ounit)
@@ -238,10 +250,9 @@ do fnum = 1, num_input_files
    if (identity_obs%count > 0) then
       if (csv_style_output) then
          call compute_times(identity_obs%first_time, identity_obs%last_time, avg_string=mid_string)
-         write(ounit, '(A,I8,A,A36,I8,2A)') "'"//trim(filename_in(fnum))//"', ", &
-                                             -1, ", ", &
-                                             "IDENTITY_OBSERVATIONS"//", ", &
-                                             identity_obs%count, ", ", trim(mid_string)
+         write(ounit, '(A,'','',I8,'','',A36,'','',I8,'','',A)') &
+               trim(filename_in(fnum)), -1, 'IDENTITY_OBSERVATIONS', &
+               identity_obs%count, trim(mid_string)
       else
          write(ounit, '(A32,I8)') "IDENTITY_OBSERVATIONS          ", identity_obs%count
          call print_date(identity_obs%first_time, '.  First obs:', ounit)
