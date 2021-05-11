@@ -152,8 +152,10 @@ do ob = 1, number_of_locations
 
    do lvl = 1, nlvls
 
+      ! in dart vertical locations using pressure are specified in units of pascals
       call set_obs_def_location(obs_def, set_location(deglon, deglat, obs_levels(lvl)*100.0_r8, VERTISPRESSURE))
    
+      ! the standard obs error routines take vertical locations in hectopascals/mb
       t_err = rawin_temp_error(obs_levels(lvl))
       call set_obs_def_error_variance(obs_def, t_err*t_err)
       call set_obs_def_type_of_obs(obs_def, RADIOSONDE_TEMPERATURE)
