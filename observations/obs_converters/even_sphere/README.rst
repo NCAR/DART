@@ -132,7 +132,7 @@ Levels
 ------
  
 The *mandatory pressure levels* defined in the
-`AMS glossary <https://amsglossary.ametsoc.org/wiki/Mandatory_level>`_ and their corresponding error variances are
+`AMS glossary <https://glossary.ametsoc.org/wiki/Mandatory_level>`_ and their corresponding error variances are
 
 .. code::
 
@@ -149,6 +149,19 @@ The default pressure levels and corresponding observation error variances are:
    levels      = [1000  925  850  700  500  400  300   250  200  150  100   70   50   40];
    T_error_var = [1.44 1.00 0.64 0.64 0.64 0.64 0.81  1.44 1.44 1.00 0.64 0.64 0.81 1.00];
    W_error_var = [1.96 2.25 2.25 2.56 4.41 6.76 9.00 10.24 7.29 5.76 4.41 4.41 4.41 4.41];
+
+The following levels may be useful since we rarely assimilate observations above 150 hPa
+and there are extra levels near the surface because any topography will interfere
+with the 1000 hPa level. These extra levels are **not** _mandatory_ levels.
+
+.. code::
+
+   levels      = [1000  950  900  850  800  750  700  650  600  550  500  400  300  200  150];
+   T_error_var = [1.44 1.21 0.81 0.64 0.64 0.64 0.64 0.64 0.64 0.64 0.64 0.64 0.81 1.44 1.00];
+   W_error_var = [1.96 2.25 2.25 2.25 2.56 2.56 2.56 3.24 3.61 4.00 4.41 6.76 9.00 7.29 5.76];
+   % OR - to replicate what the (deprecated) even_sphere_dense.m  did:
+   T_error_var = [1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00];
+   W_error_var = [4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00];
 
 .. attention::
 
