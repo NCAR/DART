@@ -2,63 +2,87 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
-! create synthetic observations evenly spaced on a sphere.
-! this program creates observations without data - they have
-! a location, type, error variance, a time. run the output file
-! through create_fixed_network_seq if you want a time series of
-! all these obs. run the output through perfect_model_obs to add data. 
+! Create synthetic observations evenly spaced on a sphere.
+!
+! This program creates observations without data.  They have
+! a location, type, error variance, and a time. Run the output file
+! through create_fixed_network_seq if you want to create a time series 
+! of these obs. Run the output through perfect_model_obs to add data. 
 ! 
-! alter as you wish to change obs types, density, etc.
+! Alter as you wish to change obs types, number of types at each loc, etc.
+! If you change the obs types either set the obs error explicitly
+! or change the call to the obs_error module to match the correct obs type.
+!
+! There is a related matlab script in the obs_converters/even_sphere directory
+! which uses the same algorithm to distribute N points around a sphere.  It has
+! additional plotting functions which may be useful.
+
 
 program create_sphere_obs
 
-use         types_mod, only : r8, missing_r8, pi, rad2deg
+use         types_mod, only : r8, pi, rad2deg
 use      location_mod, only : VERTISPRESSURE, set_location
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               find_namelist_in_file, check_namelist_read,         &
                               do_nml_file, do_nml_term, logfileunit, nmlfileunit
-use  time_manager_mod, only : time_type, set_calendar_type, set_date, GREGORIAN, &
-                              get_time
-use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
-                              static_init_obs_sequence, init_obs, write_obs_seq, &
-                              init_obs_sequence, get_num_obs, set_obs_def, &
-                              set_copy_meta_data, set_qc_meta_data
+use  time_manager_mod, only : time_type, set_calendar_type, set_date, GREGORIAN
+use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, write_obs_seq, &
+                              init_obs_sequence, set_obs_def
 use      obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, RADIOSONDE_V_WIND_COMPONENT, &
                               RADIOSONDE_TEMPERATURE
-use      obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
-                             set_obs_def_error_variance, set_obs_def_location, &
-                             get_obs_def_time, get_obs_def_location,           &
-                             get_obs_def_type_of_obs, get_obs_def_error_variance,         &
-                             set_obs_def_key
+use       obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
+                              set_obs_def_error_variance, set_obs_def_location
 use obs_utilities_mod, only : add_obs_to_seq
+use       obs_err_mod, only : rawin_temp_error, rawin_wind_error
 
 
 
-! Input is in hectopascals, obs are in pascals
-real(r8) :: obs_levels(15) = (/ 1000., 950., 900., 850., 800., 750., 700., 650., &
-                                 600., 550., 500., 400., 300., 200., 150. /)
+integer  :: iunit, io, ntypes
+real(r8) :: x, y, z, lat, lon, inc, off, r, phi, deglon, deglat, t_err, w_err
+integer  :: num_obs, ob, lvl, nlvls
 
-! Date information 
-integer :: year = 2008
-integer :: month = 10
-integer :: day = 1
-integer :: hour = 0
-
-! Number of roughly evenly distributed points in horizontal
-integer :: number_of_locations, iunit, io
-real(r8) :: x, y, z, lat, lon, inc, off, r, phi, dlon, dlat
-integer :: num_obs, ob, lvl, nlvls
+integer, parameter :: MAX_LEVELS = 40
+integer, parameter :: DEF_LEVELS = 15
 
 type(time_type) :: time_obs, prev_time
 
 type(obs_sequence_type) :: seq
 type(obs_type)          :: obs, prev_obs
 type(obs_def_type)      :: obs_def
-logical :: first_obs
+logical                 :: first_obs
 
-namelist /create_sphere_obs_nml/ number_of_locations
+! These default levels are standard radiosonde reporting pressures in hectopascals.
+real(r8), parameter :: default_levels(DEF_LEVELS) = (/ 1000.0_r8, 950.0_r8, 900.0_r8, 850.0_r8, 800.0_r8,  &
+                                                        750.0_r8, 700.0_r8, 650.0_r8, 600.0_r8, 550.0_r8,  &
+                                                        500.0_r8, 400.0_r8, 300.0_r8, 200.0_r8, 150.0_r8  /)
+
+! namelist variables
+
+! Number of roughly evenly distributed points in horizontal.
+! Final number of obs will be N * L times this, where N is the
+! number of different obs types at each location and L is the
+! number of pressure levels specified.
+
+integer :: number_of_locations
+
+! The level array here is specified in hectopascals (mb).  
+! Observations are created and stored in pascals.  
+! If this item is not altered by the namelist the default levels are used.
+
+real(r8) :: obs_levels(MAX_LEVELS) =  -1.0_r8
+
+! Date of obs
+integer :: year  = 2008
+integer :: month = 10
+integer :: day   = 1
+integer :: hour  = 0
+
+
+namelist /create_sphere_obs_nml/ number_of_locations, &
+                                 obs_levels, &
+                                 year, month, day, hour
+
 
 
 ! start of executable code
@@ -72,13 +96,26 @@ call check_namelist_read(iunit, io, "create_sphere_obs_nml")
 if (do_nml_file()) write(nmlfileunit, nml=create_sphere_obs_nml)
 if (do_nml_term()) write(     *     , nml=create_sphere_obs_nml)
 
-nlvls = size(obs_levels)
+! if the user doesn't set any levels, use the defaults.
+! otherwise, stop at the first -1 value or end of the array.
 
-! Total number of observations at single time is levels*n*3
-num_obs = nlvls * number_of_locations * 3
+if (all(obs_levels <= 0.0_r8)) then
+   obs_levels(1:DEF_LEVELS) = default_levels
+   nlvls = DEF_LEVELS
+else
+   nlvls = findloc(obs_levels, -1.0_r8, 1) - 1
+   if (nlvls <= 0) nlvls = size(obs_levels)
+endif
 
-! create a new (empty) sequence
-! we define only the location, type, time, and error here.
+! update this if you change the code to have more or fewer 
+! obs types created at each location.
+ntypes = 3   
+
+! Total number of observations at single time is: nlevels * nlocs * ntypes
+num_obs = nlvls * number_of_locations * ntypes
+
+! create a new (empty) sequence.
+! this program defines only the location, type, time, and error.
 ! run perfect_model_obs to fill in the obs values if needed
 call init_obs_sequence(seq, 0, 0, num_obs)
 
@@ -110,22 +147,28 @@ do ob = 1, number_of_locations
    lon = atan2(y, x) + pi
    lat = asin(z)
    
-   dlon = rad2deg * lon
-   dlat = rad2deg * lat
+   deglon = rad2deg * lon
+   deglat = rad2deg * lat
 
    do lvl = 1, nlvls
-      call set_obs_def_location(obs_def, set_location(dlon, dlat, obs_levels(lvl), VERTISPRESSURE))
+
+      ! in dart vertical locations using pressure are specified in units of pascals
+      call set_obs_def_location(obs_def, set_location(deglon, deglat, obs_levels(lvl)*100.0_r8, VERTISPRESSURE))
    
-      call set_obs_def_error_variance(obs_def, 1.0_r8)
+      ! the standard obs error routines take vertical locations in hectopascals/mb
+      t_err = rawin_temp_error(obs_levels(lvl))
+      call set_obs_def_error_variance(obs_def, t_err*t_err)
       call set_obs_def_type_of_obs(obs_def, RADIOSONDE_TEMPERATURE)
       call set_obs_def(obs, obs_def)  
       call add_obs_to_seq(seq, obs, time_obs, prev_obs, prev_time, first_obs)
    
-      call set_obs_def_error_variance(obs_def, 4.0_r8)
+      w_err = rawin_wind_error(obs_levels(lvl))
+      call set_obs_def_error_variance(obs_def, w_err*w_err)
       call set_obs_def_type_of_obs(obs_def, RADIOSONDE_U_WIND_COMPONENT)
       call set_obs_def(obs, obs_def) 
       call add_obs_to_seq(seq, obs, time_obs, prev_obs, prev_time, first_obs)
    
+      call set_obs_def_error_variance(obs_def, w_err*w_err)
       call set_obs_def_type_of_obs(obs_def, RADIOSONDE_V_WIND_COMPONENT)
       call set_obs_def(obs, obs_def) 
       call add_obs_to_seq(seq, obs, time_obs, prev_obs, prev_time, first_obs)
@@ -134,15 +177,9 @@ do ob = 1, number_of_locations
 
 enddo
 
-call write_obs_seq(seq, 'even_sphere.in')
+call write_obs_seq(seq, 'even_sphere_seq.in')
 
 call finalize_utilities('create_sphere_obs')
 
 end program create_sphere_obs
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 

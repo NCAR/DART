@@ -26,6 +26,11 @@
 
 &create_sphere_obs_nml
    number_of_locations = 25
+   obs_levels          = -1
+   year                = 2012 
+   month               = 5
+   day                 = 1
+   hour                = 0
    /
 
 &utilities_nml
