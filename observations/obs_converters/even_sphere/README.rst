@@ -178,12 +178,23 @@ output from create_obs_sequence and the
 :doc:`../../../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq` 
 to generate a series of observation sequence files.
 
-
 run_fixed_network_seq.csh
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Calls *create_fixed_network_seq* to create a separate file for each time period.
+By default, it makes 2 files/day, 12 hours apart, single time per file.
+The intervals and dates can be changed by editing the script.
+It assumes that *create_fixed_network* has any model-specific files it needs in this directory.
+It requires a *set_def.out* file (usually created by *create_obs_sequence*).
+
 run_fixed_network_daily.csh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Calls *create_fixed_network_seq* to create a separate file for each time period.
+By default it makes 1 file/day, single time (noon) per file.
+The dates and time can be changed by editing the script.
+It assumes that *create_fixed_network* has any model-specific files it needs in this directory.
+It requires a *set_def.out* file (usually created by *create_obs_sequence*).
 
 The process, end to end:
 
