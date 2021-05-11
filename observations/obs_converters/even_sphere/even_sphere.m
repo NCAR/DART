@@ -53,6 +53,8 @@ default_levels      = [1000  925  850  700  500  400  300   250   200   150   10
 default_fill        = false; % For diagnostic test need a null data value and a null qc value
 default_nlevels     = length(default_levels);
 default_YMD         = '2017-12-25';
+default_nlon         = 288;
+default_nlat         = 192;
 
 if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'T_error_var', default_T_error_var, @isnumeric);
@@ -61,6 +63,8 @@ if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'nlevels',     default_nlevels,     @isnumeric);
     addParameter(p,'fill_obs',    default_fill,        @islogical);
     addParameter(p,'YMD',         default_YMD,         @ischar);
+    addParameter(p,'nlon',        default_nlon,        @isnumeric);
+    addParameter(p,'nlat',        default_nlat,        @isnumeric);
 else
     addParamValue(p,'T_error_var', default_T_error_var, @isnumeric); %#ok<NVREPL>
     addParamValue(p,'W_error_var', default_W_error_var, @isnumeric); %#ok<NVREPL>
@@ -68,6 +72,8 @@ else
     addParamValue(p,'nlevels',     default_nlevels,     @isnumeric); %#ok<NVREPL>
     addParamValue(p,'fill_obs',    default_fill,        @islogical); %#ok<NVREPL>
     addParamValue(p,'YMD',         default_YMD,         @ischar);    %#ok<NVREPL>
+    addParamValue(p,'nlon',        default_nlon,        @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'nlat',        default_nlat,        @isnumeric); %#ok<NVREPL>
 end
 
 p.parse(nprofiles, varargin{:});
@@ -78,6 +84,8 @@ T_error_var = p.Results.T_error_var;
 W_error_var = p.Results.W_error_var;
 fill_obs    = p.Results.fill_obs;
 yyyymmdd    = p.Results.YMD;
+nlon        = p.Results.nlon;
+nlat        = p.Results.nlat;
 
 % FIXME ... check that all arrays of length 'level' are consistent.
 
@@ -86,7 +94,7 @@ yyyymmdd    = p.Results.YMD;
 % specify.
 
 nlevels    = min(nlevels,length(levels));
-levels     =     levels(1:nlevels);
+levels     =       levels(1:nlevels);
 T_error_var = T_error_var(1:nlevels);
 W_error_var = W_error_var(1:nlevels);
 
@@ -95,24 +103,9 @@ fprintf('vertical levels %s\n',levelstrings)
 
 % Generate obs_sequence input for this problem
 
-% Input is in hectopascals - this was intended to be the mandatory levels (see below).
-% levels = [1000 850 700 500 400 300 200 150 100 50 30 20 10 7 5];
-%
-% the nice thing about standards is there are so many of them.  mandatory levels, according to:
-% wisconsin: http://www.meteor.wisc.edu/~hopkins/aos100/raobdoc.htm
-% [1000 925 850 700 500 400 300 250 200 150 100 70 50 10] mb.
-%
-% the AMS glossary: http://amsglossary.allenpress.com/glossary/search?id=mandatory-level1
-% [1000 850 700 500 400 300 200 150 100 50 30 20 10 7 5 3 2 1] mb.
-%
-% the Office of Federal Coordinator of Meterology: http://www.ofcm.gov/fmh3/text/chapter5.htm
-% [1000 925 850 700 500 400 300 250 200 150 100 70 50 30 20 10] hPa
-% plus it says that these levels should be considered standard: 7, 5, 3, 2, and 1 hPa.
-%
-% the ones that this program generates right now:
-% Zagar OSSE; we've set   no_obs_assim_above_level = 5, which is slightly higher than 36 hPa in CAM6.
-
 % Date information is overwritten by create_fixed_network_sequence
+% so these values are only marginally useful.
+
 [year, month, day] = ymd(datetime(yyyymmdd));
 obsdate   = datenum(yyyymmdd);
 gregorian = datenum('1601-01-01');
@@ -121,7 +114,8 @@ dart_date = obsdate-gregorian;
 fprintf('Using date/time as %d-%02d-%02d 00:00:00 Z\n',year, month, day)
 fprintf('(days since 1601-01-01) : %f\n',dart_date)
 
-fprintf('Creating %d profiles with %d levels ...\n',nprofiles,nlevels)
+fprintf('Creating %d profiles with %d levels for 3 variables = %d observations ...\n', ...
+         nprofiles,nlevels,nprofiles*nlevels*3)
 
 % preallocate space for efficiency
 x(      1:nprofiles) = 0;
@@ -133,7 +127,7 @@ lat_rad(1:nprofiles) = 0;
 lat_deg(1:nprofiles) = 0;
 
 % Total number of observations at single time is nlevels*nprofiles*[T,U,V]
-num_obs = size(levels, 2) * nprofiles * 3;
+num_obs = nlevels * nprofiles * 3;
 
 % Calculate the cartesian locations.
 % For the geometric and visually minded: see the README.rst.
@@ -231,20 +225,9 @@ fprintf('done.\n')
 %  Plot a regular grid for comparison.
 
 % Model grid for comparison on the obs distribution plot
-% T85   256x128 points on A-grid
-%   nlat = 128;
-%   nlon = 256;
-% FV 1 degree:
-
-nlat = 192;
-nlon = 288;
-
-% Number of roughly evenly distributed points in horizontal
-% 2 degree, every fifth point
-% n = 600;
-% 1 degree every 4th point in latitude and longitude would be 3528.
-
-n = (nlat * nlon) / 16;
+% T85          : nlon=256, nlat=128 points on A-grid
+% FV ~1 degree : nlon=288, nlat=192
+% 1 degree every 4th point in latitude and longitude would be (288*192/16=3528)
 
 plot(lon_rad, lat_rad, '*');
 title(sprintf('%d profile locations with %d levels (1 level shown)',nprofiles,nlevels))
