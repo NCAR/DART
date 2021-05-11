@@ -118,13 +118,13 @@ fprintf('Creating %d profiles with %d levels for 3 variables = %d observations .
          nprofiles,nlevels,nprofiles*nlevels*3)
 
 % preallocate space for efficiency
-x(      1:nprofiles) = 0;
-y(      1:nprofiles) = 0;
-z(      1:nprofiles) = 0;
-lon_rad(1:nprofiles) = 0;
-lon_deg(1:nprofiles) = 0;
-lat_rad(1:nprofiles) = 0;
-lat_deg(1:nprofiles) = 0;
+x(     1:nprofiles) = 0;
+y(     1:nprofiles) = 0;
+z(     1:nprofiles) = 0;
+lon(   1:nprofiles) = 0;   % radians
+lat(   1:nprofiles) = 0;   % radians
+deglon(1:nprofiles) = 0;   % degrees
+deglat(1:nprofiles) = 0;   % degrees
 
 % Total number of observations at single time is nlevels*nprofiles*[T,U,V]
 num_obs = nlevels * nprofiles * 3;
@@ -144,11 +144,11 @@ end
 % Now convert to latitude and longitude in both radians and degrees
 
 for k = 1:nprofiles
-    lon_rad(k) = atan2(y(k), x(k)) + pi;
-    lat_rad(k) = asin(z(k));
+    lon(k) = atan2(y(k), x(k)) + pi;
+    lat(k) = asin(z(k));
     % Input is in degrees of latitude and longitude; convert from radians
-    lon_deg(k) = rad2deg(lon_rad(k));
-    lat_deg(k) = rad2deg(lat_rad(k));
+    deglon(k) = rad2deg(lon(k));
+    deglat(k) = rad2deg(lat(k));
 end
 
 % text file for driving create_obs_sequence
@@ -189,8 +189,8 @@ for hloc = 1:nprofiles
             fprintf(fid, '%5i\n', levels(vloc));
             
             % longitude and latitude in degrees
-            fprintf(fid, '%6.2f\n', lon_deg(hloc));
-            fprintf(fid, '%6.2f\n', lat_deg(hloc));
+            fprintf(fid, '%6.2f\n', deglon(hloc));
+            fprintf(fid, '%6.2f\n', deglat(hloc));
             
             % Now the date and time
             fprintf(fid, '%5i %3i %3i %3i %2i %2i \n', year, month, day, 0, 0, 0);
@@ -229,7 +229,7 @@ fprintf('done.\n')
 % FV ~1 degree : nlon=288, nlat=192
 % 1 degree every 4th point in latitude and longitude would be (288*192/16=3528)
 
-plot(lon_rad, lat_rad, '*');
+plot(lon, lat, '*');
 title(sprintf('%d profile locations with %d levels (1 level shown)',nprofiles,nlevels))
 set(gca,'FontSize',20)
 

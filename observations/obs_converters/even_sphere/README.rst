@@ -23,6 +23,9 @@ This document has two sections:
 1. `even_sphere.m`_
 2. `Automation Scripts`_
 
+    - `run_fixed_network_seq.csh`_
+    - `run_fixed_network_daily.csh`_
+
 
 This directory contains a MATLAB function (*even_sphere.m*) 
 that generates input for the 
@@ -39,13 +42,19 @@ even_sphere.m
 *even_sphere.m* has many optional arguments to tailor its behavior.
 It has exactly 1 required argument - the number of horizontal locations desired.
 
+- it will create a text file '**even_create_input**' to be used as input to *create_obs_sequence*
 - the default number of pressure levels is 14
-- the default pressure levels are: 1000.00 925.00 850.00 700.00 500.00 400.00 300.00 250.00 200.00 150.00 100.00 70.00 50.00 40.00
-- the default observation errors for each observation type are level-dependent and are consistent with *DART/observations/obs_converters/obs_error/ncep_obs_err_mod.f90*
-- the default is to create 'empty' observation sequences - i.e. they have no actual observation values and are suitable to be used with *perfect_model_obs*
+- the default pressure levels are: 1000 925 850 700 500 400 300 250 200 150 100 70 50 40
+- the default observation errors for each observation type are level-dependent and are 
+  consistent with *DART/observations/obs_converters/obs_error/ncep_obs_err_mod.f90*
+- the default is to create 'empty' observation sequences - i.e. they have no actual 
+  observation values and are suitable to be used with *perfect_model_obs*
 - the default date of the observations is 2017-12-25 00:00:00
-- a plot of the locations will be created. The number of gridlines is configurable but defaults to 288 in longitude and 192 in latitude.
-- **all** the defaults can be changed by specifying 'variable-value' pairs of options, as described below. Examples of some options are also available via the normal MATLAB *help* facility.
+- a plot of the locations will be created. The number of gridlines is configurable but 
+  defaults to 288 in longitude and 192 in latitude.
+- **all** the defaults can be changed by specifying 'variable-value' pairs of options, 
+  as described below. Examples of some options are also available via the normal 
+  MATLAB *help* facility. (Documenting all of them in the *help* makes the help page too long.)
 
 Note that the number of observations will be the number of locations \* 
 the number of vertical levels \* the number of variables (i.e. 3) 
@@ -57,37 +66,37 @@ Optional Argument Variable-Value pairs
 
 The optional variable-value pairs can appear in any order.
 
-+-------------------+---------------------------------+--------------------------------------------------+
-| optional variable | example value                   | Description                                      |
-+===================+=================================+==================================================+
-| 'nlevels'         | 14                              | number of pressure levels to use.                |
-|                   |                                 | May be less than the length of the               |
-|                   |                                 | 'levels' array, but cannot be more.              |
-+-------------------+---------------------------------+--------------------------------------------------+
-| levels            | [1000  850  500  300  200  100] | pressure levels desired.                         |
-|                   |                                 | see `Levels`_ section for discussion.            |
-+-------------------+---------------------------------+--------------------------------------------------+
-| T_error_var       | [1.44 0.64 0.64 0.81 1.44 0.64] | level-specific                                   |
-|                   |                                 | Temperature error variances.                     |
-|                   |                                 | see `Levels`_ section for discussion.            |
-+-------------------+---------------------------------+--------------------------------------------------+
-| W_error_var       | [1.96 2.25 4.41 9.00 7.29 4.41] | level-specific error variances                   |
-|                   |                                 | for both U, V wind components.                   |
-|                   |                                 | see `Levels`_ section for discussion.            |
-+-------------------+---------------------------------+--------------------------------------------------+
-| 'YMD'             | '2017-12-25'                    | Date required for *create_obs_sequence*.         |
-|                   |                                 | This time is replaced if and when                |
-|                   |                                 | through *create_fixed_network_seq*               |
-+-------------------+---------------------------------+--------------------------------------------------+
-| fill_obs          | false                           | 'true' inserts a bogus observation value of 1.0  |
-|                   |                                 | and a bogus QC value of 0.'false' does not insert|
-|                   |                                 | bogus values and essentially creates an empty    |
-|                   |                                 | obs sequence file (typically *set_def.out*)      |
-+-------------------+---------------------------------+--------------------------------------------------+
-| 'nlon'            | 288                             | number of longitude grid lines in plot           |
-+-------------------+---------------------------------+--------------------------------------------------+
-| 'nlat'            | 192                             | number of latitude grid lines in plot            |
-+-------------------+---------------------------------+--------------------------------------------------+
++-------------------+----------------------------+--------------------------------------------------+
+| optional variable | example value              | Description                                      |
++===================+============================+==================================================+
+| 'nlevels'         | 14                         | number of pressure levels to use.                |
+|                   |                            | May be less than the length of the               |
+|                   |                            | 'levels' array, but cannot be more.              |
++-------------------+----------------------------+--------------------------------------------------+
+| levels            | [1000  500  300  200  100] | pressure levels desired.                         |
+|                   |                            | see `Levels`_ section for discussion.            |
++-------------------+----------------------------+--------------------------------------------------+
+| T_error_var       | [1.44 0.64 0.81 1.44 0.64] | level-specific                                   |
+|                   |                            | Temperature error variances.                     |
+|                   |                            | see `Levels`_ section for discussion.            |
++-------------------+----------------------------+--------------------------------------------------+
+| W_error_var       | [1.96 4.41 9.00 7.29 4.41] | level-specific error variances                   |
+|                   |                            | for both U, V wind components.                   |
+|                   |                            | see `Levels`_ section for discussion.            |
++-------------------+----------------------------+--------------------------------------------------+
+| 'YMD'             | '2017-12-25'               | Date required for *create_obs_sequence*.         |
+|                   |                            | This time is replaced if and when                |
+|                   |                            | through *create_fixed_network_seq*               |
++-------------------+----------------------------+--------------------------------------------------+
+| fill_obs          | false                      | 'true' inserts a bogus observation value of 1.0  |
+|                   |                            | and a bogus QC value of 0.'false' does not insert|
+|                   |                            | bogus values and essentially creates an empty    |
+|                   |                            | obs sequence file (typically *set_def.out*)      |
++-------------------+----------------------------+--------------------------------------------------+
+| 'nlon'            | 288                        | number of longitude grid lines in plot           |
++-------------------+----------------------------+--------------------------------------------------+
+| 'nlat'            | 192                        | number of latitude grid lines in plot            |
++-------------------+----------------------------+--------------------------------------------------+
 
 Examples
 --------
@@ -122,13 +131,24 @@ Examples
 Levels
 ------
  
- The *mandatory pressure levels* defined in `The AMS glossary <https://amsglossary.ametsoc.org/wiki/Mandatory_level>`_ 
- are [1000 925 850 700 500 400 300 250 200 150 100 70 50 30 20 10 7 5 3 2 1] hPa
+The *mandatory pressure levels* defined in the
+`AMS glossary <https://amsglossary.ametsoc.org/wiki/Mandatory_level>`_ and their corresponding error variances are
 
- The default levels that this program generates were use to create the 
- Zagar OSSE which did not assimilate any observations above (about) 36 hPa.
+.. code::
 
- NOTE: ... need to create the matching T,W obs error variances for the AMS levels.
+   levels      = [1000  925  850  700  500  400  300   250  200  150  100   70   50   30   20   10    7    5    3    2    1];
+   T_error_var = [1.44 1.00 0.64 0.64 0.64 0.64 0.81  1.44 1.44 1.00 0.64 0.64 0.81 1.00 1.69 2.25 2.25 2.25 2.25 2.25 2.25];
+   W_error_var = [1.96 2.25 2.25 2.56 4.41 6.76 9.00 10.24 7.29 5.76 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41];
+
+The default levels that this program generates were use to create the 
+Zagar OSSE which did not assimilate any observations above (about) 36 hPa.
+The default pressure levels and corresponding observation error variances are: 
+
+.. code::
+
+   levels      = [1000  925  850  700  500  400  300   250  200  150  100   70   50   40];
+   T_error_var = [1.44 1.00 0.64 0.64 0.64 0.64 0.81  1.44 1.44 1.00 0.64 0.64 0.81 1.00];
+   W_error_var = [1.96 2.25 2.25 2.56 4.41 6.76 9.00 10.24 7.29 5.76 4.41 4.41 4.41 4.41];
 
 .. attention::
 
@@ -146,6 +166,11 @@ output from create_obs_sequence and the
 to generate a series of observation sequence files.
 
 
+run_fixed_network_seq.csh
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+run_fixed_network_daily.csh
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The process, end to end:
 
