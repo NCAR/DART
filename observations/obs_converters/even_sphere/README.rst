@@ -131,6 +131,12 @@ Examples
 Levels
 ------
  
+.. attention::
+
+   Specifying the vertical levels is the most problematic part of this process.
+   Since observation error variances tend to vary with level, coordinating
+   the levels and the error variances is required.
+
 The *mandatory pressure levels* defined in the
 `AMS glossary <https://glossary.ametsoc.org/wiki/Mandatory_level>`_ and their corresponding error variances are
 
@@ -152,7 +158,7 @@ The default pressure levels and corresponding observation error variances are:
 
 The following levels may be useful since we rarely assimilate observations above 150 hPa
 and there are extra levels near the surface because any topography will interfere
-with the 1000 hPa level. These extra levels are **not** _mandatory_ levels.
+with the 1000 hPa level. These extra levels are **not** *mandatory* levels.
 
 .. code::
 
@@ -163,11 +169,35 @@ with the 1000 hPa level. These extra levels are **not** _mandatory_ levels.
    T_error_var = [1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00];
    W_error_var = [4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00];
 
-.. attention::
+Running Matlab in Batch Mode
+----------------------------
+ 
+If you would prefer to run *even_sphere.m* in batch mode (i.e. from within a shell script),
+here is an example syntax that worked for me. The script ran in the same directory
+as *even_sphere.m*. There are many ways to construct the input, naturally - but you don't have
+to explicitly edit *even_sphere.m* this way. 
 
-   Specifying the vertical levels is the most problematic part of this process.
-   Since observation error variances tend to vary with level, coordinating
-   the levels and the error variances is required.
+.. code::
+
+    #!/bin/csh
+
+    \rm -rf matlab_input.m
+
+    cat >> matlab_input.m << EndOfInput
+
+       nprofiles   = 30;
+       levels      = [1000  850  500  300  200  100];
+       T_error_var = [1.44 0.64 0.64 0.81 1.44 0.64];
+       W_error_var = [1.96 2.25 4.41 9.00 7.29 4.41];
+       even_sphere(nprofiles, 'levels', levels, ...
+                  'T_error_var', T_error_var, 'W_error_var', W_error_var)
+       fname = sprintf('even_sphere_%d_profiles',nprofiles);
+       orient landscape
+       print(fname,'-dpdf')
+
+    EndOfInput
+
+    matlab -nosplash -nodesktop -r "try; cd $PWD; matlab_input; catch; end; exit";
 
 
 Automation Scripts
@@ -200,19 +230,17 @@ The process, end to end:
 
 MATLAB:
 
-Edit even_sphere.m and set the number of levels, the
-number of profiles, the vertical coordinate type, etc.     
-
-Run it in MATLAB.  It will make a plot (which you can 
-save from the menu) and it will create a text file 'even_create_input'.
+Set the number of profiles, the levels, etc. and run *even_sphere.m* in
+MATLAB. It creates the necessary text file *even_create_input* for the next step.
+It will also make a plot - which you can save.
 
 DART:
 
-Then you have a choice about building and running the ``create_obs_sequence``
-and ``create_fixed_network_seq`` programs:
+Then you have a choice about building and running the *create_obs_sequence*
+and *create_fixed_network_seq* programs:
 
-A. building them in the models/template/work directory 
-B. using the ones which were built in models/your_model/work directory 
+A. building them in the *models/template/work* directory 
+B. using the ones which were built in *models/your_model/work* directory 
    by *quickbuild.csh*. 
 
 Choice A uses programs which have no model specific file dependencies,
@@ -234,14 +262,14 @@ A
    models/template/work/input.nml
 
 3. In your obs_seq directory, run create_obs_sequence, 
-   which creates a ``set_def.out`` file.
+   which creates a *set_def.out* file.
 
 .. code-block:: text
 
    ./create_obs_sequence < even_create_input > /dev/null
 
-4. Edit and run your choice of ``run_fixed_network_*.csh`` for the desired dates.
-   These call create_fixed_network_seq, which creates an ``obs_seq.in`` file
+4. Edit and run your choice of *run_fixed_network_\*.csh* for the desired dates.
+   These call create_fixed_network_seq, which creates an *obs_seq.in* file
    for each specified date.
 
 B
@@ -256,10 +284,11 @@ substituting your model name for the "template" in the pathnames.
 NOTE: you may need to link additional input files, which your model needs to start, 
 into the directory where you will run the programs.
 These typically contain grid information and are found in your_model/work.
-For example, cam-fv needs a caminput.nc and cam_phis.nc.
+For example, **cam-fv** needs a *caminput.nc* and *cam_phis.nc*.
 
 
-DETAILS on generating points evenly distributed on a sphere
+DETAILS on generating points evenly-distributed on a sphere
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is the algorithm that's being used:
 
