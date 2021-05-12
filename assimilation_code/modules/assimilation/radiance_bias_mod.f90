@@ -319,7 +319,7 @@ subroutine get_global_radiance_info(obs_seq, obs_ens_handle, keys, obs_val_index
             radiance_ob_keys(nn) = keys(i) ! currently not used
             radiance_ob_errors(nn) = get_obs_def_error_variance(obs_def)
             base_obs_names(nn) = get_name_for_type_of_obs(base_obs_type)
-            biaspreds(1:npred,nn) = get_obs_def_biaspreds(obs_def,npred,1,npred)
+            biaspreds(1:npred,nn) = get_obs_def_biaspreds(obs_def,npred,int(1,8),npred)
             call get_obs_values(observation, obs_value(1:1), obs_val_index)
             obfit_post(nn) = obs_value(1) - mean_temp(i) ! y - H(x_bar)
            !obfit_post(nn) = obs_value(1) - mean_temp(keys(i)) ! y - H(x_bar)
@@ -337,8 +337,8 @@ subroutine get_global_radiance_info(obs_seq, obs_ens_handle, keys, obs_val_index
    ! Sanity check
    if ( nn /= nobs_sat ) then
       write(msgstring,  '(A)') 'Mismatching numbers'
-      write(msgstring2, '(A,I)') 'nobs_sat is', nobs_sat
-      write(msgstring3, '(A,I)') 'nn is ',nn
+      write(msgstring2, '(A,I5)') 'nobs_sat is', nobs_sat
+      write(msgstring3, '(A,I5)') 'nn is ',nn
       call error_handler(E_ERR, 'get_radiance_info_global:', msgstring, &
          source, revision, revdate, text2=msgstring2, text3=msgstring3)
    endif
@@ -373,7 +373,7 @@ subroutine map_to_gsi_satinfo
                  !    parallelization hack. base_obs_names also available on all processors
       do j = 1,jpch_rad
          ! Make a string containing satellite,sensor,and channel to match obs_def_radiance_mod.f90 (the "obs_types") entries
-         write(str_channel,fmt='(i)') nuchan(j)
+         write(str_channel,fmt='(i5)') nuchan(j)
          full_ob_name = trim(adjustl(nusis(j)))//'_ch'//trim(adjustl(str_channel)) ! e.g., amsua_n19_ch7, amsua_metop-a_ch9
          call to_upper(full_ob_name) ! Make uppercase to match the case in obs_def_radiance_mod.f90
          call replace_hyphen(full_ob_name)  ! Bad things will happen in DART preprocess "obs_def" files if there are hyphens in names. Replace with underscores
@@ -426,12 +426,12 @@ subroutine apply_biascorr_gsi(obs_seq,obs_ens_handle,ens_size)
             base_obs_name = get_name_for_type_of_obs(base_obs_type)
             do j = 1,jpch_rad
                ! Make a string containing satellite,sensor,and channel to match obs_def_radiance_mod.f90 entries
-               write(str_channel,fmt='(i)') nuchan(j)
+               write(str_channel,fmt='(i5)') nuchan(j)
                full_ob_name = trim(adjustl(nusis(j)))//'_ch'//trim(adjustl(str_channel)) ! e.g., amsua_n19_ch7, amsua_metop-a_ch9
                call to_upper(full_ob_name) ! Make uppercase to match the case in obs_def_radiance_mod.f90
                call replace_hyphen(full_ob_name)  ! Bad things will happen in DART preprocess "obs_def" files if there are hyphens in names. Replace with underscores
                if ( trim(adjustl(full_ob_name)) == trim(adjustl(base_obs_name)) ) then ! we found a match for this satellite/sensor/channel.
-                  these_biaspreds(1:npred+2) = get_obs_def_biaspreds(obs_def,npred+2,1,npred+2)
+                  these_biaspreds(1:npred+2) = get_obs_def_biaspreds(obs_def,npred+2,int(1,8),npred+2)
                   ! subtract bias_amount to start with unbiascorrected values before adding the updated correction
                   ! Note that obs_ens_handle%copies has all obs on this PE, not just radiances. Fortunately, we saved the indices we need to update (my_radiance_ob_indices)
                   bias_amount = these_biaspreds(npred+2)

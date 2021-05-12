@@ -166,7 +166,7 @@ type obs_def_type
    integer               :: external_FO_key
    integer               :: ens_size
    logical               :: has_biaspreds = .false. ! CSS Bias correction predictor variables
-   integer               :: npred
+   integer(i8)           :: npred         ! HK radinfo.f90 has i8
    real(r8), allocatable :: biaspreds(:)  ! dimension(npred+2).  1:npred: BC predictors
                                           ! npred+1: total scan angle BC AMOUNT
                                           ! npred+2: total BC AMOUNT summed over all predictors
@@ -471,7 +471,7 @@ end subroutine set_obs_def_external_FO
 subroutine set_obs_def_bc_predictors(obs_def, has_biaspreds, npred, biaspreds)
    type(obs_def_type), intent(inout) :: obs_def
    logical,            intent(in)    :: has_biaspreds
-   integer,            intent(in)    :: npred
+   integer(i8),        intent(in)    :: npred
    real(r8),           intent(in)    :: biaspreds(npred+2)
 
    if ( .not. module_initialized ) call initialize_module
@@ -1025,15 +1025,16 @@ missing_r = missing_r8
 call set_obs_def_external_FO(obs_def, .false., .false., missing_i, 1, missing_r)
 if ( allocated(obs_def%external_FO)) deallocate(obs_def%external_FO) ! CSS
 
-call set_obs_def_bc_predictors(obs_def, .false., 1, (/missing_r/)) ! CSS
+call set_obs_def_bc_predictors(obs_def, .false., int(1,8), (/missing_r/)) ! CSS
 if ( allocated(obs_def%biaspreds)) deallocate(obs_def%biaspreds) ! CSS
 end subroutine destroy_obs_def
 
 
 function get_obs_def_biaspreds(obs_def,num_elements,index_start,index_end) ! CSS added
    type(obs_def_type), intent(in) :: obs_def
-   integer(i8), intent(in)        :: num_elements,index_start,index_end
+   integer(i8), intent(in)        :: num_elements,index_start,index_end 
    real(r8) :: get_obs_def_biaspreds(num_elements)
+
    if ( .not. module_initialized ) call initialize_module
    get_obs_def_biaspreds(1:num_elements) = obs_def%biaspreds(index_start:index_end)
 end function get_obs_def_biaspreds
