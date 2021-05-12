@@ -1,10 +1,10 @@
 
 &obs_info_nml
-   filename_in  = 'obs_seq.out'
-   filelist_in  = ''
-   calendar     = 'Gregorian'
+   filename_in             = ''
+   filelist_in             = ''
+   calendar                = 'Gregorian'
    filenames_from_terminal = .false.
-   counts_only  = .false.
-   output_file  = ''
+   csv_style_output        = .false.
+   output_file             = ''
    /
 
