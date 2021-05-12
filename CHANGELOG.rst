@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 10 2021 :: obs_info support for identity obs Tag: v9.10.4**
+
+- programs/obs_utils/obs_info.f90 now supports reporting identity obs
+
 **May 6 2021 :: fix AMSUA converter bug. Tag: v9.10.3**
 
 - AIRS/convert_amsu_L1.f90 correctly handles multiple input files 
