@@ -137,9 +137,12 @@
                              '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
                              '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                             '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
                              '../../../observations/forward_operators/obs_def_gps_mod.f90',
                              '../../../observations/forward_operators/obs_def_vortex_mod.f90',
-                             '../../../observations/forward_operators/obs_def_gts_mod.f90'
+                             '../../../observations/forward_operators/obs_def_gts_mod.f90',
+                             '../../../observations/forward_operators/obs_def_mesonet_mod.f90',
+                             '../../../observations/forward_operators/obs_def_radiance_mod.f90'
    /
 
 &obs_kind_nml
