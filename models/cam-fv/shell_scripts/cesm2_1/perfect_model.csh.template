@@ -265,7 +265,7 @@ if ($input_file_list_name == $output_file_list_name) then
 endif
 
 echo "`date` -- BEGIN CAM PERFECT_MODEL_OBS"
-${LAUNCHCMD}/{EXEROOT}/perfect_model_obs  || exit 140
+${LAUNCHCMD} ${EXEROOT}/perfect_model_obs  || exit 140
 echo "`date` -- END CAM PERFECT_MODEL_OBS"
 
 # output files are:
@@ -285,11 +285,11 @@ echo "`date` -- END CAM PERFECT_MODEL_OBS"
 ${MOVE} true_state.nc ${CASE}.dart.e.${scomp}_true_state.${ATM_DATE_EXT}.nc || exit 160
 
 set MYSTRING = `grep obs_seq_out_file_name input.nml`
-set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
+set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g" | sed -e 's#"# #g'`
 set obs_seq_out_file_name = $MYSTRING[2]
-$${MOVE} $obs_seq_out_file_name  obs_seq.${ATM_DATE_EXT}.out
+${MOVE} $obs_seq_out_file_name  obs_seq.${ATM_DATE_EXT}.out
 
-${MOVE} dart_log.out     ../cam_dart_log.${ATM_DATE_EXT}.out
+${MOVE} dart_log.out     cam_dart_log.${ATM_DATE_EXT}.out
 
 #=========================================================================
 # Block 4: Update the cam restart file
@@ -315,8 +315,12 @@ cd ${CASEROOT}
 ./xmlchange CHECK_TIMING=${CHECK_TIMING}
 cd ${RUNDIR}
 
-
-${REMOVE} perfect_ics dart_log.nml
+# Remove lines of blanks and extra spaces.
+# ${REMOVE} dart_log.nml
+sed -e '/^[ ]\+$/d' \
+    -e 's/\([A-Za-z0-9,=]\)[ ]\+/\1 /g' \
+    dart_log.nml >! short
+${MOVE} short dart_log.nml
 
 echo "`date` -- END CAM OBERVATIONS FROM TRUE STATE"
 

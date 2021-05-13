@@ -25,9 +25,9 @@
 #BSUB  -o Test0.bld1
 #BSUB  -e Test0.bld1
 #--------------------------------------------
-#PBS  -N setup_hybrid
-#PBS  -A your_account_there
-#PBS  -q shared_node_queue_for_this_setup_script
+#PBS  -N setup_pmo
+#PBS  -A P86850054
+#PBS  -q share
 #
 # Resources I want:
 #    select=#nodes
@@ -36,10 +36,10 @@
 #PBS  -l select=1:ncpus=4:mpiprocs=4
 #PBS  -l walltime=01:00:00
 #PBS  -m ae
-#PBS  -M you@email.org
+#PBS  -M raeder@ucar.edu
 # Send standard output and error to this file.
 # It's helpful to use the $casename here.
-#PBS  -o Test_0.bld1
+#PBS  -o PMO_test0.bld5
 #PBS  -j oe 
 #
 # ---------------------
@@ -47,9 +47,8 @@
 # ---------------------
 #
 # This script is designed to set up, stage, and build a single-instance run
-# of CESM using an F compset where CAM, CLM and CICE are active. 
->>>  Add comment about generating obs, DART_config
-#
+# of CESM using an F compset where CAM, CLM and CICE are active.  It also
+# prepares DART_config to set up perfect_model_obs to generate synthetic observations.
 #
 # This script has a counterpart (setup_hybrid) that is a multi-instance setup for either a
 # free run or an assimilation experiment. To make it easy to maintain (and
@@ -57,21 +56,15 @@
 # That means this script performs a lot of manipulation of the 'instance'
 # portion of the filenames, which seems unnecessary initially.
 
->>> Merge this with text above
-# This script results in a viable setup for a CESM single instance experiment.
 # You are STRONGLY encouraged to run the single instance CESM a few times and
 # experiment with different settings BEFORE you try to generate 'perfect' observations. 
 # You should become comfortable using 
 # CESM's restart capability to re-stage files in your RUN directory.
 #
-# ${caseroot}/DART_config is automatically run by this script and will
+# ${caseroot}/DART_config can be run by this script and will
 # augment the CESM case with the required setup and configuration to use DART
 # to harvest synthetic observations. 
 
-#
-# This script relies heavily on the information in:
-# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/book1.html
-#
 # ---------------------
 # How to use this script.
 # ---------------------
@@ -83,7 +76,7 @@
 #
 # -- Examine the whole script to identify things to change for your experiments.
 #
-# -- Edit this script in the $DART/models/cam-fv/shell_scripts directory
+# -- Edit this script in the $DART/models/cam-fv/shell_scripts/cesm#_# directory
 #    or copy it and its dependent scripts to somewhere where it will be preserved.
 #    It archives itself to the $caseroot directory during its execution.
 #
@@ -95,18 +88,12 @@
 #    2) a run directory, where each forecast will take place,
 #    3) a bld directory for the executables.
 #    4) CESM's short term archiver (st_archive) will use a fourth directory for
-#    storage of model output until it can be moved to long term storage (HPSS)
+#    storage of model output until it can be moved to long term storage.
 #
 # -- Confirm the variable values in $caseroot/env_{build,run,batch,...}.xml.
 #
->>> Consolidate this with DART_config sections above
-#    This script also executes ${CASEROOT}/CESM_DART_config to modify
-#    the ${CASEROOT}/${CASE}.run script so that the SourceMods for CAM
-#    are effective. CESM_DART_config will also augment the case with all
-#    the pieces necessary to run DART when the time comes.
-#
-# -- (if running perfect_model_obs) Edit the DART input.nml that appears in the ${CASEROOT}
-#    directory.
+# -- (if running perfect_model_obs) Edit the DART input.nml:perfect_model_nml 
+#    that appears in the ${CASEROOT}directory.
 #
 # -- Submit the job using ${caseroot}/case.submit -M begin,end
 #
@@ -159,14 +146,15 @@
 # models/cam-fv/readme.html documentation.
 # ==============================================================================
 
-setenv case            Test0
-setenv compset         HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV
+setenv case           PMO_test0
+setenv compset        HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV
 # setenv compset         FHIST_DARTC6
-setenv resolution           f09_f09
-setenv cesmtag         cesm2_0
+setenv resolution     f09_d025
+setenv user_grid      ''
+setenv cesmtag        cesm2_1_relsd_m5.6
 # If cemstag >= cesm2_0_alpha10f and compset = FHIST_DARTC6 (or another non-supported):
-setenv compset_args     "--compset $compset"
-setenv compset_args "${compset_args} --run-unsupported"
+setenv compset_args   "--compset $compset"
+setenv compset_args   "${compset_args} --run-unsupported"
 
 # ==============================================================================
 # machines and directories:
@@ -186,7 +174,6 @@ setenv compset_args "${compset_args} --run-unsupported"
 #               This script will delete an existing caseroot with the same name,
 #               so this script and other things you want to preserve should be kept elsewhere.
 # dartroot      Location of the root of _your_ DART installation.
->>> Make sure cesm_output replaces rundir and exeroot where necessary.
 # cime_output   $cime_root/$CASEROOT is the directory where CESM's build and run directories will be created.
 #               Large amount of space needed, generally on a scratch partition.  
 #               CESM will define the following variables:
@@ -205,10 +192,10 @@ setenv compset_args "${compset_args} --run-unsupported"
 # archdir       The CESM short-term archive directory.
 #               Files will remain here until you move them to permanent storage
 #               (or are purged).
-# baseobsdir    Part of the directory name containing the obs_seq.out files to be used by the
-#               assimilation.  Assimilate.csh looks for a directory with the year and month:
-#               $baseobsdir/YYYYMM_6H_CESM.
-#               Will be inserted into DART_config and assimilate.csh.
+# baseobsdir    Part of the directory name containing the obs_seq.in files to be used by the
+#               perfect model run.  Perfect_model.csh looks for a directory with the year and month:
+#               $baseobsdir/YYYYMM_6H.
+#               Will be inserted into DART_config and then into perfect_model.csh.
 # ==============================================================================
 
 setenv mach         cheyenne
@@ -216,18 +203,20 @@ setenv cesmdata     /glade/p/cesm/cseg/inputdata
 setenv cesmroot     /glade/work/${USER}/Models/${cesmtag}
 setenv sourcemods   ~/${cesmtag}/SourceMods
 setenv caseroot     /glade/work/${USER}/Exp/${case}
-setenv dartroot     /glade/u/home/${USER}/DART/rma_recam
+setenv dartroot     /glade/u/home/${USER}/DART/Manhattan_git
 
 setenv cime_output  /glade/scratch/${USER}
 setenv archdir      ${cime_output}/${case}/archive
 
-setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS
+setenv baseobsdir   /glade/p/cisl/dares/Observations/Synthetic/UVTRadiosonde_3456
 
 # ==============================================================================
 # Initial conditions files:
 #
-# refcase    The name of the existing reference case that this run will
-#            start from.
+# refcase    The name of the existing reference case from which this run will start.
+#            The default script setup expects the initial condition files to use this
+#            as the CASENAME part of the file names, and as the scratch directory name
+#            where they are stored.
 #
 # refyear    The specific date/time-of-day in the reference case that this
 # refmon     run will start from.  (Also see 'runtime settings' below for
@@ -253,14 +242,14 @@ setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS
 # stagedir   The directory location of the reference case files.
 # ==============================================================================
 
-setenv refcase     A_case_having_CAM_initial+all_restart_files
-setenv refyear     2013
-setenv refmon      08
-setenv refday      01
+setenv refcase     f.e21.FHIST_BGC.f09_025.CAM6assim.011
+setenv refyear     2017
+setenv refmon      12
+setenv refday      25
 setenv reftod      00000
 
 setenv MultiInstanceRefcase true
-setenv TRUTHinstance 1
+setenv TRUTHinstance 7
 
 # useful combinations of time that we use below
 setenv refdate      $refyear-$refmon-$refday
@@ -271,7 +260,8 @@ setenv reftimestamp $refyear-$refmon-$refday-$reftod
 # setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
 # setenv stagedir /glade/scratch/${USER}/${refcase}/run
 # setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
-setenv stagedir /glade/work/${USER}/Models/CAM_init/FV1deg_cesm2_1/${reftimestamp}
+setenv stagedir /glade/scratch/${USER}/Zagar_OSSE_ICs/archive/rest/${reftimestamp}
+# setenv stagedir /glade/work/${USER}/Models/CAM_init/FV1deg_cesm2_1/${reftimestamp}
 
 # ==============================================================================
 # runtime settings:
@@ -290,9 +280,9 @@ setenv stagedir /glade/work/${USER}/Models/CAM_init/FV1deg_cesm2_1/${reftimestam
 # short_term_archiver  Copies the files from each job step to a 'rest' directory.
 # ==============================================================================
 
-setenv start_year    2009
-setenv start_month   08
-setenv start_day     02
+setenv start_year    2017
+setenv start_month   12
+setenv start_day     25
 setenv start_tod     00000
 setenv stop_option   nhours
 setenv stop_n        6
@@ -321,14 +311,33 @@ set nthreads = 1
 # The supported alternative is time interpolation of a monthly SST+CICE data set.
 # Examples are provided here.
 # "2 degree":
-setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_1850_2016_c170525.nc
-setenv sst_grid ${cesmdata}/share/domains/domain.ocn.fv1.9x2.5_gx1v7.170518.nc
+# setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_1850_2016_c170525.nc
+# setenv sst_grid ${cesmdata}/share/domains/domain.ocn.fv1.9x2.5_gx1v7.170518.nc
 # "1 degree":
 # setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2016_c170525.nc
 # setenv sst_grid ${cesmdata}/share/domains/domain.ocn.fv0.9x1.25_gx1v7.151020.nc
+
 # Specify the beginning and ending years of the data set.
-setenv sst_year_start 1850
-setenv sst_year_end   2016
+# setenv sst_year_start 1850
+# setenv sst_year_end   2016
+
+# A better alternative is daily, 1/4-degree SSTs from Reynolds,...,Tomas
+
+set user_grid = "${user_grid} --gridfile /glade/work/raeder/Models/CAM_init/SST"
+set user_grid = "${user_grid}/config_grids+fv1+2deg_oi0.25_gland20.xml"
+setenv sst_dataset \
+   "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.2011-202001_0Z_filled_c200810.nc"
+
+set list = `ncdump -h $sst_dataset | grep calendar`
+if ($list[3] !~ '"gregorian"') then
+   echo "ERROR: $sst_dataset"
+   echo "       must have the calendar attribute attached to the time variable."
+   echo "       Use: ncatted -a calendar,time,c,c,gregorian $sst_dataset"
+   exit 5
+endif
+setenv sst_grid    /glade/work/raeder/Models/CAM_init/SST/domain.ocn.d025.120821.nc
+setenv sst_year_start $start_year
+setenv sst_year_end   $start_year
 
 
 # ==============================================================================
@@ -339,9 +348,8 @@ setenv sst_year_end   2016
 # queue      can be changed during a series by changing the case.run
 # timewall   can be changed during a series by changing the case.run
 # ==============================================================================
->>> Make sure ACCOUNT has been changed to PROJECT
-setenv PROJECT      your_account_there
-setenv queue        queue_for_assimilation_jobs
+setenv PROJECT      P86850054
+setenv queue        regular
 setenv timewall     1:00
 
 # ==============================================================================
@@ -446,8 +454,8 @@ cd -
 cd ${CIMEROOT}/../components/cam
 echo "n Using CAM version"
 head -n 5 doc/ChangeLog | tail -n 3
-echo "svn status -u:"
-svn status -u
+# echo "svn status -u:"
+# svn status -u
 echo " " 
 cd -
 
@@ -461,9 +469,10 @@ ${CIMEROOT}/scripts/create_newcase \
    --queue    $queue          \
    --walltime $timewall       \
    --pecount  ${use_tasks_per_node}x${nthreads}  \
-   --ninst    $num_instances  \
+   --ninst    $num_drivers    \
    $compset_args              \
-   $multi_driver
+   $multi_driver              \
+   $user_grid
 
 if ( $status != 0 ) then
    echo "ERROR: Case could not be created."
@@ -687,10 +696,11 @@ echo "After xmlchanges for ROOTPEs ..."
 
 ./xmlchange PIO_TYPENAME=pnetcdf
 
-set TEST_MPI = `./xmlquery -valonly MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
-if (${TEST_MPI} == 'UNSET') then
-   ./xmlchange MPI_RUN_COMMAND=mpirun.lsf
-endif
+# Old fix, no longer useful (>= CESM2)?
+# set TEST_MPI = `./xmlquery --value MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
+# if (${TEST_MPI} == 'UNSET') then
+#    ./xmlchange MPI_RUN_COMMAND=mpirun
+# endif
 
 # COUPLING discussion. F compsets are 'tight' coupling.
 # Only change the ATM_NCPL ... everything is based on this one value,
@@ -761,6 +771,11 @@ endif
 echo 'Setting up the case ...'
 echo 'Ignore "WARNING:: mosart.buildnml . . .".  Those files will be provided later'
 
+# Hopefully a fix to the failure to build.
+# but mostly a stab in the dark, using mpt that worked for Ben on 2020-12-10(?).
+# 2.16 is no longer available.
+# module swap mpt/2.19 mpt/2.16
+
 echo 'Before case.setup, modules are'
 source /etc/profile.d/modules.csh
 module list
@@ -778,12 +793,13 @@ endif
 # from a caseroot directory.
 if ( -e ${DART_CESM_scripts}/DART_config.template ) then
    sed -e "s#your_dart_path#${dartroot}#" \
+       -e "s#your_dart_script#perfect_model.csh#" \
        -e "s#your_setup_script_dir#$DART_CESM_scripts:t#" \
        -e "s#your_observation_path#${baseobsdir}#" \
-       -e "s#days_between_archiving_restarts#${save_every_Mth_day_restart}#" \
        < ${DART_CESM_scripts}/DART_config.template \
        >! DART_config  || exit 20
    chmod 755 DART_config
+#        -e "s#days_between_archiving_restarts#${save_every_Mth_day_restart}#" \
 else
    echo "ERROR: the script to configure for data assimilation is not available."
    echo "       DART_config.template MUST be in $DART_CESM_scripts "
@@ -829,7 +845,9 @@ chmod 755 case.st_archive
 
 ./xmlchange --subgroup case.st_archive --id JOB_WALLCLOCK_TIME --val 1:00
 
-./DART_config || exit 57
+# Enable the DART programs (perfect_model.csh, etc.).
+# This can be run manually after confirming that the CAM hindcasts work correctly.
+# ./DART_config || exit 57
 
 # ==============================================================================
 # Modify namelist templates for each instance.
@@ -847,7 +865,7 @@ chmod 755 case.st_archive
 
 # Decide whether interpolation of the CLM restart file will be done.
 # If so, each CLM namelist needs it's own finidat_interp_dest.
-set do_clm_interp = "true"
+set do_clm_interp = "false"
 
 @ inst = 1
 while ($inst <= 1)
@@ -896,7 +914,7 @@ while ($inst <= 1)
          echo "ERROR; the default external forcing files end with year 2015."
          echo "       Use an earlier year, "
          echo "       or locate non-default forcing files for your year (in setup_advanced?)."
-         exit 65
+# >>>          exit 65
       else
          echo 'WARNING; using default ozone and tracer_cnst forcing files'
          echo 'WARNING; using default srf_emis_* and ext_frc_*'
@@ -986,6 +1004,19 @@ end
 # For some reason, a single user_nl_cpl works even when --multi-driver is used.
 
 ./preview_namelists || exit 75
+
+# Fix the time offset for pre-2020 avhrr SST data sets.
+# Those times are whole numbers, but are "valid at midday".
+# CaseDocs doesn't exist until after preview_namelists has been run.
+echo $sst_dataset | grep avhrr 
+if ($status == 0) then
+   echo "Before preview_namelists, does CaseDocs/docn exist?"
+   pwd
+   ls -l CaseDocs/docn*
+   sed -e "s#      0#      43200#"                        \
+       CaseDocs/docn.streams.txt.prescribed${inst_string} \
+       >   user_docn.streams.txt.prescribed${inst_string}
+endif
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists.
@@ -1225,37 +1256,36 @@ Time to check the case.
     Verify the CESM XML settings, especially in env_batch.xml and env_run.xml.
     ./xmlquery --partial <partial_string_of_interest> 
     is particularly useful.
+    Check the contents of the user_nl_{component}* files (e.g. do CAM's external 
+    forcing files cover your time period)
 
-4)  The default initial configuration is to do NO ASSIMILATION.
-    When you are ready to add data assimilation, follow the instructions in 
-    ${caseroot}/DART_config. 
->>> Merge with 4)
-echo "3) The case is initially configured to NOT INVOKE ANY DART CODE by calling"
-echo "   a script named 'no_assimilate.csh' in the ${case}.run script."
-echo "   When you are ready to generate synthetic observations, change the"
-echo "   ${case}.run script to call 'perfect_model.csh' instead of 'no_assimilate.csh'."
-echo "   The configuration of CAM requires that 'no_assimilate.csh' be called even"
-echo "   if doing a CESM-only run."
-echo ""
+4)  The default initial configuration is to do no harvesting of observations.
+    as defined by the 'no_assimilate.csh' in the env_run.xml file.
+    When you are ready to harvest, change "no_assimilate" to "perfect_model"
+    and follow the instructions in ${caseroot}/DART_config. 
+
+Time to run the first job
+
 5)  Submit the job (and get mail when it starts and stops):
     ./case.submit -M begin,end --skip-preview-namelist
-echo ""
-echo "5) After the job has run, check to make sure it worked."
-echo ""
-8)  To extend the run in $stop_n '$stop_option' steps, use xmlchange to
+
+6)  After the job has run, check to make sure it worked;
+    expected files are there, observation space diagnostics, ...
+
+Additional cycles.
+
+7)  To extend the run in $stop_n '$stop_option' steps, use xmlchange to
     change the CESM runtime variables:
 
     ./xmlchange DATA_ASSIMILATION_CYCLES= the value you want.
     ./xmlchange CONTINUE_RUN=TRUE
     ./xmlchange RESUBMIT= the number of JOBS to run (each JOB performs DATA_ASSIMILATION_CYCLES cycles)
+    ./xmlchange --subgroup case.run --id JOB_WALLCLOCK_TIME --val 3:00
 
 EndOfText
 
 cat CESM_instructions.txt
 
-echo "    If the first cycle generated an ensemble from a single state, change input.nml as described in the "
-echo "       instructions in it, to make cycles 2,...,N use the latest ensemble, unperturbed."
-echo "    Change values in env_batch.xml to accommodate longer runs."
 
 exit 0
 

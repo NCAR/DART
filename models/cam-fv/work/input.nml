@@ -77,7 +77,7 @@
 
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
-   input_state_files          = "cam_initial.nc"
+   input_state_files          = "caminput.nc"
    init_time_days             = -1
    init_time_seconds          = -1
 
@@ -238,6 +238,7 @@
 !                             '../../../observations/forward_operators/obs_def_CO_Nadir_mod.f90',
 !                             '../../../observations/forward_operators/obs_def_SABER_mod.f90',
 !                             '../../../observations/forward_operators/obs_def_MOPITT_CO_mod.f90',
+! model_mod needs all of the listed quantity_files, even if there are no obs that use them.
 
 &preprocess_nml
    overwrite_output        = .true.
@@ -253,6 +254,7 @@
                              '../../../assimilation_code/modules/observations/space_quantities_mod.f90',
                              '../../../assimilation_code/modules/observations/chemistry_quantities_mod.f90'
    /
+
 
 ! Not usually assimilated.  No fundamental reason not to.
 !                               'RADIOSONDE_SPECIFIC_HUMIDITY',
