@@ -16,7 +16,7 @@ This involves multiple steps:
 5. if desired, run :doc:`../../../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq`
    to create a longer observation sequence file.
 6. run :doc:`../../../assimilation_code/programs/perfect_model_obs/perfect_model_obs` 
-   to harvest the synthetic observations.  
+   to harvest the synthetic observations from a chosen model.  
 
 This document has two sections:
 
@@ -69,7 +69,7 @@ The optional variable-value pairs can appear in any order.
 +-------------------+----------------------------+--------------------------------------------------+
 | optional variable | example value              | Description                                      |
 +===================+============================+==================================================+
-| 'nlevels'         | 14                         | number of pressure levels to use.                |
+| 'nlevels'         | 5                          | number of pressure levels to use.                |
 |                   |                            | May be less than the length of the               |
 |                   |                            | 'levels' array, but cannot be more.              |
 +-------------------+----------------------------+--------------------------------------------------+
@@ -85,8 +85,8 @@ The optional variable-value pairs can appear in any order.
 |                   |                            | see `Levels`_ section for discussion.            |
 +-------------------+----------------------------+--------------------------------------------------+
 | 'YMD'             | '2017-12-25'               | Date required for *create_obs_sequence*.         |
-|                   |                            | This time is replaced if and when                |
-|                   |                            | through *create_fixed_network_seq*               |
+|                   |                            | If *create_fixed_network_seq* is run, this time  |
+|                   |                            | is replaced.                                     |
 +-------------------+----------------------------+--------------------------------------------------+
 | fill_obs          | false                      | 'true' inserts a bogus observation value of 1.0  |
 |                   |                            | and a bogus QC value of 0.'false' does not insert|
@@ -133,12 +133,14 @@ Levels
  
 .. attention::
 
-   Specifying the vertical levels is the most problematic part of this process.
-   Since observation error variances tend to vary with level, coordinating
-   the levels and the error variances is required.
+   If you need realistic error variances attached to your observations,
+   be careful to align your levels and variances.
 
-The *mandatory pressure levels* defined in the
-`AMS glossary <https://glossary.ametsoc.org/wiki/Mandatory_level>`_ and their corresponding error variances are
+The default levels that this program generates are the *mandatory pressure levels* defined in the
+`AMS glossary <https://glossary.ametsoc.org/wiki/Mandatory_level>`_.
+The corresponding error variances are from ncep_obs_err_mod.  
+See :doc`../obs_converters/obs_error/README`__.
+Levels at the top can be excluded by setting *nprofiles* < 21 (size(levels)).
 
 .. code::
 
@@ -146,28 +148,15 @@ The *mandatory pressure levels* defined in the
    T_error_var = [1.44 1.00 0.64 0.64 0.64 0.64 0.81  1.44 1.44 1.00 0.64 0.64 0.81 1.00 1.69 2.25 2.25 2.25 2.25 2.25 2.25];
    W_error_var = [1.96 2.25 2.25 2.56 4.41 6.76 9.00 10.24 7.29 5.76 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41];
 
-The default levels that this program generates were use to create the 
-Zagar OSSE which did not assimilate any observations above (about) 36 hPa.
-The default pressure levels and corresponding observation error variances are: 
-
-.. code::
-
-   levels      = [1000  925  850  700  500  400  300   250  200  150  100   70   50   40];
-   T_error_var = [1.44 1.00 0.64 0.64 0.64 0.64 0.81  1.44 1.44 1.00 0.64 0.64 0.81 1.00];
-   W_error_var = [1.96 2.25 2.25 2.56 4.41 6.76 9.00 10.24 7.29 5.76 4.41 4.41 4.41 4.41];
-
-The following levels may be useful since we rarely assimilate observations above 150 hPa
-and there are extra levels near the surface because any topography will interfere
-with the 1000 hPa level. These extra levels are **not** *mandatory* levels.
+Here's an example of replacing the AMS levels with a set that has more levels near the surface
+and none above 150 hPa.  Note that the error variances should change to be consistent
+with the levels.
 
 .. code::
 
    levels      = [1000  950  900  850  800  750  700  650  600  550  500  400  300  200  150];
    T_error_var = [1.44 1.21 0.81 0.64 0.64 0.64 0.64 0.64 0.64 0.64 0.64 0.64 0.81 1.44 1.00];
    W_error_var = [1.96 2.25 2.25 2.25 2.56 2.56 2.56 3.24 3.61 4.00 4.41 6.76 9.00 7.29 5.76];
-   % OR - to replicate what the (deprecated) even_sphere_dense.m  did:
-   T_error_var = [1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00];
-   W_error_var = [4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00 4.00];
 
 Running Matlab in Batch Mode
 ----------------------------

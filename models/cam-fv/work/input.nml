@@ -48,12 +48,12 @@
    output_mean                  = .true.
    output_sd                    = .true.
    output_members               = .true.
-   num_output_state_members     = X
+   num_output_state_members     = 3
    single_file_out              = .false.
    write_all_stages_at_end      = .false.
    output_interval              = 1
 
-   ens_size                     = X
+   ens_size                     = 3
    num_groups                   = 1
    distributed_state            = .true.
 
@@ -71,7 +71,7 @@
 
    obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
-   num_output_obs_members   = X
+   num_output_obs_members   = 3
    compute_posterior        = .false.
 
    trace_execution          = .true.

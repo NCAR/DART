@@ -44,12 +44,13 @@ p = inputParser;
 
 addRequired(p,'nprofiles',@isnumeric);
 
-% From NCEP+ACARS/201812_6H/obs_seq2018120100
-% They could (should?) come from obs_converters/obs_error/ncep_obs_err_mod.f90.
+% These are the *mandatory pressure levels* defined in the
+% AMS glossary https://glossary.ametsoc.org/wiki/Mandatory_level
+% The error variances come from obs_converters/obs_error/ncep_obs_err_mod.f90.
 
-default_T_error_var = [1.44 1.00 0.64 0.64 0.64 0.64 0.81  1.44  1.44  1.00  0.64 0.64 0.81 1.00];
-default_W_error_var = [1.96 2.25 2.25 2.56 4.41 6.76 9.00 10.24  7.29  5.76  4.41 4.41 4.41 4.41];
-default_levels      = [1000  925  850  700  500  400  300   250   200   150   100   70   50   40];
+default_levels      = [1000  925  850  700  500  400  300   250  200  150  100   70   50   30   20   10    7    5    3    2    1];
+default_T_error_var = [1.44 1.00 0.64 0.64 0.64 0.64 0.81  1.44 1.44 1.00 0.64 0.64 0.81 1.00 1.69 2.25 2.25 2.25 2.25 2.25 2.25];
+default_W_error_var = [1.96 2.25 2.25 2.56 4.41 6.76 9.00 10.24 7.29 5.76 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41];
 default_fill        = false; % For diagnostic test need a null data value and a null qc value
 default_nlevels     = length(default_levels);
 default_YMD         = '2017-12-25';
@@ -103,8 +104,7 @@ fprintf('vertical levels %s\n',levelstrings)
 
 % Generate obs_sequence input for this problem
 
-% Date information is overwritten by create_fixed_network_sequence
-% so these values are only marginally useful.
+% If create_fixed_network_sequence is run, this ate information will be overwritten
 
 [year, month, day] = ymd(datetime(yyyymmdd));
 obsdate   = datenum(yyyymmdd);
@@ -227,7 +227,7 @@ fprintf('done.\n')
 % Model grid for comparison on the obs distribution plot
 % T85          : nlon=256, nlat=128 points on A-grid
 % FV ~1 degree : nlon=288, nlat=192
-% 1 degree every 4th point in latitude and longitude would be (288*192/16=3528)
+% 1 degree every 4th point in latitude and longitude would be (288*192/16=3456)
 
 plot(lon, lat, '*');
 title(sprintf('%d profile locations with %d levels (1 level shown)',nprofiles,nlevels))

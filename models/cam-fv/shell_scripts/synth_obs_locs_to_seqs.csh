@@ -8,8 +8,12 @@
 # Call create_obs_sequence to convert a text file of obs locations and types
 # into a set_def.out file.  
 # Call create_fixed_network_seq to create separate files for each time period. 
-# This one makes multiple files/day (2 or 4 are the most common), 
-# a single time per file.
+# This one makes multiple files/day.  There's a single time in each file.
+# 2 and 4 are the most common numbers of files/day. 
+
+# It requires only a few seconds to run a single date with ~100,000 observations, 
+# in which case it can be run interactively 
+# and the batch job directives can be ignored.
 
 # (Copy to and) Submit from a case_dir, where there's 
 # + a text file of locations and types for input to create_obs_sequence,
@@ -84,22 +88,23 @@ set exec_dir      = /glade/u/home/raeder/DART/reanalysis_git/models/cam-fv/work
 if (! -d $obs_out_dir) mkdir $obs_out_dir
 cd $obs_out_dir
 
-# Link to files needed by CAM's static_init_model
-# because create_fixed_network_seq *can* make identity obs 
-# (but won't in this usage).
+# Link to files needed by CAM's static_init_model subroutine,
+# which is used by create_fixed_network_seq.
 if (-f input.nml) $MOVE input.nml input.nml.$$
 $COPY ${case_dir}/input.nml .
 
 if (-f ${case_dir}/caminput.nc) then
    $COPY ${case_dir}/caminput.nc .
 else
-   $COPY ${exec_dir}/caminput.nc .
+   echo "ERROR: failed to find ${case_dir}/caminput.nc"
+   exit 10
 endif
 
 if (-f ${case_dir}/cam_phis.nc) then
    $COPY ${case_dir}/cam_phis.nc .
 else
-   $COPY ${exec_dir}/cam_phis.nc .
+   echo "ERROR: failed to find ${case_dir}/cam_phis.nc"
+   exit 20
 endif
 
 # Transform the raw obs location data into a set_def.out file
@@ -107,7 +112,7 @@ if (! -f set_def.out) then
    ${exec_dir}/create_obs_sequence < $obs_text_file > /dev/null
    if ($status != 0) then
       echo "create_obs_sequence failed"
-      exit
+      exit 30
    endif
 endif
 
@@ -121,7 +126,7 @@ while($day <= $day_last)
       set fstring = `printf obs_seq%04d%02d%02d%02d $year $month $day $hour`
       if (-f $fstring) then
          echo "$fstring exists: move it and try again"
-         exit
+         exit 40
       endif
 
       # Create the file which will be input to create_fixed_network_seq

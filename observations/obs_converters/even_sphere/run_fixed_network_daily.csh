@@ -5,8 +5,8 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
 # Call ./create_fixed_network_seq to create a separate file for each time period.  
-# Edit the values below to change the dates and intervals.
-# It makes 1 file/day, single time per file.
+# Edit the values below to change the dates.
+# It makes 1 file/day, single time per file, at 12 UTC.
 # It assumes that create_fixed_network has any model-specific files it needs in this directory.
 # It requires a set_def.out file (usually created by create_obs_sequence).
 
