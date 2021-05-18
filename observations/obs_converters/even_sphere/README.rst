@@ -149,7 +149,7 @@ Levels
 The default levels that this program generates are the *mandatory pressure levels* defined in the
 `AMS glossary <https://glossary.ametsoc.org/wiki/Mandatory_level>`_.
 The corresponding error variances are from ncep_obs_err_mod.  
-See :doc`../obs_converters/obs_error/README`__.
+See :doc:`../obs_error/README`.
 Levels at the top can be excluded by setting *nprofiles* < 21 (size(levels)).
 
 .. code::
