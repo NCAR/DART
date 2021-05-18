@@ -4,6 +4,16 @@ Even Sphere
 
 It is frequently useful to generate a series of synthetic observations 
 located at roughly evenly-distributed locations [1]_ on a sphere.  
+
+There are two methods provided here.  One is a Matlab script and
+the standard DART observation generation utilities.  The other is
+a stand-alone Fortran program. See the second-to-last section in 
+this file for the Fortran program information.
+
+
+Matlab Scripts Plus Standard DART Observation Executables
+---------------------------------------------------------
+
 This involves multiple steps:
 
 1. determine how many locations are needed
@@ -270,10 +280,25 @@ See `the cam-fv example <models/cam-fv/shell_scripts/synth_obs_locs_to_seqs.csh>
 If there is *not* a script like that for your model,
 you can follow the steps in A), 
 substituting your model name for the "template" in the pathnames. 
-NOTE: you may need to link additional input files, which your model needs to start, 
+NOTE: you may need to link any additional input files which your model requires
 into the directory where you will run the programs.
 These typically contain grid information and are found in your_model/work.
 For example, **cam-fv** needs a *caminput.nc* and *cam_phis.nc*.
+
+
+Fortran program for generating obs directly
+-------------------------------------------
+
+The Fortran program does not generate the nice plots that the Matlab
+process does, but it may be faster and easier to automate for generating
+a large number of obs.
+
+cd into the work directory and run ``quickbuild.csh``.
+
+This builds the ``create_even_sphere`` executable.  Edit the ``input.nml``
+to set the number of obs to generate and the date in the namelist.  Run
+the program and the output file will be generated.
+
 
 
 DETAILS on generating points evenly-distributed on a sphere

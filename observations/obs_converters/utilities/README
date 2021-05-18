@@ -1,0 +1,11 @@
+
+plans for this directory:
+
+mv obs_seq_utilities_mod to the assimilation/modules/observations dir
+
+leave obs_utilities_mod here but there is no need for mkmf or pathnames.
+it is a set of utility routines intended for use by obs converters.
+
+nancy
+18 may 2021
+
