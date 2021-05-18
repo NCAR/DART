@@ -25,7 +25,7 @@ The changes are now listed with the most recent at the top.
 **May 18 2021 :: updated process to generate obs on a sphere.  Tag: v9.10.5**
 
 - Matlab scripts and new scripts for cam-fv make it simpler to
-generate synthetic observations evenly spaced around the sphere.
+  generate synthetic observations evenly spaced around the sphere.
 - Moved create_sphere_obs into the even_sphere directory.
 
 **May 10 2021 :: obs_info support for identity obs Tag: v9.10.4**
