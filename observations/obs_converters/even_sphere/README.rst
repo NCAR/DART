@@ -273,7 +273,7 @@ B
 
 This choice may involve fewer steps, *if* there is a model specific script
 which combines the steps in A).  
-See the `cam-fv example <../../../models/cam-fv/shell_scripts/synth_obs_locs_to_seqs.csh>`_.
+See the cam-fv example (models/cam-fv/shell_scripts/synth_obs_locs_to_seqs.csh).
 If there is *not* a script like that for your model,
 you can follow the steps in A), 
 substituting your model name for the "template" in the pathnames. 
