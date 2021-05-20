@@ -43,7 +43,7 @@ real(r8) :: x, y, z, lat, lon, inc, off, r, phi, deglon, deglat, t_err, w_err
 integer  :: num_obs, ob, lvl, nlvls
 
 integer, parameter :: MAX_LEVELS = 40
-integer, parameter :: DEF_LEVELS = 15
+integer, parameter :: DEF_LEVELS = 21
 
 type(time_type) :: time_obs, prev_time
 
@@ -53,9 +53,10 @@ type(obs_def_type)      :: obs_def
 logical                 :: first_obs
 
 ! These default levels are standard radiosonde reporting pressures in hectopascals.
-real(r8), parameter :: default_levels(DEF_LEVELS) = (/ 1000.0_r8, 950.0_r8, 900.0_r8, 850.0_r8, 800.0_r8,  &
-                                                        750.0_r8, 700.0_r8, 650.0_r8, 600.0_r8, 550.0_r8,  &
-                                                        500.0_r8, 400.0_r8, 300.0_r8, 200.0_r8, 150.0_r8  /)
+real(r8), parameter :: default_levels(DEF_LEVELS) = (/ 1000.0_r8, 925.0_r8, 850.0_r8, 700.0_r8, 500.0_r8, &
+                                                        400.0_r8, 300.0_r8, 250.0_r8, 200.0_r8, 150.0_r8, &
+                                                        100.0_r8,  70.0_r8,  50.0_r8,  30.0_r8,  20.0_r8, &
+                                                         10.0_r8,  7.0_r8, 5.0_r8, 3.0_r8, 2.0_r8, 1.0_r8 /)
 
 ! namelist variables
 

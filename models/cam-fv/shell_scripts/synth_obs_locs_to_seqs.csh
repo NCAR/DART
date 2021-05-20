@@ -83,6 +83,26 @@ set obs_text_file = ${case_dir}/even_create_input_all
 set obs_out_dir   = /glade/p/cisl/dares/Observations/Synthetic/UVTRadiosonde_3456
 set exec_dir      = /glade/u/home/raeder/DART/reanalysis_git/models/cam-fv/work
 
+# This section could be modified to include running even_sphere.m as part of a single job
+# to generate synthetic observations evenly distributed on the sphere.
+#     \rm -rf matlab_input.m
+# 
+#     cat >> matlab_input.m << EndOfInput
+# 
+#        nprofiles   = 30;
+#        levels      = [1000  850  500  300  200  100];
+#        T_error_var = [1.44 0.64 0.64 0.81 1.44 0.64];
+#        W_error_var = [1.96 2.25 4.41 9.00 7.29 4.41];
+#        even_sphere(nprofiles, 'levels', levels, ...
+#                   'T_error_var', T_error_var, 'W_error_var', W_error_var)
+#        fname = sprintf('even_sphere_%d_profiles',nprofiles);
+#        orient landscape
+#        print(fname,'-dpdf')
+# 
+#     EndOfInput
+# 
+#     matlab -nosplash -nodesktop -r "try; cd $PWD; matlab_input; catch; end; exit";
+
 # ==============================================================================
 
 if (! -d $obs_out_dir) mkdir $obs_out_dir
