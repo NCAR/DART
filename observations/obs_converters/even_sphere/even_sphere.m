@@ -1,7 +1,6 @@
 function even_sphere(nprofiles, varargin)
 
 % Generate approximately evenly-distributed profiles on a sphere using Golden Section spiral algorithm
-%    http://www.softimageblog.com/archives/115
 %
 % This creates input to create_obs_sequence that will generate a set of radiosonde
 % profiles of T,U,V, that are approximately evenly-spaced on a sphere.
