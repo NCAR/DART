@@ -1740,38 +1740,39 @@ do ivar = 1, num_vars
 
       has_missing = get_has_missing_value(dom_id,ivar)
       has_Fill    = get_has_FillValue(    dom_id,ivar)
-         select case (get_xtype(dom_id,ivar))
-            case (NF90_INT)
-           write(*,*) 'xtype             : ', 'NF90_INT'
-           if (has_missing) then
-              call get_missing_value(dom_id,ivar,missingINT)
-              write(*,*) 'missing_value     : ', missingINT
-           endif
-           if (has_Fill) then
-              call get_FillValue(    dom_id,ivar,spval_int)
-              write(*,*) '_FillValue        : ', spval_int
-           endif
-            case (NF90_FLOAT)
-           write(*,*) 'xtype             : ', 'NF90_FLOAT'
-           if (has_missing) then
-              call get_missing_value(dom_id,ivar,missingR4)
-              write(*,*) 'missing_value     : ', missingR4
-           endif
-           if (has_Fill) then
-              call get_FillValue(    dom_id,ivar,spval_r4)
-              write(*,*) '_FillValue        : ', spval_r4
-           endif
-            case (NF90_DOUBLE)
-           write(*,*) 'xtype             : ', 'NF90_DOUBLE'
-           if (has_missing) then
-              call get_missing_value(dom_id,ivar,missingR8)
-              write(*,*) 'missing_value     : ', missingR8
-           endif
-           if (has_Fill)    then
-              call get_FillValue(    dom_id,ivar,spval_r8)
-              write(*,*) '_FillValue        : ', spval_r8
-           endif
-         end select
+
+      select case (get_xtype(dom_id,ivar))
+         case (NF90_INT)
+            write(*,*) 'xtype             : ', 'NF90_INT'
+            if (has_missing) then
+               call get_missing_value(dom_id,ivar,missingINT)
+               write(*,*) 'missing_value     : ', missingINT
+            endif
+            if (has_Fill) then
+               call get_FillValue(    dom_id,ivar,spval_int)
+               write(*,*) '_FillValue        : ', spval_int
+            endif
+         case (NF90_FLOAT)
+            write(*,*) 'xtype             : ', 'NF90_FLOAT'
+            if (has_missing) then
+               call get_missing_value(dom_id,ivar,missingR4)
+               write(*,*) 'missing_value     : ', missingR4
+            endif
+            if (has_Fill) then
+               call get_FillValue(    dom_id,ivar,spval_r4)
+               write(*,*) '_FillValue        : ', spval_r4
+            endif
+         case (NF90_DOUBLE)
+            write(*,*) 'xtype             : ', 'NF90_DOUBLE'
+            if (has_missing) then
+               call get_missing_value(dom_id,ivar,missingR8)
+               write(*,*) 'missing_value     : ', missingR8
+            endif
+            if (has_Fill)    then
+               call get_FillValue(    dom_id,ivar,spval_r8)
+               write(*,*) '_FillValue        : ', spval_r8
+            endif
+      end select
 
    endif
 
