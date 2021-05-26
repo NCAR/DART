@@ -653,6 +653,7 @@ if ( get_has_missing_value(domid, varid) ) then
          call check_attribute_value_r8(ncFile, filename, ncVarID, 'missing_value', spvalR8)
 
       case default
+         !>@todo FIXME report the variable with the unsupported xtype
          call error_handler(E_ERR, 'check_attributes', 'unknown xtype', source)
    end select
 endif
@@ -672,6 +673,7 @@ if ( get_has_FillValue(   domid, varid) ) then
          call check_attribute_value_r8(ncFile, filename, ncVarID, 'FillValue', spvalR8)
 
       case default
+         !>@todo FIXME report the variable with the unsupported xtype
          call error_handler(E_ERR, 'check_attributes', 'unknown xtype', source)
    end select
 endif
@@ -728,7 +730,7 @@ real(r4) :: ret_att_valR4
 
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_att_valR4) == NF90_NOERR ) then
    if (att_valR4 /= ret_att_valR4) then
-      write(string1,*) ' variable attribute "'//trim(att_string)//'" in stateis ', att_valR4
+      write(string1,*) ' variable attribute "'//trim(att_string)//'" in state is ', att_valR4
       write(string2,*) ' does not match "'//trim(att_string)//'" ', ret_att_valR4
       write(string3,*) ' in "'//trim(filename)//'"'
       call error_handler(E_ERR, 'check_attribute_value_r4', string1, &
@@ -756,7 +758,7 @@ real(r8) :: ret_att_valR8
 
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_att_valR8) == NF90_NOERR ) then
    if (att_valR8 /= ret_att_valR8) then
-      write(string1,*) ' variable attribute "'//trim(att_string)//'" in stateis ', att_valr8
+      write(string1,*) ' variable attribute "'//trim(att_string)//'" in state is ', att_valr8
       write(string2,*) ' does not match "'//trim(att_string)//'" ', ret_att_valr8
       write(string3,*) ' in "'//trim(filename)//'"'
       call error_handler(E_ERR, 'check_attribute_value_r8', string1, &

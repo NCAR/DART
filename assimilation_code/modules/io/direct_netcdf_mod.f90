@@ -1459,8 +1459,6 @@ end subroutine transpose_write_multi_task
 !> If the variable is unbounded, this routine returns .FALSE.
 !> The return value is not an indication of whether or not the values have
 !> actually been modified.
-!> "clamp_variable()" must be called after the MISSING_R8 has been replaced 
-!> by the 'native' missing value "set_model_missing_value()"
 !-------------------------------------------------------------------------------
 
 subroutine clamp_variable(dom_id, var_index, variable)
@@ -1470,9 +1468,8 @@ integer,     intent(in) :: var_index   ! variable index
 real(r8), intent(inout) :: variable(:) ! variable
 
 real(r8) :: minclamp, maxclamp, my_minmax(2)
-character(len=NF90_MAX_NAME) :: var_name ! for informational log messages
+character(len=NF90_MAX_NAME) :: varname ! for informational log messages
 logical  :: allow_missing
-real(r8) :: mymissing
 
 ! if neither bound is set, return early
 minclamp = get_io_clamping_minval(dom_id, var_index)
@@ -1485,23 +1482,21 @@ if (minclamp == missing_r8 .and. maxclamp == missing_r8) return
 allow_missing = get_missing_ok_status()
 
 if (allow_missing) then
-   ! by the 'native' missing value ("replace_missing()").
-   call get_missing_value(dom_id, var_index, mymissing)
-   my_minmax(1) = minval(variable, mask=(variable /= mymissing))
-   my_minmax(2) = maxval(variable, mask=(variable /= mymissing))
+   my_minmax(1) = minval(variable, mask=(variable /= missing_r8))
+   my_minmax(2) = maxval(variable, mask=(variable /= missing_r8))
 else
    ! get the min/max for this variable before we start
    my_minmax(1) = minval(variable)
    my_minmax(2) = maxval(variable)
 endif
      
-var_name = get_variable_name(dom_id, var_index)
+varname = get_variable_name(dom_id, var_index)
 
 ! is lower bound set?
 if ( minclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
    if ( my_minmax(1) < minclamp ) then
        if (allow_missing) then
-          where(variable /= mymissing) variable = max(minclamp, variable)
+          where(variable /= missing_r8) variable = max(minclamp, variable)
        else
           variable = max(minclamp, variable)
        endif
@@ -1512,7 +1507,7 @@ endif ! min range set
 if ( maxclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
    if ( my_minmax(2) > maxclamp ) then
       if (allow_missing) then
-         where(variable /= mymissing) variable = min(maxclamp, variable)
+         where(variable /= missing_r8) variable = min(maxclamp, variable)
       else
          variable = min(maxclamp, variable)
       endif
@@ -1566,15 +1561,7 @@ do i = start_var, end_var
    ! This information is stored in the state structure and
    ! set by the model.
    if ( do_io_update(domain, i) .or. force_copy ) then
-
-      ! If this (model) supports missing values in the state
-      ! they must be replaced with the natural special values.
-      if ( allow_missing ) then
-         call set_model_missing_value(domain, i, var_block(istart:iend))
-      endif
-
       ! diagnostic files do not get clamped but restart may be clamped
-      ! clamp_variable handles the missing values correctly
       if ( do_io_clamping(domain, i) .and. do_variable_clamping) then
          call clamp_variable(domain, i, var_block(istart:iend))
       endif
@@ -1587,6 +1574,8 @@ do i = start_var, end_var
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
       write(msgstring,*) 'nf90_inq_varid "'//trim(get_variable_name(domain,i))//'"'
       call nc_check(ret, 'write_variables:', msgstring)
+
+      if (allow_missing) call set_model_missing_value(domain, i, var_block(istart:iend))
 
       ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
       write(msgstring,*) 'nf90_put_var "'//trim(get_variable_name(domain,i))//'"'
@@ -1648,7 +1637,7 @@ ret = nf90_create(filename, create_mode, ncfile_out)
 call nc_check(ret, routine, 'nf90_create "'//trim(filename)//'"')
 
 ret = nf90_enddef(ncfile_out)
-call nc_check(ret, routine, 'end define mode')
+call nc_check(ret, routine, 'end define mode before writing grid info')
 
 ! write grid information
 call nc_write_model_atts(ncfile_out, dom_id)
@@ -1951,7 +1940,6 @@ integer,          intent(in) :: varid
 
 integer :: missing_valueINT, FillValueINT
 
-
 if ( get_has_missing_value(domid, varid) ) then
    call  get_missing_value(domid, varid, missing_valueINT)
    call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missing_valueINT), &
@@ -2008,7 +1996,7 @@ integer,          intent(in) :: ncVarID
 integer,          intent(in) :: domid
 integer,          intent(in) :: varid
 
-real(digits12) :: missing_valueR8, FillValueR8
+real(r8) :: missing_valueR8, FillValueR8
 
 if ( get_has_missing_value(domid, varid) ) then
    call  get_missing_value(domid, varid, missing_valueR8)
@@ -3042,12 +3030,10 @@ integer,  intent(in)    :: domain
 integer,  intent(in)    :: variable
 real(r8), intent(inout) :: array(:)
 
-character(len=NF90_MAX_NAME) :: varname
 integer        :: model_missing_valueINT
 real(r4)       :: model_missing_valueR4
 real(digits12) :: model_missing_valueR8
 
-! check to see if variable has missing value attributes
 if ( get_has_missing_value(domain, variable) ) then
 
    select case ( get_xtype(domain, variable) )
@@ -3080,7 +3066,6 @@ if ( get_has_FillValue(domain, variable) ) then
 
 endif
 
-
 end subroutine set_dart_missing_value
 
 !--------------------------------------------------------
@@ -3103,10 +3088,10 @@ if ( get_has_missing_value(domain, variable) ) then
    select case ( get_xtype(domain, variable) )
       case ( NF90_INT )
          call get_missing_value(domain, variable, model_missing_valueINT)
-         where(array == MISSING_R8) array = model_missing_valueINT
+         where(array == MISSING_R8)       array = model_missing_valueINT
       case ( NF90_FLOAT )
          call get_missing_value(domain, variable, model_missing_valueR4)
-         where(array == MISSING_R8) array = model_missing_valueR4
+         where(array == MISSING_R8)       array = model_missing_valueR4
       case ( NF90_DOUBLE )
          call get_missing_value(domain, variable, model_missing_valueR8)
          where(array == MISSING_R8)       array = model_missing_valueR8
@@ -3125,7 +3110,7 @@ if ( get_has_FillValue(domain, variable) ) then
          where(array == MISSING_R8)   array = model_missing_valueR4
       case ( NF90_DOUBLE )
          call get_FillValue(domain, variable, model_missing_valueR8)
-         where(array == MISSING_R8) array = model_missing_valueR8
+         where(array == MISSING_R8)   array = model_missing_valueR8
    end select
 
 endif

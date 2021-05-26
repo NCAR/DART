@@ -794,15 +794,16 @@ do ivar = 1, nvars
    endif
 
    ! Saving any FillValue, missing_value attributes ...
-   ! Also stuff them into the R8 slots to facilitate simpler clamp_variable
-   ! implementation.
+   ! Also stuff them into the 'r8' slots to facilitate simpler clamp_variable
+   ! implementation. (Since we coerce the DART state to 'r8')
 
    var_xtype = domain%variable(ivar)%io_info%xtype
    select case (var_xtype)
       case ( NF90_INT )
+          ! Sometimes the attributes are specified as GLOBAL attributes
           ret = nf90_get_att(ncid, NF90_GLOBAL, '_FillValue',    cf_spvalINT)
           if (ret == NF90_NOERR) then
-             domain%variable(ivar)%io_info%spvalINT       = cf_spvalINT
+             domain%variable(ivar)%io_info%spvalINT            = cf_spvalINT
              domain%variable(ivar)%io_info%spvalR8             = real(cf_spvalINT,r8)
              domain%variable(ivar)%io_info%has_FillValue       = .true.
           endif
@@ -812,6 +813,7 @@ do ivar = 1, nvars
              domain%variable(ivar)%io_info%spvalR8             = real(cf_spvalINT,r8)
              domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
+          ! Usually the attributes are specified as variable attributes
           ret = nf90_get_att(ncid, VarID, '_FillValue',          cf_spvalINT)
           if (ret == NF90_NOERR) then
              domain%variable(ivar)%io_info%spvalINT            = cf_spvalINT
@@ -852,6 +854,7 @@ do ivar = 1, nvars
           endif
 
       case ( NF90_DOUBLE )
+
           ret = nf90_get_att(ncid, NF90_GLOBAL, '_FillValue',    cf_spvalR8)
           if (ret == NF90_NOERR) then
              domain%variable(ivar)%io_info%spvalR8             = cf_spvalR8
@@ -862,7 +865,7 @@ do ivar = 1, nvars
              domain%variable(ivar)%io_info%missingR8           = cf_spvalR8
              domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
-          ret = nf90_get_att(ncid, VarID, '_FillValue', cf_spvalR8)
+          ret = nf90_get_att(ncid, VarID, '_FillValue',          cf_spvalR8)
           if (ret == NF90_NOERR) then
              domain%variable(ivar)%io_info%spvalR8             = cf_spvalR8
              domain%variable(ivar)%io_info%has_FillValue       = .true.
@@ -899,7 +902,8 @@ do ivar = 1, nvars
 
    endif
 
-   !>@todo FIXME : Not using scale factor or offset at the moment. Need to
+   !>@todo FIXME : Not supporting scale factor or offset at the moment, so just error.
+   !>              To fully support netCDF I/O we need to
    !>              pack and unpack the variable if these attributes exist.
    if (nf90_get_att(ncid, VarID, 'scale_factor',   cf_scale_factor) == NF90_NOERR) then
       domain%variable(ivar)%io_info%scale_factor = cf_scale_factor
