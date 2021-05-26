@@ -103,7 +103,7 @@ fprintf('vertical levels %s\n',levelstrings)
 
 % Generate obs_sequence input for this problem
 
-% If create_fixed_network_sequence is run, this ate information will be overwritten
+% If create_fixed_network_sequence is run, this date information will be overwritten
 
 [year, month, day] = ymd(datetime(yyyymmdd));
 obsdate   = datenum(yyyymmdd);
@@ -243,4 +243,3 @@ xlabel(sprintf('%d evenly-spaced longitudes',nlon))
 ylabel(sprintf('%d evenly-spaced latitudes' ,nlat))
 
 axis tight
-
