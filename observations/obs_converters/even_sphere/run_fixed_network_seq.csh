@@ -4,11 +4,11 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# loop, calling ./create_fixed_network_seq to create separate
-# files for each time period.  edit the values below to change
-# the dates and intervals.
-
-# this one makes 2 files/day, 12 hours apart, single time per file.
+# Call ./create_fixed_network_seq to create a separate file for each time period.  
+# Edit the values below to change the dates and intervals.
+# By default it makes files at 0 and 12 UTC, with a single time per file.
+# It assumes that create_fixed_network has any model-specific files it needs in this directory.
+# It requires a set_def.out file (usually created by create_obs_sequence).
 
 @ year   = 2008
 @ month  = 8
@@ -38,5 +38,4 @@ while($day <= $ndays)
 end
 
 exit 0
-
 
