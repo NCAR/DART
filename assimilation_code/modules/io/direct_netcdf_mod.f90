@@ -935,7 +935,7 @@ integer :: block_size , istart, iend , copy , start_var
 istart     = dart_index ! position in state_ens_handle%vars
 block_size = 0
 
-! need to read into a tempory array, then fill up copies
+! need to read into a temporary array, then fill up copies
 allocate(vector(get_domain_size(domain)))
 
 COPIES: do copy = 1, state_ens_handle%my_num_copies
@@ -997,13 +997,13 @@ integer :: time_owner, time_owner_index
 logical :: clamp_vars, force_copy
 type(time_type) :: dart_time
 
-! need to read into a tempory array to fill with one copies
+! need a temporary array to fill with one copy
 allocate(vector(get_domain_size(domain)))
 
 istart = dart_index ! position in state_ens_handle%vars
 block_size = 0
 
-! need to read into a temporary array, then fill up copies
+! read into a temporary array, then fill up copies
 
 COPIES: do copy = 1, state_ens_handle%my_num_copies
 
