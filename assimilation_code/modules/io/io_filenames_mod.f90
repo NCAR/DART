@@ -554,7 +554,6 @@ do i = 1, get_num_variables(dom)
 
    if ( .not. do_io_update(dom,i) ) cycle
 
-   ! get variable id from necfile
    ret = nf90_inq_varid(ncfile, get_variable_name(dom,i), var_id)
    write(string1,*) 'no match for variable ',  trim(get_variable_name(dom,i)), &
                       ' in "'//trim(netcdf_filename)//'"'
@@ -743,7 +742,6 @@ end subroutine check_attribute_value_r4
 
 !--------------------------------------------------------------------
 !> check r8 values are the same
-!>@ FIXME ... does this actually work when r8=r4 ?
 
 
 subroutine check_attribute_value_r8(ncFile, filename, ncVarID, att_string, att_valR8)
