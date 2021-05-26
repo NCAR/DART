@@ -855,23 +855,32 @@ do ivar = 1, nvars
 
       case ( NF90_DOUBLE )
 
+          ! If r8 = r4, 
+          ! the missing_value must be present in both missingR4 and missingR8 
+          ! ditto for _FillValue.
+          ! This satisfies the overloaded operator 'get_missing_value, get_FillValue'
+
           ret = nf90_get_att(ncid, NF90_GLOBAL, '_FillValue',    cf_spvalR8)
           if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR4             = cf_spvalR8
              domain%variable(ivar)%io_info%spvalR8             = cf_spvalR8
              domain%variable(ivar)%io_info%has_FillValue       = .true.
           endif
           ret = nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalR8)
           if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR4           = cf_spvalR8
              domain%variable(ivar)%io_info%missingR8           = cf_spvalR8
              domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
           ret = nf90_get_att(ncid, VarID, '_FillValue',          cf_spvalR8)
           if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR4             = cf_spvalR8
              domain%variable(ivar)%io_info%spvalR8             = cf_spvalR8
              domain%variable(ivar)%io_info%has_FillValue       = .true.
           endif
           ret = nf90_get_att(ncid, VarID, 'missing_value',       cf_spvalR8)
           if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR4           = cf_spvalR8
              domain%variable(ivar)%io_info%missingR8           = cf_spvalR8
              domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
