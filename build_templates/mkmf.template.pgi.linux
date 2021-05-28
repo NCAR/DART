@@ -93,7 +93,7 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 # for development or debugging, use this for flags:
 # FFLAGS = -g -gopt -Mbounds -Mchkfpstk -Mchkptr -Mchkstk -Mpgicoff  \
 #         -Mdclchk -Meh_frame -traceback -Minform=inform \
-#         -Mflushz -Ktrap=fp -pc 64 $(INCS)
+#         -Mflushz -Ktrap=fp -pc 64 -Mbackslash $(INCS)
 
 # <next few lines under version control, do not edit>
 # $URL$
