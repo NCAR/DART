@@ -1394,13 +1394,11 @@ character     (len=NF90_MAX_NAME)     :: varname
 
 if ( .not. module_initialized ) call static_init_model()
 
-!>@todo CHECKME ... this may not be needed for CLM4.5, CLM5 (CESM2.0)
-call error_handler(E_ERR,routine,'routine not needed - maybe',source)
-
 ! Must check anything with a dimension of 'levtot' or 'levsno' and manually
 ! set the values to DART missing. If only it were that easy ...
 !
-!>@todo check if this relationship is still true ... snow can exist even if there is no snow layer
+!>@todo check if this relationship is still true ... 
+!       trace amounts of snow can exist even if there is no snow layer
 ! The treatment of snow-related variables is complicated.
 ! The SNLSNO variable defines the number of snow layers with valid values.
 ! HOWEVER, if the snow depth is < 0.01 m, the snow is not represented by a layer,

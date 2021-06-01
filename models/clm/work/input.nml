@@ -23,6 +23,7 @@
    silence                    = .false.
    /
 
+
 &filter_nml
    async                    = 0
    adv_ens_command          = 'cannot_advance_clm'
@@ -68,18 +69,24 @@
    inf_sd_max_change           = 1.05,                    1.05
    /
 
+
 &quality_control_nml
-   input_qc_threshold       = 1.0
-   outlier_threshold        = 3.0
-/
+   input_qc_threshold = 1.0
+   outlier_threshold  = 3.0
+   /
+
 
 &clm_to_dart_nml
-   clm_to_dart_output_file = 'clm_missing_r8.nc'
+   clm_to_dart_input_files  =  'clm_restart.nc',  'clm_history.nc',  'clm_vector_history.nc'
+   clm_to_dart_output_files = 'dart_restart.nc', 'dart_history.nc', 'dart_vector_history.nc'
    /
 
+
 &dart_to_clm_nml
-   dart_to_clm_input_file  = 'model_restart.nc'
+   dart_to_clm_input_file  = 'dart_restart.nc'
+   dart_to_clm_output_file = 'clm_restart.nc'
    /
+
 
 &smoother_nml
    num_lags              = 0
