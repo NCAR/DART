@@ -77,8 +77,8 @@
 
 
 &clm_to_dart_nml
-   clm_to_dart_input_files  =  'clm_restart.nc',  'clm_history.nc',  'clm_vector_history.nc'
-   clm_to_dart_output_files = 'dart_restart.nc', 'dart_history.nc', 'dart_vector_history.nc'
+   clm_restart_file =  'clm.nc'
+   verbose          = 0
    /
 
 
