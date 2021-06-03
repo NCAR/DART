@@ -19,7 +19,7 @@ use        types_mod, only : r8
 
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
-                             error_handler, E_MSG
+                             error_handler, E_MSG, E_ERR
 
 use netcdf_utilities_mod, only : nc_check, &
                                  nc_open_file_readwrite, &
@@ -27,6 +27,7 @@ use netcdf_utilities_mod, only : nc_check, &
                                  nc_synchronize_file, &
                                  nc_begin_define_mode, &
                                  nc_end_define_mode, &
+                                 nc_variable_exists, &
                                  nc_get_variable, &
                                  nc_put_variable, &
                                  nc_get_variable_size, &
@@ -63,11 +64,14 @@ integer :: dimlen(NF90_MAX_VAR_DIMS)
 character(len=NF90_MAX_NAME) :: dimnames(NF90_MAX_VAR_DIMS)
 character(len=NF90_MAX_NAME) :: varname
 
+real(r8), allocatable :: frac_sno(:)
+real(r8), allocatable :: SNOW_DEPTH(:)
+real(r8), allocatable :: H2OSNO(:)     ! total snow in column - includes traces
 integer,  allocatable :: SNLSNO(:)     ! "negative number of snow layers"
 real(r8), allocatable :: variable(:,:)
 real(r8)              :: FillValue
 
-character(len=512) :: string1
+character(len=512) :: string1, string2
 
 !===============================================================================
 
@@ -81,17 +85,9 @@ call check_namelist_read(iunit, io, "clm_to_dart_nml") ! closes, too.
 
 ncid = nc_open_file_readwrite(clm_restart_file, 'open for bogus snow value replacement')
 
-! If SNLSNO does not exist, there is nothing in the file that has bogus
-! values in the snow layers. Issue warning about wrong file (i.e. not a restart)?
+call get_snow_metadata()
 
-call nc_get_variable_size(ncid, 'SNLSNO', ncolumn)
-allocate(SNLSNO(ncolumn))
-call nc_get_variable(ncid,'SNLSNO',SNLSNO)
-if (verbose > 1) write(*,*)'minval of SNLSNO is ',minval(SNLSNO)
-
-nlevsno = nc_get_dimension_size(ncid,'levsno')
-
-!>@todo  SNLSNO has a _FillValue of -9999 but there should never be any of these 
+nlevsno = nc_get_dimension_size(ncid,'levsno') ! The number of snow layers
 
 ! Get the number of variables in the netCDF file.
 ! We will query each of them to see if they use the 'levsno' or 'levtot'
@@ -104,18 +100,18 @@ call nc_check(io, source, 'determining number of variables in file')
 if (verbose > 0) write(*,*)'There are ',nvariables,' variables in the file.'
 
 VARIABLES : do ivar = 1,nvariables
+
    write(string1,*)'inquire variable number ',ivar
    io = nf90_inquire_variable(ncid, ivar, varname, xtype, ndims, dimids)
    call nc_check(io, source, string1)
 
-!  One stop shopping ... 
-!  call nc_get_variable_info(ncid, varname, xtype, ndims, dimlen, dimnames)
-
+   ! immediately skip the variables that cannot contain snow layers 
    if (xtype /= NF90_DOUBLE) cycle VARIABLES
    if (ndims /= 2)           cycle VARIABLES
 
+   ! Now that we are guaranteed to have a 2D variable - skip anything
+   ! that is not dimensioned (*levels*,column)
    call nc_get_variable_dimension_names(ncid, varname, dimnames)
-
    if (trim(dimnames(2)) /= 'column') cycle VARIABLES
 
    if ( verbose > 1 ) &
@@ -125,7 +121,7 @@ VARIABLES : do ivar = 1,nvariables
    ! For 2D variables, the levels are always the first dimension
 
    select case (dimnames(1))
-      case ( 'levtot', 'levsno' )
+      case ( 'levtot', 'levsno')
          if (verbose > 0) then
             write(string1,*)'variable # ',ivar,' is "',trim(varname),'" - replacing bogus'
             call error_handler(E_MSG,'clm_to_dart',string1)
@@ -141,32 +137,34 @@ VARIABLES : do ivar = 1,nvariables
 
          do j = 1, dimlen(2)  ! loop over columns
             numsnowlevels = abs(SNLSNO(j))
+
+            if (numsnowlevels == 0 .and. &
+                variable(nlevsno,j) /= FillValue .and. &
+                variable(nlevsno,j) > 0.0_r8) then
+               write(*,*)'TJH: ', trim(varname), nlevsno, j, &
+                   variable(nlevsno,j), H2OSNO(j), frac_sno(j), SNOW_DEPTH(j)
+            endif
+
             do i = 1, nlevsno - numsnowlevels  ! loop over layers
-               variable(i,j) = FillValue
+               if (H2OSNO(j) <= 0.0_r8) then
+           !      write(*,*)'TJH: ',trim(varname),i,j,variable(i,j),H2OSNO(j),frac_sno(j)
+                  variable(i,j) = FillValue
+           !   else
+           !      write(*,*)'TJH: ',trim(varname),i,j,variable(i,j),H2OSNO(j)
+               endif
             enddo
+
          enddo
 
          ! CLM uses some indeterminate values instead of the _FillValue code 
 
          if (varname == 'T_SOISNO') then
-            where(variable < 1.0_r8) variable = FillValue
-            !do j = 1,nj  ! T_SOISNO has missing data in lake columns
-            !  if (cols1d_ityplun(j) == icol_deep_lake) then
-            !  !  write(*,*)'Found a lake column resetting the following:'
-            !  !  write(*,*)variable(:,j)
-            !     variable(:,j) = FillValue
-            !  endif
-            !enddo
+  !TJH       where(variable < 1.0_r8) variable = FillValue
          endif
 
          if ((varname == 'H2OSOI_LIQ')  .or. &
              (varname == 'H2OSOI_ICE')) then
-            where(variable < 0.0_r8) variable = FillValue
-            !do j = 1,nj  ! missing data in lake columns
-            !  if (cols1d_ityplun(j) == icol_deep_lake) then
-            !     variable(:,j) = FillValue
-            !  endif
-            !enddo
+  !TJH       where(variable < 0.0_r8) variable = FillValue
          endif
 
          ! update the netCDF file - in place
@@ -182,9 +180,51 @@ enddo VARIABLES
 
 call nc_close_file(ncid)
 
-deallocate(SNLSNO)
+deallocate(SNLSNO, H2OSNO, frac_sno, SNOW_DEPTH)
 
 call finalize_utilities('clm_to_dart')
+
+!===============================================================================
+contains
+!===============================================================================
+
+
+!-------------------------------------------------------------------------------
+!> The SNLSNO variable contains the information about how many snow layers are
+!> being used in each column.
+!> H2OSNO is used to detect the columns that have trace amounts of snow.
+
+subroutine get_snow_metadata()
+
+! If SNLSNO does not exist, there is nothing in 
+! the file that has bogus values in the snow layers.
+
+if ( .not. nc_variable_exists(ncid,'SNLSNO') ) then
+   write(string1,*)'"'//trim(clm_restart_file)//'" has no "SNLSNO" variable.'
+   string2 = 'CLM restart files have "SNLSNO", clm_to_dart only works with restart files.'
+   call error_handler(E_ERR,'get_snow_metadata',string1,source,text2=string2)
+endif
+
+! Both variables are dimensioned the same size
+call nc_get_variable_size(ncid, 'SNLSNO', ncolumn)
+allocate(SNLSNO(ncolumn),H2OSNO(ncolumn),frac_sno(ncolumn),SNOW_DEPTH(ncolumn))
+call nc_get_variable(ncid,'SNLSNO',SNLSNO)
+call nc_get_variable(ncid,'H2OSNO',H2OSNO)
+call nc_get_variable(ncid,'frac_sno',frac_sno)
+call nc_get_variable(ncid,'SNOW_DEPTH',SNOW_DEPTH)
+
+if (verbose > 1) write(*,*)'minval of SNLSNO is ',minval(SNLSNO)
+
+!SNLSNO has a _FillValue of -9999 but there should never be any of these 
+
+call nc_get_attribute_from_variable(ncid,'SNLSNO','_FillValue',FillValue)
+if (any(SNLSNO == FillValue)) then
+   write(string1,*)'SNLSNO has at least one _FillValue ... unexpected, unable to proceed.'
+   call error_handler(E_ERR,'get_snow_metadata',string1,source)
+endif
+
+end subroutine get_snow_metadata
+
 
 end program clm_to_dart
 
