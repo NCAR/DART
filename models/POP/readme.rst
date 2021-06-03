@@ -58,7 +58,7 @@ Detailed instructions for using DART and CESM POP2 on NCAR's supercomputer
 If you're using NCAR's supercomputer, you can run the setup scripts after
 making minor edits to set details that are specific to your project. The setup
 scripts create a CESM case in which POP is configured using a 1° horizontal
-grid, and uses the eddy-paremetrization of  Gent and McWilliams (1990). [2]_
+grid, and uses the eddy parametrization of  Gent and McWilliams (1990). [2]_
 The CICE model is active and atmospheric forcing is provided by the `CAM6 DART
 Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_.
 
@@ -259,7 +259,7 @@ initial ensemble.
 
 If you have access to CGD's Ocean Section directory on ``/glade/campaign`` you
 can use the `copy_POP_JRA_restarts.py`_ script to stage a collection of POP
-restart files from Who Kim's mulit-century ``g210.G_JRA.v14.gx1v7.01``
+restart files from Who Kim's multi-century ``g210.G_JRA.v14.gx1v7.01``
 experiment to serve as an initial ensemble. This experiment uses the JRA-55
 dataset for atmospheric forcing (Tsujino et al. 2018 [4]_).
 
