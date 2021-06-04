@@ -35,8 +35,6 @@ use netcdf_utilities_mod, only : nc_check, &
                                  nc_get_attribute_from_variable, &
                                  nc_get_dimension_size
 
-use time_manager_mod, only : time_type, print_time, print_date
-
 use netcdf
 
 implicit none
@@ -64,10 +62,11 @@ integer :: dimlen(NF90_MAX_VAR_DIMS)
 character(len=NF90_MAX_NAME) :: dimnames(NF90_MAX_VAR_DIMS)
 character(len=NF90_MAX_NAME) :: varname
 
-real(r8), allocatable :: frac_sno(:)
-real(r8), allocatable :: SNOW_DEPTH(:)
-real(r8), allocatable :: H2OSNO(:)     ! total snow in column - includes traces
+real(r8), allocatable :: SNOW_DEPTH(:) ! "snow depth"
+real(r8), allocatable :: H2OSNO(:)     ! "snow water" (in column - includes traces)
+real(r8), allocatable :: frac_sno(:)   ! "fraction of ground covered by snow (0 to 1)"
 integer,  allocatable :: SNLSNO(:)     ! "negative number of snow layers"
+
 real(r8), allocatable :: variable(:,:)
 real(r8)              :: FillValue
 
@@ -139,13 +138,15 @@ VARIABLES : do ivar = 1,nvariables
          do j = 1, dimlen(2)  ! loop over columns
             numsnowlevels = abs(SNLSNO(j))
 
-            ! Debug block to check what happens in related variables
-            ! when there is no snow in the layer closest to the ground.
-            if (numsnowlevels == 0 .and. &
-                variable(nlevsno,j) /= FillValue .and. &
-                variable(nlevsno,j) > 0.0_r8) then
-               write(*,*)'TJH: ', trim(varname), nlevsno, j, &
-                   variable(nlevsno,j), H2OSNO(j), frac_sno(j), SNOW_DEPTH(j)
+            if (verbose > 2) then
+               ! Debug block to check what happens in related variables
+               ! when there is no snow in the layer closest to the ground.
+               if (numsnowlevels == 0 .and. &
+                   variable(nlevsno,j) /= FillValue .and. &
+                   variable(nlevsno,j) > 0.0_r8) then
+                  write(*,*)trim(varname), nlevsno, j, &
+                      variable(nlevsno,j), H2OSNO(j), frac_sno(j), SNOW_DEPTH(j)
+               endif
             endif
 
             ! The point of the whole exercise ... 
@@ -211,13 +212,26 @@ if ( .not. nc_variable_exists(ncid,'SNLSNO') ) then
    call error_handler(E_ERR,'get_snow_metadata',string1,source,text2=string2)
 endif
 
-! Both variables are dimensioned the same size
+! All variables are dimensioned the same size
 call nc_get_variable_size(ncid, 'SNLSNO', ncolumn)
 allocate(SNLSNO(ncolumn),H2OSNO(ncolumn),frac_sno(ncolumn),SNOW_DEPTH(ncolumn))
+
 call nc_get_variable(ncid,'SNLSNO',SNLSNO)
-call nc_get_variable(ncid,'H2OSNO',H2OSNO)
 call nc_get_variable(ncid,'frac_sno',frac_sno)
 call nc_get_variable(ncid,'SNOW_DEPTH',SNOW_DEPTH)
+
+! ctsm5.1.dev043 replaced the H2OSNO variable with H2OSNO_NO_LAYERS
+if ( nc_variable_exists(ncid,'H2OSNO')) then
+   call nc_get_variable(ncid,'H2OSNO',H2OSNO)
+
+else if (nc_variable_exists(ncid,'H2OSNO_NO_LAYERS')) then
+   call nc_get_variable(ncid,'H2OSNO_NO_LAYERS',H2OSNO)
+
+else
+   string1 = 'neither "H2OSNO" nor "H2OSNO_NO_LAYERS" exists in file'
+   string2 = 'one or the other is needed'
+   call error_handler(E_ERR,'get_snow_metadata',string1,source,text2=string2)
+endif
 
 if (verbose > 1) write(*,*)'minval of SNLSNO is ',minval(SNLSNO)
 
