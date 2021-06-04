@@ -107,19 +107,17 @@ them from prematurely terminating the namelist. These are the defaults:
 
 .. container::
 
-   +------------------+--------------------+-----------------------------------------------------------------+
-   | Item             | Type               | Description                                                     |
-   +==================+====================+=================================================================+
-   | clm_restart_file | character(len=256) | Path name of the CLM restart file to be overwritten.            |
-   |                  |                    | to be preprocessed. The default is                              |
-   +------------------+--------------------+-----------------------------------------------------------------+
-   | verbose          | integer            | Flag to control how much run-time output is created.            |
-   |                  |                    | 0   is very little output                                       |
-   |                  |                    | 1   reports which variables are being updated                   |
-   |                  |                    | 2   reports all 2d variables with columns as one dimension      |
-   |                  |                    | 3   reports the variables and columns that have traces of snow. |
-   |                  |                    |     Warning, this can generate a lot of output.                 |
-   +------------------+--------------------+-----------------------------------------------------------------+
+   ================== ==================== ================================================================= 
+   Item               Type                 Description                                                     
+   ================== ==================== ================================================================= 
+   clm_restart_file   character(len=256)   Path name of the CLM restart file to be overwritten.
+   verbose            integer              | Flag to control how much run-time output is created.
+                                           | 0   is very little output.
+                                           | 1   reports which variables are being updated.
+                                           | 2   reports all 2d variables with columns as one dimension.
+                                           | 3   reports the variables and columns that have traces of snow.
+                                           | *Warning*, 3 can generate a lot of output.
+   ================== ==================== =================================================================
 
 
 Modules used
