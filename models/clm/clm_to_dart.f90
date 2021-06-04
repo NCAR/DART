@@ -123,7 +123,8 @@ VARIABLES : do ivar = 1,nvariables
    select case (dimnames(1))
       case ( 'levtot', 'levsno')
          if (verbose > 0) then
-            write(string1,*)'variable # ',ivar,' is "',trim(varname),'" - replacing bogus'
+            write(string1,*)'variable # ',ivar,' is "',trim(varname), &
+                            '" - replacing indeterminate values'
             call error_handler(E_MSG,'clm_to_dart',string1)
          endif
 
@@ -132,12 +133,14 @@ VARIABLES : do ivar = 1,nvariables
          call nc_get_variable(ncid, varname, variable)
          call nc_get_attribute_from_variable(ncid,varname,'_FillValue',FillValue)
 
-         ! replace the bogus values for layers we KNOW to be unused
+         ! Replace the bogus values for layers we KNOW to be unused.
          ! The SNLSNO has the negative number of snow layers, so ...
 
          do j = 1, dimlen(2)  ! loop over columns
             numsnowlevels = abs(SNLSNO(j))
 
+            ! Debug block to check what happens in related variables
+            ! when there is no snow in the layer closest to the ground.
             if (numsnowlevels == 0 .and. &
                 variable(nlevsno,j) /= FillValue .and. &
                 variable(nlevsno,j) > 0.0_r8) then
@@ -145,26 +148,29 @@ VARIABLES : do ivar = 1,nvariables
                    variable(nlevsno,j), H2OSNO(j), frac_sno(j), SNOW_DEPTH(j)
             endif
 
-            do i = 1, nlevsno - numsnowlevels  ! loop over layers
-               if (H2OSNO(j) <= 0.0_r8) then
-           !      write(*,*)'TJH: ',trim(varname),i,j,variable(i,j),H2OSNO(j),frac_sno(j)
-                  variable(i,j) = FillValue
-           !   else
-           !      write(*,*)'TJH: ',trim(varname),i,j,variable(i,j),H2OSNO(j)
-               endif
+            ! The point of the whole exercise ... 
+            do i = 1, nlevsno - numsnowlevels  ! loop over unused layers
+
+               ! trace amounts of snow are in the level closest to the ground
+               ! frac_sno(j) seems to be a reliable indicator of a trace of snow
+               if (frac_sno(j) > 0.0_r8 .and. i == nlevsno) cycle
+
+               variable(i,j) = FillValue
             enddo
 
          enddo
 
          ! CLM uses some indeterminate values instead of the _FillValue code 
+         ! 'old' versions of CLM had some pretty unusual behavior. These
+         ! may not do anything, but they certainly don't hurt.
 
          if (varname == 'T_SOISNO') then
-  !TJH       where(variable < 1.0_r8) variable = FillValue
+            where(variable < 1.0_r8) variable = FillValue
          endif
 
          if ((varname == 'H2OSOI_LIQ')  .or. &
              (varname == 'H2OSOI_ICE')) then
-  !TJH       where(variable < 0.0_r8) variable = FillValue
+            where(variable < 0.0_r8) variable = FillValue
          endif
 
          ! update the netCDF file - in place
