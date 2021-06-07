@@ -381,7 +381,6 @@ converters) include:
 -  `NCEP (prepbufr->ascii) <NCEP/prep_bufr/prep_bufr.html>`__
 -  `NCEP (ascii->obs_seq) <NCEP/ascii_to_obs/create_real_obs.html>`__
 -  `ROMS <ROMS/ROMS.html>`__
--  `ROMS <ROMS/ROMS.html>`__
 -  `SIF <SIF/SIF_to_obs_netcdf.html>`__
 -  `SSEC <SSEC/SSEC.html>`__
 -  `SST <SST/SST.html>`__
