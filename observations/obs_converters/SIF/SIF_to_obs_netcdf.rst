@@ -174,7 +174,7 @@ then are further sorted based upon the VI Usefulness parameter as follows:
 
 
 Citation
--------
+--------
 
 Wen, J., P. Köhler, G. Duveiller, N. C. Parazoo, T. S. Magney, G. Hooker, L. Yu, 
 C. Y. Chang, and Y. Sun. "A framework for harmonizing multiple satellite instruments 

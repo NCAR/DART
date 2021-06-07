@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 7 2021 :: New observation converter for Solar Induced Fluorescence (SIF).  Tag: v9.10.6**
+
+- Converter for harmonized SIF retrievals
+
 **May 18 2021 :: updated process to generate obs on a sphere.  Tag: v9.10.5**
 
 - Matlab scripts and new scripts for cam-fv make it simpler to

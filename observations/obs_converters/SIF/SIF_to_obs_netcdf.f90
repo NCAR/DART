@@ -26,13 +26,13 @@ use      location_mod, only : VERTISUNDEF, set_location
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               nmlfileunit, do_nml_file, do_nml_term, &
                               find_namelist_in_file, check_namelist_read, &
-                              error_handler, E_ERR, E_MSG, find_textfile_dims, &
+                              error_handler, E_ERR, E_MSG, &
                               open_file, close_file, file_exist
 
 use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time, &
                               set_date, print_date, get_time, print_time
 
-use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
+use  obs_sequence_mod, only : obs_sequence_type, obs_type, &
                               static_init_obs_sequence, init_obs, write_obs_seq, &
                               init_obs_sequence, get_num_obs, &
                               set_copy_meta_data, set_qc_meta_data, &
@@ -40,6 +40,7 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               set_obs_values, set_qc
 
 use      obs_kind_mod, only : HARMONIZED_SIF
+
 use  obs_def_land_mod, only : set_SIF_wavelength
 
 use       obs_def_mod, only : obs_def_type, set_obs_def_type_of_obs, &
@@ -48,10 +49,10 @@ use       obs_def_mod, only : obs_def_type, set_obs_def_type_of_obs, &
 
 use obs_utilities_mod, only : add_obs_to_seq
 
-use netcdf_utilities_mod, only : nc_check, nc_open_file_readonly, nc_close_file, &
-                                 nc_get_dimension_size, nc_get_variable
-
-use netcdf
+use netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, &
+                                 nc_get_dimension_size, nc_get_variable, &
+                                 nc_variable_attribute_exists, &
+                                 nc_get_attribute_from_variable
 
 implicit none
 
@@ -95,6 +96,8 @@ integer :: ncid, nlat, nlon, i, j, num_new_obs
 
 real(r8) :: qc
 real(r8) :: rlat, rlon
+real(r8) :: FillValue 
+logical  :: has_FillValue = .false.
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -159,6 +162,12 @@ FileLoop: do ifile = 1,num_input_files
    call nc_get_variable(ncid, 'SIF_740_daily_corr_SD', SIF_ERR, source)
    call nc_get_variable(ncid, 'EVI_Quality', EVI_Quality, source)
 
+   has_FillValue = nc_variable_attribute_exists(ncid,'SIF_740_daily_corr','_FillValue')
+
+   if ( has_FillValue ) then
+      call nc_get_attribute_from_variable(ncid,'SIF_740_daily_corr','_FillValue',FillValue)
+   endif
+
    ! Convert data units etc.
    where(lon < 0.0_r8) lon = lon + 360.0_r8
    SIF_ERR=SIF_ERR**2
@@ -205,6 +214,9 @@ FileLoop: do ifile = 1,num_input_files
          ! ensure the lat values are in range 
          rlon = lon(i)   
          if ( rlon > 360.0_r8 .or. rlon <    0.0_r8 ) cycle LONLOOP
+
+         ! Skip anything marked as such
+         if ( has_FillValue .and. SIF(i,j) == FillValue ) cycle LONLOOP
 
          ! reject obviously bad observations
          if ( SIF(i,j) <  0.0_r8 ) cycle LONLOOP
@@ -305,6 +317,8 @@ if (Check_Input_Files >= MAXLINES-1 ) then
    write(string1,*)'Too many files to process. Increase MAXLINES and try again.'
    call error_handler(E_ERR,'Check_Input_Files',string1,source)
 endif
+
+call close_file(iunit)
 
 end function Check_Input_Files
 
