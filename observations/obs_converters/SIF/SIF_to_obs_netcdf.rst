@@ -56,6 +56,7 @@ quotes to prevent them from prematurely terminating the namelist.
       wavelength      = 740
       /
 
+
 .. container::
 
    +-----------------+--------------------+-----------------------------------------------------------------------------+
@@ -68,6 +69,7 @@ quotes to prevent them from prematurely terminating the namelist.
    +-----------------+--------------------+-----------------------------------------------------------------------------+
    | wavelength      | integer            | The wavelength at which SIF irradiance is centered upon (e.g. 740 nm)       | 
    +-----------------+--------------------+-----------------------------------------------------------------------------+
+
 
 Data sources
 ------------
@@ -83,22 +85,21 @@ although older (SIF005v1) and newer (SIF005v2.2) versions exist with similar for
 
 The data product variables are provided in global, gridded (lat/lon) format:
 
-+---------------+----------------------+------------------------------+--------------------------+-------------------------------+-------------+
-| Units         | Variable             | Description                  | DART type                | DART kind                     | DART units  |
-+===============+======================+==============================+==========================+===============================+=============+
-| mW/m^2/nm/sr  | SIF_740_daily_corr   | Solar Induced                | HARMONIZED_SIF           |QTY_SOLAR_INDUCED_FLUORESCENCE | mW/m^2/nm/sr|
-|               |                      | Fluorescence Irradiance      |                          |                               |             |
-+---------------+----------------------+------------------------------+--------------------------+-------------------------------+-------------+
-| mW/m^2/nm/sr  | SIF_740_daily_corr_SD| Solar Induced Fluorescence   |   N/A                    |    N/A                        | mW/m^2/nm/sr|
-|               |                      | Irradiance Standard Deviation|                          |                               |             |
-+---------------+----------------------+------------------------------+--------------------------+-------------------------------+-------------+
-| 5 digit       | EVI_Quality          | MODIS EVI Quality Flag       |   N/A                    |    N/A                        | N/A, See    |
-| integer       |                      |                              |                          |                               | below       |
-+---------------+----------------------+------------------------------+--------------------------+-------------------------------+-------------+
-| degrees       | lat                  | latitude                     |   N/A                    |    N/A                        | radians     |
-+---------------+----------------------+------------------------------+--------------------------+-------------------------------+-------------+
-| degrees       | lon                  | longitude                    |   N/A                    |    N/A                        | radians     |
-+---------------+----------------------+------------------------------+--------------------------+-------------------------------+-------------+
++---------------+----------------------+------------------------------+--------------------------+--------------------------------+-------------+
+| Units         | Variable             | Description                  | Observation TYPE         | DART QUANTITY                  | DART units  |
++===============+======================+==============================+==========================+================================+=============+
+| mW/m^2/nm/sr  | SIF_740_daily_corr   | Solar Induced                | HARMONIZED_SIF           | QTY_SOLAR_INDUCED_FLUORESCENCE | mW/m^2/nm/sr|
+|               |                      | Fluorescence Irradiance      |                          |                                |             |
++---------------+----------------------+------------------------------+--------------------------+--------------------------------+-------------+
+| mW/m^2/nm/sr  | SIF_740_daily_corr_SD| Solar Induced Fluorescence   |   N/A                    |    N/A                         | mW/m^2/nm/sr|
+|               |                      | Irradiance Standard Deviation|                          |                                |             |
++---------------+----------------------+------------------------------+--------------------------+--------------------------------+-------------+
+| See below     | EVI_Quality          | MODIS EVI Quality Flag       |   N/A                    |    N/A                         | See below   |
++---------------+----------------------+------------------------------+--------------------------+--------------------------------+-------------+
+| degrees       | lat                  | latitude                     |   N/A                    |    N/A                         | radians     |
++---------------+----------------------+------------------------------+--------------------------+--------------------------------+-------------+
+| degrees       | lon                  | longitude                    |   N/A                    |    N/A                         | radians     |
++---------------+----------------------+------------------------------+--------------------------+--------------------------------+-------------+
 
 
 
@@ -116,60 +117,60 @@ data assimilation.
 The ``EVI_Quality`` is a data quality estimate for the ``SIF_740_daily_corr``.
 The ``EVI_Quality`` is derived from the MODIS retrieval of EVI (enhanced vegetation index)
 which is one of the explanatory variables used in the algorithm to calculate 
-``SIF_740_daily_corr``.  The ``EVI_Quality`` is a 5 digit integer (representing a 16 bit field)
-that evaluates quality through 9 parameters that include VI Quality, VI Usefulness, Aerosol Quantity, 
-Adjacent Cloud Detection, Atmosphere BRDF correction, Mixed Clouds, Land/Water Mask, 
-possible snow/ice, possible shadow.  See Table 5 of the following 
-`document <https://lpdaac.usgs.gov/documents/103/MOD13_User_Guide_V6.pdf>`__ for more 
-information.  
+``SIF_740_daily_corr``.  The ``EVI_Quality`` is an integer (representing a 16 bit field)
+that evaluates quality through 9 parameters that include VI (Vegetation Index) Quality, 
+VI Usefulness, Aerosol Quantity, Adjacent Cloud Detection, Atmosphere BRDF correction, 
+Mixed Clouds, Land/Water Mask, possible snow/ice, possible shadow.  See Table 5 of the
+`MODIS Vegetation Index Users Guide <https://lpdaac.usgs.gov/documents/103/MOD13_User_Guide_V6.pdf>`__ 
+for more information.  
 
 The DART-compatible QC value assigned to the `obs_seq.out` uses the criteria from 
-VI Quality and VI Usefulness only.  The DART-compatible QC is based on
+the MODIS VI Quality and VI Usefulness only.  The DART-compatible QC is based on
 NCEP-like error codes.
 
-+-------------------+
-|0.0 = best quality |
-+-------------------+
-|1.0 = lesser       |
-+-------------------+
-|"........."        |
-+-------------------+
-|50  = least quality|
-+-------------------+
++---------------------+
+| 0.0 = best quality  |
++---------------------+
+| 1.0 = lesser        |
++---------------------+
+| "........."         |
++---------------------+
+| 50  = least quality |
++---------------------+
 
 The `input_qc_threshold` namelist value can be used to test whether or not lesser 
 quality observations improve the result or not.  Thus, all observations are included 
 and the exclusion of observations is left up to the user based upon the `input_qc_threshold`.
 
-The qc value assignment is such where anything not assigned a VI Quality value of 
-'good' (00), is assigned a qc=50.  Values that recieve a VI Quality of 'good' (00), 
+The qc value assignment is such where anything not assigned a EVI Quality value of 
+'good' (00), is assigned a qc=50.  Values that recieve a EVI Quality of 'good' (00), 
 then are further sorted based upon the VI Usefulness parameter as follows:
 
-+------------------------------------------------------+---------------------------------+
-|EVI Quality Usefulness Parameter                      | DART-compatible QC              |
-+======+===============================================+===+=============================+
-| 0000 |  Highest quality                              |0  | Highest Quality             |
-+------+-----------------------------------------------+---+-----------------------------+
-| 0001 | Lower quality                                 |1  | Lower Quality               |
-+------+-----------------------------------------------+---+-----------------------------+
-| 0010 | Decreasing quality                            |2  | Lower Quality               |
-+------+-----------------------------------------------+---+-----------------------------+
-| 0100 | Decreasing quality                            |3  | Lower Quality               |
-+------+-----------------------------------------------+---+-----------------------------+
-| 1000 | Decreasing quality                            |4  | Lower Quality               |
-+------+-----------------------------------------------+---+-----------------------------+
-| 1001 | Decreasing quality                            |5  | Lower Quality               |
-+------+-----------------------------------------------+---+-----------------------------+
-| 1010 | Decreasing quality                            |50 | Do not use                  |
-+------+-----------------------------------------------+---+-----------------------------+
-| 1100 | Lowest     quality                            |50 | Do not use                  |
-+------+-----------------------------------------------+---+-----------------------------+
-| 1101 | Quality so low that it is not useful          |50 | Do not use                  |
-+------+-----------------------------------------------+---+-----------------------------+
-| 1110 | L1B data faulty                               |50 | Do not use                  |
-+------+-----------------------------------------------+---+-----------------------------+
-| 1111 | Not useful for any other reason/not processed |50 | Do not use                  |
-+------+-----------------------------------------------+---+-----------------------------+
++------------------------------------------------------+----------------------------------+
+| EVI Quality Usefulness Parameter                     | DART-compatible QC               |
++======+===============================================+====+=============================+
+| 0000 |  Highest quality                              | 0  | Highest Quality             |
++------+-----------------------------------------------+----+-----------------------------+
+| 0001 | Lower quality                                 | 1  | Lower Quality               |
++------+-----------------------------------------------+----+-----------------------------+
+| 0010 | Decreasing quality                            | 2  | Lower Quality               |
++------+-----------------------------------------------+----+-----------------------------+
+| 0100 | Decreasing quality                            | 3  | Lower Quality               |
++------+-----------------------------------------------+----+-----------------------------+
+| 1000 | Decreasing quality                            | 4  | Lower Quality               |
++------+-----------------------------------------------+----+-----------------------------+
+| 1001 | Decreasing quality                            | 5  | Lower Quality               |
++------+-----------------------------------------------+----+-----------------------------+
+| 1010 | Decreasing quality                            | 50 | Do not use                  |
++------+-----------------------------------------------+----+-----------------------------+
+| 1100 | Lowest     quality                            | 50 | Do not use                  |
++------+-----------------------------------------------+----+-----------------------------+
+| 1101 | Quality so low that it is not useful          | 50 | Do not use                  |
++------+-----------------------------------------------+----+-----------------------------+
+| 1110 | L1B data faulty                               | 50 | Do not use                  |
++------+-----------------------------------------------+----+-----------------------------+
+| 1111 | Not useful for any other reason/not processed | 50 | Do not use                  |
++------+-----------------------------------------------+----+-----------------------------+
 
 
 
