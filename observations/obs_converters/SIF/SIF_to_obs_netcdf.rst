@@ -125,52 +125,56 @@ Mixed Clouds, Land/Water Mask, possible snow/ice, possible shadow.  See Table 5 
 for more information.  
 
 The DART-compatible QC value assigned to the `obs_seq.out` uses the criteria from 
-the MODIS VI Quality and VI Usefulness only.  The DART-compatible QC is based on
-NCEP-like error codes.
+the MODIS EVI Quality and EVI Usefulness only.  The DART-compatible QC is based on
+NCEP-like error codes as:
 
-+---------------------+
-| 0.0 = best quality  |
-+---------------------+
-| 1.0 = lesser        |
-+---------------------+
-| "........."         |
-+---------------------+
-| 50  = least quality |
-+---------------------+
++--------------------------+
+| 0  = best quality        |
++--------------------------+
+| 1  = less quality        |
++--------------------------+
+| "........."              |
++--------------------------+
+| 17 = least quality       |
++--------------------------+     
+| 50  = faulty, no utility |
++--------------------------+
 
 The `input_qc_threshold` namelist value can be used to test whether or not lesser 
-quality observations improve the result or not.  Thus, all observations are included 
-and the exclusion of observations is left up to the user based upon the `input_qc_threshold`.
+quality observations improve the result or not.  Thus, all observations (except those
+that are defined as faulty/no utility) are included in `obs_seq.out` and the exclusion
+of observations is left up to the user based upon the `input_qc_threshold`.
 
-The qc value assignment is such where anything not assigned a EVI Quality value of 
-'good' (00), is assigned a qc=50.  Values that recieve a EVI Quality of 'good' (00), 
-then are further sorted based upon the VI Usefulness parameter as follows:
+The qc value assignment is such where values given an EVI quality value of 
+'good' (00), are assigned a DART qc from 1-7 or rejected (DART qc=50) based on the EVI Usefulness
+parameter (see table below).  Values where the 'EVI is produced, but should be checked
+with additional QA' (01) are assigned a DART qc from 10-17 or rejected (DART qc=50). 
 
-+------------------------------------------------------+----------------------------------+
-| EVI Quality Usefulness Parameter                     | DART-compatible QC               |
-+======+===============================================+====+=============================+
-| 0000 |  Highest quality                              | 0  | Highest Quality             |
-+------+-----------------------------------------------+----+-----------------------------+
-| 0001 | Lower quality                                 | 1  | Lower Quality               |
-+------+-----------------------------------------------+----+-----------------------------+
-| 0010 | Decreasing quality                            | 2  | Lower Quality               |
-+------+-----------------------------------------------+----+-----------------------------+
-| 0100 | Decreasing quality                            | 3  | Lower Quality               |
-+------+-----------------------------------------------+----+-----------------------------+
-| 1000 | Decreasing quality                            | 4  | Lower Quality               |
-+------+-----------------------------------------------+----+-----------------------------+
-| 1001 | Decreasing quality                            | 5  | Lower Quality               |
-+------+-----------------------------------------------+----+-----------------------------+
-| 1010 | Decreasing quality                            | 50 | Do not use                  |
-+------+-----------------------------------------------+----+-----------------------------+
-| 1100 | Lowest     quality                            | 50 | Do not use                  |
-+------+-----------------------------------------------+----+-----------------------------+
-| 1101 | Quality so low that it is not useful          | 50 | Do not use                  |
-+------+-----------------------------------------------+----+-----------------------------+
-| 1110 | L1B data faulty                               | 50 | Do not use                  |
-+------+-----------------------------------------------+----+-----------------------------+
-| 1111 | Not useful for any other reason/not processed | 50 | Do not use                  |
-+------+-----------------------------------------------+----+-----------------------------+
++------------------------------------------------------+----------------------------------+--------------------------------+
+| EVI Quality Usefulness Parameter                     | DART-QC, EVI Quality Value (00)  | DART-QC, EVI Quality Value (01)|
++======+===============================================+====+=============================+====+===========================+
+| 0000 |  Highest quality                              | 0  | Highest quality             | 10 | Decreasing quality        |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 0001 | Lower quality                                 | 1  | Lower quality               | 11 | Decreasing quality        |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 0010 | Decreasing quality                            | 2  | Decreasing quality          | 12 | Decreasing quality        |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 0100 | Decreasing quality                            | 3  | Decreasing quality          | 13 | Decreasing quality        |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 1000 | Decreasing quality                            | 4  | Decreasing quality          | 14 | Decreasing quality        |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 1001 | Decreasing quality                            | 5  | Decreasing quality          | 15 | Decreasing quality        |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 1010 | Decreasing quality                            | 6  | Decreasing quality          | 16 | Decreasing quality        |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 1100 | Lowest     quality                            | 7  | Decreasing quality          | 17 | Least quality             |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 1101 | Quality so low that it is not useful          | 50 | Not used                    | 50 | Not used                  |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 1110 | L1B data faulty                               | 50 | Not used                    | 50 | Not used                  |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
+| 1111 | Not useful for any other reason/not processed | 50 | Not used                    | 50 | Not used                  |
++------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
 
 
 
