@@ -14,9 +14,9 @@ The SIF product is described by
 and combines GOME-2 and SCIAMACHY SIF retrievals, along with MODIS data
 to produce a single continuous, monthly, 0.05 degree SIF data set.  
 See `Wen et al., 2020 RSE <https://doi.org/10.1016/j.rse.2020.111644>`__ 
-for a more detailed description.  Download is made available by the authors
-`here <https://cornell.app.box.com/s/gkp4moy4grvqsus1q5oz7u5lc30i7o41/folder/100438579357>`__.
+for a more detailed description.  
 The conversion script was designed and tested for version SIF005v2. 
+Download instructions can be found in the `Data Sources`_ section below.
 
 This SIF data product also comes with its own uncertainty value, and quality 
 control flag described below.  Namelist options also include a wavelength option
@@ -26,20 +26,23 @@ control flag described below.  Namelist options also include a wavelength option
 Standard workflow:
 
 #. Download the Level 3 data for the months of interest. Years 2002-2018 are available
-   as of 5/18/21.  (see 'Data Source' below)
+   as of 5/18/21.  (see `Data Sources`_ below)
 #. Make note of the SIF wavelength the data is centered upon. This information is 
    included in the SIF variable of netcdf file ``SIF_740_daily_corr``  
 #. Build the DART executables with support for land observations. This is done by running 
    ``preprocess`` with ``obs_def_land_mod.f90`` in the list of ``input_files`` for 
    ``preprocess_nml``.
 #. Provide basic information via the ``SIF_to_obs_netcdf_nml`` (e.g. verbose, wavelength)
-#. Convert single or multiple SIF netcdf data files using ``SIF_to_obs_netcdf``
+#. Convert single or multiple SIF netcdf data files using ``SIF_to_obs_netcdf``. Converting
+   one file at a time results in better memory management, but this is unlikely to be an
+   issue in most cases.
 #. Combine all output files for the region and timeframe of interest into one file using
    :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`
 
 For some models (CLM, for example), it is required to reorganize the observation sequence 
 files into a series of files that contains ONLY the observations for each assimilation. 
-This can be achieved with the `makedaily.sh` script which can be found in the `DART/models/clm/shell_scripts` directory.
+This can be achieved with the `makedaily.sh` script which can be found in 
+the `DART/models/clm/shell_scripts` directory.
 
 Namelist
 --------
@@ -71,7 +74,7 @@ quotes to prevent them from prematurely terminating the namelist.
    +-----------------+--------------------+-----------------------------------------------------------------------------+
 
 
-Data sources
+Data Sources
 ------------
 
 The datasets are available from the
@@ -147,12 +150,12 @@ that are defined as faulty/no utility) are included in `obs_seq.out` and the exc
 of observations is left up to the user based upon the `input_qc_threshold`.
 
 The qc value assignment is such where values given an EVI quality value of 
-'good' (00), are assigned a DART qc from 1-7 or rejected (DART qc=50) based on the EVI Usefulness
+'good' (00), are assigned a QC from 1-7 or 50 based on the EVI Usefulness
 parameter (see table below).  Values where the 'EVI is produced, but should be checked
-with additional QA' (01) are assigned a DART qc from 10-17 or rejected (DART qc=50). 
+with additional QA' (01) are assigned a QC from 10-17 or 50. 
 
-+------------------------------------------------------+----------------------------------+--------------------------------+
-| EVI Quality Usefulness Parameter                     | DART-QC, EVI Quality Value (00)  | DART-QC, EVI Quality Value (01)|
++------------------------------------------------------+----+-----------------------------+----+---------------------------+
+| EVI Quality Usefulness Parameter                     | QC | EVI Quality Value (00)      | QC | EVI Quality Value (01)    |
 +======+===============================================+====+=============================+====+===========================+
 | 0000 |  Highest quality                              | 0  | Highest quality             | 10 | Decreasing quality        |
 +------+-----------------------------------------------+----+-----------------------------+----+---------------------------+
@@ -201,3 +204,4 @@ is included as an input file within ``&preprocess_nml`` of the ``input.nml``.
 
 Next compile the observation converter by running ``mkmf_SIF_to_obs_netcdf``, run
 ``Makefile``, and finally run ``SIF_to_obs_netcdf``. 
+
