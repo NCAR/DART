@@ -30,7 +30,7 @@ Standard workflow:
 #. Make note of the SIF wavelength the data is centered upon. This information is 
    included in the SIF variable of netcdf file ``SIF_740_daily_corr``  
 #. Build the DART executables with support for land observations. This is done by running 
-   ``preprocess`` with ``obs_def_lnd_mod.f90`` in the list of ``input_files`` for 
+   ``preprocess`` with ``obs_def_land_mod.f90`` in the list of ``input_files`` for 
    ``preprocess_nml``.
 #. Provide basic information via the ``SIF_to_obs_netcdf_nml`` (e.g. verbose, wavelength)
 #. Convert single or multiple SIF netcdf data files using ``SIF_to_obs_netcdf``
