@@ -3,7 +3,20 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 ! $Id: assim_tools_mod.pf.f90 12591 2018-05-21 20:49:26Z nancy@ucar.edu $
-
+!
+!
+!!!!!!!!!!!!!!!!!!!!!!  PLEASE READ BEFORE USING  !!!!!!!!!!!!!!!!!!!!!!
+!
+! This version of assim_tools_mod supports ongoing developments toward a
+! localized particle filter (Poterjoy 2016; Poterjoy and Anderson 2016;
+! Poterjoy et al. 2019; Poterjoy 2021). It should NOT be used with 'filter 
+! kind' other than 9 or with any sort of adaptive prior/posterior inflation.
+! A breakdown of namelist options specific to the local PF are described
+! below. They include options to use a hybrid PF-EAKF update, which performs
+! a partial assimilation of observations with the PF followed by a second
+! update using the EAKF (Poterjoy 2021). Please contact the developer
+! (Jon Poterjoy, poterjoy@umd.edu) before using.
+!
 !>  A variety of operations required by assimilation.
 module assim_tools_mod
 
@@ -145,8 +158,8 @@ character(len=128), parameter :: revdate  = "$Date: 2018-05-21 16:49:26 -0400 (M
 !      pf_maxiter -> Max number of PF iterations for tempering
 !      pf_kf_rtps_coeff -> Relaxation to prior spread factor used for EnKF part of hybrid
 
-integer  :: filter_kind                     = 1
-real(r8) :: cutoff                          = 0.2_r8
+integer  :: filter_kind                     = 9
+real(r8) :: cutoff                          = 0.3_r8
 logical  :: sort_obs_inc                    = .false.
 logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
@@ -154,7 +167,7 @@ integer  :: adaptive_localization_threshold = -1
 real(r8) :: adaptive_cutoff_floor           = 0.0_r8
 integer  :: print_every_nth_obs             = 0
 real(r8) :: frac_neff                       = 0.20_r8
-real(r8) :: pf_alpha                        = 0.50_r8
+real(r8) :: pf_alpha                        = 0.30_r8
 integer  :: pf_kddm                         = 0
 logical  :: sampling_weighted_prior         = .true.
 logical  :: pf_enkf_hybrid                  = .true.
