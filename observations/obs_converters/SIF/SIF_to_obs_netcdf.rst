@@ -130,7 +130,7 @@ for more information.
 
 The DART-compatible QC value assigned to the `obs_seq.out` uses the criteria from 
 the MODIS EVI Quality and EVI Usefulness only.  The DART-compatible QC is based on
-NCEP-like error codes as:
+NCEP-like error codes and ``SIF_to_obs_netcdf`` assigns values as follows:
 
 +--------------------------+
 | 0  = best quality        |
@@ -150,9 +150,11 @@ that are defined as faulty/no utility) are included in `obs_seq.out` and the exc
 of observations is left up to the user based upon the `input_qc_threshold`.
 
 The qc value assignment is such where values given an EVI quality value of 
-'good' (00), are assigned a QC from 1-7 or 50 based on the EVI Usefulness
-parameter (see table below).  Values where the 'EVI is produced, but should be checked
-with additional QA' (01) are assigned a QC from 10-17 or 50. 
+'good' (00), are assigned a QC from 1-7 based on the EVI Quality Usefulness
+Parameter (see table below).  Values where the 'EVI is produced, but should be checked
+with additional QA' (01) are assigned a QC from 10-17. Anything with an
+EVI Quality Usefulness Parameter of '1101' or higher is given a QC of 50 (or more) and
+is currently skipped and **not written** to the output observation sequence file.
 
 +------------------------------------------------------+----+-----------------------------+----+---------------------------+
 | EVI Quality Usefulness Parameter                     | QC | EVI Quality Value (00)      | QC | EVI Quality Value (01)    |
