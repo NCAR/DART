@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**Jun 7 2021 :: fix typos in POP documentation Tag: v9.10.6**
+
+- fix some spelling mistakes, does not change meaning.
+
 **May 18 2021 :: updated process to generate obs on a sphere.  Tag: v9.10.5**
 
 - Matlab scripts and new scripts for cam-fv make it simpler to
