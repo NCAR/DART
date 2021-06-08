@@ -39,7 +39,7 @@ Standard workflow:
 
 For some models (CLM, for example), it is required to reorganize the observation sequence 
 files into a series of files that contains ONLY the observations for each assimilation. 
-This can be achieved with the `makedaily.sh <makedaily.sh>`__ script.
+This can be achieved with the `makedaily.sh` script which can be found in the `DART/models/clm/shell_scripts` directory.
 
 Namelist
 --------
@@ -200,5 +200,4 @@ is included as an input file within ``&preprocess_nml`` of the ``input.nml``.
 
 Next compile the observation converter by running ``mkmf_SIF_to_obs_netcdf``, run
 ``Makefile``, and finally run ``SIF_to_obs_netcdf``. 
-
 
