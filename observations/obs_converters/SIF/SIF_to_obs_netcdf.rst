@@ -74,7 +74,8 @@ quotes to prevent them from prematurely terminating the namelist.
 Data sources
 ------------
 
-The data was acquired from the following `site <https://cornell.app.box.com/s/gkp4moy4grvqsus1q5oz7u5lc30i7o41/folder/100438579357>`__,
+The datasets are available from the
+`Cornell University Box service <https://cornell.app.box.com/s/gkp4moy4grvqsus1q5oz7u5lc30i7o41/folder/100438579357>`__,
 and have names like:
 
 ``SIF005_YYYYMM.nc``, ``SIF005_200504.nc``, ``SIF005_201808.nc`` 
@@ -200,4 +201,3 @@ is included as an input file within ``&preprocess_nml`` of the ``input.nml``.
 
 Next compile the observation converter by running ``mkmf_SIF_to_obs_netcdf``, run
 ``Makefile``, and finally run ``SIF_to_obs_netcdf``. 
-
