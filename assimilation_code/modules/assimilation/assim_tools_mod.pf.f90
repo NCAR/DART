@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: assim_tools_mod.pf.f90 12591 2018-05-21 20:49:26Z nancy@ucar.edu $
 !
 !
 !!!!!!!!!!!!!!!!!!!!!!  PLEASE READ BEFORE USING  !!!!!!!!!!!!!!!!!!!!!!
