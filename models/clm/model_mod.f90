@@ -140,7 +140,6 @@ public::  init_time,              &
 ! Routines for support purposes, these interfaces can be changed as appropriate.
 public :: get_gridsize,                 &
           get_clm_restart_filename,     &
-          get_grid_vertval,             &
           compute_gridcell_value,       &
           gridcell_components,          &
           fill_missing_r8_with_orig
@@ -507,7 +506,8 @@ call error_handler(E_MSG,routine,string1,source)
 ! do not have the full lat/lon arrays nor any depth information.
 !
 ncid = 0; ! signal that netcdf file is closed
-call get_history_dims(ncid, clm_history_filename, 'open', nlon, nlat, nlevgrnd, nlevsoi, nlevdcmp)
+call get_history_dims(ncid, clm_history_filename, 'open', nlon, nlat, &
+                      nlevgrnd, nlevsoi, nlevdcmp)
 
 if (unstructured) then
    allocate( AREA1D(nlon),      LANDFRAC1D(nlon) )
@@ -1880,9 +1880,9 @@ indexN = get_index_end(  domain, varname)
 
 !>@todo check applicability
 !if ( variable does not have levels ) then
-!   write(string1, *)'Variable '//trim(varstring)//' should not use this routine.'
-!   write(string2, *)'use compute_gridcell_value() instead.'
-!   call error_handler(E_ERR,routine,string1,source,text2=string2)
+    write(string1, *)'Variable '//trim(varname)//' should not use this routine.'
+    write(string2, *)'use compute_gridcell_value() instead.'
+    call error_handler(E_ERR,routine,string1,source,text2=string2)
 !endif
 
 ! determine the grid cell for the location
@@ -2555,7 +2555,7 @@ ngridcell = nc_get_dimension_size(ncid, 'gridcell', routine)
 nlandunit = nc_get_dimension_size(ncid, 'landunit', routine)
 ncolumn   = nc_get_dimension_size(ncid, 'column',   routine)
 npft      = nc_get_dimension_size(ncid, 'pft',      routine)
-nlevgrnd  = nc_get_dimension_size(ncid, 'levgrnd',  routine)
+mylevgrnd  = nc_get_dimension_size(ncid, 'levgrnd',  routine)
 
 if (mylevgrnd /= nlevgrnd) then
    write(string1,*)'Number of ground levels in restart file is',mylevgrnd
@@ -2888,8 +2888,6 @@ ncols = size(table,2)
 
 ngood = 0
 MyLoop : do i = 1, nrows
-
-   write(*,*)'TJH parsing table row ',i,' of ',nrows
 
    varname      = trim(state_variables(ncols*i - 5))
    dartstr      = trim(state_variables(ncols*i - 4))
@@ -3490,6 +3488,7 @@ VARLOOP : do ivar = 1,size(table,1)
    if ( table(ivar,VT_STATEINDX) == 'UPDATE' ) var_update(nvars) = .true.
 
    if (debug > 0 .and. do_output()) then
+      call say(' ')
       write(string1,*)trim(origin),' defines domain ',domain_count, &
                       ' var "',trim(var_names(nvars)),'"'
       write(string2,*)'variable has declared range ', &
@@ -3707,24 +3706,31 @@ integer(i8),      intent(inout) :: indx
 !      X(landunit, numrad)
 
 integer :: i, j, xi, xj
+integer :: horiz_dimension, other_dimension
 
-! In the ncdump output, dimension 2 is the leftmost dimension.
-! Only dimension 2 matters for the weights. IF WE IGNORE THE VECTOR FILES
+! sometimes the horizontal dimension is 1, sometimes it is 2
+! In this context, gridcell,lat,colum,pft,landunit are 'horizontal',
+! but 'lon' is not ... the 'horizontal dimension' is used to index the
+! first dimension of the LANDFRAC2D variable ... which is 'lat' 
+
+call parse_dimensions(varname,dimension_name,horiz_dimension,other_dimension)
 
 if ((debug > 0) .and. do_output()) then
    write(*,*)
    write(*,*)'variable ',trim(varname)
    write(*,*)'dimension 1 (i) ',trim(dimension_name(1)),dimension_length(1)
    write(*,*)'dimension 2 (j) ',trim(dimension_name(2)),dimension_length(2)
+   write(*,*)'horizontal dimension : ',trim(dimension_name(horiz_dimension))
+   write(*,*)'other      dimension : ',trim(dimension_name(other_dimension))
 endif
 
-SELECT CASE ( trim(dimension_name(2)) )
+SELECT CASE ( trim(dimension_name(horiz_dimension)) )
    CASE ("gridcell")
       if ((debug > 8) .and. do_output()) write(*,*)'length grid1d_ixy ',size(grid1d_ixy)
-      do j = 1, dimension_length(2)
+      do j = 1, dimension_length(horiz_dimension)
          xi = grid1d_ixy(j)
          xj = grid1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
-         do i = 1, dimension_length(1)
+         do i = 1, dimension_length(other_dimension)
             if (unstructured) then
                lonixy(  indx) = xi
                latjxy(  indx) = xi
@@ -3740,10 +3746,10 @@ SELECT CASE ( trim(dimension_name(2)) )
 
    CASE ("landunit")
       if ((debug > 8) .and. do_output()) write(*,*)'length land1d_ixy ',size(land1d_ixy)
-      do j = 1, dimension_length(2)
+      do j = 1, dimension_length(horiz_dimension)
          xi = land1d_ixy(j)
          xj = land1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
-         do i = 1, dimension_length(1)
+         do i = 1, dimension_length(other_dimension)
             if (unstructured) then
                lonixy(  indx) = xi
                latjxy(  indx) = xi
@@ -3765,13 +3771,13 @@ SELECT CASE ( trim(dimension_name(2)) )
       if ((debug > 8) .and. do_output()) write(*,*)'size zsno ',size(zsno,1), size(zsno,2)
       if ((debug > 8) .and. do_output()) write(*,*)'nlevsno ',nlevsno
 
-      LANDCOLUMN : do j = 1, dimension_length(2)
+      LANDCOLUMN : do j = 1, dimension_length(horiz_dimension)
 
-         call fill_levels(varname,dimension_name(1),j,dimension_length(1),levtot)
+         call fill_levels(varname,dimension_name(other_dimension),j,dimension_length(other_dimension),levtot)
 
          xi = cols1d_ixy(j)
          xj = cols1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
-         VERTICAL :  do i = 1, dimension_length(1)
+         VERTICAL :  do i = 1, dimension_length(other_dimension)
             levels(  indx) = levtot(i)
             if (unstructured) then
                lonixy(  indx) = xi
@@ -3788,10 +3794,10 @@ SELECT CASE ( trim(dimension_name(2)) )
 
    CASE ("pft")
       if ((debug > 8) .and. do_output()) write(*,*)'length pfts1d_ixy ',size(pfts1d_ixy)
-      do j = 1, dimension_length(2)
+      do j = 1, dimension_length(horiz_dimension)
          xi = pfts1d_ixy(j)
          xj = pfts1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
-         do i = 1, dimension_length(1)
+         do i = 1, dimension_length(other_dimension)
             if (unstructured) then
                lonixy(  indx) = xi
                latjxy(  indx) = xi
@@ -3806,8 +3812,8 @@ SELECT CASE ( trim(dimension_name(2)) )
       enddo
 
    CASE ("lat")
-      do j = 1, dimension_length(2)
-         do i = 1, dimension_length(1)
+      do j = 1, dimension_length(horiz_dimension)
+         do i = 1, dimension_length(other_dimension)
             if (unstructured) then
                lonixy(  indx) = i
                latjxy(  indx) = i
@@ -3827,7 +3833,7 @@ SELECT CASE ( trim(dimension_name(2)) )
       ! The vector history files actually have the horizontal dimension as dimension 1
       ! This violates a long-standing assumption about this model.
 
-      write(string1,*)'unsupported dimension name "'//trim(dimension_name(2))//'"'
+      write(string1,*)'unsupported dimension "'//trim(dimension_name(horiz_dimension))//'"'
       write(string2,*)' while trying to create metadata for "'//trim(varname)//'"'
       call error_handler(E_ERR,'fill_rank2_metadata',string1,source,text2=string2)
 
@@ -3886,6 +3892,10 @@ endif
 SELECT CASE ( trim(dimension_name(3)) )
    CASE ("levgrnd")
       levtot(1:dimension_length(3)) = LEVGRND;
+   CASE ("levsoi")
+      levtot(1:dimension_length(3)) = LEVSOI;
+   CASE ("levdcmp")
+      levtot(1:dimension_length(3)) = LEVDCMP;
    CASE DEFAULT
       write(string1,*)'unsupported vertical dimension name "'//trim(dimension_name(3))//'"'
       write(string2,*)' while trying to create metadata for "'//trim(varname)//'"'
@@ -3905,6 +3915,71 @@ do k = 1, dimension_length(3)
 enddo
 
 end subroutine fill_rank3_metadata
+
+
+! RANK 2 VARIABLES (as summarized by 'ncdump') - 'time' dimension omitted
+!         RESTART FILES          HISTORY_FILES          VECTOR_FILES
+!      X(  column, levtot)       X(lat, lon)            X(lat,lon)
+!      X(  column, levgrnd)                             X(levgrnd, column)
+!      X(  column, levsno)                              X(levsoi,  column)
+!      X(  column, levlak)                              X(levdcmp, column)
+!      X(  column, numrad )
+!      X(  column, levsno1)
+!      X(     pft, levgrnd)
+!      X(     pft, levcan)
+!      X(     pft, numrad)
+!      X(landunit, numrad)
+
+subroutine parse_dimensions(varname,dimension_names,h_dimension,o_dimension)
+
+character(len=*), intent(in)  :: varname
+character(len=*), intent(in)  :: dimension_names(:)
+integer,          intent(out) :: h_dimension, o_dimension
+
+integer :: i
+
+h_dimension = -1
+o_dimension = -1
+
+string2 = ''
+
+DIMLOOP : do i = 1,size(dimension_names)
+
+   write(string2,*) trim(string2),'"'//trim(dimension_names(i))//'",'
+
+   SELECT CASE ( trim(dimension_names(i)) )
+     CASE ("lat","landunit","column","pft")
+        h_dimension = i
+     CASE ("lon")
+        ! the fill_rank2_metadata() routine counts on finding 'lat' to
+        ! correctly index into the shape of LANDFRAC2D varible. ugly.
+        continue
+     CASE DEFAULT
+        continue
+   END SELECT
+
+   if (h_dimension > 0) exit DIMLOOP
+enddo DIMLOOP
+
+! In the current context, it is a fatal error to call this function and not
+! find a horizontal dimension or the variable is a 3D variable.
+
+if (h_dimension < 1) then
+   write(string1,*)'Unable to determine horizontal dimension for "'//trim(varname)//'"'
+   write(string2,*)'dimensions are '//trim(string2)
+   call error_handler(E_ERR,'parse_dimensions',string1,source,text2=string2)
+elseif (h_dimension == 1 ) then
+   o_dimension = 2
+elseif (h_dimension == 2 ) then
+   o_dimension = 1
+else
+   write(string1,*)'Only variables with two dimensiona are supported.'
+   write(string2,*)'Unable to determine horizontal dimension for "'//trim(varname)//'"'
+   write(string3,*)'dimensions are '//trim(string2)
+   call error_handler(E_ERR,'parse_dimensions',string1,source,text2=string2,text3=string3)
+endif
+
+end subroutine parse_dimensions
 
 !===================================================================
 ! End of model_mod
