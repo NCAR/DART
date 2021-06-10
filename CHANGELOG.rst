@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 8 2021 :: New observation converter for Solar Induced Fluorescence (SIF).  Tag: v9.11.0**
+
+- Converter for harmonized SIF retrievals
+
 **Jun 7 2021 :: fix typos in POP documentation Tag: v9.10.6**
 
 - fix some spelling mistakes, does not change meaning.

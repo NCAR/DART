@@ -77,13 +77,18 @@
 !SURFACE_ALBEDO,                 QTY_SURFACE_ALBEDO
 !OCO2_SIF,                       QTY_SOLAR_INDUCED_FLUORESCENCE, COMMON_CODE
 !ECOSTRESS_ET,                   QTY_LATENT_HEAT_FLUX,           COMMON_CODE
+!HARMONIZED_SIF,                 QTY_SOLAR_INDUCED_FLUORESCENCE
 ! END DART PREPROCESS TYPE DEFINITIONS
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !  use obs_def_land_mod, only : calculate_albedo, &
 !                               calculate_biomass, &
-!                               calculate_fpar
+!                               calculate_fpar, &
+!                               calculate_sif, &
+!                               read_sif_wavelength, &
+!                               write_sif_wavelength, &
+!                               interactive_sif_wavelength
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !-----------------------------------------------------------------------------
 
@@ -95,6 +100,8 @@
 !     call calculate_biomass(state_handle, ens_size, location, expected_obs, istatus)
 !  case(MODIS_FPAR)
 !     call calculate_fpar(state_handle, ens_size, location, expected_obs, istatus)
+!  case(HARMONIZED_SIF)
+!     call calculate_sif(state_handle, ens_size, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
@@ -104,6 +111,8 @@
 !         BIOMASS, &
 !         MODIS_FPAR)
 !       continue
+!    case(HARMONIZED_SIF)
+!       call read_SIF_wavelength(obs_def%key, key, ifile, fform)
 ! END DART PREPROCESS READ_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -113,6 +122,8 @@
 !         BIOMASS, &
 !         MODIS_FPAR)
 !       continue
+!    case(HARMONIZED_SIF)
+!       call write_SIF_wavelength(key, ifile, fform)
 ! END DART PREPROCESS WRITE_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -122,6 +133,8 @@
 !         BIOMASS, &
 !         MODIS_FPAR)
 !       continue
+!    case(HARMONIZED_SIF)
+!       call interactive_SIF_wavelength(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -138,10 +151,9 @@ use            types_mod, only : r8, MISSING_R8
 use         location_mod, only : location_type, &
                                  write_location
 
-use        utilities_mod, only : register_module, &
-                                 error_handler, &
+use        utilities_mod, only : error_handler, &
                                  E_ERR, E_MSG, &
-                                 do_output
+                                 do_output, ascii_file_format
 
 use      assim_model_mod, only : interpolate
 
@@ -157,18 +169,22 @@ use         obs_kind_mod, only : QTY_RADIATION_VISIBLE_DOWN, &
                                  QTY_FRACTION_ABSORBED_PAR, &
                                  QTY_PAR_DIRECT, &
                                  QTY_PAR_DIFFUSE, &
-                                 QTY_ABSORBED_PAR
+                                 QTY_ABSORBED_PAR, &
+                                 QTY_SOLAR_INDUCED_FLUORESCENCE
 
 implicit none
 private
 
 public :: calculate_albedo, &
           calculate_biomass, &
-          calculate_fpar
+          calculate_fpar, &
+          calculate_sif, &
+          set_SIF_wavelength, &
+          read_SIF_wavelength, &
+          write_SIF_wavelength, &
+          interactive_SIF_wavelength
 
-character(len=*), parameter :: source   = 'obs_def_land_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'obs_def_land_mod.f90'
 
 logical :: module_initialized = .false.
 
@@ -177,6 +193,11 @@ character(len=512) :: string1, string2, string3
 ! This might be useful, but not enough to warrant a namelist ... yet
 logical :: debug = .false.
 
+! Bits and bobs for the solar-induced fluorescence metadata
+integer :: max_num_sif_obs = 200000
+integer :: sifkey = 0
+integer, allocatable :: sif_wavelength(:)
+character(len=*), parameter :: SIF_STRING = 'lambda'
 
 !===============================================================================
 contains
@@ -189,8 +210,7 @@ if (module_initialized) return
 
 module_initialized = .true.
 
-! Log the version of this source file.
-call register_module(source, revision, revdate)
+allocate(sif_wavelength(max_num_sif_obs))
 
 end subroutine initialize_module
 
@@ -219,8 +239,7 @@ integer :: imem
 istatus = 1           ! 0 == success, anything else is a failure
 obs_val = MISSING_R8
 
-call error_handler(E_ERR,'calculate_albedo','routine untested - stopping.', &
-           source, revision, revdate)
+call error_handler(E_ERR,'calculate_albedo','routine untested - stopping.', source )
 
 if ( .not. module_initialized ) call initialize_module()
 
@@ -415,6 +434,210 @@ if (debug .and. do_output()) then
 endif
 
 end subroutine calculate_fpar
+
+
+!-------------------------------------------------------------------------------
+
+
+subroutine calculate_sif(state_handle, ens_size, location, obs_val, istatus)
+
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+real(r8),            intent(out) :: obs_val(ens_size)
+integer,             intent(out) :: istatus(ens_size)
+
+if ( .not. module_initialized ) call initialize_module()
+
+! If the model state has it directly, this is simple.
+! If it does not ... nothing else to try at the moment
+
+call interpolate(state_handle, ens_size, location, &
+                 QTY_SOLAR_INDUCED_FLUORESCENCE, obs_val, istatus)
+
+end subroutine calculate_sif
+
+
+!-------------------------------------------------------------------------------
+!> stuff the value into the local metadata array
+
+function set_SIF_wavelength(lambda) result(key)
+
+integer, intent(in) :: lambda
+integer :: key
+
+if ( .not. module_initialized ) call initialize_module
+
+! update the index into the module array
+sifkey = sifkey + 1
+
+! check that it fits
+if (sifkey > max_num_sif_obs) call double_metadata()
+
+sif_wavelength(sifkey) = lambda
+key = sifkey
+
+end function set_SIF_wavelength
+
+
+!-------------------------------------------------------------------------------
+!> writes the metadata for SIF observations.
+
+subroutine read_SIF_wavelength(key, obsID, ifile, fform)
+
+integer,           intent(out)          :: key
+integer,           intent(in)           :: obsID
+integer,           intent(in)           :: ifile
+character(len=*),  intent(in), optional :: fform
+
+character(len=*), parameter :: routine = 'read_SIF_wavelength'
+
+logical  :: is_asciifile
+integer  :: lambda
+character(len=6) :: header
+integer :: ierr
+character(len=512) :: msgstring
+
+if ( .not. module_initialized ) call initialize_module
+
+! create string for error reporting
+write(msgstring,*)'observation # ',obsID
+
+! given the index into the local metadata arrays - retrieve
+! the metadata for this particular observation.
+
+is_asciifile = ascii_file_format(fform)
+
+if (is_asciifile) then
+   read(ifile, *, iostat=ierr) header
+   call check_iostat(ierr,routine,'header',msgstring)
+   read(ifile, *, iostat=ierr) lambda
+   call check_iostat(ierr,routine,'lambda',msgstring)
+   read(ifile, *, iostat=ierr) key
+   call check_iostat(ierr,routine,'key',msgstring)
+else
+   read(ifile   , iostat=ierr) header
+   call check_iostat(ierr,routine,'header',msgstring)
+   read(ifile   , iostat=ierr) lambda
+   call check_iostat(ierr,routine,'lambda',msgstring)
+   read(ifile   , iostat=ierr) key
+   call check_iostat(ierr,routine,'key',msgstring)
+endif
+
+sifkey = sifkey + 1
+
+! check that it fits
+if (sifkey > max_num_sif_obs) call double_metadata()
+
+sif_wavelength(sifkey) = lambda
+key = sifkey
+
+end subroutine read_SIF_wavelength
+
+!-------------------------------------------------------------------------------
+!> writes the metadata for SIF observations.
+
+subroutine write_SIF_wavelength(key, ifile, fform)
+
+integer,           intent(in)           :: key
+integer,           intent(in)           :: ifile
+character(len=*),  intent(in), optional :: fform
+
+logical  :: is_asciifile
+integer  :: lambda
+
+if ( .not. module_initialized ) call initialize_module
+
+! given the index into the local metadata arrays - retrieve
+! the metadata for this particular observation.
+
+lambda = sif_wavelength(key)
+
+is_asciifile = ascii_file_format(fform)
+
+if (is_asciifile) then
+   write(ifile, *) trim(SIF_STRING)
+   write(ifile, *) lambda
+   write(ifile, *) key
+else
+   write(ifile   ) trim(SIF_STRING)
+   write(ifile   ) lambda
+   write(ifile   ) key
+endif
+
+end subroutine write_SIF_wavelength
+
+
+!-------------------------------------------------------------------------------
+!> interactively queries for metadata required for SIF observations.
+
+subroutine interactive_SIF_wavelength(key)
+
+integer, intent(out) :: key
+
+character(len=*), parameter :: routine = 'interactive_SIF_wavelength'
+integer  :: lambda
+
+if ( .not. module_initialized ) call initialize_module
+
+write(*,*) 'Input wavelength of SIF (nm)'
+read(*,*)lambda
+
+key = set_SIF_wavelength(lambda)
+
+end subroutine interactive_SIF_wavelength
+
+
+!-------------------------------------------------------------------------------
+!> creates enough space for more SIF metadata 
+
+subroutine double_metadata() 
+
+integer, allocatable :: temp_array(:)
+integer :: existing_length
+integer :: new_length
+
+existing_length = size(sif_wavelength)
+new_length      = 2 * existing_length
+
+write(string1,*)'increasing metadata length from ',existing_length, &
+                ' to ',new_length
+call error_handler(E_MSG,'double_metadata',string1,source)
+
+allocate(temp_array(existing_length))
+
+temp_array = sif_wavelength
+
+deallocate(sif_wavelength)
+allocate(  sif_wavelength(new_length))
+
+sif_wavelength(1:existing_length) = temp_array
+
+deallocate(temp_array)
+
+max_num_sif_obs = new_length
+
+end subroutine double_metadata
+
+
+!-------------------------------------------------------------------------------
+!> simple error handling routine
+
+subroutine check_iostat(istat, routine, context, msgstring)
+
+integer,          intent(in) :: istat
+character(len=*), intent(in) :: routine
+character(len=*), intent(in) :: context
+character(len=*), intent(in) :: msgstring
+
+if ( istat /= 0 ) then
+   write(string1,*)'istat should be 0 but is ',istat,' for '//context
+   call error_handler(E_ERR, routine, string1, source, text2=msgstring)
+end if
+
+end subroutine check_iostat
+
+
 
 end module obs_def_land_mod
 
