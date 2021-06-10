@@ -74,6 +74,7 @@ use     obs_kind_mod, only : QTY_SOIL_TEMPERATURE,       &
                              QTY_ABSORBED_PAR,           &
                              QTY_FRACTION_ABSORBED_PAR,  &
                              QTY_SOLAR_INDUCED_FLUORESCENCE, &
+                             QTY_SOIL_CARBON,            &
                              QTY_LATENT_HEAT_FLUX,       &
                              QTY_LANDMASK,               &
                              get_index_for_quantity,     &
@@ -401,13 +402,6 @@ if ( .not. module_initialized ) call static_init_model
 location = set_location( LON(lonixy(indx)), LAT(latjxy(indx)), levels(indx), VERTISHEIGHT)
 
 if (present(var_type)) then
-
-   ! if it is not 'land', is it useful
-   ! We don't have a QTY_WATERMASK, so I am abusing QTY_LANDMASK
-   if (landarea(indx) == 0.0_r8) then
-      var_type = QTY_LANDMASK
-      RETURN
-   endif
 
    var_type = MISSING_I
 
@@ -1610,7 +1604,7 @@ select case( obs_kind )
 
       where (istatus == 0) expected_obs = interp_val_liq + interp_val_ice
 
-   case ( QTY_SOIL_TEMPERATURE, QTY_SOIL_LIQUID_WATER, QTY_SOIL_ICE )
+   case ( QTY_SOIL_TEMPERATURE, QTY_SOIL_LIQUID_WATER, QTY_SOIL_ICE, QTY_SOIL_CARBON )
 
       call get_grid_vertval(state_handle, ens_size, location, obs_kind, &
                             expected_obs, istatus)
@@ -1880,9 +1874,9 @@ indexN = get_index_end(  domain, varname)
 
 !>@todo check applicability
 !if ( variable does not have levels ) then
-    write(string1, *)'Variable '//trim(varname)//' should not use this routine.'
-    write(string2, *)'use compute_gridcell_value() instead.'
-    call error_handler(E_ERR,routine,string1,source,text2=string2)
+!   write(string1, *)'Variable '//trim(varname)//' should not use this routine.'
+!   write(string2, *)'use compute_gridcell_value() instead.'
+!   call error_handler(E_ERR,routine,string1,source,text2=string2)
 !endif
 
 ! determine the grid cell for the location
@@ -2951,8 +2945,8 @@ end subroutine parse_variable_table
 
 
 !------------------------------------------------------------------
-!> dimname         ... is it dimensioned 'levgrnd' or 'levsno' or 'levtot' ...
 !> icol            ... which CLM 'column' are we in
+!> dimname         ... is it dimensioned 'levgrnd' or 'levsno' or 'levtot' ...
 !> enlevels        ... the expected number of levels ... varshape
 !> levtot          ... the output array of vertical coordinates
 !>
@@ -2991,11 +2985,11 @@ end subroutine parse_variable_table
 !> figure(5); plot3(lon,lat,h2o(:,5),'x'); hold on; worldmap; view(0,90)
 !> figure(6); plot3(lon,lat,h2o(:,6),'x'); hold on; worldmap; view(0,90)
 
-subroutine fill_levels(varname,dimname,icol,enlevels,levtot)
+subroutine fill_levels(varname,icol,dimname,enlevels,levtot)
 
 character(len=*), intent(in)    :: varname
-character(len=*), intent(in)    :: dimname
 integer,          intent(in)    :: icol
+character(len=*), intent(in)    :: dimname
 integer,          intent(in)    :: enlevels
 real(r8),         intent(out)   :: levtot(:)
 
@@ -3004,7 +2998,8 @@ integer :: j
 if     (dimname == 'levsno') then
 
    if (nlevsno /= enlevels) then
-      write(string1,*) trim(varname),' dimension ', trim(dimname),' has declared length ',enlevels
+      write(string1,*) trim(varname),' dimension ', trim(dimname), &
+                       ' has declared length ',enlevels
       write(string2,*) 'not the known number of snow levels ',nlevsno
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
@@ -3013,7 +3008,8 @@ if     (dimname == 'levsno') then
 elseif (dimname == 'levsno1') then
 
    if (nlevsno1 /= enlevels) then
-      write(string1,*) trim(varname),' dimension ', trim(dimname),' has declared length ',enlevels
+      write(string1,*) trim(varname),' dimension ', trim(dimname), &
+                       ' has declared length ',enlevels
       write(string2,*) 'not the known number of snow interfaces ',nlevsno1
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
@@ -3022,7 +3018,8 @@ elseif (dimname == 'levsno1') then
 elseif (dimname == 'levgrnd') then
 
    if (nlevgrnd /= enlevels) then
-      write(string1,*) trim(varname),' dimension ', trim(dimname),' has declared length ',enlevels
+      write(string1,*) trim(varname),' dimension ', trim(dimname), &
+                       ' has declared length ',enlevels
       write(string2,*) 'not the known number of ground levels ',nlevgrnd
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
@@ -3031,7 +3028,8 @@ elseif (dimname == 'levgrnd') then
 elseif (dimname == 'levsoi') then
 
    if (nlevsoi /= enlevels) then
-      write(string1,*) trim(varname),' dimension ', trim(dimname),' has declared length ',enlevels
+      write(string1,*) trim(varname),' dimension ', trim(dimname), &
+                       ' has declared length ',enlevels
       write(string2,*) 'not the known number of soil levels ',nlevsoi
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
@@ -3040,8 +3038,9 @@ elseif (dimname == 'levsoi') then
 elseif (dimname == 'levdcmp') then
 
    if (nlevdcmp /= enlevels) then
-      write(string1,*) trim(varname),' dimension ', trim(dimname),' has declared length ',enlevels
-      write(string2,*) 'not the known number of decompositoin levels ',nlevdcmp
+      write(string1,*) trim(varname),' dimension ', trim(dimname), &
+                       ' has declared length ',enlevels
+      write(string2,*) 'not the known number of decomposition levels ',nlevdcmp
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
    levtot(1:nlevdcmp) = LEVGRND(1:nlevdcmp)   ! 'levdcmp' has same levels as 'levgrnd'
@@ -3052,14 +3051,17 @@ elseif (dimname == 'levtot') then
    ! followed by nlevgrnd levels. Dunno what to do with lake stuff ...
 
    if (nlevtot /= enlevels) then
-      write(string1,*) trim(varname),' dimension ', trim(dimname),' has declared length ',enlevels
+      write(string1,*) trim(varname),' dimension ', trim(dimname), &
+                       ' has declared length ',enlevels
       write(string2,*) 'not the known number of total levels ',nlevtot
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
 
    if (nlevtot /= nlevgrnd + nlevsno) then
-      write(string1,*) trim(varname),' nlevtot ', nlevtot,' is not equal to nlevgrnd + nlevsno'
-      write(string2,*) 'nlevgrnd is ',nlevgrnd,' nlevsno is ',nlevsno,' total of ',nlevgrnd+nlevsno
+      write(string1,*) trim(varname),' nlevtot ', nlevtot, &
+                       ' is not equal to nlevgrnd + nlevsno'
+      write(string2,*) 'nlevgrnd is ',nlevgrnd,' nlevsno is ',nlevsno, &
+                       ' total of ',nlevgrnd+nlevsno
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
 
@@ -3069,7 +3071,8 @@ elseif (dimname == 'levtot') then
 elseif (dimname == 'numrad') then
 
    if (nnumrad /= enlevels) then
-      write(string1,*) trim(varname),' dimension ', trim(dimname),' has declared length ',enlevels
+      write(string1,*) trim(varname),' dimension ', trim(dimname), &
+                       ' has declared length ',enlevels
       write(string2,*) 'not the known number of radiation levels ',nnumrad
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
@@ -3715,6 +3718,9 @@ integer :: horiz_dimension, other_dimension
 
 call parse_dimensions(varname,dimension_name,horiz_dimension,other_dimension)
 
+! If the variable is dimensioned (*vertical*,column) the order of the looping must
+! be reversed to match the storage order in the DART state vector.
+
 if ((debug > 0) .and. do_output()) then
    write(*,*)
    write(*,*)'variable ',trim(varname)
@@ -3764,33 +3770,18 @@ SELECT CASE ( trim(dimension_name(horiz_dimension)) )
       enddo
 
    CASE ("column") ! Column is the only coordinate that has vertical levels.
-                   ! The vertical levels are fully defined by the levgrnd and
-                   ! levsno variables. levgrnd is static, levsno varies by column.
+                   ! Sometimes the storage order is (column,level), sometimes
+                   ! it is (level,column). Remember netCDF reporting is opposite
+                   ! to Fortran.
 
-      if ((debug > 8) .and. do_output()) write(*,*)'length cols1d_ixy ',size(cols1d_ixy)
-      if ((debug > 8) .and. do_output()) write(*,*)'size zsno ',size(zsno,1), size(zsno,2)
-      if ((debug > 8) .and. do_output()) write(*,*)'nlevsno ',nlevsno
+      if (horiz_dimension == 2) then
+         call loop_other_fastest(varname, indx, dimension_name, dimension_length, &
+                                      horiz_dimension, other_dimension)
+      else
+         call loop_column_fastest(varname, indx, dimension_name, dimension_length, &
+                                      horiz_dimension, other_dimension)
+      endif
 
-      LANDCOLUMN : do j = 1, dimension_length(horiz_dimension)
-
-         call fill_levels(varname,dimension_name(other_dimension),j,dimension_length(other_dimension),levtot)
-
-         xi = cols1d_ixy(j)
-         xj = cols1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
-         VERTICAL :  do i = 1, dimension_length(other_dimension)
-            levels(  indx) = levtot(i)
-            if (unstructured) then
-               lonixy(  indx) = xi
-               latjxy(  indx) = xi
-               landarea(indx) = AREA1D(xi) * LANDFRAC1D(xi) * cols1d_wtxy(j)
-            else
-               lonixy(  indx) = xi
-               latjxy(  indx) = xj
-               landarea(indx) = AREA2D(xi,xj) * LANDFRAC2D(xi,xj) * cols1d_wtxy(j)
-            endif
-            indx = indx + 1
-         enddo VERTICAL
-      enddo LANDCOLUMN
 
    CASE ("pft")
       if ((debug > 8) .and. do_output()) write(*,*)'length pfts1d_ixy ',size(pfts1d_ixy)
@@ -3823,7 +3814,7 @@ SELECT CASE ( trim(dimension_name(horiz_dimension)) )
                lonixy(  indx) = i
                latjxy(  indx) = j
                landarea(indx) = AREA2D(i,j) * LANDFRAC2D(i,j)
-               endif
+            endif
             indx = indx + 1
          enddo
       enddo
@@ -3980,6 +3971,92 @@ else
 endif
 
 end subroutine parse_dimensions
+
+
+
+subroutine loop_other_fastest(varname, indx, dimension_names, dimension_lengths, &
+                                      horiz_dimension, other_dimension)
+character(len=*), intent(in) :: varname
+integer(i8),          intent(inout) :: indx
+character(len=*), intent(in) :: dimension_names(:)
+integer,          intent(in) :: dimension_lengths(:)
+integer,          intent(in) :: horiz_dimension
+integer,          intent(in) :: other_dimension
+
+integer :: i,j,xi,xj
+
+COLUMN : do j = 1, dimension_lengths(horiz_dimension)
+
+   call fill_levels(varname, j, dimension_names(  other_dimension), & 
+                                dimension_lengths(other_dimension),levtot)
+
+   xi = cols1d_ixy(j)
+   xj = cols1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
+   OTHER :  do i = 1, dimension_lengths(other_dimension)
+      levels(  indx) = levtot(i)
+      if (unstructured) then
+         lonixy(  indx) = xi
+         latjxy(  indx) = xi
+         landarea(indx) = AREA1D(xi) * LANDFRAC1D(xi) * cols1d_wtxy(j)
+      else
+         lonixy(  indx) = xi
+         latjxy(  indx) = xj
+         landarea(indx) = AREA2D(xi,xj) * LANDFRAC2D(xi,xj) * cols1d_wtxy(j)
+
+! if ( LON(lonixy(indx)) /= cols1d_lon(j) .or.  LAT(latjxy(indx)) /= cols1d_lat(j)) then
+! write(*,*)'TJH',indx,j,i,LON(lonixy(indx)),LAT(latjxy(indx)),cols1d_lon(j),cols1d_lat(j)
+! endif
+   
+      endif
+      indx = indx + 1
+   enddo OTHER
+enddo COLUMN
+
+end subroutine loop_other_fastest
+
+
+
+subroutine loop_column_fastest(varname, indx, dimension_names, dimension_lengths, &
+                                      horiz_dimension, other_dimension)
+character(len=*), intent(in) :: varname
+integer(i8),          intent(inout) :: indx
+character(len=*), intent(in) :: dimension_names(:)
+integer,          intent(in) :: dimension_lengths(:)
+integer,          intent(in) :: horiz_dimension
+integer,          intent(in) :: other_dimension
+
+integer :: i,j,xi,xj
+
+OTHER : do j = 1, dimension_lengths(other_dimension)
+   COLUMN :  do i = 1, dimension_lengths(horiz_dimension)
+
+      xi = cols1d_ixy(i)
+      xj = cols1d_jxy(i) ! nnnnn_jxy(:) always 1 if unstructured
+
+      call fill_levels(varname, i, dimension_names(  other_dimension), & 
+                                   dimension_lengths(other_dimension),levtot)
+
+      levels(  indx) = levtot(j)
+      if (unstructured) then
+         lonixy(  indx) = xi
+         latjxy(  indx) = xi
+         landarea(indx) = AREA1D(xi) * LANDFRAC1D(xi) * cols1d_wtxy(i)
+      else
+         lonixy(  indx) = xi
+         latjxy(  indx) = xj
+         landarea(indx) = AREA2D(xi,xj) * LANDFRAC2D(xi,xj) * cols1d_wtxy(i)
+
+! if ( LON(lonixy(indx)) /= cols1d_lon(j) .or.  LAT(latjxy(indx)) /= cols1d_lat(j)) then
+! write(*,*)'TJH',indx,j,i,LON(lonixy(indx)),LAT(latjxy(indx)),cols1d_lon(j),cols1d_lat(j)
+! endif
+   
+      endif
+      indx = indx + 1
+   enddo COLUMN
+enddo OTHER
+
+end subroutine loop_column_fastest
+
 
 !===================================================================
 ! End of model_mod
