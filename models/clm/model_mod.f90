@@ -54,7 +54,7 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_get_dimension_size, nc_get_variable_size,  &
                                  nc_get_variable, nc_put_variable, &
                                  nc_get_variable_dimension_names, &
-                                 nc_define_dimension, &
+                                 nc_define_dimension, nc_variable_exists, &
                                  nc_define_integer_variable, &
                                  nc_define_real_variable, &
                                  nc_define_double_variable
@@ -363,10 +363,11 @@ contains
 !==================================================================
 
 
-function get_model_size()
 !------------------------------------------------------------------
-! Returns the size of the model as an integer.
-! Required for all applications.
+!> Returns the size of the model as an integer.
+!> Required for all applications.
+
+function get_model_size()
 
 integer(i8) :: get_model_size
 
@@ -377,11 +378,11 @@ get_model_size = model_size
 end function get_model_size
 
 
+!------------------------------------------------------------------
+!> Given an integer index into the state vector structure, returns the
+!> associated array indices for lat, lon, and height, as well as the type.
 
 subroutine get_state_meta_data(indx, location, var_type)
-!------------------------------------------------------------------
-! Given an integer index into the state vector structure, returns the
-! associated array indices for lat, lon, and height, as well as the type.
 
 integer(i8),         intent(in)  :: indx
 type(location_type), intent(out) :: location
@@ -424,9 +425,9 @@ end subroutine get_state_meta_data
 
 
 !------------------------------------------------------------------
-! Returns the the time step of the model; the smallest increment
-! in time that the model is capable of advancing the state in a given
-! implementation. This interface is required for all applications.
+!> Returns the the time step of the model; the smallest increment
+!> in time that the model is capable of advancing the state in a given
+!> implementation. This interface is required for all applications.
 
 function shortest_time_between_assimilations()
 
@@ -440,7 +441,7 @@ end function shortest_time_between_assimilations
 
 
 !------------------------------------------------------------------
-! Called to do one time initialization of the model.
+!> Called to do one time initialization of the model.
 
 subroutine static_init_model()
 
@@ -668,84 +669,26 @@ deallocate(lonixy, latjxy, landarea)
 end subroutine end_model
 
 
+!------------------------------------------------------------------
+!> Writes the model-specific attributes to a netCDF file.
+!> This includes coordinate variables and some metadata, but NOT
+!> the model state vector.
 
 subroutine nc_write_model_atts( ncid, domain_id ) 
-!------------------------------------------------------------------
-! TJH -- Writes the model-specific attributes to a netCDF file.
-!     This includes coordinate variables and some metadata, but NOT
-!     the model state vector.
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
 
 integer, intent(in) :: ncid      ! netCDF file identifier
 integer, intent(in) :: domain_id
 
 character(len=*), parameter :: routine = 'nc_write_model_atts'
 
-!----------------------------------------------------------------------
-! variables if we parse the state vector into prognostic variables.
-!----------------------------------------------------------------------
-
-! for the dimensions and coordinate variables
-integer ::     nlonDimID
-integer ::     nlatDimID
-integer ::  lndgridDimID
-integer :: gridcellDimID
-integer :: landunitDimID
-integer ::   columnDimID
-integer ::      pftDimID
-integer ::  levgrndDimID
-integer ::   levsoiDimID
-integer ::  levdcmpDimID
-integer ::   levlakDimID
-integer ::   levsnoDimID
-integer ::  levsno1DimID
-integer ::   levtotDimID
-integer ::   numradDimID
-integer ::   levcanDimID
-
-integer :: VarID
-
-!----------------------------------------------------------------------
-! local variables
-!----------------------------------------------------------------------
-
-character(len=128) :: filename
-
 if ( .not. module_initialized ) call static_init_model
 
-!--------------------------------------------------------------------
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-!--------------------------------------------------------------------
-
-write(filename,*) 'ncid', ncid
-
-!-------------------------------------------------------------------------------
 ! Put file into define mode.
-
 ! Write Global Attributes
 
 call nc_begin_define_mode(ncid)
-
 call nc_add_global_creation_time(ncid)
-
 call nc_add_global_attribute(ncid, "model_source", source)
-
 call nc_add_global_attribute(ncid, "model", "CLM")
 
 !----------------------------------------------------------------------------
@@ -795,17 +738,19 @@ call nc_add_attribute_to_variable(ncid,'lat','valid_range', (/ -90.0_r8, 90.0_r8
 ! subsurface levels
 
 call nc_define_real_variable(     ncid,'levgrnd','levgrnd',routine)
-call nc_add_attribute_to_variable(ncid,'levgrnd','long_name','coordinate soil levels',routine)
+call nc_add_attribute_to_variable(ncid,'levgrnd','long_name','coordinate ground levels',routine)
 call nc_add_attribute_to_variable(ncid,'levgrnd','cartesian_axis', 'Z',routine)
 call nc_add_attribute_to_variable(ncid,'levgrnd','units', 'm',routine)
 
 call nc_define_real_variable(     ncid,'levsoi','levsoi',routine) 
-call nc_add_attribute_to_variable(ncid,'levsoi','long_name','coordinate soil levels',routine)
+call nc_add_attribute_to_variable(ncid,'levsoi','long_name', &
+          'coordinate soil levels (equivalent to top nlevsoi levels of levgrnd)',routine)
 call nc_add_attribute_to_variable(ncid,'levsoi','cartesian_axis', 'Z',routine)
 call nc_add_attribute_to_variable(ncid,'levsoi','units', 'm',routine)
 
 call nc_define_real_variable(     ncid,'levdcmp','levdcmp',routine) 
-call nc_add_attribute_to_variable(ncid,'levdcmp','long_name','coordinate soil levels',routine)
+call nc_add_attribute_to_variable(ncid,'levdcmp','long_name', &
+                  'coordinate levels for soil decomposition variables',routine)
 call nc_add_attribute_to_variable(ncid,'levdcmp','cartesian_axis', 'Z',routine)
 call nc_add_attribute_to_variable(ncid,'levdcmp','units', 'm',routine)
 
@@ -815,6 +760,7 @@ call nc_add_attribute_to_variable(ncid,'levlak','cartesian_axis', 'Z',routine)
 call nc_add_attribute_to_variable(ncid,'levlak','units', 'm',routine)
 
 ! grid cell areas
+
 if (unstructured) then
    call nc_define_real_variable(ncid,'area','lon',routine)
 else
@@ -823,8 +769,8 @@ endif
 call nc_add_attribute_to_variable(ncid,'area','long_name','grid cell areas',routine)
 call nc_add_attribute_to_variable(ncid,'area','units','km^2',routine)
 
-
 ! grid cell land fractions
+
 if (unstructured) then
    call nc_define_real_variable(ncid,'landfrac','nlon',routine) 
 else
@@ -955,18 +901,17 @@ call nc_put_variable(ncid,'pfts1d_lon',     pfts1d_lon,     routine)
 call nc_put_variable(ncid,'pfts1d_lat',     pfts1d_lat,     routine)
 call nc_put_variable(ncid,'pfts1d_ityplun', pfts1d_ityplun, routine)
 
-!-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
+
 call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 
 
 !-------------------------------------------------------------------------------
-! Actually, nothing special about get_close_obs for CLM. Including it here
-! because we may need a unique one in the future. Right now it is simply
-! a pass-through to the default routine.
+!> Actually, nothing special about get_close_obs for CLM. Including it here
+!> because we may need a unique one in the future. Right now it is simply
+!> a pass-through to the default routine.
 
 subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
                          num_close, close_ind, dist, ens_handle)
@@ -993,9 +938,9 @@ end subroutine get_close_obs
 
 
 !----------------------------------------------------------------------------
-! Routine to enforce a-priori assumptions about correlations. Manipulate the
-! distance between two objects to put them outside the localization radius if
-! we expect or know them to be uncorrelated.
+!> Routine to enforce a-priori assumptions about correlations. Manipulate the
+!> distance between two objects to put them outside the localization radius if
+!> we expect or know them to be uncorrelated.
 
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, ens_handle)
@@ -1125,9 +1070,9 @@ call nc_close_file(ncid, 'read_model_time', filename)
 
 end function read_model_time
 
+
 !-----------------------------------------------------------------------
-!>@todo this routine should write the model time when 
-!>      creating files from scratch
+!> this routine writes the model time when creating files from scratch
 !>
 !>	int timemgr_rst_start_ymd ;
 !>		timemgr_rst_start_ymd:long_name = "start date" ;
@@ -1148,7 +1093,7 @@ end function read_model_time
 
 subroutine write_model_time(ncid, dart_time)
 
-integer,             intent(in) :: ncid !< netcdf file handle
+integer,             intent(in) :: ncid
 type(time_type),     intent(in) :: dart_time
 
 character(len=*), parameter :: routine = 'write_model_time'
@@ -1189,11 +1134,9 @@ endif
 if ( defining ) call nc_check(nf90_enddef(ncid), routine, 'enddef')
 
 io = nf90_put_var(ncid, ymdVarID, rst_curr_ymd)
-! call nc_check(io, routine, ncid=ncid)  ! would like to use this if ncid is in the table
 call nc_check(io, routine, 'put_var timemgr_rst_curr_ymd')
 
 io = nf90_put_var(ncid, todVarID, rst_curr_tod)
-! call nc_check(io, routine, ncid=ncid)  ! would like to use this if ncid is in the table
 call nc_check(io, routine, 'put_var timemgr_rst_curr_tod')
 
 !>@todo maybe we also want to write the time in a DART-like way.
@@ -1204,10 +1147,13 @@ end subroutine write_model_time
 ! The remaining PUBLIC interfaces come next
 !==================================================================
 
-subroutine get_gridsize(num_lon, num_lat, num_lev)
-integer, intent(out) :: num_lon, num_lat, num_lev
+
 !------------------------------------------------------------------
-! public utility routine.
+!>
+
+subroutine get_gridsize(num_lon, num_lat, num_lev)
+
+integer, intent(out) :: num_lon, num_lat, num_lev
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1325,9 +1271,11 @@ call nc_close_file(ncid_dart, routine)
 
 end subroutine fill_missing_r8_with_orig
 
+
 !==================================================================
 ! The remaining required interfaces
 !==================================================================
+
 
 !-----------------------------------------------------------------------
 !> Interpolate any QUANTITY of the model state to any arbitrary location.
@@ -1574,7 +1522,7 @@ endif
 !>@todo  FIXME ... this is the loop that can exploit the knowledge of what 
 ! columnids or pftids are needed for any particular gridcell.
 ! gridCellInfo%pftids, gridCellInfo%columnids
-!gridCellInfo(gridlatj,gridloni)%gridcell
+! gridCellInfo(gridlatj,gridloni)%gridcell
 
 index1 = get_index_start(domain, varid)
 indexN = get_index_end(  domain, varid)
@@ -1940,14 +1888,14 @@ end subroutine get_grid_vertval
 
 
 !------------------------------------------------------------------
-! convert the values from a 1d array, starting at an offset, into a 1d array.
-!
-! If the optional argument (ncid) is specified, some additional
-! processing takes place. The variable in the netcdf is read.
-! This must be the same shape as the intended output array.
-! Anywhere the DART MISSING code is encountered in the input array,
-! the corresponding (i.e. original) value from the netCDF file is
-! used.
+!> convert the values from a 1d array, starting at an offset, into a 1d array.
+!>
+!> If the optional argument (ncid) is specified, some additional
+!> processing takes place. The variable in the netcdf is read.
+!> This must be the same shape as the intended output array.
+!> Anywhere the DART MISSING code is encountered in the input array,
+!> the corresponding (i.e. original) value from the netCDF file is
+!> used.
 
 subroutine fill_missing_r8_with_orig_1d(ivar, ncid_dart, ncid_clm)
 
@@ -1983,8 +1931,7 @@ end subroutine fill_missing_r8_with_orig_1d
 
 
 !------------------------------------------------------------------
-! convert the values from a 1d array, starting at an offset,
-! into a 2d array.
+!>  convert the values from a 1d array, starting at an offset, into a 2d array.
 
 subroutine fill_missing_r8_with_orig_2d(ivar, ncid_dart, ncid_clm)
 
@@ -2015,7 +1962,6 @@ where(data_2d_array == MISSING_R8 ) data_2d_array = org_array
 call nc_put_variable(ncid_clm, varname, data_2d_array, 'fill_missing_r8_with_orig_2d')
 
 deallocate(org_array, data_2d_array)
-
 
 end subroutine fill_missing_r8_with_orig_2d
 
@@ -2066,34 +2012,10 @@ levgrnd = nc_get_dimension_size(ncid,'levgrnd',routine)
 levsoi  = nc_get_dimension_size(ncid,'levsoi', routine)
 levdcmp = nc_get_dimension_size(ncid,'levdcmp',routine)
 
-
-if (present(lonatm)) then
-   call nc_check(nf90_inq_dimid(ncid, 'lonatm', dimid), &
-               routine,'inq_dimid lonatm '//trim(fname))
-   call nc_check(nf90_inquire_dimension(ncid, dimid, len=lonatm), &
-               routine,'inquire_dimension lonatm '//trim(fname))
-endif
-
-if (present(latatm)) then
-   call nc_check(nf90_inq_dimid(ncid, 'latatm', dimid), &
-               routine,'inq_dimid latatm '//trim(fname))
-   call nc_check(nf90_inquire_dimension(ncid, dimid, len=latatm), &
-               routine,'inquire_dimension latatm '//trim(fname))
-endif
-
-if (present(lonrof)) then
-   call nc_check(nf90_inq_dimid(ncid, 'lonrof', dimid), &
-               routine,'inq_dimid lonrof '//trim(fname))
-   call nc_check(nf90_inquire_dimension(ncid, dimid, len=lonrof), &
-               routine,'inquire_dimension lonrof '//trim(fname))
-endif
-
-if (present(latrof)) then
-   call nc_check(nf90_inq_dimid(ncid, 'latrof', dimid), &
-               routine,'inq_dimid latrof '//trim(fname))
-   call nc_check(nf90_inquire_dimension(ncid, dimid, len=latrof), &
-               routine,'inquire_dimension latrof '//trim(fname))
-endif
+if (present(lonatm)) lonatm = nc_get_dimension_size(ncid,'lonatm',routine)
+if (present(latatm)) latatm = nc_get_dimension_size(ncid,'latatm',routine)
+if (present(lonrof)) lonrof = nc_get_dimension_size(ncid,'lonrof',routine)
+if (present(latrof)) latrof = nc_get_dimension_size(ncid,'latrof',routine)
 
 if ((debug > 8) .and. do_output()) then
    write(logfileunit,*)
@@ -2122,6 +2044,7 @@ endif
 
 end subroutine get_history_dims
 
+
 !------------------------------------------------------------------
 !> Read the grid dimensions from the CLM history netcdf file.
 !> LON,LAT,AREA,LANDFRAC,LEVGRN all have module scope
@@ -2148,9 +2071,18 @@ call nc_get_variable(ncid, 'lon'    , LON,     routine)
 call nc_get_variable(ncid, 'lat'    , LAT,     routine)
 call nc_get_variable(ncid, 'levgrnd', LEVGRND, routine)
 
-! TJH CHECK THIS THOROUGHLY
-LEVDCMP = LEVGRND
-LEVSOI(1:nlevsoi) = LEVGRND(1:nlevsoi)
+if ( nc_variable_exists(ncid,'levsoi') ) then
+   call nc_get_variable(ncid,'levsoi', LEVSOI, routine)
+else
+   LEVSOI(1:nlevsoi) = LEVGRND(1:nlevsoi)
+endif
+    
+if ( nc_variable_exists(ncid,'levdcmp') ) then
+   call nc_get_variable(ncid,'levdcmp', LEVDCMP, routine)
+else
+   LEVDCMP(1:nlevdcmp) = LEVGRND(1:nlevdcmp)
+endif
+
 
 if (unstructured) then
    call nc_get_variable(ncid,'area'    ,AREA1D,     routine)
@@ -2213,7 +2145,6 @@ if ((debug > 7) .and. do_output()) then
 
 endif
 
-return
 end subroutine get_full_grid
 
 
@@ -2370,7 +2301,6 @@ if ((debug > 1) .and. do_output()) then
 
 endif
 
-return
 end subroutine get_clm_codes
 
 
@@ -2386,17 +2316,15 @@ character(len=*), intent(in)    :: cstat
 
 character(len=*), parameter :: routine = 'get_sparse_dims'
 
-integer :: dimid, istatus, mylevgrnd
+integer :: mylevgrnd
 
 if (ncid == 0) ncid = nc_open_file_readonly(fname, routine)
-
-! get dimid for 'gridcell' and then get value ...
 
 ngridcell = nc_get_dimension_size(ncid, 'gridcell', routine)
 nlandunit = nc_get_dimension_size(ncid, 'landunit', routine)
 ncolumn   = nc_get_dimension_size(ncid, 'column',   routine)
 npft      = nc_get_dimension_size(ncid, 'pft',      routine)
-mylevgrnd  = nc_get_dimension_size(ncid, 'levgrnd',  routine)
+mylevgrnd = nc_get_dimension_size(ncid, 'levgrnd',  routine)
 
 if (mylevgrnd /= nlevgrnd) then
    write(string1,*)'Number of ground levels in restart file is',mylevgrnd
@@ -2612,7 +2540,6 @@ if ((debug > 7) .and. do_output()) then
 
 endif
 
-return
 end subroutine get_sparse_geog
 
 
@@ -2790,7 +2717,6 @@ endif
 end subroutine parse_variable_table
 
 
-
 !------------------------------------------------------------------
 !> icol            ... which CLM 'column' are we in
 !> dimname         ... is it dimensioned 'levgrnd' or 'levsno' or 'levtot' ...
@@ -2880,7 +2806,7 @@ elseif (dimname == 'levsoi') then
       write(string2,*) 'not the known number of soil levels ',nlevsoi
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
-   levtot(1:nlevsoi) = LEVGRND(1:nlevsoi)   ! 'levsoi' has same levels as 'levgrnd'
+   levtot(1:nlevsoi) = LEVSOI
 
 elseif (dimname == 'levdcmp') then
 
@@ -2890,7 +2816,7 @@ elseif (dimname == 'levdcmp') then
       write(string2,*) 'not the known number of decomposition levels ',nlevdcmp
       call error_handler(E_ERR,'fill_levels',string1,source,text2=string2)
    endif
-   levtot(1:nlevdcmp) = LEVGRND(1:nlevdcmp)   ! 'levdcmp' has same levels as 'levgrnd'
+   levtot(1:nlevdcmp) = LEVDCMP
 
 elseif (dimname == 'levtot') then
 
@@ -3030,6 +2956,7 @@ get_model_time = model_time
 
 end function get_model_time
 
+
 !-------------------------------------------------------------------------------
 !> Find the first occurrence of the desired DART QTY of interest. 
 !> The first domain, the first variable. This variable will be used for all
@@ -3075,15 +3002,16 @@ endif
 end subroutine FindVarOfInterest
 
 
+!-------------------------------------------------------------------------------
+!> This function will create the relational table that will indicate how many
+!> and which columns pertain to the gridcells. A companion function will
+!> return the column indices that are needed to recreate the gridcell value.
+!>
+!> This fills the gridCellInfo(:,:) structure.
+!> given a gridcell, the gridCellInfo(:,:) structure will indicate how many and
+!> which columns are part of the gridcell.
 
 subroutine SetLocatorArrays()
-! This function will create the relational table that will indicate how many
-! and which columns pertain to the gridcells. A companion function will
-! return the column indices that are needed to recreate the gridcell value.
-!
-! This fills the gridCellInfo(:,:) structure.
-! given a gridcell, the gridCellInfo(:,:) structure will indicate how many and
-! which columns are part of the gridcell.
 
 integer :: ilon, ilat, ij, iunit
 integer :: icol, currenticol(nlon,nlat)
@@ -3200,6 +3128,7 @@ endif
 end subroutine SetLocatorArrays
 
 
+!-------------------------------------------------------------------------------
 !> FindDesiredTimeIndx() returns the index into the time array that matches
 !> the model_time from the CLM restart file.
 
@@ -3355,7 +3284,6 @@ end subroutine cluster_variables
 
 !------------------------------------------------------------------
 
-
 subroutine say(what)
 character(len=*), intent(in) :: what
 
@@ -3366,11 +3294,11 @@ end subroutine say
 
 
 !------------------------------------------------------------------
-! right now, we simply want to declare all urban areas and lakes 'unrelated'
-! to whatever observations we are considering. It is actually
-! easier to specify that we only want to update vegetated or crop columns/landunits.
-! At some point, we may want to update land ice or glaciers or ... 
-! but that will probably entail an expanded set of namelist options.
+!> Declare all urban areas and lakes 'unrelated'
+!> to whatever observations we are considering. It is actually
+!> easier to specify that we only want to update vegetated or crop columns/landunits.
+!> At some point, we may want to update land ice or glaciers or ... 
+!> but that will probably entail an expanded set of namelist options.
 
 function related(obs_quantity, state_index)
 
@@ -3755,6 +3683,8 @@ enddo
 end subroutine fill_rank3_metadata
 
 
+!-------------------------------------------------------------------------------
+!>
 ! RANK 2 VARIABLES (as summarized by 'ncdump') - 'time' dimension omitted
 !         RESTART FILES          HISTORY_FILES          VECTOR_FILES
 !      X(  column, levtot)       X(lat, lon)            X(lat,lon)
@@ -3820,6 +3750,8 @@ endif
 end subroutine parse_dimensions
 
 
+!-------------------------------------------------------------------------------
+!>
 
 subroutine loop_other_fastest(varname, indx, dimension_names, dimension_lengths, &
                                       horiz_dimension, other_dimension)
@@ -3857,6 +3789,8 @@ enddo COLUMN
 end subroutine loop_other_fastest
 
 
+!-------------------------------------------------------------------------------
+!>
 
 subroutine loop_column_fastest(varname, indx, dimension_names, dimension_lengths, &
                                       horiz_dimension, other_dimension)
