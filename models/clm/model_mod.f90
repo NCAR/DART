@@ -54,7 +54,10 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_get_dimension_size, nc_get_variable_size,  &
                                  nc_get_variable, nc_put_variable, &
                                  nc_get_variable_dimension_names, &
-                                 nc_define_dimension, nc_define_real_variable
+                                 nc_define_dimension, &
+                                 nc_define_integer_variable, &
+                                 nc_define_real_variable, &
+                                 nc_define_double_variable
 
 use     obs_kind_mod, only : QTY_SOIL_TEMPERATURE,       &
                              QTY_SOIL_MOISTURE,          &
@@ -749,255 +752,170 @@ call nc_add_global_attribute(ncid, "model", "CLM")
 ! Define the new dimensions IDs
 !----------------------------------------------------------------------------
 
-call nc_check(nf90_def_dim(ncid=ncid, name='lon', len = nlon, &
-          dimid =     nlonDimID),routine, 'lon def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncid, name='lat', len = nlat, &
-          dimid =     nlatDimID),routine, 'lat def_dim '//trim(filename))
-if (unstructured) then
-   call nc_check(nf90_def_dim(ncid=ncid, name='lndgrid', len = ngridcell, &
-          dimid = lndgridDimID),routine, 'lndgrid def_dim '//trim(filename))
-endif
+call nc_define_dimension(ncid,'lon', nlon, routine)
+call nc_define_dimension(ncid,'lat', nlat, routine)
 
-call nc_check(nf90_def_dim(ncid=ncid, name='gridcell', len = ngridcell, &
-          dimid = gridcellDimID),routine, 'gridcell def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncid, name='landunit', len = nlandunit, &
-          dimid = landunitDimID),routine, 'landunit def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncid, name='column', len = ncolumn, &
-          dimid =   columnDimID),routine, 'column def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncid, name='pft', len = npft, &
-          dimid =      pftDimID),routine, 'pft def_dim '//trim(filename))
+call nc_define_dimension(ncid,'gridcell', ngridcell, routine)
+call nc_define_dimension(ncid,'landunit', nlandunit, routine)
+call nc_define_dimension(ncid,'column',   ncolumn,   routine)
+call nc_define_dimension(ncid,'pft',      npft,      routine)
+call nc_define_dimension(ncid,'levgrnd',  nlevgrnd,  routine)
+call nc_define_dimension(ncid,'levsoi',   nlevsoi,   routine)
+call nc_define_dimension(ncid,'levdcmp',  nlevdcmp,  routine)
+call nc_define_dimension(ncid,'levlak',   nlevlak,   routine)
+call nc_define_dimension(ncid,'levsno',   nlevsno,   routine)
+call nc_define_dimension(ncid,'levsno1',  nlevsno1,  routine)
+call nc_define_dimension(ncid,'levtot',   nlevtot,   routine)
+call nc_define_dimension(ncid,'numrad',   nnumrad,   routine)
 
-call nc_check(nf90_def_dim(ncid=ncid, name='levgrnd',  len = nlevgrnd, &
-          dimid =  levgrndDimID),routine, 'levgrnd def_dim '//trim(filename))
+if (unstructured) call nc_define_dimension(ncid,'lndgrid', ngridcell, routine)
 
-call nc_define_dimension(ncid,'levsoi', nlevsoi, routine)
-call nc_define_dimension(ncid,'levdcmp',nlevdcmp,routine)
-
-call nc_check(nf90_def_dim(ncid=ncid, name='levlak', len = nlevlak, &
-          dimid =   levlakDimID),routine, 'levlak def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncid, name='levsno', len = nlevsno, &
-          dimid =   levsnoDimID),routine, 'levsno def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncid, name='levsno1', len = nlevsno1, &
-          dimid =  levsno1DimID),routine, 'levsno1 def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncid, name='levtot', len = nlevtot, &
-          dimid =   levtotDimID),routine, 'levtot def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncid, name='numrad', len = nnumrad, &
-          dimid =   numradDimID),routine, 'numrad def_dim '//trim(filename))
-if (nlevcan > 0) &
-call nc_check(nf90_def_dim(ncid=ncid, name='levcan', len = nlevcan, &
-          dimid =   levcanDimID),routine, 'levcan def_dim'//trim(filename))
+if (nlevcan > 0) call nc_define_dimension(ncid,'levcan',nlevcan,routine)
 
 !----------------------------------------------------------------------------
 ! Create the (empty) Coordinate Variables and the Attributes
 !----------------------------------------------------------------------------
 
 ! Grid Longitudes
-call nc_check(nf90_def_var(ncid,name='lon', xtype=nf90_real, &
-              dimids=(/ nlonDimID /), varid=VarID),&
-              routine, 'lon def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'coordinate longitude'), &
-              routine, 'lon long_name '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'cartesian_axis', 'X'),  &
-              routine, 'lon cartesian_axis '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'units', 'degrees_east'), &
-              routine, 'lon units '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'valid_range', (/ 0.0_r8, 360.0_r8 /)), &
-              routine, 'lon valid_range '//trim(filename))
+
+call nc_define_real_variable(     ncid,'lon','lon',routine)
+call nc_add_attribute_to_variable(ncid,'lon','long_name','coordinate longitude',routine)
+call nc_add_attribute_to_variable(ncid,'lon','cartesian_axis', 'X',routine)
+call nc_add_attribute_to_variable(ncid,'lon','units', 'degrees_east',routine)
+call nc_add_attribute_to_variable(ncid,'lon','valid_range', (/ 0.0_r8, 360.0_r8 /),routine)
 
 ! Grid Latitudes
-call nc_check(nf90_def_var(ncid,name='lat', xtype=nf90_real, &
-              dimids=(/ nlatDimID /), varid=VarID),&
-              routine, 'lat def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'coordinate latitude'), &
-              routine, 'lat long_name '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'cartesian_axis', 'Y'),   &
-              routine, 'lat cartesian_axis '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'units', 'degrees_north'),  &
-              routine, 'lat units '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID,'valid_range',(/ -90.0_r8, 90.0_r8 /)), &
-              routine, 'lat valid_range '//trim(filename))
+
+call nc_define_real_variable(     ncid,'lat','lat',routine)
+call nc_add_attribute_to_variable(ncid,'lat','long_name','coordinate latitude',routine)
+call nc_add_attribute_to_variable(ncid,'lat','cartesian_axis', 'Y',routine)
+call nc_add_attribute_to_variable(ncid,'lat','units', 'degrees_north',routine)
+call nc_add_attribute_to_variable(ncid,'lat','valid_range', (/ -90.0_r8, 90.0_r8 /),routine)
 
 ! subsurface levels
-call nc_check(nf90_def_var(ncid,name='levgrnd', xtype=nf90_real, &
-              dimids=(/ levgrndDimID /), varid=VarID),&
-              routine, 'levgrnd def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'coordinate soil levels'), &
-              routine, 'levgrnd long_name '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'cartesian_axis', 'Z'),   &
-              routine, 'levgrnd cartesian_axis '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'units', 'm'),  &
-              routine, 'levgrnd units '//trim(filename))
 
-call nc_define_real_variable(ncid,'levsoi','levsoi',routine) 
-call nc_define_real_variable(ncid,'levdcmp','levdcmp',routine) 
+call nc_define_real_variable(     ncid,'levgrnd','levgrnd',routine)
+call nc_add_attribute_to_variable(ncid,'levgrnd','long_name','coordinate soil levels',routine)
+call nc_add_attribute_to_variable(ncid,'levgrnd','cartesian_axis', 'Z',routine)
+call nc_add_attribute_to_variable(ncid,'levgrnd','units', 'm',routine)
+
+call nc_define_real_variable(     ncid,'levsoi','levsoi',routine) 
+call nc_add_attribute_to_variable(ncid,'levsoi','long_name','coordinate soil levels',routine)
+call nc_add_attribute_to_variable(ncid,'levsoi','cartesian_axis', 'Z',routine)
+call nc_add_attribute_to_variable(ncid,'levsoi','units', 'm',routine)
+
+call nc_define_real_variable(     ncid,'levdcmp','levdcmp',routine) 
+call nc_add_attribute_to_variable(ncid,'levdcmp','long_name','coordinate soil levels',routine)
+call nc_add_attribute_to_variable(ncid,'levdcmp','cartesian_axis', 'Z',routine)
+call nc_add_attribute_to_variable(ncid,'levdcmp','units', 'm',routine)
+
+call nc_define_real_variable(     ncid,'levlak','levlak',routine) 
+call nc_add_attribute_to_variable(ncid,'levlak','long_name','coordinate lake levels',routine)
+call nc_add_attribute_to_variable(ncid,'levlak','cartesian_axis', 'Z',routine)
+call nc_add_attribute_to_variable(ncid,'levlak','units', 'm',routine)
 
 ! grid cell areas
 if (unstructured) then
-   call nc_check(nf90_def_var(ncid,name='area', xtype=nf90_real, &
-              dimids=(/ nlonDimID /), varid=VarID),&
-              routine, 'area def_var '//trim(filename))
+   call nc_define_real_variable(ncid,'area','lon',routine)
 else
-   call nc_check(nf90_def_var(ncid,name='area', xtype=nf90_real, &
-              dimids=(/ nlonDimID,nlatDimID /), varid=VarID),&
-              routine, 'area def_var '//trim(filename))
+   call nc_define_real_variable(ncid,'area',(/'lon', 'lat'/),routine)
 endif
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'grid cell areas'), &
-              routine, 'area long_name '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'units', 'km^2'),  &
-              routine, 'area units '//trim(filename))
+call nc_add_attribute_to_variable(ncid,'area','long_name','grid cell areas',routine)
+call nc_add_attribute_to_variable(ncid,'area','units','km^2',routine)
+
 
 ! grid cell land fractions
 if (unstructured) then
-   call nc_check(nf90_def_var(ncid,name='landfrac', xtype=nf90_real, &
-              dimids=(/ nlonDimID /), varid=VarID),&
-              routine, 'landfrac def_var '//trim(filename))
+   call nc_define_real_variable(ncid,'landfrac','nlon',routine) 
 else
-   call nc_check(nf90_def_var(ncid,name='landfrac', xtype=nf90_real, &
-              dimids=(/ nlonDimID,nlatDimID /), varid=VarID),&
-              routine, 'landfrac def_var '//trim(filename))
+   call nc_define_real_variable(ncid,'landfrac',(/ 'lon', 'lat' /),routine) 
 endif
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'land fraction'), &
-              routine, 'landfrac long_name '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'units', 'km^2'),  &
-              routine, 'landfrac units '//trim(filename))
+call nc_add_attribute_to_variable(ncid,'landfrac','long_name','land fraction',routine)
+call nc_add_attribute_to_variable(ncid,'landfrac','units','km^2',routine)
 
 ! ---------
 ! landunits
 
 ! longitude grid index for each landunit
-call nc_check(nf90_def_var(ncid,name='land1d_ixy', xtype=nf90_int, &
-              dimids=(/ landunitDimID /), varid=VarID),&
-              routine, 'land1d_ixy def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              '2d longitude index of corresponding landunit'), &
-              routine, 'land1d_ixy long_name '//trim(filename))
+call nc_define_integer_variable(  ncid,'land1d_ixy','landunit',routine) 
+call nc_add_attribute_to_variable(ncid,'land1d_ixy','long_name', &
+                '2d longitude index of corresponding landunit',routine)
 
 ! latitude grid index for each land
-call nc_check(nf90_def_var(ncid,name='land1d_jxy', xtype=nf90_int, &
-              dimids=(/ landunitDimID /), varid=VarID),&
-              routine, 'land1d_jxy def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              '2d latitude index of corresponding landunit'), &
-              routine, 'land1d_jxy long_name '//trim(filename))
+call nc_define_integer_variable(  ncid,'land1d_jxy','landunit',routine) 
+call nc_add_attribute_to_variable(ncid,'land1d_jxy','long_name', &
+                '2d latitude index of corresponding landunit',routine)
 
 ! land weight relative to corresponding gridcell
-call nc_check(nf90_def_var(ncid,name='land1d_wtxy', xtype=nf90_double, &
-              dimids=(/ landunitDimID /), varid=VarID),&
-              routine, 'land1d_wtxy def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'landunit weight relative to corresponding gridcell'), &
-              routine, 'land1d_wtxy long_name '//trim(filename))
+call nc_define_double_variable(   ncid,'land1d_wtxy','landunit',routine) 
+call nc_add_attribute_to_variable(ncid,'land1d_wtxy','long_name', &
+           'landunit weight relative to corresponding gridcell',routine)
 
 ! land type of each land
-call nc_check(nf90_def_var(ncid,name='land1d_ityplun', xtype=nf90_int, &
-              dimids=(/ landunitDimID /), varid=VarID),&
-              routine, 'land1d_ityplun def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'landunit type'), &
-              routine, 'land1d_ityplun long_name '//trim(filename))
+call nc_define_integer_variable(  ncid,'land1d_ityplun','landunit',routine) 
+call nc_add_attribute_to_variable(ncid,'land1d_ityplun','long_name', 'landunit type',routine)
 
 ! ---------
 ! columns
 
 ! longitude grid index for each column
-call nc_check(nf90_def_var(ncid,name='cols1d_ixy', xtype=nf90_int, &
-              dimids=(/ columnDimID /), varid=VarID),&
-              routine, 'cols1d_ixy def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              '2d longitude index of corresponding column'), &
-              routine, 'cols1d_ixy long_name '//trim(filename))
+call nc_define_integer_variable(  ncid,'cols1d_ixy','column',routine) 
+call nc_add_attribute_to_variable(ncid,'cols1d_ixy','long_name', &
+                '2d longitude index of corresponding column',routine)
 
 ! latitude grid index for each column
-call nc_check(nf90_def_var(ncid,name='cols1d_jxy', xtype=nf90_int, &
-              dimids=(/ columnDimID /), varid=VarID),&
-              routine, 'cols1d_jxy def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              '2d latitude index of corresponding column'), &
-              routine, 'cols1d_jxy long_name '//trim(filename))
+call nc_define_integer_variable(  ncid,'cols1d_jxy','column',routine) 
+call nc_add_attribute_to_variable(ncid,'cols1d_jxy','long_name', &
+                '2d latitude index of corresponding column',routine)
 
 ! column weight relative to corresponding gridcell
-call nc_check(nf90_def_var(ncid,name='cols1d_wtxy', xtype=nf90_double, &
-              dimids=(/ columnDimID /), varid=VarID),&
-              routine, 'cols1d_wtxy def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'column weight relative to corresponding gridcell'), &
-              routine, 'cols1d_wtxy long_name '//trim(filename))
-              
-              
-! colunm longitude
-call nc_check(nf90_def_var(ncid,name='cols1d_lon', xtype=nf90_double, &
-              dimids=(/ columnDimID /), varid=VarID),&
-              routine, 'cols1d_lon def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'column longitude'), &
-              routine, 'cols1d_lon long_name '//trim(filename))
-             
-! column latitude
-call nc_check(nf90_def_var(ncid,name='cols1d_lat', xtype=nf90_double, &
-              dimids=(/ columnDimID /), varid=VarID),&
-              routine, 'cols1d_lat def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'column latitude'), &
-              routine, 'cols1d_lat long_name '//trim(filename))
+call nc_define_double_variable(   ncid,'cols1d_wtxy','column',routine) 
+call nc_add_attribute_to_variable(ncid,'cols1d_wtxy','long_name', &
+           'column weight relative to corresponding gridcell',routine)
 
-! land type of each column
-call nc_check(nf90_def_var(ncid,name='cols1d_ityplun', xtype=nf90_int, &
-              dimids=(/ columnDimID /), varid=VarID),&
-              routine, 'cols1d_ityplun def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'column landunit type (vegetated,urban,lake,wetland or glacier)'), &
-              routine, 'cols1d_ityplun long_name '//trim(filename))
+! column longitude
+call nc_define_double_variable(   ncid,'cols1d_lon','column',routine) 
+call nc_add_attribute_to_variable(ncid,'cols1d_lon','long_name', 'column longitude',routine)
+
+! column latitude
+call nc_define_double_variable(   ncid,'cols1d_lat','column',routine) 
+call nc_add_attribute_to_variable(ncid,'cols1d_lat','long_name', 'column latitude',routine)
+
+! column land type
+call nc_define_integer_variable(  ncid,'cols1d_ityplun','column',routine) 
+call nc_add_attribute_to_variable(ncid,'cols1d_ityplun','long_name', &
+              'column landunit type (vegetated,urban,lake,wetland or glacier)',routine)
 
 ! ---------
 ! patches
 
 ! longitude grid index for each pft
-call nc_check(nf90_def_var(ncid,name='pfts1d_ixy', xtype=nf90_int, &
-              dimids=(/ pftDimID /), varid=VarID),&
-              routine, 'pfts1d_ixy def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              '2d longitude index of corresponding column'), &
-              routine, 'pfts1d_ixy long_name '//trim(filename))
+call nc_define_integer_variable(  ncid,'pfts1d_ixy','pft',routine) 
+call nc_add_attribute_to_variable(ncid,'pfts1d_ixy','long_name', &
+                '2d longitude index of corresponding pft',routine)
 
 ! latitude grid index for each pft
-call nc_check(nf90_def_var(ncid,name='pfts1d_jxy', xtype=nf90_int, &
-              dimids=(/ pftDimID /), varid=VarID),&
-              routine, 'pfts1d_jxy def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              '2d latitude index of corresponding column'), &
-              routine, 'pfts1d_jxy long_name '//trim(filename))
+call nc_define_integer_variable(  ncid,'pfts1d_jxy','pft',routine) 
+call nc_add_attribute_to_variable(ncid,'pfts1d_jxy','long_name', &
+                '2d latitude index of corresponding pft',routine)
 
 ! pft weight relative to corresponding gridcell
-call nc_check(nf90_def_var(ncid,name='pfts1d_wtxy', xtype=nf90_double, &
-              dimids=(/ pftDimID /), varid=VarID),&
-              routine, 'pfts1d_wtxy def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'pft weight relative to corresponding gridcell'), &
-              routine, 'pfts1d_wtxy long_name '//trim(filename))
+call nc_define_double_variable(   ncid,'pfts1d_wtxy','pft',routine) 
+call nc_add_attribute_to_variable(ncid,'pfts1d_wtxy','long_name', &
+           'pft weight relative to corresponding gridcell',routine)
 
 ! pft longitude
-call nc_check(nf90_def_var(ncid,name='pfts1d_lon', xtype=nf90_double, &
-              dimids=(/ pftDimID /), varid=VarID),&
-              routine, 'pfts1d_lon def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'pft longitude'), &
-              routine, 'pfts1d_lon long_name '//trim(filename))
-             
-! pft latitude
-call nc_check(nf90_def_var(ncid,name='pfts1d_lat', xtype=nf90_double, &
-              dimids=(/ pftDimID /), varid=VarID),&
-              routine, 'pfts1d_lat def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'pft latitude'), &
-              routine, 'pfts1d_lat long_name '//trim(filename))
+call nc_define_double_variable(   ncid,'pfts1d_lon','pft',routine) 
+call nc_add_attribute_to_variable(ncid,'pfts1d_lon','long_name', 'pft longitude',routine)
 
-! land type of each pft
-call nc_check(nf90_def_var(ncid,name='pfts1d_ityplun', xtype=nf90_int, &
-              dimids=(/ pftDimID /), varid=VarID),&
-              routine, 'pfts1d_ityplun def_var '//trim(filename))
-call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
-              'pft landunit type'), &
-              routine, 'pfts1d_ityplun long_name '//trim(filename))
+! pft latitude
+call nc_define_double_variable(   ncid,'pfts1d_lat','pft',routine) 
+call nc_add_attribute_to_variable(ncid,'pfts1d_lat','long_name', 'pft latitude',routine)
+
+! pft land type
+call nc_define_integer_variable(  ncid,'pfts1d_ityplun','pft',routine) 
+call nc_add_attribute_to_variable(ncid,'pfts1d_ityplun','long_name', &
+                                          'pft landunit type',routine)
 
 !----------------------------------------------------------------------------
 ! Finished with dimension/variable definitions, must end 'define' mode to fill.
@@ -1009,107 +927,34 @@ call nc_end_define_mode(ncid)
 ! Fill the coordinate variables
 !----------------------------------------------------------------------------
 
-call nc_check(nf90_inq_varid(ncid, 'lon', VarID), &
-             routine, 'put_var lon '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, lon ), &
-             routine, 'lon put_var '//trim(filename))
-
-call nc_check(nf90_inq_varid(ncid, 'lat', VarID), &
-             routine, 'put_var lat '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, lat ), &
-             routine, 'lat put_var '//trim(filename))
-
-call nc_check(nf90_inq_varid(ncid, 'levgrnd', VarID), &
-             routine, 'put_var levgrnd '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, LEVGRND ), &
-             routine, 'levgrnd put_var '//trim(filename))
-
+call nc_put_variable(ncid,'lon',LON,routine)
+call nc_put_variable(ncid,'lat',LAT,routine)
+call nc_put_variable(ncid,'levgrnd',LEVGRND,routine)
 call nc_put_variable(ncid,'levsoi',LEVSOI,routine)
 call nc_put_variable(ncid,'levdcmp',LEVDCMP,routine)
 
-! AREA can be 1D or 2D
-call nc_check(nf90_inq_varid(ncid, 'area', VarID), &
-             routine, 'put_var area '//trim(filename))
 if (unstructured) then
-   call nc_check(nf90_put_var(ncid, VarID, AREA1D ), &
-             routine, 'area put_var '//trim(filename))
+   call nc_put_variable(ncid,'area',    AREA1D,    routine)
+   call nc_put_variable(ncid,'landfrac',LANDFRAC1D,routine)
 else
-   call nc_check(nf90_put_var(ncid, VarID, AREA2D ), &
-             routine, 'area put_var '//trim(filename))
+   call nc_put_variable(ncid,'area',    AREA2D,    routine)
+   call nc_put_variable(ncid,'landfrac',LANDFRAC2D,routine)
 endif
 
+call nc_put_variable(ncid,'cols1d_ixy',     cols1d_ixy,     routine)
+call nc_put_variable(ncid,'cols1d_jxy',     cols1d_jxy,     routine)
+call nc_put_variable(ncid,'cols1d_wtxy',    cols1d_wtxy,    routine)
+call nc_put_variable(ncid,'cols1d_lon',     cols1d_lon,     routine)
+call nc_put_variable(ncid,'cols1d_lat',     cols1d_lat,     routine)
+call nc_put_variable(ncid,'cols1d_ityplun', cols1d_ityplun, routine)
 
-! LANDFRAC can be 1D or 2D
-call nc_check(nf90_inq_varid(ncid, 'landfrac', VarID), &
-             routine, 'put_var landfrac '//trim(filename))
-if (unstructured) then
-   call nc_check(nf90_put_var(ncid, VarID, LANDFRAC1D ), &
-             routine, 'landfrac put_var '//trim(filename))
-else
-   call nc_check(nf90_put_var(ncid, VarID, LANDFRAC2D ), &
-             routine, 'landfrac put_var '//trim(filename))
-endif
+call nc_put_variable(ncid,'pfts1d_ixy',     pfts1d_ixy,     routine)
+call nc_put_variable(ncid,'pfts1d_jxy',     pfts1d_jxy,     routine)
+call nc_put_variable(ncid,'pfts1d_wtxy',    pfts1d_wtxy,    routine)
+call nc_put_variable(ncid,'pfts1d_lon',     pfts1d_lon,     routine)
+call nc_put_variable(ncid,'pfts1d_lat',     pfts1d_lat,     routine)
+call nc_put_variable(ncid,'pfts1d_ityplun', pfts1d_ityplun, routine)
 
-call nc_check(nf90_inq_varid(ncid, 'cols1d_ixy', VarID), &
-             routine, 'put_var cols1d_ixy '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, cols1d_ixy ), &
-             routine, 'cols1d_ixy put_var '//trim(filename))
-
-call nc_check(nf90_inq_varid(ncid, 'cols1d_jxy', VarID), &
-             routine, 'put_var cols1d_jxy '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, cols1d_jxy ), &
-             routine, 'cols1d_jxy put_var '//trim(filename))
-
-call nc_check(nf90_inq_varid(ncid, 'cols1d_wtxy', VarID), &
-             routine, 'put_var cols1d_wtxy '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, cols1d_wtxy ), &
-             routine, 'cols1d_wtxy put_var '//trim(filename))
-             
-call nc_check(nf90_inq_varid(ncid, 'cols1d_lon', VarID), &
-             routine, 'put_var cols1d_lon '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, cols1d_lon ), &
-             routine, 'cols1d_lon put_var '//trim(filename))
-             
-call nc_check(nf90_inq_varid(ncid, 'cols1d_lat', VarID), &
-             routine, 'put_var cols1d_lat '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, cols1d_lat ), &
-             routine, 'cols1d_lat put_var '//trim(filename))
-
-call nc_check(nf90_inq_varid(ncid, 'cols1d_ityplun', VarID), &
-             routine, 'put_var cols1d_ityplun '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, cols1d_ityplun ), &
-             routine, 'cols1d_ityplun put_var '//trim(filename))
-
-call nc_check(nf90_inq_varid(ncid, 'pfts1d_ixy', VarID), &
-             routine, 'put_var pfts1d_ixy '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, pfts1d_ixy ), &
-             routine, 'pfts1d_ixy put_var '//trim(filename))
-
-call nc_check(nf90_inq_varid(ncid, 'pfts1d_jxy', VarID), &
-             routine, 'put_var pfts1d_jxy '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, pfts1d_jxy ), &
-             routine, 'pfts1d_jxy put_var '//trim(filename))
-
-call nc_check(nf90_inq_varid(ncid, 'pfts1d_wtxy', VarID), &
-             routine, 'put_var pfts1d_wtxy '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, pfts1d_wtxy ), &
-             routine, 'pfts1d_wtxy put_var '//trim(filename))
-             
-call nc_check(nf90_inq_varid(ncid, 'pfts1d_lon', VarID), &
-             routine, 'put_var pfts1d_lon '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, pfts1d_lon ), &
-             routine, 'pfts1d_lon put_var '//trim(filename))
-             
-call nc_check(nf90_inq_varid(ncid, 'pfts1d_lat', VarID), &
-             routine, 'put_var pfts1d_lat '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, pfts1d_lat ), &
-             routine, 'pfts1d_lat put_var '//trim(filename))
-             
-call nc_check(nf90_inq_varid(ncid, 'pfts1d_ityplun', VarID), &
-             routine, 'put_var pfts1d_ityplun '//trim(filename))
-call nc_check(nf90_put_var(ncid, VarID, pfts1d_ityplun ), &
-             routine, 'pfts1d_ityplun put_var '//trim(filename))
-             
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
@@ -1694,7 +1539,7 @@ loc_lon    = loc(1)
 loc_lat    = loc(2)
 
 ! determine the portion of interest of the state vector
-call findKindIndex(qty_index, routine, domain, varid, varname)
+call FindVarOfInterest(qty_index, routine, domain, varid, varname)
 
 if (varid < 1) then
    istatus = 11
@@ -1863,7 +1708,7 @@ if ( loc_lev < 0.0_r8 ) then
 endif
 
 ! determine the portion of interest of the state vector
-call findKindIndex(qty_index, routine, domain, ivar, varname)
+call FindVarOfInterest(qty_index, routine, domain, ivar, varname)
 if (ivar < 1) then
    istatus = 20
    return
@@ -1897,6 +1742,8 @@ endif
 ! The 'depths' are all positive numbers, increasingly positive is deeper.
 ! The variables currently supported use the subsurface definitions in
 ! the module variable LEVNGRND -- number of layers is nlevgrnd
+!@todo FIXME other variables may use coordinate variables other than LEVGRND
+!(despite the fact that levsoi and levdcmp use the depths defined in LEVGRND)
 
 if (loc_lev  <= LEVGRND(1)) then  ! the top level is so close to the surface
    depthabove = LEVGRND(1)        ! just use the top level
@@ -3188,7 +3035,7 @@ end function get_model_time
 !> The first domain, the first variable. This variable will be used for all
 !> forward operator calculations.
 
-subroutine findKindIndex(qty_index, caller, dom_id, var_id, varname)
+subroutine FindVarOfInterest(qty_index, caller, dom_id, var_id, varname)
 
 integer,          intent(in)  :: qty_index
 character(len=*), intent(in)  :: caller
@@ -3221,11 +3068,11 @@ if (.not. warned .and. debug > 0) then
    kind_string = get_name_for_quantity( qty_index )
    write(string1,*) trim(caller)//' cannot find "'//trim(kind_string)//'" in list of DART state variables.'
    write(string2,*) trim(caller)//' looking for DART KIND (index) ', qty_index
-   call error_handler(E_WARN,'findKindIndex',string1,source,text2=string2)
+   call error_handler(E_WARN,'FindVarOfInterest',string1,source,text2=string2)
    warned = .true.
 endif
 
-end subroutine findKindIndex
+end subroutine FindVarOfInterest
 
 
 
@@ -4002,11 +3849,6 @@ COLUMN : do j = 1, dimension_lengths(horiz_dimension)
          lonixy(  indx) = xi
          latjxy(  indx) = xj
          landarea(indx) = AREA2D(xi,xj) * LANDFRAC2D(xi,xj) * cols1d_wtxy(j)
-
-! if ( LON(lonixy(indx)) /= cols1d_lon(j) .or.  LAT(latjxy(indx)) /= cols1d_lat(j)) then
-! write(*,*)'TJH',indx,j,i,LON(lonixy(indx)),LAT(latjxy(indx)),cols1d_lon(j),cols1d_lat(j)
-! endif
-   
       endif
       indx = indx + 1
    enddo OTHER
@@ -4045,11 +3887,6 @@ OTHER : do j = 1, dimension_lengths(other_dimension)
          lonixy(  indx) = xi
          latjxy(  indx) = xj
          landarea(indx) = AREA2D(xi,xj) * LANDFRAC2D(xi,xj) * cols1d_wtxy(i)
-
-! if ( LON(lonixy(indx)) /= cols1d_lon(j) .or.  LAT(latjxy(indx)) /= cols1d_lat(j)) then
-! write(*,*)'TJH',indx,j,i,LON(lonixy(indx)),LAT(latjxy(indx)),cols1d_lon(j),cols1d_lat(j)
-! endif
-   
       endif
       indx = indx + 1
    enddo COLUMN
