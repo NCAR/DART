@@ -3351,10 +3351,11 @@ RELATEDLOOP: do jdim = 1, get_num_dims(dom_id, var_id)
              !write(*,*)'related: TJH pfts1d_ityplun ', &
              !          pfts1d_ityplun(indices(jdim)),trim(dimension_name)
           case default
-          ! Since variables can use only one of these dimensions,
-          ! there is not need to check the other dimensions. 
-          if (related) exit RELATEDLOOP
    end select
+
+   ! Since variables can use only one of these dimensions,
+   ! there is no need to check the other dimensions. 
+   if (related) exit RELATEDLOOP
 
 enddo RELATEDLOOP
 
