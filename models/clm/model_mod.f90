@@ -1039,6 +1039,9 @@ call error_handler(E_WARN,'pert_model_copies', &
                   source, &
                   text2='see comments in clm/model_mod.f90::pert_model_copies()')
 
+! Should provide a minimal pert routine that only perturbs some variables on columns
+! or pfts that we like ... 'vegetated or bare ground, crop' ... but not lake, glacier, etc.
+
 interf_provided = .false.
 
 end subroutine pert_model_copies
@@ -3409,8 +3412,6 @@ SELECT CASE ( trim(dimension_name(horiz_dimension)) )
 
    CASE DEFAULT
 
-      ! The vector history files actually have the horizontal dimension as dimension 1
-      ! This violates a long-standing assumption about this model.
 
       write(string1,*)'unsupported dimension "'//trim(dimension_name(horiz_dimension))//'"'
       write(string2,*)' while trying to create metadata for "'//trim(varname)//'"'
