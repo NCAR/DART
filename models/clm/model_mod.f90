@@ -145,8 +145,7 @@ public::  init_time,              &
 public :: get_gridsize,                 &
           get_clm_restart_filename,     &
           compute_gridcell_value,       &
-          gridcell_components,          &
-          fill_missing_r8_with_orig
+          gridcell_components
 
 character(len=*), parameter :: source   = 'clm/model_mod.f90'
 character(len=*), parameter :: revdate  = ''
@@ -1164,114 +1163,6 @@ if ( .not. module_initialized ) call static_init_model
 end subroutine get_gridsize
 
 
-!------------------------------------------------------------------
-!> Writes the current time and state variables from a dart state
-!> vector (1d array) into a clm netcdf restart file.
-
-subroutine fill_missing_r8_with_orig(file_dart, file_clm, dart_time)
-
-character(len=*), intent(in) :: file_dart
-character(len=*), intent(in) :: file_clm
-type(time_type),  intent(in) :: dart_time
-
-character(len=NF90_MAX_NAME) :: varname
-character(len=NF90_MAX_NAME) :: dimnames( NF90_MAX_VAR_DIMS)
-integer                      :: dimlength(NF90_MAX_VAR_DIMS)
-
-integer         :: ivar, irank, rank
-integer         :: ncid_dart, ncid_clm
-type(time_type) :: file_time
-
-character(len=*), parameter :: routine = 'fill_missing_r8_with_orig'
-
-if ( .not. module_initialized ) call static_init_model
-
-!TJH Stub only - untested.
-call error_handler(E_ERR,routine,'routine untested',source)
-
-ncid_dart = nc_open_file_readonly(file_dart,routine)
-ncid_clm  = nc_open_file_readwrite(file_clm,routine)
-
-! make sure the time in the file is the same as the time on the data
-! we are trying to insert.  we are only updating part of the contents
-! of the clm restart file, and state vector contents from a different
-! time won't be consistent with the rest of the file.
-
-file_time = get_state_time(ncid_clm)
-
-if ( file_time /= dart_time ) then
-   call print_time(dart_time,'DART current time',logfileunit)
-   call print_time(file_time,'clm  current time',logfileunit)
-   call print_time(dart_time,'DART current time')
-   call print_time(file_time,'clm  current time')
-   write(string1,*)trim(file_dart),' current time /= model time. FATAL error.'
-   call error_handler(E_ERR,routine,string1,source)
-endif
-
-if (do_output()) call print_time(file_time,'time of restart file "'//trim(file_dart)//'"')
-if (do_output()) call print_date(file_time,'date of restart file "'//trim(file_dart)//'"')
-
-! The DART prognostic variables are only defined for a single time.
-! We already checked the assumption that variables are xy2d or xyz3d ...
-! IF the netCDF variable has a TIME dimension, it must be the last dimension,
-! and we need to read the LAST timestep and effectively squeeze out the
-! singleton dimension when we stuff it into the DART state vector.
-
-! The snow water equivalent (H2OSNO) cannot be zero since H2OSNO is used to calculate the
-! bulk snow density, which in turn is a parameter in the equation of Snow Cover Fraction.
-! In order to avoid the negative values of H2OSNO produced by DART, 
-! I added some "if" conditions to set the value of H2OSNO back to the value before 
-! assimilation if negative value is found.
-
-UPDATE : do ivar=1, get_num_variables(dom_restart)
-
-   varname = get_variable_name(dom_restart,ivar)
-   rank    = get_num_dims(     dom_restart,ivar)
-   string2 = trim(file_dart)//' '//trim(varname)
-
-   ! Ensure CLM netCDF variable is conformable with DART variable.
-   ! The TIME dimension is intentionally not queried.
-
-   call nc_get_variable_dimension_names(ncid_clm, varname, dimnames,  routine)
-   call nc_get_variable_size(           ncid_clm, varname, dimlength, routine)
-
-   DimCheck : do irank = 1,rank
-
-      if ( dimlength(irank) /= get_dim_length(dom_restart,ivar,irank) ) then
-         write(string1,*) trim(string2),' dim/dimlength ',irank,dimlength(irank), &
-                          ' not ',get_dim_length(dom_restart,ivar,irank)
-         write(string2,*)' but it should be.'
-         call error_handler(E_ERR, routine, string1, source, text2=string2)
-      endif
-
-   enddo DimCheck
-
-   ! TJH  do we need to restore this functionality
-   ! When called with a 4th argument, fill_missing_r8_with_original() replaces the DART
-   ! missing code with the value in the corresponding variable in the netCDF file.
-   ! Any clamping to physically meaningful values occurrs in fill_missing_r8_with_original.
-  if (do_io_update(dom_restart, ivar)) then
-      if (rank == 1) then
-
-         call fill_missing_r8_with_orig_1d(ivar, ncid_dart, ncid_clm)
-
-      elseif (rank == 2) then
-
-         call fill_missing_r8_with_orig_2d(ivar, ncid_dart, ncid_clm)
-
-      else
-         write(string1, *) 'no support for data array of dimension ', rank
-         call error_handler(E_ERR, routine, string1, source)
-      endif
-  endif
-enddo UPDATE
-
-call nc_close_file(ncid_clm,  routine)
-call nc_close_file(ncid_dart, routine)
-
-end subroutine fill_missing_r8_with_orig
-
-
 !==================================================================
 ! The remaining required interfaces
 !==================================================================
@@ -1885,85 +1776,6 @@ enddo
 deallocate(counter_above, counter_below, above, below, area_above, area_below)
 
 end subroutine get_grid_vertval
-
-
-!------------------------------------------------------------------
-!> convert the values from a 1d array, starting at an offset, into a 1d array.
-!>
-!> If the optional argument (ncid) is specified, some additional
-!> processing takes place. The variable in the netcdf is read.
-!> This must be the same shape as the intended output array.
-!> Anywhere the DART MISSING code is encountered in the input array,
-!> the corresponding (i.e. original) value from the netCDF file is
-!> used.
-
-subroutine fill_missing_r8_with_orig_1d(ivar, ncid_dart, ncid_clm)
-
-integer,  intent(in)  :: ivar
-integer,  intent(in)  :: ncid_dart
-integer,  intent(in)  :: ncid_clm
-
-character(len=NF90_MAX_NAME) :: varname
-integer                      :: varsize(NF90_MAX_VAR_DIMS)
-
-real(r8), allocatable, dimension(:) :: org_array, data_1d_array
-
-! Replace the DART fill value with the original value and apply any clamping.
-! Get the 'original' variable from the netcdf file.
-
-varname = get_variable_name(dom_restart,ivar)
-varsize = get_variable_size(dom_restart,ivar)
-
-allocate(org_array(varsize(1)), data_1d_array(varsize(1)))
-
-call nc_get_variable(ncid_clm,  varname, org_array    )
-call nc_get_variable(ncid_dart, varname, data_1d_array)
-
-! restoring the indeterminate original values
-
-where(data_1d_array == MISSING_R8) data_1d_array = org_array
-
-call nc_put_variable(ncid_clm, varname, data_1d_array, 'fill_missing_r8_with_orig_1d')
-
-deallocate(org_array, data_1d_array)
-
-end subroutine fill_missing_r8_with_orig_1d
-
-
-!------------------------------------------------------------------
-!>  convert the values from a 1d array, starting at an offset, into a 2d array.
-
-subroutine fill_missing_r8_with_orig_2d(ivar, ncid_dart, ncid_clm)
-
-integer, intent(in)  :: ivar
-integer, intent(in)  :: ncid_dart
-integer, intent(in)  :: ncid_clm
-
-character(len=NF90_MAX_NAME) :: varname
-integer                      :: varsize(NF90_MAX_VAR_DIMS)
-
-real(r8), allocatable, dimension(:,:) :: org_array, data_2d_array
-
-varname = get_variable_name(dom_restart,ivar)
-varsize = get_variable_size(dom_restart,ivar)
-
-! Get the 'original' variable from the netcdf file if need be.
-
-allocate(org_array(varsize(1), varsize(2)), &
-     data_2d_array(varsize(1), varsize(2)))
-
-call nc_get_variable(ncid_clm,  varname, org_array    )
-call nc_get_variable(ncid_dart, varname, data_2d_array)
-
-! restoring the indeterminate original values
-
-where(data_2d_array == MISSING_R8 ) data_2d_array = org_array
-
-call nc_put_variable(ncid_clm, varname, data_2d_array, 'fill_missing_r8_with_orig_2d')
-
-deallocate(org_array, data_2d_array)
-
-end subroutine fill_missing_r8_with_orig_2d
 
 
 !------------------------------------------------------------------
