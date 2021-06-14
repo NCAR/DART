@@ -11,7 +11,7 @@
    output_interval            = 1
    single_file_in             = .false.
    single_file_out            = .false.
-   input_state_files          = 'clm5_tag34.clm2_0001.r.nc', 'clm5_tag34.clm2_0001.h0.nc','clm5_tag34.clm2_0001.h2.nc'
+   input_state_files          = 'clm_restart.nc', 'clm_history.nc','clm_vector_history.nc'
    output_state_files         = 'restart_out.nc', 'history_out.nc', 'vector_out.nc'
    obs_seq_in_file_name       = 'obs_seq.in'
    obs_seq_out_file_name      = 'obs_seq.out'
@@ -25,6 +25,8 @@
 
 
 &filter_nml
+   perturb_from_single_instance = .TRUE.
+   perturbation_amplitude       = 0.2
    async                    = 0
    adv_ens_command          = 'cannot_advance_clm'
    ens_size                 = 3
@@ -80,7 +82,7 @@
 
 &clm_to_dart_nml
    clm_restart_file =  'clm.nc'
-   verbose          = 0
+   verbose          = 3
    /
 
 
