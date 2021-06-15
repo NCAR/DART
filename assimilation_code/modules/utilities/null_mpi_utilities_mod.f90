@@ -647,7 +647,6 @@ end subroutine get_from_fwd
 subroutine get_global_max(max)
 
 real(r8), intent(inout)  :: max       !> global max over tasks
-integer :: errcode
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -680,4 +679,3 @@ subroutine exit_all(exit_code)
    call exit(exit_code)
 
 end subroutine exit_all
-
