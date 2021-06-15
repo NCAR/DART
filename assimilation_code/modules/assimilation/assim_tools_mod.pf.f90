@@ -122,7 +122,7 @@ real(r8), allocatable  :: exp_true_correl(:), alpha(:)
 ! and fill this 2d impact table.
 real(r8), allocatable  :: obs_impact_table(:,:)
 
-character(len=*), parameter :: source = 'assim_tools_mod.f90'
+character(len=*), parameter :: source = 'assim_tools_mod.pf.f90'
 
 !============================================================================
 
