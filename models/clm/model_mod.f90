@@ -972,6 +972,21 @@ integer :: iunit
 call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                             num_close, close_ind, dist, ens_handle)
 
+! Convert the observation type to a DART Quantity.
+obsqty = get_quantity_for_type_of_obs(base_type)
+
+! Check to see if the Quantity is supposed to modify whatever
+! is pointed to by the current state index.
+do iloc=1, num_close
+
+   full_index = loc_indx(close_ind(iloc))
+
+   if (.not. related(obsqty, full_index) ) then
+      if (present(dist)) dist(iloc) = huge(1.0_r8) ! really far away
+   endif
+
+enddo
+
 ! The close_ind indices are only the subset of indices that are on this particular
 ! task. Use these indices to reference the absolute index into the state vector to
 ! call get_state_meta_data() or access one of the arrays that indicates
@@ -990,21 +1005,6 @@ if (debug > 99) then
    enddo
    write(iunit,*)''
 endif
-
-! Convert the observation type to a DART Quantity.
-obsqty = get_quantity_for_type_of_obs(base_type)
-
-! Check to see if the Quantity is supposed to modify whatever
-! is pointed to by the current state index.
-do iloc=1, num_close
-
-   full_index = loc_indx(close_ind(iloc))
-
-   if (.not. related(obsqty, full_index) ) then
-      if (present(dist)) dist(iloc) = huge(1.0_r8) ! really far away
-   endif
-
-enddo
 
 end subroutine get_close_state
 
@@ -3137,8 +3137,6 @@ related = .false.
 call get_model_variable_indices(state_index, indices(1), indices(2), indices(3), &
             var_id=var_id, dom_id=dom_id, kind_index=var_type, kind_string=var_kind_string)
 
-! write(*,*)'related: ',obs_quantity, state_index, var_type, trim(var_kind_string)
-
 ! Determine if state_index is a variable from a column (or whatever is of interest).
 ! Determine what dimension is of interest, need to know to index into
 ! cols1d_ityplun(ncolumn) array (for example).
@@ -3147,7 +3145,7 @@ RELATEDLOOP: do jdim = 1, get_num_dims(dom_id, var_id)
 
    dimension_name = get_dim_name(dom_id, var_id, jdim)
    select case ( trim(dimension_name) )
-          case ("gridcell")
+          case ("gridcell","lon","lat")
              related = .true.
           case ("lndgrid")
              related = .true.
@@ -3173,6 +3171,8 @@ RELATEDLOOP: do jdim = 1, get_num_dims(dom_id, var_id)
    if (related) exit RELATEDLOOP
 
 enddo RELATEDLOOP
+
+! write(*,*)'related: ',obs_quantity, state_index, var_type, trim(var_kind_string), related
 
 end function related
 
@@ -3274,7 +3274,9 @@ end subroutine fill_rank1_metadata
 
 
 !-------------------------------------------------------------------------------
-!> horrible way to fill the metadata arrays:
+!> Horrible way to fill the metadata arrays: The arrays have to be filled in the
+!> same order as the data is stored in the DART state vector, which happens
+!> somewhere else in DART.
 !> lonixy   contains the index to the longitude array
 !> latjxy   contains the index to the latitude array
 !> landarea contains the weight to use when calculating area-weighted quantities
@@ -3399,7 +3401,7 @@ SELECT CASE ( trim(dimension_name(horiz_dimension)) )
             if (unstructured) then
                lonixy(  indx) = i
                latjxy(  indx) = i
-               landarea(indx) = AREA1D(xi) * LANDFRAC1D(xi)
+               landarea(indx) = AREA1D(i) * LANDFRAC1D(i)
                call error_handler(E_ERR,'fill_rank2_metadata','section untested',source)
             else
                lonixy(  indx) = i
