@@ -1253,10 +1253,6 @@ ITERATIONS: do iter = 1,maxiter
       endif
       whichvert_obs_in_localization_coord = nint(whichvert_real)
 
-      if (is_doing_vertical_conversion) then
-         ! use converted vertical coordinate value and type from owner
-         call set_vertical(base_obs_loc, vertvalue_obs_in_localization_coord, whichvert_obs_in_localization_coord)
-      endif
    endif
    !-----------------------------------------------------------------------
 
@@ -1268,6 +1264,12 @@ ITERATIONS: do iter = 1,maxiter
       endif
       cycle SEQUENTIAL_OBS
    endif
+   
+   !> all tasks must set the converted vertical values into the 'base' version of this loc
+   !> because that's what we pass into the get_close_xxx() routines below.
+   if (is_doing_vertical_conversion) &
+      call set_vertical(base_obs_loc, vertvalue_obs_in_localization_coord, whichvert_obs_in_localization_coord)
+   
    ! Skip for PF
    if (filter_kind /= 9) then
 
