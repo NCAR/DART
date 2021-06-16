@@ -309,36 +309,23 @@ for ``clm_variables``:
 
 .. container::
 
-   +---------------+----------------+---------------------------------------+
-   | **Column 1**  | Variable name  | This is the CLM variable name as it   |
-   |               |                | appears in the CLM netCDF file.       |
-   +---------------+----------------+---------------------------------------+
-   | **Column 2**  | DART QUANTITY  | This is the character string of the   |
-   |               |                | corresponding DART QUANTITY.          |
-   +---------------+----------------+---------------------------------------+
-   | **Column 3**  | minimum        | If the variable is to be updated      |
-   |               |                | this specifies the minimum value. If  |
-   |               |                | set to 'NA' there is no minimum value.|
-   +---------------+----------------+---------------------------------------+
-   | **Column 4**  | maximum        | If the variable is to be updated      |
-   |               |                | this specifies the maximum value. If  |
-   |               |                | set to 'NA' there is no maximum value.|
-   +---------------+----------------+---------------------------------------+
-   | **Column 5**  | filename       | This specifies which file should be   |
-   |               |                | used to obtain the variable.          |
-   |               |                | ``'restart'`` => clm_restart_filename |
-   |               |                | ``'history'`` => clm_history_filename |
-   |               |                | ``'vector'`` =>                       |
-   |               |                | clm_vector_history_filename           |
-   +---------------+----------------+---------------------------------------+
-   | **Column 6**  | update         | If the variable comes from the        |
-   |               |                | restart file, it may be updated after |
-   |               |                | the assimilation.                     |
-   |               |                | ``'UPDATE'`` => the variable in the   |
-   |               |                | restart file is updated.              |
-   |               |                | ``'NO_COPY_BACK'`` => the variable in |
-   |               |                | the restart file remains unchanged.   |
-   +---------------+----------------+---------------------------------------+
+   ======== ============================================================== 
+    Column  Description
+   ======== ============================================================== 
+    **1**   The CLM variable name as it appears in the CLM netCDF file.
+    **2**   The corresponding DART QUANTITY.
+    **3**   | Minimum value of the posterior.
+            | If set to 'NA' there is no minimum value.
+    **4**   | Maximum value of the posterior.
+            | If set to 'NA' there is no maximum value.
+    **5**   | Specifies which file should be used to obtain the variable.
+            | ``'restart'`` => clm_restart_filename
+            | ``'history'`` => clm_history_filename
+            | ``'vector'``  => clm_vector_history_filename
+    **6**   | Should ``filter`` update the variable in the specified file.
+            | ``'UPDATE'`` => the variable is updated.
+            | ``'NO_COPY_BACK'`` => the variable remains unchanged.
+   ======== ============================================================== 
 
 The following are only meant to be examples - they are not scientifically validated. 
 Some of these that are UPDATED are probably diagnostic quantities, Some of these that 
