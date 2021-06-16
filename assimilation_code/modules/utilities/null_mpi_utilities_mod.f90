@@ -648,11 +648,6 @@ subroutine get_global_max(max)
 
 real(r8), intent(inout)  :: max       !> global max over tasks
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'get_global_max', errstring, source)
-endif
-
 ! Nothing to do with only one task.
 
 end subroutine get_global_max
