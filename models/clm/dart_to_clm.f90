@@ -10,8 +10,17 @@ program dart_to_clm
 !          repartition it into prognostic snow layers.
 !
 ! method: Read DART posterior and replace the valid values in the
-!         CLM restart file. The 'clm_to_dart' program replaced the 
-!         CLM indeterminate values with the DART MISSING_R8. Since 
+!         CLM restart file. Anything with a DART posterior _FillValue 
+!         is replaced with the original CLM value. 
+!
+! discussion: Some variables in the CLM restart file have variables that
+!         have neither the declared _FillValue nor a predictable value.
+!         The 'clm_to_dart' program replaced those CLM indeterminate 
+!         values with the _FillValue so the DART netCDF readers correctly 
+!         replace those values with the DART MISSING value. The DART 
+!         netCDF write routines replace the DART MISSING values with the
+!         variables declared _FillValue. This routine replaces the 
+!         _FillValue with whatever was originally in the CLM restart file.
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8, MISSING_R8
