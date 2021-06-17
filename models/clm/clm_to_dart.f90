@@ -82,7 +82,7 @@ call find_namelist_in_file("input.nml", "clm_to_dart_nml", iunit)
 read(iunit, nml = clm_to_dart_nml, iostat = io)
 call check_namelist_read(iunit, io, "clm_to_dart_nml") ! closes, too.
 
-ncid = nc_open_file_readwrite(clm_restart_file, 'open for bogus snow value replacement')
+ncid = nc_open_file_readwrite(clm_restart_file, 'open for unused snow layer value replacement')
 
 call get_snow_metadata()
 
@@ -247,4 +247,3 @@ end subroutine get_snow_metadata
 
 
 end program clm_to_dart
-
