@@ -93,8 +93,8 @@ if (do_nml_term()) write(     *     , nml=dart_to_clm_nml)
 ncid_dart = nc_open_file_readonly( dart_to_clm_input_file,  'opening to read posterior')
 ncid_clm  = nc_open_file_readwrite(dart_to_clm_output_file, 'opening to write restart')
 
-write(string1,*)'converting DART file "'//trim(dart_to_clm_input_file)//'" to'
-write(string2,*)'clm restart file "'//trim(dart_to_clm_output_file)//'"'
+write(string1,*)'reading updated values from DART file "'//trim(dart_to_clm_input_file)//'"'
+write(string2,*)'and writing to CLM restart file "'//trim(dart_to_clm_output_file)//'"'
 call error_handler(E_MSG,source,string1,text2=string2)
 
 ! Make sure we are updating the right restart file - 
