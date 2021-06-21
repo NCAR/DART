@@ -153,7 +153,7 @@ water equivalent (SWE - CLM variable *H2OSNO*) or snow depth
 (CLM variable *SNOW_DEPTH*).  These CLM *diagnostic* variables  
 simplify the forward operator and have been part of the DART state. 
 However, updating the prognostic variables 
-(*T_SOISNO, H2OSOI_LIQ, H2oSOI_ICE, DZSNO, ZSNO, ZISNO*)
+(*T_SOISNO, H2OSOI_LIQ, H2OSOI_ICE, DZSNO, ZSNO, ZISNO*)
 through their ensemble covariance with the update to *H2OSNO*, for example
 will generally not result in a posterior SWE (calculated from the prognostic 
 variables) that matches the posterior SWE in *H2OSNO*. Consequently, a 
@@ -665,4 +665,3 @@ is THE reference for CLM.
 .. |CLM gridcell breakdown| image:: ../../guide/images/clm_landcover.png
    :height: 600px
    :target: https://escomp.github.io/ctsm-docs/versions/release-clm5.0/html/tech_note/Ecosystem/CLM50_Tech_Note_Ecosystem.html#surface-characterization
-
