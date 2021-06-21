@@ -1511,11 +1511,6 @@ ITERATIONS: do iter = 1,maxiter
       cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
          base_obs_loc, base_obs_type, my_state_loc(state_index), my_state_kind(state_index))
 
-      ! SEEMS TO BE NEEDED FOR VERTICAL LOCALIZATION IN BGRID
-      if (filter_kind == 9) then
-         if ( cov_factor == 0.0_r8 ) cycle STATE_UPDATE
-      end if
-
       ! if external impact factors supplied, factor them in here
       ! FIXME: this would execute faster for 0.0 impact factors if
       ! we check for that before calling comp_cov_factor.  but it makes
@@ -1524,6 +1519,11 @@ ITERATIONS: do iter = 1,maxiter
          impact_factor = obs_impact_table(base_obs_type, my_state_kind(state_index))
          cov_factor = cov_factor * impact_factor
       endif
+
+      ! If no weight is indicated, no more to do with this state variable
+      if (filter_kind == 9) then ! note other filter kinds will need to cycle
+         if ( cov_factor == 0.0_r8 ) cycle STATE_UPDATE
+      end if
 
       ! Update state for PF
       if (filter_kind == 9) then
