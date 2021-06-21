@@ -124,7 +124,7 @@ setenv pmo_output_baseobsdir  /glade/p/cisl/dares/Observations/land/pmo/output
 # startdate  The date used as the starting date for the hybrid run.
 # ==============================================================================
 
-setenv refcase      clm5.0.06_f09_80
+setenv refcase      clm2.2.01_f09_80
 setenv refyear      2010
 setenv refmon       01
 setenv refday       01
@@ -138,7 +138,7 @@ setenv stagedir /glade/p/cisl/dares/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop
 # It does not have to match the reference (although changing the month/day seems bad).
 # runtime settings:
 
-setenv start_year    2011
+setenv start_year    2012
 setenv start_month   01
 setenv start_day     01
 setenv start_tod     00000
@@ -183,7 +183,7 @@ setenv stream_year_first 2011
 setenv stream_year_last  2019
 
 # ==============================================================================
-9 machine-specific commands:
+# machine-specific commands:
 
 setenv project      P86850054
 setenv machine      cheyenne

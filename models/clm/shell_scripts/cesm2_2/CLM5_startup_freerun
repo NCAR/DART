@@ -265,6 +265,38 @@ while ( $inst <= $num_instances )
    echo "           'linear', " >> ${fname}
    echo "           'linear', " >> ${fname}
    echo "           'nearest' " >> ${fname}
+#  echo "dtlimit  = 1.0e30    " >> ${fname}
+
+   # Guidance regarding 'dtlimit':
+   # 
+   # NOTE: this is only for starting from 1 Jan 2011 00Z and the first streamfile you have is
+   # starts with 2011.  If you start from 1 Jan 2012 and have a streamfile for 2011,
+   # you DO NOT NEED TO specify dtlimit.
+   #
+   # A warning about starting from 1 Jan 2011 at 00Z.  The first timestamp in the DATM
+   # files from the CAM Reanalysis for year 2011 is several minutes into the year. 
+   # This is causing a problem for the coupler temporal interpolations which require
+   # value(s) before that to be able to interpolate for the first timestep.
+   # If you get run-time errors of the form:
+   # 
+   # 2: (shr_strdata_advance) ERROR: for stream            1
+   # 2: (shr_strdata_advance) ERROR: dt limit1   0.302083333333333       3.125000000000000E-002   3.00000000000000
+   # 2: (shr_strdata_advance) ERROR: dt limit2     20110101        4500    20110101        7200
+   # 2: ERROR: (shr_strdata_advance) ERROR dt limit for stream
+   # 
+   # The solution is to specify a large number for 'dtlimit'.
+   # From http://esmci.github.io/cime/versions/cesm2.2/html/data_models/input-streams.html?highlight=dtlimit
+   # 
+   # "Specifies delta time ratio limits placed on the time interpolation associated with the
+   # array of streams. Causes the model to stop if the ratio of the running maximum delta
+   # time divided by the minimum delta time is greater than the dtlimit for that stream.
+   # For instance, with daily data, the delta time should be exactly one day throughout the
+   # dataset and the computed maximum divided by minimum delta time should always be 1.0.
+   # For monthly data, the delta time should be between 28 and 31 days and the maximum
+   # ratio should be about 1.1. The running value of the delta time is computed as data is
+   # read and any wraparound or cycling is also included. this input helps trap missing
+   # data or errors in cycling. to turn off trapping, set the value to 1.0e30 or
+   # something similar."
 
    # Create stream files for each ensemble member
    set SOURCEDIR = ${dartroot}/models/clm/shell_scripts/cesm2_2
@@ -293,7 +325,7 @@ while ( $inst <= $num_instances )
    #              Default: 0,-24,-24,-24,-24,-24
    # hist_mfilt:  Per tape series maximum number of time samples.
 
-   echo "hist_empty_htapes = .false."               >! ${fname}
+   echo "hist_empty_htapes = .false."               >> ${fname}
 #  echo "hist_fincl1 = 'FSIF','EFLX_LH_TOT'"        >> ${fname}
 #  echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'" >> ${fname}
 #  echo "hist_nhtfrq = 0,-24"                       >> ${fname}
