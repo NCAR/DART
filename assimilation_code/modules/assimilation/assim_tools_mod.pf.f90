@@ -1506,8 +1506,8 @@ ITERATIONS: do iter = 1,maxiter
          varying_ss_inflate    = 0.0_r8
          varying_ss_inflate_sd = 0.0_r8
       endif
-     
-      ! Compute the distance and covariance factor 
+
+      ! Compute the distance and covariance factor
       cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
          base_obs_loc, base_obs_type, my_state_loc(state_index), my_state_kind(state_index))
 
@@ -4356,7 +4356,7 @@ select case (filter_kind)
    msgstring = 'Rank Histogram Filter'
  case (9) 
    msgstring = 'Local Particle Filter (Poterjoy)'
- case default 
+ case default
    call error_handler(E_ERR, 'assim_tools_init:', 'illegal filter_kind value, valid values are 1-9', &
                       source)
 end select
