@@ -1914,7 +1914,7 @@ if (filter_kind == 9 .and. pf_kddm > 0 ) then
 
 endif ! KDDM
 
-! Perform RTPS step for hybrid
+! Perform RTPS step for hybrid. For hybrid PF-EAKF the last iteration switches to EAKF (filter_kind=1)
 if (filter_kind == 1 .and. .not. local_varying_ss_inflate) then
 
    if (my_task_id() == 0) then
