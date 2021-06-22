@@ -1721,6 +1721,12 @@ ITERATIONS: do iter = 1,maxiter
    OBS_UPDATE: do j = 1, num_close_obs
       obs_index = close_obs_ind(j)
 
+      ! The ocal PF now iterates multiple times over observations, so it still needs 
+      ! to update obs-space priors for measurements that are already assimilated.
+      ! For other filter_kinds, this line should be put back in to cycle for obs which 
+      ! have already been processed. 
+      ! if (my_obs_indx(obs_index) <= i) cycle OBS_UPDATE
+
       ! Skip if regularization reaches threashold value 
       if (filter_kind == 9) then
          if ( beta_y(obs_index) == beta_max ) cycle OBS_UPDATE
@@ -1742,9 +1748,8 @@ ITERATIONS: do iter = 1,maxiter
          impact_factor = obs_impact_table(base_obs_type, my_obs_kind(obs_index))
          cov_factor = cov_factor * impact_factor
       endif
-
-      ! 
-      if (filter_kind == 9) then ! note other filter kinds will need to cycle
+ 
+      if (filter_kind == 9) then ! note other filter kinds will also need to cycle
          if ( cov_factor == 0.0_r8 ) cycle OBS_UPDATE
       end if
 
