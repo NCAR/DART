@@ -1721,7 +1721,7 @@ ITERATIONS: do iter = 1,maxiter
    OBS_UPDATE: do j = 1, num_close_obs
       obs_index = close_obs_ind(j)
 
-      ! The ocal PF now iterates multiple times over observations, so it still needs 
+      ! The local PF now iterates multiple times over observations, so it still needs 
       ! to update obs-space priors for measurements that are already assimilated.
       ! For other filter_kinds, this line should be put back in to cycle for obs which 
       ! have already been processed. 
