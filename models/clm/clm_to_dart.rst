@@ -111,7 +111,7 @@ Discussion of Indeterminate Values
 To explore the most robust way to replace the indeterminate values with the 
 DART-required *_FillValue*, a low-resolution run (10 deg x 15 deg) was performed 
 using the **f10_f10_musgs** tag on the **release-clm5.0.34** branch.
-The ``clm_to_dart_nml`` verbosity was set to 3 and the run-time output was captured 
+The ``clm_to_dart_nml`` verbosity was set to 3 and the ``clm_to_dart``  run-time output was captured 
 and is summarized below. The output has been pruned to improve clarity and the 
 column headers have been added. Only the output for the *T_SOISNO* variable is 
 shown as it clearly illustrates the situation.
@@ -195,4 +195,3 @@ References
 ----------
 
 -  none, but https://escomp.github.io/ctsm-docs/versions/master/html/tech_note/Snow_Hydrology/CLM50_Tech_Note_Snow_Hydrology.html is very relevant.
-
