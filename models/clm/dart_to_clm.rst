@@ -46,7 +46,7 @@ them from prematurely terminating the namelist. These are the defaults:
    ======================= =================== ================================================================= 
    Item                    Type                Description                                                     
    ======================= =================== ================================================================= 
-   dart_to_clm_input_file  character(len=256)  Name of the DART posterior (the output of filter)
+   dart_to_clm_input_file  character(len=256)  Name of the DART posterior (the output of the filter program)
    dart_to_clm_output_file character(len=256)  Name of the CLM restart file to modify. 
                                                | This will be used for the next CLM model advance.
    repartition_swe         logical             Update the prognostic snow variables in CLM such that 
