@@ -62,7 +62,7 @@ CLM variables are encoded as rectangular arrays in the netCDF files. (Thankfully
 However, this means that some variables have space for layers that are unused.
 Anything with snow layers, for example. CLM has the *SNLSNO* varible to indicate
 which snow layers are active. The *unused* layers may not have the *_FillValue*
-value, but can have 'indeteminate' values. The :doc:`clm_to_dart` 
+value, but can have 'indeterminate' values. The :doc:`clm_to_dart` 
 must be run to convert these indeterminate values to *_FillValue* to be 
 interpreted correctly by DART.  After the assimilation is complete, the 
 :doc:`dart_to_clm` must be called to replace the *_FillValue* with whatever
