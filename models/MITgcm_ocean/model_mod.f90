@@ -26,7 +26,8 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MS
                              open_file, file_exist, find_textfile_dims, file_to_text
 
 use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT, &
-                             QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT
+                             QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT, &
+                             get_index_for_quantity
 
 use mpi_utilities_mod, only: my_task_id
 
@@ -262,7 +263,16 @@ integer, parameter :: Eta_index = 5
 
 ! (the absoft compiler likes them to all be the same length during declaration)
 ! we trim the blanks off before use anyway, so ...
-character(len=128) :: progvarnames(nfields) = (/'PSAL','PTMP','UVEL','VVEL','ETA'/)
+character(len=128) :: progvarnames(nfields) = (/'PSAL','PTMP','UVEL','VVEL','ETA '/)
+character(len=128) :: quantity_list(nfields) = (/ &
+'QTY_SALINITY             ', & 
+'QTY_POTENTIAL_TEMPERATURE', &
+'QTY_U_CURRENT_COMPONENT  ', &
+'QTY_V_CURRENT_COMPONENT  ', &
+'QTY_SEA_SURFACE_HEIGHT   '/)
+
+integer :: quantity_integers(nfields)
+
 integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf files.
 
 integer :: start_index(nfields)
@@ -537,7 +547,13 @@ model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 
 if (do_output()) write(*,*) 'model_size = ', model_size
 
-domain_id = add_domain(model_shape_file, nfields, var_names = progvarnames)
+quantity_integers(1) = get_index_for_quantity(quantity_list(1))
+quantity_integers(2) = get_index_for_quantity(quantity_list(2))
+quantity_integers(3) = get_index_for_quantity(quantity_list(3))
+quantity_integers(4) = get_index_for_quantity(quantity_list(4))
+quantity_integers(5) = get_index_for_quantity(quantity_list(5))
+
+domain_id = add_domain(model_shape_file, nfields, var_names = progvarnames, kind_list = quantity_integers)
 
 
 end subroutine static_init_model
