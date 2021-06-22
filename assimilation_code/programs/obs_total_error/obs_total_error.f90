@@ -11,7 +11,7 @@
 program obs_total_error
 
 use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
-use    utilities_mod, only : register_module, initialize_utilities,            &
+use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
@@ -44,11 +44,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=*), parameter :: source = 'obs_total_error.f90'
 
 type(obs_sequence_type) :: seq_in
 integer                 :: size_seq_in
@@ -102,8 +98,7 @@ cal = (get_calendar_type() /= NO_CALENDAR)
 if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
    write(msgstring1,*)'specify "obs_sequence_name" or "obs_sequence_list"'
    write(msgstring2,*)'set other to an empty string ... i.e. ""'
-   call error_handler(E_ERR, 'obs_assim_count', msgstring1, &
-                   source, revision, revdate, text2=msgstring2)
+   call error_handler(E_ERR, 'obs_assim_count', msgstring1, source, text2=msgstring2)
 endif
 
 ! if you add anything to the namelist, you can process it here.
@@ -128,7 +123,7 @@ ObsFileLoop : do      ! until we run out of names
 
    if ( .not. file_exist(filename_in) ) then
       write(msgstring1,*)'cannot open ', trim(filename_in)
-      call error_handler(E_ERR,'obs_assim_count:',msgstring1,source,revision,revdate)
+      call error_handler(E_ERR,'obs_assim_count:',msgstring1,source)
    endif
 
 call read_obs_seq_header(filename_in, num_copies_in, num_qc_in, &
@@ -174,7 +169,6 @@ subroutine setup()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_total_error')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 end subroutine setup
@@ -415,8 +409,7 @@ is_there_one = get_first_obs(seq, obs)
 ! we already tested for 0 obs above, so there should be a first obs here.
 if ( .not. is_there_one )  then
    write(msgstring,*)'no first obs in sequence ' // trim(filename)
-   call error_handler(E_ERR,'obs_total_error:validate', &
-                      msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'obs_total_error:validate', msgstring, source)
    return
 endif
 
@@ -438,8 +431,7 @@ ObsLoop : do while ( .not. is_this_last)
       write(msgstring1,*)'obs number ', key, ' has earlier time than previous obs'
       write(msgstring2,*)'observations must be in increasing time order, file ' // trim(filename)
       call error_handler(E_ERR,'obs_total_error:validate', msgstring2, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+                         source, text2=msgstring1)
    endif
 
    last_time = this_time
@@ -468,13 +460,12 @@ if (obs_count /= size_seq) then
       ! this is a fatal error
       write(msgstring1,*) 'linked list obs_count > total size_seq, should not happen'
       call error_handler(E_ERR,'obs_total_error:validate', msgstring, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+                         source, text2=msgstring1)
    else
       ! just warning msg
       write(msgstring1,*) 'only observations in linked list will be processed'
       call error_handler(E_MSG,'obs_total_error:validate', msgstring, &
-                         source, revision, revdate, text2=msgstring1)
+                         source, text2=msgstring1)
    endif
 endif
 
@@ -500,8 +491,7 @@ num_qc     = get_num_qc(    seq)
 
 if ( num_copies < 0 .or. num_qc < 0 ) then
    write(msgstring3,*)' illegal copy or obs count in file '//trim(fname)
-   call error_handler(E_ERR, 'obs_total_error', msgstring3, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'obs_total_error', msgstring3, source)
 endif
 
 MetaDataLoop : do i=1, num_copies
@@ -542,8 +532,7 @@ num_qc = get_num_qc(seq)
 
 if ( num_qc < 0 ) then
    write(msgstring3,*)' illegal qc metadata count in file '//trim(fname)
-   call error_handler(E_ERR, 'obs_total_error', msgstring3, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'obs_total_error', msgstring3, source)
 endif
 
 QCMetaData : do i=1, num_qc
@@ -580,8 +569,7 @@ num_copies = get_num_copies(seq)
 
 if ( num_copies < 0 ) then
    write(msgstring3,*)' illegal copy metadata count in file '//trim(fname)
-   call error_handler(E_ERR, 'obs_total_error', msgstring3, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'obs_total_error', msgstring3, source)
 endif
 
 MetaData : do i=1, num_copies

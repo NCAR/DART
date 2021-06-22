@@ -1,15 +1,13 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module restart_pnetcdf_mod
 
 use assim_model_mod,       only : awrite_state_restart, aread_state_restart
 use time_manager_mod,      only : time_type
 use types_mod,             only : r8
-use ensemble_manager_mod,    only : ensemble_type
+use ensemble_manager_mod,  only : ensemble_type
 use pnetcdf_utilities_mod, only : pnet_check
 use mpi_utilities_mod,     only : datasize, my_task_id
 
@@ -362,8 +360,3 @@ end subroutine write_ensemble_restart_parallel
 
 end module restart_pnetcdf_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

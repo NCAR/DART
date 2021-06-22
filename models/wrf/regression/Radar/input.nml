@@ -13,7 +13,8 @@
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "./advance_model.csh"  /
+   adv_ens_command       = "./advance_model.csh"
+   /
 
 &filter_nml
    async                    = 2,
@@ -55,14 +56,15 @@
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
    inf_sd_lower_bound          = 0.0,                     0.0
-/
+   /
 
 &smoother_nml
    num_lags              = 0,
    start_from_restart    = .false.,
    output_restart        = .false.,
    restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'  /
+   restart_out_file_name = 'smoother_restart'
+   /
 
 &assim_tools_nml
    filter_kind                     = 1,
@@ -71,30 +73,37 @@
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
-   print_every_nth_obs             = 0  /
+   print_every_nth_obs             = 0
+   /
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
-   input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
-                              '../../../observations/forward_operators/obs_def_radar_mod.f90',
-                              '../../../observations/forward_operators/obs_def_metar_mod.f90',
-                              '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
-                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
-                              '../../../observations/forward_operators/obs_def_gps_mod.f90',
-                              '../../../observations/forward_operators/obs_def_vortex_mod.f90'  /
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                             '../../../observations/forward_operators/obs_def_metar_mod.f90',
+                             '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                             '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                             '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../observations/forward_operators/obs_def_vortex_mod.f90'
+   /
 
 &obs_kind_nml
    assimilate_these_obs_types = 'DOPPLER_RADIAL_VELOCITY',
-                                'RADAR_REFLECTIVITY' /
+                                'RADAR_REFLECTIVITY'
+   /
 
 &obs_def_radar_mod_nml
    apply_ref_limit_to_obs     =  .true. ,
@@ -109,13 +118,14 @@
    n0_snow                    =   3.0e6 ,
    rho_rain                   =  1000.0 ,
    rho_graupel                =   400.0 ,
-   rho_snow                   =   100.0 /
+   rho_snow                   =   100.0
+   /
 
 
 &assim_model_nml
    write_binary_restart_files = .true.,
    netCDF_large_file_support  = .false.
-  /
+   /
 
 # Notes for model_nml:
 # (1) vert_localization_coord must be one of:
@@ -134,7 +144,8 @@
    adv_mod_command             = './wrf.exe',
    vert_localization_coord     = 3,
    center_search_half_length   = 500000.,
-   center_spline_grid_scale    = 10  /
+   center_spline_grid_scale    = 10
+   /
 
 &location_nml
    horiz_dist_only             = .false.,
@@ -144,24 +155,28 @@
    approximate_distance        = .false.,
    nlon                        = 1201,
    nlat                        = 1201,
-   output_box_info             = .false.  /
+   output_box_info             = .false.
+   /
 
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .true.,
    logfilename = 'dart_log.out',
-   nmlfilename = 'dart_log.nml'  /
+   nmlfilename = 'dart_log.nml'
+   /
 
 &reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"  /
+   reg_diagnostics_file = "reg_diagnostics"
+   /
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.,
    single_restart_file_out = .true.,
-   perturbation_amplitude  = 0.2  /
+   perturbation_amplitude  = 0.2
+   /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -173,8 +188,8 @@
 # Acceptable longitudes range from [  0, Inf]
 
 &obs_def_gps_nml
-  max_gpsro_obs = 100000,
-  / 
+   max_gpsro_obs = 100000,
+   / 
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
@@ -214,7 +229,7 @@
    overwrite_advance_time       = .false.,
    new_advance_days             = -1, 
    new_advance_secs             = -1
-/
+   /
 
 
 &obs_sequence_tool_nml

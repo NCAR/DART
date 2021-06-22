@@ -168,8 +168,10 @@ end type obs_def_type
 logical, save :: module_initialized = .false.
 
 ! define a fixed integer code that specifies whether a record 
-! in a binary obs_sequence file is a precomputed FO rather than a time_type
-integer, parameter :: external_prior_code = -123
+! in a binary obs_sequence file is a precomputed FO rather than a time_type.
+! This value cannot be construed as the number of 'days'.
+
+integer, parameter :: EXTERNAL_PRIOR_CODE = -123
 
 contains
 
@@ -521,6 +523,9 @@ type(time_type)     :: obs_time
 integer             :: obs_key
 real(r8)            :: error_var
 logical             :: use_precomputed_FO
+integer             :: copy
+
+character(len=512) :: string1, string2, string3
 
 ! Load up the assimilate and evaluate status for this observation kind
 assimilate_this_ob = assimilate_this_type_of_obs(obs_kind_ind)
@@ -540,9 +545,20 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
    ! if we use them there is no way to compute a consistent posterior.
    ! so the posteriors are always marked as 'failed forward operator'.
    if (use_precomputed_FO) then 
+      if (obs_def%ens_size < ens_size) then
+         write(string1,'(A,1x,I4,1x,A,1x,I4)')'The number of precomputed forward operators (', &
+                      obs_def%ens_size, ') is smaller than the ensemble size of ', ens_size
+         write(string2,*)'observation type '//trim(get_name_for_type_of_obs(obs_def%kind))
+         write(string3,*)'precomputed value(1) ', obs_def%external_FO(1)
+         call error_handler(E_ERR, 'get_expected_obs_from_def', string1, source, &
+                    text2=string2, text3=string3)
+      endif
+
       if (isprior) then
          if ( obs_def%has_external_FO ) then
-            expected_obs(:) = obs_def%external_FO(:) 
+            do copy = 1, ens_size
+               expected_obs(copy) = obs_def%external_FO(copy_indices(copy))
+            enddo
             istatus = 0 
          else 
             call error_handler(E_ERR, 'get_expected_obs_from_def', &
@@ -706,37 +722,52 @@ end select
 ! We need to see whether there is external prior metadata.
 ! If so, we need to read it in, but that doesn't necessarily mean
 ! the precomputed FO will acutally be used for that particular obs_type
+
 time_set = .false.
 obs_def%write_external_FO = .false.  ! Always false when actually running DART
+
 if (is_ascii) then
    read(ifile,fmt='(a)') string
    if (string(1:11) /= 'external_FO') then 
-      ! no metadata, we really just read the time.
+      ! no metadata, we really just read the time record
+
       backspace(ifile) ! go back to previous line to prepare to read time
       obs_def%has_external_FO = .false.
-   else ! we have a precomputed FO
+
+   else
+      ! we have a precomputed FO
+      ! While we are happy to read in the obs_def%external_FO_key, the value
+      ! is of no use outside the possiblity of being used in a debugging message.
+
       read(string, *) header_external_FO, obs_def%ens_size, obs_def%external_FO_key
-      ! FIXME: remove this if * works ok
-      !read(string, FMT='(a11, 2i8)') header_external_FO, obs_def%ens_size, obs_def%external_FO_key
       if ( .not. allocated(obs_def%external_FO)) allocate(obs_def%external_FO(obs_def%ens_size))
       read(ifile, *) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
       obs_def%has_external_FO = .true.
+
    endif
 else
+   ! Binary files do not have a character string identifier for precomputed
+   ! forward observations.  The presence of external forward operator values
+   ! is indicated by the value of the second item.
+
    read(ifile) secs, days
-   if ( days /= external_prior_code ) then
-      ! no metadata, we really just read the time
-      ! can't use backspace on a binary file.
+   if ( days /= EXTERNAL_PRIOR_CODE ) then ! we actually read the time
       obs_def%time = set_time(secs, days)
-      time_set = .true.
+      time_set                = .true.
       obs_def%has_external_FO = .false.
-   else ! we have a precomputed FO
-      counter = counter + 1
-      obs_def%ens_size = secs
+
+   else
+      ! we have a precomputed FO
+      ! The obs_def%external_FO_key is set to a counter that may be useful in
+      ! a debugging message, which would be more meaningful than the
+      ! EXTERNAL_PRIOR_CODE value.
+      counter                 = counter + 1
+      obs_def%ens_size        = secs
       obs_def%external_FO_key = counter
-      if ( .not. allocated(obs_def%external_FO)) allocate(obs_def%external_FO(obs_def%ens_size))
-      read(ifile)    (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
       obs_def%has_external_FO = .true.
+      if ( .not. allocated(obs_def%external_FO)) allocate(obs_def%external_FO(obs_def%ens_size))
+      read(ifile) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
+      !>@FIXME ... should this read (and the others) have status checks?
    endif
 endif
 
@@ -822,10 +853,10 @@ if ( obs_def%has_external_FO .and. obs_def%write_external_FO ) then
          source, revision, revdate, text2='observation type '//trim(get_name_for_type_of_obs(obs_def%kind)))
    endif
    if (is_ascii) then
-      write(ifile, 12) obs_def%ens_size, obs_def%external_FO_key
+      write(ifile, 12) obs_def%ens_size, key
       write(ifile, *) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
    else
-      write(ifile)    obs_def%ens_size, external_prior_code
+      write(ifile)    obs_def%ens_size, EXTERNAL_PRIOR_CODE
       write(ifile)    (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
    endif
 12  format('external_FO', 2i8)

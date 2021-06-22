@@ -42,7 +42,7 @@ use time_manager_mod, only : time_type, set_time, print_time, print_date, &
                              operator(>), operator(<), &
                              operator(>=), operator(/=), operator(==)
 
-use    utilities_mod, only : get_unit, register_module, error_handler, &
+use    utilities_mod, only : get_unit, error_handler, &
                              find_namelist_in_file, check_namelist_read, &
                              E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term, &
                              open_file, close_file
@@ -86,10 +86,7 @@ public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
 ! Public interfaces for obs covariance modeling
 public :: obs_cov_type
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_sequence_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'obs_sequence_mod.f90'
 
 type obs_sequence_type
    private
@@ -157,7 +154,6 @@ subroutine static_init_obs_sequence
 
 integer :: iunit, io
 
-call register_module(source, revision, revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "obs_sequence_nml", iunit)
@@ -669,7 +665,7 @@ if(seq%num_obs >= seq%max_num_obs) then
    ! Later do an increase of space and copy
    write(string1,*) 'ran out of room, num_obs (',seq%num_obs, &
                                ') > max_num_obs (',seq%max_num_obs,')'
-   call error_handler(E_ERR,'insert_obs_in_seq',string1,source,revision,revdate)
+   call error_handler(E_ERR,'insert_obs_in_seq',string1, source)
 endif
 
 ! Set the key for the observation
@@ -701,7 +697,7 @@ if(present(prev_obs)) then
           !next = seq%first_time
           ! error out 
           write(string1,*) 'time of prev_obs cannot be > time of new obs'
-          call error_handler(E_ERR,'insert_obs_in_seq',string1,source,revision,revdate)
+          call error_handler(E_ERR,'insert_obs_in_seq',string1, source)
        endif
     endif
    
@@ -793,7 +789,7 @@ else
    last_time = get_obs_def_time(last_obs%def)
    if(obs_time < last_time) then
       write(string1, *) 'time of appended obs cannot be < time of last obs in sequence'
-      call error_handler(E_ERR,'append_obs_to_seq',string1,source,revision,revdate)
+      call error_handler(E_ERR,'append_obs_to_seq',string1, source)
    endif
 
 !!!   call insert_obs_in_seq(seq, obs)
@@ -803,7 +799,7 @@ else
    if(seq%num_obs >= seq%max_num_obs) then
 ! Later do an increase of space and copy
       write(string1,*) 'ran out of room, max_num_obs = ',seq%max_num_obs
-      call error_handler(E_ERR,'append_obs_to_seq',string1,source,revision,revdate)
+      call error_handler(E_ERR,'append_obs_to_seq',string1, source)
    endif
 
 ! Set the key for the observation
@@ -904,14 +900,13 @@ lj_meta_data = adjustl(meta_data)
 if (len_trim(lj_meta_data) > metadatalength) then
    write(string1,*) 'metadata string [', trim(lj_meta_data),']'
    write(string2,*) 'must be shorter than ',metadatalength
-   call error_handler(E_ERR, 'set_copy_meta_data', string1, &
-                      source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'set_copy_meta_data', string1, source, text2=string2)
 endif
 
 if (copy_num > seq%num_copies) then
    write(string1,*) 'trying to set copy (', copy_num, &
                       ') which is larger than num_copies (', seq%num_copies, ')'
-   call error_handler(E_ERR,'set_copy_meta_data',string1,source,revision,revdate)
+   call error_handler(E_ERR,'set_copy_meta_data',string1, source)
 endif
 
 seq%copy_meta_data(copy_num) = trim(lj_meta_data)
@@ -934,14 +929,13 @@ lj_meta_data = adjustl(meta_data)
 if (len_trim(lj_meta_data) > metadatalength) then
    write(string1,*) 'metadata string [', trim(lj_meta_data),']'
    write(string2,*) 'must be shorter than ',metadatalength
-   call error_handler(E_ERR, 'set_qc_meta_data', string1, &
-                      source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'set_qc_meta_data', string1, source, text2=string2)
 endif
 
 if (qc_num > seq%num_qc) then
    write(string1,*) 'trying to set qc (', qc_num, &
                       ') which is larger than num_qc (', seq%num_qc, ')'
-   call error_handler(E_ERR,'set_qc_meta_data',string1,source,revision,revdate)
+   call error_handler(E_ERR,'set_qc_meta_data',string1, source)
 endif
 
 seq%qc_meta_data(qc_num) = trim(lj_meta_data)
@@ -1101,7 +1095,7 @@ endif
 if (rc /= 0) then
    write(string1, *) 'unable to create observation sequence file "'//trim(file_name)//'"'
    write(string2, *) 'open file return code = ', rc
-   call error_handler(E_ERR,'write_obs_seq',string1,source,revision,revdate, text2=string2)
+   call error_handler(E_ERR,'write_obs_seq',string1, source, text2=string2)
 else
    write(string1, *) 'opening '// trim(useform) // ' observation sequence file "'//trim(file_name)//'"'
    call error_handler(E_MSG,'write_obs_seq',string1)
@@ -1201,8 +1195,7 @@ do i = 1, num_copies
    if (io /= 0) then
       ! Read error of some type
       write(string1, *) 'Read error in copy metadata ', i, ' rc= ', io
-      call error_handler(E_ERR, 'read_obs_seq', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs_seq', string1, source)
    endif
 end do
 
@@ -1216,8 +1209,7 @@ do i = 1, num_qc
    if (io /= 0) then
       ! Read error of some type
       write(string1, *) 'Read error in qc metadata ', i, ' rc= ', io
-      call error_handler(E_ERR, 'read_obs_seq', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs_seq', string1, source)
    endif
 end do
 
@@ -1230,17 +1222,16 @@ endif
 if (io /= 0) then
    ! Read error of some type
    write(string1, *) 'Read error in first/last times, rc= ', io
-   call error_handler(E_ERR, 'read_obs_seq', string1, &
-      source, revision, revdate)
+   call error_handler(E_ERR, 'read_obs_seq', string1, source)
 endif
 
 if (seq%first_time < -1 .or. seq%first_time > max_num_obs) then
    write(string1, *) 'Bad value for first', seq%first_time, ', min is -1, max is ', max_num_obs 
-   call error_handler(E_ERR, 'read_obs_seq', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'read_obs_seq', string1, source)
 endif
 if (seq%last_time < -1 .or. seq%last_time > max_num_obs) then
    write(string1, *) 'Bad value for last', seq%last_time, ', min is -1, max is ', max_num_obs 
-   call error_handler(E_ERR, 'read_obs_seq', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'read_obs_seq', string1, source)
 endif
 
 ! Now read in all the previously defined observations
@@ -1249,8 +1240,7 @@ do i = 1, num_obs
    if (io /= 0) then
       ! Read error of some type
       write(string1, *) 'Read error in obs label', i, ' rc= ', io
-      call error_handler(E_ERR, 'read_obs_seq', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs_seq', string1, source)
    endif
    call read_obs(file_id, num_copies, add_copies, num_qc, add_qc, i, seq%obs(i), &
       read_format, num_obs)
@@ -1322,7 +1312,7 @@ if(ios /= 0) then  ! try reading binary formats
       write(string2, *) 'Attempted to read both as a formatted (ascii) and unformatted (binary) file.'
       write(string3, *) 'For binary files, endian selection was "'//trim(read_binary_file_format)//'"' 
       call error_handler(E_ERR, 'read_obs_seq_header', string1, &
-                         source, revision, revdate, text2=string2, text3=string3)
+                         source, text2=string2, text3=string3)
    endif
 endif
 
@@ -1366,7 +1356,7 @@ integer :: check_obs_seq_header
 
 integer :: ios
 character(len=12) :: file_header   ! 'obs_sequence'
-character(len=20) :: toc_header    ! 'obs_kind_definitions'
+character(len=20) :: toc_header    ! 'obs_kind_definitions' (old) OR 'obs_type_definitions' (new, and correct)
 
 if (read_format == 'formatted') then
    read(file_id, *, iostat = ios) file_header
@@ -1385,7 +1375,7 @@ else
    read(file_id, iostat = ios) toc_header
 endif
    
-if(ios /= 0 .or. toc_header /= 'obs_kind_definitions') then
+if(ios /= 0 .or. (toc_header /= 'obs_kind_definitions' .and. toc_header /= 'obs_type_definitions')) then
    check_obs_seq_header = -1
    return
 endif
@@ -1596,15 +1586,13 @@ integer              :: obs_type_index(num_obs_input_types), this_obs_type
 ! Some sanity checking on the input args.
 if (num_obs_input_types <= 0) then
    write(string1,*) 'num_obs_input_types must be > 0'
-   call error_handler(E_ERR,'delete_obs_by_typelist', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_typelist', string1, source)
 endif
 ! Ok for list to be longer; only first N items will be used.  But list
 ! cannot be shorter.
 if (size(obs_input_types) < num_obs_input_types) then
    write(string1,*) 'num_obs_input_types must be >= length of list'
-   call error_handler(E_ERR,'delete_obs_by_typelist', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_typelist', string1, source)
 endif
 
 
@@ -1613,8 +1601,7 @@ do i=1, num_obs_input_types
    obs_type_index(i) = get_index_for_type_of_obs(obs_input_types(i))
    if (obs_type_index(i) < 0) then
       write(string1,*) 'obs_type ', trim(obs_input_types(i)), ' not found'
-      call error_handler(E_ERR,'delete_obs_by_typelist', string1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'delete_obs_by_typelist', string1, source)
    endif
 enddo
 
@@ -1718,14 +1705,12 @@ real(r8)             :: qcval(1)
 ! Some sanity checking on the input args.
 if (qc_index > seq%num_qc) then
    write(string1,*) 'qc_index must be <', seq%num_qc
-   call error_handler(E_ERR,'delete_obs_by_qc', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_qc', string1, source)
 endif
 ! Ok for min/max to be missing_r8; if both specified, min must be <= max.
 if (qc_min /= missing_r8 .and. qc_max /= missing_r8 .and. qc_min > qc_max) then
    write(string1,*) 'qc_min must be less than or equal qc_max'
-   call error_handler(E_ERR,'delete_obs_by_qc', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_qc', string1, source)
 endif
 
 ! Initialize an observation type with appropriate size
@@ -1811,15 +1796,13 @@ real(r8)             :: copyval(1)
 ! Some sanity checking on the input args.
 if (copy_index > seq%num_copies) then
    write(string1,*) 'copy_index must be <', seq%num_copies
-   call error_handler(E_ERR,'delete_obs_by_copy', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_copy', string1, source)
 endif
 ! Ok for min/max to be missing_r8; if both specified, min must be <= max.
 if (copy_min /= missing_r8 .and. copy_max /= missing_r8 .and. &
     copy_min > copy_max) then
    write(string1,*) 'copy_min must be less than or equal copy_max'
-   call error_handler(E_ERR,'delete_obs_by_copy', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_copy', string1, source)
 endif
 
 ! Get index number for the type
@@ -1827,8 +1810,7 @@ if (len(trim(obs_type_name)) > 0) then
    obs_type_index = get_index_for_type_of_obs(obs_type_name)
    if (obs_type_index < 0) then
       write(string1,*) 'obs_type ', trim(obs_type_name), ' not found'
-      call error_handler(E_ERR,'delete_obs_by_copy', string1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'delete_obs_by_copy', string1, source)
    endif
 else
    obs_type_index = -1
@@ -2073,8 +2055,7 @@ call get_obs_time_range(oldseq, first_time, last_time, &
                         key_bounds, num_keys, out_of_range)
 if (out_of_range) then
    write(string1, *) 'All keys out of range'
-   call error_handler(E_ERR, 'copy_obs_seq', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'copy_obs_seq', string1, source)
 endif
 
 
@@ -2306,22 +2287,19 @@ integer :: i, ival
 ival = min(minval(copylist(1:numcopies)), minval(qclist(1:numqc)))
 if (ival < 0) then
    write(string1, '(A,I8,A)') 'index list value, ', ival, ' must be >= 0'
-   call error_handler(E_ERR, 'copy_partial_obs:', string1, &
-               source, revision, revdate)
+   call error_handler(E_ERR, 'copy_partial_obs:', string1, source)
 endif
 ival = maxval(copylist(1:numcopies))
 if (ival > size(obs2%values)) then
    write(string1, '(A,I8,A,I8)') 'index list value, ', ival, &
       ' is larger than copies length, ', size(obs2%values)
-   call error_handler(E_ERR, 'copy_partial_obs:', string1, &
-               source, revision, revdate)
+   call error_handler(E_ERR, 'copy_partial_obs:', string1, source)
 endif
 ival = maxval(qclist(1:numqc))
 if (ival > size(obs2%qc)) then
    write(string1, '(A,I8,A,I8)') 'index list value, ', ival, &
       ' is larger than qc length, ', size(obs2%qc)
-   call error_handler(E_ERR, 'copy_partial_obs:', string1, &
-               source, revision, revdate)
+   call error_handler(E_ERR, 'copy_partial_obs:', string1, source)
 endif
 
 obs1%key = obs2%key
@@ -2562,8 +2540,7 @@ if(num_copies > 0) then
          if (io /= 0) then
             ! Read error of some type
             write(string1, *) 'Read error in obs values, obs ', i, ' rc= ', io
-            call error_handler(E_ERR, 'read_obs', string1, &
-               source, revision, revdate)
+            call error_handler(E_ERR, 'read_obs', string1, source)
          endif
       end do
    else
@@ -2571,8 +2548,7 @@ if(num_copies > 0) then
       if (io /= 0) then
          ! Read error of some type
          write(string1, *) 'Read error in obs values, rc= ', io
-         call error_handler(E_ERR, 'read_obs', string1, &
-            source, revision, revdate)
+         call error_handler(E_ERR, 'read_obs', string1, source)
       endif
    endif
 endif
@@ -2584,8 +2560,7 @@ if(num_qc > 0) then
          if (io /= 0) then
             ! Read error of some type
             write(string1, *) 'Read error in qc values, obs ', i, ' rc= ', io
-            call error_handler(E_ERR, 'read_obs', string1, &
-               source, revision, revdate)
+            call error_handler(E_ERR, 'read_obs', string1, source)
          endif
       end do
    else
@@ -2593,8 +2568,7 @@ if(num_qc > 0) then
       if (io /= 0) then
          ! Read error of some type
          write(string1, *) 'Read error in qc values, rc= ', io
-         call error_handler(E_ERR, 'read_obs', string1, &
-            source, revision, revdate)
+         call error_handler(E_ERR, 'read_obs', string1, source)
       endif
    endif
 endif
@@ -2615,8 +2589,7 @@ endif
 if (io /= 0) then
    ! Read error of some type
    write(string1, *) 'Read error in linked list or cov grp, rc= ', io
-   call error_handler(E_ERR, 'read_obs', string1, &
-      source, revision, revdate)
+   call error_handler(E_ERR, 'read_obs', string1, source)
 endif
 
 ! if max_obs specified, do additional error checking
@@ -2624,13 +2597,11 @@ if (present(max_obs)) then
    ! -1 is ok; used for first and last entries.
    if (obs%prev_time < -1 .or. obs%prev_time > max_obs) then
       write(string1, *) 'Bad value for previous obs, ', obs%prev_time, ', in obs ', key 
-      call error_handler(E_ERR, 'read_obs', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs', string1, source)
    endif
    if (obs%next_time < -1 .or. obs%next_time > max_obs) then
       write(string1, *) 'Bad value for next obs, ', obs%next_time, ', in obs ', key
-      call error_handler(E_ERR, 'read_obs', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs', string1, source)
    endif
 endif
 
@@ -2722,8 +2693,7 @@ if (present(key1)) then
    if (key1 < seq%first_time .or. key1 > seq%last_time) then
       write(string1, *) 'Bad value for key1, must be between ', &
                             seq%first_time, ' and ', seq%last_time
-      call error_handler(E_ERR, 'get_num_key_range', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'get_num_key_range', string1, source)
    endif
    next = key1
 else
@@ -2733,8 +2703,7 @@ if (present(key2)) then
    if (key2 < seq%first_time .or. key2 > seq%last_time) then
       write(string1, *) 'Bad value for key2, must be between ', &
                             seq%first_time, ' and ', seq%last_time
-      call error_handler(E_ERR, 'get_num_key_range', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'get_num_key_range', string1, source)
    endif
    last = key2
 else
@@ -2975,7 +2944,7 @@ is_there_one = get_first_obs(seq, obs)
 ! we already tested for 0 obs above, so there should be a first obs here.
 if ( .not. is_there_one )  then
    write(string1,*)'no first obs in sequence "'//trim(filename)//'"'
-   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+   call error_handler(E_ERR, routine, string1, source)
 endif
 
 is_this_last = .false.

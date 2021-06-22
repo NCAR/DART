@@ -35,6 +35,7 @@
    synonymous_qc_list   = ''
    print_only           = .false.
    gregorian_cal        = .true.
+   remove_precomputed_FO_values = ''
    /
 
 ! SEE THE .HTML FILE FOR MORE DETAILED EXAMPLES AND FULL

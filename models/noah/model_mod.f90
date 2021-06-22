@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module model_mod
 
@@ -22,7 +20,7 @@ use          location_mod, only : location_type, get_close_type, get_dist, &
                                   get_location, is_vertical,  &
                                   VERTISSURFACE, VERTISHEIGHT
 
-use         utilities_mod, only : register_module, error_handler, do_output, &
+use         utilities_mod, only : error_handler, do_output, &
                                   E_ERR, E_MSG, file_exist, get_unit, &
                                   logfileunit, nmlfileunit, to_upper, &
                                   do_nml_file, do_nml_term, &
@@ -115,10 +113,7 @@ public :: nc_write_model_vars, &
           convert_vertical_obs, &
           convert_vertical_state
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'noah_model_mod.f90'
 
 !------------------------------------------------------------------
 ! The NSOLDX parameter comes from the NOAH source code. We need it
@@ -244,9 +239,6 @@ if ( module_initialized ) return ! only need to do this once.
 ! we'll say we've been initialized pretty dang early.
 module_initialized = .true.
 
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
-
 ! Read the DART namelist
 call find_namelist_in_file('input.nml', 'model_nml', iunit)
 read(iunit, nml = model_nml, iostat = io)
@@ -266,7 +258,7 @@ call set_calendar_type( calendar )
 if ( .not. file_exist(domain_shapefiles(1)) ) then
    write(string1,*) 'Domain 1 shapefile "', trim(domain_shapefiles(1)),'" does not exist.'
    write(string2,*) 'There must be a domain 1.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+   call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
 DOMAINS: do domainID = 1,size(domain_shapefiles)
@@ -278,7 +270,7 @@ DOMAINS: do domainID = 1,size(domain_shapefiles)
    if ( .not. file_exist(domain_shapefiles(domainID)) ) then
       write(string1,'("Domain shapefile ",i3, A," does not exist.")')  &
                      domainID, '"'//trim(domain_shapefiles(domainID))//'"'
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+      call error_handler(E_ERR,routine,string1,source)
    else
       call configure_lsm(lsm_model_choice,domain_shapefiles(domainID))
       call read_noah_global_atts(domain_shapefiles(domainID))
@@ -358,7 +350,7 @@ if ( .not. module_initialized ) call static_init_model
 time = set_time(0,0)
 
 write(string1,*) 'no good way to specify initial time'
-call error_handler(E_ERR,routine,string1,source,revision,revdate)
+call error_handler(E_ERR,routine,string1,source)
 
 end subroutine init_time
 
@@ -380,8 +372,7 @@ if ( .not. module_initialized ) call static_init_model
 
 write(string1,*) 'PROBLEM: no known way to set arbitrary initial conditions.'
 write(string2,*) 'start_from_restart must be .true. in this model.'
-call error_handler(E_ERR, routine, string1, &
-           source, revision, revdate, text2=string2)
+call error_handler(E_ERR, routine, string1, source, text2=string2)
 
 x = MISSING_R8
 
@@ -454,7 +445,7 @@ if(isLsmFile) then ! Get the time from the LSM restart file
 
    if (strlen /= STRINGLENGTH) then
       write(string1,*)'DatStrLen string length ',strlen,' /= ',STRINGLENGTH
-      call error_handler(E_ERR,routine, string1, source, revision, revdate)
+      call error_handler(E_ERR,routine, string1, source )
    endif
 
    ! Get all the Time strings, use the last one.
@@ -544,7 +535,7 @@ call nc_check(ios, routine, 'inquire_dimension', 'DateStrLen', ncid=ncid)
 
 if (strlen /= STRINGLENGTH) then
    write(string1,*)'DatStrLen string length ',strlen,' /= ',STRINGLENGTH
-   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+   call error_handler(E_ERR, routine, string1, source )
 endif
 
 ios = nf90_inq_varid(ncid, 'Times', VarID)
@@ -914,7 +905,7 @@ elseif ( num_dims == 3 ) then
 
 else
    write(string1,*) 'unsupported number of dimensions (',num_dims,') for "',trim(varname),'"'
-   call error_handler(E_ERR,'get_state_meta_data',string1,source,revision,revdate)
+   call error_handler(E_ERR,'get_state_meta_data',string1,source)
 endif
 
 if (present(var_type)) var_type = qtyid
@@ -1149,8 +1140,7 @@ integer, parameter :: NTRIES = 100
 if ( .not. module_initialized ) call static_init_model
 
 call error_handler(E_MSG,routine, &
-                  'NOAH cannot be started from a single vector', &
-                  source, revision, revdate, &
+                  'NOAH cannot be started from a single vector', source, &
                   text2='see comments in noah/model_mod.f90::pert_model_copies()',&
                   text3='or noah/model_mod.html#pert_model_copies')
 
@@ -1211,8 +1201,7 @@ DOMAIN : do idom = 1, domain_count
                   if (.not. positive) then
                      write(string1,*)'tried ',NTRIES,' times to get something >= 0.0_r8 and failed'
                      write(string2,*)'state value ',state_ens_handle%copies(copy,j)
-                     call error_handler(E_ERR, routine, string1, &
-                                source, revision, revdate, text2=string2)
+                     call error_handler(E_ERR, routine, string1, source, text2=string2)
                   endif
                endif
             enddo COPIES
@@ -1273,8 +1262,7 @@ MyLoop : do i = 1, size(variable_table,2)
    if ( varname == ' ' .or.  dartstr == ' ' ) then
       string1 = 'model_nml: variable list not fully specified'
       string2 = 'reading from "'//trim(filename)//'"'
-      call error_handler(E_ERR,routine, string1, &
-                 source, revision, revdate, text2=string2)
+      call error_handler(E_ERR,routine, string1, source, text2=string2)
    endif
 
    ! The internal DART routines check if the variable name is valid.
@@ -1284,7 +1272,7 @@ MyLoop : do i = 1, size(variable_table,2)
    if( quantity < 0 ) then
       write(string1,'(''there is no obs_kind "'',a,''" in obs_kind_mod.f90'')') &
                     trim(dartstr)
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+      call error_handler(E_ERR,routine,string1,source)
    endif
 
    ! All good to here - fill the output variables
@@ -1310,7 +1298,7 @@ enddo MyLoop
 if (ngood == MAX_STATE_VARIABLES) then
    string1 = 'WARNING: you may need to increase "MAX_STATE_VARIABLES"'
    write(string2,'(''you have specified at least '',i4,'' perhaps more.'')') ngood
-   call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+   call error_handler(E_MSG,routine,string1,source,text2=string2)
 endif
 
 
@@ -1398,8 +1386,7 @@ do ivar = 1,get_num_variables(domainID)
          write(string1,*) 'Only supporting variables with a vertical coordinate &
                            &of "soil_layers_stag" or "soil_nirogen_layers_stag"'
          write(string2,*) trim(varname), ' has "',trim(dimname),'"'
-         call error_handler(E_ERR, routine, string1, &
-              source, revision, revdate, text2=string2)
+         call error_handler(E_ERR, routine, string1, source, text2=string2)
       endif
    enddo
 enddo
@@ -1434,8 +1421,7 @@ if (periodic_x .or. periodic_y .or. polar) then
    write(string1,*)'Only a subset of the wrf grid logic is supported in our noah implementation.'
    write(string2,*)'We do not support periodic boundary conditions. Unsupported namelist setting:'
    write(string3,*)'periodic_x=',periodic_x,'; periodic_y=',periodic_y,'; polar=',polar
-   call error_handler(E_ERR, routine, string1, source, revision, revdate, &
-                      text2=string2, text3=string3)
+   call error_handler(E_ERR, routine, string1, source, text2=string2, text3=string3)
 endif
 
 ! get meta data and static data we need
@@ -1513,7 +1499,7 @@ if ( lsm%dom(dom_id)%scm ) then
    latinc = 0.0_r8
    loninc = 0.0_r8
    write(string1,*)'Single Column Model not supported.'
-   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+   call error_handler(E_ERR, routine, string1, source)
 else
    latinc = 180.0_r8/lsm%dom(dom_id)%sn
    loninc = 360.0_r8/lsm%dom(dom_id)%we
@@ -1540,8 +1526,7 @@ else
    write(string1,*)'Map projection ',lsm%dom(dom_id)%map_proj,' not supported.'
    write(string2,*)'Valid values are: ',map_latlon, map_lambert, map_polar_stereo
    write(string3,*)'                  ',map_mercator, map_cylindrical, map_cassini
-   call error_handler(E_ERR, routine, string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+   call error_handler(E_ERR, routine, string1, source, text2=string2, text3=string3)
 endif
 
 if (debug > 99) then
@@ -1558,8 +1543,7 @@ if (lsm%dom(dom_id)%pole_lat /= 90.0_r8 .or. &
    write(string1,*)'Rotated poles are not supported.'
    write(string2,*)'POLE_LAT must be 90.0'
    write(string3,*)'POLE_LON must be  0.0'
-   call error_handler(E_ERR, routine, string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+   call error_handler(E_ERR, routine, string1, source, text2=string2, text3=string3)
 endif
 
 call map_set( proj_code = proj_code, &
@@ -1603,8 +1587,7 @@ if (present(domain_id_start)) then
    if (domain_id_start < 1 .or. domain_id_start > domain_count) then
       write(string1,  '(A,I1)') 'bad domain_id_start: ', domain_id_start
       write(string2, '(A,I1)') 'must be between 1 and ', domain_count
-      call error_handler(E_ERR, routine, string1, &
-                         source, revision, revdate, text2=string2)
+      call error_handler(E_ERR, routine, string1, source, text2=string2)
    endif
    dom_id = domain_id_start
 endif
@@ -1785,7 +1768,7 @@ endif
 
 if ( lsm%dom(id)%periodic_x ) then
    write(string1,*)'not supporting periodic x just yet'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 ! Regardless of grid, NOT Periodic always has i+1
@@ -1861,8 +1844,7 @@ VERTICAL : do jdim = 1, num_dims
          else
             write(string1,*)'variable uses soil_nitrogen_layers but'
             write(string2,*)'namelist.hrldas has no nitrogen layers (NITSOIL).'
-            call error_handler(E_ERR,'get_vertical_array',string1, &
-                       source, revision, revdate, text2=string2)
+            call error_handler(E_ERR,'get_vertical_array',string1, source, text2=string2)
          endif
          exit VERTICAL
 

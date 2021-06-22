@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 ! An example of a simple forward operator that involves more than
 ! just interpolating directly from a state vector in a model.
@@ -12,9 +11,9 @@
 ! right column must be a generic kind that already exists in
 ! the obs_kind/DEFAULT_obs_kind_mod.F90 file.
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! RADIOSONDE_WIND_SPEED,         QTY_VELOCITY
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! This section will be added to the main obs_def_mod.f90 that
 ! is going to be generated, to allow it to call the code we
@@ -145,8 +144,3 @@ end subroutine get_expected_windspeed
 end module obs_def_wind_speed_mod
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,13 +1,11 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 program obs_timejitter
 
 use        types_mod, only : r8
-use    utilities_mod, only : register_module, open_file, close_file, &
+use    utilities_mod, only : open_file, close_file, &
                              initialize_utilities, finalize_utilities
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, set_obs_def_time
@@ -21,14 +19,6 @@ use time_manager_mod, only : time_type, set_time, get_time, interactive_time, &
 use        model_mod, only : static_init_model
 
 implicit none
-
-! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
-
 
 type(obs_sequence_type) :: seq, seq_in
 type(obs_type)          :: obs, next_obs, new_obs, last_obs
@@ -44,7 +34,6 @@ real(r8)                :: perturbation_amplitude, delseconds  ! size of perturb
 
 ! Record the current time, date, etc. to the logfile
 call initialize_utilities('obs_timejitter')
-call register_module(source, revision, revdate)
 
 ! Call the underlying model's static initialization for calendar info
 call static_init_model()
@@ -137,8 +126,3 @@ call finalize_utilities()
 
 end program obs_timejitter
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

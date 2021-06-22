@@ -4,31 +4,30 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# This converter needs the HDF-EOS2 libraries which are built on the HDF4
+# libraries. If any of these libraries are not found during execution,
+# make sure your [DY]LD_LIBRARY_PATH contains $HDFEOS_LIBROOT
 
-# Your locations may differ
-#----------------------------------------------------------------------
-#set JPGDIR = /contrib/jpeg-6b_intel-10.1-64
-#set HDFDIR = /contrib/HDF4.2r4_intel-10.1-64
-#set HDFDIR = /contrib/HDF4.2r4/intel-10-64
-#set MYLIBS = "-lmfhdf -ldf -ljpeg -lz -lm"
-#set MYINCDIR = "-I${HDFDIR}/include -I${JPGDIR}/include"
-#set MYLIBDIR = "-L${HDFDIR}/lib     -L${JPGDIR}/lib"
-#----------------------------------------------------------------------
+if ( $?NCAR_INC_HDFEOS ) then
+   set HDFEOS_INCLUDE = $NCAR_INC_HDFEOS
+   set HDFEOS_LIBROOT = $NCAR_LDFLAGS_HDFEOS
+   set HDFEOS_LIBRARIES = $NCAR_LIBS_HDFEOS
 
-set HDFDIR = /opt/local
-set MYLIBS = "-lmfhdf -ldf -ljpeg -lz -lm"
-set MYINCDIR = "-I${HDFDIR}/include"
-set MYLIBDIR = "-L${HDFDIR}/lib"
+else if ( -e /glade/work/thoar/hdf-eos/lib/libhdfeos.a ) then
+   set HDFEOS_INCLUDE = "/glade/work/thoar/hdf-eos/include"
+   set HDFEOS_LIBROOT = "/glade/work/thoar/hdf-eos/lib"
+   set HDFEOS_LIBRARIES = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
 
-../../../../build_templates/mkmf -p convert_L2b -t ../../../../build_templates/mkmf.template \
- -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
+else
+   set HDFEOS_INCLUDE = "/Users/thoar/gnu/gnu_9.2.0/hdf-eos/include"
+   set HDFEOS_LIBROOT = "/Users/thoar/gnu/gnu_9.2.0/hdf-eos/lib"
+   set HDFEOS_LIBRARIES = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
+endif
+
+     ../../../../build_templates/mkmf -p convert_L2b \
+ -t  ../../../../build_templates/mkmf.template \
+ -l "-I${HDFEOS_INCLUDE} -L${HDFEOS_LIBROOT} ${HDFEOS_LIBRARIES}" \
  -a "../../../.." path_names_convert_L2b
 
 exit $status
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

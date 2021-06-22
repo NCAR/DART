@@ -1,0 +1,33 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# This converter needs the HDF-EOS2 libraries which are built on the HDF4
+# libraries. If any of these libraries are not found during execution,
+# make sure your [DY]LD_LIBRARY_PATH contains $HDFEOS_LIBROOT
+
+if ( $?NCAR_INC_HDFEOS ) then
+   set HDFEOS_INCLUDE = $NCAR_INC_HDFEOS
+   set HDFEOS_LIBROOT = $NCAR_LDFLAGS_HDFEOS
+   set HDFEOS_LIBRARIES = $NCAR_LIBS_HDFEOS
+
+else if ( -e /glade/work/thoar/hdf-eos/lib/libhdfeos.a ) then
+   set HDFEOS_INCLUDE = "/glade/work/thoar/hdf-eos/include"
+   set HDFEOS_LIBROOT = "/glade/work/thoar/hdf-eos/lib"
+   set HDFEOS_LIBRARIES = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
+
+else
+   set HDFEOS_INCLUDE = "/Users/thoar/gnu/gnu_9.2.0/hdf-eos/include"
+   set HDFEOS_LIBROOT = "/Users/thoar/gnu/gnu_9.2.0/hdf-eos/lib"
+   set HDFEOS_LIBRARIES = "-lhdfeos -lGctp -lmfhdf -ldf -ljpeg -lz"
+endif
+
+     ../../../../build_templates/mkmf -p L1_AMSUA_to_netcdf \
+  -t ../../../../build_templates/mkmf.template \
+  -l "-I${HDFEOS_INCLUDE} -L${HDFEOS_LIBROOT} ${HDFEOS_LIBRARIES}" \
+ -a "../../../.." path_names_L1_AMSUA_to_netcdf
+
+exit $status
+

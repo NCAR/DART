@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Change observation sequence files by adding or removing observations
 !> based on type, location, values, time.  Long list of options based on 
@@ -10,21 +8,30 @@
 
 program obs_sequence_tool
 
-use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
-use    utilities_mod, only : finalize_utilities, register_module, initialize_utilities, &
+use        types_mod, only : r8, missing_r8, metadatalength, obstypelength, &
+                             MISSING_I
+
+use    utilities_mod, only : finalize_utilities, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
-                             do_nml_file, do_nml_term, set_filename_list
+                             do_nml_file, do_nml_term, set_filename_list, &
+                             to_upper
+
 use     location_mod, only : location_type, get_location, set_location, &
                              LocationName !%! , vert_is_height 
-                             ! see comment in select_gps_by_height() for explanation of !%!
+                             ! comment in select_gps_by_height() explains !%!
+
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs, &
                              get_obs_def_location, set_obs_def_write_external_FO
-use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
+
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, &
+                             get_index_for_type_of_obs
+
 use time_manager_mod, only : time_type, operator(>), print_time, set_time, &
                              print_date, set_calendar_type, GREGORIAN
+
 use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
-                             init_obs, assignment(=), get_obs_def, &
+                             init_obs, assignment(=), get_obs_def, set_obs_def, &
                              init_obs_sequence, static_init_obs_sequence, &
                              read_obs_seq_header, read_obs_seq, get_num_obs, &
                              get_first_obs, get_next_obs, &
@@ -41,11 +48,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'obs_sequence_tool.f90'
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type) :: obs_in, next_obs_in
@@ -62,7 +65,7 @@ logical :: trim_first, trim_last
 character(len=512) :: msgstring1, msgstring2, msgstring3
 
 ! could go into namelist if you wanted runtime control
-integer, parameter      :: print_every = 20000
+integer, parameter :: print_every = 20000
 
 ! specify sizes of allocated arrays; increase and recompile if too small
 integer, parameter :: copy_qc_listlen = 256           ! max number of data or qc copies
@@ -84,6 +87,13 @@ integer :: matching_qc_limit   = 0
 integer :: copy_index_len      = 0
 integer :: qc_index_len        = 0
 
+
+! variables to manage whether or not the precomputed forward operator values
+! are written out
+
+integer :: FO_write_types(max_obs_input_types) = MISSING_I
+integer :: num_FO_types_to_suppress
+
 !----------------------------------------------------------------
 ! Namelist input with default values
 
@@ -99,6 +109,7 @@ integer  :: first_obs_seconds = -1
 integer  :: last_obs_days     = -1
 integer  :: last_obs_seconds  = -1
 
+character(len=obstypelength) :: remove_precomputed_FO_values(max_obs_input_types) = ''
 character(len=obstypelength) :: obs_types(max_obs_input_types) = ''
 logical  :: keep_types = .true.
 
@@ -135,8 +146,6 @@ logical  :: print_only = .false.
 logical  :: gregorian_cal = .true.
 real(r8) :: min_gps_height = missing_r8
 
-logical  :: write_external_FOs
-
 namelist /obs_sequence_tool_nml/ &
          num_input_files, filename_seq, filename_seq_list, filename_out,     &
          first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, &
@@ -146,7 +155,7 @@ namelist /obs_sequence_tool_nml/ &
          min_gps_height, edit_copy_metadata, new_copy_index,                 &
          edit_qc_metadata, new_qc_index, synonymous_copy_list,               &
          synonymous_qc_list, edit_copies, edit_qcs, new_copy_metadata,       &
-         new_qc_metadata, new_copy_data, new_qc_data, write_external_FOs
+         new_qc_metadata, new_copy_data, new_qc_data, remove_precomputed_FO_values
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -171,8 +180,7 @@ if (do_nml_term()) write(     *     , nml=obs_sequence_tool_nml)
 if (num_input_files > 0) then
    write(msgstring1, *) '"num_input_files" is a DEPRECATED namelist item and is ignored.'
    write(msgstring2, *) 'the count of input files is set by the number of filenames specified.'
-   call error_handler(E_MSG,'obs_sequence_tool', msgstring1, &
-                      source,revision,revdate, text2=msgstring2)
+   call error_handler(E_MSG,'obs_sequence_tool', msgstring1, source, text2=msgstring2)
 endif
 
 ! when set_filename_list() returns, filename_seq contains all the filenames
@@ -198,6 +206,17 @@ else
    restrict_by_obs_type = .true.
 endif
 
+! See if the user wants to suppress the precomputed forward operator values 
+! for any/all observation types with precomputed forward operator values
+
+num_FO_types_to_suppress = 0
+do i = 1, max_obs_input_types
+   if ( len(remove_precomputed_FO_values(i)) == 0  .or.  &
+            remove_precomputed_FO_values(i)  == "" ) exit
+   num_FO_types_to_suppress = i
+enddo
+if (num_FO_types_to_suppress > 0) call setup_FO_suppress_list(FO_write_types)
+
 ! See if the user is restricting the obs locations to be processed, and set up
 ! the values if so.  Note that if any of the values are not missing_r8, all of
 ! them must have good (and consistent) values.  i don't have code in here yet
@@ -217,48 +236,40 @@ if ((min_lat /= -90.0_r8) .or. (max_lat /=  90.0_r8) .or. &
    ! do not allow namelist to set BOTH min/max box and by lat/lon.
    if (restrict_by_location) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'use either lat/lon box or min/max box but not both', &
-                         source,revision,revdate)
+              'use either lat/lon box or min/max box but not both', source)
    endif
    restrict_by_location = .true.
    if ((trim(LocationName) /= 'loc3Dsphere') .and.  &
        (trim(LocationName) /= 'loc2Dsphere')) then  
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'can only use lat/lon box with 2d/3d sphere locations', &
-                         source,revision,revdate)
+              'can only use lat/lon box with 2d/3d sphere locations', source)
    endif
    ! simple err checks before going on; try to catch radians vs degrees or
    ! just plain junk or typos.
    if (min_lat >= max_lat) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'min_lat must be less than max_lat', &
-                         source,revision,revdate)
+              'min_lat must be less than max_lat', source)
    endif
    if (min_lat < -90.0_r8) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'min_lat cannot be less than -90.0 degrees', &
-                         source,revision,revdate)
+              'min_lat cannot be less than -90.0 degrees', source)
    endif
    if (max_lat >  90.0_r8) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'max_lat cannot be greater than  90.0 degrees', &
-                         source,revision,revdate)
+              'max_lat cannot be greater than  90.0 degrees', source)
    endif
    ! this is ok - e.g.-180 to 180
    !if (min_lon < 0.0_r8) then
    !   call error_handler(E_ERR,'obs_sequence_tool', &
-   !                      'min_lon cannot be less than 0.0 degrees', &
-   !                      source,revision,revdate)
+   !           'min_lon cannot be less than 0.0 degrees', source)
    !endif
    if (min_lon > 360.0_r8) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'min_lon cannot be greater than 360.0 degrees', &
-                         source,revision,revdate)
+                         'min_lon cannot be greater than 360.0 degrees', source)
    endif
    if (max_lon > 360.0_r8) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'max_lon cannot be greater than 360.0 degrees', &
-                         source,revision,revdate)
+                         'max_lon cannot be greater than 360.0 degrees', source)
    endif
 
    ! it is risky to allow == operations on floating point numbers.
@@ -269,8 +280,7 @@ if ((min_lat /= -90.0_r8) .or. (max_lat /=  90.0_r8) .or. &
    ! will be accepted.
    if (min_lon == max_lon) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'min_lon cannot exactly equal max_lon', &
-                         source,revision,revdate)
+                         'min_lon cannot exactly equal max_lon', source)
    endif
   
    ! do not test for min < max, because lon can wrap around 0.  ensure that
@@ -310,8 +320,7 @@ endif
 if ((min_qc /= missing_r8) .or. (max_qc /= missing_r8)) then
    if (len(trim(qc_metadata)) == 0) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'must specify the metadata name of a QC field', &
-                         source,revision,revdate)
+                         'must specify the metadata name of a QC field', source)
    endif
    restrict_by_qc = .true.
 else
@@ -321,8 +330,7 @@ endif
 if ((min_copy /= missing_r8) .or. (max_copy /= missing_r8)) then
    if (len(trim(copy_metadata)) == 0) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'must specify the metadata name of a copy field', &
-                         source,revision,revdate)
+                         'must specify the metadata name of a copy field', source)
    endif
    restrict_by_copy = .true.
 else
@@ -376,8 +384,7 @@ endif
 if (trim_first .and. trim_last) then
    if (first_obs_time > last_obs_time) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'first time cannot be later than last time', &
-                         source,revision,revdate)
+                         'first time cannot be later than last time', source)
    endif
 endif
 
@@ -401,7 +408,6 @@ if (synonymous_qc_list(1) /= '') then
    enddo
 endif
 
-
 ! end of namelist processing and setup
 
 ! Read header information for the sequences to see if we need
@@ -423,7 +429,7 @@ do i = 1, num_input_files
 
    if ( len(filename_seq(i)) .eq. 0 .or. filename_seq(i) .eq. "" ) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-         'num_input_files and filename_seq mismatch',source,revision,revdate)
+         'num_input_files and filename_seq mismatch',source)
    endif
 
    ! count up the number of observations we are going to eventually have.
@@ -464,8 +470,7 @@ do i = 1, num_input_files
             if ((new_copy_index(j) > num_copies_in) .or. &
                 (new_copy_index(j) < 0)) then   ! was < 1 here and below
                write(msgstring1,*)'new_copy_index values must be between 0 and ', num_copies_in
-               call error_handler(E_ERR,'obs_sequence_tool', msgstring1, &
-                                  source,revision,revdate)
+               call error_handler(E_ERR,'obs_sequence_tool', msgstring1, source)
 
             endif
          enddo
@@ -485,8 +490,7 @@ do i = 1, num_input_files
             if ((new_qc_index(j) > num_qc_in) .or. &
                 (new_qc_index(j) < 0)) then  ! was < 1 here and below
                write(msgstring1,*)'new_qc_index values must be between 0 and ', num_qc_in
-               call error_handler(E_ERR,'obs_sequence_tool', msgstring1, &
-                                  source,revision,revdate)
+               call error_handler(E_ERR,'obs_sequence_tool', msgstring1, source)
 
             endif
          enddo
@@ -512,7 +516,7 @@ enddo
 ! still waiting to process the first one and never found one.
 if (first_seq < 0 .or. size_seq_out == 0) then
    msgstring1 = 'All input files are empty or all obs excluded by time/type/location'
-   call error_handler(E_ERR,'obs_sequence_tool',msgstring1,source,revision,revdate)
+   call error_handler(E_ERR,'obs_sequence_tool',msgstring1,source)
 endif
 
 ! pass 2:
@@ -548,7 +552,7 @@ do i = 1, num_input_files
    if(remaining_obs_count == 0) then
       call destroy_obs_sequence(seq_in) 
       write(msgstring1, *) 'Internal error trying to process file ', trim(filename_seq(i))
-      call error_handler(E_ERR,'obs_sequence_tool',msgstring1,source,revision,revdate)
+      call error_handler(E_ERR,'obs_sequence_tool',msgstring1,source)
    endif
 
    ! create the output sequence here based on the first input file
@@ -662,6 +666,9 @@ do i = 1, num_input_files
          obs_out = obs_in
       endif
 
+      ! changing metadata to output precomputed FOs based on namelist
+      call set_FO_metadata(obs_out)
+
 !#!      ! see comment in subroutine code for an explanation
 !#!      call change_obs(obs_out)
 
@@ -679,7 +686,10 @@ do i = 1, num_input_files
             endif
          endif
 
-         obs_in     = next_obs_in   ! essentially records position in seq_out
+         obs_in = next_obs_in   ! essentially records position in seq_out
+
+         !setting flag to output precomputed FOs based on namelist
+         call set_FO_metadata(obs_in)
 
          if (editing_obs) then
             ! copy subset or reordering
@@ -757,7 +767,7 @@ call destroy_obs(next_obs_in )
 call destroy_obs(     obs_out)
 call destroy_obs(prev_obs_out)
 
-call error_handler(E_MSG, 'obs_sequence_tool', 'Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG, 'obs_sequence_tool', 'Finished successfully.',source)
 call finalize_utilities()
 
 
@@ -769,7 +779,6 @@ subroutine obs_seq_modules_used()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_sequence_tool')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 end subroutine obs_seq_modules_used
@@ -843,8 +852,7 @@ else
 endif
 if ( num_copies < 0 .or. num_qc < 0 ) then
    call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, &
-                      source, revision, revdate, &
-                      text2=msgstring2, text3=msgstring3)
+                      source, text2=msgstring2, text3=msgstring3)
 endif
 
 ! watch the code flow in this loop and the one below it.
@@ -910,7 +918,7 @@ CopyMetaData : do i=1, num_copies
    write(msgstring2,*)'copy metadata mismatch, file 1: ', trim(str1)
    write(msgstring3,*)'copy metadata mismatch, file 2: ', trim(str2)
    call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, &
-                      source, revision, revdate, &
+                      source, &
                       text2=msgstring2, text3=msgstring3)
 
 enddo CopyMetaData
@@ -974,8 +982,7 @@ QCMetaData : do i=1, num_qc
    write(msgstring2,*)'qc metadata mismatch, file 1: ', trim(str1)
    write(msgstring3,*)'qc metadata mismatch, file 2: ', trim(str2)
    call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, &
-                      source, revision, revdate, &
-                      text2=msgstring2, text3=msgstring3)
+                      source, text2=msgstring2, text3=msgstring3)
 
 enddo QCMetaData
 
@@ -1300,7 +1307,7 @@ is_there_one = get_first_obs(seq, obs)
 
 if ( .not. is_there_one )  then
    write(msgstring1,*)'no first observation in sequence ' // trim(filename)
-   call error_handler(E_MSG,'obs_sequence_tool:validate', msgstring1, source, revision, revdate)
+   call error_handler(E_MSG,'obs_sequence_tool:validate', msgstring1, source)
 endif
 
 call get_obs_def(obs, this_obs_def)
@@ -1324,7 +1331,7 @@ ObsLoop : do while ( .not. is_this_last)
       write(msgstring1,*)'obs number ', key, ' has earlier time than previous obs'
       write(msgstring2,*)'observations must be in increasing time order, file ' // trim(filename)
       call error_handler(E_ERR,'obs_sequence_tool:validate', msgstring1, &
-                         source, revision, revdate, text2=msgstring2)
+                         source, text2=msgstring2)
    endif
 
    last_time = this_time
@@ -1358,7 +1365,7 @@ num_qc     = get_num_qc(    seq1)
 
 if ( num_copies < 0 .or. num_qc < 0 ) then
    write(msgstring1,*)' illegal copy or obs count in file '//trim(fname1)
-   call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source, revision, revdate)
+   call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source)
 endif
 
 MetaDataLoop : do i=1, num_copies
@@ -1417,6 +1424,81 @@ endif
 
 end subroutine set_new_data
 
+
+!-------------------------------------------------------------------------------
+! Construct list of observation types whose precomputed forward operator (FO) 
+! values are to be removed.
+
+subroutine setup_FO_suppress_list(type_list)
+
+integer, intent(out) :: type_list(:)
+
+integer :: i
+character(len=obstypelength) :: upperstring
+
+LOOP : do i = 1, num_FO_types_to_suppress
+   upperstring = trim(remove_precomputed_FO_values(i))
+   call to_upper(upperstring)
+
+   if (upperstring == 'ALL') then
+      ! If all possible observations with FO values are selected 
+      ! just indicate that by setting num_FO_types_to_suppress
+      ! to value that is larger than the largest possible
+      type_list = 1
+      num_FO_types_to_suppress = max_obs_input_types + 1
+      exit LOOP
+   else
+      type_list(i) = get_index_for_type_of_obs(upperstring)
+      if (type_list(i) < 0) then
+         write(msgstring1,*) 'obs_type "'//trim(remove_precomputed_FO_values(i))//'"'
+         write(msgstring2,*) 'not a valid observation type.'
+         write(msgstring3,*) 'check entries for "remove_precomputed_FO_values"'
+         call error_handler(E_ERR,'setup_FO_suppress_list', msgstring1, source, &
+                            text2=msgstring2, text3=msgstring3)
+      endif
+   endif
+enddo LOOP
+
+end subroutine setup_FO_suppress_list
+
+
+!-------------------------------------------------------------------------------
+! If the observation type matches one specified by the remove_precomputed_FO_values 
+! variable, adjust the metadata for that observation so that write_obs_def() 
+! does the right thing. Since read_obs_def() sets the flag to suppress the writing
+! of the precomputed values, this routine must set the flag to enable the writing
+! of the precomputed values.
+
+subroutine set_FO_metadata(obs)
+
+type(obs_type), intent(inout) :: obs
+
+type(obs_def_type) :: obs_def
+integer            :: this_obs_type
+logical            :: write_FO_values
+
+write_FO_values = .true.
+
+call get_obs_def(obs, obs_def)
+this_obs_type = get_obs_def_type_of_obs(obs_def)
+
+! If all types are to be suppressed, just match - and avoid using
+! num_FO_types_to_suppress as an index ...
+
+if (num_FO_types_to_suppress > max_obs_input_types) then
+   write_FO_values = .false.
+elseif ( any(this_obs_type == FO_write_types(1:num_FO_types_to_suppress)) ) then
+   write_FO_values = .false.
+endif
+
+if (write_FO_values) then
+   call set_obs_def_write_external_FO(obs_def,write_FO_values)
+   call set_obs_def(obs,obs_def)
+endif
+
+end subroutine set_FO_metadata
+
+
 !%! !---------------------------------------------------------------------
 !%! subroutine select_gps_by_height(min_height, seq, all_gone)
 !%! 
@@ -1452,8 +1534,7 @@ end subroutine set_new_data
 !%! gps_type_index = get_index_for_type_of_obs('GPSRO_REFRACTIVITY')
 !%! if (gps_type_index < 0) then
 !%!    write(msgstring1,*) 'obs_type GPSRO_REFRACTIVITY not found'
-!%!    call error_handler(E_ERR,'select_gps_by_height', msgstring1, &
-!%!                       source, revision, revdate)
+!%!    call error_handler(E_ERR,'select_gps_by_height', msgstring1, source)
 !%! endif
 !%! 
 !%! ! Initialize an observation type with appropriate size
@@ -1490,8 +1571,7 @@ end subroutine set_new_data
 !%!       ! this makes the tool locations/threed_sphere dependent.
 !%!       if (.not. vert_is_height(location)) then
 !%!          write(msgstring1,*) 'obs_type GPSRO_REFRACTIVITY vertical location not height'
-!%!          call error_handler(E_ERR,'select_gps_by_height', msgstring1, &
-!%!                             source, revision, revdate)
+!%!          call error_handler(E_ERR,'select_gps_by_height', msgstring1, source)
 !%!       endif
 !%! 
 !%!       ll = get_location(location)

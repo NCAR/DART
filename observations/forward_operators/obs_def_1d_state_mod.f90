@@ -2,20 +2,19 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! RAW_STATE_VARIABLE,    QTY_STATE_VARIABLE,     COMMON_CODE
 ! RAW_STATE_1D_INTEGRAL, QTY_1D_INTEGRAL
 ! RAW_STATE_VAR_POWER,   QTY_STATE_VAR_POWER
 ! LARGE_SCALE_STATE,     QTY_LARGE_SCALE_STATE,  COMMON_CODE
 ! SMALL_SCALE_STATE,     QTY_SMALL_SCALE_STATE,  COMMON_CODE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS TYPE DEFINITIONS
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, &
 !                                     interactive_1d_integral, get_expected_1d_integral, &
-                                     write_power, read_power, interactive_power, get_expected_power
+!                                     write_power, read_power, interactive_power, get_expected_power
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
@@ -652,8 +651,3 @@ end module obs_def_1d_state_mod
 
 ! END DART PREPROCESS MODULE CODE
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

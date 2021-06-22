@@ -1,0 +1,67 @@
+h1,h2,.rst-content .toctree-wrapper p.caption,h3,h4,h5,h6,legend{margin-top:0;font-weight:400;font-family:Poppins, "Tw Cen MT", Futura, sans-serif; color: #424242;}
+
+body {font-family: Roboto, Arial, Helvetica, sans-serif; font-weight:400; color: #616161;}
+.wy-nav-side{background-color: #1A658F;}
+.wy-side-nav-search{background-color: #DBE2E9;}
+.wy-side-nav-search>div.version{color: #012169 !important;}
+.wy-menu-vertical header, .wy-menu-vertical p.caption{font-weight:700;font-family:Poppins, "Tw Cen MT", Futura, sans-serif; color: #012169;}
+.wy-menu-vertical a:hover, .wy-menu-vertical a:active { background-color: #012169; color: #d9d9d9; }
+.wy-menu-vertical a, .wy-menu-vertical a:visited { color: #d9d9d9; }
+.wy-body-for-nav { background: #CED9E5; background-image: url("../NCAR-Waves-Vertical.png"); background-repeat: no-repeat; background-size: 630px 1827px; background-position-x: 97%; background-position-y: top;}
+.wy-nav-content { max-width: 904px; background: #FFF; }
+
+.wy-menu-vertical li span.toctree-expand {
+  color: #FFF;
+}
+
+.wy-table-responsive table td {
+    white-space: normal !important;
+}
+.wy-table-responsive {
+    overflow: visible !important;
+}
+
+
+div.section thead, th
+{
+  background-color: #FFFFFF;    
+}
+
+div.section tr.row-odd
+{
+  background-color: #FFFFFF;    
+}
+
+footer div[role=contentinfo] { color: #616161; }
+
+a {color: #007FA3; }
+a:visited { color: #1A658F; }
+a:hover, a:active { color: #00797C; }
+
+/* CSS for sphinx-prompt */
+
+pre.highlight {
+    border: 1px solid #e1e4e5;
+    overflow-x: auto;
+    margin: 1px 0 24px 0;
+    padding: 12px 12px;
+}
+
+/* Tweak css for sphinx_prompt #5281 */
+pre.highlight span[class^="prompt"] {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+@font-face{font-family:Poppins;font-style:normal;font-weight:400;src:url("../fonts/Poppins/Poppins-Regular.ttf") format("truetype")}
+@font-face{font-family:Poppins;font-style:normal;font-weight:700;src:url("../fonts/Poppins/Poppins-Bold.ttf") format("truetype")}
+
+@font-face{font-family:Roboto;font-style:normal;font-weight:400;src:url("../fonts/Roboto/Roboto-Regular.ttf") format("truetype")}
+@font-face{font-family:Roboto;font-style:italic;font-weight:400;src:url("../fonts/Roboto/Roboto-Italic.ttf") format("truetype")}
+@font-face{font-family:Roboto;font-style:normal;font-weight:700;src:url("../fonts/Roboto/Roboto-Bold.ttf") format("truetype")}
+@font-face{font-family:Roboto;font-style:italic;font-weight:700;src:url("../fonts/Roboto/Roboto-BoldItalic.ttf") format("truetype")}
+
+.bolditalic {
+  font-weight: bold;
+  font-style: italic;
+}

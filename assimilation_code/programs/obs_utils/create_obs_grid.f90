@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> program intended to create a set of observations located on
 !> a regular grid.  obs have no data values - the output obs_seq
@@ -14,8 +12,7 @@
 
 program create_obs_grid
 
-use    utilities_mod, only : register_module, open_file, close_file, &
-                             initialize_utilities, finalize_utilities
+use    utilities_mod, only : initialize_utilities, finalize_utilities
 use obs_sequence_mod, only : obs_sequence_type, interactive_obs, write_obs_seq, &
                              static_init_obs_sequence, obs_type, init_obs_sequence, &
                              set_copy_meta_data, init_obs, destroy_obs, insert_obs_in_seq, &
@@ -29,19 +26,13 @@ use obs_kind_mod
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source = 'create_obs_grid.f90'
 
 type(obs_sequence_type) :: seq
-character(len = 129)    :: file_name
+character(len=256)      :: file_name
 
 ! Record the current time, date, etc. to the logfile
 call initialize_utilities('create_obs_grid')
-call register_module(source, revision, revdate)
 
 ! Initialize the assim_model module, need this to get model
 ! state meta data for locations of identity observations

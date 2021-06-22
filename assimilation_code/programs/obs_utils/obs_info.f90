@@ -1,16 +1,24 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 !> print out information about observation sequence file(s).
 !> summarizes obs types, times, counts.
+!>
+!> If 'csv_style_output = .true.' and 'output_file="summary.csv"', 
+!> the resulting comma-separated-values file
+!> can be trivially read into matlab with:
+!>
+!> X = readtable('summary.csv')
+!>
+!> The first line of the output file describes the columns.
+!>
+!>@todo FIXME This routine should use print_obs_seq_summary. 
 
 program obs_info
 
 use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
-use    utilities_mod, only : register_module, initialize_utilities,            &
+use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
@@ -38,12 +46,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source = 'obs_info.f90'
 
 type(obs_sequence_type) :: seq_in
 type(obs_type)          :: obs_in, next_obs_in
@@ -73,14 +76,14 @@ type obs_info_type
    type(time_type) :: last_time
 end type
 
-! in spite of the name, this is the number of specific types.
+! an array to hold counts for each obs type.
 ! also one for all obs types.
-type(obs_info_type) :: oinfo(0:max_defined_types_of_obs)
+type(obs_info_type) :: oinfo(max_defined_types_of_obs)
+type(obs_info_type) :: identity_obs
 type(obs_info_type) :: all_obs
 
 type(location_type) :: location
 integer :: obs_type_ind
-character(len=256) :: string
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -91,11 +94,11 @@ character(len=256)   :: filename_in(MAX_IN_FILES) = ''
 character(len=256)   :: filelist_in = ''
 character(len=32)    :: calendar = 'Gregorian'
 logical              :: filenames_from_terminal = .false.
-logical              :: counts_only = .false.
+logical              :: csv_style_output = .false.
 character(len=256)   :: output_file = ''
 
 
-namelist /obs_info_nml/ filename_in, filelist_in, counts_only, &
+namelist /obs_info_nml/ filename_in, filelist_in, csv_style_output, &
                         calendar, filenames_from_terminal, output_file
 
 !----------------------------------------------------------------
@@ -134,8 +137,12 @@ if (output_file /= '') then
    ounit = open_file(output_file, action='write')
    write(msgstring, *) 'Output counts will be written to text file: '
    write(msgstring1,*)  trim(output_file)
-   call error_handler(E_MSG,'obs_info',msgstring, &
-                      text2=msgstring1)
+   call error_handler(E_MSG,'obs_info',msgstring, text2=msgstring1)
+
+   if (csv_style_output) then
+      ! The first row of the csv file describes the columns.
+      write(ounit,'(''Filename, ObsTypeInteger, ObsType, Count, AverageTime'')')
+   endif
 else
    ounit = 0
 endif
@@ -147,9 +154,10 @@ endif
 do fnum = 1, num_input_files
 
    ! initialize the bookkeeping structures
-   do i=0, max_defined_types_of_obs
+   do i=1, max_defined_types_of_obs
       call initialize(oinfo(i))
    enddo
+   call initialize(identity_obs)
    call initialize(all_obs)
    
    ! single pass algorithm (unlike other obs tools).
@@ -163,10 +171,13 @@ do fnum = 1, num_input_files
       call error_handler(E_ERR,'obs_info',msgstring)
    endif
    
-   write(msgstring, *) 'Starting to process input sequence file: '
-   write(msgstring1,*)  trim(filename_in(fnum))
-   call error_handler(E_MSG,'obs_info',msgstring, &
-                      text2=msgstring1)
+   if (.not. csv_style_output) then
+      write(msgstring,  *) '--------------------------------------------------'
+      write(msgstring1, *) 'Starting to process input sequence file: '
+      write(msgstring2, *)  trim(filename_in(fnum))
+      call error_handler(E_MSG,'obs_info',msgstring, &
+                         text2=msgstring1, text3=msgstring2)
+   endif
    
    call read_obs_seq(filename_in(fnum), 0, 0, 0, seq_in)
    
@@ -174,7 +185,7 @@ do fnum = 1, num_input_files
    call validate_obs_seq_time(seq_in, filename_in(fnum))
    
    ! blank line
-   call error_handler(E_MSG,' ',' ')
+   if (.not. csv_style_output) call error_handler(E_MSG,' ',' ')
    
    ! Initialize individual observation variables
    call init_obs(     obs_in,  num_copies_in, num_qc_in)
@@ -200,7 +211,11 @@ do fnum = 1, num_input_files
          obs_time = get_obs_def_time(this_obs_def)
    
          call update(all_obs, obs_time)
-         call update(oinfo(obs_type_ind), obs_time)
+         if (obs_type_ind < 0) then
+            call update(identity_obs, obs_time)
+         else
+            call update(oinfo(obs_type_ind), obs_time)
+         endif
    
          call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
    
@@ -211,34 +226,47 @@ do fnum = 1, num_input_files
       call error_handler(E_MSG,'obs_info', msgstring)
    endif
    
-   if (.not. counts_only) then
+   if (.not. csv_style_output) then
       write(ounit, *) 'Totals for all obs types:'
       write(ounit, *) '  Count: ', all_obs%count
       call print_date(all_obs%first_time, '.  First obs:', ounit)
       call print_date(all_obs%last_time,  '.   Last obs:', ounit)
-      write(ounit, *) '---------------------------------------------------------'
    endif
    
    ! print out the results
-   ALLTYPES: do i=0, max_defined_types_of_obs
+   ALLTYPES: do i=1, max_defined_types_of_obs
       if (oinfo(i)%count == 0) cycle ALLTYPES
-      if (counts_only) then
+      if (csv_style_output) then
          call compute_times(oinfo(i)%first_time, oinfo(i)%last_time, avg_string=mid_string)
-         write(ounit, '(A,I8,A,A36,I8,2A)') "'"//trim(filename_in(fnum))//"', ", &
-                                             i, ", ", &
-                                             trim(get_name_for_type_of_obs(i))//", ", &
-                                             oinfo(i)%count, ", ", trim(mid_string)
+         write(ounit, '(A,'','',I8,'','',A36,'','',I8,'','',A)') &
+               trim(filename_in(fnum)), i, trim(get_name_for_type_of_obs(i)), &
+               oinfo(i)%count, trim(mid_string)
       else
-         write(ounit, '(A,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
+         write(ounit, '(A32,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
          call print_date(oinfo(i)%first_time, '.  First obs:', ounit)
          call print_date(oinfo(i)%last_time,  '.   Last obs:', ounit)
       endif
    enddo ALLTYPES
+   if (identity_obs%count > 0) then
+      if (csv_style_output) then
+         call compute_times(identity_obs%first_time, identity_obs%last_time, avg_string=mid_string)
+         write(ounit, '(A,'','',I8,'','',A36,'','',I8,'','',A)') &
+               trim(filename_in(fnum)), -1, 'IDENTITY_OBSERVATIONS', &
+               identity_obs%count, trim(mid_string)
+      else
+         write(ounit, '(A32,I8)') "IDENTITY_OBSERVATIONS          ", identity_obs%count
+         call print_date(identity_obs%first_time, '.  First obs:', ounit)
+         call print_date(identity_obs%last_time,  '.   Last obs:', ounit)
+      endif
+   endif
    
    call destroy_obs_sequence(seq_in)
    call destroy_obs(     obs_in )
    call destroy_obs(next_obs_in )
    
+   ! blank line only if not doing the CSV output
+   if (.not. csv_style_output) call error_handler(E_MSG,' ',' ')
+
 enddo
 
 call shutdown()
@@ -256,7 +284,6 @@ subroutine setup()
 
 ! Initialize modules used that require it
 call initialize_utilities('obs_info')
-call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 end subroutine setup
@@ -310,124 +337,6 @@ endif
 end subroutine update
 
 !---------------------------------------------------------------------
-subroutine print_obs_seq(seq_in, filename)
-
-! you can get more info by running the obs_diag program, but this
-! prints out a quick table of obs types and counts, overall start and
-! stop times, and metadata strings and counts.
-
-type(obs_sequence_type), intent(in) :: seq_in
-character(len=*),        intent(in) :: filename
-
-type(obs_type)          :: obs, next_obs
-type(obs_def_type)      :: this_obs_def
-logical                 :: is_there_one, is_this_last
-integer                 :: size_seq_in
-integer                 :: i
-integer                 :: this_obs_type
-integer                 :: type_count(max_defined_types_of_obs), identity_count
-
-
-! Initialize input obs_types
-do i = 0, max_defined_types_of_obs
-   type_count(i) = 0
-enddo
-identity_count = 0
-
-! make sure there are obs left to process before going on.
-! num_obs should be ok since we just constructed this seq so it should
-! have no unlinked obs.  if it might for some reason, use this instead:
-! size_seq_in = get_num_key_range(seq_in)     !current size of seq_in
-
-size_seq_in = get_num_obs(seq_in)
-if (size_seq_in == 0) then
-   msgstring = 'Obs_seq file '//trim(filename)//' is empty.'
-   call error_handler(E_MSG,'obs_info',msgstring)
-   return
-endif
-
-! Initialize individual observation variables 
-call init_obs(     obs, get_num_copies(seq_in), get_num_qc(seq_in))
-call init_obs(next_obs, get_num_copies(seq_in), get_num_qc(seq_in))
-
-! blank line
-call error_handler(E_MSG,'',' ')
-
-write(msgstring,*) 'Processing sequence file ', trim(filename)
-call error_handler(E_MSG,'',msgstring)
-
-call print_metadata(seq_in, filename)
-
-!-------------------------------------------------------------
-! Start to process obs from seq_in
-!--------------------------------------------------------------
-is_there_one = get_first_obs(seq_in, obs)
-
-if ( .not. is_there_one )  then
-   write(msgstring,*)'no first observation in ',trim(filename)
-   call error_handler(E_MSG,'obs_info', msgstring)
-endif
-
-! process it here
-is_this_last = .false.
-
-call get_obs_def(obs, this_obs_def)
-call print_time(get_obs_def_time(this_obs_def), ' First timestamp: ')
-! does not work with NO_CALENDAR
-if (cal) call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
-
-ObsLoop : do while ( .not. is_this_last)
-
-   call get_obs_def(obs, this_obs_def)
-   this_obs_type = get_obs_def_type_of_obs(this_obs_def)
-   if (this_obs_type < 0) then
-      identity_count = identity_count + 1
-   else
-      type_count(this_obs_type) = type_count(this_obs_type) + 1
-   endif
-!   print *, 'obs type index = ', this_obs_type
-!   if(this_obs_type > 0)print *, 'obs name = ', get_name_for_type_of_obs(this_obs_type)
-
-   call get_next_obs(seq_in, obs, next_obs, is_this_last)
-   if (.not. is_this_last) then 
-      obs = next_obs
-   else
-      call print_time(get_obs_def_time(this_obs_def), '  Last timestamp: ')
-      if (cal) call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
-   endif
-
-enddo ObsLoop
-
-
-write(msgstring, *) 'Number of obs processed  :          ', size_seq_in
-call error_handler(E_MSG, '', msgstring)
-write(msgstring, *) '---------------------------------------------------------'
-call error_handler(E_MSG, '', msgstring)
-do i = 0, max_defined_types_of_obs
-   if (type_count(i) > 0) then 
-      write(msgstring, '(a32,i8,a)') trim(get_name_for_type_of_obs(i)), &
-                                     type_count(i), ' obs'
-      call error_handler(E_MSG, '', msgstring)
-   endif
-enddo
-if (identity_count > 0) then 
-   write(msgstring, '(a32,i8,a)') 'Identity observations', &
-                                  identity_count, ' obs'
-   call error_handler(E_MSG, '', msgstring)
-endif
-
-! another blank line
-call error_handler(E_MSG, '', ' ')
-
-! Time to clean up
-
-call destroy_obs(     obs)
-call destroy_obs(next_obs)
-
-end subroutine print_obs_seq
-
-
-!---------------------------------------------------------------------
 subroutine validate_obs_seq_time(seq, filename)
 
 ! this eventually belongs in the obs_seq_mod code, but for now
@@ -472,8 +381,7 @@ is_there_one = get_first_obs(seq, obs)
 ! we already tested for 0 obs above, so there should be a first obs here.
 if ( .not. is_there_one )  then
    write(msgstring,*)'no first obs in sequence ' // trim(filename)
-   call error_handler(E_ERR,'obs_info:validate', &
-                      msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'obs_info:validate', msgstring, source)
    return
 endif
 
@@ -494,9 +402,7 @@ ObsLoop : do while ( .not. is_this_last)
       key = get_obs_key(obs)
       write(msgstring1,*)'obs number ', key, ' has earlier time than previous obs'
       write(msgstring2,*)'observations must be in increasing time order, file ' // trim(filename)
-      call error_handler(E_ERR,'obs_info:validate', msgstring2, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+      call error_handler(E_ERR,'obs_info:validate', msgstring2, source, text2=msgstring1)
    endif
 
    last_time = this_time
@@ -524,59 +430,15 @@ if (obs_count /= size_seq) then
    if (obs_count > size_seq) then
       ! this is a fatal error
       write(msgstring1,*) 'linked list obs_count > total size_seq, should not happen'
-      call error_handler(E_ERR,'obs_info:validate', msgstring, &
-                         source, revision, revdate, &
-                         text2=msgstring1)
+      call error_handler(E_ERR,'obs_info:validate', msgstring, source, text2=msgstring1)
    else
       ! just warning msg
       write(msgstring1,*) 'only observations in linked list will be processed'
-      call error_handler(E_MSG,'obs_info:validate', msgstring, &
-                         source, revision, revdate, text2=msgstring1)
+      call error_handler(E_MSG,'obs_info:validate', msgstring, source, text2=msgstring1)
    endif
 endif
 
 end subroutine validate_obs_seq_time
-
-
-!---------------------------------------------------------------------
-subroutine print_metadata(seq, fname)
-
-!
-! print out the metadata strings, trimmed
-!
-
-type(obs_sequence_type),    intent(in) :: seq
-character(len=*), optional, intent(in) :: fname
-
-integer :: num_copies , num_qc, i
-character(len=metadatalength) :: str
-
-num_copies = get_num_copies(seq)
-num_qc     = get_num_qc(    seq)
-
-if ( num_copies < 0 .or. num_qc < 0 ) then
-   write(msgstring3,*)' illegal copy or obs count in file '//trim(fname)
-   call error_handler(E_ERR, 'obs_info', msgstring3, &
-                      source, revision, revdate)
-endif
-
-MetaDataLoop : do i=1, num_copies
-   str = get_copy_meta_data(seq,i)
-
-   write(msgstring,*)'Data Metadata: ',trim(str)
-   call error_handler(E_MSG, '', msgstring)
-
-enddo MetaDataLoop
-
-QCMetaData : do i=1, num_qc
-   str = get_qc_meta_data(seq,i)
-
-   write(msgstring,*)'  QC Metadata: ', trim(str)
-   call error_handler(E_MSG, '', msgstring)
-
-enddo QCMetaData
-
-end subroutine print_metadata
 
 
 !---------------------------------------------------------------------
@@ -624,8 +486,7 @@ if (filename_in(1) == '' .and. filelist_in == '') then
 
    if (num_input_files /= 0 .and. num_input_files /= 1) then
       call error_handler(E_ERR,'obs_info', &
-          'if no filenames specified, num_input_files must be 0 or 1', &
-          source,revision,revdate)
+          'if no filenames specified, num_input_files must be 0 or 1', source)
    endif
 
    num_input_files = 1
@@ -636,8 +497,7 @@ endif
 ! make sure the namelist specifies one or the other but not both
 if (filename_in(1) /= '' .and. filelist_in /= '') then
    call error_handler(E_ERR,'obs_info', &
-       'cannot specify both filename_in and filelist_in', &
-       source,revision,revdate)
+       'cannot specify both filename_in and filelist_in', source)
 endif
 
 ! if they have specified a file which contains a list, read it into
@@ -657,8 +517,7 @@ do index = 1, MAX_IN_FILES
    if (filename_in(index) == '') then
       if (index == 1) then
          call error_handler(E_ERR,'obs_info', &
-             'namelist item '//trim(fsource)//' contains no filenames', &
-             source,revision,revdate)
+             'namelist item '//trim(fsource)//' contains no filenames', source)
       endif
       ! leaving num_input_files unspecified (or set to 0) means use
       ! whatever number of files is in the list.
@@ -676,15 +535,14 @@ do index = 1, MAX_IN_FILES
          write(msgstring3, *) 'if num_input_files is not 0, it must match the number of filenames specified'
 
          call error_handler(E_ERR,'obs_info', msgstring, &
-            source,revision,revdate, text2=msgstring2, text3=msgstring3)
+            source, text2=msgstring2, text3=msgstring3)
 
       endif
    endif
 enddo
 
 write(msgstring, *) 'cannot specify more than ',MAX_IN_FILES,' files'
-call error_handler(E_ERR,'obs_info', msgstring, &
-     source,revision,revdate)
+call error_handler(E_ERR,'obs_info', msgstring, source)
 
 end subroutine handle_filenames
 
@@ -699,20 +557,28 @@ character(len=*), intent(out), optional :: avg_string
 
 type(time_type)  :: avg_time
 integer          :: yr, mo, dy, hr, mn, sc
+integer          :: aday, asec
 character(len=9) :: mon_name
 
 avg_time = (first_time + last_time) / 2
 
+call get_time(avg_time, asec, aday)
+
 if (present(avg_day) .and. present(avg_sec)) then
-   call get_time(avg_time, avg_sec, avg_day)
+   avg_day = aday
+   avg_sec = asec
 else if (present(avg_sec)) then
    call get_time(avg_time, avg_sec)
 endif
 
 if (present(avg_string)) then
-   call get_date(avg_time, yr,mo,dy,hr,mn,sc)
-   mon_name = month_name(mo) 
-   write(avg_string, "(I2.2,'-',A3,'-',I4,' ',I2.2,':',I2.2,':',I2.2 )") dy, mon_name, yr, hr, mn, sc 
+   if (cal) then
+      call get_date(avg_time, yr,mo,dy,hr,mn,sc)
+      mon_name = month_name(mo) 
+      write(avg_string, "(I2.2,'-',A3,'-',I4,' ',I2.2,':',I2.2,':',I2.2 )") dy, mon_name, yr, hr, mn, sc 
+   else 
+      write(avg_string, "('day ', I8, ',', ' sec ', I8)") aday, asec
+   endif
 endif
 
 end subroutine compute_times
