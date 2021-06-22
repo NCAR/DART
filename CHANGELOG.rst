@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 18 2021 :: build fixes for PGI compiler and intel compiler osx. Tag: v9.11.1**
+
+- mkmf.templates fixes for intel.osx and pgi
+- input.nml fix for obs_total_error
+- path_names fix for test_quad_*_interp 
+
 **June 8 2021 :: New observation converter for Solar Induced Fluorescence (SIF).  Tag: v9.11.0**
 
 - Converter for harmonized SIF retrievals
