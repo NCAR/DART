@@ -1187,75 +1187,38 @@ end subroutine set_model_end_time
 
 
 
-subroutine get_state_meta_data(index_in, location, var_type)
 !------------------------------------------------------------------
-!
-! Given an integer index into the state vector structure, returns the
-! associated location. A second intent(out) optional argument kind
-! can be returned if the model has more than one type of field (for
-! instance temperature and zonal wind component). This interface is
-! required for all filter applications as it is required for computing
-! the distance between observations and state variables.
+!> Given an integer index into the state vector structure, returns the
+!> associated location. A second intent(out) optional argument kind
+!> can be returned if the model has more than one type of field (for
+!> instance temperature and zonal wind component). This interface is
+!> required for all filter applications as it is required for computing
+!> the distance between observations and state variables.
 
-integer(i8),          intent(in)  :: index_in
+subroutine get_state_meta_data(index_in, location, var_type)
+
+integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
 real(R8) :: lat, lon, depth
 integer :: var_num, offset, lon_index, lat_index, depth_index
-integer :: iloc, jloc, kloc
+integer :: iloc, jloc, kloc, var_id
 
 if ( .not. module_initialized ) call static_init_model
 
-!print *, 'asking for meta data about index ', index_in
+call get_model_variable_indices(index_in, iloc, jloc, kloc, var_id)
 
-if (index_in < start_index(S_index+1)) then
-   if (present(var_type)) var_type = QTY_SALINITY  
-   var_num = S_index
-else if (index_in < start_index(T_index+1)) then
-   if (present(var_type)) var_type = QTY_TEMPERATURE  
-   var_num = T_index
-else if (index_in < start_index(U_index+1)) then
-   if (present(var_type)) var_type = QTY_U_CURRENT_COMPONENT
-   var_num = U_index
-else if (index_in < start_index(V_index+1)) then
-   if (present(var_type)) var_type = QTY_V_CURRENT_COMPONENT
-   var_num = V_index
-else 
-   if (present(var_type)) var_type = QTY_SEA_SURFACE_HEIGHT
-   var_num = Eta_index
-endif
+if (present(var_type)) var_type = var_id
 
-!print *, 'var num = ', var_num
+!>@todo FIXME: this doesn't account for the staggered grids ...
+!>        use the var_id to select which grid variable to use
 
-! local offset into this var array
-offset = index_in - start_index(var_num)
+lon   = XC(iloc)
+lat   = YC(jloc)
+depth = ZC(kloc)
 
-!print *, 'offset = ', offset
-
-if (var_num == Eta_index) then
-  depth = 0.0
-  depth_index = 1
-else
-  depth_index = (offset / (Nx * Ny)) + 1
-  depth = ZC(depth_index)
-endif
-
-lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
-lon_index = offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
-
-call get_model_variable_indices(index_in, iloc, jloc, kloc)
-
-print *, 'gsmd: index_in, lon, lat, depth index = ', index_in, lon_index, lat_index, depth_index
-print *, 'gsmd: index_in, lon, lat, depth index = ', index_in, iloc, jloc, kloc
-
-! TJH: this doesn't account for the staggered grids ...
-
-lon = XC(lon_index)
-lat = YC(lat_index)
-
-print *, 'gsmd (old) : lon, lat, depth = ', lon, lat, depth
-print *, 'gsmd (new) : lon, lat, depth = ', XC(iloc), YC(jloc), ZC(kloc)
+if (var_id == QTY_SEA_SURFACE_HEIGHT) depth = 0.0_r8
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
