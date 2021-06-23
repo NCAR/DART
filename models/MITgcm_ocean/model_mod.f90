@@ -7,7 +7,8 @@ module model_mod
 ! This is the interface between the MITgcm ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8, i8, SECPERDAY
+use        types_mod, only : r4, r8, i8, SECPERDAY, vtablenamelength, &
+                             MISSING_I, MISSING_R4, MISSING_R8
 
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              set_calendar_type, GREGORIAN, print_time, print_date, &
@@ -20,10 +21,11 @@ use     location_mod, only : location_type,      get_close_init, &
                              VERTISHEIGHT, get_location, is_vertical, &
                              convert_vertical_obs, convert_vertical_state
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
+use    utilities_mod, only : error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, nc_check, do_output, to_upper, &
                              find_namelist_in_file, check_namelist_read, &
-                             open_file, file_exist, find_textfile_dims, file_to_text
+                             open_file, file_exist, find_textfile_dims, file_to_text, &
+                             string_to_real, string_to_logical
 
 use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT, &
                              QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT, &
@@ -88,21 +90,13 @@ public :: MIT_meta_type, read_meta, write_meta, &
           DARTtime_to_timestepindex, &
           lon_bounds,lat_bounds, lon_dist, max_nx, max_ny, max_nz, max_nr, MAX_LEN_FNAM 
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'MITgcm_ocean/model_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'MITgcm_ocean/model_mod.f90'
 
-character(len=512) :: msgstring
+character(len=512) :: string1, string2, string3
 logical, save :: module_initialized = .false.
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
-
-!! FIXME: This is horrid ... 'reclen' is compiler-dependent.
-!! IBM XLF  -- item_size_direct_access == 4,8
-!! IFORT    -- needs compile switch "-assume byterecl"
-integer, parameter :: item_size_direct_access = 4
 
 !------------------------------------------------------------------
 !
@@ -261,21 +255,16 @@ integer, parameter :: U_index   = 3
 integer, parameter :: V_index   = 4
 integer, parameter :: Eta_index = 5
 
+
 ! (the absoft compiler likes them to all be the same length during declaration)
 ! we trim the blanks off before use anyway, so ...
-character(len=128) :: progvarnames(nfields) = (/'PSAL','PTMP','UVEL','VVEL','ETA '/)
-character(len=128) :: quantity_list(nfields) = (/ &
-'QTY_SALINITY             ', & 
-'QTY_POTENTIAL_TEMPERATURE', &
-'QTY_U_CURRENT_COMPONENT  ', &
-'QTY_V_CURRENT_COMPONENT  ', &
-'QTY_SEA_SURFACE_HEIGHT   '/)
-
-integer :: quantity_integers(nfields)
+character(len=4) :: progvarnames(nfields) = (/'PSAL','PTMP','UVEL','VVEL','ETA '/)
 
 integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf files.
 
 integer :: start_index(nfields)
+
+
 
 ! Grid parameters - the values will be read from a
 ! standard MITgcm namelist and filled in here.
@@ -300,7 +289,19 @@ type(time_type) :: model_time, model_timestep
 integer :: model_size    ! the state vector length
 
 
-character(len=256) :: model_shape_file = 'filter_ics.0001'
+! DART contents are specified in the input.nml:&model_nml namelist.
+!>@todo  NF90_MAX_NAME is 256 ... this makes the namelist output unreadable
+integer, parameter :: MAX_STATE_VARIABLES = 8
+integer, parameter :: num_state_table_columns = 5
+character(len=vtablenamelength) :: mitgcm_variables(MAX_STATE_VARIABLES * num_state_table_columns ) = ' '
+character(len=vtablenamelength) :: nbling_variables(MAX_STATE_VARIABLES * num_state_table_columns ) = ' '
+character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
+integer  :: quantity_list(MAX_STATE_VARIABLES)   = MISSING_I
+real(r8) ::    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
+logical  ::   update_list(MAX_STATE_VARIABLES)   = .FALSE.
+
+
+character(len=256) :: model_shape_files(2) = ' '
 integer  :: assimilation_period_days = 7
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
@@ -308,7 +309,9 @@ real(r8) :: model_perturbation_amplitude = 0.2
 namelist /model_nml/ assimilation_period_days,    &
                      assimilation_period_seconds, &
                      model_perturbation_amplitude, &
-                     model_shape_file
+                     model_shape_files, &
+                     mitgcm_variables, &
+                     nbling_variables
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
@@ -322,6 +325,7 @@ type MIT_meta_type
 end type MIT_meta_type
 
 integer :: domain_id
+integer :: nvars
 
 contains
 
@@ -354,9 +358,6 @@ integer :: ss, dd
 !   set the grid location info
 !
 
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
-
 ! Since this routine calls other routines that could call this routine
 ! we'll say we've been initialized pretty dang early.
 module_initialized = .true.
@@ -382,10 +383,10 @@ if (index(TheCalendar,'g') > 0 ) then
 elseif (index(TheCalendar,'G') > 0 )then
    call set_calendar_type(GREGORIAN)
 else
-   write(msgstring,*)"namelist data.cal indicates a ",trim(TheCalendar)," calendar."
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"only have support for Gregorian"
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)"namelist data.cal indicates a ",trim(TheCalendar)," calendar."
+   call error_handler(E_MSG,"static_init_model", string1, source)
+   write(string1,*)"only have support for Gregorian"
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 if (do_output()) write(*,*)'model_mod:namelist cal_NML',startDate_1,startDate_2
 if (do_output()) write(*,nml=CAL_NML)
@@ -400,12 +401,12 @@ if ((deltaTmom   == deltaTtracer) .and. &
     (deltaTClock == deltaTtracer)) then
    ocean_dynamics_timestep = deltaTmom                    ! need a time_type version
 else
-   write(msgstring,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"values were ",deltaTmom, deltaTtracer, deltaTClock
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"At present, DART only supports equal values."
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
+   call error_handler(E_MSG,"static_init_model", string1, source)
+   write(string1,*)"values were ",deltaTmom, deltaTtracer, deltaTClock
+   call error_handler(E_MSG,"static_init_model", string1, source)
+   write(string1,*)"At present, DART only supports equal values."
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 
 ! Define the assimilation period as the model_timestep
@@ -418,9 +419,9 @@ model_timestep = set_model_time_step(assimilation_period_seconds, &
 
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
-write(msgstring,*)"assimilation period is ",dd," days ",ss," seconds"
-call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
-if (do_output()) write(logfileunit,*)msgstring
+write(string1,*)"assimilation period is ",dd," days ",ss," seconds"
+call error_handler(E_MSG,'static_init_model',string1,source)
+if (do_output()) write(logfileunit,*)string1
 
 ! Grid-related variables are in PARM04
 delX(:) = 0.0_r4
@@ -455,8 +456,8 @@ do i=1, size(delX)
  endif
 enddo
 if (Nx == -1) then
-   write(msgstring,*)'could not figure out number of longitudes from delX in namelist'
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)'could not figure out number of longitudes from delX in namelist'
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 
 Ny = -1
@@ -467,8 +468,8 @@ do i=1, size(delY)
  endif
 enddo
 if (Ny == -1) then
-   write(msgstring,*)'could not figure out number of latitudes from delY in namelist'
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)'could not figure out number of latitudes from delY in namelist'
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 
 Nz = -1
@@ -479,8 +480,8 @@ do i=1, size(delZ)
  endif
 enddo
 if (Nz == -1) then
-   write(msgstring,*)'could not figure out number of depth levels from delZ in namelist'
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)'could not figure out number of depth levels from delZ in namelist'
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 
 ! We know enough to allocate grid variables. 
@@ -547,14 +548,11 @@ model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 
 if (do_output()) write(*,*) 'model_size = ', model_size
 
-quantity_integers(1) = get_index_for_quantity(quantity_list(1))
-quantity_integers(2) = get_index_for_quantity(quantity_list(2))
-quantity_integers(3) = get_index_for_quantity(quantity_list(3))
-quantity_integers(4) = get_index_for_quantity(quantity_list(4))
-quantity_integers(5) = get_index_for_quantity(quantity_list(5))
+! parse_variable_input() fills var_names, quantity_list, clamp_vals, update_list
+call parse_variable_input(mitgcm_variables, nvars)
 
-domain_id = add_domain(model_shape_file, nfields, var_names = progvarnames, kind_list = quantity_integers)
-
+domain_id = add_domain(model_shape_files(1), nvars, &
+                    var_names, quantity_list, clamp_vals, update_list )
 
 end subroutine static_init_model
 
@@ -1342,10 +1340,6 @@ call nc_check(nf90_Redef(ncFileID),"nc_write_model_atts",   "redef "//trim(filen
 
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ), &
            "nc_write_model_atts", "source put "//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision), &
-           "nc_write_model_atts", "revision put "//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ), &
-           "nc_write_model_atts", "revdate put "//trim(filename))
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model",  "MITgcm_ocean" ), &
            "nc_write_model_atts", "model put "//trim(filename))
 
@@ -1610,8 +1604,8 @@ iunit = get_unit()
 
 inquire(file=filename, exist=fexist, iostat=io)
 if ((io /= 0) .or. (.not. fexist)) then 
-   write(msgstring,*) trim(filename), ' does not exist, using namelist values'
-   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) trim(filename), ' does not exist, using namelist values'
+   call error_handler(E_MSG,'model_mod:read_meta',string1,source)
    return
 endif
 
@@ -1619,8 +1613,8 @@ endif
 
 open(unit=iunit, file=filename, action='read', form='formatted', iostat = io)
 if (io /= 0) then
-   write(msgstring,*) 'cannot open ', trim(filename), ', using namelist values'
-   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'cannot open ', trim(filename), ', using namelist values'
+   call error_handler(E_MSG,'model_mod:read_meta',string1,source)
    return
 endif
 
@@ -1638,15 +1632,15 @@ ReadnDims: do i = 1,1000
    if (indx > 0) then
       read(charstring(indx+9:),*,iostat=io)read_meta%nDims
       if (io /= 0 )then
-         write(msgstring,*)'unable to parse line ',nlines,' from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta:nDims',msgstring,source,revision,revdate)
+         write(string1,*)'unable to parse line ',nlines,' from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta:nDims',string1,source)
       endif
    endif
 enddo ReadnDims
 
 if (read_meta%nDims < 1) then
-   write(msgstring,*) 'unable to determine nDims from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine nDims from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',string1,source)
 endif
 
 ! Read every line looking for the dimList entry
@@ -1660,8 +1654,8 @@ ReaddimList: do i = 1,nlines
    
    read(iunit,'(a)', iostat = io)charstring
    if (io /= 0) then
-      write(msgstring,*) 'unable to read line ',i,' of ', trim(filename)
-      call error_handler(E_ERR,'model_mod:read_meta:dimList',msgstring,source,revision,revdate)
+      write(string1,*) 'unable to read line ',i,' of ', trim(filename)
+      call error_handler(E_ERR,'model_mod:read_meta:dimList',string1,source)
    endif
 
    indx = index(charstring,'dimList = [')
@@ -1670,8 +1664,8 @@ ReaddimList: do i = 1,nlines
       do j = 1,read_meta%nDims
          read(iunit,*,iostat=io)read_meta%dimList(j),dim1,dimN
          if (io /= 0) then
-            write(msgstring,*)'unable to parse dimList(',j, ') from ', trim(filename)
-            call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+            write(string1,*)'unable to parse dimList(',j, ') from ', trim(filename)
+            call error_handler(E_ERR,'model_mod:read_meta',string1,source)
          endif
       enddo
       exit ReaddimList
@@ -1679,8 +1673,8 @@ ReaddimList: do i = 1,nlines
 enddo ReaddimList
 
 if (all(read_meta%dimList < 1)) then
-   write(msgstring,*) 'unable to determine dimList from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine dimList from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',string1,source)
 endif
 
 
@@ -1692,8 +1686,8 @@ Readdataprec: do i = 1,nlines
 
    read(iunit,'(a)', iostat = io)charstring
    if (io /= 0) then
-      write(msgstring,*) 'unable to read line ',i,' of ', trim(filename)
-      call error_handler(E_ERR,'model_mod:read_meta:dataprec',msgstring,source,revision,revdate)
+      write(string1,*) 'unable to read line ',i,' of ', trim(filename)
+      call error_handler(E_ERR,'model_mod:read_meta:dataprec',string1,source)
    endif
 
    indx = index(charstring,'dataprec = [')
@@ -1701,16 +1695,16 @@ Readdataprec: do i = 1,nlines
    if (indx > 0) then
       read(charstring(indx+12:),*,iostat=io)read_meta%dataprec
       if (io /= 0) then
-         write(msgstring,*)'unable to parse dataprec from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+         write(string1,*)'unable to parse dataprec from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta',string1,source)
       endif
       exit Readdataprec
    endif
 enddo Readdataprec
 
 if (index(read_meta%dataprec,'null') > 0) then
-   write(msgstring,*) 'unable to determine dataprec from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine dataprec from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',string1,source)
 endif
 
 
@@ -1721,7 +1715,7 @@ rewind(iunit)
 Readnrecords: do i = 1,nlines 
    read(iunit,'(a)', iostat = io)charstring
    if (io /= 0) then
-      call error_handler(E_ERR,'model_mod:read_meta','message',source,revision,revdate)
+      call error_handler(E_ERR,'model_mod:read_meta','message',source)
    endif
 
    indx = index(charstring,'nrecords = [')
@@ -1729,16 +1723,16 @@ Readnrecords: do i = 1,nlines
    if (indx > 0) then
       read(charstring(indx+12:),*,iostat=io)read_meta%nrecords
       if (io /= 0) then
-         write(msgstring,*)'unable to parse nrecords from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+         write(string1,*)'unable to parse nrecords from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta',string1,source)
       endif
       exit Readnrecords
    endif
 enddo Readnrecords
 
 if (read_meta%nrecords < 1) then
-   write(msgstring,*) 'unable to determine nrecords from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine nrecords from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',string1,source)
 endif
 
 
@@ -1749,15 +1743,15 @@ rewind(iunit)
 ReadtimeStepNumber: do i = 1,nlines 
    read(iunit,'(a)', iostat = io)charstring
    if (io /= 0) then
-      call error_handler(E_ERR,'model_mod:read_meta','message',source,revision,revdate)
+      call error_handler(E_ERR,'model_mod:read_meta','message',source)
    endif
 
    indx = index(charstring,'timeStepNumber = [')
    if (indx > 0) then
       read(charstring(indx+18:),*,iostat=io)read_meta%timeStepNumber
       if (io /= 0) then
-         write(msgstring,*)'unable to parse timeStepNumber from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+         write(string1,*)'unable to parse timeStepNumber from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta',string1,source)
       endif
       exit ReadtimeStepNumber
 
@@ -1765,8 +1759,8 @@ ReadtimeStepNumber: do i = 1,nlines
 enddo ReadtimeStepNumber
 
 if (read_meta%timeStepNumber < 0) then
-   write(msgstring,*) 'unable to determine timeStepNumber from ', trim(filename)
-   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine timeStepNumber from ', trim(filename)
+   call error_handler(E_MSG,'model_mod:read_meta',string1,source)
 endif
 
 close(iunit)
@@ -1790,8 +1784,8 @@ filename = trim(filebase)//'.meta'
 iunit = get_unit()
 open(unit=iunit, file=filename, action='write', form='formatted', iostat = io)
 if (io /= 0) then
-   write(msgstring,*) 'unable to open file ', trim(filename), ' for writing'
-   call error_handler(E_ERR,'model_mod:write_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to open file ', trim(filename), ' for writing'
+   call error_handler(E_ERR,'model_mod:write_meta',string1,source)
 endif
 
 write(iunit, "(A,I5,A)") "nDims = [ ", metadata%nDims, " ];"
@@ -1850,9 +1844,9 @@ offset = set_time(0,0)
 maxtimestep = HUGE(modeloffset)/ocean_dynamics_timestep
 
 if (TimeStepIndex >= maxtimestep) then
-   write(msgstring,*)' timestepindex (',TimeStepIndex, &
+   write(string1,*)' timestepindex (',TimeStepIndex, &
                      ') * timestep (',ocean_dynamics_timestep,') overflows.'
-   call error_handler(E_ERR,'model_mod:timestep_to_DARTtime',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:timestep_to_DARTtime',string1,source) 
 endif
 
 modeloffset = nint(TimeStepIndex * ocean_dynamics_timestep)
@@ -1928,8 +1922,8 @@ call get_time(offset,ss,dd)
 
 if (dd >= (HUGE(dd)/SECPERDAY)) then   ! overflow situation
    call print_time(mytime,'DART time is',logfileunit)
-   write(msgstring,*)'Trying to convert DART time to MIT timestep overflows'
-   call error_handler(E_ERR,'model_mod:DARTtime_to_timestepindex',msgstring,source,revision,revdate) 
+   write(string1,*)'Trying to convert DART time to MIT timestep overflows'
+   call error_handler(E_ERR,'model_mod:DARTtime_to_timestepindex',string1,source) 
 endif
 
 DARTtime_to_timestepindex = nint((dd*SECPERDAY+ss) / ocean_dynamics_timestep)
@@ -1975,7 +1969,7 @@ character(len=169) :: nml_string, uc_string
 
 if ( .not. file_exist('data') ) then
    call error_handler(E_ERR,'write_data_namelistfile', &
-      'namelist file "data" does not exist',source,revision,revdate) 
+      'namelist file "data" does not exist',source) 
 endif
 
 iunit = open_file('data',      action = 'read')
@@ -1996,9 +1990,8 @@ FINDSTART : do
    !  write(*,*)'FINDSTART ... end-of-file at ',linenumN
       exit FINDSTART
    elseif (io /= 0 ) then ! read error
-      write(*,msgstring)'manual namelist read failed at line ',linenum1
-      call error_handler(E_ERR,'write_data_namelistfile', &
-         msgstring,source,revision,revdate) 
+      write(*,string1)'manual namelist read failed at line ',linenum1
+      call error_handler(E_ERR,'write_data_namelistfile',string1,source) 
    endif
 
    linenumN = linenumN + 1
@@ -2013,9 +2006,8 @@ enddo FINDSTART
 ! write(*,*)'File has ',linenumN,' lines'
 
 if (linenum1 < 1) then
-   write(*,msgstring)'unable to find string PARM03'
-   call error_handler(E_ERR,'write_data_namelistfile', &
-      msgstring,source,revision,revdate) 
+   write(*,string1)'unable to find string PARM03'
+   call error_handler(E_ERR,'write_data_namelistfile',string1,source) 
 endif
 
 ! We must preserve the value of the paramters right now,
@@ -2030,8 +2022,7 @@ MyEndTime  = endTime
 rewind(iunit) 
 read(iunit, nml = PARM03, iostat = io)
 if (io /= 0 ) then
-   call error_handler(E_ERR,'write_data_namelistfile', &
-   'namelist READ failed somehow',source,revision,revdate) 
+   call error_handler(E_ERR,'write_data_namelistfile','namelist READ failed somehow',source) 
 endif
 
 endTime  = MyEndTime
@@ -2049,9 +2040,8 @@ FINDEND : do
    !  write(*,*)'FINDEND ... end-of-file at ',linenumE
       exit FINDEND
    elseif (io /= 0 ) then ! read error
-      write(*,msgstring)'manual namelist read failed at line ',linenumE
-      call error_handler(E_ERR,'write_data_namelistfile', &
-         msgstring,source,revision,revdate) 
+      write(*,string1)'manual namelist read failed at line ',linenumE
+      call error_handler(E_ERR,'write_data_namelistfile',string1,source) 
    endif
 
    linenumE = linenumE + 1
@@ -2101,6 +2091,73 @@ close(iunit)
 close(ounit)
 
 end subroutine write_data_namelistfile
+
+
+!-----------------------------------------------------------------------
+!>
+!> Fill the array of requested variables, dart kinds, possible min/max
+!> values and whether or not to update the field in the output file.
+!>
+!>@param state_variables the list of variables and kinds from model_mod_nml
+!>@param ngood the number of variable/KIND pairs specified
+
+subroutine parse_variable_input( state_variables, ngood )
+
+character(len=*), intent(in)  :: state_variables(:)
+integer,          intent(out) :: ngood
+
+integer :: i
+character(len=NF90_MAX_NAME) :: varname       ! column 1
+character(len=NF90_MAX_NAME) :: dartstr       ! column 2
+character(len=NF90_MAX_NAME) :: minvalstring  ! column 3
+character(len=NF90_MAX_NAME) :: maxvalstring  ! column 4
+character(len=NF90_MAX_NAME) :: state_or_aux  ! column 5   change to updateable
+
+ngood = 0
+MyLoop : do i = 1, MAX_STATE_VARIABLES
+
+   varname      = trim(state_variables(num_state_table_columns*i-4))
+   dartstr      = trim(state_variables(num_state_table_columns*i-3))
+   minvalstring = trim(state_variables(num_state_table_columns*i-2))
+   maxvalstring = trim(state_variables(num_state_table_columns*i-1))
+   state_or_aux = trim(state_variables(num_state_table_columns*i  ))
+
+   if ( varname == ' ' .and. dartstr == ' ' ) exit MyLoop ! Found end of list.
+
+   if ( varname == ' ' .or. dartstr == ' ' ) then
+      string1 = 'model_nml:model "variables" not fully specified'
+      call error_handler(E_ERR,'parse_variable_input:',string1,source)
+   endif
+
+   ! Make sure DART kind is valid
+
+   if( get_index_for_quantity(dartstr) < 0 ) then
+      write(string1,'(''there is no quantity <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
+      call error_handler(E_ERR,'parse_variable_input:',string1,source)
+   endif
+
+   call to_upper(minvalstring)
+   call to_upper(maxvalstring)
+   call to_upper(state_or_aux)
+
+   var_names(   i) = varname
+   quantity_list(   i) = get_index_for_quantity(dartstr)
+   clamp_vals(i,1) = string_to_real(minvalstring)
+   clamp_vals(i,2) = string_to_real(maxvalstring)
+   update_list( i) = string_to_logical(state_or_aux, 'UPDATE')
+
+   ngood = ngood + 1
+
+enddo MyLoop
+
+if (ngood == MAX_STATE_VARIABLES) then
+   string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
+   write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
+   call error_handler(E_MSG,'parse_variable_input:',string1,source,text2=string2)
+endif
+
+end subroutine parse_variable_input
+
 
 !===================================================================
 ! End of MITgcm_ocean model_mod

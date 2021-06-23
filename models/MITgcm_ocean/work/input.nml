@@ -177,7 +177,12 @@
    assimilation_period_days     = 0
    assimilation_period_seconds  = 259200
    model_perturbation_amplitude = 0.2
-   model_shape_file             = 'TEST_EXEC/filter_ics.0001.nc'
+   model_shape_files            = 'OUTPUT.nc'
+   mitgcm_variables = 'PTMP', 'QTY_TEMPERATURE',          'NA', 'NA', 'update',
+                      'PSAL', 'QTY_SALINITY',            '0.0', 'NA', 'update',
+                      'UVEL', 'QTY_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+                      'VVEL', 'QTY_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+                      'ETA',  'QTY_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update', 
   /
 
 
@@ -436,7 +441,7 @@
 #   quantity_of_interest = 'QTY_DENSITY'
 
 &model_mod_check_nml
-   input_state_files     = 'TEST_EXEC/filter_ics.0001.nc'
+   input_state_files     = 'OUTPUT.nc'
    output_state_files    = 'check_me'
    verbose               = .TRUE.
    test1thru             = 0
