@@ -333,11 +333,10 @@ contains
 
 
 
-subroutine static_init_model()
 !------------------------------------------------------------------
-!
-! Called to do one time initialization of the model. In this case,
-! it reads in the grid information and then the model data.
+!> Called to do one-time initialization of the model.
+
+subroutine static_init_model()
 
 character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
 integer  :: quantity_list(MAX_STATE_VARIABLES)   = MISSING_I
@@ -497,9 +496,6 @@ if (.not. allocated(ZC)) allocate(ZC(Nz))
 if (.not. allocated(XG)) allocate(XG(Nx))
 if (.not. allocated(YG)) allocate(YG(Ny))
 if (.not. allocated(ZG)) allocate(ZG(Nz))
-
-!allocate(XC(Nx), YC(Ny), ZC(Nz))
-!allocate(XG(Nx), YG(Ny), ZG(Nz))
 
 ! XG (the grid edges) and XC (the grid centroids) must be computed.
 
@@ -720,7 +716,7 @@ else   ! if pressure or undefined, we don't know what to do
 endif
 
 ! determine which variable is the desired QUANTITY
-varid = get_varid_from_kind(domain_id, obs_quantity)
+varid = get_varid_from_kind(domain_id, quantity)
 
 if (varid < 1) then
    istatus = 3
@@ -733,7 +729,7 @@ base_offset = get_index_start(domain_id, varid)
 
 ! For Sea Surface Height don't need the vertical coordinate
 if( is_vertical(location,"SURFACE") ) then
-   call lat_lon_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_quantity, interp_val, istatus)
+   call lat_lon_interpolate(state_handle, ens_size, base_offset, llon, llat, quantity, interp_val, istatus)
    return
 endif
    
@@ -743,12 +739,17 @@ if(hstatus /= 0) then
    istatus = 4
    return
 endif
+
+! TJH: THIS IS A PROBLEM ... the offset is calulated assuming a storage order ... 
+! lat_lon_interpolate needs to have the vertical level index as an input variable
+! instead of the 'offset' to the right horizontal slab.
    
 ! Find the base location for the top height and interpolate horizontally on this level
 offset = base_offset + (hgt_top - 1) * nx * ny
 !print *, 'relative top height offset = ', offset(1) - base_offset
 !print *, 'absolute top height offset = ', offset(1)
-call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, obs_quantity, top_val, istatus)
+
+call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, quantity, top_val, istatus)
 ! Failed istatus from interpolate means give up
 do i =1,ens_size
    if(istatus(i) /= 0) return
@@ -758,7 +759,7 @@ enddo
 offset = base_offset + (hgt_bot - 1) * nx * ny
 !print *, 'relative bot height offset = ', offset(1) - base_offset
 !print *, 'absolute bot height offset = ', offset(1)
-call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, obs_quantity, bot_val, istatus)
+call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, quantity, bot_val, istatus)
 ! Failed istatus from interpolate means give up
 do i =1,ens_size
    if(istatus(i) /= 0) return
@@ -884,6 +885,9 @@ if(lat_status /= 0) then
    istatus = 12
    return
 endif
+
+
+! TJH get_val() should be replaced with get_dart_vector_index() and get_state()
 
 ! Vector is laid out with lat outermost loop, lon innermost loop
 ! Find the bounding points for the lat lon box
@@ -1076,43 +1080,45 @@ endif
 end function lon_dist
 
 
-!Lanai version: function get_val(lon_index, lat_index, nlon, x, masked)
 function get_val(lon_index, lat_index, nlon, state_handle,offset,ens_size, masked)
 !=======================================================================
 !
 
 ! Returns the value from a single level array given the lat and lon indices
-integer,     intent(in) :: lon_index, lat_index, nlon
-!Lanai: real(r8),    intent(in) :: x(:)
-type(ensemble_type), intent(in) :: state_handle
-integer(i8),        intent(in)      :: offset
-integer,        intent(in)      :: ens_size
+integer,             intent(in)  :: lon_index, lat_index, nlon
+type(ensemble_type), intent(in)  :: state_handle
+integer(i8),         intent(in)  :: offset
+integer,             intent(in)  :: ens_size
+logical,             intent(out) :: masked
+real(r8)                         :: get_val(ens_size)
 
-logical,    intent(out) :: masked
-!Lanai: real(r8)                :: get_val
-real(r8)                :: get_val(ens_size)
 integer(i8) :: state_index
 integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
-! Layout has lons varying most rapidly
 !print *, 'lat_index, lon_index, nlon', lat_index, lon_index, nlon
-!print *, 'computing index val ', (lat_index - 1) * nlon + lon_index
-!Lanai: get_val = x((lat_index - 1) * nlon + lon_index)
+
+!TJH: this calculation is only correct for slabs ...
 state_index=int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offset-1,i8)
+
+!TJH DART has an accessor function ...
+!TJH state_index = get_dart_vector_index(lon_index,lat_index,lev_index,dom_id,var_id)
+
 get_val = get_state(state_index,state_handle)
+
 !print *, 'get_val = ', get_val
 
 ! Masked returns false if the value is masked
 ! A grid variable is assumed to be masked if its value is FVAL. 
-!Just to maintain legacy, we also assume that A grid variable is assumed to be masked if its value is exactly 0.
+! Just to maintain legacy, we also assume that A grid variable is assumed 
+! to be masked if its value is exactly 0.
 ! See discussion in lat_lon_interpolate.
 masked = .false.
 do i=1,ens_size
- if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
+   if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
 enddo
-!print *, 'masked is ', masked
+
 end function get_val
 
 
@@ -1197,6 +1203,7 @@ integer,             intent(out), optional :: var_type
 
 real(R8) :: lat, lon, depth
 integer :: var_num, offset, lon_index, lat_index, depth_index
+integer :: iloc, jloc, kloc
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1237,11 +1244,18 @@ endif
 lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
 lon_index = offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
 
-!print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
+call get_model_variable_indices(index_in, iloc, jloc, kloc)
+
+print *, 'gsmd: index_in, lon, lat, depth index = ', index_in, lon_index, lat_index, depth_index
+print *, 'gsmd: index_in, lon, lat, depth index = ', index_in, iloc, jloc, kloc
+
+! TJH: this doesn't account for the staggered grids ...
+
 lon = XC(lon_index)
 lat = YC(lat_index)
 
-!print *, 'lon, lat, depth = ', lon, lat, depth
+print *, 'gsmd (old) : lon, lat, depth = ', lon, lat, depth
+print *, 'gsmd (new) : lon, lat, depth = ', XC(iloc), YC(jloc), ZC(kloc)
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
@@ -1465,7 +1479,6 @@ call nc_check(nf90_sync(ncFileID), "nc_write_model_atts", "atts sync")
 
 ierr = 0 ! If we got here, things went well.
 
-!end function nc_write_model_atts
 end subroutine nc_write_model_atts
 
 
@@ -1941,21 +1954,21 @@ DARTtime_to_timestepindex = nint((dd*SECPERDAY+ss) / ocean_dynamics_timestep)
 end function DARTtime_to_timestepindex
 
 
-
-subroutine get_gridsize(num_x, num_y, num_z)
 !------------------------------------------------------------------
 !
- integer, intent(out) :: num_x, num_y, num_z
 
- num_x = Nx
- num_y = Ny
- num_z = Nz
+subroutine get_gridsize(num_x, num_y, num_z)
+
+integer, intent(out) :: num_x, num_y, num_z
+
+num_x = Nx
+num_y = Ny
+num_z = Nz
 
 end subroutine get_gridsize
 
 
 
-subroutine write_data_namelistfile
 !------------------------------------------------------------------
 ! Essentially, we want to set the PARM03:endTime value to tell the
 ! model when to stop. To do that, we have to write an entirely new
@@ -1968,7 +1981,8 @@ subroutine write_data_namelistfile
 ! So - once we know where the namelist starts and stops, we can
 ! hunt for the values we need to change and change them while 
 ! preserving everything else.
-! 
+
+subroutine write_data_namelistfile
 
 integer :: iunit, ounit
 integer :: linenum1, linenumE, linenumN
