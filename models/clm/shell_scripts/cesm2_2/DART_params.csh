@@ -34,9 +34,9 @@ setenv num_instances  3
 # we are using 'SIF' in the CASE. FYI only.
 
 if (${num_instances} == 1) then
-   setenv CASE clm5_f09_SIF_pmo
+   setenv CASE clm5_f09_pmo
 else
-   setenv CASE clm5_f09_SIF_e${num_instances}
+   setenv CASE clm5_f09_hybrid_free_e${num_instances}
 endif
 
 # ==============================================================================
@@ -124,8 +124,8 @@ setenv pmo_output_baseobsdir  /glade/p/cisl/dares/Observations/land/pmo/output
 # startdate  The date used as the starting date for the hybrid run.
 # ==============================================================================
 
-setenv refcase      clm2.2.01_f09_80
-setenv refyear      2010
+setenv refcase      clm5.0.06_f09_80
+setenv refyear      2011
 setenv refmon       01
 setenv refday       01
 setenv reftod       00000

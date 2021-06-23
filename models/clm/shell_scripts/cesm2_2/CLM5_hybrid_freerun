@@ -5,15 +5,10 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # ------------------------------------------------------------------------------
-# Purpose: Simply advances an ensemble in 1 month chunks.
-#          Writes out restart files once per month.
-#          All ensembles start from the same (default) input file.
-#
-# Put another way: This script takes the spun-up CLM state supplied with
-# the compset and forecasts an ensemble of these. Each ensemble member uses
-# a unique data atmosphere stream file. After some time, the ensemble of
-# CLM states have enough diversity to be a useful initial ensemble for
-# an assimilation experiment.
+# Purpose: Given an ensemble of CLM states, advance the ensemble using unique
+#          DATM stream files for each ensemble member. This starts from a
+#          CESM 'hybrid' run-type, so the initial staging of the ensemble is
+#          required (and performed by this script).
 # ------------------------------------------------------------------------------
 
 # Many user-specified variables and settings are read from a DART
@@ -39,10 +34,10 @@ source DART_params.csh
 # resubmit=0 ... stop after the first execution. Allows one to check the output
 #                before burning a lot of cycles.
 
-setenv run_type      startup
+setenv run_type      hybrid
 setenv run_startdate ${startdate}
 
-# override some values from DART_params.csh
+# (possibly) override some values from DART_params.csh
 setenv stop_option nmonths
 setenv stop_n 12
 setenv rest_n 1
@@ -154,8 +149,26 @@ endif
 ./xmlchange DATM_CPLHIST_YR_START=${stream_year_first}
 ./xmlchange DATM_CPLHIST_YR_END=${stream_year_last}
 
+# --- In a hybrid run the model is initialized as a startup, BUT uses
+# initialization datasets FROM A PREVIOUS case.  This
+# is somewhat analogous to a branch run with relaxed restart
+# constraints.  A hybrid run allows users to bring together combinations
+# of initial/restart files from a previous case (specified by
+# RUN_REFCASE) at a given model output date (specified by
+# RUN_REFDATE). Unlike a branch run, the starting date of a hybrid run
+# (specified by RUN_STARTDATE) can be modified relative to the reference
+# case. In a hybrid run, the model does not continue in a bit-for-bit
+# fashion with respect to the reference case. The resulting climate,
+# however, should be continuous provided that no model source code or
+# namelists are changed in the hybrid run.  In a hybrid initialization,
+# the ocean model does not start until the second ocean coupling
+# (normally the second day), and the coupler does a cold start without
+# a restart file.</desc>
+
 ./xmlchange RUN_TYPE=${run_type}
-./xmlchange RUN_STARTDATE=${run_startdate}
+./xmlchange RUN_REFCASE=${refcase}
+./xmlchange RUN_REFDATE=${refdate}
+./xmlchange RUN_STARTDATE=${startdate}
 
 # pnetcdf is default
 ./xmlchange PIO_TYPENAME=pnetcdf
@@ -268,37 +281,6 @@ while ( $inst <= $num_instances )
    if ($startdate == 2011-01-01) then
       echo "dtlimit = 1.0e30"   >> ${fname}
    endif
-   
-   # Guidance regarding 'dtlimit':
-   # 
-   # NOTE: this is only for starting from 1 Jan 2011 00Z and the first streamfile you have is
-   # starts with 2011.  If you start from 1 Jan 2012 and have a streamfile for 2011,
-   # you DO NOT NEED TO specify dtlimit.
-   #
-   # A warning about starting from 1 Jan 2011 at 00Z.  The first timestamp in the DATM
-   # files from the CAM Reanalysis for year 2011 is several minutes into the year. 
-   # This is causing a problem for the coupler temporal interpolations which require
-   # value(s) before that to be able to interpolate for the first timestep.
-   # If you get run-time errors of the form:
-   # 
-   # 2: (shr_strdata_advance) ERROR: for stream            1
-   # 2: (shr_strdata_advance) ERROR: dt limit1   0.302083333333333       3.125000000000000E-002   3.00000000000000
-   # 2: (shr_strdata_advance) ERROR: dt limit2     20110101        4500    20110101        7200
-   # 2: ERROR: (shr_strdata_advance) ERROR dt limit for stream
-   # 
-   # The solution is to specify a large number for 'dtlimit'.
-   # From http://esmci.github.io/cime/versions/cesm2.2/html/data_models/input-streams.html?highlight=dtlimit
-   # 
-   # "Specifies delta time ratio limits placed on the time interpolation associated with the
-   # array of streams. Causes the model to stop if the ratio of the running maximum delta
-   # time divided by the minimum delta time is greater than the dtlimit for that stream.
-   # For instance, with daily data, the delta time should be exactly one day throughout the
-   # dataset and the computed maximum divided by minimum delta time should always be 1.0.
-   # For monthly data, the delta time should be between 28 and 31 days and the maximum
-   # ratio should be about 1.1. The running value of the delta time is computed as data is
-   # read and any wraparound or cycling is also included. this input helps trap missing
-   # data or errors in cycling. to turn off trapping, set the value to 1.0e30 or
-   # something similar."
 
    # Create stream files for each ensemble member
    set SOURCEDIR = ${dartroot}/models/clm/shell_scripts/cesm2_2
@@ -327,6 +309,7 @@ while ( $inst <= $num_instances )
    #              Default: 0,-24,-24,-24,-24,-24
    # hist_mfilt:  Per tape series maximum number of time samples.
 
+   echo "use_init_interp   = .true."                >> ${fname}
    echo "hist_empty_htapes = .false."               >> ${fname}
 #  echo "hist_fincl1 = 'FSIF','EFLX_LH_TOT'"        >> ${fname}
 #  echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'" >> ${fname}
@@ -341,6 +324,158 @@ end
 
 ./preview_namelists || exit 6
 
+# ==============================================================================
+# Stage the restarts now that the run directory exists
+# ==============================================================================
+
+echo "staging restarts"
+
+set init_time = ${reftimestamp}
+
+cat << EndOfText >! stage_cesm_files
+#!/bin/csh -f
+# This script can be used to help restart an experiment from any previous step.
+# The appropriate files are copied to the RUN directory.
+#
+# Before running this script:
+#  1) be sure CONTINUE_RUN is set correctly in the env_run.xml file in
+#     your CASEROOT directory.
+#     CONTINUE_RUN=FALSE => you are starting over at the initial time.
+#     CONTINUE_RUN=TRUE  => you are starting from a previous step but not
+#                           the very first one.
+#  2) be sure 'restart_time' is set to the day and time that you want to
+#     restart from if not the initial time.
+
+set restart_time = $init_time
+
+# get the settings for this case from the CESM environment
+cd ${caseroot}
+
+setenv CONTINUE_RUN \`./xmlquery CONTINUE_RUN --value\`
+setenv RUNDIR       \`./xmlquery RUNDIR       --value\`
+setenv DOUT_S       \`./xmlquery DOUT_S       --value\`
+setenv DOUT_S_ROOT  \`./xmlquery DOUT_S_ROOT  --value\`
+setenv CASE         \`./xmlquery CASE         --value\`
+
+cd \${RUNDIR}
+
+echo 'Copying the required CESM files to the run directory to rerun'
+echo 'a previous step.  CONTINUE_RUN from env_run.xml is' \${CONTINUE_RUN}
+if ( \${CONTINUE_RUN} == TRUE ) then
+  echo 'so files for some later step than the initial one will be restaged.'
+  echo "Date to reset files to is: \${restart_time}"
+else
+  echo 'so files for the initial step of this experiment will be restaged.'
+  echo "Date to reset files to is: ${init_time}"
+endif
+echo ''
+
+if ( \${CONTINUE_RUN} == TRUE ) then
+
+   #----------------------------------------------------------------------
+   # This block copies over a set of restart files from any previous step of
+   # the experiment that is NOT the initial step.
+   # After running this script resubmit the job to rerun.
+   #----------------------------------------------------------------------
+
+   echo "Staging restart files for run date/time: " \${restart_time}
+
+   #  The short term archiver is on, so the files we want should be in one
+   #  of the short term archive 'rest' restart directories.  This assumes
+   #  the long term archiver has NOT copied these files to the HPSS yet.
+
+   if (  \${DOUT_S} == TRUE ) then
+
+      # The restarts should be in the short term archive directory.
+
+      set RESTARTDIR = \${DOUT_S_ROOT}/rest/\${restart_time}
+
+      if ( ! -d \${RESTARTDIR} ) then
+
+         echo "restart file directory not found: "
+         echo " \${RESTARTDIR}"
+         echo "If the long-term archiver is on, you may have to restore this directory first."
+         echo "You can also check for either a .sta or a .sta2 hidden subdirectory in"
+         echo "\${DOUT_S_ROOT}"
+         echo "which may contain the 'rest' directory you need,"
+         echo "and then modify RESTARTDIR in this script."
+         exit 7
+
+      endif
+
+      ${COPY} \${RESTARTDIR}/* . || exit 7
+
+   else
+
+      # The short term archiver is off, which leaves all the restart files
+      # in the run directory.  The rpointer files must still be updated to
+      # point to the files with the right day/time.
+
+      @ inst=1
+      while (\$inst <= $num_instances)
+
+         set inst_string = \`printf _%04d \$inst\`
+
+         echo "\${CASE}.cpl\${inst_string}.r.\${restart_time}.nc"    >! rpointer.drv\${inst_string}
+         echo "\${CASE}.clm2\${inst_string}.r.\${restart_time}.nc"   >! rpointer.lnd\${inst_string}
+         echo "\${CASE}.datm\${inst_string}.r.\${restart_time}.nc"   >! rpointer.atm\${inst_string}
+         echo "\${CASE}.datm\${inst_string}.rs1.\${restart_time}.nc" >> rpointer.atm\${inst_string}
+         echo "\${CASE}.mosart\${inst_string}.r.\${restart_time}.nc" >! rpointer.rof\${inst_string}
+
+         @ inst ++
+      end
+
+      # If the multi-driver is not being used,
+      # there is only a single coupler restart file.
+      echo "\${CASE}.cpl.r.\${restart_time}.nc" >! rpointer.drv
+
+   endif
+
+   echo "All files reset to rerun experiment step for time " \$restart_time
+
+else     # CONTINUE_RUN == FALSE
+
+   #----------------------------------------------------------------------
+   # This block links the right files to rerun the initial (very first)
+   # step of an experiment.  The names and locations are set during the
+   # building of the case; to change them rebuild the case.
+   # After running this script resubmit the job to rerun.
+   #----------------------------------------------------------------------
+
+   @ inst=1
+   while (\$inst <= $num_instances)
+
+      set inst_string = \`printf _%04d \$inst\`
+
+      echo "Staging initial files for instance \$inst of $num_instances"
+
+      if ( -e    ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc ) then
+         ${LINK} ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc .
+      else
+         echo "ERROR: ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc does not exist."
+         echo "       Check your 'reftimestamp' setting, or maybe your 'stagedir' or 'refcase' or ..."
+         exit 8
+      endif
+
+      if ( -e    ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc ) then
+         ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
+      else
+         echo "ERROR: ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc does not exist."
+         exit 8
+      endif
+      @ inst ++
+   end
+
+   echo "All files set to run the FIRST experiment step at time" $init_time
+
+endif
+exit 0
+
+EndOfText
+chmod 0755 stage_cesm_files
+
+./stage_cesm_files || exit 9
+
 #===============================================================================
 # This example has SourceMods that enable CLM to output solar induced fluorescence
 # as an additional diagnostic variable ("FSIF") in the history file.
@@ -348,7 +483,7 @@ end
 if ( ${use_SourceMods} == TRUE ) then
 
    if (    -d    ${SourceModDir} ) then
-      ${COPY} -r ${SourceModDir}/* ${caseroot}/SourceMods/ || exit 7
+      ${COPY} -r ${SourceModDir}/* ${caseroot}/SourceMods/ || exit 9
 
       # determine if we need sourcemods for CLM4.5 or CLM5
       set clm_version = `echo $CLM_PHYSICS_VERSION | sed -e "s/-//"`
@@ -358,7 +493,7 @@ if ( ${use_SourceMods} == TRUE ) then
          case "clm5_0","clm4_5":
             if ( -e    SourceMods/src.clm/${clm_version} ) then
                cd      SourceMods/src.clm
-               ${LINK} ${clm_version}/*/*F90 . || exit 7
+               ${LINK} ${clm_version}/*/*F90 . || exit 9
                cd      ../..
             else
                echo "No SourceMods for CLM <${clm_version}>."
@@ -370,7 +505,7 @@ if ( ${use_SourceMods} == TRUE ) then
             echo "SourceMods requested and using CLM version <${clm_version}>."
             echo "Unsupported version of CLM."
             echo "Only 'clm5_0' and 'clm4_5' have SourceMods."
-            exit 7
+            exit 9
          breaksw
 
       endsw
@@ -380,11 +515,11 @@ if ( ${use_SourceMods} == TRUE ) then
    else
       echo "ERROR - DART_params.csh use_SourceMods = ${use_SourceMods}"
       echo "ERROR - but there are no SourceMods in ${SourceModDir}"
-      exit 7
+      exit 9
    endif
 endif
 
-${BUILD_WRAPPER} ./case.build || exit 7
+${BUILD_WRAPPER} ./case.build || exit 9
 
 # ==============================================================================
 # What to do next
