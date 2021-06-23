@@ -246,24 +246,9 @@ NAMELIST /PARM05/ &
 !
 !------------------------------------------------------------------
 
-integer, parameter :: n3dfields = 4
-integer, parameter :: n2dfields = 1
-integer, parameter :: nfields   = n3dfields + n2dfields
-
-integer, parameter :: S_index   = 1
-integer, parameter :: T_index   = 2
-integer, parameter :: U_index   = 3
-integer, parameter :: V_index   = 4
-integer, parameter :: Eta_index = 5
-
-
 ! (the absoft compiler likes them to all be the same length during declaration)
 ! we trim the blanks off before use anyway, so ...
 integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf files.
-
-integer :: start_index(nfields)
-
-
 
 ! Grid parameters - the values will be read from a
 ! standard MITgcm namelist and filled in here.
@@ -272,14 +257,6 @@ integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
-
-! location information - these grids can either be regularly
-! spaced or the spacing along each axis can vary.
-
-!real(r8) :: lat_origin, lon_origin
-!logical  :: regular_lat, regular_lon, regular_depth
-!real(r8) :: delta_lat, delta_lon, delta_depth
-!real(r8), allocatable :: lat_grid(:), lon_grid(:), depth_grid(:)
 
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
@@ -524,15 +501,6 @@ do i=2, Nz
  ZG(i) = ZG(i-1) - delZ(i-1)
  ZC(i) = ZC(i-1) - 0.5_r8 * delZ(i-1) - 0.5_r8 * delZ(i) 
 enddo
-
-! record where in the state vector the data type changes
-! from one type to another, by computing the starting
-! index for each block of data.
-start_index(S_index)   = 1
-start_index(T_index)   = start_index(S_index) + (Nx * Ny * Nz)
-start_index(U_index)   = start_index(T_index) + (Nx * Ny * Nz)
-start_index(V_index)   = start_index(U_index) + (Nx * Ny * Nz)
-start_index(Eta_index) = start_index(V_index) + (Nx * Ny * Nz)
 
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
@@ -850,18 +818,14 @@ if ( .not. module_initialized ) call static_init_model
 ! Succesful return has istatus of 0
 istatus = 0
 
-
 ! Find out what latitude box and fraction
 ! The latitude grid being used depends on the variable type
 ! V is on the YG latitude grid
-if(var_type == QTY_V_CURRENT_COMPONENT) then
-   lat_array = yg
-   call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
-else 
-   ! Eta, U, T and S are on the YC latitude grid
-   lat_array = yc
-   call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
-endif
+
+lat_array = yc
+if(var_type == QTY_V_CURRENT_COMPONENT) lat_array = yg
+
+call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 
 ! Check for error on the latitude interpolation
 if(lat_status /= 0) then 
@@ -870,18 +834,13 @@ if(lat_status /= 0) then
 endif
 
 ! Find out what longitude box and fraction
-if(var_type == QTY_U_CURRENT_COMPONENT) then
-   ! U velocity is on the XG grid
-   lon_array = xg
-   call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
-else
-   ! Eta, V, T, and S are on the XC grid
-   lon_array = xc
-   call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
-endif
+lon_array = xc
+if(var_type == QTY_U_CURRENT_COMPONENT) lon_array = xg
+
+call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 
 ! Check for error on the longitude interpolation
-if(lat_status /= 0) then 
+if(lon_status /= 0) then 
    istatus = 12
    return
 endif
@@ -1097,7 +1056,7 @@ integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
-!print *, 'lat_index, lon_index, nlon', lat_index, lon_index, nlon
+! print *, 'lat_index, lon_index, nlon, offset', lat_index, lon_index, nlon, offset
 
 !TJH: this calculation is only correct for slabs ...
 state_index=int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offset-1,i8)
@@ -1485,7 +1444,6 @@ enddo
 
 ! NOTE: This routine is not complete. We should find the global min/max
 ! for the variable - of the values that are not 'missing'
-! The FESOM model has something close, but there is no land mask to worry about.
 
 !>@todo keep variable from exceeding the original range
 
