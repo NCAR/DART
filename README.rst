@@ -370,6 +370,8 @@ References
    models/CESM/readme
    models/cice/readme
    models/clm/readme
+   models/clm/clm_to_dart
+   models/clm/dart_to_clm
    models/cm1/readme
    models/coamps_nest/readme
    models/coamps/readme

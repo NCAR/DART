@@ -1,40 +1,195 @@
 CLM
 ===
 
-.. attention::
-
-   ``CLM`` has a private development branch with some features that are delaying its integration with the rest
-   of the public DART repository.  Until that time, you should consider this documentation as out-of-date.
-   There are several groups that are successfully using recent versions of CLM and recent versions of DART.  
-   If you are interested in using ``CLM`` with more recent versions of DART, contact DAReS staff.
-
+|CLM gridcell breakdown|                              
+Figure from the CLM5.0 Tech Note. The image is a link to the document.
 
 Overview
 --------
 
-This is the DART interface to the Community Land Model (CLM). It is run as part of the `Community Earth System Model
-(CESM) <http://www.cesm.ucar.edu/models/cesm1.1/>`__ framework. It is **strongly** recommended that you become
-familiar with running a multi-instance experiment in CESM **before** you try to run DART/CLM. The DART/CLM facility
-uses language and concepts that should be familiar to CESM users. The DART/CLM capability is entirely dependent on the
-multi-instance capability of CESM, first supported in its entirety in CESM1.1.1. Consequently, this version or newer
-is required to run CLM/DART. The `CLM User's
-Guide <http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf>`__ is an excellent
-reference for CLM. *As of (V7195) 3 October 2014, CESM1.2.1 is also supported.*
+This is the DART interface to the 
+`CESM2 Community Land Model. <https://www.cesm.ucar.edu/models/cesm2/land/>`__
+It is **strongly** recommended that you become familiar with running a multi-instance 
+experiment in CESM **before** you try to run DART/CLM. The DART/CLM facility uses 
+language and concepts that should be familiar to CESM users. The DART/CLM capability 
+is entirely dependent on the multi-instance capability of CESM, first supported in 
+its entirety in CESM1.1.1.  Consequently, this version or newer is required to run 
+CLM/DART. The 
+`CTSM Documentation <https://escomp.github.io/ctsm-docs/versions/master/html/index.html>`__
+has reference material for CLM.
   
-  
-DART uses the multi-instance capability of CESM, which means that DART is not responsible for advancing the model.
-This GREATLY simplifies the traditional DART workflow, but it means *CESM has to stop and write out a restart file
-every time an assimilation is required*. The multi-instance capability is very new to CESM and we are in close
-collaboration with the CESM developers to make using DART with CESM as easy as possible. While we strive to keep DART
-requirements out of the model code, there are a few SourceMods needed to run DART from within CESM. Appropriate
-SourceMods for each CESM version are available at http://www.image.ucar.edu/pub/DART/CESM and should be unpacked into
-your HOME directory. They will create a ``~/cesm_?_?_?`` directory with the appropriate SourceMods structure. The
-ensuing scripts require these SourceMods and expect them to be in your HOME directory.
+DART uses the multi-instance capability of CESM, which means that DART is not 
+responsible for advancing the model.  This GREATLY simplifies the traditional DART 
+workflow, but it means *CESM has to stop and write out a restart file every time an 
+assimilation is required*. The multi-instance capability is relatively new to CESM 
+and we are in close collaboration with the CESM developers to make using DART with 
+CESM as easy as possible. While we strive to keep DART requirements out of the model 
+code, there are a few SourceMods needed to run DART from within CESM. Appropriate 
+SourceMods for each CESM version are available at 
+http://www.image.ucar.edu/pub/DART/CESM
+and should be unpacked into your HOME directory. They will create a ``~/cesm_?_?_?`` 
+directory with the appropriate SourceMods structure. The DART scripting require 
+these SourceMods and expect them to be in your HOME directory.
 
-Our notes on how to set up, configure, build, and run CESM for an assimilation experiment evolved into scripts. These
-scripts are not intended to be a 'black box'; you will have to read and understand them and modify them to your own
-purpose. They are heavily commented -- in keeping with their origins as a set of notes. If you would like to offer
-suggestions on how to improve those notes - please send them to dart@ucar.edu - we'd love to hear them.
+CLM is a rapidly-moving target and DART is developed and maintained by a small
+group of people. Consequently, we have focused on supporting *released* versions
+of CLM. This documentation and scripting were tested using the CESM 
+tag **release-cesm2.2.0** and CLM tag **release-cesm2.2.01** following the download
+instructions from https://github.com/ESCOMP/CESM .
+
+CLM-DART has been used to assimilate snow data, soil moisture, leaf area index, 
+biomass, solar-induced fluorescence and more. See the `References`_ section below
+for some examples. The list is by no means complete. Each experiment has extended
+the capabilities of the CLM-DART system. The observations supported by
+DART are contained in the *obs_def_land_mod.f90*, *obs_def_tower_mod.f90*, 
+and *obs_def_COSMOS_mod.f90* modules - each of which may be easily extended. 
+New observation types are usually easily supported. There are **many** examples 
+of routines to convert from native data formats (netCDF, HDF, csv, etc.) 
+to a DART observation sequence file.
+
+
+Important Features
+------------------
+
+Land DA is extremely diverse. The support for Land DA as pertains to CLM-DART
+has some features that need to be described in some detail.
+
+
+CLM indeterminate values
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+CLM variables are encoded as rectangular arrays in the netCDF files. (Thankfully!)
+However, this means that some variables have space for layers that are unused.
+Anything with snow layers, for example. CLM has the *SNLSNO* varible to indicate
+which snow layers are active. The *unused* layers may not have the *_FillValue*
+value, but can have 'indeterminate' values. The :doc:`clm_to_dart` 
+must be run to convert these indeterminate values to *_FillValue* to be 
+interpreted correctly by DART.  After the assimilation is complete, the 
+:doc:`dart_to_clm` must be called to replace the *_FillValue* with whatever
+is originally in that slot. Extra care is taken to handle the special case
+of a *trace* of snow. See the *Discussion of Indeterminate Values* 
+section of :doc:`clm_to_dart` for more details.
+
+
+Model Interpolate - The Forward Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since the subgridscale components of CLM have no explicit location associated 
+with them, the location of every component in the gridcell is the same as the 
+gridcell itself. The DART forward operators fundamentally rely on 
+interpolating the model state to some arbitrary location. At present, the best we
+can do is to create an area-weighted average of all pieces in the gridcell.
+This is clearly sub-optimal. A nice project would be to use some sort of lookup
+table for the observation location to determine the dominant PFT or whatever at
+that location and then just average up all the similar PFTs in the gridcell.
+The forward operator would be more accurate and might have a discernable impact
+on the regression relationship (i.e. ensemble covariance) with the variables
+in the DART state vector.
+
+The *model_interpolate* function in DART achieves efficiency by interpolating
+all the ensemble members at the same time. This gives rise to some challenging
+problems when interpolating values for variables with dynamic active layers.
+Some ensemble members may only have 2 active snow layers, some may have 3 ...
+this is an untenable situation when asked for the snow temperature or water 
+content in layer 3, for example. Consequently - *model_interpolate* will fail
+and return an error code - the forward operator will fail - and the observation
+is rejected and the DART QC is marked as such. Be aware.
+
+Localization
+~~~~~~~~~~~~
+
+Localization is the term used to restrict the portion of the state to the portion
+believed to be related to the observation. Most often, this is a spatial argument
+but it does not need to be restricted to that. In some way, even the selection
+of the CLM variables to include in the DART state is a de-facto localization.
+Since CLM has such a rich description of land unit types: urban columns, glaciers, 
+lakes, etc. it is also possible (and probably desirable) to explicitly declare
+some columns and/or PFTs to be unaffected by the assimilation - i.e., we are
+going to declare that soil moisture observations should not impact urban columns
+or deep lakes or ... The **get_close_state()** function employs a routine to
+explicitly declare what subgridscale components are allowed to be modified by
+the assimilation. This routine can easily be customized to suit your purpose.  
+The code segment below should make this clear.
+
+.. code-block:: fortran
+
+  ! Determine if state_index is a variable from a column (or whatever is of interest).
+  ! Determine what dimension is of interest, need to know to index into
+  ! cols1d_ityplun(ncolumn) array (for example).
+  
+  RELATEDLOOP: do jdim = 1, get_num_dims(dom_id, var_id)
+  
+     dimension_name = get_dim_name(dom_id, var_id, jdim)
+     select case ( trim(dimension_name) )
+            case ("gridcell","lon","lat")
+               related = .true.
+            case ("lndgrid")
+               related = .true.
+            case ("landunit")
+               if ( land1d_ityplun(indices(jdim)) == ilun_vegetated_or_bare_soil ) related = .true.
+               if ( land1d_ityplun(indices(jdim)) == ilun_crop                   ) related = .true.
+            case ("column")
+               if ( cols1d_ityplun(indices(jdim)) == icol_vegetated_or_bare_soil ) related = .true.
+               if ( cols1d_ityplun(indices(jdim)) == icol_crop                   ) related = .true.
+            case ("pft")
+               related = .true.
+            case default
+     end select
+  
+     ! Since variables can use only one of these dimensions,
+     ! there is no need to check the other dimensions. 
+     if (related) exit RELATEDLOOP
+  
+  enddo RELATEDLOOP
+
+
+Snow Data Assimilation
+~~~~~~~~~~~~~~~~~~~~~~
+
+The *prognostic* variables for snow (i.e. the ones that impact the forecast) 
+are the ones that have layers. The snow observations are typically without 
+explicit depths and are essentially column-integrated quantities like snow 
+water equivalent (SWE - CLM variable *H2OSNO*) or snow depth 
+(CLM variable *SNOW_DEPTH*).  These CLM *diagnostic* variables  
+simplify the forward operator and have been part of the DART state. 
+However, updating the prognostic variables 
+(*T_SOISNO, H2OSOI_LIQ, H2OSOI_ICE, DZSNO, ZSNO, ZISNO*)
+through their ensemble covariance with the update to *H2OSNO*, for example
+will generally not result in a posterior SWE (calculated from the prognostic 
+variables) that matches the posterior SWE in *H2OSNO*. Consequently, a 
+partitition function should be used to redistribute the posterior SWE into
+the appropriate prognostic variables. **This is under development.**
+Note that we have not attempted to include any of the snow property
+variables (grain radius, carbon content, etc) in the DART state.
+
+The snow formulation in CLM is complex. Reducing the amount of snow through
+assimilation is well-defined. Creating snow when there is none 
+**is not supported** in CLM-DART. The snow-relevant column values remain 
+unchanged. **If any ensemble member does not have snow** the statistical
+assumptions for ensemble data assimilation are not valid and the snow variables
+**for all members** remain unchanged. The best method would be to alter the
+amount of snow *from the forcing file* and let CLM manage the snow. This is
+beyond the scope of CLM-DART. We have thought that if one member does not have
+snow - maybe we should just use the values from some other member - but when
+does that stop being acceptable? 10 ensemble members? 20? The distributions
+become multimodal, and the logical end result is that you could wind up using
+1 ensemble member to declare the snow for all the remaining members. That seems
+like a bad idea.
+
+The same logic applies to the variables related to plant growth. If the LAI
+observations indicates there should be something growing and nothing has
+sprouted yet ... DART essentially gives up and moves on ... 
+
+
+Configuring an Experiment
+-------------------------
+
+Our notes on how to set up, configure, build, and run CESM for an assimilation 
+experiment evolved into scripts. These scripts are not intended to be a 'black box'; 
+you will have to read and understand them and modify them to your own purpose. 
+They are heavily commented -- in keeping with their origins as a set of notes. 
+If you would like to offer suggestions on how to improve those notes - please 
+send them to dart@ucar.edu - we'd love to hear them.
 
 +------------------------------------------+-----------------------------------------------------------+
 | Script                                   | Description                                               |
@@ -101,145 +256,112 @@ In addition to the script above, there are a couple scripts that will either per
 platforms although they require configuration, mainly to indicate the location of the DART observation sequence files on
 your system.
 
-Pertinent details of the CLM gridcell
--------------------------------------
 
-|CLM gridcell breakdown|                              
+Declaring the Variables in the DART State
+-----------------------------------------
 
-"The land surface is represented by 5 primary sub-grid    
-land cover types (landunits: glacier, lake, wetland,      
-urban, vegetated) in each grid cell. The vegetated        
-portion of a grid cell is further divided into patches of 
-plant functional types, each with its own leaf and stem   
-area index and canopy height. Each subgrid land cover     
-type and PFT patch is a separate column for energy and    
-water calculations." -- *CLM documentation*.                
+The DART state vector is constructed in a very flexible manner. 
+A namelist is used to relate the netCDF variable name, the netCDF file 
+type [restart, (XY) history, or vector history] with a DART QUANTITY. 
+Including variables from an 'XY' CLM history file allows the
+inclusion of diagnostic variables that can speed up the forward 
+observation operators if gridcell averages are appropriate.
 
-The only location information available is at the         
-gridcell level. All landunits, columns, and PFTs in that  
-gridcell have the same location. This has ramifications   
-for the forward observation operators. If the observation 
-metadata has information about land use/land cover, it    
-can be used to select only those patches that are         
-appropriate. Otherwise, an area-weighted average of ALL   
-patches in the gridcell is used to calculate the          
-observation value for that location.                      
+It is also possible to read some variables from the restart file,
+and some from a 'vector-based' history file that has the same
+structure (gridcell/landunit/column/pft) as the restart file - but may be 
+temporal averages instead of instantaneous quantities.
+Care must be taken to assign the proper DART QUANTITY to the variables.
+Any variable in the DART state is updated, but the forward operator
+looks for specific QUANTITIES. If you want to use the vector-based history
+file for the forward operator - make sure you declare it to be of the
+QUANTITY used by the forward operator code.
 
+.. "Simple" observations like snowcover fraction come directly from 
+   the DART state. It is possible to configure the CLM history files 
+   to contain the CLM estimates of some quantities (mostly flux tower 
+   observations e.g, net ecosystem production, sensible heat flux, 
+   latent heat flux) that are very complicated combinations of portions 
+   of the CLM state.  The forward observation operators for these flux tower 
+   observations read these quantities from the CLM ``.h1.`` history file. 
+   The smaller the CLM gridcell, the more likely it seems that these 
+   values will agree with point observations. Be advised that the
+   **obs_def_tower_mod.f90** is **not supported in this version**.
 
-A word about forward observation operators
-------------------------------------------
+The namelist specification of what goes into the DART state vector 
+includes the ability to specify if the quantity should have a lower 
+bound, upper bound, or both, what file the variable should be read 
+from, and if the variable should be modified by the assimilation or not.
+Make sure you read the `Inflation`_ section to fully understand what
+happens when you designate a varible 'NO_COPY_BACK'.
 
-"Simple" observations like snowcover fraction come directly from the DART state. It is possible to configure the CLM
-history files to contain the CLM estimates of some quantities (mostly flux tower observations e.g, net ecosystem
-production, sensible heat flux, latent heat flux) that are very complicated combinations of portions of the CLM state.
-The forward observation operators for these flux tower observations read these quantities from the CLM ``.h1.``
-history file. The smaller the CLM gridcell, the more likely it seems that these values will agree with point
-observations.
+.. attention::
 
-The prior and posterior values for these will naturally be identical as the history file is unchanged by the
-assimilation. Configuring the CLM user_nl_clm files to output the desired quantities must be done at the first
-execution of CLM. As soon as CONTINUE_RUN=TRUE, the namelist values for history file generation are ignored. Because
-the history file creation is very flexible, some additional information must be passed to DART to construct the
-filename of the ``.h1.`` history file needed for any particular time.
+   It is important to know that the variables in the DART diagnostic files 
+   ``preassim``, ``postassim``, ``analysis``, and ``output`` will contain 
+   the unbounded versions of ALL the variables specied in ``clm_variables``.
+   Only the files specified in the ``filter_nml:output_state_file_list``
+   will have the 'clamped' values.
 
-Major changes as of (v7195) 3 october 2014
-------------------------------------------
-
-The DART state vector may be constructed in a much more flexible way. Variables from two different CLM history files
-may also be incorporated directly into the DART state - which should GREATLY speed up the forward observation
-operators - and allow the observation operators to be constructed in a more flexible manner so that they can be used
-by any model capable of providing required inputs. It is now possible to read some variables from the restart file,
-some variables from a traditional history file, and some from a 'vector-based' history file that has the same
-structure (gridcell/landunit/column/pft) as the restart file. This should allow more accurate forward observation
-operators since the quantities are not gridcell-averaged a priori.
-
-Another namelist item has been added ``clm_vector_history_filename`` to support the concept that two history files can
-be supported. My intent was to have the original history file (required for grid metadata) and another for support of
-vector-based quantities in support of forward observation operators. Upon reflection, I'm not sure I need two
-different history files - BUT - I'm sure there will be a situation where it comes in handy.
-
-The new namelist specification of what goes into the DART state vector includes the ability to specify if the quantity
-should have a lower bound, upper bound, or both, what file the variable should be read from, and if the variable
-should be modified by the assimilation or not. **Only variables in the CLM restart file will be candidates for
-updating.** No CLM history files are modified. **It is important to know that the variables in the DART diagnostic
-files ``preassim.nc`` and ``analysis.nc`` will contain the unbounded versions of ALL the variables specied in
-``clm_variables``.**
-The example ``input.nml`` ``model_nml`` demonstrates how to construct the DART state vector. The following table
-explains in detail each entry for ``clm_variables``:
+The example ``input.nml`` ``model_nml`` demonstrates how to construct the 
+DART state vector. The following table explains in detail each entry 
+for ``clm_variables``:
 
 .. container::
 
-   ============= ========= ======== ======== ======== ========
-   Column 1      Column 2  Column 3 Column 4 Column 5 Column 6
-   ============= ========= ======== ======== ======== ========
-   Variable name DART KIND minimum  maximum  filename update
-   ============= ========= ======== ======== ======== ========
+   ======== ============================================================== 
+    Column  Description
+   ======== ============================================================== 
+    **1**   The CLM variable name as it appears in the CLM netCDF file.
+    **2**   The corresponding DART QUANTITY.
+    **3**   | Minimum value of the posterior.
+            | If set to 'NA' there is no minimum value.
+    **4**   | Maximum value of the posterior.
+            | If set to 'NA' there is no maximum value.
+    **5**   | Specifies which file should be used to obtain the variable.
+            | ``'restart'`` => clm_restart_filename
+            | ``'history'`` => clm_history_filename
+            | ``'vector'``  => clm_vector_history_filename
+    **6**   | Should ``filter`` update the variable in the specified file.
+            | ``'UPDATE'`` => the variable is updated.
+            | ``'NO_COPY_BACK'`` => the variable remains unchanged.
+   ======== ============================================================== 
 
-   +---------------+----------------+---------------------------------------+
-   | **Column 1**  | Variable name  | This is the CLM variable name as it   |
-   |               |                | appears in the CLM netCDF file.       |
-   +---------------+----------------+---------------------------------------+
-   | **Column 2**  | DART KIND      | This is the character string of the   |
-   |               |                | corresponding DART KIND.              |
-   +---------------+----------------+---------------------------------------+
-   | **Column 3**  | minimum        | If the variable is to be updated in   |
-   |               |                | the CLM restart file, this specifies  |
-   |               |                | the minimum value. If set to 'NA',    |
-   |               |                | there is no minimum value.            |
-   +---------------+----------------+---------------------------------------+
-   | **Column 4**  | maximum        | If the variable is to be updated in   |
-   |               |                | the CLM restart file, this specifies  |
-   |               |                | the maximum value. If set to 'NA',    |
-   |               |                | there is no maximum value.            |
-   +---------------+----------------+---------------------------------------+
-   | **Column 5**  | filename       | This specifies which file should be   |
-   |               |                | used to obtain the variable.          |
-   |               |                | ``'restart'`` => clm_restart_filename |
-   |               |                | ``'history'`` => clm_history_filename |
-   |               |                | ``'vector'`` =>                       |
-   |               |                | clm_vector_history_filename           |
-   +---------------+----------------+---------------------------------------+
-   | **Column 6**  | update         | If the variable comes from the        |
-   |               |                | restart file, it may be updated after |
-   |               |                | the assimilation.                     |
-   |               |                | ``'UPDATE'`` => the variable in the   |
-   |               |                | restart file is updated.              |
-   |               |                | ``'NO_COPY_BACK'`` => the variable in |
-   |               |                | the restart file remains unchanged.   |
-   +---------------+----------------+---------------------------------------+
-
-The following are only meant to be examples - they are not scientifically validated. Some of these that are UPDATED are
-probably diagnostic quantities, Some of these that should be updated may be marked NO_COPY_BACK. There are multiple
-choices for some DART kinds. This list is by no means complete.
+The following are only meant to be examples - they are not scientifically validated. 
+Some of these that are UPDATED are probably diagnostic quantities, Some of these that 
+should be updated may be marked NO_COPY_BACK.  This list is by no means complete.
 
 ::
 
-          'livecrootc',  'QTY_ROOT_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'deadcrootc',  'QTY_ROOT_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'livestemc',   'QTY_STEM_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'deadstemc',   'QTY_STEM_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'livecrootn',  'QTY_ROOT_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
-          'deadcrootn',  'QTY_ROOT_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
-          'livestemn',   'QTY_STEM_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
-          'deadstemn',   'QTY_STEM_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
-          'litr1c',      'QTY_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'litr2c',      'QTY_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'litr3c',      'QTY_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'soil1c',      'QTY_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'soil2c',      'QTY_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'soil3c',      'QTY_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'soil4c',      'QTY_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-          'fabd',        'QTY_FPAR_DIRECT',            'NA', 'NA', 'restart', 'UPDATE',
-          'fabi',        'QTY_FPAR_DIFFUSE',           'NA', 'NA', 'restart', 'UPDATE',
-          'T_VEG',       'QTY_VEGETATION_TEMPERATURE', 'NA', 'NA', 'restart', 'UPDATE',
-          'fabd_sun_z',  'QTY_FPAR_SUNLIT_DIRECT',     'NA', 'NA', 'restart', 'UPDATE',
-          'fabd_sha_z',  'QTY_FPAR_SUNLIT_DIFFUSE',    'NA', 'NA', 'restart', 'UPDATE',
-          'fabi_sun_z',  'QTY_FPAR_SHADED_DIRECT',     'NA', 'NA', 'restart', 'UPDATE',
-          'fabi_sha_z',  'QTY_FPAR_SHADED_DIFFUSE',    'NA', 'NA', 'restart', 'UPDATE',
-          'elai',        'QTY_LEAF_AREA_INDEX',        'NA', 'NA', 'restart', 'UPDATE',
+   clm_variables  = 'leafc',       'QTY_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'frac_sno',    'QTY_SNOWCOVER_FRAC',         '0.0', '1.', 'restart' , 'UPDATE',
+                    'SNOW_DEPTH',  'QTY_SNOW_THICKNESS',         '0.0', 'NA', 'restart' , 'NO_COPY_BACK',
+                    'H2OSOI_LIQ',  'QTY_SOIL_LIQUID_WATER',      '0.0', 'NA', 'restart' , 'UPDATE',
+                    'H2OSOI_ICE',  'QTY_SOIL_ICE',               '0.0', 'NA', 'restart' , 'UPDATE',
+                    'T_SOISNO',    'QTY_TEMPERATURE',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'livestemc',   'QTY_LIVE_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
+                    'deadstemc',   'QTY_DEAD_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
+                    'NEP',         'QTY_NET_CARBON_PRODUCTION',  'NA' , 'NA', 'history' , 'NO_COPY_BACK',
+                    'H2OSOI',      'QTY_SOIL_MOISTURE',          '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'SMINN_vr',    'QTY_SOIL_MINERAL_NITROGEN',  '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'LITR1N_vr',   'QTY_NITROGEN',               '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'TSOI',        'QTY_SOIL_TEMPERATURE',       'NA' , 'NA', 'history' , 'NO_COPY_BACK',
+                    'FSDSVDLN',    'QTY_PAR_DIRECT',             '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'FSDSVILN',    'QTY_PAR_DIFFUSE',            '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'PARVEGLN',    'QTY_ABSORBED_PAR',           '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'NEE',         'QTY_NET_CARBON_FLUX',        'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'H2OSNO',      'QTY_SNOW_WATER',             '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'TLAI',        'QTY_LEAF_AREA_INDEX',        '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'TWS',         'QTY_TOTAL_WATER_STORAGE',    'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'SOILC_vr',    'QTY_SOIL_CARBON',            '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'SOIL1N_vr',   'QTY_SOIL_NITROGEN',          '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'SMP',         'QTY_SOIL_MATRIC_POTENTIAL',  '0.0', 'NA', 'vector'  , 'NO_COPY_BACK'
+      /
+ 
 
-**Only the first variable for a DART kind in the clm_variables list will be used for the forward observation operator.**
-The following is perfectly legal (for CLM4, at least):
+**Only the first variable for a DART QUANTITY in the clm_variables list will 
+be used for the forward observation operator.**
+The following is perfectly legal:
 
 ::
 
@@ -253,16 +375,55 @@ The following is perfectly legal (for CLM4, at least):
                    'TLAI',       'QTY_LEAF_AREA_INDEX', 'NA', 'NA', 'vector'  , 'NO_COPY_BACK'
       /
 
-however, only LAIP_VALUE will be used to calculate the LAI when an observation of LAI is encountered. All the other LAI
-variables in the DART state will be modified by the assimilation based on the relationship of LAIP_VALUE and the
-observation. Those coming from the restart file and marked 'UPDATE' **will** be updated in the CLM restart file.
+however, only **LAIP_VALUE** will be used to calculate the LAI when an 
+observation of LAI is encountered. **All** (the other LAI) variables in 
+the DART state will be modified by the assimilation based on the 
+relationship of LAIP_VALUE and the observation. 
+
+Inflation
+---------
+
+Inflation has been shown to be quite useful in our experience of
+DA with CLM and DART. The model is strongly influenced by the
+atmospheric forcing and will cause the CLM ensemble to
+relax to a state consistent with the forcing when the assimilation
+stops. [5]_ Depending on the forecast length between assimilations, and 
+sometimes just to restore the variance lost during an assimilation, 
+inflation should be used.
+
+The 'NO_COPY_BACK' designation has some side effects when it 
+comes to state-space inflation (inf_flavor 2,4 or 5 - 
+'VARYING_SS_INFLATION','RELAXATION_TO_PRIOR_SPREAD', 
+or 'ENHANCED_SS_INFLATION' - respectively).  State-space inflation
+requires an inflation value for everything in the DART state. 
+If the variable has been designated as 'NO_COPY_BACK'
+the DART write routine (when called from ``filter``) simply 
+skips the variable and nothing is written.
+This is a problem for inflation files that need to adapt.
+
+The solution is to run 
+:doc:`../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart`
+to create an initial inflation file with inflation values of 1.0 (i.e.
+no inflation). ``fill_inflation_restart`` has been specially designed
+to output inflation values for every variable in the DART state. 
+The idea is to copy the *input* inflation file to the *output* inflation
+file name *before each assimilation cycle*. No new values will be written
+for the variables designated 'NO_COPY_BACK', the original values will persist. 
+
+It remains a scientific question as to whether or not this is the **right** thing
+to do! The 'NO_COPY_BACK' mechanism was initially intended to simply avoid 
+writing variables that did not impact the next model forecast. Since inflation
+is a powerful mechanism to overcome observation-model bias, it might be 
+perfectly warranted to 'UPDATE' these diagnostic variables. Be warned, if
+you do 'UPDATE' the diagnostic variables, you may want to create copies
+of the prior so you explore exactly what happens during an assimilation.
 
 Namelist
 --------
 
-These namelists are read from the file ``input.nml``. Namelists start with an ampersand '&' and terminate with a slash
-'/'. Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely terminating the
-namelist.
+Namelists start with an ampersand '&' and terminate with a slash '/'. 
+Character strings that contain a '/' must be enclosed in quotes to prevent 
+them from prematurely terminating the namelist. These are the defaults:
 
 ::
 
@@ -386,628 +547,25 @@ namelist.
    |                               |                      |  preprocess_nml:input_files variable.  |
    +-------------------------------+----------------------+----------------------------------------+
 
-| 
 
-::
-
-   &obs_def_tower_nml
-      casename    = '../clm_dart',
-      hist_nhtfrq = -24,
-      debug       = .false.
-      /
-
-.. container::
-
-   +-------------+--------------------+----------------------------------------------------------------------------------+
-   | Item        | Type               | Description                                                                      |
-   +=============+====================+==================================================================================+
-   | casename    | character(len=256) |  this is the name of the CESM case. It is used by the forward observation        |
-   |             |                    |  operators to help construct the filename of the CLM ``.h1.`` history files for  |
-   |             |                    |  the flux tower observations. When the ``input.nml`` gets staged in the CASEROOT |
-   |             |                    |  directory by ``CESM_DART_config``, the appropriate value should automatically   |
-   |             |                    |  be inserted.                                                                    |
-   +-------------+--------------------+----------------------------------------------------------------------------------+
-   | hist_nhtfrq | integer            |  this is the same value as in the CLM documentation. A negative value indicates  |
-   |             |                    |  the number of hours contained in the ``.h1.`` file. This value is needed to     |
-   |             |                    |  constuct the right ``.h1.`` filename. When the ``input.nml`` gets staged in the |
-   |             |                    |  CASEROOT directory by ``CESM_DART_config``, the appropriate value should        |
-   |             |                    |  automatically be inserted. Due to the large number of ways of specifying the    |
-   |             |                    |  CLM history file information, the correct value here is very dependent on how   |
-   |             |                    |  the case was configured. You would be wise to check it.                         |
-   +-------------+--------------------+----------------------------------------------------------------------------------+
-   | debug       | logical            | Set to .false. for minimal output.                                               |
-   +-------------+--------------------+----------------------------------------------------------------------------------+
-
-Other modules used (directly)
+Modules used 
 -----------------------------
 
 ::
 
-   types_mod
-   time_manager_mod
-   threed_sphere/location_mod
-   utilities_mod
+   default_model_mod
+   distributed_state_mod
+   ensemble_manager_mod
+   mpi_utilities_mod
+   netcdf_utilities_mod
+   obs_def_utilities_mod
    obs_kind_mod
-   obs_def_land_mod
-   obs_def_tower_mod
-   random_seq_mod
-
-Public interfaces - required
-----------------------------
-
-======================= ======================
-*use model_mod, only :* get_model_size
-\                       adv_1step
-\                       get_state_meta_data
-\                       model_interpolate
-\                       get_model_time_step
-\                       static_init_model
-\                       end_model
-\                       init_time
-\                       init_conditions
-\                       nc_write_model_atts
-\                       nc_write_model_vars
-\                       pert_model_state
-\                       get_close_maxdist_init
-\                       get_close_obs_init
-\                       get_close_obs
-\                       ens_mean_for_model
-======================= ======================
-
-A note about documentation style. Optional arguments are enclosed in brackets *[like this]*.
-
-| 
-
-.. container:: routine
-
-   *model_size = get_model_size( )*
-   ::
-
-      integer :: get_model_size
-
-.. container:: indent1
-
-   Returns the length of the model state vector.
-
-   ============== =====================================
-   ``model_size`` The length of the model state vector.
-   ============== =====================================
-
-| 
-
-.. container:: routine
-
-   *call adv_1step(x, time)*
-   ::
-
-      real(r8), dimension(:), intent(inout) :: x
-      type(time_type),        intent(in)    :: time
-
-.. container:: indent1
-
-   Advances the model for a single time step. The time associated with the initial model state is also input although it
-   is not used for the computation.
-
-   ======== ==========================================
-   ``x``    State vector of length model_size.
-   ``time`` Specifies time of the initial model state.
-   ======== ==========================================
-
-| 
-
-.. container:: routine
-
-   *call get_state_meta_data (index_in, location, [, var_type] )*
-   ::
-
-      integer,             intent(in)  :: index_in
-      type(location_type), intent(out) :: location
-      integer, optional,   intent(out) ::  var_type 
-
-.. container:: indent1
-
-   Returns metadata about a given element, indexed by index_in, in the model state vector. The location defines where
-   the state variable is located.
-
-   ============ ===================================================================
-   ``index_in`` Index of state vector element about which information is requested.
-   ``location`` The location of state variable element.
-   *var_type*   The generic DART kind of the state variable element.
-   ============ ===================================================================
-
-| 
-
-.. container:: routine
-
-   *call model_interpolate(x, location, itype, obs_val, istatus)*
-   ::
-
-      real(r8), dimension(:), intent(in)  :: x
-      type(location_type),    intent(in)  :: location
-      integer,                intent(in)  :: itype
-      real(r8),               intent(out) :: obs_val
-      integer,                intent(out) :: istatus
-
-.. container:: indent1
-
-   Given model state, returns the value interpolated to a given location.
-
-   +--------------+------------------------------------------------------------------------------------------------------+
-   | ``x``        | A model state vector.                                                                                |
-   +--------------+------------------------------------------------------------------------------------------------------+
-   | ``location`` | Location to which to interpolate.                                                                    |
-   +--------------+------------------------------------------------------------------------------------------------------+
-   | ``itype``    | Not used.                                                                                            |
-   +--------------+------------------------------------------------------------------------------------------------------+
-   | ``obs_val``  | The interpolated value from the model.                                                               |
-   +--------------+------------------------------------------------------------------------------------------------------+
-   | ``istatus``  | If the interpolation was successful ``istatus = 0``. If ``istatus /= 0`` the interpolation failed.   |
-   |              | Values less than zero are reserved for DART.                                                         |
-   +--------------+------------------------------------------------------------------------------------------------------+
-
-| 
-
-.. container:: routine
-
-   *var = get_model_time_step()*
-   ::
-
-      type(time_type) :: get_model_time_step
-
-.. container:: indent1
-
-   Returns the time step (forecast length) of the model;
-
-   ======= ============================
-   ``var`` Smallest time step of model.
-   ======= ============================
-
-| 
-
-.. container:: routine
-
-   *call static_init_model()*
-
-.. container:: indent1
-
-   Used for runtime initialization of model; reads namelist, initializes model parameters, etc. This is the first call
-   made to the model by any DART-compliant assimilation routine.
-
-| 
-
-.. container:: routine
-
-   *call end_model()*
-
-.. container:: indent1
-
-   A stub.
-
-| 
-
-.. container:: routine
-
-   *call init_time(time)*
-   ::
-
-      type(time_type), intent(out) :: time
-
-.. container:: indent1
-
-   Returns the time at which the model will start if no input initial conditions are to be used. This is used to spin-up
-   the model from rest.
-
-   ======== ===================
-   ``time`` Initial model time.
-   ======== ===================
-
-| 
-
-.. container:: routine
-
-   *call init_conditions(x)*
-   ::
-
-      real(r8), dimension(:), intent(out) :: x
-
-.. container:: indent1
-
-   Returns default initial conditions for the model; generally used for spinning up initial model states.
-
-   ===== ====================================
-   ``x`` Initial conditions for state vector.
-   ===== ====================================
-
-| 
-
-.. container:: routine
-
-   *ierr = nc_write_model_atts(ncFileID)*
-   ::
-
-      integer             :: nc_write_model_atts
-      integer, intent(in) :: ncFileID
-
-.. container:: indent1
-
-   Function to write model specific attributes to a netCDF file. At present, DART is using the NetCDF format to output
-   diagnostic information. This is not a requirement, and models could choose to provide output in other formats. This
-   function writes the metadata associated with the model to a NetCDF file opened to a file identified by ncFileID.
-
-   ============ =========================================================
-   ``ncFileID`` Integer file descriptor to previously-opened netCDF file.
-   ``ierr``     Returns a 0 for successful completion.
-   ============ =========================================================
-
-| 
-
-.. container:: routine
-
-   *ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)*
-   ::
-
-      integer                            :: nc_write_model_vars
-      integer,                intent(in) :: ncFileID
-      real(r8), dimension(:), intent(in) :: statevec
-      integer,                intent(in) :: copyindex
-      integer,                intent(in) :: timeindex
-
-.. container:: indent1
-
-   Writes a copy of the state variables to a netCDF file. Multiple copies of the state for a given time are supported,
-   allowing, for instance, a single file to include multiple ensemble estimates of the state.
-
-   ============= =================================================
-   ``ncFileID``  file descriptor to previously-opened netCDF file.
-   ``statevec``  A model state vector.
-   ``copyindex`` Integer index of copy to be written.
-   ``timeindex`` The timestep counter for the given state.
-   ``ierr``      Returns 0 for normal completion.
-   ============= =================================================
-
-| 
-
-.. container:: routine
-
-   *call pert_model_state(state, pert_state, interf_provided)*
-   ::
-
-      real(r8), dimension(:), intent(in)  :: state
-      real(r8), dimension(:), intent(out) :: pert_state
-      logical,                intent(out) :: interf_provided
-
-.. container:: indent1
-
-   Given a model state, produces a perturbed model state.
-
-   =================== =============================================
-   ``state``           State vector to be perturbed.
-   ``pert_state``      Perturbed state vector: NOT returned.
-   ``interf_provided`` Returned false; interface is not implemented.
-   =================== =============================================
-
-| 
-
-.. container:: routine
-
-   *call get_close_maxdist_init(gc, maxdist)*
-   ::
-
-      type(get_close_type), intent(inout) :: gc
-      real(r8),             intent(in)    :: maxdist
-
-.. container:: indent1
-
-   In distance computations any two locations closer than the given ``maxdist`` will be considered close by the
-   ``get_close_obs()`` routine. Pass-through to the 3D Sphere locations module. See
-   `get_close_maxdist_init() <../../assimilation_code/location/threed_sphere/location_mod.html#get_close_maxdist_init>`__
-   for the documentation of this subroutine.
-
-| 
-
-.. container:: routine
-
-   *call get_close_obs_init(gc, num, obs)*
-   ::
-
-      type(get_close_type), intent(inout) :: gc
-      integer,              intent(in)    :: num
-      type(location_type),  intent(in)    :: obs(num)
-
-.. container:: indent1
-
-   Pass-through to the 3D Sphere locations module. See
-   `get_close_obs_init() <../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs_init>`__ for
-   the documentation of this subroutine.
-
-| 
-
-.. container:: routine
-
-   *call get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, num_close, close_ind [, dist])*
-   ::
-
-      type(get_close_type), intent(in)  :: gc
-      type(location_type),  intent(in)  :: base_obs_loc
-      integer,              intent(in)  :: base_obs_kind
-      type(location_type),  intent(in)  :: obs(:)
-      integer,              intent(in)  :: obs_kind(:)
-      integer,              intent(out) :: num_close
-      integer,              intent(out) :: close_ind(:)
-      real(r8), optional,   intent(out) :: dist(:)
-
-.. container:: indent1
-
-   Pass-through to the 3D Sphere locations module. See
-   `get_close_obs() <../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs>`__ for the
-   documentation of this subroutine.
-
-| 
-
-.. container:: routine
-
-   *call ens_mean_for_model(ens_mean)*
-   ::
-
-      real(r8), dimension(:), intent(in) :: ens_mean
-
-.. container:: indent1
-
-   A NULL INTERFACE in this model.
-
-   ============ ==========================================
-   ``ens_mean`` State vector containing the ensemble mean.
-   ============ ==========================================
-
-Public interfaces - optional
-----------------------------
-
-======================= ========================
-*use model_mod, only :* get_gridsize
-\                       clm_to_dart_state_vector
-\                       sv_to_restart_file
-\                       get_clm_restart_filename
-\                       get_state_time
-\                       get_grid_vertval
-\                       compute_gridcell_value
-\                       gridcell_components
-\                       DART_get_var
-\                       get_model_time
-======================= ========================
-
-| 
-
-.. container:: routine
-
-   *call get_gridsize(num_lon, num_lat, num_lev)*
-   ::
-
-      integer, intent(out) :: num_lon, num_lat, num_lev
-
-.. container:: indent1
-
-   Returns the number of longitudes, latitudes, and total number of levels in the CLM state.
-
-   =========== ====================================================================================================
-   ``num_lon`` The number of longitude grid cells in the CLM state. This comes from the CLM history file.
-   ``num_lat`` The number of latitude grid cells in the CLM state. This comes from the CLM history file.
-   ``num_lev`` The number of levels grid cells in the CLM state. This comes from 'nlevtot' in the CLM restart file.
-   =========== ====================================================================================================
-
-| 
-
-.. container:: routine
-
-   *call clm_to_dart_state_vector(state_vector, restart_time)*
-   ::
-
-      real(r8),         intent(inout) :: state_vector(:)
-      type(time_type),  intent(out)   :: restart_time
-
-.. container:: indent1
-
-   | Reads the current time and state variables from CLM netCDF file(s) and packs them into a DART state vector. This
-     MUST happen in the same fashion as the metadata arrays are built. The variables are specified by
-     ``model_nml:clm_variables``. Each variable specifies its own file of origin. If there are multiple times in the
-     file of origin, only the time that matches the restart file are used.
-
-   ================ ================================
-   ``state_vector`` The DART state vector.
-   ``restart_time`` The valid time of the CLM state.
-   ================ ================================
-
-| 
-
-.. container:: routine
-
-   *call sv_to_restart_file(state_vector, filename, dart_time)*
-   ::
-
-      real(r8),         intent(in) :: state_vector(:)
-      character(len=*), intent(in) :: filename
-      type(time_type),  intent(in) :: dart_time
-
-.. container:: indent1
-
-   This routine updates the CLM restart file with the posterior state from the assimilation. Some CLM variables that are
-   useful to include in the DART state (frac_sno, for example) are diagnostic quantities and are not used for subsequent
-   model advances. The known diagnostic variables are NOT updated. If the values created by the assimilation are outside
-   physical bounds, or if the original CLM value was 'missing', the ``vector_to_prog_var()`` subroutine ensures that the
-   values in the original CLM restart file are **not updated**.
-
-   +------------------+--------------------------------------------------------------------------------------------------+
-   | ``state_vector`` | The DART state vector containing the state modified by the assimilation.                         |
-   +------------------+--------------------------------------------------------------------------------------------------+
-   | ``filename``     | The name of the CLM restart file. **The contents of some of the variables will be overwritten    |
-   |                  | with new values.**                                                                               |
-   +------------------+--------------------------------------------------------------------------------------------------+
-   | ``dart_time``    | The valid time of the DART state. This has to match the time in the CLM restart file.            |
-   +------------------+--------------------------------------------------------------------------------------------------+
-
-| 
-
-.. container:: routine
-
-   *call get_clm_restart_filename( filename )*
-   ::
-
-      character(len=*), intent(out) :: filename
-
-.. container:: indent1
-
-   provides access to the name of the CLM restart file to routines outside the scope of this module.
-
-   ============ =================================
-   ``filename`` The name of the CLM restart file.
-   ============ =================================
-
-| 
-
-.. container:: routine
-
-   *time = get_state_time(file_handle)*
-   ::
-
-      integer,          intent(in) :: file_handle 
-      character(len=*), intent(in) :: file_handle 
-      type(time_type)              :: get_state_time
-
-.. container:: indent1
-
-   This routine has two interfaces - one for an integer input, one for a filename. They both return the valid time of
-   the model state contained in the file. The file referenced is the CLM restart file in netCDF format.
-
-   +-----------------+---------------------------------------------------------------------------------------------------+
-   | ``file_handle`` | If specified as an integer, it must be the netCDF file identifier from nf90_open(). If specified  |
-   |                 | as a filename, the name of the netCDF file.                                                       |
-   +-----------------+---------------------------------------------------------------------------------------------------+
-   | ``time``        | A DART time-type that contains the valid time of the model state in the CLM restart file.         |
-   +-----------------+---------------------------------------------------------------------------------------------------+
-
-| 
-
-.. container:: routine
-
-   *call get_grid_vertval(x, location, varstring, interp_val, istatus)*
-   ::
-
-      real(r8),            intent(in)  :: x(:)
-      type(location_type), intent(in)  :: location
-      character(len=*),    intent(in)  :: varstring
-      real(r8),            intent(out) :: interp_val
-      integer,             intent(out) :: istatus
-
-.. container:: indent1
-
-   Calculate the value of quantity at depth. The gridcell value at the levels above and below the depth of interest are
-   calculated and then the value for the desired depth is linearly interpolated. Each gridcell value is an area-weighted
-   value of an unknown number of column- or pft-based quantities. This is one of the workhorse routines for
-   ``model_interpolate()``.
-
-   +----------------+----------------------------------------------------------------------------------------------------+
-   | ``x``          | The DART state vector.                                                                             |
-   +----------------+----------------------------------------------------------------------------------------------------+
-   | ``location``   | The location of the desired quantity.                                                              |
-   +----------------+----------------------------------------------------------------------------------------------------+
-   | ``varstring``  | The CLM variable of interest - this must be part of the DART state. e.g, T_SOISNO, H2OSOI_LIQ,     |
-   |                | H2OSOI_ICE ...                                                                                     |
-   +----------------+----------------------------------------------------------------------------------------------------+
-   | ``interp_val`` | The quantity at the location of interest.                                                          |
-   +----------------+----------------------------------------------------------------------------------------------------+
-   | ``istatus``    | error code. 0 (zero) indicates a successful interpolation.                                         |
-   +----------------+----------------------------------------------------------------------------------------------------+
-
-| 
-
-.. container:: routine
-
-   *call compute_gridcell_value(x, location, varstring, interp_val, istatus)*
-   ::
-
-      real(r8),            intent(in)  :: x(:)
-      type(location_type), intent(in)  :: location
-      character(len=*),    intent(in)  :: varstring
-      real(r8),            intent(out) :: interp_val
-      integer,             intent(out) :: istatus
-
-.. container:: indent1
-
-   Calculate the value of a CLM variable in the DART state vector given a location. Since the CLM location information
-   is only available at the gridcell level, all the columns in a gridcell are area-weighted to derive the value for the
-   location. This is one of the workhorse routines for ``model_interpolate()``, and only select CLM variables are
-   currently supported. Only CLM variables that have no vertical levels may use this routine.
-
-   ============== =================================================================================================
-   ``x``          The DART state vector.
-   ``location``   The location of the desired quantity.
-   ``varstring``  The CLM variable of interest - this must be part of the DART state. e.g, frac_sno, leafc, ZWT ...
-   ``interp_val`` The quantity at the location of interest.
-   ``istatus``    error code. 0 (zero) indicates a successful interpolation.
-   ============== =================================================================================================
-
-| 
-
-.. container:: routine
-
-   *call gridcell_components(varstring)*
-   ::
-
-      character(len=*), intent(in) :: varstring
-
-.. container:: indent1
-
-   This is a utility routine that helps identify how many land units,columns, or PFTs are in each gridcell for a
-   particular variable. Helps answer exploratory questions about which gridcells are appropriate to test code. The CLM
-   variable is read from the CLM restart file.
-
-   ============= ==================================
-   ``varstring`` The CLM variable name of interest.
-   ============= ==================================
-
-| 
-
-.. container:: routine
-
-   *call DART_get_var(ncid, varname, datmat)*
-   ::
-
-      integer,                  intent(in)  :: ncid
-      character(len=*),         intent(in)  :: varname
-      real(r8), dimension(:),   intent(out) :: datmat
-      real(r8), dimension(:,:), intent(out) :: datmat
-
-.. container:: indent1
-
-   Reads a 1D or 2D variable of 'any' type from a netCDF file and processes and applies the offset/scale/FillValue
-   attributes correctly.
-
-   +-------------+-------------------------------------------------------------------------------------------------------+
-   | ``ncid``    | The netCDF file identifier to an open file. ncid is the output from a nf90_open() call.               |
-   +-------------+-------------------------------------------------------------------------------------------------------+
-   | ``varname`` | The name of the netCDF variable of interest. The variables can be integers, floats, or doubles.       |
-   +-------------+-------------------------------------------------------------------------------------------------------+
-   | ``datmat``  | The shape of datmat must match the shape of the netCDF variable. Only 1D or 2D variables are          |
-   |             | currently supported.                                                                                  |
-   +-------------+-------------------------------------------------------------------------------------------------------+
-
-| 
-
-.. container:: routine
-
-   *model_time = get_model_time( )*
-   ::
-
-      integer :: get_model_time
-
-.. container:: indent1
-
-   Returns the valid time of the model state vector.
-
-   ============== =========================================
-   ``model_time`` The valid time of the model state vector.
-   ============== =========================================
-
-| 
+   options_mod
+   state_structure_mod
+   threed_sphere/location_mod
+   time_manager_mod
+   types_mod
+   utilities_mod
 
 Files
 -----
@@ -1017,17 +575,11 @@ filename               purpose
 ====================== ===========================================================================
 input.nml              to read the model_mod namelist
 clm_restart.nc         both read and modified by the CLM model_mod
-clm_history.nc         read by the CLM model_mod for metadata purposes.
-\*.h1.\* history files may be read by the obs_def_tower_mod for observation operator purposes.
+clm_history.nc         read by the CLM model_mod for metadata and possible diagnostic variables.
+clm_vector_history.nc  read by the CLM model_mod for possible diagnostic variables.
 dart_log.out           the run-time diagnostic output
 dart_log.nml           the record of all the namelists actually USED - contains the default values
 ====================== ===========================================================================
-
-References
-----------
-
-`CLM User's Guide <http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf>`__ is an
-excellent reference for CLM.
 
 Error codes and conditions
 --------------------------
@@ -1036,25 +588,80 @@ Error codes and conditions
 |       Routine       |                   Message                   |                      Comment                      |
 +=====================+=============================================+===================================================+
 | nc_write_model_atts | Various netCDF-f90 interface error messages | From one of the netCDF calls in the named routine |
-| nc_write_model_vars |                                             |                                                   |
 +---------------------+---------------------------------------------+---------------------------------------------------+
 
 Future plans
 ------------
 
-Almost too many to list.
+Where to begin? 
 
-#. Implement a robust update_snow() routine that takes the modified SWE and repartitions it into the respective snow layers in a manner that works with both CLM4 and CLM4.5. This may mean modifying the clm_variables list to contain SNOWDP, H2OSOI_LIQ, H2OSOI_ICE, T_SOISNO, and others that may not be in the UPDATE list.
-#. Implement a fast way to get the quantities needed for the calculation of radiative transfer models - needs a whole column of CLM variables, redundant if multiple frequencies are used.
-#. Figure out what to do when one or more of the ensemble members does not have snow/leaves/etc. when the observation indicates there should be. Ditto for removing snow/leaves/etc. when the observation indicates otherwise.
-#. Right now, the soil moisture observation operator is used by the COSMOS code to calculate the expected neutron intensity counts. This is the right idea, however, the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2 ... I have not checked to see if they are, in fact, identical. This brings up a bigger issue in that the soil moisture observation operator would also be used to calculate whatever a TDT probe or ??? would measure. What units are they in? Can one operator support both?
+#. Implement a robust update_snow() routine that takes the modified SWE and 
+repartitions it into the respective snow layers in a manner that works with both 
+CLM4.5 and CLM5. This may mean modifying the clm_variables list to contain 
+SNOWDP, H2OSOI_LIQ, H2OSOI_ICE, T_SOISNO, and others that may not be in the UPDATE list.
+#. Implement a fast way to get the quantities needed for the calculation of 
+radiative transfer models - needs a whole column of CLM variables, redundant if 
+multiple frequencies are used.
+#. Figure out what to do when one or more of the ensemble members does not have 
+snow/leaves/etc. when the observation indicates there should be. Ditto for removing 
+snow/leaves/etc. when the observation indicates otherwise.
+#. Right now, the soil moisture observation operator is used by the COSMOS code to 
+calculate the expected neutron intensity counts. This is the right idea, however, 
+the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2 ... I have not 
+checked to see if they are, in fact, identical. This brings up a bigger issue in 
+that the soil moisture observation operator would also be used to calculate whatever 
+a TDT probe or ??? would measure. What units are they in? Can one operator support both?
 
 
-Private components
-------------------
 
-N/A
+References
+----------
 
-.. |CLM gridcell breakdown| image:: ../../guide/images/clm_landcover.jpg
+The 
+`CTSM Documentation <https://escomp.github.io/ctsm-docs/versions/master/html/index.html>`__
+is THE reference for CLM.
+
+.. [1] Zhang, Y.-F., T. J. Hoar, Z.-L. Yang, J. L. Anderson, A. M. Toure and M. Rodell, 2014:
+       Assimilation of MODIS snow cover through the Data Assimilation Research Testbed 
+       and the Community Land Model version 4.
+       *Journal of Geophysical Research: Atmospheres*, **142** 1489-1508, 
+       `doi:10.1002/2013JD021329 <https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2013JD021329>`__
+
+.. [2] Lin, P., J. Wei, Z. -L. Yang, Y. Zhang, K. Zhang, 2016:
+       Snow data assimilation‐constrained land initialization improves seasonal 
+       temperature prediction.
+       *Geophysical Research Letters* **43** (21), 11,423-11,432
+       `doi:10.1002/2016GL070966 <https://doi.org/10.1002/2016GL070966>`__
+
+.. [3] Zhao, L., Z. -L. Yang and T. J. Hoar, 2016:
+       Global soil moisture estimation by assimilating AMSR-E brightness temperatures 
+       in a coupled CLM4-RTM-DART system.
+       *Journal of Hydrometeorology*, **17**, 2431-2454, 
+       `doi:10.1175/JHM-D-15-0218.1 <https://doi.org/10.1175/JHM-D-15-0218.1>`__
+
+.. [4] Kwon, Y., Z. -L. Yang, T. J. Hoar and A. M. Toure, 2017:
+       Improving the radiance assimilation performance in estimating snow water storage across 
+       snow and land-cover types in North America.
+       *Journal of Hydrometeorology*, **18**, 651-668, 
+       `doi:10.1175/JHM-D-16-0102.1 <https://doi.org/10.1175/JHM-D-16-0102.1>`__
+
+.. [5]  Fox, A. M., Hoar, T. J., Anderson, J. L., Arellano, A. F., Smith, W. K., Litvak, M. E., et al., 2018:
+       Evaluation of a data assimilation system for land surface models using CLM4.5.
+       *Journal of Advances in Modeling Earth Systems*, **10**, 2471–2494, 
+       `doi.org/10.1029/2018MS001362 <https://doi.org/10.1029/2018MS001362>`__
+
+.. [6] Ling, X. L., Fu, C. B., Yang, Z. L., & Guo, W. D., 2019:
+       Comparison of different sequential assimilation algorithms for satellite-derived leaf area 
+       index using the Data Assimilation Research Testbed (version Lanai).
+       *Geoscientific Model Development*, 12(7), 3119-3133. 
+       `doi.org/10.5194/gmd-12-3119-2019 <https://doi.org/10.5194/gmd-12-3119-2019>`__
+
+.. [7] Bian, Q., Xu, Z., Zhao, L., Zhang, Y. F., Zheng, H., Shi, C., … & Yang, Z. L., 2019:
+       Evaluation and intercomparison of multiple snow water equivalent products over the Tibetan Plateau.
+       *Journal of Hydrometeorology*, 20(10), 2043-2055. 
+       `doi.org/10.1175/JHM-D-19-0011.1 <https://doi.org/10.1175/JHM-D-19-0011.1>`__
+
+
+.. |CLM gridcell breakdown| image:: ../../guide/images/clm_landcover.png
    :height: 600px
-   :target: http://www.cesm.ucar.edu/models/clm/surface.heterogeneity.html
+   :target: https://escomp.github.io/ctsm-docs/versions/release-clm5.0/html/tech_note/Ecosystem/CLM50_Tech_Note_Ecosystem.html#surface-characterization
