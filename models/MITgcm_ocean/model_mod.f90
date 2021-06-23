@@ -246,8 +246,6 @@ NAMELIST /PARM05/ &
 !
 !------------------------------------------------------------------
 
-! (the absoft compiler likes them to all be the same length during declaration)
-! we trim the blanks off before use anyway, so ...
 integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf files.
 
 ! Grid parameters - the values will be read from a
@@ -708,10 +706,6 @@ if(hstatus /= 0) then
    return
 endif
 
-! TJH: THIS IS A PROBLEM ... the offset is calulated assuming a storage order ... 
-! lat_lon_interpolate needs to have the vertical level index as an input variable
-! instead of the 'offset' to the right horizontal slab.
-   
 ! Find the base location for the top height and interpolate horizontally on this level
 offset = base_offset + (hgt_top - 1) * nx * ny
 !print *, 'relative top height offset = ', offset(1) - base_offset
@@ -1160,9 +1154,8 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
-real(R8) :: lat, lon, depth
-integer :: var_num, offset, lon_index, lat_index, depth_index
-integer :: iloc, jloc, kloc, var_id
+real(r8) :: lat, lon, depth
+integer  :: iloc, jloc, kloc, var_id
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1230,32 +1223,11 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 
-! for the prognostic variables
-integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID 
-
-!----------------------------------------------------------------------
-! variables for the namelist output
-!----------------------------------------------------------------------
-
-character(len=129), allocatable, dimension(:) :: textblock
-integer :: LineLenDimID, nlinesDimID, nmlVarID
-integer :: nlines, linelen
-
 !----------------------------------------------------------------------
 ! local variables 
 !----------------------------------------------------------------------
 
-! we are going to need these to record the creation date in the netCDF file.
-! This is entirely optional, but nice.
-
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1
-
-integer :: i
-character(len=128)  :: filename
+character(len=128) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1373,6 +1345,7 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model",  "MITgcm_ocean" ), &
                   "more negative is closer to the center of the earth"),  &
                  "nc_write_model_atts", "ZC comment "//trim(filename))
 
+   !>@todo FIXME ... why are we not defining ZGVarID
 
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -1415,7 +1388,7 @@ integer,             intent(in)    :: ens_size
 real(r8),            intent(in)    :: pert_amp
 logical,             intent(out)   :: interf_provided
 
-integer     :: i, j, var_type
+integer     :: i, j
 
 type(random_seq_type) :: random_seq
 
