@@ -178,8 +178,8 @@
    assimilation_period_seconds  = 259200
    model_perturbation_amplitude = 0.2
    model_shape_files            = 'OUTPUT.nc'
-   mitgcm_variables = 'PTMP', 'QTY_TEMPERATURE',          'NA', 'NA', 'update',
-                      'PSAL', 'QTY_SALINITY',            '0.0', 'NA', 'update',
+   mitgcm_variables = 'PSAL', 'QTY_SALINITY',            '0.0', 'NA', 'update',
+                      'PTMP', 'QTY_TEMPERATURE',          'NA', 'NA', 'update',
                       'UVEL', 'QTY_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
                       'VVEL', 'QTY_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
                       'ETA',  'QTY_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update', 
@@ -445,10 +445,11 @@
    output_state_files    = 'check_me'
    verbose               = .TRUE.
    test1thru             = 0
-   run_tests             = 1, 2, 3, 4, 7
+   run_tests             = 1, 2, 3, 4
    x_ind                 = 1234
-   loc_of_interest       = 26.0924, 40.1515, 12.01
-   quantity_of_interest  = 'QTY_SALINITY'
+   loc_of_interest       = 38.6, 20.0, 12.01
+   quantity_of_interest  = 'QTY_TEMPERATURE'
+   interp_test_vertcoord = 'VERTISHEIGHT'
    interp_test_lonrange  = 22.0, 33.0
    interp_test_dlon      = 0.25
    interp_test_latrange  = 38.0, 43.0

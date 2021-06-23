@@ -46,6 +46,7 @@ use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_i
 use distributed_state_mod, only : get_state
 
 use state_structure_mod, only : add_domain, get_model_variable_indices, &
+                                get_varid_from_kind, &
                                 state_structure_info, &
                                 get_index_start, get_index_end, &
                                 get_dart_vector_index, get_num_variables, &
@@ -258,8 +259,6 @@ integer, parameter :: Eta_index = 5
 
 ! (the absoft compiler likes them to all be the same length during declaration)
 ! we trim the blanks off before use anyway, so ...
-character(len=4) :: progvarnames(nfields) = (/'PSAL','PTMP','UVEL','VVEL','ETA '/)
-
 integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf files.
 
 integer :: start_index(nfields)
@@ -288,17 +287,18 @@ type(time_type) :: model_time, model_timestep
 
 integer :: model_size    ! the state vector length
 
+! Model namelist declarations with defaults
+! Codes for interpreting the columns of the variable_table
 
-! DART contents are specified in the input.nml:&model_nml namelist.
-!>@todo  NF90_MAX_NAME is 256 ... this makes the namelist output unreadable
+integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
+integer, parameter :: VT_KINDINDX     = 2 ! ... DART QUANTITY
+integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
+integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
+integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
 integer, parameter :: MAX_STATE_VARIABLES = 8
-integer, parameter :: num_state_table_columns = 5
-character(len=vtablenamelength) :: mitgcm_variables(MAX_STATE_VARIABLES * num_state_table_columns ) = ' '
-character(len=vtablenamelength) :: nbling_variables(MAX_STATE_VARIABLES * num_state_table_columns ) = ' '
-character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
-integer  :: quantity_list(MAX_STATE_VARIABLES)   = MISSING_I
-real(r8) ::    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
-logical  ::   update_list(MAX_STATE_VARIABLES)   = .FALSE.
+integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
+character(len=vtablenamelength) :: mitgcm_variables(NUM_STATE_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
+character(len=vtablenamelength) :: nbling_variables(NUM_STATE_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
 
 
 character(len=256) :: model_shape_files(2) = ' '
@@ -338,6 +338,11 @@ subroutine static_init_model()
 !
 ! Called to do one time initialization of the model. In this case,
 ! it reads in the grid information and then the model data.
+
+character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
+integer  :: quantity_list(MAX_STATE_VARIABLES)   = MISSING_I
+real(r8) ::    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
+logical  ::   update_list(MAX_STATE_VARIABLES)   = .FALSE.
 
 integer :: i, iunit, io
 integer :: ss, dd
@@ -542,17 +547,16 @@ if (do_output()) write(logfileunit, *) 'Using grid size : '
 if (do_output()) write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 if (do_output()) write(     *     , *) 'Using grid size : '
 if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
-!print *, ' 3d field size: ', n3dfields * (Nx * Ny * Nz)
-!print *, ' 2d field size: ', n2dfields * (Nx * Ny)
-model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 
-if (do_output()) write(*,*) 'model_size = ', model_size
-
-! parse_variable_input() fills var_names, quantity_list, clamp_vals, update_list
-call parse_variable_input(mitgcm_variables, nvars)
+call parse_variable_input(mitgcm_variables, model_shape_files(1), nvars, &
+                      var_names, quantity_list, clamp_vals, update_list)
 
 domain_id = add_domain(model_shape_files(1), nvars, &
                     var_names, quantity_list, clamp_vals, update_list )
+
+model_size = get_domain_size(domain_id)
+
+if (do_output()) write(*,*) 'model_size = ', model_size
 
 end subroutine static_init_model
 
@@ -603,6 +607,7 @@ if ( .not. module_initialized ) call static_init_model
 if (do_output()) then
    call print_time(time,'NULL interface adv_1step (no advance) DART time is')
    call print_time(time,'NULL interface adv_1step (no advance) DART time is',logfileunit)
+   call error_handler(E_ERR,'adv_1step','not configured to advance model',source)
 endif
 
 end subroutine adv_1step
@@ -641,56 +646,67 @@ type(time_type), intent(out) :: time
 if ( .not. module_initialized ) call static_init_model
 
 ! for now, just set to 0
+!@>todo read time from netCDF input file if possible
+
 time = set_time(0,0)
 
 end subroutine init_time
 
-
-subroutine model_interpolate(state_handle, ens_size, location, obs_quantity, interp_val, istatus)
-!=======================================================================
+!-----------------------------------------------------------------------
 !
+
+subroutine model_interpolate(state_handle, ens_size, location, quantity, interp_val, istatus)
 
 type(ensemble_type),   intent(in)  :: state_handle
 integer,               intent(in)  :: ens_size
 type(location_type),   intent(in)  :: location 
-integer,               intent(in)  :: obs_quantity
+integer,               intent(in)  :: quantity
 real(r8),              intent(out) :: interp_val(ens_size)
 integer,               intent(out) :: istatus(ens_size)
 
-! Model interpolate will interpolate any state variable (S, T, U, V, Eta) to
-! the given location given a state vector. The type of the variable being
-! interpolated is obs_quantity since normally this is used to find the expected
-! value of an observation at some location. The interpolated value is 
-! returned in interp_val and istatus is 0 for success.
+! model_interpolate will interpolate any variable in the DART vector to the given location.
+! The first variable matching the quantity of interest will be used for the interpolation.
+!
+! istatus =  0 ... success
+! istatus =  1 ... unknown model level
+! istatus =  2 ... vertical coordinate unsupported
+! istatus =  3 ... quantity not in the DART vector
+! istatus =  4 ... vertical  interpolation failed
+! istatus = 11 ... latitude  interpolation failed
+! istatus = 12 ... longitude interpolation failed
+! istatus = 13 ... corner a retrieval failed
+! istatus = 14 ... corner b retrieval failed
+! istatus = 15 ... corner c retrieval failed
+! istatus = 16 ... corner d retrieval failed
 
 ! Local storage
-real(r8)       :: loc_array(3), llon, llat, lheight
-integer(i8)        :: base_offset, offset
-integer        :: ind
-integer        :: hgt_bot, hgt_top
-real(r8)       :: hgt_fract
-real(r8),dimension(ens_size)       :: top_val, bot_val
-integer        :: hstatus
-integer        :: i
+real(r8)    :: loc_array(3), llon, llat, lheight
+integer(i8) :: base_offset, offset
+integer     :: ind
+integer     :: hgt_bot, hgt_top
+real(r8)    :: hgt_fract
+real(r8)    :: top_val(ens_size), bot_val(ens_size)
+integer     :: hstatus
+integer     :: i, varid
 
 if ( .not. module_initialized ) call static_init_model
 
 ! Successful istatus is 0
-interp_val = 0.0_r8
-istatus = 0
+interp_val = MISSING_R8
+istatus    = 0
 
 ! Get the individual locations values
 loc_array = get_location(location)
-llon    = loc_array(1)
-llat    = loc_array(2)
-lheight = loc_array(3)
+llon      = loc_array(1)
+llat      = loc_array(2)
+lheight   = loc_array(3)
    
 if( is_vertical(location,"HEIGHT") ) then
-      ! Nothing to do 
+   ! Nothing to do 
 elseif ( is_vertical(location,"SURFACE") ) then
-! Nothing to do 
+   ! Nothing to do 
 elseif (is_vertical(location,"LEVEL")) then
-! convert the level index to an actual depth 
+   ! convert the level index to an actual depth 
    ind = nint(loc_array(3))
    if ( (ind < 1) .or. (ind > size(zc)) ) then 
       lheight = zc(ind)
@@ -699,28 +715,22 @@ elseif (is_vertical(location,"LEVEL")) then
       return
    endif
 else   ! if pressure or undefined, we don't know what to do
-   istatus = 7
+   istatus = 2
    return
 endif
-   
+
+! determine which variable is the desired QUANTITY
+varid = get_varid_from_kind(domain_id, obs_quantity)
+
+if (varid < 1) then
+   istatus = 3
+   return
+endif
+
+base_offset = get_index_start(domain_id, varid)
+
 ! Do horizontal interpolations for the appropriate levels
-! Find the basic offset of this field
-if(obs_quantity == QTY_SALINITY) then
-   base_offset = start_index(1)
-else if(obs_quantity == QTY_TEMPERATURE) then
-   base_offset = start_index(2)
-else if(obs_quantity == QTY_U_CURRENT_COMPONENT) then
-   base_offset = start_index(3)
-else if(obs_quantity == QTY_V_CURRENT_COMPONENT) then
-   base_offset = start_index(4)
-else if(obs_quantity == QTY_SEA_SURFACE_HEIGHT) then
-   base_offset = start_index(5)
-else
-! Not a legal type for interpolation, return istatus error
-   istatus = 5
-   return
-endif
-   
+
 ! For Sea Surface Height don't need the vertical coordinate
 if( is_vertical(location,"SURFACE") ) then
    call lat_lon_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_quantity, interp_val, istatus)
@@ -730,7 +740,7 @@ endif
 ! Get the bounding vertical levels and the fraction between bottom and top
 call height_bounds(lheight, nz, zc, hgt_bot, hgt_top, hgt_fract, hstatus)
 if(hstatus /= 0) then
-   istatus = 2
+   istatus = 4
    return
 endif
    
@@ -854,7 +864,7 @@ endif
 
 ! Check for error on the latitude interpolation
 if(lat_status /= 0) then 
-   istatus = 1
+   istatus = 11
    return
 endif
 
@@ -871,7 +881,7 @@ endif
 
 ! Check for error on the longitude interpolation
 if(lat_status /= 0) then 
-   istatus = 2
+   istatus = 12
    return
 endif
 
@@ -890,25 +900,25 @@ endif
 pa = get_val(lon_bot, lat_bot, nx, state_handle, offset, ens_size, masked)
 !print *, 'pa = ', pa
 if(masked) then
-   istatus = 3
+   istatus = 13
    return
 endif
 pb = get_val(lon_top, lat_bot, nx, state_handle, offset, ens_size, masked)
 !print *, 'pb = ', pb
 if(masked) then
-   istatus = 3
+   istatus = 14
    return
 endif
 pc = get_val(lon_bot, lat_top, nx, state_handle, offset, ens_size, masked)
 !print *, 'pc = ', pc
 if(masked) then
-   istatus = 3
+   istatus = 15
    return
 endif
 pd = get_val(lon_top, lat_top, nx, state_handle, offset, ens_size, masked)
 !print *, 'pd = ', pd
 if(masked) then
-   istatus = 3
+   istatus = 16
    return
 endif
 
@@ -2101,35 +2111,42 @@ end subroutine write_data_namelistfile
 !>@param state_variables the list of variables and kinds from model_mod_nml
 !>@param ngood the number of variable/KIND pairs specified
 
-subroutine parse_variable_input( state_variables, ngood )
+subroutine parse_variable_input(state_variables, filename, ngood, &
+                     var_names, quantity_list, clamp_vals, update_list)
 
-character(len=*), intent(in)  :: state_variables(:)
+character(len=*), intent(in)  :: state_variables(:,:)
+character(len=*), intent(in)  :: filename
 integer,          intent(out) :: ngood
+character(len=*), intent(out) :: var_names(:)
+integer,          intent(out) :: quantity_list(:)
+real(r8),         intent(out) :: clamp_vals(:,:)
+logical,          intent(out) :: update_list(:)
 
 integer :: i
-character(len=NF90_MAX_NAME) :: varname       ! column 1
-character(len=NF90_MAX_NAME) :: dartstr       ! column 2
-character(len=NF90_MAX_NAME) :: minvalstring  ! column 3
-character(len=NF90_MAX_NAME) :: maxvalstring  ! column 4
-character(len=NF90_MAX_NAME) :: state_or_aux  ! column 5   change to updateable
+character(len=NF90_MAX_NAME) :: varname
+character(len=NF90_MAX_NAME) :: dartstr
+character(len=NF90_MAX_NAME) :: minvalstring
+character(len=NF90_MAX_NAME) :: maxvalstring
+character(len=NF90_MAX_NAME) :: updateable
 
 ngood = 0
 MyLoop : do i = 1, MAX_STATE_VARIABLES
 
-   varname      = trim(state_variables(num_state_table_columns*i-4))
-   dartstr      = trim(state_variables(num_state_table_columns*i-3))
-   minvalstring = trim(state_variables(num_state_table_columns*i-2))
-   maxvalstring = trim(state_variables(num_state_table_columns*i-1))
-   state_or_aux = trim(state_variables(num_state_table_columns*i  ))
+   varname      = trim(state_variables(VT_VARNAMEINDX,i))
+   dartstr      = trim(state_variables(VT_KINDINDX   ,i))
+   minvalstring = trim(state_variables(VT_MINVALINDX ,i))
+   maxvalstring = trim(state_variables(VT_MAXVALINDX ,i))
+   updateable   = trim(state_variables(VT_STATEINDX  ,i))
 
    if ( varname == ' ' .and. dartstr == ' ' ) exit MyLoop ! Found end of list.
 
    if ( varname == ' ' .or. dartstr == ' ' ) then
       string1 = 'model_nml:model "variables" not fully specified'
-      call error_handler(E_ERR,'parse_variable_input:',string1,source)
+      string2 = 'reading from "'//trim(filename)//'"'
+      call error_handler(E_ERR,'parse_variable_input:',string1,source,text2=string2)
    endif
 
-   ! Make sure DART kind is valid
+   ! Make sure DART quantity is valid
 
    if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no quantity <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
@@ -2138,13 +2155,13 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
 
    call to_upper(minvalstring)
    call to_upper(maxvalstring)
-   call to_upper(state_or_aux)
+   call to_upper(updateable)
 
    var_names(   i) = varname
    quantity_list(   i) = get_index_for_quantity(dartstr)
    clamp_vals(i,1) = string_to_real(minvalstring)
    clamp_vals(i,2) = string_to_real(maxvalstring)
-   update_list( i) = string_to_logical(state_or_aux, 'UPDATE')
+   update_list( i) = string_to_logical(updateable, 'UPDATE')
 
    ngood = ngood + 1
 
