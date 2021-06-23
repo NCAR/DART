@@ -5,28 +5,28 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # ------------------------------------------------------------------------------
-# Purpose: takes a single instance from a spun-up ensemble and advances CLM in
-#          24-hour segments. If that works, the setup can be modified to run
-#          perfect_model_obs to harvest synthetic observations from the single
-#          instance, which is now the true state of the system.
+# Purpose: perform a multi-instance advance of CLM and then assimilate.
+#          The assumptions here are that there is an ensemble of CLM states
+#          available (as well as the CESM-required ROF states).
+#
+# The example configured here is for daily assimilation - at 00Z.
+# Some variables for the DART state come from the CLM restart file,
+# some from the .h0. file that has 30-minute values in it, some from
+# a .h2. file that is still in the vector-based format.
+#
+# An example of assimilating monthly can be found in CLM5_monthly_assim.csh
+# ------------------------------------------------------------------------------
 
-# Many user-specified variables and settings are read from a DART
-# parameter file "DART_params.csh". This should be configured first.
-# There are still some variables that are logically defined in this script,
-# as well as some specifics about the CLM namelists.
+# All the user-specified variables and settings are read from a DART
+# parameter file. This includes the case name, ensemble size, the location
+# of the CESM code, etc. There are still some variables that are logically
+# defined in this script, as well as some specifics about the CLM namelists.
 
 source DART_params.csh
 
-# Prevent accidental removal of an experiment.
-# If you want to replace the experiment, you have to manually
-# remove the directories. 
-
-if ( -e ${caseroot} ) then
-   echo "WARNING : ${caseroot} exists."
-   echo "EXISTING: ${caseroot}"
-   echo "EXISTING: ${exeroot}"
-   echo "EXISTING: ${rundir}"
-   echo "WARNING : Stopping."
+if ( -e $caseroot ) then
+   echo "WARNING: $caseroot exists."
+   echo "WARNING: Stopping."
    exit
 endif
 
@@ -34,20 +34,16 @@ endif
 # job settings:
 #
 # run_queue, run_time, st_archive_queue, st_archive_time may be changed at any time
-#
-# FYI: Advancing 1 instance for 24 hours with 2 nodes and running perfect_model_obs
-#      took less than 6 minutes on cheyenne.
-# ==============================================================================
 
-setenv run_queue premium
-setenv run_time 00:10:00
+setenv run_queue regular
+setenv run_time 00:30:00
 
 # the short-term archiver is turned off (initially?) to let you explore the
 # run directory
 
 setenv short_term_archiver off
 setenv st_archive_queue share
-setenv st_archive_time 02:00:00
+setenv st_archive_time 06:00:00
 
 # ==============================================================================
 # Create the case - this creates the CASEROOT directory.
@@ -75,7 +71,9 @@ ${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
                                          --compset ${compset} \
                                          --case ${caseroot} \
                                          --project ${project} \
-                                         --run-unsupported || exit 2
+                                         --run-unsupported \
+                                         --ninst ${num_instances} \
+                                         --multi-driver || exit 2
 
 # ==============================================================================
 # Preserve a copy of this script and the parameter file as it was run.
@@ -205,7 +203,7 @@ endif
 
 echo "setting up the case ... "
 
-./case.setup || exit 4
+./case.setup || exit 6
 
 echo "case setup finished."
 
@@ -253,24 +251,17 @@ endif
 @ inst = 1
 while ( $inst <= $num_instances )
 
-   # following the CESM strategy for 'inst_string'
-   set inst_string = ''
-
-   if ( ${SingleInstanceRefcase} == TRUE ) then
-      set true_string = ''
-   else
-      set true_string = `printf %04d $TRUTHinstance`
-   endif
+   set inst_string = `printf %04d $inst`
 
    # ===========================================================================
-   set fname = "user_nl_datm"
+   set fname = "user_nl_datm_${inst_string}"
    # ===========================================================================
    # DATM namelist
 
-   set FILE1 = datm.streams.txt.CPLHISTForcing.Solar
-   set FILE2 = datm.streams.txt.CPLHISTForcing.State1hr
-   set FILE3 = datm.streams.txt.CPLHISTForcing.State3hr
-   set FILE4 = datm.streams.txt.CPLHISTForcing.nonSolarFlux
+   set FILE1 = datm.streams.txt.CPLHISTForcing.Solar_${inst_string}
+   set FILE2 = datm.streams.txt.CPLHISTForcing.State1hr_${inst_string}
+   set FILE3 = datm.streams.txt.CPLHISTForcing.State3hr_${inst_string}
+   set FILE4 = datm.streams.txt.CPLHISTForcing.nonSolarFlux_${inst_string}
    set DOMAINFILE = '/glade/p/cesmdata/cseg/inputdata/share/domains/domain.lnd.fv0.9x1.25_gx1v7.151020.nc'
 
    echo "domainfile = '${DOMAINFILE}'" >> ${fname}
@@ -278,7 +269,7 @@ while ( $inst <= $num_instances )
    echo "          '$FILE2 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
    echo "          '$FILE3 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
    echo "          '$FILE4 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
-   echo "          'datm.streams.txt.presaero.clim_2000 2000 2000 2000'" >> ${fname}
+   echo "          'datm.streams.txt.presaero.clim_2000_${inst_string} 2000 2000 2000'" >> ${fname}
    echo "vectors  = 'u:v' "     >> ${fname}
    echo "mapmask  = 'nomask', " >> ${fname}
    echo "           'nomask', " >> ${fname}
@@ -299,15 +290,15 @@ while ( $inst <= $num_instances )
    ${COPY} ${SOURCEDIR}/${STREAMFILE_STATE3HR}      user_${FILE3} || exit 5
    ${COPY} ${SOURCEDIR}/${STREAMFILE_NONSOLARFLUX}  user_${FILE4} || exit 5
 
-   foreach FNAME ( user_datm.streams.txt* )
+   foreach FNAME ( user_datm.streams.txt*_${inst_string} )
       echo "modifying $FNAME"
-      sed s/NINST/${true_string}/g $FNAME >! temp
+      sed s/NINST/${inst_string}/g $FNAME >! temp
       sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
    end
    ${REMOVE} temp
 
    # ===========================================================================
-   set fname = "user_nl_clm"
+   set fname = "user_nl_clm_${inst_string}"
    # ===========================================================================
 
    # We are explicitly constructing the 'finidat' to match what is getting
@@ -324,35 +315,59 @@ while ( $inst <= $num_instances )
    #              i.e. 5 means every 24 time-steps and -24 means every day
    #              Default: 0,-24,-24,-24,-24,-24
    # hist_mfilt:  Per tape series maximum number of time samples.
+   # EXAMPLE with stop_option = 'nhours' and 'stop_n' is 24
+   #  hist_nhtfrq          =    -24,     1,   -24
+   #  hist_mfilt           =      1,    48,     1
+   #  hist_avgflag_pertape =    'A',   'A',    'I'
+   #  hist_dov2xy          = .true.,.true.,.false.
+   #  means the .h0. will be daily averages in lat/lon space
+   #  means the .h1. will have 48 'averages' (i.e. every 30 mins) in lat/lon space
+   #  means the .h2. will have an instantaneous value in the same 'vector' format
+   #                 as the restart file.
 
-   echo "finidat = '"${refcase}.clm2.r.${reftimestamp}.nc"'"                >> ${fname}
-   echo "use_init_interp = .true."                                          >> ${fname}
-   echo "init_interp_fill_missing_with_natveg = .true."                     >> ${fname}
-   echo "use_lch4 = .false."                                                >> ${fname}
-   echo "hist_empty_htapes = .true."                                        >> ${fname}
-   echo "hist_fincl1 = 'NEP','H2OSOI','SMINN_vr','LITR1N_vr','TSOI','EFLX_LH_TOT','TLAI','FSDSVD','FSDSVI','PARVEGLN'"   >> ${fname}
-   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R','GPP'"                   >> ${fname}
-   echo "hist_fincl3 = 'NEE','H2OSNO','TLAI','TWS','SOILC_vr','SOIL1N_vr','LEAFN','SMP'"  >> ${fname}
-   echo "hist_nhtfrq = -$stop_n,1,-$stop_n"                                 >> ${fname}
-   echo "hist_mfilt  = 1,$h1nsteps,1"                                       >> ${fname}
-   echo "hist_avgflag_pertape = 'A','A','I'"                                >> ${fname}
-   echo "hist_dov2xy = .true.,.true.,.false."                               >> ${fname}
-   echo "hist_type1d_pertape = ' ',' ',' '"                                 >> ${fname}
+   # Here are some of the candidate variables. Generally do not want ALL possible
+   # variables - the files are already huge, and we have an ensemble of them.
+   # FSH            units="W/m^2"    long_name='sensible heat not including correction for ... 
+   # FSDSVD         units='W/m^2'    long_name='direct vis incident solar radiation'
+   # FSDSVI         units='W/m^2'    long_name='diffuse vis incident solar radiation'
+   # FSDSVDLN       units='W/m^2'    long_name='direct vis incident solar radiation at local noon'
+   # FSDSVILN       units='W/m^2'    long_name='diffuse vis incident solar radiation at local noon'
+   # PARVEGLN       units='W/m^2'    long_name='absorbed par by vegetation at local noon'
+   # EFLX_LH_TOT    units='W/m^2'    long_name='total latent heat flux [+ to atm]'
+   # EFLX_LH_TOT_R  units='W/m^2'    long_name='Rural total evaporation'
+   # TLAI           units='m^2/m^2'  long_name='total projected leaf area index'
+   # NEP            units='gC/m^2/s' long_name='net ecosystem production, excludes ...
+   # GPP            units='gC/m^2/s' long_name='gross primary production'
+
+   echo "finidat = '"${refcase}.clm2_${inst_string}.r.${reftimestamp}.nc"'" >> ${fname}
+   echo "use_lch4 = .false."                                     >> ${fname}
+   echo "use_init_interp = .true."                               >> ${fname}
+   echo "init_interp_fill_missing_with_natveg = .true."          >> ${fname}
+   echo "hist_empty_htapes = .true."                             >> ${fname}
+   echo "hist_fincl1 = 'EFLX_LH_TOT','TLAI','FSDSVD','FSDSVI','PARVEGLN'" >> ${fname}
+   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R','GPP'"        >> ${fname}
+   echo "hist_fincl3 = 'LEAFN','TLAI'"                           >> ${fname}
+   echo "hist_nhtfrq = -$stop_n,1,-$stop_n"                      >> ${fname}
+   echo "hist_mfilt  = 1,$h1nsteps,1"                            >> ${fname}
+   echo "hist_avgflag_pertape = 'A','A','I'"                     >> ${fname}
+   echo "hist_dov2xy = .true.,.true.,.false."                    >> ${fname}
+   echo "hist_type1d_pertape = ' ',' ',' '"                      >> ${fname}
+
 
    # ===========================================================================
-   set fname = "user_nl_mosart"
+   set fname = "user_nl_mosart_${inst_string}"
    # ===========================================================================
 
    # We are explicitly constructing the 'finidat_rtm' to match what is getting
    # staged by the 'stage_cesm_files' script.
 
-   echo "finidat_rtm = '"${refcase}.mosart.r.${reftimestamp}.nc"'" >> ${fname}
+   echo "finidat_rtm = '"${refcase}.mosart_${inst_string}.r.${reftimestamp}.nc"'" >> ${fname}
 
 
    @ inst ++
 end
 
-./preview_namelists || exit 6
+./preview_namelists || exit 3
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
@@ -433,7 +448,7 @@ if ( \${CONTINUE_RUN} == TRUE ) then
 
       endif
 
-      ${COPY} \${RESTARTDIR}/* . || exit 7
+      ${COPY} \${RESTARTDIR}/* . || exit -1
 
    else
 
@@ -444,7 +459,7 @@ if ( \${CONTINUE_RUN} == TRUE ) then
       @ inst=1
       while (\$inst <= $num_instances)
 
-         set inst_string = ''
+         set inst_string = \`printf _%04d \$inst\`
 
          echo "\${CASE}.cpl\${inst_string}.r.\${restart_time}.nc"    >! rpointer.drv\${inst_string}
          echo "\${CASE}.clm2\${inst_string}.r.\${restart_time}.nc"   >! rpointer.lnd\${inst_string}
@@ -475,30 +490,22 @@ else     # CONTINUE_RUN == FALSE
    @ inst=1
    while (\$inst <= $num_instances)
 
-      set inst_string = ''
+      set inst_string = \`printf _%04d \$inst\`
 
-      if ( ${SingleInstanceRefcase} == TRUE ) then
-         set true_string = ''
-         echo "Staging initial files from a single instance."
-      else
-         set true_string = `printf _%04d $TRUTHinstance`
-         echo "Staging initial files from instance $TRUTHinstance for the truth run."
-      endif
+      echo "Staging initial files for instance \$inst of $num_instances"
 
-      if ( -e    ${stagedir}/${refcase}.clm2\${true_string}.r.${init_time}.nc ) then
-         ${LINK} ${stagedir}/${refcase}.clm2\${true_string}.r.${init_time}.nc \
-                             ${refcase}.clm2\${inst_string}.r.${init_time}.nc
+      if ( -e    ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc ) then
+         ${LINK} ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc .
       else
-         echo "ERROR: ${stagedir}/${refcase}.clm2\${true_string}.r.${init_time}.nc does not exist."
+         echo "ERROR: ${stagedir}/${refcase}.clm2\${inststring}.r.${init_time}.nc does not exist."
          echo "       Check your 'reftimestamp' setting, or maybe your 'stagedir' or 'refcase' or ..."
          exit 8
       endif
 
-      if ( -e    ${stagedir}/${refcase}.mosart\${true_string}.r.${init_time}.nc ) then
-         ${LINK} ${stagedir}/${refcase}.mosart\${true_string}.r.${init_time}.nc \
-                             ${refcase}.mosart\${inst_string}.r.${init_time}.nc
+      if (-e     ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc ) then
+         ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
       else
-         echo "ERROR: ${stagedir}/${refcase}.mosart\${true_string}.r.${init_time}.nc does not exist."
+         echo "ERROR: ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc does not exist."
          exit 8
       endif
 
@@ -577,23 +584,25 @@ Time to check the case.
 
 3) check things
 
-4) run a single job (and send mail), verify that it works without DART
+4) run a single job (and send mail), verify that it works without assimilation
    ./case.submit -M all
 
-5) If that works, start again, this time using DART
-   ./xmlchange CONTINUE_RUN=FALSE
-
-6) IF NEEDED, compile all the DART executables by
+5) IF NEEDED, compile all the DART executables by
    cd  ${dartroot}/models/clm/work
    ./quickbuild.csh -mpi
 
-7) Modify the case to enable perfect_model_obs and
+6) Modify the case to enable data assimilation and
    run DART by executing
    cd ${caseroot}
    ./CESM_DART_config
    and follow the directions.
 
-8) If that works, continue the run in $stop_n '"$stop_option"' steps,
+7) Make sure the DART-related parts are appropriate.
+   Check the input.nml
+   Check the assimilate.csh or perfect_model.csh - as appropriate
+   ./case.submit -M all
+
+8) If that works
    ./xmlchange CONTINUE_RUN=TRUE
    ./xmlchange RESUBMIT=<number_of_cycles_to_run>
    and

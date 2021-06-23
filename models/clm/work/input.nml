@@ -93,6 +93,19 @@
    verbose                 = 99
    /
 
+&fill_inflation_restart_nml
+   write_prior_inf   = .true.
+   prior_inf_mean    = 1.01
+   prior_inf_sd      = 0.6
+
+   write_post_inf    = .true.
+   post_inf_mean     = 1.00
+   post_inf_sd       = 0.6
+
+   input_state_files = 'clm_restart.nc','clm_history.nc','clm_vector_history.nc'
+   single_file       = .false.
+   verbose           = .false.
+   /
 
 &smoother_nml
    num_lags              = 0
@@ -214,8 +227,8 @@
                     'SMINN_vr',    'QTY_SOIL_MINERAL_NITROGEN',  '0.0', 'NA', 'history' , 'NO_COPY_BACK',
                     'LITR1N_vr',   'QTY_NITROGEN',               '0.0', 'NA', 'history' , 'NO_COPY_BACK',
                     'TSOI',        'QTY_SOIL_TEMPERATURE',       'NA' , 'NA', 'history' , 'NO_COPY_BACK',
-                    'FSDSVDLN',    'QTY_PAR_DIRECT',             '0.0', 'NA', 'history' , 'NO_COPY_BACK',
-                    'FSDSVILN',    'QTY_PAR_DIFFUSE',            '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'FSDSVD',      'QTY_PAR_DIRECT',             '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'FSDSVI',      'QTY_PAR_DIFFUSE',            '0.0', 'NA', 'history' , 'NO_COPY_BACK',
                     'PARVEGLN',    'QTY_ABSORBED_PAR',           '0.0', 'NA', 'history' , 'NO_COPY_BACK',
                     'NEE',         'QTY_NET_CARBON_FLUX',        'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
                     'H2OSNO',      'QTY_SNOW_WATER',             '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',

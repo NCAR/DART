@@ -28,7 +28,7 @@
 setenv cesmtag        my_cesm_sandbox
 setenv resolution     f09_f09_mg17
 setenv compset        2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
-setenv num_instances  3
+setenv num_instances  1
 
 # Since this example was tested while assimilating solar induced fluorescence,
 # we are using 'SIF' in the CASE. FYI only.
@@ -36,7 +36,7 @@ setenv num_instances  3
 if (${num_instances} == 1) then
    setenv CASE clm5_f09_pmo
 else
-   setenv CASE clm5_f09_hybrid_free_e${num_instances}
+   setenv CASE clm5_f09_assim_e${num_instances}
 endif
 
 # ==============================================================================
@@ -88,13 +88,13 @@ setenv SourceModDir   ~/${cesmtag}/SourceMods
 #              not be on a scratch partition unless the long-term archiver is 
 #              invoked to move these files to permanent storage.
 
-setenv cesmdata     /glade/p/cesmdata/cseg/inputdata
-setenv cesmroot     /glade/work/${USER}/CESM/$cesmtag
-setenv caseroot     /glade/work/${USER}/cases/$cesmtag/${CASE}
-setenv cime_output_root /glade/scratch/${USER}/$cesmtag/${CASE}
-setenv rundir       ${cime_output_root}/run
-setenv exeroot      ${cime_output_root}/bld
-setenv archdir      ${cime_output_root}/archive
+setenv cesmdata         /glade/p/cesmdata/cseg/inputdata
+setenv cesmroot         /glade/work/${USER}/CESM/${cesmtag}
+setenv caseroot         /glade/work/${USER}/cases/${cesmtag}/${CASE}
+setenv cime_output_root /glade/scratch/${USER}/${cesmtag}/${CASE}
+setenv rundir           ${cime_output_root}/run
+setenv exeroot          ${cime_output_root}/bld
+setenv archdir          ${cime_output_root}/archive
 
 # ==============================================================================
 # Set the variables needed for the DART configuration.
@@ -138,7 +138,7 @@ setenv stagedir /glade/p/cisl/dares/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop
 # It does not have to match the reference (although changing the month/day seems bad).
 # runtime settings:
 
-setenv start_year    2012
+setenv start_year    2011
 setenv start_month   01
 setenv start_day     01
 setenv start_tod     00000
