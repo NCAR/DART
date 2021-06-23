@@ -7,35 +7,35 @@ module model_mod
 ! This is the interface between the MITgcm ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8, i8, SECPERDAY, vtablenamelength, &
-                             MISSING_I, MISSING_R4, MISSING_R8
+use        types_mod,      only : r4, r8, i8, SECPERDAY, vtablenamelength, &
+                                  MISSING_I, MISSING_R4, MISSING_R8
 
-use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
-                             set_calendar_type, GREGORIAN, print_time, print_date, &
-                             operator(*),  operator(+), operator(-), &
-                             operator(>),  operator(<), operator(/), &
-                             operator(/=), operator(<=)
+use time_manager_mod,      only : time_type, set_time, set_date, get_date, get_time, &
+                                  set_calendar_type, GREGORIAN, print_time, print_date, &
+                                  operator(*),  operator(+), operator(-), &
+                                  operator(>),  operator(<), operator(/), &
+                                  operator(/=), operator(<=)
 
-use     location_mod, only : location_type,      get_close_init, &
-                             get_close_state,    get_close_obs, set_location, &
-                             VERTISHEIGHT, get_location, is_vertical, &
-                             convert_vertical_obs, convert_vertical_state
+use     location_mod,      only : location_type, get_close_init, &
+                                  get_close_state, get_close_obs, set_location, &
+                                  VERTISHEIGHT, get_location, is_vertical, &
+                                  convert_vertical_obs, convert_vertical_state
 
-use    utilities_mod, only : error_handler, E_ERR, E_WARN, E_MSG, &
-                             logfileunit, get_unit, nc_check, do_output, to_upper, &
-                             find_namelist_in_file, check_namelist_read, &
-                             open_file, file_exist, find_textfile_dims, file_to_text, &
-                             string_to_real, string_to_logical
+use    utilities_mod,      only : error_handler, E_ERR, E_WARN, E_MSG, &
+                                  logfileunit, get_unit, nc_check, do_output, to_upper, &
+                                  find_namelist_in_file, check_namelist_read, &
+                                  open_file, file_exist, find_textfile_dims, file_to_text, &
+                                  string_to_real, string_to_logical
 
-use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT, &
-                             QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT, &
-                             get_index_for_quantity
+use     obs_kind_mod,      only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT, &
+                                  QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT, &
+                                  get_index_for_quantity
 
-use mpi_utilities_mod, only: my_task_id
+use mpi_utilities_mod,     only : my_task_id
 
-use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
+use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
-use default_model_mod,   only : nc_write_model_vars
+use default_model_mod,     only : nc_write_model_vars
 
 use dart_time_io_mod,      only : write_model_time
 
@@ -45,12 +45,12 @@ use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_i
 
 use distributed_state_mod, only : get_state
 
-use state_structure_mod, only : add_domain, get_model_variable_indices, &
-                                get_varid_from_kind, &
-                                state_structure_info, &
-                                get_index_start, get_index_end, &
-                                get_dart_vector_index, get_num_variables, &
-                                get_num_dims, get_domain_size
+use state_structure_mod,   only : add_domain, get_model_variable_indices, &
+                                  get_varid_from_kind, &
+                                  state_structure_info, &
+                                  get_index_start, get_index_end, &
+                                  get_dart_vector_index, get_num_variables, &
+                                  get_num_dims, get_domain_size
 
 !!!!! TODO: check if needed
 use netcdf
@@ -71,15 +71,14 @@ public :: get_model_size,         &
           init_conditions,        &
           nc_write_model_atts,    &
           nc_write_model_vars,    &
-          !pert_model_state,       &
           pert_model_copies,      &
-          get_close_init, &
+          get_close_init,         &
           get_close_obs,          &
-          get_close_state, &
-          convert_vertical_obs, &
+          get_close_state,        &
+          convert_vertical_obs,   &
           convert_vertical_state, &
-          read_model_time, &
-          write_model_time, &
+          read_model_time,        &
+          write_model_time,       &
           ens_mean_for_model
 
 ! generally useful routines for various support purposes.
@@ -94,7 +93,7 @@ public :: MIT_meta_type, read_meta, write_meta, &
 character(len=*), parameter :: source = 'MITgcm_ocean/model_mod.f90'
 
 character(len=512) :: string1, string2, string3
-logical, save :: module_initialized = .false.
+logical, save      :: module_initialized = .false.
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
@@ -116,11 +115,11 @@ type(random_seq_type) :: random_seq
 ! startDate_2 (integer) hhmmss
 !------------------------------------------------------------------
 
-character(len=9) :: TheCalendar = 'gregorian'
+character(len=9) :: TheCalendar         = 'gregorian'
 ! integration start date follows: yyyymmddhhmmss
-integer          :: startDate_1 = 19530101
-integer          :: startDate_2 =          60000
-logical          :: calendarDumps = .false.
+integer          :: startDate_1         = 19530101
+integer          :: startDate_2         = 60000
+logical          :: calendarDumps       = .false.
 logical          :: pickupStrictlyMatch = .false.
 
 NAMELIST /CAL_NML/ TheCalendar, startDate_1, startDate_2, calendarDumps
@@ -1155,22 +1154,17 @@ type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
 real(r8) :: lat, lon, depth
-integer  :: iloc, jloc, kloc, var_id
+integer  :: iloc, jloc, kloc
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_model_variable_indices(index_in, iloc, jloc, kloc, var_id)
-
-if (present(var_type)) var_type = var_id
-
-!>@todo FIXME: this doesn't account for the staggered grids ...
-!>        use the var_id to select which grid variable to use
+call get_model_variable_indices(index_in, iloc, jloc, kloc, kind_index = var_type)
 
 lon   = XC(iloc)
 lat   = YC(jloc)
 depth = ZC(kloc)
 
-if (var_id == QTY_SEA_SURFACE_HEIGHT) depth = 0.0_r8
+if (var_type == QTY_SEA_SURFACE_HEIGHT) depth = 0.0_r8
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
