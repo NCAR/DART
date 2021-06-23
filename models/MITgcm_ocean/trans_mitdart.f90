@@ -367,31 +367,36 @@ call check(nf90_put_var(ncid, ZCVarID, ZC ))
 ! Fill the data
 
 iunit = get_unit()
-open(iunit,file='PSAL.data',form="UNFORMATTED",status='OLD',access='DIRECT',recl=4*Nx*Ny*Nz)
+open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
 call check(nf90_put_var(ncid,SVarID,data_3d,start=(/1,1,1/)))
 
-open(iunit,file='PTMP.data',form="UNFORMATTED",status='OLD',access='DIRECT',recl=4*Nx*Ny*Nz)
+open(iunit, file='PTMP.data', form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=4*Nx*Ny*Nz,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
 call check(nf90_put_var(ncid,TVarID,data_3d,start=(/1,1,1/)))
 
-open(iunit,file='UVEL.data',form="UNFORMATTED",status='OLD',access='DIRECT',recl=4*Nx*Ny*Nz)
+open(iunit, file='UVEL.data', form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=4*Nx*Ny*Nz,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
 call check(nf90_put_var(ncid,UVarID,data_3d,start=(/1,1,1/)))
 
-open(iunit,file='VVEL.data',form="UNFORMATTED",status='OLD',access='DIRECT',recl=4*Nx*Ny*Nz)
+open(iunit, file='VVEL.data', form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=4*Nx*Ny*Nz,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
 call check(nf90_put_var(ncid,VVarID,data_3d,start=(/1,1,1/)))
  
-open(iunit,file='ETA.data',form="UNFORMATTED",status='OLD',access='DIRECT',recl=4*Nx*Ny)
+open(iunit, file='ETA.data', form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=4*Nx*Ny,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_2d
 close(iunit)
 where (data_2d == 0.0_r4) data_2d = FVAL
@@ -427,7 +432,8 @@ call check( NF90_GET_VAR(ncid,varid,data_3d))
 call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
 where (data_3d == FVAL) data_3d = 0.0_r4
 
-open(iunit,file='PSAL.data',form="UNFORMATTED",status='UNKNOWN',access='DIRECT',recl=4*Nx*Ny*Nz)
+open(iunit, file='PSAL.data', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_3d
 close(iunit)
 
@@ -435,7 +441,8 @@ call check( NF90_INQ_VARID(ncid,'PTMP',varid) )
 call check( NF90_GET_VAR(ncid,varid,data_3d))
 call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
 where (data_3d == FVAL) data_3d = 0.0_r4
-open(iunit,file='PTMP.data',form="UNFORMATTED",status='UNKNOWN',access='DIRECT',recl=4*Nx*Ny*Nz)
+open(iunit, file='PTMP.data', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_3d
 close(iunit)
 
@@ -443,7 +450,8 @@ call check( NF90_INQ_VARID(ncid,'UVEL',varid) )
 call check( NF90_GET_VAR(ncid,varid,data_3d))
 call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
 where (data_3d == FVAL) data_3d = 0.0_r4
-open(iunit,file='UVEL.data',form="UNFORMATTED",status='UNKNOWN',access='DIRECT',recl=4*Nx*Ny*Nz)
+open(iunit, file='UVEL.data', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_3d
 close(iunit)
 
@@ -451,7 +459,8 @@ call check( NF90_INQ_VARID(ncid,'VVEL',varid) )
 call check( NF90_GET_VAR(ncid,varid,data_3d))
 call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
 where (data_3d == FVAL) data_3d = 0.0_r4
-open(iunit,file='VVEL.data',form="UNFORMATTED",status='UNKNOWN',access='DIRECT',recl=4*Nx*Ny*Nz)
+open(iunit, file='VVEL.data', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_3d
 close(iunit)
 
@@ -459,7 +468,8 @@ call check( NF90_INQ_VARID(ncid,'ETA',varid) )
 call check( NF90_GET_VAR(ncid,varid,data_2d))
 call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
 where (data_2d == FVAL) data_2d = 0.0_r4
-open(iunit,file='ETA.data',form="UNFORMATTED",status='UNKNOWN',access='DIRECT',recl=4*Nx*Ny)
+open(iunit, file='ETA.data', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=4*Nx*Ny, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_2d
 close(iunit)
 

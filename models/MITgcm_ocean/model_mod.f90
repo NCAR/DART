@@ -7,7 +7,8 @@ module model_mod
 ! This is the interface between the MITgcm ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8, i8, SECPERDAY
+use        types_mod, only : r4, r8, i8, SECPERDAY, vtablenamelength, &
+                             MISSING_I, MISSING_R4, MISSING_R8
 
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              set_calendar_type, GREGORIAN, print_time, print_date, &
@@ -20,10 +21,11 @@ use     location_mod, only : location_type,      get_close_init, &
                              VERTISHEIGHT, get_location, is_vertical, &
                              convert_vertical_obs, convert_vertical_state
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
+use    utilities_mod, only : error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, nc_check, do_output, to_upper, &
                              find_namelist_in_file, check_namelist_read, &
-                             open_file, file_exist, find_textfile_dims, file_to_text
+                             open_file, file_exist, find_textfile_dims, file_to_text, &
+                             string_to_real, string_to_logical
 
 use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT, &
                              QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT, &
@@ -44,6 +46,7 @@ use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_i
 use distributed_state_mod, only : get_state
 
 use state_structure_mod, only : add_domain, get_model_variable_indices, &
+                                get_varid_from_kind, &
                                 state_structure_info, &
                                 get_index_start, get_index_end, &
                                 get_dart_vector_index, get_num_variables, &
@@ -88,21 +91,13 @@ public :: MIT_meta_type, read_meta, write_meta, &
           DARTtime_to_timestepindex, &
           lon_bounds,lat_bounds, lon_dist, max_nx, max_ny, max_nz, max_nr, MAX_LEN_FNAM 
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'MITgcm_ocean/model_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'MITgcm_ocean/model_mod.f90'
 
-character(len=512) :: msgstring
+character(len=512) :: string1, string2, string3
 logical, save :: module_initialized = .false.
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
-
-!! FIXME: This is horrid ... 'reclen' is compiler-dependent.
-!! IBM XLF  -- item_size_direct_access == 4,8
-!! IFORT    -- needs compile switch "-assume byterecl"
-integer, parameter :: item_size_direct_access = 4
 
 !------------------------------------------------------------------
 !
@@ -251,31 +246,7 @@ NAMELIST /PARM05/ &
 !
 !------------------------------------------------------------------
 
-integer, parameter :: n3dfields = 4
-integer, parameter :: n2dfields = 1
-integer, parameter :: nfields   = n3dfields + n2dfields
-
-integer, parameter :: S_index   = 1
-integer, parameter :: T_index   = 2
-integer, parameter :: U_index   = 3
-integer, parameter :: V_index   = 4
-integer, parameter :: Eta_index = 5
-
-! (the absoft compiler likes them to all be the same length during declaration)
-! we trim the blanks off before use anyway, so ...
-character(len=128) :: progvarnames(nfields) = (/'PSAL','PTMP','UVEL','VVEL','ETA '/)
-character(len=128) :: quantity_list(nfields) = (/ &
-'QTY_SALINITY             ', & 
-'QTY_POTENTIAL_TEMPERATURE', &
-'QTY_U_CURRENT_COMPONENT  ', &
-'QTY_V_CURRENT_COMPONENT  ', &
-'QTY_SEA_SURFACE_HEIGHT   '/)
-
-integer :: quantity_integers(nfields)
-
 integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf files.
-
-integer :: start_index(nfields)
 
 ! Grid parameters - the values will be read from a
 ! standard MITgcm namelist and filled in here.
@@ -285,22 +256,27 @@ integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 
-! location information - these grids can either be regularly
-! spaced or the spacing along each axis can vary.
-
-!real(r8) :: lat_origin, lon_origin
-!logical  :: regular_lat, regular_lon, regular_depth
-!real(r8) :: delta_lat, delta_lon, delta_depth
-!real(r8), allocatable :: lat_grid(:), lon_grid(:), depth_grid(:)
-
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
 integer :: model_size    ! the state vector length
 
+! Model namelist declarations with defaults
+! Codes for interpreting the columns of the variable_table
 
-character(len=256) :: model_shape_file = 'filter_ics.0001'
+integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
+integer, parameter :: VT_KINDINDX     = 2 ! ... DART QUANTITY
+integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
+integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
+integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
+integer, parameter :: MAX_STATE_VARIABLES = 8
+integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
+character(len=vtablenamelength) :: mitgcm_variables(NUM_STATE_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
+character(len=vtablenamelength) :: nbling_variables(NUM_STATE_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
+
+
+character(len=256) :: model_shape_files(2) = ' '
 integer  :: assimilation_period_days = 7
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
@@ -308,7 +284,9 @@ real(r8) :: model_perturbation_amplitude = 0.2
 namelist /model_nml/ assimilation_period_days,    &
                      assimilation_period_seconds, &
                      model_perturbation_amplitude, &
-                     model_shape_file
+                     model_shape_files, &
+                     mitgcm_variables, &
+                     nbling_variables
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
@@ -322,6 +300,7 @@ type MIT_meta_type
 end type MIT_meta_type
 
 integer :: domain_id
+integer :: nvars
 
 contains
 
@@ -329,11 +308,15 @@ contains
 
 
 
-subroutine static_init_model()
 !------------------------------------------------------------------
-!
-! Called to do one time initialization of the model. In this case,
-! it reads in the grid information and then the model data.
+!> Called to do one-time initialization of the model.
+
+subroutine static_init_model()
+
+character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
+integer  :: quantity_list(MAX_STATE_VARIABLES)   = MISSING_I
+real(r8) ::    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
+logical  ::   update_list(MAX_STATE_VARIABLES)   = .FALSE.
 
 integer :: i, iunit, io
 integer :: ss, dd
@@ -353,9 +336,6 @@ integer :: ss, dd
 !
 !   set the grid location info
 !
-
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
 
 ! Since this routine calls other routines that could call this routine
 ! we'll say we've been initialized pretty dang early.
@@ -382,10 +362,10 @@ if (index(TheCalendar,'g') > 0 ) then
 elseif (index(TheCalendar,'G') > 0 )then
    call set_calendar_type(GREGORIAN)
 else
-   write(msgstring,*)"namelist data.cal indicates a ",trim(TheCalendar)," calendar."
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"only have support for Gregorian"
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)"namelist data.cal indicates a ",trim(TheCalendar)," calendar."
+   call error_handler(E_MSG,"static_init_model", string1, source)
+   write(string1,*)"only have support for Gregorian"
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 if (do_output()) write(*,*)'model_mod:namelist cal_NML',startDate_1,startDate_2
 if (do_output()) write(*,nml=CAL_NML)
@@ -400,12 +380,12 @@ if ((deltaTmom   == deltaTtracer) .and. &
     (deltaTClock == deltaTtracer)) then
    ocean_dynamics_timestep = deltaTmom                    ! need a time_type version
 else
-   write(msgstring,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"values were ",deltaTmom, deltaTtracer, deltaTClock
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"At present, DART only supports equal values."
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
+   call error_handler(E_MSG,"static_init_model", string1, source)
+   write(string1,*)"values were ",deltaTmom, deltaTtracer, deltaTClock
+   call error_handler(E_MSG,"static_init_model", string1, source)
+   write(string1,*)"At present, DART only supports equal values."
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 
 ! Define the assimilation period as the model_timestep
@@ -418,9 +398,9 @@ model_timestep = set_model_time_step(assimilation_period_seconds, &
 
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
-write(msgstring,*)"assimilation period is ",dd," days ",ss," seconds"
-call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
-if (do_output()) write(logfileunit,*)msgstring
+write(string1,*)"assimilation period is ",dd," days ",ss," seconds"
+call error_handler(E_MSG,'static_init_model',string1,source)
+if (do_output()) write(logfileunit,*)string1
 
 ! Grid-related variables are in PARM04
 delX(:) = 0.0_r4
@@ -455,8 +435,8 @@ do i=1, size(delX)
  endif
 enddo
 if (Nx == -1) then
-   write(msgstring,*)'could not figure out number of longitudes from delX in namelist'
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)'could not figure out number of longitudes from delX in namelist'
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 
 Ny = -1
@@ -467,8 +447,8 @@ do i=1, size(delY)
  endif
 enddo
 if (Ny == -1) then
-   write(msgstring,*)'could not figure out number of latitudes from delY in namelist'
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)'could not figure out number of latitudes from delY in namelist'
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 
 Nz = -1
@@ -479,8 +459,8 @@ do i=1, size(delZ)
  endif
 enddo
 if (Nz == -1) then
-   write(msgstring,*)'could not figure out number of depth levels from delZ in namelist'
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+   write(string1,*)'could not figure out number of depth levels from delZ in namelist'
+   call error_handler(E_ERR,"static_init_model", string1, source)
 endif
 
 ! We know enough to allocate grid variables. 
@@ -491,9 +471,6 @@ if (.not. allocated(ZC)) allocate(ZC(Nz))
 if (.not. allocated(XG)) allocate(XG(Nx))
 if (.not. allocated(YG)) allocate(YG(Ny))
 if (.not. allocated(ZG)) allocate(ZG(Nz))
-
-!allocate(XC(Nx), YC(Ny), ZC(Nz))
-!allocate(XG(Nx), YG(Ny), ZG(Nz))
 
 ! XG (the grid edges) and XC (the grid centroids) must be computed.
 
@@ -523,15 +500,6 @@ do i=2, Nz
  ZC(i) = ZC(i-1) - 0.5_r8 * delZ(i-1) - 0.5_r8 * delZ(i) 
 enddo
 
-! record where in the state vector the data type changes
-! from one type to another, by computing the starting
-! index for each block of data.
-start_index(S_index)   = 1
-start_index(T_index)   = start_index(S_index) + (Nx * Ny * Nz)
-start_index(U_index)   = start_index(T_index) + (Nx * Ny * Nz)
-start_index(V_index)   = start_index(U_index) + (Nx * Ny * Nz)
-start_index(Eta_index) = start_index(V_index) + (Nx * Ny * Nz)
-
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
 !  e.g. S,T,U,V = 256 x 225 x 70
@@ -541,20 +509,16 @@ if (do_output()) write(logfileunit, *) 'Using grid size : '
 if (do_output()) write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 if (do_output()) write(     *     , *) 'Using grid size : '
 if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
-!print *, ' 3d field size: ', n3dfields * (Nx * Ny * Nz)
-!print *, ' 2d field size: ', n2dfields * (Nx * Ny)
-model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
+
+call parse_variable_input(mitgcm_variables, model_shape_files(1), nvars, &
+                      var_names, quantity_list, clamp_vals, update_list)
+
+domain_id = add_domain(model_shape_files(1), nvars, &
+                    var_names, quantity_list, clamp_vals, update_list )
+
+model_size = get_domain_size(domain_id)
 
 if (do_output()) write(*,*) 'model_size = ', model_size
-
-quantity_integers(1) = get_index_for_quantity(quantity_list(1))
-quantity_integers(2) = get_index_for_quantity(quantity_list(2))
-quantity_integers(3) = get_index_for_quantity(quantity_list(3))
-quantity_integers(4) = get_index_for_quantity(quantity_list(4))
-quantity_integers(5) = get_index_for_quantity(quantity_list(5))
-
-domain_id = add_domain(model_shape_file, nfields, var_names = progvarnames, kind_list = quantity_integers)
-
 
 end subroutine static_init_model
 
@@ -605,6 +569,7 @@ if ( .not. module_initialized ) call static_init_model
 if (do_output()) then
    call print_time(time,'NULL interface adv_1step (no advance) DART time is')
    call print_time(time,'NULL interface adv_1step (no advance) DART time is',logfileunit)
+   call error_handler(E_ERR,'adv_1step','not configured to advance model',source)
 endif
 
 end subroutine adv_1step
@@ -643,56 +608,67 @@ type(time_type), intent(out) :: time
 if ( .not. module_initialized ) call static_init_model
 
 ! for now, just set to 0
+!@>todo read time from netCDF input file if possible
+
 time = set_time(0,0)
 
 end subroutine init_time
 
-
-subroutine model_interpolate(state_handle, ens_size, location, obs_quantity, interp_val, istatus)
-!=======================================================================
+!-----------------------------------------------------------------------
 !
+
+subroutine model_interpolate(state_handle, ens_size, location, quantity, interp_val, istatus)
 
 type(ensemble_type),   intent(in)  :: state_handle
 integer,               intent(in)  :: ens_size
 type(location_type),   intent(in)  :: location 
-integer,               intent(in)  :: obs_quantity
+integer,               intent(in)  :: quantity
 real(r8),              intent(out) :: interp_val(ens_size)
 integer,               intent(out) :: istatus(ens_size)
 
-! Model interpolate will interpolate any state variable (S, T, U, V, Eta) to
-! the given location given a state vector. The type of the variable being
-! interpolated is obs_quantity since normally this is used to find the expected
-! value of an observation at some location. The interpolated value is 
-! returned in interp_val and istatus is 0 for success.
+! model_interpolate will interpolate any variable in the DART vector to the given location.
+! The first variable matching the quantity of interest will be used for the interpolation.
+!
+! istatus =  0 ... success
+! istatus =  1 ... unknown model level
+! istatus =  2 ... vertical coordinate unsupported
+! istatus =  3 ... quantity not in the DART vector
+! istatus =  4 ... vertical  interpolation failed
+! istatus = 11 ... latitude  interpolation failed
+! istatus = 12 ... longitude interpolation failed
+! istatus = 13 ... corner a retrieval failed
+! istatus = 14 ... corner b retrieval failed
+! istatus = 15 ... corner c retrieval failed
+! istatus = 16 ... corner d retrieval failed
 
 ! Local storage
-real(r8)       :: loc_array(3), llon, llat, lheight
-integer(i8)        :: base_offset, offset
-integer        :: ind
-integer        :: hgt_bot, hgt_top
-real(r8)       :: hgt_fract
-real(r8),dimension(ens_size)       :: top_val, bot_val
-integer        :: hstatus
-integer        :: i
+real(r8)    :: loc_array(3), llon, llat, lheight
+integer(i8) :: base_offset, offset
+integer     :: ind
+integer     :: hgt_bot, hgt_top
+real(r8)    :: hgt_fract
+real(r8)    :: top_val(ens_size), bot_val(ens_size)
+integer     :: hstatus
+integer     :: i, varid
 
 if ( .not. module_initialized ) call static_init_model
 
 ! Successful istatus is 0
-interp_val = 0.0_r8
-istatus = 0
+interp_val = MISSING_R8
+istatus    = 0
 
 ! Get the individual locations values
 loc_array = get_location(location)
-llon    = loc_array(1)
-llat    = loc_array(2)
-lheight = loc_array(3)
+llon      = loc_array(1)
+llat      = loc_array(2)
+lheight   = loc_array(3)
    
 if( is_vertical(location,"HEIGHT") ) then
-      ! Nothing to do 
+   ! Nothing to do 
 elseif ( is_vertical(location,"SURFACE") ) then
-! Nothing to do 
+   ! Nothing to do 
 elseif (is_vertical(location,"LEVEL")) then
-! convert the level index to an actual depth 
+   ! convert the level index to an actual depth 
    ind = nint(loc_array(3))
    if ( (ind < 1) .or. (ind > size(zc)) ) then 
       lheight = zc(ind)
@@ -701,46 +677,41 @@ elseif (is_vertical(location,"LEVEL")) then
       return
    endif
 else   ! if pressure or undefined, we don't know what to do
-   istatus = 7
+   istatus = 2
    return
 endif
-   
+
+! determine which variable is the desired QUANTITY
+varid = get_varid_from_kind(domain_id, quantity)
+
+if (varid < 1) then
+   istatus = 3
+   return
+endif
+
+base_offset = get_index_start(domain_id, varid)
+
 ! Do horizontal interpolations for the appropriate levels
-! Find the basic offset of this field
-if(obs_quantity == QTY_SALINITY) then
-   base_offset = start_index(1)
-else if(obs_quantity == QTY_TEMPERATURE) then
-   base_offset = start_index(2)
-else if(obs_quantity == QTY_U_CURRENT_COMPONENT) then
-   base_offset = start_index(3)
-else if(obs_quantity == QTY_V_CURRENT_COMPONENT) then
-   base_offset = start_index(4)
-else if(obs_quantity == QTY_SEA_SURFACE_HEIGHT) then
-   base_offset = start_index(5)
-else
-! Not a legal type for interpolation, return istatus error
-   istatus = 5
-   return
-endif
-   
+
 ! For Sea Surface Height don't need the vertical coordinate
 if( is_vertical(location,"SURFACE") ) then
-   call lat_lon_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_quantity, interp_val, istatus)
+   call lat_lon_interpolate(state_handle, ens_size, base_offset, llon, llat, quantity, interp_val, istatus)
    return
 endif
    
 ! Get the bounding vertical levels and the fraction between bottom and top
 call height_bounds(lheight, nz, zc, hgt_bot, hgt_top, hgt_fract, hstatus)
 if(hstatus /= 0) then
-   istatus = 2
+   istatus = 4
    return
 endif
-   
+
 ! Find the base location for the top height and interpolate horizontally on this level
 offset = base_offset + (hgt_top - 1) * nx * ny
 !print *, 'relative top height offset = ', offset(1) - base_offset
 !print *, 'absolute top height offset = ', offset(1)
-call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, obs_quantity, top_val, istatus)
+
+call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, quantity, top_val, istatus)
 ! Failed istatus from interpolate means give up
 do i =1,ens_size
    if(istatus(i) /= 0) return
@@ -750,7 +721,7 @@ enddo
 offset = base_offset + (hgt_bot - 1) * nx * ny
 !print *, 'relative bot height offset = ', offset(1) - base_offset
 !print *, 'absolute bot height offset = ', offset(1)
-call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, obs_quantity, bot_val, istatus)
+call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, quantity, bot_val, istatus)
 ! Failed istatus from interpolate means give up
 do i =1,ens_size
    if(istatus(i) /= 0) return
@@ -841,41 +812,35 @@ if ( .not. module_initialized ) call static_init_model
 ! Succesful return has istatus of 0
 istatus = 0
 
-
 ! Find out what latitude box and fraction
 ! The latitude grid being used depends on the variable type
 ! V is on the YG latitude grid
-if(var_type == QTY_V_CURRENT_COMPONENT) then
-   lat_array = yg
-   call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
-else 
-   ! Eta, U, T and S are on the YC latitude grid
-   lat_array = yc
-   call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
-endif
+
+lat_array = yc
+if(var_type == QTY_V_CURRENT_COMPONENT) lat_array = yg
+
+call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 
 ! Check for error on the latitude interpolation
 if(lat_status /= 0) then 
-   istatus = 1
+   istatus = 11
    return
 endif
 
 ! Find out what longitude box and fraction
-if(var_type == QTY_U_CURRENT_COMPONENT) then
-   ! U velocity is on the XG grid
-   lon_array = xg
-   call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
-else
-   ! Eta, V, T, and S are on the XC grid
-   lon_array = xc
-   call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
-endif
+lon_array = xc
+if(var_type == QTY_U_CURRENT_COMPONENT) lon_array = xg
+
+call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 
 ! Check for error on the longitude interpolation
-if(lat_status /= 0) then 
-   istatus = 2
+if(lon_status /= 0) then 
+   istatus = 12
    return
 endif
+
+
+! TJH get_val() should be replaced with get_dart_vector_index() and get_state()
 
 ! Vector is laid out with lat outermost loop, lon innermost loop
 ! Find the bounding points for the lat lon box
@@ -892,25 +857,25 @@ endif
 pa = get_val(lon_bot, lat_bot, nx, state_handle, offset, ens_size, masked)
 !print *, 'pa = ', pa
 if(masked) then
-   istatus = 3
+   istatus = 13
    return
 endif
 pb = get_val(lon_top, lat_bot, nx, state_handle, offset, ens_size, masked)
 !print *, 'pb = ', pb
 if(masked) then
-   istatus = 3
+   istatus = 14
    return
 endif
 pc = get_val(lon_bot, lat_top, nx, state_handle, offset, ens_size, masked)
 !print *, 'pc = ', pc
 if(masked) then
-   istatus = 3
+   istatus = 15
    return
 endif
 pd = get_val(lon_top, lat_top, nx, state_handle, offset, ens_size, masked)
 !print *, 'pd = ', pd
 if(masked) then
-   istatus = 3
+   istatus = 16
    return
 endif
 
@@ -1068,43 +1033,45 @@ endif
 end function lon_dist
 
 
-!Lanai version: function get_val(lon_index, lat_index, nlon, x, masked)
 function get_val(lon_index, lat_index, nlon, state_handle,offset,ens_size, masked)
 !=======================================================================
 !
 
 ! Returns the value from a single level array given the lat and lon indices
-integer,     intent(in) :: lon_index, lat_index, nlon
-!Lanai: real(r8),    intent(in) :: x(:)
-type(ensemble_type), intent(in) :: state_handle
-integer(i8),        intent(in)      :: offset
-integer,        intent(in)      :: ens_size
+integer,             intent(in)  :: lon_index, lat_index, nlon
+type(ensemble_type), intent(in)  :: state_handle
+integer(i8),         intent(in)  :: offset
+integer,             intent(in)  :: ens_size
+logical,             intent(out) :: masked
+real(r8)                         :: get_val(ens_size)
 
-logical,    intent(out) :: masked
-!Lanai: real(r8)                :: get_val
-real(r8)                :: get_val(ens_size)
 integer(i8) :: state_index
 integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
-! Layout has lons varying most rapidly
-!print *, 'lat_index, lon_index, nlon', lat_index, lon_index, nlon
-!print *, 'computing index val ', (lat_index - 1) * nlon + lon_index
-!Lanai: get_val = x((lat_index - 1) * nlon + lon_index)
+! print *, 'lat_index, lon_index, nlon, offset', lat_index, lon_index, nlon, offset
+
+!TJH: this calculation is only correct for slabs ...
 state_index=int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offset-1,i8)
+
+!TJH DART has an accessor function ...
+!TJH state_index = get_dart_vector_index(lon_index,lat_index,lev_index,dom_id,var_id)
+
 get_val = get_state(state_index,state_handle)
+
 !print *, 'get_val = ', get_val
 
 ! Masked returns false if the value is masked
 ! A grid variable is assumed to be masked if its value is FVAL. 
-!Just to maintain legacy, we also assume that A grid variable is assumed to be masked if its value is exactly 0.
+! Just to maintain legacy, we also assume that A grid variable is assumed 
+! to be masked if its value is exactly 0.
 ! See discussion in lat_lon_interpolate.
 masked = .false.
 do i=1,ens_size
- if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
+   if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
 enddo
-!print *, 'masked is ', masked
+
 end function get_val
 
 
@@ -1173,67 +1140,37 @@ end subroutine set_model_end_time
 
 
 
-subroutine get_state_meta_data(index_in, location, var_type)
 !------------------------------------------------------------------
-!
-! Given an integer index into the state vector structure, returns the
-! associated location. A second intent(out) optional argument kind
-! can be returned if the model has more than one type of field (for
-! instance temperature and zonal wind component). This interface is
-! required for all filter applications as it is required for computing
-! the distance between observations and state variables.
+!> Given an integer index into the state vector structure, returns the
+!> associated location. A second intent(out) optional argument kind
+!> can be returned if the model has more than one type of field (for
+!> instance temperature and zonal wind component). This interface is
+!> required for all filter applications as it is required for computing
+!> the distance between observations and state variables.
 
-integer(i8),          intent(in)  :: index_in
+subroutine get_state_meta_data(index_in, location, var_type)
+
+integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
-real(R8) :: lat, lon, depth
-integer :: var_num, offset, lon_index, lat_index, depth_index
+real(r8) :: lat, lon, depth
+integer  :: iloc, jloc, kloc, var_id
 
 if ( .not. module_initialized ) call static_init_model
 
-!print *, 'asking for meta data about index ', index_in
+call get_model_variable_indices(index_in, iloc, jloc, kloc, var_id)
 
-if (index_in < start_index(S_index+1)) then
-   if (present(var_type)) var_type = QTY_SALINITY  
-   var_num = S_index
-else if (index_in < start_index(T_index+1)) then
-   if (present(var_type)) var_type = QTY_TEMPERATURE  
-   var_num = T_index
-else if (index_in < start_index(U_index+1)) then
-   if (present(var_type)) var_type = QTY_U_CURRENT_COMPONENT
-   var_num = U_index
-else if (index_in < start_index(V_index+1)) then
-   if (present(var_type)) var_type = QTY_V_CURRENT_COMPONENT
-   var_num = V_index
-else 
-   if (present(var_type)) var_type = QTY_SEA_SURFACE_HEIGHT
-   var_num = Eta_index
-endif
+if (present(var_type)) var_type = var_id
 
-!print *, 'var num = ', var_num
+!>@todo FIXME: this doesn't account for the staggered grids ...
+!>        use the var_id to select which grid variable to use
 
-! local offset into this var array
-offset = index_in - start_index(var_num)
+lon   = XC(iloc)
+lat   = YC(jloc)
+depth = ZC(kloc)
 
-!print *, 'offset = ', offset
-
-if (var_num == Eta_index) then
-  depth = 0.0
-  depth_index = 1
-else
-  depth_index = (offset / (Nx * Ny)) + 1
-  depth = ZC(depth_index)
-endif
-
-lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
-lon_index = offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
-
-!print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
-lon = XC(lon_index)
-lat = YC(lat_index)
-
-!print *, 'lon, lat, depth = ', lon, lat, depth
+if (var_id == QTY_SEA_SURFACE_HEIGHT) depth = 0.0_r8
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
@@ -1286,32 +1223,11 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 
-! for the prognostic variables
-integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID 
-
-!----------------------------------------------------------------------
-! variables for the namelist output
-!----------------------------------------------------------------------
-
-character(len=129), allocatable, dimension(:) :: textblock
-integer :: LineLenDimID, nlinesDimID, nmlVarID
-integer :: nlines, linelen
-
 !----------------------------------------------------------------------
 ! local variables 
 !----------------------------------------------------------------------
 
-! we are going to need these to record the creation date in the netCDF file.
-! This is entirely optional, but nice.
-
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1
-
-integer :: i
-character(len=128)  :: filename
+character(len=128) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1342,10 +1258,6 @@ call nc_check(nf90_Redef(ncFileID),"nc_write_model_atts",   "redef "//trim(filen
 
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ), &
            "nc_write_model_atts", "source put "//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision), &
-           "nc_write_model_atts", "revision put "//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ), &
-           "nc_write_model_atts", "revdate put "//trim(filename))
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model",  "MITgcm_ocean" ), &
            "nc_write_model_atts", "model put "//trim(filename))
 
@@ -1433,6 +1345,7 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model",  "MITgcm_ocean" ), &
                   "more negative is closer to the center of the earth"),  &
                  "nc_write_model_atts", "ZC comment "//trim(filename))
 
+   !>@todo FIXME ... why are we not defining ZGVarID
 
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -1461,7 +1374,6 @@ call nc_check(nf90_sync(ncFileID), "nc_write_model_atts", "atts sync")
 
 ierr = 0 ! If we got here, things went well.
 
-!end function nc_write_model_atts
 end subroutine nc_write_model_atts
 
 
@@ -1476,7 +1388,7 @@ integer,             intent(in)    :: ens_size
 real(r8),            intent(in)    :: pert_amp
 logical,             intent(out)   :: interf_provided
 
-integer     :: i, j, var_type
+integer     :: i, j
 
 type(random_seq_type) :: random_seq
 
@@ -1505,7 +1417,6 @@ enddo
 
 ! NOTE: This routine is not complete. We should find the global min/max
 ! for the variable - of the values that are not 'missing'
-! The FESOM model has something close, but there is no land mask to worry about.
 
 !>@todo keep variable from exceeding the original range
 
@@ -1610,8 +1521,8 @@ iunit = get_unit()
 
 inquire(file=filename, exist=fexist, iostat=io)
 if ((io /= 0) .or. (.not. fexist)) then 
-   write(msgstring,*) trim(filename), ' does not exist, using namelist values'
-   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) trim(filename), ' does not exist, using namelist values'
+   call error_handler(E_MSG,'model_mod:read_meta',string1,source)
    return
 endif
 
@@ -1619,8 +1530,8 @@ endif
 
 open(unit=iunit, file=filename, action='read', form='formatted', iostat = io)
 if (io /= 0) then
-   write(msgstring,*) 'cannot open ', trim(filename), ', using namelist values'
-   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'cannot open ', trim(filename), ', using namelist values'
+   call error_handler(E_MSG,'model_mod:read_meta',string1,source)
    return
 endif
 
@@ -1638,15 +1549,15 @@ ReadnDims: do i = 1,1000
    if (indx > 0) then
       read(charstring(indx+9:),*,iostat=io)read_meta%nDims
       if (io /= 0 )then
-         write(msgstring,*)'unable to parse line ',nlines,' from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta:nDims',msgstring,source,revision,revdate)
+         write(string1,*)'unable to parse line ',nlines,' from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta:nDims',string1,source)
       endif
    endif
 enddo ReadnDims
 
 if (read_meta%nDims < 1) then
-   write(msgstring,*) 'unable to determine nDims from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine nDims from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',string1,source)
 endif
 
 ! Read every line looking for the dimList entry
@@ -1660,8 +1571,8 @@ ReaddimList: do i = 1,nlines
    
    read(iunit,'(a)', iostat = io)charstring
    if (io /= 0) then
-      write(msgstring,*) 'unable to read line ',i,' of ', trim(filename)
-      call error_handler(E_ERR,'model_mod:read_meta:dimList',msgstring,source,revision,revdate)
+      write(string1,*) 'unable to read line ',i,' of ', trim(filename)
+      call error_handler(E_ERR,'model_mod:read_meta:dimList',string1,source)
    endif
 
    indx = index(charstring,'dimList = [')
@@ -1670,8 +1581,8 @@ ReaddimList: do i = 1,nlines
       do j = 1,read_meta%nDims
          read(iunit,*,iostat=io)read_meta%dimList(j),dim1,dimN
          if (io /= 0) then
-            write(msgstring,*)'unable to parse dimList(',j, ') from ', trim(filename)
-            call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+            write(string1,*)'unable to parse dimList(',j, ') from ', trim(filename)
+            call error_handler(E_ERR,'model_mod:read_meta',string1,source)
          endif
       enddo
       exit ReaddimList
@@ -1679,8 +1590,8 @@ ReaddimList: do i = 1,nlines
 enddo ReaddimList
 
 if (all(read_meta%dimList < 1)) then
-   write(msgstring,*) 'unable to determine dimList from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine dimList from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',string1,source)
 endif
 
 
@@ -1692,8 +1603,8 @@ Readdataprec: do i = 1,nlines
 
    read(iunit,'(a)', iostat = io)charstring
    if (io /= 0) then
-      write(msgstring,*) 'unable to read line ',i,' of ', trim(filename)
-      call error_handler(E_ERR,'model_mod:read_meta:dataprec',msgstring,source,revision,revdate)
+      write(string1,*) 'unable to read line ',i,' of ', trim(filename)
+      call error_handler(E_ERR,'model_mod:read_meta:dataprec',string1,source)
    endif
 
    indx = index(charstring,'dataprec = [')
@@ -1701,16 +1612,16 @@ Readdataprec: do i = 1,nlines
    if (indx > 0) then
       read(charstring(indx+12:),*,iostat=io)read_meta%dataprec
       if (io /= 0) then
-         write(msgstring,*)'unable to parse dataprec from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+         write(string1,*)'unable to parse dataprec from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta',string1,source)
       endif
       exit Readdataprec
    endif
 enddo Readdataprec
 
 if (index(read_meta%dataprec,'null') > 0) then
-   write(msgstring,*) 'unable to determine dataprec from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine dataprec from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',string1,source)
 endif
 
 
@@ -1721,7 +1632,7 @@ rewind(iunit)
 Readnrecords: do i = 1,nlines 
    read(iunit,'(a)', iostat = io)charstring
    if (io /= 0) then
-      call error_handler(E_ERR,'model_mod:read_meta','message',source,revision,revdate)
+      call error_handler(E_ERR,'model_mod:read_meta','message',source)
    endif
 
    indx = index(charstring,'nrecords = [')
@@ -1729,16 +1640,16 @@ Readnrecords: do i = 1,nlines
    if (indx > 0) then
       read(charstring(indx+12:),*,iostat=io)read_meta%nrecords
       if (io /= 0) then
-         write(msgstring,*)'unable to parse nrecords from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+         write(string1,*)'unable to parse nrecords from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta',string1,source)
       endif
       exit Readnrecords
    endif
 enddo Readnrecords
 
 if (read_meta%nrecords < 1) then
-   write(msgstring,*) 'unable to determine nrecords from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine nrecords from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',string1,source)
 endif
 
 
@@ -1749,15 +1660,15 @@ rewind(iunit)
 ReadtimeStepNumber: do i = 1,nlines 
    read(iunit,'(a)', iostat = io)charstring
    if (io /= 0) then
-      call error_handler(E_ERR,'model_mod:read_meta','message',source,revision,revdate)
+      call error_handler(E_ERR,'model_mod:read_meta','message',source)
    endif
 
    indx = index(charstring,'timeStepNumber = [')
    if (indx > 0) then
       read(charstring(indx+18:),*,iostat=io)read_meta%timeStepNumber
       if (io /= 0) then
-         write(msgstring,*)'unable to parse timeStepNumber from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+         write(string1,*)'unable to parse timeStepNumber from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta',string1,source)
       endif
       exit ReadtimeStepNumber
 
@@ -1765,8 +1676,8 @@ ReadtimeStepNumber: do i = 1,nlines
 enddo ReadtimeStepNumber
 
 if (read_meta%timeStepNumber < 0) then
-   write(msgstring,*) 'unable to determine timeStepNumber from ', trim(filename)
-   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to determine timeStepNumber from ', trim(filename)
+   call error_handler(E_MSG,'model_mod:read_meta',string1,source)
 endif
 
 close(iunit)
@@ -1790,8 +1701,8 @@ filename = trim(filebase)//'.meta'
 iunit = get_unit()
 open(unit=iunit, file=filename, action='write', form='formatted', iostat = io)
 if (io /= 0) then
-   write(msgstring,*) 'unable to open file ', trim(filename), ' for writing'
-   call error_handler(E_ERR,'model_mod:write_meta',msgstring,source,revision,revdate)
+   write(string1,*) 'unable to open file ', trim(filename), ' for writing'
+   call error_handler(E_ERR,'model_mod:write_meta',string1,source)
 endif
 
 write(iunit, "(A,I5,A)") "nDims = [ ", metadata%nDims, " ];"
@@ -1850,9 +1761,9 @@ offset = set_time(0,0)
 maxtimestep = HUGE(modeloffset)/ocean_dynamics_timestep
 
 if (TimeStepIndex >= maxtimestep) then
-   write(msgstring,*)' timestepindex (',TimeStepIndex, &
+   write(string1,*)' timestepindex (',TimeStepIndex, &
                      ') * timestep (',ocean_dynamics_timestep,') overflows.'
-   call error_handler(E_ERR,'model_mod:timestep_to_DARTtime',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:timestep_to_DARTtime',string1,source) 
 endif
 
 modeloffset = nint(TimeStepIndex * ocean_dynamics_timestep)
@@ -1928,8 +1839,8 @@ call get_time(offset,ss,dd)
 
 if (dd >= (HUGE(dd)/SECPERDAY)) then   ! overflow situation
    call print_time(mytime,'DART time is',logfileunit)
-   write(msgstring,*)'Trying to convert DART time to MIT timestep overflows'
-   call error_handler(E_ERR,'model_mod:DARTtime_to_timestepindex',msgstring,source,revision,revdate) 
+   write(string1,*)'Trying to convert DART time to MIT timestep overflows'
+   call error_handler(E_ERR,'model_mod:DARTtime_to_timestepindex',string1,source) 
 endif
 
 DARTtime_to_timestepindex = nint((dd*SECPERDAY+ss) / ocean_dynamics_timestep)
@@ -1937,21 +1848,21 @@ DARTtime_to_timestepindex = nint((dd*SECPERDAY+ss) / ocean_dynamics_timestep)
 end function DARTtime_to_timestepindex
 
 
-
-subroutine get_gridsize(num_x, num_y, num_z)
 !------------------------------------------------------------------
 !
- integer, intent(out) :: num_x, num_y, num_z
 
- num_x = Nx
- num_y = Ny
- num_z = Nz
+subroutine get_gridsize(num_x, num_y, num_z)
+
+integer, intent(out) :: num_x, num_y, num_z
+
+num_x = Nx
+num_y = Ny
+num_z = Nz
 
 end subroutine get_gridsize
 
 
 
-subroutine write_data_namelistfile
 !------------------------------------------------------------------
 ! Essentially, we want to set the PARM03:endTime value to tell the
 ! model when to stop. To do that, we have to write an entirely new
@@ -1964,7 +1875,8 @@ subroutine write_data_namelistfile
 ! So - once we know where the namelist starts and stops, we can
 ! hunt for the values we need to change and change them while 
 ! preserving everything else.
-! 
+
+subroutine write_data_namelistfile
 
 integer :: iunit, ounit
 integer :: linenum1, linenumE, linenumN
@@ -1975,7 +1887,7 @@ character(len=169) :: nml_string, uc_string
 
 if ( .not. file_exist('data') ) then
    call error_handler(E_ERR,'write_data_namelistfile', &
-      'namelist file "data" does not exist',source,revision,revdate) 
+      'namelist file "data" does not exist',source) 
 endif
 
 iunit = open_file('data',      action = 'read')
@@ -1996,9 +1908,8 @@ FINDSTART : do
    !  write(*,*)'FINDSTART ... end-of-file at ',linenumN
       exit FINDSTART
    elseif (io /= 0 ) then ! read error
-      write(*,msgstring)'manual namelist read failed at line ',linenum1
-      call error_handler(E_ERR,'write_data_namelistfile', &
-         msgstring,source,revision,revdate) 
+      write(*,string1)'manual namelist read failed at line ',linenum1
+      call error_handler(E_ERR,'write_data_namelistfile',string1,source) 
    endif
 
    linenumN = linenumN + 1
@@ -2013,9 +1924,8 @@ enddo FINDSTART
 ! write(*,*)'File has ',linenumN,' lines'
 
 if (linenum1 < 1) then
-   write(*,msgstring)'unable to find string PARM03'
-   call error_handler(E_ERR,'write_data_namelistfile', &
-      msgstring,source,revision,revdate) 
+   write(*,string1)'unable to find string PARM03'
+   call error_handler(E_ERR,'write_data_namelistfile',string1,source) 
 endif
 
 ! We must preserve the value of the paramters right now,
@@ -2030,8 +1940,7 @@ MyEndTime  = endTime
 rewind(iunit) 
 read(iunit, nml = PARM03, iostat = io)
 if (io /= 0 ) then
-   call error_handler(E_ERR,'write_data_namelistfile', &
-   'namelist READ failed somehow',source,revision,revdate) 
+   call error_handler(E_ERR,'write_data_namelistfile','namelist READ failed somehow',source) 
 endif
 
 endTime  = MyEndTime
@@ -2049,9 +1958,8 @@ FINDEND : do
    !  write(*,*)'FINDEND ... end-of-file at ',linenumE
       exit FINDEND
    elseif (io /= 0 ) then ! read error
-      write(*,msgstring)'manual namelist read failed at line ',linenumE
-      call error_handler(E_ERR,'write_data_namelistfile', &
-         msgstring,source,revision,revdate) 
+      write(*,string1)'manual namelist read failed at line ',linenumE
+      call error_handler(E_ERR,'write_data_namelistfile',string1,source) 
    endif
 
    linenumE = linenumE + 1
@@ -2101,6 +2009,80 @@ close(iunit)
 close(ounit)
 
 end subroutine write_data_namelistfile
+
+
+!-----------------------------------------------------------------------
+!>
+!> Fill the array of requested variables, dart kinds, possible min/max
+!> values and whether or not to update the field in the output file.
+!>
+!>@param state_variables the list of variables and kinds from model_mod_nml
+!>@param ngood the number of variable/KIND pairs specified
+
+subroutine parse_variable_input(state_variables, filename, ngood, &
+                     var_names, quantity_list, clamp_vals, update_list)
+
+character(len=*), intent(in)  :: state_variables(:,:)
+character(len=*), intent(in)  :: filename
+integer,          intent(out) :: ngood
+character(len=*), intent(out) :: var_names(:)
+integer,          intent(out) :: quantity_list(:)
+real(r8),         intent(out) :: clamp_vals(:,:)
+logical,          intent(out) :: update_list(:)
+
+integer :: i
+character(len=NF90_MAX_NAME) :: varname
+character(len=NF90_MAX_NAME) :: dartstr
+character(len=NF90_MAX_NAME) :: minvalstring
+character(len=NF90_MAX_NAME) :: maxvalstring
+character(len=NF90_MAX_NAME) :: updateable
+
+ngood = 0
+MyLoop : do i = 1, MAX_STATE_VARIABLES
+
+   varname      = trim(state_variables(VT_VARNAMEINDX,i))
+   dartstr      = trim(state_variables(VT_KINDINDX   ,i))
+   minvalstring = trim(state_variables(VT_MINVALINDX ,i))
+   maxvalstring = trim(state_variables(VT_MAXVALINDX ,i))
+   updateable   = trim(state_variables(VT_STATEINDX  ,i))
+
+   if ( varname == ' ' .and. dartstr == ' ' ) exit MyLoop ! Found end of list.
+
+   if ( varname == ' ' .or. dartstr == ' ' ) then
+      string1 = 'model_nml:model "variables" not fully specified'
+      string2 = 'reading from "'//trim(filename)//'"'
+      call error_handler(E_ERR,'parse_variable_input:',string1,source,text2=string2)
+   endif
+
+   ! Make sure DART quantity is valid
+
+   if( get_index_for_quantity(dartstr) < 0 ) then
+      write(string1,'(''there is no quantity <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
+      call error_handler(E_ERR,'parse_variable_input:',string1,source)
+   endif
+
+   call to_upper(minvalstring)
+   call to_upper(maxvalstring)
+   call to_upper(updateable)
+
+   var_names(   i) = varname
+   quantity_list(   i) = get_index_for_quantity(dartstr)
+   clamp_vals(i,1) = string_to_real(minvalstring)
+   clamp_vals(i,2) = string_to_real(maxvalstring)
+   update_list( i) = string_to_logical(updateable, 'UPDATE')
+
+   ngood = ngood + 1
+
+enddo MyLoop
+
+if (ngood == MAX_STATE_VARIABLES) then
+   string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
+   write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
+   call error_handler(E_MSG,'parse_variable_input:',string1,source,text2=string2)
+endif
+
+end subroutine parse_variable_input
+
 
 !===================================================================
 ! End of MITgcm_ocean model_mod

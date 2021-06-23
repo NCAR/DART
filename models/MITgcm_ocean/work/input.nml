@@ -177,8 +177,14 @@
    assimilation_period_days     = 0
    assimilation_period_seconds  = 259200
    model_perturbation_amplitude = 0.2
-   model_shape_file             = 'TEST_EXEC/filter_ics.0001.nc'
+   model_shape_files            = 'OUTPUT.nc','NBLING.nc'
+   mitgcm_variables = 'PSAL', 'QTY_SALINITY',            '0.0', 'NA', 'update',
+                      'PTMP', 'QTY_TEMPERATURE',          'NA', 'NA', 'update',
+                      'UVEL', 'QTY_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+                      'VVEL', 'QTY_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+                      'ETA',  'QTY_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update', 
   /
+   nbling_variables = 'PSAL', 'QTY_CHLOROPHYLL',         '0.0', 'NA', 'update',
 
 
 &location_nml
@@ -436,19 +442,20 @@
 #   quantity_of_interest = 'QTY_DENSITY'
 
 &model_mod_check_nml
-   input_state_files     = 'TEST_EXEC/filter_ics.0001.nc'
+   input_state_files     = 'OUTPUT.nc'
    output_state_files    = 'check_me'
-   verbose               = .TRUE.
+   verbose               = .FALSE.
    test1thru             = 0
-   run_tests             = 1, 2, 3, 4, 7
-   x_ind                 = 1234
-   loc_of_interest       = 26.0924, 40.1515, 12.01
-   quantity_of_interest  = 'QTY_SALINITY'
-   interp_test_lonrange  = 22.0, 33.0
-   interp_test_dlon      = 0.25
-   interp_test_latrange  = 38.0, 43.0
-   interp_test_dlat      = 0.25
-   interp_test_vertrange = 1.0,  301.0
-   interp_test_dvert     = 300.0
+   run_tests             = 1, 2, 3, 4, 5, 6, 7
+   x_ind                 = 37500001
+   loc_of_interest       = 38.6, 20.0, 12.01
+   quantity_of_interest  = 'QTY_TEMPERATURE'
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   interp_test_lonrange  = 30.0, 45.0
+   interp_test_dlon      = 0.10
+   interp_test_latrange  = 10.0, 30.0
+   interp_test_dlat      = 0.10
+   interp_test_vertrange = 0.0,  -100.00
+   interp_test_dvert     = -10.0
    /
 
