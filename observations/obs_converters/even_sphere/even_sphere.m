@@ -1,171 +1,245 @@
-% Generate approximately evenly distributed points on sphere using
-% Golden Section spiral algorithm 
-%    http://www.softimageblog.com/archives/115
+function even_sphere(nprofiles, varargin)
+
+% Generate approximately evenly-distributed profiles on a sphere using Golden Section spiral algorithm
+%
+% This creates input to create_obs_sequence that will generate a set of radiosonde
+% profiles of T,U,V, that are approximately evenly-spaced on a sphere.
+% An optional argument 'fill_obs' will trigger the creation of synthetic
+% observations complete with (silly) observation values.
+%
+% The vertical coordinate system is 'pressure'.
+% The pressure levels themselves may be input.
+% The observation error variances for each level must then also be input.
+% There are separate error variances for T and [U,V].
+%
+% Example 1: 30 profiles, 14 default levels and obs error variances
+% nprofiles   = 30;
+% even_sphere(nprofiles)
+%
+% Example 2: 30 profiles at 6 specified levels, 
+%            uses the default obs error variances for each layer
+% nprofiles   = 30;
+% levels      = [1000  850  500  300  200  100];
+% even_sphere(nprofiles, 'levels', levels)
+%
+% Example 3: 30 profiles at 6 specified levels, 
+%            specify the error variances for each layer 
+% nprofiles   = 30;
+% levels      = [1000  850  500  300  200  100];
+% T_error_var = [1.44 0.64 0.64 0.81 1.44 0.64];
+% W_error_var = [1.96 2.25 4.41 9.00 7.29 4.41];
+% even_sphere(nprofiles, 'levels', levels, ...
+%             'T_error_var', T_error_var, 'W_error_var', W_error_var)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
-%
-% DART $Id$
 
-close all; clear;
+%%--------------------------------------------------------------------
+% Decode,Parse,Check the input
+%---------------------------------------------------------------------
+
+p = inputParser;
+
+addRequired(p,'nprofiles',@isnumeric);
+
+% These are the *mandatory pressure levels* defined in the
+% AMS glossary https://glossary.ametsoc.org/wiki/Mandatory_level
+% The error variances come from obs_converters/obs_error/ncep_obs_err_mod.f90.
+
+default_levels      = [1000  925  850  700  500  400  300   250  200  150  100   70   50   30   20   10    7    5    3    2    1];
+default_T_error_var = [1.44 1.00 0.64 0.64 0.64 0.64 0.81  1.44 1.44 1.00 0.64 0.64 0.81 1.00 1.69 2.25 2.25 2.25 2.25 2.25 2.25];
+default_W_error_var = [1.96 2.25 2.25 2.56 4.41 6.76 9.00 10.24 7.29 5.76 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41 4.41];
+default_fill        = false; % For diagnostic test need a null data value and a null qc value
+default_nlevels     = length(default_levels);
+default_YMD         = '2017-12-25';
+default_nlon         = 288;
+default_nlat         = 192;
+
+if (exist('inputParser/addParameter','file') == 2)
+    addParameter(p,'T_error_var', default_T_error_var, @isnumeric);
+    addParameter(p,'W_error_var', default_W_error_var, @isnumeric);
+    addParameter(p,'levels',      default_levels,      @isnumeric);
+    addParameter(p,'nlevels',     default_nlevels,     @isnumeric);
+    addParameter(p,'fill_obs',    default_fill,        @islogical);
+    addParameter(p,'YMD',         default_YMD,         @ischar);
+    addParameter(p,'nlon',        default_nlon,        @isnumeric);
+    addParameter(p,'nlat',        default_nlat,        @isnumeric);
+else
+    addParamValue(p,'T_error_var', default_T_error_var, @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'W_error_var', default_W_error_var, @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'levels',      default_levels,      @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'nlevels',     default_nlevels,     @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'fill_obs',    default_fill,        @islogical); %#ok<NVREPL>
+    addParamValue(p,'YMD',         default_YMD,         @ischar);    %#ok<NVREPL>
+    addParamValue(p,'nlon',        default_nlon,        @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'nlat',        default_nlat,        @isnumeric); %#ok<NVREPL>
+end
+
+p.parse(nprofiles, varargin{:});
+
+nlevels     = p.Results.nlevels;
+levels      = p.Results.levels;
+T_error_var = p.Results.T_error_var;
+W_error_var = p.Results.W_error_var;
+fill_obs    = p.Results.fill_obs;
+yyyymmdd    = p.Results.YMD;
+nlon        = p.Results.nlon;
+nlat        = p.Results.nlat;
+
+% FIXME ... check that all arrays of length 'level' are consistent.
+
+% If the user specifies nlevels, use the first nlevels of the default.
+% If the user also specifies 'levels', use the first nlevels of what they
+% specify.
+
+nlevels    = min(nlevels,length(levels));
+levels     =       levels(1:nlevels);
+T_error_var = T_error_var(1:nlevels);
+W_error_var = W_error_var(1:nlevels);
+
+levelstrings = sprintf('%.2f ',levels);
+fprintf('vertical levels %s\n',levelstrings)
 
 % Generate obs_sequence input for this problem
 
-% For diagnostic test need a null data value and a null qc value
-diagnostic_test = false;
+% If create_fixed_network_sequence is run, this date information will be overwritten
 
-% Input is in hectopascals - this was intended to be the mandatory levels (see below).
-levels = [1000 850 700 500 400 300 200 150 100 50 30 20 10 7 5];
+[year, month, day] = ymd(datetime(yyyymmdd));
+obsdate   = datenum(yyyymmdd);
+gregorian = datenum('1601-01-01');
+dart_date = obsdate-gregorian;
 
-% the nice thing about standards is there are so many of them.  mandatory levels, according to:
-% wisconsin: http://www.meteor.wisc.edu/~hopkins/aos100/raobdoc.htm
-% the surface, 1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100, 70, 50, and 10 mb.
-%
-% the AMS glossary: http://amsglossary.allenpress.com/glossary/search?id=mandatory-level1
-% 1000, 850, 700, 500, 400, 300, 200, 150, 100, 50, 30, 20, 10, 7, 5, 3, 2, and 1 mb.
-%
-% the Office of Federal Coordinator of Meterology: http://www.ofcm.gov/fmh3/text/chapter5.htm
-% 1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100, 70, 50, 30, 20, 10 hPa, plus it says
-% that these levels should be considered standard: 7, 5, 3, 2, and 1 hPa.
-%
-% the ones that this program generates right now:
-% 1000, 850, 700, 500, 400, 300, 200, 150, 100, 50, 30, 20, 10, 7, 5 mb.
+fprintf('Using date/time as %d-%02d-%02d 00:00:00 Z\n',year, month, day)
+fprintf('(days since 1601-01-01) : %f\n',dart_date)
 
-% Date information is overwritten by create_fixed_network_sequence
-year = 2008;
-month = 10;
-day = 1;
-hour = 0;
+fprintf('Creating %d profiles with %d levels for 3 variables = %d observations ...\n', ...
+         nprofiles,nlevels,nprofiles*nlevels*3)
 
-% Number of roughly evenly distributed points in horizontal
-n = 600;
-x(1:n) = 0;
-y(1:n) = 0;
-z(1:n) = 0;
+% preallocate space for efficiency
+x(     1:nprofiles) = 0;
+y(     1:nprofiles) = 0;
+z(     1:nprofiles) = 0;
+lon(   1:nprofiles) = 0;   % radians
+lat(   1:nprofiles) = 0;   % radians
+deglon(1:nprofiles) = 0;   % degrees
+deglat(1:nprofiles) = 0;   % degrees
 
-% Total number of observations at single time is levels*n*3
-num_obs = size(levels, 2) * n * 3;
- 
+% Total number of observations at single time is nlevels*nprofiles*[T,U,V]
+num_obs = nlevels * nprofiles * 3;
+
+% Calculate the cartesian locations.
+% For the geometric and visually minded: see the README.rst.
 inc = pi * (3 - sqrt(5));
-off = 2 / n;
-for k = 1:n
-   y(k) = (k-1) * off - 1 + (off / 2);
-   r = sqrt(1 - y(k)*y(k));
-   phi = (k-1) * inc; 
-   x(k) = cos(phi) * r;
-   z(k) = sin(phi) * r;
-end 
-
-% Now convert to latitude and longitude
-for k = 1:n
-   lon(k) = atan2(y(k), x(k)) + pi;
-   lat(k) = asin(z(k));
-   % Input is in degrees of lat and longitude
-   dlon(k) = rad2deg(lon(k));
-   dlat(k) = rad2deg(lat(k));
+off = 2 / nprofiles;
+for k = 1:nprofiles
+    y(k) = (k-1) * off - 1 + (off / 2);
+    r = sqrt(1 - y(k)*y(k));
+    phi = (k-1) * inc;
+    x(k) = cos(phi) * r;
+    z(k) = sin(phi) * r;
 end
 
-% Need to generate output for driving create_obs_sequence
-fid = fopen('even_create_input', 'w');
+% Now convert to latitude and longitude in both radians and degrees
+
+for k = 1:nprofiles
+    lon(k) = atan2(y(k), x(k)) + pi;
+    lat(k) = asin(z(k));
+    % Input is in degrees of latitude and longitude; convert from radians
+    deglon(k) = rad2deg(lon(k));
+    deglat(k) = rad2deg(lat(k));
+end
+
+% text file for driving create_obs_sequence
+outputfile = 'even_create_input';
+fprintf('Creating output file "%s" ... ',outputfile)
+fid = fopen(outputfile, 'w');
 
 % Output the total number of observations
 fprintf(fid, '%6i\n', num_obs);
-% 0 copies of data
-if(diagnostic_test) 
-   fprintf(fid, '%2i\n', 1);
+
+if(fill_obs)
+    fprintf(fid, '%2i\n', 1);
+    fprintf(fid, '%2i\n', 1);
+    fprintf(fid, '"observations"\n'); % Metadata for data copy
+    fprintf(fid, '"Quality Control"\n'); % Metadata for qc
 else
-   fprintf(fid, '%2i\n', 0);
+    fprintf(fid, '%2i\n', 0); % 0 copies of data
+    fprintf(fid, '%2i\n', 0); % 0 QC fields
 end
-
-% 0 QC fields
-if(diagnostic_test) 
-   fprintf(fid, '%2i\n', 1);
-else
-   fprintf(fid, '%2i\n', 0);
-end
-
-% Metadata for data copy
-if(diagnostic_test)
-   fprintf(fid, '"observations"\n');
-end
-% Metadata for qc
-if(diagnostic_test)
-   fprintf(fid, '"Quality Control"\n');
-end
-
 
 % Loop to create each observation
-for hloc = 1:n
-   for vloc = 1:size(levels, 2)
-      for field = 1:3
-         % 0 indicates that there is another observation; 
-         fprintf(fid, '%2i\n', 0);
-         % Specify obs kind by string
-         if(field == 1)
-            fprintf(fid, 'RADIOSONDE_TEMPERATURE\n');
-         elseif(field == 2)
-            fprintf(fid, 'RADIOSONDE_U_WIND_COMPONENT\n');
-         elseif(field == 3)
-            fprintf(fid, 'RADIOSONDE_V_WIND_COMPONENT\n');
-         end
-         % Select pressure as the vertical coordinate
-         fprintf(fid, '%2i\n', 2);
-         % The vertical pressure level
-         fprintf(fid, '%5i\n', levels(vloc));
-         % Lon and lat in degrees next
-         fprintf(fid, '%6.2f\n', dlon(hloc));
-         fprintf(fid, '%6.2f\n', dlat(hloc));
-         % Now the date and time
-         fprintf(fid, '%5i %3i %3i %3i %2i %2i \n', year, month, day, hour, 0, 0);
-         % Finally, the error variance, 1 for temperature, 4 for winds
-         if(field == 1)
-            fprintf(fid, '%2i\n', 1);
-         else
-            fprintf(fid, '%2i\n', 4);
-         end
-     
-         % Need value and qc for testing
-         if(diagnostic_test)
-            fprintf(fid, '%2i\n', 1);
+obs_type = {'RADIOSONDE_TEMPERATURE','RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT'};
+
+for hloc = 1:nprofiles
+    for vloc = 1:length(levels)
+        for field = obs_type
+            
+            % 0 indicates that there is another observation;
             fprintf(fid, '%2i\n', 0);
-         end
-      end   
-   end
+            
+            % Specify obs kind by string
+            fprintf(fid, '%s\n',string(field));
+            
+            % Specify pressure as the vertical coordinate system
+            fprintf(fid, '%2i\n', 2);
+            
+            % The vertical pressure value
+            fprintf(fid, '%5i\n', levels(vloc));
+            
+            % longitude and latitude in degrees
+            fprintf(fid, '%6.2f\n', deglon(hloc));
+            fprintf(fid, '%6.2f\n', deglat(hloc));
+            
+            % Now the date and time
+            fprintf(fid, '%5i %3i %3i %3i %2i %2i \n', year, month, day, 0, 0, 0);
+            
+            % Finally, the error variance
+            switch string(field)
+                case 'RADIOSONDE_TEMPERATURE'
+                    fprintf(fid, '%6.2f\n', T_error_var(vloc));
+                otherwise
+                    fprintf(fid, '%6.2f\n', W_error_var(vloc));
+            end
+            
+            % Need observation value and qc for testing
+            if(fill_obs)
+                fprintf(fid, '%2i\n', 1);  % observation value
+                fprintf(fid, '%2i\n', 0);  % qc value
+            end
+        end
+    end
 end
 
-% File name
+% File name that results from running create_obs_sequence.
 fprintf(fid, 'set_def.out\n');
 
 % Done with output, close file
 fclose(fid);
+fprintf('done.\n')
 
 
+%-------------------------------------------------------------------------------
+%% Some plotting to visualize this observation set in context
+%  Plot a regular grid for comparison.
 
-% Some plotting to visualize this observation set
+% Model grid for comparison on the obs distribution plot
+% T85          : nlon=256, nlat=128 points on A-grid
+% FV ~1 degree : nlon=288, nlat=192
+% 1 degree every 4th point in latitude and longitude would be (288*192/16=3456)
+
 plot(lon, lat, '*');
-hold on
+title(sprintf('%d profile locations with %d levels (1 level shown)',nprofiles,nlevels))
+set(gca,'FontSize',20)
 
-% Plot an approximate CAM T85 grid for comparison
-% 256x128 points on A-grid
-% Plot latitude lines first
-del_lat = pi / 128;
-for i = 1:128
-   glat = del_lat * i - pi/2;
-   a = [0 2*pi];
-   b = [glat glat];
-   plot(a, b, 'k');
-end
+yticks = -pi/2 :   pi/nlat : pi/2;
+xticks =     0 : 2*pi/nlon : 2*pi;
 
-del_lon = 2*pi / 256;
-for i = 1:256
-   glon = del_lon*i;
-   a = [glon glon];
-   b = [-pi/2,  pi/2];
-   plot(a, b, 'k');
-end
+set(gca,'YTick',yticks, 'YTickLabel',[], ...
+    'XTick',    xticks, 'XTickLabel',[])
+grid on
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$
+xlabel(sprintf('%d evenly-spaced longitudes',nlon))
+ylabel(sprintf('%d evenly-spaced latitudes' ,nlat))
+
+axis tight

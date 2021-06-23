@@ -27,17 +27,18 @@ Anyone who wants to contribute another error module is
 more than welcome to add files here.
 
 IMPORTANT:
-Each file should have the same module name; e.g. the file
-names will differ, but the module name itself must be the
-same across all modules in this directory.
+Each file should have the same module name; i.e. the source
+file names will differ but the module name inside the file
+must be the same across all modules in this directory.
 
-All the subroutines must also have the same names, and
-supply appropriate values for each observation type that
-is required.  If a new observation type is added, it should
+All the subroutines must also have the same names and
+calling sequence. They must return appropriate values 
+for each observation type that is required.  
+If errors for a new observation type is added, it should
 be added to all the files in this directory.
 
 This way the user can change between error values by editing
-the filename in the path_names_xxx files and recompiling,
+the filename in the path_names_xxx files and recompiling
 without changing the code.
 
 Thanks to Ryan Torn for the idea and initial contributions.

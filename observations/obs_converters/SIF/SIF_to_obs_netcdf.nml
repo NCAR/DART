@@ -1,0 +1,7 @@
+
+&SIF_to_obs_netcdf_nml
+   input_file_list = 'SIF.input.txt'
+   verbose         = 0
+   wavelength      = 740
+   /
+
