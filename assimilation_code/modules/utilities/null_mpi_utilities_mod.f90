@@ -95,7 +95,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
           sum_across_tasks, get_dart_mpi_comm, datasize, send_minmax_to,     &
           get_from_fwd, get_from_mean, broadcast_minmax, broadcast_flag,     &
-          start_mpi_timer, read_mpi_timer, send_sum_to,                      &
+          start_mpi_timer, read_mpi_timer, send_sum_to, get_global_max,      &
           all_reduce_min_max  ! deprecated, replace by broadcast_minmax
 
 character(len=*), parameter :: source = 'null_mpi_utilities_mod.f90'
@@ -637,6 +637,21 @@ end subroutine get_from_fwd
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------
+
+!> Collect global max values on each task.
+
+subroutine get_global_max(max)
+
+real(r8), intent(inout)  :: max       !> global max over tasks
+
+! Nothing to do with only one task.
+
+end subroutine get_global_max
+
 
 end module mpi_utilities_mod
 
@@ -659,4 +674,3 @@ subroutine exit_all(exit_code)
    call exit(exit_code)
 
 end subroutine exit_all
-
