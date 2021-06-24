@@ -25,7 +25,7 @@
 
 
 &filter_nml
-   perturb_from_single_instance = .TRUE.
+   perturb_from_single_instance = .FALSE.
    perturbation_amplitude       = 0.2
    async                    = 0
    adv_ens_command          = 'cannot_advance_clm'
@@ -35,9 +35,9 @@
    input_state_file_list    = 'restart_files.txt',
                               'history_files.txt',
                               'vector_files.txt' 
-   output_state_file_list   = 'restart_files_out.txt',
-                              'history_files_out.txt',
-                              'vector_files_out.txt'
+   output_state_file_list   = 'restart_files.txt',
+                              'history_files.txt',
+                              'vector_files.txt'
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
@@ -82,7 +82,7 @@
 
 &clm_to_dart_nml
    clm_restart_file =  'clm.nc'
-   verbose          = 3
+   verbose          = 0
    /
 
 

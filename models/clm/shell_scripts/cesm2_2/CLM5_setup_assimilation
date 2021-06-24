@@ -24,9 +24,16 @@
 
 source DART_params.csh
 
-if ( -e $caseroot ) then
-   echo "WARNING: $caseroot exists."
-   echo "WARNING: Stopping."
+# Prevent accidental removal of an experiment.
+# If you want to replace the experiment, you have to manually
+# remove the directories. 
+
+if ( -e ${caseroot} ) then
+   echo "WARNING : ${caseroot} exists."
+   echo "EXISTING: ${caseroot}"
+   echo "EXISTING: ${exeroot}"
+   echo "EXISTING: ${rundir}"
+   echo "WARNING : Stopping."
    exit
 endif
 
@@ -203,7 +210,7 @@ endif
 
 echo "setting up the case ... "
 
-./case.setup || exit 6
+./case.setup || exit 4
 
 echo "case setup finished."
 
@@ -340,19 +347,18 @@ while ( $inst <= $num_instances )
    # GPP            units='gC/m^2/s' long_name='gross primary production'
 
    echo "finidat = '"${refcase}.clm2_${inst_string}.r.${reftimestamp}.nc"'" >> ${fname}
-   echo "use_lch4 = .false."                                     >> ${fname}
-   echo "use_init_interp = .true."                               >> ${fname}
-   echo "init_interp_fill_missing_with_natveg = .true."          >> ${fname}
-   echo "hist_empty_htapes = .true."                             >> ${fname}
-   echo "hist_fincl1 = 'EFLX_LH_TOT','TLAI','FSDSVD','FSDSVI','PARVEGLN'" >> ${fname}
-   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R','GPP'"        >> ${fname}
-   echo "hist_fincl3 = 'LEAFN','TLAI'"                           >> ${fname}
-   echo "hist_nhtfrq = -$stop_n,1,-$stop_n"                      >> ${fname}
-   echo "hist_mfilt  = 1,$h1nsteps,1"                            >> ${fname}
-   echo "hist_avgflag_pertape = 'A','A','I'"                     >> ${fname}
-   echo "hist_dov2xy = .true.,.true.,.false."                    >> ${fname}
-   echo "hist_type1d_pertape = ' ',' ',' '"                      >> ${fname}
-
+   echo "use_init_interp = .true."                                          >> ${fname}
+   echo "init_interp_fill_missing_with_natveg = .true."                     >> ${fname}
+   echo "use_lch4 = .false."                                                >> ${fname}
+   echo "hist_empty_htapes = .true."                                        >> ${fname}
+   echo "hist_fincl1 = 'NEP','H2OSOI','SMINN_vr','LITR1N_vr','TSOI','EFLX_LH_TOT','TLAI','FSDSVD','FSDSVI','PARVEGLN'"   >> ${fname}
+   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R','GPP'"                   >> ${fname}
+   echo "hist_fincl3 = 'NEE','H2OSNO','TLAI','TWS','SOILC_vr','SOIL1N_vr','LEAFN','SMP'"  >> ${fname}
+   echo "hist_nhtfrq = -$stop_n,1,-$stop_n"                                 >> ${fname}
+   echo "hist_mfilt  = 1,$h1nsteps,1"                                       >> ${fname}
+   echo "hist_avgflag_pertape = 'A','A','I'"                                >> ${fname}
+   echo "hist_dov2xy = .true.,.true.,.false."                               >> ${fname}
+   echo "hist_type1d_pertape = ' ',' ',' '"                                 >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_mosart_${inst_string}"
@@ -367,7 +373,7 @@ while ( $inst <= $num_instances )
    @ inst ++
 end
 
-./preview_namelists || exit 3
+./preview_namelists || exit 6
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
@@ -448,7 +454,7 @@ if ( \${CONTINUE_RUN} == TRUE ) then
 
       endif
 
-      ${COPY} \${RESTARTDIR}/* . || exit -1
+      ${COPY} \${RESTARTDIR}/* . || exit 7
 
    else
 
@@ -520,7 +526,7 @@ exit 0
 EndOfText
 chmod 0755 stage_cesm_files
 
-./stage_cesm_files || exit 2
+./stage_cesm_files || exit 8
 
 #===============================================================================
 # This example has SourceMods that enable CLM to output solar induced fluorescence
@@ -529,7 +535,7 @@ chmod 0755 stage_cesm_files
 if ( ${use_SourceMods} == TRUE ) then
 
    if (    -d    ${SourceModDir} ) then
-      ${COPY} -r ${SourceModDir}/* ${caseroot}/SourceMods/ || exit 7
+      ${COPY} -r ${SourceModDir}/* ${caseroot}/SourceMods/ || exit 9
 
       # determine if we need sourcemods for CLM4.5 or CLM5
       set clm_version = `echo $CLM_PHYSICS_VERSION | sed -e "s/-//"`
@@ -539,7 +545,7 @@ if ( ${use_SourceMods} == TRUE ) then
          case "clm5_0","clm4_5":
             if ( -e    SourceMods/src.clm/${clm_version} ) then
                cd      SourceMods/src.clm
-               ${LINK} ${clm_version}/*/*F90 . || exit 7
+               ${LINK} ${clm_version}/*/*F90 . || exit 9
                cd      ../..
             else
                echo "No SourceMods for CLM <${clm_version}>."
@@ -551,7 +557,7 @@ if ( ${use_SourceMods} == TRUE ) then
             echo "SourceMods requested and using CLM version <${clm_version}>."
             echo "Unsupported version of CLM."
             echo "Only 'clm5_0' and 'clm4_5' have SourceMods."
-            exit 7
+            exit 9
          breaksw
 
       endsw
@@ -561,11 +567,11 @@ if ( ${use_SourceMods} == TRUE ) then
    else
       echo "ERROR - DART_params.csh use_SourceMods = ${use_SourceMods}"
       echo "ERROR - but there are no SourceMods in ${SourceModDir}"
-      exit 7
+      exit 9
    endif
 endif
 
-${BUILD_WRAPPER} ./case.build || exit 7
+${BUILD_WRAPPER} ./case.build || exit 9
 
 # ==============================================================================
 # What to do next

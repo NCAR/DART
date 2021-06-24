@@ -28,7 +28,7 @@
 setenv cesmtag        my_cesm_sandbox
 setenv resolution     f09_f09_mg17
 setenv compset        2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
-setenv num_instances  1
+setenv num_instances  3
 
 # Since this example was tested while assimilating solar induced fluorescence,
 # we are using 'SIF' in the CASE. FYI only.
@@ -106,7 +106,7 @@ setenv archdir          ${cime_output_root}/archive
 # ==============================================================================
 
 setenv dartroot               /glade/work/${USER}/git/DART_public
-setenv baseobsdir             /glade/p/cisl/dares/Observations/land/pmo
+setenv baseobsdir             /glade/p/cisl/dares/Observations/land
 setenv pmo_input_baseobsdir   /glade/p/cisl/dares/Observations/land/pmo/input
 setenv pmo_output_baseobsdir  /glade/p/cisl/dares/Observations/land/pmo/output
 
