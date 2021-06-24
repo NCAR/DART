@@ -1164,7 +1164,10 @@ lon   = XC(iloc)
 lat   = YC(jloc)
 depth = ZC(kloc)
 
-if (var_type == QTY_SEA_SURFACE_HEIGHT) depth = 0.0_r8
+! Acounting for surface variables and those on staggered grids
+if (var_type == QTY_SEA_SURFACE_HEIGHT)  depth = 0.0_r8
+if (var_type == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
+if (var_type == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)  
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
