@@ -309,6 +309,7 @@ References
    observations/obs_converters/NCEP/prep_bufr/prep_bufr
    observations/obs_converters/NCEP/ascii_to_obs/create_real_obs
    observations/obs_converters/ROMS/ROMS
+   observations/obs_converters/SIF/SIF_to_obs_netcdf
    observations/obs_converters/SSEC/SSEC
    observations/obs_converters/SST/SST
    observations/obs_converters/SSUSI/convert_f16_edr_dsk

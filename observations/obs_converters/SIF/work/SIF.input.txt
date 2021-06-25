@@ -1,2 +1,2 @@
-../data/SIF005clip_201807.nc
-../data/SIF005clip_201808.nc
+../data/SIF005_201807.nc
+../data/SIF005_201808.nc
