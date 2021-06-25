@@ -793,6 +793,7 @@ setenv save_every_Mth_day_restart 3
 # from a caseroot directory.
 if ( -e ${DART_CESM_scripts}/DART_config.template ) then
    sed -e "s#your_dart_path#${dartroot}#" \
+       -e "s#your_dart_script#assimilate.csh#" \
        -e "s#your_setup_script_dir#$DART_CESM_scripts:t#" \
        -e "s#your_observation_path#${baseobsdir}#" \
        -e "s#days_between_archiving_restarts#${save_every_Mth_day_restart}#" \

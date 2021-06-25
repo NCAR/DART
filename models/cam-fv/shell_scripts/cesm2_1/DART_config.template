@@ -10,9 +10,9 @@
 # Purpose
 # ---------------------
 #
-# This script integrates DART with a pre-existing CESM multi-instance case.
-# It must be run from a valid CASEROOT directory and some environment variables
-# must be set (as in cesm#_#/setup_XXX). 
+# This script integrates DART with a pre-existing CESM case.
+# It must be run from a valid CASEROOT directory to have access 
+# to some environment variables.
 #
 # CAM is the only model component used for assimilation.
 # CESM starts and stops to allow for CAM to assimilate every 6 hours.
@@ -71,7 +71,8 @@ echo "==================="
 
 setenv DARTROOT               your_dart_path
 setenv DART_SCRIPTS_DIR       $DARTROOT/models/cam-fv/shell_scripts/your_setup_script_dir
-echo "DART_SCRIPTS_DIR = $DART_SCRIPTS_DIR"
+setenv DART_SCRIPT            your_dart_script
+echo "DART_SCRIPTS_DIR/DART_SCRIPT = $DART_SCRIPTS_DIR/$DART_SCRIPT"
 
 setenv BASEOBSDIR             your_observation_path
 
@@ -109,9 +110,10 @@ setenv num_instances `./xmlquery --subgroup ATM --value NINST`
 # The default is to tell CESM to use no_assimilate.csh.
 # If this script is run by setup_advanced, use one of its environment variables 
 # to turn on assimilation.  
-# In any case, you can change the value of DATA_ASSIMILATION_SCRIPT in env_run.xml.
+# In any case, you can change the value of DATA_ASSIMILATION_SCRIPT manually
+# using an xmlchange command.
 ./xmlchange                 DATA_ASSIMILATION_SCRIPT=${CASEROOT}/no_assimilate.csh
-if ($?CIMEROOT) ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/assimilate.csh
+if ($?CIMEROOT) ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/$DART_SCRIPT
 
 # ==============================================================================
 
@@ -164,7 +166,7 @@ foreach MODEL ( cam-fv )
       echo "         Looking for: $targetdir/filter "
       echo "         Trying to rebuild all executables for $MODEL now ..."
       echo "         This will be incorrect, if input.nml:preprocess_nml is not correct."
-      (cd $targetdir; ./quickbuild.csh -mpi)
+      (cd $targetdir; ./quickbuild.csh -mpi; cd -)
       if ( ! -x $targetdir/filter ) then
          echo "ERROR: executable file 'filter' not found."
          echo "       Unsuccessfully tried to rebuild: $targetdir/filter "
@@ -186,12 +188,15 @@ sed -e "s#BOGUSBASEOBSDIR#$BASEOBSDIR#"  \
     -e "s#BOGUS_save_every_Mth#$SAVE_EVERY_MTH_RESTART#" \
     ${DART_SCRIPTS_DIR}/assimilate.csh.template  > assimilate.csh  || exit 40
 
+sed -e "s#BOGUSBASEOBSDIR#$BASEOBSDIR#"  \
+    ${DART_SCRIPTS_DIR}/perfect_model.csh.template  > perfect_model.csh  || exit 41
+
 chmod 755 assimilate.csh
 chmod 755 no_assimilate.csh
-# chmod 755 perfect_model.csh
+chmod 755 perfect_model.csh
 
 if (-f ${DART_SCRIPTS_DIR}/compress.csh) then
-   $COPY -f -${VERBOSE} ${DART_SCRIPTS_DIR}/compress.csh . || exit 43
+   $COPY -f ${VERBOSE} ${DART_SCRIPTS_DIR}/compress.csh . || exit 43
 else
    echo "ERROR: no compress.csh in  ${DART_SCRIPTS_DIR}"
    exit 45
