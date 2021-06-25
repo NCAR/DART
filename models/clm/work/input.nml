@@ -370,7 +370,7 @@
    test1thru             = 0
    run_tests             = 1, 2, 3, 4
    x_ind                 = 482189
-   loc_of_interest       = 75.0, 60.0, 0.40
+   loc_of_interest       = 255.0, 50.0, 0.001
    quantity_of_interest  = 'QTY_SOIL_TEMPERATURE'
    interp_test_vertcoord = 'VERTISHEIGHT'
    interp_test_lonrange  = 320.0, 90.0

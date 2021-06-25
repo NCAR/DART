@@ -5,7 +5,9 @@
 program clm_to_dart
 
 !-------------------------------------------------------------------------------
-! purpose: Replace 'bogus' values in unused snow layers with _FillValue
+! purpose: Update CLM output files to be suitable as input to filter
+!                 Current functionality:
+!                 - replaces random values in empty snow layers with a consistent _FillValue
 !
 ! USAGE:  The clm filename is read from the clm_in namelist
 !         <edit clm_to_dart_output_file in input.nml:clm_to_dart_nml>
@@ -82,7 +84,7 @@ call find_namelist_in_file("input.nml", "clm_to_dart_nml", iunit)
 read(iunit, nml = clm_to_dart_nml, iostat = io)
 call check_namelist_read(iunit, io, "clm_to_dart_nml") ! closes, too.
 
-ncid = nc_open_file_readwrite(clm_restart_file, 'open for bogus snow value replacement')
+ncid = nc_open_file_readwrite(clm_restart_file, 'open for unused snow layer value replacement')
 
 call get_snow_metadata()
 
@@ -247,4 +249,3 @@ end subroutine get_snow_metadata
 
 
 end program clm_to_dart
-
