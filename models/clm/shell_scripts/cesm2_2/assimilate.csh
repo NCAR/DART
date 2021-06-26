@@ -211,15 +211,14 @@ if ( $PRIOR_INF != 0 ) then
 
    ${REMOVE} input_priorinf_mean*.nc input_priorinf_sd*.nc
 
-   @ domain = 1
+   @ domaincount = 1
 
-   while ( $domain <= $domaincount )
+   foreach POINTERFILE ( priorinf_pointer*.txt )
 
-      set DOMAIN = `printf _d%02d $domain`
+      set DOMAIN = `printf _d%02d $domaincount`
       set INPUT  =  input_priorinf_mean_${DOMAIN}
       set OUTPUT = output_priorinf_mean_${DOMAIN}
 
-      set POINTERFILE = `printf priorinf_pointer_d%02d.txt $domain`
       set latest_mean = `head -n 1 $POINTERFILE`
       set latest_sd   = `tail -n 1 $POINTERFILE`
 
@@ -232,7 +231,7 @@ if ( $PRIOR_INF != 0 ) then
       ${LINK} ${latest_mean} input_priorinf_mean${DOMAIN}.nc
       ${LINK} ${latest_sd}   input_priorinf_sd${DOMAIN}.nc
 
-      @ domain ++
+      @ domaincount ++
 
    end
 
