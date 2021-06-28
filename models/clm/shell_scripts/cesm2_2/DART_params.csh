@@ -28,44 +28,50 @@
 setenv cesmtag        my_cesm_sandbox
 setenv resolution     f09_f09_mg17
 setenv compset        2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
-setenv num_instances  3
+setenv num_instances  1
 
 # Since this example was tested while assimilating solar induced fluorescence,
-# we are using 'SIF' in the CASE. FYI only.
+# we are using 'SIF' in the CASE. Assimilating SIF requires the use_SourceMods
+# to be TRUE.
 
 if (${num_instances} == 1) then
-   setenv CASE clm5_f09_pmo
+   setenv CASE clm5_f09_pmo_SIF
 else
-   setenv CASE clm5_f09_assim_e${num_instances}
+   setenv CASE clm5_f09_assim_SIF_e${num_instances}
 endif
 
 # ==============================================================================
-# There are SourceMods to enable CLM to compute SIF
 # SourceMods may be handled in one of two ways. If you have your own GIT clone of
 # the repository, you may simply commit your changes to your GIT repo and 
 # set use_SourceMods = FALSE . If you prefer to keep your changes separate 
-# (as was required under SVN), please put your SourceMods in a directory with 
+# please put your SourceMods in a directory with 
 # the following structure (which is intended to be similar to the structure 
 # in the CLM distribution):
 #
 # ${SourceModDir}/src.clm
-#                |-- clm4_0
-#                |   |-- biogeochem
-#                |   |   `-- CNBalanceCheckMod.F90
-#                |   `-- biogeophys
-#                |       |-- BalanceCheckMod.F90
-#                |       |-- SnowHydrologyMod.F90
-#                |       `-- UrbanMod.F90
-#                `-- clm5_0
 #                    |-- biogeochem
 #                    |   `-- CNBalanceCheckMod.F90
 #                    !-- biogeophys
 #                    !   !-- CanopyFluxesMod.F90
 #                    !   `-- PhotosynthesisMod.F90
-#                    `-- cpl
+#                    !   `-- SurfaceRadiationMod.F90
+#                    `-- cpl/mct/
 #                        `-- lnd_import_export.F90
+#
+# Description of the intent for each file:
+#
+# biogeochem/CNBalanceCheckMod.F90   Suppress balance checks for first restart step
+#
+# cpl/mct/lnd_import_export.F90      (deprecated) DS199.1 originally had some slightly
+#                                    negative downward radiations that needed to be 
+#                                    corrected.
+#
+# biogeophys/SurfaceRadiationMod.F90 Allows the use of 'PARVEG' in a history file.
+#                                    Normally, only 'PARVEGLN' is output.
+#
+# biogeophys/CanopyFluxesMod.F90,PhotosynthesisMod.F90 calculate SIF
 
-setenv use_SourceMods FALSE
+setenv use_SourceMods TRUE
 setenv SourceModDir   ~/${cesmtag}/SourceMods
 
 # ==============================================================================
@@ -195,11 +201,7 @@ setenv BUILD_WRAPPER "qcmd -q share -l select=1 -A $project --"
 setenv nodes_per_instance 2
 setenv number_of_threads 1
 
-# Command to run an MPI executable on your machine
-setenv LAUNCHCMD 'mpiexec_mpt dplace -s 1'
-
 # ==============================================================================
-#
 # The FORCE  options are not optional. You may need to specify full paths
 # to alternate locations that support the '-f' option.
 # The VERBOSE options are useful for debugging though
