@@ -41,6 +41,10 @@ else
 endif
 
 # ==============================================================================
+# SourceMods for different versions of CESM are available at
+# http://www.image.ucar.edu/pub/DART/CESM. Download the tar file that matches
+# your CESM version and install the sourcefiles.
+#
 # SourceMods may be handled in one of two ways. If you have your own GIT clone of
 # the repository, you may simply commit your changes to your GIT repo and 
 # set use_SourceMods = FALSE . If you prefer to keep your changes separate 
@@ -72,7 +76,7 @@ endif
 # biogeophys/CanopyFluxesMod.F90,PhotosynthesisMod.F90 calculate SIF
 
 setenv use_SourceMods TRUE
-setenv SourceModDir   ~/${cesmtag}/SourceMods
+setenv SourceModDir   ~/SourceMods_release-cesm2.2.01/SourceMods
 
 # ==============================================================================
 # Directories:
