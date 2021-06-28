@@ -38,8 +38,9 @@ setenv ARCHIVE        `./xmlquery DOUT_S_ROOT --value`
 setenv TOTALPES       `./xmlquery TOTALPES    --value`
 setenv STOP_N         `./xmlquery STOP_N      --value`
 setenv DATA_ASSIMILATION_CYCLES `./xmlquery DATA_ASSIMILATION_CYCLES --value`
+setenv TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE --value`
 
-# This may be determined from CASEROOT  ./preview_run
+# Most of this syntax can be determined from CASEROOT  ./preview_run
 setenv MPI_RUN_COMMAND "mpiexec_mpt -np $TOTALPES omplace -tm open64"
 
 cd ${RUNDIR}
@@ -113,6 +114,17 @@ else
 endif
 
 echo "`date` -- END COPY BLOCK"
+
+# If possible, use the round-robin approach to deal out the tasks.
+
+if ($?TASKS_PER_NODE) then
+   if ($#TASKS_PER_NODE > 0) then
+      ${COPY} input.nml input.nml.$$
+      sed -e "s#layout.*#layout = 2#" \
+          -e "s#tasks_per_node.*#tasks_per_node = $TASKS_PER_NODE#" input.nml.$$ >! input.nml
+      ${REMOVE} input.nml.$$
+   endif
+endif
 
 #=========================================================================
 # Block 4: DART INFLATION

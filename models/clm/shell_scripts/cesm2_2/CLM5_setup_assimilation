@@ -106,12 +106,9 @@ end
 # If any of these are changed by xmlchange calls in this program,
 # then they must be explicty changed with setenv calls too.
 
-setenv TEST_MPI              `./xmlquery MPI_RUN_COMMAND       --value` || exit 3
-setenv CLM_PHYSICS_VERSION   `./xmlquery CLM_PHYSICS_VERSION   --value` || exit 3
 setenv COMPSET               `./xmlquery COMPSET               --value` || exit 3
 setenv COMP_ATM              `./xmlquery COMP_ATM              --value` || exit 3
 setenv COMP_OCN              `./xmlquery COMP_OCN              --value` || exit 3
-setenv CIMEROOT              `./xmlquery CIMEROOT              --value` || exit 3
 setenv CASEROOT              `./xmlquery CASEROOT              --value` || exit 3
 
 # Make sure the case is configured with a stub ocean and a data atmosphere.
@@ -531,43 +528,24 @@ chmod 0755 stage_cesm_files
 #===============================================================================
 # This example has SourceMods that enable CLM to output solar induced fluorescence
 # as an additional diagnostic variable ("FSIF") in the history file.
+# There are also SourceMods that suppress the balance checks for the first
+# restart timestep.
 
 if ( ${use_SourceMods} == TRUE ) then
 
    if (    -d    ${SourceModDir} ) then
-      ${COPY} -r ${SourceModDir}/* ${caseroot}/SourceMods/ || exit 9
+      ${COPY} -r ${SourceModDir}/* ${caseroot}/SourceMods/ || exit 7
 
-      # determine if we need sourcemods for CLM4.5 or CLM5
-      set clm_version = `echo $CLM_PHYSICS_VERSION | sed -e "s/-//"`
-
-      switch ( ${clm_version} )
-
-         case "clm5_0","clm4_5":
-            if ( -e    SourceMods/src.clm/${clm_version} ) then
-               cd      SourceMods/src.clm
-               ${LINK} ${clm_version}/*/*F90 . || exit 9
-               cd      ../..
-            else
-               echo "No SourceMods for CLM <${clm_version}>."
-               echo "Got the version from CLM_CONFIG_OPTS ...  <${CLM_CONFIG_OPTS}>"
-            endif
-         breaksw
-
-         default:
-            echo "SourceMods requested and using CLM version <${clm_version}>."
-            echo "Unsupported version of CLM."
-            echo "Only 'clm5_0' and 'clm4_5' have SourceMods."
-            exit 9
-         breaksw
-
-      endsw
-
-         @ iarg = $iarg + 2
-      end
+      if ( -e    SourceMods/src.clm ) then
+         cd      SourceMods/src.clm
+         ${LINK} `find . -name "*F90"` . || exit 7
+         cd      ../..
    else
       echo "ERROR - DART_params.csh use_SourceMods = ${use_SourceMods}"
       echo "ERROR - but there are no SourceMods in ${SourceModDir}"
-      exit 9
+      echo "        See discussion in DART_params.csh for information on"
+      echo "        where to get a tar file of SourceMods for DART." 
+      exit 7
    endif
 endif
 
