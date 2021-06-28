@@ -9,6 +9,8 @@ Overview
 
 This is the DART interface to the 
 `CESM2 Community Land Model. <https://www.cesm.ucar.edu/models/cesm2/land/>`__
+Specifically, CESM **release-cesm2.2.0** using CLM **release-cesm2.2.01**
+
 It is **strongly** recommended that you become familiar with running a multi-instance 
 experiment in CESM **before** you try to run DART/CLM. The DART/CLM facility uses 
 language and concepts that should be familiar to CESM users. The DART/CLM capability 
@@ -23,13 +25,8 @@ responsible for advancing the model.  This GREATLY simplifies the traditional DA
 workflow, but it means *CESM has to stop and write out a restart file every time an 
 assimilation is required*. The multi-instance capability is relatively new to CESM 
 and we are in close collaboration with the CESM developers to make using DART with 
-CESM as easy as possible. While we strive to keep DART requirements out of the model 
-code, there are a few SourceMods needed to run DART from within CESM. Appropriate 
-SourceMods for each CESM version are available at 
-http://www.image.ucar.edu/pub/DART/CESM
-and should be unpacked into your HOME directory. They will create a ``~/cesm_?_?_?`` 
-directory with the appropriate SourceMods structure. The DART scripting require 
-these SourceMods and expect them to be in your HOME directory.
+CESM as easy as possible. See the `SourceMods` section for a desciption of the 
+changes to the CLM source code that are useful in a data assimilation context. 
 
 CLM is a rapidly-moving target and DART is developed and maintained by a small
 group of people. Consequently, we have focused on supporting *released* versions
@@ -53,6 +50,40 @@ Important Features
 
 Land DA is extremely diverse. The support for Land DA as pertains to CLM-DART
 has some features that need to be described in some detail.
+
+SourceMods
+~~~~~~~~~~
+
+While we strive to keep DART requirements out of the model code, there are a few 
+SourceMods needed to run DART for CLM from within CESM. Appropriate SourceMods 
+for each CESM version are available as tar files at 
+http://www.image.ucar.edu/pub/DART/CESM
+They will create a directory with the appropriate SourceMods structure. 
+It is up to you to either use them 'as is' or put them under version control 
+in your CESM source code installation. The DART scripting allows you to specify
+a directory containing the SourceMods - and then copies those SourceMods to
+the appropriate CASEROOT directory.
+
+The ``DART_params.csh`` file has a large comment block in the section
+pertaining to SourceMods.
+
++----------------------------------------+-----------------------------------------------------------+
+| SourceMod File                         | Description                                               |
++========================================+===========================================================+
+| ``biogeochem/CNBalanceCheckMod.F90``   | Suppress balance checks for first restart step.           |
+|                                        | This is **highly recommended**. Many people find it       |
+|                                        | to suppress balance checks for ALL timesteps.             |
++----------------------------------------+-----------------------------------------------------------+
+| ``cpl/mct/lnd_import_export.F90``      | (deprecated) DS199.1 originally had some slightly         |
+|                                        | negative downward radiations that needed to be corrected. |
++----------------------------------------+-----------------------------------------------------------+
+| ``biogeophys/SurfaceRadiationMod.F90`` | Allows the use of 'PARVEG' in a history file.             |
+|                                        | Normally, only 'PARVEGLN' is output.                      |
++----------------------------------------+-----------------------------------------------------------+
+| ``biogeophys/CanopyFluxesMod.F90``     | Used to calculate SIF                                     |
++----------------------------------------+-----------------------------------------------------------+
+| ``biogeophys/PhotosynthesisMod.F90``   | Used to calculate SIF                                     |
++----------------------------------------+-----------------------------------------------------------+
 
 
 CLM indeterminate values
@@ -191,70 +222,110 @@ They are heavily commented -- in keeping with their origins as a set of notes.
 If you would like to offer suggestions on how to improve those notes - please 
 send them to dart@ucar.edu - we'd love to hear them.
 
-+------------------------------------------+-----------------------------------------------------------+
-| Script                                   | Description                                               |
-+==========================================+===========================================================+
-| ``shell_scripts/CESM1_1_1_setup_pmo``    | runs a single instance of CLM to harvest synthetic        |
-|                                          | observations for an OSSE or "perfect model" experiment.   |
-|                                          | It requires a single CLM state from a previous experiment |
-|                                          | and uses a specified DATM stream for forcing. This        |
-|                                          | parallels an assimilation experiment in that in the       |
-|                                          | multi-instance setting each CLM instance may use (should  |
-|                                          | use?) a unique DATM forcing. This script has almost       |
-|                                          | nothing to do with DART. There is one (trivial) section   |
-|                                          | that records some configuration information in the DART   |
-|                                          | setup script, but that's about it. This script should     |
-|                                          | initially be run without DART to ensure a working CESM    |
-|                                          | environment.                                              |
-|                                          | As of (V7195) 3 October 2014, this script demonstrates    |
-|                                          | how to create 'vector'-based CLM history files (which     |
-|                                          | requires a bugfix) and has an option to use a bugfixed    |
-|                                          | snow grain-size code.                                     |
-|                                          | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
-|                                          | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
-+------------------------------------------+-----------------------------------------------------------+
-| ``shell_scripts/CESM1_2_1_setup_pmo``    | Is functionally identical to ``CESM1_1_1_setup_pmo`` but  |
-|                                          | is appropriate for the the CESM 1_2_1 release, which      |
-|                                          | supports both CLM 4 and CLM 4.5.                          |
-+------------------------------------------+-----------------------------------------------------------+
-| ``shell_scripts/CESM1_1_1_setup_hybrid`` | runs a multi-instance CLM experiment and can be used to   |
-|                                          | perform a free run or 'open loop' experiment. By default, |
-|                                          | each CLM instance uses a unique DATM forcing. This script |
-|                                          | also has almost nothing to do with DART. There is one     |
-|                                          | (trivial) section that records some configuration         |
-|                                          | information in the DART setup script, but that's about    |
-|                                          | it. This script should initially be run without DART to   |
-|                                          | ensure a working CESM.                                    |
-|                                          | As of (V7195) 3 October 2014, this script demonstrates    |
-|                                          | how to create 'vector'-based CLM history files (which     |
-|                                          | requires a bugfix) and has an option to use a bugfixed    |
-|                                          | snow grain-size code.                                     |
-|                                          | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
-|                                          | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
-+------------------------------------------+-----------------------------------------------------------+
-| ``shell_scripts/CESM1_2_1_setup_hybrid`` | Is functionally identical to ``CESM1_1_1_setup_hybrid``   |
-|                                          | but is appropriate for the the CESM 1_2_1 release, which  |
-|                                          | supports both CLM 4 and CLM 4.5.                          |
-+------------------------------------------+-----------------------------------------------------------+
-| ``shell_scripts/CESM_DART_config``       | augments a CESM case with the bits and pieces required to |
-|                                          | run DART. When either ``CESM1_?_1_setup_pmo`` or          |
-|                                          | ``CESM1_?_1_setup_hybrid`` gets executed,                 |
-|                                          | ``CESM_DART_config`` gets copied to the CESM "caseroot"   |
-|                                          | directory. It is designed such that you can execute it at |
-|                                          | any time during a CESM experiment. When you do execute    |
-|                                          | it, it will build the DART executables and copy them into |
-|                                          | the CESM "bld" directory, stage the run-time configurable |
-|                                          | ``input.nml`` in the "caseroot" directory, etc. and also  |
-|                                          | *modifies* the CESM ``case.run`` script to call the DART  |
-|                                          | scripts for assimilation or to harvest synthetic          |
-|                                          | observations.                                             |
-+------------------------------------------+-----------------------------------------------------------+
++------------------------------+--------------------------------------------------------------------------------+
+| shell_scripts/cesm2_2        | Description                                                                    |
++==============================+================================================================================+
+| ``simple.csh``               | The script to run first. This configures and builds                            |
+|                              | a very simple single-instance CLM experiment. This is                          |
+|                              | intended to check if CLM runs on your machine. It has                          |
+|                              | nothing to do with DART. There are **no** DART                                 |
+|                              | requirements in it.                                                            |
++------------------------------+--------------------------------------------------------------------------------+
+| ``DART_params.csh``          | Resource file for use when running CLM and DART. This                          |
+|                              | file has all the configuration items needed and will be                        |
+|                              | copied into the CASEROOT directory to be used during                           |
+|                              | an experiment.                                                                 |
++------------------------------+--------------------------------------------------------------------------------+
+| ``CLM5_startup_freerun``     | This script takes the single (spun-up) CLM state supplied                      |
+|                              | with the compset and forecasts an ensemble of these. Each                      |
+|                              | ensemble member uses a unique data atmosphere stream                           |
+|                              | file. After some time, the ensemble of CLM states have                         |
+|                              | enough diversity to be a useful initial ensemble for an                        |
+|                              | assimilation experiment.                                                       |
+|                              | In this configuration, no observations are                                     |
+|                              | required, and no DART exectuables are involved.                                |
++------------------------------+--------------------------------------------------------------------------------+
+| ``CLM5_hybrid_freerun``      | Given an ensemble of CLM states, advance the ensemble                          |
+|                              | using unique DATM stream files for each ensemble member.                       |
+|                              | This starts from a CESM 'hybrid' run-type, so the initial                      |
+|                              | staging of the ensemble is required (and performed by                          |
+|                              | this script). In this configuration, no observations are                       |
+|                              | required, and no DART exectuables are involved.                                |
++------------------------------+--------------------------------------------------------------------------------+
+| ``CLM5_setup_pmo``           | Takes a single instance from a spun-up ensemble and                            |
+|                              | advances CLM in 24-hour segments. If that works, the                           |
+|                              | setup can be extended to run ``perfect_model_obs`` to                          |
+|                              | harvest synthetic observations from the single instance,                       |
+|                              | which is now the true state of the system. This requires                       |
+|                              | the creation of a series of `obs_seq.in` files which can                       |
+|                              | be created with                                                                |
+|                              | :doc:`../../assimilation_code/programs/create_obs_sequence/create_obs_sequence`|
+|                              | ``CLM5_setup_pmo`` creates a file called                                       |
+|                              | *CESM_instructions.txt* in the CASEROOT directory with                         |
+|                              | instructions on how to extend the setup to run DART.                           |
++------------------------------+--------------------------------------------------------------------------------+
+| ``CLM5_setup_assimilation``  | Runs a multi-instance CLM experiment and can be used to                        |
+|                              | perform an assimilation.                                                       |
+|                              | CLM advances in 24-hour segments. If that works, the                           |
+|                              | setup can be extended to run ``filter``.                                       |
+|                              | Keep in mind that if all                                                       |
+|                              | observations are denoted as 'evaluate_these_obs', this is                      |
+|                              | equivalent to a free run with the added advantage that you                     |
+|                              | can compare the observation-space diagnotics to a                              |
+|                              | subsequent experiement that assimilates the observations.                      |
+|                              | Each CLM instance uses a unique DATM forcing,                                  |
+|                              | ``CLM5_setup_assimilation`` creates a file called                              |
+|                              | *CESM_instructions.txt* in the CASEROOT directory with                         |
+|                              | instructions on how to extend the setup to run DART.                           |
+|                              | The *user_nl_clm* namelists have been configured to                            |
+|                              | output several history files - some in the common 'XY'                         |
+|                              | (gridcell) format, some in the same format as the restart                      |
+|                              | file (vector). This is to demonstrate methods for                              |
+|                              | creating variables useful for forward operators.                               |
++------------------------------+--------------------------------------------------------------------------------+
+| ``CESM_DART_config``         | Augments a CESM case with the bits and pieces required to                      |
+|                              | run DART. When either ``CLM5_setup_pmo`` or                                    |
+|                              | ``CLM5_setup_assimilation`` gets executed,                                     |
+|                              | ``CESM_DART_config`` gets copied to the CESM CASEROOT                          |
+|                              | directory and should be run there. It is designed such                         |
+|                              | that you can execute it at any time during a CESM                              |
+|                              | experiment. When you do execute it, it will build the                          |
+|                              | DART executables if needed and copy them into the CESM                         |
+|                              | EXEROOT directory, stage the run-time configurable                             |
+|                              | ``input.nml`` in the CASEROOT directory, etc.                                  |
+|                              | ``CESM_DART_config`` creates a file called                                     |
+|                              | *DART_instructions.txt* in the CASEROOT directory with                         |
+|                              | instructions on how to modify the experiment to run DART.                      |
+|                              | ``CESM_DART_config`` also creates a file called                                |
+|                              | *stage_dart_files* in the CASEROOT directory to assist in                      |
+|                              | copying updated executables to the correct directory for                       |
+|                              | the experiment.                                                                |
++------------------------------+--------------------------------------------------------------------------------+
+| ``perfect_model.csh``        | This script is invoked by CESM when specified by the                           |
+|                              | DATA_ASSIMILATION_SCRIPT resource. This resource is                            |
+|                              | specified by ``CESM_DART_config``. ``perfect_model.csh``                       |
+|                              | locates the appropriate observation sequence file and                          |
+|                              | links it to the expected name, removes the indeterminate                       |
+|                              | values from the input files so the DART requirements are                       |
+|                              | met, and then harvests the synthetic observations and                          |
+|                              | moves them to the *pmo_output_baseobsdir* directory (as                        |
+|                              | specified in *DART_params.csh*)                                                |
++------------------------------+--------------------------------------------------------------------------------+
+| ``assimilate.csh``           | This script is invoked by CESM when specified by the                           |
+|                              | DATA_ASSIMILATION_SCRIPT resource. This resource is                            |
+|                              | specified by ``CESM_DART_config``. ``assimilate.csh``                          |
+|                              | links the appropriate observation sequence file and                            |
+|                              | and **copies** the CLM restart files and removes the                           |
+|                              | indeterminate values.  If inflation is specified,                              |
+|                              | ``assimilate.csh`` reads the latest inflation values from                      |
+|                              | the inflation pointer file. The assimilation is performed.                     |
+|                              | If inflation was specified the inflation pointer files are                     |
+|                              | updated in preparation for the next assimilation cycle.                        |
+|                              | All output is tagged with the date-time-stamp of the                           |
+|                              | model state for that cycle.                                                    |
++------------------------------+--------------------------------------------------------------------------------+
 
-In addition to the script above, there are a couple scripts that will either perform an assimilation
-(``assimilate.csh``) or harvest observations for a perfect model experiment
-(``perfect_model.csh``). These scripts are designed to work on several compute
-platforms although they require configuration, mainly to indicate the location of the DART observation sequence files on
-your system.
+
 
 
 Declaring the Variables in the DART State
@@ -417,6 +488,11 @@ is a powerful mechanism to overcome observation-model bias, it might be
 perfectly warranted to 'UPDATE' these diagnostic variables. Be warned, if
 you do 'UPDATE' the diagnostic variables, you may want to create copies
 of the prior so you explore exactly what happens during an assimilation.
+
+If the filter namelist specifies the use of inflation, the ``assimilate.csh`` 
+script is configured to run ``fill_inflation_restart`` on the first assimilation cycle.
+The inflation filenames are put in a pointer file which is continually updated
+as the experiment progresses.
 
 Namelist
 --------
@@ -593,8 +669,9 @@ Error codes and conditions
 Future plans
 ------------
 
-Where to begin? 
-
+#. Implement a lookup table that relates the observation location to a dominant PFT or COLUMN
+so the *model_interpolate* code can average quantities from similar PFTs or COLUMNs instead
+of everything in the entire grid cell.
 #. Implement a robust update_snow() routine that takes the modified SWE and 
 repartitions it into the respective snow layers in a manner that works with both 
 CLM4.5 and CLM5. This may mean modifying the clm_variables list to contain 
@@ -611,6 +688,8 @@ the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2 ... I have no
 checked to see if they are, in fact, identical. This brings up a bigger issue in 
 that the soil moisture observation operator would also be used to calculate whatever 
 a TDT probe or ??? would measure. What units are they in? Can one operator support both?
+#. One of the ``CESM_DART_config`` *stage* scripts should reset the inflation pointer files based on the
+   restart date ... maybe.
 
 
 
@@ -665,3 +744,76 @@ is THE reference for CLM.
 .. |CLM gridcell breakdown| image:: ../../guide/images/clm_landcover.png
    :height: 600px
    :target: https://escomp.github.io/ctsm-docs/versions/release-clm5.0/html/tech_note/Ecosystem/CLM50_Tech_Note_Ecosystem.html#surface-characterization
+
+
+
+.. attention::
+
+   The remainder of the document describes the deprecated scripts in the *shell_scripts/cesm1_x*
+   directory - for reference only. These scripts **will not work** with CESM2.
+
+
++------------------------------------------+-----------------------------------------------------------+
+| Script                                   | Description                                               |
++==========================================+===========================================================+
+| ``shell_scripts/CESM1_1_1_setup_pmo``    | runs a single instance of CLM to harvest synthetic        |
+|                                          | observations for an OSSE or "perfect model" experiment.   |
+|                                          | It requires a single CLM state from a previous experiment |
+|                                          | and uses a specified DATM stream for forcing. This        |
+|                                          | parallels an assimilation experiment in that in the       |
+|                                          | multi-instance setting each CLM instance may use (should  |
+|                                          | use?) a unique DATM forcing. This script has almost       |
+|                                          | nothing to do with DART. There is one (trivial) section   |
+|                                          | that records some configuration information in the DART   |
+|                                          | setup script, but that's about it. This script should     |
+|                                          | initially be run without DART to ensure a working CESM    |
+|                                          | environment.                                              |
+|                                          | As of (V7195) 3 October 2014, this script demonstrates    |
+|                                          | how to create 'vector'-based CLM history files (which     |
+|                                          | requires a bugfix) and has an option to use a bugfixed    |
+|                                          | snow grain-size code.                                     |
+|                                          | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
+|                                          | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
++------------------------------------------+-----------------------------------------------------------+
+| ``shell_scripts/CESM1_2_1_setup_pmo``    | Is functionally identical to ``CESM1_1_1_setup_pmo`` but  |
+|                                          | is appropriate for the the CESM 1_2_1 release, which      |
+|                                          | supports both CLM 4 and CLM 4.5.                          |
++------------------------------------------+-----------------------------------------------------------+
+| ``shell_scripts/CESM1_1_1_setup_hybrid`` | runs a multi-instance CLM experiment and can be used to   |
+|                                          | perform a free run or 'open loop' experiment. By default, |
+|                                          | each CLM instance uses a unique DATM forcing. This script |
+|                                          | also has almost nothing to do with DART. There is one     |
+|                                          | (trivial) section that records some configuration         |
+|                                          | information in the DART setup script, but that's about    |
+|                                          | it. This script should initially be run without DART to   |
+|                                          | ensure a working CESM.                                    |
+|                                          | As of (V7195) 3 October 2014, this script demonstrates    |
+|                                          | how to create 'vector'-based CLM history files (which     |
+|                                          | requires a bugfix) and has an option to use a bugfixed    |
+|                                          | snow grain-size code.                                     |
+|                                          | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730             |
+|                                          | http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934             |
++------------------------------------------+-----------------------------------------------------------+
+| ``shell_scripts/CESM1_2_1_setup_hybrid`` | Is functionally identical to ``CESM1_1_1_setup_hybrid``   |
+|                                          | but is appropriate for the the CESM 1_2_1 release, which  |
+|                                          | supports both CLM 4 and CLM 4.5.                          |
++------------------------------------------+-----------------------------------------------------------+
+| ``shell_scripts/CESM_DART_config``       | augments a CESM case with the bits and pieces required to |
+|                                          | run DART. When either ``CESM1_?_1_setup_pmo`` or          |
+|                                          | ``CESM1_?_1_setup_hybrid`` gets executed,                 |
+|                                          | ``CESM_DART_config`` gets copied to the CESM "CASEROOT"   |
+|                                          | directory. It is designed such that you can execute it at |
+|                                          | any time during a CESM experiment. When you do execute    |
+|                                          | it, it will build the DART executables and copy them into |
+|                                          | the CESM "bld" directory, stage the run-time configurable |
+|                                          | ``input.nml`` in the "CASEROOT" directory, etc. and also  |
+|                                          | *modifies* the CESM ``case.run`` script to call the DART  |
+|                                          | scripts for assimilation or to harvest synthetic          |
+|                                          | observations.                                             |
++------------------------------------------+-----------------------------------------------------------+
+
+In addition to the script above, there are a couple scripts that will either perform an assimilation
+(``assimilate.csh``) or harvest observations for a perfect model experiment
+(``perfect_model.csh``). These scripts are designed to work on several compute
+platforms although they require configuration, mainly to indicate the location of the DART observation sequence files on
+your system.
