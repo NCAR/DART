@@ -274,23 +274,29 @@ Check the DART configuration:
 
 1) When you want to run DART, check that the CESM assimilation script 
    is correct and then turn on data assimilation (if you need to).
+   If your job has enough time to run multiple cycles in the same job, you
+   can avoid recompeting for the queue by requesting multiple assimilation
+   cycles in a single job. Each cycle will still use the same 'STOP_OPTION' and
+   'STOP_N'. This example requests two assimilation cycles instead of the
+   default 1 cycle. You can run as many cycles as you like given limits of
+   the queue and the amount of filespace you can afford.
    
    cd ${CASEROOT} 
    ./xmlquery --partial ASSIMILATION 
    ./xmlchange DATA_ASSIMILATION_LND=TRUE
+   ./xmlchange DATA_ASSIMILATION_CYCLES=2
 
 2) Modify what you need to in the DART namelist file, i.e. ${CASEROOT}/input.nml
 
 3) If you have recompiled any part of the DART system, 'stage_dart_files'
    will copy them into the correct places.
 
-4) If you stage your own inflation files, make sure you read the INFLATION section
-   in ${CASEROOT}/CESM_DART_config
+4) Submit the CESM job in the normal way.
 
-5) Submit the CESM job in the normal way.
-
-6) You can use ${CASEROOT}/stage_cesm_files
-    to stage files to restart a run.
+5) You can use ${CASEROOT}/stage_cesm_files
+   to stage files to restart a run. Make sure you check the script to
+   specify the correct date to use for the restart. Pay attention to
+   updating the pointer files to use the desired inflation files.
 
 -------------------------------------------------------------------------
 
