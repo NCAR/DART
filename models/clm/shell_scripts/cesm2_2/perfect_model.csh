@@ -128,32 +128,40 @@ if ($?TASKS_PER_NODE) then
    endif
 endif
 
-# DART/CLM routines all need a clm_restart.nc, clm_history.nc, etc.
-# The flux tower forward operator looks for a CLM history file with
-# an instance number in the filename.
+#=========================================================================
+# Block 4: Replace indeterminate values
+#=========================================================================
 
 set      LND_RESTART_FILENAME = ${CASE}.clm2.r.${LND_DATE_EXT}.nc
 set      LND_HISTORY_FILENAME = ${CASE}.clm2.h0.${LND_DATE_EXT}.nc
 set  LND_VEC_HISTORY_FILENAME = ${CASE}.clm2.h2.${LND_DATE_EXT}.nc
-set     OBS1_HISTORY_FILENAME = ${CASE}.clm2.h1.${LND_DATE_EXT}.nc
-set     OBS2_HISTORY_FILENAME = ${CASE}.clm2_0001.h1.${LND_DATE_EXT}.nc
 
-# remove any potentially pre-existing linked files 
-${REMOVE} clm_restart.nc clm_history.nc clm_vector_history.nc ${OBS2_HISTORY_FILENAME}
+# Remove any potentially pre-existing files.
+# DART/CLM routines all need a clm_restart.nc, clm_history.nc, etc.
+${REMOVE} clm_restart.nc
+${REMOVE} clm_history.nc
+${REMOVE} clm_vector_history.nc
 
-${LINK} ${LND_RESTART_FILENAME} clm_restart.nc || exit 3
-${LINK} ${LND_HISTORY_FILENAME} clm_history.nc || exit 3
-
-if (  -e   ${OBS1_HISTORY_FILENAME}) then
-   ${LINK} ${OBS1_HISTORY_FILENAME} ${OBS2_HISTORY_FILENAME} || exit 3
-endif
+# Since clm_to_dart updates the files in place, work with copies.
+${COPY} ${LND_RESTART_FILENAME} clm_restart.nc || exit 3
+${COPY} ${LND_HISTORY_FILENAME} clm_history.nc || exit 3
 if (  -e   ${LND_VEC_HISTORY_FILENAME}) then
-   ${LINK} ${LND_VEC_HISTORY_FILENAME} clm_vector_history.nc || exit 3
+   ${COPY} ${LND_VEC_HISTORY_FILENAME} clm_vector_history.nc || exit 3
 endif
+
+# The input.nml:perfect_model_obs_nml has the input states as
+# 'clm_restart.nc', 'clm_history.nc','clm_vector_history.nc' - the same
+# as those specied as the 'shape files' for the model_nml.
+# So by specifying them as links, the targets are getting updated.
+
+foreach FILE ( clm_restart.nc clm_history.nc clm_vector_history.nc )
+   ${LINK} $FILE clm.nc
+   ${EXEROOT}/clm_to_dart >& /dev/null
+   unlink clm.nc
+end
 
 #=========================================================================
-# Block 4: Advance the model and harvest the synthetic observations.
-# note:    MPI_RUN_COMMAND is supplied by the CESM environment.
+# Block 5: Advance the model and harvest the synthetic observations.
 #
 # The following scripting supports:
 # &perfect_model_obs_nml
