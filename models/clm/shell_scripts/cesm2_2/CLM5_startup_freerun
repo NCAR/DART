@@ -353,6 +353,7 @@ if ( ${use_SourceMods} == TRUE ) then
          cd      SourceMods/src.clm
          ${LINK} `find . -name "*F90"` . || exit 7
          cd      ../..
+      endif
    else
       echo "ERROR - DART_params.csh use_SourceMods = ${use_SourceMods}"
       echo "ERROR - but there are no SourceMods in ${SourceModDir}"
