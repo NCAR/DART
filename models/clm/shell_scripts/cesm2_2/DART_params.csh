@@ -28,7 +28,7 @@
 setenv cesmtag        my_cesm_sandbox
 setenv resolution     f09_f09_mg17
 setenv compset        2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
-setenv num_instances  1
+setenv num_instances  5
 
 # Since this example was tested while assimilating solar induced fluorescence,
 # we are using 'SIF' in the CASE. Assimilating SIF requires the use_SourceMods
@@ -37,7 +37,7 @@ setenv num_instances  1
 if (${num_instances} == 1) then
    setenv CASE clm5_f09_pmo_SIF
 else
-   setenv CASE clm5_f09_assim_SIF_e${num_instances}
+   setenv CASE clm5_f09_assim_e${num_instances}
 endif
 
 # ==============================================================================
