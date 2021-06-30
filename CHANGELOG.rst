@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July XX 2021 :: CLM now fully supported on public repo. Tag: v.9.12.0**
+
+- CLM (tag release-cesm2.2.01) publicly supported.
+  The private repository is now deprecated.
+
 **June 24 2021 :: bug fix for cam-fv model_interpolate. Tag: v.9.11.3**
 
 - cam-fv model_interpolate now passes the correct array slice of quad_vals
