@@ -297,9 +297,7 @@ endif
 
 ${REMOVE} restart_files.txt history_files.txt vector_files.txt
 
-foreach FILE ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc \
-               ${CASE}.clm2_*.h0.${LND_DATE_EXT}.nc \
-               ${CASE}.clm2_*.h2.${LND_DATE_EXT}.nc )
+foreach FILE ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
 
    # create unique output filename for the copy that has the indeterminate
    # values replaced by the _FillValue. The copies are the files that will
@@ -312,9 +310,9 @@ foreach FILE ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc \
 
 end
 
-ls -1 clm2_*.r.${LND_DATE_EXT}.nc  >! restart_files.txt
-ls -1 clm2_*.h0.${LND_DATE_EXT}.nc >! history_files.txt
-ls -1 clm2_*.h2.${LND_DATE_EXT}.nc >! vector_files.txt
+ls -1         clm2_*.r.${LND_DATE_EXT}.nc  >! restart_files.txt
+ls -1 ${CASE}.clm2_*.h0.${LND_DATE_EXT}.nc >! history_files.txt
+ls -1 ${CASE}.clm2_*.h2.${LND_DATE_EXT}.nc >! vector_files.txt
 
 #=========================================================================
 # Block 6: Actually run the assimilation.
