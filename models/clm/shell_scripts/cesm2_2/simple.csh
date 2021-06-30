@@ -6,21 +6,33 @@
 
 # This file is just to see if CESM can be bullt on whatever architecture.
 # Single instance ... nothing fancy ... no DART ... just something simple.
+# You are expected to read this and understand it before executing it.
 
-/glade/work/thoar/CESM/ctsm/cime/scripts/query_config  --compsets clm
+# You will have to modify this to point to your CESM repository
+set CESMCLONE = /glade/work/thoar/CESM/my_cesm_sandbox
 
+# You will have to modify this to suit your own purpose.
 set CASE = clm5bgc-crop_simple
 set CASEDIR = /glade/work/thoar/cases
 set COMPSET = 2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
 set CASEROOT = ${CASEDIR}/${CASE}
 
+# Just echo what compsets are available
+${CESMCLONE}/cime/scripts/query_config  --compsets clm
+
+# Prevent accidental removal of an experiment.
+if ( -e ${CASEROOT} ) then
+   echo "WARNING : ${CASEROOT} exists. Stopping."
+   echo "WARNING : If you want to replace the experiment,"
+   echo "WARNING : you have to manually remove the CASEROOT, EXEDIR, RUNDIR."
+   exit
+endif
+
 \rm -rf ${CASEROOT}
-\rm -rf /glade/scratch/thoar/${CASE}/bld
-\rm -rf /glade/scratch/thoar/${CASE}/run
 
-echo "TJH: Starting create_newcase ..."
+echo " Starting create_newcase ..."
 
-/glade/work/thoar/CESM/my_cesm_sandbox/cime/scripts/create_newcase \
+${CESMCLONE}/cime/scripts/create_newcase \
     --case ${CASEROOT} \
     --compset ${COMPSET} \
     --mach cheyenne \
@@ -30,8 +42,8 @@ echo "TJH: Starting create_newcase ..."
 
 cd ${CASEROOT}
 
-echo "TJH: Finished create_newcase ..."
-echo "TJH: Starting case.setup     ..."
+echo " Finished create_newcase ..."
+echo " Starting case.setup     ..."
 
 foreach FILE ( *xml )
    cp -v ${FILE} ${FILE}.original
@@ -89,12 +101,12 @@ echo "hist_avgflag_pertape = 'A','A','I'"                              >> ${fnam
 echo "hist_dov2xy = .true.,.true.,.false."                             >> ${fname}
 echo "hist_type1d_pertape = ' ',' ',' '"                               >> ${fname}
 
-echo "TJH: Finished case.setup     ..."
-echo "TJH: Starting case.build     ..."
+echo " Finished case.setup     ..."
+echo " Starting case.build     ..."
 
 ./case.build || exit 3
 
-echo "TJH: Finished case.build     ..."
+echo " Finished case.build     ..."
 echo ""
 echo "  cd  ${CASEROOT}"
 echo "  ./case.submit"
