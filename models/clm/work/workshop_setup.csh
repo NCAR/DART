@@ -25,19 +25,20 @@ cp clm_dart.clm2.h0.2013-07-02-00000.nc clm_history.nc
 cp clm_dart.clm2.h2.2013-07-02-00000.nc clm_vector_history.nc
 
 echo 'running clm_to_dart'
-./clm_to_dart                || exit 1
-
-echo 'running model_mod_check'
-./model_mod_check            || exit 2
+./clm_to_dart                    || exit 1
 
 echo 'running perfect_model_obs'
-${MPICMD} ./perfect_model_obs          || exit 3
+${MPICMD} ./perfect_model_obs    || exit 2
 
 echo 'running fill_inflation_restart'
-./fill_inflation_restart     || exit 4
+./fill_inflation_restart         || exit 3
 
 # We need an ensemble of 5 for this test
 # We are perturbing a single instance, which will issue a warning.
+# At this point, clm_restart.nc has had all the indeterminate values
+# replaced and is being copied to all the output files.
+# The ensemble is being created by perturbing the single input state.
+# We know that will issue a warning, and that's OK.
 
 @ member = 1
 while ($member <= 5)
@@ -55,10 +56,13 @@ ls -1 clm_history_????.nc        >! history_files.txt
 ls -1 clm_vector_history_????.nc >! vector_files.txt
 
 echo 'running filter'
-${MPICMD} ./filter                     || exit 5
+${MPICMD} ./filter               || exit 4
+
+# For testing purposes, we only need to run dart_to_clm on one
+# instance.
 
 echo 'running dart_to_clm'
-./dart_to_clm                || exit 6
+./dart_to_clm                    || exit 5
 
 exit 0
 
