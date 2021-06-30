@@ -154,11 +154,9 @@ endif
 # as those specied as the 'shape files' for the model_nml.
 # So by specifying them as links, the targets are getting updated.
 
-foreach FILE ( clm_restart.nc clm_history.nc clm_vector_history.nc )
-   ${LINK} $FILE clm.nc
-   ${EXEROOT}/clm_to_dart >& /dev/null
-   unlink clm.nc
-end
+${LINK} clm_restart.nc clm.nc
+${EXEROOT}/clm_to_dart >& /dev/null
+unlink clm.nc
 
 #=========================================================================
 # Block 5: Advance the model and harvest the synthetic observations.
