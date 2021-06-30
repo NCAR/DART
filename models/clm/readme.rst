@@ -109,7 +109,7 @@ Since the subgridscale components of CLM have no explicit location associated
 with them, the location of every component in the gridcell is the same as the 
 gridcell itself. The DART forward operators fundamentally rely on 
 interpolating the model state to some arbitrary location. At present, the best we
-can do is to create an area-weighted average of all pieces in the gridcell.
+can do is to create an area-weighted average of all components in the gridcell.
 This is clearly sub-optimal. A nice project would be to use some sort of lookup
 table for the observation location to determine the dominant PFT or whatever at
 that location and then just average up all the similar PFTs in the gridcell.
@@ -119,7 +119,7 @@ in the DART state vector.
 
 The *model_interpolate* function in DART achieves efficiency by interpolating
 all the ensemble members at the same time. This gives rise to some challenging
-problems when interpolating values for variables with dynamic active layers.
+problems when interpolating values for variables with with changing numbers of active layers.
 Some ensemble members may only have 2 active snow layers, some may have 3 ...
 this is an untenable situation when asked for the snow temperature or water 
 content in layer 3, for example. Consequently - *model_interpolate* will fail

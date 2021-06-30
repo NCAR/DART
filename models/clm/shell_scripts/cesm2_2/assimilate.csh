@@ -5,8 +5,12 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # This script performs an assimilation by directly reading and writing to
-# the CLM restart file. There is no post-processing step 'dart_to_clm',
-# consequently, snow DA is not supported in this framework.
+# the CLM restart file.
+#
+# NOTE: 'dart_to_clm' does not currently support updating the 
+# prognostic snow variables based on posterior SWE values.
+# Consequently, snow DA is not currently supported.
+# Implementing snow DA is high on our list of priorities. 
 
 #=========================================================================
 # This block is an attempt to localize all the machine-specific
