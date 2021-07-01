@@ -1,0 +1,54 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+The scripts in this directory are:
+
+run_filter.csh - 
+the main batch script for starting an assimilation run.  will start either
+a serial or parallel version of the filter program.  has directives for
+the LSF and PBS batch systems.  can also be run interactively.
+
+advance_model.csh - 
+normally small models (including this one) are compiled directly with
+the filter program to make a single executable that does both the data
+assimilation and the model advances.  However, to test the mode where the
+model is a separate executable, this script is an example of what is needed.
+See the filter.html documentation for async mode 2 for more details.
+
+run_filter_async4.csh - 
+an example script for running with both a parallel (MPI) filter program and
+a parallel model.  Obviously this model is too small to gain anything from
+running in parallel, but for testing and debugging with a small program and
+quick turnaround, it has been useful.  This is the main batch script which is
+used instead of the simpler run_filter.csh script, and the integrate_model
+program should be compiled with MPI in order to do a real test.  See the
+filter.html documentation for async mode 4 for more details.
+
+run_filter.lynx.sh - 
+a special-purpose script for running on the NCAR Cray system.  Uses
+Torque/Moab for the batch system.
+
+run_filter_nonpipe.sh -
+in async 4 mode the script and at least one of the MPI tasks
+must be running on the same node so they can use pipes to 
+synchronise model advances and assimilation.  however, if the
+batch nodes are distinct from where the script is running
+they have to use a normal file to coordinate.  this is an
+example script using a normal file to handshake.  the input.nml
+namelist file must have &mpi_utilities_mod : separate_node_sync
+set to .true., and the mpi namelist must be enabled by
+editing mpi_utilities/mpi_utilities_mod.f90 and setting
+'use_namelist' to .true. and recompiling.
+
+note that the non-pipe script polls the filesystem once each second.
+if the script is actually running on a batch node, it will slow down 
+the MPI job.
+
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

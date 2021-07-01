@@ -1,0 +1,59 @@
+netcdf perfect_input {
+dimensions:
+	member = 1 ;
+	metadatalength = 32 ;
+	location = 40 ;
+	time = UNLIMITED ; // (1 currently)
+variables:
+
+	char MemberMetadata(member, metadatalength) ;
+		MemberMetadata:long_name = "description of each member" ;
+
+	double location(location) ;
+		location:short_name = "loc1d" ;
+		location:long_name = "location on a unit circle" ;
+		location:dimension = 1 ;
+		location:valid_range = 0., 1. ;
+
+	double state(time, member, location) ;
+		state:long_name = "the model state" ;
+
+	double time(time) ;
+		time:long_name = "valid time of the model state" ;
+		time:axis = "T" ;
+		time:cartesian_axis = "T" ;
+		time:calendar = "none" ;
+		time:units = "days" ;
+
+// global attributes:
+		:title = "true state from control" ;
+                :version = "$Id$" ;
+		:model = "Lorenz_96" ;
+		:model_forcing = 8. ;
+		:model_deltat = 0.05 ;
+		:history = "identical (within 64bit precision) to ASCII perfect_ics r1350 (circa June 2005)";
+data:
+
+ MemberMetadata =
+  "true state" ;
+
+ location = 0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.225, 0.25, 
+    0.275, 0.3, 0.325, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.525, 
+    0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7, 0.725, 0.75, 0.775, 0.8, 
+    0.825, 0.85, 0.875, 0.9, 0.925, 0.95, 0.975 ;
+
+ state =
+  -3.283831399225840, 2.987044359909341, 4.558773805868710, 6.159592107802789,
+    -0.2813433303230143, 1.783872007175771, 5.315309368976074, 6.185579382096991,
+    -4.470938278230834, 5.089703226982548, 4.984197852175176, 3.005293350308208,
+    6.078784392030220, 4.023850005496899, 1.122717178009049, 3.890247508832349,
+    3.437645949306041, -1.955645931850329, 2.391941476651454, 3.415605300249309,
+    7.626192280131916, -2.554952331117323, -1.010802362078098, 1.592471914139939,
+    3.299857322554734, 4.192143854977455, 5.577569469983012, -3.398544532933467,
+    -0.4354930839185195, -1.801440581876160, 8.641529480409632,
+    1.367417911273089, 1.397109861558213, 1.832572439257778, 3.613490951542299,
+    7.870471941819551, 0.9008011952299098, 2.407957328301259, 5.756811711656888,
+    5.795279345212906 ;
+
+ time = 41.666666666666667 ;
+}

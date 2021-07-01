@@ -1,0 +1,36 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+The test_merge.ksh script is a self-contained script
+that constructs input.nml files and runs obs_sequence_tool.
+
+It prints out the test number and output from the run
+into a log file, and if the output sequence file is short,
+concatenates the entire output file in the log; if it's long,
+it prints out the first and last 30 values.
+
+If the test is expected to fail, it has a 'fail' keyword
+in the test.   This does test various overlaps of files
+and start/stop times, but the checking is far from automated
+and it doesn't test a few other things which need testing
+like squeezing out unused obs or sorting (which it does but
+there's just no specific test for it yet).
+
+nancy
+12.feb.2008
+
+
+the 'merge_obs_seq' tool is long gone, but these are
+still useful tests for the more capable 'obs_sequence_tool'.
+update the namelist names and executable names in the script.
+
+nancy
+28.aug.2014
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
