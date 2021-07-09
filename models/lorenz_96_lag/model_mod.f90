@@ -74,20 +74,34 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 ! Namelist with default values
 
-integer(i8) :: model_size = 40
+integer(i8) :: model_size = 120
 real(r8)    :: forcing    = 8.00_r8
 real(r8)    :: delta_t    = 0.05_r8
-integer     :: time_step_days = 0
-integer     :: time_step_seconds = 3600
+integer     :: var_offset = 0
+integer     :: conc_offset = 40
+integer     :: source_offset = 80
+integer(i8)    :: time_step_days = 0
+integer(i8)    :: time_step_seconds = 3600
 
-namelist /model_nml/ model_size, forcing, delta_t, time_step_days, time_step_seconds
+namelist /model_nml/ model_size, forcing, delta_t, var_offset, conc_offset, source_offset, time_step_days, time_step_seconds
 
+! Tracer parameters
+! mean velocity
+real(r8) :: mean_velocity = 25.00_r8
+! velocity normalization
+real(r8) :: pert_velocity_multiplier = 5.00_r8
+! diffusion everywhere
+real(r8) :: diffusion_coef = 0.00_r8
+! amount injected per unit time
+real(r8) :: source_rate = 100.00_r8
+! include an exponential sink
+real(r8) :: e_folding = 1.00_r8
 
 ! module global variables
 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
-type(time_type) :: time_step
+type(time_type) :: time_step 
 
 
 contains
@@ -101,29 +115,90 @@ contains
 
 subroutine adv_1step(x, time)
 
-real(r8),        intent(inout) :: x(:)
-type(time_type), intent(in)    :: time
+real(r8), intent(inout) :: x(:) ! positions (1-40) tracer (41-80) and source (81-120)
+                            ! this is generalizable to any model size that is a 
+                            ! multiple of 3
+real(r8), intent(inout) :: time
 
-real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
+real(r8) :: velocity, target, frac, ratio
+integer(r8) :: low, hi, up, down, i
+real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter
 
-call comp_dt(x, dx)        !  Compute the first intermediate step
-x1    = delta_t * dx
-inter = x + x1 / 2.0_r8
+! Doing an upstream semi-lagrangian advection for q for each grid point
+do i = 1, model_size/3
+! Get the target point
+velocity = mean_velocity + x(i)*pert_velocity_multiplier
+target = (i + model_size/3) - velocity*delta_t
+! Get the bounding grid point
+low = floor(target)
+hi = low + 1
+frac = target - low
+! Assume for now that we are not looking upstream for multiple revolutions
+if (low < (model_size/3 + 1)) then
+low = low + model_size/3
+else if (low > (2*model_size)/3) then
+low = low - model_size/3
+end if
 
-call comp_dt(inter, dx)    !  Compute the second intermediate step
-x2    = delta_t * dx
-inter = x + x2 / 2.0_r8
+if (hi < (model_size/3 + 1)) then
+hi = hi + model_size/3
+else if (hi > (2*model_size)/3) then
+hi = hi - model_size/3
+end if 
 
-call comp_dt(inter, dx)    !  Compute the third intermediate step
-x3    = delta_t * dx
-inter = x + x3
+! Interpolation
+x(i + model_size/3) = (1 - frac)*x(low) + frac*x(hi)
+end do
 
-call comp_dt(inter, dx)    !  Compute fourth intermediate step
+! Diffusion for smoothing and avoiding shocky behavior
+do i = model_size/3 + 1, (2*model_size)/3
+down = i - 1;
+if (down < (model_size/3 + 1)) then
+down = down + model_size/3
+end if 
+up = i + 1;
+if (up > (2*model_size)/3) then
+up = up - model_size/3
+end if
+
+x(i) = diffusion_coef * (x(down) + x(up) - 2*x(i))
+end do
+
+! Add source following the source input
+x(model_size/3 + 1 : (2*model_size)/3) = x(model_size/3 + 1 : (2*model_size)/3) &
+               + x((2*model_size)/3 + 1 : model_size)*delta_t
+! Add exponential sinks at every grid point
+ratio = exp((-1)*e_folding*delta_t)
+x(model_size/3 + 1 : (2*model_size)/3) = ratio*x(model_size/3 + 1 : (2*model_size)/3)
+
+! RK4 solver for the lorenz-96 equations
+
+! Compute first intermediate step
+call comp_dt(x(1: model_size/3), dx)
+x1 = delta_t * dx
+inter = x(1: model_size/3)+ x1/2
+
+! Compute second intermediate step
+call comp_dt(inter, dx)
+x2 = delta_t * dx
+inter = x(1: model_size/3) + x2/2
+
+! Compute third intermediate step
+call comp_dt(inter, dx)
+x3 = delta_t * dx
+inter = x(1: model_size/3) + x3
+
+! Compute fourth intermediate step
+call comp_dt(inter, dx)
 x4 = delta_t * dx
 
-!  Compute new value for x
+! Compute new value for x 
+x_new = x(1: model_size/3) + x1/6 + x2/3 + x3/3 + x4/6
 
-x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
+x(1: model_size/3) = x_new
+
+! Increment time step
+time = time + 1
 
 end subroutine adv_1step
 
@@ -132,23 +207,21 @@ end subroutine adv_1step
 
 subroutine comp_dt(x, dt)
 
-real(r8), intent(in)  ::  x(:)
+real(r8), intent(in) :: x(:)
 real(r8), intent(out) :: dt(:)
 
 integer :: j, jp1, jm1, jm2, ms
 
-! avoid compiler bugs with long integers
-! being used as loop indices.
 ms = model_size
-do j = 1, ms
-   jp1 = j + 1
-   if(jp1 > ms) jp1 = 1
-   jm2 = j - 2
-   if(jm2 < 1) jm2 = ms + jm2
-   jm1 = j - 1
-   if(jm1 < 1) jm1 = ms
-   
-   dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + forcing
+do j = 1, ms/3
+      jp1 = j + 1
+      if (jp1 > ms) jp1 = 1
+      jm2 = j - 2
+      if (jm2 < 1) jm2 = ms + jm2
+      jm1 = j - 1
+      if (jm1 < 1) jm1 = ms
+      
+      dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + forcing
 end do
 
 end subroutine comp_dt
@@ -169,8 +242,18 @@ call initialize()
 allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
-do i = 1, model_size
-   x_loc = (i - 1.0_r8) / model_size
+do i = 1, model_size/3
+   x_loc = (i - 1.0_r8) / (model_size/3)
+   state_loc(i) =  set_location(x_loc)
+end do
+
+do i = (model_size/3 + 1), ((2*model_size)/3)
+   x_loc = (i - (model_size/3 + 1)) / (model_size/3)
+   state_loc(i) =  set_location(x_loc)
+end do
+
+do i = ((2*model_size)/3 + 1), model_size
+   x_loc = (i - ((2*model_size)/3 + 1)) / (model_size/3)
    state_loc(i) =  set_location(x_loc)
 end do
 
@@ -235,6 +318,7 @@ real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
 integer(i8) :: lower_index, upper_index
+integer :: offset
 real(r8) :: lctn, lctnfrac
 real(r8) :: x_lower(ens_size) !< the lower piece of state vector
 real(r8) :: x_upper(ens_size) !< the upper piece of state vector
@@ -245,14 +329,31 @@ istatus(:) = 0
 ! Convert location to real
 lctn = get_location(location)
 ! Multiply by model size assuming domain is [0, 1] cyclic
-lctn = model_size * lctn
+lctn = model_size/3 * lctn
 
 lower_index = int(lctn) + 1
 upper_index = lower_index + 1
-if(lower_index > model_size) lower_index = lower_index - model_size
-if(upper_index > model_size) upper_index = upper_index - model_size
+if(lower_index > model_size) lower_index = lower_index - model_size/3
+if(upper_index > model_size) upper_index = upper_index - model_size/3
 
 lctnfrac = lctn - int(lctn)
+
+! Now figure out which type of quantity the location indicates
+if (itype == QTY_STATE_VARIABLE) then
+   offset = var_offset
+else if (itype == QTY_TRACER_CONCENTRATION) then
+   offset = conc_offset
+else if (itype == QTY_TRACER_SOURCE) then
+   offset = source_offset
+else
+   write(string1, *) 'quantity ', iqty, ' ('//trim(get_name_for_quantity(iqty))// &
+                  ') is not supported in model_interpolate'
+   call error_handler(E_ERR,'model_interpolate',string1, source, revision, revdate)
+end if
+
+! Add the offset to the lower and the upper indices
+lower_index = lower_index + offset
+upper_index = upper_index + offset
 
 ! Grab the correct pieces of state vector
 
@@ -266,8 +367,7 @@ x_upper(:) = get_state(upper_index, state_handle)
 
 expected_obs(:) = (1.0_r8 - lctnfrac) * x_lower(:) + lctnfrac * x_upper(:)
 
-end subroutine model_interpolate
-
+end subroutine model_interpolate   
 !------------------------------------------------------------------
 !> Given an integer index into the state vector structure, returns the
 !> associated location and variable type.
@@ -278,8 +378,22 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
-location = state_loc(index_in)
-if (present(var_type)) var_type = QTY_STATE_VARIABLE 
+if (present(var_type)) then
+   if (index_in <= model_size/3) then
+      var_type = QTY_STATE_VARIABLE
+      location = state_loc(index_in)
+   end if
+
+   if (model_size/3 < index_in <= (2*model_size)/3) then
+      var_type = QTY_TRACER_CONCENTRATION
+      loction = state_loc(index_in)
+   end if
+
+   if ((2*model_size)/3 < index_in <= model_size) then
+      var_type = QTY_TRACER_SOURCE
+      location = state_loc(index_in)
+   end if
+end if
 
 end subroutine get_state_meta_data
 
@@ -325,9 +439,11 @@ call nc_add_global_attribute(ncid, "model_source", source )
 call nc_add_global_attribute(ncid, "model_revision", revision )
 call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
-call nc_add_global_attribute(ncid, "model", "Lorenz_96")
+call nc_add_global_attribute(ncid, "model", "Lorenz_96_Lagrangian")
 call nc_add_global_attribute(ncid, "model_forcing", forcing )
 call nc_add_global_attribute(ncid, "model_delta_t", delta_t )
+call nc_add_global_attribute(ncid, "source_rate", source_rate)
+call nc_add_global_attribute(ncid, "exponential_sink_folding", e_folding)
 
 call nc_write_location_atts(ncid, msize)
 call nc_end_define_mode(ncid)
