@@ -16,7 +16,7 @@ use location_mod,          only : location_type, set_location, get_location,  &
 
 use utilities_mod,         only : register_module, do_nml_file, do_nml_term,    &
                                   nmlfileunit, find_namelist_in_file,           &
-                                  check_namelist_read
+                                  check_namelist_read, E_ERR, error_handler
 
 use location_io_mod,      only :  nc_write_location_atts, nc_write_location
 
@@ -24,7 +24,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_begin_define_mode, &
                                  nc_end_define_mode
 
-use         obs_kind_mod,  only : QTY_STATE_VARIABLE
+use         obs_kind_mod,  only : QTY_STATE_VARIABLE, QTY_TRACER_SOURCE, &
+                                  QTY_TRACER_CONCENTRATION, get_name_for_quantity
 
 use ensemble_manager_mod,  only : ensemble_type
 
@@ -80,8 +81,8 @@ real(r8)    :: delta_t    = 0.05_r8
 integer     :: var_offset = 0
 integer     :: conc_offset = 40
 integer     :: source_offset = 80
-integer(i8)    :: time_step_days = 0
-integer(i8)    :: time_step_seconds = 3600
+integer    :: time_step_days = 0
+integer    :: time_step_seconds = 3600
 
 namelist /model_nml/ model_size, forcing, delta_t, var_offset, conc_offset, source_offset, time_step_days, time_step_seconds
 
@@ -118,7 +119,7 @@ subroutine adv_1step(x, time)
 real(r8), intent(inout) :: x(:) ! positions (1-40) tracer (41-80) and source (81-120)
                             ! this is generalizable to any model size that is a 
                             ! multiple of 3
-real(r8), intent(inout) :: time
+type(time_type), intent(inout) :: time
 
 real(r8) :: velocity, target, frac, ratio
 integer(r8) :: low, hi, up, down, i
@@ -197,8 +198,8 @@ x_new = x(1: model_size/3) + x1/6 + x2/3 + x3/3 + x4/6
 
 x(1: model_size/3) = x_new
 
-! Increment time step
-time = time + 1
+! Increment time step  !HK why?
+! time = time + 1
 
 end subroutine adv_1step
 
@@ -323,6 +324,8 @@ real(r8) :: lctn, lctnfrac
 real(r8) :: x_lower(ens_size) !< the lower piece of state vector
 real(r8) :: x_upper(ens_size) !< the upper piece of state vector
 
+character(128) :: string1
+
 ! All forward operators supported
 istatus(:) = 0
 
@@ -346,7 +349,7 @@ else if (itype == QTY_TRACER_CONCENTRATION) then
 else if (itype == QTY_TRACER_SOURCE) then
    offset = source_offset
 else
-   write(string1, *) 'quantity ', iqty, ' ('//trim(get_name_for_quantity(iqty))// &
+   write(string1, *) 'quantity ', itype, ' ('//trim(get_name_for_quantity(itype))// &
                   ') is not supported in model_interpolate'
    call error_handler(E_ERR,'model_interpolate',string1, source, revision, revdate)
 end if
@@ -384,12 +387,12 @@ if (present(var_type)) then
       location = state_loc(index_in)
    end if
 
-   if (model_size/3 < index_in <= (2*model_size)/3) then
+   if (model_size/3 < index_in .and. index_in <= (2*model_size)/3) then
       var_type = QTY_TRACER_CONCENTRATION
-      loction = state_loc(index_in)
+      location = state_loc(index_in)
    end if
 
-   if ((2*model_size)/3 < index_in <= model_size) then
+   if ((2*model_size)/3 < index_in .and. index_in <= model_size) then
       var_type = QTY_TRACER_SOURCE
       location = state_loc(index_in)
    end if
