@@ -129,7 +129,7 @@
    /
 
 &model_nml
-   model_size        = 40,
+   model_size        = 120,
    forcing           = 8.00,
    delta_t           = 0.05,
    time_step_days    = 0,
