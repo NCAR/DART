@@ -29,8 +29,8 @@
 
 &filter_nml
    single_file_in               = .true.,
-   input_state_files            = ''
-   input_state_file_list        = 'filter_input_list.txt'
+   input_state_files            = 'filter_input_one.nc'
+   input_state_file_list        = ''
 
    stages_to_write  = 'preassim', 'analysis', 'output'
 
@@ -45,7 +45,7 @@
 
    ens_size                     = 20,
    num_groups                   = 1,
-   perturb_from_single_instance = .false.,
+   perturb_from_single_instance = .true.,
    perturbation_amplitude       = 0.2,
    distributed_state            = .true.
 

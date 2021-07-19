@@ -24,16 +24,20 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_begin_define_mode, &
                                  nc_end_define_mode
 
-use         obs_kind_mod,  only : QTY_STATE_VARIABLE, QTY_TRACER_SOURCE, &
+use obs_kind_mod,          only : QTY_STATE_VARIABLE, QTY_TRACER_SOURCE, &
                                   QTY_TRACER_CONCENTRATION, get_name_for_quantity
 
-use ensemble_manager_mod,  only : ensemble_type
+use  mpi_utilities_mod,    only : my_task_id
+
+use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
+
+use ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
 
 use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain
 
-use default_model_mod,     only : end_model, pert_model_copies, nc_write_model_vars, &
+use default_model_mod,     only : end_model, nc_write_model_vars, &
                                   init_time
 
 use dart_time_io_mod,      only : read_model_time, write_model_time
@@ -92,7 +96,7 @@ real(r8) :: mean_velocity = 25.00_r8
 ! velocity normalization
 real(r8) :: pert_velocity_multiplier = 5.00_r8
 ! diffusion everywhere
-real(r8) :: diffusion_coef = 0.00_r8
+real(r8) :: diffusion_coef = 0.60_r8
 ! amount injected per unit time
 real(r8) :: source_rate = 100.00_r8
 ! include an exponential sink
@@ -102,7 +106,11 @@ real(r8) :: e_folding = 1.00_r8
 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
-type(time_type) :: time_step 
+type(time_type) :: time_step
+
+! Module storage for a random sequence for perturbing a single initial state
+type(random_seq_type) :: random_seq
+logical :: random_seq_init = .false.
 
 
 contains
@@ -117,86 +125,92 @@ contains
 subroutine adv_1step(x, time)
 
 real(r8), intent(inout) :: x(:) ! positions (1-40) tracer (41-80) and source (81-120)
-                            ! this is generalizable to any model size that is a 
+                            ! this is generalizable to any model size that is a
                             ! multiple of 3
 type(time_type), intent(inout) :: time
 
 real(r8) :: velocity, target, frac, ratio
 integer(r8) :: low, hi, up, down, i
 real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter
+integer(i8) :: model_size_third !Used enough to use as a variable
 
+model_size_third = model_size/3
+
+!print *, x
 ! Doing an upstream semi-lagrangian advection for q for each grid point
-do i = 1, model_size/3
-! Get the target point
-velocity = mean_velocity + x(i)*pert_velocity_multiplier
-target = (i + model_size/3) - velocity*delta_t
-! Get the bounding grid point
-low = floor(target)
-hi = low + 1
-frac = target - low
-! Assume for now that we are not looking upstream for multiple revolutions
-if (low < (model_size/3 + 1)) then
-low = low + model_size/3
-else if (low > (2*model_size)/3) then
-low = low - model_size/3
-end if
+do i = 1, model_size_third
+    ! Get the target point
+    velocity = mean_velocity + x(i)*pert_velocity_multiplier
+    !print *, x(i)
+    target = (i + model_size_third) - velocity*delta_t
+    ! Get the bounding grid point
+    low = floor(target)
+    hi = low + 1
+    frac = target - low
+    ! Assume for now that we are not looking upstream for multiple revolutions
+    if (low < (model_size_third + 1)) then
+      low = low + model_size_third
+  else if (low > (2*model_size_third)) then
+      low = low - model_size_third
+    end if
 
-if (hi < (model_size/3 + 1)) then
-hi = hi + model_size/3
-else if (hi > (2*model_size)/3) then
-hi = hi - model_size/3
-end if 
+    if (hi < (model_size_third + 1)) then
+      hi = hi + model_size_third
+  else if (hi > (2*model_size_third)) then
+      hi = hi - model_size_third
+    end if
+    !print *, low, hi, i
 
-! Interpolation
-x(i + model_size/3) = (1 - frac)*x(low) + frac*x(hi)
+    ! Interpolation
+    x(i + model_size_third) = (1 - frac)*x(low) + frac*x(hi)
 end do
 
 ! Diffusion for smoothing and avoiding shocky behavior
-do i = model_size/3 + 1, (2*model_size)/3
-down = i - 1;
-if (down < (model_size/3 + 1)) then
-down = down + model_size/3
-end if 
-up = i + 1;
-if (up > (2*model_size)/3) then
-up = up - model_size/3
-end if
+do i = model_size_third + 1, (2*model_size_third)
+    down = i - 1;
+    if (down < (model_size_third + 1)) then
+      down = down + model_size_third
+    end if
+    up = i + 1;
+    if (up > (2*model_size_third)) then
+      up = up - model_size_third
+    end if
 
-x(i) = diffusion_coef * (x(down) + x(up) - 2*x(i))
+    x(i) = diffusion_coef * (x(down) + x(up) - 2*x(i))
 end do
 
 ! Add source following the source input
-x(model_size/3 + 1 : (2*model_size)/3) = x(model_size/3 + 1 : (2*model_size)/3) &
-               + x((2*model_size)/3 + 1 : model_size)*delta_t
+x(model_size_third + 1 : (2*model_size_third)) = x(model_size_third + 1 : (2*model_size_third)) &
+               + x((2*model_size_third) + 1 : model_size)*delta_t
 ! Add exponential sinks at every grid point
 ratio = exp((-1)*e_folding*delta_t)
-x(model_size/3 + 1 : (2*model_size)/3) = ratio*x(model_size/3 + 1 : (2*model_size)/3)
+x(model_size_third + 1 : (2*model_size_third)) = ratio*x(model_size_third + 1 : (2*model_size_third))
 
 ! RK4 solver for the lorenz-96 equations
 
 ! Compute first intermediate step
-call comp_dt(x(1: model_size/3), dx)
+call comp_dt(x(1: model_size_third), dx)
 x1 = delta_t * dx
-inter = x(1: model_size/3)+ x1/2
+inter = x(1: model_size_third)+ x1/2
 
 ! Compute second intermediate step
 call comp_dt(inter, dx)
 x2 = delta_t * dx
-inter = x(1: model_size/3) + x2/2
+inter = x(1: model_size_third) + x2/2
 
 ! Compute third intermediate step
 call comp_dt(inter, dx)
 x3 = delta_t * dx
-inter = x(1: model_size/3) + x3
+inter = x(1: model_size_third) + x3
 
 ! Compute fourth intermediate step
 call comp_dt(inter, dx)
 x4 = delta_t * dx
 
-! Compute new value for x 
-x_new = x(1: model_size/3) + x1/6 + x2/3 + x3/3 + x4/6
+! Compute new value for x
+x_new = x(1: model_size_third) + x1/6 + x2/3 + x3/3 + x4/6
 
-x(1: model_size/3) = x_new
+x(1: model_size_third) = x_new
 
 ! Increment time step  !HK why?
 ! time = time + 1
@@ -216,12 +230,12 @@ integer :: j, jp1, jm1, jm2, ms
 ms = model_size
 do j = 1, ms/3
       jp1 = j + 1
-      if (jp1 > ms) jp1 = 1
+      if (jp1 > ms/3) jp1 = 1
       jm2 = j - 2
-      if (jm2 < 1) jm2 = ms + jm2
+      if (jm2 < 1) jm2 = ms/3 + jm2
       jm1 = j - 1
-      if (jm1 < 1) jm1 = ms
-      
+      if (jm1 < 1) jm1 = ms/3
+
       dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + forcing
 end do
 
@@ -258,8 +272,8 @@ do i = ((2*model_size)/3 + 1), model_size
    state_loc(i) =  set_location(x_loc)
 end do
 
-! The time_step in terms of a time type must also be initialized. 
-! (Need to determine appropriate non-dimensionalization conversion 
+! The time_step in terms of a time type must also be initialized.
+! (Need to determine appropriate non-dimensionalization conversion
 ! for L96 from Shree Khare.)
 time_step = set_time(time_step_seconds, time_step_days)
 
@@ -277,8 +291,10 @@ subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
-x    = forcing
+x = 0
+x(1:model_size/3) = forcing
 x(1) = 1.001_r8 * forcing
+x((2*model_size)/3 + 1) = 100
 
 end subroutine init_conditions
 
@@ -370,7 +386,7 @@ x_upper(:) = get_state(upper_index, state_handle)
 
 expected_obs(:) = (1.0_r8 - lctnfrac) * x_lower(:) + lctnfrac * x_upper(:)
 
-end subroutine model_interpolate   
+end subroutine model_interpolate
 !------------------------------------------------------------------
 !> Given an integer index into the state vector structure, returns the
 !> associated location and variable type.
@@ -411,7 +427,7 @@ integer :: iunit, io
 ! Print module information
 call register_module(source, revision, revdate)
 
-! Read the namelist 
+! Read the namelist
 call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
@@ -421,6 +437,50 @@ if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
 end subroutine initialize
+
+!------------------------------------------------------------------
+!> Perturbs a model state for generating initial ensembles.
+!> Returning interf_provided .true. means this code has
+!> added uniform small independent perturbations to a
+!> single ensemble member to generate the full ensemble.
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,   intent(in) :: ens_size
+real(r8),  intent(in) :: pert_amp
+logical,  intent(out) :: interf_provided
+
+integer :: i,j, num_my_grid_points
+integer(i8), allocatable :: my_grid_points(:)
+type(location_type) :: location
+integer :: var_type
+
+interf_provided = .true.
+
+call init_random_seq(random_seq, my_task_id()+1)
+! if we are running with more than 1 task, then
+! we have all the ensemble members for a subset of
+! the model state.  which variables we have are determined
+! by looking at the global index number into the state vector.
+
+! how many grid points does my task have to work on?
+! and what are their indices into the full state vector?
+num_my_grid_points = get_my_num_vars(state_ens_handle)
+allocate(my_grid_points(num_my_grid_points))
+call get_my_vars(state_ens_handle, my_grid_points)
+
+do i=1,num_my_grid_points
+    call get_state_meta_data(my_grid_points(i), location, var_type)
+
+    if (var_type == QTY_STATE_VARIABLE) then
+        do j=1,ens_size
+            state_ens_handle%copies(j, i) = random_gaussian(random_seq, 0.0_r8, pert_amp)
+        end do
+    end if
+end do
+
+deallocate(my_grid_points)
+end subroutine pert_model_copies
 
 !------------------------------------------------------------------
 ! Writes model-specific attributes to a netCDF file
