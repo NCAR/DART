@@ -136,7 +136,7 @@ integer(i8) :: model_size_third !Used enough to use as a variable
 
 model_size_third = model_size/3
 
-!print *, x
+print *, x
 ! Doing an upstream semi-lagrangian advection for q for each grid point
 do i = 1, model_size_third
     ! Get the target point
@@ -147,6 +147,7 @@ do i = 1, model_size_third
     low = floor(target)
     hi = low + 1
     frac = target - low
+    print *, frac
     ! Assume for now that we are not looking upstream for multiple revolutions
     if (low < (model_size_third + 1)) then
       low = low + model_size_third

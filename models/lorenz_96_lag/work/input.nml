@@ -1,7 +1,7 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
    single_file_in             = .true.
-   input_state_files          = "perfect_input.nc"
+   input_state_files          = "filter_input_one.nc"
 
    write_output_state_to_file = .true.,
    single_file_out            = .true.
@@ -124,8 +124,8 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
-                                'RAW_STATE_1D_INTEGRAL',
-                                'RAW_STATE_VAR_POWER'
+				'RAW_TRACER_CONCENTRATION',
+				'RAW_TRACER_SOURCE'
    /
 
 &model_nml
