@@ -96,7 +96,7 @@ real(r8) :: mean_velocity = 25.00_r8
 ! velocity normalization
 real(r8) :: pert_velocity_multiplier = 5.00_r8
 ! diffusion everywhere
-real(r8) :: diffusion_coef = 0.60_r8
+real(r8) :: diffusion_coef = 0.00_r8
 ! amount injected per unit time
 real(r8) :: source_rate = 100.00_r8
 ! include an exponential sink
@@ -110,7 +110,7 @@ type(time_type) :: time_step
 
 ! Module storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
-logical :: random_seq_init = .false.
+logical :: random_seq_init = .true.
 
 
 contains
@@ -130,40 +130,48 @@ real(r8), intent(inout) :: x(:) ! positions (1-40) tracer (41-80) and source (81
 type(time_type), intent(inout) :: time
 
 real(r8) :: velocity, target, frac, ratio
-integer(r8) :: low, hi, up, down, i
+integer(r8) :: low, hi, up, down, i, f
 real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter
 integer(i8) :: model_size_third !Used enough to use as a variable
 
 model_size_third = model_size/3
 
 print *, x
+!print *, model_size, model_size_third, (2*model_size_third)
+
+! do f = 1, model_size_third
+!    if (x(f)>10 .or. x(f)<-10) then
+!       print *,x(f)
+!    end if 
+! end do
+
 ! Doing an upstream semi-lagrangian advection for q for each grid point
 do i = 1, model_size_third
     ! Get the target point
     velocity = mean_velocity + x(i)*pert_velocity_multiplier
     !print *, x(i)
-    target = (i + model_size_third) - velocity*delta_t
+    target = i - velocity*delta_t
     ! Get the bounding grid point
     low = floor(target)
     hi = low + 1
     frac = target - low
-    print *, frac
+    !print *, frac
     ! Assume for now that we are not looking upstream for multiple revolutions
-    if (low < (model_size_third + 1)) then
+    if (low < 1) then
       low = low + model_size_third
-  else if (low > (2*model_size_third)) then
+    else if (low > model_size_third) then
       low = low - model_size_third
     end if
 
-    if (hi < (model_size_third + 1)) then
+    if (hi < 1) then
       hi = hi + model_size_third
-  else if (hi > (2*model_size_third)) then
+    else if (hi > model_size_third) then
       hi = hi - model_size_third
     end if
-    !print *, low, hi, i
+    print *, low, hi, i
 
     ! Interpolation
-    x(i + model_size_third) = (1 - frac)*x(low) + frac*x(hi)
+    x(i + model_size_third) = (1 - frac)*x(low + model_size_third) + frac*x(hi + model_size_third)
 end do
 
 ! Diffusion for smoothing and avoiding shocky behavior
@@ -177,6 +185,7 @@ do i = model_size_third + 1, (2*model_size_third)
       up = up - model_size_third
     end if
 
+    !print *, i, down, up
     x(i) = diffusion_coef * (x(down) + x(up) - 2*x(i))
 end do
 
