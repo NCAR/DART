@@ -331,12 +331,14 @@ echo "`date` -- END FILTER"
 # restart file is also the prior for the next forecast.
 #=========================================================================
 
+unlink clm_restart.nc
+
 foreach RESTART ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
 
    set POSTERIOR = `echo $RESTART | sed -e "s/${CASE}.//"`
 
    ${LINK} $POSTERIOR dart_posterior.nc
-   ${LINK} $RESTART   clm_prior.nc
+   ${LINK} $RESTART   clm_restart.nc
 
    ${EXEROOT}/dart_to_clm >& /dev/null
 
@@ -346,7 +348,7 @@ foreach RESTART ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
    endif
 
    unlink dart_posterior.nc
-   unlink clm_prior.nc
+   unlink clm_restart.nc
 end
 
 # Remove the copies that we no longer need. The posterior values are
