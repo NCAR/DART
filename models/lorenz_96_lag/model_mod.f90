@@ -131,7 +131,7 @@ type(time_type), intent(inout) :: time
 
 real(r8) :: velocity, target, frac, ratio
 integer(r8) :: low, hi, up, down, i, f
-real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter
+real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter, q_diff
 integer(i8) :: model_size_third !Used enough to use as a variable
 
 model_size_third = model_size/3
@@ -175,19 +175,21 @@ do i = 1, model_size_third
 end do
 
 ! Diffusion for smoothing and avoiding shocky behavior
-do i = model_size_third + 1, (2*model_size_third)
+do i = 1, model_size_third
     down = i - 1;
-    if (down < (model_size_third + 1)) then
+    if (down < 1) then
       down = down + model_size_third
     end if
     up = i + 1;
-    if (up > (2*model_size_third)) then
+    if (up > model_size_third) then
       up = up - model_size_third
     end if
 
     !print *, i, down, up
-    x(i) = diffusion_coef * (x(down) + x(up) - 2*x(i))
+    q_diff(i) = diffusion_coef * (x(down + model_size_third) + x(up + model_size_third) - 2*x(i + model_size_third))
 end do
+
+x(model_size_third + 1 : (2*model_size_third)) = x(model_size_third + 1 : (2*model_size_third)) + q_diff*delta_t
 
 ! Add source following the source input
 x(model_size_third + 1 : (2*model_size_third)) = x(model_size_third + 1 : (2*model_size_third)) &
