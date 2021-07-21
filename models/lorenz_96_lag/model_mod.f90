@@ -131,7 +131,7 @@ type(time_type), intent(inout) :: time
 
 real(r8) :: velocity, target, frac, ratio
 integer(r8) :: low, hi, up, down, i, f
-real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter, q_diff
+real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new
 integer(i8) :: model_size_third !Used enough to use as a variable
 
 model_size_third = model_size/3
@@ -149,7 +149,6 @@ print *, x
 do i = 1, model_size_third
     ! Get the target point
     velocity = mean_velocity + x(i)*pert_velocity_multiplier
-    !print *, x(i)
     target = i - velocity*delta_t
     ! Get the bounding grid point
     low = floor(target)
@@ -168,10 +167,9 @@ do i = 1, model_size_third
     else if (hi > model_size_third) then
       hi = hi - model_size_third
     end if
-    print *, low, hi, i
 
     ! Interpolation
-    x(i + model_size_third) = (1 - frac)*x(low + model_size_third) + frac*x(hi + model_size_third)
+    q_new(i) = (1 - frac)*x(low + model_size_third) + frac*x(hi + model_size_third)
 end do
 
 ! Diffusion for smoothing and avoiding shocky behavior
@@ -186,17 +184,18 @@ do i = 1, model_size_third
     end if
 
     !print *, i, down, up
-    q_diff(i) = diffusion_coef * (x(down + model_size_third) + x(up + model_size_third) - 2*x(i + model_size_third))
+    q_diff(i) = diffusion_coef * (q_new(down) + q_new(up) - 2*q_new(i))
 end do
 
-x(model_size_third + 1 : (2*model_size_third)) = x(model_size_third + 1 : (2*model_size_third)) + q_diff*delta_t
+q_new = q_new + q_diff*delta_t
 
 ! Add source following the source input
-x(model_size_third + 1 : (2*model_size_third)) = x(model_size_third + 1 : (2*model_size_third)) &
-               + x((2*model_size_third) + 1 : model_size)*delta_t
+q_new = x((2*model_size_third)+1 : model_size)*delta_t + q_new
 ! Add exponential sinks at every grid point
 ratio = exp((-1)*e_folding*delta_t)
-x(model_size_third + 1 : (2*model_size_third)) = ratio*x(model_size_third + 1 : (2*model_size_third))
+q_new = ratio*q_new
+
+x(model_size_third+1:2*(model_size_third)) = q_new
 
 ! RK4 solver for the lorenz-96 equations
 
