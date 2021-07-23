@@ -35,7 +35,7 @@ use ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
 
 use distributed_state_mod, only : get_state
 
-use state_structure_mod,   only : add_domain
+use state_structure_mod,   only : add_domain, add_dimension_to_variable, finished_adding_domain, state_structure_info
 
 use default_model_mod,     only : end_model, nc_write_model_vars, &
                                   init_time
@@ -101,6 +101,8 @@ real(r8) :: diffusion_coef = 0.00_r8
 real(r8) :: source_rate = 100.00_r8
 ! include an exponential sink
 real(r8) :: e_folding = 1.00_r8
+! number state variable types_mod
+integer  :: NVARS = 3
 
 ! module global variables
 
@@ -131,20 +133,20 @@ type(time_type), intent(inout) :: time
 
 real(r8) :: velocity, target, frac, ratio
 integer(r8) :: low, hi, up, down, i, f
-real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new
+real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new, q
 integer(i8) :: model_size_third !Used enough to use as a variable
 
 model_size_third = model_size/3
 
-print *, x
 !print *, model_size, model_size_third, (2*model_size_third)
 
 ! do f = 1, model_size_third
 !    if (x(f)>10 .or. x(f)<-10) then
 !       print *,x(f)
-!    end if 
+!    end if
 ! end do
-
+q = x(model_size_third + 1 :2*model_size_third)
+!print *, x
 ! Doing an upstream semi-lagrangian advection for q for each grid point
 do i = 1, model_size_third
     ! Get the target point
@@ -156,6 +158,9 @@ do i = 1, model_size_third
     frac = target - low
     !print *, frac
     ! Assume for now that we are not looking upstream for multiple revolutions
+
+   !  low = mod(low,model_size_third)
+   !  hi = mod(hi,model_size_third)
     if (low < 1) then
       low = low + model_size_third
     else if (low > model_size_third) then
@@ -169,7 +174,11 @@ do i = 1, model_size_third
     end if
 
     ! Interpolation
-    q_new(i) = (1 - frac)*x(low + model_size_third) + frac*x(hi + model_size_third)
+   !  if (low < 1 .or. low > model_size_third .or. hi < 1 .or. hi > model_size_third) then
+   !    print *, "GECKO", low, hi, frac, target
+   !  end if
+
+    q_new(i) = (1 - frac)*q(low) + frac*q(hi)
 end do
 
 ! Diffusion for smoothing and avoiding shocky behavior
@@ -182,8 +191,6 @@ do i = 1, model_size_third
     if (up > model_size_third) then
       up = up - model_size_third
     end if
-
-    !print *, i, down, up
     q_diff(i) = diffusion_coef * (q_new(down) + q_new(up) - 2*q_new(i))
 end do
 
@@ -259,7 +266,7 @@ end subroutine comp_dt
 subroutine static_init_model()
 
 real(r8) :: x_loc
-integer  :: i, dom_id
+integer  :: i, dom_id, var_id
 
 ! Do any initial setup needed, including reading the namelist values
 call initialize()
@@ -290,7 +297,27 @@ time_step = set_time(time_step_seconds, time_step_days)
 
 ! Tell the DART I/O routines how large the model data is so they
 ! can read/write it.
-dom_id = add_domain(model_size)
+!dom_id = add_domain(model_size)
+
+dom_id = add_domain('template.nc', NVARS, &
+                              (/ 'state_variable      ', &
+                                 'tracer_concentration', &
+                                 'source              ' /),&
+                              (/QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE/))
+
+! dom_id = add_domain(NVARS, (/ 'state_variable      ', &
+!                               'tracer_concentration', &
+!                               'source              ' /),&
+!                               (/QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE/))
+!
+! do var_id=1, NVARS
+!    !call add_dimension_to_variable(dom_id, var_id, 'member', 1)
+!    call add_dimension_to_variable(dom_id, var_id, 'location', int(model_size/3))
+!    !call add_dimension_to_variable(dom_id, var_id, 'time', 1)
+! enddo
+!
+!call finished_adding_domain(dom_id)
+! !call state_structure_info(dom_id)
 
 end subroutine static_init_model
 
@@ -303,8 +330,8 @@ subroutine init_conditions(x)
 real(r8), intent(out) :: x(:)
 
 x = 0
-x(1:model_size/3) = forcing
-x(1) = 1.001_r8 * forcing
+x(1:model_size/3) = 0.0_r8
+x(1) = 0.1_r8
 x((2*model_size)/3 + 1) = 100
 
 end subroutine init_conditions
@@ -485,9 +512,20 @@ do i=1,num_my_grid_points
 
     if (var_type == QTY_STATE_VARIABLE) then
         do j=1,ens_size
-            state_ens_handle%copies(j, i) = random_gaussian(random_seq, 0.0_r8, pert_amp)
+            state_ens_handle%copies(j, i) = random_gaussian(random_seq, state_ens_handle%copies(j, i), pert_amp)
+        end do
+    !Perturbing all sources
+    else if (var_type == QTY_TRACER_SOURCE) then
+        do j=1,ens_size
+         state_ens_handle%copies(j, i) = state_ens_handle%copies(j, i) + random_gaussian(random_seq, 0.00_r8, 50.00_r8)
         end do
     end if
+!! Perturbing first source grid (not sure that this works, seems to give not different results)
+!    else if (var_type == QTY_TRACER_SOURCE) then
+!       do j=1,ens_size
+!        state_ens_handle%copies(j, i) = state_ens_handle%copies(j, i) + random_gaussian(random_seq, 0.00_r8, 50.00_r8)
+!       end do
+!   end if
 end do
 
 deallocate(my_grid_points)
@@ -519,9 +557,9 @@ call nc_add_global_attribute(ncid, "model_delta_t", delta_t )
 call nc_add_global_attribute(ncid, "source_rate", source_rate)
 call nc_add_global_attribute(ncid, "exponential_sink_folding", e_folding)
 
-call nc_write_location_atts(ncid, msize)
+call nc_write_location_atts(ncid, msize/3)
 call nc_end_define_mode(ncid)
-call nc_write_location(ncid, state_loc, msize)
+call nc_write_location(ncid, state_loc(1:40), msize/3)
 
 call nc_synchronize_file(ncid)
 
