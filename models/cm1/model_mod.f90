@@ -210,6 +210,9 @@ integer :: domid
 integer  :: ni  =-1, nj  =-1, nk  =-1   ! scalar grid counts
 integer  :: nip1=-1, njp1=-1, nkp1=-1 ! staggered grid counts
 
+! Latitude/Longitude JDL
+real(r8) :: ctrlat, ctrlon   !--- try to call at grid info
+
 ! Arrays of grid values
 
 ! scalar grid positions
@@ -505,7 +508,7 @@ elseif (on_ugrid(var_id)) then  ! i.e., JDL X - stagger
 
 else ! on sgrid   !i.e., JDL - No staggered grid points
 
-   xlocation = wlat(x_index, y_index) !xh(x_index)
+   xlocation = wlon(x_index, y_index) !xh(x_index)
    ylocation = wlat(x_index, y_index) !yh(y_index)
    zlocation = get_my_z(var_id, x_index, y_index, z_index)
 
@@ -1998,6 +2001,15 @@ call nc_check( nf90_inq_dimid(ncid, 'nkp1', dimid=dimID), &
 call nc_check( nf90_inquire_dimension(ncid, dimID, len=nkp1), &
                'get_grid_info', 'inq_dimid nkp1 ')
 
+
+! JDL Addition - Add Lat/Lon DOES NOT WORK COME BACK JDL
+call nc_check( nf90_inq_dimid(ncid, 'ctrlat', dimid=dimID), &
+               'get_grid_info', 'inquire ctrlat ')
+
+call nc_check( nf90_inq_dimid(ncid, 'ctrlon', dimid=dimID), &
+               'get_grid_info', 'inquire ctrlon ')
+
+
 end subroutine get_grid_info
 
 
@@ -2025,7 +2037,7 @@ integer :: VarID ! netcdf variable id
 integer :: ret ! netcdf return code
 
 integer :: i,j,k
-real(r8)   :: ref_lon, ref_lat, x, y, lat, lon
+real(r8)   :: ctrlon, ctrlat, x, y, lat, lon
 
 ! allocate module storage for grid information
 allocate( xh( ni )) ! west-east location of scalar grid points
@@ -2146,23 +2158,23 @@ endif
 
 !  JDL This is Where You Get the Lat/Lon Info (CURRENTLY FUDGING THE LATS)
 !  Assumes the Grid Lays on a Flat Earth
-ref_lon = 45.0_r8
-ref_lat = 25.7_r8
+!ctrlon = 45.0_r8
+!ctrlat = 25.7_r8
 DO j = 1, nj 
    DO i = 1, ni
-      call xy_to_ll(wlat(i,j), wlon(i,j), 0, xh(i), yh(j), ref_lat, ref_lon, .true.) 
+      call xy_to_ll(wlat(i,j), wlon(i,j), 0, xh(i), yh(j), ctrlat, ctrlon, .true.) 
    ENDDO
 ENDDO
 
 DO j = 1, njp1 
    DO i = 1, ni
-      call xy_to_ll(vlat(i,j), vlon(i,j), 0, xh(i), yf(j), ref_lat, ref_lon, .true.) 
+      call xy_to_ll(vlat(i,j), vlon(i,j), 0, xh(i), yf(j), ctrlat, ctrlon, .true.) 
    ENDDO
 ENDDO
 
 DO j = 1, nj 
    DO i = 1, nip1
-      call xy_to_ll(ulat(i,j), ulon(i,j), 0, xf(i), yh(j), ref_lat, ref_lon, .true.) 
+      call xy_to_ll(ulat(i,j), ulon(i,j), 0, xf(i), yh(j), ctrlat, ctrlon, .true.) 
    ENDDO
 ENDDO
 
@@ -2174,8 +2186,8 @@ IF( debug > 2) THEN
   !lon = 0.0_r8
   DO j = 1, nj
      DO i = 1, ni
-        call ll_to_xy(x, y , 0, ref_lat, ref_lon, wlat(i,j), wlon(i,j),.true.)
-        call xy_to_ll(lat, lon, 0, xh(i), yh(j), ref_lat, ref_lon)
+        call ll_to_xy(x, y , 0, ctrlat, ctrlon, wlat(i,j), wlon(i,j),.true.)
+        call xy_to_ll(lat, lon, 0, xh(i), yh(j), ctrlat, ctrlon)
         write(*,*) 'i,j,x,u,x1,y1: ',i, j, xh(i), yh(j), x, y, wlat(i,j), wlon(i,j), lat, lon
      ENDDO
   ENDDO
