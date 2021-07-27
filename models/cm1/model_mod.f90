@@ -2001,15 +2001,13 @@ call nc_check( nf90_inq_dimid(ncid, 'nkp1', dimid=dimID), &
 call nc_check( nf90_inquire_dimension(ncid, dimID, len=nkp1), &
                'get_grid_info', 'inq_dimid nkp1 ')
 
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ctrlat',   ctrlat), &
+                'get_grid_info',  'imquire ctrlat ')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ctrlon',   ctrlon), &
+                'get_grid_info',  'imquire ctrlon ')
 
-! JDL Addition - Add Lat/Lon DOES NOT WORK COME BACK JDL
-call nc_check( nf90_inq_dimid(ncid, 'ctrlat', dimid=dimID), &
-               'get_grid_info', 'inquire ctrlat ')
-
-call nc_check( nf90_inq_dimid(ncid, 'ctrlon', dimid=dimID), &
-               'get_grid_info', 'inquire ctrlon ')
-
-
+print*,'JDL ctrlat = ',ctrlat
+print*,'JDL ctrlon = ',ctrlon
 end subroutine get_grid_info
 
 
