@@ -1558,6 +1558,7 @@ end subroutine set_periodic
 ! internal routine - reset the state of the axes.
 ! and precompute some stuff to make this simpler.
 
+! JDL - Defines if BDRS are periodic
 subroutine recompute_periodic()
 
 ! Shortcut to see if any axis is periodic
@@ -1589,7 +1590,7 @@ if (any_periodic) then
    loopy%midline(IY) = (min_y_for_periodic + max_y_for_periodic ) / 2.0_r8
    loopy%midline(IZ) = (min_z_for_periodic + max_z_for_periodic ) / 2.0_r8
 
-if (debug > 0) write(0,*) 'setting midlines: ', loopy%midline
+   if (debug > 0) write(0,*) 'setting midlines: ', loopy%midline
    ! update these in the get_close init routines
    loopy%midbox(IX) = -1
    loopy%midbox(IY) = -1
@@ -1598,7 +1599,7 @@ if (debug > 0) write(0,*) 'setting midlines: ', loopy%midline
    loopy%offset(IX) = max_x_for_periodic - min_x_for_periodic
    loopy%offset(IY) = max_y_for_periodic - min_y_for_periodic
    loopy%offset(IZ) = max_z_for_periodic - min_z_for_periodic
-if (debug > 0) write(0,*) 'setting offsets: ', loopy%offset
+   if (debug > 0) write(0,*) 'setting offsets: ', loopy%offset
 else
    loopy%midline(:) = MISSING_R8
    loopy%midbox(:) = MISSING_I
