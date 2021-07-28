@@ -1127,6 +1127,38 @@ if ( periodic_x .and. periodic_y ) then
       return ! exit early
 
    endif
+! JDL ADDITION
+elseif ( periodic_x) then
+    ! require that the point is contained within the staggered grid for the 
+    ! y - direction since you cannot wrap-arround
+    if ( (obs_location(1) < xf(1)) .or. (obs_location(1) > xf(nip1)) .or. &
+        (obs_location(2) < yh(1)) .or. (obs_location(2) > yh(njp1)) ) then
+
+      if (debug > 0) then
+         print *, 'periodic boundary conditions - in x-direction'
+         print *, 'OBSERVATION_x,y at ', obs_location(1:2), ' is off x,y grid'
+         print *, 'x_min, x_max ', xf(1), xf(nip1)
+         print *, 'y_min, y_max ', yh(1), yh(nj)
+      endif
+
+      return ! exit early
+    endif
+elseif ( periodic_y) then
+    ! require that the point is contained within the staggered grid for the 
+    ! x - direction since you cannot wrap-arround
+    if ( (obs_location(1) < xh(1)) .or. (obs_location(1) > xh(nip1)) .or. &
+        (obs_location(2) < yf(1)) .or. (obs_location(2) > yf(njp1)) ) then
+
+      if (debug > 0) then
+         print *, 'periodic boundary conditions - in x-direction'
+         print *, 'OBSERVATION_x,y at ', obs_location(1:2), ' is off x,y grid'
+         print *, 'x_min, x_max ', xh(1), xh(ni)
+         print *, 'y_min, y_max ', yf(1), yf(njp1)
+      endif
+
+      return ! exit early
+    endif
+ 
 elseif ( (.not. periodic_x) .and. (.not. periodic_y) ) then
    ! require that the point is contained within the staggered grid for now.
    ! you could extrapolate for values that are within xf-xh, yf-yh
@@ -1147,7 +1179,7 @@ elseif ( (.not. periodic_x) .and. (.not. periodic_y) ) then
 
    endif
 else
-   write(string1,*) 'only grids with periodic x and y grids, or non-periodic '
+   write(string1,*) ' This option is not supoorted '
    write(string2,*) 'boundary conditions supported'
    call error_handler(E_ERR, 'observation_on_grid', string1, &
                   source, revision, revdate, text2=string2)
