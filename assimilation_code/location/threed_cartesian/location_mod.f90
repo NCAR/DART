@@ -16,6 +16,7 @@ use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            do_nml_term, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use mpi_utilities_mod, only : my_task_id, task_count
+use         obs_kind_mod, only : get_num_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
 use ensemble_manager_mod, only : ensemble_type
 use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
                                  get_vertical_localization_coord, &
@@ -67,25 +68,68 @@ end type periodic_info_type
 ! This version supports only regularly spaced boxes (the non-working octree code
 ! was removed.) 
 
+!type box_type
+!   private
+!   integer, pointer  :: loc_box(:)           ! (nloc); List of loc indices in boxes
+!   integer, pointer  :: count(:, :, :)       ! (nx, ny, nz); # of locs in each box
+!   integer, pointer  :: start(:, :, :)       ! (nx, ny, nz); Start of list of locs in this box
+!   real(r8)          :: bot_x, top_x         ! extents in x, y, z
+!   real(r8)          :: bot_y, top_y
+!   real(r8)          :: bot_z, top_z
+!   real(r8)          :: x_width, y_width, z_width    ! widths of boxes in x,y,z
+!   real(r8)          :: nboxes_x, nboxes_y, nboxes_z ! based on maxdist how far to search
+!end type box_type
+
 type box_type
    private
-   integer, pointer  :: loc_box(:)           ! (nloc); List of loc indices in boxes
-   integer, pointer  :: count(:, :, :)       ! (nx, ny, nz); # of locs in each box
-   integer, pointer  :: start(:, :, :)       ! (nx, ny, nz); Start of list of locs in this box
+   integer           :: num                      
+   real(r8)          :: maxdist              ! furthest seperation between "close" locations  
+   !integer, allocatable  :: x_offset(:, :)     ! (nlat, nlat), lon box indices searched (nlat 2x IS correct) ! JDL - DONT KNOW YET 
+   integer, allocatable  :: loc_box(:)           ! (nloc); List of loc indices in boxes
+   integer, allocatable  :: count(:, :, :)       ! (nx, ny, nz); # of locs in each box
+   integer, allocatable  :: start(:, :, :)       ! (nx, ny, nz); Start of list of locs in this box
    real(r8)          :: bot_x, top_x         ! extents in x, y, z
    real(r8)          :: bot_y, top_y
    real(r8)          :: bot_z, top_z
    real(r8)          :: x_width, y_width, z_width    ! widths of boxes in x,y,z
    real(r8)          :: nboxes_x, nboxes_y, nboxes_z ! based on maxdist how far to search
+   !logical           :: lon_cyclic           ! Do boxes wraparound in longitude?  ! JDL DONT KNOW YET
 end type box_type
 
+
+! JDL An Addition That Will need work (Lat/Lon info has no use here)'
+! You might be able to merge this into the origin box_type categoyr
+!type get_close_type_by_type
+!   private
+!   integer               :: num
+!   real(r8)              :: maxdist              ! furthest separation between "close" locations
+!   integer, allocatable  :: lon_offset(:, :)     ! (nlat, nlat), lon box indices searched (nlat 2x IS correct)
+!   integer, allocatable  :: loc_box(:)           ! (nloc), List of loc indices in boxes
+!   integer, allocatable  :: count(:, :)          ! (nlon, nlat), # of loc in each box
+!   integer, allocatable  :: start(:, :)          ! (nlon, nlat), Start of list of loc in this box
+!   real(r8)              :: bot_lat, top_lat     ! Bottom and top latitudes of latitude boxes
+!   real(r8)              :: bot_lon, top_lon     ! Bottom and top longitudes of longitude boxes
+!   real(r8)              :: lon_width, lat_width ! Width of boxes in lon and lat
+!   logical               :: lon_cyclic           ! Do boxes wraparound in longitude?
+!end type get_close_type_by_type
+
 ! Type to facilitate efficient computation of observations close to a given location
+! JDL Coverup Initially
+
 type get_close_type
    private
-   integer           :: num
-   real(r8)          :: maxdist
-   type(box_type)    :: box
+   integer           :: nt                      ! The number of distinct cutoffs
+   real(r8)          :: type_to_cutoff_map(:)   ! mapping of types to index
+   type(box_type),allocatable  :: box                     ! Array of box types (JDL - May need to add array of close types by type)
 end type get_close_type
+
+
+!type get_close_type
+!   private
+!   integer           :: num
+!   real(r8)          :: maxdist
+!   type(box_type)    :: box
+!end type get_close_type
 
 type(random_seq_type) :: ran_seq
 logical               :: ran_seq_init = .false.
@@ -805,7 +849,7 @@ end subroutine interactive_location
 ! Initializes get_close accelerator 
 
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
-
+! JDL - This is where we start
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
 real(r8),             intent(in)    :: maxdist
@@ -816,25 +860,91 @@ integer :: i, j, k, cum_start, l
 integer :: x_box(num), y_box(num), z_box(num)
 integer :: tstart(nx, ny, nz)
 
+
+! JDL --- New 
+integer :: typecount, distcount
+real(r8), allocatable :: distlist(:)
+
+
 if ( .not. module_initialized ) call initialize_module
 
-! Set the maximum localization distance
-gc%maxdist = maxdist
+typecount = get_num_types_of_obs()
+allocate(gc%type_to_cutoff_map(typecount)) ! JDL ENDED HERE 
 
-! Allocate storage for number dependent part
-allocate(gc%box%loc_box(num))
-gc%box%loc_box(:) = -1
+if (present(maxdist_list)) then
+   if (size(maxdist_list) .ne. typecount) then
+      write(msgstring,'(A,I8,A,I8)')'maxdist_list len must equal number of specific types, ', &
+                                    size(maxdist_list), ' /= ', typecount
+      call error_handler(E_ERR, 'get_close_init', msgstring, source)
+   endif
+
+   allocate(distlist(typecount))
+   call distinct_values(maxdist_list, distcount, distlist, gc%type_to_cutoff_map)
+   gc%nt = distcount
+   if (gc%nt <= 0) then
+      write(msgstring,'(A)')'error getting count of distinct cutoff dists; should not happen'
+      call error_handler(E_ERR, 'get_close_init', msgstring, source)
+   endif
+else
+   gc%nt = 1
+   gc%type_to_cutoff_map(:) = 1
+endif
+
+allocate(gc%box(gc%nt))
+
+! JDL START
+if (present(maxdist_list)) then
+   do i=1, gc%nt
+      gc%box(i)%maxdist = distlist(i)
+   enddo
+else
+   ! no per-type settings, everyone uses same distance
+   gc%box(1)%maxdist = maxdist
+endif
+
+if (present(maxdist_list)) deallocate(distlist)
 
 ! Allocate the storage for the grid dependent boxes
-allocate(gc%box%count(nx,ny,nz), gc%box%start(nx,ny,nz))
-gc%box%count  = -1
-gc%box%start  = -1
+do i=1, gc%nt
+   allocate(gc%box(i)%count(nx, ny, nz), gc%box(i)%start(nx, ny, nz))
+   !allocate(gc%box(i)%x_offset(nx, ny, nz)) ! JDL MAY NEED
+   !gc%box(i)%x_offset = -1  ! JDL MAY NEED
+   gc%box(i)%count      = -1
+   gc%box(i)%start      = -1
+enddo
+
+! store the location counts in all derived types
+do i=1, gc%nt
+   gc%box(i)%num = num
+enddo
+
+
+! If there are no locs to operate on, no point in going any further.
+if (num == 0) return
+
+! Set the maximum localization distance
+!gc%maxdist = maxdist
+
+! Allocate storage for number dependent part
+!allocate(gc%box%loc_box(num))
+!gc%box%loc_box(:) = -1
+
+! Allocate the storage for the grid dependent boxes
+!allocate(gc%box%count(nx,ny,nz), gc%box%start(nx,ny,nz))
+!gc%box%count  = -1
+!gc%box%start  = -1
+
+do i=1, gc%nt
+   ! Allocate storage for locs number dependent part
+   allocate(gc%box(i)%loc_box(num))
+   gc%box(i)%loc_box(:) = -1
+enddo
 
 ! Set the value of num_locs in the structure
-gc%num = num
+!gc%num = num
 
 ! If num == 0, no point in going any further.
-if (num == 0) return
+!if (num == 0) return
 
 !! FIXME: compute nx, ny, nz from nboxes?  or put in namelist
 !nx = nint(real(nboxes, r8)**0.33333)   ! roughly cube root
@@ -860,59 +970,64 @@ if (num == 0) return
 !> and nboxes*2 is the end of the halo on the upper side.
 
 ! Determine where the boxes should be for this set of locs and maxdist
-call find_box_ranges(gc, locs, num)
+do n=1, gc%nt ! JDL THIS IS WHERE WE BEGIN TO LOOP
+    ! Determine where the boxes should be for this set of locs and maxdist
+    call find_box_ranges(gc%box(n), locs, num) ! JDL This is the last thing I edited
 
-! Begin by computing the number of locations in each box in x,y,z
-gc%box%count = 0
-do i = 1, num
+    ! JDL THERE IS A blat_ind section in the threed sphere - Determine if you need to include this...
+    ! Since The Box Object Does not use this method I am not going to save it right now.
 
-!write(0,*)  i, locs(i)%x, locs(i)%y, locs(i)%z
-   x_box(i) = floor((locs(i)%x - gc%box%bot_x) / gc%box%x_width) + 1
-   if(x_box(i) > nx) x_box(i) = nx
-   if(x_box(i) < 1)  x_box(i) = 1
+    ! Begin by computing the number of locations in each box in x,y,z
+    gc%box(n)%count = 0
+    do i = 1, num
 
-   y_box(i) = floor((locs(i)%y - gc%box%bot_y) / gc%box%y_width) + 1
-   if(y_box(i) > ny) y_box(i) = ny
-   if(y_box(i) < 1)  y_box(i) = 1
+    !write(0,*)  i, locs(i)%x, locs(i)%y, locs(i)%z
+       x_box(i) = floor((locs(i)%x - gc%box(n)%bot_x) / gc%box(n)%x_width) + 1
+       if(x_box(i) > nx) x_box(i) = nx
+       if(x_box(i) < 1)  x_box(i) = 1
 
-   z_box(i) = floor((locs(i)%z - gc%box%bot_z) / gc%box%z_width) + 1
-   if(z_box(i) > nz) z_box(i) = nz
-   if(z_box(i) < 1)  z_box(i) = 1
+       y_box(i) = floor((locs(i)%y - gc%box(n)%bot_y) / gc%box(n)%y_width) + 1
+       if(y_box(i) > ny) y_box(i) = ny
+       if(y_box(i) < 1)  y_box(i) = 1
 
-   gc%box%count(x_box(i), y_box(i), z_box(i)) = gc%box%count(x_box(i), y_box(i), z_box(i)) + 1
-!write(0,*)  'adding count to box ', x_box(i), y_box(i), z_box(i), &
-!                                 gc%box%count(x_box(i), y_box(i), z_box(i))
-end do
+       z_box(i) = floor((locs(i)%z - gc%box(n)%bot_z) / gc%box(n)%z_width) + 1
+       if(z_box(i) > nz) z_box(i) = nz
+       if(z_box(i) < 1)  z_box(i) = 1
 
-! Figure out where storage for each boxes members should begin
-cum_start = 1
-do i = 1, nx
-   do j = 1, ny
-      do k = 1, nz
-         gc%box%start(i, j, k) = cum_start
-         cum_start = cum_start + gc%box%count(i, j, k)
+       gc%box(n)%count(x_box(i), y_box(i), z_box(i)) = gc%box(n)%count(x_box(i), y_box(i), z_box(i)) + 1
+    !write(0,*)  'adding count to box ', x_box(i), y_box(i), z_box(i), &
+    !                                 gc%box%count(x_box(i), y_box(i), z_box(i))
+    end do
+
+    ! Figure out where storage for each boxes members should begin
+    cum_start = 1
+    do i = 1, nx
+      do j = 1, ny
+         do k = 1, nz
+            gc%box(n)%start(i, j, k) = cum_start
+            cum_start = cum_start + gc%box(n)%count(i, j, k)
+         end do
+      end do
+   end do
+
+   ! Now we know how many are in each box, get a list of which are in each box
+   tstart = gc%box(n)%start
+   do i = 1, num
+      gc%box(n)%loc_box(tstart(x_box(i), y_box(i), z_box(i))) = i
+      tstart(x_box(i), y_box(i), z_box(i)) = tstart(x_box(i), y_box(i), z_box(i)) + 1
+   end do
+   ! JDL STOP
+   do i = 1, nx
+      do j = 1, ny
+         do k = 1, nz
+   !if (gc%box%count(i,j,k) > 0) write(0,*)  i,j,k, gc%box%count(i,j,k), gc%box%start(i,j,k)
+            do l=1, gc%box(n)%count(i,j,k)
+   !write(0,*)  l, gc%box%loc_box(l)
+            enddo
+         end do
       end do
    end do
 end do
-
-! Now we know how many are in each box, get a list of which are in each box
-tstart = gc%box%start
-do i = 1, num
-   gc%box%loc_box(tstart(x_box(i), y_box(i), z_box(i))) = i
-   tstart(x_box(i), y_box(i), z_box(i)) = tstart(x_box(i), y_box(i), z_box(i)) + 1
-end do
-
-do i = 1, nx
-   do j = 1, ny
-      do k = 1, nz
-!if (gc%box%count(i,j,k) > 0) write(0,*)  i,j,k, gc%box%count(i,j,k), gc%box%start(i,j,k)
-         do l=1, gc%box%count(i,j,k)
-!write(0,*)  l, gc%box%loc_box(l)
-         enddo
-      end do
-   end do
-end do
-
 ! info on how well the boxes are working.  by default print nothing.
 ! set print_box_level to higher values to get more and more detail.
 ! user info should be level 1; 2 and 3 should be for debug only.
@@ -922,12 +1037,12 @@ if (output_box_info) then
    ! if print level > 2, set all tasks to print and call print.
    ! then reset the status to off again.
    if (do_output()) then
-      call print_get_close_type(gc, print_box_level)
+      call print_get_close_type(gc, 1, print_box_level)
    else if (print_box_level >= 2 .or. print_box_level < 0) then
       ! print status was false, but turn on temporarily
       ! to output box info from all tasks.
       call set_output(.true.)
-      call print_get_close_type(gc, print_box_level)
+      call print_get_close_type(gc, 1, print_box_level)
       call set_output(.false.)
    endif
 endif
@@ -1036,7 +1151,7 @@ this_maxdist = gc%maxdist
 
 !> @todo this is doing an exhaustive search each time.  expensive
 !> but should give the right answer.
-
+! JDL - Is this even called
 if(.true.) then
    if (present(dist)) then
       call exhaustive_collect(gc, base_loc, locs, &
@@ -1144,7 +1259,7 @@ end subroutine get_close
 
 !--------------------------------------------------------------------------
 
-subroutine find_box_ranges(gc, locs, num)
+subroutine find_box_ranges(box, locs, num)
 
 ! Finds boundaries for x,y,z boxes.
 ! FIXME: ways boxes could be divided:
@@ -1153,58 +1268,58 @@ subroutine find_box_ranges(gc, locs, num)
 !     on each side of the dividing plane.
 !  - about 100 other schemes
 
-type(get_close_type), intent(inout) :: gc
+type(box_type), intent(inout)       :: box
 integer,              intent(in)    :: num
 type(location_type),  intent(in)    :: locs(num)
 
 !logical :: old_out
 
 if (x_is_periodic) then
-   gc%box%bot_x = min_x_for_periodic
-   gc%box%top_x = max_x_for_periodic
+   box%bot_x = min_x_for_periodic
+   box%top_x = max_x_for_periodic
 else
-   gc%box%bot_x = minval(locs(:)%x - gc%maxdist)
-   gc%box%top_x = maxval(locs(:)%x + gc%maxdist)
+   box%bot_x = minval(locs(:)%x - box%maxdist)
+   box%top_x = maxval(locs(:)%x + box%maxdist)
 endif
 
 if (y_is_periodic) then
-   gc%box%bot_y = min_x_for_periodic
-   gc%box%top_y = max_x_for_periodic
+   box%bot_y = min_x_for_periodic
+   box%top_y = max_x_for_periodic
 else
-   gc%box%bot_y = minval(locs(:)%y - gc%maxdist)
-   gc%box%top_y = maxval(locs(:)%y + gc%maxdist)
+   box%bot_y = minval(locs(:)%y - box%maxdist)
+   box%top_y = maxval(locs(:)%y + box%maxdist)
 endif
 
 if (z_is_periodic) then
-   gc%box%bot_z = min_x_for_periodic
-   gc%box%top_z = max_x_for_periodic
+   box%bot_z = min_x_for_periodic
+   box%top_z = max_x_for_periodic
 else
-   gc%box%bot_z = minval(locs(:)%z - gc%maxdist)
-   gc%box%top_z = maxval(locs(:)%z + gc%maxdist)
+   box%bot_z = minval(locs(:)%z - box%maxdist)
+   box%top_z = maxval(locs(:)%z + box%maxdist)
 endif
 
 if (debug > 0) print *, 'nx/ny/nz: ', nx, ny, nz
-if (debug > 0) print *, 'bots: ', gc%box%bot_x, gc%box%bot_y, gc%box%bot_z
-if (debug > 0) print *, 'tops: ', gc%box%top_x, gc%box%top_y, gc%box%top_z
+if (debug > 0) print *, 'bots: ', box%bot_x, box%bot_y, box%bot_z
+if (debug > 0) print *, 'tops: ', box%top_x, box%top_y, box%top_z
 
-gc%box%x_width = max(1.0_r8, (gc%box%top_x - gc%box%bot_x) / nx)
-gc%box%y_width = max(1.0_r8, (gc%box%top_y - gc%box%bot_y) / ny)
-gc%box%z_width = max(1.0_r8, (gc%box%top_z - gc%box%bot_z) / nz)
+box%x_width = max(1.0_r8, (box%top_x - box%bot_x) / nx)
+box%y_width = max(1.0_r8, (box%top_y - box%bot_y) / ny)
+box%z_width = max(1.0_r8, (box%top_z - box%bot_z) / nz)
 
-if (debug > 0) print *, 'widths = ', gc%box%x_width, gc%box%y_width, gc%box%z_width
+if (debug > 0) print *, 'widths = ', box%x_width, box%y_width, box%z_width
 
 ! FIXME:  compute a sphere of radius maxdist and see how
 ! many boxes in x, y, z that would include.
-if (gc%box%x_width <= 0.0_r8) &
+if (box%x_width <= 0.0_r8) &
    call error_handler(E_ERR, 'find_box_ranges', 'x_width <= 0', source)
-if (gc%box%y_width <= 0.0_r8) &
+if (box%y_width <= 0.0_r8) &
    call error_handler(E_ERR, 'find_boy_ranges', 'y_width <= 0', source)
-if (gc%box%z_width <= 0.0_r8) &
+if (box%z_width <= 0.0_r8) &
    call error_handler(E_ERR, 'find_boz_ranges', 'z_width <= 0', source)
 
-gc%box%nboxes_x = aint((gc%maxdist + (gc%box%x_width-1)) / gc%box%x_width)
-gc%box%nboxes_y = aint((gc%maxdist + (gc%box%y_width-1)) / gc%box%y_width)
-gc%box%nboxes_z = aint((gc%maxdist + (gc%box%z_width-1)) / gc%box%z_width)
+box%nboxes_x = aint((box%maxdist + (box%x_width-1)) / box%x_width)
+box%nboxes_y = aint((box%maxdist + (box%y_width-1)) / box%y_width)
+box%nboxes_z = aint((box%maxdist + (box%z_width-1)) / box%z_width)
 
 !if(compare_to_correct) then
 !   old_out = do_output()
@@ -1441,6 +1556,68 @@ if (debug > 0) write(0,*)  'any_periodic = ', any_periodic
 
 end subroutine recompute_periodic
 
+
+!---------------------------------------------------------------------------
+subroutine distinct_values(in_list, mycount, values, map)
+!--- JDL A transplant from the threed-sphere code
+!> parse an input list of values and return:
+!>  1) the count of distinct values
+!>  2) the list of unique values
+!>  3) the mapping of the input list to the value list
+!> the values and map list should already be allocated, and be the same
+!> length as the incoming list length.
+
+! JDL - in_list =  The list of cutoff radii
+! JDL - mycount =  The updated number of radii?
+! JDL - values  =
+! JDL - map     =
+
+
+real(r8), intent(in)    :: in_list(:)   !< incoming list of all values
+integer,  intent(out)   :: mycount      !< count of distinct values
+real(r8), intent(inout) :: values(:)    !< list of distinct values
+integer,  intent(inout) :: map(:)       !< mapping of in_list to values
+
+integer :: i, j, listsize, nextslot
+logical :: foundnew
+real(r8) :: newval
+
+! set return values now; if we error out then we can
+! just return.
+mycount = 0
+values(:) = -1.0_r8
+map(:) = -1
+
+listsize = size(in_list)
+if (listsize <= 0) return
+if (size(values) /= size(in_list)) return
+if (size(map) /= size(in_list)) return
+
+! set values() with only the unique distances.
+! when done, the valid values are only 'count' long,
+! not 'listsize'.
+OUTER: do i=1, listsize
+  newval = in_list(i)
+  foundnew = .true.
+  INNER: do j=1, listsize
+     nextslot = j
+     if (values(j) < 0.0_r8) exit INNER
+     if (abs(values(j) - newval) <= epsilon(newval)) then
+        foundnew = .false.
+        map(i) = j
+        exit INNER
+     endif
+  enddo INNER
+  if (foundnew) then
+     values(nextslot) = newval
+     map(i) = nextslot
+     mycount = nextslot
+  endif
+enddo OUTER
+
+end subroutine distinct_values
+
+
 !---------------------------------------------------------------------------
 
 function get_maxdist(gc, obs_type)
@@ -1454,17 +1631,18 @@ end function get_maxdist
 
 !----------------------------------------------------------------------------
 
-subroutine print_get_close_type(gc, amount)
+subroutine print_get_close_type(gc, tt, amount)
 
 ! print out debugging statistics, or optionally print out a full
 ! dump from all mpi tasks in a format that can be plotted with matlab.
 
 type(get_close_type), intent(in), target :: gc
+integer, intent(in), optional    :: tt
 integer, intent(in), optional            :: amount
 
 integer :: i, j, k, l, first, index, mytask, alltasks
 integer :: sample, nfull, nempty, howmuch, total, maxcount, maxi, maxj, maxk
-logical :: tickmark(gc%num), iam0
+logical :: tickmark(gc%box(1)%num), iam0
 real(r8) :: x_cen, y_cen, z_cen
 
 logical, save :: write_now = .true.
@@ -1474,6 +1652,14 @@ character(len=64) :: fname
 
 ! cumulative times through this routine
 been_called = been_called + 1
+
+! second arg is optional, defaults to 1, and selects which
+! of the cutoff structs to print
+if (present(tt)) then
+   whichtt = tt
+else
+   whichtt = 1
+endif
 
 ! second arg is now an int, not logical, and means:
 ! 0 = very terse, only box summary (default).
@@ -1506,7 +1692,7 @@ endif
 ! locations from the state vector in one set of boxes, but just a few
 ! locations from the observations in another.  this lets you turn off
 ! the debugging level for the large set and leave it on for the small.
-!if (gc%num > 100) howmuch = 0
+!if (gc%box(whichtt)%num > 100) howmuch = 0
 
 ! print the get_close_type derived type values
 
@@ -1514,19 +1700,19 @@ if (howmuch /= 0 .and. iam0) then
    write(errstring,*) 'get_close_type values:'
    call error_handler(E_MSG, 'loc', errstring)
 
-   write(errstring,*) ' num = ', gc%num
+   write(errstring,*) ' num = ', gc%box(whichtt)%num
    call error_handler(E_MSG, 'loc', errstring)
 
    write(errstring,*) ' nx, ny, nz = ', nx, ny, nz
    call error_handler(E_MSG, 'loc', errstring)
 
-   write(errstring,"(A,F12.6)") ' maxdist = ', gc%maxdist
+   write(errstring,"(A,F12.6)") ' maxdist = ', gc%box(whichtt)%maxdist
    call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' x_box: bot, top, width = ', gc%box%bot_x, gc%box%top_x, gc%box%x_width
+   write(errstring, "(A,3(F12.6))") ' x_box: bot, top, width = ', gc%box(whichtt)%bot_x, gc%box(whichtt)%top_x, gc%box(whichtt)%x_width
    call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' y_box: bot, top, width = ', gc%box%bot_y, gc%box%top_y, gc%box%y_width
+   write(errstring, "(A,3(F12.6))") ' y_box: bot, top, width = ', gc%box(whichtt)%bot_y, gc%box(whichtt)%top_y, gc%box(whichtt)%y_width
    call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' z_box: bot, top, width = ', gc%box%bot_z, gc%box%top_z, gc%box%z_width
+   write(errstring, "(A,3(F12.6))") ' z_box: bot, top, width = ', gc%box(whichtt)%bot_z, gc%box(whichtt)%top_z, gc%box(whichtt)%z_width
    call error_handler(E_MSG, 'loc', errstring)
 
 endif
@@ -1534,19 +1720,19 @@ endif
 ! this one can be very large.   print only the first nth unless
 ! instructed otherwise.  (print n+1 because 1 more value fits on
 ! the line because it prints ( i ) and not ( i, j ) like the others.)
-if (associated(gc%box%loc_box)) then
-   i = size(gc%box%loc_box,1)
-   if (i/= gc%num) then
-      write(errstring,*) ' warning: size of loc_box incorrect, nlocs, i =', gc%num, i
+if (associated(gc%box(whichtt)%loc_box)) then
+   i = size(gc%box(whichtt)%loc_box,1)
+   if (i/= gc%box(whichtt)%num) then
+      write(errstring,*) ' warning: size of loc_box incorrect, nlocs, i =', gc%box(whichtt)%num, i
       call error_handler(E_MSG, 'locations_mod', errstring)
    endif
    if (howmuch > 1) then
       ! DEBUG
-      write(errstring,"(A,I8,A,36(I8,1X))") ' loc_box(',i,') =', gc%box%loc_box(1:min(i,36))  ! (nlocs)
+      write(errstring,"(A,I8,A,36(I8,1X))") ' loc_box(',i,') =', gc%box(whichtt)%loc_box(1:min(i,36))  ! (nlocs)
       !write(errstring,*) ' loc_box(',i,') =', gc%box%loc_box    ! (nlocs)
       call error_handler(E_MSG, 'locations_mod', errstring)
    else if(howmuch > 0) then
-      write(errstring,*) ' loc_box(',i,') =', gc%box%loc_box(1:min(i,sample+1))
+      write(errstring,*) ' loc_box(',i,') =', gc%box(whichtt)%loc_box(1:min(i,sample+1))
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of loc_box omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1560,10 +1746,10 @@ endif
 
 ! like loc_box, this one can be very large.   print only the first nth unless
 ! instructed otherwise
-if (associated(gc%box%start)) then
-   i = size(gc%box%start,1)
-   j = size(gc%box%start,2)
-   k = size(gc%box%start,3)
+if (associated(gc%box(whichtt)%start)) then
+   i = size(gc%box(whichtt)%start,1)
+   j = size(gc%box(whichtt)%start,2)
+   k = size(gc%box(whichtt)%start,3)
    if ((i /= nx) .or. (j /= ny) .or. (k /= nz)) then
       write(errstring,*) ' warning: size of start incorrect, nx, ny, nz, i, j, k =', nx, ny, nz, i, j, k
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1572,11 +1758,11 @@ if (associated(gc%box%start)) then
       write(errstring,*) ' start(',i,j,k,') ='              ! (nx, ny, nz)
       call error_handler(E_MSG, 'locations_mod', errstring)
       do l=1, j
-         write(errstring,"(36(I8,1X))") gc%box%start(1:min(i,36), l, 1)
+         write(errstring,"(36(I8,1X))") gc%box(whichtt)%start(1:min(i,36), l, 1)
          call error_handler(E_MSG, 'locations_mod', errstring)
       enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' start(',i,j,k,') =', gc%box%start(1:min(i,sample), 1, 1)
+      write(errstring,*) ' start(',i,j,k,') =', gc%box(whichtt)%start(1:min(i,sample), 1, 1)
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of start omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1589,10 +1775,10 @@ else
 endif
 
 ! as above, print only first n unless second arg is .true.
-if (associated(gc%box%count)) then
-   i = size(gc%box%count,1)
-   j = size(gc%box%count,2)
-   k = size(gc%box%count,3)
+if (associated(gc%box(whichtt)%count)) then
+   i = size(gc%box(whichtt)%count,1)
+   j = size(gc%box(whichtt)%count,2)
+   k = size(gc%box(whichtt)%count,3)
    if ((i /= nx) .or. (j /= ny) .or. (k /= nz)) then
       write(errstring,*) ' warning: size of count incorrect, nx, ny, nz, i, j, k =', nx, ny, nz, i, j, k
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1601,11 +1787,11 @@ if (associated(gc%box%count)) then
       write(errstring,*) ' count(',i,j,k,') ='              ! (nx, ny, nz)
       call error_handler(E_MSG, 'locations_mod', errstring)
       do l=1, j
-         write(errstring,"(36(I8,1X))") gc%box%count(1:min(i,36), l, 1)
+         write(errstring,"(36(I8,1X))") gc%box(whichtt)%count(1:min(i,36), l, 1)
          call error_handler(E_MSG, 'locations_mod', errstring)
       enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' count(',i,j,k,') =', gc%box%count(1:min(i,sample), 1, 1)
+      write(errstring,*) ' count(',i,j,k,') =', gc%box(whichtt)%count(1:min(i,sample), 1, 1)
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of count omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1629,10 +1815,10 @@ tickmark = .FALSE.
 do i=1, nx
    do j=1, ny
       do k=1, nz
-         first = gc%box%start(i, j, k)
-         do l=1, gc%box%count(i, j, k)
+         first = gc%box(whichtt)%start(i, j, k)
+         do l=1, gc%box(whichtt)%count(i, j, k)
             index = first + l - 1
-            if ((index < 1) .or. (index > gc%num)) then
+            if ((index < 1) .or. (index > gc%box(whichtt)%num)) then
                write(errstring, *) 'exiting at first bad value; could be more'
                call error_handler(E_MSG, 'locations_mod', errstring)
                write(errstring, *) 'bad locs list index, in box: ', index, i, j, k
@@ -1651,7 +1837,7 @@ do i=1, nx
    enddo
 enddo
 
-do i=1, gc%num
+do i=1, gc%box(whichtt)%num
   if (.not. tickmark(i)) then
      write(errstring, *) 'exiting at first bad value; could be more'
      call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1684,24 +1870,24 @@ endif
 
 do i=1, nx
    if (howmuch == -8) then
-      x_cen = gc%box%bot_x + ((i-1)*gc%box%x_width) + (gc%box%x_width/2.0)
+      x_cen = gc%box(whichtt)%bot_x + ((i-1)*gc%box(whichtt)%x_width) + (gc%box(whichtt)%x_width/2.0)
       write(funit, '(A,I2,A,I4,A,F12.9,A)') 'xlocs(', i, ',', mytask+1, ') = ',  x_cen, ';'
    endif
    do j=1, ny
       if (howmuch == -8 .and. i==1) then
-         y_cen = gc%box%bot_y + ((j-1)*gc%box%y_width) + (gc%box%y_width/2.0)
+         y_cen = gc%box(whichtt)%bot_y + ((j-1)*gc%box(whichtt)%y_width) + (gc%box(whichtt)%y_width/2.0)
          write(funit, '(A,I2,A,I4,A,F12.9,A)') 'ylocs(', j, ',', mytask+1, ') = ',  y_cen, ';'
       endif
       do k=1, nz
          if (howmuch == -8 .and. i==1) then
-            z_cen = gc%box%bot_z + ((j-1)*gc%box%z_width) + (gc%box%z_width/2.0)
+            z_cen = gc%box(whichtt)%bot_z + ((j-1)*gc%box(whichtt)%z_width) + (gc%box(whichtt)%z_width/2.0)
             write(funit, '(A,I2,A,I4,A,F12.9,A)') 'zlocs(', k, ',', mytask+1, ') = ',  z_cen, ';'
          endif
-         if (gc%box%count(i, j, k) > 0) then
+         if (gc%box(whichtt)%count(i, j, k) > 0) then
             nfull = nfull + 1
-            total = total + gc%box%count(i, j, k)
-            if (gc%box%count(i, j, k) > maxcount) then
-               maxcount = gc%box%count(i, j, k)
+            total = total + gc%box(whichtt)%count(i, j, k)
+            if (gc%box(whichtt)%count(i, j, k) > maxcount) then
+               maxcount = gc%box(whichtt)%count(i, j, k)
                maxi = i
                maxj = j
                maxk = k
@@ -1712,7 +1898,7 @@ do i=1, nx
          ! output for grid boxes; in matlab-friendly format
          if (howmuch == -8) then
             write(funit, '(3(A,I2),A,I4,A,I8,A)') 'boxes(', i, ', ', j, ', ', k, &
-                                   ',', mytask+1, ') = ', gc%box%count(i, j, k), ';'
+                                   ',', mytask+1, ') = ', gc%box(whichtt)%count(i, j, k), ';'
          endif
       enddo
    enddo
@@ -1728,7 +1914,7 @@ write(errstring, '(a)') "Location module statistics:"
 call error_handler(E_MSG, 'locations_mod', errstring)
 write(errstring, '(a,i9)') " Total boxes (nx * ny * nz): ", nfull + nempty
 call error_handler(E_MSG, 'locations_mod', errstring)
-write(errstring, '(a,i9)') " Total items to put in boxes: ", gc%num
+write(errstring, '(a,i9)') " Total items to put in boxes: ", gc%box(whichtt)%num
 call error_handler(E_MSG, 'locations_mod', errstring)
 if (howmuch > 0) then
    write(errstring, '(a,i9)') " Total boxes with 1+ items: ", nfull
