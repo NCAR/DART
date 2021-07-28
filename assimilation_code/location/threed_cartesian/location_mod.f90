@@ -317,7 +317,8 @@ endif
 !> for all combinations of location 1 and location 2 where
 !> they aren't both above or both below the midpoint add the
 !> offset, compute the distance, and keep the minimium
-
+! JDL APPEAR GOOD - THOUGH WHAT IS OBSERVATIONS OCCUR NEAR THE TOP
+! MAY NEED TO FLIP ADDING AND SUBTRACTING OFFSET DEPENDENT UPON WHETHER DIFF IS NEGATIVE OR POSITIVE
 below_L1 = find_my_quadrant(loc1)
 if (debug > 0) write(0,*) 'below_L1, find my quadrant: ', below_L1
 below_L2 = find_my_quadrant(loc2)
