@@ -507,9 +507,6 @@ else     # CONTINUE_RUN == FALSE
 
       if (-e     ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc ) then
          ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
-      else
-         echo "ERROR: ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc does not exist."
-         exit 8
       endif
 
       @ inst ++
