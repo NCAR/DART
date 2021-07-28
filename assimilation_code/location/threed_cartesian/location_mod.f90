@@ -118,8 +118,8 @@ end type box_type
 
 type get_close_type
    private
-   integer           :: nt                      ! The number of distinct cutoffs
-   real(r8)          :: type_to_cutoff_map(:)   ! mapping of types to index
+   integer                     :: nt                      ! The number of distinct cutoffs
+   real(r8),allocatable        :: type_to_cutoff_map(:)   ! mapping of types to index
    type(box_type),allocatable  :: box                     ! Array of box types (JDL - May need to add array of close types by type)
 end type get_close_type
 
@@ -850,13 +850,14 @@ end subroutine interactive_location
 
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
 ! JDL - This is where we start
+! JDL - Mostly Done (May Double Check for Bugs)
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
 real(r8),             intent(in)    :: maxdist
 type(location_type),  intent(in)    :: locs(:)
 real(r8), intent(in), optional      :: maxdist_list(:)
 
-integer :: i, j, k, cum_start, l
+integer :: i, j, k, cum_start, l, n
 integer :: x_box(num), y_box(num), z_box(num)
 integer :: tstart(nx, ny, nz)
 
@@ -1052,10 +1053,17 @@ end subroutine get_close_init
 !----------------------------------------------------------------------------
 
 subroutine get_close_destroy(gc)
-
+! JDL UPDATED 
 type(get_close_type), intent(inout) :: gc
+integer :: i
 
-deallocate(gc%box%loc_box, gc%box%count, gc%box%start)
+do i = 1, gc%nt ! JDL Come back
+  if (allocated(gc%box(i)%loc_box)) deallocate(gc%box(i)%loc_box)
+  deallocate(gc%box(i)%count, gc%box(i)%start)
+enddo
+deallocate(gc%type_to_cutoff_map)
+deallocate(gc%box)
+!deallocate(gc%box%loc_box, gc%box%count, gc%box%start) ! ORIG
 
 end subroutine get_close_destroy
 
@@ -1063,7 +1071,7 @@ end subroutine get_close_destroy
 
 subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
                          num_close, close_ind, dist, ens_handle)
-
+! JDL SHOULD BE GOOD
 ! The specific type of the base observation, plus the generic kinds list
 ! for either the state or obs lists are available if a more sophisticated
 ! distance computation is needed.
@@ -1084,7 +1092,7 @@ end subroutine get_close_obs
 
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, ens_handle)
-
+! JDL SHOULD BE GOOD
 ! The specific type of the base observation, plus the generic kinds list
 ! for either the state or obs lists are available if a more sophisticated
 ! distance computation is needed.
@@ -1106,7 +1114,7 @@ end subroutine get_close_state
 
 subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
                      num_close, close_ind, dist, ens_handle)
-
+! JDL DONE
 type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_loc,  locs(:)
 integer,              intent(in)  :: base_type, loc_qtys(:)
@@ -1117,7 +1125,7 @@ type(ensemble_type),  intent(in)  :: ens_handle
 ! If dist is NOT present, just find everybody in a box, put them in the list,
 ! but don't compute any distances
 
-integer :: x_box, y_box, z_box, i, j, k, l
+integer :: x_box, y_box, z_box, i, j, k, l, bt
 integer :: start_x, end_x, start_y, end_y, start_z, end_z
 integer ::  n_in_box, st, t_ind
 real(r8) :: this_dist, this_maxdist
@@ -1135,30 +1143,73 @@ close_ind = -99
 if(present(dist)) dist = -1e38_r8  ! big but negative
 this_dist = 1e38_r8                ! something big and positive.
 
+
+! handle identity obs correctly -- only support them if there are no
+! per-obs-type cutoffs.  identity obs don't have a specific type, they
+! only have a generic kind based on what index into the state vector is
+! specified.  if this is absolutely needed by someone, i can rejigger the
+! code to try to use the default cutoff for identity obs, but it's tricky
+! to identify which obs type is using the default.  in theory it's possible
+! to specify a default cutoff and then specify a per-type cutoff for every
+! other type in the system.  in that case i don't have a map entry for the
+! default, and it's a pain to construct one.  so i'm punting for now.
+if (base_type < 0) then
+   if (gc%nt > 1) then
+      write(msgstring,  '(A)') 'no support for identity obs if per-obs-type cutoffs are specified'
+      write(msgstring1, '(A)') 'contact dart support if you have a need for this combination'
+      call error_handler(E_ERR, 'get_close', msgstring, source, text2=msgstring1)
+   endif
+   bt = 1
+else
+   ! map from type index to gtt index
+   if (base_type < 1 .or. base_type > size(gc%type_to_cutoff_map)) then
+      write(msgstring,'(A,I8)')'base_type out of range, is ', base_type
+      write(msgstring1,'(A,2I8)')'must be between ', 1, size(gc%type_to_cutoff_map)
+      call write_location (0, base_loc, charstring=msgstring2)
+      call error_handler(E_ERR, 'get_close', msgstring, source, &
+                         text2=msgstring1, text3=msgstring2)
+   endif
+   bt = gc%type_to_cutoff_map(base_type)
+   if (bt < 1 .or. bt > gc%nt) then
+      write(msgstring,'(A,I8)')'mapped type index out of range, is ', bt
+      write(msgstring1,'(A,2I8)')'must be between ', 1, gc%nt
+      write(msgstring2, '(A)')'internal error, should not happen.  Contact DART Support'
+      call error_handler(E_ERR, 'get_close', msgstring, source, &
+                         text2=msgstring1, text3=msgstring2)
+   endif
+endif
+
+
+
 ! the list of locations in the loc() argument must be the same
 ! as the list of locations passed into get_close_init(), so
 ! gc%num and size(loc) better be the same.   if the list changes,
 ! you have to destroy the old gc and init a new one.
-if (size(locs) /= gc%num) then
-   write(errstring,*)'locs() array must match one passed to get_close_init()'
-   call error_handler(E_ERR, 'get_close_boxes', errstring, source)
+if (size(locs) /= gc%box(bt)%num) then
+   !write(errstring,*)'locs() array must match one passed to get_close_init()'
+   !call error_handler(E_ERR, 'get_close_boxes', errstring, source)
+   write(msgstring,'(A)')'locs() array must match one passed to get_close_init()'
+   write(msgstring1,'(A,2I8)')'init size, current list size: ', gc%box(bt)%num, size(locs)
+   write(msgstring2,'(A,I8)')'bt = ', bt
+   call error_handler(E_ERR, 'get_close', msgstring, source, &
+                      text2=msgstring1, text3=msgstring2)
 endif
 
 ! If num == 0, no point in going any further.
-if (gc%num == 0) return
+if (gc%box(bt)%num == 0) return
 
-this_maxdist = gc%maxdist
+this_maxdist = gc%box(bt)%maxdist
 
 !> @todo this is doing an exhaustive search each time.  expensive
 !> but should give the right answer.
 ! JDL - Is this even called
 if(.true.) then
    if (present(dist)) then
-      call exhaustive_collect(gc, base_loc, locs, &
+      call exhaustive_collect(gc%box(bt), base_loc, locs, &
                               num_close, close_ind, dist)
    else
       allocate(cdist(size(locs)))
-      call exhaustive_collect(gc, base_loc, locs, &
+      call exhaustive_collect(gc%box(bt), base_loc, locs, &
                               num_close, close_ind, cdist)
       deallocate(cdist)
    endif
@@ -1169,15 +1220,15 @@ endif
 ! exhaustive search
 if(compare_to_correct) then
    allocate(cclose_ind(size(locs)), cdist(size(locs)))
-   call exhaustive_collect(gc, base_loc, locs, &
+   call exhaustive_collect(gc%box(bt), base_loc, locs, &
                            cnum_close, cclose_ind, cdist)
 endif
 
 
 ! Begin by figuring out which box the base loc is in
-x_box = floor((base_loc%x - gc%box%bot_x) / gc%box%x_width) + 1
-y_box = floor((base_loc%y - gc%box%bot_y) / gc%box%y_width) + 1
-z_box = floor((base_loc%z - gc%box%bot_z) / gc%box%z_width) + 1
+x_box = floor((base_loc%x - gc%box(bt)%bot_x) / gc%box(bt)%x_width) + 1
+y_box = floor((base_loc%y - gc%box(bt)%bot_y) / gc%box(bt)%y_width) + 1
+z_box = floor((base_loc%z - gc%box(bt)%bot_z) / gc%box(bt)%z_width) + 1
 
 ! If it is not in any box, then it is more than the maxdist away from everybody
 if(x_box > nx .or. x_box < 1 .or. x_box < 0) return
@@ -1190,19 +1241,19 @@ if(z_box > nz .or. z_box < 1 .or. z_box < 0) return
 !write(0,*)  'nboxes x, y, z = ', gc%box%nboxes_x, gc%box%nboxes_y, gc%box%nboxes_z
 !write(0,*)  'base_loc in box ', x_box, y_box, z_box
 
-start_x = x_box - gc%box%nboxes_x
+start_x = x_box - gc%box(bt)%nboxes_x
 if (start_x < 1) start_x = 1
-end_x = x_box + gc%box%nboxes_x
+end_x = x_box + gc%box(bt)%nboxes_x
 if (end_x > nx) end_x = nx
 
-start_y = y_box - gc%box%nboxes_y
+start_y = y_box - gc%box(bt)%nboxes_y
 if (start_y < 1) start_y = 1
-end_y = y_box + gc%box%nboxes_y
+end_y = y_box + gc%box(bt)%nboxes_y
 if (end_y > ny) end_y = ny
 
-start_z = z_box - gc%box%nboxes_z
+start_z = z_box - gc%box(bt)%nboxes_z
 if (start_z < 1) start_z = 1
-end_z = z_box + gc%box%nboxes_z
+end_z = z_box + gc%box(bt)%nboxes_z
 if (end_z > nz) end_z = nz
 
 !write(0,*)  'looping from '
@@ -1216,14 +1267,14 @@ do i = start_x, end_x
       do k = start_z, end_z
 
          ! Box to search is i,j,k
-         n_in_box = gc%box%count(i, j, k)
-         st = gc%box%start(i,j,k)
+         n_in_box = gc%box(bt)%count(i, j, k)
+         st = gc%box(bt)%start(i,j,k)
 
 
          ! Loop to check how close all loc in the box are; add those that are close
          do l = 1, n_in_box
 
-            t_ind = gc%box%loc_box(st - 1 + l)
+            t_ind = gc%box(bt)%loc_box(st - 1 + l)
 !write(0,*)  'l, t_ind = ', l, t_ind
 
             ! Only compute distance if dist is present
@@ -1337,8 +1388,10 @@ end subroutine find_box_ranges
 
 !----------------------------------------------------------------------------
 
-subroutine find_nearest(gc, base_loc, loc_list, nearest, rc)
- type(get_close_type), intent(in), target  :: gc
+subroutine find_nearest(box, base_loc, loc_list, nearest, rc)
+ ! JDL Subroutine does not appear to be called, but come back if it causes troubel
+ ! JDL - The subroutine has been updated just in case
+ type(box_type), intent(in), target  :: box
  type(location_type),  intent(in)  :: base_loc
  type(location_type),  intent(in)  :: loc_list(:)
  integer,              intent(out) :: nearest
@@ -1360,20 +1413,20 @@ dist = 1e38_r8                ! something big and positive.
 ! as the list of locations passed into get_close_init(), so
 ! gc%num and size(loc) better be the same.   if the list changes,
 ! you have to destroy the old gc and init a new one.
-if (size(loc_list) /= gc%num) then
+if (size(loc_list) /= box%num) then
    write(errstring,*)'loc() array must match one passed to get_close_init()'
    call error_handler(E_ERR, 'find_nearest_boxes', errstring, source)
 endif
 
 ! If num == 0, no point in going any further.
-if (gc%num == 0) return
+if (box%num == 0) return
 
 !--------------------------------------------------------------
 
 ! Begin by figuring out which box the base loc is in
-x_box = floor((base_loc%x - gc%box%bot_x) / gc%box%x_width) + 1
-y_box = floor((base_loc%y - gc%box%bot_y) / gc%box%y_width) + 1
-z_box = floor((base_loc%z - gc%box%bot_z) / gc%box%z_width) + 1
+x_box = floor((base_loc%x - box%bot_x) / box%x_width) + 1
+y_box = floor((base_loc%y - box%bot_y) / box%y_width) + 1
+z_box = floor((base_loc%z - box%bot_z) / box%z_width) + 1
 
 ! FIXME: this should figure out if it's > n or < 0 and
 ! set to n or 0 and always return something.
@@ -1388,19 +1441,19 @@ if(z_box > nz .or. z_box < 1 .or. z_box < 0) return
 !write(0,*)  'nboxes x, y, z = ', gc%box%nboxes_x, gc%box%nboxes_y, gc%box%nboxes_z
 !write(0,*)  'base_loc in box ', x_box, y_box, z_box
 
-start_x = x_box - gc%box%nboxes_x
+start_x = x_box - box%nboxes_x
 if (start_x < 1) start_x = 1
-end_x = x_box + gc%box%nboxes_x
+end_x = x_box + box%nboxes_x
 if (end_x > nx) end_x = nx
 
-start_y = y_box - gc%box%nboxes_y
+start_y = y_box - box%nboxes_y
 if (start_y < 1) start_y = 1
-end_y = y_box + gc%box%nboxes_y
+end_y = y_box + box%nboxes_y
 if (end_y > ny) end_y = ny
 
-start_z = z_box - gc%box%nboxes_z
+start_z = z_box - box%nboxes_z
 if (start_z < 1) start_z = 1
-end_z = z_box + gc%box%nboxes_z
+end_z = z_box + box%nboxes_z
 if (end_z > nz) end_z = nz
 
 !write(0,*)  'looping from '
@@ -1414,14 +1467,14 @@ do i = start_x, end_x
       do k = start_z, end_z
 
          ! Box to search is i,j,k
-         n_in_box = gc%box%count(i, j, k)
-         st = gc%box%start(i,j,k)
+         n_in_box = box%count(i, j, k)
+         st = box%start(i,j,k)
 
 
          ! Loop to check how close all loc in the box are; add those that are close
          do l = 1, n_in_box
 
-            t_ind = gc%box%loc_box(st - 1 + l)
+            t_ind = box%loc_box(st - 1 + l)
 !write(0,*)  'l, t_ind = ', l, t_ind
 
             this_dist = get_dist(base_loc, loc_list(t_ind))
@@ -1621,11 +1674,17 @@ end subroutine distinct_values
 !---------------------------------------------------------------------------
 
 function get_maxdist(gc, obs_type)
+! JDL UPDATED
 type(get_close_type), intent(in) :: gc
 integer, optional,    intent(in) :: obs_type
 real(r8) :: get_maxdist
 
-get_maxdist = gc%maxdist
+integer :: bt
+
+bt = gc%type_to_cutoff_map(obs_type)
+get_maxdist = gc%box(bt)%maxdist
+
+!get_maxdist = gc%maxdist
 
 end function get_maxdist
 
@@ -1635,12 +1694,12 @@ subroutine print_get_close_type(gc, tt, amount)
 
 ! print out debugging statistics, or optionally print out a full
 ! dump from all mpi tasks in a format that can be plotted with matlab.
-
+! JDL UPDATED
 type(get_close_type), intent(in), target :: gc
 integer, intent(in), optional    :: tt
 integer, intent(in), optional            :: amount
 
-integer :: i, j, k, l, first, index, mytask, alltasks
+integer :: i, j, k, l, first, index, mytask, alltasks, whichtt
 integer :: sample, nfull, nempty, howmuch, total, maxcount, maxi, maxj, maxk
 logical :: tickmark(gc%box(1)%num), iam0
 real(r8) :: x_cen, y_cen, z_cen
@@ -1969,12 +2028,13 @@ end function is_location_in_region
 
 !---------------------------------------------------------------------------
 
-subroutine exhaustive_collect(gc, base_loc, loc_list, num_close, close_ind, close_dist)
+subroutine exhaustive_collect(box, base_loc, loc_list, num_close, close_ind, close_dist)
 
 ! For validation, it is useful to be able to compare against exact
 ! exhaustive search
+! JDL - edit in future
 
-type(get_close_type),  intent(in)  :: gc
+type(box_type),        intent(in)  :: box
 type(location_type),   intent(in)  :: base_loc, loc_list(:)
 integer,               intent(out) :: num_close
 integer,               intent(out) :: close_ind(:)
@@ -1984,9 +2044,9 @@ real(r8) :: this_dist
 integer :: i
 
 num_close = 0
-do i = 1, gc%num
+do i = 1, box%num
    this_dist = get_dist(base_loc, loc_list(i))
-   if(this_dist <= gc%maxdist) then
+   if(this_dist <= box%maxdist) then
       ! Add this loc to correct list
       num_close = num_close + 1
       close_ind(num_close) = i
