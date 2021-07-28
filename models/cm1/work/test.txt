@@ -1,0 +1,61 @@
+
+---------------------------------------------------
+CM1 build number 1 is preprocess
+ Makefile is ready.
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/types_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/utilities_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/time_manager_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/parse_args_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/programs/preprocess/preprocess.f90
+ftn null_mpi_utilities_mod.o utilities_mod.o time_manager_mod.o preprocess.o parse_args_mod.o types_mod.o -o preprocess  -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include -L/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/lib -lnetcdff -lnetcdf -L/opt/cray/pe/hdf5/1.10.0.3/INTEL/16.0/lib -lhdf5_hl -lhdf5 -L/usr/lib64 -lz
+ 
+ --------------------------------------
+ Starting ... at YYYY MM DD HH MM SS = 
+                 2021  7 27 13 49  3
+ Program preprocess
+ --------------------------------------
+ 
+  set_nml_output Echo NML values to log file only
+ Path names of default obs_def and obs_qty modules
+ ../../../observations/forward_operators/DEFAULT_obs_def_mod.F90
+ ../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90
+ Path names of output obs_def and obs_qty modules
+ ../../../observations/forward_operators/obs_def_mod.f90
+ ../../../assimilation_code/modules/observations/obs_kind_mod.f90
+ INPUT obs_def files:
+ ../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90
+ ../../../observations/forward_operators/obs_def_surface_mod.f90
+ INPUT quantity files:
+ ../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90
+  preprocess Finished successfully.
+ 
+ --------------------------------------
+ Finished ... at YYYY MM DD HH MM SS = 
+                 2021  7 27 13 49  3
+ Program preprocess
+ --------------------------------------
+ 
+
+---------------------------------------------------
+CM1 build number 2 is advance_time
+ Makefile is ready.
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/programs/advance_time/advance_time.f90
+ftn advance_time.o types_mod.o time_manager_mod.o null_mpi_utilities_mod.o utilities_mod.o parse_args_mod.o -o advance_time  -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include -L/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/lib -lnetcdff -lnetcdf -L/opt/cray/pe/hdf5/1.10.0.3/INTEL/16.0/lib -lhdf5_hl -lhdf5 -L/usr/lib64 -lz
+
+---------------------------------------------------
+CM1 build number 3 is create_fixed_network_seq
+ Makefile is ready.
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/sort_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/ensemble_manager_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/observations/obs_kind_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/netcdf_utilities_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/location/utilities/default_location_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/io/dart_time_io_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/random_seq_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/location/threed_sphere/location_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/null_win_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/utilities/distributed_state_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../assimilation_code/modules/io/state_structure_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../models/utilities/default_model_mod.f90
+ftn -O2 -xAVX -I/opt/cray/pe/netcdf/4.4.1.1.3/INTEL/16.0/include  -c	../../../models/cm1/model_mod.f90
