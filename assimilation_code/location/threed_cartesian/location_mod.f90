@@ -119,8 +119,9 @@ end type box_type
 type get_close_type
    private
    integer                     :: nt                      ! The number of distinct cutoffs
-   real(r8),allocatable        :: type_to_cutoff_map(:)   ! mapping of types to index
-   type(box_type),allocatable  :: box                     ! Array of box types (JDL - May need to add array of close types by type)
+   !real(r8),allocatable        :: type_to_cutoff_map(:)   ! mapping of types to index
+   integer, allocatable        :: type_to_cutoff_map(:)   ! mapping of types to index
+   type(box_type),allocatable  :: box(:)                  ! Array of box types (JDL - May need to add array of close types by type)
 end type get_close_type
 
 
@@ -136,7 +137,7 @@ logical               :: ran_seq_init = .false.
 logical, save         :: module_initialized = .false.
 
 character(len = 512) :: errstring
-
+character(len = 512) :: msgstring, msgstring1, msgstring2
 
 ! for sanity when i'm using arrays of length(3):
 integer, parameter :: IX = 1
@@ -1695,9 +1696,9 @@ subroutine print_get_close_type(gc, tt, amount)
 ! print out debugging statistics, or optionally print out a full
 ! dump from all mpi tasks in a format that can be plotted with matlab.
 ! JDL UPDATED
-type(get_close_type), intent(in), target :: gc
+type(get_close_type), intent(in) :: gc
 integer, intent(in), optional    :: tt
-integer, intent(in), optional            :: amount
+integer, intent(in), optional    :: amount
 
 integer :: i, j, k, l, first, index, mytask, alltasks, whichtt
 integer :: sample, nfull, nempty, howmuch, total, maxcount, maxi, maxj, maxk
@@ -1779,7 +1780,7 @@ endif
 ! this one can be very large.   print only the first nth unless
 ! instructed otherwise.  (print n+1 because 1 more value fits on
 ! the line because it prints ( i ) and not ( i, j ) like the others.)
-if (associated(gc%box(whichtt)%loc_box)) then
+if (allocated(gc%box(whichtt)%loc_box)) then
    i = size(gc%box(whichtt)%loc_box,1)
    if (i/= gc%box(whichtt)%num) then
       write(errstring,*) ' warning: size of loc_box incorrect, nlocs, i =', gc%box(whichtt)%num, i
@@ -1805,7 +1806,7 @@ endif
 
 ! like loc_box, this one can be very large.   print only the first nth unless
 ! instructed otherwise
-if (associated(gc%box(whichtt)%start)) then
+if (allocated(gc%box(whichtt)%start)) then
    i = size(gc%box(whichtt)%start,1)
    j = size(gc%box(whichtt)%start,2)
    k = size(gc%box(whichtt)%start,3)
@@ -1834,7 +1835,7 @@ else
 endif
 
 ! as above, print only first n unless second arg is .true.
-if (associated(gc%box(whichtt)%count)) then
+if (allocated(gc%box(whichtt)%count)) then
    i = size(gc%box(whichtt)%count,1)
    j = size(gc%box(whichtt)%count,2)
    k = size(gc%box(whichtt)%count,3)
