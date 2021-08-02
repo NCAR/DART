@@ -54,6 +54,7 @@ C$$$
       INTEGER(4)       narg,iargc,JSTAT(100)
       integer findbufr, i, INDEXVAL, rc
       character*1 byte(8)
+      integer :: STAT
  
       data i1/11/,i2/51/,newed/2/
 
