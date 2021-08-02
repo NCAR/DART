@@ -50,7 +50,7 @@
   assimilation_period_seconds = 60
   calendar                    = 'Gregorian'
   cm1_template_file           = 'cm1out_rst_000001.nc'
-  periodic_x                  = .true.
+  periodic_x                  = .false.
   periodic_y                  = .true.
   debug                       = 0
   model_variables = 'ua'   , 'QTY_U_WIND_COMPONENT'      , 'NULL', 'NULL', 'UPDATE',
@@ -58,19 +58,14 @@
                     'wa'   , 'QTY_VERTICAL_VELOCITY'     , 'NULL', 'NULL', 'UPDATE',
                     'theta', 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
                     'ppi'  , 'QTY_PRESSURE'              , 'NULL', 'NULL', 'UPDATE',
-                    'u10'  , 'QTY_10M_U_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
-                    'v10'  , 'QTY_10M_V_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
-                    't2'   , 'QTY_2M_TEMPERATURE'        , 0.0000, 'NULL', 'UPDATE',
-                    'th2'  , 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
-                    'tsk'  , 'QTY_SKIN_TEMPERATURE'      , 0.0000, 'NULL', 'UPDATE',
-                    'q2'   , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
+               'air_temp'  , 'QTY_TEMPERATURE'           , 'NULL', 'NULL', 'UPDATE',
+               'spec_hum'  , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
                     'qv'   , 'QTY_VAPOR_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
                     'qc'   , 'QTY_CLOUD_LIQUID_WATER'    , 0.0000, 'NULL', 'UPDATE',
                     'qr'   , 'QTY_RAINWATER_MIXING_RATIO', 0.0000, 'NULL', 'UPDATE',
                     'qi'   , 'QTY_CLOUD_ICE'             , 0.0000, 'NULL', 'UPDATE',
                     'qs'   , 'QTY_SNOW_MIXING_RATIO'     , 0.0000, 'NULL', 'UPDATE',
                     'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE',
-                    'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE' 
 /
 
 
@@ -85,13 +80,13 @@
 
 
 &location_nml
-   x_is_periodic       = .true.
+   x_is_periodic       = .false.
    y_is_periodic       = .true.
    z_is_periodic       = .false.
    min_x_for_periodic  = 0.0
-   max_x_for_periodic  = 128000.0
+   max_x_for_periodic  = 200000.0
    min_y_for_periodic  = 0.0
-   max_y_for_periodic  = 128000.0
+   max_y_for_periodic  = 200000.0
    min_z_for_periodic  = 0.0
    max_z_for_periodic  = 1.0
    compare_to_correct  = .false.
@@ -148,7 +143,7 @@
 
 &assim_tools_nml
   adaptive_localization_threshold = -1
-  cutoff                          = 4000.0
+  cutoff                          = 15000.0
   filter_kind                     = 1
   print_every_nth_obs             = 100
   rectangular_quadrature          = .true.
