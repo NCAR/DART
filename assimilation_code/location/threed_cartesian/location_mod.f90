@@ -425,15 +425,31 @@ if (x_periodic) then
 endif
 
 if (y_periodic) then
-
+   ! JDL This is the important to understand.  
+   ! Print next_diff to see if it decreases if obs
+   ! on north side and south side
    if (debug > 0) write(0,*)  'in the y_periodic case'
 
    if (below_L1(IY) .neqv. below_L2(IY)) then
       next_diff = diff
-      next_diff(IY) = next_diff(IY) + loopy%offset(IY)
+      !JDL - Must account for instance where observations 
+      !      are located above the midline or below the 
+      !      midline.  This is because offset is always positive
+      if (loc1%y >  loopy%midline(IY)) then
+         next_diff(IY) = loopy%offset(IY) - next_diff(IY) 
+      else
+         next_diff(IY) = loopy%offset(IY) + next_diff(IY)    
+      endif
+
       this_dist = dist_3d_sq(next_diff)
+
   if (debug > 0) write(0,*)  'periodic Y dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
+         !write(0,*) 'locy1, locy2',loc1%y,loc2%y
+         !write(0,*) 'JDL0 diff = ',diff(IY)
+         !write(0,*) 'JDL0 next_diff = ',next_diff(IY)
+         !write(0,*) 'JDL0 offset = ',loopy%offset(IY)
+         !print*,'*****************'
          square_dist = this_dist
       endif
    else
