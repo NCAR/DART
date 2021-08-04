@@ -343,12 +343,14 @@ while ( $inst <= $num_instances )
    # NEP            units='gC/m^2/s' long_name='net ecosystem production, excludes ...
    # GPP            units='gC/m^2/s' long_name='gross primary production'
 
+
+
    echo "finidat = '"${refcase}.clm2_${inst_string}.r.${reftimestamp}.nc"'" >> ${fname}
    echo "use_init_interp = .true."                                          >> ${fname}
    echo "init_interp_fill_missing_with_natveg = .true."                     >> ${fname}
    echo "use_lch4 = .false."                                                >> ${fname}
    echo "hist_empty_htapes = .true."                                        >> ${fname}
-   echo "hist_fincl1 = 'NEP','H2OSOI','SMINN_vr','LITR1N_vr','TSOI','EFLX_LH_TOT','TLAI','FSDSVD','FSDSVI','PARVEGLN'"   >> ${fname}
+   echo "hist_fincl1 = 'NEP','H2OSOI','SMINN_vr','LITR1N_vr','TSOI','EFLX_LH_TOT','TLAI','FSDSVDLN','FSDSVILN','PARVEGLN'"   >> ${fname}
    echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R','GPP'"                   >> ${fname}
    echo "hist_fincl3 = 'NEE','H2OSNO','TLAI','TWS','SOILC_vr','SOIL1N_vr','LEAFN','SMP'"  >> ${fname}
    echo "hist_nhtfrq = -$stop_n,1,-$stop_n"                                 >> ${fname}
@@ -356,8 +358,8 @@ while ( $inst <= $num_instances )
    echo "hist_avgflag_pertape = 'A','A','I'"                                >> ${fname}
    echo "hist_dov2xy = .true.,.true.,.false."                               >> ${fname}
    echo "hist_type1d_pertape = ' ',' ',' '"                                 >> ${fname}
-
-   # ===========================================================================
+  
+ # ===========================================================================
    set fname = "user_nl_mosart_${inst_string}"
    # ===========================================================================
 
@@ -507,9 +509,6 @@ else     # CONTINUE_RUN == FALSE
 
       if (-e     ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc ) then
          ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
-      else
-         echo "ERROR: ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc does not exist."
-         exit 8
       endif
 
       @ inst ++
