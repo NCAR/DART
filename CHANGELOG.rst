@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 23 2021 :: bug fix for wrf non-initialized unique levels. Tag: v9.11.4**
+
+- The array uniquek is now initialized to an invalid level to prevent random
+  reasonable level values in the array.
+
 **June 24 2021 :: bug fix for cam-fv model_interpolate. Tag: v.9.11.3**
 
 - cam-fv model_interpolate now passes the correct array slice of quad_vals
