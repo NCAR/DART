@@ -1,24 +1,20 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program ftest_sendrecv
 
-! simple MPI fortran program.  use to test running interactively
-! with MPI parallel communication libraries.  warning -- this program
-! may compile without obvious errors, but at runtime, unless MPI_Init()
-! returns 0 as the error code, there is a good chance the compile and
-! link phase did not succeed.
+! MPI fortran program that uses parts of the DART library to test
+! the send and receive functions in the mpi_utilities_mod.f90 file.
+! THIS IS NOT A STANDALONE PROGRAM!
 
 ! The following 2 build tips are the 2 places where different installations
 ! of MPI seem to vary the most.  Some systems have an include file, some
 ! have a F90 module.  Some require an interface block to use the system()
 ! function, some give an error if it is here.   You can use this program
-! to figure out which combinations work on your system.  Then go into the
-! $DART/mpi_utilities and make the same two changes in mpi_utilities_mod.f90,
-! and just the system() change (if needed) in null_mpi_utilities_mod.f90.
+! to figure out which combinations work on your system.  Then go into 
+! $DART/assimilation_code/utilities/mpi_utilities_mod.f90 and make the 
+! same two changes there. also possibly (if needed) null_mpi_utilities_mod.f90.
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BUILD TIP 1:
@@ -27,6 +23,8 @@ program ftest_sendrecv
 ! file which defines constants.  Try to use the module if it is available.
 
 use mpi
+
+! these are DART modules which must be built before running this test.
 use types_mod
 use utilities_mod
 use time_manager_mod
@@ -47,14 +45,15 @@ implicit none
 ! you an error about an undefined symbol (something like '_system_').  
 ! Comment this block in or out as needed.
 
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
+! interface block for getting return code back from system() routine
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+   interface
+    function system(string)
+     character(len=*) :: string
+     integer :: system
+    end function system
+   end interface
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -64,7 +63,7 @@ real(r8) :: buf(BSIZE)
 integer :: i
 
 ! integer variables
-integer :: ierror, myrank, totalprocs, rc
+integer :: myrank, totalprocs
 
    call initialize_mpi_utilities('ftest_sendrecv')
 
@@ -93,8 +92,3 @@ integer :: ierror, myrank, totalprocs, rc
 
 end program ftest_sendrecv
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

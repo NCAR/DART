@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program ftest_stop
 
@@ -45,14 +43,15 @@ implicit none
 ! you an error about an undefined symbol (something like '_system_').  
 ! Comment this block in or out as needed.
 
-!  ! interface block for getting return code back from system() routine
-!  interface
-!   function system(string)
-!    character(len=*) :: string
-!    integer :: system
-!   end function system
-!  end interface
-!  ! end block
+! interface block for getting return code back from system() routine
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+   interface
+    function system(string)
+     character(len=*) :: string
+     integer :: system
+    end function system
+   end interface
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
@@ -189,8 +188,3 @@ end subroutine restart_task
 
 end program ftest_stop
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
