@@ -450,7 +450,8 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          ncunit = NC_Compatibility_Check(ncName, iepoch)
       else 
          if (.not. epoch_file_created(iepoch)) then
-            write(*,*) 'creating file ', ncName
+            write(string1,*) 'creating file ', ncName
+            call error_handler(E_MSG,'obs_seq_to_netcdf',string1,source)
             ncunit = InitNetCDF(ncName, iepoch)
             epoch_file_created(iepoch) = .true.
          else
