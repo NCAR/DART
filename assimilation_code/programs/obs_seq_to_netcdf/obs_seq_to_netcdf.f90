@@ -130,6 +130,8 @@ integer  :: iepoch, ifile, num_obs_in_epoch, ngood
 
 integer  :: i, io, obsindex, ncunit
 integer  :: Nepochs
+! Keep track of epoch files created during this run of obs_seq_to_netcdf
+logical, allocatable, dimension(:) :: epoch_file_created 
 
 type(schedule_type) :: schedule
 type(time_type) :: TimeMin, TimeMax    ! of the entire period of interest
@@ -198,6 +200,8 @@ Nepochs = get_schedule_length(schedule)
 
 allocate(total_obs_in_epoch(Nepochs))
 total_obs_in_epoch = 0
+allocate(epoch_file_created(Nepochs))
+epoch_file_created(:) = .false.
 
 call get_time_from_schedule(TimeMin, schedule,       1, 1)
 call get_time_from_schedule(TimeMax, schedule, Nepochs, 2)
@@ -444,8 +448,15 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
       if ( file_exist(ncName) .and. append_to_netcdf ) then
          ncunit = NC_Compatibility_Check(ncName, iepoch)
-      else
-         ncunit = InitNetCDF(ncName, iepoch)
+      else 
+         if (.not. epoch_file_created(iepoch)) then
+            write(string1,*) 'creating file ', ncName
+            call error_handler(E_MSG,'obs_seq_to_netcdf',string1,source)
+            ncunit = InitNetCDF(ncName, iepoch)
+            epoch_file_created(iepoch) = .true.
+         else
+            ncunit = NC_Compatibility_Check(ncName, iepoch)
+         endif
       endif
 
       ngood = 0
@@ -576,6 +587,7 @@ if (allocated(module_obs_copy_names)) &
    deallocate(module_obs_copy_names, module_qc_copy_names)
 
 deallocate(obs_seq_filenames)
+deallocate(epoch_file_created)
 
 call error_handler(E_MSG,'obs_seq_to_netcdf','Finished successfully.',source)
 call finalize_utilities()
