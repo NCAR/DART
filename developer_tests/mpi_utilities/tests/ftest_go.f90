@@ -1,16 +1,16 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
 
 program ftest_go
 
-! test using named pipes to synchronize two separate executables.
-! used in the async=4 mode of running a parallel filter and running
+! Test using named pipes to synchronize two separate executables.
+! Used in the async=4 mode of running both a parallel filter and 
 ! a parallel model advance, where filter does not exit during the
 ! model advances.
 
-! run this in background and then run ftest_go to wake it up.
+! To execute this test:
+!  Run ftest_stop in background and then run this program to wake it up.
 
 ! The following 2 build tips are the 2 places where different installations
 ! of MPI seem to vary the most.  Some systems have an include file, some
@@ -38,21 +38,23 @@ implicit none
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BUILD TIP 2:
 ! Some systems require this interface block in order to use the system()
-! function.  However, some other systems complain if this is here... 
-! If this is a problem your program will not link and most likely give 
-! you an error about an undefined symbol (something like '_system_').  
+! function.  However, some other systems complain if this is here.
+! The 'fixsystem' script in the assimilation_code/modules/utilities
+! directory will try to fix this for you.  If it does not work,
+! your program will not link and most likely give you an error 
+! about an undefined symbol (something like '_system_').  
 ! Comment this block in or out as needed.
 
 ! interface block for getting return code back from system() routine
 
- !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
-   interface
-    function system(string)
-     character(len=*) :: string
-     integer :: system
-    end function system
-   end interface
- !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
+!!!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+!   interface
+!    function system(string)
+!     character(len=*) :: string
+!     integer :: system
+!    end function system
+!   end interface
+!!!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

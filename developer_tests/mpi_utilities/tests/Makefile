@@ -30,8 +30,11 @@ include ../../../build_templates/mkmf.template
 CC    = gcc    # c compiler (e.g. gcc, icc, cc)
 MPICC = mpicc  # mpi wrapper for cc
 
-# one test uses the DART utilities
+# one test uses the DART utilities, and several tests need
+# to comment in or out blocks of code.
+
 UTILS_DIR = ../../../assimilation_code/modules/utilities
+FIXSYSTEM = $(UTILS_DIR)/fixsystem
 
 # ----------------------------------------------------------------------------
 
@@ -44,6 +47,8 @@ ALLSRC = $(SRC) Makefile README runme_*
 EXE = ftest_f90 ftest_mpi ftest_nc ftest_sendrecv ftest_onesided
 ALLEXE = $(EXE) ftest_stop ftest_go ctest ctest_mpi ctest_nc
 
+FIXLIST = ftest_go.f90 ftest_mpi.f90 ftest_sendrecv.f90 ftest_stop.f90
+
 # ----------------------------------------------------------------------------
 
 # default target - build and test only what is necessary for dart
@@ -54,7 +59,7 @@ all:  fixsys $(EXE)
 everything: fixsys $(ALLEXE)
 
 fixsys:
-	./fixsystem $(FC)
+	$(FIXSYSTEM) $(FC) $(FIXLIST)
 
 
 # run the basic executables interactively

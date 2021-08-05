@@ -38,8 +38,9 @@
 # given instead and they will be processed instead of these.
 #
 
-# default file list
+# default file list, and both marker strings must exist in these files
 export FLIST="mpi_utilities_mod.f90 null_mpi_utilities_mod.f90"
+export STRINGS_REQUIRED=1
 
 # compiler name required.  additional filenames optional.
 # if filenames are given, they replace the defaults
@@ -58,9 +59,11 @@ elif [ $# = 1 ]; then
 else
     # first arg: the name of your fortran compiler command
     # aqdditional args: list of filenames to process
+    # not a fatal error if files don't contain marker strings
     export COMPILER=$1
     shift
     export FLIST="$*"
+    export STRINGS_REQUIRED=0
 fi
 
 
@@ -94,11 +97,15 @@ do
   elif [ "`echo $bline1 | grep COMMENTED_IN`" != ""  ]; then
     export before1=in
   else
-    echo ${f} not found, or does not have the right comment string to
-    echo automatically change interface blocks via script.
-    echo Please restore original file from the subversion repository
-    echo and try again.
-    exit 1
+    if [ $STRINGS_REQUIRED = 0 ]; then
+      before1=none
+    else
+      echo ${f} not found, or does not have the right comment string to
+      echo automatically change the system interface block via script.
+      echo Please restore original file from the subversion repository
+      echo and try again.
+      exit 1
+    fi
   fi
   
   # NAG sections have both in and out - but NAG_BLOCK_EDIT is key
@@ -108,12 +115,19 @@ do
   elif [ "`echo $bline2 | grep COMMENTED_IN`" != ""  ]; then
     export before2=in
   else
-    echo ${f} not found, or does not have the right comment string to
-    echo automatically change the interface blocks via script.
-    echo Please restore original file from the subversion repository
-    echo and try again.
-    exit 1
+    if [ $STRINGS_REQUIRED = 0 ]; then
+      before2=none
+    else
+      echo ${f} not found, or does not have the right comment string to
+      echo automatically change the NAG interface block via script.
+      echo Please restore original file from the subversion repository
+      echo and try again.
+      exit 1
+    fi
   fi
+
+  # if neither marker string is found, loop without complaint.
+  if ([ $before1 = none ] && [ $before2 = none ]); then continue; fi
 
   # if we are already in the right state, loop to next file
   if ([ $before1 = $todo1 ] && [ $before2 = $todo2 ]); then continue; fi

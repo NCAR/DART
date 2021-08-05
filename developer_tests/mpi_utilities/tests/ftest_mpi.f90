@@ -36,20 +36,23 @@ implicit none
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BUILD TIP 2:
 ! Some systems require this interface block in order to use the system()
-! function.  However, some other systems complain if this is here... 
-! If this is a problem your program will not link and most likely give 
-! you an error about an undefined symbol (something like '_system_').  
+! function.  However, some other systems complain if this is here.
+! The 'fixsystem' script in the assimilation_code/modules/utilities
+! directory will try to fix this for you.  If it does not work,
+! your program will not link and most likely give you an error 
+! about an undefined symbol (something like '_system_').  
 ! Comment this block in or out as needed.
 
 ! interface block for getting return code back from system() routine
- !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
-   interface
-    function system(string)
-     character(len=*) :: string
-     integer :: system
-    end function system
-   end interface
- !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
+
+! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+!   interface
+!    function system(string)
+!     character(len=*) :: string
+!     integer :: system
+!    end function system
+!   end interface
+! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
