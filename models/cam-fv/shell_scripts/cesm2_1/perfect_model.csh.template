@@ -124,6 +124,7 @@ cd ${RUNDIR}
 
 # This next line ultimately specifies the location of the observation files.
 set BASEOBSDIR = BOGUSBASEOBSDIR
+
 # Make sure that this script is using standard system commands
 # instead of aliases defined by the user.
 # If the standard commands are not in the location listed below,
@@ -284,6 +285,9 @@ echo "`date` -- END CAM PERFECT_MODEL_OBS"
 # for more flexibility and robustness.
 ${MOVE} true_state.nc ${CASE}.dart.e.${scomp}_true_state.${ATM_DATE_EXT}.nc || exit 160
 
+# These are not put into CESM file name format because they should not be archived
+# by st_archive.  They'll be moved to, e.g. $obs/Synthetic/UVTRadiosonde_3456/201712_6H/
+# and should not have a CAM specific name (for future use by filter).
 set MYSTRING = `grep obs_seq_out_file_name input.nml`
 set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g" | sed -e 's#"# #g'`
 set obs_seq_out_file_name = $MYSTRING[2]
