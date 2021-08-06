@@ -154,27 +154,11 @@ VARIABLES : do ivar = 1,nvariables
             ! The point of the whole exercise ... 
             do i = 1, nlevsno - numsnowlevels  ! loop over unused layers
 
-               ! trace amounts of snow are in the level closest to the ground
-               ! frac_sno(j) seems to be a reliable indicator of a trace of snow
-               if (frac_sno(j) > 0.0_r8 .and. i == nlevsno) cycle
-
-               variable(i,j) = FillValue
+                variable(i,j) = FillValue
+            
             enddo
 
          enddo
-
-         ! CLM uses some indeterminate values instead of the _FillValue code 
-         ! 'old' versions of CLM had some pretty unusual behavior. These
-         ! may not do anything, but they certainly don't hurt.
-
-         if (varname == 'T_SOISNO') then
-            where(variable < 1.0_r8) variable = FillValue
-         endif
-
-         if ((varname == 'H2OSOI_LIQ')  .or. &
-             (varname == 'H2OSOI_ICE')) then
-            where(variable < 0.0_r8) variable = FillValue
-         endif
 
          ! update the netCDF file - in place
 
