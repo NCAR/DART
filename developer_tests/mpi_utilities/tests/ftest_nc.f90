@@ -47,7 +47,7 @@ integer :: test1dimid, dataid
    ! netcdf test to be sure this system can create all necessary kinds
    if(.not. byteSizesOK()) then
        print *, 'Compiler does not support required kinds of variables.'
-       call exit
+       stop
    end if
 
 !-------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ subroutine netcdf_error_exit(istat)
    error_msg = 'netcdf error, string is: ' // nf90_strerror(istat)
 
    print *, error_msg
-   call exit
+   stop
 
 end subroutine netcdf_error_exit
 
