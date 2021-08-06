@@ -101,7 +101,8 @@ integer :: ierror, myrank, totalprocs, rc
    ! start model advances in async=2 and async=4 modes, and to get this
    ! program to compile may involve updating the fixsystem script and/or
    ! the mpi_utilities_mod.f90 for new compilers.
-   call do_system("echo hello world")
+   call do_system("echo hello world", rc)
+   if (rc /= 0) print *, 'call to system() returned error'
 
    ierror = -999
    call MPI_Finalize(ierror)
@@ -124,6 +125,9 @@ subroutine do_system(execute, rc)
 
 character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
+
+! fill this in if an explicit shell name is required by your system
+character(len=32) :: shell_name = ''
 
 ! !!NAG_BLOCK_EDIT START COMMENTED_OUT
 !  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
