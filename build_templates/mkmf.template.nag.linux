@@ -65,7 +65,7 @@ NETCDF = /usr/local/netcdf_c-4.3.2_f-4.4.1-nag-6.0
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O $(INCS)
+FFLAGS  = -O -mismatch $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
