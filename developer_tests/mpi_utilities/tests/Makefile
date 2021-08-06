@@ -38,25 +38,25 @@ FIXSYSTEM = $(UTILS_DIR)/fixsystem
 
 # ----------------------------------------------------------------------------
 
-SRC = ftest_f90.f90 ftest_mpi.f90 ftest_sendrecv.f90 ftest_nc.f90 \
-      ftest_onesided.f90 ftest_stop.f90 ftest_go.f90 \
+SRC = ftest_f90.f90 ftest_mpi.f90 ftest_nc.f90 \
+      ftest_onesided.f90 ftest_sendrecv.f90 \
       ctest.c ctest_mpi.c ctest_nc.c
 
 ALLSRC = $(SRC) Makefile README runme_*
 
 EXE = ftest_f90 ftest_mpi ftest_nc ftest_sendrecv ftest_onesided
-ALLEXE = $(EXE) ftest_stop ftest_go ctest ctest_mpi ctest_nc
+ALLEXE = $(EXE) ctest ctest_mpi ctest_nc
 
-FIXLIST = ftest_go.f90 ftest_mpi.f90 ftest_sendrecv.f90 ftest_stop.f90
+FIXLIST = ftest_mpi.f90 
 
 # ----------------------------------------------------------------------------
 
 # default target - build and test only what is necessary for dart
-all:  fixsys $(EXE)
+all:  $(EXE)
 
 # all executables - if you are having problems, this might help diagnose
 # what parts of the install are giving problems
-everything: fixsys $(ALLEXE)
+everything: $(ALLEXE)
 
 fixsys:
 	$(FIXSYSTEM) $(FC) $(FIXLIST)
@@ -75,12 +75,6 @@ batch: ftest_mpi
 	#qsub runme             # comment this in for PBS
 	./runme                 # anything else
 
-# check async=4 mode.  comment in the right line for your batch system.
-async4: ftest_stop ftest_go
-	#bsub < runme_async4      # comment this in for LSF
-	#qsub runme_async4        # comment this in for PBS
-	./runme_async4            # anything else
-
 # ----------------------------------------------------------------------------
 
 
@@ -89,7 +83,7 @@ ftest_f90: ftest_f90.f90
 	$(FC) ftest_f90.f90 $(LDFLAGS) -o ftest_f90
 
 # f90 test program that calls MPI functions
-ftest_mpi: ftest_mpi.f90
+ftest_mpi: fixsys ftest_mpi.f90
 	$(MPIFC) ftest_mpi.f90 $(LDFLAGS) -o ftest_mpi
 
 # f90 test program that uses DART MPI utility routines
@@ -117,14 +111,6 @@ mpi_utilities_mod.o: $(UTILS_DIR)/mpi_utilities_mod.f90
 # f90 test program that calls netCDF functions
 ftest_nc: ftest_nc.f90
 	$(FC) ftest_nc.f90 $(LDFLAGS) -o ftest_nc
-
-
-# test of named pipe (fifo) communication with mpi
-ftest_stop: ftest_stop.f90
-	$(MPIFC) ftest_stop.f90 $(LDFLAGS) -o ftest_stop
-
-ftest_go: ftest_go.f90
-	$(MPIFC) ftest_go.f90 $(LDFLAGS) -o ftest_go
 
 
 

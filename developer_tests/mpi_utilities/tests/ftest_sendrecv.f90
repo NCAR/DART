@@ -8,20 +8,8 @@ program ftest_sendrecv
 ! the send and receive functions in the mpi_utilities_mod.f90 file.
 ! THIS IS NOT A STANDALONE PROGRAM!
 
-! The following 2 build tips are the 2 places where different installations
-! of MPI seem to vary the most.  Some systems have an include file, some
-! have a F90 module.  Some require an interface block to use the system()
-! function, some give an error if it is here.   You can use this program
-! to figure out which combinations work on your system.  Then go into 
-! $DART/assimilation_code/utilities/mpi_utilities_mod.f90 and make the 
-! same two changes there. also possibly (if needed) null_mpi_utilities_mod.f90.
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! BUILD TIP 1:
-! Most fortran MPI implementations provide either a fortran 90 module
-! which defines the interfaces to the MPI library routines, or an include
-! file which defines constants.  Try to use the module if it is available.
-
+! this module should be on your system if MPI is installed
 use mpi
 
 ! these are DART modules which must be built before running this test.
@@ -32,33 +20,11 @@ use mpi_utilities_mod
 
 implicit none
 
+! some older installations only installed a header file instead of
+! a module (module is better).  only if there is no other option,
+! comment out 'use mpi' above and comment in the include file here.
 !include "mpif.h"
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! BUILD TIP 2:
-! Some systems require this interface block in order to use the system()
-! function.  However, some other systems complain if this is here.
-! The 'fixsystem' script in the assimilation_code/modules/utilities
-! directory will try to fix this for you.  If it does not work,
-! your program will not link and most likely give you an error 
-! about an undefined symbol (something like '_system_').  
-! Comment this block in or out as needed.
-
-! interface block for getting return code back from system() routine
-
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-!   interface
-!    function system(string)
-!     character(len=*) :: string
-!     integer :: system
-!    end function system
-!   end interface
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 integer, parameter :: BSIZE = 101
 
