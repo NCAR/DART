@@ -610,7 +610,7 @@ just like any other piece of metadata.  If the precomputed forward operator
 values for any or all observation types are not wanted, it is possible to 
 remove the precomputed values and retain the rest of the observation. 
 
-.. warning
+.. note ::
 
   observations resulting from
   ``perfect_model_obs`` are **not** 
