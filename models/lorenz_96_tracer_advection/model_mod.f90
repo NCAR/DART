@@ -551,7 +551,7 @@ call nc_add_global_attribute(ncid, "model_source", source )
 call nc_add_global_attribute(ncid, "model_revision", revision )
 call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
-call nc_add_global_attribute(ncid, "model", "Lorenz_96_Lagrangian")
+call nc_add_global_attribute(ncid, "model", "Lorenz_96_Tracer_Advection")
 call nc_add_global_attribute(ncid, "model_forcing", forcing )
 call nc_add_global_attribute(ncid, "model_delta_t", delta_t )
 call nc_add_global_attribute(ncid, "source_rate", source_rate)

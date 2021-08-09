@@ -88,7 +88,7 @@ end
  clear pinfo; clf
 
  pinfo.fname    = 'preassim.nc';
- pinfo.model    = 'Lorenz_96';
+ pinfo.model    = 'Lorenz_96_Tracer_Advection';
  pinfo.var1name = 'state';
  pinfo.var2name = 'state';
  pinfo.var3name = 'state';
