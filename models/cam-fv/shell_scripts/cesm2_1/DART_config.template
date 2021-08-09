@@ -377,7 +377,7 @@ cat << EndOfText >! DART_instructions.txt
 
 Check the DART configuration:
 
-1) The default behavior setup_hybrid and setup_pmo are too not run DART_config, 
+1) The default behavior setup_hybrid and setup_pmo are to not run DART_config, 
    which sets up assimilation.
    The default behavior of setup_advanced is to invoke DART_config. 
 

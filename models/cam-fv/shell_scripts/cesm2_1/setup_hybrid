@@ -135,9 +135,9 @@
 #               https://ncar.github.io/CAM/doc/build/html/users_guide/atmospheric-configurations.html
 #               and carefully incorporate any needed changes into this script.
 # resolution    Defines the horizontal resolution and dynamical core;
-#               see http://esmci.github.io/cime/users_guide/grids.html.
-#               f19_f19  ... FV core at ~ 2 degree (19 means 1.9 degrees of latitude).
-#               f09_f09  ... FV core at ~ 1 degree (the 2nd f09 means CLM uses a .9 degree latitude grid)
+#               see https://www.cesm.ucar.edu/models/cesm2/config/2.1.0/grids.html
+#               f19_f19_mg17  ... FV core at ~ 2 degree (19 means 1.9 degrees of latitude).
+#               f09_f09_mg17  ... FV core at ~ 1 degree (the 2nd f09 means CLM uses a .9 degree latitude grid)
 # cesmtag       The version of the CESM source code to use when building the model.
 #               The assimilate.csh in this directory will handle only cesm2_0 and later.
 # num_instances The number of ensemble members.
@@ -149,13 +149,13 @@
 setenv case            Test0
 setenv compset         HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV
 # setenv compset         FHIST_DARTC6
-setenv resolution      f09_f09
-setenv cesmtag         cesm2_1
+setenv resolution      f09_f09_mg17
+setenv cesmtag         cesm2_1_relsd_m5.6
 setenv num_instances   3
 
 # If cemstag >= cesm2_0_alpha10f and compset = FHIST_DARTC6 (or another non-supported):
-setenv compset_args     "--compset $compset"
-setenv compset_args "${compset_args} --run-unsupported"
+setenv compset_args   "--compset $compset"
+setenv compset_args   "${compset_args} --run-unsupported"
 
 # ==============================================================================
 # machines and directories:
@@ -208,7 +208,8 @@ setenv dartroot     /glade/u/home/${USER}/DART/your_DART
 setenv cime_output  /glade/scratch/${USER}
 setenv archdir      ${cime_output}/${case}/archive
 
-setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS
+# setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS
+setenv baseobsdir   /glade/p/cisl/dares/Observations/Synthetic/UVTRadiosonde_3456
 
 # ==============================================================================
 # Initial conditions files:
@@ -221,7 +222,7 @@ setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS
 # refyear    The specific date/time-of-day in the reference case that this
 # refmon     run will start from.  (Also see 'runtime settings' below for
 # refday     start_year, start_mon, start_day and start_tod.)
-# reftod
+# reftod     NOTE; there must be obs_seq.in files for these dates.
 # NOTE:      All the ref* variables must be treated like strings and have
 #            the appropriate number of preceeding zeros. 
 #
@@ -244,7 +245,7 @@ setenv reftimestamp $refyear-$refmon-$refday-$reftod
 setenv stagedir /glade/work/${USER}/Models/CAM_init/FV1deg_cesm2_1/${reftimestamp}
 
 # ==============================================================================
-# runtime settings: 
+# runtime settings:
 #    This script will find usable CAM external forcing files for years 19mumble-2015.
 #    Years after that (or before) may require searching $cesmdata for more
 #    up-to-date files and adding them to the user_nl_cam_#### in the code below.
@@ -293,14 +294,18 @@ set nthreads = 1
 # Examples are provided here.
 # "2 degree":
 # setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_1850_2016_c170525.nc
-# setenv sst_grid ${cesmdata}/share/domains/domain.ocn.fv1.9x2.5_gx1v7.170518.nc
+# setenv sst_grid    ${cesmdata}/share/domains/domain.ocn.fv1.9x2.5_gx1v7.170518.nc
 # "1 degree":
-setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2016_c170525.nc
-sst_grid ${cesmdata}/share/domains/domain.ocn.fv0.9x1.25_gx1v7.151020.nc
+setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2020_c210521.nc
+setenv sst_grid    ${cesmdata}/share/domains/domain.ocn.fv0.9x1.25_gx1v7.151020.nc
 # Specify the beginning and ending years of the data set.
 setenv sst_year_start 1850
-setenv sst_year_end   2016
+setenv sst_year_end   2021
 
+if ($start_year > $sst_year_end) then
+   echo "ERROR: start_year is later then sst_year_end"
+   exit 6
+endif
 
 # ==============================================================================
 # job settings:
@@ -353,6 +358,8 @@ if ($?LS_SUBCWD) then
 else if ($?PBS_O_WORKDIR) then
    cd $PBS_O_WORKDIR
 endif
+echo "Using the starred branch of `pwd`"
+git branch
 
 # Store the location of these setup scripts for use in DART_config.
 set DART_CESM_scripts = `pwd`
@@ -441,7 +448,7 @@ ${CIMEROOT}/scripts/create_newcase \
    --ninst    $num_drivers    \
    $compset_args              \
    $multi_driver
-    
+
 if ( $status != 0 ) then
    echo "ERROR: Case could not be created."
    exit 15
@@ -994,6 +1001,7 @@ while ($inst <= $num_instances)
    @ inst ++
 
 end
+echo ' '
 
 # ===========================================================================
 # set fname = "user_nl_cpl"
