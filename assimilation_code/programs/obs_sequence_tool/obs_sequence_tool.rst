@@ -278,7 +278,7 @@ namelist.
    | remove_precomputed_FO_values | character(len=32), dimension(500)   | The (case-insensitive) array of observation type names whose           |
    |                              |                                     | precomputed forward operator (FO) values are not wanted.  If any type  |
    |                              |                                     | names are specified, observations matching these types will have their |
-   |                              |                                     | precomputed FO values values removed. The remainder of observation     |
+   |                              |                                     | precomputed FO values values removed. The remainder of the observation |
    |                              |                                     | persists, subject to the constraints of ``keep_types``                 |
    |                              |                                     | and/or any other subsetting options. The default is to keep all        |
    |                              |                                     | precomputed_FO_values.                                                 |

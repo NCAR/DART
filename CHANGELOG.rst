@@ -22,7 +22,7 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**August 9 2021 :: Documentation and GitHub template update**
+**August 10 2021 :: Documentation and GitHub template update**
 
 - External forward operator documentation
 - Typo fixes for GitHub templates 
