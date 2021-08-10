@@ -21,7 +21,7 @@ Please provide any error messages.
 
 ### Which model(s) are you working with?
 
-###Screenshots   
+### Screenshots   
 If applicable, add screenshots to help explain your problem.
 
 ### Version of DART      

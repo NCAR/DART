@@ -1297,7 +1297,7 @@ else
    enddo
 
    allocate(uniquek(count))
- 
+   uniquek(:) = -1 
    uk = 1
    do e = 1, ens_size
       if ( all(uniquek /= k(e)) ) then
@@ -1871,6 +1871,7 @@ else
       enddo
    
       allocate(uniquek(count))
+      uniquek(:) = -1 
     
       uk = 1
       do e = 1, ens_size
@@ -2701,6 +2702,7 @@ else
          enddo
       
          allocate(uniquek(count))
+         uniquek(:) = -1 
        
          uk = 1
          do e = 1, ens_size
