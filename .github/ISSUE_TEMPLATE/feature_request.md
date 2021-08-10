@@ -14,7 +14,7 @@ What are you trying to accomplish?  Sometimes there may already be a way to do w
 If so, give a clear and concise description of what the problem is.
 For example, " I'm always frustrated when [...]"
 
-### Describe the your prefered solution  
+### Describe your preferred solution  
 Please provide enough detail here to help people have a discussion about your proposal
 
 ### Describe any alternatives you have considered  
