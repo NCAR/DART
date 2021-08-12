@@ -181,7 +181,11 @@ switch lower(pinfo.model)
       legend boxoff
 
    case {'lorenz_96', 'lorenz_96_2scale', 'forced_lorenz_96', 'lorenz_04', ...
+<<<<<<< HEAD
          'ikeda', 'simple_advection','lorenz_96_tracer_advection', 'null'}
+=======
+         'ikeda', 'simple_advection', 'lorenz_96_tracer_advection', 'null'}
+>>>>>>> 14e4250289635babd6295c577a2f0c8d5bd4bc86
 
       % Use one figure with subplots
       figure(1); clf; iplot = 0;

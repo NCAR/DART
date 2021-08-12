@@ -33,7 +33,7 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/perfect_model_obs/perfect_model_obs.f90
-models/lorenz_96_lag/model_mod.f90
+models/lorenz_96_tracer_advection/model_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90

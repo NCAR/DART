@@ -1,19 +1,204 @@
-
- --------------------------------------
- Starting ... at YYYY MM DD HH MM SS = 
-                 2021  7 22 13 22 24
- Program create_obs_sequence
- --------------------------------------
-
-  set_nml_output Echo NML values to log file only
- 
- Assimilate_these_obs_types:
-    RAW_STATE_VARIABLE
-    RAW_STATE_1D_INTEGRAL
-    RAW_STATE_VAR_POWER
- Evaluate_these_obs_types:
-    none
- Use the precomputed Prior Forward Operators for these obs types:
-    none
- 
- Input upper bound on number of observations in sequence
+40
+0
+0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+0
+RAW_STATE_VARIABLE
+-1
+0 0
+1.0
+set_def.out
