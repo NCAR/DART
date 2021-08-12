@@ -285,7 +285,7 @@ switch lower(pinfo.model)
       end
       
       
-   case {'lorenz_96_lagrangian'}
+   case {'lorenz_96_tracer_advection'}
 
       varlist = {'state_variable','tracer_concentration','source'};
 
