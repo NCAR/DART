@@ -118,13 +118,13 @@ Description of each namelist entry
 |                   |          | time_step_seconds.                  |
 +-------------------+----------+-------------------------------------+
 | var_offset        |          | Offset for wind variables in the    |
-|                   |          | state vector (components 1-40)      |
+|                   |          | state vector (components 1-40).     |
 +-------------------+----------+-------------------------------------+
 | conc_offset       |          | Offset for tracer conc. in the      |
-|                   |          | state vector (components 41-80)     |
+|                   |          | state vector (components 41-80).    |
 +-------------------+----------+-------------------------------------+
 | source_offset     |          |  Offset for source info in the      |
-|                   |          |  state vector (components 81-120)   |
+|                   |          |  state vector (components 81-120).  |
 +-------------------+----------+-------------------------------------+
 | time_step_days    | integer  | Number of days for dimensional      |
 |                   |          | timestep, mapped to delta_t.        |
