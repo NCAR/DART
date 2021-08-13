@@ -85,16 +85,16 @@ prematurely terminating the namelist.
 
 .. code-block:: fortran
 
-&model_nml
-   model_size        = 120,
-   forcing           = 8.00,
-   delta_t           = 0.05,
-   var_offset        = 0,
-   conc_offset       = 40,
-   source_offset     = 80,
-   time_step_days    = 0,
-   time_step_seconds = 3600
-/
+  &model_nml
+     model_size        = 120,
+     forcing           = 8.00,
+     delta_t           = 0.05,
+     var_offset        = 0,
+     conc_offset       = 40,
+     source_offset     = 80,
+     time_step_days    = 0,
+     time_step_seconds = 3600
+  /
 
 Description of each namelist entry
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -108,7 +108,7 @@ Description of each namelist entry
 |                   |          | describes tracer concentration, and |
 |                   |          | the final third of the state vector |
 |                   |          | describes the location strength of  |
-|                   |          | sources.
+|                   |          | sources.                            |
 +-------------------+----------+-------------------------------------+
 | forcing           | real(r8) | Forcing, F, for model.              |
 +-------------------+----------+-------------------------------------+
