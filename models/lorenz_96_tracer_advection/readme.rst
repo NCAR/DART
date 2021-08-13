@@ -51,7 +51,11 @@ Lorenz and Emmanuel (1998) [2]_ describe the model as:
   temperature, at *J* equally spaced sites extending around a latitude circle.
   Nothing will simulate the atmosphere's latitudinal or vertical extent.
 
+In this model we are using the Semi-Lagrangian Scheme to model how tracer particles get distributed upstream across the grids by the Lorenz 96 winds
+
 |Plot of 1D Semi-Lagrangian Method|
+
+The figure above describes
 
 For Lorenz 96, DART advances the model, gets the model state and metadata
 describing this state, finds state variables that are close to a given
@@ -122,3 +126,4 @@ References
        <https://doi.org/10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2>`__
 
 .. |Plot of 1D Semi-Lagrangian Method| image:: images/Semi_lag.png
+                                       :width: 100px
