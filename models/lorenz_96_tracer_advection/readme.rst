@@ -1,8 +1,6 @@
 Lorenz 96 Tracer Advection
 ==========================
 
-Note to test doc build
-
 Overview
 --------
 
