@@ -4,7 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
 
 # for command file jobs.
 # Sidd Ghosh Feb 22, 2017
@@ -26,9 +25,3 @@ INSTANCE=$(sed -n ${line}p $1)
 # echo "launching $INSTANCE at "; date --rfc-3339=ns
 
 eval "$INSTANCE"
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
