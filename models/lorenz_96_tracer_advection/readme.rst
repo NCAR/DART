@@ -55,7 +55,7 @@ In this model we are using the Semi-Lagrangian Scheme to model how tracer partic
 
 |Plot of 1D Semi-Lagrangian Method|
 
-The figure above describes the implementation of the Semi-Lagrangian scheme in a one dimensional array. The tracer particle in the figure lands on a predefined grid point at t\ :sup:`n+1`
+The figure above describes the implementation of the Semi-Lagrangian scheme in a one dimensional array. The tracer particle in the figure lands on a predefined grid point at t\ :sup:`n+1`. The trajectory of this tracer particle is then integrated backwards by one time step to time t\ :sup:`n`, often landing between grid points. Then the concentration of tracer [3]_
 
 For Lorenz 96, DART advances the model, gets the model state and metadata
 describing this state, finds state variables that are close to a given
@@ -124,5 +124,8 @@ References
        *Journal of the Atmospheric Sciences*, **55**, 399-414,
        `doi:10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2
        <https://doi.org/10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2>`__
+
+.. [3] Cushman-Roisin, Benoit, and Jean-Marie Beckers. 2011.         Introduction to Geophysical Fluid Dynamics: Volume 101: Physical and Numerical Aspects. 2nd ed. San Diego, CA: Academic Press.
+
 
 .. |Plot of 1D Semi-Lagrangian Method| image:: images/Semi_lag.png
