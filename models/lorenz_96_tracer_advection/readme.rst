@@ -121,4 +121,4 @@ References
        `doi:10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2
        <https://doi.org/10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2>`__
 
-.. |Plot of Lorenz 63 attractor| image:: images/Semi_lag 1D.png
+.. |Plot of 1D Semi-Lagrangian Method| image:: images/semi_lag 1.png
