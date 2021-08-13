@@ -93,7 +93,8 @@ prematurely terminating the namelist.
    conc_offset       = 40,
    source_offset     = 80,
    time_step_days    = 0,
-   time_step_seconds = 3600  /
+   time_step_seconds = 3600
+/
 
 Description of each namelist entry
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
