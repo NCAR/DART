@@ -1,5 +1,5 @@
-Lorenz 96
-=========
+Lorenz 96 Tracer Advection
+==========================
 
 Overview
 --------
@@ -55,17 +55,15 @@ In this model we are using the Semi-Lagrangian Scheme to model how tracer partic
 
 |Plot of 1D Semi-Lagrangian Method|
 
-The figure above describes the implementation of the Semi-Lagrangian scheme in a one dimensional array. The tracer particle in the figure lands on a predefined grid point at t\ :sup:`n+1`. The trajectory of this tracer particle is then integrated backwards by one time step to time t\ :sup:`n`, often landing between grid points. Then, due to advection without diffusion, the concentration of tracer at time t\ :sup:`n+1` is simply the concentration of tracer at time t\ :sup:`n`, which can be determined by interpolating concentrations of the surrounding grids. [3]_
+The figure above describes the implementation of the Semi-Lagrangian scheme in a one dimensional array. The tracer particle in the figure lands on a predefined grid point at t\ :sup:`n+1`. The trajectory of this tracer particle is then integrated backwards by one time step to time t\ :sup:`n`, often landing between grid points. Then, due to advection without diffusion, the concentration of tracer at time t\ :sup:`n+1` is simply the concentration of tracer at time t\ :sup:`n`, which can be determined by interpolating concentrations of the surrounding grids [3]_.
 
 Once the coupled Lorenz 96 and semi-Lagrangian is run with a source of strength 100 units/s and location at grid point one (with exponential sinks present in all grid points), the time evolution is as depicted below:
 
 |Plot of Lorenz 96 Tracer Advection|
 
-For Lorenz 96, DART advances the model, gets the model state and metadata
-describing this state, finds state variables that are close to a given
-location, and does spatial interpolation for model state variables.
+For Lorenz 96 Tracer Advection, DART advances the model, gets the model state and metadata describing this state, finds state variables that are close to a given location, and does spatial interpolation for model state variables.
 
-The Lorenz 96 model has a ``work/workshop_setup.csh`` script that compiles and
+The Lorenz 96 Tracer Advection model has a ``work/workshop_setup.csh`` script that compiles and
 runs an example.  This example is referenced at various points in the
 :doc:`DART tutorial <../../theory/readme>`
 and is intended to provide insight into model/assimilation behavior.
@@ -74,7 +72,7 @@ Be aware that the ``input.nml`` file is modified by the ``workshop_setup.csh``
 script.
 
 There are also some excellent Matlab tools to explore the behavior of the
-Lorenz 96 model, namely ``run_lorenz_96.m`` and ``run_lorenz_96_inf.m``, both of
+base Lorenz 96 model, namely ``run_lorenz_96.m`` and ``run_lorenz_96_inf.m``, both of
 which are part of the :doc:`DART_LAB Tutorial. <../../guide/DART_LAB/DART_LAB>`
 
 Namelist
@@ -87,13 +85,15 @@ prematurely terminating the namelist.
 
 .. code-block:: fortran
 
-  &model_nml
-     model_size        = 40,
-     forcing           = 8.00,
-     delta_t           = 0.05,
-     time_step_days    = 0,
-     time_step_seconds = 3600
-  /
+&model_nml
+   model_size        = 120,
+   forcing           = 8.00,
+   delta_t           = 0.05,
+   var_offset        = 0,
+   conc_offset       = 40,
+   source_offset     = 80,
+   time_step_days    = 0,
+   time_step_seconds = 3600  /
 
 Description of each namelist entry
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -101,7 +101,13 @@ Description of each namelist entry
 +-------------------+----------+-------------------------------------+
 | Item              | Type     | Description                         |
 +===================+==========+=====================================+
-| model_size        | integer  | Number of variables in model.       |
+| model_size        | integer  | Number of variables in model. The   |
+|                   |          | first third of the state vector     |
+|                   |          | describes winds, the second third   |
+|                   |          | describes tracer concentration, and |
+|                   |          | the final third of the state vector |
+|                   |          | describes the location strength of  |
+|                   |          | sources.
 +-------------------+----------+-------------------------------------+
 | forcing           | real(r8) | Forcing, F, for model.              |
 +-------------------+----------+-------------------------------------+
