@@ -22,6 +22,70 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 10 2021 :: Documentation and GitHub template update**
+
+- External forward operator documentation
+- Typo fixes for GitHub templates 
+
+**August 5 2021 :: bug fix for obs_seq_to_netcdf and grabbufr.x**
+
+- obs_seq_to_netcdf now works correctly with mulitple obs_seq per epoch.
+- grabbufr.x STAT function returns correctly for long filenames when using PGI
+
+**July 23 2021 :: bug fix for wrf non-initialized unique levels. Tag: v9.11.4**
+
+- The array uniquek is now initialized to an invalid level to prevent random
+  reasonable level values in the array.
+
+**June 24 2021 :: bug fix for cam-fv model_interpolate. Tag: v.9.11.3**
+
+- cam-fv model_interpolate now passes the correct array slice of quad_vals
+  to quad_lon_lat_evaluate
+
+**June 24 2021 :: latest version of local particle filter.  Tag: v9.11.2**
+
+- latest version of particle filter from Jon Potterjoy
+- new mpi routine get_global_max
+
+**June 18 2021 :: build fixes for PGI compiler and intel compiler osx. Tag: v9.11.1**
+
+- mkmf.templates fixes for intel.osx and pgi
+- input.nml fix for obs_total_error
+- path_names fix for test_quad_*_interp 
+
+**June 8 2021 :: New observation converter for Solar Induced Fluorescence (SIF).  Tag: v9.11.0**
+
+- Converter for harmonized SIF retrievals
+
+**Jun 7 2021 :: fix typos in POP documentation Tag: v9.10.6**
+
+- fix some spelling mistakes, does not change meaning.
+
+**May 18 2021 :: updated process to generate obs on a sphere.  Tag: v9.10.5**
+
+- Matlab scripts and new scripts for cam-fv make it simpler to
+  generate synthetic observations evenly spaced around the sphere.
+- Moved create_sphere_obs into the even_sphere directory.
+
+**May 10 2021 :: obs_info support for identity obs Tag: v9.10.4**
+
+- programs/obs_utils/obs_info.f90 now supports reporting identity obs
+
+**May 6 2021 :: fix AMSUA converter bug. Tag: v9.10.3**
+
+- AIRS/convert_amsu_L1.f90 correctly handles multiple input files 
+- separated AIRS/README, convert_amsu_L1, and convert_airs_L2 documentation
+
+**May 4 2021 :: issue and pull request templates.  Tag: v9.10.2**
+
+*Github changes*
+
+- Templates for pull requests, bug reports and feature requests
+
+*Documentation updates*
+
+- Removed outdated instructions for checking out a tag
+
 **April 29 2021 :: change default GitHub branch. Tag: v9.10.1**
 
 - Replaced the default branch ("Manhattan") with "main".

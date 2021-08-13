@@ -123,7 +123,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
           sum_across_tasks, get_dart_mpi_comm, datasize, send_minmax_to,     &
           get_from_fwd, get_from_mean, broadcast_minmax, broadcast_flag,     &
-          start_mpi_timer, read_mpi_timer, send_sum_to,                      &
+          start_mpi_timer, read_mpi_timer, send_sum_to, get_global_max,      &
           all_reduce_min_max  ! deprecated, replace by broadcast_minmax
 
 character(len=*), parameter :: source = 'mpi_utilities_mod.f90'
@@ -1973,6 +1973,28 @@ call mpi_get(x, num_rows, datasize, owner, target_disp, num_rows, datasize, wind
 call mpi_win_unlock(owner, window, errcode)
 
 end subroutine get_from_fwd
+
+!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------
+
+!> Collect global max values on each task.
+
+subroutine get_global_max(max)
+
+real(r8), intent(inout)  :: max       !> global max over tasks
+integer :: errcode
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'get_global_max', errstring, source)
+endif
+
+! collect max values over al tasks
+call mpi_allreduce(MPI_IN_PLACE, max, 1, datasize, MPI_MAX, my_local_comm, errcode)
+
+end subroutine get_global_max
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------

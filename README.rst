@@ -78,49 +78,13 @@ Email dart@ucar.edu for advice if you are interested in a model which has not be
 Quick-start
 -----------
 
-1. fork the NCAR/DART repo
-2. clone your (new) fork to your machine - this will set up a remote named
-   ‘origin’. To clone DART and checkout the latest release, use
+DART is available through `GitHub <https://github.com/NCAR/DART>`__. To
+download the latest version of DART, use:
 
 .. code::
 
-   git clone https://github.com/USERNAME/DART.git
-   cd DART
-   git checkout -b v9.10.0-branch tags/v9.10.0 
+   git clone https://github.com/NCAR/DART.git
 
-where `USERNAME` is your GitHub username. 
-
-3. create a remote to point back to the NCAR/DART repo … convention dictates
-   that this remote should be called ‘upstream’
-4. Download one of the tar files (listed below) of ‘large’ files so you can test
-   your DART installation.
-5. If you want to issue a PR, create a feature branch and push that to your fork
-   and issue the PR.
-
-There are several large files that are needed to run some of the tests and
-examples but are not included in order to keep the repository as small as
-possible. If you are interested in running *bgrid_solo*, *cam-fv*, or testing
-the *NCEP/prep_bufr* observation converter, you will need these files. These
-files are available at:
-
-+-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
-| Release           | Size | Filename                                                                                                                         |
-+===================+======+==================================================================================================================================+
-| “Manhattan”       | 189M | `Manhattan_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Manhattan_large_files.tar.gz>`__             |
-+-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
-| “wrf-chem.r13172” | 141M | `wrf-chem.r13172_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/wrf-chem.r13172_large_files.tar.gz>`__ |
-+-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
-| “Lanai”           | 158M | `Lanai_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Lanai_large_files.tar.gz>`__                     |
-+-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
-| “Kodiak”          | 158M | `Kodiak_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Kodiak_large_files.tar.gz>`__                   |
-+-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
-| “Jamaica”         | 32M  | `Jamaica_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Jamaica_large_files.tar.gz>`__                 |
-+-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
-| “Hawaii”          | 32M  | `Hawaii_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Hawaii_large_files.tar.gz>`__                   |
-+-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
-
-Download the appropriate tar file and untar it into your DART repository. Ignore
-any warnings about ``tar: Ignoring unknown extended header keyword``.
 
 Go into the ``build_templates`` directory and copy over the closest
 ``mkmf.template``._compiler.system\_ file into ``mkmf.template``.
@@ -163,6 +127,64 @@ other MPI-capable executables with MPI.
 If any of these steps fail or you don’t know how to do them, go to the DART
 project web page listed above for very detailed instructions that should get you
 over any bumps in the process.
+
+Quick-start for developers
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To create a fork of DART for your own development you will need
+a `GitHub <https://github.com/>`__ account. 
+
+1. fork the NCAR/DART repo on GitHub
+2. clone your (new) fork to your machine - this will set up a remote named
+   ‘origin’.
+
+.. code::
+
+   git clone https://github.com/USERNAME/DART.git
+
+where `USERNAME` is your GitHub username. 
+
+3. create a remote to point back to the NCAR/DART repo. Convention dictates
+   that this remote should be called ‘upstream’
+
+.. code::
+
+   git remote add upstream https://github.com/NCAR/DART.git
+
+Use ‘upstream’ to keep your fork up to date with NCAR/DART. GitHub has documentation
+on `working with forks <https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/working-with-forks>`__.
+
+4. Download one of the tar files (listed below) of ‘large’ files so you can test
+   your DART installation.
+5. If you want to contribute your work back to the DART community, create a feature
+   branch with your work, then issue a `pull request <https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork>`__
+   to propose changes to NCAR/DART.
+
+There are several large files that are needed to run some of the tests and
+examples but are not included in order to keep the repository as small as
+possible. If you are interested in running *bgrid_solo*, *cam-fv*, or testing
+the *NCEP/prep_bufr* observation converter, you will need these files. These
+files are available at:
+
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| Release           | Size | Filename                                                                                                                         |
++===================+======+==================================================================================================================================+
+| “Manhattan”       | 189M | `Manhattan_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Manhattan_large_files.tar.gz>`__             |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “wrf-chem.r13172” | 141M | `wrf-chem.r13172_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/wrf-chem.r13172_large_files.tar.gz>`__ |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “Lanai”           | 158M | `Lanai_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Lanai_large_files.tar.gz>`__                     |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “Kodiak”          | 158M | `Kodiak_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Kodiak_large_files.tar.gz>`__                   |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “Jamaica”         | 32M  | `Jamaica_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Jamaica_large_files.tar.gz>`__                 |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+| “Hawaii”          | 32M  | `Hawaii_large_files.tar.gz <https://www.image.ucar.edu/pub/DART/Release_datasets/Hawaii_large_files.tar.gz>`__                   |
++-------------------+------+----------------------------------------------------------------------------------------------------------------------------------+
+
+Download the appropriate tar file and untar it into your DART repository. Ignore
+any warnings about ``tar: Ignoring unknown extended header keyword``.
+
 
 Citing DART
 -----------
@@ -263,8 +285,9 @@ References
 .. toctree::
    :hidden:
 
-   observations/obs_converters/AIRS/AIRS
    observations/obs_converters/AIRS/README
+   observations/obs_converters/AIRS/convert_airs_L2
+   observations/obs_converters/AIRS/convert_amsu_L1
    observations/obs_converters/AVISO/AVISO
    observations/obs_converters/Ameriflux/level4_to_obs
    observations/obs_converters/CHAMP/work/README
@@ -286,6 +309,7 @@ References
    observations/obs_converters/NCEP/prep_bufr/prep_bufr
    observations/obs_converters/NCEP/ascii_to_obs/create_real_obs
    observations/obs_converters/ROMS/ROMS
+   observations/obs_converters/SIF/SIF_to_obs_netcdf
    observations/obs_converters/SSEC/SSEC
    observations/obs_converters/SST/SST
    observations/obs_converters/SSUSI/convert_f16_edr_dsk

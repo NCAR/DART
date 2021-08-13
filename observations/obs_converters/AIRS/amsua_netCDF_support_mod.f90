@@ -7,7 +7,7 @@ module amsua_netCDF_support_mod
 use         types_mod, only : r4, r8, digits12, deg2rad, rad2deg, PI, MISSING_R8
 
 use     utilities_mod, only : error_handler, E_MSG, E_ERR, &
-                              is_longitude_between, register_module
+                              is_longitude_between
 
 use  time_manager_mod, only : time_type, get_date, set_date,            &
                               get_time, set_time, set_calendar_type,    &
@@ -15,9 +15,10 @@ use  time_manager_mod, only : time_type, get_date, set_date,            &
                               operator(+)
 
 use  obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
-                              set_obs_values, obs_sequence_type,              &
+                              set_obs_values, obs_sequence_type, get_num_obs, &
                               obs_type, set_copy_meta_data, set_qc_meta_data, &
-                              print_obs_seq_summary
+                              print_obs_seq_summary, get_first_obs, get_next_obs, &
+                              read_obs_seq
 
 use      location_mod, only : location_type, VERTISUNDEF, &
                               set_location, get_location
@@ -59,16 +60,20 @@ public :: initialize_amsua_netcdf, &
           make_obs_sequence, &
           define_amsua_dimensions, &
           define_amsua_variables, &
-          fill_amsua_variables
+          fill_amsua_variables, &
+          max_possible_obs, &
+          append_or_create, &
+          combine_sequences
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'amsua_netCDF_support_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
+character(len=*), parameter :: source = 'amsua_netCDF_support_mod.f90'
 
 logical, save :: module_initialized = .false.
 
 character(len=512) :: string1, string2, string3
+
+! flag to specify how much run-time output to create.
+! 0 == none, higher is more.
+integer :: verbosity = 0
 
 contains
 
@@ -77,8 +82,6 @@ contains
 !>
 
 subroutine initialize_module
-
-call register_module(source, revision, revdate)
 
 call set_calendar_type(GREGORIAN)
 
@@ -90,9 +93,10 @@ end subroutine initialize_module
 !------------------------------------------------------------------------------
 !>
 
-subroutine initialize_amsua_netcdf(filename)
+subroutine initialize_amsua_netcdf(filename, verbose)
 
 character(len=*), intent(in) :: filename
+integer,          intent(in) :: verbose
 
 integer :: ncid
 integer :: GEOXTRACK,  GEOTRACK,    CHANNEL, &
@@ -103,6 +107,9 @@ logical :: mismatch
 character(len=*), parameter :: context = 'initialize_amsua_netcdf'
 
 if ( .not. module_initialized ) call initialize_module
+
+! set verbosity for entire module
+verbosity = verbose
 
 ncid = nc_open_file_readonly(filename,context)
 
@@ -131,7 +138,8 @@ if ( AMSUA_BT_WARMPRTA12  /= WARMPRTA12  ) mismatch = .true.
 if ( AMSUA_BT_WARMPRTA2   /= WARMPRTA2   ) mismatch = .true.
 
 if (mismatch) then
-   call error_handler(E_ERR,'initialize_amsua_netcdf','assumptions wrong',source)
+   call error_handler(E_ERR,'initialize_amsua_netcdf','assumptions wrong',source,&
+              text2='dimensions in file do not match expected dimensions')
 endif
 
 end subroutine initialize_amsua_netcdf
@@ -197,9 +205,14 @@ CHANNELS: do ichannel = 1,size(channel_list)
          exit CHANNELS
       case default
          write(string1,*)'<'//trim(channel_list(ichannel))//'> is not a valid channel declaration'
-         call error_handler(E_ERR,'channel_list_to_indices','unknown channel input')
+         call error_handler(E_ERR,'channel_list_to_indices','unknown channel input', &
+                    source,text2=trim(channel_list(ichannel)))
     end select
 enddo CHANNELS
+
+if (all(use_channels .eqv. .false.)) then
+   call error_handler(E_ERR,'channel_list_to_indices','no valid input channels',source) 
+endif
 
 ! FIXME ... print a summary of the channels and frequences being used
 
@@ -241,7 +254,7 @@ if (swath_title(1:nchar) .ne. SWATHNAME) then
    write(string2,*) 'Expected "'//SWATHNAME//'"'
    write(string3,*) 'got      "'//swath_title(1:nchar)//'"'
    call error_handler(E_ERR, context, string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+              source, text2=string2, text3=string3)
 end if
 
 ! FIXME ... unsupported types are commented out for now.
@@ -399,7 +412,7 @@ call nc_get_global_attribute(swid, "QA_rec_PRT_a2_min_track", granule%QA_rec_PRT
 call nc_get_global_attribute(swid, "QA_rec_PRT_a2_min_xtrack", granule%QA_rec_PRT_a2%min_xtrack, context)
 call nc_get_global_attribute(swid, "granules_present", granule%granules_present, context)
 
-call dump_attributes(granule)
+if (verbosity > 2) call dump_attributes(granule,file_name)
 
 ! Geolocation fields
 call nc_get_variable(swid, "latitude",  granule%latitude, context)
@@ -621,7 +634,7 @@ character(len=*), parameter :: routine = 'make_obs_sequence'
 
 if ( .not. module_initialized ) then
     write(string1,*) 'The data has not been read yet.' 
-    call error_handler(E_ERR,routine,string1,source,revision,revdate)
+    call error_handler(E_ERR,routine,string1,source)
 endif
 
 ! one observation data value and one quality control value
@@ -748,7 +761,7 @@ which_vert = VERTISUNDEF
 robstype = get_index_for_type_of_obs('EOS_2_AMSUA_TB')
 if (robstype < 1) then
    string1 = 'unknown observation type EOS_2_AMSUA_TB'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 !        Latitude(                  AMSUA_BT_GEOXTRACK, AMSUA_BT_GEOTRACK)
@@ -858,7 +871,7 @@ scanloop:  do iscan=1,size(swath%Latitude,2) ! AKA GEOTRACK
             write(string2,*) 'See https://github.com/NCAR/DART/issues/99#'
             write(string3,*) 'Also Section 8.12 of the RTTOV v12 user guide.'
             call error_handler(E_ERR, routine, string1, &
-                       source, revision, revdate, text2=string2, text3=string3)
+                       source, text2=string2, text3=string3)
          else
             mag_field = MISSING_R8
             cosbk = MISSING_R8
@@ -908,11 +921,11 @@ scanloop:  do iscan=1,size(swath%Latitude,2) ! AKA GEOTRACK
 enddo scanloop
 
 ! Print a little summary
-call print_obs_seq_summary(seq)
+if (verbosity > 2) call print_obs_seq_summary(seq)
 
 write(string1,*) 'Converted ',obs_num,' obs for ',trim(swath%instrument), &
                  '; total obs = ',key
-call error_handler(E_MSG, routine, string1, source, revision, revdate)
+call error_handler(E_MSG, routine, string1, source)
 
 end subroutine add_granule_observations
 
@@ -920,9 +933,11 @@ end subroutine add_granule_observations
 !-----------------------------------------------------------------------------
 !> routine to confirm granule metadata
 
-subroutine dump_attributes(granule)
+subroutine dump_attributes(granule,filename)
 type (amsua_bt_granule), intent(in) :: granule
+character(len=*),        intent(in) :: filename
 
+print *,' Summary for file "'//trim(filename)//'" :'
 print *,' AutomaticQAFlag               "'//trim(granule%AutomaticQAFlag)//'"'
 print *,' DayNightFlag                  "'//trim(granule%DayNightFlag)//'"'
 print *,' LatGranuleCen                  ', granule%LatGranuleCen
@@ -1089,6 +1104,151 @@ call nc_put_variable(ncid, 'brightness_temp', granule%brightness_temp, context)
 
 end subroutine fill_amsua_variables
 
+
+!------------------------------------------------------------------------------
+!> Determine max possible obs from all files. 
+!> Allocating way too much results in excessive run-time and memory use.
+
+function max_possible_obs(num_files, scan_thin, xtrack_thin, channels)
+
+integer, intent(in) :: num_files
+integer, intent(in) :: scan_thin
+integer, intent(in) :: xtrack_thin
+logical, intent(in) :: channels(:)
+integer :: max_possible_obs
+
+integer :: thin_factor, num_channels, ichan
+
+num_channels = 0
+do ichan = 1, size(channels)
+   if (channels(ichan)) num_channels = num_channels + 1
+enddo
+
+thin_factor    = 1  ! no thinning
+
+if (  scan_thin > 0) thin_factor = thin_factor *   scan_thin 
+if (xtrack_thin > 0) thin_factor = thin_factor * xtrack_thin
+
+max_possible_obs = AMSUA_BT_GEOXTRACK * AMSUA_BT_GEOTRACK * num_channels * &
+                   num_files / thin_factor
+
+end function max_possible_obs
+
+
+!-------------------------------------------------------------------------------
+!> Given two observation sequences, insert the observations from the first
+!> sequence into the second sequence.
+
+function combine_sequences(seq_in, seq_out, filename)
+
+! The logic of this routine is loosely taken from the obs_sequence_tool
+
+type(obs_sequence_type), intent(in)    :: seq_in
+type(obs_sequence_type), intent(inout) :: seq_out
+character(len=*),        intent(in)    :: filename
+integer                                :: combine_sequences
+
+integer :: num_inserted
+logical :: is_there_one, is_this_last
+
+type(obs_type) :: obs_in,  next_obs_in
+type(obs_type) :: obs_out, prev_obs_out
+
+! could check to make sure metadata is compatible, skipping for now
+integer :: num_copies_in  = 1
+integer :: num_qc_in      = 1
+integer :: num_copies_out = 1
+integer :: num_qc_out     = 1
+
+call init_obs(     obs_in,  num_copies_in,  num_qc_in )
+call init_obs(next_obs_in,  num_copies_in,  num_qc_in )
+call init_obs(     obs_out, num_copies_out, num_qc_out)
+call init_obs(prev_obs_out, num_copies_out, num_qc_out)
+
+! Insert the first observation (which is slow) and then use that
+! as the starting point to append the rest of the observations.
+
+num_inserted = 0
+is_there_one = get_first_obs(seq_in, obs_in)
+
+if (.not. is_there_one )  then
+   write(string1,*)'no first observation in ',trim(filename)
+   call error_handler(E_MSG,'combine_sequences', string1)
+endif
+
+! insert_obs_in_seq() CHANGES the obs passed in.
+! Must pass a copy of incoming obs to insert_obs_in_seq.
+
+obs_out = obs_in
+call insert_obs_in_seq(seq_out,obs_out)
+
+prev_obs_out = obs_out            ! records new position in seq_out
+num_inserted = num_inserted + 1
+
+call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
+
+ObsLoop : do while (.not. is_this_last)
+
+   obs_in = next_obs_in   ! essentially records position in seq_out
+
+   ! Since the stride through the observation sequence file is always
+   ! guaranteed to be in temporally-ascending order, we can use the
+   ! 'previous' observation as the starting point to search for the
+   ! correct insertion point.  This speeds up the insert code a lot.
+
+   obs_out = obs_in
+   call insert_obs_in_seq(seq_out, obs_out, prev_obs_out)
+
+   prev_obs_out = obs_out    ! update position in seq_in for next insert
+   num_inserted = num_inserted + 1
+
+   call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
+
+enddo ObsLoop
+
+combine_sequences = num_inserted
+
+end function combine_sequences
+
+
+!-------------------------------------------------------------------------------
+!> either read existing obs_seq or create a new one
+
+subroutine append_or_create(append_output, outputfile, max_num, seq)
+
+logical,                 intent(in)  :: append_output
+character(len=*),        intent(in)  :: outputfile
+integer,                 intent(in)  :: max_num
+type(obs_sequence_type), intent(out) :: seq
+
+logical :: file_exist
+integer :: i
+
+! one observation data value and one quality control value
+integer, parameter :: NUM_COPIES = 1
+integer, parameter :: NUM_QC     = 1
+
+inquire(file=outputfile, exist=file_exist)
+
+if ( file_exist .and. append_output ) then
+  call read_obs_seq(outputfile, 0, 0, max_num, seq)
+  write(string1,*)'Appending to "'//trim(outputfile)//'"'
+  write(string2,*)'Initially has ',get_num_obs(seq),' observations.'
+else
+  call init_obs_sequence(seq, NUM_COPIES, NUM_QC, max_num)
+  do i = 1, NUM_COPIES
+    call set_copy_meta_data(seq, i, 'observation')
+  end do
+  do i = 1, NUM_QC
+    call set_qc_meta_data(seq, i, 'QC')
+  end do
+  write(string1,*)'Creating "'//trim(outputfile)//'" from scratch.'
+  write(string2,*)'Initially has ',get_num_obs(seq),' observations.'
+endif
+
+if (verbosity > 0) call error_handler(E_MSG,source,string1,text2=string2)
+
+end subroutine append_or_create
 
 !-------------------------------------------------------------------------------
 

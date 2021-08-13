@@ -357,8 +357,8 @@ observations into the format required by DART.
 The current list of converters (some directories contain multiple
 converters) include:
 
--  `AIRS <AIRS/AIRS.html>`__ `atmospheric variables <AIRS/AIRS.html>`__
-   and `AMSUA radiances <AIRS/README.html>`__
+-  `AIRS <AIRS/README.html>`__ `atmospheric variables <AIRS/convert_airs_L2.html>`__
+   and `AMSUA radiances <AIRS/convert_amsu_L1.html>`__
 -  AURA (uses a combination of IDL and Fortran)
 -  `Aviso+/CMEMS <AVISO/AVISO.html>`__
 -  `Ameriflux <Ameriflux/level4_to_obs.html>`__
@@ -381,6 +381,7 @@ converters) include:
 -  `NCEP (prepbufr->ascii) <NCEP/prep_bufr/prep_bufr.html>`__
 -  `NCEP (ascii->obs_seq) <NCEP/ascii_to_obs/create_real_obs.html>`__
 -  `ROMS <ROMS/ROMS.html>`__
+-  `SIF <SIF/SIF_to_obs_netcdf.html>`__
 -  `SSEC <SSEC/SSEC.html>`__
 -  `SST <SST/SST.html>`__
 -  `SSUSI <SSUSI/convert_f16_edr_dsk.html>`__
@@ -398,14 +399,6 @@ converters) include:
 -  `Var (little-r) <var/littler_tf_dart.html>`__
 -  `Var (radar) <var/rad_3dvar_to_dart.html>`__
 
-There are also a couple utilities of note:
-
--  `Even Sphere <even_sphere/README.html>`__ - a utility for generating
-   evenly-spaced observation locations that can then be used in a
-   perfect model experiment.
--  `obs_error <obs_error/README.html>`__ - modules that specify observation
-   errors based on what is used by ECMWF and NCEP
-
 In addition the following external program produces DART observation
 sequence files:
 
@@ -421,10 +414,19 @@ For generating synthetic observations, see the
 `create_obs_sequence <../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html>`__
 program documentation. You can also generate observation files based on
 text input. See the `text_to_obs <text/text_to_obs.html>`__ program
-documentation. Or for simulating a large complex observing system, you
+documentation and even_sphere. Or for simulating a large complex observing system, you
 can use the DART library routines in a Fortran program to compute the
 observation information and have the DART routines write the output
 file.
+
+There are a couple utilities of note:
+
+-  `even_sphere <even_sphere/README.html>`__ - a utility for generating
+   a text file of evenly-spaced observation locations that can then be used in a
+   perfect model experiment.
+-  `obs_error <obs_error/README.html>`__ - modules that specify observation
+   errors based on what is used by ECMWF and NCEP
+
 
 See the
 `perfect_model <../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__

@@ -52,6 +52,7 @@
                         '../data/AIRS.2019.06.22.237.L1B.AMSU_Rad.v5.0.0.0.G19174110446.nc'
    l1_file_list       = ''
    outputfile         = 'obs_seq.amsua'
+   append_output      = .false.
    channel_list       = 3,15
    along_track_thin   = 0
    cross_track_thin   = 0
@@ -59,6 +60,7 @@
    lon2               = 360.0
    lat1               = -90.0
    lat2               =  90.0
+   verbose            = 1
   /
 
 # The 'L1_AMSUA_to_netcdf.f90' program is not working yet.
