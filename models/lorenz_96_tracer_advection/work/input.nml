@@ -1,7 +1,7 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .false.,
    single_file_in             = .true.
-   input_state_files          = "filter_input_one.nc"
+   input_state_files          = "./filter_input/filter_input_one.nc"
 
    write_output_state_to_file = .true.,
    single_file_out            = .true.
@@ -11,7 +11,7 @@
    async                      = 0,
    adv_ens_command            = "./advance_model.csh",
 
-   obs_seq_in_file_name       = "obs_seq_state_tracer.in",
+   obs_seq_in_file_name       = "obs_seq.in",
    obs_seq_out_file_name      = "obs_seq.out",
    init_time_days             = 0,
    init_time_seconds          = 0,
@@ -29,7 +29,7 @@
 
 &filter_nml
    single_file_in               = .true.,
-   input_state_files            = 'filter_input_one.nc'
+   input_state_files            = './filter_input/filter_input_one.nc'
    input_state_file_list        = ''
 
    stages_to_write  = 'preassim', 'analysis', 'output'

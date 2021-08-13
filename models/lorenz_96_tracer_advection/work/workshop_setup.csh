@@ -66,7 +66,7 @@ cp -f input.workshop.nml input.nml
 
 \rm -f preprocess *.o *.mod
 
-set MODEL = "lorenz_96"
+set MODEL = "lorenz_96_tracer_advection"
 
 echo 'building and running preprocess'
 

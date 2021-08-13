@@ -138,15 +138,7 @@ integer(i8) :: model_size_third !Used enough to use as a variable
 
 model_size_third = model_size/3
 
-!print *, model_size, model_size_third, (2*model_size_third)
-
-! do f = 1, model_size_third
-!    if (x(f)>10 .or. x(f)<-10) then
-!       print *,x(f)
-!    end if
-! end do
 q = x(model_size_third + 1 :2*model_size_third)
-!print *, x
 ! Doing an upstream semi-lagrangian advection for q for each grid point
 do i = 1, model_size_third
     ! Get the target point
@@ -156,11 +148,9 @@ do i = 1, model_size_third
     low = floor(target)
     hi = low + 1
     frac = target - low
-    !print *, frac
+
     ! Assume for now that we are not looking upstream for multiple revolutions
 
-   !  low = mod(low,model_size_third)
-   !  hi = mod(hi,model_size_third)
     if (low < 1) then
       low = low + model_size_third
     else if (low > model_size_third) then
@@ -172,11 +162,6 @@ do i = 1, model_size_third
     else if (hi > model_size_third) then
       hi = hi - model_size_third
     end if
-
-    ! Interpolation
-   !  if (low < 1 .or. low > model_size_third .or. hi < 1 .or. hi > model_size_third) then
-   !    print *, "GECKO", low, hi, frac, target
-   !  end if
 
     q_new(i) = (1 - frac)*q(low) + frac*q(hi)
 end do
@@ -230,8 +215,6 @@ x_new = x(1: model_size_third) + x1/6 + x2/3 + x3/3 + x4/6
 
 x(1: model_size_third) = x_new
 
-! Increment time step  !HK why?
-! time = time + 1
 
 end subroutine adv_1step
 
@@ -305,19 +288,6 @@ dom_id = add_domain('template.nc', NVARS, &
                                  'source              ' /),&
                               (/QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE/))
 
-! dom_id = add_domain(NVARS, (/ 'state_variable      ', &
-!                               'tracer_concentration', &
-!                               'source              ' /),&
-!                               (/QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE/))
-!
-! do var_id=1, NVARS
-!    !call add_dimension_to_variable(dom_id, var_id, 'member', 1)
-!    call add_dimension_to_variable(dom_id, var_id, 'location', int(model_size/3))
-!    !call add_dimension_to_variable(dom_id, var_id, 'time', 1)
-! enddo
-!
-!call finished_adding_domain(dom_id)
-! !call state_structure_info(dom_id)
 
 end subroutine static_init_model
 
@@ -514,18 +484,12 @@ do i=1,num_my_grid_points
         do j=1,ens_size
             state_ens_handle%copies(j, i) = random_gaussian(random_seq, state_ens_handle%copies(j, i), pert_amp)
         end do
-    !Perturbing all sources
+    !Perturbing all source grid points
     else if (var_type == QTY_TRACER_SOURCE) then
         do j=1,ens_size
          state_ens_handle%copies(j, i) = state_ens_handle%copies(j, i) + random_gaussian(random_seq, 0.00_r8, 50.00_r8)
         end do
     end if
-!! Perturbing first source grid (not sure that this works, seems to give not different results)
-!    else if (var_type == QTY_TRACER_SOURCE) then
-!       do j=1,ens_size
-!        state_ens_handle%copies(j, i) = state_ens_handle%copies(j, i) + random_gaussian(random_seq, 0.00_r8, 50.00_r8)
-!       end do
-!   end if
 end do
 
 deallocate(my_grid_points)
