@@ -55,7 +55,7 @@ In this model we are using the Semi-Lagrangian Scheme to model how tracer partic
 
 |Plot of 1D Semi-Lagrangian Method|
 
-The figure above describes
+The figure above describes the implementation of the Semi-Lagrangian scheme in a one dimensional array. The tracer particle in the figure lands on a predefined grid point at t\ :sup:`n+1`
 
 For Lorenz 96, DART advances the model, gets the model state and metadata
 describing this state, finds state variables that are close to a given
@@ -126,4 +126,3 @@ References
        <https://doi.org/10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2>`__
 
 .. |Plot of 1D Semi-Lagrangian Method| image:: images/Semi_lag.png
-                                       :width: 100px
