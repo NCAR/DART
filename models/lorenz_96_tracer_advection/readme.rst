@@ -55,7 +55,11 @@ In this model we are using the Semi-Lagrangian Scheme to model how tracer partic
 
 |Plot of 1D Semi-Lagrangian Method|
 
-The figure above describes the implementation of the Semi-Lagrangian scheme in a one dimensional array. The tracer particle in the figure lands on a predefined grid point at t\ :sup:`n+1`. The trajectory of this tracer particle is then integrated backwards by one time step to time t\ :sup:`n`, often landing between grid points. Then the concentration of tracer [3]_
+The figure above describes the implementation of the Semi-Lagrangian scheme in a one dimensional array. The tracer particle in the figure lands on a predefined grid point at t\ :sup:`n+1`. The trajectory of this tracer particle is then integrated backwards by one time step to time t\ :sup:`n`, often landing between grid points. Then, due to advection without diffusion, the concentration of tracer at time t\ :sup:`n+1` is simply the concentration of tracer at time t\ :sup:`n`, which can be determined by interpolating concentrations of the surrounding grids. [3]_
+
+Once the coupled Lorenz 96 and semi-Lagrangian is run with a source of strength 100 units/s and location at grid point one (with exponential sinks present in all grid points), the time evolution is as depicted below:
+
+|Plot of Lorenz 96 Tracer Advection|
 
 For Lorenz 96, DART advances the model, gets the model state and metadata
 describing this state, finds state variables that are close to a given
@@ -129,3 +133,4 @@ References
 
 
 .. |Plot of 1D Semi-Lagrangian Method| image:: images/Semi_lag.png
+.. |Plot of Lorenz 96 Tracer Advection| image:: images/lorenz_96_tracer_advection.gif
