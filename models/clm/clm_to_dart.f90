@@ -151,12 +151,21 @@ VARIABLES : do ivar = 1,nvariables
                endif
             endif
 
-            ! The point of the whole exercise ... 
-            do i = 1, nlevsno - numsnowlevels  ! loop over unused layers
-
-                variable(i,j) = FillValue
             
-            enddo
+                ! The point of the whole exercise ... 
+                ! Preserve (apply FillValue, no assimilation update) to unused snow layers (has indeterminate values)
+                ! If surface snow layer (i=12) has trace snow, then *do not* preserve original value and
+                ! allow for assimilation/update of this value
+                do i = 1, nlevsno - numsnowlevels  ! loop over unused layers
+
+                    
+                     ! trace amounts of snow are in the level closest to the ground
+                     ! frac_sno(j) seems to be a reliable indicator of a trace of snow
+                     if (frac_sno(j) > 0.0_r8 .and. i == nlevsno) cycle
+                       
+                     variable(i,j) = FillValue
+            
+                enddo
 
          enddo
 
