@@ -29,7 +29,7 @@
    perturbation_amplitude       = 0.2
    async                    = 0
    adv_ens_command          = 'cannot_advance_clm'
-   ens_size                 = 3
+   ens_size                 = 5
    obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
    input_state_file_list    = 'restart_files.txt',
@@ -44,8 +44,8 @@
    first_obs_seconds        = -1
    last_obs_days            = -1
    last_obs_seconds         = -1
-   num_output_state_members = 3
-   num_output_obs_members   = 3
+   num_output_state_members = 5
+   num_output_obs_members   = 5
    output_interval          = 1
    num_groups               = 1
    compute_posterior        = .true.
@@ -95,7 +95,7 @@
 
 &fill_inflation_restart_nml
    write_prior_inf   = .true.
-   prior_inf_mean    = 1.01
+   prior_inf_mean    = 1.00
    prior_inf_sd      = 0.6
 
    write_post_inf    = .true.
