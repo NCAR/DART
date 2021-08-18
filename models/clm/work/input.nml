@@ -65,7 +65,7 @@
    inf_sd_initial_from_restart = .true.,                 .false.
    inf_deterministic           = .true.,                  .true.
    inf_initial                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
+   inf_lower_bound             = 0.0,                     1.0
    inf_upper_bound             = 20.0,                   20.0
    inf_damping                 = 0.9,                     0.9
    inf_sd_initial              = 0.6,                     0.6
