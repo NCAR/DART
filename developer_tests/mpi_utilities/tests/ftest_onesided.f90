@@ -68,7 +68,9 @@ call check_data_before(target_count)
 
 
 ! first test - have each task get 10 items from 
-! task 0 at offset 100 into the local buffer.
+! task 0 at offset 100 and put them into the local
+! buffer. the transferred data always goes into 
+! offset 0 in the local buffer.
 ! do the transfer and check results
 
 owner_task = 0
@@ -82,7 +84,7 @@ call check_data_after(owner_task, window_offset, target_count)
 
 ! second test - have each task get data from task N-1,
 ! wrap around for task 0.  also set different offsets
-! in the sourcewindow for each task.  reset local buffer
+! in the source window for each task.  reset local buffer
 ! data first.  do the transfer and check results
 
 call prefill_target(target_count)
