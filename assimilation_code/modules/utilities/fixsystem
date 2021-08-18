@@ -120,7 +120,7 @@ do
     else
       echo ${f} not found, or does not have the right comment string to
       echo automatically change the NAG interface block via script.
-      echo Please restore original file from the subversion repository
+      echo Please restore original file from the repository
       echo and try again.
       exit 1
     fi
