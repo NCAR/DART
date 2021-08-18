@@ -334,9 +334,6 @@ for i = 1:gauges.want.num
         if plot_ol, ens_mean_ol = zeros(1, Nt); ens_sd_ol = zeros(1, Nt); end
     
         for j = 1:Nt
-            if j >= 280
-                1;
-            end
             if ~isnan(ens_time(j)) && ~isnan(ens_time(j+1)) 
                 obs_val(j)       = mean(tmp.obs_val   (:, ens_time(j):ens_time(j+1)), 2);
                 ens_mean_f(j)    = mean(tmp.ens_mean_f(:, ens_time(j):ens_time(j+1)), 2);
