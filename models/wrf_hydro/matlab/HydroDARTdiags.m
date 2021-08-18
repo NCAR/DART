@@ -2,7 +2,7 @@ function [observation, openloop, forecast, analysis, exp] = HydroDARTdiags(dir_e
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
-% http://www.image.ucar.edu/DAReS/DART/DART_download
+% https://dart.ucar.edu/software/
 % 
 % ** dir_exps: Experiment directories 
 %
