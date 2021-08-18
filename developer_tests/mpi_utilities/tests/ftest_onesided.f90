@@ -102,6 +102,8 @@ call check_data_after(owner_task, window_offset, target_count)
 
 ! release resources
 
+deallocate(target_array)
+
 call free_window()
 
 call takedown_mpi()
@@ -141,7 +143,7 @@ subroutine create_window()
 end subroutine create_window
 
 !-------------------------------------------------------------
-! release the window, and deallocate arrays
+! release the window, and deallocate window array
 
 subroutine free_window()
 
@@ -152,7 +154,6 @@ subroutine free_window()
    endif
 
    deallocate(contiguous_array)
-   deallocate(target_array)
 
 end subroutine free_window
 
