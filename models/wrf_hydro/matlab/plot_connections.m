@@ -2,7 +2,7 @@ function plot_connections(x, ROUTE_FILE, fig_pos, colorbar_title, tiny_flow)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
-% https://dart.ucar.edu/software/
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 % 
 % ** x: Hydrologic State to show (could be a time-average, a snapshot, ...) 
 %

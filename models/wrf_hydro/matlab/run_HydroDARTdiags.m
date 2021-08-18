@@ -4,7 +4,7 @@ clc
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
-% https://dart.ucar.edu/software/
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 % 
 % Example script to run the HydroDARTdiags.m function
 %
