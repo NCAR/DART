@@ -21,7 +21,7 @@ copyright = '2021, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '9.11.6'
+release = '9.11.7'
 master_doc = 'README'
 
 # -- General configuration ---------------------------------------------------
