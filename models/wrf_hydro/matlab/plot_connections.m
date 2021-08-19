@@ -11,7 +11,7 @@ function plot_connections(x, ROUTE_FILE, fig_pos, colorbar_title, tiny_flow)
 %
 % ** fig_pos: Position of the figure; could be separate or a subplot
 %
-% ** colorbar_title: title of the colorbar (usuallu units "cms", "m", ...)
+% ** colorbar_title: title of the colorbar (usually units "cms", "m", ...)
 %
 % ** tiny_flow: low flow conditions (e.g., 10cm for streamflow, 1mm for bucket)
 %

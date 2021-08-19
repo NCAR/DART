@@ -140,7 +140,7 @@ netcdf.close(ncid);
 exp = struct;
 for e = 1:num_exps
     ncid        = netcdf.open(nc(e).obs_diag, 'NC_NOWRITE');
-    [~, rbins]  = netcdf.inqDim(ncid, 14); 
+    [~, rbins]  = netcdf.inqDim(ncid, 14); % # of bins in the rank histogram (i.e., ens_size+1) 
 
     exp(e).ens_size = rbins-1; % size of the ensemble
     netcdf.close(ncid);
