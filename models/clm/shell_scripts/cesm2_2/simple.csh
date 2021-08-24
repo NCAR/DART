@@ -22,13 +22,14 @@ ${CESMCLONE}/cime/scripts/query_config  --compsets clm
 
 # Prevent accidental removal of an experiment.
 if ( -e ${CASEROOT} ) then
-   echo "WARNING : ${CASEROOT} exists. Stopping."
-   echo "WARNING : If you want to replace the experiment,"
-   echo "WARNING : you have to manually remove the CASEROOT, EXEDIR, RUNDIR."
+   echo "WARNING" 
+   echo "WARNING : The CASE ${CASEROOT} exists. Stopping."
+   echo "WARNING : If you want to perform the experiment,"
+   echo "WARNING : you have to manually remove the CASEROOT, EXEDIR, RUNDIR"
+   echo "WARNING : or change the CASE name to something else."
    exit
 endif
 
-\rm -rf ${CASEROOT}
 
 echo " Starting create_newcase ..."
 
