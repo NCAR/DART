@@ -6,7 +6,7 @@ Overview
 
 ``dart_to_clm`` replaces the contents of a CLM restart file with the posterior values 
 from DART. Only variables with posterior values are updated. The *_FillValue* in the 
-DART posterior is used as a mask when replacing the value. The CLM restart file values 
+DART posterior is used as a mask when replacing the value. The original CLM restart file values 
 are maintained when the DART posterior value is *_FillValue*.
 
 Another intended use for ``dart_to_clm`` is to use the posterior snow water equivalent 
@@ -21,7 +21,7 @@ Usage
 discussion on replacing indeterminate values in the CLM restart snow variables with 
 *_FillValue* so that the DART netCDF read routines handle the special values correctly. 
 Where the DART posterior file has *_FillValue* values, the original CLM restart file 
-is left unchanged.
+is left unchanged, preserving the original values.
 
 Namelist
 --------

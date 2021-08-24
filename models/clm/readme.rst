@@ -91,14 +91,17 @@ CLM indeterminate values
 
 CLM variables are encoded as rectangular arrays in the netCDF files. (Thankfully!)
 However, this means that some variables have space for layers that are unused.
-Anything with snow layers, for example. CLM has the *SNLSNO* varible to indicate
+Anything with snow layers, for example. CLM has the *SNLSNO* variable to indicate
 which snow layers are active. The *unused* layers may not have the *_FillValue*
 value, but can have 'indeterminate' values. The :doc:`clm_to_dart` 
 must be run to convert these indeterminate values to *_FillValue* to be 
 interpreted correctly by DART.  After the assimilation is complete, the 
 :doc:`dart_to_clm` must be called to replace the *_FillValue* with whatever
-is originally in that slot. Extra care is taken to handle the special case
-of a *trace* of snow. See the *Discussion of Indeterminate Values* 
+is originally in that slot. This approach preserves the 'indeterminate' value
+for *unused* snow layers and prevents DART from adjusting the value during
+the *filter* step. If the surface snow layer has a *trace* of snow this is 
+considered an active snow layer, and we allow DART to adjust this value.
+See the *Discussion of Indeterminate Values* 
 section of :doc:`clm_to_dart` for more details.
 
 
@@ -110,12 +113,13 @@ with them, the location of every component in the gridcell is the same as the
 gridcell itself. The DART forward operators fundamentally rely on 
 interpolating the model state to some arbitrary location. At present, the best we
 can do is to create an area-weighted average of all components in the gridcell.
-This is clearly sub-optimal. A nice project would be to use some sort of lookup
-table for the observation location to determine the dominant PFT or whatever at
-that location and then just average up all the similar PFTs in the gridcell.
-The forward operator would be more accurate and might have a discernable impact
-on the regression relationship (i.e. ensemble covariance) with the variables
-in the DART state vector.
+This is sub-optimal because it introduces representation mismatch between the
+grid cell and observation spatial resolution. A nice project would be to use a lookup
+table for the observation location to determine the dominant PFT (or relevant metadata) at
+that location and only average the PFTs specifically associated with
+the observation within the gridcell. This will allow the forward operator to be
+more accurate and might have a discernable impact on the regression relationship
+(i.e. ensemble covariance) between the variables in the DART state vector.
 
 The *model_interpolate* function in DART achieves efficiency by interpolating
 all the ensemble members at the same time. This gives rise to some challenging
@@ -135,8 +139,8 @@ but it does not need to be restricted to that. In some way, even the selection
 of the CLM variables to include in the DART state is a de-facto localization.
 Since CLM has such a rich description of land unit types: urban columns, glaciers, 
 lakes, etc. it is also possible (and probably desirable) to explicitly declare
-some columns and/or PFTs to be unaffected by the assimilation - i.e., we are
-going to declare that soil moisture observations should not impact urban columns
+some columns and/or PFTs to be unaffected by the assimilation - i.e., we 
+declare that soil moisture observations should not impact urban columns
 or deep lakes or ... The **get_close_state()** function employs a routine to
 explicitly declare what subgridscale components are allowed to be modified by
 the assimilation. This routine can easily be customized to suit your purpose.  
@@ -194,11 +198,13 @@ Note that we have not attempted to include any of the snow property
 variables (grain radius, carbon content, etc) in the DART state.
 
 The snow formulation in CLM is complex. Reducing the amount of snow through
-assimilation is well-defined. Creating snow when there is none 
-**is not supported** in CLM-DART. The snow-relevant column values remain 
-unchanged. **If any ensemble member does not have snow** the statistical
-assumptions for ensemble data assimilation are not valid and the snow variables
-**for all members** remain unchanged. The best method would be to alter the
+assimilation is well-defined. Creating snow when there is none is 
+**a limited capability** in CLM-DART. If snow exists for a subset of ensemble
+members at a given location, then it is possible to adjust ensemble members
+with a value of zero to a non-zero value. On the other hand, 
+**if all ensemble members do not have snow, or at least one member has a FillValue**,
+the statistical assumptions for ensemble data assimilation are
+not valid and the snow variables remain at zero. The best method would be to alter the
 amount of snow *from the forcing file* and let CLM manage the snow. This is
 beyond the scope of CLM-DART. We have thought that if one member does not have
 snow - maybe we should just use the values from some other member - but when
@@ -207,7 +213,7 @@ become multimodal, and the logical end result is that you could wind up using
 1 ensemble member to declare the snow for all the remaining members. That seems
 like a bad idea.
 
-The same logic applies to the variables related to plant growth. If the LAI
+Similar logic applies to the variables related to plant growth. If the LAI
 observations indicates there should be something growing and nothing has
 sprouted yet ... DART essentially gives up and moves on ... 
 
@@ -234,7 +240,8 @@ send them to dart@ucar.edu - we'd love to hear them.
 | ``DART_params.csh``          | Resource file for use when running CLM and DART. This                          |
 |                              | file has all the configuration items needed and will be                        |
 |                              | copied into the CASEROOT directory to be used during                           |
-|                              | an experiment.                                                                 |
+|                              | an experiment. Other setup scripts within this table require                   |
+|                              | the parameter values defined in this file.                                     |                                                                
 +------------------------------+--------------------------------------------------------------------------------+
 | ``CLM5_startup_freerun``     | This script takes the single (spun-up) CLM state supplied                      |
 |                              | with the compset and forecasts an ensemble of these. Each                      |
@@ -272,7 +279,7 @@ send them to dart@ucar.edu - we'd love to hear them.
 |                              | observations are denoted as 'evaluate_these_obs', this is                      |
 |                              | equivalent to a free run with the added advantage that you                     |
 |                              | can compare the observation-space diagnotics to a                              |
-|                              | subsequent experiement that assimilates the observations.                      |
+|                              | subsequent experiment that assimilates the observations.                       |
 |                              | Each CLM instance uses a unique DATM forcing,                                  |
 |                              | ``CLM5_setup_assimilation`` creates a file called                              |
 |                              | *CESM_instructions.txt* in the CASEROOT directory with                         |
@@ -453,7 +460,11 @@ The following is perfectly legal:
 however, only **LAIP_VALUE** will be used to calculate the LAI when an 
 observation of LAI is encountered. **All** (the other LAI) variables in 
 the DART state will be modified by the assimilation based on the 
-relationship of LAIP_VALUE and the observation. 
+relationship of LAIP_VALUE and the observation. It is possible that 
+several clm variables could serve as the input for the forward operator,
+however, in practice, the user should choose the variable that best
+matches the observation (temporal/spatial resolution, units etc), to help
+limit the complexity of the forward operator.
 
 Inflation
 ---------
@@ -497,6 +508,18 @@ If the filter namelist specifies the use of inflation, the ``assimilate.csh``
 script is configured to run ``fill_inflation_restart`` on the first assimilation cycle.
 The inflation filenames are put in a pointer file which is continually updated
 as the experiment progresses.
+
+
+.. attention::
+
+   It is recommended to apply no inflation during the first assimilation step. In other
+   words within ``input.nml`` and namelist ``&fill_inflation_restart_nml`` 
+   set ``prior_inf_mean = 1.00`` and ``post_inf_mean = 1.00``.  Otherwise, a spatially
+   uniform inflation will be applied to the entire spatial domain of the assimilation
+   which can make CLM unstable. In general, inflation is intended to account for biases
+   between the observation and model-estimated observation, as well as to restore ensemble 
+   spread after an observation has been assimilated.  
+
 
 Namelist
 --------
@@ -673,30 +696,30 @@ Error codes and conditions
 +---------------------+---------------------------------------------+---------------------------------------------------+
 
 
-Future plans
-------------
+Future plans:
+-------------
 
-#. Implement a lookup table that relates the observation location to a dominant PFT or COLUMN
-so the *model_interpolate* code can average quantities from similar PFTs or COLUMNs instead
-of everything in the entire grid cell.
-#. Implement a robust update_snow() routine that takes the modified SWE and 
-repartitions it into the respective snow layers in a manner that works with both 
-CLM4.5 and CLM5. This may mean modifying the clm_variables list to contain 
-SNOWDP, H2OSOI_LIQ, H2OSOI_ICE, T_SOISNO, and others that may not be in the UPDATE list.
-#. Implement a fast way to get the quantities needed for the calculation of 
-radiative transfer models - needs a whole column of CLM variables, redundant if 
-multiple frequencies are used.
-#. Figure out what to do when one or more of the ensemble members does not have 
-snow/leaves/etc. when the observation indicates there should be. Ditto for removing 
-snow/leaves/etc. when the observation indicates otherwise.
-#. Right now, the soil moisture observation operator is used by the COSMOS code to 
-calculate the expected neutron intensity counts. This is the right idea, however, 
-the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2 ... I have not 
-checked to see if they are, in fact, identical. This brings up a bigger issue in 
-that the soil moisture observation operator would also be used to calculate whatever 
-a TDT probe or ??? would measure. What units are they in? Can one operator support both?
-#. One of the ``CESM_DART_config`` *stage* scripts should reset the inflation pointer 
-files based on the restart date ... maybe.
+1. Implement a lookup table that relates the observation location to a dominant PFT or COLUMN
+   so the *model_interpolate* code can average quantities from similar PFTs or COLUMNs instead
+   of everything in the entire grid cell.
+2. Implement a robust update_snow() routine that takes the modified SWE and 
+   repartitions it into the respective snow layers in a manner that works with both 
+   CLM4.5 and CLM5. This may mean modifying the clm_variables list to contain 
+   SNOWDP, H2OSOI_LIQ, H2OSOI_ICE, T_SOISNO, and others that may not be in the UPDATE list.
+3. Implement a fast way to get the quantities needed for the calculation of 
+   radiative transfer models - needs a whole column of CLM variables, redundant if 
+   multiple frequencies are used.
+4. Figure out what to do when one or more of the ensemble members does not have 
+   snow/leaves/etc. when the observation indicates there should be. Ditto for removing 
+   snow/leaves/etc. when the observation indicates otherwise.
+5. Right now, the soil moisture observation operator is used by the COSMOS code to 
+   calculate the expected neutron intensity counts. This is the right idea, however, 
+   the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2 ... I have not 
+   checked to see if they are, in fact, identical. This brings up a bigger issue in 
+   that the soil moisture observation operator would also be used to calculate whatever 
+   a TDT probe or ??? would measure. What units are they in? Can one operator support both?
+6. One of the ``CESM_DART_config`` *stage* scripts should reset the inflation pointer 
+   files based on the restart date ... maybe.
 
 
 
@@ -746,6 +769,10 @@ is THE reference for CLM.
        Evaluation and intercomparison of multiple snow water equivalent products over the Tibetan Plateau.
        *Journal of Hydrometeorology*, 20(10), 2043-2055. 
        `doi.org/10.1175/JHM-D-19-0011.1 <https://doi.org/10.1175/JHM-D-19-0011.1>`__
+
+.. [8] Raczka, B., Hoar T.J., Duarte H.F., Fox A.M., Anderson J.L., Bowling D.R., & Lin J.C., 2021
+       Improving CLM5.0 Biomass and Carbon Exchange across the Western US Using a Data Assimilation System.
+       *Journal of Advances in Modeling Earth Systems*, `doi.org/10.1029/2020MS002421 <https://doi.org/10.1029/2020MS002421>`__
 
 
 .. |CLM gridcell breakdown| image:: ../../guide/images/clm_landcover.png
