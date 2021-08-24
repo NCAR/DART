@@ -526,9 +526,6 @@ References
    :caption: non-compiling models
    :hidden:
          
-   models/cam-old/cam_to_dart
-   models/cam-old/readme
-   models/cam-old/dart_to_cam
    models/MITgcm_ocean/trans_pv_sv
    models/MITgcm_ocean/create_ocean_obs
    models/MITgcm_ocean/trans_sv_pv
