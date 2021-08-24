@@ -28,7 +28,8 @@ source DART_params.csh
 #      about 2.5 hours of wall-clock and generates about 2.6Tb of data.
 #      About 15,000 core hours on cheyenne.
 
-# A 'startup' run_type uses the spun-up CLM state supplied with the compset.
+# A 'hybrid' run_type uses initialization datasets FROM A PREVIOUS case. 
+# The previous case must be specified by the user in the refcase.
 # stop_option=nmonths,stop_n=12 ... stop after 1 year
 # rest_n=1 ... output a restart every month, not just at end of run
 # resubmit=0 ... stop after the first execution. Allows one to check the output
@@ -56,24 +57,20 @@ setenv st_archive_time 06:00:00
 # ==============================================================================
 # Create the case - this creates the CASEROOT directory.
 #
-# FATAL idea to make caseroot the same dir as where this setup script is
-# since the build process removes all files in the caseroot dir before
-# populating it.  try to prevent shooting yourself in the foot.
-
-if ( ${caseroot} == `pwd` ) then
-   echo "ERROR: the setup script should not be located in the caseroot"
-   echo "directory, because all files in the caseroot dir will be removed"
-   echo "before creating the new case.  move the script to a safer place."
-   exit 1
+# Prevent accidental removal of a previous case.
+if ( -e ${caseroot} ) then
+   echo "WARNING"
+   echo "WARNING : The CASE ${caseroot} exists. Stopping."
+   echo "WARNING : If you want to perform the experiment,"
+   echo "WARNING : you have to manually remove the CASEROOT, EXEDIR, RUNDIR"
+   echo "WARNING : or change the CASE name to something else."
+   exit
 endif
 
-echo "removing old files from ${caseroot}"
-echo "removing old files from ${exeroot}"
-echo "removing old files from ${rundir}"
 
-${REMOVE} ${caseroot}
-${REMOVE} ${exeroot}
-${REMOVE} ${rundir}
+echo " Starting create_newcase ..."
+
+
 ${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
                                          --mach ${machine} \
                                          --compset ${compset} \
