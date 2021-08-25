@@ -18,6 +18,17 @@
 
 source DART_params.csh
 
+# Prevent accidental removal of a previous case.
+if ( -e ${caseroot} ) then
+   echo "WARNING"
+   echo "WARNING : The CASE ${caseroot} already exists. Stopping."
+   echo "WARNING : If you want to perform the experiment,"
+   echo "WARNING : you have to manually remove the CASEROOT, EXEDIR, RUNDIR"
+   echo "WARNING : or change the CASE name to something else."
+   exit
+endif
+
+
 # ==============================================================================
 # job settings:
 #
@@ -57,19 +68,26 @@ setenv st_archive_time 06:00:00
 # ==============================================================================
 # Create the case - this creates the CASEROOT directory.
 #
-# Prevent accidental removal of a previous case.
-if ( -e ${caseroot} ) then
-   echo "WARNING"
-   echo "WARNING : The CASE ${caseroot} exists. Stopping."
-   echo "WARNING : If you want to perform the experiment,"
-   echo "WARNING : you have to manually remove the CASEROOT, EXEDIR, RUNDIR"
-   echo "WARNING : or change the CASE name to something else."
-   exit
+# FATAL idea to make caseroot the same dir as where this setup script is
+# since the build process removes all files in the caseroot dir before
+# populating it.  try to prevent shooting yourself in the foot.
+
+if ( ${caseroot} == `pwd` ) then
+   echo "ERROR: the setup script should not be located in the caseroot"
+   echo "directory, because all files in the caseroot dir will be removed"
+   echo "before creating the new case.  move the script to a safer place."
+   exit 1
 endif
 
+echo "removing old files from ${caseroot}"
+echo "removing old files from ${exeroot}"
+echo "removing old files from ${rundir}"
+
+${REMOVE} ${caseroot}
+${REMOVE} ${exeroot}
+${REMOVE} ${rundir}
 
 echo " Starting create_newcase ..."
-
 
 ${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
                                          --mach ${machine} \
@@ -313,10 +331,22 @@ while ( $inst <= $num_instances )
 #  echo "hist_dov2xy = .true.,.true."               >> ${fname}
 #  echo "hist_type1d_pertape = ' ',' '"             >> ${fname}
 
-   @ inst ++
+
+   # ===========================================================================
+   set fname = "user_nl_mosart_${inst_string}"
+   # ===========================================================================
+
+   # We are explicitly constructing the 'finidat_rtm' to match what is getting
+   # staged by the 'stage_cesm_files' script
+   # If this file is not available or you do not want stage this file set finidat_rtm = ' '.
+
+   echo "finidat_rtm = '"${refcase}.mosart_${inst_string}.r.${reftimestamp}.nc"'" >> ${fname}
+
+@ inst ++
 end
 
 ./preview_namelists || exit 6
+
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
@@ -325,7 +355,7 @@ end
 echo "staging restarts"
 
 set init_time = ${reftimestamp}
-
+  
 cat << EndOfText >! stage_cesm_files
 #!/bin/csh -f
 # This script can be used to help restart an experiment from any previous step.
@@ -454,8 +484,9 @@ else     # CONTINUE_RUN == FALSE
       if ( -e    ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc ) then
          ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
       else
-         echo "ERROR: ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc does not exist."
-         exit 8
+         echo "WARNING: ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc does not exist."
+         echo "       Check your 'reftimestamp' setting, or maybe your 'stagedir' or 'refcase' or ..."
+         echo "       If this is not a mistake, set finidat_rtm = ' ', within mosart namelist or input file"
       endif
       @ inst ++
    end

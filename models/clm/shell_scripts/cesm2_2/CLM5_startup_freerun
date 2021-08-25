@@ -23,6 +23,19 @@
 
 source DART_params.csh
 
+# Prevent accidental removal of a previous case.
+# If you want to replace the experiment, you have to manually
+# remove the directories. 
+
+if ( -e ${caseroot} ) then
+   echo "WARNING"
+   echo "WARNING : The CASE ${caseroot} already exists. Stopping."
+   echo "WARNING : If you want to perform the experiment,"
+   echo "WARNING : you have to manually remove the CASEROOT, EXEDIR, RUNDIR"
+   echo "WARNING : or change the CASE name to something else."
+   exit
+endif
+
 # ==============================================================================
 # job settings:
 #
@@ -61,15 +74,25 @@ setenv st_archive_time 06:00:00
 # ==============================================================================
 # Create the case - this creates the CASEROOT directory.
 #
-# Prevent accidental removal of a previous case.
-if ( -e ${caseroot} ) then
-   echo "WARNING"
-   echo "WARNING : The CASE ${caseroot} exists. Stopping."
-   echo "WARNING : If you want to perform the experiment,"
-   echo "WARNING : you have to manually remove the CASEROOT, EXEDIR, RUNDIR"
-   echo "WARNING : or change the CASE name to something else."
-   exit
+
+# FATAL idea to make caseroot the same dir as where this setup script is
+# since the build process removes all files in the caseroot dir before
+# populating it.  try to prevent shooting yourself in the foot.
+
+if ( ${caseroot} == `pwd` ) then
+   echo "ERROR: the setup script should not be located in the caseroot"
+   echo "directory, because all files in the caseroot dir will be removed"
+   echo "before creating the new case.  move the script to a safer place."
+   exit 1
 endif
+
+echo "removing old files from ${caseroot}"
+echo "removing old files from ${exeroot}"
+echo "removing old files from ${rundir}"
+
+${REMOVE} ${caseroot}
+${REMOVE} ${exeroot}
+${REMOVE} ${rundir}
 
 
 echo " Starting create_newcase ..."

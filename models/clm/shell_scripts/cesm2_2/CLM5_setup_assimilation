@@ -29,10 +29,11 @@ source DART_params.csh
 # remove the directories. 
 
 if ( -e ${caseroot} ) then
-   echo "WARNING : ${caseroot} exists."
+   echo "WARNING : ${caseroot} already exists."
    echo "EXISTING: ${caseroot}"
    echo "EXISTING: ${exeroot}"
    echo "EXISTING: ${rundir}"
+   echo "These directories need to be removed or the case must be renamed"
    echo "WARNING : Stopping."
    exit
 endif
@@ -365,6 +366,7 @@ while ( $inst <= $num_instances )
 
    # We are explicitly constructing the 'finidat_rtm' to match what is getting
    # staged by the 'stage_cesm_files' script.
+   # If this file is not available or you do not want stage this file set finidat_rtm = ' '.
 
    echo "finidat_rtm = '"${refcase}.mosart_${inst_string}.r.${reftimestamp}.nc"'" >> ${fname}
 
@@ -509,6 +511,10 @@ else     # CONTINUE_RUN == FALSE
 
       if (-e     ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc ) then
          ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
+      else
+        echo "WARNING: ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc does not exist."
+        echo "       Check your 'reftimestamp' setting, or maybe your 'stagedir' or 'refcase' or ..."
+        echo "       If this is not a mistake, set finidat_rtm = ' ', within mosart namelist or input file"
       endif
 
       @ inst ++
