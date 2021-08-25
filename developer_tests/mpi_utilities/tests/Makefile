@@ -116,7 +116,7 @@ ftest_nc: ftest_nc.f90
 
 # DART uses no C code, but if you want to test whether your system has 
 # working C interfaces for MPI or netCDF, you can use these programs.
-# define CC and MPICC below, if needed, to reference your own C compiler
+# define CC and MPICC at the top of this Makefile, if needed, to reference your own C compiler
 
 # simple c program without mpi or netcdf
 ctest: ctest.c
