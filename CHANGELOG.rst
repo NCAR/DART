@@ -22,6 +22,20 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 19 2021 :: WRF-Hydro diagnostics**
+
+- Improved DART diagnostic routines for WRF-Hydro
+
+**August 10 2021 :: Documentation and GitHub template update**
+
+- External forward operator documentation
+- Typo fixes for GitHub templates 
+
+**August 5 2021 :: bug fix for obs_seq_to_netcdf and grabbufr.x**
+
+- obs_seq_to_netcdf now works correctly with mulitple obs_seq per epoch.
+- grabbufr.x STAT function returns correctly for long filenames when using PGI
+
 **July 23 2021 :: bug fix for wrf non-initialized unique levels. Tag: v9.11.4**
 
 - The array uniquek is now initialized to an invalid level to prevent random
