@@ -155,7 +155,7 @@ run_c: ctest_mpi
 
 
 # ----------------------------------------------------------------------------
-## sanity: checks f90 and mpi interactively and batch mode
+## sanity: checks f90 and mpi interactively and in batch mode
 sanity:
 	make clean
 	make ftest_f90
