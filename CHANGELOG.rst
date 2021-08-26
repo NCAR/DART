@@ -22,16 +22,22 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**August 19 2021 :: WRF-Hydro diagnostics**
+**August 26 2021 :: NAG compiler fixes and updates to developer tests Tag: v9.11.8**
+
+- bug fix for fixsytem for the NAG compiler
+- new developer test for mpi one-sided communication
+- removed obsolete async 4 developer tests 
+
+**August 19 2021 :: WRF-Hydro diagnostics Tag: v9.11.7**
 
 - Improved DART diagnostic routines for WRF-Hydro
 
-**August 10 2021 :: Documentation and GitHub template update**
+**August 10 2021 :: Documentation and GitHub template update Tag: v9.11.6**
 
 - External forward operator documentation
 - Typo fixes for GitHub templates 
 
-**August 5 2021 :: bug fix for obs_seq_to_netcdf and grabbufr.x**
+**August 5 2021 :: bug fix for obs_seq_to_netcdf and grabbufr.x Tag: v9.11.5**
 
 - obs_seq_to_netcdf now works correctly with mulitple obs_seq per epoch.
 - grabbufr.x STAT function returns correctly for long filenames when using PGI
