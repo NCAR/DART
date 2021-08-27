@@ -25,27 +25,27 @@
 
 
 &filter_nml
-   perturb_from_single_instance = .TRUE.
+   perturb_from_single_instance = .FALSE.
    perturbation_amplitude       = 0.2
    async                    = 0
    adv_ens_command          = 'cannot_advance_clm'
-   ens_size                 = 3
+   ens_size                 = 5
    obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
    input_state_file_list    = 'restart_files.txt',
                               'history_files.txt',
                               'vector_files.txt' 
-   output_state_file_list   = 'restart_files_out.txt',
-                              'history_files_out.txt',
-                              'vector_files_out.txt'
+   output_state_file_list   = 'restart_files.txt',
+                              'history_files.txt',
+                              'vector_files.txt'
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
    first_obs_seconds        = -1
    last_obs_days            = -1
    last_obs_seconds         = -1
-   num_output_state_members = 3
-   num_output_obs_members   = 3
+   num_output_state_members = 5
+   num_output_obs_members   = 5
    output_interval          = 1
    num_groups               = 1
    compute_posterior        = .true.
@@ -60,12 +60,12 @@
    output_sd                = .true.
    write_all_stages_at_end  = .false.
 
-   inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_flavor                  = 5,                       0
+   inf_initial_from_restart    = .true.,                 .false.
+   inf_sd_initial_from_restart = .true.,                 .false.
    inf_deterministic           = .true.,                  .true.
    inf_initial                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
+   inf_lower_bound             = 0.0,                     1.0
    inf_upper_bound             = 20.0,                   20.0
    inf_damping                 = 0.9,                     0.9
    inf_sd_initial              = 0.6,                     0.6
@@ -93,6 +93,19 @@
    verbose                 = 99
    /
 
+&fill_inflation_restart_nml
+   write_prior_inf   = .true.
+   prior_inf_mean    = 1.00
+   prior_inf_sd      = 0.6
+
+   write_post_inf    = .true.
+   post_inf_mean     = 1.00
+   post_inf_sd       = 0.6
+
+   input_state_files = 'clm_restart.nc','clm_history.nc','clm_vector_history.nc'
+   single_file       = .false.
+   verbose           = .false.
+   /
 
 &smoother_nml
    num_lags              = 0
@@ -250,6 +263,7 @@
 #       float SMP(      time, levgrnd, column) ;
 #
 # The obs_seq.in has a 'BIOMASS' ob, which needs leafc,livestemc,deadstemc
+# 'MODIS_FPAR' observations require FSDSVDLN,FSDSVILN,PARVEGLN for the FO
 
 
 &location_nml

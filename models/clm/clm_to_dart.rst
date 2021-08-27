@@ -16,7 +16,10 @@ The *SNLSNO* variable is used to detemine which layers are unused. However, when
 is only a trace of snow, *SNLSNO* may indicate there are no snow layers in use and yet 
 still have some valid values in the snow layer closest to the ground. This situation 
 is confirmed by checking for non-zero values of snowcover fraction (*frac_sno*) as it 
-seems to be a conservative predictor of the presence of snow. 
+seems to be a conservative predictor of the presence of snow. Therefore, in general, 
+the indeterminate value for unused snow layer is preserved during the assimilation step,
+**unless there is a trace of snow** in which case it may be adjusted.
+ 
 See the `Discussion of Indeterminate Values`_ section for an example.
 
 Usage
@@ -25,7 +28,8 @@ Usage
 The issue arises because all CLM columns have a fixed number of snow layers but only
 some of the layers may actually contain snow. CLM internally tracks the number of
 active snow layers in the **SNLSNO** variable and the indeterminate values in the
-unused snow layers are of no consequence. The internal logic in DART requires these
+unused snow layers are of no consequence. To prevent these indeterminate values
+from being operated on by ``filter``, DART requires these
 indeterminate values to be replaced by the DART **MISSING_R8** code, which is done
 automatically if the variable has a *_FillValue*.
 
