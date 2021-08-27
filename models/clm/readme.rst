@@ -89,7 +89,7 @@ pertaining to SourceMods.
 CLM indeterminate values
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-CLM variables are encoded as rectangular arrays in the netCDF files. (Thankfully!)
+CLM variables are encoded as rectangular arrays in the netCDF files.
 However, this means that some variables have space for layers that are unused.
 Anything with snow layers, for example. CLM has the *SNLSNO* variable to indicate
 which snow layers are active. The *unused* layers may not have the *_FillValue*
@@ -124,8 +124,8 @@ more accurate and might have a discernable impact on the regression relationship
 The *model_interpolate* function in DART achieves efficiency by interpolating
 all the ensemble members at the same time. This gives rise to some challenging
 problems when interpolating values for variables with with changing numbers of active layers.
-Some ensemble members may only have 2 active snow layers, some may have 3 ...
-this is an untenable situation when asked for the snow temperature or water 
+For example, some ensemble members may only have 2 active snow layers, some may have 3.
+This is an untenable situation when asked for the snow temperature or water 
 content in layer 3, for example. Consequently - *model_interpolate* will fail
 and return an error code - the forward operator will fail - and the observation
 is rejected and the DART QC is marked as such. Be aware.
@@ -215,7 +215,7 @@ like a bad idea.
 
 Similar logic applies to the variables related to plant growth. If the LAI
 observations indicates there should be something growing and nothing has
-sprouted yet ... DART essentially gives up and moves on ... 
+sprouted yet, DART does nothing to the variables.
 
 
 Configuring an Experiment
@@ -714,12 +714,12 @@ Future plans:
    snow/leaves/etc. when the observation indicates otherwise.
 5. Right now, the soil moisture observation operator is used by the COSMOS code to 
    calculate the expected neutron intensity counts. This is the right idea, however, 
-   the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2 ... I have not 
+   the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2. I have not 
    checked to see if they are, in fact, identical. This brings up a bigger issue in 
    that the soil moisture observation operator would also be used to calculate whatever 
    a TDT probe or ??? would measure. What units are they in? Can one operator support both?
 6. One of the ``CESM_DART_config`` *stage* scripts should reset the inflation pointer 
-   files based on the restart date ... maybe.
+   files based on the restart date?
 
 
 
