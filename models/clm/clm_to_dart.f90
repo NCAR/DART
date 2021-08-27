@@ -152,10 +152,9 @@ VARIABLES : do ivar = 1,nvariables
             endif
 
             
-                ! The point of the whole exercise ... 
-                ! Preserve (apply FillValue, no assimilation update) to unused snow layers (has indeterminate values)
-                ! If surface snow layer (i=12) has trace snow, then *do not* preserve original value and
-                ! allow for assimilation/update of this value
+                ! Prevent unused snow layers from being updated by the assimilation.
+                ! Unused snow layers have indeterminate values. The indeterminate values are replaced with 
+                ! FillValue which prevents filter from updating the unused snow layers during the assimilation.
                 do i = 1, nlevsno - numsnowlevels  ! loop over unused layers
 
                     

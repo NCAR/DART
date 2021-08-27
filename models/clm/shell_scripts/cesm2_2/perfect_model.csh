@@ -42,7 +42,7 @@ setenv MPI_RUN_COMMAND "mpiexec_mpt -np $TOTALPES omplace -tm open64"
 cd ${RUNDIR}
 
 #=========================================================================
-# Block 1: Determine time of model state ... from file name
+# Block 1: Determine time of model state from file name
 # of the form "./${CASE}.clm2.r.2000-01-06-00000.nc"
 #
 # Piping stuff through 'bc' strips off any preceeding zeros.
@@ -62,7 +62,7 @@ echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_SECONDS (seconds
 echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_HOUR (hours)"
 
 #=========================================================================
-# Block 2: Get observation sequence file ... or die right away.
+# Block 2: Get observation sequence file or die right away.
 #=========================================================================
 
 # The observation file names have a time that matches the stopping time of CLM.
@@ -74,8 +74,8 @@ echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_HOUR (hours)"
 # not the same length. The observations _may_ come from different directories.
 #
 # The contents of the file must match the history file contents if one is using
-# the obs_def_tower_mod or could be the 'traditional' +/- 12Z ... or both.
-# Since the history file contains the previous days' history ... so must the obs file.
+# the obs_def_tower_mod or could be the 'traditional' +/- 12Z or both.
+# Since the history file contains the previous days' history so must the obs file.
 
 if ($STOP_N >= 24) then
    set OBSDIR = `printf %04d%02d    ${LND_YEAR} ${LND_MONTH}`

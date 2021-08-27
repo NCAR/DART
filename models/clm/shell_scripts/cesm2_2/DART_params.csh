@@ -177,7 +177,7 @@ setenv stop_option  nhours
 setenv stop_n       24
 setenv resubmit     0
 
-# clm_dtime     CLM dynamical timestep (in seconds) ... 1800 is the default
+# clm_dtime     CLM dynamical timestep (in seconds). 1800 is the default
 # h1nsteps      is the number of time steps to put in a single CLM .h1. file
 #               DART needs to know this and the only time it is known is during
 #               this configuration step. Changing the value later has no effect.

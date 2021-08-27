@@ -5,7 +5,7 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
 # This file is just to see if CESM can be bullt on whatever architecture.
-# Single instance ... nothing fancy ... no DART ... just something simple.
+# Single instance, no DART.
 # You are expected to read this and understand it before executing it.
 
 # You will have to modify this to point to your CESM repository

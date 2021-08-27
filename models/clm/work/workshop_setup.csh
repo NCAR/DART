@@ -11,7 +11,7 @@
 # The CLM files and obs_seq.in are part of the test tarfile.
 # models/run_tests.csh replaces the input.nml with input.nml.testing
 #
-# TODO ... inherit the MPI command from run_tests.csh
+# TODO  inherit the MPI command from run_tests.csh
 #----------------------------------------------------------------------
 
 set MODEL = "CLM"
