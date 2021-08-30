@@ -97,7 +97,26 @@ fields and does a generic computation.
 
 
 Possible Future Enhancements
-----------------------------
+============================
+
+Units
+-----
+
+Expected values returned from the forward operator code must use
+the same units as the observation in the observation sequence file.
+
+Recent updates to DART include being able to define the units
+used by observation types.  Upcoming changes are expected to
+allow fields in the state vector to define their units.
+
+The observation file creation must ensure the observation values
+are in the correct units, and forward operator code may be able
+to query the state vector fields to ensure they are using the
+expected units.  Contact the DART team at dart@ucar.edu for
+more details on this feature.
+
+Multiple Values from a Single Call
+----------------------------------
 
 There are some cases where an extensive computation is required to
 return the expected value, and/or multiple values are returned from
@@ -199,7 +218,7 @@ Each of the first N tasks computes the expected value for all observations for
 that single ensemble member.  Tasks N+1 and higher are idle during this part of
 the execution.
 
-In distribute mode each task computes the expected values for
+In distributed mode each task computes the expected values for
 a subset of the observations.  The observations are equally distributed round-robin.
 For O observations and T tasks each task gets O/T obs.  MPI one-sided communication
 is used to retrieve needed state values from other tasks.
