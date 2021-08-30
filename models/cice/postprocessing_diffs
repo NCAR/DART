@@ -1,0 +1,472 @@
+61c61
+< real(r8), allocatable :: vice_original(:,:)
+---
+> !real(r8), allocatable :: vice_original(:,:)
+70c70
+< real(r8), allocatable :: vice_pre(:,:)
+---
+> !real(r8), allocatable :: vice_pre(:,:)
+97c97
+< real(r8), allocatable :: vice(:,:)
+---
+> !real(r8), allocatable :: vice(:,:)
+104,108c104,106
+< !real(r8), allocatable :: aice_temp(:,:)
+< real(r8), allocatable :: vice_temp(:,:)
+< !real(r8), allocatable :: vsno_temp(:,:)
+< !real(r8), allocatable :: increment_aice(:,:)
+< real(r8), allocatable :: increment_vice(:,:)
+---
+> real(r8), allocatable :: aice_temp(:,:)
+> real(r8), allocatable :: increment_aice(:,:)
+> !real(r8), allocatable :: increment_vice(:,:)
+111,112c109,110
+< !real(r8), allocatable :: tendency_aice(:,:)
+< real(r8), allocatable :: tendency_vice(:,:)
+---
+> real(r8), allocatable :: tendency_aice(:,:)
+> !real(r8), allocatable :: tendency_vice(:,:)
+114,115c112,113
+< !real(r8), allocatable :: tendency_aicen(:,:,:)
+< real(r8), allocatable :: tendency_vicen(:,:,:)
+---
+> real(r8), allocatable :: tendency_aicen(:,:,:)
+> !real(r8), allocatable :: tendency_vicen(:,:,:)
+118c116
+< real(r8) :: R, weight_vicen     !, weight_aicen, weight_vsnon
+---
+> real(r8) :: R, weight_aicen     !, weight_vicen, weight_vsnon
+217,219c215,217
+< Nx   = size(vicen,1)
+< Ny   = size(vicen,2)
+< Ncat = size(vicen,3)
+---
+> Nx   = size(aicen,1)
+> Ny   = size(aicen,2)
+> Ncat = size(aicen,3)
+221,222c219,220
+< allocate(vice(Nx,Ny))
+< allocate(vice_temp(Nx,Ny))
+---
+> allocate(aice(Nx,Ny))
+> allocate(aice_temp(Nx,Ny))
+230,231c228
+<       allocate(vice_original(Nx,Ny))
+<       vice_original    = vicen_original(:,:,1)
+---
+>       allocate(aice_original(Nx,Ny))
+233c230
+<         vice_original  = vice_original + vicen_original(:,:,n)
+---
+>         aice_original  = aice_original + aicen_original(:,:,n)
+257,258c254,255
+<       !allocate (tendency_aicen(Nx,Ny,Ncat))
+<       allocate (tendency_vicen(Nx,Ny,Ncat))
+---
+>       allocate (tendency_aicen(Nx,Ny,Ncat))
+>       !allocate (tendency_vicen(Nx,Ny,Ncat))
+261,262c258,259
+<       !allocate (tendency_aice(Nx,Ny))
+<       allocate (tendency_vice(Nx,Ny))
+---
+>       allocate (tendency_aice(Nx,Ny))
+>       !allocate (tendency_vice(Nx,Ny))
+265,268c262,264
+<       !allocate (aice(Nx,Ny))
+<       !allocate (aice_original(Nx,Ny))
+<       !allocate (aice_pre(Nx,Ny))
+<       !allocate (increment_aice(Nx,Ny))
+---
+>       allocate (aice_original(Nx,Ny))
+>       allocate (aice_pre(Nx,Ny))
+>       allocate (increment_aice(Nx,Ny))
+271,273c267,269
+<       allocate (vice_original(Nx,Ny))
+<       allocate (vice_pre(Nx,Ny))
+<       allocate (increment_vice(Nx,Ny))
+---
+>       !allocate (vice_original(Nx,Ny))
+>       !allocate (vice_pre(Nx,Ny))
+>       !allocate (increment_vice(Nx,Ny))
+295a292,296
+>       !calculate the weights
+>       aice            = aicen(:,:,1)
+>       aice_original   = aicen_original(:,:,1)
+>       aice_pre        = aicen_pre(:,:,1)
+>    
+298,299c299,300
+<       !hence aicen and vsnon are calculated based on their relationship
+<       !with vicen
+---
+>       !hence vicen and vsnon are calculated based on their relationship
+>       !with aicen
+301,309c302,304
+< 
+<       !calculate the weights
+<       !aice            = aicen(:,:,1)
+<       !aice_original   = aicen_original(:,:,1)
+<       !aice_pre        = aicen_pre(:,:,1)
+< 
+<       vice            = vicen(:,:,1)
+<       vice_original   = vicen_original(:,:,1)
+<       vice_pre        = vicen_pre(:,:,1)
+---
+>       !vice            = vicen(:,:,1)
+>       !vice_original   = vicen_original(:,:,1)
+>       !vice_pre        = vicen_pre(:,:,1)
+316,318c311,313
+<          !aice         = aice          + aicen(:,:,n)
+<          !aice_original= aice_original + aicen_original(:,:,n)
+<          !aice_pre     = aice_pre      + aicen_pre(:,:,n)
+---
+>          aice         = aice          + aicen(:,:,n)
+>          aice_original= aice_original + aicen_original(:,:,n)
+>          aice_pre     = aice_pre      + aicen_pre(:,:,n)
+320,322c315,317
+<          vice         = vice          + vicen(:,:,n)
+<          vice_original= vice_original + vicen_original(:,:,n)
+<          vice_pre     = vice_pre      + vicen_pre(:,:,n)
+---
+>          !vice         = vice          + vicen(:,:,n)
+>          !vice_original= vice_original + vicen_original(:,:,n)
+>          !vice_pre     = vice_pre      + vicen_pre(:,:,n)
+329,330c324,325
+<       !increment_aice   = aice - aice_original
+<       increment_vice   = vice - vice_original
+---
+>       increment_aice   = aice - aice_original
+>       !increment_vice   = vice - vice_original
+333,334c328,329
+<       !tendency_aice    = aice_original - aice_pre
+<       tendency_vice    = vice_original - vice_pre
+---
+>       tendency_aice    = aice_original - aice_pre
+>       !tendency_vice    = vice_original - vice_pre
+337,338c332,333
+<       !tendency_aicen   = aicen_original - aicen_pre
+<       tendency_vicen   = vicen_original - vicen_pre
+---
+>       tendency_aicen   = aicen_original - aicen_pre
+>       !tendency_vicen   = vicen_original - vicen_pre
+345c340
+<                ! if (abs(increment_aice(i,j))>0._r8) then
+---
+>                 if (abs(increment_aice(i,j))>0._r8) then
+347c342
+<                !    R = abs(tendency_aice(i,j)/increment_aice(i,j))
+---
+>                    R = abs(tendency_aice(i,j)/increment_aice(i,j))
+349c344
+<                !    if (R > 0.5_r8) then
+---
+>                    if (R > 0.5_r8) then
+351,353c346,348
+<                !        weight_aicen = tendency_aicen(i,j,n)/tendency_aice(i,j)
+<                !        aicen(i,j,n) = increment_aice(i,j)*weight_aicen + &
+<                !                   aicen_original(i,j,n)    
+---
+>                        weight_aicen = tendency_aicen(i,j,n)/tendency_aice(i,j)
+>                        aicen(i,j,n) = increment_aice(i,j)*weight_aicen + &
+>                                   aicen_original(i,j,n)    
+355c350
+<                !     else if (aice_original(i,j)>0.0_r8) then
+---
+>                     else if (aice_original(i,j)>0.0_r8) then
+357,359c352,354
+<                !        weight_aicen = aicen_original(i,j,n)/aice_original(i,j)
+<                !        aicen(i,j,n) = increment_aice(i,j)*weight_aicen + &
+<                !                   aicen_original(i,j,n)
+---
+>                        weight_aicen = aicen_original(i,j,n)/aice_original(i,j)
+>                        aicen(i,j,n) = increment_aice(i,j)*weight_aicen + &
+>                                   aicen_original(i,j,n)
+361c356
+<                !     endif
+---
+>                     endif
+363c358
+<                ! endif
+---
+>                 endif
+365c360
+<                if (abs(increment_vice(i,j))>0._r8) then
+---
+>               !  if (abs(increment_vice(i,j))>0._r8) then
+367c362
+<                   R = abs(tendency_vice(i,j)/increment_vice(i,j))
+---
+>               !     R = abs(tendency_vice(i,j)/increment_vice(i,j))
+369c364
+<                   if (R > 0.5_r8) then
+---
+>               !     if (R > 0.5_r8) then
+371,373c366,368
+<                       weight_vicen = tendency_vicen(i,j,n)/tendency_vice(i,j)
+<                       vicen(i,j,n) = increment_vice(i,j)*weight_vicen + &
+<                                  vicen_original(i,j,n)
+---
+>               !         weight_vicen = tendency_vicen(i,j,n)/tendency_vice(i,j)
+>               !         vicen(i,j,n) = increment_vice(i,j)*weight_vicen + &
+>               !                    vicen_original(i,j,n)
+375c370
+<                  else if (vice_original(i,j)>0.001_r8) then
+---
+>               !    else if (vice_original(i,j)>0.001_r8) then
+377,379c372,374
+<                       weight_vicen = vicen_original(i,j,n)/vice_original(i,j)
+<                       vicen(i,j,n) = increment_vice(i,j)*weight_vicen + &
+<                                  vicen_original(i,j,n)
+---
+>               !         weight_vicen = vicen_original(i,j,n)/vice_original(i,j)
+>               !         vicen(i,j,n) = increment_vice(i,j)*weight_vicen + &
+>               !                    vicen_original(i,j,n)
+381c376
+<                   end if
+---
+>               !     endif
+383c378
+<                end if
+---
+>               !  endif
+385c380
+<                ! if (abs(increment_vsno(i,j))>0._r8) then
+---
+>               ! if (abs(increment_vsno(i,j))>0._r8) then
+387c382
+<                !     R = abs(tendency_vsno(i,j)/increment_vsno(i,j))
+---
+>               !     R = abs(tendency_vsno(i,j)/increment_vsno(i,j))
+389c384
+<                !     if (R > 0.5_r8) then
+---
+>               !     if (R > 0.5_r8) then
+391,393c386,388
+<                !         weight_vsnon = tendency_vsnon(i,j,n)/tendency_vsno(i,j)
+<                !         vsnon(i,j,n) = increment_vsno(i,j)*weight_vsnon + &
+<                !                    vsnon_original(i,j,n)
+---
+>               !         weight_vsnon = tendency_vsnon(i,j,n)/tendency_vsno(i,j)
+>               !         vsnon(i,j,n) = increment_vsno(i,j)*weight_vsnon + &
+>               !                    vsnon_original(i,j,n)
+395c390
+<                !     else if (vsno_original(i,j)>0.0_r8) then
+---
+>               !     else if (vsno_original(i,j)>0.0_r8) then
+397,399c392,394
+<                !         weight_vsnon = vsnon_original(i,j,n)/vsno_original(i,j)
+<                !         vsnon(i,j,n) = increment_vsno(i,j)*weight_vsnon + &
+<                !                    vsnon_original(i,j,n)
+---
+>               !         weight_vsnon = vsnon_original(i,j,n)/vsno_original(i,j)
+>               !         vsnon(i,j,n) = increment_vsno(i,j)*weight_vsnon + &
+>               !                    vsnon_original(i,j,n)
+401c396
+<                !     end if
+---
+>               !     endif
+403c398
+<                !  end if
+---
+>               !  endif
+430,431c425,426
+<       !allocate (aice_original(Nx,Ny))
+<       !allocate (increment_aice(Nx,Ny))
+---
+>       allocate (aice_original(Nx,Ny))
+>       allocate (increment_aice(Nx,Ny))
+434,435c429,430
+<       allocate (vice_original(Nx,Ny))
+<       allocate (increment_vice(Nx,Ny))
+---
+>     !  allocate (vice_original(Nx,Ny))
+>     !  allocate (increment_vice(Nx,Ny))
+441,442c436,437
+<       !aice          = aicen(:,:,1)
+<       !aice_original = aicen_original(:,:,1)
+---
+>       aice          = aicen(:,:,1)
+>       aice_original = aicen_original(:,:,1)
+444,445c439,440
+<       vice          = vicen(:,:,1)
+<       vice_original = vicen_original(:,:,1)
+---
+>     !  vice          = vicen(:,:,1)
+>     !  vice_original = vicen_original(:,:,1)
+451,452c446,447
+<      !   aice           = aice          + aicen(:,:,n)
+<      !   aice_original  = aice_original + aicen_original(:,:,n)    
+---
+>         aice           = aice          + aicen(:,:,n)
+>         aice_original  = aice_original + aicen_original(:,:,n)    
+454,455c449,450
+<         vice           = vice          + vicen(:,:,n)
+<         vice_original  = vice_original + vicen_original(:,:,n)
+---
+>      !   vice           = vice          + vicen(:,:,n)
+>      !   vice_original  = vice_original + vicen_original(:,:,n)
+461,462c456,457
+<       !increment_aice   = aice - aice_original
+<       increment_vice   = vice - vice_original
+---
+>       increment_aice   = aice - aice_original
+>       !increment_vice   = vice - vice_original
+469,478c464,473
+<             ! if ( aice_original(i,j)>0 ) then 
+<             !    weight_aicen         = aicen_original(i,j,n)/aice_original(i,j)
+<             !    aicen(i,j,n)         = increment_aice(i,j)*weight_aicen + &
+<             !                           aicen_original(i,j,n)
+<             ! end if
+<             if ( vice_original(i,j)>0 ) then
+<                weight_vicen         = vicen_original(i,j,n)/vice_original(i,j)
+<                vicen(i,j,n)         = increment_vice(i,j)*weight_vicen + &
+<                                       vicen_original(i,j,n)
+<             end if
+---
+>              if ( aice_original(i,j)>0 ) then 
+>                 weight_aicen         = aicen_original(i,j,n)/aice_original(i,j)
+>                 aicen(i,j,n)         = increment_aice(i,j)*weight_aicen + &
+>                                        aicen_original(i,j,n)
+>              end if
+>        !      if ( vice_original(i,j)>0 ) then
+>        !         weight_vicen         = vicen_original(i,j,n)/vice_original(i,j)
+>        !         vicen(i,j,n)         = increment_vice(i,j)*weight_vicen + &
+>        !                                vicen_original(i,j,n)
+>        !      end if
+530,531c525,526
+<      ! calculate vice, which might be negative at this point
+<      vice = vicen(:,:,1)
+---
+>      ! calculate aice, which might be negative or >1 at this point
+>      aice = aicen(:,:,1)
+533,534c528,529
+<        vice = vice+vicen(:,:,n)
+<      end do
+---
+>        aice = aice+aicen(:,:,n)
+>      enddo
+537c532
+<      vicen   = max(0.0_r8,vicen)
+---
+>      aicen   = max(0.0_r8,aicen)
+540c535
+<      vice_temp = vicen(:,:,1)
+---
+>      aice_temp = aicen(:,:,1)
+542,543c537,538
+<         vice_temp = vice_temp + vicen(:,:,n)
+<      end do
+---
+>         aice_temp = aice_temp + aicen(:,:,n)
+>      enddo
+545c540
+<      ! if vice <0, then set every category to 0
+---
+>      ! if aice <0, then set every category to 0
+548,552c543,547
+<            if (vice(i,j)<0._r8) then
+<               vicen(i,j,:) = 0._r8
+<            end if
+<         end do
+<      end do
+---
+>            if (aice(i,j)<0._r8) then
+>               aicen(i,j,:) = 0._r8
+>            endif
+>         enddo
+>      enddo
+569,574c564,569
+<              if (vice_temp(i,j) > 0._r8 .and. vice(i,j)>0._r8) then
+<                 vicen(i,j,n) = vicen(i,j,n) - (vice_temp(i,j)-vice(i,j))*vicen(i,j,n)/vice_temp(i,j)
+<              end if  
+<           end do
+<        end do
+<      end do
+---
+>              if (aice_temp(i,j) > 0._r8 .and. aice(i,j)>0._r8) then
+>                 aicen(i,j,n) = aicen(i,j,n) - (aice_temp(i,j)-aice(i,j))*aicen(i,j,n)/aice_temp(i,j)
+>              endif  
+>           enddo
+>        enddo
+>      enddo
+582,589c577,584
+<      !do j = 1, Ny
+<      !  do i = 1, Nx
+<      !     if (aice(i,j) > 1.0_r8) then
+<      !        squeeze        = 1.0_r8 / aice(i,j)
+<      !        aicen(i,j,:)   = aicen(i,j,:)*squeeze
+<      !     endif
+<      !  enddo
+<      !enddo
+---
+>       do j = 1, Ny
+>         do i = 1, Nx
+>            if (aice(i,j) > 1.0_r8) then
+>               squeeze        = 1.0_r8 / aice(i,j)
+>               aicen(i,j,:)   = aicen(i,j,:)*squeeze
+>            endif
+>         enddo
+>      enddo
+592c587
+<      where(vicen_original==0) vicen_original = -999
+---
+>      where(aicen_original==0) aicen_original = -999
+605,606c600,601
+<      where(vicen_original==-999) vicen_original=0.0_r8
+<          aicen  = vicen/hicen_original
+---
+>      where(aicen_original==-999) aicen_original=0.0_r8
+>          vicen  = aicen*hicen_original
+609,626d603
+< 
+<          aice = aicen(:,:,1)
+<          do n = 2, Ncat  
+<             aice = aice+aicen(:,:,n)
+<          end do
+< 
+<          ! squeeze aicen, which might be >1 at this point 
+<          if (aice(i,j) > 1.0_r8) then
+<             squeeze        = 1.0_r8 / aice(i,j)
+<             aicen(i,j,:)   = aicen(i,j,:)*squeeze
+<          end if
+<   
+<          ! ensure volume follows physical constraints of aice <= 1 
+<          vicen = aicen * hicen_original
+<   
+<          ! calculate snow volume
+<          vsnon = aicen * hsnon_original
+< 
+639c616
+<      end do
+---
+>      enddo
+641c618
+<      do n = 1, Ncat
+---
+>     do n = 1, Ncat
+671c648
+<                end if
+---
+>                endif
+673c650
+<               if (vicen(i,j,n)>0._r8 .and. vicen_original(i,j,n)==0._r8) then
+---
+>                if (aicen(i,j,n)>0._r8 .and. aicen_original(i,j,n)==0._r8) then
+682c659
+<                  aicen(i,j,n) =  vicen(i,j,n) / hcat_midpoint(n)
+---
+>                  vicen(i,j,n) =  aicen(i,j,n) * hcat_midpoint(n)
+707,710c684,688
+<               end if
+<            end do
+<         end do
+<       end do
+---
+>               endif
+>               
+>             enddo
+>         enddo
+>      enddo
+912c890
+< deallocate( aicen_original, hin_max, hcat_midpoint)
+---
+> deallocate(aicen_original, hin_max, hcat_midpoint)
