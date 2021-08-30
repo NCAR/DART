@@ -465,7 +465,6 @@ References
    assimilation_code/programs/advance_time/advance_time
    assimilation_code/programs/model_mod_check/model_mod_check
    assimilation_code/programs/closest_member_tool/closest_member_tool
-   assimilation_code/programs/restart_file_tool/restart_file_tool
    assimilation_code/programs/filter/filter
    assimilation_code/programs/obs_keep_a_few/obs_keep_a_few
    assimilation_code/programs/create_obs_sequence/create_obs_sequence
