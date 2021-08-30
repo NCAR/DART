@@ -22,6 +22,22 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 30 2021 :: Repository clean-up and DART registration form. Tag: v9.11.9**
+
+*removed obsolete code:*
+
+- cam-old
+- restart_file_tool
+- html boilerplate from pre-readthedocs documentation
+- null versions of clamp_mod and vert_convert_mod
+- io test harnesses
+- jekyll website
+
+*removed experimental code:*
+
+- pnetcdf (for restart files)
+- filter.separate_seq (split obs_seq across cores)
+
 **August 26 2021 :: NAG compiler fixes and updates to developer tests Tag: v9.11.8**
 
 - bug fix for fixsytem for the NAG compiler
