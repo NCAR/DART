@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # start this script like:
 #   bsub < runme   (for lsf)
 #   qsub runme     (for pbs)
@@ -56,7 +54,3 @@ endif
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

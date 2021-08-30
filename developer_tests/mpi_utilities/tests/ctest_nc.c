@@ -2,8 +2,6 @@
  * DART software - Copyright UCAR. This open source software is provided
  * by UCAR, "as is", without charge, subject to all terms of use at
  * http://www.image.ucar.edu/DAReS/DART/DART_download
- *
- * DART $Id$
  */
 
 /* A simple netCDF "c" program to test that the netCDF c interfaces work.   */
@@ -17,7 +15,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <strings.h>
+#include <string.h>
 
 void netcdf_error_exit(int istat);
 
@@ -51,14 +49,14 @@ int main(int argc, char **argv)
    printf("successfully opened '%s'\n", filename);
 
 /*---------------------------------------------------------------------------*/
-/* Define dimension(s) */
+/* Define dimension(s)                                                       */
 /*---------------------------------------------------------------------------*/
 
    istat = nc_def_dim(ncfileid, "test1", test1_length, &test1dimid);
    if (istat != NC_NOERR) netcdf_error_exit(istat);
 
 /*---------------------------------------------------------------------------*/
-/* Write global attributes  */
+/* Write global attributes                                                   */
 /*---------------------------------------------------------------------------*/
 
    istat = nc_put_att_text(ncfileid, NC_GLOBAL, "title", 
@@ -66,7 +64,7 @@ int main(int argc, char **argv)
    if (istat != NC_NOERR) netcdf_error_exit(istat);
 
 /*---------------------------------------------------------------------------*/
-/* Create variables and attributes. */
+/* Create variables and attributes.                                          */
 /*---------------------------------------------------------------------------*/
 
    istat = nc_def_var(ncfileid, "data", NC_INT, 1, &test1dimid, &dataid);
@@ -77,21 +75,20 @@ int main(int argc, char **argv)
    if (istat != NC_NOERR) netcdf_error_exit(istat);
 
 /*---------------------------------------------------------------------------*/
-/* Leave define mode so we can fill */
+/* Leave define mode so we can fill                                          */
 /*---------------------------------------------------------------------------*/
    istat = nc_enddef(ncfileid);
    if (istat != NC_NOERR) netcdf_error_exit(istat);
 
 /*---------------------------------------------------------------------------*/
-/* Fill the coordinate variables. */
-/* The time variable is filled as time progresses. */
+/* Fill the coordinate variables.                                            */
 /*---------------------------------------------------------------------------*/
 
    istat = nc_put_var_int(ncfileid, dataid, idata);
    if (istat != NC_NOERR) netcdf_error_exit(istat);
 
 /*---------------------------------------------------------------------------*/
-/* Close */
+/* Close                                                                     */
 /*---------------------------------------------------------------------------*/
 
    istat = nc_close(ncfileid);
@@ -115,8 +112,3 @@ void netcdf_error_exit(int istat)
    exit(-1);
 }
 
-/* <next few lines under version control, do not edit>
- * $URL$
- * $Revision$
- * $Date$
- */
