@@ -207,8 +207,10 @@ call get_3d_variable(ncid, 'qsno001', qsno001, dart_to_cice_input_file)
 call get_3d_variable(ncid, 'qsno002', qsno002, dart_to_cice_input_file)
 call get_3d_variable(ncid, 'qsno003', qsno003, dart_to_cice_input_file)
 
-! get the parameter variables in the restart
-call get_2d_variable(ncid, r_snw_name, r_snw, dart_to_cice_input_file)
+if (r_snw_name /= 'none') then
+   ! get the parameter variables in the restart
+   call get_2d_variable(ncid, r_snw_name, r_snw, dart_to_cice_input_file)
+endif
 
 Nx   = size(aicen,1)
 Ny   = size(aicen,2)
@@ -514,9 +516,11 @@ END SELECT
      aicen   = min(1.0_r8,aicen)    ! concentrations must not exceed 1 
      Tsfcn   = min(Tsmelt,Tsfcn)    ! ice/sno surface must not exceed melting
 
-     ! post-process the parameters
-     r_snw   = min(rsnw_max,r_snw)
-     r_snw   = max(rsnw_min,r_snw)
+     if (r_snw_name /= 'none') then
+       ! post-process the parameters
+       r_snw   = min(rsnw_max,r_snw)
+       r_snw   = max(rsnw_min,r_snw)
+     endif
 
      ! calculate aice, which might be negative or >1 at this point
      aice = aicen(:,:,1)
@@ -871,13 +875,15 @@ END SELECT
    call nc_check(io, 'dart_to_cice', &
                  'put_var '//trim(varname)//' '//trim(dart_to_cice_input_file))
 
-   varname=r_snw_name
-   io = nf90_inq_varid(ncid, trim(varname), VarID)
-   call nc_check(io, 'dart_to_cice', &
-                 'inq_varid '//trim(varname)//' '//trim(dart_to_cice_input_file))
-   io = nf90_put_var(ncid, VarID, r_snw)
-   call nc_check(io, 'dart_to_cice', &
-                 'put_var '//trim(varname)//' '//trim(dart_to_cice_input_file))
+   if (r_snw_name /= 'none') then
+     varname=r_snw_name
+     io = nf90_inq_varid(ncid, trim(varname), VarID)
+     call nc_check(io, 'dart_to_cice', &
+                   'inq_varid '//trim(varname)//' '//trim(dart_to_cice_input_file))
+     io = nf90_put_var(ncid, VarID, r_snw)
+     call nc_check(io, 'dart_to_cice', &
+                   'put_var '//trim(varname)//' '//trim(dart_to_cice_input_file))
+   endif
 
 call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(dart_to_cice_input_file))
 
@@ -886,7 +892,9 @@ deallocate( aicen, vicen, vsnon, Tsfcn, aice )
 deallocate( sice001, sice002, sice003, sice004, sice005, sice006, sice007, sice008 )
 deallocate( qice001, qice002, qice003, qice004, qice005, qice006, qice007, qice008 )
 deallocate( qsno001, qsno002, qsno003 )
-deallocate(r_snw)
+if (r_snw_name /= 'none') then
+  deallocate(r_snw)
+endif
 
 call finalize_utilities('dart_to_cice')
 
