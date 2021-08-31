@@ -1,15 +1,91 @@
-<!doctype html><html lang=en-us><head><meta charset=utf-8><title>Model for Prediction across Scales</title><meta name=viewport content="width=device-width,initial-scale=1"><meta name=author content="DAReS"><meta name=generator content="Hugo 0.82.0"><link rel=stylesheet href=https://dart.ucar.edu/css/bootstrap.min.css><link rel=stylesheet href=https://dart.ucar.edu/font-awesome/css/font-awesome.min.css><link rel=stylesheet href=https://dart.ucar.edu/icomoon/style.css><link href=https://dart.ucar.edu/scss/style.min.css rel=stylesheet><link rel="shortcut icon" href=https://dart.ucar.edu/images/favicon.png type=image/x-icon><link rel=icon href=https://dart.ucar.edu/images/favicon.ico type=image/x-icon></head><body><nav class="navbar navbar-expand-lg site-navigation"><div class=container><a class=navbar-brand href=https://ncar.ucar.edu/who-we-are/funding><img src=https://dart.ucar.edu/images/NSF_4-Color_bitmap_Logo.png alt=logo></a>
-<a class=navbar-second-brand href=/><img src=https://dart.ucar.edu/images/ncar-dart-logo-navy.svg alt=logo></a>
+<!doctype html><html lang=en-us><head>
+<meta charset=utf-8>
+<title>Model for Prediction across Scales</title>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<meta name=author content="DAReS">
+<meta name=generator content="Hugo 0.87.0">
+<link rel=stylesheet href=https://dart.ucar.edu/css/bootstrap.min.css>
+<link rel=stylesheet href=https://dart.ucar.edu/font-awesome/css/font-awesome.min.css>
+<link rel=stylesheet href=https://dart.ucar.edu/icomoon/style.css>
+<link href=https://dart.ucar.edu/scss/style.min.css rel=stylesheet>
+<link rel="shortcut icon" href=https://dart.ucar.edu/images/favicon.png type=image/x-icon>
+<link rel=icon href=https://dart.ucar.edu/images/favicon.ico type=image/x-icon>
+</head>
+<body><nav class="navbar navbar-expand-lg site-navigation">
+<div class=container>
+<a class=navbar-brand href=https://ncar.ucar.edu/who-we-are/funding>
+<img src=https://dart.ucar.edu/images/NSF_4-Color_bitmap_Logo.png alt=logo>
+</a>
+<a class=navbar-second-brand href=/>
+<img src=https://dart.ucar.edu/images/ncar-dart-logo-navy.svg alt=logo>
+</a>
 <button class="navbar-toggler collapsed" type=button data-toggle=collapse data-target=#sitenavbar aria-label=menu>
-<span class=icon-bar></span><span class=icon-bar></span><span class=icon-bar></span></button><div class="collapse navbar-collapse" id=sitenavbar><ul class="navbar-nav ml-auto main-nav"><li class=nav-item><a class=nav-link a href=https://dart.ucar.edu/about>About</a></li><li class=nav-item><div class=dropdown-container><a href=# class="dropdown-toggle nav-link" data-toggle=dropdown role=button aria-haspopup=true aria-expanded=false>Research<span class=caret></span></a><ul class=dropdown-menu><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/research>Featured Projects</a></li><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/publications>Publications</a></li><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/presentations>Presentations</a></li></ul></div></li><li class=nav-item><a class=nav-link a href=https://docs.dart.ucar.edu/>Documentation</a></li><li class=nav-item><a class=nav-link a href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li class=nav-item><a class="nav-link btn btn-sm btn-primary btn-sm-rounded" href=https://dart.ucar.edu/software><span class=btn-area><span data-text="Get DART">Get DART</span></span></a></li></ul></div></div></nav><main><section class=site-project-single-section><div class=container><div class=row><div class="col-lg-12 mx-auto"><div class=site-project-single><h1>Model for Prediction across Scales</h1></div></div></div><div class=row><div class="col-lg-8 mx-auto"><p>Data assimilation for MPAS is available as an ensemble Kalman filter (EnKF)
-implemented through <a href=http://dart.ucar.edu>Data Assimilation Research Testbed</a></p><p>This work is done in a collaborative effort between the
+<span class=icon-bar></span>
+<span class=icon-bar></span>
+<span class=icon-bar></span>
+</button>
+<div class="collapse navbar-collapse" id=sitenavbar>
+<ul class="navbar-nav ml-auto main-nav">
+<li class=nav-item>
+<a class=nav-link a href=https://dart.ucar.edu/about>About</a>
+</li>
+<li class=nav-item>
+<div class=dropdown-container>
+<a href=# class="dropdown-toggle nav-link" data-toggle=dropdown role=button aria-haspopup=true aria-expanded=false>Research<span class=caret></span></a>
+<ul class=dropdown-menu>
+<li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/research>Featured Projects</a></li>
+<li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/publications>Publications</a></li>
+<li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/presentations>Presentations</a></li>
+</ul>
+</div>
+</li>
+<li class=nav-item>
+<a class=nav-link a href=https://docs.dart.ucar.edu/>Documentation</a>
+</li>
+<li class=nav-item>
+<a class=nav-link a href=https://dart.ucar.edu/tutorials>Tutorials</a>
+</li>
+<li class=nav-item>
+<a class="nav-link btn btn-sm btn-primary btn-sm-rounded" href=https://dart.ucar.edu/software>
+<span class=btn-area>
+<span data-text="Get DART">
+Get DART
+</span>
+</span>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</nav>
+<main>
+<section class=site-project-single-section>
+<div class=container>
+<div class=row>
+<div class="col-lg-12 mx-auto">
+<div class=site-project-single>
+<h1>
+Model for Prediction across Scales
+</h1>
+</div>
+</div>
+</div>
+<div class=row>
+<div class="col-lg-8 mx-auto">
+<p>Data assimilation for MPAS is available as an ensemble Kalman filter (EnKF)
+implemented through <a href=http://dart.ucar.edu>Data Assimilation Research Testbed</a></p>
+<p>This work is done in a collaborative effort between the
 <a href=http://www.mmm.ucar.edu>Mesoscale and Microscale Meteorology (MMM)</a>
 Division and the DART development team. DART support for both MPAS-Atmosphere
-and MPAS-Ocean are available as part of the standard DART package.</p><p>In collaboration with NOAA&rsquo;s <a href=http://www.esrl.noaa.gov>Earth System Research Laboratory</a>
+and MPAS-Ocean are available as part of the standard DART package.</p>
+<p>In collaboration with NOAA&rsquo;s <a href=http://www.esrl.noaa.gov>Earth System Research Laboratory</a>
 related efforts are also underway to explore ensemble data assimilation
 for MPAS-Atmosphere with the
 Gridpoint Statistical Interpolation (GSI) scheme that is operational at
-<a href=http://www.ncep.noaa.gov>the National Centers for Environmental Prediction</a>.</p><figure class=site-project-single-image><img src=/images/science_nuggets/MPAS_spaghetti_Z500mb_anal.2008090512.png></figure><p>Grid structure used in the MPAS/DART interface
+<a href=http://www.ncep.noaa.gov>the National Centers for Environmental Prediction</a>.</p>
+<figure class=site-project-single-image><img src=/images/science_nuggets/MPAS_spaghetti_Z500mb_anal.2008090512.png>
+</figure>
+<p>Grid structure used in the MPAS/DART interface
 The MPAS/DART interface is
 built on MPAS&rsquo;s unstructured centroidal Voronoi mesh,
 and does not regrid to latitude-longitude grids. In MPAS, the finite-volume
@@ -19,24 +95,138 @@ at the center of finite-volume cells and for the normal component of velocity
 The normal component of velocity <em>(u)</em> at cell edges is then used to
 reconstruct zonal and meridional winds at cell centers <em>(V)</em>
 using radial basis functions (RBFs).
-To avoid the singularity issue on the poles, the cartesian coordinate is employed.</p><figure class=site-project-single-image><img src=/images/science_nuggets/MPAS_grid_components.png></figure><p>The forward operators on the unstructured grid mesh are constructed as follows.
+To avoid the singularity issue on the poles, the cartesian coordinate is employed.</p>
+<figure class=site-project-single-image><img src=/images/science_nuggets/MPAS_grid_components.png>
+</figure>
+<p>The forward operators on the unstructured grid mesh are constructed as follows.
 The dual of the Voronoi mesh, or the triangular mesh (shown as dashed lines in the
 figure), is used to search the closest cell center to an arbitrary (or observation)
 point, then find three cell centers of the triangle enclosing the desired point.
 Mass fields are then horizontally interpolated from the cell centers to the observation
-location using a barycentric (e.g., area-weighted) interpolation.</p><p>While the observed wind quantities are zonal and meridional winds, the normal
+location using a barycentric (e.g., area-weighted) interpolation.</p>
+<p>While the observed wind quantities are zonal and meridional winds, the normal
 component of velocity <em>(u)</em> is the only prognostic wind variable in MPAS,
 we thus implement a couple of different ways of assimilating wind observations.
 The options determine which wind variables are used in the forward operator to
 compute expected observation values; how the horizontal interpolation is computed
 in that forward operator; and how the assimilation increments are applied to update
-the wind quantities in the state vector of the analysis.</p><p>Preliminary results based on real data assimilation experiments indicate that
+the wind quantities in the state vector of the analysis.</p>
+<p>Preliminary results based on real data assimilation experiments indicate that
 performance is better when the zonal and meridional winds are used as input to the
 forward operator that uses Barycentric interpolation and the prognostic <em>(u)</em>
 wind is incrementally updated. However, there remain scientific questions about
-how best to handle the wind fields under different situations.</p><p>For any questions or future collaboration, please contact either
-Soyoung Ha (<a href=mailto:syha@ucar.edu>syha@ucar.edu</a>) or the DART team (<a href=mailto:dart@ucar.edu>dart@ucar.edu</a>)</p><ul><li>Ha, S., C. Snyder, W. C. Skamarock, J. Anderson and N. Collins, <strong>2017</strong>
+how best to handle the wind fields under different situations.</p>
+<p>For any questions or future collaboration, please contact either
+Soyoung Ha (<a href=mailto:syha@ucar.edu>syha@ucar.edu</a>) or the DART team (<a href=mailto:dart@ucar.edu>dart@ucar.edu</a>)</p>
+<ul>
+<li>Ha, S., C. Snyder, W. C. Skamarock, J. Anderson and N. Collins, <strong>2017</strong>
 Ensemble Kalman filter data assimilation for the Model for Prediction
 Across Scales (MPAS).
 <em>Monthly Weather Review</em>, <strong>145</strong>, 4673-4692,
-<a href=https://doi.org/10.1175/MWR-D-17-0145.1>doi:10.1175/MWR-D-17-0145.1</a></li></ul></div><div class="col-lg-4 mx-auto"></div></div></div></section></main><footer class=site-footer><div class=container><div class=row><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Contact Info</h5><p class=site-footer-widget-description>1850 Table Mesa Dr.<br>Boulder, CO 80305<br><br><a href=mailto:dart@ucar.edu>dart@ucar.edu</a></p></div></div><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Sitemap</h5><ul class=site-footer-widget-links><li><a href=https://dart.ucar.edu/about>About Us</a></li><li><a href=https://dart.ucar.edu/research>Research</a></li><li><a href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li><a href=https://dart.ucar.edu/contact>Contact</a></li></ul></div></div><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Research</h5><ul class=site-footer-widget-links><li><a href=https://dart.ucar.edu/research>Featured Projects</a></li><li><a href=https://dart.ucar.edu/publications>Publications</a></li><li><a href=https://dart.ucar.edu/presentations>Presentations</a></li></ul></div></div><div class="col-lg-4 col-md-6"><div class=site-footer-nsf>The National Center for Atmospheric Research is sponsored by the National Science Foundation. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation.</div></div><div class="col-lg-2 col-md-6"><div class=site-footer-logo><a href=https://nsf.gov><img src=https://dart.ucar.edu/images/ncar-koru/footer-logo-nsf.png alt=logo-footer></a></div></div></div></div></footer><script src=https://dart.ucar.edu/js/vendor.min.js></script><script src=https://dart.ucar.edu/js/script.min.js></script><footer class=ucar-footer><div class=container><div class=row><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><center>© 2021 UCAR</center></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/privacy-notice>Privacy</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/cookie-other-tracking-technologies-notice>Cookies</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/terms-of-use>Terms of Use</a></h5></div></div><div class="col-lg-2 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act>Copyright Issues</a></h5></div></div><div class="col-lg-2 col-md-4"><div class=ucar-footer-widget><center><h6><a href=https://nsf.gov>Sponsored by NSF</a></h5></center></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://ncar.ucar.edu>NCAR Home</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu>UCAR Home</a></h5></div></div></div></div></div></footer></body></html>
+<a href=https://doi.org/10.1175/MWR-D-17-0145.1>doi:10.1175/MWR-D-17-0145.1</a></li>
+</ul>
+</div>
+<div class="col-lg-4 mx-auto">
+</div>
+</div>
+</div>
+</section>
+</main><footer class=site-footer>
+<div class=container>
+<div class=row>
+<div class="col-lg-2 col-md-4">
+<div class=site-footer-widget>
+<h5 class=site-footer-widget-title>Contact Info</h5>
+<p class=site-footer-widget-description>
+1850 Table Mesa Dr.<br>Boulder, CO 80305
+<br>
+<br>
+<a href=mailto:dart@ucar.edu>dart@ucar.edu</a>
+</p>
+</div>
+</div>
+<div class="col-lg-2 col-md-4">
+<div class=site-footer-widget>
+<h5 class=site-footer-widget-title>Sitemap</h5>
+<ul class=site-footer-widget-links>
+<li><a href=https://dart.ucar.edu/about>About Us</a></li>
+<li><a href=https://dart.ucar.edu/research>Research</a></li>
+<li><a href=https://dart.ucar.edu/tutorials>Tutorials</a></li>
+<li><a href=https://dart.ucar.edu/contact>Contact</a></li>
+</ul>
+</div>
+</div>
+<div class="col-lg-2 col-md-4">
+<div class=site-footer-widget>
+<h5 class=site-footer-widget-title>Research</h5>
+<ul class=site-footer-widget-links>
+<li><a href=https://dart.ucar.edu/research>Featured Projects</a></li>
+<li><a href=https://dart.ucar.edu/publications>Publications</a></li>
+<li><a href=https://dart.ucar.edu/presentations>Presentations</a></li>
+</ul>
+</div>
+</div>
+<div class="col-lg-4 col-md-6">
+<div class=site-footer-nsf>
+The National Center for Atmospheric Research is sponsored by the National Science Foundation. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation.
+</div>
+</div>
+<div class="col-lg-2 col-md-6">
+<div class=site-footer-logo><a href=https://nsf.gov><img src=https://dart.ucar.edu/images/ncar-koru/footer-logo-nsf.png alt=logo-footer></a></div>
+</div>
+</div>
+</div>
+</footer>
+<script src=https://dart.ucar.edu/js/vendor.min.js></script>
+<script src=https://dart.ucar.edu/js/script.min.js></script>
+<footer class=ucar-footer>
+<div class=container>
+<div class=row>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<center> © 2021 UCAR </center>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu/privacy-notice>Privacy</a> </h5>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu/cookie-other-tracking-technologies-notice>Cookies</a> </h5>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu/terms-of-use>Terms of Use</a> </h5>
+</div>
+</div>
+<div class="col-lg-2 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act>Copyright Issues</a> </h5>
+</div>
+</div>
+<div class="col-lg-2 col-md-4">
+<div class=ucar-footer-widget>
+<center>
+<h6> <a href=https://nsf.gov>Sponsored by NSF</a> </h5>
+</center>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://ncar.ucar.edu>NCAR Home</a> </h5>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu>UCAR Home</a> </h5>
+</div>
+</div>
+</div>
+</div>
+</div>
+</footer>
+</body>
+</html>

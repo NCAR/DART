@@ -1,5 +1,419 @@
-<!doctype html><html lang=en-us><head><meta charset=utf-8 name=description content="DART is a community facility for ensemble DA developed and maintained by the Data Assimilation Research Section (DAReS) at the National Center for Atmospheric Research (NCAR)."><title>DART | The Data Assimilation Research Testbed</title><meta name=viewport content="width=device-width,initial-scale=1"><meta name=author content="DAReS"><meta name=generator content="Hugo 0.82.0"><link rel=stylesheet href=https://dart.ucar.edu/css/bootstrap.min.css><link rel=stylesheet href=https://dart.ucar.edu/font-awesome/css/font-awesome.min.css><link rel=stylesheet href=https://dart.ucar.edu/icomoon/style.css><link href=https://dart.ucar.edu/scss/style.min.css rel=stylesheet><link rel="shortcut icon" href=https://dart.ucar.edu/images/favicon.png type=image/x-icon><link rel=icon href=https://dart.ucar.edu/images/favicon.ico type=image/x-icon></head><body><nav class="navbar navbar-expand-lg site-navigation"><div class=container><a class=navbar-brand href=https://ncar.ucar.edu/who-we-are/funding><img src=https://dart.ucar.edu/images/NSF_4-Color_bitmap_Logo.png alt=logo></a>
-<a class=navbar-second-brand href=/><img src=https://dart.ucar.edu/images/ncar-dart-logo-navy.svg alt=logo></a>
+<!doctype html><html lang=en-us><head>
+<meta charset=utf-8 name=description content="DART is a community facility for ensemble DA developed and maintained by the Data Assimilation Research Section (DAReS) at the National Center for Atmospheric Research (NCAR).">
+<title>DART | The Data Assimilation Research Testbed</title>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<meta name=author content="DAReS">
+<meta name=generator content="Hugo 0.87.0">
+<link rel=stylesheet href=https://dart.ucar.edu/css/bootstrap.min.css>
+<link rel=stylesheet href=https://dart.ucar.edu/font-awesome/css/font-awesome.min.css>
+<link rel=stylesheet href=https://dart.ucar.edu/icomoon/style.css>
+<link href=https://dart.ucar.edu/scss/style.min.css rel=stylesheet>
+<link rel="shortcut icon" href=https://dart.ucar.edu/images/favicon.png type=image/x-icon>
+<link rel=icon href=https://dart.ucar.edu/images/favicon.ico type=image/x-icon>
+</head>
+<body><nav class="navbar navbar-expand-lg site-navigation">
+<div class=container>
+<a class=navbar-brand href=https://ncar.ucar.edu/who-we-are/funding>
+<img src=https://dart.ucar.edu/images/NSF_4-Color_bitmap_Logo.png alt=logo>
+</a>
+<a class=navbar-second-brand href=/>
+<img src=https://dart.ucar.edu/images/ncar-dart-logo-navy.svg alt=logo>
+</a>
 <button class="navbar-toggler collapsed" type=button data-toggle=collapse data-target=#sitenavbar aria-label=menu>
-<span class=icon-bar></span><span class=icon-bar></span><span class=icon-bar></span></button><div class="collapse navbar-collapse" id=sitenavbar><ul class="navbar-nav ml-auto main-nav"><li class=nav-item><a class=nav-link a href=https://dart.ucar.edu/about>About</a></li><li class=nav-item><div class=dropdown-container><a href=# class="dropdown-toggle nav-link" data-toggle=dropdown role=button aria-haspopup=true aria-expanded=false>Research<span class=caret></span></a><ul class=dropdown-menu><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/research>Featured Projects</a></li><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/publications>Publications</a></li><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/presentations>Presentations</a></li></ul></div></li><li class=nav-item><a class=nav-link a href=https://docs.dart.ucar.edu/>Documentation</a></li><li class=nav-item><a class=nav-link a href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li class=nav-item><a class="nav-link btn btn-sm btn-primary btn-sm-rounded" href=https://dart.ucar.edu/software><span class=btn-area><span data-text="Get DART">Get DART</span></span></a></li></ul></div></div></nav><main><div id=carouselIndicators class="carousel slide" data-ride=carousel><div class=carousel-inner><div class="carousel-item active"><div class=carousel-img style=background-image:url(images/hero/aether.jpg)><div class=row><div class="col-lg-8 mx-auto"><div class="site-hero-content text-center"><h3><a href=research/aether>Featured project: University of Michigan, NCAR, NASA & NRL Collaboration</a></h3><h1><a href=research/aether>NEXT-GENERATION SPACE WEATHER PREDICTION</a></h1></div></div></div></div></div><div class=carousel-item><div class=carousel-img style=background-image:url(images/hero/wrf-hydro.jpg)><div class=row><div class="col-lg-8 mx-auto"><div class="site-hero-content text-center"><h3><a href=research/wrf-hydro>Featured project: Computational & Information Systems Lab & Research Applications Lab Collaboration</a></h3><h1><a href=research/wrf-hydro>PREDICTING FLOODS AND PROTECTING LIVES</a></h1></div></div></div></div></div><div class=carousel-item><div class=carousel-img style=background-image:url(images/hero/roms.jpg)><div class=row><div class="col-lg-8 mx-auto"><div class="site-hero-content text-center"><h3><a href=research/gulf-of-mexico>Featured project: NC State, UC San Diego, MIT & KAUST Collaboration</a></h3><h1><a href=research/gulf-of-mexico>UNDERSTANDING GULF OF MEXICO EDDY DYNAMICS</a></h1></div></div></div></div></div></div><a class=carousel-control-prev href=#carouselIndicators role=button data-slide=prev><span class=carousel-control-prev-icon aria-hidden=true></span><span class=sr-only>Previous</span></a>
-<a class=carousel-control-next href=#carouselIndicators role=button data-slide=next><span class=carousel-control-next-icon aria-hidden=true></span><span class=sr-only>Next</span></a></div><section class=site-testimonial><div class=container><div class=row><div class="col-lg-4 col-md-6"><div class="site-testimonial-item ncar-blue"><div class=site-testimonial-item-header><div class=thumb><img src=https://dart.ucar.edu/images/triptych/models.png alt=user-thumb-one></div></div><p class=site-testimonial-item-body><div class=person><h5>DATA ASSIMILATION FOR THE ENTIRE EARTH SYSTEM</h5></div>Use ensemble DA techniques with geophysical models spanning the earth system.</p></div></div><div class="col-lg-4 col-md-6"><div class="site-testimonial-item ncar-blue"><div class=site-testimonial-item-header><div class=thumb><img src=https://dart.ucar.edu/images/triptych/instruments.png alt=user-thumb-one></div></div><p class=site-testimonial-item-body><div class=person><h5>USE DATA FROM ANY SOURCE, TEST MANY ALGORITHMS</h5></div>Assimilate any suitable observations. Swap out filter and inflation algorithms with ease.</p></div></div><div class="col-lg-4 col-md-6"><div class="site-testimonial-item ncar-blue"><div class=site-testimonial-item-header><div class=thumb><img src=https://dart.ucar.edu/images/triptych/platforms.png alt=user-thumb-one></div></div><p class=site-testimonial-item-body><div class=person><h5>LEARN ON LAPTOPS, RUN ON SUPERCOMPUTERS</h5></div>Compile without MPI for conceptual models or with MPI for GCMs on supercomputers.</p></div></div></div></div></section><section class=site-counter id=counter><div class=container><div class=row><div class=col-12><div class=section-title><h2>DART's benefit to the community</h2></div></div><div class="col-lg-3 col-md-6"><div class=site-counter-item><span class=site-counter-item-title>Models supported</span><h3 class=site-counter-item-number>25+</h3></div></div><div class="col-lg-3 col-md-6"><div class=site-counter-item><span class=site-counter-item-title><a href=publications>Publications</a></span><h3 class=site-counter-item-number><a href=publications>200+</a></h3></div></div><div class="col-lg-3 col-md-6"><div class=site-counter-item><span class=site-counter-item-title>ASP postdocs</span><h3 class=site-counter-item-number>8</h3></div></div><div class="col-lg-3 col-md-6"><div class=site-counter-item><span class=site-counter-item-title>SIParCS interns</span><h3 class=site-counter-item-number>3</h3></div></div></div></div></section><section class=site-collab style=background-image:url(images/backgrounds/NCAR-Waves.png)><div class=container><span class=site-collab-title><h2>Supported models</h2></span><table class=table><tr><th>Lower Atmosphere</th><th>Upper Atmosphere</th><th>Ocean</th><th>Cryosphere</th><th>Land Surface</th><th>Hydrology</th><th>Conceptual</th></tr><tr><td>CAM</td><td>WACCM</td><td>POP</td><td>CICE</td><td>CLM</td><td>WRF-Hydro</td><td>Lorenz '63, '84, '96, '05</td></tr><tr><td>WRF</td><td>GITM</td><td>ROMS</td><td></td><td>NOAH, NOAH-MP</td><td></td><td>Ikeda</td></tr><tr><td>WRF-Chem</td><td>Open GGCM</td><td>MITgcm-ocean</td><td></td><td></td><td></td><td>B-grid</td></tr><tr><td>MPAS-Atmosphere</td><td>TIE GCM</td><td>MPAS-ocean</td><td></td><td></td><td></td><td>SQG</td></tr><tr><td>AM2</td><td>ROSE</td><td>FESOM</td><td></td><td></td><td></td><td>9-variable</td></tr></table></section><section class=site-project id=project><div class=container><div class=row><div class=col-12><div class=section-title><h2>RECENT PROJECTS</h2><p>Research projects involving DART</p></div></div><div class="col-lg-6 col-md-10 mx-auto"><div class=site-project-item><div class=site-project-item-thumb><a href=https://dart.ucar.edu/research/mpas/><img src=https://dart.ucar.edu/images/science_nuggets/mpas_teaser.png alt=project-thumb></a></div><div class=site-project-item-content><span>WEATHER PREDICTION</span><h3><a href=https://dart.ucar.edu/research/mpas/>Model for Prediction across Scales</a></h3><a href=https://dart.ucar.edu/research/mpas/ class=read-more>view project</a></div></div></div><div class="col-lg-6 col-md-10 mx-auto"><div class=site-project-item><div class=site-project-item-thumb><a href=https://dart.ucar.edu/research/open_ggcm/><img src=https://dart.ucar.edu/images/science_nuggets/OpenGGCM_graphic.png alt=project-thumb></a></div><div class=site-project-item-content><span>GEOSPACE MODELING</span><h3><a href=https://dart.ucar.edu/research/open_ggcm/>Open Geospace General Circulation Model</a></h3><a href=https://dart.ucar.edu/research/open_ggcm/ class=read-more>view project</a></div></div></div><div class="col-lg-6 col-md-10 mx-auto"><div class=site-project-item><div class=site-project-item-thumb><a href=https://dart.ucar.edu/research/wrf-hydro/><img src=https://dart.ucar.edu/images/science_nuggets/ats_local_200_1_teaser.png alt=project-thumb></a></div><div class=site-project-item-content><span>FLOOD PREDICTION</span><h3><a href=https://dart.ucar.edu/research/wrf-hydro/>Predicting Floods and Protecting Lives</a></h3><a href=https://dart.ucar.edu/research/wrf-hydro/ class=read-more>view project</a></div></div></div><div class="col-lg-6 col-md-10 mx-auto"><div class=site-project-item><div class=site-project-item-thumb><a href=https://dart.ucar.edu/research/gulf-of-mexico/><img src=https://dart.ucar.edu/images/featured-articles/gulf-of-mexico-featured-article.jpg alt=project-thumb></a></div><div class=site-project-item-content><span>OCEANOGRAPHY</span><h3><a href=https://dart.ucar.edu/research/gulf-of-mexico/>Understanding Gulf of Mexico Eddy Dynamics</a></h3><a href=https://dart.ucar.edu/research/gulf-of-mexico/ class=read-more>view project</a></div></div></div><div class="col-12 text-center text-lg-left"><a href=research class=site-project-cta>MORE PROJECTS</a></div></div></div></section></main><footer class=site-footer><div class=container><div class=row><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Contact Info</h5><p class=site-footer-widget-description>1850 Table Mesa Dr.<br>Boulder, CO 80305<br><br><a href=mailto:dart@ucar.edu>dart@ucar.edu</a></p></div></div><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Sitemap</h5><ul class=site-footer-widget-links><li><a href=https://dart.ucar.edu/about>About Us</a></li><li><a href=https://dart.ucar.edu/research>Research</a></li><li><a href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li><a href=https://dart.ucar.edu/contact>Contact</a></li></ul></div></div><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Research</h5><ul class=site-footer-widget-links><li><a href=https://dart.ucar.edu/research>Featured Projects</a></li><li><a href=https://dart.ucar.edu/publications>Publications</a></li><li><a href=https://dart.ucar.edu/presentations>Presentations</a></li></ul></div></div><div class="col-lg-4 col-md-6"><div class=site-footer-nsf>The National Center for Atmospheric Research is sponsored by the National Science Foundation. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation.</div></div><div class="col-lg-2 col-md-6"><div class=site-footer-logo><a href=https://nsf.gov><img src=https://dart.ucar.edu/images/ncar-koru/footer-logo-nsf.png alt=logo-footer></a></div></div></div></div></footer><script src=https://dart.ucar.edu/js/vendor.min.js></script><script src=https://dart.ucar.edu/js/script.min.js></script><footer class=ucar-footer><div class=container><div class=row><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><center>© 2021 UCAR</center></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/privacy-notice>Privacy</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/cookie-other-tracking-technologies-notice>Cookies</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/terms-of-use>Terms of Use</a></h5></div></div><div class="col-lg-2 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act>Copyright Issues</a></h5></div></div><div class="col-lg-2 col-md-4"><div class=ucar-footer-widget><center><h6><a href=https://nsf.gov>Sponsored by NSF</a></h5></center></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://ncar.ucar.edu>NCAR Home</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu>UCAR Home</a></h5></div></div></div></div></div></footer></body></html>
+<span class=icon-bar></span>
+<span class=icon-bar></span>
+<span class=icon-bar></span>
+</button>
+<div class="collapse navbar-collapse" id=sitenavbar>
+<ul class="navbar-nav ml-auto main-nav">
+<li class=nav-item>
+<a class=nav-link a href=https://dart.ucar.edu/about>About</a>
+</li>
+<li class=nav-item>
+<div class=dropdown-container>
+<a href=# class="dropdown-toggle nav-link" data-toggle=dropdown role=button aria-haspopup=true aria-expanded=false>Research<span class=caret></span></a>
+<ul class=dropdown-menu>
+<li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/research>Featured Projects</a></li>
+<li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/publications>Publications</a></li>
+<li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/presentations>Presentations</a></li>
+</ul>
+</div>
+</li>
+<li class=nav-item>
+<a class=nav-link a href=https://docs.dart.ucar.edu/>Documentation</a>
+</li>
+<li class=nav-item>
+<a class=nav-link a href=https://dart.ucar.edu/tutorials>Tutorials</a>
+</li>
+<li class=nav-item>
+<a class="nav-link btn btn-sm btn-primary btn-sm-rounded" href=https://dart.ucar.edu/software>
+<span class=btn-area>
+<span data-text="Get DART">
+Get DART
+</span>
+</span>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</nav>
+<main>
+<div id=carouselIndicators class="carousel slide" data-ride=carousel>
+<div class=carousel-inner>
+<div class="carousel-item active">
+<div class=carousel-img style=background-image:url(images/hero/aether.jpg)>
+<div class=row>
+<div class="col-lg-8 mx-auto">
+<div class="site-hero-content text-center">
+<h3><a href=research/aether>Featured project: University of Michigan, NCAR, NASA & NRL Collaboration</a></h3>
+<h1><a href=research/aether>NEXT-GENERATION SPACE WEATHER PREDICTION</a></h1>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class=carousel-item>
+<div class=carousel-img style=background-image:url(images/hero/wrf-hydro.jpg)>
+<div class=row>
+<div class="col-lg-8 mx-auto">
+<div class="site-hero-content text-center">
+<h3><a href=research/wrf-hydro>Featured project: Computational & Information Systems Lab & Research Applications Lab Collaboration</a></h3>
+<h1><a href=research/wrf-hydro>PREDICTING FLOODS AND PROTECTING LIVES</a></h1>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class=carousel-item>
+<div class=carousel-img style=background-image:url(images/hero/roms.jpg)>
+<div class=row>
+<div class="col-lg-8 mx-auto">
+<div class="site-hero-content text-center">
+<h3><a href=research/gulf-of-mexico>Featured project: NC State, UC San Diego, MIT & KAUST Collaboration</a></h3>
+<h1><a href=research/gulf-of-mexico>UNDERSTANDING GULF OF MEXICO EDDY DYNAMICS</a></h1>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<a class=carousel-control-prev href=#carouselIndicators role=button data-slide=prev>
+<span class=carousel-control-prev-icon aria-hidden=true></span>
+<span class=sr-only>Previous</span>
+</a>
+<a class=carousel-control-next href=#carouselIndicators role=button data-slide=next>
+<span class=carousel-control-next-icon aria-hidden=true></span>
+<span class=sr-only>Next</span>
+</a>
+</div>
+<section class=site-testimonial>
+<div class=container>
+<div class=row>
+<div class="col-lg-4 col-md-6">
+<div class="site-testimonial-item ncar-blue">
+<div class=site-testimonial-item-header>
+<div class=thumb>
+<img src=https://dart.ucar.edu/images/triptych/models.png alt=user-thumb-one>
+</div>
+</div>
+<p class=site-testimonial-item-body>
+<div class=person>
+<h5>DATA ASSIMILATION FOR THE ENTIRE EARTH SYSTEM</h5>
+</div>
+Use ensemble DA techniques with geophysical models spanning the earth system.
+</p>
+</div>
+</div>
+<div class="col-lg-4 col-md-6">
+<div class="site-testimonial-item ncar-blue">
+<div class=site-testimonial-item-header>
+<div class=thumb>
+<img src=https://dart.ucar.edu/images/triptych/instruments.png alt=user-thumb-one>
+</div>
+</div>
+<p class=site-testimonial-item-body>
+<div class=person>
+<h5>USE DATA FROM ANY SOURCE, TEST MANY ALGORITHMS</h5>
+</div>
+Assimilate any suitable observations. Swap out filter and inflation algorithms with ease.
+</p>
+</div>
+</div>
+<div class="col-lg-4 col-md-6">
+<div class="site-testimonial-item ncar-blue">
+<div class=site-testimonial-item-header>
+<div class=thumb>
+<img src=https://dart.ucar.edu/images/triptych/platforms.png alt=user-thumb-one>
+</div>
+</div>
+<p class=site-testimonial-item-body>
+<div class=person>
+<h5>LEARN ON LAPTOPS, RUN ON SUPERCOMPUTERS</h5>
+</div>
+Compile without MPI for conceptual models or with MPI for GCMs on supercomputers.
+</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class=site-counter id=counter>
+<div class=container>
+<div class=row>
+<div class=col-12>
+<div class=section-title>
+<h2>DART's benefit to the community</h2>
+</div>
+</div>
+<div class="col-lg-3 col-md-6">
+<div class=site-counter-item>
+<span class=site-counter-item-title>Models supported</span>
+<h3 class=site-counter-item-number>25+</h3>
+</div>
+</div>
+<div class="col-lg-3 col-md-6">
+<div class=site-counter-item>
+<span class=site-counter-item-title><a href=publications>Publications</a></span>
+<h3 class=site-counter-item-number><a href=publications>200+</a></h3>
+</div>
+</div>
+<div class="col-lg-3 col-md-6">
+<div class=site-counter-item>
+<span class=site-counter-item-title>ASP postdocs</span>
+<h3 class=site-counter-item-number>8</h3>
+</div>
+</div>
+<div class="col-lg-3 col-md-6">
+<div class=site-counter-item>
+<span class=site-counter-item-title>SIParCS interns</span>
+<h3 class=site-counter-item-number>3</h3>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class=site-collab style=background-image:url(images/backgrounds/NCAR-Waves.png)>
+<div class=container>
+<span class=site-collab-title>
+<h2> Supported models </h2>
+</span>
+<table class=table>
+<tr>
+<th>Lower Atmosphere</th>
+<th>Upper Atmosphere</th>
+<th>Ocean</th>
+<th>Cryosphere</th>
+<th>Land Surface</th>
+<th>Hydrology</th>
+<th>Conceptual</th>
+</tr>
+<tr>
+<td>CAM</td>
+<td>WACCM</td>
+<td>POP</td>
+<td>CICE</td>
+<td>CLM</td>
+<td>WRF-Hydro</td>
+<td>Lorenz '63, '84, '96, '05</td>
+</tr>
+<tr>
+<td>WRF</td>
+<td>GITM</td>
+<td>ROMS</td>
+<td></td>
+<td>NOAH, NOAH-MP</td>
+<td></td>
+<td>Ikeda</td>
+</tr>
+<tr>
+<td>WRF-Chem</td>
+<td>Open GGCM</td>
+<td>MITgcm-ocean</td>
+<td></td>
+<td></td>
+<td></td>
+<td>B-grid</td>
+</tr>
+<tr>
+<td>MPAS-Atmosphere</td>
+<td>TIE GCM</td>
+<td>MPAS-ocean</td>
+<td></td>
+<td></td>
+<td></td>
+<td>SQG</td>
+</tr>
+<tr>
+<td>AM2</td>
+<td>ROSE</td>
+<td>FESOM</td>
+<td></td>
+<td></td>
+<td></td>
+<td>9-variable</td>
+</tr>
+</table>
+</section>
+<section class=site-project id=project>
+<div class=container>
+<div class=row>
+<div class=col-12>
+<div class=section-title>
+<h2>RECENT PROJECTS</h2>
+<p>Research projects involving DART</p>
+</div>
+</div>
+<div class="col-lg-6 col-md-10 mx-auto">
+<div class=site-project-item>
+<div class=site-project-item-thumb>
+<a href=https://dart.ucar.edu/research/mpas/><img src=https://dart.ucar.edu/images/science_nuggets/mpas_teaser.png alt=project-thumb></a>
+</div>
+<div class=site-project-item-content>
+<span>WEATHER PREDICTION</span>
+<h3><a href=https://dart.ucar.edu/research/mpas/>Model for Prediction across Scales</a></h3>
+<a href=https://dart.ucar.edu/research/mpas/ class=read-more>view project</a>
+</div>
+</div>
+</div>
+<div class="col-lg-6 col-md-10 mx-auto">
+<div class=site-project-item>
+<div class=site-project-item-thumb>
+<a href=https://dart.ucar.edu/research/open_ggcm/><img src=https://dart.ucar.edu/images/science_nuggets/OpenGGCM_graphic.png alt=project-thumb></a>
+</div>
+<div class=site-project-item-content>
+<span>GEOSPACE MODELING</span>
+<h3><a href=https://dart.ucar.edu/research/open_ggcm/>Open Geospace General Circulation Model</a></h3>
+<a href=https://dart.ucar.edu/research/open_ggcm/ class=read-more>view project</a>
+</div>
+</div>
+</div>
+<div class="col-lg-6 col-md-10 mx-auto">
+<div class=site-project-item>
+<div class=site-project-item-thumb>
+<a href=https://dart.ucar.edu/research/wrf-hydro/><img src=https://dart.ucar.edu/images/science_nuggets/ats_local_200_1_teaser.png alt=project-thumb></a>
+</div>
+<div class=site-project-item-content>
+<span>FLOOD PREDICTION</span>
+<h3><a href=https://dart.ucar.edu/research/wrf-hydro/>Predicting Floods and Protecting Lives</a></h3>
+<a href=https://dart.ucar.edu/research/wrf-hydro/ class=read-more>view project</a>
+</div>
+</div>
+</div>
+<div class="col-lg-6 col-md-10 mx-auto">
+<div class=site-project-item>
+<div class=site-project-item-thumb>
+<a href=https://dart.ucar.edu/research/gulf-of-mexico/><img src=https://dart.ucar.edu/images/featured-articles/gulf-of-mexico-featured-article.jpg alt=project-thumb></a>
+</div>
+<div class=site-project-item-content>
+<span>OCEANOGRAPHY</span>
+<h3><a href=https://dart.ucar.edu/research/gulf-of-mexico/>Understanding Gulf of Mexico Eddy Dynamics</a></h3>
+<a href=https://dart.ucar.edu/research/gulf-of-mexico/ class=read-more>view project</a>
+</div>
+</div>
+</div>
+<div class="col-12 text-center text-lg-left">
+<a href=research class=site-project-cta>MORE PROJECTS</a>
+</div>
+</div>
+</div>
+</section>
+</main><footer class=site-footer>
+<div class=container>
+<div class=row>
+<div class="col-lg-2 col-md-4">
+<div class=site-footer-widget>
+<h5 class=site-footer-widget-title>Contact Info</h5>
+<p class=site-footer-widget-description>
+1850 Table Mesa Dr.<br>Boulder, CO 80305
+<br>
+<br>
+<a href=mailto:dart@ucar.edu>dart@ucar.edu</a>
+</p>
+</div>
+</div>
+<div class="col-lg-2 col-md-4">
+<div class=site-footer-widget>
+<h5 class=site-footer-widget-title>Sitemap</h5>
+<ul class=site-footer-widget-links>
+<li><a href=https://dart.ucar.edu/about>About Us</a></li>
+<li><a href=https://dart.ucar.edu/research>Research</a></li>
+<li><a href=https://dart.ucar.edu/tutorials>Tutorials</a></li>
+<li><a href=https://dart.ucar.edu/contact>Contact</a></li>
+</ul>
+</div>
+</div>
+<div class="col-lg-2 col-md-4">
+<div class=site-footer-widget>
+<h5 class=site-footer-widget-title>Research</h5>
+<ul class=site-footer-widget-links>
+<li><a href=https://dart.ucar.edu/research>Featured Projects</a></li>
+<li><a href=https://dart.ucar.edu/publications>Publications</a></li>
+<li><a href=https://dart.ucar.edu/presentations>Presentations</a></li>
+</ul>
+</div>
+</div>
+<div class="col-lg-4 col-md-6">
+<div class=site-footer-nsf>
+The National Center for Atmospheric Research is sponsored by the National Science Foundation. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation.
+</div>
+</div>
+<div class="col-lg-2 col-md-6">
+<div class=site-footer-logo><a href=https://nsf.gov><img src=https://dart.ucar.edu/images/ncar-koru/footer-logo-nsf.png alt=logo-footer></a></div>
+</div>
+</div>
+</div>
+</footer>
+<script src=https://dart.ucar.edu/js/vendor.min.js></script>
+<script src=https://dart.ucar.edu/js/script.min.js></script>
+<footer class=ucar-footer>
+<div class=container>
+<div class=row>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<center> © 2021 UCAR </center>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu/privacy-notice>Privacy</a> </h5>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu/cookie-other-tracking-technologies-notice>Cookies</a> </h5>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu/terms-of-use>Terms of Use</a> </h5>
+</div>
+</div>
+<div class="col-lg-2 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act>Copyright Issues</a> </h5>
+</div>
+</div>
+<div class="col-lg-2 col-md-4">
+<div class=ucar-footer-widget>
+<center>
+<h6> <a href=https://nsf.gov>Sponsored by NSF</a> </h5>
+</center>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://ncar.ucar.edu>NCAR Home</a> </h5>
+</div>
+</div>
+<div class="col-lg-1 col-md-4">
+<div class=ucar-footer-widget>
+<h6> <a href=https://www.ucar.edu>UCAR Home</a> </h5>
+</div>
+</div>
+</div>
+</div>
+</div>
+</footer>
+</body>
+</html>
