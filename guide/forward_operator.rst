@@ -56,17 +56,17 @@ water in the column.
 
 There are 2 common approaches to implementing code of this type.
 
-#. Use a synthetic set of vertical values at the horizontal location.
-The forward operator code can take the horizontal components of
-the requested location and construct a set of synthetic locations
-with fixed steps in the vertical, call interpolate for each vertical
-location, and sum the results.
+#. Use a synthetic set of pressure or height vertical values at the horizontal location.
+The forward operator code uses the horizontal components of
+the requested location and constructs a set of synthetic locations
+with fixed steps in pressure or height in the vertical, calls 
+interpolate for each vertical location, and sums the results.
 
 #. Use a synthetic set of model levels in the vertical at the horizontal location.
-The forward operator code can take the horizontal components of
+The forward operator code uses the horizontal components of
 the requested location and construct a set of synthetic locations
-with model level numbers in the vertical, call interpolate for each
-vertical location, and sum the results.  This approach has the
+with model level numbers in the vertical, calls interpolate for each
+vertical location, and sums the results.  This approach has the
 advantage of minimizing the interpolation needed for the model-specific
 code to compute the vertical value.
 
@@ -83,11 +83,11 @@ Optional Precomputed Fields
 --------------------------
 
 If a complex computation is already being performed by the model
-for an observed type, the forward operator code could try to 
-interpolate that type directly.  If the model can supply a value
-for that type the code can return it.  However if this forward
-operator is run with a similar model without this field, it should
-have code to do a computation with other fields in the model state.
+for an observed type, those values can be added to the state vector
+and the forward operator code can interpolate values from that field 
+directly.  However if this forward operator is used when that field is
+not present it should have code to do a computation using other fields 
+present in the model state.
 
 See the radar forward operator for an example in the 'expected fall velocity'
 section.  If this has already been computed by the model and is
@@ -119,19 +119,19 @@ Multiple Values from a Single Call
 ----------------------------------
 
 There are some cases where an extensive computation is required to
-return the expected value, and/or multiple values are returned from
+return the expected value and multiple values are returned from
 a single computation, for example an external library like a 
 radiative transfer model.
 
-In practice although there is redundant computation in using only
+Although there is redundant computation in using only
 a single value from a library call, in practice this is often
 fast enough to not be worth trying to cache and reuse the other
 values.
 
-In future releases of DART there is the possibility of calling
-the forward operator code for multiple locations at a single time
-and having the forward operator code return multiple expected values.
-So far the additional complexity has not justified this but if
+In future releases of DART there is the possibility of adding the
+feature of calling the forward operator code for multiple locations 
+at a single time, where the forward operator code returns multiple expected values.
+So far the additional code complexity has not justified this but if
 you have a use case which might fit this situation email
 dart@ucar.edu for further discussion.
 
@@ -202,12 +202,20 @@ were used.  If all data values for a single ensemble were needed an all-to-some 
 used to collect the state vector data onto the first N tasks, where N is the ensemble size.
 If all ensemble values for a single item were needed a some-to-all transpose was used to
 spread a subset of the state vector data to all tasks, where tasks contained all 
-ensemble member values for the items they had.
+ensemble member values for the items they had.  This is ``transpose mode`` where the
+full state vector must fit into a single task's memory.  
 
-In the Manhattan release it is still possible to run in ``transpose mode`` which avoids
+The current Manhattan release runs in ``distributed mode`` where state data is read
+into memory and distributed across all tasks.  Each task stores all ensemble member
+values for a subset of the items in the state vector.  The entire filter run keeps
+this data distribution and the data is only collected back into individual ensembles
+at output time.  Collection and I/O can be done on a field-by-field basis so the entire 
+state vector is never present at one time on a task.
+
+In the Manhattan release it is still possible to run in transpose mode which avoids
 using MPI one-sided communication.  It is generally only feasible for models with
 smaller state vector sizes since the first N tasks will need to store an entire state
-vector in memory.  However, run time is generally faster for the default distributed
+vector in memory.  However, in most cases run time is still faster for distributed
 mode even for smaller models because computing forward operators for an entire ensemble 
 at once often amortizes the overhead parts of the computation when computing N values.
 
@@ -220,7 +228,7 @@ the execution.
 
 In distributed mode each task computes the expected values for
 a subset of the observations.  The observations are equally distributed round-robin.
-For O observations and T tasks each task gets O/T obs.  MPI one-sided communication
+For K observations and T tasks each task gets K/T obs.  MPI one-sided communication
 is used to retrieve needed state values from other tasks.
 
 
