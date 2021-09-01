@@ -1,0 +1,12 @@
+ cosconvert -b A25497 201801.tar
+ cosconvert -b A25516 201802.tar
+ cosconvert -b A25535 201803.tar
+ cosconvert -b A25554 201804.tar
+ cosconvert -b A25573 201805.tar
+ cosconvert -b A25592 201806.tar
+ cosconvert -b A25611 201807.tar
+ cosconvert -b A25630 201808.tar
+#cosconvert -b A25649 201809.tar
+#cosconvert -b A25668 201810.tar
+#cosconvert -b A25687 201811.tar
+#cosconvert -b A25706 201812.tar

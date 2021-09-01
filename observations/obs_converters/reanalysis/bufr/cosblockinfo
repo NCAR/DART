@@ -1,0 +1,13 @@
+
+if a file is not already in tar format, it probably
+needs to be 'uncosblocked'.  
+
+there is a copy of the 'cosconvert' executable on cheyenne
+in the /glade/p/cisl/dares/Observations/bufr directory.  
+
+to use:
+
+./cosconvert -b Annnnn YYYYMM.tar 
+
+now tar -tvf YYYYMM.tar should give you a good list of files.
+
