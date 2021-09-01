@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# set this
+if [ $# -gt 0 ]; then
+ yr=$1
+else
+ echo usage: $0 YYYY
+ exit 0
+fi
+
+
+pre=obs_seq${yr}
+
+let m=1
+while [[ $m -le 12 ]]; do
+
+  mm=`printf %02d $m`
+  
+  for hh in 00 06 12 18; do
+    if [[ `ls ${pre}${mm}*${hh} 2>/dev/null | wc -l` -gt 0 ]]; then
+      echo all days, ${mm}-${yr}, hour $hh
+      ls -l ${pre}${mm}??${hh}
+    fi
+  done
+
+  let m=m+1
+done
+
+exit 0
+
