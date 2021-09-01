@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# set this - 4 digits here
+if [ $# -gt 0 ]; then
+ yr=$1
+else
+ echo usage: $0 YYYY
+ echo will list file counts by month/hour for this year
+ exit 0
+fi
+
+# this program just wants the last 2 digits
+yr=`echo $yr | cut -c3-4`
+
+pre=prepqm${yr}
+post=.no_ship_id.gz
+
+let m=1
+while [[ $m -le 12 ]]; do
+
+  mm=`printf %02d $m`
+  
+  if [[ `ls ${pre}${mm}*${post} 2>/dev/null | wc -l` -gt 0 ]]; then
+     echo ${pre}${mm}
+
+     echo -n $mm " 00  "; ls -1 ${pre}${mm}??00${post} 2>/dev/null | wc -l
+     echo -n $mm " 06  "; ls -1 ${pre}${mm}??06${post} 2>/dev/null | wc -l
+     echo -n $mm " 12  "; ls -1 ${pre}${mm}??12${post} 2>/dev/null | wc -l
+     echo -n $mm " 18  "; ls -1 ${pre}${mm}??18${post} 2>/dev/null | wc -l
+     echo ''
+  fi
+ 
+  let m=m+1
+done
+
+exit 0
+

@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# set this - 4 digits here, then 2 digits
+if [ $# -gt 1 ]; then
+ yr=$1
+ mm=$2
+else
+ echo usage: $0 YYYY MM
+ echo will remove prepqm files for that year/month
+ exit 0
+fi
+
+# this program just wants the last 2 digits for yr
+yr=`echo $yr | cut -c3-4`
+
+pre=prepqm${yr}
+post=.no_ship_id.gz
+
+file_cnt=`ls ${pre}${mm}*${post} 2>/dev/null | wc -l`
+if [[ $file_cnt -gt 0 ]]; then
+     echo found $file_cnt files to remove for ${pre}${mm}
+
+     rm ${pre}${mm}??00${post}
+     rm ${pre}${mm}??06${post}
+     rm ${pre}${mm}??12${post}
+     rm ${pre}${mm}??18${post}
+fi
+
+exit 0
+

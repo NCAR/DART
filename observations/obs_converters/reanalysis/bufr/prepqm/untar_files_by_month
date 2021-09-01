@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# set this - 4 digits here
+if [ $# -gt 0 ]; then
+ yr=$1
+else
+ echo usage: $0 YYYY
+ echo will untar a years worth of files into the current directory
+ exit 0
+fi
+
+let m=1
+while [[ $m -le 12 ]]; do
+
+  mm=`printf %02d $m`
+  tfile=${yr}${mm}.tar
+  
+  if [ -f ../tarfiles/$tfile ]; then
+     echo starting to untar $tfile
+     echo ''
+
+     tar -xvf ../tarfiles/$tfile
+  fi
+ 
+  let m=m+1
+done
+
+exit 0
+
