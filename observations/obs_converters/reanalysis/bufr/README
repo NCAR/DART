@@ -1,0 +1,18 @@
+
+status:
+
+i did the conversion of obs files up to mid 2019.
+jeff stewart converted the rest of the 2019 files and jan 2020.  
+
+these scripts assume you can get the files directly off the
+HPSS, which is going away soon.  the task is the same but
+the method will have to be different.
+
+you want to ask DSS (i've always dealt with Chi-Fan) for access
+to the "prepqm" obs files used in the reanalysis dataset 090.0,
+specifically the version that includes ACARS obs.
+
+nsc 
+01 sept 2021
+
+
