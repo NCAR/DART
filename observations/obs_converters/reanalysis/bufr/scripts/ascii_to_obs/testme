@@ -1,0 +1,174 @@
+#!/bin/tcsh
+
+# for debugging - i ended up with 2 lines for task 0
+# when the cmd file had only a single real entry
+
+set start_year  = 2017
+set start_month =    7
+set start_day   =    1
+
+set end_year    = 2017
+set end_month   =   12
+set end_day     =   31
+
+# should match the mpiprocs=X setting above
+set njobs = 36
+
+# END USER SETTINGS
+
+
+# set things that vary between batch systems here.
+
+if ($?SLURM_JOB_ID) then
+  echo running SLURM
+  setenv SLURM true
+  setenv RUNCMD "srun --multi-prog"
+  setenv EXEDIR casper
+else if ($?PBS_NODEFILE) then
+  echo running PBS
+  setenv PBS true
+  setenv MPI_SHEPHERD true
+  setenv RUNCMD "mpiexec_mpt launch_cf.sh"
+  setenv EXEDIR .
+else if ($?LSB_HOSTS) then
+  echo running LSF
+  setenv LSF true
+  setenv MP_PGMMODEL mpmd
+  setenv RUNCMD "mpirun.lsf -cmdfile"
+  setenv EXEDIR ibm
+else
+  echo running without a batch system
+  setenv NOBATCH true
+  setenv RUNCMD "csh"
+  setenv EXEDIR .
+  # for debugging
+  setenv SLURM true
+  setenv EXEDIR casper
+endif
+
+echo job started at `date`
+
+# convert the start and stop times to gregorian days, so we can
+# compute total number of days including rolling over month and
+# year boundaries.  make sure all values have leading 0s if they
+# are < 10.  do the end time first so we can use the same values
+# to set the initial day while we are doing the total day calc.
+
+# the output of advance time with the -g input is:
+#   gregorian_day_number  seconds
+# use $var[1] to return just the day number
+
+set mon2=`printf %02d $end_month`
+set day2=`printf %02d $end_day`
+set end_d=(`echo ${end_year}${mon2}${day2}00 0 -g | $EXEDIR/advance_time`)
+
+set mon2=`printf %02d $start_month`
+set day2=`printf %02d $start_day`
+set start_d=(`echo ${start_year}${mon2}${day2}00 0 -g | $EXEDIR/advance_time`)
+
+# the output of this call is a string YYYYMMDDHH
+# see below for help in how to easily parse this up into words
+set curday=`echo ${start_year}${mon2}${day2}00 0 | $EXEDIR/advance_time`
+
+# how many total days are going to be processed (for the loop counter)
+# note that the parens below are necessary; otherwise the computation
+# does total = end - (start+1), or total = end - start - 1, which is
+# not how elementary math usually works on a computer (left to right
+# evaluation of ops with equal priority is most common.)
+@ totaldays = ( $end_d[1] - $start_d[1] ) + 1
+
+# echo this to help log what this batch job is converting
+echo converting files for $totaldays days
+echo starting at $start_year $start_month $start_day
+echo ending at $end_year $end_month $end_day
+echo ""
+
+
+# loop over each day
+set d=1
+while ( $d <= $totaldays )
+
+  rm -f mycmdfile
+
+  set j=1
+  while ( $j <= $njobs && $d <= $totaldays)
+
+    # parse out the parts from a string which is YYYYMMDDHH
+    # use cut with the byte option to pull out columns 1-4, 5-6, and 7-8
+    # then bc to strip off leading blanks
+    set  year=`echo $curday | cut -b1-4`
+    set month=`echo $curday | cut -b5-6`
+    set   day=`echo $curday | cut -b7-8`
+  
+    # numeric month/day (no leading 0)
+    set nummonth=`echo $month | bc`
+    set   numday=`echo $day | bc`
+
+    # figure out the next day; the output is YYYYMMDD00
+    set nextday=`echo ${year}${month}${day}00 +1d | $EXEDIR/advance_time`
+
+    set  nyear=`echo $nextday | cut -b1-4`
+    set nmonth=`echo $nextday | cut -b5-6`
+    set   nday=`echo $nextday | cut -b7-8`
+  
+    # numeric next month/day (no leading 0)
+    set numnmonth=`echo $nmonth | bc`
+    set   numnday=`echo $nday | bc`
+  
+    # status/debug - comment in or out as desired.
+    echo starting processing for ${year} ${nummonth} ${numday}
+  
+    # Subdirectory base name.
+    set tdir = workdir_${year}_${month}_${day}
+  
+    echo starting day $day 
+    set cmd="csh -c 'cd $tdir; ./prepbufr_to_obs; rm input.nml ./prepbufr_to_obs dart_log.nml dart_log.out; cd ..; rmdir $tdir'" 
+    if ( $?SLURM ) then
+       @ k = $j - 1
+       echo "$k $cmd" >> mycmdfile
+    else
+       echo "$cmd" >> mycmdfile
+    endif
+  
+    # advance the day
+    set curday=$nextday
+  
+    # advance the loop counter
+    @ d += 1
+
+    # advance the concurrent job counter
+    @ j += 1
+  end
+
+  echo real jobs to run:
+  cat mycmdfile
+
+  # the system seems to want the same number of commands in each
+  # invocation of the command file as there are cpus on the node.
+  # if we aren't running an even multiple of real tasks compared
+  # to the cpu count, pad the rest of the script with a call to 'date'
+
+  # avoid echoing the filename by making wc read stdin
+  set j=`cat mycmdfile | wc -l`
+echo number of lines in cmdfile = $j
+  @ j += 1
+  while ( $j <= $njobs )
+    if ( $?SLURM ) then
+       @ k = $j - 1
+echo k is $k
+       echo "$k date " >> mycmdfile
+    else
+       echo "date " >> mycmdfile
+    endif
+    @ j += 1
+  end
+
+  # actually launch the jobs here
+  echo
+  echo full cmd file contents:
+  cat mycmdfile
+  echo
+
+end
+
+exit 0

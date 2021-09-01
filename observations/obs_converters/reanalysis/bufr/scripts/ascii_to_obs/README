@@ -1,0 +1,10 @@
+this requires the following executables:
+
+advance_time
+create_real_obs
+obs_sequence_tool
+prepbufr_to_obs
+input.nml
+
+from DART/observations/obs_converters/NCEP/ascii_to_obs/work
+

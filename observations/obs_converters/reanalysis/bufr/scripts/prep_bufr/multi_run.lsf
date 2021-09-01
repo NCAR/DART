@@ -1,0 +1,125 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: multi_prep.csh 6256 2013-06-12 16:19:10Z thoar $
+#
+# this one is trying to roll over month boundaries.  it requires
+# advance_time in the current dir., which requires utilities_nml
+# in the input.nml file (it can be an empty namelist).
+#
+# Driver script for the parallel version.  Submit this script
+# to your batch system and it will invoke the 'prepbufr.csh'
+# script once for each conversion day.
+#
+#--------------------------------------------------------------
+# DESCRIPTION:
+#
+#  This script is used to generate daily (3:01Z to 3:00Z of next day) 
+#  decoded NCEP reanalysis PREPBUFR text/ascii data.
+#
+#--------------------------------------------------------------
+
+#BSUB -o prep.out
+#BSUB -e prep.err
+#BSUB -J multiprep
+#BSUB -q geyser
+#BSUB -W 6:25
+#BSUB -P P86850054
+#BSUB -n 1
+
+# USER SETTINGS HERE
+
+# Set year, month, days for to pass as args to prepbufr.csh
+set start_year  = 2015
+set start_month =    5
+set start_day   =    1
+
+set end_year    = 2015
+set end_month   =    8
+set end_day     =   30
+
+# END USER SETTINGS
+
+# convert the start and stop times to gregorian days, so we can
+# compute total number of days including rolling over month and
+# year boundaries.  make sure all values have leading 0s if they
+# are < 10.  do the end time first so we can use the same values
+# to set the initial day while we are doing the total day calc.
+
+# the output of advance time with the -g input is:
+#   gregorian_day_number  seconds
+# use $var[1] to return just the day number
+
+set mon2=`printf %02d $end_month`
+set day2=`printf %02d $end_day`
+set end_d=(`echo ${end_year}${mon2}${day2}00 0 -g | ./advance_time`)
+
+set mon2=`printf %02d $start_month`
+set day2=`printf %02d $start_day`
+set start_d=(`echo ${start_year}${mon2}${day2}00 0 -g | ./advance_time`)
+
+# the output of this call is a string YYYYMMDDHH
+# see below for help in how to easily parse this up into words
+set curday=`echo ${start_year}${mon2}${day2}00 0 | ./advance_time`
+
+# how many total days are going to be processed (for the loop counter)
+# note that the parens below are necessary; otherwise the computation
+# does total = end - (start+1), or total = end - start - 1, which is
+# not how elementary math is supposed to work.
+@ totaldays = ( $end_d[1] - $start_d[1] ) + 1
+
+# loop over each day
+set d=1
+while ( $d <= $totaldays )
+
+  # parse out the parts from a string which is YYYYMMDDHH
+  # use cut with the byte option to pull out columns 1-4, 5-6, and 7-8
+  # then bc to strip off leading blanks
+  set  year=`echo $curday | cut -b1-4`
+  set month=`echo $curday | cut -b5-6`
+  set   day=`echo $curday | cut -b7-8`
+
+  # numeric month/day (no leading 0)
+  set nmonth=`echo $month | bc`
+  set   nday=`echo $day | bc`
+
+  # status/debug - comment in or out as desired.
+  echo starting processing for ${year} ${nmonth} ${nday}
+
+  # Subdirectory base name.
+  set tdir = tempdir_${year}_${month}_${day}
+
+  mkdir $tdir
+  cd $tdir
+
+  cp -f ../prepbufr.csh .
+  cp -f ../input.nml .
+
+  echo starting day $day 
+  ./prepbufr.csh $year $nmonth $nday $nday 
+
+  cd ..
+  rm $tdir/input.nml $tdir/prepbufr.csh
+  rmdir $tdir
+
+
+  # advance the day; the output is YYYYMMDD00
+  set curday=`echo ${year}${month}${day}00 +1d | ./advance_time`
+
+  # advance the loop counter
+  @ d += 1
+end
+
+# there should not be any remaining dirs with these names if all is ok
+ls -ld tempdir_*
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/NCEP/prep_bufr/work/multi_prep.csh $
+# $Revision: 6256 $
+# $Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $
+
