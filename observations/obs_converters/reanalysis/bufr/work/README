@@ -1,0 +1,7 @@
+This directory needs to exist (but can be empty).
+
+See the instructions in Observations/obs_converters/reanalysis.
+The executables built in the NCEP prepbufr directory should
+be copied here so the scripts can use them.
+
+
