@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# put in YYYY as an argument - cesm filename version
+if [ $# -gt 0 ]; then
+ yr=$1
+else
+ echo usage: $0 YYYY
+ echo lists observation file counts by month
+ exit 0
+fi
+
+
+
+let m=1
+while [[ $m -le 12 ]]; do
+
+  mm=`printf %02d $m`
+  pre=obs_seq.${yr}-${mm}
+  dir=../Thinned_x9x10/${yr}${mm}_6H_CESM
+  
+  if [[ `ls ${dir}/${pre}* 2>/dev/null | wc -l` -gt 0 ]]; then
+     echo ${pre}
+
+     echo -n $mm " 00000  "; ls -1 $dir/${pre}-??-00000 2>/dev/null | wc -l
+     echo -n $mm " 21600  "; ls -1 $dir/${pre}-??-21600 2>/dev/null | wc -l
+     echo -n $mm " 43200  "; ls -1 $dir/${pre}-??-43200 2>/dev/null | wc -l
+     echo -n $mm " 64800  "; ls -1 $dir/${pre}-??-64800 2>/dev/null | wc -l
+     echo ''
+  fi
+ 
+  let m=m+1
+done
+
+exit 0
+

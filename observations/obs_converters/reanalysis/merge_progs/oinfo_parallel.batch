@@ -1,0 +1,262 @@
+#!/bin/ksh 
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: multi_parallel.lsf 9948 2016-03-03 22:30:57Z nancy $
+#
+#--------------------------------------------------------------
+# DESCRIPTION:
+# run obs_info to count the number of obs in each file, per month.
+#
+# note that since we're using advance_time and obs_info
+# and these are compiled executable programs, if we run on different 
+# hardware (e.g. cheyenne vs casper) we will need to build 
+# executables for that specific machine and run those.
+# in the past i've done this two different ways.  one way is
+# to use symbolic links to the right machine versions and
+# keep the same names in this script.  or i've made subdirs to
+# hold the executables for different machines and then made the
+# executable calls include a machine name.  look for EXEDIR in 
+# this script; it looks like i'm using the second approach here.
+#
+#--------------------------------------------------------------
+
+#==========================================================================
+# SLURM directives             sbatch script.csh
+#
+# sinfo     information about the whole slurm system
+# squeue    information about running jobs
+# sbatch    submit a job
+# scancel   kill a job
+#
+#SBATCH --ignore-pbs
+#SBATCH --job-name=obscount
+#SBATCH -n 36
+#SBATCH --ntasks-per-node=36
+#SBATCH --time=04:10:00
+#SBATCH -A P86850054
+#SBATCH -p dav
+#SBATCH -C casper
+#SBATCH -e obscount.%j.err
+#SBATCH -o obscount.%j.out
+#
+#==========================================================================
+# PBS directives                qsub script.csh
+#
+# qstat    information on running jobs
+# qsub     submit a job
+# qdel     kill a job
+# qpeek    see output from a running job
+#
+#PBS -N obscount         
+#PBS -l walltime=04:00:00
+#PBS -q regular
+#PBS -l select=1:ncpus=18:mpiprocs=18:mem=109GB
+#PBS -A P86850054
+#
+#==========================================================================
+# LSF directives                bsub < script.csh
+#
+# bstat    information on running jobs
+# bsub     submit a job
+# bdel     kill a job
+# bpeek    see output from a running job
+#
+#BSUB -J obscount
+#BSUB -o obscount.%J.log
+#BSUB -q small
+#BSUB -n 16
+#BSUB -W 0:10:00
+#BSUB -P P86850054
+#
+#==========================================================================
+
+# USER SETTINGS HERE
+
+#--------------------------------------------------------------
+
+# set the first and last year/month.
+#
+# set these WITHOUT leading 0s.  they are numeric values, not strings.
+#
+
+let start_year=2010
+let start_month=1 
+
+let end_year=2014
+let end_month=12
+
+# should match the mpiprocs=X setting above
+let njobs=18
+
+# END USER SETTINGS
+
+
+TMPDIR=/glade/scratch/$USER/temp
+EXEDIR=.
+
+# set things that vary between batch systems here.
+
+if [ "$SLURM_JOB_ID" != "" ] ; then
+  echo running SLURM
+  SLURM=true
+  RUNCMD="/usr/local/bin/srun --multi-prog"
+  EXEDIR=casper
+  # i do not know why $USER is undefined.
+  TMPDIR=/glade/scratch/$SLURM_JOB_USER/temp
+elif [ "$PBS_NODEFILE" != "" ] ;  then
+  echo running PBS
+  PBS=true
+  export MPI_SHEPHERD=true
+  RUNCMD="mpiexec_mpt launch_cf.sh"
+elif [ "$LSB_HOSTS" != "" ] ; then
+  echo running LSF
+  LSF=true
+  export MP_PGMMODEL=mpmd
+  RUNCMD="mpirun.lsf -cmdfile"
+  EXEDIR=ibm  
+else
+  echo running without a batch system
+  NOBATCH=true
+  RUNCMD="csh"
+fi
+
+mkdir -p $TMPDIR
+
+echo job started at `date`
+echo
+
+
+# precompute the number of months we're going to do.
+# make sure all numeric values do NOT have leading 0s
+# only add them when you need a 2 char string value.
+
+let sy=$start_year
+let sm=$start_month   # no leading 0 for numbers
+
+let ey=$end_year
+let em=$end_month
+
+let totalsteps=1
+
+while true ; do
+
+  if [[ $sy -ge $ey  &&  $sm -ge $em ]]; then break; fi
+
+  let totalsteps=$totalsteps+1
+  if [[ $sm -gt 12 ]]; then 
+    let sy=$sy+1
+    let sm=0
+  fi 
+  let sm=$sm+1
+ 
+done
+
+echo This script is going to sum obs in $totalsteps months.
+echo Starting at $start_year $start_month 
+echo Ending at $end_year $end_month 
+echo
+
+# ok, let's actually do something. 
+
+let sy=$start_year
+let sm=$start_month   # no leading 0 for numbers
+
+let s=1
+while [[ $s -le $totalsteps ]] ; do
+
+  rm -f mycmdfile
+
+  let j=1
+  while [[ $j -le $njobs && $s -le $totalsteps ]] ; do
+
+    # ----------------------------------------
+    # start of this obs_info-specific code
+  
+    sm2=`printf "%02d" $sm `   # string with leading 0
+    ym=${sy}${sm2}
+
+    # where to do the work.
+    workdir=workdir_${ym}
+
+    # where to leave the output file
+    outfile=obs_counts_${ym}
+  
+    mkdir -p $workdir
+
+    cd $workdir
+
+    # try to avoid any other files that happen to be in this dir
+    # match only obs_seq.YYYY-MM-DD-SSSSS
+    obsfilepattern="obs_seq.${sy}-${sm2}"-'[0-9][0-9]-[0-9][0-9][0-9][0-9][0-9]'
+    ls ../../Thinned_x9x10/${ym}_6H_CESM/$obsfilepattern  > flist
+
+    cp ../input.nml.obs_info input.nml
+  
+    ln -sf ../$EXEDIR/obs_info . 
+  
+    cd ..
+
+    # create a command file where each line calls a script with
+    # unique arguments, including a unique work directory name.
+    if [ "$SLURM" != "" ]; then
+      let k=$j-1
+      echo "$k ksh ./doinfo.sh $workdir $outfile" >> mycmdfile
+    else
+      echo "ksh ./doinfo.sh $workdir $outfile" >> mycmdfile
+    fi
+    # ----------------------------------------
+
+    # advance the loop counter
+    let s=$s+1
+   
+    # advance the concurrent job counter
+    let j=$j+1
+
+    # advance the year/month
+    let sm=$sm+1
+    if [[ $sm -gt 12 ]]; then 
+      let sy=$sy+1
+      let sm=1
+    fi 
+
+  done
+
+  echo running jobs:
+  cat mycmdfile
+
+  # the system seems to want the same number of commands in each
+  # invocation of the command file as there are cpus on the node.
+  # if we aren't running an even multiple of real tasks compared
+  # to the cpu count, pad the rest of the script with a call to 'date'
+
+  # avoid echoing the filename by making wc read stdin
+  let j=`cat mycmdfile | wc -l`
+  let j=$j+1
+  while [[ $j -le $njobs ]] ; do
+    if [ "$SLURM" != "" ]; then
+      let k=$j-1
+      echo "$k date " >> mycmdfile
+    else
+      echo "date " >> mycmdfile
+    fi
+    let j=$j+1
+  done
+
+  # actually launch the jobs here
+  $RUNCMD ./mycmdfile 
+
+done
+
+
+echo job ended at `date`
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/NCEP/prep_bufr/work/multi_parallel.lsf $
+# $Revision: 9948 $
+# $Date: 2016-03-03 15:30:57 -0700 (Thu, 03 Mar 2016) $
+
