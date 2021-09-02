@@ -1547,7 +1547,7 @@ integer, intent(in) :: dom_id ! domain identifier
 
 integer :: ivar, jdim
 integer :: num_vars, num_dims, variable_size
-integer(i8) :: next_start, count_dims
+integer(i8) :: next_start
 integer :: count_dims
 integer(i8) :: domain_offset
 
