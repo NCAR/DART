@@ -253,6 +253,13 @@ real(r8) :: inf_lower_bound(2)             = 1.0_r8
 real(r8) :: inf_upper_bound(2)             = 1000000.0_r8
 real(r8) :: inf_sd_lower_bound(2)          = 0.0_r8
 
+! Hybrid scheme variables
+
+integer            :: hybrid_flavor                        = 1
+integer            :: hybrid_ens_size                      = 100
+character(len=256) :: hybrid_state_file_list(MAX_NUM_DOMS) = ''  ! Name of files containing a list of static (climatology) state files 
+character(len=256) :: hybrid_state_files(MAX_FILES)        = ''
+
 ! Some models are allowed to have MISSING_R8 values in the DART state vector.
 ! If they are encountered, it is not necessarily a FATAL error.
 ! Most of the time, if a MISSING_R8 is encountered, DART should die.
@@ -309,7 +316,11 @@ namelist /filter_nml/ async,     &
    output_sd,                    &
    write_all_stages_at_end,      &
    write_obs_every_cycle,        & 
-   allow_missing_clm
+   allow_missing_clm,            &
+   hybrid_flavor,                &
+   hybrid_ens_size,              & 
+   hybrid_state_file_list,       &
+   hybrid_state_files
 
 
 integer :: inflation_flavor(2)
@@ -328,6 +339,7 @@ contains
 subroutine filter_main()
 
 type(ensemble_type)         :: state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle
+type(ensemble_type)         :: static_state_ens_handle, static_obs_ens_handle, static_qc_ens_handle
 type(obs_sequence_type)     :: seq
 type(time_type)             :: time1, first_obs_time, last_obs_time
 type(time_type)             :: curr_ens_time, next_ens_time, window_time
@@ -344,6 +356,12 @@ integer                 :: OBS_VAL_COPY, OBS_ERR_VAR_COPY, OBS_KEY_COPY
 integer                 :: OBS_GLOBAL_QC_COPY,OBS_EXTRA_QC_COPY
 integer                 :: OBS_MEAN_START, OBS_MEAN_END
 integer                 :: OBS_VAR_START, OBS_VAR_END, TOTAL_OBS_COPIES
+! Hybrid indices
+integer                 :: STATIC_OBS_VAL_COPY, STATIC_OBS_ERR_VAR_COPY, STATIC_OBS_KEY_COPY
+integer                 :: STATIC_OBS_GLOBAL_QC_COPY, STATIC_OBS_EXTRA_QC_COPY
+integer                 :: STATIC_OBS_MEAN_START, STATIC_OBS_MEAN_END
+integer                 :: STATIC_OBS_VAR_START, STATIC_OBS_VAR_END, TOTAL_STATIC_OBS_COPIES
+
 integer                 :: input_qc_index, DART_qc_index
 integer                 :: num_state_ens_copies
 logical                 :: read_time_from_file
@@ -358,11 +376,12 @@ type(file_info_type) :: file_info_postassim
 type(file_info_type) :: file_info_analysis
 type(file_info_type) :: file_info_output
 type(file_info_type) :: file_info_all
+type(file_info_type) :: file_info_hybrid
 
 logical :: ds, all_gone, allow_missing
 
 ! real(r8), allocatable   :: temp_ens(:) ! for smoother
-real(r8), allocatable   :: prior_qc_copy(:)
+real(r8), allocatable   :: prior_qc_copy(:), static_prior_qc_copy(:)
 
 call filter_initialize_modules_used() ! static_init_model called in here
 
@@ -496,7 +515,26 @@ OBS_MEAN_END         = OBS_MEAN_START + num_groups - 1
 OBS_VAR_START        = OBS_MEAN_START + num_groups
 OBS_VAR_END          = OBS_VAR_START + num_groups - 1
 
-TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
+TOTAL_OBS_COPIES     = ens_size + 5 + 2*num_groups
+
+if (hybrid_flavor) then
+
+   if (num_groups > 1) then 
+      call error_handler(E_ERR, 'filter', 'Hybrid DA scheme only supported with num_groups = 1.')
+   endif
+  
+   STATIC_OBS_ERR_VAR_COPY   = hybrid_ens_size + 1
+   STATIC_OBS_VAL_COPY       = hybrid_ens_size + 2
+   STATIC_OBS_KEY_COPY       = hybrid_ens_size + 3
+   STATIC_OBS_GLOBAL_QC_COPY = hybrid_ens_size + 4
+   STATIC_OBS_EXTRA_QC_COPY  = hybrid_ens_size + 5
+   STATIC_OBS_MEAN_START     = hybrid_ens_size + 6
+   STATIC_OBS_MEAN_END       = STATIC_OBS_MEAN_START  
+   STATIC_OBS_VAR_START      = STATIC_OBS_MEAN_START + 1 
+   STATIC_OBS_VAR_END        = STATIC_OBS_VAR_START  
+
+   TOTAL_STATIC_OBS_COPIES   = hybrid_ens_size + 7
+endif
 
 !>@todo FIXME turn trace/timestamp calls into:  
 !>
@@ -535,6 +573,18 @@ else
    call init_ensemble_manager(state_ens_handle, num_state_ens_copies, model_size, transpose_type_in = 2)
    msgstring = 'running without distributed state; model states are gathered by ensemble for forward operators'
 endif
+
+! Initialize the static ensemble
+if(hybrid_flavor) then
+   if(distributed_state) then
+     call init_ensemble_manager(static_state_ens_handle, hybrid_ens_size, model_size)
+     msgstring = 'running with distributed state; model states stay distributed across all tasks for the entire run'
+   else
+     call init_ensemble_manager(static_state_ens_handle, hybrid_ens_size, model_size, transpose_type_in = 2)
+     msgstring = 'running without distributed state; model states are gathered by ensemble for forward operators'
+   endif
+endif
+
 ! don't print if running single task.  transposes don't matter in this case.
 if (task_count() > 1) &
    call error_handler(E_MSG,'filter_main:', msgstring, source)
@@ -575,7 +625,7 @@ call initialize_file_information(num_state_ens_copies ,                     &
                                  file_info_input      , file_info_mean_sd,  &
                                  file_info_forecast   , file_info_preassim, &
                                  file_info_postassim  , file_info_analysis, &
-                                 file_info_output)
+                                 file_info_output     , file_info_hybrid)
 
 call check_file_info_variable_shape(file_info_output, state_ens_handle)
 
@@ -586,6 +636,16 @@ call set_inflation_sd_copy(   post_inflate,  POST_INF_SD_COPY )
 
 call read_state(state_ens_handle, file_info_input, read_time_from_file, time1, &
                 prior_inflate, post_inflate, perturb_from_single_instance)
+
+if (hybrid_flavor) then
+   ! Time is not really important here 
+   ! Need to add weight calculations here (just like inflation for the state)
+   call read_state(static_state_ens_handle, file_info_hybrid, read_time_from_file, time1)
+endif
+
+!print *, '130 ens var: ', state_ens_handle%copies(1:ens_size, 130)
+!print *, ''
+!print *, '130 hyb var: ', static_state_ens_handle%copies(1:hybrid_ens_size, 130)
 
 ! This must be after read_state
 call get_minmax_task_zero(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
@@ -768,6 +828,7 @@ AdvanceTime : do
 
       ! make sure storage is allocated in ensemble manager for vars.
       call allocate_vars(state_ens_handle)
+      if (hybrid_flavor) call allocate_vars(static_state_ens_handle)
 
       call all_copies_to_all_vars(state_ens_handle)
 
@@ -775,6 +836,8 @@ AdvanceTime : do
               adv_ens_command, tasks_per_model_advance, file_info_output, file_info_input)
 
       call all_vars_to_all_copies(state_ens_handle)
+      !MEG: check if we need to this!? 
+     
 
       ! updated mean and spread after the model advance
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -809,6 +872,13 @@ AdvanceTime : do
    ! Also need a qc field for copy of each observation
    call init_ensemble_manager(qc_ens_handle, ens_size, &
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
+
+   if (hybrid_flavor) then
+      call init_ensemble_manager(static_obs_ens_handle, TOTAL_STATIC_OBS_COPIES, &
+                              int(num_obs_in_set,i8), 1, transpose_type_in = 2)
+      call init_ensemble_manager(static_qc_ens_handle, hybrid_ens_size, &
+                              int(num_obs_in_set,i8), 1, transpose_type_in = 2)
+   endif
 
    ! Allocate storage for the keys for this number of observations
    allocate(keys(num_obs_in_set)) ! This is still var size for writing out the observation sequence
@@ -873,12 +943,21 @@ AdvanceTime : do
 
    ! allocate() space for the prior qc copy
    call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
-
+   call allocate_single_copy(static_obs_ens_handle, static_prior_qc_copy)
+ 
    call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
            qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
            OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
            OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
            isprior=.true., prior_qc_copy=prior_qc_copy)
+
+   if (hybrid_flavor) then 
+      call get_obs_ens_distrib_state(static_state_ens_handle, static_obs_ens_handle, &
+           static_qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
+           STATIC_OBS_ERR_VAR_COPY, STATIC_OBS_VAL_COPY, STATIC_OBS_KEY_COPY, STATIC_OBS_GLOBAL_QC_COPY, &
+           STATIC_OBS_EXTRA_QC_COPY, STATIC_OBS_MEAN_START, STATIC_OBS_VAR_START, &
+           isprior=.true., prior_qc_copy=static_prior_qc_copy)
+   endif
 
    call timestamp_message('After  computing prior observation values')
    call     trace_message('After  computing prior observation values')
@@ -926,12 +1005,23 @@ AdvanceTime : do
    call     trace_message('Before observation assimilation')
    call timestamp_message('Before observation assimilation')
 
-   call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
-      ens_size, num_groups, obs_val_index, prior_inflate, &
-      ENS_MEAN_COPY, ENS_SD_COPY, &
-      PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-      OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
-      OBS_VAR_END, inflate_only = .false.)
+   
+
+   if (.not. hybrid_flavor) then 
+      call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
+         ens_size, num_groups, obs_val_index, prior_inflate, &
+         ENS_MEAN_COPY, ENS_SD_COPY, &
+         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+         OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
+         OBS_VAR_END, inflate_only = .false.)
+   else
+      call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
+         ens_size, num_groups, obs_val_index, prior_inflate, &
+         ENS_MEAN_COPY, ENS_SD_COPY, &
+         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+         OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
+         OBS_VAR_END, static_state_ens_handle, static_obs_ens_handle, inflate_only = .false.)
+   endif
 
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
@@ -2276,7 +2366,7 @@ end subroutine store_copies
 !------------------------------------------------------------------
 !> Count the number of copies to be allocated for the ensemble manager
 
-function count_state_ens_copies(ens_size, post_inflate, prior_inflate) result(num_copies)
+function count_state_ens_copies(ens_size, prior_inflate, post_inflate) result(num_copies)
 
 integer,                     intent(in) :: ens_size
 type(adaptive_inflate_type), intent(in) :: prior_inflate
@@ -2436,6 +2526,21 @@ end subroutine set_filename_info
 
 !------------------------------------------------------------------
 
+subroutine set_hybrid_info(file_info, stage, num_ens, STAGE_COPIES)
+
+type(file_info_type), intent(inout) :: file_info
+character(len=*),     intent(in)    :: stage
+integer,              intent(in)    :: num_ens
+integer,              intent(in)    :: STAGE_COPIES(2)
+
+call set_member_file_metadata(file_info, num_ens, STAGE_COPIES(MEM_START))
+
+call set_io_copy_flag(file_info, STAGE_COPIES(MEM_START), STAGE_COPIES(MEM_START)+num_ens-1, READ_COPY)
+
+end subroutine set_hybrid_info
+
+!------------------------------------------------------------------
+
 subroutine set_input_file_info( file_info, num_ens, STAGE_COPIES )
 
 type(file_info_type), intent(inout) :: file_info
@@ -2588,7 +2693,7 @@ subroutine initialize_file_information(ncopies, &
                                        file_info_input,     file_info_mean_sd, &
                                        file_info_forecast,  file_info_preassim, &
                                        file_info_postassim, file_info_analysis, &
-                                       file_info_output)
+                                       file_info_output, file_info_hybrid)
 
 integer,              intent(in)  :: ncopies
 type(file_info_type), intent(out) :: file_info_input
@@ -2599,8 +2704,10 @@ type(file_info_type), intent(out) :: file_info_postassim
 type(file_info_type), intent(out) :: file_info_analysis
 type(file_info_type), intent(out) :: file_info_output
 
-integer :: noutput_members, ninput_files, noutput_files, ndomains
-character(len=256), allocatable :: file_array_input(:,:), file_array_output(:,:)
+type(file_info_type), optional, intent(out) :: file_info_hybrid
+
+integer :: noutput_members, ninput_files, noutput_files, nhybrid_files, ndomains
+character(len=256), allocatable :: file_array_input(:,:), file_array_output(:,:), file_array_hybrid(:,:)
 
 ! local variable to shorten the name for function input
 noutput_members = num_output_state_members 
@@ -2657,6 +2764,30 @@ call io_filenames_init(file_info_output,                       &
                        restart_files = file_array_output,      &
                        root_name     = 'output',               &
                        check_output_compatibility = .true.)
+
+! Handle Hybrid option
+if (present(file_info_hybrid)) then
+   nhybrid_files = hybrid_ens_size
+
+   call set_multiple_filename_lists(hybrid_state_files(:), &
+                                    hybrid_state_file_list(:), &
+                                    ndomains, &
+                                    nhybrid_files, &
+                                    'filter','hybrid_state_files','hybrid_state_file_list')
+
+   allocate(file_array_hybrid(nhybrid_files, ndomains))
+
+   file_array_hybrid = RESHAPE(hybrid_state_files,  (/nhybrid_files,  ndomains/))
+
+   call io_filenames_init(file_info_hybrid,                       &
+                           ncopies       = hybrid_ens_size,       &
+                           cycling       = has_cycling,           &
+                           single_file   = single_file_in,        &
+                           restart_files = file_array_hybrid,     &
+                           root_name     = 'hybrid')
+   
+   call set_hybrid_info(file_info_hybrid, 'hybrid', hybrid_ens_size, (/ 1, hybrid_ens_size /) )
+endif
 
 
 ! Set filename metadata information

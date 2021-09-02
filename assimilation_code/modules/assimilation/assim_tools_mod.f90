@@ -185,6 +185,10 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
+
+! MEG:hard code the weight for now
+real(r8) :: hybrid_weight = 0.5
+
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    spread_restoration, sampling_error_correction,                          &
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
@@ -302,19 +306,20 @@ subroutine filter_assim(ens_handle, obs_ens_handle, obs_seq, keys,           &
    ens_size, num_groups, obs_val_index, inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
    ENS_INF_COPY, ENS_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY,          &
    OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START,            &
-   OBS_PRIOR_VAR_END, inflate_only)
+   OBS_PRIOR_VAR_END, stat_ens_handle, stat_obs_ens_handle, inflate_only)
 
-type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
-type(obs_sequence_type),     intent(in)    :: obs_seq
-integer,                     intent(in)    :: keys(:)
-integer,                     intent(in)    :: ens_size, num_groups, obs_val_index
-type(adaptive_inflate_type), intent(inout) :: inflate
-integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, ENS_INF_COPY
-integer,                     intent(in)    :: ENS_INF_SD_COPY
-integer,                     intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
-integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
-integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
-logical,                     intent(in)    :: inflate_only
+type(ensemble_type),           intent(inout) :: ens_handle, obs_ens_handle
+type(obs_sequence_type),       intent(in)    :: obs_seq
+integer,                       intent(in)    :: keys(:)
+integer,                       intent(in)    :: ens_size, num_groups, obs_val_index
+type(adaptive_inflate_type),   intent(inout) :: inflate
+integer,                       intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, ENS_INF_COPY
+integer,                       intent(in)    :: ENS_INF_SD_COPY
+integer,                       intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
+integer,                       intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
+integer,                       intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
+logical,                       intent(in)    :: inflate_only
+type(ensemble_type), optional, intent(in)    :: stat_ens_handle, stat_obs_ens_handle
 
 ! changed the ensemble sized things here to allocatable
 
@@ -393,6 +398,35 @@ real(digits12), allocatable :: elapse_array(:)
 
 integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
 
+logical               :: do_hybrid
+integer               :: hybrid_ens_size
+real(r8)              :: stat_obs_prior_mean, stat_obs_prior_var
+real(r8), allocatable :: stat_obs_prior(:) 
+
+if (present(stat_ens_handle)) then 
+   do_hybrid       = .true.
+   hybrid_ens_size = stat_ens_handle%num_copies
+
+   allocate(stat_obs_prior(hybrid_ens_size))
+else
+   do_hybrid = .false.
+endif
+
+
+print *, 'do_hybrid: ', do_hybrid
+print *, 'weight: ', hybrid_weight
+print *, 'ENS_MEAN_COPY: ', ENS_MEAN_COPY
+print *, 'ENS_SD_COPY: ', ENS_SD_COPY
+print *, 'ENS_INF_COPY: ', ENS_INF_COPY
+print *, 'ENS_INF_SD_COPY: ', ENS_INF_SD_COPY
+print *, 'OBS_KEY_COPY: ', OBS_KEY_COPY
+print *, 'OBS_GLOBAL_QC_COPY: ', OBS_GLOBAL_QC_COPY
+print *, 'OBS_PRIOR_MEAN_START: ', OBS_PRIOR_MEAN_START
+print *, 'OBS_PRIOR_MEAN_END: ', OBS_PRIOR_MEAN_END
+print *, 'OBS_PRIOR_VAR_START: ', OBS_PRIOR_VAR_START
+print *, 'OBS_PRIOR_VAR_END: ', OBS_PRIOR_VAR_END
+
+
 ! timing disabled by default
 timing(:)  = .false.
 t_base(:)  = 0.0_r8
@@ -442,6 +476,7 @@ allocate(close_state_dist(     ens_handle%my_num_vars), &
 ! end alloc
 
 ! we are going to read/write the copies array
+! MEG: This routine literally does nothing 
 call prepare_to_update_copies(ens_handle)
 call prepare_to_update_copies(obs_ens_handle)
 
@@ -531,6 +566,9 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 ! overwrite the vertical location with the required localization vertical coordinate when you
 ! do the forward operator calculation
 call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, obs_time)
+
+print *, 'my_obs_kind: ', my_obs_kind
+print *, 'my_obs_type: ', my_obs_type
 
 if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
    ! convert the vertical of all my observations to the localization coordinate
@@ -631,6 +669,8 @@ allow_missing_in_state = get_missing_ok_status()
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
+   print *, 'obs i: ', i
+
    if (timing(MLOOP))  call start_timer(t_base(MLOOP))
    if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
 
@@ -656,16 +696,21 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    base_obs_loc = get_obs_def_location(obs_def)
    obs_err_var = get_obs_def_error_variance(obs_def)
    base_obs_type = get_obs_def_type_of_obs(obs_def)
+   
    if (base_obs_type > 0) then
       base_obs_kind = get_quantity_for_type_of_obs(base_obs_type)
    else
       call get_state_meta_data(-1 * int(base_obs_type,i8), dummyloc, base_obs_kind)  ! identity obs
    endif
+   
+   print *, 'base_obs_type: ', base_obs_type
+   print *, 'base_obs_kind: ', base_obs_kind
+
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
 
    ! Find out who has this observation and where it is
-   call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
+   call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index) 
 
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------
@@ -686,6 +731,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       IF_QC_IS_OKAY: if(nint(obs_qc) ==0) then
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
 
+         !print *, 'shape of obs_ens_handle%copies: ', shape(obs_ens_handle%copies)
+         !print *, 'shape of ens_handle%copies: ', shape(ens_handle%copies)
+
+         !print *, 'shape of stat_obs_ens_handle%copies: ', shape(stat_obs_ens_handle%copies)
+         !print *, 'shape of stat_ens_handle%copies: ', shape(stat_ens_handle%copies)
+         
+
          ! Compute the prior mean and variance for this observation
          orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
             OBS_PRIOR_MEAN_END, owners_index)
@@ -696,10 +748,19 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          do group = 1, num_groups
             grp_bot = grp_beg(group)
             grp_top = grp_end(group)
-            call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
-               obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
-               my_inflate_sd, net_a(group))
+
+            if (.not. do_hybrid) then
+               call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
+                    obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate, &
+                    my_inflate_sd, net_a(group))
+            else
+               stat_obs_prior = stat_obs_ens_handle%copies(1:hybrid_ens_size, owners_index)
+               call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
+                    obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate, &
+                    my_inflate_sd, net_a(group), stat_obs_prior)
+            endif
          end do
+         print *, 'obs_inc: ', obs_inc         
 
          ! Compute updated values for single state space inflation
          SINGLE_SS_INFLATE: if(local_single_ss_inflate) then
@@ -757,16 +818,16 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
       if(local_varying_ss_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
+            orig_obs_prior_mean, orig_obs_prior_var, net_a, stat_obs_prior, scalar1=obs_qc, &
             scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
 
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-           net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
+           net_a, stat_obs_prior, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
            scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
       else
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-           net_a, scalar1=obs_qc, &
+           net_a, stat_obs_prior, scalar1=obs_qc, &
            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
       endif
 
@@ -780,22 +841,22 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       !>the cost of sending unneeded values
       if(local_varying_ss_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
+            orig_obs_prior_mean, orig_obs_prior_var, net_a, stat_obs_prior, scalar1=obs_qc, &
             scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
+            net_a, stat_obs_prior, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
             scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
       else
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-           net_a, scalar1=obs_qc, &
+           net_a, stat_obs_prior, scalar1=obs_qc, &
            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
       endif
       whichvert_obs_in_localization_coord = nint(whichvert_real)
 
    endif
    !-----------------------------------------------------------------------
-
+   
    ! Everybody is doing this section, cycle if qc is bad
    if(nint(obs_qc) /= 0) then
       if (timing(MLOOP)) then
@@ -820,6 +881,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       if (obs_prior_var(group) < 0.0_r8) obs_prior_var(group) = 0.0_r8
    end do
 
+   if (do_hybrid) then 
+      stat_obs_prior_mean = sum(stat_obs_prior) / hybrid_ens_size
+      stat_obs_prior_var  = sum((stat_obs_prior - stat_obs_prior_mean)**2) / (hybrid_ens_size - 1.0_r8)
+
+      if (stat_obs_prior_var < 0.0_r8) stat_obs_prior_var = 0.0_r8       
+   endif
+   
    ! If we are doing adaptive localization then we need to know the number of
    ! other observations that are within the localization radius.  We may need
    ! to shrink it, and so we need to know this before doing get_close() for the
@@ -1003,6 +1071,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
+      
+      print *, 'j: ', j
+      print *, 'state_index: ', state_index
 
       ! the "any" is an expensive test when you do it for every ob.  don't test
       ! if we know there aren't going to be missing values in the state.
@@ -1038,24 +1109,43 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
 
       if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-      ! Loop through groups to update the state variable ensemble members
-      do group = 1, num_groups
-         grp_bot = grp_beg(group)
-         grp_top = grp_end(group)
-         ! Do update of state, correl only needed for varying ss inflate
+      
+      if (do_hybrid) then ! Regression for the hybrid case: Only support 1 group for now; i.e., num_groups = 1
          if(local_varying_ss_inflate .and. varying_ss_inflate > 0.0_r8 .and. &
             varying_ss_inflate_sd > 0.0_r8) then
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-               ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
-               increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+            call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
+               obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
+               stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
+               stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
+               increment, reg_coef(1), net_a(1), correl(1))
          else
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-               ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
-               increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+            call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
+               obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
+               stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
+               stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
+               increment, reg_coef(1), net_a(1))
          endif
-      end do
+      else
+         ! Loop through groups to update the state variable ensemble members
+         do group = 1, num_groups
+            grp_bot = grp_beg(group)
+            grp_top = grp_end(group)
+            ! Do update of state, correl only needed for varying ss inflate
+            if(local_varying_ss_inflate .and. varying_ss_inflate > 0.0_r8 .and. &
+               varying_ss_inflate_sd > 0.0_r8) then
+               call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+                  obs_prior_var(group), obs_inc(grp_bot:grp_top), &
+                  ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
+                  increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+            else
+               call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+                  obs_prior_var(group), obs_inc(grp_bot:grp_top), &
+                  ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
+                  increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+            endif
+         end do
+      endif
+      
       if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_from_obs_inc_S', &
                                           t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
 
@@ -1181,15 +1271,25 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
 
          if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-         ! Loop through and update ensemble members in each group
-         do group = 1, num_groups
-            grp_bot = grp_beg(group)
-            grp_top = grp_end(group)
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-                obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
-                increment(grp_bot:grp_top), reg_coef(group), net_a(group))
-         end do
+     
+         if (do_hybrid) then 
+            call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1),   & 
+               obs_inc, obs_ens_handle%copies(1:ens_size, obs_index), ens_size,           & 
+               stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                   &
+               stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), hybrid_ens_size, &
+               increment, reg_coef(1), net_a(1))
+         else
+            ! Loop through and update ensemble members in each group
+            do group = 1, num_groups
+               grp_bot = grp_beg(group)
+               grp_top = grp_end(group)
+               call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+                   obs_prior_var(group), obs_inc(grp_bot:grp_top), &
+                   obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
+                   increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+            end do
+         endif
+         
          if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_from_obs_inc_O', &
                                              t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
 
@@ -1329,6 +1429,8 @@ deallocate(close_state_dist,      &
 
 deallocate(n_close_state_items, &
            n_close_obs_items)
+
+if (do_hybrid) deallocate(stat_obs_prior)
 ! end dealloc
 
 end subroutine filter_assim
@@ -1336,7 +1438,7 @@ end subroutine filter_assim
 !-------------------------------------------------------------
 
 subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc, &
-   inflate, my_cov_inflate, my_cov_inflate_sd, net_a)
+   inflate, my_cov_inflate, my_cov_inflate_sd, net_a, hyb_ens_in)
 
 ! Given the ensemble prior for an observation, the observation, and
 ! the observation error variance, computes increments and adjusts
@@ -1348,12 +1450,19 @@ real(r8),                    intent(out)   :: obs_inc(ens_size)
 type(adaptive_inflate_type), intent(inout) :: inflate
 real(r8),                    intent(inout) :: my_cov_inflate, my_cov_inflate_sd
 real(r8),                    intent(out)   :: net_a
+real(r8), optional,          intent(in)    :: hyb_ens_in(:) 
 
 real(r8) :: ens(ens_size), inflate_inc(ens_size)
 real(r8) :: prior_mean, prior_var, new_val(ens_size)
 integer  :: i, ens_index(ens_size), new_index(ens_size)
 
 real(r8) :: rel_weights(ens_size)
+
+integer  :: ens_size2
+real(r8) :: hyb_mean, ens_var, hyb_var 
+
+!print *, 'obs_prior: ', ens_in
+!print *, 'hyb_obs_prior: ', hyb_ens_in
 
 ! Copy the input ensemble to something that can be modified
 ens = ens_in
@@ -1363,7 +1472,23 @@ net_a = 0.0_r8
 
 ! Compute prior variance and mean from sample
 prior_mean = sum(ens) / ens_size
-prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+
+if (present(hyb_ens_in)) then 
+   ens_size2 = size(hyb_ens_in)
+   hyb_mean  = sum(hyb_ens_in)/ens_size2
+
+   ens_var   = sum((ens        - prior_mean)**2) / (ens_size  - 1)
+   hyb_var   = sum((hyb_ens_in - hyb_mean  )**2) / (ens_size2 - 1)
+   
+   prior_var = hybrid_weight * ens_var + (1.0_r8 - hybrid_weight) * hyb_var
+else
+   prior_var = sum((ens - prior_mean)**2) / (ens_size - 1)
+endif 
+
+!print *, 'hyb_mean: ', hyb_mean
+!print *, 'ens_var: ', ens_var
+!print *, 'hyb_var: ', hyb_var
+!print *, 'prior_var: ', prior_var
 
 ! If observation space inflation is being done, compute the initial
 ! increments and update the inflation factor and its standard deviation
@@ -1970,6 +2095,150 @@ endif
 
 end subroutine update_from_obs_inc
 
+!------------------------------------------------------------------------
+
+subroutine update_from_hybobs_inc(obs, obs_prior_mean, obs_prior_var, obs_inc,     &
+               state, ens_size, clim_obs, clim_obs_prior_mean, clim_obs_prior_var, & 
+               clim_state, ens_size2, state_inc, reg_coef, net_a, correl_out)
+!========================================================================
+
+! Does linear regression of a state variable onto an observation and
+! computes state variable increments from observation increments
+
+! Hybrid variant, with the following assumptions: 
+! [1] inflation only sees pure ensemble statistics (not the hybridized ones)
+! [2] weight between ensemble and climatology is uniform in space
+
+integer,            intent(in)    :: ens_size, ens_size2
+real(r8),           intent(in)    :: obs(ens_size), clim_obs(ens_size2), obs_inc(ens_size)
+real(r8),           intent(in)    :: obs_prior_mean, obs_prior_var
+real(r8),           intent(in)    :: clim_obs_prior_mean, clim_obs_prior_var
+real(r8),           intent(in)    :: state(ens_size), clim_state(ens_size2)
+real(r8),           intent(out)   :: state_inc(ens_size), reg_coef
+real(r8),           intent(inout) :: net_a
+real(r8), optional, intent(inout) :: correl_out
+
+real(r8) :: obs_state_cov, hyb_obs_state_cov, hyb_obs_prior_var, intermed
+real(r8) :: restoration_inc(ens_size), state_mean, state_var, correl
+real(r8) :: factor, exp_true_correl, mean_factor
+real(r8) :: clim_state_mean, clim_obs_state_cov
+
+! For efficiency, just compute regression coefficient here unless correl is needed
+state_mean         = sum(state) / ens_size
+obs_state_cov      = sum( (state - state_mean) * (obs - obs_prior_mean) ) / (ens_size - 1)
+
+clim_state_mean    = sum(clim_state) / ens_size2 
+clim_obs_state_cov = sum( (clim_state - clim_state_mean) * (clim_obs - clim_obs_prior_mean) ) / (ens_size2 - 1)
+
+hyb_obs_prior_var  = hybrid_weight * obs_prior_var + (1.0_r8 - hybrid_weight) * clim_obs_prior_var 
+hyb_obs_state_cov  = hybrid_weight * obs_state_cov + (1.0_r8 - hybrid_weight) * clim_obs_state_cov 
+
+if (obs_prior_var > 0.0_r8) then
+   reg_coef = hyb_obs_state_cov / hyb_obs_prior_var
+else
+   reg_coef = 0.0_r8
+endif
+
+print *, 'obs_prior_var: ', obs_prior_var
+print *, 'clim_obs_prior_var: ', clim_obs_prior_var
+print *, 'obs_state_cov: ', obs_state_cov
+print *, 'clim_obs_state_cov: ', clim_obs_state_cov
+print *, 'reg_coef: ', obs_state_cov / obs_prior_var
+print *, 'hyb_reg_coef: ', reg_coef
+
+! If correl_out is present, need correl for adaptive inflation
+! Also needed for file correction below.
+
+! WARNING: we have had several different numerical problems in this
+! section, especially with users running in single precision floating point.
+! Be very cautious if changing any code in this section, taking into
+! account underflow and overflow for 32 bit floats.
+
+if(present(correl_out) .or. sampling_error_correction) then
+   if (obs_state_cov == 0.0_r8 .or. obs_prior_var <= 0.0_r8) then
+      correl = 0.0_r8
+   else
+      state_var = sum((state - state_mean)**2) / (ens_size - 1)
+      if (state_var <= 0.0_r8) then
+         correl = 0.0_r8
+      else
+         intermed = sqrt(obs_prior_var) * sqrt(state_var)
+         if (intermed <= 0.0_r8) then
+            correl = 0.0_r8
+         else
+            correl = obs_state_cov / intermed
+         endif
+      endif
+   endif
+   if(correl >  1.0_r8) correl =  1.0_r8
+   if(correl < -1.0_r8) correl = -1.0_r8
+endif
+if(present(correl_out)) correl_out = correl
+
+
+! Get the expected actual correlation and the regression weight reduction factor
+if(sampling_error_correction) then
+   call get_correction_from_table(correl, mean_factor, exp_true_correl, ens_size)
+   ! Watch out for division by zero; if correl is really small regression is safely 0
+   if(abs(correl) > 0.001_r8) then
+      reg_coef = reg_coef * (exp_true_correl / correl) * mean_factor
+   else
+      reg_coef = 0.0_r8
+   endif
+   correl = exp_true_correl
+endif
+
+
+
+! Then compute the increment as product of reg_coef and observation space increment
+state_inc = reg_coef * obs_inc
+
+print *, 'state_inc: ', state_inc
+!
+! FIXME: craig schwartz has a degenerate case involving externally computed
+! forward operators in which the obs prior variance is in fact exactly 0.
+! adding this test allowed him to continue to  use spread restoration
+! without numerical problems.  we don't know if this is sufficient;
+! for now we'll leave the original code but it needs to be revisited.
+!
+! Spread restoration algorithm option.
+!if(spread_restoration .and. obs_prior_var > 0.0_r8) then
+!
+
+! Spread restoration algorithm option.
+if(spread_restoration) then
+   ! Don't use this to reduce spread at present (should revisit this line)
+   if(net_a > 1.0_r8) net_a = 1.0_r8
+
+   ! Default restoration increment is 0.0
+   restoration_inc = 0.0_r8
+
+   ! Compute the factor by which to inflate
+   ! These come from correl_error.f90 in system_simulation and the files ens??_pairs and
+   ! ens_pairs_0.5 in work under system_simulation. Assume a linear reduction from 1
+   ! as a function of the net_a. Assume that the slope of this reduction is a function of
+   ! the reciprocal of the ensemble_size (slope = 0.80 / ens_size). These are empirical
+   ! for now. See also README in spread_restoration_paper documentation.
+   !!!factor = 1.0_r8 / (1.0_r8 + (net_a - 1.0_r8) * (0.8_r8 / ens_size)) - 1.0_r8
+   factor = 1.0_r8 / (1.0_r8 + (net_a - 1.0_r8) / (-2.4711_r8 + 1.6386_r8 * ens_size)) - 1.0_r8
+   !!!factor = 1.0_r8 / (1.0_r8 + (net_a**2 - 1.0_r8) * (-0.0111_r8 + .8585_r8 / ens_size)) - 1.0_r8
+
+   ! Variance restoration
+   state_mean = sum(state) / ens_size
+   restoration_inc = factor * (state - state_mean)
+   state_inc = state_inc + restoration_inc
+endif
+
+!! NOTE: if requested to be returned, correl_out is set further up in the
+!! code, before the sampling error correction, if enabled, is applied.
+!! this means it's returning a different larger value than the correl
+!! being returned here.  it's used by the adaptive inflation and so the
+!! inflation will see a slightly different correlation value.  it isn't
+!! clear that this is a bad thing; it means the inflation might be a bit
+!! larger than it would otherwise.  before we move any code this would
+!! need to be studied to see what the real impact would be.
+
+end subroutine update_from_hybobs_inc
 
 !------------------------------------------------------------------------
 
