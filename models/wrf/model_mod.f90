@@ -343,13 +343,12 @@ TYPE wrf_static_data_for_dart
    character(len=10), dimension(:),pointer :: clamp_or_fail
    character(len=129),dimension(:),pointer :: description, units, stagger, coordinates
 
-   integer, dimension(:,:,:,:), pointer :: dart_ind
 
 end type wrf_static_data_for_dart
 
 type wrf_dom
    type(wrf_static_data_for_dart), pointer :: dom(:)
-   integer :: model_size
+   integer(i8) :: model_size
 end type wrf_dom
 
 type(wrf_dom) :: wrf
