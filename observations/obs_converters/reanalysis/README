@@ -59,19 +59,27 @@ details for converting each type of obs:
 
 ncep obs with acars:
  download:
- 1) if your time period is between 2000 and now, use this procedure:
- - chifan gave me a list of all prepqm files from 2000 to 2018
-    find it in Observations/bufr/tarfiles/nancy.get 
-    each line starts with cget.  run 'hsi cget xxx' for the
-    files you want off the HPSS for one-at-a-time, edit the
-    ones you want into a separate file (e.g. bob), each line 
-    starting with 'cget', and run 'hsi < bob' to do multiples.
- - run:  cosconvert -b Axxxx  YYYYMM.tar
+ 1) if your time period is between 2000 and 2018, use this procedure:
+ - if they haven't been removed to reclaim disk space, the prepqm
+    tar files are in the bufr/tarfiles directory.  a record of the
+    original HPSS dataset names are in:
+     Observations/bufr/tarfiles/nancy.get 
+    but since the HPSS is gone this is mostly of historical interest.
+ - if you need to start with an "A" file for any reason, you might
+    have to run:
+     cosconvert -b Axxxx  YYYYMM.tar
     (the cosconvert executable should be in that same dir)
 
  2) if your time period is other, use this procedure:
+ - check the RDA DS 090.0 inventory files and look to see
+    if your desired months are listed.  you are looking for
+    prepqm files.  depending on the time range, they could
+    be weekly, 2 per month, or monthly.  recent obs data usually
+    appears about a month or two behind the current date.
  - email chifan (in DSS) and ask for the DS 090.0 prepqm 
-    monthly tar files with ncep+acars observations. 
+    tar files *with ncep+acars observations*.  again, depending
+    on the era, the prepqm files you see listed on the website
+    may not contain the ACARS data.
     it usually takes less than a day for him to extract them 
     onto glade scratch. and he usually runs cosconvert for you.
  - copy the files he gave you from scratch into the
@@ -82,6 +90,10 @@ ncep obs with acars:
     so you can tell which file is which month.)  keep these around
     until you are *sure* everything is ok.  less work for chifan
     if you don't have to request the same file again.
+ - chifan usually runs cosconvert on the files first so they are
+    already in tar format.  if tar gives you an error, try:
+     cosconvert -b infile outfile.tar
+    and try to list the output file.  it should be in tar format now.
 
  now continue here:
  - untar the files into bufr/prepqm 
@@ -94,14 +106,14 @@ ncep obs with acars:
     which prints out total file counts to verify they're all there.
 
  convert:
- - go into bufr/nsc_scripts/prep_bufr and edit my_multi_parallel.batch
+ - go into bufr/scripts/prep_bufr and edit my_multi_parallel.batch
     to set the start/end times.  submit it.  it will process files
     in bufr/prepqm and leave ascii files in bufr/prepout. these are
     still 6h files.  filename format is temp_obs.YYYYMMDDHH and
     hours are now 06, 12, 18, 24. 
     in bufr/prepout, see the 'list_files_by_month' script
     which prints out total file counts to verify they're all there.
- - go into bufr/nsc_scripts/ascii_to_obs.  edit multi_parallel.pbs
+ - go into bufr/scripts/ascii_to_obs.  edit multi_parallel.pbs
     to set the start/end times.  submit it to the batch system.
     it will create 6H obs_seq files in bufr/obs_seq with filesnames
     of the form  obs_seqYYYYMMDDHH  hours are back to 00, 06, 12, 18
@@ -112,15 +124,24 @@ ncep obs with acars:
      /glade/p/cisl/dares/Observations/NCEP+ACARS/YYYYMM_6H
 
 gps obs:
- setup:
- - current $DART root to use:  
-     /glade/work/nancy/subversion/cleanrmatrunk.cheyenne
- - mkdir /glade/scratch/nancy/gps_conversion/{work,cosmic,shell_scripts}. 
- - copy the contents of:
-      $DART/observations/obs_converters/gps/work
+ code and script locations:
+ - dart root to use for executable programs:
+     git repo code, main branch
+ - dart root to use for scripts:
+     git repo code, reanalysis branch, observations/obs_converters/reanalysis
+ 
+ user access:
+  in the past it was necessary to get a username/password to
+  access the files on this website.  check here for the current process.
+      https://cdaac-www.cosmic.ucar.edu/cdaac/products.html
+
+ setup on a partition with a lot of space:
+ - mkdir /glade/scratch/$USER/gps_conversion/{work,cosmic,shell_scripts}. 
+ - compile with quickbuild.csh, and copy the contents of:
+      main branch: observations/obs_converters/gps/work
     into the scratch gps_conversion/work directory.
  - copy the contents of:
-      $DART/observations/obs_converters/gps/shell_scripts
+      reanalysis branch: observations/obs_converters/gps/shell_scripts
     into the scratch gps_conversion/shell_scripts directory.
  - cd into the scratch shell_scripts directory.
    the jobs will be started from here.
@@ -154,7 +175,7 @@ gps obs:
    in a subdir for each day. filenames are YYYYMMDD/obs_seq.gpsro_YYYYMMDD
 
  move to destination:
- - go into /glade/scratch/nancy/gps_conversion/cosmic
+ - go into /glade/scratch/$USER/gps_conversion/cosmic
  - edit the start/end dates in list_here and run it to see if all
     the obs_seq files were created.  look for 'ls: not found' errors.
  - set the start/end dates in 'move_there' and run it to move
