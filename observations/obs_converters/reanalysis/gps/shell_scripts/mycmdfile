@@ -1,0 +1,36 @@
+csh ./my_gpsro_to_obsseq.csh 20171221 ../cosmic/20171221 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171222 ../cosmic/20171222 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171223 ../cosmic/20171223 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171224 ../cosmic/20171224 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171225 ../cosmic/20171225 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171226 ../cosmic/20171226 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171227 ../cosmic/20171227 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171228 ../cosmic/20171228 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171229 ../cosmic/20171229 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171230 ../cosmic/20171230 yes yes yes ./satlist
+csh ./my_gpsro_to_obsseq.csh 20171231 ../cosmic/20171231 yes yes yes ./satlist
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 
+date 

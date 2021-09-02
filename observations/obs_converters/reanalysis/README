@@ -141,7 +141,7 @@ gps obs:
       main branch: observations/obs_converters/gps/work
     into the scratch gps_conversion/work directory.
  - copy the contents of:
-      reanalysis branch: observations/obs_converters/gps/shell_scripts
+      reanalysis branch: observations/obs_converters/reanalysis/gps/shell_scripts
     into the scratch gps_conversion/shell_scripts directory.
  - cd into the scratch shell_scripts directory.
    the jobs will be started from here.
