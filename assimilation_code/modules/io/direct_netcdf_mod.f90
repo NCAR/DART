@@ -166,7 +166,7 @@ subroutine read_transpose(state_ens_handle, name_handle, domain, dart_index, rea
 type(ensemble_type),       intent(inout) :: state_ens_handle !< Ensemble handle
 type(stage_metadata_type), intent(in)    :: name_handle      !< Name handle
 integer,                   intent(in)    :: domain           !< Which domain to read
-integer,                   intent(inout) :: dart_index       !< This is for multiple domains
+integer(i8),               intent(inout) :: dart_index       !< This is for multiple domains
 logical,                   intent(in)    :: read_single_vars !< Read one variable at a time
 
 if (task_count() == 1) then
@@ -188,7 +188,7 @@ subroutine transpose_write(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index
+integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_single_vars !< write one variable at a time
 logical,                   intent(in)    :: write_single_precision
 
@@ -885,14 +885,15 @@ subroutine read_transpose_single_task(state_ens_handle, name_handle, domain, dar
 type(ensemble_type),      intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)   :: name_handle
 integer,                   intent(in)   :: domain
-integer,                  intent(inout) :: dart_index !< This is for multiple domains
+integer(i8),              intent(inout) :: dart_index !< This is for multiple domains
 
 real(r8), allocatable :: vector(:)
 
 integer :: ncfile !< netcdf input file identifier
 character(len=256) :: netcdf_filename
 
-integer :: block_size , istart, iend , copy , start_var
+integer(i8) :: block_size, istart, iend
+integer :: copy , start_var
 
 istart     = dart_index ! position in state_ens_handle%vars
 block_size = 0
@@ -946,7 +947,7 @@ subroutine transpose_write_single_task(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index
+integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_single_precision
 
 ! netcdf variables
@@ -955,7 +956,8 @@ character(len=256) :: netcdf_filename_out
 
 real(r8), allocatable :: vector(:)
 
-integer :: block_size , istart, iend , copy , start_var, end_var
+integer(i8) :: block_size , istart, iend
+integer :: copy , start_var, end_var
 integer :: time_owner, time_owner_index
 logical :: clamp_vars, force_copy
 type(time_type) :: dart_time
@@ -1052,7 +1054,7 @@ subroutine read_transpose_multi_task(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index !< This is for multiple domains
+integer(i8),               intent(inout) :: dart_index !< This is for multiple domains
 logical,                   intent(in)    :: read_var_by_var !< Read one variable at a time 
 
 integer :: start_var, end_var   !< start/end variables in a read block
@@ -1060,15 +1062,15 @@ integer :: start_rank           !< starting rank containg variable of interest
 integer :: recv_start, recv_end !< start/end variables for receives
 integer :: send_start, send_end !< start/end variables for sends
 integer :: recv_pe, sending_pe  !< PEs sending and receiving data
-integer :: elm_count            !< number of elements to send
-integer :: block_size           !< number of state elements in a block
-integer :: istart, iend         !< position in state vector copies array
+integer(i8) :: elm_count        !< number of elements to send
+integer(i8) :: block_size       !< number of state elements in a block
+integer(i8) :: istart, iend     !< position in state vector copies array
 integer :: ens_size             !< ensemble size
 integer :: my_pe                !< task or pe?
 integer :: ensemble_member      !< the ensmeble_member you are receiving.
 integer :: my_copy              !< which copy a pe is reading, from 1 to ens_handle%num_copies
 integer :: c                    !< copies_read loop index
-integer :: start_point
+integer(i8) :: start_point
 integer :: copies_read
 integer :: num_state_variables
 integer :: dummy_loop
@@ -1234,7 +1236,7 @@ subroutine transpose_write_multi_task(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index
+integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_var_by_var !< Write a single variable, one at a time
 logical,                   intent(in)    :: write_single_precision
 
@@ -1243,10 +1245,10 @@ integer :: start_var, end_var !< start/end variables in a read block
 integer :: my_pe !< task or pe?
 integer :: recv_pe, sending_pe
 real(r8), allocatable :: var_block(:) !< for reading in variables
-integer :: block_size !< number of variables in a block
-integer :: elm_count !< number of elements to send
-integer :: istart!< position in state_ens_handle%copies
-integer :: iend
+integer(i8) :: block_size !< number of variables in a block
+integer(i8) :: elm_count !< number of elements to send
+integer(i8) :: istart!< position in state_ens_handle%copies
+integer(i8) :: iend
 integer :: ens_size !< ensemble size
 integer :: start_rank
 integer :: recv_start, recv_end
@@ -1517,8 +1519,8 @@ integer,  intent(in)    :: domain
 logical,  intent(in)    :: do_file_clamping
 logical,  intent(in)    :: force_copy
 
-integer :: istart, iend
-integer :: i, ret, var_id, var_size
+integer(i8) :: istart, iend, var_size
+integer :: i, ret, var_id
 integer, allocatable :: dims(:)
 
 logical :: missing_possible
@@ -2195,7 +2197,7 @@ integer,                intent(in) :: timeindex
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: start_point
-integer :: istart, iend
+integer(i8) :: istart, iend
 integer :: ivar, jdim
 integer :: ndims
 integer :: ret ! netcdf return code
