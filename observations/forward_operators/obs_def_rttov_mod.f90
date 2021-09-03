@@ -59,7 +59,7 @@
 ! observations with the correct units.
 !----------------------------------------------------------------------
 
-! BEGIN DART PREPROCESS TYPE DEFINITIONS
+! BEGIN DART PREPROCESS KIND LIST
 ! NOAA_1_VTPR1_RADIANCE,        QTY_RADIANCE
 ! NOAA_2_VTPR1_RADIANCE,        QTY_RADIANCE
 ! NOAA_3_VTPR1_RADIANCE,        QTY_RADIANCE
@@ -271,7 +271,7 @@
 ! GF5_1_VIMS_RADIANCE,          QTY_RADIANCE
 ! HY2_1_MWRI_TB,                QTY_BRIGHTNESS_TEMPERATURE
 ! CLOUDSAT_1_CPR_TB,            QTY_BRIGHTNESS_TEMPERATURE 
-! END DART PREPROCESS TYPE DEFINITIONS
+! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !   use obs_def_rttov_mod, only : read_rttov_metadata, &
@@ -310,11 +310,10 @@ module obs_def_rttov_mod
 
 use        types_mod, only : r8, MISSING_R8, MISSING_I, obstypelength
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, E_ALLMSG, &
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              ascii_file_format, nmlfileunit, do_nml_file, &
                              do_nml_term, check_namelist_read, find_namelist_in_file, &
-                             interactive_r, interactive_i, open_file, file_exist, &
-                             close_file
+                             interactive_r, interactive_i, open_file, file_exist
 
 use     location_mod, only : location_type, set_location, get_location, &
                              VERTISUNDEF, VERTISHEIGHT, VERTISLEVEL, VERTISSURFACE
@@ -417,15 +416,8 @@ public ::     atmos_profile_type, &
                 get_rttov_sensor, &
                 do_forward_model
 
-! routines for unit testing
-public :: test_unit_setup,       &
-          test_set_metadata,     &
-          test_unit_teardown,    &
-          test_metadata,         &
-          test_key_within_range, &
-          test_subkey_within_range
-
 ! Metadata for rttov observations.
+
 type visir_metadata_type
    real(jprb)    :: sat_az      ! azimuth of satellite position (degrees)
    real(jprb)    :: sat_ze      ! zenith of satellite position (degrees)
@@ -598,7 +590,8 @@ logical            :: module_initialized = .false.
 logical            :: arrays_prealloced  = .false.
 integer            :: iunit, rc
 
-integer,                   allocatable :: obstype_metadata(:,:) ! key & subkey
+logical,                   allocatable :: obstype_metadata(:)
+integer,                   allocatable :: obstype_subkey(:)
 type(visir_metadata_type), pointer     :: visir_obs_metadata(:)
 type(visir_metadata_type)              :: missing_visir_metadata
 type(mw_metadata_type),    pointer     :: mw_obs_metadata(:)
@@ -606,14 +599,6 @@ type(mw_metadata_type)                 :: missing_mw_metadata
 
 character(len=5), parameter :: VISIR_STRING = 'visir'
 character(len=5), parameter :: MW_STRING    = 'mw   '
-
-integer, parameter :: NO_OBS = -1
-integer, parameter :: VISIR = 1
-integer, parameter :: MW = 2
-
-! row in obstype_metadata(:,:)
-integer, parameter :: SUBTYPE = 1 
-integer, parameter :: SUBKEY = 2
 
 logical :: debug = .false.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
@@ -653,7 +638,6 @@ logical              :: use_water_type       = .false.  ! use water type (0 = fr
 logical              :: addrefrac            = .false.  ! enable atmospheric refraction (all) 
 logical              :: plane_parallel       = .false.  ! treat atmosphere as strictly plane-parallel? (all)
 logical              :: use_salinity         = .false.  ! use ocean salinity (in practical salinity units) (MW, FASTEM 4-6 and TESSEM2)
-logical              :: apply_band_correction= .true.   ! apply band correction from coef file? (MW)
 logical              :: cfrac_data           = .false.  ! specify cloud fraction? (VIS/IR/MW)
 logical              :: clw_data             = .false.  ! specify non-precip cloud liquid water? (VIS/IR/MW)
 logical              :: rain_data            = .false.  ! specify precip cloud liquid water? (VIS/IR/MW)
@@ -690,9 +674,9 @@ integer              :: idg_scheme           = 2        ! Ou and Liou (1), Wyser
 logical              :: user_aer_opt_param   = .false.  ! specify aerosol scattering properties (VIS/IR, add_clouds only)
 logical              :: user_cld_opt_param   = .false.  ! specify cloud scattering properties (VIS/IR, add_clouds only)
 logical              :: grid_box_avg_cloud   = .true.   ! cloud concentrations are grid box averages. False = concentrations for cloudy layer only. (VIS/IR, add_clouds and not user_cld_opt_param only)
-real(r8)             :: cldstr_threshold     = -1.0_r8    ! threshold for cloud stream weights for scattering (VIS/IR, add_clouds only)
-logical              :: cldstr_simple        = .false.  ! If true, one clear column, one cloudy column (VIS/IR, add_clouds only)
-real(r8)             :: cldstr_low_cloud_top = 750.0_r8   ! cloud fraction maximum in layers from ToA down to specified hPa (VIS/IR, cldstr_simple only)
+real(r8)             :: cldcol_threshold     = -1.0_r8    ! threshold for cloud stream weights for scattering (VIS/IR, add_clouds only)
+integer              :: cloud_overlap        = 1        ! default: 1 (max/random overlap)
+real(r8)             :: cc_low_cloud_top = 750.0_r8   ! cloud fraction maximum in layers from ToA down to specified hPa (VIS/IR, cldstr_simple only)
 integer              :: ir_scatt_model       = 2        ! DOM (1) or Chou-scaling (2) (IR, add_clouds or add_aerosl only)
 integer              :: vis_scatt_model      = 1        ! DOM (1), single scat (2), or MFASIS (3) (VIS, addsolar and add_clouds or add_aerosl only)
 integer              :: dom_nstreams         = 8        ! number of streams to use with DOM (VIS/IR, add_clouds or add_aerosl and DOM model only, must be >= 2 and even)
@@ -726,7 +710,6 @@ namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               addrefrac,              &
                               plane_parallel,         &
                               use_salinity,           &
-                              apply_band_correction,  &
                               cfrac_data,             &
                               clw_data,               &
                               rain_data,              &
@@ -763,9 +746,9 @@ namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               user_aer_opt_param,     &
                               user_cld_opt_param,     &
                               grid_box_avg_cloud,     &
-                              cldstr_threshold,       &
-                              cldstr_simple,          &
-                              cldstr_low_cloud_top,   &
+                              cldcol_threshold,       &
+                              cloud_overlap,          &
+                              cc_low_cloud_top,   &
                               ir_scatt_model,         &
                               vis_scatt_model,        &
                               dom_nstreams,           &
@@ -784,6 +767,10 @@ type(atmos_profile_type)     :: atmos
 type(trace_gas_profile_type) :: trace_gas
 type(aerosol_profile_type)   :: aerosols
 type(cloud_profile_type)     :: clouds
+
+integer               :: year
+integer               :: month
+integer               :: day
   
 ! include the interface files as per the RTTOV standard
 include "rttov_direct.interface"
@@ -1221,8 +1208,6 @@ lineloop: do
    deallocate(channels)
 end do lineloop
 
-call close_file(dbUnit)
-
 end subroutine read_sensor_db_file
 
 !----------------------------------------------------------------------
@@ -1531,77 +1516,87 @@ if (debug) then
 end if
 
 if (present(opts_scatt)) then
-   ! Allocate cld_profile for rttov_scatt
-   allocate(runtime % cld_profiles(ens_size), stat=alloc_status)
-   if (alloc_status /= 0) then
-      write(string1,*) 'allocation error for cld_profiles array'
-      call error_handler(E_ERR, routine, string1, source, revision, revdate)
-   end if
+    ! Allocate cld_profile for rttov_scatt
+    allocate(runtime % cld_profiles(ens_size), stat=alloc_status)
+    if (alloc_status /= 0) then
+       write(string1,*) 'allocation error for cld_profiles array'
+       call error_handler(E_ERR, routine, string1, source, revision, revdate)
+    end if
+ 
+    CALL rttov_alloc_scatt_prof(               &
+          err=errorstatus,                     &
+          nprof=ens_size,                      &
+          cld_profiles=runtime % cld_profiles, &
+          nlev=nlevs,                          &
+          nhydro=5,                            & ! default 
+          nhydro_frac=1,                       & ! 1 cfrac profile
+          ! use_totalice=do_totalice,            &
+          asw=1,                               & ! 1 = allocate
+          init=.TRUE._jplm) !,                    &
+          ! mmr_snowrain=.TRUE._jplm)              ! true = kg/kg units for clouds
+ 
+    if (errorstatus /= errorstatus_success) then
+       write(string1,*) 'allocation error for rttov_direct structures'
+       call error_handler(E_ERR, routine, string1, source, revision, revdate)
+    endif
+ 
+    allocate(use_chan(ens_size,runtime % coefs % coef % fmv_chn))
+    allocate(runtime % frequencies(ens_size))
+ 
+    ! only the channels to simulate will be set
+    allocate(runtime % frequencies_all(runtime % coefs % coef % fmv_chn))
+ 
+    if (size(sensor % channels) /= 0) then
+       nch = size(sensor % channels)
+    else
+       nch = runtime % coefs % coef % fmv_chn
+    end if
+ 
+    do i=1,ens_size
+       runtime % chanprof(i) % prof = i
+    end do
+ 
+    do i=1,nch
+       use_chan(:,:) = .FALSE._jplm
+ 
+       if (size(sensor % channels) /= 0) then
+          ich = sensor % channels(i)
+       else
+          ich = i
+       end if
+ 
+       ! Set use_chan to .TRUE. only for the ith required channel
+       use_chan(:,ich) = .TRUE._jplm
+ 
+       runtime % chanprof(:) % chan = ich
+ 
+       ! Populate chanprof and frequencies arrays for this one channel
+       call rttov_scatt_setupindex (                    &
+             errorstatus=errorstatus,                   &
+             nprofiles=ens_size,                        &
+             n_chan=runtime % coefs % coef % fmv_chn,   &
+             coef_rttov=runtime % coefs,                &
+             coef_scatt=runtime % coefs_scatt,          &
+             nchannels=ens_size,                        &
+             chanprof=runtime % chanprof,               &
+             frequencies=runtime % frequencies,         &
+             lchannel_subset=use_chan )
+ 
+       runtime % frequencies_all(ich) = runtime % frequencies(1)
+    end do
 
-   CALL rttov_alloc_scatt_prof(               &
-         err=errorstatus,                     &
-         nprof=ens_size,                      &
-         cld_profiles=runtime % cld_profiles, &
-         nlev=nlevs,                          &
-         use_totalice=do_totalice,            &
-         asw=1,                               & ! 1 = allocate
-         init=.TRUE._jplm,                    &
-         mmr_snowrain=.TRUE._jplm)              ! true = kg/kg units for clouds
+    if (errorstatus /= errorstatus_success) then
+       write(string1,*) 'allocation error for rttov_scatt_setupindex: chanprof and frequencies arrays'
+       call error_handler(E_ERR, routine, string1, source, revision, revdate)
+    endif
 
-   if (errorstatus /= errorstatus_success) then
-      write(string1,*) 'allocation error for rttov_direct structures'
-      call error_handler(E_ERR, routine, string1, source, revision, revdate)
-   endif
-
-   allocate(use_chan(ens_size,runtime % coefs % coef % fmv_chn))
-   allocate(runtime % frequencies(ens_size))
-
-   ! only the channels to simulate will be set
-   allocate(runtime % frequencies_all(runtime % coefs % coef % fmv_chn))
-
-   if (size(sensor % channels) /= 0) then
-      nch = size(sensor % channels)
-   else
-      nch = runtime % coefs % coef % fmv_chn
-   end if
-
-   do i=1,ens_size
-      runtime % chanprof(i) % prof = i
-   end do
-
-   do i=1,nch
-      use_chan(:,:) = .FALSE._jplm
-
-      if (size(sensor % channels) /= 0) then
-         ich = sensor % channels(i)
-      else
-         ich = i
-      end if
-
-      ! Set use_chan to .TRUE. only for the ith required channel
-      use_chan(:,ich) = .TRUE._jplm
-
-      runtime % chanprof(:) % chan = ich
-
-      ! Populate chanprof and frequencies arrays for this one channel
-      call rttov_scatt_setupindex (                    &
-            nprofiles=ens_size,                        &
-            n_chan=runtime % coefs % coef % fmv_chn,   &
-            coef_rttov=runtime % coefs,                &
-            nchannels=ens_size,                        &
-            chanprof=runtime % chanprof,               &
-            frequencies=runtime % frequencies,         &
-            lchannel_subset=use_chan )
-
-      runtime % frequencies_all(ich) = runtime % frequencies(1)
-   end do
-
-   if (debug) then
-      write(string1,*) 'Successfully initialized RTTOV-scatt cloud profiles for platform/sat/sensor id combination:',&
-         instrument
-      call error_handler(E_MSG, routine, string1, source, revision, revdate, text2=string2)
-   end if
-end if
+ 
+    if (debug) then
+       write(string1,*) 'Successfully initialized RTTOV-scatt cloud profiles for platform/sat/sensor id combination:',&
+          instrument
+       call error_handler(E_MSG, routine, string1, source, revision, revdate, text2=string2)
+    end if
+ end if
 
 end subroutine sensor_runtime_setup
 
@@ -1619,7 +1614,7 @@ logical,                  intent(in)    :: use_water_type
 logical,                  intent(in)    :: use_salinity
 logical,                  intent(in)    :: supply_foam_fraction
 logical,                  intent(in)    :: use_sfc_snow_frac
-
+write(*,*) 'atmos_profile_setup'
 allocate(atmos%temperature(ens_size, numlevels), &
          atmos%   moisture(ens_size, numlevels), &
          atmos%   pressure(ens_size, numlevels), &
@@ -1830,7 +1825,7 @@ if (clw_data) then
 
    if (clw_scheme == 2) then
       allocate(clouds%clwde(ens_size, numlevels)) 
-      clouds%clwde = 0.0_jprb
+      clouds%clwde = 20.0_jprb  !lkugler
    end if
 end if
 
@@ -1844,7 +1839,7 @@ if (ciw_data) then
    clouds%ciw = 0.0_jprb
    if (ice_scheme == 1 .and. use_icede) then
       allocate(clouds%icede(ens_size, numlevels))
-      clouds%icede = 0.0_jprb
+      clouds%icede = 60.0_jprb  !lkugler
    end if
 end if
 
@@ -2044,11 +2039,12 @@ DO imem = 1, ens_size
 
    ! check that the pressure is monotonically increasing from TOA down
    do ilvl = 1, nlevels-1
-      if (atmos % pressure(imem,lvlidx(ilvl)) >= atmos % pressure(imem,lvlidx(ilvl+1))) then
+      if (atmos % pressure(imem,lvlidx(ilvl)) > atmos % pressure(imem,lvlidx(ilvl+1))) then
          if (debug) then
-            write(string1,*) 'For ens #',imem,', pressure ',lvlidx(ilvl),' was greater than or equal to pressure ',&
-                lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' >= ',atmos%pressure(imem,lvlidx(ilvl+1))
-            call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
+            write(string1,*) 'For ens #',imem,', pressure ',lvlidx(ilvl),' was greater than pressure ',&
+                lvlidx(ilvl+1),':',atmos % pressure(imem,lvlidx(ilvl)),' > ',atmos%pressure(imem,lvlidx(ilvl+1))
+            write(*,*) 'pres', atmos % pressure(imem,:)
+            call error_handler(E_MSG,routine,string1,source,revision,revdate)
          end if
 
          radiances(:) = MISSING_R8
@@ -2065,7 +2061,8 @@ DO imem = 1, ens_size
    runtime % profiles(imem) % mmr_cldaer = .true. ! kg/kg
    runtime % profiles(imem) % clw_scheme = clw_scheme
    runtime % profiles(imem) % ice_scheme = ice_scheme
-   runtime % profiles(imem) % idg        = idg_scheme
+   runtime % profiles(imem) % icede_param = idg_scheme
+   runtime % profiles(imem) % clwde_param = 1  ! default
 
    ! set the required profile variables 
    runtime % profiles(imem) % p(:) = atmos % pressure(imem,lvlidx)/100.0_jprb  ! Pa -> hPa
@@ -2075,27 +2072,27 @@ DO imem = 1, ens_size
    ! set trace gases if opts present and individual flags are used
    ! the arrays are assumed to have been allocated - this was already checked in obs_def
    if (is_visir .or. mw_clear_sky_only) then
-      if (runtime % opts % rt_ir % ozone_data) then
+      if (runtime % opts % rt_all % ozone_data) then
          runtime % profiles(imem) % o3(:) = max(trace_gas % ozone(imem,lvlidx),0.0_r8)
       end if
 
-      if (runtime % opts % rt_ir % co2_data) then
+      if (runtime % opts % rt_all % co2_data) then
          runtime % profiles(imem) % co2(:) = max(trace_gas % co2(imem,lvlidx),0.0_r8)
       end if
 
-      if (runtime % opts % rt_ir % n2o_data) then
+      if (runtime % opts % rt_all % n2o_data) then
          runtime % profiles(imem) % n2o(:) = max(trace_gas % n2o(imem,lvlidx),0.0_r8)
       end if
 
-      if (runtime % opts % rt_ir % ch4_data) then
+      if (runtime % opts % rt_all % ch4_data) then
          runtime % profiles(imem) % ch4(:) = max(trace_gas % ch4(imem,lvlidx),0.0_r8)
       end if
 
-      if (runtime % opts % rt_ir % co_data) then
+      if (runtime % opts % rt_all % co_data) then
          runtime % profiles(imem) % co(:)  = max(trace_gas % co(imem,lvlidx),0.0_r8)
       end if
 
-      if (runtime % opts % rt_ir % so2_data) then
+      if (runtime % opts % rt_all % so2_data) then
          runtime % profiles(imem) % so2(:) = max(trace_gas % so2(imem,lvlidx),0.0_r8)
       end if
 
@@ -2260,69 +2257,70 @@ DO imem = 1, ens_size
          end if
       end if ! add IR clouds
    else if (is_mw) then
+      ! lkugler
       ! RTTOV-SCATT, add MW clouds
-      if (allocated(clouds % cfrac)) then
-         runtime % cld_profiles(imem) % cc(:) = min(max(clouds % cfrac(imem, lvlidx),0.0_r8),1.0_r8)
-      else
-         ! Assume cloud fraction is 1 everywhere. No harm if no clouds.
-         runtime % cld_profiles(imem) % cc(:) = 1.0_jprb
-      end if
+      !if (allocated(clouds % cfrac)) then
+      !   runtime % cld_profiles(imem) % cc(:) = min(max(clouds % cfrac(imem, lvlidx),0.0_r8),1.0_r8)
+      !else
+      !   ! Assume cloud fraction is 1 everywhere. No harm if no clouds.
+      !   runtime % cld_profiles(imem) % cc(:) = 1.0_jprb
+      !end if
 
 
-      if (allocated(clouds % clw)) then
-         runtime % cld_profiles(imem) % clw(:) = max(clouds % clw(imem,lvlidx),0.0_r8)
-      else
-         runtime % cld_profiles(imem) % clw = 0.0_jprb
-      end if
+      ! if (allocated(clouds % clw)) then
+      !    runtime % cld_profiles(imem) % clw(:) = max(clouds % clw(imem,lvlidx),0.0_r8)
+      ! else
+      !    runtime % cld_profiles(imem) % clw = 0.0_jprb
+      ! end if
 
-      if (allocated(clouds % rain)) then
-         runtime % cld_profiles(imem) % rain(:) = max(clouds % rain(imem,lvlidx),0.0_r8)
-      else
-         runtime % cld_profiles(imem) % rain = 0.0_jprb
-      end if
+      ! if (allocated(clouds % rain)) then
+      !    runtime % cld_profiles(imem) % rain(:) = max(clouds % rain(imem,lvlidx),0.0_r8)
+      ! else
+      !    runtime % cld_profiles(imem) % rain = 0.0_jprb
+      ! end if
 
-      if (use_totalice) then
-         totalice(:) = 0.0_r8
+      ! if (use_totalice) then
+      !    totalice(:) = 0.0_r8
 
-         if (allocated(clouds % ciw)) then
-            totalice(:) = totalice(:) + max(clouds % ciw(imem,lvlidx),0.0_r8)
-         end if 
+      !    if (allocated(clouds % ciw)) then
+      !       totalice(:) = totalice(:) + max(clouds % ciw(imem,lvlidx),0.0_r8)
+      !    end if 
 
-         if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
-         end if 
+      !    if (allocated(clouds % snow)) then
+      !       totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
+      !    end if 
 
-         if (allocated(clouds % graupel)) then
-            totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
-         end if 
+      !    if (allocated(clouds % graupel)) then
+      !       totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
+      !    end if 
 
-         if (allocated(clouds % hail)) then
-            totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
-         end if 
+      !    if (allocated(clouds % hail)) then
+      !       totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
+      !    end if 
 
-         runtime % cld_profiles(imem) % totalice(:) = totalice(:)
-      else
-         if (allocated(clouds % ciw)) then
-            runtime % cld_profiles(imem) % ciw(:) = max(clouds % ciw(imem,lvlidx),0.0_r8)
-         end if 
+      !    runtime % cld_profiles(imem) % totalice(:) = totalice(:)
+      ! else
+      !    if (allocated(clouds % ciw)) then
+      !       runtime % cld_profiles(imem) % ciw(:) = max(clouds % ciw(imem,lvlidx),0.0_r8)
+      !    end if 
 
-         ! "totalice" here is being used only for solid precipitation (no ciw)
-         totalice(:) = 0.0_r8
+      !    ! "totalice" here is being used only for solid precipitation (no ciw)
+      !    totalice(:) = 0.0_r8
 
-         if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
-         end if 
+      !    if (allocated(clouds % snow)) then
+      !       totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
+      !    end if 
 
-         if (allocated(clouds % graupel)) then
-            totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
-         end if 
+      !    if (allocated(clouds % graupel)) then
+      !       totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
+      !    end if 
 
-         if (allocated(clouds % hail)) then
-            totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
-         end if 
+      !    if (allocated(clouds % hail)) then
+      !       totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
+      !    end if 
 
-         runtime % cld_profiles(imem) % sp(:) = totalice(:)
-      end if
+      !    runtime % cld_profiles(imem) % sp(:) = totalice(:)
+      ! end if
 
       ! also add "half-level pressures" as requested by RTTOV-Scatt
       runtime % cld_profiles(imem) % ph(2:nlevels) = 0.5_jprb*(atmos % pressure(imem,ly1idx)+atmos % pressure(imem,ly2idx))/100.0_jprb
@@ -2393,7 +2391,7 @@ DO imem = 1, ens_size
 
    if (is_visir .and. do_lambertian) then
       ! Surface specularity (0-1)
-      runtime % profiles(imem) % skin % specularity = min(max(visir_md % specularity,0.0_jprb),1.0_jprb)
+      runtime % emissivity(imem) % specularity = min(max(visir_md % specularity,0.0_jprb),1.0_jprb)
    end if
 
    if (allocated(clouds % simple_cfrac)) then
@@ -2445,6 +2443,9 @@ end do ! profile data
 ! 6. Specify surface emissivity and reflectance
 ! --------------------------------------------------------------------------
 
+! Here we assume zero specularity
+runtime % emissivity(:) % specularity = 0._jprb
+
 ! Here we assume we have no values for input emissivities
 runtime % emissivity(:) % emis_in = 0._jprb
 
@@ -2462,6 +2463,8 @@ runtime % calcrefl(:) = (runtime % reflectance(:) % refl_in <= 0._jprb)
 ! Use default cloud top BRDF for simple cloud in VIS/NIR channels
 runtime % reflectance(:) % refl_cloud_top = 0._jprb
 
+write(*,*) 'before running'
+
 if (debug) then
    print *,'is_visir:',is_visir
    call rttov_print_opts(runtime % opts, lu=ioout)
@@ -2470,7 +2473,6 @@ if (debug) then
       call rttov_print_opts_scatt(runtime % opts_scatt, lu=ioout)
    end if
 end if
-
 
 if (is_visir .or. mw_clear_sky_only) then
    ! Call RTTOV forward model
@@ -2521,6 +2523,8 @@ else
       call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
    end if
 end if
+
+write(*,*) 'after running'
 
 ! utility from obs_kind_mod for getting string of obs qty
 obs_qty_string = get_name_for_type_of_obs(flavor)
@@ -2647,11 +2651,12 @@ missing_mw_metadata%fastem_p3 = MISSING_R8
 missing_mw_metadata%fastem_p4 = MISSING_R8
 missing_mw_metadata%fastem_p5 = MISSING_R8
 
-allocate(obstype_metadata(2, MAXrttovkey))
+allocate(obstype_metadata(2*MAXrttovkey))
+allocate(obstype_subkey(2*MAXrttovkey))
 allocate(visir_obs_metadata(MAXrttovkey))
 allocate(mw_obs_metadata(MAXrttovkey))
 
-obstype_metadata(:,:) = NO_OBS
+obstype_subkey(:)    = -1
 visir_obs_metadata(:) = missing_visir_metadata
 mw_obs_metadata(:)    = missing_mw_metadata
 
@@ -2702,8 +2707,6 @@ if (debug) then
    write(string1,*)'plane_parallel         - ',plane_parallel
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
    write(string1,*)'use_salinity           - ',use_salinity
-   call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'apply_band_correction  - ',apply_band_correction
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
    write(string1,*)'cfrac_data             - ',cfrac_data
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
@@ -2777,11 +2780,11 @@ if (debug) then
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
    write(string1,*)'grid_box_avg_cloud     - ',grid_box_avg_cloud
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'cldstr_threshold       - ',cldstr_threshold
+   write(string1,*)'cldcol_threshold       - ',cldcol_threshold
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'cldstr_simple          - ',cldstr_simple
+   write(string1,*)'cloud_overlap          - ',cloud_overlap
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   write(string1,*)'cldstr_low_cloud_top   - ',cldstr_low_cloud_top
+   write(string1,*)'cc_low_cloud_top   - ',cc_low_cloud_top
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
    write(string1,*)'ir_scatt_model         - ',ir_scatt_model
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
@@ -2871,9 +2874,7 @@ opts % rt_all % plane_parallel         = plane_parallel
 
 if (is_mw) then
    ! mw options could be used with direct or scatt, so set them here
-   opts % rt_mw % apply_band_correction = apply_band_correction
    opts % rt_mw % clw_data              = clw_data
-   opts % rt_mw % clw_calc_on_coef_lev  = .false.                 ! calculate CLW optical depths on input levels
    opts % rt_mw % clw_scheme            = clw_scheme
    opts % rt_mw % clw_cloud_top         = clw_cloud_top
    opts % rt_mw % fastem_version        = fastem_version
@@ -2890,14 +2891,13 @@ if (is_mw .and. .not. mw_clear_sky_only) then
    opts_scatt % config % fix_hgpl         = fix_hgpl
 
    opts_scatt % rad_down_lin_tau      = rad_down_lin_tau
-   opts_scatt % apply_band_correction = apply_band_correction
    opts_scatt % interp_mode           = interp_mode
    opts_scatt % lgradp                = .false.               ! Do not allow TL/AD/K of user pressure levels
    opts_scatt % reg_limit_extrap      = .true.                ! intelligently extend beyond the model top
    opts_scatt % fastem_version        = fastem_version
    opts_scatt % supply_foam_fraction  = supply_foam_fraction
    opts_scatt % use_q2m               = use_q2m
-   opts_scatt % lradiance             = .false.               ! Calculate Brightness Temperatures 
+   ! lkugler ! opts_scatt % lradiance             = .false.               ! Calculate Brightness Temperatures 
    opts_scatt % lusercfrac            = .false.               ! Have RTTOV-SCATT calculate the effective cloud fraction 
    opts_scatt % cc_threshold          = cc_threshold
 
@@ -2908,12 +2908,12 @@ if (is_mw .and. .not. mw_clear_sky_only) then
                              opts_scatt=opts_scatt, &
                              use_totalice=use_totalice)
 else
-   opts % rt_ir % ozone_data            = ozone_data
-   opts % rt_ir % co2_data              = co2_data
-   opts % rt_ir % n2o_data              = n2o_data
-   opts % rt_ir % co_data               = co_data
-   opts % rt_ir % ch4_data              = ch4_data
-   opts % rt_ir % so2_data              = so2_data
+   opts % rt_all % ozone_data            = ozone_data
+   opts % rt_all % co2_data              = co2_data
+   opts % rt_all % n2o_data              = n2o_data
+   opts % rt_all % co_data               = co_data
+   opts % rt_all % ch4_data              = ch4_data
+   opts % rt_all % so2_data              = so2_data
    opts % rt_ir % addsolar              = addsolar
    opts % rt_ir % rayleigh_single_scatt = rayleigh_single_scatt
    opts % rt_ir % do_nlte_correction    = do_nlte_correction
@@ -2924,9 +2924,9 @@ else
    opts % rt_ir % user_aer_opt_param    = user_aer_opt_param
    opts % rt_ir % user_cld_opt_param    = user_cld_opt_param
    opts % rt_ir % grid_box_avg_cloud    = grid_box_avg_cloud
-   opts % rt_ir % cldstr_threshold      = cldstr_threshold
-   opts % rt_ir % cldstr_simple         = cldstr_simple
-   opts % rt_ir % cldstr_low_cloud_top  = cldstr_low_cloud_top
+   opts % rt_ir % cldcol_threshold      = cldcol_threshold
+   opts % rt_ir % cloud_overlap         = cloud_overlap
+   opts % rt_ir % cc_low_cloud_top  = cc_low_cloud_top
    opts % rt_ir % ir_scatt_model        = ir_scatt_model
    opts % rt_ir % vis_scatt_model       = vis_scatt_model
    opts % rt_ir % dom_nstreams          = dom_nstreams
@@ -2983,13 +2983,13 @@ if ( .not. module_initialized ) call initialize_module
 
 visirnum = visirnum + 1  ! increase module storage used counters
 rttovkey = rttovkey + 1
+obstype_metadata(rttovkey) = .true. ! .true. for visir
+  obstype_subkey(rttovkey) = visirnum
 
 ! Make sure the new key is within the length of the metadata arrays.
-call grow_metadata(rttovkey,'set_visir_metadata', VISIR)
+call grow_metadata(rttovkey,'set_visir_metadata', .true.)
 
 key = rttovkey ! now that we know its legal
-obstype_metadata(SUBTYPE, key) = VISIR 
-obstype_metadata(SUBKEY, key) = visirnum
 
 visir_obs_metadata(visirnum) % sat_az      = sat_az
 visir_obs_metadata(visirnum) % sat_ze      = sat_ze
@@ -3034,14 +3034,13 @@ if ( .not. module_initialized ) call initialize_module
 
 mwnum    = mwnum + 1    ! increase module storage used counters
 rttovkey = rttovkey + 1 
+obstype_metadata(rttovkey) = .false. ! .false. for MW 
+  obstype_subkey(rttovkey) = mwnum
 
 ! Make sure the new key is within the length of the metadata arrays.
-call grow_metadata(rttovkey,'set_mw_metadata', MW)
+call grow_metadata(rttovkey,'set_mw_metadata', .false.)
 
 key = rttovkey ! now that we know its legal
-obstype_metadata(SUBTYPE, key) = MW    
-obstype_metadata(SUBKEY, key) = mwnum
-
 
 mw_obs_metadata(mwnum) % sat_az       = sat_az
 mw_obs_metadata(mwnum) % sat_ze       = sat_ze
@@ -3072,39 +3071,40 @@ real(r8), intent(out) :: sat_az, sat_ze, sun_az, sun_ze
 integer,  intent(out) :: platform_id, sat_id, sensor_id, channel
 real(r8), intent(out) :: specularity
 
-integer :: mykey
+integer :: visirnum
 
 character(len=*), parameter :: routine = 'get_visir_metadata'
 
 if ( .not. module_initialized ) call initialize_module
 
-! Make sure the desired key is within the useful length of the metadata arrays.
+! Make sure the desired key is within the length of the metadata arrays.
 call key_within_range(key,routine)
 
-if (obstype_metadata(SUBTYPE,key) /= VISIR) then
+if (.not. obstype_metadata(key)) then
    write(string1,*)'The obstype metadata for key ',key,'is not visir as expected'
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate)
 end if
 
-mykey = obstype_metadata(SUBKEY,key)
+visirnum = obstype_subkey(key)
 
-if (.not. is_valid_subkey(mykey, VISIR)) then
-   write(string1,*)'The visir-specific key ',mykey,'is invalid.'
-   write(string2,*)'Size of visir_obs_metadata:', visirnum
+if (visirnum < 0 .or. visirnum > size(visir_obs_metadata)) then
+   write(string1,*)'The visir-specific key ',visirnum,'is invalid.'
+   write(string2,*)'Size of visir_obs_metadata:',&
+      size(visir_obs_metadata)
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate, text2=string2)
 end if
 
-sat_az      = visir_obs_metadata(mykey) % sat_az
-sat_ze      = visir_obs_metadata(mykey) % sat_ze
-sun_az      = visir_obs_metadata(mykey) % sun_az
-sun_ze      = visir_obs_metadata(mykey) % sun_ze
-platform_id = visir_obs_metadata(mykey) % platform_id
-sat_id      = visir_obs_metadata(mykey) % sat_id
-sensor_id   = visir_obs_metadata(mykey) % sensor_id
-channel     = visir_obs_metadata(mykey) % channel
-specularity = visir_obs_metadata(mykey) % specularity
+sat_az      = visir_obs_metadata(visirnum) % sat_az
+sat_ze      = visir_obs_metadata(visirnum) % sat_ze
+sun_az      = visir_obs_metadata(visirnum) % sun_az
+sun_ze      = visir_obs_metadata(visirnum) % sun_ze
+platform_id = visir_obs_metadata(visirnum) % platform_id
+sat_id      = visir_obs_metadata(visirnum) % sat_id
+sensor_id   = visir_obs_metadata(visirnum) % sensor_id
+channel     = visir_obs_metadata(visirnum) % channel
+specularity = visir_obs_metadata(visirnum) % specularity
 
 end subroutine get_visir_metadata
 
@@ -3126,41 +3126,42 @@ real(r8), intent(out) :: fastem_p1, fastem_p2, fastem_p3, &
 
 character(len=*), parameter :: routine = 'get_mw_metadata'
 
-integer :: mykey
+integer :: mwnum
 
 if ( .not. module_initialized ) call initialize_module
 
-! Make sure the desired key is within the useful length of the metadata arrays.
+! Make sure the desired key is within the length of the metadata arrays.
 call key_within_range(key,routine)
 
-if (obstype_metadata(SUBTYPE,key) /= MW) then
+if (obstype_metadata(key)) then
    write(string1,*)'The obstype metadata for key ',key,'is not MW as expected'
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate)
 end if
 
-mykey = obstype_metadata(SUBKEY, key)
+mwnum = obstype_subkey(key)
 
-if (.not. is_valid_subkey(mykey, MW)) then
-   write(string1,*)'The mw-specific key ',mykey,'is invalid.'
-   write(string2,*)'Size of mw_obs_metadata:',mwnum 
+if (mwnum < 0 .or. mwnum > size(mw_obs_metadata)) then
+   write(string1,*)'The mw-specific key ',mwnum,'is invalid.'
+   write(string2,*)'Size of visir_obs_metadata:',&
+      size(mw_obs_metadata)
    call error_handler(E_ERR, routine, string1, source, &
       revision, revdate, text2=string2)
 end if
 
-sat_az       = mw_obs_metadata(mykey) % sat_az
-sat_ze       = mw_obs_metadata(mykey) % sat_ze
-platform_id  = mw_obs_metadata(mykey) % platform_id
-sat_id       = mw_obs_metadata(mykey) % sat_id
-sensor_id    = mw_obs_metadata(mykey) % sensor_id
-channel      = mw_obs_metadata(mykey) % channel
-mag_field    = mw_obs_metadata(mykey) % mag_field
-cosbk        = mw_obs_metadata(mykey) % cosbk
-fastem_p1    = mw_obs_metadata(mykey) % fastem_p1
-fastem_p2    = mw_obs_metadata(mykey) % fastem_p2
-fastem_p3    = mw_obs_metadata(mykey) % fastem_p3
-fastem_p4    = mw_obs_metadata(mykey) % fastem_p4
-fastem_p5    = mw_obs_metadata(mykey) % fastem_p5
+sat_az       = mw_obs_metadata(mwnum) % sat_az
+sat_ze       = mw_obs_metadata(mwnum) % sat_ze
+platform_id  = mw_obs_metadata(mwnum) % platform_id
+sat_id       = mw_obs_metadata(mwnum) % sat_id
+sensor_id    = mw_obs_metadata(mwnum) % sensor_id
+channel      = mw_obs_metadata(mwnum) % channel
+mag_field    = mw_obs_metadata(mwnum) % mag_field
+cosbk        = mw_obs_metadata(mwnum) % cosbk
+fastem_p1    = mw_obs_metadata(mwnum) % fastem_p1
+fastem_p2    = mw_obs_metadata(mwnum) % fastem_p2
+fastem_p3    = mw_obs_metadata(mwnum) % fastem_p3
+fastem_p4    = mw_obs_metadata(mwnum) % fastem_p4
+fastem_p5    = mw_obs_metadata(mwnum) % fastem_p5
 
 end subroutine get_mw_metadata
 
@@ -3203,7 +3204,7 @@ if ( is_asciifile ) then
       read(ifile, *, iostat=ierr) platform_id, sat_id, sensor_id, channel
       call check_iostat(ierr,'read_rttov_metadata','platform/sat_id/sensor/channel',string2)
       read(ifile, *, iostat=ierr) specularity
-      call check_iostat(ierr,'read_rttov_metadata','specularity',string2)
+      call check_iostat(ierr,'read_rttov_metadata','platform/sat_id/sensor/channel',string2)
       read(ifile, *, iostat=ierr) oldkey
       call check_iostat(ierr,'read_rttov_metadata','oldkey',string2)
       is_visir = .true.
@@ -3296,7 +3297,10 @@ real(r8) :: fastem_p1, fastem_p2, fastem_p3, &
             fastem_p4, fastem_p5
 
 character(len=5)  :: header
-character(len=*), parameter :: routine = 'write_rttov_metadata'
+
+logical  :: is_visir
+
+is_visir = obstype_metadata(key)
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -3305,55 +3309,52 @@ if ( .not. module_initialized ) call initialize_module
 
 is_asciifile = ascii_file_format(fform)
 
-select case (obstype_metadata(SUBTYPE,key))
+if (is_visir) then
+   call get_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
+      platform_id, sat_id, sensor_id, channel, specularity)
 
-   case (VISIR)
-      call get_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
-         platform_id, sat_id, sensor_id, channel, specularity)
-   
-      header = VISIR_STRING
-   
-      if (is_asciifile) then
-         write(ifile, *) header
-         write(ifile, *) sat_az, sat_ze, sun_az, sun_ze
-         write(ifile, *) platform_id, sat_id, sensor_id, channel
-         write(ifile, *) specularity
-         write(ifile, *) key
-      else
-         write(ifile   ) header
-         write(ifile   ) sat_az, sat_ze, sun_az, sun_ze
-         write(ifile   ) platform_id, sat_id, sensor_id, channel
-         write(ifile   ) specularity
-         write(ifile   ) key
-      endif
-   case (MW)
-      call get_mw_metadata(key, sat_az, sat_ze,                  &
-         platform_id, sat_id, sensor_id, channel, mag_field, cosbk, &
-         fastem_p1, fastem_p2, fastem_p3, fastem_p4,    &
-         fastem_p5)
-   
-      header = MW_STRING
-   
-      if (is_asciifile) then
-         write(ifile, *) header
-         write(ifile, *) sat_az, sat_ze
-         write(ifile, *) platform_id, sat_id, sensor_id, channel
-         write(ifile, *) mag_field, cosbk
-         write(ifile, *) fastem_p1, fastem_p2, fastem_p3, &
-                         fastem_p4, fastem_p5 
-         write(ifile, *) key
-      else
-         write(ifile   ) header
-         write(ifile   ) sat_az, sat_ze
-         write(ifile   ) platform_id, sat_id, sensor_id, channel
-         write(ifile   ) mag_field, cosbk
-         write(ifile   ) fastem_p1, fastem_p2, fastem_p3, &
-                         fastem_p4, fastem_p5 
-         write(ifile   ) key
-      end if
-   case default
-      call error_handler(E_ERR, routine, 'unknown metadata type', source, revision, revdate)
-end select
+   header = VISIR_STRING
+
+   if (is_asciifile) then
+      write(ifile, *) header
+      write(ifile, *) sat_az, sat_ze, sun_az, sun_ze
+      write(ifile, *) platform_id, sat_id, sensor_id, channel
+      write(ifile, *) specularity
+      write(ifile, *) key
+   else
+      write(ifile   ) header
+      write(ifile   ) sat_az, sat_ze, sun_az, sun_ze
+      write(ifile   ) platform_id, sat_id, sensor_id, channel
+      write(ifile   ) specularity
+      write(ifile   ) key
+   endif
+else
+   call get_mw_metadata(key, sat_az, sat_ze,                  &
+      platform_id, sat_id, sensor_id, channel, mag_field, cosbk, &
+      fastem_p1, fastem_p2, fastem_p3, fastem_p4,    &
+      fastem_p5)
+
+   header = MW_STRING
+
+   if (is_asciifile) then
+      write(ifile, *) header
+      write(ifile, *) sat_az, sat_ze
+      write(ifile, *) platform_id, sat_id, sensor_id, channel
+      write(ifile, *) mag_field, cosbk
+      write(ifile, *) fastem_p1, fastem_p2, fastem_p3, &
+                      fastem_p4, fastem_p5 
+      write(ifile, *) key
+   else
+      write(ifile   ) header
+      write(ifile   ) sat_az, sat_ze
+      write(ifile   ) platform_id, sat_id, sensor_id, channel
+      write(ifile   ) mag_field, cosbk
+      write(ifile   ) fastem_p1, fastem_p2, fastem_p3, &
+                      fastem_p4, fastem_p5 
+      write(ifile   ) key
+   end if
+end if
+
 
 end subroutine write_rttov_metadata
 
@@ -3463,7 +3464,6 @@ type(location_type) :: loc
 integer :: maxlevels, numlevels
 
 type(location_type) :: loc_undef        ! surface location
-type(location_type) :: loc_sea          ! surface location
 type(location_type) :: loc_sfc          ! surface location
 type(location_type) :: loc_2m           ! surface location
 type(location_type) :: loc_10m          ! surface location
@@ -3475,38 +3475,37 @@ character(len=*), parameter :: routine = 'get_expected_radiance'
 type(visir_metadata_type), pointer :: visir_md
 type(mw_metadata_type),    pointer :: mw_md
 
+logical :: is_visir
 logical :: return_now
-
+write(*,*) 'get_expected_radiance'
 !=================================================================================
 
 if ( .not. module_initialized ) call initialize_module
 
 val = 0.0_r8 ! set return value early
 
-! Make sure the desired key is within the useful length of the metadata arrays.
+! Make sure the desired key is within the length of the metadata arrays.
 call key_within_range(key, routine)
 
-select case (obstype_metadata(SUBTYPE, key))
+is_visir = obstype_metadata(key)
 
-case (VISIR)
-   visir_md => visir_obs_metadata(obstype_metadata(SUBKEY,key))
+if (is_visir) then
+   visir_md => visir_obs_metadata(obstype_subkey(key))
    mw_md    => null()
 
    platform_id = visir_md % platform_id
    sat_id      = visir_md % sat_id
    sensor_id   = visir_md % sensor_id
    channel     = visir_md % channel
-case (MW)
+else
    visir_md => null()
-   mw_md    => mw_obs_metadata(obstype_metadata(SUBKEY,key))
+   mw_md    => mw_obs_metadata(obstype_subkey(key))
 
    platform_id = mw_md % platform_id
    sat_id      = mw_md % sat_id
    sensor_id   = mw_md % sensor_id
    channel     = mw_md % channel
-case default
-   call error_handler(E_ERR, routine, 'unknown metadata type', source, revision, revdate)
-end select
+end if
 
 !=================================================================================
 ! Determine the number of model levels 
@@ -3533,7 +3532,7 @@ if ( .not. arrays_prealloced) then
       write(string1,'(A,I0)') 'FAILED to determine number of levels in model:', &
          numlevels
          
-      if (debug) call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
+      if (debug) call error_handler(E_MSG,routine,string1,source,revision,revdate)
       istatus = 1
       val     = MISSING_R8
       return
@@ -3585,17 +3584,20 @@ end if
 ! Set all of the istatuses back to zero for track_status
 istatus = 0
 
+write(*,*) 'getleveldata'
+
 GETLEVELDATA : do i = 1,numlevels
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
+   write(*,*) 'pressure'
 
    call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, atmos%pressure(:,i), this_istatus)
    call check_status('QTY_PRESSURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
    if (return_now) return
-
+   write(*,*) 'temperature'
    call interpolate(state_handle, ens_size, loc, QTY_TEMPERATURE, atmos%temperature(:, i), this_istatus)
    call check_status('QTY_TEMPERATURE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
    if (return_now) return
-
+   write(*,*) 'qvapor'
    call interpolate(state_handle, ens_size, loc, QTY_VAPOR_MIXING_RATIO, atmos%moisture(:, i), this_istatus)
    call check_status('QTY_VAPOR_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .true., return_now)
    if (return_now) return
@@ -3745,7 +3747,7 @@ GETLEVELDATA : do i = 1,numlevels
 
       if (clw_scheme == 2) then
          ! The effective diameter must also be specified with clw_scheme 2
-         call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
+         !lkugler when choosing radii myself; call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
          call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
          if (return_now) return
       end if
@@ -3802,29 +3804,18 @@ GETLEVELDATA : do i = 1,numlevels
 
 end do GETLEVELDATA
 
-! Set the surface fields
-! Some models check that the difference between 'surface' locations and 
-! the surface of the model is within some namelist-specified tolerance.
-! To ensure that these interpolations return useful values, get the model
-! definiiton of the surface and add the appropriate height, if any.
+loc_undef = set_location(loc_lon, loc_lat, 1.0_r8, VERTISUNDEF )
+loc_sfc = set_location(loc_lon, loc_lat, 0.0_r8, VERTISSURFACE )
+loc_2m  = set_location(loc_lon, loc_lat, 2.0_r8, VERTISSURFACE )
+loc_10m = set_location(loc_lon, loc_lat, 10.0_r8, VERTISSURFACE )
 
-! Simply check if we can get the model surface elevation (loc_sea is not used)
-loc_sea = set_location(loc_lon, loc_lat, 0.0_r8, VERTISSURFACE )
-call interpolate(state_handle, ens_size, loc_sea, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
-call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc_sea, istatus, routine, source, revision, revdate, .true., return_now)
-if (return_now) return
-
-!>@todo FIXME If the model does not check for surface consistency,
-!>            should we continue ...
-
-! These are the locations of interest. 
-loc_undef = set_location(loc_lon, loc_lat,                MISSING_R8, VERTISUNDEF )
-loc_sfc   = set_location(loc_lon, loc_lat,  0.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
-loc_2m    = set_location(loc_lon, loc_lat,  2.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
-loc_10m   = set_location(loc_lon, loc_lat, 10.0_r8+atmos%sfc_elev(1), VERTISSURFACE )
-
+! set the surface fields
 call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_PRESSURE, atmos%sfc_p(:), this_istatus)
 call check_status('QTY_SURFACE_PRESSURE', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
+if (return_now) return
+
+call interpolate(state_handle, ens_size, loc_sfc, QTY_SURFACE_ELEVATION, atmos%sfc_elev(:), this_istatus)
+call check_status('QTY_SURFACE_ELEVATION', ens_size, this_istatus, val, loc_sfc, istatus, routine, source, revision, revdate, .true., return_now)
 if (return_now) return
 
 call interpolate(state_handle, ens_size, loc_2m, QTY_2M_TEMPERATURE, atmos%s2m_t(:), this_istatus)
@@ -3967,144 +3958,129 @@ subroutine key_within_range(key, routine)
 integer,          intent(in) :: key
 character(len=*), intent(in) :: routine
 
-if (is_valid_key(key)) then
+integer :: maxkey 
+
+maxkey = size(obstype_metadata)
+
+if ((key > 0) .and. (key <= maxkey)) then
    ! we are still within limits
    return
 else
    ! Bad news. Tell the user.
-   write(string1, *) 'key (',key,') not within known range ( 1,', rttovkey,')'
+   write(string1, *) 'key (',key,') not within known range ( 1,', maxkey,')'
    call error_handler(E_ERR,routine,string1,source,revision,revdate) 
 end if
 
 end subroutine key_within_range
 
 !----------------------------------------------------------------------
-! Make sure the key is within the useful range of the metdata arrays
-function is_valid_key(key)
-
-integer, intent(in) :: key
-logical :: is_valid_key
-
-is_valid_key = (key >0 .and. key <= rttovkey)
-
-end function is_valid_key
-!-----------------------------------------------------------------------
-! Make sure the subkey is within the useful range of the metadata arrays
-function is_valid_subkey(skey, stype)
-
-integer, intent(in) :: skey  ! subkey 
-integer, intent(in) :: stype ! subype (visir or mw)
-logical :: is_valid_subkey
-
-if (skey <=0 ) then
-  is_valid_subkey = .false.
-  return
-endif
-
-select case (stype)
-case (VISIR)
-  is_valid_subkey = (skey <= visirnum)
-case (MW)
-  is_valid_subkey = (skey <= mwnum)
-case default
-  is_valid_subkey = .false.
-end select 
-
-end function is_valid_subkey
- 
-!----------------------------------------------------------------------
 ! If the allocatable metadata arrays are not big enough ... try again
 
-subroutine grow_metadata(key, routine, obstype)
+subroutine grow_metadata(key, routine, is_visir)
 
 integer,          intent(in) :: key
 character(len=*), intent(in) :: routine
-integer,          intent(in) :: obstype
+logical,          intent(in) :: is_visir
 
 integer :: orglength, newlength
 type(visir_metadata_type), allocatable :: safe_visir_metadata(:)
 type(mw_metadata_type),    allocatable :: safe_mw_metadata(:)
-integer,                   allocatable :: safe_obstype_metadata(:,:)
+logical,                   allocatable :: safe_obstype_metadata(:)
+integer,                   allocatable :: safe_obstype_subkey(:)
+
+integer :: current_obstype_length
+integer :: new_obstype_length
+
+current_obstype_length = size(obstype_metadata)
+new_obstype_length      = current_obstype_length
 
 ! Check for some error conditions.
 if (key < 1) then
    write(string1, *) 'key (',key,') must be >= 1'
    call error_handler(E_ERR,routine,string1,source,revision,revdate)
-elseif (key > 2*size(obstype_metadata(1,:))) then
+elseif (key >= 2*current_obstype_length) then
    write(string1, *) 'key (',key,') really unexpected.'
    write(string2, *) 'doubling storage will not help.'
    call error_handler(E_ERR,routine,string1,source,revision,revdate, &
                       text2=string2)
 endif
 
-select case (obstype)
-   case (VISIR)
-      if (visirnum > size(visir_obs_metadata)) then
-         ! we need to grow visir_obs_metadata
-         orglength = size(visir_obs_metadata)
-         newlength = 2 * orglength
-   
-         ! News. Tell the user we are increasing storage.
-         write(string1, *) 'Warning: subkey (',visirnum,') exceeds visir_obs_metadata length (',orglength,')'
-         write(string2, *) 'Increasing visir_obs_metadata to length ',newlength
-         call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
-   
-         allocate(safe_visir_metadata(orglength))
-         safe_visir_metadata(:) = visir_obs_metadata(:)
-   
-         deallocate(visir_obs_metadata)
-         allocate(visir_obs_metadata(newlength))
-   
-         visir_obs_metadata = missing_visir_metadata
-         visir_obs_metadata(1:orglength) = safe_visir_metadata(:)
-         deallocate(safe_visir_metadata)
-     endif
-   case (MW)
-      ! duplicate the above since we can't use any object-oriented magic
-      if (mwnum > size(mw_obs_metadata)) then
-         ! we need to grow mw_obs_metadata
-         orglength = size(mw_obs_metadata)
-         newlength = 2 * orglength
-   
-         ! News. Tell the user we are increasing storage.
-         write(string1, *) 'Warning: subkey (',mwnum,') exceeds mw_obs_metadata length (',orglength,')'
-         write(string2, *) 'Increasing mw_obs_metadata to length ',newlength
-         call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
-   
-         allocate(safe_mw_metadata(orglength))
-         safe_mw_metadata(:) = mw_obs_metadata(:)
-   
-         deallocate(mw_obs_metadata)
-         allocate(mw_obs_metadata(newlength))
-   
-         mw_obs_metadata = missing_mw_metadata
-         mw_obs_metadata(1:orglength) = safe_mw_metadata(:)
-         deallocate(safe_mw_metadata)
-      end if
-   case default
-      call error_handler(E_ERR, routine, 'unknown metadata type', source, revision, revdate)
-end select
+if (is_visir) then
+   if ((key > 0) .and. (key <= size(visir_obs_metadata))) then
+      ! we are still within limits
+      return
+   else
+      ! we need to grow visir_obs_metadata
+      orglength = size(visir_obs_metadata)
+      newlength = 2 * orglength
 
+      ! News. Tell the user we are increasing storage.
+      write(string1, *) 'Warning: key (',key,') exceeds visir_obs_metadata length (',orglength,')'
+      write(string2, *) 'Increasing visir_obs_metadata to length ',newlength
+      call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 
-if ( key > size(obstype_metadata(1,:)) ) then
-   ! we need to grow obstype_metadata
-   orglength = size(obstype_metadata(1,:))
-   newlength = 2 * orglength
+      allocate(safe_visir_metadata(orglength))
+      safe_visir_metadata(:) = visir_obs_metadata(:)
 
-   ! News. Tell the user we are increasing storage.
-   write(string1, *) 'Warning: key (',key,') exceeds obs_metadata length (',orglength,')'
-   write(string2, *) 'Increasing obs_metadata to length ',newlength
-   call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
-  
-   allocate(safe_obstype_metadata(2,orglength))
-   safe_obstype_metadata(:,:) = obstype_metadata(:,:)
+      deallocate(visir_obs_metadata)
+        allocate(visir_obs_metadata(newlength))
+
+      visir_obs_metadata(1:orglength)           = safe_visir_metadata(:)
+      visir_obs_metadata(orglength+1:newlength) = missing_visir_metadata
+
+      deallocate(safe_visir_metadata)
+      new_obstype_length = current_obstype_length + (newlength-orglength) 
+   end if
+else
+   ! duplicate the above since we can't use any object-oriented magic
+   if ((key > 0) .and. (key <= size(mw_obs_metadata))) then
+      ! we are still within limits
+      return
+   else
+      ! we need to grow mw_obs_metadata
+      orglength = size(mw_obs_metadata)
+      newlength = 2 * orglength
+
+      ! News. Tell the user we are increasing storage.
+      write(string1, *) 'Warning: key (',key,') exceeds mw_obs_metadata length (',orglength,')'
+      write(string2, *) 'Increasing mw_obs_metadata to length ',newlength
+      call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+
+      allocate(safe_mw_metadata(orglength))
+      safe_mw_metadata(:) = mw_obs_metadata(:)
+
+      deallocate(mw_obs_metadata)
+        allocate(mw_obs_metadata(newlength))
+
+      mw_obs_metadata(1:orglength)           = safe_mw_metadata(:)
+      mw_obs_metadata(orglength+1:newlength) = missing_mw_metadata
+
+      deallocate(safe_mw_metadata)
+      new_obstype_length = current_obstype_length + (newlength-orglength) 
+   end if
+end if
+
+if (current_obstype_length /= new_obstype_length) then
+   ! expand the obstype metadata as well, copying over as above
+   allocate(safe_obstype_metadata(current_obstype_length))
+   safe_obstype_metadata(:) = obstype_metadata(:)
+
    deallocate(obstype_metadata)
-   allocate(obstype_metadata(2, newlength)) 
+     allocate(obstype_metadata(new_obstype_length))
 
-   obstype_metadata(:,:) = NO_OBS
-   obstype_metadata(:,1:orglength) = safe_obstype_metadata(:,1:orglength)
-   deallocate(safe_obstype_metadata) 
-endif
+   obstype_metadata(1:current_obstype_length) = safe_obstype_metadata(:)
+   ! obstype_metadata(current_obstype_length+1:new_obstype_length) = -1
+   ! no default for obstype_metadata as it is a logical that is true for visir
+
+   allocate(safe_obstype_subkey(current_obstype_length))
+   safe_obstype_subkey(:) = obstype_subkey(:)
+
+   deallocate(obstype_subkey)
+     allocate(obstype_subkey(new_obstype_length))
+
+   obstype_subkey(1:current_obstype_length) = safe_obstype_subkey(:)
+   obstype_subkey(current_obstype_length+1:new_obstype_length) = -1
+end if
 
 end subroutine grow_metadata
 
@@ -4141,7 +4117,7 @@ if (return_now) then
    else if (debug) then
       write(string1,*) 'Could not find requested field ' // trim(field_name), ' istatus:',istatus,&
          'location:',locv(1),'/',locv(2),'/',locv(3)
-      call error_handler(E_ALLMSG,routine,string1,source,revision,revdate)
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
    end if
 end if
 
@@ -4158,7 +4134,8 @@ function get_rttov_option_logical(field_name) result(p)
    integer,          parameter   :: duc = ichar('A') - ichar('a')
    character(len=:), allocatable :: fname
    
-   integer   :: slen
+   character :: ch
+   integer   :: slen, i
 
 
    ! copy the string over to an appropriate size
@@ -4200,8 +4177,6 @@ function get_rttov_option_logical(field_name) result(p)
          p = PLANE_PARALLEL
       case('USE_SALINITY')
          p = USE_SALINITY
-      case('APPLY_BAND_CORRECTION')
-         p = APPLY_BAND_CORRECTION
       case('CFRAC_DATA')
          p = CFRAC_DATA
       case('CLW_DATA')
@@ -4256,8 +4231,8 @@ function get_rttov_option_logical(field_name) result(p)
          p = USER_CLD_OPT_PARAM
       case('GRID_BOX_AVG_CLOUD')
          p = GRID_BOX_AVG_CLOUD
-      case('CLDSTR_SIMPLE')
-         p = CLDSTR_SIMPLE
+      case('CLOUD_OVERLAP')
+         p = CLOUD_OVERLAP
       case('ADDPC')
          p = ADDPC
       case('ADDRADREC')
@@ -4274,6 +4249,7 @@ function get_rttov_option_logical(field_name) result(p)
    end select
 
 end function get_rttov_option_logical
+
 
 !-----------------------------------------------------------------------
 ! A function to return the key associated with a VISIR/MW metadata.
@@ -4293,8 +4269,8 @@ function get_channel(flavor, key) result(channel)
    integer  :: platform_id, sat_id, sensor_id
    real(r8) :: mag_field, cosbk, specularity
    real(r8) :: fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5
+   integer  :: subkey
 
-   character(len=*), parameter :: routine = 'get_channel'
    channel = MISSING_R8
 
    ! If the observation is not supported by this module, there is no channel
@@ -4305,22 +4281,22 @@ function get_channel(flavor, key) result(channel)
    ! Retrieve channel from different metadata types
    ! All the other arguments are mandatory, but not needed here.
 
-   select case (obstype_metadata(SUBTYPE,key))
-
-   case ( VISIR )
+   if ( obstype_metadata(key) ) then
+      ! FIXME ... should be local index ... subkey = obstype_subkey(key)
+      if (.false.) write(*,*)'get_channel_visir: key,subkey',key,subkey
       call get_visir_metadata(key, &
                            sat_az, sat_ze, sun_az, sun_ze, &
                            platform_id, sat_id, sensor_id, channel, &
                            specularity)
-   case ( MW )
+   else
+      ! FIXME ... should be local index ... subkey = obstype_subkey(key)
+      if (.false.) write(*,*)'get_channel_mw: key,subkey',key,subkey
       call get_mw_metadata(key, &
                         sat_az, sat_ze, &
                         platform_id, sat_id, sensor_id, channel, &
                         mag_field, cosbk, &
                         fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5)
-   case default
-      call error_handler(E_ERR, routine, 'unknown metadata type', source, revision, revdate)
-   end select
+   endif
 
    if (debug) write(*,*)'get_channel: key,channel ',key,channel
 
@@ -4328,121 +4304,8 @@ end function get_channel
 
 
 !-----------------------------------------------------------------------
-! Test functions below this point
-!-----------------------------------------------------------------------
-function test_unit_setup(metadata_start)
 
-integer, intent(in) :: metadata_start
-logical :: test_unit_setup
 
-! Test requires module not initialized to start
-if ( module_initialized ) then
-  test_unit_setup = .false.
-else
-  test_unit_setup = .true.
-endif
-
-! Overwrite module globals for testing
-! start at 1 to watch the metadata grow 
-MAXrttovkey = metadata_start
-call initialize_module
-
-end function test_unit_setup
-
-!-----------------------------------------------------------------------
-! Using a teardown for unit tests as there is no end_module
-subroutine test_unit_teardown()
-
-module_initialized = .false.
-MAXrttovkey = 0
-rttovkey = 0
-visirnum = 0
-mwnum = 0
-
-deallocate(obstype_metadata, visir_obs_metadata, mw_obs_metadata)
-
-end subroutine test_unit_teardown
-
-!-----------------------------------------------------------------------
-! inputs: n_ir : number of visir obs
-!         n_mw : number of microwave obs
-! outputs metadata_size[3] :  size(1,obstype_metadata)
-!                             size(visir_obs_metadata)
-!                             size(mw_obs_metadata)
-!  Loop to have a look at how grow_metadata works
-!  The actul data in the obs is junk
-function test_set_metadata(n_ir, n_mw) result(metadata_size)
-
-integer, intent(in)  :: n_ir, n_mw
-integer  :: metadata_size(3) 
-
-integer  :: key 
-real(r8) :: sat_az, sat_ze, sun_az, sun_ze
-integer  :: platform_id, sat_id, sensor_id, channel
-real(r8) :: specularity 
-
-real(r8) ::  mag_field, cosbk     
-real(r8) :: fastem_p1, fastem_p2, fastem_p3, fastem_p4, fastem_p5 
-
-integer :: ii
-
-do ii = 1, n_ir
-  call set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, &
-        platform_id, sat_id, sensor_id, channel, specularity)
-enddo
-
-do ii = 1, n_mw
-  call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, &
-     channel, mag_field, cosbk, fastem_p1, fastem_p2, fastem_p3,         &
-     fastem_p4, fastem_p5)
-enddo
-
-metadata_size(1) = size(obstype_metadata,2)
-metadata_size(2) = size(visir_obs_metadata)
-metadata_size(3) = size(mw_obs_metadata)
-
-end function test_set_metadata
-
-!-----------------------------------------------------------------------
-! passes metadata out to external test routine
-subroutine test_metadata(metadata)
-
-integer, intent(out) :: metadata(:,:)
-metadata = obstype_metadata
-
-end subroutine test_metadata
-
-!-----------------------------------------------------------------------
-! call is_valid_key for a bunch of values
-subroutine test_key_within_range(keysin,inrange)
-
-integer, intent(in)  :: keysin(:)
-logical, intent(out) :: inrange(:)
-
-integer :: ii, key
-
-do ii = 1, size(keysin)
-   key = keysin(ii)
-   inrange(ii) = is_valid_key(key)
-enddo
-
-end subroutine test_key_within_range
-!-----------------------------------------------------------------------
-subroutine test_subkey_within_range(subkeysin,stype,inrange)
-
-integer, intent(in)  :: subkeysin(:)
-integer, intent(in)  :: stype
-logical, intent(out) :: inrange(:)
-
-integer :: ii, key
-
-do ii = 1, size(subkeysin)
-   key = subkeysin(ii)
-   inrange(ii) = is_valid_subkey(key,stype)
-enddo
-
-end subroutine test_subkey_within_range
-!-----------------------------------------------------------------------
 end module obs_def_rttov_mod
 
 ! END DART PREPROCESS MODULE CODE
