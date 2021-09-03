@@ -56,7 +56,8 @@ type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
    !!!private
    integer(i8)                  :: num_vars
-   integer                      :: num_copies, my_num_copies, my_num_vars
+   integer                      :: num_copies, my_num_copies
+   integer(i8)                  :: my_num_vars
    integer,        allocatable  :: my_copies(:)
    integer(i8),    allocatable  :: my_vars(:)
    ! Storage in next line is to be used when each pe has all copies of subset of vars

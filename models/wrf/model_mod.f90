@@ -373,7 +373,8 @@ integer :: io, iunit
 
 character (len=1)     :: idom
 logical, parameter    :: debug = .false.
-integer               :: ind, i, j, k, id, dart_index
+integer               :: ind, i, j, k, id
+integer(i8)           :: dart_index
 integer               :: my_index
 integer               :: var_element_list(max_state_variables)
 logical               :: var_update_list(max_state_variables)
