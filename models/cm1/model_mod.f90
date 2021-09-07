@@ -693,7 +693,7 @@ integer     :: hstatus ! for non-sgrid height interpolation
 
 ! need to know
 integer :: nlevs,nlevs_shrink ! number of levels (zhalf and zfull have different number?)
-! JDL nlevs_shrink is necesary when working with three-d data because only lowest two gridpoints
+! nlevs_shrink is necesary when working with three-d data because only lowest two gridpoints
 ! are saved otherwise
 integer :: varid
 integer :: ndims
@@ -776,11 +776,9 @@ endif
 ! Find the x, y enclosing box on the variable grid (which ever grid the variable is on).
 ! Need grid from kind
 call get_x_axis(varid, axis, axis_length)
-print*,'JDL A'
 call get_enclosing_coord(obs_loc_array(1), axis(1:axis_length), x_ind, x_val)
 
 call get_y_axis(varid, axis, axis_length)
-print*,'JDL B'
 call get_enclosing_coord(obs_loc_array(2), axis(1:axis_length), y_ind, y_val)
 
 ! wrap the indicies if the observation is near the boundary
@@ -871,9 +869,7 @@ real(r8)    :: x_val(2), y_val(2) !  bounding box values
 
 ! Find enclosing xy box indices on the height grid. Height is always on the
 ! ni, nj grid (which is xh, yh). What about extrapolation?
-print*,'JDL C'
 call get_enclosing_coord(obs_loc_array(1), xh, x_ind, x_val)
-print*,'JDL D'
 call get_enclosing_coord(obs_loc_array(2), yh, y_ind, y_val)
 
 ! wrap the indicies if the observation is near the boundary
@@ -909,7 +905,6 @@ Z(:) = bilinear_interpolation(nlevs, obs_loc_array(1), obs_loc_array(2), &
                               x_val(1), x_val(2), y_val(1), y_val(2), Q11, Q12, Q21, Q22)
 
 ! Find out which level the point is in:
-print*,'JDL E'
 call get_enclosing_coord(obs_loc_array(3), Z, z_ind, z_val)
 
 !print*, 'level', z_ind, z_val
@@ -1090,10 +1085,6 @@ Z(:) = bilinear_interpolation(nlevs, obs_loc_array(1), obs_loc_array(2), &
 
 
 ! Find out which level the point is in:
-print*,'JDL F'
-print*,'JDL nlevs = ',nlevs
-print*,'JDL Z(:) = ',Z(:)
-print*,'obs_loc_array = ',obs_loc_array(3)
 call get_enclosing_coord(obs_loc_array(3), Z, z_ind, z_val)
 
 !>@todo Can this fail if you go outside the grid?
@@ -1123,10 +1114,6 @@ observation_on_grid = .true.
 
 ! this is for periodidc x and y. would need to extrapolate for z so enforce
 ! that observation is in the half grid
-print*,'JDL obs_location(1) = ',obs_location(1)
-print*,'xmin,xmax = ',xf(1),xf(nip1)
-print*,'JDL obs_location(2) = ',obs_location(2)
-print*,'ymin,ymax = ',yf(1),yf(njp1)
 if ( periodic_x .and. periodic_y ) then
    if ( (obs_location(1) < xf(1)) .or. (obs_location(1) > xf(nip1)) .or. &
         (obs_location(2) < yf(1)) .or. (obs_location(2) > yf(njp1)) ) then
@@ -1143,7 +1130,6 @@ if ( periodic_x .and. periodic_y ) then
       return ! exit early
 
    endif
-! JDL ADDITION
 elseif ( periodic_x) then
     ! require that the point is contained within the staggered grid for the 
     ! y - direction since you cannot wrap-arround
@@ -1565,14 +1551,8 @@ xloop: do i = 2, size(xcoords)
 enddo xloop
 
 if (ind(1) == -999) then
-  print*,'JDL x,i = ',x,i
-  print*,'JDL xcoords 0 = ',xcoords(1)
-  print*,'JDL xcoords i = ',xcoords(i)
-  print*,'JDL xcoords i = ',xcoords(i-1)
-
   call error_handler(E_ERR, 'get_enclosing_coord', 'off the grid, unexpected 3', &
                      source, revision, revdate)
-  print*,'JDL DID I MAKE IT AFTER?'
 endif
 
 end subroutine get_enclosing_coord

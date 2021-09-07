@@ -84,7 +84,6 @@ type box_type
    private
    integer           :: num                      
    real(r8)          :: maxdist              ! furthest seperation between "close" locations  
-   !integer, allocatable  :: x_offset(:, :)     ! (nlat, nlat), lon box indices searched (nlat 2x IS correct) ! JDL - DONT KNOW YET 
    integer, allocatable  :: loc_box(:)           ! (nloc); List of loc indices in boxes
    integer, allocatable  :: count(:, :, :)       ! (nx, ny, nz); # of locs in each box
    integer, allocatable  :: start(:, :, :)       ! (nx, ny, nz); Start of list of locs in this box
@@ -93,35 +92,16 @@ type box_type
    real(r8)          :: bot_z, top_z
    real(r8)          :: x_width, y_width, z_width    ! widths of boxes in x,y,z
    real(r8)          :: nboxes_x, nboxes_y, nboxes_z ! based on maxdist how far to search
-   !logical           :: lon_cyclic           ! Do boxes wraparound in longitude?  ! JDL DONT KNOW YET
 end type box_type
 
 
-! JDL An Addition That Will need work (Lat/Lon info has no use here)'
-! You might be able to merge this into the origin box_type categoyr
-!type get_close_type_by_type
-!   private
-!   integer               :: num
-!   real(r8)              :: maxdist              ! furthest separation between "close" locations
-!   integer, allocatable  :: lon_offset(:, :)     ! (nlat, nlat), lon box indices searched (nlat 2x IS correct)
-!   integer, allocatable  :: loc_box(:)           ! (nloc), List of loc indices in boxes
-!   integer, allocatable  :: count(:, :)          ! (nlon, nlat), # of loc in each box
-!   integer, allocatable  :: start(:, :)          ! (nlon, nlat), Start of list of loc in this box
-!   real(r8)              :: bot_lat, top_lat     ! Bottom and top latitudes of latitude boxes
-!   real(r8)              :: bot_lon, top_lon     ! Bottom and top longitudes of longitude boxes
-!   real(r8)              :: lon_width, lat_width ! Width of boxes in lon and lat
-!   logical               :: lon_cyclic           ! Do boxes wraparound in longitude?
-!end type get_close_type_by_type
-
-! Type to facilitate efficient computation of observations close to a given location
-! JDL Coverup Initially
 
 type get_close_type
    private
    integer                     :: nt                      ! The number of distinct cutoffs
    !real(r8),allocatable        :: type_to_cutoff_map(:)   ! mapping of types to index
    integer, allocatable        :: type_to_cutoff_map(:)   ! mapping of types to index
-   type(box_type),allocatable  :: box(:)                  ! Array of box types (JDL - May need to add array of close types by type)
+   type(box_type),allocatable  :: box(:)                  ! Array of box types 
 end type get_close_type
 
 
@@ -317,8 +297,6 @@ endif
 !> for all combinations of location 1 and location 2 where
 !> they aren't both above or both below the midpoint add the
 !> offset, compute the distance, and keep the minimium
-! JDL APPEAR GOOD - THOUGH WHAT IS OBSERVATIONS OCCUR NEAR THE TOP
-! MAY NEED TO FLIP ADDING AND SUBTRACTING OFFSET DEPENDENT UPON WHETHER DIFF IS NEGATIVE OR POSITIVE
 below_L1 = find_my_quadrant(loc1)
 if (debug > 0) write(0,*) 'below_L1, find my quadrant: ', below_L1
 below_L2 = find_my_quadrant(loc2)
@@ -425,16 +403,10 @@ if (x_periodic) then
 endif
 
 if (y_periodic) then
-   ! JDL This is the important to understand.  
-   ! Print next_diff to see if it decreases if obs
-   ! on north side and south side
    if (debug > 0) write(0,*)  'in the y_periodic case'
 
    if (below_L1(IY) .neqv. below_L2(IY)) then
       next_diff = diff
-      !JDL - Must account for instance where observations 
-      !      are located above the midline or below the 
-      !      midline.  This is because offset is always positive
       if (loc1%y >  loopy%midline(IY)) then
          next_diff(IY) = loopy%offset(IY) - next_diff(IY) 
       else
@@ -445,11 +417,6 @@ if (y_periodic) then
 
   if (debug > 0) write(0,*)  'periodic Y dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
-         !write(0,*) 'locy1, locy2',loc1%y,loc2%y
-         !write(0,*) 'JDL0 diff = ',diff(IY)
-         !write(0,*) 'JDL0 next_diff = ',next_diff(IY)
-         !write(0,*) 'JDL0 offset = ',loopy%offset(IY)
-         !print*,'*****************'
          square_dist = this_dist
       endif
    else
@@ -867,8 +834,6 @@ end subroutine interactive_location
 ! Initializes get_close accelerator 
 
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
-! JDL - This is where we start
-! JDL - Mostly Done (May Double Check for Bugs)
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
 real(r8),             intent(in)    :: maxdist
@@ -880,7 +845,6 @@ integer :: x_box(num), y_box(num), z_box(num)
 integer :: tstart(nx, ny, nz)
 
 
-! JDL --- New 
 integer :: typecount, distcount
 real(r8), allocatable :: distlist(:)
 
@@ -888,7 +852,7 @@ real(r8), allocatable :: distlist(:)
 if ( .not. module_initialized ) call initialize_module
 
 typecount = get_num_types_of_obs()
-allocate(gc%type_to_cutoff_map(typecount)) ! JDL ENDED HERE 
+allocate(gc%type_to_cutoff_map(typecount)) 
 
 if (present(maxdist_list)) then
    if (size(maxdist_list) .ne. typecount) then
@@ -911,7 +875,6 @@ endif
 
 allocate(gc%box(gc%nt))
 
-! JDL START
 if (present(maxdist_list)) then
    do i=1, gc%nt
       gc%box(i)%maxdist = distlist(i)
@@ -926,8 +889,6 @@ if (present(maxdist_list)) deallocate(distlist)
 ! Allocate the storage for the grid dependent boxes
 do i=1, gc%nt
    allocate(gc%box(i)%count(nx, ny, nz), gc%box(i)%start(nx, ny, nz))
-   !allocate(gc%box(i)%x_offset(nx, ny, nz)) ! JDL MAY NEED
-   !gc%box(i)%x_offset = -1  ! JDL MAY NEED
    gc%box(i)%count      = -1
    gc%box(i)%start      = -1
 enddo
@@ -989,12 +950,9 @@ enddo
 !> and nboxes*2 is the end of the halo on the upper side.
 
 ! Determine where the boxes should be for this set of locs and maxdist
-do n=1, gc%nt ! JDL THIS IS WHERE WE BEGIN TO LOOP
+do n=1, gc%nt 
     ! Determine where the boxes should be for this set of locs and maxdist
-    call find_box_ranges(gc%box(n), locs, num) ! JDL This is the last thing I edited
-
-    ! JDL THERE IS A blat_ind section in the threed sphere - Determine if you need to include this...
-    ! Since The Box Object Does not use this method I am not going to save it right now.
+    call find_box_ranges(gc%box(n), locs, num) 
 
     ! Begin by computing the number of locations in each box in x,y,z
     gc%box(n)%count = 0
@@ -1035,7 +993,6 @@ do n=1, gc%nt ! JDL THIS IS WHERE WE BEGIN TO LOOP
       gc%box(n)%loc_box(tstart(x_box(i), y_box(i), z_box(i))) = i
       tstart(x_box(i), y_box(i), z_box(i)) = tstart(x_box(i), y_box(i), z_box(i)) + 1
    end do
-   ! JDL STOP
    do i = 1, nx
       do j = 1, ny
          do k = 1, nz
@@ -1071,11 +1028,10 @@ end subroutine get_close_init
 !----------------------------------------------------------------------------
 
 subroutine get_close_destroy(gc)
-! JDL UPDATED 
 type(get_close_type), intent(inout) :: gc
 integer :: i
 
-do i = 1, gc%nt ! JDL Come back
+do i = 1, gc%nt 
   if (allocated(gc%box(i)%loc_box)) deallocate(gc%box(i)%loc_box)
   deallocate(gc%box(i)%count, gc%box(i)%start)
 enddo
@@ -1089,7 +1045,6 @@ end subroutine get_close_destroy
 
 subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
                          num_close, close_ind, dist, ens_handle)
-! JDL SHOULD BE GOOD
 ! The specific type of the base observation, plus the generic kinds list
 ! for either the state or obs lists are available if a more sophisticated
 ! distance computation is needed.
@@ -1110,7 +1065,6 @@ end subroutine get_close_obs
 
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, ens_handle)
-! JDL SHOULD BE GOOD
 ! The specific type of the base observation, plus the generic kinds list
 ! for either the state or obs lists are available if a more sophisticated
 ! distance computation is needed.
@@ -1132,7 +1086,6 @@ end subroutine get_close_state
 
 subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
                      num_close, close_ind, dist, ens_handle)
-! JDL DONE
 type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_loc,  locs(:)
 integer,              intent(in)  :: base_type, loc_qtys(:)
@@ -1220,7 +1173,6 @@ this_maxdist = gc%box(bt)%maxdist
 
 !> @todo this is doing an exhaustive search each time.  expensive
 !> but should give the right answer.
-! JDL - Is this even called
 if(.true.) then
    if (present(dist)) then
       call exhaustive_collect(gc%box(bt), base_loc, locs, &
@@ -1407,8 +1359,6 @@ end subroutine find_box_ranges
 !----------------------------------------------------------------------------
 
 subroutine find_nearest(box, base_loc, loc_list, nearest, rc)
- ! JDL Subroutine does not appear to be called, but come back if it causes troubel
- ! JDL - The subroutine has been updated just in case
  type(box_type), intent(in), target  :: box
  type(location_type),  intent(in)  :: base_loc
  type(location_type),  intent(in)  :: loc_list(:)
@@ -1575,7 +1525,6 @@ end subroutine set_periodic
 ! internal routine - reset the state of the axes.
 ! and precompute some stuff to make this simpler.
 
-! JDL - Defines if BDRS are periodic
 subroutine recompute_periodic()
 
 ! Shortcut to see if any axis is periodic
@@ -1631,19 +1580,12 @@ end subroutine recompute_periodic
 
 !---------------------------------------------------------------------------
 subroutine distinct_values(in_list, mycount, values, map)
-!--- JDL A transplant from the threed-sphere code
 !> parse an input list of values and return:
 !>  1) the count of distinct values
 !>  2) the list of unique values
 !>  3) the mapping of the input list to the value list
 !> the values and map list should already be allocated, and be the same
 !> length as the incoming list length.
-
-! JDL - in_list =  The list of cutoff radii
-! JDL - mycount =  The updated number of radii?
-! JDL - values  =
-! JDL - map     =
-
 
 real(r8), intent(in)    :: in_list(:)   !< incoming list of all values
 integer,  intent(out)   :: mycount      !< count of distinct values
@@ -1693,7 +1635,6 @@ end subroutine distinct_values
 !---------------------------------------------------------------------------
 
 function get_maxdist(gc, obs_type)
-! JDL UPDATED
 type(get_close_type), intent(in) :: gc
 integer, optional,    intent(in) :: obs_type
 real(r8) :: get_maxdist
@@ -1713,7 +1654,6 @@ subroutine print_get_close_type(gc, tt, amount)
 
 ! print out debugging statistics, or optionally print out a full
 ! dump from all mpi tasks in a format that can be plotted with matlab.
-! JDL UPDATED
 type(get_close_type), intent(in) :: gc
 integer, intent(in), optional    :: tt
 integer, intent(in), optional    :: amount
@@ -2051,7 +1991,6 @@ subroutine exhaustive_collect(box, base_loc, loc_list, num_close, close_ind, clo
 
 ! For validation, it is useful to be able to compare against exact
 ! exhaustive search
-! JDL - edit in future
 
 type(box_type),        intent(in)  :: box
 type(location_type),   intent(in)  :: base_loc, loc_list(:)
@@ -2087,7 +2026,7 @@ integer,            intent(inout) :: cclose_ind(:)
 integer,            intent(in)    :: close_ind(:)
 real(r8),           intent(inout) :: cclose_dist(:)
 real(r8), optional, intent(in)    :: close_dist(:)
-
+e
 ! Do comparisons against full search
 if((num_close /= cnum_close) .and. present(close_dist)) then
    write(errstring, *) 'get_close (', num_close, ') should equal exhaustive search (', cnum_close, ')'
