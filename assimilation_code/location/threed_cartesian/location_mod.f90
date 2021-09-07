@@ -2026,7 +2026,7 @@ integer,            intent(inout) :: cclose_ind(:)
 integer,            intent(in)    :: close_ind(:)
 real(r8),           intent(inout) :: cclose_dist(:)
 real(r8), optional, intent(in)    :: close_dist(:)
-e
+
 ! Do comparisons against full search
 if((num_close /= cnum_close) .and. present(close_dist)) then
    write(errstring, *) 'get_close (', num_close, ') should equal exhaustive search (', cnum_close, ')'
