@@ -1,0 +1,3 @@
+wget --background --load-cookies /glade/u/home/nancy/.urs_cookies --save-cookies /glade/u/home/nancy/.urs_cookies --no-verbose --auth-no-challenge=on --keep-session-cookies --content-disposition -i downloads*.txt
+
+# --background is new

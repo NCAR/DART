@@ -219,13 +219,16 @@ airs:
  convert:
  - in the ../work directory is a copy of the converter compiled from:
 
-/glade/work/nancy/subversion/cleanrmatrunk.cheyenne/observations/obs_converters/AIRS/work
+   public dart repo, reanalysis branch : observations/obs_converters/AIRS/work
 
  - if you need to rebuild it, see the mkmf_convert_airs_L2 
     in that same src directory for info on how to build on cheyenne.  
     someone built the hdf-eos libraries already so you can load 
     a module to get them.  the ones i built a long time ago no longer work.
 
+ - in the public repo, reanalysis branch : 
+      observations/obs_converters/reanalysis/AIRS/shell_scripts
+      
  - there's a 'multi_parallel.batch' script that runs the converter.  you can set
     start/end times, and submit it to the batch queue.  it now does a year in
     less than an hour, running in parallel.  files are created in 

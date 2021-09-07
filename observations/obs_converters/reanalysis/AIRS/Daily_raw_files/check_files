@@ -1,0 +1,16 @@
+#!/bin/sh
+
+let granule=1
+
+while [ $granule -le 240 ]; do
+
+ gr3=`printf %03d $granule`
+ num=`ls AIRS.*.${gr3}.L2.RetStd_IR* | wc -l`
+
+ echo $num granules with value $gr3
+
+ let granule=${granule}+1
+
+done
+
+exit 0
