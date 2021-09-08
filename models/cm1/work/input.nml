@@ -69,7 +69,7 @@
                     'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
                     'qhl'  , 'QTY_HAIL_MIXING_RATIO'       , 0.0000, 'NULL', 'UPDATE',
                    'ccw'   , 'QTY_DROPLET_NUMBER_CONCENTR' , 0.0000, 'NULL', 'UPDATE', 
-                   'ccr'   , 'QTY_RAIN_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                   'crw'   , 'QTY_RAIN_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
                    'cci'   , 'QTY_ICE_NUMBER_CONCENTRATION', 0.0000, 'NULL', 'UPDATE',
                    'csw'   , 'QTY_SNOW_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
                    'chw'   , 'QTY_GRAUPEL_NUMBER_CONCENTR' , 0.0000, 'NULL', 'UPDATE',
