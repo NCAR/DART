@@ -484,10 +484,11 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_start_point
 
 integer :: icopy, ivar, domain  
-integer :: ens_size, extra_size, time_size, var_size, elm_count, ndims
+integer :: ens_size, extra_size, time_size, ndims
 integer :: my_pe, recv_pe, recv_start, recv_end, start_rank
-integer :: start_pos, end_pos, send_start, send_end, start_point
+integer :: send_start, send_end
 logical :: do_perturb, is_sender, is_receiver, is_extra_copy
+integer(i8) :: var_size, elm_count, start_pos, end_pos, start_point
 
 real(r8), allocatable :: var_block(:)
 
@@ -1240,7 +1241,7 @@ integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_var_by_var !< Write a single variable, one at a time
 logical,                   intent(in)    :: write_single_precision
 
-integer :: i
+integer(i8) :: i
 integer :: start_var, end_var !< start/end variables in a read block
 integer :: my_pe !< task or pe?
 integer :: recv_pe, sending_pe
@@ -2040,9 +2041,9 @@ subroutine send_to_waiting_task(state_ens_handle, recv_pe, start, elm_count, blo
 
 type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: recv_pe ! receiving pe
-integer,             intent(in) :: start ! start in variable block on sender.
-integer,             intent(in) :: elm_count ! how many elements
-integer,             intent(in) :: block_size ! size of info on sender - the receiver only
+integer(i8),         intent(in) :: start ! start in variable block on sender.
+integer(i8),         intent(in) :: elm_count ! how many elements
+integer(i8),         intent(in) :: block_size ! size of info on sender - the receiver only
                                               ! gets part of this.
 real(r8),            intent(in) :: variable_block(block_size) ! variable info
 
@@ -2084,8 +2085,8 @@ subroutine send_variables_to_write(state_ens_handle, recv_pe, &
 type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: recv_pe ! receiving pe
 integer,             intent(in) :: ensemble_member
-integer,             intent(in) :: start  ! start in copies array on sender.
-integer,             intent(in) :: finish ! end in copies array on sender
+integer(i8),         intent(in) :: start  ! start in copies array on sender.
+integer(i8),         intent(in) :: finish ! end in copies array on sender
 
 real(r8), allocatable :: buffer(:) ! for making send array contiguous
 
@@ -2122,8 +2123,8 @@ subroutine wait_to_receive(state_ens_handle, recv_pe, &
 type(ensemble_type), intent(inout) :: state_ens_handle
 integer,             intent(in)    :: recv_pe ! receiving pe
 integer,             intent(in)    :: ensemble_member
-integer,             intent(in)    :: start  ! start in copies array on sender.
-integer,             intent(in)    :: finish ! end in copies array on sender
+integer(i8),         intent(in)    :: start  ! start in copies array on sender.
+integer(i8),         intent(in)    :: finish ! end in copies array on sender
 
 real(r8), allocatable :: buffer(:) ! for making send array contiguous
 
@@ -2159,9 +2160,9 @@ subroutine recv_variables_to_write(state_ens_handle, sending_pe, start, &
 
 type(ensemble_type), intent(in)    :: state_ens_handle
 integer,             intent(in)    :: sending_pe !! sending_pe
-integer,             intent(in)    :: start      !! start in vars array on receiver.
-integer,             intent(in)    :: elm_count  !! how many elements
-integer,             intent(in)    :: block_size !! size of info on sender - the receiver only gets part of this.
+integer(i8),         intent(in)    :: start      !! start in vars array on receiver.
+integer(i8),         intent(in)    :: elm_count  !! how many elements
+integer(i8),         intent(in)    :: block_size !! size of info on sender - the receiver only gets part of this.
 real(r8),            intent(inout) :: variable_block(block_size) !! variable info
 
 real(r8), allocatable :: buffer(:) !! for making send array contiguous
@@ -2948,7 +2949,7 @@ function num_elements_on_pe(pe, start_rank, block_size) result(elm_count)
 
 integer, intent(in) :: pe
 integer, intent(in) :: start_rank
-integer, intent(in) :: block_size
+integer(i8), intent(in) :: block_size
 
 integer :: elm_count, remainder
 
@@ -2988,7 +2989,7 @@ function find_start_point(recv_pe, start_rank)
 
 integer, intent(in)  :: recv_pe !< the receiver
 integer, intent(in)  :: start_rank !< the pe that owns the 1st element of the var_block
-integer              :: find_start_point
+integer(i8)          :: find_start_point
 
 if (start_rank < recv_pe) then
    find_start_point = recv_pe - start_rank + 1
