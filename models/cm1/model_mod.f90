@@ -17,11 +17,40 @@ use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              operator(>),  operator(<), operator(/),           &
                              operator(/=), operator(<=)
 
-use     location_mod, only : location_type, get_dist, query_location,          &
-                             get_close_type, set_location, get_location,       &
-                             write_location, get_close_obs, get_close_state,   &
-                             convert_vertical_obs, convert_vertical_state,     &
-                             set_periodic
+! JDL - Original Code
+!use     location_mod, only : location_type, get_dist, query_location,          &
+!                             get_close_type, set_location, get_location,       &
+!                             write_location, get_close_obs, get_close_state,   &
+!                             convert_vertical_obs, convert_vertical_state,     &
+!                             set_periodic
+! JDL - Updated to include threed_sphere location module
+
+!--- TED
+!use     location_mod, only : location_type, get_dist, query_location,          &
+!                             get_close_maxdist_init, get_close_type,           &
+!                             set_location, get_location, horiz_dist_only,      &
+!                             VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,          &
+!                             VERTISPRESSURE, VERTISHEIGHT,                     &
+!                             get_close_obs_init, loc_get_close_obs => get_close_obs
+! Set LOCATION DEFAULT
+!use     location_mod, only : location_type, get_dist, query_location,           &
+!                              get_close_maxdist_init, get_close_type,           &
+!                              set_location, get_location, horiz_dist_only,      &
+!                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,          &
+!                              VERTISPRESSURE, VERTISHEIGHT,                     &
+!                              loc_get_close_obs => get_close_obs,               &
+!                              get_close_state => get_close_state
+
+use      location_mod,   only : location_type, get_location, set_location,     &
+                                 query_location,  write_location,              &
+                                 VERTISUNDEF, VERTISSURFACE,                   &
+                                 VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT,    &
+                                 VERTISSCALEHEIGHT, vertical_localization_on,  &
+                                 convert_vertical_obs, convert_vertical_state, &
+                                 set_vertical_localization_coord,              &
+                                 get_close_type, get_dist, is_vertical,        &
+                                 get_close_obs, get_close_state
+
 
 use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, logfileunit, nmlfileunit,   &
@@ -148,6 +177,8 @@ logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
 integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
+!--- Earth Radius
+real(digits12), parameter :: rearth=1000.0_digits12 * 6367.0_digits12 ! radius of earth (m)
 
 ! indices associated with variable_table columns
 integer, parameter :: VT_VARNAME_INDEX  = 1
@@ -179,6 +210,9 @@ integer :: domid
 integer  :: ni  =-1, nj  =-1, nk  =-1   ! scalar grid counts
 integer  :: nip1=-1, njp1=-1, nkp1=-1 ! staggered grid counts
 
+! Latitude/Longitude JDL
+real(r8) :: ctrlat, ctrlon   !--- try to call at grid info
+
 ! Arrays of grid values
 
 ! scalar grid positions
@@ -195,6 +229,13 @@ real(r8), allocatable :: zf(:)   ! normal height of staggered cells
 real(r8), allocatable :: zs(:,:) ! terrain height
 
 real(r8), allocatable :: axis(:) ! this array is the length of largest axis
+
+
+! JDL Addition
+! These arrays store the longitude and latitude of the lower left corner (presumably - Check JDL)
+real(r8), allocatable :: ulat(:,:), ulon(:,:)  ! xf,yh
+real(r8), allocatable :: vlat(:,:), vlon(:,:)  ! xh,yf
+real(r8), allocatable :: wlat(:,:), wlon(:,:)  ! xh,yh
 
 ! full grid points
 real(r8), allocatable :: zfull(:,:,:) ! height full (w) grid points (3d array)
@@ -267,6 +308,7 @@ ncid = nc_open_file_readonly(cm1_template_file, 'static_init_model')
 ! 2) allocate space for the grid
 ! 3) read it from the template file
 
+!--- JDL Allocate LAT/LON Infor in the following function
 call get_grid_info(ncid)
 
 if(debug > 0 .and. do_output()) then
@@ -277,11 +319,13 @@ if(debug > 0 .and. do_output()) then
 endif
 
 ! reads in staggered and scalar grid arrays
+! JDL the latitude/longitude pairs defined here as well
 call get_grid(ncid)
 
 ! set periodic boundary conditions for x and y
-if (periodic_x) call set_periodic('x', xf(1), xf(nip1))
-if (periodic_y) call set_periodic('y', yf(1), yf(njp1))
+! JDL DELETE TEMPORARILY (UNLESS YOU CAN THINK OTHERWISE)
+!if (periodic_x) call set_periodic('x', xf(1), xf(nip1))
+!if (periodic_y) call set_periodic('y', yf(1), yf(njp1))
 
 call nc_close_file(ncid, 'static_init_model')
 
@@ -385,7 +429,7 @@ end function get_model_size
 !> given an index into the state vector, return its location and
 !> if given, the var kind.   despite the name, var_type is a generic
 !> kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
-
+!  JDL This subroutine will be updated to accommodate lat/lon coords
 subroutine get_state_meta_data(index_in, location, var_type)
 
 integer(i8),         intent(in)  :: index_in
@@ -401,16 +445,17 @@ real(r8) :: xlocation, ylocation, zlocation
 if ( .not. module_initialized ) call static_init_model()
 
 ! get the local indicies and type from dart index.
+! JDL This subroutine lines an x/y/z to an index value
 call get_model_variable_indices(index_in, x_index, y_index, z_index, var_id=var_id)
 
 xlocation = 0.0_r8
 ylocation = 0.0_r8
 zlocation = 0.0_r8
 
-if (on_vgrid(var_id)) then
+if (on_vgrid(var_id)) then  ! i.e., JDL Y - stagger
 
-   xlocation = xh(x_index)
-   ylocation = yf(y_index)
+   xlocation = vlon(x_index,y_index) !xh(x_index) 
+   ylocation = vlat(x_index,y_index) !yf(y_index)
 
    if (y_index == 1 .or. y_index > nj ) then ! off height grid
 
@@ -434,10 +479,10 @@ if (on_vgrid(var_id)) then
 
    endif
 
-elseif (on_ugrid(var_id)) then
+elseif (on_ugrid(var_id)) then  ! i.e., JDL X - stagger
 
-   xlocation = xf(x_index)
-   ylocation = yh(y_index)
+   xlocation = ulon(x_index, y_index) !xf(x_index)
+   ylocation = ulat(x_index, y_index) !yh(y_index)
 
    if (x_index == 1  .or. x_index > ni ) then ! off height grid
 
@@ -461,17 +506,17 @@ elseif (on_ugrid(var_id)) then
 
    endif
 
-else ! on sgrid
+else ! on sgrid   !i.e., JDL - No staggered grid points
 
-   xlocation = xh(x_index)
-   ylocation = yh(y_index)
+   xlocation = wlon(x_index, y_index) !xh(x_index)
+   ylocation = wlat(x_index, y_index) !yh(y_index)
    zlocation = get_my_z(var_id, x_index, y_index, z_index)
 
 endif
 
 
-location = set_location(xlocation, ylocation, zlocation)
-
+location = set_location(xlocation, ylocation, zlocation, VERTISHEIGHT)
+!--- JDL PROGVAR?  DONE IN CM1
 if (present(var_type)) then
    var_type = get_kind_index(domid, var_id)
 endif
@@ -549,7 +594,8 @@ subroutine end_model()
 deallocate( xh, yh, zh ) ! deallocate half grid points
 deallocate( xf, yf, zf ) ! deallocate full grid points
 deallocate( zs, zhalf, zfull ) ! deallocate terrain values
-
+deallocate(ulat, ulon, vlat, vlon)
+deallocate(wlat, wlon)
 end subroutine end_model
 
 
@@ -1989,6 +2035,13 @@ call nc_check( nf90_inq_dimid(ncid, 'nkp1', dimid=dimID), &
 call nc_check( nf90_inquire_dimension(ncid, dimID, len=nkp1), &
                'get_grid_info', 'inq_dimid nkp1 ')
 
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ctrlat',   ctrlat), &
+                'get_grid_info',  'imquire ctrlat ')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ctrlon',   ctrlon), &
+                'get_grid_info',  'imquire ctrlon ')
+
+print*,'JDL ctrlat = ',ctrlat
+print*,'JDL ctrlon = ',ctrlon
 end subroutine get_grid_info
 
 
@@ -2015,6 +2068,9 @@ integer,          intent(in)    :: ncid
 integer :: VarID ! netcdf variable id
 integer :: ret ! netcdf return code
 
+integer :: i,j,k
+real(r8)   :: ctrlon, ctrlat, x, y, lat, lon
+
 ! allocate module storage for grid information
 allocate( xh( ni )) ! west-east location of scalar grid points
 allocate( yh( nj )) ! south-north location of scalar grid points
@@ -2027,6 +2083,11 @@ allocate( zf( nkp1 )) ! nominal height of staggered w grid points
 allocate(    zs( ni, nj ))       ! terrain height
 allocate( zhalf( ni, nj, nk ))   ! height of half (scalar) grid points (3d array)
 allocate( zfull( ni, nj, nkp1 )) ! height of full (w) grid points (3d array)
+
+! JDL allocate module storage for Lat/Lon
+allocate( ulat(nip1,nj), ulon(nip1,nj) )
+allocate( vlat(ni,njp1), vlon(ni,njp1) )
+allocate( wlat(ni,nj), wlon(ni,nj) )
 
 ! grab scalar grid points
 call nc_check( nf90_inq_varid(ncid, 'xh', VarID), &
@@ -2127,6 +2188,70 @@ if (debug > 0 .and. do_output()) then ! A little sanity check
    write(*,*)'zfull range ',minval(zfull),maxval(zfull)
 endif
 
+!  JDL This is Where You Get the Lat/Lon Info (CURRENTLY FUDGING THE LATS)
+!  Assumes the Grid Lays on a Flat Earth
+!ctrlon = 45.0_r8
+!ctrlat = 25.7_r8
+DO j = 1, nj 
+   DO i = 1, ni
+      call xy_to_ll(wlat(i,j), wlon(i,j), 0, xh(i), yh(j), ctrlat, ctrlon, .true.) 
+   ENDDO
+ENDDO
+
+DO j = 1, njp1 
+   DO i = 1, ni
+      call xy_to_ll(vlat(i,j), vlon(i,j), 0, xh(i), yf(j), ctrlat, ctrlon, .true.) 
+   ENDDO
+ENDDO
+
+DO j = 1, nj 
+   DO i = 1, nip1
+      call xy_to_ll(ulat(i,j), ulon(i,j), 0, xf(i), yh(j), ctrlat, ctrlon, .true.) 
+   ENDDO
+ENDDO
+
+!--- JDL Sanity Check to Make Sure Latitudes / Longitudes Work
+IF( debug > 2) THEN
+  !x = 0.0_r8
+  !y = 0.0_r8
+  !lat = 0.0_r8
+  !lon = 0.0_r8
+  DO j = 1, nj
+     DO i = 1, ni
+        call ll_to_xy(x, y , 0, ctrlat, ctrlon, wlat(i,j), wlon(i,j),.true.)
+        call xy_to_ll(lat, lon, 0, xh(i), yh(j), ctrlat, ctrlon)
+        write(*,*) 'i,j,x,u,x1,y1: ',i, j, xh(i), yh(j), x, y, wlat(i,j), wlon(i,j), lat, lon
+     ENDDO
+  ENDDO
+
+ENDIF
+
+where (ulon <   0.0_r8) ulon = ulon + 360.0_r8
+where (ulon > 360.0_r8) ulon = ulon - 360.0_r8
+where (vlon <   0.0_r8) vlon = vlon + 360.0_r8
+where (vlon > 360.0_r8) vlon = vlon - 360.0_r8
+where (wlon <   0.0_r8) wlon = wlon + 360.0_r8
+where (wlon > 360.0_r8) wlon = wlon - 360.0_r8
+
+where (ulat < -90.0_r8) ulat = -90.0_r8
+where (ulat >  90.0_r8) ulat =  90.0_r8
+where (vlat < -90.0_r8) vlat = -90.0_r8
+where (vlat >  90.0_r8) vlat =  90.0_r8
+where (wlat < -90.0_r8) wlat = -90.0_r8
+where (wlat >  90.0_r8) wlat =  90.0_r8
+
+
+if ( debug > 1 ) then
+   write(*,*)'ulon longitude range ',minval(ulon),maxval(ulon)
+   write(*,*)'ulat latitude  range ',minval(ulat),maxval(ulat)
+   write(*,*)'vlon longitude range ',minval(vlon),maxval(vlon)
+   write(*,*)'vlat latitude  range ',minval(vlat),maxval(vlat)
+   write(*,*)'wlon longitude range ',minval(wlon),maxval(wlon)
+   write(*,*)'wlat latitude  range ',minval(wlat),maxval(wlat)
+endif
+
+! JDL - The NCOMMAS Module has a return statement at the end of this subroutine (Do I need it)?t
+
 end subroutine get_grid
 
 !------------------------------------------------------------------
@@ -2216,6 +2341,194 @@ endif
 
 end subroutine parse_variable_input
 
+
+!############################################################################
+!
+!     ##################################################################
+!     ######                                                      ######
+!     ######                   SUBROUTINE LL_TO_XY                ######
+!     ######                                                      ######
+!     ##################################################################
+!
+!
+!     PURPOSE:
+!
+!     This subroutine computes the projected (x, y) coordinates of the
+!     point (lat2, lon2) relative to (lat1, lon1).
+!
+!############################################################################
+!
+!     Author:  David Dowell
+!
+!     Creation Date:  25 February 2005
+!     Modified:  August 2010:  Number of mods to add optional arg to convert
+!                from and to degrees for input/output, and some a check
+!                to see if the inputs are in degrees (Lou Wicker)
+!
+!                Note, the automatic checks will FAIL with small latitudes
+!                or longitudes - we cannot differntiate between deg and rad
+!
+!############################################################################
+
+  subroutine ll_to_xy(x, y, map_proj, lat1, lon1, lat2, lon2, degrees)
+
+! Passed variables
+
+    real(r8),     intent(out)     :: x, y           ! distance (m)  RETURNED FIELDS
+    real(r8),     intent(in)      :: lat1, lon1     ! coordinates of first point (in deg or radians)
+    real(r8),     intent(in)      :: lat2, lon2     ! coordinates of second point (in deg or radians)
+    integer ,     intent(in)      :: map_proj       ! map projection:
+                                                    !   0 = flat earth
+                                                    !   1 = oblique azimuthal (not supported)
+                                                    !   2 = Lambert conformal (not supported)
+
+    logical, intent(in), optional :: degrees        ! If lat/lon inputs are in degrees, convert to radians
+
+! Local variables
+
+    real(r8)      :: llat1, llon1     ! local coordinates of first point (in radians)
+    real(r8)      :: llat2, llon2     ! local coordinates of second point (in radians)
+    real(r8)      :: llon1p, llon2p   ! local positive longitudes (in radians)
+
+! In case they are already in radians..
+
+    llat1 = lat1
+    llat2 = lat2
+    llon1 = lon1
+    llon2 = lon2
+
+! If not, check things
+
+    IF( present(degrees) ) THEN
+      IF( degrees ) THEN
+       llat1 = lat1 * deg2rad
+       llat2 = lat2 * deg2rad
+       llon1 = lon1 * deg2rad
+       llon2 = lon2 * deg2rad
+      ENDIF
+     ELSE
+! Try and be smart, in case user is stupid (like me!) - Note, this check will not work with lats ~ equator,
+! nor lons near in western Europe, or mid-Pacific
+
+      IF( abs(llat1) >  2.0_r8*PI ) llat1 = llat1 * deg2rad
+      IF( abs(llat2) >  2.0_r8*PI ) llat2 = llat2 * deg2rad
+      IF( abs(llon1) >  2.0_r8*PI ) llon1 = llon1 * deg2rad
+      IF( abs(llon2) >  2.0_r8*PI ) llon2 = llon2 * deg2rad
+    ENDIF
+
+    if (llon1 < 0.0_r8) then
+      llon1p = llon1+2.0_r8*PI
+    else
+      llon1p = llon1
+    endif
+    if (llon2 < 0.0_r8) then
+      llon2p = llon2+2.0_r8*PI
+    else
+      llon2p = llon2
+    endif
+
+    if (map_proj == 0) then
+      x = rearth * cos(0.5_r8*(llat1+llat2)) * (llon2p-llon1p)
+      y = rearth * (llat2-llat1)
+    else
+       write(string1,*) 'Requested map projection unavailable: ', map_proj
+       call error_handler(E_ERR,'ll_to_xy',string1,source,revision,revdate)
+    endif
+
+  return
+  end subroutine ll_to_xy
+
+
+!############################################################################
+!
+!     ##################################################################
+!     ######                                                                                                                              ######
+!     ######                  SUBROUTINE XY_TO_LL                 ######
+!     ######                                                                                                                              ######
+!     ##################################################################
+!
+!
+!     PURPOSE:
+!
+!     This subroutine computes the projected (lat, lon) coordinates of the
+!     point (x, y) relative to (lat0, lon0).  Various map projections
+!     are possible.
+!
+!############################################################################
+!
+!     Author:  David Dowell
+!
+!     Creation Date:  25 February 2005
+!     Modified:  August 2010:  Number of mods to add optional arg to convert
+!                from and to degrees for input/output, and some a check
+!                to see if the inputs are in degrees - outputs are then
+!                automatically converted back.  (Lou Wicker)
+!
+!                Note, the automatic checks will FAIL with small latitudes
+!                or longitudes - we cannot differntiate between deg and rad
+!############################################################################
+
+  subroutine xy_to_ll(lat, lon, map_proj, x, y, lat1, lon1, degrees)
+
+! Passed variables
+
+    real(r8),     intent(in)     :: x, y         ! distance (in meters) of point
+    real(r8),     intent(out)    :: lat, lon     ! coordinates of first point (in deg or radians)
+    real(r8),     intent(in)     :: lat1, lon1   ! coordinates of second point (in deg or radians)
+    integer ,     intent(in)     :: map_proj     ! map projection:
+                                                 !   0 = flat earth
+                                                 !   1 = oblique azimuthal (not supported)
+                                                 !   2 = Lambert conformal (not supported)
+
+    logical, intent(in), optional :: degrees     ! If TRUE and lat/lon inputs are in degrees, return degrees
+
+! Local variables
+
+    real(r8)      :: llat1, llon1     ! local coordinates of reference lat/lon (in radians)
+
+! In case they are already in radians..
+
+    llat1 = lat1
+    llon1 = lon1
+
+! If not, check things
+
+    IF( present(degrees) ) THEN
+      IF( degrees ) THEN
+       llat1 = lat1 * deg2rad
+       llon1 = lon1 * deg2rad
+      ENDIF
+    ENDIF
+
+! Try and be smart, in case user is stupid (like me!) - Note, this check will not work with lats ~ equator,
+! nor lons near in western Europe, or mid-Pacific
+
+   IF ( .not. present(degrees) ) THEN
+    IF( abs(llat1) .gt. 2.0_r8*PI ) llat1 = llat1 * deg2rad
+    IF( abs(llon1) .gt. 2.0_r8*PI ) llon1 = llon1 * deg2rad
+   ENDIF
+
+    IF (map_proj.eq.0) THEN
+      lat = llat1 + y / rearth
+      lon = llon1 + x / ( rearth * cos(0.5_r8*(llat1+lat)) )
+    ELSE
+      write(string1,*) 'Requested map projection unavailable: ', map_proj
+      call error_handler(E_ERR,'xy_to_ll',string1,source,revision,revdate)
+    ENDIF
+
+    IF( present(degrees) ) THEN      ! USER said convert them back to degrees
+      IF( degrees ) THEN
+       lat = lat * rad2deg ! / deg2rad
+       lon = lon * rad2deg ! / deg2rad
+      ENDIF
+    ENDIF
+
+   IF ( .not. present(degrees) ) THEN
+    IF( abs(lat1) > 2.0_r8*PI ) lat = lat * rad2deg ! / deg2rad   ! User inputs were in degrees (we think)
+    IF( abs(lon1) > 2.0_r8*PI ) lon = lon * rad2deg ! / deg2rad
+   ENDIF
+  return
+  end subroutine xy_to_ll
 
 !===================================================================
 ! End of model_mod
