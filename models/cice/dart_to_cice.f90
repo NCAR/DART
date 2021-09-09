@@ -496,8 +496,8 @@ END SELECT
      !aicen*hicen_original
      !===============================================================
      
-   !  aicen   = max(0.0_r8,aicen)   ! concentrations must be non-negative
-     vicen   = max(0.0_r8,vicen)   ! same for volumes 
+     aicen   = max(0.0_r8,aicen)   ! concentrations must be non-negative
+     !vicen   = max(0.0_r8,vicen)   ! same for volumes 
      vsnon   = max(0.0_r8,vsnon)
      sice001 = max(0.0_r8,sice001) ! same for salinities 
      sice002 = max(0.0_r8,sice002)
@@ -525,7 +525,7 @@ END SELECT
        ! post-process the parameters
        r_snw   = min(rsnw_max,r_snw)
        r_snw   = max(rsnw_min,r_snw)
-     endif
+     end if
 
      ! calculate vice, which might be negative at this point
      vice = vicen(:,:,1)
@@ -533,10 +533,10 @@ END SELECT
        vice = vice+vicen(:,:,n)
      end do
 
-     ! set negative aicen to zero
+     ! set negative vicen to zero
      vicen   = max(0.0_r8,vicen)
 
-     ! reclaculate aice, now it should be non-negative
+     ! reclaculate vice, now it should be non-negative
      vice_temp = vicen(:,:,1)
      do n = 2, Ncat
         vice_temp = vice_temp + vicen(:,:,n)
@@ -562,7 +562,8 @@ END SELECT
      !write(*,*)'aice_temp-aice',aice_temp(i,j)-aice(i,j)
      !write(*,*)'aicen/aice_temp',aicen(i,j,n)/aice_temp(i,j)
      !write(*,*)'aicen - delta*ratio:',aicen(i,j,n) -(aice_temp(i,j)-aice(i,j))*aicen(i,j,n)/aice_temp(i,j)
-
+   
+     ! move the negative values and 'melt' ice to conserve volume
      do n=1, Ncat
        do j=1, Ny
           do i=1, Nx
@@ -588,9 +589,11 @@ END SELECT
      !  enddo
      !enddo
 
-     !update vsnon and vicen
+     ! update aicen
+     ! set 0 values to very negative to do thickness calculation
      where(vicen_original==0) vicen_original = -999
-
+     
+     ! calculate thickness per category
      do n=1,Ncat
         do j=1,Ny
            do i=1,Nx
@@ -599,31 +602,20 @@ END SELECT
            end do
         end do
      end do
-
+     
+     ! remove negative values of ice thickness
      where(hicen_original<0)  hicen_original = 0.0_r8
      where(hsnon_original<0)  hsnon_original = 0.0_r8
+
+     ! reassign zero volume 
      where(vicen_original==-999) vicen_original=0.0_r8
-         aicen  = vicen/hicen_original
-         vsnon  = aicen*hsnon_original
+     
+     ! calculate aicen from vicen and original ice thickness
+     where(hicen_original==0._r8) aicen = 0.0_r8
+     where(hicen_original/=0._r8) aicen  = vicen/hicen_original
 
-
-         aice = aicen(:,:,1)
-         do n = 2, Ncat  
-            aice = aice+aicen(:,:,n)
-         end do
-
-         ! squeeze aicen, which might be >1 at this point 
-         if (aice(i,j) > 1.0_r8) then
-            squeeze        = 1.0_r8 / aice(i,j)
-            aicen(i,j,:)   = aicen(i,j,:)*squeeze
-         end if
-  
-         ! ensure volume follows physical constraints of aice <= 1 
-         vicen = aicen * hicen_original
-  
-         ! calculate snow volume
-         vsnon = aicen * hsnon_original
-
+     ! address aicen cases where volume is zero or the update 'grows' ice
+     ! calculate thickness category midpoints 
      cc1 = 3._r8/real(Ncat,kind=r8)
      cc2 = 15.0_r8*cc1
      cc3 = 3._r8
@@ -638,12 +630,48 @@ END SELECT
         hcat_midpoint(n)=0.5_r8*(hin_max(n-1)+hin_max(n))
      end do
 
+     ! finish aicen update for special cases 
+     do n = 1, Ncat
+        do j = 1, Ny 
+           do i = 1, Nx
+
+               if (vicen(i,j,n)==0._r8 ) then
+                  aicen(i,j,n)  = 0._r8
+               end if
+
+               if (vicen(i,j,n)>0._r8 .and. vicen_original(i,j,n)==0._r8) then
+                  ! require ice area for thickness = category boundary midpoint
+                  aicen(i,j,n) =  vicen(i,j,n) / hcat_midpoint(n)
+               end if 
+
+           end do
+        end do
+     end do
+
+     ! squeeze this new area to be 1 or less
+     aice = aicen(:,:,1)
+     do n = 2, Ncat  
+        aice = aice+aicen(:,:,n)
+     end do
+     
+     do j = 1, Ny
+        do i = 1, Nx
+           if (aice(i,j) > 1.0_r8) then
+              squeeze        = 1.0_r8 / aice(i,j)
+              aicen(i,j,:)   = aicen(i,j,:)*squeeze
+           end if
+        end do
+     end do
+
+     ! calculate snow volume using squeezed area
+     vsnon = aicen * hsnon_original
+
+     ! tidy up other restart variables according to vicen special cases 
      do n = 1, Ncat
         do j = 1, Ny
            do i = 1, Nx
             
-              if (aicen(i,j,n)==0._r8 ) then
-                 vicen(i,j,n)   = 0._r8
+              if (vicen(i,j,n)==0._r8 ) then
                  sice001(i,j,n) = 0._r8
                  sice002(i,j,n) = 0._r8
                  sice003(i,j,n) = 0._r8
@@ -678,9 +706,6 @@ END SELECT
                  qsno002(i,j,n) = 0._r8
                  qsno003(i,j,n) = 0._r8
 
-               ! require ice volume for thickness = category boundary midpoint
-                 aicen(i,j,n) =  vicen(i,j,n) / hcat_midpoint(n)
-
                ! salinity of mushy ice, see add_new_ice in ice_therm_itd.F90
                  Si0new = sss - dSin0_frazil ! given our choice of sss
                  sice001(i,j,n) = Si0new
@@ -709,10 +734,12 @@ END SELECT
         end do
       end do
 
+    
    !for testing make something to fix
-!  aicen(10,10,1)=1.1
-!  write(*,*) (aicen(10,10,k), k=1,5)
+   !  aicen(10,10,1)=1.1
+   !  write(*,*) (aicen(10,10,k), k=1,5)
    
+   ! write variables back into file
    varname='aicen'
    io = nf90_inq_varid(ncid, trim(varname), VarID)
    call nc_check(io, 'dart_to_cice', &
