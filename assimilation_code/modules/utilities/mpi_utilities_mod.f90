@@ -30,7 +30,7 @@
 
 module mpi_utilities_mod
 
-use types_mod, only :  i8, r8, digits12
+use types_mod, only :  i4, i8, r8, digits12
 use utilities_mod, only : error_handler, & 
                           E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file, &
                           set_output, set_tasknum, initialize_utilities,     &
@@ -540,7 +540,7 @@ subroutine send_to(dest_id, srcarray, time, label)
 
 integer :: tag, errcode
 integer :: itime(2)
-integer :: itemcount, offset, nextsize
+integer(i8) :: itemcount, offset, nextsize
 real(r8), allocatable :: tmpdata(:)
 
 if (verbose) write(*,*) "PE", myrank, ": start of send_to "
@@ -557,7 +557,7 @@ if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
    call error_handler(E_ERR,'send_to', errstring, source)
 endif
 
-itemcount = size(srcarray)
+itemcount = size(srcarray,KIND=i8)
 
 if (present(label)) then
    write(*,*) trim(label)//" PE", myrank, ": send_to itemsize ", itemcount, " dest ", dest_id
@@ -576,7 +576,7 @@ if (itemcount <= SNDRCV_MAXSIZE) then
    if (verbose) write(*,*) "PE", myrank, ": send_to ", itemcount, " dest ", dest_id
 
    if (.not. make_copy_before_sendrecv) then
-      call MPI_Ssend(srcarray, itemcount, datasize, dest_id, tag, &
+      call MPI_Ssend(srcarray, int(itemcount,i4), datasize, dest_id, tag, &
                     my_local_comm, errcode)
    else
       ! this copy should be unneeded, but on the intel fortran 9.0 compiler and mpich
@@ -586,7 +586,7 @@ if (itemcount <= SNDRCV_MAXSIZE) then
       ! have been needed, and is a performance/memory sink.
 
       tmpdata = srcarray
-      call MPI_Ssend(tmpdata, itemcount, datasize, dest_id, tag, &
+      call MPI_Ssend(tmpdata, int(itemcount,i4), datasize, dest_id, tag, &
                     my_local_comm, errcode)
    endif
 else
@@ -606,11 +606,11 @@ else
       if (verbose) write(*,*) 'sending array items ', offset, ' thru ' , offset + nextsize - 1
 
       if (.not. make_copy_before_sendrecv) then
-         call MPI_Ssend(srcarray(offset:offset+nextsize-1), nextsize, datasize, dest_id, tag, &
+         call MPI_Ssend(srcarray(offset:offset+nextsize-1), int(nextsize,i4), datasize, dest_id, tag, &
                         my_local_comm, errcode)
       else
          tmpdata = srcarray(offset:offset+nextsize-1)
-         call MPI_Ssend(tmpdata, nextsize, datasize, dest_id, tag, &
+         call MPI_Ssend(tmpdata, int(nextsize,i4), datasize, dest_id, tag, &
                         my_local_comm, errcode)
       endif
       if (errcode /= MPI_SUCCESS) then
@@ -663,7 +663,7 @@ subroutine receive_from(src_id, destarray, time, label)
 integer :: tag, errcode
 integer :: itime(2)
 integer :: status(MPI_STATUS_SIZE)
-integer :: itemcount, offset, nextsize
+integer(i8) :: itemcount, offset, nextsize
 real(r8), allocatable :: tmpdata(:)
 
 if (verbose) write(*,*) "PE", myrank, ": start of receive_from "
@@ -680,7 +680,7 @@ if ((src_id < 0) .or. (src_id >= total_tasks)) then
    call error_handler(E_ERR,'receive_from', errstring, source)
 endif
 
-itemcount = size(destarray)
+itemcount = size(destarray,KIND=i8)
 
 if (present(label)) then
    write(*,*) trim(label)//" PE", myrank, ": receive_from itemsize ", itemcount, " src ", src_id
@@ -698,7 +698,7 @@ if (make_copy_before_sendrecv) allocate(tmpdata(min(itemcount,SNDRCV_MAXSIZE)))
 
 if (itemcount <= SNDRCV_MAXSIZE) then
    if (.not. make_copy_before_sendrecv) then
-      call MPI_Recv(destarray, itemcount, datasize, src_id, MPI_ANY_TAG, &
+      call MPI_Recv(destarray, int(itemcount,i4), datasize, src_id, MPI_ANY_TAG, &
                  my_local_comm, status, errcode)
    else
       ! this copy should be unneeded, but on the intel fortran 9.0 compiler and mpich
@@ -707,7 +707,7 @@ if (itemcount <= SNDRCV_MAXSIZE) then
       ! contiguous buffer before send and receive fixed the corruption.  this shouldn't
       ! have been needed, and is a performance/memory sink.
 
-      call MPI_Recv(tmpdata, itemcount, datasize, src_id, MPI_ANY_TAG, &
+      call MPI_Recv(tmpdata, int(itemcount,i4), datasize, src_id, MPI_ANY_TAG, &
                     my_local_comm, status, errcode)
       destarray = tmpdata
    endif
@@ -728,12 +728,12 @@ else
       if (verbose) write(*,*) 'recving array items ', offset, ' thru ' , offset + nextsize - 1
 
       if (.not. make_copy_before_sendrecv) then
-         call MPI_Recv(destarray(offset:offset+nextsize-1), nextsize, datasize, src_id, MPI_ANY_TAG, &
+         call MPI_Recv(destarray(offset:offset+nextsize-1), int(nextsize,i4), datasize, src_id, MPI_ANY_TAG, &
                        my_local_comm, status, errcode)
       else
-         call MPI_Recv(tmpdata, itemcount, datasize, src_id, MPI_ANY_TAG, &
+         call MPI_Recv(tmpdata, int(nextsize,i4), datasize, src_id, MPI_ANY_TAG, &
                        my_local_comm, status, errcode)
-         destarray(offset:offset+nextsize-1) = tmpdata
+         destarray(offset:offset+nextsize-1) = tmpdata(1:nextsize)
       endif
       if (errcode /= MPI_SUCCESS) then
          write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
