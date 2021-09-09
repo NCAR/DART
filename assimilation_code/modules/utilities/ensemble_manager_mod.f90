@@ -672,7 +672,7 @@ function get_my_num_vars(ens_handle)
 ! Returns the number of vars stored on my processor when copy complete.
 ! Same as num_vars if single process is in use.
 
-integer                          :: get_my_num_vars
+integer(i8)                      :: get_my_num_vars
 type (ensemble_type), intent(in) :: ens_handle
 
 get_my_num_vars = ens_handle%my_num_vars
@@ -712,7 +712,8 @@ subroutine set_up_ens_distribution(ens_handle)
 
 type (ensemble_type),  intent(inout)  :: ens_handle
 
-integer :: num_per_pe_below, num_left_over, i
+integer(i8) :: num_per_pe_below, num_left_over
+integer :: i
 
 ! Option 1: Maximum separation for both vars and copies
 ! Compute the total number of copies I'll get for var complete
@@ -824,7 +825,7 @@ function get_max_num_vars(ens_handle, num_vars)
 
 type (ensemble_type), intent(in)  :: ens_handle
 integer(i8), intent(in) :: num_vars
-integer                 :: get_max_num_vars
+integer(i8)             :: get_max_num_vars
 !!!integer, intent(in) :: distribution_type
 
 !could this be instead:
