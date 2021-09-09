@@ -306,13 +306,31 @@ if (xyz_periodic) then
 
    if (debug > 0) write(0,*)  'in the xyz_periodic case'
 
-   if ((below_L1(IX) .neqv. below_L2(IX)) .and. &
-       (below_L1(IY) .neqv. below_L2(IY)) .and. &
+   if ((below_L1(IX) .neqv. below_L2(IX)) .or. &
+       (below_L1(IY) .neqv. below_L2(IY)) .or. &
        (below_L1(IZ) .neqv. below_L2(IZ))) then
       next_diff = diff
-      next_diff(IX) = next_diff(IX) + loopy%offset(IX)
-      next_diff(IY) = next_diff(IY) + loopy%offset(IY)
-      next_diff(IZ) = next_diff(IZ) + loopy%offset(IZ)
+      if (below_L1(IX) .neqv. below_L2(IX)) then ! Adjust x
+         if (loc1%x > loopy%midline(IX)) then
+            next_diff(IX) = loopy%offset(IX) - next_diff(IX)
+         else
+            next_diff(IX) = loopy%offset(IX) + next_diff(IX)
+         endif
+      endif
+      if (below_L1(IY) .neqv. below_L2(IY)) then ! Adjust y
+         if (loc1%y > loopy%midline(IY)) then
+            next_diff(IY) = loopy%offset(IY) - next_diff(IY)
+         else
+            next_diff(IY) = loopy%offset(IY) + next_diff(IY)
+         endif
+      endif
+      if (below_L1(IZ) .neqv. below_L2(IZ)) then ! Adjust z
+         if (loc1%z > loopy%midline(IZ)) then
+            next_diff(IZ) = loopy%offset(IZ) - next_diff(IZ)
+         else
+            next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
+         endif
+      endif
       this_dist = dist_3d_sq(next_diff)
   if (debug > 0) write(0,*)  'periodic XYZ dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
@@ -328,11 +346,24 @@ if (xy_periodic) then
 
    if (debug > 0) write(0,*)  'in the xy_periodic case'
 
-   if ((below_L1(IX) .neqv. below_L2(IX)) .and. &
+   if ((below_L1(IX) .neqv. below_L2(IX)) .or. &
        (below_L1(IY) .neqv. below_L2(IY))) then
       next_diff = diff
-      next_diff(IX) = next_diff(IX) + loopy%offset(IX)
-      next_diff(IY) = next_diff(IY) + loopy%offset(IY)
+      if (below_L1(IX) .neqv. below_L2(IX)) then
+         if (loc1%x > loopy%midline(IX)) then
+            next_diff(IX) = loopy%offset(IX) - next_diff(IX)
+         else
+            next_diff(IX) = loopy%offset(IX) + next_diff(IX)
+         endif
+      endif
+      if (below_L1(IY) .neqv. below_L2(IY)) then
+         if (loc1%y > loopy%midline(IY)) then
+            next_diff(IY) = loopy%offset(IY) - next_diff(IY)
+         else
+            next_diff(IY) = loopy%offset(IY) + next_diff(IY)
+         endif
+      endif
+
       this_dist = dist_3d_sq(next_diff)
   if (debug > 0) write(0,*)  'periodic XY dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
@@ -344,15 +375,28 @@ if (xy_periodic) then
 
 endif
 
+
 if (xz_periodic) then
 
    if (debug > 0) write(0,*)  'in the xz_periodic case'
 
-   if ((below_L1(IX) .neqv. below_L2(IX)) .and. &
+   if ((below_L1(IX) .neqv. below_L2(IX)) .or. &
        (below_L1(IZ) .neqv. below_L2(IZ))) then
       next_diff = diff
-      next_diff(IX) = next_diff(IX) + loopy%offset(IX)
-      next_diff(IZ) = next_diff(IZ) + loopy%offset(IZ)
+      if (below_L1(IX) .neqv. below_L2(IX)) then ! Adjust x
+         if (loc1%x > loopy%midline(IX)) then
+            next_diff(IX) = loopy%offset(IX) - next_diff(IX)
+         else
+            next_diff(IX) = loopy%offset(IX) + next_diff(IX)
+         endif
+      endif
+      if (below_L1(IZ) .neqv. below_L2(IZ)) then ! Adjust z
+         if (loc1%z > loopy%midline(IZ)) then
+            next_diff(IZ) = loopy%offset(IZ) - next_diff(IZ)
+         else
+            next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
+         endif
+      endif
       this_dist = dist_3d_sq(next_diff)
   if (debug > 0) write(0,*)  'periodic XZ dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
@@ -368,11 +412,23 @@ if (yz_periodic) then
 
    if (debug > 0) write(0,*)  'in the yz_periodic case'
 
-   if ((below_L1(IY) .neqv. below_L2(IY)) .and. &
+   if ((below_L1(IY) .neqv. below_L2(IY)) .or. &
        (below_L1(IZ) .neqv. below_L2(IZ))) then
       next_diff = diff
-      next_diff(IY) = next_diff(IY) + loopy%offset(IY)
-      next_diff(IZ) = next_diff(IZ) + loopy%offset(IZ)
+      if (below_L1(IY) .neqv. below_L2(IY)) then ! Adjust y
+         if (loc1%y > loopy%midline(IY)) then
+            next_diff(IY) = loopy%offset(IY) - next_diff(IY)
+         else
+            next_diff(IY) = loopy%offset(IY) + next_diff(IY)
+         endif
+      endif
+      if (below_L1(IZ) .neqv. below_L2(IZ)) then ! Adjust z
+         if (loc1%z > loopy%midline(IZ)) then
+            next_diff(IZ) = loopy%offset(IZ) - next_diff(IZ)
+         else
+            next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
+         endif
+      endif
       this_dist = dist_3d_sq(next_diff)
   if (debug > 0) write(0,*)  'periodic YZ dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
@@ -390,7 +446,11 @@ if (x_periodic) then
 
    if (below_L1(IX) .neqv. below_L2(IX)) then
       next_diff = diff
-      next_diff(IX) = next_diff(IX) + loopy%offset(IX)
+      if (loc1%x > loopy%midline(IX)) then
+         next_diff(IX) = loopy%offset(IX) - next_diff(IX)
+      else
+         next_diff(IX) = loopy%offset(IX) + next_diff(IX)
+      endif
       this_dist = dist_3d_sq(next_diff)
   if (debug > 0) write(0,*)  'periodic X dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
@@ -431,7 +491,11 @@ if (z_periodic) then
 
    if (below_L1(IZ) .neqv. below_L2(IZ)) then
       next_diff = diff
-      next_diff(IZ) = next_diff(IZ) + loopy%offset(IZ)
+      if (loc1%z >  loopy%midline(IZ)) then
+         next_diff(IZ) = loopy%offset(IZ) - next_diff(IZ)
+      else
+         next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
+      endif
       this_dist = dist_3d_sq(next_diff)
   if (debug > 0) write(0,*)  'periodic Y dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
