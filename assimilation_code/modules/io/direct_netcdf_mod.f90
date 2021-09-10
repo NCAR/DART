@@ -2951,7 +2951,7 @@ integer, intent(in) :: pe
 integer, intent(in) :: start_rank
 integer(i8), intent(in) :: block_size
 
-integer :: elm_count, remainder
+integer(i8) :: elm_count, remainder
 
 elm_count = block_size/task_count()
 remainder = mod(block_size, task_count())
@@ -2989,7 +2989,7 @@ function find_start_point(recv_pe, start_rank)
 
 integer, intent(in)  :: recv_pe !< the receiver
 integer, intent(in)  :: start_rank !< the pe that owns the 1st element of the var_block
-integer(i8)          :: find_start_point
+integer              :: find_start_point
 
 if (start_rank < recv_pe) then
    find_start_point = recv_pe - start_rank + 1
