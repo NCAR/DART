@@ -835,8 +835,8 @@ integer,  intent(in)    :: end_var
 integer,  intent(in)    :: domain
 
 integer :: i
-integer :: istart, iend
-integer :: var_size
+integer(i8) :: istart, iend
+integer(i8) :: var_size
 integer, allocatable :: dims(:)
 integer :: ret, var_id
 
