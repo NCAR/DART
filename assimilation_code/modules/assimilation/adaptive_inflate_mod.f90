@@ -22,7 +22,7 @@ private
 public :: update_inflation,                                 do_obs_inflate,     &
           do_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,        &
           adaptive_inflate_init,    adaptive_inflate_type,                      &
-                                    deterministic_inflate,  solve_quadratic,    &
+          set_from_string,          deterministic_inflate,  solve_quadratic,    &
           log_inflation_info,       get_minmax_task_zero,   mean_from_restart,  &
           sd_from_restart,                                                      &
           output_inf_restart,       get_inflate_mean,       get_inflate_sd,     &

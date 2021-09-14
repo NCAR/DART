@@ -62,6 +62,11 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
                                   SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD,    &
                                   ENHANCED_SS_INFLATION
 
+use hybrid_mod,            only : NO_HYBRID, CONSTANT_HYBRID, SINGLE_SS_HYBRID, VARYING_SS_HYBRID,  &
+                                  hybrid_type, validate_hybrid_options, adaptive_hybrid_init,       &
+                                  hyb_mean_from_restart, hyb_sd_from_restart, set_hybrid_mean_copy, &
+                                  set_hybrid_sd_copy, hyb_minmax_task_zero, log_hybrid_info 
+
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
 
@@ -111,7 +116,7 @@ integer :: trace_level, timestamp_level
 ! Defining whether diagnostics are for prior or posterior
 integer, parameter :: PRIOR_DIAG = 0, POSTERIOR_DIAG = 2
 
-! Determine if inflation it turned on or off for reading and writing
+! Determine if inflation is turned on or off for reading and writing
 ! inflation restart files
 logical :: output_inflation = .false.
 
@@ -124,9 +129,11 @@ integer, parameter :: PRIORINF_MEAN = 5
 integer, parameter :: PRIORINF_SD   = 6
 integer, parameter :: POSTINF_MEAN  = 7
 integer, parameter :: POSTINF_SD    = 8
+integer, parameter :: HYBRID_MEAN   = 9
+integer, parameter :: HYBRID_SD     = 10
 
 ! Number of Stage Copies
-integer, parameter :: NUM_SCOPIES    = 8
+integer, parameter :: NUM_SCOPIES   = 10
 
 ! Ensemble copy numbers
 integer :: ENS_MEM_START                   = COPY_NOT_PRESENT
@@ -137,6 +144,8 @@ integer :: PRIOR_INF_COPY                  = COPY_NOT_PRESENT
 integer :: PRIOR_INF_SD_COPY               = COPY_NOT_PRESENT
 integer :: POST_INF_COPY                   = COPY_NOT_PRESENT
 integer :: POST_INF_SD_COPY                = COPY_NOT_PRESENT
+integer :: HYBRID_WEIGHT_MEAN_COPY         = COPY_NOT_PRESENT
+integer :: HYBRID_WEIGHT_SD_COPY           = COPY_NOT_PRESENT 
 
 integer :: INPUT_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
 
@@ -152,6 +161,13 @@ integer :: SPARE_PRIOR_SPREAD              = COPY_NOT_PRESENT
 logical :: do_prior_inflate     = .false.
 logical :: do_posterior_inflate = .false.
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
+
+! Hybrid global variables
+logical           :: do_hybrid          = .false.
+logical           :: output_hybrid      = .false.
+integer           :: STAT_ENS_MEAN_COPY = COPY_NOT_PRESENT
+integer           :: STAT_ENS_SD_COPY   = COPY_NOT_PRESENT 
+type(hybrid_type) :: hybridization
 
 logical :: has_cycling          = .false. ! filter will advance the model
 
@@ -255,10 +271,14 @@ real(r8) :: inf_sd_lower_bound(2)          = 0.0_r8
 
 ! Hybrid scheme variables
 
-integer            :: hybrid_flavor                        = 1
-integer            :: hybrid_ens_size                      = 100
-character(len=256) :: hybrid_state_file_list(MAX_NUM_DOMS) = ''  ! Name of files containing a list of static (climatology) state files 
-character(len=256) :: hybrid_state_files(MAX_FILES)        = ''
+integer            :: hyb_flavor                        = 1
+integer            :: hyb_ens_size                      = 100
+character(len=256) :: hyb_state_file_list(MAX_NUM_DOMS) = ''  ! Name of files containing a list of static (climatology) state files 
+character(len=256) :: hyb_state_files(MAX_FILES)        = ''
+logical            :: hyb_initial_from_restart          = .false.
+logical            :: hyb_sd_initial_from_restart       = .false.
+real(r8)           :: hyb_weight_initial                = 0.5_r8
+real(r8)           :: hyb_weight_sd_initial             = 0.1_r8
 
 ! Some models are allowed to have MISSING_R8 values in the DART state vector.
 ! If they are encountered, it is not necessarily a FATAL error.
@@ -317,11 +337,14 @@ namelist /filter_nml/ async,     &
    write_all_stages_at_end,      &
    write_obs_every_cycle,        & 
    allow_missing_clm,            &
-   hybrid_flavor,                &
-   hybrid_ens_size,              & 
-   hybrid_state_file_list,       &
-   hybrid_state_files
-
+   hyb_flavor,                   &
+   hyb_ens_size,                 & 
+   hyb_state_file_list,          &
+   hyb_state_files,              &
+   hyb_initial_from_restart,     &
+   hyb_sd_initial_from_restart,  &
+   hyb_weight_initial,           &
+   hyb_weight_sd_initial 
 
 integer :: inflation_flavor(2)
 
@@ -341,7 +364,7 @@ subroutine filter_main()
 type(ensemble_type)         :: state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle
 type(ensemble_type)         :: static_state_ens_handle, static_obs_ens_handle, static_qc_ens_handle
 type(obs_sequence_type)     :: seq
-type(time_type)             :: time1, first_obs_time, last_obs_time
+type(time_type)             :: time1, time2, first_obs_time, last_obs_time
 type(time_type)             :: curr_ens_time, next_ens_time, window_time
 
 integer,    allocatable :: keys(:)
@@ -363,7 +386,7 @@ integer                 :: STATIC_OBS_MEAN_START, STATIC_OBS_MEAN_END
 integer                 :: STATIC_OBS_VAR_START, STATIC_OBS_VAR_END, TOTAL_STATIC_OBS_COPIES
 
 integer                 :: input_qc_index, DART_qc_index
-integer                 :: num_state_ens_copies
+integer                 :: num_state_ens_copies, num_static_ens_copies
 logical                 :: read_time_from_file
 
 integer :: num_extras ! the extra ensemble copies
@@ -429,6 +452,9 @@ call validate_inflate_options(inflation_flavor, inf_damping, inf_initial_from_re
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
    do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
 
+call validate_hybrid_options(hyb_flavor, hyb_ens_size, hyb_initial_from_restart, &
+   hyb_sd_initial_from_restart, do_hybrid, output_hybrid)
+
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate, &
                            inflation_flavor(PRIOR_INF), &
@@ -459,6 +485,11 @@ call adaptive_inflate_init(post_inflate, &
                            inf_sd_max_change(POSTERIOR_INF), &
                            state_ens_handle, &
                            allow_missing, 'Posterior')
+
+! Initialize the hybrid module
+call adaptive_hybrid_init(hybridization, hyb_flavor, hyb_ens_size,               & 
+                          hyb_initial_from_restart, hyb_sd_initial_from_restart, &
+                          output_hybrid, hyb_weight_initial, hyb_weight_sd_initial)
 
 if (do_output()) then
    if (inflation_flavor(PRIOR_INF) > NO_INFLATION .and. &
@@ -501,8 +532,11 @@ if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 call parse_stages_to_write(stages_to_write)
 
 ! Count and set up State copy numbers
-num_state_ens_copies = count_state_ens_copies(ens_size, prior_inflate, post_inflate)
+num_state_ens_copies = count_state_ens_copies(ens_size, prior_inflate, post_inflate, hybridization)
 num_extras           = num_state_ens_copies - ens_size
+
+print *, 'num_state_ens_copies: ', num_state_ens_copies
+print *, 'num_extras: ', num_extras
 
 ! Observation
 OBS_ERR_VAR_COPY     = ens_size + 1
@@ -513,27 +547,32 @@ OBS_EXTRA_QC_COPY    = ens_size + 5
 OBS_MEAN_START       = ens_size + 6
 OBS_MEAN_END         = OBS_MEAN_START + num_groups - 1
 OBS_VAR_START        = OBS_MEAN_START + num_groups
-OBS_VAR_END          = OBS_VAR_START + num_groups - 1
+OBS_VAR_END          = OBS_VAR_START  + num_groups - 1
 
 TOTAL_OBS_COPIES     = ens_size + 5 + 2*num_groups
 
-if (hybrid_flavor) then
-
+if (do_hybrid) then
    if (num_groups > 1) then 
-      call error_handler(E_ERR, 'filter', 'Hybrid DA scheme only supported with num_groups = 1.')
+      call error_handler(E_ERR, 'filter:', 'Hybrid DA scheme only supported with num_groups = 1.')
    endif
-  
-   STATIC_OBS_ERR_VAR_COPY   = hybrid_ens_size + 1
-   STATIC_OBS_VAL_COPY       = hybrid_ens_size + 2
-   STATIC_OBS_KEY_COPY       = hybrid_ens_size + 3
-   STATIC_OBS_GLOBAL_QC_COPY = hybrid_ens_size + 4
-   STATIC_OBS_EXTRA_QC_COPY  = hybrid_ens_size + 5
-   STATIC_OBS_MEAN_START     = hybrid_ens_size + 6
+   
+   ! state copies: # of static member files + mean + sd
+   num_static_ens_copies     = hyb_ens_size + 2 
+   STAT_ENS_MEAN_COPY        = hyb_ens_size + 1
+   STAT_ENS_SD_COPY          = hyb_ens_size + 2
+
+   ! Indices (dummy) needed to compute forward operators only 
+   STATIC_OBS_ERR_VAR_COPY   = hyb_ens_size + 1
+   STATIC_OBS_VAL_COPY       = hyb_ens_size + 2
+   STATIC_OBS_KEY_COPY       = hyb_ens_size + 3
+   STATIC_OBS_GLOBAL_QC_COPY = hyb_ens_size + 4
+   STATIC_OBS_EXTRA_QC_COPY  = hyb_ens_size + 5
+   STATIC_OBS_MEAN_START     = hyb_ens_size + 6
    STATIC_OBS_MEAN_END       = STATIC_OBS_MEAN_START  
    STATIC_OBS_VAR_START      = STATIC_OBS_MEAN_START + 1 
    STATIC_OBS_VAR_END        = STATIC_OBS_VAR_START  
 
-   TOTAL_STATIC_OBS_COPIES   = hybrid_ens_size + 7
+   TOTAL_STATIC_OBS_COPIES   = hyb_ens_size + 7
 endif
 
 !>@todo FIXME turn trace/timestamp calls into:  
@@ -575,12 +614,12 @@ else
 endif
 
 ! Initialize the static ensemble
-if(hybrid_flavor) then
+if(do_hybrid) then
    if(distributed_state) then
-     call init_ensemble_manager(static_state_ens_handle, hybrid_ens_size, model_size)
+     call init_ensemble_manager(static_state_ens_handle, num_static_ens_copies, model_size)
      msgstring = 'running with distributed state; model states stay distributed across all tasks for the entire run'
    else
-     call init_ensemble_manager(static_state_ens_handle, hybrid_ens_size, model_size, transpose_type_in = 2)
+     call init_ensemble_manager(static_state_ens_handle, num_static_ens_copies, model_size, transpose_type_in = 2)
      msgstring = 'running without distributed state; model states are gathered by ensemble for forward operators'
    endif
 endif
@@ -633,19 +672,25 @@ call set_inflation_mean_copy( prior_inflate, PRIOR_INF_COPY )
 call set_inflation_sd_copy(   prior_inflate, PRIOR_INF_SD_COPY )
 call set_inflation_mean_copy( post_inflate,  POST_INF_COPY )
 call set_inflation_sd_copy(   post_inflate,  POST_INF_SD_COPY )
+call set_hybrid_mean_copy(   hybridization,  HYBRID_WEIGHT_MEAN_COPY )
+call set_hybrid_sd_copy(     hybridization,  HYBRID_WEIGHT_SD_COPY )
 
 call read_state(state_ens_handle, file_info_input, read_time_from_file, time1, &
-                prior_inflate, post_inflate, perturb_from_single_instance)
+                prior_inflate, post_inflate, perturb_from_single_instance,     &
+                hybridization)
 
-if (hybrid_flavor) then
-   ! Time is not really important here 
-   ! Need to add weight calculations here (just like inflation for the state)
-   call read_state(static_state_ens_handle, file_info_hybrid, read_time_from_file, time1)
+if (do_hybrid) then
+   ! Time is not really important here. Just send in a dummy time arg.  
+   ! Weight calculations are added in the previous read_state call
+   call read_state(static_state_ens_handle, file_info_hybrid, read_time_from_file, time2)
 endif
 
 !print *, '130 ens var: ', state_ens_handle%copies(1:ens_size, 130)
 !print *, ''
-!print *, '130 hyb var: ', static_state_ens_handle%copies(1:hybrid_ens_size, 130)
+!print *, '130 hyb var: ', static_state_ens_handle%copies(1:hyb_ens_size, 130)
+
+!print *, 'extras ens:  ', state_ens_handle%copies(ens_size+1:num_state_ens_copies, 130)
+!print *, 'extras hyb:  ', static_state_ens_handle%copies(hyb_ens_size+1:num_static_ens_copies, 130) 
 
 ! This must be after read_state
 call get_minmax_task_zero(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
@@ -653,6 +698,9 @@ call log_inflation_info(prior_inflate, state_ens_handle%my_pe, 'Prior', single_f
 call get_minmax_task_zero(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
 call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior', single_file_in)
 
+! Get hybrid information and advertize it
+call hyb_minmax_task_zero(hybridization, state_ens_handle, HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_SD_COPY)
+call log_hybrid_info(hybridization, state_ens_handle%my_pe, single_file_in)
 
 if (perturb_from_single_instance) then
    call error_handler(E_MSG,'filter_main:', &
@@ -725,6 +773,9 @@ call filter_set_window_time(window_time)
 ! Compute mean and spread
 call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
+! Compute mean and spread for static ensemble
+if(do_hybrid) call compute_copy_mean_sd(static_state_ens_handle, 1, hyb_ens_size, STAT_ENS_MEAN_COPY, STAT_ENS_SD_COPY)
+
 ! Write out the mean and sd for the input files if requested
 if (get_stage_to_write('input')) then
 
@@ -732,7 +783,7 @@ if (get_stage_to_write('input')) then
    call timestamp_message('Before input state space output')
 
    if (write_all_stages_at_end) then
-      call store_input(state_ens_handle, prior_inflate, post_inflate)
+      call store_input(state_ens_handle, prior_inflate, post_inflate, hybridization)
    else
       ! if there is only one timestep in your input file insert the mean and sd if requested
       ntimes = nc_get_num_times(file_info_input%stage_metadata%filenames(1,1))
@@ -754,7 +805,6 @@ if (get_stage_to_write('input')) then
    call     trace_message('After  input state space output')
 
 endif
-
 
 AdvanceTime : do
    call trace_message('Top of main advance time loop')
@@ -785,6 +835,8 @@ AdvanceTime : do
 
    call move_ahead(state_ens_handle, ens_size, seq, last_key_used, window_time, &
       key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
+
+   ! MEG: The static ensmeble doesn't move ahead hence the name "static"
 
    call trace_message('After  move_ahead checks time of data and next obs')
 
@@ -828,7 +880,6 @@ AdvanceTime : do
 
       ! make sure storage is allocated in ensemble manager for vars.
       call allocate_vars(state_ens_handle)
-      if (hybrid_flavor) call allocate_vars(static_state_ens_handle)
 
       call all_copies_to_all_vars(state_ens_handle)
 
@@ -836,8 +887,6 @@ AdvanceTime : do
               adv_ens_command, tasks_per_model_advance, file_info_output, file_info_input)
 
       call all_vars_to_all_copies(state_ens_handle)
-      !MEG: check if we need to this!? 
-     
 
       ! updated mean and spread after the model advance
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -856,6 +905,9 @@ AdvanceTime : do
       call trace_message('Model does not need to run; data already at required time', 'filter:', -1)
    endif
 
+   ! TODO: MEG check if we really need to do this!?
+   if (do_hybrid) call allocate_vars(static_state_ens_handle)
+
    call trace_message('Before setup for next group of observations')
    write(msgstring, '(A,I7)') 'Number of observations to be assimilated', &
       num_obs_in_set
@@ -873,10 +925,10 @@ AdvanceTime : do
    call init_ensemble_manager(qc_ens_handle, ens_size, &
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
-   if (hybrid_flavor) then
+   if (do_hybrid) then
       call init_ensemble_manager(static_obs_ens_handle, TOTAL_STATIC_OBS_COPIES, &
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
-      call init_ensemble_manager(static_qc_ens_handle, hybrid_ens_size, &
+      call init_ensemble_manager(static_qc_ens_handle, hyb_ens_size, &
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
    endif
 
@@ -943,7 +995,6 @@ AdvanceTime : do
 
    ! allocate() space for the prior qc copy
    call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
-   call allocate_single_copy(static_obs_ens_handle, static_prior_qc_copy)
  
    call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
            qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
@@ -951,13 +1002,21 @@ AdvanceTime : do
            OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
            isprior=.true., prior_qc_copy=prior_qc_copy)
 
-   if (hybrid_flavor) then 
+   if (do_hybrid) then
+      call allocate_single_copy(static_obs_ens_handle, static_prior_qc_copy) 
+   
       call get_obs_ens_distrib_state(static_state_ens_handle, static_obs_ens_handle, &
            static_qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
            STATIC_OBS_ERR_VAR_COPY, STATIC_OBS_VAL_COPY, STATIC_OBS_KEY_COPY, STATIC_OBS_GLOBAL_QC_COPY, &
            STATIC_OBS_EXTRA_QC_COPY, STATIC_OBS_MEAN_START, STATIC_OBS_VAR_START, &
            isprior=.true., prior_qc_copy=static_prior_qc_copy)
    endif
+
+   !print *, 'obs_ens: ', obs_fwd_op_ens_handle%copies(1:ens_size, 1)
+   !print *, 'rest: '   , obs_fwd_op_ens_handle%copies(ens_size+1:TOTAL_OBS_COPIES, 1)
+
+   !print *, 'obs_hyb: ', static_obs_ens_handle%copies(1:hyb_ens_size, 1)
+   !print *, 'rest: '   , static_obs_ens_handle%copies(hyb_ens_size+1:TOTAL_STATIC_OBS_COPIES, 1)   
 
    call timestamp_message('After  computing prior observation values')
    call     trace_message('After  computing prior observation values')
@@ -1007,20 +1066,21 @@ AdvanceTime : do
 
    
 
-   if (.not. hybrid_flavor) then 
+   if (.not. do_hybrid) then 
       call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
-         ens_size, num_groups, obs_val_index, prior_inflate, &
-         ENS_MEAN_COPY, ENS_SD_COPY, &
-         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-         OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
+         ens_size, num_groups, obs_val_index, prior_inflate, hybridization, &
+         ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, PRIOR_INF_SD_COPY,     &
+         HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_SD_COPY, OBS_KEY_COPY,      &
+         OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START,   &
          OBS_VAR_END, inflate_only = .false.)
    else
       call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
-         ens_size, num_groups, obs_val_index, prior_inflate, &
-         ENS_MEAN_COPY, ENS_SD_COPY, &
-         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-         OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
-         OBS_VAR_END, static_state_ens_handle, static_obs_ens_handle, inflate_only = .false.)
+         ens_size, num_groups, obs_val_index, prior_inflate, hybridization, &
+         ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, PRIOR_INF_SD_COPY,     &
+         HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_SD_COPY, OBS_KEY_COPY,      &
+         OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START,   &
+         OBS_VAR_END, static_state_ens_handle, static_obs_ens_handle,       &
+         inflate_only = .false.)
    endif
 
    call timestamp_message('After  observation assimilation')
@@ -1035,11 +1095,10 @@ AdvanceTime : do
 
       call     trace_message('Before smoother assimilation')
       call timestamp_message('Before smoother assimilation')
-      call smoother_assim(obs_fwd_op_ens_handle, seq, keys, ens_size, num_groups, &
-         obs_val_index, ENS_MEAN_COPY, ENS_SD_COPY, &
-         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-         OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
-         OBS_VAR_END)
+      call smoother_assim(obs_fwd_op_ens_handle, seq, keys, ens_size, num_groups,          &
+         obs_val_index, ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, PRIOR_INF_SD_COPY,     &
+         HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+         OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, OBS_VAR_END)
       call timestamp_message('After  smoother assimilation')
       call     trace_message('After  smoother assimilation')
    endif
@@ -1170,11 +1229,12 @@ AdvanceTime : do
          call     trace_message('Before computing posterior state space inflation')
          call timestamp_message('Before computing posterior state space inflation')
 
-         call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
-                 ens_size, num_groups, obs_val_index, post_inflate, &
-                 ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
-                 OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, &
-                 OBS_VAR_START, OBS_VAR_END, inflate_only = .true.)
+         call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys,     &
+                 ens_size, num_groups, obs_val_index, post_inflate, hybridization, &
+                 ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY,      &
+                 HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_MEAN_COPY, OBS_KEY_COPY,   &
+                 OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START,  &
+                 OBS_VAR_END, inflate_only = .true.)
 
          call timestamp_message('After  computing posterior state space inflation')
          call     trace_message('After  computing posterior state space inflation')
@@ -2281,11 +2341,12 @@ end subroutine  set_time_on_extra_copies
 !> Copy the current mean, sd, inf_mean, inf_sd to spare copies
 !> Assuming that if the spare copy is there you should fill it
 
-subroutine store_input(ens_handle, prior_inflate, post_inflate)
+subroutine store_input(ens_handle, prior_inflate, post_inflate, hybridization)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 type(adaptive_inflate_type), intent(in)    :: prior_inflate
 type(adaptive_inflate_type), intent(in)    :: post_inflate
+type(hybrid_type),           intent(in)    :: hybridization
 
 if( output_mean ) then
    if (query_copy_present( INPUT_COPIES(ENS_MEAN)) ) &
@@ -2300,7 +2361,12 @@ if( output_mean ) then
       if (query_copy_present( INPUT_COPIES(POSTINF_MEAN)) ) &
          ens_handle%copies(   INPUT_COPIES(POSTINF_MEAN), :) = ens_handle%copies(POST_INF_COPY, :)
    endif
-   
+
+   if ( do_hybrid .and. .not. hyb_mean_from_restart(hybridization) ) then
+      if (query_copy_present( INPUT_COPIES(HYBRID_MEAN)) ) &
+         ens_handle%copies(   INPUT_COPIES(HYBRID_MEAN), :) = ens_handle%copies(HYBRID_WEIGHT_MEAN_COPY, :)
+   endif   
+
 endif
 
 if( output_sd ) then
@@ -2318,6 +2384,12 @@ if( output_sd ) then
    if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) then
       if (query_copy_present( INPUT_COPIES(POSTINF_SD)) ) then
          ens_handle%copies(   INPUT_COPIES(POSTINF_SD), :)  = ens_handle%copies(POST_INF_SD_COPY, :)
+      endif
+   endif
+
+   if ( do_hybrid .and. .not. hyb_sd_from_restart(hybridization) ) then
+      if (query_copy_present( INPUT_COPIES(HYBRID_SD)) ) then
+         ens_handle%copies(   INPUT_COPIES(HYBRID_SD), :)  = ens_handle%copies(HYBRID_WEIGHT_SD_COPY, :)
       endif
    endif
 
@@ -2354,7 +2426,13 @@ if (query_copy_present( STAGE_COPIES(POSTINF_MEAN)) ) &
 
 if (query_copy_present( STAGE_COPIES(POSTINF_SD)) ) &
    ens_handle%copies(   STAGE_COPIES(POSTINF_SD), :)    = ens_handle%copies(POST_INF_SD_COPY, :)
-     
+
+if (query_copy_present( STAGE_COPIES(HYBRID_MEAN)) ) &
+   ens_handle%copies(   STAGE_COPIES(HYBRID_MEAN), :)  = ens_handle%copies(HYBRID_WEIGHT_MEAN_COPY, :)
+
+if (query_copy_present( STAGE_COPIES(HYBRID_SD)) ) &
+   ens_handle%copies(   STAGE_COPIES(HYBRID_SD), :)    = ens_handle%copies(HYBRID_WEIGHT_SD_COPY, :)    
+ 
 do i = 1, num_output_state_members
    offset = STAGE_COPIES(MEM_START) + i - 1
    if ( query_copy_present(offset) ) ens_handle%copies(offset, :) = ens_handle%copies(i, :)
@@ -2366,11 +2444,13 @@ end subroutine store_copies
 !------------------------------------------------------------------
 !> Count the number of copies to be allocated for the ensemble manager
 
-function count_state_ens_copies(ens_size, prior_inflate, post_inflate) result(num_copies)
+function count_state_ens_copies(ens_size, prior_inflate, post_inflate, hybridization) result(num_copies)
 
 integer,                     intent(in) :: ens_size
 type(adaptive_inflate_type), intent(in) :: prior_inflate
 type(adaptive_inflate_type), intent(in) :: post_inflate
+type(hybrid_type)          , intent(in) :: hybridization
+
 integer :: num_copies
 
 integer :: cnum = 0
@@ -2387,13 +2467,17 @@ ENS_MEM_END   = next_copy_number(cnum, ens_size)
 !    PRIOR_INF_SD_COPY
 !    POST_INF_COPY    
 !    POST_INF_SD_COPY 
+!    HYBRID_WEIGHT_MEAN_COPY
+!    HYBRID_WEIGHT_SD_COPY
 
-ENS_MEAN_COPY     = next_copy_number(cnum)
-ENS_SD_COPY       = next_copy_number(cnum)
-PRIOR_INF_COPY    = next_copy_number(cnum)
-PRIOR_INF_SD_COPY = next_copy_number(cnum)
-POST_INF_COPY     = next_copy_number(cnum)
-POST_INF_SD_COPY  = next_copy_number(cnum)
+ENS_MEAN_COPY           = next_copy_number(cnum)
+ENS_SD_COPY             = next_copy_number(cnum)
+PRIOR_INF_COPY          = next_copy_number(cnum)
+PRIOR_INF_SD_COPY       = next_copy_number(cnum)
+POST_INF_COPY           = next_copy_number(cnum)
+POST_INF_SD_COPY        = next_copy_number(cnum)
+HYBRID_WEIGHT_MEAN_COPY = next_copy_number(cnum)
+HYBRID_WEIGHT_SD_COPY   = next_copy_number(cnum)
 
 ! If there are no diagnostic files, we will need to store the
 ! copies that would have gone in Prior_Diag.nc and Posterior_Diag.nc
@@ -2412,6 +2496,9 @@ if (write_all_stages_at_end) then
          if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) then
             INPUT_COPIES(POSTINF_MEAN)  = next_copy_number(cnum)
          endif
+         if ( do_hybrid .and. .not. hyb_mean_from_restart(hybridization) ) then
+            INPUT_COPIES(HYBRID_MEAN) = next_copy_number(cnum)
+         endif
       endif
 
       if (output_sd) then
@@ -2421,6 +2508,9 @@ if (write_all_stages_at_end) then
          endif
          if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) then
             INPUT_COPIES(POSTINF_SD)  = next_copy_number(cnum)
+         endif
+         if ( do_hybrid .and. .not. hyb_sd_from_restart(hybridization) ) then
+            INPUT_COPIES(HYBRID_SD) = next_copy_number(cnum)
          endif
       endif
    endif
@@ -2451,6 +2541,9 @@ else
       if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) then
          INPUT_COPIES(POSTINF_MEAN)  = POST_INF_COPY
       endif
+      if ( do_hybrid .and. .not. hyb_mean_from_restart(hybridization) ) then
+         INPUT_COPIES(HYBRID_MEAN) = HYBRID_WEIGHT_MEAN_COPY
+      endif
    endif
 
    if (output_sd) then
@@ -2461,24 +2554,32 @@ else
       if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) then
          INPUT_COPIES(POSTINF_SD)  = POST_INF_SD_COPY
       endif
+      if ( do_hybrid .and. .not. hyb_sd_from_restart(hybridization) ) then
+         INPUT_COPIES(HYBRID_SD) = HYBRID_WEIGHT_SD_COPY
+      endif
    endif
   
    FORECAST_COPIES   = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
-                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
+                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY,       & 
+                          POST_INF_SD_COPY, HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_SD_COPY /)
 
    PREASSIM_COPIES   = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
-                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
+                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY,       &
+                          POST_INF_SD_COPY, HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_SD_COPY /)
 
    POSTASSIM_COPIES  = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
-                         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
+                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY,       &
+                          POST_INF_SD_COPY, HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_SD_COPY /)
 
    ANALYSIS_COPIES   = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
-                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
+                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY,       &
+                          POST_INF_SD_COPY, HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_SD_COPY /)
   
 endif
 
 CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
-                       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
+                       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY,       & 
+                       POST_INF_SD_COPY, HYBRID_WEIGHT_MEAN_COPY, HYBRID_WEIGHT_SD_COPY /)
 
 ! If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation
 ! then we need an extra copy to hold (save) the prior ensemble spread
@@ -2515,12 +2616,14 @@ call set_member_file_metadata(file_info, num_ens, STAGE_COPIES(MEM_START))
 
 STAGE_COPIES(MEM_END) = STAGE_COPIES(MEM_START) + num_ens - 1
 
-call set_file_metadata(file_info, STAGE_COPIES(ENS_MEAN),      stage, 'mean',          'ensemble mean')
-call set_file_metadata(file_info, STAGE_COPIES(ENS_SD),        stage, 'sd',            'ensemble sd')
-call set_file_metadata(file_info, STAGE_COPIES(PRIORINF_MEAN), stage, 'priorinf_mean', 'prior inflation mean')
-call set_file_metadata(file_info, STAGE_COPIES(PRIORINF_SD),   stage, 'priorinf_sd',   'prior inflation sd')
-call set_file_metadata(file_info, STAGE_COPIES(POSTINF_MEAN),  stage, 'postinf_mean',  'posterior inflation mean')
-call set_file_metadata(file_info, STAGE_COPIES(POSTINF_SD),    stage, 'postinf_sd',    'posterior inflation sd')
+call set_file_metadata(file_info, STAGE_COPIES(ENS_MEAN),      stage, 'mean',              'ensemble mean')
+call set_file_metadata(file_info, STAGE_COPIES(ENS_SD),        stage, 'sd',                'ensemble sd')
+call set_file_metadata(file_info, STAGE_COPIES(PRIORINF_MEAN), stage, 'priorinf_mean',     'prior inflation mean')
+call set_file_metadata(file_info, STAGE_COPIES(PRIORINF_SD),   stage, 'priorinf_sd',       'prior inflation sd')
+call set_file_metadata(file_info, STAGE_COPIES(POSTINF_MEAN),  stage, 'postinf_mean',      'posterior inflation mean')
+call set_file_metadata(file_info, STAGE_COPIES(POSTINF_SD),    stage, 'postinf_sd',        'posterior inflation sd')
+call set_file_metadata(file_info, STAGE_COPIES(HYBRID_MEAN),   stage, 'hybridweight_mean', 'hyrbid weighting coefficient mean')
+call set_file_metadata(file_info, STAGE_COPIES(HYBRID_SD),     stage, 'hybridweight_sd',   'hybrid weighting coefficient sd')
 
 end subroutine set_filename_info
 
@@ -2569,6 +2672,13 @@ if ( do_posterior_inflate ) then
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
+if ( do_hybrid ) then
+   if ( hyb_initial_from_restart ) &
+      call set_io_copy_flag(file_info, STAGE_COPIES(HYBRID_MEAN),  READ_COPY, inherit_units=.false.)
+   if ( hyb_sd_initial_from_restart ) &
+      call set_io_copy_flag(file_info, STAGE_COPIES(HYBRID_SD),    READ_COPY, inherit_units=.false.)
+endif
+
 ! This is for single file augmented state mean and sd if requested
 if(single_file_in) then
    if (output_mean) then
@@ -2579,6 +2689,9 @@ if(single_file_in) then
 
       if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) &
         call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  WRITE_COPY, inherit_units=.false.)
+
+      if ( do_hybrid .and. .not. hyb_mean_from_restart(hybridization) ) &
+        call set_io_copy_flag(file_info, STAGE_COPIES(HYBRID_MEAN),  WRITE_COPY, inherit_units=.false.)
    endif
    
    if (output_sd) then
@@ -2589,6 +2702,9 @@ if(single_file_in) then
 
       if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) &
         call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),  WRITE_COPY, inherit_units=.false.)
+
+      if ( do_hybrid .and. .not. hyb_sd_from_restart(hybridization) ) &
+        call set_io_copy_flag(file_info, STAGE_COPIES(HYBRID_SD),  WRITE_COPY, inherit_units=.false.)
    endif
 endif
 
@@ -2628,6 +2744,12 @@ if ( do_posterior_inflate ) &
                          inherit_units=.false., force_copy_back=force_copy)
 if ( do_posterior_inflate ) &
    call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),     WRITE_COPY, &
+                         inherit_units=.false., force_copy_back=force_copy)
+if ( do_hybrid )            &
+   call set_io_copy_flag(file_info, STAGE_COPIES(HYBRID_MEAN),   WRITE_COPY, &
+                         inherit_units=.false., force_copy_back=force_copy)
+if ( do_hybrid )            &
+   call set_io_copy_flag(file_info, STAGE_COPIES(HYBRID_SD),     WRITE_COPY, &
                          inherit_units=.false., force_copy_back=force_copy)
 
 end subroutine set_output_file_info
@@ -2693,7 +2815,7 @@ subroutine initialize_file_information(ncopies, &
                                        file_info_input,     file_info_mean_sd, &
                                        file_info_forecast,  file_info_preassim, &
                                        file_info_postassim, file_info_analysis, &
-                                       file_info_output, file_info_hybrid)
+                                       file_info_output,    file_info_hybrid)
 
 integer,              intent(in)  :: ncopies
 type(file_info_type), intent(out) :: file_info_input
@@ -2767,26 +2889,26 @@ call io_filenames_init(file_info_output,                       &
 
 ! Handle Hybrid option
 if (present(file_info_hybrid)) then
-   nhybrid_files = hybrid_ens_size
+   nhybrid_files = hyb_ens_size
 
-   call set_multiple_filename_lists(hybrid_state_files(:), &
-                                    hybrid_state_file_list(:), &
+   call set_multiple_filename_lists(hyb_state_files(:), &
+                                    hyb_state_file_list(:), &
                                     ndomains, &
                                     nhybrid_files, &
-                                    'filter','hybrid_state_files','hybrid_state_file_list')
+                                    'filter','hyb_state_files','hyb_state_file_list')
 
    allocate(file_array_hybrid(nhybrid_files, ndomains))
 
-   file_array_hybrid = RESHAPE(hybrid_state_files,  (/nhybrid_files,  ndomains/))
+   file_array_hybrid = RESHAPE(hyb_state_files,  (/nhybrid_files,  ndomains/))
 
-   call io_filenames_init(file_info_hybrid,                       &
-                           ncopies       = hybrid_ens_size,       &
-                           cycling       = has_cycling,           &
-                           single_file   = single_file_in,        &
-                           restart_files = file_array_hybrid,     &
+   call io_filenames_init(file_info_hybrid,                   &
+                           ncopies       = hyb_ens_size,      &
+                           cycling       = has_cycling,       &
+                           single_file   = single_file_in,    &
+                           restart_files = file_array_hybrid, &
                            root_name     = 'hybrid')
    
-   call set_hybrid_info(file_info_hybrid, 'hybrid', hybrid_ens_size, (/ 1, hybrid_ens_size /) )
+   call set_hybrid_info(file_info_hybrid, 'hybrid', hyb_ens_size, (/ 1, hyb_ens_size /) )
 endif
 
 
@@ -2888,6 +3010,16 @@ if (output_inflation) then
    if (do_posterior_inflate) then
       STAGE_COPIES(POSTINF_MEAN)  = next_copy_number(cnum)
       STAGE_COPIES(POSTINF_SD)    = next_copy_number(cnum)
+   endif
+endif
+
+if (output_hybrid) then
+   ! Option to Output Hybrid
+   !    HYBRID_MEAN
+   !    HYBRID_SD
+   if (do_hybrid) then
+      STAGE_COPIES(HYBRID_MEAN) = next_copy_number(cnum)
+      STAGE_COPIES(HYBRID_SD)   = next_copy_number(cnum)
    endif
 endif
 

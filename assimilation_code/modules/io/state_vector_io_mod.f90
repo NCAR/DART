@@ -37,6 +37,9 @@ use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_f
                                  read_single_file, write_augmented_state, &
                                  initialize_single_file_io, finalize_single_file_io
 
+use hybrid_mod,           only : hybrid_type, do_single_ss_hybrid, get_hybrid_mean_copy,         &
+                                 get_hybrid_sd_copy, hyb_mean_from_restart, hyb_sd_from_restart, &
+                                 do_ss_hybrid, get_hybrid_mean, get_hybrid_sd
 
 use types_mod,            only : r8, i4, i8, MISSING_R8
 
@@ -158,7 +161,7 @@ end subroutine state_vector_io_init
 
 
 subroutine read_state(state_ens_handle, file_info, read_time_from_file, model_time, &
-            prior_inflate_handle, post_inflate_handle, perturb_from_single_copy)
+            prior_inflate_handle, post_inflate_handle, perturb_from_single_copy, hybrid_handle)
 
 type(ensemble_type),         intent(inout) :: state_ens_handle
 type(file_info_type),        intent(in)    :: file_info
@@ -167,6 +170,7 @@ type(time_type),             intent(inout) :: model_time
 type(adaptive_inflate_type), optional, intent(in) :: prior_inflate_handle
 type(adaptive_inflate_type), optional, intent(in) :: post_inflate_handle
 logical,                     optional, intent(in) :: perturb_from_single_copy
+type(hybrid_type),           optional, intent(in) :: hybrid_handle
 
 logical :: inflation_handles
 
@@ -210,6 +214,12 @@ if (inflation_handles) then
    call fill_inf_from_namelist_value(state_ens_handle, prior_inflate_handle)
    call fill_inf_from_namelist_value(state_ens_handle, post_inflate_handle)
 
+endif
+
+! Similar to inflation, handle single state-space hybrid flavor
+if (present(hybrid_handle)) then 
+   call fill_single_hybrid_val_from_read(state_ens_handle, hybrid_handle)
+   call fill_hyb_from_namelist_value(state_ens_handle, hybrid_handle)
 endif
 
 if (get_single_file(file_info)) then
@@ -452,9 +462,72 @@ end subroutine fill_single_inflate_val_from_read
 
 
 !-----------------------------------------------------------------------
+!> Similar to inflation we need to fill in the hybrid weight array 
+!> in case of a single state-space type.
+
+subroutine fill_single_hybrid_val_from_read(ens_handle, hybrid_handle)
+
+type(ensemble_type), intent(inout) :: ens_handle
+type(hybrid_type),   intent(in)    :: hybrid_handle
+
+integer :: owner, owners_index
+integer(i8) :: first_element
+real(r8), allocatable :: hyb_array(:) ! 2 
+integer :: hyb_count
+logical :: return_me ! flag to return if not read any inflation values from files
+
+integer :: WEIGHT_MEAN
+integer :: WEIGHT_SD
+
+! Return if not doing single state space inflation
+if ( .not. do_single_ss_hybrid(hybrid_handle) ) return
+
+return_me = .true.
+! Return if not reading any state space hybrid values from files
+if ( do_single_ss_hybrid(hybrid_handle)) then
+   if (hyb_mean_from_restart(hybrid_handle)) return_me = .false.
+   if (hyb_sd_from_restart(hybrid_handle))   return_me = .false.
+endif
+if (return_me) return
+
+! At least some single state space hybrid values are being read from files.
+hyb_count = 0
+if (do_single_ss_hybrid(hybrid_handle)) hyb_count = 2
+
+allocate(hyb_array(hyb_count)) ! for sending and recveiving hybrid values
+
+! Find out who owns the first element of vars array
+first_element = 1
+call get_var_owner_index(ens_handle, first_element, owner, owners_index)
+
+WEIGHT_MEAN = get_hybrid_mean_copy(hybrid_handle)
+WEIGHT_SD   = get_hybrid_sd_copy(  hybrid_handle)
+
+if (ens_handle%my_pe == owner) then
+   if (do_single_ss_hybrid(hybrid_handle)) then
+      hyb_array(1) = ens_handle%copies(WEIGHT_MEAN, owners_index)
+      hyb_array(2) = ens_handle%copies(WEIGHT_SD,   owners_index)
+   endif
+
+   call broadcast_send(map_pe_to_task(ens_handle, owner), hyb_array)
+
+else
+
+   call broadcast_recv(map_pe_to_task(ens_handle, owner), hyb_array)
+
+   if (do_single_ss_hybrid(hybrid_handle)) then
+
+      ens_handle%copies(WEIGHT_MEAN, owners_index) = hyb_array(1)
+      ens_handle%copies(WEIGHT_SD,   owners_index) = hyb_array(2)
+   endif
+endif
+
+end subroutine fill_single_hybrid_val_from_read
+
+
+!-----------------------------------------------------------------------
 !> Check whether inflation values come from namelist and
 !> fill copies array with namelist values for inflation if they do.
-
 
 subroutine fill_inf_from_namelist_value(ens_handle, inflate_handle)
 
@@ -496,6 +569,43 @@ if (.not. sd_from_restart(inflate_handle)) then
 endif
 
 end subroutine fill_inf_from_namelist_value
+
+
+!-----------------------------------------------------------------------
+!> Check whether hybrid weight values come from namelist and
+!> fill copies array with namelist values for hybrid if they do.
+
+subroutine fill_hyb_from_namelist_value(ens_handle, hybrid_handle)
+
+type(ensemble_type), intent(inout) :: ens_handle
+type(hybrid_type),   intent(in)    :: hybrid_handle
+
+character(len=32)  :: label
+integer            :: WEIGHT_MEAN_COPY, WEIGHT_SD_COPY
+real(r8)           :: weight_initial, sd_initial
+
+WEIGHT_MEAN_COPY = get_hybrid_mean_copy(hybrid_handle)
+WEIGHT_SD_COPY   = get_hybrid_sd_copy(  hybrid_handle)
+
+!if (.not. do_ss_hybrid(hybrid_handle)) then
+!   ens_handle%copies(WEIGHT_MEAN_COPY, :) = 1.0_r8
+!   ens_handle%copies(WEIGHT_SD_COPY, :)   = 0.0_r8
+!   return
+!endif
+
+
+if (.not. hyb_mean_from_restart(hybrid_handle)) then
+   weight_initial = get_hybrid_mean(hybrid_handle)
+   ens_handle%copies(WEIGHT_MEAN_COPY, :) = weight_initial
+endif
+
+if (.not. hyb_sd_from_restart(hybrid_handle)) then
+   sd_initial = get_hybrid_sd(hybrid_handle)
+   ens_handle%copies(WEIGHT_SD_COPY, :) = sd_initial
+endif
+
+end subroutine fill_hyb_from_namelist_value
+
 
 !-----------------------------------------------------------
 !> set stage names

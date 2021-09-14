@@ -24,6 +24,7 @@ use assim_tools_mod,      only : filter_assim
 use obs_sequence_mod,     only : obs_sequence_type
 use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
                                  do_varying_ss_inflate, do_single_ss_inflate
+use hybrid_mod,           only : hybrid_type, adaptive_hybrid_init
 use io_filenames_mod,     only : file_info_type, netcdf_file_type
 
 implicit none
@@ -50,6 +51,7 @@ integer :: smoother_state_mean_index, smoother_state_spread_index
 type(ensemble_type), allocatable :: lag_handle(:)
 type(netcdf_file_type), allocatable :: SmootherStateUnit(:)
 type(adaptive_inflate_type)         :: lag_inflate
+type(hybrid_type)                   :: lag_hybrid
 
 !============================================================================
 
@@ -120,6 +122,9 @@ allow_missing = get_missing_ok_status()
 if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., &
    .false. ,.true., 1.0_r8, 0.0_r8,       &
    1.0_r8, 1.0_r8, 0.0_r8, 1.0_r8, ens_handle, allow_missing, "Lag")
+
+! Define a dummy hybrid handle not supported for smoothers 
+call adaptive_hybrid_init(lag_hybrid, 0, 1, .false., .false., .false., 1.0_r8, 0.0_r8)
 
 end subroutine init_smoother
 
@@ -365,10 +370,10 @@ end subroutine smoother_write_restart
 
 !-----------------------------------------------------------
 
-subroutine smoother_assim(obs_ens_handle, seq, keys, ens_size, num_groups, obs_val_index, &
-   ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, &
-   OBS_GLOBAL_QC_COPY, OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
-   OBS_PRIOR_VAR_END)
+subroutine smoother_assim(obs_ens_handle, seq, keys, ens_size, num_groups, obs_val_index,   &
+   ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, HYB_MEAN_COPY,            &
+   HYB_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, & 
+   OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END)
 
 type(ensemble_type),         intent(inout) :: obs_ens_handle
 type(obs_sequence_type),     intent(in) :: seq
@@ -376,6 +381,7 @@ integer,                     intent(in)    :: keys(:)
 integer,                     intent(in)    :: ens_size, num_groups, obs_val_index
 integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY
 integer,                     intent(in)    :: PRIOR_INF_SD_COPY
+integer,                     intent(in)    :: HYB_MEAN_COPY, HYB_SD_COPY
 integer,                     intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
 integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
@@ -406,12 +412,12 @@ do i = 1, num_current_lags
    endif
 
    ! NEED A LAG INFLATE TYPE THAT DOES NO INFLATION FOR NOW
-   call filter_assim(lag_handle(smoother_index), obs_ens_handle, &
-      seq, keys, ens_size, num_groups, &
-      obs_val_index, lag_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
-      PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-      OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
-      OBS_PRIOR_VAR_END, inflate_only = .false.)
+   call filter_assim(lag_handle(smoother_index), obs_ens_handle, seq, keys, & 
+        ens_size, num_groups, obs_val_index, lag_inflate, lag_hybrid,       &
+        ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, PRIOR_INF_SD_COPY,      &
+        HYB_SD_COPY, HYB_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY,         &
+        OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START,      &
+        OBS_PRIOR_VAR_END, inflate_only = .false.)
 
    !write(errstring, '(A,I8,A,I4,A)') 'finished assimilating ', size(keys), &
    !                                  ' observations for lag', i, ' data'
