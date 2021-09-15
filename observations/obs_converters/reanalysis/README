@@ -3,11 +3,6 @@ nsc 12 nov 2018
 updated may 2019 for AIRS
 updated sept 2021 for adding instructions to GIT repo.
 
-the original of this file was on cheyenne.ucar.edu  at
-/glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/README
-the conversion work was all done on cheyenne.
-
-
 intro:
 much of this process has been automated.  however some of it
 still needs human intervention, especially getting the input
@@ -57,107 +52,108 @@ intentional on their part.
 
 details for converting each type of obs:
 
-ncep obs with acars:
+ncep with acars:
  download:
  1) if your time period is between 2000 and 2018, use this procedure:
  - if they haven't been removed to reclaim disk space, the prepqm
-    tar files are in the bufr/tarfiles directory.  a record of the
-    original HPSS dataset names are in:
+   tar files are in the bufr/tarfiles directory.  a record of the
+   original HPSS dataset names are in:
      Observations/bufr/tarfiles/nancy.get 
-    but since the HPSS is gone this is mostly of historical interest.
+   but since the HPSS is gone this is mostly of historical interest.
  - if you need to start with an "A" file for any reason, you might
-    have to run:
+   have to run (on the machine on which cosconvert was built):
      cosconvert -b Axxxx  YYYYMM.tar
-    (the cosconvert executable should be in that same dir)
+   (the cosconvert executable should be in that same dir)
 
  2) if your time period is other, use this procedure:
- - check the RDA DS 090.0 inventory files and look to see
-    if your desired months are listed.  you are looking for
-    prepqm files.  depending on the time range, they could
-    be weekly, 2 per month, or monthly.  recent obs data usually
-    appears about a month or two behind the current date.
  - email chifan (in DSS) and ask for the DS 090.0 prepqm 
-    tar files *with ncep+acars observations*.  again, depending
-    on the era, the prepqm files you see listed on the website
-    may not contain the ACARS data.
-    it usually takes less than a day for him to extract them 
-    onto glade scratch. and he usually runs cosconvert for you.
- - copy the files he gave you from scratch into the
-    Observations/bufr/tarfiles directory.  if they still have
-    names like Annnnn, rename them to YYYYMM.tar.  (running
-      tar -tvf Annnnn| head
-    should show you filenames like YYYYMM/prepqmYYMMDDHH.no_ship_id.gz
-    so you can tell which file is which month.)  keep these around
-    until you are *sure* everything is ok.  less work for chifan
-    if you don't have to request the same file again.
- - chifan usually runs cosconvert on the files first so they are
-    already in tar format.  if tar gives you an error, try:
-     cosconvert -b infile outfile.tar
-    and try to list the output file.  it should be in tar format now.
+   tar files *with ncep+acars observations*.  
+   it usually takes less than a day for him to extract them 
+   onto glade scratch. 
+   The tar files will contain files prepqmYYMMDDHH.no_ship_id.gz.
+   These files are hidden from the public.
+   The prepqm files you see listed on the website
+   probably don't contain the ACARS data.
+ - check the contents using
+      tar -tvf ${chi-fan_file}.tar | head
+ - if they are tar files, copy them into 
+   Observations/bufr/tarfiles directory with names like YYYYMM.tar.
+   keep these around until you are *sure* everything is ok.   
+   less work for chifan if you don't have to request the same file again.
+ - if the tar command fails to detect a tar file, 
+   try this on the machine where ./cosconvert was built:
+      cosconvert -b ${chi-fan_file}.tar Observations/bufr/tarfiles/YYYYMM.tar
+   and try to list the output file.  it should be in tar format now.
 
  now continue here:
  - untar the files into bufr/prepqm 
  - if this version of the tar file creates the individual prepqm
-    files in a subdirectory, move them up directly into the prepqm
-    directory.  this makes rolling over between months and years easier
-    for the conversion scripts if all files are in a single dir.
+   files in a subdirectory, move them up directly into the prepqm
+   directory.  this makes rolling over between months and years easier
+   for the conversion scripts if all files are in a single dir.
  - verify there are 4 6-hr files per day; 00, 06, 12, 18.  
-    you can leave them gzipped.  see the 'list_files_by_month' script
-    which prints out total file counts to verify they're all there.
+   you can leave them gzipped.  see the 'list_files_by_month' script
+   which prints out total file counts to verify they're all there.
 
  convert:
  - go into bufr/scripts/prep_bufr and edit my_multi_parallel.batch
-    to set the start/end times.  submit it.  it will process files
-    in bufr/prepqm and leave ascii files in bufr/prepout. these are
-    still 6h files.  filename format is temp_obs.YYYYMMDDHH and
-    hours are now 06, 12, 18, 24. 
-    in bufr/prepout, see the 'list_files_by_month' script
-    which prints out total file counts to verify they're all there.
+   to set the start/end times.  submit it.  it will process files
+   in bufr/prepqm and leave ascii files in bufr/prepout. these are
+   still 6h files.  filename format is temp_obs.YYYYMMDDHH and
+   hours are now 06, 12, 18, 24. 
+   in bufr/prepout, see the 'list_files_by_month' script
+   which prints out total file counts to verify they're all there.
  - go into bufr/scripts/ascii_to_obs.  edit multi_parallel.pbs
-    to set the start/end times.  submit it to the batch system.
-    it will create 6H obs_seq files in bufr/obs_seq with filesnames
-    of the form  obs_seqYYYYMMDDHH  hours are back to 00, 06, 12, 18
+   to set the start/end times.  submit it to the batch system.
+   it will create 6H obs_seq files in bufr/obs_seq with filesnames
+   of the form  obs_seqYYYYMMDDHH  hours are back to 00, 06, 12, 18
 
  move to destination:
  - go into bufr/progs and run 'moveto' if there are a lot of files.
-    otherwise just move them by hand into directories of the form
-     /glade/p/cisl/dares/Observations/NCEP+ACARS/YYYYMM_6H
+   otherwise just move them by hand into directories of the form
+      /glade/p/cisl/dares/Observations/NCEP+ACARS/YYYYMM_6H
 
-gps obs:
+gps:
  code and script locations:
  - dart root to use for executable programs:
-     git repo code, main branch
+      git repo code, main branch
  - dart root to use for scripts:
-     git repo code, reanalysis branch, observations/obs_converters/reanalysis
+      git repo code, reanalysis branch: observations/obs_converters/reanalysis
  
  user access:
-  in the past it was necessary to get a username/password to
-  access the files on this website.  check here for the current process.
-      https://cdaac-www.cosmic.ucar.edu/cdaac/products.html
+ - The data are freely available, but somewhat hidden and scattered.  Go to
+      https://www.cosmic.ucar.edu/what-we-do/data-processing-center/data
+   and click on a link for a COSMIC mission, or look in the 'data' row
+   of the table of non-COSMIC missions.
 
  setup on a partition with a lot of space:
  - mkdir /glade/scratch/$USER/gps_conversion/{work,cosmic,shell_scripts}. 
  - compile with quickbuild.csh, and copy the contents of:
       main branch: observations/obs_converters/gps/work
-    into the scratch gps_conversion/work directory.
+   into the scratch gps_conversion/work directory.
  - copy the contents of:
       reanalysis branch: observations/obs_converters/reanalysis/gps/shell_scripts
-    into the scratch gps_conversion/shell_scripts directory.
+   into the scratch gps_conversion/shell_scripts directory.
  - cd into the scratch shell_scripts directory.
    the jobs will be started from here.
  - edit my_gpsro_to_obsseq.csh to be sure it has the right scratch 
-     directory path, cdaac password, etc.
+   directory path, cdaac password, etc.
  - open a browser to:
-      https://cdaac-www.cosmic.ucar.edu/cdaac/products.html
-    and confirm which level of processing is right for each satellite
-    source depending on your time range.  don't replicate processing
-    levels for the same satellite or you'll create duplicate obs.
-    the left column is the best; middle is fine; right is 
-    real-time and has the least quality QC processing.  
-    we use dataset 'atmPrf' if you want to check individual days 
-    for data availability.
+      https://www.cosmic.ucar.edu/what-we-do/data-processing-center/data/
+   A list (2021-9-3) of the locations of the data available for 2020-...
+   is in ./gps_websites.
+   Follow the links to COSMIC[1,2] to get desired data.
+   For the nonCOSMIC satellites, see the wide, missions table:
+      Row 2; the level of processing for that satellite.
+      Row 3; the dates available (YYYY.DDD).
+      Row 4; link to the data 
+      Row 8; whether atmPrf format files are available
+   Check for files of the form atmPrf_{postProc,nrt}_YYYY_DDD.tar.gz,
+   which are usually in the level2 directories.
+   Don't replicate processing levels for the same satellite 
+   or you'll create duplicate obs.
  - edit my_multi_parallel.batch to set the satlist and the
-    start/end times.  
+   start/end times.  
 
  download and convert:
  - for testing, run with a single day or two. set these in 
@@ -177,71 +173,88 @@ gps obs:
  move to destination:
  - go into /glade/scratch/$USER/gps_conversion/cosmic
  - edit the start/end dates in list_here and run it to see if all
-    the obs_seq files were created.  look for 'ls: not found' errors.
+   the obs_seq files were created.  look for 'ls: not found' errors.
  - set the start/end dates in 'move_there' and run it to move
    files into:
-     /glade/p/cisl/dares/Observations/GPS/local-allsats-2019/YYYYMM
+      /glade/p/cisl/dares/Observations/GPS/local-allsats-2019/YYYYMM
  - set the start/end dates in clean_here and run it to remove all
    the work directories.
 
 airs:
  download:
  - open a browser to here:  
-      https://disc.gsfc.nasa.gov/datasets/AIRS2RET_V006/summary?keywords=airs%20version%206
+      https://disc.gsfc.nasa.gov/datasets/AIRS2RET_006/summary
+      Help > Registration
+   which may require a registration through Earthdata 
+      https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+For+an+EarthData+Login+Profile
+   and through
+      https://urs.earthdata.nasa.gov/
+ - Go to https://disc.gsfc.nasa.gov/api/jobs/results/6132aa6051cef5312b131426.
    if they've moved it, search for some combination of: Earthdata, GSFC, NASA,
-    AIRS version 6, L2 data.  see if you can get to the data download page.
-    we use AIRS2RET.006 data for temperature and moisture.  (AIRX2RET.006 is the
-    L2 product with radiance data in it.)
- - click on 'subset/get data' in the 'data access' box
- - pick a start/end date.  there are 240 files/day, so a month of files
-    is around 7000 which currently is taking about 2 hours to download onto
-    a glade disk.  so i've been doing no more than a month at a time. 
-    (the rest of these instructions assume you're doing this process month by month.)
- - it looks like asking to download a month actually includes one or more files
-    from the day before the start day and one or more files from the day after 
-    the end date.  sometimes observation times in the files are slightly before 
-    or after the time in the filename.  
+   AIRS version 6, L2 data.  
+   we use AIRS2RET.006 data for temperature and moisture.  
+   (AIRX2RET.006 is the L2 product with radiance data in it.)
+ - Get a list of files to fetch via Data Access: Subset/Get Data (the last option)
+   It looks like it will start the data fetch process, 
+   but only generates a list of files for use by wget.
+   Wget is used in scripts described below, 
+   but this page links to instructions for using it, if needed.
+   It's also possible to, "click here" to authorize (or maybe gain access to) 
+   'NASA GESDISC DATA ARCHIVE' application, if you haven't already done that. 
+ - Use shell_scripts/convert_airs_L2.csh to fetch the files.
+   (it can convert to obs_seq format, but there's a faster, parallel program for that; 
+   AIRS/shell_scripts/multi_parallel.batch).
+   pick start and end dates.  there are 240 files/day, 
+   and a month takes about 2 hours to download onto a glade disk (2020).
+   (the rest of these instructions assume you're doing this process month by month.)
+ - asking to fetch a month includes one or more files
+   from the day before the start day and one or more files from the day after 
+   the end date.  sometimes observation times in the files are slightly before 
+   or after the time in the filename.  
  - make and go into:
-         Observations/AIRS/Daily_tar_files/YYYYMM
-    save the file with the list of filenames here.
- - follow the instructions to use wget to copy them down. (making a cookie
-    file, etc - seems to be necessary).  use the option that says you have
-    a text file with a filename per line.  see 'get_files' for an example.
-    (i've been in the YYYYMM dir, with the text file named downloads*, and
-    running ../get_files which backgrounds itself so i can log out of cheyenne
-    and it keeps running.)
+      Observations/AIRS/Daily_tar_files/YYYYMM
+   save the file with the list of filenames here (2021: subset_AIRS2RET_006_{dates}.txt).
+ - follow the instructions in convert_airs_L2.csh to copy the files to the YYYYMM directory. 
+   If you don't use convert_airs_L2.csh, you'll need to use a correct wget command,
+   which can be done using a command (file) like $obs/AIRS/Daily_raw_files/get_files.
+   It requires making a cookie file, and providing the name of the file containing the files to fetch.
+   ../get_files backgrounds itself so you can log out of cheyenne and it keeps running.)
  - see that all the files by month have downloaded into: 
-     Observations/AIRS/Daily_raw_files/YYYYMM
- - edit the 'movehdf.monthly' script (or movehdf.yearly depending on how many obs
-     you are doing) and run it to move each set of 240 daily files 
-     into separate subdirectories named YYYYMMDD for each day. 
+      Observations/AIRS/Daily_raw_files/YYYYMM
+ - edit the 'Daily_raw_files/movehdf.monthly' script 
+   (or movehdf.yearly depending on how many obs you are doing) 
+   and run it to move each set of 240 daily files 
+   into separate subdirectories named YYYYMMDD for each day. 
 
  convert:
  - in the ../work directory is a copy of the converter compiled from:
-
-/glade/work/nancy/subversion/cleanrmatrunk.cheyenne/observations/obs_converters/AIRS/work
-
+      public dart repo, reanalysis branch : observations/obs_converters/AIRS/work
+   (not obs_converters/reanalysis/AIRS)
  - if you need to rebuild it, see the mkmf_convert_airs_L2 
-    in that same src directory for info on how to build on cheyenne.  
-    someone built the hdf-eos libraries already so you can load 
-    a module to get them.  the ones i built a long time ago no longer work.
-
- - there's a 'multi_parallel.batch' script that runs the converter.  you can set
-    start/end times, and submit it to the batch queue.  it now does a year in
-    less than an hour, running in parallel.  files are created in 
-    ../AIRS_sub9x10_nceperrs/YYYYMM/ dirs.
+   in that same work directory for info on how to build on cheyenne.  
+   someone built the hdf-eos libraries already so you can load 
+   a module to get them.  the ones i built a long time ago no longer work.
+ - in the public repo, reanalysis branch : 
+      observations/obs_converters/reanalysis/AIRS/shell_scripts
+   there's a 'multi_parallel.batch' script that runs the converter.  you can set
+   start/end times, and submit it to the batch queue.  it now does a year in
+   less than an hour, running in parallel.  files are created in 
+      ../AIRS_sub9x10_nceperrs/YYYYMM/ dirs.
 
 
 merge:
  - the multi_parallel.batch script in NCEP+ACARS+GPS+AIRS/progs merges
-   NCEP+ACARS, GPS, and AIRS obs.  it assumes the obs are here under
-   /glade/p/cisl/dares/Observations:
-   ncep - NCEP+ACARS/YYYMM_6H/obs_seqYYYYMMDDHH
-   gps  - GPS/local-allsats-2019/YYYMM/obs_seq.gpsro_YYYYMMDD
-   airs - AIRS/AIRS_24_sub9x10_nceperrs/YYYYMM/obs_seq.AIRS.YYYYMMDD.out
+   NCEP+ACARS, GPS, and AIRS obs.  
 
- - go into Observations/NCEP+ACARS+GPS+AIRS/progs
+ - copies of this script and related scripts are in the 
+      dart public repo reanalysis branch: 
+      observations/obs_converters/reanalysis/merge_progs
+
  - edit multi_parallel.batch to set start/end times.
+   it assumes the obs are in /glade/p/cisl/dares/Observations:
+      ncep - NCEP+ACARS/YYYMM_6H/obs_seqYYYYMMDDHH
+      gps  - GPS/local-allsats-YYYY/YYYMM/obs_seq.gpsro_YYYYMMDD
+      airs - AIRS/AIRS_24_sub9x10_nceperrs/YYYYMM/obs_seq.AIRS.YYYYMMDD.out
  - submit to batch queue
  - files end up in NCEP+ACARS+GPS+AIRS/Thinned_x9x10/YYYYMM_6H_CESM directory
    with cesm-style dates in the filenames:  obs_seq.YYYY-MM-DD-SSSSS
@@ -266,12 +279,12 @@ validate:
    if i don't i might need to download or request a whole month's worth 
    of data to get just the first 3 hours of the first day, or the 
    last 3 hours of the last day.
- - run 'obs_info' which prints out counts of each obs type, along with
-   first/last dates.  i don't have any automatic validation programs
-   but look for files missing all GPS obs, or all obs of some other
-   type, or missing time ranges, etc.  obs_info may be on the rma_trunk
-   now - there is a version that prompts for a filename instead of
-   having to change the namelist each time.
+ - run 'obs_info' (fortran) which prints out counts of each obs type, 
+   along with first/last dates.  i don't have any automatic validation programs
+   but look for files missing all GPS obs, or all obs of some other type,
+   or missing time ranges, etc.  
+   obs_info is on the Manhattan main and reanalyis branches.
+   it prompts for a filename instead of having to change the namelist each time.
 
 celebrate:
  - hope you don't have to do this for a long time again.
