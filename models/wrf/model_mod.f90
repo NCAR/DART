@@ -2964,7 +2964,7 @@ subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, status)
 
 type(ensemble_type), intent(in)    :: state_handle
-integer(i8),         intent(in)    :: num
+integer,             intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer,             intent(in)    :: loc_types(:)
