@@ -481,7 +481,7 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
       integer,             intent(in)  :: num
       type(location_type), intent(in)  :: locs(:)
       integer,             intent(in)  :: loc_qtys(:)
-      integer,             intent(in)  :: loc_indx(:)
+      integer(i8),         intent(in)  :: loc_indx(:)
       integer,             intent(in)  :: which_vert
       integer,             intent(out) :: status(:)
 
