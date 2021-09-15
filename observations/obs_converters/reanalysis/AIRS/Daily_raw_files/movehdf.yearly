@@ -1,0 +1,95 @@
+#!/bin/csh
+
+# move 240 raw hdf files/day into daily subdirs
+# from a single yearly dir.  assumes yearly dir 
+# is subdir of current dir.
+
+
+# USER SETTINGS HERE
+
+set start_year  = 2018
+set start_month =    1
+set start_day   =    1
+
+set end_year    = 2018
+set end_month   =   12
+set end_day     =   31
+
+# END USER SETTINGS
+
+echo job started at `date`
+
+if ( ! -f advance_time ) then
+  echo error: advance_time must exist in the current directory
+  exit 1
+endif
+
+if ( ! -f input.nml ) then
+  echo \&utilities_nml > input.nml
+  echo / >> input.nml
+endif
+
+# convert the start and stop times to gregorian days, so we can
+# compute total number of days including rolling over month and
+# year boundaries.  make sure all values have leading 0s if they
+# are < 10.  do the end time first so we can use the same values
+# to set the initial day while we are doing the total day calc.
+
+# the output of advance time with the -g input is:
+#   gregorian_day_number  seconds
+# use $var[1] to return just the day number
+
+set mon2=`printf %02d $end_month`
+set day2=`printf %02d $end_day`
+set end_d=(`echo ${end_year}${mon2}${day2}00 0 -g | ./advance_time`)
+
+set mon2=`printf %02d $start_month`
+set day2=`printf %02d $start_day`
+set start_d=(`echo ${start_year}${mon2}${day2}00 0 -g | ./advance_time`)
+
+# the output of this call is a string YYYYMMDDHH
+# see below for help in how to easily parse this up into words
+set curday=`echo ${start_year}${mon2}${day2}00 0 | ./advance_time`
+
+# how many total days are going to be processed (for the loop counter)
+# note that the parens below are necessary; otherwise the computation
+# does total = end - (start+1) which is not what we want.
+@ totaldays = ( $end_d[1] - $start_d[1] ) + 1
+
+echo will process $totaldays days of data
+echo starting at $start_year $start_month $start_day
+echo ending at $end_year $end_month $end_day
+echo ""
+
+# loop over each day
+set d=1
+while ( $d <= $totaldays )
+
+  # parse out the parts from a string which is YYYYMMDDHH
+  # use cut with the byte option
+  set  year=`echo $curday | cut -b1-4`
+  set month=`echo $curday | cut -b5-6`
+  set   day=`echo $curday | cut -b7-8`
+
+  # this conversion date and year/month
+  set tmonth = ${year}${month}
+  set tdate  = ${year}${month}${day}
+
+
+  # finally, the work this script is actually doing:
+  mkdir -p $tmonth/$tdate
+  mv $year/AIRS.${year}.${month}.${day}.*.L2.RetStd*.hdf $tmonth/$tdate
+
+
+  # advance the day; the output is YYYYMMDD00
+  set curday=`echo ${year}${month}${day}00 +1d | ./advance_time`
+
+  # advance the loop counter
+  @ d += 1
+
+end
+
+echo job ended at `date`
+
+exit 0
+

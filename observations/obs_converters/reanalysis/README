@@ -241,7 +241,6 @@ airs:
    less than an hour, running in parallel.  files are created in 
       ../AIRS_sub9x10_nceperrs/YYYYMM/ dirs.
 
-
 merge:
  - the multi_parallel.batch script in NCEP+ACARS+GPS+AIRS/progs merges
    NCEP+ACARS, GPS, and AIRS obs.  

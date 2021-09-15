@@ -1,0 +1,10 @@
+#!/bin/csh
+
+while 1
+ date
+ wc -l 2015/wget-log
+ wc -l 2016/wget-log
+ wc -l 2017/wget-log
+ wc -l 2018/wget-log
+ sleep 600
+end
