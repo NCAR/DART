@@ -56,8 +56,7 @@ type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
    !!!private
    integer(i8)                  :: num_vars
-   integer                      :: num_copies, my_num_copies
-   integer                      :: my_num_vars
+   integer                      :: num_copies, my_num_copies, my_num_vars
    integer,        allocatable  :: my_copies(:)
    integer(i8),    allocatable  :: my_vars(:)
    ! Storage in next line is to be used when each pe has all copies of subset of vars
@@ -712,8 +711,7 @@ subroutine set_up_ens_distribution(ens_handle)
 
 type (ensemble_type),  intent(inout)  :: ens_handle
 
-integer :: num_per_pe_below, num_left_over
-integer :: i
+integer :: num_per_pe_below, num_left_over, i
 
 ! Option 1: Maximum separation for both vars and copies
 ! Compute the total number of copies I'll get for var complete
