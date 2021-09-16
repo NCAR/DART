@@ -1,0 +1,106 @@
+#!/bin/sh
+
+# run this with 1st arg A to see a listing of the files
+# converted for this year/month, then B to move them
+# to the target directory and list them, and then if
+# everything still seems ok, run it with C to remove the
+# input raw profile files for that month.  multiple letters
+# can be specified to do multiple steps at once.
+
+# year should be 4 digits, and month should be 1-12 with
+# no leading 0.  will NOT roll over year boundaries.
+
+# error checking depends on 'days_month' being in your
+# search path.  there is a copy in ~nancy/bin on cheyenne.
+# also depends on an input.nml-free version of advance_time
+# there is a copy in ~nancy/cbin on cheyenne.
+
+if [[ $# -ne 3 && $# -ne 4 ]]; then
+  echo usage: $0 [ABC] year startmonth [endmonth]
+  echo Must specify one or more of the letters A, B, or C
+  echo Must also specify a year and month number
+  echo If more than one month specified, loops between the
+  echo start and ending month.
+  exit -1
+fi
+
+stage=$1
+year=$2
+smonth=$3
+if [ $# -eq 3 ]; then
+  emonth=$3
+else
+  emonth=$4
+fi
+
+if [[ $smonth -lt 1 || $smonth -gt 12 ]]; then
+  echo usage: $0 [ABC] year startmonth [endmonth]
+  echo startmonth must be between 1 and 12
+  exit -1
+fi
+
+if [[ $emonth -lt 1 || $emonth -gt 12 ]]; then
+  echo usage: $0 [ABC] year startmonth [endmonth]
+  echo if specified, endmonth must be between 1 and 12
+  exit -1
+fi
+
+# syntax:  `expr index "$string" A` returns the position of A in $string
+
+foundA=`expr index $stage A`
+foundB=`expr index $stage B`
+foundC=`expr index $stage C`
+
+if [[ $foundA -eq 0 && $foundB -eq 0 && $foundC -eq 0 ]]; then
+  echo usage: $0 [ABC] year startmonth [endmonth]
+  echo first argument must be one or more of the letters A, B, or C
+  exit -1
+fi
+
+let thismonth=smonth
+while [ $thismonth -le $emonth ]; do
+
+  srcdir=../prepout
+  srcbase=`printf temp_obs.%04d%02d $year $thismonth`
+  targetdir=../obs_seq
+  targbase=`printf obs_seq%04d%02d $year $thismonth`
+  
+  if [ $foundA -ne 0 ]; then
+    echo ""
+    echo counting files for $thismonth/$year
+    #nfiles=`ls -1 $srcdir/$srcbase* | wc -l`
+    nfiles=`ls -1 $targetdir/$targbase* | wc -l`
+    tfiles=`days_month $year $thismonth`
+    tfiles=`expr $tfiles \* 4`
+    if [ $nfiles -ne $tfiles ]; then
+      echo " "there should be $tfiles for this month, but $nfiles were found.
+      echo " "INCOMPLETE MONTH - VERIFY
+    else
+      echo " "there are $nfiles for this month, which is correct.
+    fi
+  fi
+  
+  if [ $foundB -ne 0 ]; then
+echo FIXME: stage B not complete yet
+  fi
+#    if [ ! -d $targetdir ]; then
+#       mkdir $targetdir
+#    fi
+#    
+#    echo moving files to target directory
+#    mv $ofiles $targetdir
+#    ls -l $targetdir/*
+#  fi
+  
+  if [ $foundC -ne 0 ]; then
+echo FIXME: stage C not complete yet
+  fi
+#    echo removing all files in $dir in the background
+#    nohup rm -fr $dir/  &
+#  fi
+  
+  let thismonth++
+done
+
+exit 0
+

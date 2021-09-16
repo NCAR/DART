@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# assumes source monthly tar files are in the 'tars' directory
+# with a name that includes the month.
+# run this from the parent directory to both 'tars' and the
+# new dir that will be created to hold the month's worth of files.
+
+
+if [[ $# != 2 ]]; then
+  echo usage: $0 YYYY MM
+  echo '(month must include leading 0 if less than 10)'
+  exit -1
+fi
+
+str=${1}${2}
+
+tfile=${str}.no_ship_id.tar
+tdir=$str
+
+if [[ ! -f tars/$tfile ]]; then
+  echo tars/$tfile not found
+  echo usage: $0 YYYY MM
+  exit -1
+fi
+
+# if cosblocked, you need to do this once first:
+# /glade/u/home/rdadata/bin/cosconvert -b $tfile
+
+if [[ -d $tdir ]]; then
+  echo directory $tdir already exists
+  echo usage: $0 YYYY MM
+  exit -1
+fi
+ 
+mkdir $1
+cd $1
+
+echo current dir now `pwd`
+tar -xvf ../tars/$tfile
+
+cd ..
+
+exit 0

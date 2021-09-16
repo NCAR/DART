@@ -1,0 +1,47 @@
+#!/bin/sh 
+
+# this version counts prepbufr ncep files
+
+# other versions can count ascii ncep, gps, or
+# gps/ncep merged files.
+
+if [ $# != 1 ]; then
+  echo usage: $0 year
+  exit 1
+fi
+
+yr=$1
+
+# these files are named with only the last 2 digits of the year
+yr=`echo $yr | cut -b3-4`
+
+# what's the fixed part of the prefix on these files?
+# directory and non-date leading part of filename:
+
+dir=../../bufr/prepqm
+pre=prepqm
+post=.no_ship_id.gz
+
+let m=1
+while [[ $m -le 12 ]]; do
+
+  mm=`printf %02d $m`
+  
+  dname=${dir}/
+  fname=${pre}${yr}${mm}
+  tname=${dname}/${fname}
+  if [[ `ls ${tname}* 2>/dev/null | wc -l` -gt 0 ]]; then
+     echo ${yr}${mm}
+
+     echo -n $mm " 00  "; ls -1 ${tname}??00${post} 2>/dev/null | wc -l
+     echo -n $mm " 06  "; ls -1 ${tname}??06${post} 2>/dev/null | wc -l
+     echo -n $mm " 12  "; ls -1 ${tname}??12${post} 2>/dev/null | wc -l
+     echo -n $mm " 18  "; ls -1 ${tname}??18${post} 2>/dev/null | wc -l
+     echo ''
+  fi
+ 
+  let m=m+1
+done
+
+exit 0
+

@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# move finished NCEP obs_seq files, month by month, from
+# here to the final location.
+
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  echo usage: $0 YYYY [ MM ]
+  echo moves either a specific year/month, or an entire year of obs_seq files
+  echo from where they are generated to the final location.
+  exit 1
+fi
+
+yr=$1
+
+start_mo=1
+end_mo=12
+
+if [ $# -gt 1 ]; then
+  start_mo=$2
+  end_mo=$2
+fi
+
+srcdir=../obs_seq
+dstdir=/glade/p/cisl/dares/Observations/NCEP+ACARS
+
+if [ ! -d $srcdir ]; then
+  echo cannot find source directory $srcdir
+  exit -1
+fi
+
+let m=$start_mo
+while [[ $m -le $end_mo ]]; do
+
+  mo=`printf %02d $m`
+
+  dstdir_mo=$dstdir/${yr}${mo}_6H
+
+  if [ ! -d $dstdir_mo ]; then
+    echo making destination directory $dstdir_mo
+    mkdir -p $dstdir_mo
+  fi
+
+  mv -f $srcdir/obs_seq${yr}${mo}???? $dstdir_mo
+
+  ls -l $dstdir_mo
+
+  let m=m+1
+done
+
+exit 0
+

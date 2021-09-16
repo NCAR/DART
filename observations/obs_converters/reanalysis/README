@@ -4,59 +4,79 @@ updated may 2019 for AIRS
 updated sept 2021 for adding instructions to GIT repo.
 
 intro:
-much of this process has been automated.  however some of it
-still needs human intervention, especially getting the input
-data files so the converters can read them.  there are parts
-that would be hard to automate, and even if you could
-i don't think it would be wise to do. it's too easy for things
-to go wrong and messages be lost in the output logs.  if you
-have to look at the files in the directories at multiple
-points along the way, you see missing files or files with
-widely different sizes.  automation isn't a time-saver if
-you generate wrong output. </rant>
+  much of this process has been automated.  however some of it
+ still needs human intervention, especially getting the input
+ data files so the converters can read them.  there are parts
+ that would be hard to automate, and even if you could
+ i don't think it would be wise to do. it's too easy for things
+ to go wrong and messages be lost in the output logs.  if you
+ have to look at the files in the directories at multiple
+ points along the way, you see missing files or files with
+ widely different sizes.  automation isn't a time-saver if
+ you generate wrong output. </rant>
 
-here are 3 places in particular where human intervention
-is required and takes a while:
+  here are 3 places in particular where human intervention
+ is required and takes a while:
 
-1) getting the NCEP+ACARS bufr files off the HPSS.  you have to
-know which Annnnn dataset contains the ACARS.  this has changed
-over the years so there's no easy way to script what you need
-to start with.  
-
-2) knowing which GPS satellites have data during your time
-period, and which of the 3 levels of processing you should use.
-the name of the 'satellite' includes the processing level, 
-and if you list more than a single processing level for the
-same satellite you will be downloading duplicate observations.  
-so setting up which satellites/processing levels per time period
-must be done by hand.  after that the GPS process is the most 
-automated - it downloads, converts, and cleans up in a single script.
-
-grep the batch output files for the string 'exiting' which 
-indicates it found no valid input files for that day.  this is 
-unusual and most often indicates an error in the satellite list.
-although once i reran just one day that failed the first time
-and it downloaded files and created the output file just fine
-the second time.  go figure.
-
-3) getting the AIRS data.  the website allows you to subset by
-date range, and then constructs a file for you to download which
-lists each file, one per line.  you then run 'wget' on that file
-to actually download the data.  i don't see any way to automate
-this part of it - especially since each time i've done this they
-have rearranged the directory layout so you can't bypass their
-web interface easily.  also i've tried wildcards and not using
-their file list and it always errors out.  i assume this is 
-intentional on their part.
+ 1) getting the NCEP+ACARS bufr files off the HPSS.  you have to
+ know which Annnnn dataset contains the ACARS.  this has changed
+ over the years so there's no easy way to script what you need
+ to start with.  
+ 
+ 2) knowing which GPS satellites have data during your time
+ period, and which of the 3 levels of processing you should use.
+ the name of the 'satellite' includes the processing level, 
+ and if you list more than a single processing level for the
+ same satellite you will be downloading duplicate observations.  
+ so setting up which satellites/processing levels per time period
+ must be done by hand.  after that the GPS process is the most 
+ automated - it downloads, converts, and cleans up in a single script.
+ 
+ grep the batch output files for the string 'exiting' which 
+ indicates it found no valid input files for that day.  this is 
+ unusual and most often indicates an error in the satellite list.
+ although once i reran just one day that failed the first time
+ and it downloaded files and created the output file just fine
+ the second time.  go figure.
+ 
+ 3) getting the AIRS data.  the website allows you to subset by
+ date range, and then constructs a file for you to download which
+ lists each file, one per line.  you then run 'wget' on that file
+ to actually download the data.  i don't see any way to automate
+ this part of it - especially since each time i've done this they
+ have rearranged the directory layout so you can't bypass their
+ web interface easily.  also i've tried wildcards and not using
+ their file list and it always errors out.  i assume this is 
+ intentional on their part.
 
 
 details for converting each type of obs:
 
 ncep with acars:
+  we use DSS dataset 090.0 which is a reanalysis.  most of the files in
+ that dataset are results from the reanalysis, but it also includes files
+ containing all the observations used as input.  these are what we want.
+ the files have the string 'prepqm' in the name.  they are in 'prepbufr'
+ format which is a quality controlled version of 'bufr' format.
+ 
+  since they are not real-time obs they include observations that arrived
+ too late for the real-time forecasts and they are more quality controlled
+ than other datasets (e.g. DSS 337.0)
+ 
+  be very careful to verify that the ncep files you are using include
+ the 'acars' observations.  these are T,U,V,P and Q from commercial
+ aircraft.  they are embargoed for a period of days by agreement with
+ the commercial carriers. you may find what looks like prepqm files on
+ glade storage but there is a good chance they do not include the 
+ ACARS obs.  if there is any question, convert a single 6h file and
+ look to see what obs it includes.  if the table of contents at the
+ top of the obs_seq file does not include any obs named ACARS_xxx
+ then you don't have the right files.
+
  download:
  1) if your time period is between 2000 and 2018, use this procedure:
  - if they haven't been removed to reclaim disk space, the prepqm
-   tar files are in the bufr/tarfiles directory.  a record of the
+   tar files are in our bufr/tarfiles directory.  a record of the
    original HPSS dataset names are in:
      Observations/bufr/tarfiles/nancy.get 
    but since the HPSS is gone this is mostly of historical interest.
@@ -114,6 +134,21 @@ ncep with acars:
       /glade/p/cisl/dares/Observations/NCEP+ACARS/YYYYMM_6H
 
 gps:
+  the GPS obs we use are: Level 2, Atmospheric profiles without moisture, 
+ datasets named AtmPrf, from all GPS satellites which have obs during 
+ the time period.  
+ 
+  these obs have been distributed in NetCDF file format with a single
+ profile per file.  there are thousands of data points per file but 
+ the converter will create roughly 100+ observations at various heights 
+ from each profile.
+ 
+  there are other file formats for this data that collect an entire month 
+ into a single file, but given that the scripts described below automate
+ the single-profile-per-file already it was more work to try to support
+ those than not.  they also may not be available for all the data that
+ is on the cosmic website.
+
  code and script locations:
  - dart root to use for executable programs:
       git repo code, main branch
@@ -181,6 +216,15 @@ gps:
    the work directories.
 
 airs:
+  we use Level 2 data, AIRS version 6 files, temperature and moisture obs from
+ AIRS2RET files.  there are many other data products on the website.  be sure
+ you get this product.
+
+  the observations come with expected error values, but in the conversion to
+ obs_seq files we both thin the data (both across and along the swath) and we
+ substitute NCEP error values for T and Q.  be sure the input.nml includes
+ setting this option: "use_NCEP_errs = .true.".
+
  download:
  - open a browser to here:  
       https://disc.gsfc.nasa.gov/datasets/AIRS2RET_006/summary
@@ -242,6 +286,11 @@ airs:
       ../AIRS_sub9x10_nceperrs/YYYYMM/ dirs.
 
 merge:
+  this process creates separate files for NCEP+AIRS, GPS, and AIRS and then
+ does a merge step at the end to create the combined files for use by the
+ CAM reanalysis (or any other atmospheric model assimilation).  the individual
+ files can be used on their own for other purposes.
+
  - the multi_parallel.batch script in NCEP+ACARS+GPS+AIRS/progs merges
    NCEP+ACARS, GPS, and AIRS obs.  
 
@@ -260,7 +309,10 @@ merge:
 
  
 validate:
- - go into Observations/bufr/progs.  there are a set of 'ls_*' listing
+  this is a long processing path and it's easy to make errors.  you cannot 
+ do too many checks to be sure you have files with all available observations.
+
+ - go into ../bufr/progs.  there are a set of 'ls_*' listing
    programs that list monthly totals for the various files along the
    workflow, from the finals back to the original gps and prepqm.  
    if there are any missing 6-hour or daily files, the counts will show that.
