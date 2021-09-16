@@ -2985,7 +2985,7 @@ subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: state_handle
-integer(i8),         intent(in)    :: num
+integer,             intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer(i8),         intent(in)    :: loc_indx(:)
