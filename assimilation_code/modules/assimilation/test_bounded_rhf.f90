@@ -9,11 +9,11 @@ use random_seq_mod,    only : random_seq_type, init_random_seq, random_gaussian
 
 implicit none
 
-real(r8), parameter :: truth = 0.50_r8
+real(r8), parameter :: truth = 0.99_r8
 integer,  parameter :: ens_size = 80
 integer,  parameter :: num_steps = 10000
 integer,  parameter :: bounds_case = 4         ! Case 4 is doubly bounded
-integer,  parameter :: init_conditions_case = 1
+integer,  parameter :: init_conditions_case = 2
 real(r8), parameter :: bound(2) = (/0.0_r8, 1.0_r8/)
 
 real(r8)              :: ens(ens_size), obs_inc(ens_size) 
