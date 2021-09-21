@@ -2790,7 +2790,6 @@ get_truncated_normal_like = weight * exp(-1.0_r8 * (x - obs)**2 / (2.0_r8 * obs_
 end function get_truncated_normal_like
 
 
-
 !------------------------------------------------------------------------
 
 
