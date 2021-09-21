@@ -1115,7 +1115,7 @@ observation_on_grid = .true.
 ! that observation is in the half grid
 if ( periodic_x .and. periodic_y ) then
    if ( (obs_location(1) < xf(1)) .or. (obs_location(1) > xf(nip1)) .or. &
-        (obs_location(2) < yf(1)) .or. (obs_location(2) > yf(njp1)) ) then
+        (obs_location(2) < yf(1)) .or. (obs_location(2) > yf(njp1i)) ) then
 
       observation_on_grid = .false.
 
@@ -1133,7 +1133,7 @@ elseif ( periodic_x) then
     ! require that the point is contained within the staggered grid for the 
     ! y - direction since you cannot wrap-arround
     if ( (obs_location(1) < xf(1)) .or. (obs_location(1) > xf(nip1)) .or. &
-        (obs_location(2) < yh(1)) .or. (obs_location(2) > yh(njp1)) ) then
+        (obs_location(2) < yh(1)) .or. (obs_location(2) > yh(nj)) ) then
 
       if (debug > 0) then
          print *, 'periodic boundary conditions - in x-direction'
@@ -1147,7 +1147,7 @@ elseif ( periodic_x) then
 elseif ( periodic_y) then
     ! require that the point is contained within the staggered grid for the 
     ! x - direction since you cannot wrap-arround
-    if ( (obs_location(1) < xh(1)) .or. (obs_location(1) > xh(nip1)) .or. &
+    if ( (obs_location(1) < xh(1)) .or. (obs_location(1) > xh(ni)) .or. &
         (obs_location(2) < yf(1)) .or. (obs_location(2) > yf(njp1)) ) then
 
       if (debug > 0) then
@@ -1180,7 +1180,7 @@ elseif ( (.not. periodic_x) .and. (.not. periodic_y) ) then
 
    endif
 else
-   write(string1,*) ' This option is not supoorted '
+   write(string1,*) 'This option is not supoorted '
    write(string2,*) 'boundary conditions supported'
    call error_handler(E_ERR, 'observation_on_grid', string1, &
                   source, revision, revdate, text2=string2)

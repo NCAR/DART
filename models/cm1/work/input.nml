@@ -20,11 +20,12 @@
   num_output_obs_members      = 40
   num_output_state_members    = 40
   output_interval             = 1
-  output_members              = .true.
+  output_members              = .true. 
   output_mean                 = .true.
   output_sd                   = .true.
   !stages_to_write             = 'preassim', 'analysis', 'output'
-  stages_to_write             = 'forecast', 'preassim', 'postassim', 'analysis', 'output'
+  !stages_to_write             = 'forecast', 'preassim', 'postassim', 'analysis', 'output'
+  stages_to_write             = 'output'
   write_all_stages_at_end     = .true.
   distributed_state           = .true.
   compute_posterior           = .true.
@@ -168,7 +169,7 @@
   output_localization_diagnostics = .false.
   localization_diagnostics_file   = 'localization_diagnostics'
   special_localization_obs_types    = 'RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE', 'RADIOSONDE_SPECIFIC_HUMIDITY', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
-  special_localization_cutoffs      = 30000.,30000.,30000.,30000.,3000.,3000.
+  special_localization_cutoffs      = 30000.,30000.,30000.,30000.,6000.,6000.
 /
 
 
