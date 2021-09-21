@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 21 2021 :: Bug fix for perfect_model_obs. Tag v9.11.10**
+
+- bug fix for perfect_model_obs to exit cleanly when no filenames are given
+  for the input_state_files or output_state_files namelist options. 
+
 **August 30 2021 :: Repository clean-up and DART registration form. Tag: v9.11.9**
 
 *removed obsolete code:*
