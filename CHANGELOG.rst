@@ -22,6 +22,57 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 30 2021 :: Repository clean-up and DART registration form. Tag: v9.11.9**
+
+*removed obsolete code:*
+
+- cam-old
+- restart_file_tool
+- html boilerplate from pre-readthedocs documentation
+- null versions of clamp_mod and vert_convert_mod
+- io test harnesses
+- jekyll website
+
+*removed experimental code:*
+
+- pnetcdf (for restart files)
+- filter.separate_seq (split obs_seq across cores)
+
+**August 26 2021 :: NAG compiler fixes and updates to developer tests Tag: v9.11.8**
+
+- bug fix for fixsytem for the NAG compiler
+- new developer test for mpi one-sided communication
+- removed obsolete async 4 developer tests 
+
+**August 19 2021 :: WRF-Hydro diagnostics Tag: v9.11.7**
+
+- Improved DART diagnostic routines for WRF-Hydro
+
+**August 10 2021 :: Documentation and GitHub template update Tag: v9.11.6**
+
+- External forward operator documentation
+- Typo fixes for GitHub templates 
+
+**August 5 2021 :: bug fix for obs_seq_to_netcdf and grabbufr.x Tag: v9.11.5**
+
+- obs_seq_to_netcdf now works correctly with mulitple obs_seq per epoch.
+- grabbufr.x STAT function returns correctly for long filenames when using PGI
+
+**July 23 2021 :: bug fix for wrf non-initialized unique levels. Tag: v9.11.4**
+
+- The array uniquek is now initialized to an invalid level to prevent random
+  reasonable level values in the array.
+
+**June 24 2021 :: bug fix for cam-fv model_interpolate. Tag: v.9.11.3**
+
+- cam-fv model_interpolate now passes the correct array slice of quad_vals
+  to quad_lon_lat_evaluate
+
+**June 24 2021 :: latest version of local particle filter.  Tag: v9.11.2**
+
+- latest version of particle filter from Jon Potterjoy
+- new mpi routine get_global_max
+
 **June 18 2021 :: build fixes for PGI compiler and intel compiler osx. Tag: v9.11.1**
 
 - mkmf.templates fixes for intel.osx and pgi

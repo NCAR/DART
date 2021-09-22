@@ -844,7 +844,7 @@ do imem=1,ens_size
    ! do the horizontal interpolation for each ensemble member.
    ! call one at a time to avoid creating temporary arrays
    call quad_lon_lat_evaluate(interp_handle, lon_fract, lat_fract, &
-                              quad_vals(:,imem), interp_vals(imem), status_array(imem))
+                              quad_vals(imem,:), interp_vals(imem), status_array(imem))
 end do
 
 if (using_chemistry) &
