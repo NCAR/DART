@@ -261,7 +261,7 @@ real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
-integer :: model_size    ! the state vector length
+integer(i8) :: model_size    ! the state vector length
 
 ! Model namelist declarations with defaults
 ! Codes for interpreting the columns of the variable_table
@@ -581,7 +581,7 @@ function get_model_size()
 ! Returns the size of the model as an integer. Required for all
 ! applications.
 
-integer :: get_model_size
+integer(i8) :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model
 
