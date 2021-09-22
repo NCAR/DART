@@ -165,11 +165,13 @@
 
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
-   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
-     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
-    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
-   input_files              = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   overwrite_output        = .true. 
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/ocean_quantities_mod.f90'
   /
 
 
@@ -177,14 +179,22 @@
    assimilation_period_days     = 0
    assimilation_period_seconds  = 259200
    model_perturbation_amplitude = 0.2
-   model_shape_files            = 'OUTPUT.nc','NBLING.nc'
-   mitgcm_variables = 'PSAL', 'QTY_SALINITY',            '0.0', 'NA', 'update',
-                      'PTMP', 'QTY_TEMPERATURE',          'NA', 'NA', 'update',
-                      'UVEL', 'QTY_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
-                      'VVEL', 'QTY_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
-                      'ETA',  'QTY_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update', 
+   model_shape_file             = 'OUTPUT.nc'
+   mitgcm_variables = 'PSAL', 'QTY_SALINITY',                   '0.0', 'NA', 'update',
+                      'PTMP', 'QTY_TEMPERATURE',                'NA',  'NA', 'update',
+                      'UVEL', 'QTY_U_CURRENT_COMPONENT',        'NA',  'NA', 'update',
+                      'VVEL', 'QTY_V_CURRENT_COMPONENT',        'NA',  'NA', 'update',
+                      'ETA',  'QTY_SEA_SURFACE_HEIGHT'          'NA',  'NA', 'update', 
+                      'NO3',  'QTY_NITRATE_CONCENTRATION',      '0.0', 'NA', 'update',
+                      'PO4',  'QTY_PHOSPHATE_CONCENTRATION',    '0.0', 'NA', 'update', 
+                      'O2',   'QTY_DISSOLVED_OXYGEN',           '0.0', 'NA', 'update',
+                      'PHY',  'QTY_PHYTOPLANKTON_BIOMASS',      '0.0', 'NA', 'update',
+                      'ALK',  'QTY_ALKALINITY',                 '0.0', 'NA', 'update',
+                      'DIC',  'QTY_DISSOLVED_INORGANIC_CARBON', '0.0', 'NA', 'update',
+                      'DOP',  'QTY_DISSOLVED_ORGANIC_P',        '0.0', 'NA', 'update',
+                      'FET',  'QTY_DISSOLVED_INORGANIC_IRON',   '0.0', 'NA', 'update',
+                      'CHL',  'QTY_SURFACE_CHLOROPHYLL',        '0.0', 'NA', 'update'
   /
-   nbling_variables = 'PSAL', 'QTY_CHLOROPHYLL',         '0.0', 'NA', 'update',
 
 
 &location_nml
@@ -444,9 +454,9 @@
 &model_mod_check_nml
    input_state_files     = 'OUTPUT.nc'
    output_state_files    = 'check_me'
-   verbose               = .FALSE.
+   verbose               = .TRUE.
    test1thru             = 0
-   run_tests             = 1, 2, 3, 4, 5, 6, 7
+   run_tests             = 1, 2, 3, 4, 5, 7
    x_ind                 = 37500001
    loc_of_interest       = 38.6, 20.0, 12.01
    quantity_of_interest  = 'QTY_TEMPERATURE'

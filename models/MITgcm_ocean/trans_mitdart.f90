@@ -13,6 +13,16 @@
 !              UVEL.data
 !              VVEL.data
 !              ETA.data
+!              DIC.data
+!              ALK.data
+!              O2.data
+!              NO3.data
+!              PO4.data
+!              FET.data
+!              DON.data
+!              DOP.data
+!              PHY.data
+!              CHL.data
 !
 !
 !When converting from MITgcm to DART-netcdf : 
@@ -24,6 +34,16 @@
 !              UVEL.data
 !              VVEL.data
 !              ETA.data
+!              DIC.data
+!              ALK.data
+!              O2.data
+!              NO3.data
+!              PO4.data
+!              FET.data
+!              DON.data
+!              DOP.data
+!              PHY.data
+!              CHL.data
 !  Outputs:
 !       OUTPUT.nc
 !*********************************************************************
@@ -32,12 +52,9 @@
 
 program trans_mitdart
 
-use        types_mod, only : r4, r8, i8, SECPERDAY
-
-use    utilities_mod, only : initialize_utilities, register_module, &
-                             get_unit, &
-                             error_handler, E_ERR
-
+use types_mod,     only: r4, r8
+use utilities_mod, only: initialize_utilities, register_module, &
+                         get_unit, file_exist
 use netcdf
 
 implicit none
@@ -47,10 +64,10 @@ character(len=*), parameter :: source   = 'trans_mitdart.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
-logical, save :: module_initialized = .false.
-
+logical, save       :: module_initialized = .false.
 character(len=1024) :: msgstring
-integer :: iunit
+integer             :: iunit
+logical             :: do_bgc = .false.
 
 !------------------------------------------------------------------
 !
@@ -62,8 +79,8 @@ integer :: iunit
 !------------------------------------------------------------------
 integer, parameter :: MAX_LEN_FNAM = 512
 
-integer, parameter :: max_nx = 1024
-integer, parameter :: max_ny = 1024
+integer, parameter :: max_nx = 2048
+integer, parameter :: max_ny = 2048
 integer, parameter :: max_nz = 512
 integer, parameter :: max_nr = 512
 
@@ -203,7 +220,6 @@ if (.not. allocated(XG)) allocate(XG(Nx))
 if (.not. allocated(YG)) allocate(YG(Ny))
 if (.not. allocated(ZG)) allocate(ZG(Nz))
 
-
 ! XG (the grid edges) and XC (the grid centroids) must be computed.
 
 XG(1) = xgOrigin
@@ -232,6 +248,12 @@ do i=2, Nz
  ZC(i) = ZC(i-1) - 0.5_r8 * delZ(i-1) - 0.5_r8 * delZ(i) 
 enddo
 
+! Are we also doing bgc on top of physics?
+! If we found nitrate then the rest of the binaries (for the 
+! remaining 9 variables) should be also there.
+! TODO may also enhance this functionality
+if (file_exist('NO3.data')) do_bgc = .true.
+
 end subroutine static_init_trans
 
 !------------------------------------------------------------------
@@ -246,9 +268,15 @@ integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 
 ! for the prognostic variables
-integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID 
+integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID
+integer :: no3_varid, po4_varid, o2_varid, phy_varid, alk_varid 
+integer :: dic_varid, dop_varid, don_varid, fet_varid
 
-real(r4), allocatable :: data_3d(:,:,:),data_2d(:,:)
+! diagnostic variable
+integer :: chl_varid  
+
+real(r4), allocatable :: data_3d(:,:,:), data_2d(:,:)
+
 real :: FVAL=-999.0
 
 if ( .not. module_initialized ) call static_init_trans
@@ -256,7 +284,7 @@ if ( .not. module_initialized ) call static_init_trans
 ALLOCATE(data_3d(Nx,Ny,Nz))
 ALLOCATE(data_2d(Nx,Ny))
 
-call check(nf90_create(path="OUTPUT.nc",cmode=NF90_CLOBBER,ncid=ncid))
+call check(nf90_create(path="OUTPUT.nc",cmode=or(nf90_clobber,nf90_64bit_offset),ncid=ncid))
 
 ! Define the new dimensions IDs
    
@@ -311,6 +339,7 @@ call check(nf90_put_att(ncid, ZCVarID, "point_spacing", "uneven"))
 call check(nf90_put_att(ncid, ZCVarID, "axis", "Z"))
 call check(nf90_put_att(ncid, ZCVarID, "standard_name", "depth"))
 
+
 ! Create the (empty) Prognostic Variables and the Attributes
 
 call check(nf90_def_var(ncid=ncid, name="PSAL", xtype=nf90_real, &
@@ -350,7 +379,102 @@ call check(nf90_def_var(ncid=ncid, name="ETA", xtype=nf90_real, &
 call check(nf90_put_att(ncid, EtaVarID, "long_name", "sea surface height"))
 call check(nf90_put_att(ncid, EtaVarID, "missing_value", FVAL))
 call check(nf90_put_att(ncid, EtaVarID, "_FillValue", FVAL))
-call check(nf90_put_att(ncid, EtaVarID, "units", "meters"))
+call check(nf90_put_att(ncid, EtaVarID, "units", "m"))
+call check(nf90_put_att(ncid, EtaVarID, "units_long_name", "meters"))
+
+!> Add BLING data:
+
+if (do_bgc) then 
+   ! 1. BLING tracer: nitrate NO3
+   call check(nf90_def_var(ncid=ncid, name="NO3", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=no3_varid))
+   call check(nf90_put_att(ncid, no3_varid, "long_name"      , "Nitrate"))
+   call check(nf90_put_att(ncid, no3_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, no3_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, no3_varid, "units"          , "mol N/m3"))
+   call check(nf90_put_att(ncid, no3_varid, "units_long_name", "moles Nitrogen per cubic meters"))
+   
+   ! 2. BLING tracer: phosphate PO4
+   call check(nf90_def_var(ncid=ncid, name="PO4", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=po4_varid))
+   call check(nf90_put_att(ncid, po4_varid, "long_name"      , "Phosphate"))
+   call check(nf90_put_att(ncid, po4_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, po4_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, po4_varid, "units"          , "mol P/m3"))
+   call check(nf90_put_att(ncid, po4_varid, "units_long_name", "moles Phosphorus per cubic meters"))
+   
+   ! 3. BLING tracer: oxygen O2
+   call check(nf90_def_var(ncid=ncid, name="O2", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=o2_varid))
+   call check(nf90_put_att(ncid, o2_varid, "long_name"      , "Dissolved Oxygen"))
+   call check(nf90_put_att(ncid, o2_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, o2_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, o2_varid, "units"          , "mol O/m3"))
+   call check(nf90_put_att(ncid, o2_varid, "units_long_name", "moles Oxygen per cubic meters"))
+   
+   ! 4. BLING tracer: phytoplankton PHY
+   call check(nf90_def_var(ncid=ncid, name="PHY", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=phy_varid))
+   call check(nf90_put_att(ncid, phy_varid, "long_name"      , "Phytoplankton Biomass"))
+   call check(nf90_put_att(ncid, phy_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, phy_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, phy_varid, "units"          , "mol C/m3"))
+   call check(nf90_put_att(ncid, phy_varid, "units_long_name", "moles Carbon per cubic meters"))
+   
+   ! 5. BLING tracer: alkalinity ALK
+   call check(nf90_def_var(ncid=ncid, name="ALK", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=alk_varid))
+   call check(nf90_put_att(ncid, alk_varid, "long_name"      , "Alkalinity"))
+   call check(nf90_put_att(ncid, alk_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, alk_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, alk_varid, "units"          , "mol eq/m3"))
+   call check(nf90_put_att(ncid, alk_varid, "units_long_name", "moles equivalent per cubic meters"))
+   
+   ! 6. BLING tracer: dissolved inorganic carbon DIC
+   call check(nf90_def_var(ncid=ncid, name="DIC", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=dic_varid))
+   call check(nf90_put_att(ncid, dic_varid, "long_name"      , "Dissolved Inorganic Carbon"))
+   call check(nf90_put_att(ncid, dic_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, dic_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, dic_varid, "units"          , "mol C/m3"))
+   call check(nf90_put_att(ncid, dic_varid, "units_long_name", "moles Carbon per cubic meters"))
+   
+   ! 7. BLING tracer: dissolved organic phosphorus DOP
+   call check(nf90_def_var(ncid=ncid, name="DOP", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=dop_varid))
+   call check(nf90_put_att(ncid, dop_varid, "long_name"      , "Dissolved Organic Phosphorus"))
+   call check(nf90_put_att(ncid, dop_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, dop_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, dop_varid, "units"          , "mol P/m3"))
+   call check(nf90_put_att(ncid, dop_varid, "units_long_name", "moles Phosphorus per cubic meters"))
+   
+   ! 8. BLING tracer: dissolved organic nitrogen DON
+   call check(nf90_def_var(ncid=ncid, name="DON", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=don_varid))
+   call check(nf90_put_att(ncid, don_varid, "long_name"      , "Dissolved Organic Nitrogen"))
+   call check(nf90_put_att(ncid, don_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, don_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, don_varid, "units"          , "mol N/m3"))
+   call check(nf90_put_att(ncid, don_varid, "units_long_name", "moles Nitrogen per cubic meters"))
+   
+   ! 9. BLING tracer: dissolved inorganic iron FET
+   call check(nf90_def_var(ncid=ncid, name="FET", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=fet_varid))
+   call check(nf90_put_att(ncid, fet_varid, "long_name"      , "Dissolved Inorganic Iron"))
+   call check(nf90_put_att(ncid, fet_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, fet_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, fet_varid, "units"          , "mol Fe/m3"))
+   call check(nf90_put_att(ncid, fet_varid, "units_long_name", "moles Iron per cubic meters"))
+   
+   ! 10. BLING tracer: Surface Chlorophyl CHL
+   call check(nf90_def_var(ncid=ncid, name="CHL", xtype=nf90_real, &
+        dimids=(/XCDimID,YCDimID/),varid=chl_varid))
+   call check(nf90_put_att(ncid, chl_varid, "long_name"      , "Surface Chlorophyll"))
+   call check(nf90_put_att(ncid, chl_varid, "missing_value"  , FVAL))
+   call check(nf90_put_att(ncid, chl_varid, "_FillValue"     , FVAL))
+   call check(nf90_put_att(ncid, chl_varid, "units"          , "mg/m3"))
+   call check(nf90_put_att(ncid, chl_varid, "units_long_name", "milligram per cubic meters"))
+endif   
 
 ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -401,6 +525,78 @@ read(iunit,rec=1)data_2d
 close(iunit)
 where (data_2d == 0.0_r4) data_2d = FVAL
 call check(nf90_put_var(ncid,EtaVarID,data_2d,start=(/1,1/)))
+
+if (do_bgc) then 
+   open(iunit, file='NO3.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_3d
+   close(iunit)
+   where (data_3d == 0.0_r4) data_3d = FVAL
+   call check(nf90_put_var(ncid,no3_varid,data_3d,start=(/1,1,1/)))
+   
+   open(iunit, file='PO4.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_3d
+   close(iunit)
+   where (data_3d == 0.0_r4) data_3d = FVAL
+   call check(nf90_put_var(ncid,po4_varid,data_3d,start=(/1,1,1/)))
+   
+   open(iunit, file='O2.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_3d
+   close(iunit)
+   where (data_3d == 0.0_r4) data_3d = FVAL
+   call check(nf90_put_var(ncid,o2_varid,data_3d,start=(/1,1,1/)))
+   
+   open(iunit, file='PHY.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_3d
+   close(iunit)
+   where (data_3d == 0.0_r4) data_3d = FVAL
+   call check(nf90_put_var(ncid,phy_varid,data_3d,start=(/1,1,1/)))
+   
+   open(iunit, file='ALK.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_3d
+   close(iunit)
+   where (data_3d == 0.0_r4) data_3d = FVAL
+   call check(nf90_put_var(ncid,alk_varid,data_3d,start=(/1,1,1/)))
+   
+   open(iunit, file='DIC.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_3d
+   close(iunit)
+   where (data_3d == 0.0_r4) data_3d = FVAL
+   call check(nf90_put_var(ncid,dic_varid,data_3d,start=(/1,1,1/)))
+   
+   open(iunit, file='DOP.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_3d
+   close(iunit)
+   where (data_3d == 0.0_r4) data_3d = FVAL
+   call check(nf90_put_var(ncid,dop_varid,data_3d,start=(/1,1,1/)))
+   
+   open(iunit, file='DON.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_3d
+   close(iunit)
+   where (data_3d == 0.0_r4) data_3d = FVAL
+   call check(nf90_put_var(ncid,don_varid,data_3d,start=(/1,1,1/)))
+   
+   open(iunit, file='FET.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_3d
+   close(iunit)
+   where (data_3d == 0.0_r4) data_3d = FVAL
+   call check(nf90_put_var(ncid,fet_varid,data_3d,start=(/1,1,1/)))
+   
+   open(iunit, file='CHL.data', form='UNFORMATTED', status='OLD', &
+               access='DIRECT', recl=4*Nx*Ny,  convert='BIG_ENDIAN')
+   read(iunit,rec=1)data_2d
+   close(iunit)
+   where (data_2d == 0.0_r4) data_2d = FVAL
+   call check(nf90_put_var(ncid,chl_varid,data_2d,start=(/1,1/)))
+endif
 
 call check(nf90_close(ncid))
 
@@ -472,6 +668,107 @@ open(iunit, file='ETA.data', form="UNFORMATTED", status='UNKNOWN', &
             access='DIRECT', recl=4*Nx*Ny, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_2d
 close(iunit)
+
+if (do_bgc) then 
+   call check( NF90_INQ_VARID(ncid,'NO3',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_3d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_3d == FVAL) data_3d = 0.0_r4
+   
+   open(iunit, file='NO3.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_3d
+   close(iunit)
+   
+   call check( NF90_INQ_VARID(ncid,'PO4',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_3d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_3d == FVAL) data_3d = 0.0_r4
+   
+   open(iunit, file='PO4.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_3d
+   close(iunit)
+   
+   call check( NF90_INQ_VARID(ncid,'O2',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_3d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_3d == FVAL) data_3d = 0.0_r4
+   
+   open(iunit, file='O2.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_3d
+   close(iunit)
+   
+   call check( NF90_INQ_VARID(ncid,'PHY',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_3d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_3d == FVAL) data_3d = 0.0_r4
+   
+   open(iunit, file='PHY.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_3d
+   close(iunit)
+   
+   call check( NF90_INQ_VARID(ncid,'ALK',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_3d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_3d == FVAL) data_3d = 0.0_r4
+   
+   open(iunit, file='ALK.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_3d
+   close(iunit)
+   
+   call check( NF90_INQ_VARID(ncid,'DIC',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_3d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_3d == FVAL) data_3d = 0.0_r4
+   
+   open(iunit, file='DIC.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_3d
+   close(iunit)
+   
+   call check( NF90_INQ_VARID(ncid,'DOP',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_3d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_3d == FVAL) data_3d = 0.0_r4
+   
+   open(iunit, file='DOP.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_3d
+   close(iunit)
+   
+   call check( NF90_INQ_VARID(ncid,'DON',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_3d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_3d == FVAL) data_3d = 0.0_r4
+   
+   open(iunit, file='DON.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_3d
+   close(iunit)
+   
+   call check( NF90_INQ_VARID(ncid,'FET',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_3d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_3d == FVAL) data_3d = 0.0_r4
+   
+   open(iunit, file='FET.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_3d
+   close(iunit)
+   
+   call check( NF90_INQ_VARID(ncid,'CHL',varid) )
+   call check( NF90_GET_VAR(ncid,varid,data_2d))
+   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
+   where (data_2d == FVAL) data_2d = 0.0_r4
+   open(iunit, file='CHL.data', form="UNFORMATTED", status='UNKNOWN', &
+               access='DIRECT', recl=4*Nx*Ny, convert='BIG_ENDIAN')
+   write(iunit,rec=1)data_2d
+   close(iunit)
+endif
 
 call check( NF90_CLOSE(ncid) )
 

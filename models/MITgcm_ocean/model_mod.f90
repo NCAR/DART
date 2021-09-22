@@ -132,8 +132,9 @@ integer, parameter :: MAX_LEN_FNAM = 512
 
 ! these come from SIZE.h and can vary.  
 ! should they be namelist controlled?
-integer, parameter :: max_nx = 1024
-integer, parameter :: max_ny = 1024
+! MEG increased these for the high-res runs
+integer, parameter :: max_nx = 2048
+integer, parameter :: max_ny = 2048
 integer, parameter :: max_nz = 512
 integer, parameter :: max_nr = 512
 
@@ -219,6 +220,7 @@ NAMELIST /PARM04/ &
       rkFac, groundAtK1
 
 !--   Input files namelist
+! MEG: These parameters are not used anywhere in the mod_mod!
 NAMELIST /PARM05/ &
       bathyFile, topoFile, shelfIceFile, &
       hydrogThetaFile, hydrogSaltFile, diffKrFile, &
@@ -269,23 +271,21 @@ integer, parameter :: VT_KINDINDX     = 2 ! ... DART QUANTITY
 integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
 integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
 integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
-integer, parameter :: MAX_STATE_VARIABLES = 8
+integer, parameter :: MAX_STATE_VARIABLES = 20
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
 character(len=vtablenamelength) :: mitgcm_variables(NUM_STATE_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
-character(len=vtablenamelength) :: nbling_variables(NUM_STATE_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
 
 
-character(len=256) :: model_shape_files(2) = ' '
+character(len=256) :: model_shape_file = ' '
 integer  :: assimilation_period_days = 7
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 
-namelist /model_nml/ assimilation_period_days,    &
-                     assimilation_period_seconds, &
+namelist /model_nml/ assimilation_period_days,     &
+                     assimilation_period_seconds,  &
                      model_perturbation_amplitude, &
-                     model_shape_files, &
-                     mitgcm_variables, &
-                     nbling_variables
+                     model_shape_file,             &
+                     mitgcm_variables
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
@@ -509,10 +509,10 @@ if (do_output()) write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 if (do_output()) write(     *     , *) 'Using grid size : '
 if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 
-call parse_variable_input(mitgcm_variables, model_shape_files(1), nvars, &
+call parse_variable_input(mitgcm_variables, model_shape_file, nvars, &
                       var_names, quantity_list, clamp_vals, update_list)
 
-domain_id = add_domain(model_shape_files(1), nvars, &
+domain_id = add_domain(model_shape_file, nvars, &
                     var_names, quantity_list, clamp_vals, update_list )
 
 model_size = get_domain_size(domain_id)
@@ -1165,6 +1165,7 @@ lat   = YC(jloc)
 depth = ZC(kloc)
 
 ! Acounting for surface variables and those on staggered grids
+! MEG: check chl's depth here
 if (var_type == QTY_SEA_SURFACE_HEIGHT)  depth = 0.0_r8
 if (var_type == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
 if (var_type == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)  
