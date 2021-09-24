@@ -5,9 +5,11 @@
 program dart_to_clm
 
 !----------------------------------------------------------------------
-! purpose: Update the CLM restart file with the DART posterior. If need
-!          be, take the posterior SWE (a diagnostic variable) and
-!          repartition it into prognostic snow layers.
+! purpose: Update the CLM restart file with the DART posterior. If the
+!          DART posterior _FillValue exists replace it with original
+!          CLM value. If repartition_ SWE = .true. then perform snow_update
+!          which repartitions prognostic snow-related variables from 
+!          H2OSNO (a diagnostic variable).
 !
 ! method: Read DART posterior and replace the valid values in the
 !         CLM restart file. Anything with a DART posterior _FillValue 
@@ -21,6 +23,12 @@ program dart_to_clm
 !         netCDF write routines replace the DART MISSING values with the
 !         variables declared _FillValue. This routine replaces the 
 !         _FillValue with whatever was originally in the CLM restart file.
+!       
+!         This routine also gives the user the option to manually repartition
+!         the prognostic snow-related variable updates from the DART update
+!         of the diagnostic total column SWE variable H2OSNO. The default
+!         behavior is for the prognostic snow related layers to be updated
+!         directly from DART.      
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8, MISSING_R8
@@ -133,8 +141,33 @@ call print_time( clm_time,'dart_to_clm:DART model time',logfileunit)
 
 dom_restart = 1
 
-UPDATE : do ivar=1, get_num_variables(dom_restart)
+  if (repartition_SWE) then
 
+  call update_snow(ivar,model_size,state_vector, ncFileID, filename)
+
+  endif
+
+
+UPDATE : do ivar=1, get_num_variables(dom_restart)
+  
+  !@fixme We need to know what varname here so we can make the right decision
+  ! Identify what varname is from ivar and then select case
+ 
+  !@fixme Add Update snow subroutine 
+
+ 
+  if (repartition_SWE) then
+   select case (varname)
+      case ('SNOWDP', 'SNOW_DEPTH', 'DZSNO', 'H2OSOI_LIQ', 'H2OSOI_ICE')
+         write(string1,*)'intentionally not updating '//trim(string2)
+         write(string3,*)'posterior is coming from repartitioning of H2OSNO.'
+         call error_handler(E_MSG, 'sv_to_restart_file', string1, text2=string3)
+         cycle UPDATE
+      case default
+      ! do nothing   
+   end select
+   endif
+  
    rank = get_num_dims(dom_restart,ivar)
 
    if (rank == 1) then
@@ -149,6 +182,7 @@ UPDATE : do ivar=1, get_num_variables(dom_restart)
       write(string1, *) 'no support for data array of dimension ', rank
       call error_handler(E_ERR, source, string1, source)
    endif
+
 enddo UPDATE
 
 call nc_close_file(ncid_clm,  source)
@@ -250,19 +284,6 @@ call nc_get_variable(ncid_dart, varname, dart_array)
 
 where(dart_array /= special) clm_array = dart_array
 
-call nc_put_variable(ncid_clm, varname, clm_array, routine)
-
-deallocate(dart_array, clm_array)
-
-end subroutine replace_values_2D
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine Compatible_Variables(varname, ncid_dart, ncid_clm, varsize)
-
-character(len=*), intent(in)  :: varname
 integer,          intent(in)  :: ncid_dart
 integer,          intent(in)  :: ncid_clm
 integer,          intent(out) :: varsize(:)
