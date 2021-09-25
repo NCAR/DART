@@ -52,29 +52,29 @@ with an ampersand '&' and terminate with a slash '/'.
 
 .. container::
 
-  +-----------------+--------------------+----------------------------------------------------------------------------------------------------------+
-  | Contents        | Type               | Description                                                                                              |
-  +=================+====================+==========================================================================================================+
-  | file_in         | character(len=256) | Name of the input netcdf data file. It's a good practice to provide the                                  |
-  |                 |                    | absolute path of the file.                                                                               |
-  |                 |                    | Example: ``$DART/observations/obs_converters/ocean_color/data/V2020336.L3m_DAY_SNPP_CHL_chlor_a_4km.nc`` |
-  +-----------------+--------------------+----------------------------------------------------------------------------------------------------------+
-  | file_out        | character(len=256) | Partial filename for the output file.  The date and time are appended to ``file_out``                    |
-  |                 |                    | to construct a unique filename reflecting the time of the observations in the file.                      |
-  +-----------------+--------------------+----------------------------------------------------------------------------------------------------------+
-  | error_sd_factor | real(r8)           | Observation error standard deviation is assumed a factor of the observed surface chlorophyll value.      |
-  |                 |                    | If ``error_sd_factor = 0.5``, that means obs error sd is 50 percent of the data value.                   |
-  +-----------------+--------------------+----------------------------------------------------------------------------------------------------------+
-  | error_sd_thresh | real(r8)           | In cases where the observed chlorophyll values are small, a threshold value is placed on the obs error   |
-  |                 |                    | sd. This threshold is given by ``error_sd_thresh``. For instance ``error_sd_thresh = 0.03``              |
-  +-----------------+--------------------+----------------------------------------------------------------------------------------------------------+
-  | subsample_intv  | integer            | It is possible to 'thin' the observations. ``subsample_intv``                                            |
-  |                 |                    | allows one to take every Nth observation.                                                                |
-  +-----------------+--------------------+----------------------------------------------------------------------------------------------------------+
-  | special_mask    | logical            | A simple procedure to ignore observations in certain areas. User can edit this according to their case.  |
-  +-----------------+--------------------+----------------------------------------------------------------------------------------------------------+
-  | debug           | logical            | Print extra information during the ``convert_sat_chl`` execution.                                        |
-  +-----------------+--------------------+----------------------------------------------------------------------------------------------------------+
+  +-----------------+--------------------+-------------------------------------------------------------------------------------------------+
+  | Contents        | Type               | Description                                                                                     |
+  +=================+====================+=================================================================================================+
+  | file_in         | character(len=256) | Name of the input netcdf data file. It's a good practice to provide the                         |
+  |                 |                    | absolute path of the file. Example:                                                             |
+  |                 |                    | ``$DART/observations/obs_converters/ocean_color/data/V2020336.L3m_DAY_SNPP_CHL_chlor_a_4km.nc`` |
+  +-----------------+--------------------+-------------------------------------------------------------------------------------------------+
+  | file_out        | character(len=256) | Partial filename for the output file.  The date and time are appended to ``file_out``           |
+  |                 |                    | to construct a unique filename reflecting the time of the observations in the file.             |
+  +-----------------+--------------------+-------------------------------------------------------------------------------------------------+
+  | error_sd_factor | real(r8)           | Observation error standard deviation is assumed a factor of the observed surface chlorophyll.   |
+  |                 |                    | If ``error_sd_factor = 0.5``, that means obs error sd is 50 percent of the data value.          |
+  +-----------------+--------------------+-------------------------------------------------------------------------------------------------+
+  | error_sd_thresh | real(r8)           | In cases where the observed chlorophyll values are small, a threshold value is used for the obs |
+  |                 |                    | error sd. This threshold is given by ``error_sd_thresh``. Example: ``error_sd_thresh = 0.03``   |
+  +-----------------+--------------------+-------------------------------------------------------------------------------------------------+
+  | subsample_intv  | integer            | It is possible to 'thin' the observations. ``subsample_intv``                                   |
+  |                 |                    | allows one to take every nth observation.                                                       |
+  +-----------------+--------------------+-------------------------------------------------------------------------------------------------+
+  | special_mask    | logical            | A simple procedure to ignore data in certain areas. User can edit this according to their case. |
+  +-----------------+--------------------+-------------------------------------------------------------------------------------------------+
+  | debug           | logical            | Print extra information during the ``convert_sat_chl`` execution.                               |
+  +-----------------+--------------------+-------------------------------------------------------------------------------------------------+
 
 The ``get_ocdata.sh`` script is placed inside the ``shell_scripts`` directory. Technically, this is the only the script that the
 user needs to run. Prior to running the script, one should edit some parameters such as: date range, the resolution
