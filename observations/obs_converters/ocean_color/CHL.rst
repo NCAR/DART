@@ -53,7 +53,7 @@ with an ampersand '&' and terminate with a slash '/'.
 .. container::
 
   +-----------------+--------------------+----------------------------------------------------------------------------------------------------------+
-  | Contents        | Type                | Description                                                                                              |
+  | Contents        | Type               | Description                                                                                              |
   +=================+====================+==========================================================================================================+
   | file_in         | character(len=256) | Name of the input netcdf data file. It's a good practice to provide the                                  |
   |                 |                    | absolute path of the file.                                                                               |

@@ -4,9 +4,9 @@
 #
 # DART $Id$
 
-These are example data files.They can be used as input files
-for the satellite chlorophyll (CHL) obs converter. These files 
-contain raw CHL data that was downloaded using the script:
+This is an example data file. It can be used as an input file
+for the satellite chlorophyll (CHL) obs converter. The file 
+contains raw CHL data that was downloaded using the script:
 $DART/observations/obs_converters/ocean_color/shell_scripts/get_ocdata.sh
 
 get_ocdata.sh downloads the data from the NASA ocean color 
@@ -14,7 +14,8 @@ webpage and modifies it. The modifications are minimal:
 - Add a time dimension with the necessary attributes for 
 the converter
 - Crops the data into the requested domain (for instance, 
-the Red Sea). 
+the Red Sea)
+- It also runs the converter 
 You can download as much data as you want by specifying 
 a date range on top of the get_ocdata.sh script. 
 
