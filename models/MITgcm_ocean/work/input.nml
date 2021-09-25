@@ -206,7 +206,7 @@
 
 
 &state_vector_io_nml
-   buffer_state_io         = .false.
+   buffer_state_io         = .true.
    single_precision_output = .false.
   /
 
