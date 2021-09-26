@@ -81,7 +81,7 @@ user needs to run. Prior to running the script, one should edit some parameters 
 of the data, the instrument, username and password to access the data site, frequency, domain area coordinates, etc.
 These parameters are hard coded in the script. The tasks that this script do are:
 
-#. Downloaded ocean color data for the requested period one file at a time.
+#. It Downloads ocean color data for the requested period and frequency one file at a time.
 #. It retains the chlorophyll variable for the requested domain and gets rid of unnecessary information in the netcdf data files.
 #. It modifies the netcdf files by adding a time dimension with the necessary attributes.
 #. It runs the obs converter ``convert_sat_chl`` for each data file.

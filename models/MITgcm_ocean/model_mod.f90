@@ -28,8 +28,8 @@ use    utilities_mod,      only : error_handler, E_ERR, E_WARN, E_MSG, &
                                   string_to_real, string_to_logical
 
 use     obs_kind_mod,      only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT, &
-                                  QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT, &
-                                  get_index_for_quantity
+                                  QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT,        &
+                                  QTY_SURFACE_CHLOROPHYLL, get_index_for_quantity
 
 use mpi_utilities_mod,     only : my_task_id
 
@@ -1166,7 +1166,8 @@ depth = ZC(kloc)
 
 ! Acounting for surface variables and those on staggered grids
 ! MEG: check chl's depth here
-if (var_type == QTY_SEA_SURFACE_HEIGHT)  depth = 0.0_r8
+if (var_type == QTY_SEA_SURFACE_HEIGHT .or. &
+    var_type == QTY_SURFACE_CHLOROPHYLL) depth = 0.0_r8
 if (var_type == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
 if (var_type == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)  
 
