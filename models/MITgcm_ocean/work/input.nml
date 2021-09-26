@@ -160,7 +160,8 @@
                                 'SATELLITE_INFRARED_SST',
                                 'SATELLITE_SSH',
                                 'SATELLITE_SSS',
-                                'HFRADAR_RADIAL_VELOCITY'
+                                'HFRADAR_RADIAL_VELOCITY', 
+                                'OCEAN_COLOR'
   /
 
 
@@ -192,6 +193,7 @@
                       'ALK',  'QTY_ALKALINITY',                 '0.0', 'NA', 'update',
                       'DIC',  'QTY_DISSOLVED_INORGANIC_CARBON', '0.0', 'NA', 'update',
                       'DOP',  'QTY_DISSOLVED_ORGANIC_P',        '0.0', 'NA', 'update',
+                      'DON',  'QTY_DISSOLVED_ORGANIC_NITROGEN', '0.0', 'NA', 'update',
                       'FET',  'QTY_DISSOLVED_INORGANIC_IRON',   '0.0', 'NA', 'update',
                       'CHL',  'QTY_SURFACE_CHLOROPHYLL',        '0.0', 'NA', 'update'
   /
@@ -206,7 +208,7 @@
 
 
 &state_vector_io_nml
-   buffer_state_io         = .false.
+   buffer_state_io         = .true.
    single_precision_output = .false.
   /
 
