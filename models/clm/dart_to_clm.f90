@@ -141,30 +141,21 @@ call print_time( clm_time,'dart_to_clm:DART model time',logfileunit)
 
 dom_restart = 1
 
-  if (repartition_SWE) then
-
-  call update_snow(ivar,model_size,state_vector, ncFileID, filename)
-
-  endif
-
-
 UPDATE : do ivar=1, get_num_variables(dom_restart)
   
-  !@fixme We need to know what varname here so we can make the right decision
-  ! Identify what varname is from ivar and then select case
- 
-  !@fixme Add Update snow subroutine 
-
- 
+  ! If repartitioing SWE then skip snow variable updates for now
+  ! The snow variable updates will be performed in update_snow
   if (repartition_SWE) then
    select case (varname)
       case ('SNOWDP', 'SNOW_DEPTH', 'DZSNO', 'H2OSOI_LIQ', 'H2OSOI_ICE')
+         string2 = trim(source)//' '//trim(varname)
          write(string1,*)'intentionally not updating '//trim(string2)
          write(string3,*)'posterior is coming from repartitioning of H2OSNO.'
-         call error_handler(E_MSG, 'sv_to_restart_file', string1, text2=string3)
+         call error_handler(E_MSG, 'dart_to_clm', string1, text2=string3)
          cycle UPDATE
       case default
-      ! do nothing   
+      ! do nothing -- proceed to default DART update subroutines:
+      ! replace_values_1D and replace_values_2D  
    end select
    endif
   
@@ -184,6 +175,16 @@ UPDATE : do ivar=1, get_num_variables(dom_restart)
    endif
 
 enddo UPDATE
+
+ ! Manually repartition snow layer variables with H2OSNO variable
+
+  if (repartition_SWE) then
+
+  call update_snow(dom_restart, ncid_dart, ncid_clm)
+
+  endif
+
+
 
 call nc_close_file(ncid_clm,  source)
 call nc_close_file(ncid_dart, source)
@@ -284,6 +285,276 @@ call nc_get_variable(ncid_dart, varname, dart_array)
 
 where(dart_array /= special) clm_array = dart_array
 
+call nc_put_variable(ncid_clm, varname, clm_array, routine)
+
+deallocate(dart_array, clm_array)
+
+end subroutine replace_values_2D
+
+!------------------------------------------------------------------
+
+subroutine update_snow(dom_id, ncid_dart, ncid_clm)
+
+!> This repartitions snow layer variables based upon DART update of diagnostic H2OSNO 
+!> variable.  This subroutine expects H2OSNO variable is available, as well as 
+!> prognostic clm variables: SNOWDP/SNOW_DEPTH, DZSNO, H2OSOI_LIQ, H2OSOI_ICE
+
+! The posterior snow water equivalent (H2OSNO) cannot be zero or negative
+! because H2OSNO is used to calculate the snow density -- which is used
+! to calculate the snow layer depth.
+! However the posterior H2OSNO values received from DART can be zero/negative
+! thus  negative values of H2OSNO produced by DART, are set to prior value
+! when calculating the snow density
+
+! @fixme  Alternatively could automatically set all snow related variables to
+!  zero, when H2OSNO posterior is zero/negative.
+
+
+! @fixme What about snow layer depth variables of middle of layer depth (ZSNO)
+!  and top interface depth (ZISNO).  Does this create inconsistency when 
+!  DZSNO is updated?
+
+! The repartitioning of the snow layer variables maintains prior distribution
+! Pseudo-code below:  Note this reparitioning is only applied to snow layers
+! and subsurface layers are left unchanged
+!
+! SnowDensity(layer,column)  = (H2OSOI_LIQ(layer,column) + H2OSOI_ICE(layer,column))
+!                              / DZSNO(layer,column)
+! 
+! wt_swe(layer,column)       = H2OSOI_LIQ(layer,column)+H2OSOI_ICE(layer,column))
+!                              / H2OSNO(column)
+! wt_liq(layer,column)       = H2OSOI_LIQ(layer,column)/(H2OSOI_LIQ(layer,column)+
+!                               H2OSOI_ICE(layer,column))
+! 
+! wt_ice(layer,column)       = 1-wt_liq(layer,column)
+! 
+! GainH2OSNO_l(layer,column) = GainH2OSNO(column)*wt_swe(layer,column)
+! 
+! GainH2O_LIQ(layer,column)  = GainH2OSNO_l(layer,column)*wt_liq(layer,column)
+! 
+! GainH2O_ICE(layer,column)  = GainH2OSNO_l(layer,column)*(1-wt_liq(layer,column))
+! 
+! GainDZSNO(layer,column)    = GainH2OSNO_l(layer,column)/SnowDensity(layer,column)
+! 
+! H2OSOI_LIQ_update(layer,column) = H2OSOI_LIQ(layer,column)+GainH2O_LIQ(layer,column)
+! 
+! H2OSOI_ICE_update(layer,column) = H2OSOI_ICE(layer,column)+GainH2O_ICE(layer,column)
+! 
+! GainSNOWDP(column)         = sum(GainDZSNO(layer,column))
+! 
+! SNOWDP_update(column)      = SNOWDP(column)+GainSNOWDP(column)
+!
+!=========================================================================
+!    double frac_sno(column) ;
+!            frac_sno:long_name = "fraction of ground covered by snow (0 to 1)" ;
+!            frac_sno:units = "unitless" ;
+!    int    SNLSNO(column) ;
+!            SNLSNO:long_name = "number of snow layers" ;
+!            SNLSNO:units = "unitless" ;
+!    double SNOWDP(column) ;
+!            SNOWDP:long_name = "snow depth" ;
+!            SNOWDP:units = "m" ;
+!    double H2OSNO(column) ;
+!            H2OSNO:long_name = "snow water" ;
+!            H2OSNO:units = "kg/m2" ;
+!    double H2OSOI_LIQ(column, levtot) ;
+!            H2OSOI_LIQ:long_name = "liquid water" ;
+!            H2OSOI_LIQ:units = "kg/m2" ;
+!    double H2OSOI_ICE(column, levtot) ;
+!            H2OSOI_ICE:long_name = "ice lens" ;
+!            H2OSOI_ICE:units = "kg/m2" ;
+!    double DZSNO(column, levsno) ;
+!            DZSNO:long_name = "snow layer thickness" ;
+!            DZSNO:units = "m" ;
+
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: ncid_dart
+integer, intent(in) :: ncid_clm
+
+character(len=*), parameter :: routine = 'update_snow'
+
+! @fixme Take out indices once assigned to allocatable variables
+integer  ::  snlsno(ncolumn)  ! Negative number of 'filled' snow layers
+integer  ::  nlevsno          ! Max possible snow layers  
+real(r8) ::  h2osno_pr(ncolumn),         h2osno_po(ncolumn)
+real(r8) ::  snowdp_pr(ncolumn),         snowdp_po(ncolumn)
+real(r8) ::  dzsno_pr(nlevsno,ncolumn),  dzsno_po(nlevsno,ncolumn)
+real(r8) ::  h2oliq_pr(nlevsno,ncolumn), h2oliq_po(nlevsno,ncolumn)
+real(r8) ::  h2oice_pr(nlevsno,ncolumn), h2oice_po(nlevsno,ncolumn)
+real(r8) ::  gain_dzsno(nlevsno,ncolumn)
+
+real(r8) :: snowden, wt_swe, wt_liq, wt_ice
+real(r8) :: gain_h2oice
+real(r8) :: gain_h2oliq
+real(r8) :: gain_h2osno
+
+integer  :: icolumn, ilayer, c
+integer  :: VarID, varsize(2)
+
+real(r8), allocatable :: dart_H2OSNO(:)
+real(r8), allocatable :: dart_SNOWDP(:)
+real(r8), allocatable :: dart_DZSNO(:,:)
+real(r8), allocatable :: dart_H2OLIQ(:,:)
+real(r8), allocatable :: dart_H2OICE(:,:)
+
+real(r8), allocatable :: clm_H2OSNO(:)
+real(r8), allocatable :: clm_SNLSNO(:)
+real(r8), allocatable :: clm_SNOWDP(:)
+real(r8), allocatable :: clm_DZSNO(:,:)
+real(r8), allocatable :: clm_H2OLIQ(:,:)
+real(r8), allocatable :: clm_H2OICE(:,:)
+
+!@fixme Check existence for snow related variables in DART vector
+! If they do not exist, throw error immediately, provide instructions
+!@fixme
+
+! Check that variables in both files are same shape
+! Check with representative variable
+call Compatible_Variables('H2OSOI_ICE', ncid_dart, ncid_clm, varsize)
+
+! Variables associated with clm_restart.nc
+! These are prior values
+call nc_get_variable(ncid_clm, 'H2OSNO',  clm_H2OSNO)
+call nc_get_variable(ncid_clm, 'SNLSNO',  clm_SNLSNO)
+call nc_get_variable(ncid_clm, 'SNOW_DEPTH',  clm_SNOWDP)
+call nc_get_variable(ncid_clm, 'DZSNO',  clm_DZSNO)
+call nc_get_variable(ncid_clm, 'H2OSOI_LIQ',  clm_H2OLIQ)
+call nc_get_variable(ncid_clm, 'H2OSOI_ICE',  clm_H2OICE)
+nlevsno = nc_get_dimension_size(ncid,'levsno') 
+! Variables associated with dart_posterior.nc
+call nc_get_variable(ncid_dart, 'H2OSNO', dart_H2OSNO)
+call nc_get_variable(ncid_dart, 'SNOWDP', dart_SNOWDP)
+call nc_get_variable(ncid_dart, 'DZSNO', dart_DZSNO)
+call nc_get_variable(ncid_dart, 'H2OSOI_LIQ', dart_H2OLIQ)
+call nc_get_variable(ncid_dart, 'H2OSOI_ICE', dart_H2OSOI_ICE)
+
+h2osno_pr=clm_H2OSNO
+snlsno=clm_SNLSNO
+snowdp_pr=clm_SNOWDP
+dzsno_pr=DZSNO
+h2oliq_pr=H2OSOI_LIQ
+h2oice_pr=H2OSOI_ICE
+
+
+where (h2osno_pr < 0.0_r8) h2osno_pr = 0.0_r8
+where (snowdp_pr < 0.0_r8) snowdp_pr = 0.0_r8
+where ( dzsno_pr < 0.0_r8)  dzsno_pr = 0.0_r8
+where (h2oliq_pr < 0.0_r8) h2oliq_pr = 0.0_r8
+where (h2oice_pr < 0.0_r8) h2oice_pr = 0.0_r8
+
+snowdp_po = snowdp_pr
+dzsno_po =  dzsno_pr
+h2oliq_po = h2oliq_pr
+h2oice_po = h2oice_pr
+
+
+! Adjust the variables to be consistent with the updated H2OSNO
+! Remember: snlsno has the NEGATIVE of the number of snow layers. 
+
+PARTITION: do icolumn = 1,varsize(2)
+      
+   if (h2osno_po(icolumn) < 0.0_r8) then  ! If there IS NOT snow in column...
+
+      write(*,*)'negative value found: column ',icolumn
+      
+      ! Force any existing layers to be near zero but not exactly zero
+      ! Leave layer aggregation to CLM
+      do ilayer=1,-snlsno(icolumn)
+
+         h2oliq_po(ilayer,icolumn) = 0.0_r8
+         h2oice_po(ilayer,icolumn) = 0.00001_r8
+          dzsno_po(ilayer,icolumn) = 0.00000001_r8   !FIXME. Re-visit these values.
+
+      enddo
+
+      snowdp_po(icolumn) = sum( dzsno_po(:,icolumn))
+      h2osno_po(icolumn) = sum(h2oice_po(:,icolumn))
+
+   else
+      
+      if (snlsno(icolumn) < 0) then  ! If there IS snow in the column ...
+   
+         do c = 1,-snlsno(icolumn)   ! Identify total snow layers in column....
+
+            ! In CLM 4 nlevsno  =5, but in CLM5 =12
+            
+            ilayer = nlevsno-c+1     ! Loop through each snow layer 
+
+            ! Calculate the snow density for each layer
+            if ( dzsno_pr(ilayer,icolumn) > 0.0_r8) then
+               snowden = (h2oliq_pr(ilayer,icolumn) + h2oice_pr(ilayer,icolumn)) / &
+                           dzsno_pr(ilayer,icolumn)
+            else
+               snowden = 0.0_r8
+            endif
+
+            ! Calculate the fraction of the SWE in this layer
+            if ( h2osno_pr(icolumn) > 0.0_r8 ) then
+               wt_swe = (h2oliq_pr(ilayer,icolumn) + h2oice_pr(ilayer,icolumn)) / &
+                                h2osno_pr(icolumn)
+            else
+               wt_swe = 0.0_r8
+            endif
+ 
+            ! Calculate the fraction of liquid (and ice) water in this layer  
+            if ( (h2oliq_pr(ilayer,icolumn) + h2oice_pr(ilayer,icolumn)) > 0.0_r8) then
+               wt_liq = h2oliq_pr(ilayer,icolumn) / &
+                       (h2oliq_pr(ilayer,icolumn) + h2oice_pr(ilayer,icolumn))
+               wt_ice = 1.0_r8 - wt_liq
+            else
+               wt_liq = 0.0_r8
+               wt_ice = 0.0_r8
+            endif
+            
+            ! Calculate the increment for each layer for SWE, liq and ice assuming identical
+            ! layer % distribution as prior
+            gain_h2osno = (h2osno_po(icolumn) - h2osno_pr(icolumn)) * wt_swe
+            gain_h2oliq = gain_h2osno * wt_liq
+            gain_h2oice = gain_h2osno * wt_ice
+            
+            ! Calculate increment for each layer depth, using prior snow density
+            if ( snowden > 0.0_r8 ) then
+               gain_dzsno(ilayer,icolumn) = gain_h2osno / snowden
+            else
+               gain_dzsno(ilayer,icolumn) = 0.0_r8
+            endif
+            
+            ! Apply the increment for liquid, ice and depth for each layer.
+            h2oliq_po(ilayer,icolumn) = h2oliq_pr(ilayer,icolumn) + gain_h2oliq
+            h2oice_po(ilayer,icolumn) = h2oice_pr(ilayer,icolumn) + gain_h2oice
+
+            ! BMR @fixme what happens to other snow layer heights?
+            !  zsno (middle of snow layer) and zisno (top of snow layer)
+            
+             dzsno_po(ilayer,icolumn) =  dzsno_pr(ilayer,icolumn) + gain_dzsno(ilayer,icolumn)
+         enddo
+
+      endif
+      ! Apply increment of layer depths to total column snow height
+      snowdp_po(icolumn) = snowdp_pr(icolumn) + sum(gain_dzsno(:,icolumn))
+
+   endif
+
+enddo PARTITION
+
+
+
+! @fixme Stuff updated repartitioned values into clm_array.  Also stuff traditionally updated
+! subsurface values here:        
+! @fixme
+
+
+
+
+end subroutine update_snow
+
+!------------------------------------------------------------------
+!>
+
+subroutine Compatible_Variables(varname, ncid_dart, ncid_clm, varsize)
+
+character(len=*), intent(in)  :: varname
 integer,          intent(in)  :: ncid_dart
 integer,          intent(in)  :: ncid_clm
 integer,          intent(out) :: varsize(:)
