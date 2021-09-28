@@ -638,17 +638,17 @@ end subroutine perfect_main
 
 subroutine perfect_initialize_modules_used()
 
-! Standard initialization (mpi not needed to use ensemble manager
-! since we are enforcing that this run as a single task).
+! Standard initialization
 call initialize_mpi_utilities('perfect_model_obs')
 
 ! Initialize modules used that require it
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
+
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
-! Initialize the model class data now that obs_sequence is all set up
+
 call state_vector_io_init()
 call initialize_qc()
 
