@@ -15,7 +15,8 @@ use         utilities_mod, only : error_handler, E_MSG, E_ERR, &
                                   find_namelist_in_file, check_namelist_read,   &
                                   E_MSG, open_file, close_file, do_output
 
-use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
+use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, &
+                                  my_task_id, task_count
 
 use          location_mod, only : location_type, write_location
 
@@ -51,6 +52,14 @@ use  test_interpolate_mod, only : test_interpolate_single, &
 implicit none
 
 character(len=*), parameter :: source = 'model_mod_check.f90'
+
+! TODO:  tests 6 and 7 need to be revisited for running with
+!        multiple tasks and large state vectors.  be sure
+!        multiple tasks aren't trying to write to the same
+!        output file (write_state is ok).  be sure tests 
+!        aren't allocating get_model_size() arrays.  
+!        they should only allocate ensemble_handle%my_num_vars 
+!        for the part of the state vector on their task.
 
 integer, parameter :: MAX_TESTS = 7
 
@@ -116,6 +125,7 @@ type(ensemble_type)   :: ens_handle
 
 type(time_type)       :: model_time
 integer(i8)           :: model_size
+integer               :: my_num_vars    ! part of the state on my task
 real(r8), allocatable :: interp_vals(:)
 
 ! misc. variables
@@ -173,9 +183,11 @@ if (tests_to_run(1)) then
       string2 = 'set "verbose = .FALSE." in the model_mod_check_nml namelist.'
       call print_info_message(string1, string2)
 
-      do idomain = 1,num_domains
-         call state_structure_info(idomain)
-      enddo
+      if (my_task_id() == 0) then
+         do idomain = 1,num_domains
+            call state_structure_info(idomain)
+         enddo
+      endif
    else
       string1 = 'To print a detailed list of the variables that comprise the DART state'
       string2 = 'set "verbose = .TRUE." in the model_mod_check_nml namelist.'
@@ -201,9 +213,22 @@ if (tests_to_run(2)) then
    call print_test_message('TEST 2', &
                            'Read and write restart file', starting=.true.)
 
-   ! Set up the ensemble storage and read in the restart file
+   ! Set up the ensemble storage
    call init_ensemble_manager(ens_handle, num_ens, model_size)
 
+   ! how much of state vector is on this task
+   ! for single task this is equal to model_size.
+   ! for multiple MPI tasks this is a fraction of it.
+   my_num_vars = ens_handle%my_num_vars
+
+   ! print the number of state vector items on this task if running with MPI
+   if ((my_task_id() == 0) .and. (task_count() > 1)) then
+      call left_just_i8(int(my_num_vars, i8), string3)
+      write(string1, *) 'part of state vector on task 0 has a length of ', trim(string3)
+      call print_info_message(string1)
+   endif
+
+   ! test reading and writing the full state vector from a file
    call do_read_test(ens_handle)
 
    call do_write_test(ens_handle)
@@ -225,13 +250,15 @@ if (tests_to_run(3)) then
                            'Testing get_state_meta_data()', &
                            starting=.true.)
 
-   if ( x_ind >= 1 .and. x_ind <= model_size ) then
-      call check_meta_data( x_ind )
-   else
-      call left_just_i8(x_ind, string2)
-      call left_just_i8(model_size, string3)
-      write(string1, *) 'namelist item "x_ind" = '//trim(string2)//" is not in valid range 1 - "//trim(string3)
-      call print_info_message(string1)
+   if (my_task_id() == 0) then
+      if ( x_ind >= 1 .and. x_ind <= model_size ) then
+         call check_meta_data( x_ind )
+      else
+         call left_just_i8(x_ind, string2)
+         call left_just_i8(model_size, string3)
+         write(string1, *) 'namelist item "x_ind" = '//trim(string2)//" is not in valid range 1 - "//trim(string3)
+         call print_info_message(string1)
+      endif
    endif
 
    call print_test_message('TEST 3', ending=.true.)
@@ -249,31 +276,33 @@ if (tests_to_run(4)) then
 
    call create_state_window(ens_handle)
 
-   allocate(interp_vals(num_ens), ios_out(num_ens))
+   if (my_task_id() == 0) then
+      allocate(interp_vals(num_ens), ios_out(num_ens))
+   
+      call print_info_message('Interpolating '//trim(quantity_of_interest), &
+                              ' at "loc_of_interest" location')
+   
+      num_passed = test_interpolate_single( ens_handle,            &
+                                            num_ens,               &
+                                            interp_test_vertcoord, &
+                                            loc_of_interest(1),    &
+                                            loc_of_interest(2),    &
+                                            loc_of_interest(3),    &
+                                            quantity_of_interest,  &
+                                            interp_vals,           &
+                                            ios_out )
+   
+      ! test_interpolate_single reports individual interpolation failures internally
+      if (num_passed == num_ens) then
+         call print_info_message('interpolation successful for all ensemble members.')
+      endif
 
-   call print_info_message('Interpolating '//trim(quantity_of_interest), &
-                           ' at "loc_of_interest" location')
-
-   num_passed = test_interpolate_single( ens_handle,            &
-                                         num_ens,               &
-                                         interp_test_vertcoord, &
-                                         loc_of_interest(1),    &
-                                         loc_of_interest(2),    &
-                                         loc_of_interest(3),    &
-                                         quantity_of_interest,  &
-                                         interp_vals,           &
-                                         ios_out )
-
-   ! test_interpolate_single reports individual interpolation failures internally
-   if (num_passed == num_ens) then
-      call print_info_message('interpolation successful for all ensemble members.')
+      deallocate(interp_vals, ios_out)
    endif
 
    call free_state_window(ens_handle)
 
    call print_test_message('TEST 4', ending=.true.)
-
-   deallocate(interp_vals, ios_out)
 
 endif
 
@@ -288,22 +317,24 @@ if (tests_to_run(5)) then
 
    call create_state_window(ens_handle)
 
-   num_failed = test_interpolate_range( ens_handle,            &
-                                        num_ens,               &
-                                        interp_test_dlon,      &
-                                        interp_test_dlat,      &
-                                        interp_test_dvert,     &
-                                        interp_test_vertcoord, &
-                                        interp_test_lonrange,  &
-                                        interp_test_latrange,  &
-                                        interp_test_vertrange, &
-                                        quantity_of_interest,  &
-                                        verbose )
-
-   ! test_interpolate_range internally reports interpolation metrics.
-   write(string1, *)'output values on interpolation grid are in'
-   write(string2, *)'check_me_interptest.nc (netcdf) and check_me_interptest.m (matlab)'
-   call print_info_message(string1, string2)
+   if (my_task_id() == 0) then
+      num_failed = test_interpolate_range( ens_handle,            &
+                                           num_ens,               &
+                                           interp_test_dlon,      &
+                                           interp_test_dlat,      &
+                                           interp_test_dvert,     &
+                                           interp_test_vertcoord, &
+                                           interp_test_lonrange,  &
+                                           interp_test_latrange,  &
+                                           interp_test_vertrange, &
+                                           quantity_of_interest,  &
+                                           verbose )
+   
+      ! test_interpolate_range internally reports interpolation metrics.
+      write(string1, *)'output values on interpolation grid are in'
+      write(string2, *)'check_me_interptest.nc (netcdf) and check_me_interptest.m (matlab)'
+      call print_info_message(string1, string2)
+   endif
 
    call free_state_window(ens_handle)
 
@@ -321,14 +352,21 @@ if (tests_to_run(6)) then
                            'Exhaustive test of get_state_meta_data()', &
                             starting=.true.)
 
-   call left_just_i8(model_size, string3)
-   write(string1,*)'There are '//trim(string3)//' items in the state vector.'
-   write(string2,*)'This might take some time.'
-   call print_info_message(string1, string2)
+   if (my_task_id() == 0) then
+      call left_just_i8(int(my_num_vars,i8), string3)
+      if (task_count() > 1) then
+         write(string1,*)'There are '//trim(string3)//' items in the state vector on task 0.'
+      else
+         write(string1,*)'There are '//trim(string3)//' items in the state vector.'
+      endif
+      write(string2,*)'This might take some time.'
+      call print_info_message(string1, string2)
 
-   call check_all_meta_data()
+      call check_all_meta_data()
 
-   call print_info_message('The table of metadata was written to file "'//trim(all_metadata_file)//'"')
+      call print_info_message('The table of metadata was written to file "'//trim(all_metadata_file)//'"')
+   endif
+
 
    call print_test_message('TEST 6', ending=.true.)
 
@@ -344,9 +382,13 @@ if (tests_to_run(7)) then
                            'Finding the state vector index closest to a given location.', &
                             starting=.true.)
 
-   call find_closest_gridpoint(loc_of_interest, &
-                               interp_test_vertcoord, &
-                               quantity_of_interest)
+   if (task_count() > 1) then
+      call print_info_message('Skipping closest gridpoint test when running with MPI')
+   else
+      call find_closest_gridpoint(loc_of_interest, &
+                                  interp_test_vertcoord, &
+                                  quantity_of_interest)
+   endif
 
    call print_test_message('TEST 7', ending=.true.)
 
@@ -375,7 +417,6 @@ contains
 subroutine initialize_modules_used()
 
 call initialize_mpi_utilities('model_mod_check')
-
 
 call static_init_obs_sequence()
 
@@ -548,7 +589,7 @@ character(len=256)  :: qty_string, metadata_qty_string
 
 fid = open_file(all_metadata_file)
 
-do iloc = 1,model_size
+do iloc = 1,my_num_vars
 
    call get_model_variable_indices(iloc, ix, iy, iz, &
                                    dom_id=dom_id, &
