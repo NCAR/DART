@@ -52,7 +52,8 @@ use   state_structure_mod, only : get_num_variables, &
                                   get_has_missing_value, &
                                   get_missing_value, &
                                   get_FillValue, &
-                                  get_domain_size
+                                  get_domain_size, &
+                                  get_varid_from_varname
 
 use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_open_file_readwrite,&
@@ -88,7 +89,7 @@ integer            :: ncid_dart, ncid_clm
 type(time_type)    :: dart_time, clm_time
 
 character(len=512) :: string1, string2, string3
-
+character(len=NF90_MAX_NAME) :: varname
 !======================================================================
 
 call initialize_utilities(progname='dart_to_clm')
@@ -143,9 +144,10 @@ dom_restart = 1
 
 UPDATE : do ivar=1, get_num_variables(dom_restart)
   
-  ! If repartitioing SWE then skip snow variable updates for now
-  ! The snow variable updates will be performed in update_snow
+  ! If repartitioning SWE then skip applying snow variable updates for now
+  ! The snow variable updates will be performed in 'update_snow'
   if (repartition_SWE) then
+   varname = get_variable_name(dom_restart,ivar)
    select case (varname)
       case ('SNOWDP', 'SNOW_DEPTH', 'DZSNO', 'H2OSOI_LIQ', 'H2OSOI_ICE')
          string2 = trim(source)//' '//trim(varname)
@@ -407,6 +409,9 @@ real(r8), allocatable :: clm_H2OICE(:,:)
 
 !@fixme Check existence for snow related variables in DART vector
 ! If they do not exist, throw error immediately, provide instructions
+! Also use this opportunity to see if SNOWDP or SNOW_DEPTH is available
+! Use this generic variable snow variable here, so you don't need if
+! statements throughout
 !@fixme
 
 ! Check that variables in both files are same shape
@@ -424,17 +429,17 @@ call nc_get_variable(ncid_clm, 'H2OSOI_ICE',  clm_H2OICE)
 nlevsno = nc_get_dimension_size(ncid,'levsno') 
 ! Variables associated with dart_posterior.nc
 call nc_get_variable(ncid_dart, 'H2OSNO', dart_H2OSNO)
-call nc_get_variable(ncid_dart, 'SNOWDP', dart_SNOWDP)
+call nc_get_variable(ncid_dart, 'SNOW_DEPTH', dart_SNOWDP)
 call nc_get_variable(ncid_dart, 'DZSNO', dart_DZSNO)
 call nc_get_variable(ncid_dart, 'H2OSOI_LIQ', dart_H2OLIQ)
-call nc_get_variable(ncid_dart, 'H2OSOI_ICE', dart_H2OSOI_ICE)
+call nc_get_variable(ncid_dart, 'H2OSOI_ICE', dart_H2OICE)
 
 h2osno_pr=clm_H2OSNO
 snlsno=clm_SNLSNO
 snowdp_pr=clm_SNOWDP
-dzsno_pr=DZSNO
-h2oliq_pr=H2OSOI_LIQ
-h2oice_pr=H2OSOI_ICE
+dzsno_pr=clm_DZSNO
+h2oliq_pr=clm_H2OLIQ
+h2oice_pr=clm_H2OICE
 
 
 where (h2osno_pr < 0.0_r8) h2osno_pr = 0.0_r8
@@ -443,6 +448,11 @@ where ( dzsno_pr < 0.0_r8)  dzsno_pr = 0.0_r8
 where (h2oliq_pr < 0.0_r8) h2oliq_pr = 0.0_r8
 where (h2oice_pr < 0.0_r8) h2oice_pr = 0.0_r8
 
+! Important that H2OSNO posterior is taken from DART(dart_posterior.nc)
+! whereas all other snow variables are taken from prior clm_restart.nc 
+! such that repartitioning H2OSNO increment can be based on prior snow distribution
+
+h2osno_po = dart_H2OSNO  
 snowdp_po = snowdp_pr
 dzsno_po =  dzsno_pr
 h2oliq_po = h2oliq_pr
@@ -464,7 +474,7 @@ PARTITION: do icolumn = 1,varsize(2)
 
          h2oliq_po(ilayer,icolumn) = 0.0_r8
          h2oice_po(ilayer,icolumn) = 0.00001_r8
-          dzsno_po(ilayer,icolumn) = 0.00000001_r8   !FIXME. Re-visit these values.
+          dzsno_po(ilayer,icolumn) = 0.00000001_r8   !@fixme. Re-visit these values.
 
       enddo
 
@@ -539,12 +549,66 @@ PARTITION: do icolumn = 1,varsize(2)
 enddo PARTITION
 
 
+! Update the 'dart_array' (dart_posterior.nc) with the repartitioned values
+ dart_SNOWDP = snowdp_po
+ dart_DZSNO  = dzsno_po
 
-! @fixme Stuff updated repartitioned values into clm_array.  Also stuff traditionally updated
-! subsurface values here:        
-! @fixme
+! Important to update only the manually repartitioned above surface layers
+! Keep the DART posterior subsurface values
+ dart_H2OLIQ(1:nlevsno,:) =h2oliq_po(1:nlevsno,:)  
+ dart_H2OICE(1:nlevsno,:) =h2oice_po(1:nlevsno,:)
 
 
+! Update the 'clm_array' with repartitioned 'dart_array' similar to 
+! subroutine replace_values_2D, but with snow variables
+
+VarID=get_varid_from_varname(dom_id, 'SNOW_DEPTH')
+
+! Identify location of missing_values and FillValues to prevent updates (masking)  
+if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
+
+!@fixme Is this right using 'get_has_missing_value' instead of 'get_has_FillValue' ??
+!@fixme I am following the same usage as in subroutine 'replace_values_2D'
+if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,special)
+
+! Make sure variables in both files are identical in shape, etc.
+call Compatible_Variables('SNOW_DEPTH', ncid_dart, ncid_clm, varsize)
+where(dart_SNOWDP /= special) clm_SNOWDP = dart_SNOWDP
+call nc_put_variable(ncid_clm, 'SNOW_DEPTH', clm_SNOWDP, routine)
+deallocate(dart_SNOWDP, clm_SNOWDP)
+
+
+VarID=get_varid_from_varname(dom_id, 'DZSNO')
+! Identify location of missing_values and FillValues to prevent updates (masking)  
+if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
+if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,special)
+! Make sure variables in both files are identical in shape, etc.
+call Compatible_Variables('DZSNO', ncid_dart, ncid_clm, varsize)
+where(dart_DZSNO /= special) clm_DZSNO = dart_DZSNO
+call nc_put_variable(ncid_clm, 'DZSNO', clm_DZSNO, routine)
+deallocate(dart_DZSNO, clm_DZSNO)
+
+
+VarID=get_varid_from_varname(dom_id, 'H2OSOI_LIQ')
+! Identify location of missing_values and FillValues to prevent updates (masking)  
+if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
+if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,special)
+! Make sure variables in both files are identical in shape, etc.
+call Compatible_Variables('H2OSOI_LIQ', ncid_dart, ncid_clm, varsize)
+where(dart_H2OLIQ /= special) clm_H2OLIQ = dart_H2OLIQ
+call nc_put_variable(ncid_clm, 'H2OSOI_LIQ', clm_H2OLIQ, routine)
+deallocate(dart_H2OLIQ, clm_H2OLIQ)
+
+
+VarID=get_varid_from_varname(dom_id, 'H2OSOI_ICE')
+! Identify location of missing_values and FillValues to prevent updates (masking)  
+if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
+if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,special)
+! Make sure variables in both files are identical in shape, etc.
+call Compatible_Variables('H2OSOI_ICE', ncid_dart, ncid_clm, varsize)
+where(dart_H2OICE /= special) clm_H2OICE = dart_H2OICE
+call nc_put_variable(ncid_clm, 'H2OSOI_ICE', clm_H2OICE, routine)
+deallocate(dart_H2OICE, clm_H2OICE)
 
 
 end subroutine update_snow
