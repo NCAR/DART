@@ -43,8 +43,7 @@ with an ampersand '&' and terminate with a slash '/'.
    &convert_sat_chl_nml
       file_in         = '../data/V2020350.L3m_DAY_SNPP_CHL_chlor_a_4km.nc'
       file_out        = '../data/obs_seq_chl'
-      error_sd_factor = 0.5
-      error_sd_thresh = 0.03
+      chl_thresh      = 0.03
       subsample_intv  = 1
       special_mask    = .true.
       debug           = .false.
@@ -61,11 +60,8 @@ with an ampersand '&' and terminate with a slash '/'.
   | file_out        | character | Partial filename for the output file.  The date and time are appended to ``file_out``   |
   |                 |           | to construct a unique filename reflecting the time of the observations in the file.     |
   +-----------------+-----------+-----------------------------------------------------------------------------------------+
-  | error_sd_factor | real(r8)  | Observation error standard deviation is assumed a factor of the observed surface        |
-  |                 |           | chlorophyll. ``error_sd_factor = 0.5`` means sd is 50 percent of the data value.        |
-  +-----------------+-----------+-----------------------------------------------------------------------------------------+
-  | error_sd_thresh | real(r8)  | When the observed chlorophyll values are small, a threshold value is used for the obs   |
-  |                 |           | error sd. Example: ``error_sd_thresh = 0.03``                                           |
+  | chl_thresh      | real(r8)  | When the observed chlorophyll values are small, a threshold value is used for the obs.  |
+  |                 |           | Example: ``chl_thresh = 0.03``                                                          |
   +-----------------+-----------+-----------------------------------------------------------------------------------------+
   | subsample_intv  | integer   | It is possible to 'thin' the observations. ``subsample_intv``                           |
   |                 |           | allows one to take every nth observation.                                               |
@@ -75,6 +71,11 @@ with an ampersand '&' and terminate with a slash '/'.
   +-----------------+-----------+-----------------------------------------------------------------------------------------+
   | debug           | logical   | Print extra information during the ``convert_sat_chl`` execution.                       |
   +-----------------+-----------+-----------------------------------------------------------------------------------------+
+
+It's widely known that chlorophyll follows a log-normal distribution. After reading the observed chlorophyll data
+from the input netcdf file, a **LOG10** transformation is applied such that the resulting distribution is normal.
+The idea behind this step is to prepare the data for the EnKF which assumes both the state and observations to
+be Gaussian.
 
 The ``get_ocdata.sh`` script is placed inside the ``shell_scripts`` directory. Technically, this is the only the script that the
 user needs to run. Prior to running the script, one should edit some parameters such as: date range, the resolution

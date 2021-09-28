@@ -195,9 +195,14 @@
                       'DOP',  'QTY_DISSOLVED_ORGANIC_P',        '0.0', 'NA', 'update',
                       'DON',  'QTY_DISSOLVED_ORGANIC_NITROGEN', '0.0', 'NA', 'update',
                       'FET',  'QTY_DISSOLVED_INORGANIC_IRON',   '0.0', 'NA', 'update',
-                      'CHL',  'QTY_SURFACE_CHLOROPHYLL',        '0.0', 'NA', 'update'
+                      'CHL',  'QTY_SURFACE_CHLOROPHYLL',        'NA',  'NA', 'no_copyback'
   /
 
+&trans_mitdart_nml
+   go_to_dart    = .true.
+   do_bgc        = .true.
+   log_transform = .true.
+  / 
 
 &location_nml
    horiz_dist_only = .true.
@@ -458,7 +463,7 @@
    output_state_files    = 'check_me'
    verbose               = .TRUE.
    test1thru             = 0
-   run_tests             = 1, 2, 3, 4, 5, 7
+   run_tests             = 1
    x_ind                 = 37500001
    loc_of_interest       = 38.6, 20.0, 12.01
    quantity_of_interest  = 'QTY_TEMPERATURE'

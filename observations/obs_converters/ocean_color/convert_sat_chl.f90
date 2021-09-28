@@ -19,22 +19,22 @@ program convert_sat_chl
 !		chlor_a:display_max = 20.f ;
 
 
-use         types_mod,   only : r8, digits12
-use  time_manager_mod,   only : time_type, set_calendar_type, GREGORIAN, &
-                                set_time, get_time, print_time, &
-                                set_date, get_date, print_date, &
-                                operator(+), operator(-)
-use     utilities_mod,   only : initialize_utilities, find_namelist_in_file, &
-                                check_namelist_read, nmlfileunit, &
-                                error_handler, E_ERR, E_MSG, &
-                                finalize_utilities, do_nml_file, do_nml_term
-use      location_mod,   only : VERTISSURFACE, set_location
-use  obs_sequence_mod,   only : obs_type, obs_sequence_type, init_obs, &
-                                static_init_obs_sequence, init_obs_sequence, &
-                                set_copy_meta_data, set_qc_meta_data, &
-                                get_num_obs, write_obs_seq, destroy_obs_sequence
+use types_mod,            only : r8, digits12
+use time_manager_mod,     only : time_type, set_calendar_type, GREGORIAN, &
+                                 set_time, get_time, print_time, &
+                                 set_date, get_date, print_date, &
+                                 operator(+), operator(-)
+use utilities_mod,        only : initialize_utilities, find_namelist_in_file, &
+                                 check_namelist_read, nmlfileunit, &
+                                 error_handler, E_ERR, E_MSG, &
+                                 finalize_utilities, do_nml_file, do_nml_term
+use location_mod,         only : VERTISSURFACE, set_location
+use obs_sequence_mod,     only : obs_type, obs_sequence_type, init_obs, &
+                                 static_init_obs_sequence, init_obs_sequence, &
+                                 set_copy_meta_data, set_qc_meta_data, &
+                                 get_num_obs, write_obs_seq, destroy_obs_sequence
 use obs_utilities_mod,    only : create_3d_obs, add_obs_to_seq
-use      obs_kind_mod,    only : QTY_SURFACE_CHLOROPHYLL, OCEAN_COLOR
+use obs_kind_mod,         only : QTY_SURFACE_CHLOROPHYLL, OCEAN_COLOR
 use netcdf_utilities_mod, only : nc_check, nc_open_file_readonly, nc_close_file, &
                                  nc_get_variable, nc_get_attribute_from_variable, &
                                  nc_get_dimension_size, nc_get_variable_size 
@@ -74,7 +74,15 @@ real(digits12), allocatable :: time(:)
 real(r8), allocatable       :: lat(:), lon(:)
 real(r8), allocatable       :: chl(:,:)
 real(r8)                    :: missing_value
-real(r8)                    :: chl_error_sd
+real(r8)                    :: log_chl
+
+! Observation uncertainty: MAny studies indicate that 
+! obs error sd is 35% [e.g., Moore et al. 2009]
+! Discussed this with Ariane Verdy from UCSD, 
+! chl = log(data) to go from lognormal to normal pdf
+! if in the lognormal space sd is 0.5 the data value, 
+! then in the trasnformed space obs_err_sd is simply 0.35 
+real(r8) :: chl_error_sd = 0.35_r8
 
 ! If we need to mask other sea areas
 ! For instance, we are only interested in the Red Sea 
@@ -87,16 +95,14 @@ real(r8) :: lat_mask = 26.5_r8
 
 character(len=256) :: file_in         = 'chl_in.nc'
 character(len=256) :: file_out        = 'obs_seq.chl'
-real(r8)           :: error_sd_factor = 0.5_r8
-real(r8)           :: error_sd_thresh = 0.03_r8
+real(r8)           :: chl_thresh      = 0.03_r8
 integer            :: subsample_intv  = 1
 logical            :: special_mask    = .false.
 logical            :: debug           = .false.
 
 namelist /convert_sat_chl_nml/ file_in,         & 
                                file_out,        &
-                               error_sd_factor, &
-                               error_sd_thresh, &
+                               chl_thresh,      &
                                subsample_intv,  &
                                special_mask,    &
                                debug
@@ -166,7 +172,7 @@ TIMELOOP: do itime = 1,ndays
    call nc_check(io, source, context='get_var chl', ncid=ncid)
 
    first_obs = .true.
-   nmissing = 0
+   nmissing  = 0
    call init_obs(     obs, num_copies, num_qc)
    call init_obs(prev_obs, num_copies, num_qc)
    call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
@@ -177,7 +183,7 @@ TIMELOOP: do itime = 1,ndays
       lonloop: do i = 1, nlon, subsample_intv
 
          if (special_mask) then 
-            ! Upper right corner of the Red Sea domain (PErsian/Arabian Gulf)
+            ! Upper right corner of the Red Sea domain (Persian/Arabian Gulf)
             if (lon(i) >= lon_mask .and. lat(j) >= lat_mask .and. chl(i, j) /= missing_value) then  
                ! Make sure it's masked
                chl(i,j) = missing_value
@@ -189,11 +195,11 @@ TIMELOOP: do itime = 1,ndays
             cycle lonloop
          endif
 
-         ! Parametrize the obs error standard deviation 
-         chl_error_sd = error_sd_factor * chl(i, j)
-         chl_error_sd = max(error_sd_thresh, chl_error_sd)
- 
-         call create_3d_obs(lat(j), lon(i), 0.0_r8, VERTISSURFACE, chl(i,j), &
+         ! log-transform of the data
+         ! Assimilate the logarithm of the data
+         log_chl = log10(max(chl_thresh, chl(i, j))) 
+
+         call create_3d_obs(lat(j), lon(i), 0.0_r8, VERTISSURFACE, log_chl, &
                             OCEAN_COLOR, chl_error_sd, oday, osec, qc, obs)
          call add_obs_to_seq(obs_seq, obs, obs_time, prev_obs, prev_time, first_obs)
 

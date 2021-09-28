@@ -10,9 +10,8 @@
 
 &convert_sat_chl_nml
    file_in         = '../data/V2020350.L3m_DAY_SNPP_CHL_chlor_a_4km.nc'
-   file_out        = '../data/obs_seq_chl'
-   error_sd_factor = 0.5
-   error_sd_thresh = 0.03 
+   file_out        = 'obs_seq_chl'
+   chl_thresh      = 0.03 
    subsample_intv  = 1
    special_mask    = .true.
    debug           = .true.

@@ -8,10 +8,12 @@ work_dir=/Users/gharamti/Documents/DART_git/MITgcm-NBLING-DART/observations/obs_
 data_dir=/Users/gharamti/Documents/DART_git/MITgcm-NBLING-DART/observations/obs_converters/ocean_color/data
 mkdir -p $data_dir 
 
-date1=2020-12-01
-date2=2020-12-31
+date1=2018-10-01
+date2=2018-10-02
 resol=4km #4km, 9km
 obsname=chlor_a
+
+obs_seq_tag=obs_seq_chl
 
 minlat=10.0
 maxlat=30.0
@@ -56,19 +58,19 @@ inst=`echo $instrument | tr '[:upper:]' '[:lower:]'`
 
 for file in `curl -d "sensor=$inst&sdate=$date1&edate=$date2&dtype=L3m&addurl=1&results_as_file=1&search=*DAY*$obsname*$resol*" $web_page | grep getfile`; do
     curl -L -O -n -c ~/.urs_cookies -b ~/.urs_cookies $file
+    files+=(`echo $file | rev | cut -d'/' -f1-1 | rev`)
 done 
-
 
 # Modifications to the netcdf file 
 echo -e "\nPreparing the netcdf files for conversion .."
 
-files=`ls *.nc`
-
 cp ${work_dir}/input.nml ${data_dir}
 ln -sf ${work_dir}/advance_time .
 
-for ncfile in $files; do
-
+for k in `seq 1 ${#files[@]}`; do
+    
+    ncfile=${files[`expr $k - 1`]}
+ 
     year=`echo $ncfile | cut -c 2-5`
     days=`echo $ncfile | cut -c 6-8`
     pryr=`expr $year - 1`
@@ -98,11 +100,15 @@ echo -e "\nRunning the ocean color converter .."
 ln -sf ${work_dir}/convert_sat_chl .
 sed -i -e "s/.*debug.*/   debug           = .false./" input.nml
 
-for ncfile in $files; do
-    echo -e "\nObs sequence file: $ncfile \n"
+for k in `seq 1 ${#files[@]}`; do
+    
+    ncfile=${files[`expr $k - 1`]}
 
-    # Update the input filename
-    sed -i -e "s/.*file_in.*/   file_in         = '$ncfile'/" input.nml
+    echo -e "\nRaw obs NETCDF file: $ncfile"
+
+    # Update the input/output filename
+    sed -i' ' -e "s/.*file_in.*/   file_in         = '$ncfile'/" input.nml
+    sed -i' ' -e "s/.*file_out.*/   file_out        = '$obs_seq_tag'/" input.nml
 
     # Run the converter
     ./convert_sat_chl

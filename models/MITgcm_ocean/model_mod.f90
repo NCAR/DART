@@ -27,9 +27,14 @@ use    utilities_mod,      only : error_handler, E_ERR, E_WARN, E_MSG, &
                                   open_file, file_exist, find_textfile_dims, file_to_text, &
                                   string_to_real, string_to_logical
 
-use     obs_kind_mod,      only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT, &
-                                  QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT,        &
-                                  QTY_SURFACE_CHLOROPHYLL, get_index_for_quantity
+use     obs_kind_mod,      only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT,  &
+                                  QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT,         &
+                                  QTY_NITRATE_CONCENTRATION, QTY_SURFACE_CHLOROPHYLL,      &
+                                  QTY_PHOSPHATE_CONCENTRATION, QTY_DISSOLVED_OXYGEN,       &
+                                  QTY_PHYTOPLANKTON_BIOMASS, QTY_DISSOLVED_INORGANIC_IRON, &
+                                  QTY_DISSOLVED_INORGANIC_CARBON, QTY_DISSOLVED_ORGANIC_P, &
+                                  QTY_DISSOLVED_ORGANIC_NITROGEN, QTY_ALKALINITY,          &
+                                  get_index_for_quantity
 
 use mpi_utilities_mod,     only : my_task_id
 
@@ -287,6 +292,12 @@ namelist /model_nml/ assimilation_period_days,     &
                      model_shape_file,             &
                      mitgcm_variables
 
+logical :: go_to_dart    = .false.
+logical :: do_bgc        = .false.
+logical :: log_transform = .false.
+
+namelist /trans_mitdart_nml/ go_to_dart, do_bgc, log_transform
+
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
 !  private
@@ -350,6 +361,11 @@ call check_namelist_read(iunit, io, "model_nml")
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 if (do_output()) write(logfileunit, nml=model_nml)
 if (do_output()) write(     *     , nml=model_nml)
+
+! mit2dart, dart2mit interface
+call find_namelist_in_file("input.nml", "trans_mitdart_nml", iunit)
+read(iunit, nml = trans_mitdart_nml, iostat = io)
+call check_namelist_read(iunit, io, "trans_mitdart_nml")
 
 ! MIT calendar information
 call find_namelist_in_file("data.cal", "CAL_NML", iunit)
@@ -1066,9 +1082,15 @@ get_val = get_state(state_index,state_handle)
 ! Just to maintain legacy, we also assume that A grid variable is assumed 
 ! to be masked if its value is exactly 0.
 ! See discussion in lat_lon_interpolate.
+
+! MEG CAUTION: THE ABOVE STATEMENT IS INCORRECT
+! trans_mitdart already looks for 0.0 and makes them FVAL
+! So, in the condition below we don't need to check for zeros
+! The only mask is FVAL
 masked = .false.
 do i=1,ens_size
-   if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
+!   if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
+    if(get_val(i) == FVAL) masked = .true.
 enddo
 
 end function get_val
@@ -2064,11 +2086,22 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    call to_upper(maxvalstring)
    call to_upper(updateable)
 
-   var_names(   i) = varname
-   quantity_list(   i) = get_index_for_quantity(dartstr)
-   clamp_vals(i,1) = string_to_real(minvalstring)
-   clamp_vals(i,2) = string_to_real(maxvalstring)
-   update_list( i) = string_to_logical(updateable, 'UPDATE')
+   var_names(i)     = varname
+   quantity_list(i) = get_index_for_quantity(dartstr)
+   clamp_vals(i, 1) = string_to_real(minvalstring)
+   clamp_vals(i, 2) = string_to_real(maxvalstring)
+   update_list(i)   = string_to_logical(updateable, 'UPDATE')
+
+   ! Adjust clamping in case of log-transform
+   if (quantity_list(i) == QTY_NITRATE_CONCENTRATION     ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_PHOSPHATE_CONCENTRATION   ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_OXYGEN          ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_PHYTOPLANKTON_BIOMASS     ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_ALKALINITY                ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_INORGANIC_CARBON) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_ORGANIC_P       ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_ORGANIC_NITROGEN) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_INORGANIC_IRON  ) call adjust_clamp(clamp_vals(i, 1))
 
    ngood = ngood + 1
 
@@ -2081,6 +2114,24 @@ if (ngood == MAX_STATE_VARIABLES) then
 endif
 
 end subroutine parse_variable_input
+
+
+!-----------------------------------------------------------------------
+!>
+!> We may choose to do a log transformation for the bgc tracers
+!> Make sure the user has the right lower_bound 
+
+subroutine adjust_clamp(lower_bound)
+
+real(r8), intent(inout) :: lower_bound
+
+if (log_transform) then 
+   lower_bound = MISSING_R8
+else
+   lower_bound = 0.0_r8
+endif
+
+end subroutine adjust_clamp
 
 
 !===================================================================
