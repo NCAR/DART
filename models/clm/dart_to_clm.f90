@@ -418,18 +418,13 @@ character(len=512) :: string1, string2
 ! can be used for SWE or snow depth.
 !@fixme
 
-!Multiple options for clm SWE variable
-if (nc_variable_exists(ncid_clm, 'H2OSNO')) then  
-   call nc_get_variable(ncid_clm, 'H2OSNO',  clm_H2OSNO, routine)
-elseif (nc_variable_exists(ncid_clm, 'H2OSNO_no_layers')) then
-   call nc_get_variable(ncid_clm, 'H2OSNO_no_layers',  clm_H2OSNO, routine)
-
+!The SWE variable must come from H2OSNO vector history
 !@fixme  Need to load ncid for clm vector history file
-elseif (nc_variable_exists(ncid_clm_vhist, 'H2OSNO', clm_H2OSNO, routine)   
+elseif (nc_variable_exists(!@fixme ncid_clm_vhist, 'H2OSNO', clm_H2OSNO, routine)   
    call nc_get_variable(ncid_clm, 'H2OSNO',  clm_H2OSNO, routine)
 else
    write(string1,*)'Snow repartitioning requires clm SWE variable'
-   write(string2,*)'Check restart/history files for "H2OSNO" or "H2OSNO_NO_LAYERS"'
+   write(string2,*)'Check for "H2OSNO" within clm vector history'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
@@ -482,12 +477,10 @@ endif
 
 ! Variables associated with dart_posterior.nc
 if (nc_variable_exists(ncid_dart, 'H2OSNO')) then
-   call nc_get_variable(ncid_clm, 'H2OSNO',  dart_H2OSNO, routine)
-elseif (nc_variable_exists(ncid_dart, 'H2OSNO_no_layers')) then
-   call nc_get_variable(ncid_clm, 'H2OSNO_no_layers',  dart_H2OSNO, routine)
+   call nc_get_variable(ncid_dart, 'H2OSNO',  dart_H2OSNO, routine)
 else
    write(string1,*)'Snow repartitioning requires a SWE variable in DART state'
-   write(string2,*)'Check that H2OSNO variable is in DART model_nml'
+   write(string2,*)'Check that H2OSNO variable is in DART model_nml as vector'
    call error_handler(E_ERR,routine,string1,source)
 endif
 
