@@ -382,13 +382,10 @@ if (tests_to_run(7)) then
                            'Finding the state vector index closest to a given location.', &
                             starting=.true.)
 
-   if (task_count() > 1) then
-      call print_info_message('Skipping closest gridpoint test when running with MPI')
-   else
-      call find_closest_gridpoint(loc_of_interest, &
-                                  interp_test_vertcoord, &
-                                  quantity_of_interest)
-   endif
+   call find_closest_gridpoint(loc_of_interest, &
+                               interp_test_vertcoord, &
+                               quantity_of_interest, &
+                               ens_handle)
 
    call print_test_message('TEST 7', ending=.true.)
 

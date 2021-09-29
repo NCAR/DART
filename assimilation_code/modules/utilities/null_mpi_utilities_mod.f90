@@ -80,6 +80,21 @@ interface sum_across_tasks
    module procedure sum_across_tasks_real
 end interface
 
+! allow send/recv to work on real arrays, real scalars and i8 scalars
+! add more if you need other combinations
+interface send_to
+   module procedure send_to_real_array
+   module procedure send_to_real_scalar
+   module procedure send_to_i8_scalar
+end interface
+
+interface receive_from
+   module procedure receive_from_real_array
+   module procedure receive_from_real_scalar
+   module procedure receive_from_i8_scalar
+end interface
+
+
 !   ---- private data for mpi_utilities ----
 
 integer :: myrank        = 0  ! my mpi number
@@ -227,7 +242,7 @@ end subroutine task_sync
 !> This communication style cannot be easily simulated correctly with one task.
 !> If called, always throw an error.
 
-subroutine send_to(dest_id, srcarray, time, label)
+subroutine send_to_real_array(dest_id, srcarray, time, label)
  integer, intent(in) :: dest_id
  real(r8), intent(in) :: srcarray(:)
  type(time_type), intent(in), optional :: time
@@ -236,7 +251,33 @@ subroutine send_to(dest_id, srcarray, time, label)
 write(errstring, '(a)') "cannot call send_to() in the single process case"
       call error_handler(E_ERR,'send_to', errstring, source)
 
-end subroutine send_to
+end subroutine send_to_real_array
+
+
+!-----------------------------------------------------------------------------
+
+!> Send the src real to the destination task id.
+!> no-op
+
+subroutine send_to_real_scalar(dest_id, srcval, label)
+ integer, intent(in) :: dest_id
+ real(r8), intent(in) :: srcval
+ character(len=*), intent(in), optional :: label
+
+end subroutine send_to_real_scalar
+
+
+!-----------------------------------------------------------------------------
+
+!> Send the src long int to the destination task id.
+!> no-op
+
+subroutine send_to_i8_scalar(dest_id, srcval, label)
+ integer, intent(in) :: dest_id
+ integer(i8), intent(in) :: srcval
+ character(len=*), intent(in), optional :: label
+
+end subroutine send_to_i8_scalar
 
 
 !-----------------------------------------------------------------------------
@@ -245,7 +286,7 @@ end subroutine send_to
 !> This communication style cannot be easily simulated correctly with one task.
 !> If called, always throw an error.
 
-subroutine receive_from(src_id, destarray, time, label)
+subroutine receive_from_real_array(src_id, destarray, time, label)
  integer, intent(in) :: src_id
  real(r8), intent(inout) :: destarray(:)    ! really only out, but avoid compiler warnings
  type(time_type), intent(out), optional :: time
@@ -254,7 +295,33 @@ subroutine receive_from(src_id, destarray, time, label)
 write(errstring, '(a)') "cannot call receive_from() in the single process case"
       call error_handler(E_ERR,'receive_from', errstring, source)
 
-end subroutine receive_from
+end subroutine receive_from_real_array
+
+
+!-----------------------------------------------------------------------------
+
+!> Receive the src real from the source task id.
+!> no-op
+
+subroutine receive_from_real_scalar(dest_id, dstval, label)
+ integer, intent(in) :: dest_id
+ real(r8), intent(inout) :: dstval
+ character(len=*), intent(in), optional :: label
+
+end subroutine receive_from_real_scalar
+
+
+!-----------------------------------------------------------------------------
+
+!> Receive the src long int from the source task id.
+!> no-op
+
+subroutine receive_from_i8_scalar(dest_id, dstval, label)
+ integer, intent(in) :: dest_id
+ integer(i8), intent(inout) :: dstval
+ character(len=*), intent(in), optional :: label
+
+end subroutine receive_from_i8_scalar
 
 
 

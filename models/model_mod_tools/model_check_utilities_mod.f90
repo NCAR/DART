@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 module model_check_utilities_mod
 
@@ -13,6 +11,9 @@ module model_check_utilities_mod
 use             types_mod, only : r8, i8, metadatalength, missing_r8
 
 use         utilities_mod, only : error_handler, E_MSG, do_output
+
+use     mpi_utilities_mod, only : my_task_id, task_count, &
+                                  send_to, receive_from
 
 use          location_mod, only : location_type, &
                                   write_location, &
@@ -35,11 +36,6 @@ public :: test_single_interpolation, &
           find_closest_gridpoint, &
           count_error_codes, &
           verify_consistent_istatus
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
 
 ! for messages
 character(len=512) :: string1, string2, string3
@@ -141,11 +137,12 @@ end subroutine count_error_codes
 !> for every variable in each domain. This could help ensure grid
 !> staggering is being handled correctly.
 
-subroutine find_closest_gridpoint(loc_of_interest, vertcoord_string, quantity_string)
+subroutine find_closest_gridpoint(loc_of_interest, vertcoord_string, quantity_string, ens_handle)
 
-real(r8),         intent(in) :: loc_of_interest(:)
-character(len=*), intent(in) :: vertcoord_string
-character(len=*), intent(in) :: quantity_string
+real(r8),            intent(in) :: loc_of_interest(:)
+character(len=*),    intent(in) :: vertcoord_string
+character(len=*),    intent(in) :: quantity_string
+type(ensemble_type), intent(in) :: ens_handle
 
 ! At this point, find_closest_gridpoint() only works for location modules that do not
 ! have a choice for vertical coordinate systems, so the argument is ignored.
@@ -156,22 +153,29 @@ character(len=*), parameter :: routine = ''  ! name not important in context
 
 type(location_type)   :: location
 type(location_type)   :: loc1
-integer(i8)           :: i
-integer               :: quantity_index, var_type
-real(r8)              :: closest
+integer               :: i, quantity_index, var_qty, myvars, num_tasks
+integer(i8)           :: closest_index, state_index
+integer(i8), allocatable :: global_index(:)
+real(r8)              :: closest_dist, next_dist
+real(r8), allocatable :: global_dist(:)
 logical               :: matched
-real(r8), allocatable :: thisdist(:)
 real(r8),   parameter :: FARAWAY = huge(r8)
-character(len=metadatalength) :: myquantity
+
+!>@todo does the following comment means this code doesn't work correctly for multiple 
+! domains?  or that it should report on a domain by domain basis?  sorry - i don't know what
+! it is trying to say. right now the code iterates the entire state vector and reports 
+! the first occurrance of the closest gridpoint, from any domain from any variable of
+! the requested quantity.
 
 !>@todo there should be arrays of length state_structure_mod:get_num_variables(domid)
 !>      get_num_domains(), get_num_variables() ...
 
 location = set_location(loc_of_interest)
 
-allocate( thisdist(get_model_size()) )
-thisdist  = FARAWAY
-matched   = .false.
+! for single task this is equal to model_size.
+! for multiple tasks this is the share of the state
+! vector that is on my task.
+myvars = ens_handle%my_num_vars
 
 ! Trying to support the ability to specify matching a particular QUANTITY.
 ! With staggered grids, the closest gridpoint might not be of the quantity
@@ -179,55 +183,90 @@ matched   = .false.
 
 quantity_index = get_index_for_quantity(quantity_string)
 
-write(string1,*)'Checking for indices into the state vector that are close to'
-call write_location(0, location, charstring=string2)
-write(string3,*)trim(string2),' for "',trim(quantity_string),'"'
-call error_handler(E_MSG,routine,string1,text2=string3)
-call error_handler(E_MSG,routine,'')
+if (my_task_id() == 0) then
+   write(string1,*)'Checking for indices into the state vector that are close to'
+   call write_location(0, location, charstring=string2)
+   write(string3,*)trim(string2),' for "',trim(quantity_string),'"'
+   call error_handler(E_MSG,routine,string1,text2=string3)
+   call error_handler(E_MSG,routine,'')
+endif
 
-! Since there can be/will be multiple variables with
-! identical distances, we will just cruise once through
-! the array and come back to find all the 'identical' values.
+! Change this from previous behavior.  Only save the first
+! occurrance of the closest location if more than one has
+! the same distance.
 
-DISTANCE : do i = 1,get_model_size()
+closest_dist = FARAWAY
+closest_index = -1_r8
+matched   = .false.
 
-   call get_state_meta_data(i, loc1, var_type)
+DISTANCE : do i = 1, myvars
 
-   if (var_type .ne. quantity_index) cycle DISTANCE
+   ! get the global index number for the next item on my task
+   ! (same as i if running single task)
+   state_index = ens_handle%my_vars(i)
 
-   thisdist(i) = get_dist(loc1, location)
+   call get_state_meta_data(state_index, loc1, var_qty)
+
+   if (var_qty .ne. quantity_index) cycle DISTANCE
+
+   next_dist = get_dist(loc1, location)
+   if (next_dist < closest_dist) then
+      closest_dist = next_dist
+      closest_index = state_index
+   endif
    matched     = .true.
 
 enddo DISTANCE
 
 if (.not. matched) then
-   write(string1,*)'No state vector elements of type "'//trim(quantity_string)//'"'
+   write(string1,*)'Found no state vector elements of quantity "'//trim(quantity_string)//'"'
    call error_handler(E_MSG, routine, string1)
-   deallocate( thisdist )
    return
 endif
 
-closest = minval(thisdist)
+num_tasks = task_count()
 
-! Now that we know the distances ... report
-! If more than one quantity has the same distance, report all.
-! Be aware that if 'approximate_distance' is .true., everything
-! in the box has a single location.
+if (num_tasks > 1) then
+   
+   ! must send distances to task 0 and have it find the closest one
+   ! from all tasks.
+   if (my_task_id() == 0) then
+      allocate(global_dist(0:num_tasks-1))
+      allocate(global_index(0:num_tasks-1))
 
-REPORT: do i = 1,get_model_size()
+      ! my values, then get the rest from the other tasks
+      global_dist(0) = closest_dist
+      global_index(0) = state_index
+      do i = 1, num_tasks - 1
+         call receive_from(i, global_dist(i))
+         call receive_from(i, global_index(i))
+      enddo
 
-   if ( thisdist(i) == closest ) then
-      call get_state_meta_data(i, loc1, var_type)
-      myquantity = get_name_for_quantity(var_type)
+      ! get the index in the distance array that's the smallest
+      ! and account for the fact that this array starts at index 0
+      ! (mpi tasks are numbered 0 to num_tasks-1, which leads fortran
+      ! programming to always be off by one somehow since fortran
+      ! arrays start at index 1. sigh.)
+      i = minloc(global_dist, 1)
+      closest_dist = global_dist(i-1)
+      closest_index = global_index(i-1)
 
-      call write_location(0, loc1, charstring=string2)
-      write(string1,'(A,I12,A)')trim(string2)//' is index ',i,' ('//trim(myquantity)//')'
-      call error_handler(E_MSG, routine, string1)
+      deallocate(global_dist, global_index)
+      
+   else
+      ! send distance and i8 index of my closest item
+      call send_to(0, closest_dist)
+      call send_to(0, closest_index)
    endif
+   
+endif
 
-enddo REPORT
-
-deallocate( thisdist )
+if (my_task_id() == 0) then
+   call get_state_meta_data(closest_index, loc1, var_qty)
+   call write_location(0, loc1, charstring=string2)
+   write(string1,'(A,I12,A)') 'state vector index ', closest_index, ' is closest at '//trim(string2)
+   call error_handler(E_MSG, routine, string1)
+endif
 
 end subroutine find_closest_gridpoint
 

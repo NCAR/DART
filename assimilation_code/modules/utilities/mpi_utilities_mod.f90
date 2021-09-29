@@ -107,6 +107,20 @@ interface sum_across_tasks
    module procedure sum_across_tasks_real
 end interface
 
+! allow send/recv to work on real arrays, real scalars and i8 scalars
+! add more if you need other combinations
+interface send_to
+   module procedure send_to_real_array
+   module procedure send_to_real_scalar
+   module procedure send_to_i8_scalar
+end interface
+
+interface receive_from
+   module procedure receive_from_real_array
+   module procedure receive_from_real_scalar
+   module procedure receive_from_i8_scalar
+end interface
+
 !   ---- private data for mpi_utilities ----
 
 integer :: myrank        = -1  ! my mpi number
@@ -532,7 +546,7 @@ end subroutine task_sync
 !> called receive to accept the data.  If the send_to/receive_from calls are 
 !> not paired correctly the code will hang.
 
-subroutine send_to(dest_id, srcarray, time, label)
+subroutine send_to_real_array(dest_id, srcarray, time, label)
  integer, intent(in) :: dest_id
  real(r8), intent(in) :: srcarray(:)
  type(time_type), intent(in), optional :: time
@@ -643,9 +657,115 @@ if (make_copy_before_sendrecv) deallocate(tmpdata)
 
 if (verbose) write(*,*) "PE", myrank, ": end of send_to "
 
-end subroutine send_to
+end subroutine send_to_real_array
+!-----------------------------------------------------------------------------
 
 
+!> Send a single scalar real to the destination id.
+!> This is a synchronous call; it will not return until the destination has 
+!> called receive to accept the data.  If the send_to/receive_from calls are 
+!> not paired correctly the code will hang.
+
+subroutine send_to_real_scalar(dest_id, srcval, label)
+ integer, intent(in) :: dest_id
+ real(r8), intent(in) :: srcval
+ character(len=*), intent(in), optional :: label
+
+integer :: tag, errcode
+integer :: itemcount, offset, nextsize
+real(r8) :: srcarray(1)
+
+if (verbose) write(*,*) "PE", myrank, ": start of send_to "
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'send_to', errstring, source)
+endif
+
+! simple idiotproofing
+if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
+   write(errstring, '(a,i8,a,i8)') "destination task id ", dest_id, &
+                                   "must be >= 0 and < ", total_tasks
+   call error_handler(E_ERR,'send_to', errstring, source)
+endif
+
+itemcount = 1
+srcarray(1) = srcval
+
+if (present(label)) then
+   write(*,*) trim(label)//" PE", myrank, ": send_to itemsize ", itemcount, " dest ", dest_id
+else if (verbose) then
+   write(*,*) "PE", myrank, ": send_to itemsize ", itemcount, " dest ", dest_id
+endif
+
+! use my task id as the tag; unused at this point.
+tag = myrank
+
+call MPI_Ssend(srcarray, itemcount, datasize, dest_id, tag, &
+               my_local_comm, errcode)
+
+if (errcode /= MPI_SUCCESS) then
+   write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
+   call error_handler(E_ERR,'send_to', errstring, source)
+endif
+
+if (verbose) write(*,*) "PE", myrank, ": end of send_to "
+
+end subroutine send_to_real_scalar
+!-----------------------------------------------------------------------------
+
+
+!> Send a single scalar long integer to the destination id.
+!> This is a synchronous call; it will not return until the destination has 
+!> called receive to accept the data.  If the send_to/receive_from calls are 
+!> not paired correctly the code will hang.
+
+subroutine send_to_i8_scalar(dest_id, srcval, label)
+ integer, intent(in) :: dest_id
+ integer(i8), intent(in) :: srcval
+ character(len=*), intent(in), optional :: label
+
+integer :: tag, errcode
+integer :: itemcount, offset, nextsize
+integer(i8) :: srcarray(1)
+
+if (verbose) write(*,*) "PE", myrank, ": start of send_to "
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'send_to', errstring, source)
+endif
+
+! simple idiotproofing
+if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
+   write(errstring, '(a,i8,a,i8)') "destination task id ", dest_id, &
+                                   "must be >= 0 and < ", total_tasks
+   call error_handler(E_ERR,'send_to', errstring, source)
+endif
+
+itemcount = 1
+srcarray(1) = srcval
+
+if (present(label)) then
+   write(*,*) trim(label)//" PE", myrank, ": send_to itemsize ", itemcount, " dest ", dest_id
+else if (verbose) then
+   write(*,*) "PE", myrank, ": send_to itemsize ", itemcount, " dest ", dest_id
+endif
+
+! use my task id as the tag; unused at this point.
+tag = myrank
+
+call MPI_Ssend(srcarray, itemcount, MPI_INTEGER8, dest_id, tag, &
+               my_local_comm, errcode)
+
+if (errcode /= MPI_SUCCESS) then
+   write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
+   call error_handler(E_ERR,'send_to', errstring, source)
+endif
+
+if (verbose) write(*,*) "PE", myrank, ": end of send_to "
+
+end subroutine send_to_i8_scalar
 !-----------------------------------------------------------------------------
 
 !> Receive data into the destination array from the src task.
@@ -654,7 +774,7 @@ end subroutine send_to
 !> sent the data.  If the send_to/receive_from calls are not paired correctly 
 !> the code will hang.
 
-subroutine receive_from(src_id, destarray, time, label)
+subroutine receive_from_real_array(src_id, destarray, time, label)
  integer, intent(in) :: src_id
  real(r8), intent(inout) :: destarray(:)
  type(time_type), intent(out), optional :: time
@@ -774,7 +894,128 @@ if (make_copy_before_sendrecv) deallocate(tmpdata)
 if (verbose) write(*,*) "PE", myrank, ": end of receive_from "
 
 
-end subroutine receive_from
+end subroutine receive_from_real_array
+!-----------------------------------------------------------------------------
+
+!> Receive a single scalar real from the source task.
+!> This is a synchronous call; it will not return until the source has 
+!> sent the data.  If the send_to/receive_from calls are not paired correctly 
+!> the code will hang.
+
+subroutine receive_from_real_scalar(src_id, destval, label)
+ integer, intent(in) :: src_id
+ real(r8), intent(inout) :: destval
+ character(len=*), intent(in), optional :: label
+
+integer :: tag, errcode
+integer :: status(MPI_STATUS_SIZE)
+integer :: itemcount
+real(r8) :: destarray(1)
+
+if (verbose) write(*,*) "PE", myrank, ": start of receive_from "
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'receive_from', errstring, source)
+endif
+
+! simple idiotproofing
+if ((src_id < 0) .or. (src_id >= total_tasks)) then
+   write(errstring, '(a,i8,a,i8)') "source task id ", src_id, &
+                                   "must be >= 0 and < ", total_tasks
+   call error_handler(E_ERR,'receive_from', errstring, source)
+endif
+
+itemcount = 1
+
+if (present(label)) then
+   write(*,*) trim(label)//" PE", myrank, ": receive_from itemsize ", itemcount, " src ", src_id
+else if (verbose) then
+   write(*,*) "PE", myrank, ": receive_from itemsize ", itemcount, " src ", src_id
+endif
+
+! send_to uses its own id as the tag.
+tag = src_id
+
+if (verbose) write(*,*) "PE", myrank, ": receive ", itemcount, " src ", src_id
+
+call MPI_Recv(destarray, itemcount, datasize, src_id, MPI_ANY_TAG, &
+              my_local_comm, status, errcode)
+
+if (errcode /= MPI_SUCCESS) then
+   write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+   call error_handler(E_ERR,'receive_from', errstring, source)
+endif
+
+destval = destarray(1)
+
+if (verbose) write(*,*) "PE", myrank, ": received from ", src_id
+
+if (verbose) write(*,*) "PE", myrank, ": end of receive_from "
+
+
+end subroutine receive_from_real_scalar
+!-----------------------------------------------------------------------------
+
+!> Receive a single scalar long integer from the source task.
+!> This is a synchronous call; it will not return until the source has 
+!> sent the data.  If the send_to/receive_from calls are not paired correctly 
+!> the code will hang.
+
+subroutine receive_from_i8_scalar(src_id, destval, label)
+ integer, intent(in) :: src_id
+ integer(i8), intent(inout) :: destval
+ character(len=*), intent(in), optional :: label
+
+integer :: tag, errcode
+integer :: status(MPI_STATUS_SIZE)
+integer :: itemcount, offset, nextsize
+integer(i8) :: destarray(1)
+
+if (verbose) write(*,*) "PE", myrank, ": start of receive_from "
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'receive_from', errstring, source)
+endif
+
+! simple idiotproofing
+if ((src_id < 0) .or. (src_id >= total_tasks)) then
+   write(errstring, '(a,i8,a,i8)') "source task id ", src_id, &
+                                   "must be >= 0 and < ", total_tasks
+   call error_handler(E_ERR,'receive_from', errstring, source)
+endif
+
+itemcount = 1
+
+if (present(label)) then
+   write(*,*) trim(label)//" PE", myrank, ": receive_from itemsize ", itemcount, " src ", src_id
+else if (verbose) then
+   write(*,*) "PE", myrank, ": receive_from itemsize ", itemcount, " src ", src_id
+endif
+
+! send_to uses its own id as the tag.
+tag = src_id
+
+if (verbose) write(*,*) "PE", myrank, ": receive ", itemcount, " src ", src_id
+
+call MPI_Recv(destarray, itemcount, MPI_INTEGER8, src_id, MPI_ANY_TAG, &
+              my_local_comm, status, errcode)
+
+if (errcode /= MPI_SUCCESS) then
+   write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+   call error_handler(E_ERR,'receive_from', errstring, source)
+endif
+
+destval = destarray(1)
+
+if (verbose) write(*,*) "PE", myrank, ": received from ", src_id
+
+if (verbose) write(*,*) "PE", myrank, ": end of receive_from "
+
+
+end subroutine receive_from_i8_scalar
+!-----------------------------------------------------------------------------
 
 
 !-----------------------------------------------------------------------------
