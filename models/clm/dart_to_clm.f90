@@ -63,6 +63,7 @@ use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_get_variable, &
                                  nc_put_variable, &
                                  nc_close_file, &
+                                 nc_variable_exists, &
                                  NF90_MAX_NAME, NF90_MAX_VAR_DIMS
 
 implicit none
@@ -407,32 +408,111 @@ real(r8), allocatable :: clm_DZSNO(:,:)
 real(r8), allocatable :: clm_H2OLIQ(:,:)
 real(r8), allocatable :: clm_H2OICE(:,:)
 
-!@fixme Check existence for snow related variables in DART vector
-! If they do not exist, throw error immediately, provide instructions
-! Also use this opportunity to see if SNOWDP or SNOW_DEPTH is available
-! Use this generic variable snow variable here, so you don't need if
-! statements throughout
+character(len=512) :: string1, string2
+
+!@fixme Check existence for snow related variables required to be
+! in DART state and CLM domain (restart,history,vector history)
+! If they do not exist, throw error immediately, provide guidance.
+! Also use this opportunity to locate proper SWE and snow depth clm
+! variables. Multiple names and multiple domains (restart, vectory history)
+! can be used for SWE or snow depth.
 !@fixme
 
-! Check that variables in both files are same shape
-! Check with representative variable
-call Compatible_Variables('H2OSOI_ICE', ncid_dart, ncid_clm, varsize)
+!Multiple options for clm SWE variable
+if (nc_variable_exists(ncid_clm, 'H2OSNO')) then  
+   call nc_get_variable(ncid_clm, 'H2OSNO',  clm_H2OSNO, routine)
+elseif (nc_variable_exists(ncid_clm, 'H2OSNO_no_layers')) then
+   call nc_get_variable(ncid_clm, 'H2OSNO_no_layers',  clm_H2OSNO, routine)
 
-! Variables associated with clm_restart.nc
-! These are prior values
-call nc_get_variable(ncid_clm, 'H2OSNO',  clm_H2OSNO)
-call nc_get_variable(ncid_clm, 'SNLSNO',  clm_SNLSNO)
-call nc_get_variable(ncid_clm, 'SNOW_DEPTH',  clm_SNOWDP)
-call nc_get_variable(ncid_clm, 'DZSNO',  clm_DZSNO)
-call nc_get_variable(ncid_clm, 'H2OSOI_LIQ',  clm_H2OLIQ)
-call nc_get_variable(ncid_clm, 'H2OSOI_ICE',  clm_H2OICE)
-nlevsno = nc_get_dimension_size(ncid,'levsno') 
+!@fixme  Need to load ncid for clm vector history file
+elseif (nc_variable_exists(ncid_clm_vhist, 'H2OSNO', clm_H2OSNO, routine)   
+   call nc_get_variable(ncid_clm, 'H2OSNO',  clm_H2OSNO, routine)
+else
+   write(string1,*)'Snow repartitioning requires clm SWE variable'
+   write(string2,*)'Check restart/history files for "H2OSNO" or "H2OSNO_NO_LAYERS"'
+   call error_handler(E_ERR,routine,string1,source,text2=string2)
+endif
+
+!Multiple options for clm snow depth variable
+if (nc_variable_exists(ncid_clm, 'SNOW_DEPTH')) then
+   call nc_get_variable(ncid_clm, 'SNOW_DEPTH',  clm_SNOWDP)
+elseif (nc_variable_exists(ncid_clm, 'SNOWDP')) then
+   call nc_get_variable(ncid_clm, 'SNOWDP',  clm_SNOWDP)
+else
+   write(string1,*)'Snow repartitioning requires clm snow depth variable'
+   write(string2,*)'Check restart/history files for "SNOW_DEPTH" or "SNOWDP"'
+   call error_handler(E_ERR,routine,string1,source,text2=string2)
+endif
+
+
+if (nc_variable_exists(ncid_clm, 'SNLSNO')) then
+   call nc_get_variable(ncid_clm, 'SNLSNO',  clm_SNLSNO)
+else
+   write(string1,*)'Snow repartitioning requires clm snow layer variable "SNLSNO"'
+   call error_handler(E_ERR,routine,string1,source)
+endif
+
+if (nc_variable_exists(ncid_clm, 'DZSNO')) then
+   call nc_get_variable(ncid_clm, 'DZSNO',  clm_DZSNO)
+else
+   write(string1,*)'Snow repartitioning requires clm snow layer depth variable "DZSNO"'
+   call error_handler(E_ERR,routine,string1,source)
+endif
+
+if (nc_variable_exists(ncid_clm, 'H2OSOI_LIQ')) then
+   call nc_get_variable(ncid_clm, 'H2OSOI_LIQ',  clm_H2OLIQ)
+else
+   write(string1,*)'Snow repartitioning requires clm snow variable "H2OSOI_LIQ"'
+   call error_handler(E_ERR,routine,string1,source)
+endif
+
+if (nc_variable_exists(ncid_clm, 'H2OSOI_ICE')) then
+   call nc_get_variable(ncid_clm, 'H2OSOI_ICE',  clm_H2OICE)
+else
+   write(string1,*)'Snow repartitioning requires clm snow layer variable "H2OSOI_ICE"'
+   call error_handler(E_ERR,routine,string1,source)
+endif
+
+if (nc_variable_exists(ncid_clm, 'levsno')) then
+   nlevsno = nc_get_dimension_size(ncid_clm, 'levsno')
+else
+   write(string1,*)'Snow repartitioning requires clm snow layer attribute "levsno"'
+   call error_handler(E_ERR,routine,string1,source)
+endif
+
 ! Variables associated with dart_posterior.nc
-call nc_get_variable(ncid_dart, 'H2OSNO', dart_H2OSNO)
-call nc_get_variable(ncid_dart, 'SNOW_DEPTH', dart_SNOWDP)
-call nc_get_variable(ncid_dart, 'DZSNO', dart_DZSNO)
-call nc_get_variable(ncid_dart, 'H2OSOI_LIQ', dart_H2OLIQ)
-call nc_get_variable(ncid_dart, 'H2OSOI_ICE', dart_H2OICE)
+if (nc_variable_exists(ncid_dart, 'H2OSNO')) then
+   call nc_get_variable(ncid_clm, 'H2OSNO',  dart_H2OSNO, routine)
+elseif (nc_variable_exists(ncid_dart, 'H2OSNO_no_layers')) then
+   call nc_get_variable(ncid_clm, 'H2OSNO_no_layers',  dart_H2OSNO, routine)
+else
+   write(string1,*)'Snow repartitioning requires a SWE variable in DART state'
+   write(string2,*)'Check that H2OSNO variable is in DART model_nml'
+   call error_handler(E_ERR,routine,string1,source)
+endif
+
+if (nc_variable_exists(ncid_dart, 'DZSNO')) then
+   call nc_get_variable(ncid_dart, 'DZSNO', dart_DZSNO)
+else
+   write(string1,*)'Snow repartitioning requires "DZSNO" within DART state'
+endif
+
+if (nc_variable_exists(ncid_dart, 'H2OSOI_LIQ')) then
+   call nc_get_variable(ncid_dart, 'H2OSOI_LIQ', dart_H2OLIQ)
+else
+   write(string1,*)'Snow repartitioning requires "H2OSOI_LIQ" within DART state'
+endif
+
+if (nc_variable_exists(ncid_dart, 'H2OSOI_ICE')) then
+   call nc_get_variable(ncid_dart, 'H2OSOI_ICE', dart_H2OICE)
+else
+   write(string1,*)'Snow repartitioning requires "H2OSOI_ICE" within DART state'
+endif
+
+
+! END clm variable and DART state checks
+
+
 
 h2osno_pr=clm_H2OSNO
 snlsno=clm_SNLSNO
@@ -462,6 +542,10 @@ h2oice_po = h2oice_pr
 ! Adjust the variables to be consistent with the updated H2OSNO
 ! Remember: snlsno has the NEGATIVE of the number of snow layers. 
 
+
+! Grab column varsize for PARTITION loop
+call Compatible_Variables('H2OSOI_ICE', ncid_dart, ncid_clm, varsize)
+
 PARTITION: do icolumn = 1,varsize(2)
       
    if (h2osno_po(icolumn) < 0.0_r8) then  ! If there IS NOT snow in column...
@@ -469,7 +553,7 @@ PARTITION: do icolumn = 1,varsize(2)
       write(*,*)'negative value found: column ',icolumn
       
       ! Force any existing layers to be near zero but not exactly zero
-      ! Leave layer aggregation to CLM
+      ! Leave layer aggregation/initialization to CLM
       do ilayer=1,-snlsno(icolumn)
 
          h2oliq_po(ilayer,icolumn) = 0.0_r8
