@@ -411,7 +411,7 @@ function add_domain_blank(domain_size) result(dom_id)
 integer(i8), intent(in) :: domain_size
 integer :: dom_id
 
-integer :: domain_offset
+integer(i8) :: domain_offset
 
 ! add to domains
 call assert_below_max_num_domains('add_domain_blank')
@@ -1391,7 +1391,8 @@ integer, intent(in) :: iloc, jloc, kloc
 integer, intent(in) :: dom_id, var_id
 integer(i8)         :: get_dart_vector_index
 
-integer :: ndims, offset
+integer :: ndims
+integer(i8) :: offset
 integer :: dsize(NF90_MAX_VAR_DIMS)
 
 ndims = get_num_dims(dom_id, var_id)
@@ -1546,7 +1547,8 @@ integer, intent(in) :: dom_id ! domain identifier
 
 integer :: ivar, jdim
 integer :: num_vars, num_dims, variable_size
-integer :: next_start, count_dims
+integer(i8) :: next_start
+integer :: count_dims
 integer(i8) :: domain_offset
 
 if ( state%domain(dom_id)%method /= 'spec') then
