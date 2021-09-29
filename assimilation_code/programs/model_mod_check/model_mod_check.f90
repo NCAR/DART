@@ -53,13 +53,6 @@ implicit none
 
 character(len=*), parameter :: source = 'model_mod_check.f90'
 
-! TODO:  tests 6 and 7 need to be revisited for running with
-!        multiple tasks and large state vectors.  be sure
-!        multiple tasks aren't trying to write to the same
-!        output file (write_state is ok).  be sure tests 
-!        aren't allocating get_model_size() arrays.  
-!        they should only allocate ensemble_handle%my_num_vars 
-!        for the part of the state vector on their task.
 
 integer, parameter :: MAX_TESTS = 7
 
