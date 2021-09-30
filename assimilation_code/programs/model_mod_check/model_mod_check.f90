@@ -427,11 +427,15 @@ if (tests_to_run(7)) then
                            'Finding the state vector index closest to a given location.', &
                             starting=.true.)
 
+   call create_state_window(ens_handle)
+
    location_of_interest = setup_location(loc_of_interest, interp_test_vertcoord)
 
    call find_closest_gridpoint(location_of_interest, &
                                quantity_of_interest, &
                                ens_handle)
+
+   call create_state_window(ens_handle)
 
    call print_test_message('TEST 7', ending=.true.)
 

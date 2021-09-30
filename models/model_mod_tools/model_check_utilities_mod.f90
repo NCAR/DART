@@ -19,8 +19,7 @@ use          location_mod, only : location_type, &
                                   write_location, &
                                   get_dist, &
                                   query_location, &
-                                  has_vertical_choice, &
-                                  convert_vertical_state
+                                  has_vertical_choice
 
 use          obs_kind_mod, only : get_name_for_quantity, &
                                   get_index_for_quantity
@@ -29,7 +28,8 @@ use  ensemble_manager_mod, only : ensemble_type
 
 use             model_mod, only : get_model_size, &
                                   get_state_meta_data, &
-                                  model_interpolate
+                                  model_interpolate, &
+                                  convert_vertical_state
 
 implicit none
 private
@@ -150,7 +150,7 @@ type(ensemble_type), intent(in) :: ens_handle
 ! test_interpolate_threed_sphere.f90
 
 type(location_type)   :: loc1
-integer               :: i, quantity_index, var_qty, myvars, num_tasks
+integer               :: i, quantity_index, var_qty, myvars, num_tasks, vert_type
 integer(i8)           :: closest_index, state_index
 integer(i8), allocatable :: global_index(:)
 real(r8)              :: closest_dist, next_dist
@@ -187,6 +187,14 @@ if (my_task_id() == 0) then
    call error_handler(E_MSG,routine,'')
 endif
 
+! if there are multiple possibilities for the vertical in this
+! type of location, convert other locations to match the location of interest.
+if (has_vertical_choice()) then
+  vert_type = query_location(location)
+else
+  vert_type = 0
+endif
+
 ! Change this from previous behavior.  Only save the first
 ! occurrance of the closest location if more than one has
 ! the same distance.
@@ -204,6 +212,9 @@ DISTANCE : do i = 1, myvars
    call get_state_meta_data(state_index, loc1, var_qty)
 
    if (var_qty .ne. quantity_index) cycle DISTANCE
+
+   if (has_vertical_choice()) &
+      call vertical_convert_single_loc(loc1, state_index, var_qty, vert_type, ens_handle)
 
    next_dist = get_dist(loc1, location)
    if (next_dist < closest_dist) then
@@ -267,6 +278,8 @@ endif
 end subroutine find_closest_gridpoint
 
 !-------------------------------------------------------------------------------
+! convert all the locations on this task.  must check loclist before deallocating
+! to see if verticals have changed.
 
 subroutine do_vertical_convert(location, ens_handle)
 type(location_type), intent(in) :: location
@@ -326,6 +339,47 @@ if (istatus /= 0) then
 endif
 
 end subroutine do_vertical_convert
+
+!-------------------------------------------------------------------------------
+! convert a single location
+
+subroutine vertical_convert_single_loc(location, state_index, var_qty, vert_type, ens_handle)
+type(location_type), intent(inout) :: location
+integer(i8),         intent(in) :: state_index
+integer,             intent(in) :: var_qty
+integer,             intent(in) :: vert_type
+type(ensemble_type), intent(in) :: ens_handle
+
+integer :: i, myvars, istatus
+type(location_type) :: loclist(1)
+integer             :: qtylist(1)
+integer(i8)         :: indexlist(1)
+
+! if this location type includes more than a single vertical coordinate,
+! use the convert routine to convert all the verticals to match the
+! 'location of interest'.
+
+if (.not. has_vertical_choice()) return
+
+loclist(1) = location
+qtylist(1) = var_qty
+indexlist(1) = state_index
+
+
+! try to convert state locations to match the vertical of the test location
+call convert_vertical_state(ens_handle, 1, loclist, qtylist, indexlist, &
+                            vert_type, istatus)
+
+
+location = loclist(1)
+
+
+if (istatus /= 0) then
+   write(string1,*)'unable to convert vertical of state item ', state_index
+   call error_handler(E_MSG, routine, string1)
+endif
+
+end subroutine vertical_convert_single_loc
 
 !-------------------------------------------------------------------------------
 
