@@ -13,11 +13,11 @@ use             types_mod, only : r8, i8, MISSING_R8
 
 use         utilities_mod, only : error_handler, E_MSG, E_ERR, &
                                   E_MSG, open_file, close_file, do_output
- 
-use     mpi_utilities_mod, only : my_task_id, task_count, send_to, receive_from
 
-use  netcdf_utilities_mod, only : nc_check, nc_create_file, nc_close_file, &
-                                  nc_end_define_mode
+use  netcdf_utilities_mod, only :  nc_create_file, nc_close_file, &
+                                   nc_define_dimension, nc_define_double_variable, &
+                                   nc_end_define_mode, nc_add_global_creation_time, &
+                                   nc_add_attribute_to_variable, nc_put_variable
 
 use          location_mod, only : location_type, set_location, &
                                   VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, &
@@ -41,16 +41,36 @@ private
 public :: setup_location, &
           test_interpolate_range
 
+! filenames are 256, messages are 512
+integer, parameter :: MAX_FILENAME_LEN = 256
+integer, parameter :: MAX_MSG_LEN = 512
+
 ! for messages
-character(len=512) :: string1, string2, string3
+character(len=MAX_MSG_LEN) :: string1, string2
 
 contains
+
+!-------------------------------------------------------------------------------
+! convert an array of reals into a location for this type
+
+function setup_location(vals, vertcoord_string)
+
+real(r8),         intent(in) :: vals(:)
+character(len=*), intent(in) :: vertcoord_string
+type(location_type)          :: setup_location
+
+integer :: vert_type
+
+vert_type = get_location_index(vertcoord_string)
+setup_location  = set_location((/ vals, real(vert_type,r8) /))
+
+end function setup_location
+
 
 !-------------------------------------------------------------------------------
 !> Interpolate over a range of lat, lon, and vert values.
 !> Returns the number of failures.
 !> Exercises model_mod:model_interpolate().
-!> This will result in a netCDF file with all salient metadata.
 
 function test_interpolate_range( ens_handle,            &
                                  ens_size,              &
@@ -63,6 +83,8 @@ function test_interpolate_range( ens_handle,            &
                                  interp_test_vertrange, &
                                  quantity_string,       &
                                  verbose )
+
+! The arguments to this function must be the same across all types of location dimensions.
 
 type(ensemble_type)   , intent(inout) :: ens_handle
 integer               , intent(in)    :: ens_size
@@ -88,20 +110,12 @@ integer,  allocatable :: all_ios_out(:,:)
 real(r8) :: lonrange_top
 integer :: nlon, nlat, nvert
 integer :: ilon, jlat, kvert, nfailed
-character(len=128) :: ncfilename, txtfilename
+character(len=MAX_FILENAME_LEN) :: ncfilename, matlabfilename
 
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
+integer :: ncid
 
-integer :: ncid, nlonDimID, nlatDimID, nvertDimID
-integer :: VarID(ens_size), lonVarID, latVarID, vertVarID
-
-character(len=256)  :: output_file = 'check_me'
-character(len=32)   :: field_name
 type(location_type) :: loc
-integer :: iunit, ios_out(ens_size), imem
+integer :: matunit, ios_out(ens_size)
 integer :: quantity_index, vertcoord
 
 test_interpolate_range = 0
@@ -120,9 +134,6 @@ endif
 vertcoord = get_location_index(interp_test_vertcoord)
 quantity_index = get_index_for_quantity(quantity_string)
 
-write( ncfilename,'(a,a)')trim(output_file),'_interptest.nc'
-write(txtfilename,'(a,a)')trim(output_file),'_interptest.m'
-
 ! for longitude, allow wrap.
 lonrange_top = interp_test_lonrange(2)
 if (interp_test_lonrange(2) < interp_test_lonrange(1)) &
@@ -133,13 +144,14 @@ nlat  = aint(( interp_test_latrange(2) - interp_test_latrange(1))  / interp_test
 nlon  = aint((            lonrange_top - interp_test_lonrange(1))  / interp_test_dlon) + 1
 nvert = aint((interp_test_vertrange(2) - interp_test_vertrange(1)) / interp_test_dvert) + 1
 
-iunit = open_file(trim(txtfilename), action='write')
-write(iunit,'(''missingvals = '',f12.4,'';'')')MISSING_R8
-write(iunit,'(''nlon = '',i8,'';'')')nlon
-write(iunit,'(''nlat = '',i8,'';'')')nlat
-write(iunit,'(''nvert = '',i8,'';'')')nvert
-write(iunit,'(''nens = '',i8,'';'')')ens_size
-write(iunit,'(''interptest = [ ... '')')
+
+! netcdf and matlab output
+! filenames are hardcoded and constructed in this routine
+
+call create_output_files(ncfilename, matlabfilename, ncid, matunit)
+
+call write_matlab_header(matunit, nlon, nlat, nvert, ens_size)
+
 
 allocate(lon(nlon), lat(nlat), vert(nvert), field(nlon,nlat,nvert,ens_size))
 allocate(all_ios_out(nlon*nlat*nvert,ens_size))
@@ -162,10 +174,9 @@ do ilon = 1, nlon
 
          call verify_consistent_istatus(ens_size, field(ilon,jlat,kvert,:), ios_out)
 
-         write(iunit,*) field(ilon,jlat,kvert,:)
          if (any(ios_out /= 0)) then
 
-            nfailed    = nfailed + 1
+	    nfailed = nfailed + 1
             ! don't really care which location was causing the failure
             all_ios_out(nfailed,:) = ios_out
 
@@ -181,11 +192,18 @@ do ilon = 1, nlon
    enddo
 enddo
 
-write(iunit,'(''];'')')
-write(iunit,'(''datmat = reshape(interptest,nvert,nlat,nlon,nens);'')')
-write(iunit,'(''datmat = permute(datmat,[4,1,2,3]);'')')
-write(iunit,'(''datmat(datmat == missingvals) = NaN;'')')
-call close_file(iunit)
+call write_matlab_data(matunit, nlon, nlat, nvert, field)
+call write_matlab_footer_and_close(matunit)
+
+
+! Write out the netCDF file for easy exploration.
+call write_netcdf_output_and_close(ncid, ens_size, nlon, nlat, nvert, &
+                                   interp_test_lonrange, &
+                                   interp_test_latrange, &
+                                   interp_test_vertrange, &
+                                   interp_test_vertcoord, &
+                                   quantity_string, lon, lat, vert, field)
+
 
 if ( do_output() ) then
    write(*,'(A)')     '-------------------------------------------------------------'
@@ -196,93 +214,6 @@ endif
 
 call count_error_codes(all_ios_out(1:nfailed,:))
 
-! Write out the netCDF file for easy exploration.
-
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(string1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
-
-ncid = nc_create_file(ncfilename,'test_interpolate_threed_sphere')
-
-call nc_check( nf90_put_att(ncid, NF90_GLOBAL, 'creation_date' ,trim(string1) ), &
-                  routine, 'creation put '//trim(ncfilename))
-
-! Define dimensions
-
-call nc_check(nf90_def_dim(ncid=ncid, name='lon', len=nlon, &
-        dimid = nlonDimID),routine, 'nlon def_dim '//trim(ncfilename))
-
-call nc_check(nf90_def_dim(ncid=ncid, name='lat', len=nlat, &
-        dimid = nlatDimID),routine, 'nlat def_dim '//trim(ncfilename))
-
-call nc_check(nf90_def_dim(ncid=ncid, name='vert', len=nvert, &
-        dimid = nvertDimID),routine, 'nvert def_dim '//trim(ncfilename))
-
-! Define variables
-
-call nc_check(nf90_def_var(ncid=ncid, name='lon', xtype=nf90_double, &
-        dimids=nlonDimID, varid=lonVarID), routine, &
-                 'lon def_var '//trim(ncfilename))
-call nc_check(nf90_put_att(ncid, lonVarID, 'range', interp_test_lonrange), &
-           routine, 'put_att lonrange '//trim(ncfilename))
-call nc_check(nf90_put_att(ncid, lonVarID, 'cartesian_axis', 'X'),   &
-           routine, 'lon cartesian_axis '//trim(ncfilename))
-
-call nc_check(nf90_def_var(ncid=ncid, name='lat', xtype=nf90_double, &
-        dimids=nlatDimID, varid=latVarID), routine, &
-                 'lat def_var '//trim(ncfilename))
-call nc_check(nf90_put_att(ncid, latVarID, 'range', interp_test_latrange), &
-           routine, 'put_att latrange '//trim(ncfilename))
-call nc_check(nf90_put_att(ncid, latVarID, 'cartesian_axis', 'Y'),   &
-           routine, 'lat cartesian_axis '//trim(ncfilename))
-
-call nc_check(nf90_def_var(ncid=ncid, name='vert', xtype=nf90_double, &
-        dimids=nvertDimID, varid=vertVarID), routine, &
-                 'vert def_var '//trim(ncfilename))
-call nc_check(nf90_put_att(ncid, vertVarID, 'range', interp_test_vertcoord), &
-           routine, 'put_att vertrange '//trim(ncfilename))
-call nc_check(nf90_put_att(ncid, vertVarID, 'cartesian_axis', 'Z'),   &
-           routine, 'vert cartesian_axis '//trim(ncfilename))
-
-! loop over ensemble members
-do imem = 1, ens_size
-   if ( ens_size > 1) then
-      write(field_name,'(A,I2)') "field_",imem
-   else
-      field_name = "field"
-   endif
-   call nc_check(nf90_def_var(ncid=ncid, name=field_name, xtype=nf90_double, &
-           dimids=(/ nlonDimID, nlatDimID, nvertDimID /), varid=VarID(imem)), routine, &
-                    'field def_var '//trim(ncfilename))
-   call nc_check(nf90_put_att(ncid, VarID(imem), 'long_name', quantity_string), &
-              routine, 'put_att field long_name '//trim(ncfilename))
-   call nc_check(nf90_put_att(ncid, VarID(imem), '_FillValue', MISSING_R8), &
-              routine, 'put_att field FillValue '//trim(ncfilename))
-   call nc_check(nf90_put_att(ncid, VarID(imem), 'missing_value', MISSING_R8), &
-              routine, 'put_att field missing_value '//trim(ncfilename))
-   call nc_check(nf90_put_att(ncid, VarID(imem), 'interp_test_vertcoord', interp_test_vertcoord ), &
-              routine, 'put_att field interp_test_vertcoord '//trim(ncfilename))
-enddo
-
-! Leave define mode so we can fill the variables.
-call nc_end_define_mode(ncid, routine)
-
-! Fill the variables
-call nc_check(nf90_put_var(ncid, lonVarID, lon), &
-              routine,'lon put_var '//trim(ncfilename))
-call nc_check(nf90_put_var(ncid, latVarID, lat), &
-              routine,'lat put_var '//trim(ncfilename))
-call nc_check(nf90_put_var(ncid, vertVarID, vert), &
-              routine,'vert put_var '//trim(ncfilename))
-
-do imem = 1, ens_size
-   call nc_check(nf90_put_var(ncid, VarID(imem), field(:,:,:,imem)), &
-                 routine,'field put_var '//trim(ncfilename))
-enddo
-
-! tidy up
-call nc_close_file(ncid, routine)
-
 deallocate(lon, lat, vert, field)
 deallocate(all_ios_out)
 
@@ -292,21 +223,165 @@ end function test_interpolate_range
 
 
 !-------------------------------------------------------------------------------
-! convert an array of reals into a location for this type
+! THIS ROUTINE COULD MOVE INTO THE COMMON CODE FILE
+! construct filenames and open output files for test_interpolate_range
 
-function setup_location(vals, vertcoord_string)
+subroutine create_output_files(ncfilename, matlabfilename, &
+                               ncid, matid)
 
-real(r8),         intent(in) :: vals(:)
-character(len=*), intent(in) :: vertcoord_string
-type(location_type)          :: setup_location
+character(len=MAX_FILENAME_LEN), intent(out) :: ncfilename, matlabfilename
+integer, intent(out) :: ncid, matid
 
-integer :: vert_type
+character(len=*), parameter :: output_file_prefix = 'check_me'
+character(len=*), parameter :: output_file_suffix = '_interptest'
 
-vert_type = get_location_index(vertcoord_string)
-setup_location  = set_location((/ vals, real(vert_type,r8) /))
+character(len=*), parameter :: routine = 'create_output_files'
 
-end function setup_location
+if (len(output_file_prefix) + len(output_file_suffix) + 3 > MAX_FILENAME_LEN) then
+   write(string1,*) 'unexpected error, constructed filename too long'
+   write(string2,*) 'contact DART support'
+   call error_handler(E_ERR, routine, string1, text2=string2)
+endif
 
+ncfilename = trim(output_file_prefix)//output_file_suffix//'.nc'
+ncid = nc_create_file(ncfilename, 'test_interpolate_range')
+
+matlabfilename = trim(output_file_prefix)//output_file_suffix//'.m'
+matid = open_file(matlabfilename, action='write')
+
+
+end subroutine create_output_files
+
+!-------------------------------------------------------------------------------
+! header depends on number of dims - could be in common code if #dims passed
+
+subroutine write_matlab_header(matunit, nlon, nlat, nvert, ens_size)
+
+integer, intent(in) :: matunit, nlon, nlat, nvert, ens_size
+
+write(matunit,'(''missingvals = '',f12.4,'';'')')MISSING_R8
+write(matunit,'(''nlon = '',i8,'';'')')nlon
+write(matunit,'(''nlat = '',i8,'';'')')nlat
+write(matunit,'(''nvert = '',i8,'';'')')nvert
+write(matunit,'(''nens = '',i8,'';'')')ens_size
+write(matunit,'(''interptest = [ ... '')')
+
+end subroutine write_matlab_header
+
+!-------------------------------------------------------------------------------
+! data array depends on dims
+
+subroutine write_matlab_data(matunit, nlon, nlat, nvert, field)
+
+integer, intent(in) :: matunit, nlon, nlat, nvert
+real(r8), intent(in) :: field(:,:,:,:)
+
+integer :: ilon, jlat, kvert
+
+! write all ensemble values for each item
+do ilon = 1, nlon
+   do jlat = 1, nlat
+      do kvert = 1, nvert
+         write(matunit,*) field(ilon,jlat,kvert,:)
+      enddo
+   enddo
+enddo
+
+end subroutine write_matlab_data
+
+!-------------------------------------------------------------------------------
+
+subroutine write_matlab_footer_and_close(matunit)
+
+integer, intent(in) :: matunit
+
+write(matunit,'(''];'')')
+write(matunit,'(''datmat = reshape(interptest,nvert,nlat,nlon,nens);'')')
+write(matunit,'(''datmat = permute(datmat,[4,1,2,3]);'')')
+write(matunit,'(''datmat(datmat == missingvals) = NaN;'')')
+
+call close_file(matunit)
+
+end subroutine write_matlab_footer_and_close
+
+!-------------------------------------------------------------------------------
+
+subroutine write_netcdf_output_and_close(ncid, ens_size, nlon, nlat, nvert, &
+                                         interp_test_lonrange, &
+                                         interp_test_latrange, &
+                                         interp_test_vertrange, &
+                                         interp_test_vertcoord, &
+                                         quantity_string, lon, lat, vert, field)
+
+integer,  intent(in) :: ncid
+integer,  intent(in) :: ens_size, nlon, nlat, nvert
+real(r8), intent(in) :: interp_test_lonrange(2)
+real(r8), intent(in) :: interp_test_latrange(2)
+real(r8), intent(in) :: interp_test_vertrange(2)
+character(len=*), intent(in) :: interp_test_vertcoord
+character(len=*), intent(in) :: quantity_string
+real(r8), intent(in) :: lon(:), lat(:), vert(:)
+real(r8), intent(in) :: field(:,:,:,:)
+
+integer :: i, imem
+character(len=32) :: field_name
+character(len=*), parameter :: routine = 'test_interpolate_range'  ! most helpful context?
+
+
+call nc_add_global_creation_time(ncid, routine)
+
+call nc_define_dimension(ncid, 'lon',  nlon, routine)
+call nc_define_dimension(ncid, 'lat',  nlat, routine)
+call nc_define_dimension(ncid, 'vert', nvert, routine)
+
+call nc_define_double_variable(ncid, 'lon', 'lon', routine)
+call nc_add_attribute_to_variable(ncid, 'lon', 'range', interp_test_lonrange, routine)
+call nc_add_attribute_to_variable(ncid, 'lon', 'cartesian_axis', 'X', routine)
+
+call nc_define_double_variable(ncid, 'lat', 'lat', routine)
+call nc_add_attribute_to_variable(ncid, 'lat', 'range', interp_test_latrange, routine)
+call nc_add_attribute_to_variable(ncid, 'lat', 'cartesian_axis', 'Y', routine)
+
+call nc_define_double_variable(ncid, 'vert', 'vert', routine)
+call nc_add_attribute_to_variable(ncid, 'vert', 'range', interp_test_vertrange, routine)
+call nc_add_attribute_to_variable(ncid, 'vert', 'cartesian_axis', 'Z', routine)
+
+
+! create an output variable for each ensemble member
+
+! default for a single ensemble member
+field_name = "field"
+
+do imem = 1, ens_size
+   if (ens_size > 1) write(field_name,'(A,I2)') "field_",imem
+
+   call nc_define_double_variable(ncid, field_name, (/ 'lon', 'lat', 'vert' /) , routine)
+   call nc_add_attribute_to_variable(ncid, field_name, 'long_name', quantity_string, routine)
+   call nc_add_attribute_to_variable(ncid, field_name, '_FillValue', MISSING_R8, routine)
+   call nc_add_attribute_to_variable(ncid, field_name, 'missing_value', MISSING_R8, routine)
+   call nc_add_attribute_to_variable(ncid, field_name, 'interp_test_vertcoord', routine)
+
+enddo
+
+! Leave define mode so we can fill the variables.
+call nc_end_define_mode(ncid, routine)
+
+! Fill the dimension variable, then the data field
+call nc_put_variable(ncid, 'lon', lon, routine)
+call nc_put_variable(ncid, 'lat', lat, routine)
+call nc_put_variable(ncid, 'vert', vert, routine)
+
+
+do imem = 1, ens_size
+   if (ens_size > 1) write(field_name,'(A,I2)') "field_",imem
+
+   call nc_put_variable(ncid, field_name, field(:,:,:,imem), routine)
+enddo
+
+! close and return
+call nc_close_file(ncid, routine)
+
+end subroutine write_netcdf_output_and_close
 
 !-------------------------------------------------------------------------------
 !> need to convert the character string for the test vertical coordinate into

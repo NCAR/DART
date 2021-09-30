@@ -14,8 +14,10 @@ use             types_mod, only : r8, i8, MISSING_R8
 use         utilities_mod, only : error_handler, E_MSG, E_ERR, &
                                   E_MSG, open_file, close_file, do_output
 
-use  netcdf_utilities_mod, only : nc_check, nc_create_file, nc_close_file, &
-                                  nc_end_define_mode
+use  netcdf_utilities_mod, only :  nc_create_file, nc_close_file, &
+                                   nc_define_dimension, nc_define_double_variable, &
+                                   nc_end_define_mode, nc_add_global_creation_time, &
+                                   nc_add_attribute_to_variable, nc_put_variable
 
 use          location_mod, only : location_type, set_location
 
@@ -36,16 +38,32 @@ private
 public :: setup_location, &
           test_interpolate_range
 
+! filenames are 256, messages are 512
+integer, parameter :: MAX_FILENAME_LEN = 256
+integer, parameter :: MAX_MSG_LEN = 512
+
 ! for messages
-character(len=512) :: string1, string2
+character(len=MAX_MSG_LEN) :: string1, string2
 
 contains
+
+!-------------------------------------------------------------------------------
+! convert an array of reals into a location for this type
+
+function setup_location(vals, vertcoord_string)
+
+real(r8),         intent(in) :: vals(:)
+character(len=*), intent(in) :: vertcoord_string
+type(location_type)          :: setup_location
+
+setup_location = set_location(vals(1))
+
+end function setup_location
 
 !-------------------------------------------------------------------------------
 !> Interpolate over a range of x values.
 !> Returns the number of failures.
 !> Exercises model_mod:model_interpolate().
-!> This will result in a netCDF file with all salient metadata.
 
 function test_interpolate_range( ens_handle,            &
                                  ens_size,              &
@@ -60,8 +78,6 @@ function test_interpolate_range( ens_handle,            &
                                  verbose )
 
 ! The arguments to this function must be the same across all types of location dimensions.
-! Consequently, there are some unused variables. Could make them optional, but this is only
-! a test.
 
 type(ensemble_type)   , intent(inout) :: ens_handle
 integer               , intent(in)    :: ens_size
@@ -86,36 +102,28 @@ real(r8), allocatable :: field(:,:)
 integer,  allocatable :: all_ios_out(:,:)
 integer               :: nx
 integer               :: i, nfailed
-character(len=128)    :: ncfilename, txtfilename
+character(len=MAX_FILENAME_LEN) :: ncfilename, matlabfilename
 
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
+integer :: ncid
 
-integer :: ncid, nxDimID
-integer :: VarID(ens_size), XVarID
-
-character(len=256)  :: output_file = 'check_me'
-character(len=32)   :: field_name
 type(location_type) :: loc
-integer :: iunit, ios_out(ens_size), imem
+integer :: matunit, ios_out(ens_size)
 integer :: quantity_index
 
 test_interpolate_range = 0
 quantity_index = get_index_for_quantity(quantity_string)
 
-write( ncfilename,'(a,a)')trim(output_file),'_interptest.nc'
-write(txtfilename,'(a,a)')trim(output_file),'_interptest.m'
-
 ! round down to avoid exceeding the specified range
 nx = aint((interp_test_xrange(2) - interp_test_xrange(1))/interp_test_dx) + 1
 
-iunit = open_file(trim(txtfilename), action='write')
-write(iunit,'(''missingvals = '',f12.4,'';'')')MISSING_R8
-write(iunit,'(''nx = '',i8,'';'')')nx
-write(iunit,'(''nens = '',i8,'';'')')ens_size
-write(iunit,'(''interptest = [ ... '')')
+
+! netcdf and matlab output
+! filenames are hardcoded and constructed in this routine
+
+call create_output_files(ncfilename, matlabfilename, ncid, matunit)
+
+call write_matlab_header(matunit, nx, ens_size)
+
 
 allocate(X(nx), field(nx,ens_size))
 allocate(all_ios_out(nx,ens_size))
@@ -131,7 +139,6 @@ do i = 1, nx
 
    call verify_consistent_istatus(ens_size, field(i,:), ios_out)
 
-   write(iunit,*) field(i,:)
    if (any(ios_out /= 0)) then
 
       nfailed = nfailed + 1
@@ -146,11 +153,13 @@ do i = 1, nx
    endif
 enddo
 
-write(iunit,'(''];'')')
-write(iunit,'(''datmat = reshape(interptest,nx,nens);'')')
-write(iunit,'(''datmat = permute(datmat,[2,1]);'')')
-write(iunit,'(''datmat(datmat == missingvals) = NaN;'')')
-call close_file(iunit)
+call write_matlab_data(matunit, nx, field)
+call write_matlab_footer_and_close(matunit)
+
+! Write out the netCDF file for easy exploration.
+call write_netcdf_output_and_close(ncid, ens_size, nx, interp_test_xrange, &
+                                   quantity_string, X, field)
+
 
 if ( do_output() ) then
    write(*,'(A)')     '-------------------------------------------------------------'
@@ -161,65 +170,6 @@ endif
 
 call count_error_codes(all_ios_out(1:nfailed,:))
 
-! Write out the netCDF file for easy exploration.
-
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(string1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
-
-ncid = nc_create_file(ncfilename,'test_interpolate_oned')
-
-call nc_check( nf90_put_att(ncid, NF90_GLOBAL, 'creation_date' ,trim(string1) ), &
-                  routine, 'creation put '//trim(ncfilename))
-
-! Define dimensions
-
-call nc_check(nf90_def_dim(ncid=ncid, name='X', len=nx, &
-        dimid = nxDimID),routine, 'nx def_dim '//trim(ncfilename))
-
-! Define variables
-
-call nc_check(nf90_def_var(ncid=ncid, name='X', xtype=nf90_double, &
-        dimids=nxDimID, varid=XVarID), routine, &
-                 'X def_var '//trim(ncfilename))
-call nc_check(nf90_put_att(ncid, XVarID, 'range', interp_test_xrange), &
-           routine, 'put_att xrange '//trim(ncfilename))
-call nc_check(nf90_put_att(ncid, XVarID, 'cartesian_axis', 'X'),   &
-           routine, 'X cartesian_axis '//trim(ncfilename))
-
-! loop over ensemble members
-do imem = 1, ens_size
-   if ( ens_size > 1) then
-      write(field_name,'(A,I2)') "field_",imem
-   else
-      field_name = "field"
-   endif
-   call nc_check(nf90_def_var(ncid=ncid, name=field_name, xtype=nf90_double, &
-           dimids=(/ nxDimID /), varid=VarID(imem)), routine, &
-                    'field def_var '//trim(ncfilename))
-   call nc_check(nf90_put_att(ncid, VarID(imem), 'long_name', quantity_string), &
-              routine, 'put_att field long_name '//trim(ncfilename))
-   call nc_check(nf90_put_att(ncid, VarID(imem), '_FillValue', MISSING_R8), &
-              routine, 'put_att field FillValue '//trim(ncfilename))
-   call nc_check(nf90_put_att(ncid, VarID(imem), 'missing_value', MISSING_R8), &
-              routine, 'put_att field missing_value '//trim(ncfilename))
-enddo
-
-! Leave define mode so we can fill the variables.
-call nc_end_define_mode(ncid, routine)
-
-! Fill the variables
-call nc_check(nf90_put_var(ncid, XVarID, X), &
-              routine,'X put_var '//trim(ncfilename))
-
-do imem = 1, ens_size
-   call nc_check(nf90_put_var(ncid, VarID(imem), field(:,imem)), &
-                 routine,'field put_var '//trim(ncfilename))
-enddo
-
-! tidy up
-call nc_close_file(ncid, routine)
-
 deallocate(X, field)
 deallocate(all_ios_out)
 
@@ -229,17 +179,138 @@ end function test_interpolate_range
 
 
 !-------------------------------------------------------------------------------
-! convert an array of reals into a location for this type
+! THIS ROUTINE COULD MOVE INTO THE COMMON CODE FILE
+! construct filenames and open output files for test_interpolate_range
 
-function setup_location(vals, vertcoord_string)
+subroutine create_output_files(ncfilename, matlabfilename, &
+                               ncid, matid)
 
-real(r8),         intent(in) :: vals(:)
-character(len=*), intent(in) :: vertcoord_string
-type(location_type)          :: setup_location
+character(len=MAX_FILENAME_LEN), intent(out) :: ncfilename, matlabfilename
+integer, intent(out) :: ncid, matid
 
-setup_location = set_location(vals(1))
+character(len=*), parameter :: output_file_prefix = 'check_me'
+character(len=*), parameter :: output_file_suffix = '_interptest'
 
-end function setup_location
+character(len=*), parameter :: routine = 'create_output_files'
+
+if (len(output_file_prefix) + len(output_file_suffix) + 3 > MAX_FILENAME_LEN) then
+   write(string1,*) 'unexpected error, constructed filename too long'
+   write(string2,*) 'contact DART support'
+   call error_handler(E_ERR, routine, string1, text2=string2)
+endif
+
+ncfilename = trim(output_file_prefix)//output_file_suffix//'.nc'
+ncid = nc_create_file(ncfilename, 'test_interpolate_range')
+
+matlabfilename = trim(output_file_prefix)//output_file_suffix//'.m'
+matid = open_file(matlabfilename, action='write')
+
+
+end subroutine create_output_files
+
+!-------------------------------------------------------------------------------
+! header depends on number of dims - could be in common code if #dims passed
+
+subroutine write_matlab_header(matunit, nx, ens_size)
+
+integer, intent(in) :: matunit, nx, ens_size
+
+write(matunit,'(''missingvals = '',f12.4,'';'')')MISSING_R8
+write(matunit,'(''nx = '',i8,'';'')')nx
+write(matunit,'(''nens = '',i8,'';'')')ens_size
+write(matunit,'(''interptest = [ ... '')')
+
+end subroutine write_matlab_header
+
+!-------------------------------------------------------------------------------
+! data array depends on dims
+
+subroutine write_matlab_data(matunit, nx, field)
+
+integer, intent(in) :: matunit, nx
+real(r8), intent(in) :: field(:,:)
+
+integer :: i
+
+! write all ensemble values for each item
+do i = 1, nx
+   write(matunit,*) field(i,:)
+enddo
+
+end subroutine write_matlab_data
+
+!-------------------------------------------------------------------------------
+
+subroutine write_matlab_footer_and_close(matunit)
+
+integer, intent(in) :: matunit
+
+write(matunit,'(''];'')')
+write(matunit,'(''datmat = reshape(interptest,nx,nens);'')')
+write(matunit,'(''datmat = permute(datmat,[2,1]);'')')
+write(matunit,'(''datmat(datmat == missingvals) = NaN;'')')
+
+call close_file(matunit)
+
+end subroutine write_matlab_footer_and_close
+
+!-------------------------------------------------------------------------------
+
+subroutine write_netcdf_output_and_close(ncid, ens_size, nx, interp_test_xrange, &
+                                         quantity_string, X, field)
+
+integer,  intent(in) :: ncid
+integer,  intent(in) :: ens_size, nx
+real(r8), intent(in) :: interp_test_xrange(2)
+character(len=*), intent(in) :: quantity_string
+real(r8), intent(in) :: X(:)
+real(r8), intent(in) :: field(:,:)
+
+integer :: i, imem
+character(len=32) :: field_name
+character(len=*), parameter :: routine = 'test_interpolate_range'  ! most helpful context?
+
+
+call nc_add_global_creation_time(ncid, routine)
+
+call nc_define_dimension(ncid, 'X', nx, routine)
+
+call nc_define_double_variable(ncid, 'X', 'X', routine)
+call nc_add_attribute_to_variable(ncid, 'X', 'range', interp_test_xrange, routine)
+call nc_add_attribute_to_variable(ncid, 'X', 'cartesian_axis', 'X', routine)
+
+
+! create an output variable for each ensemble member
+
+! default for a single ensemble member
+field_name = "field"
+
+do imem = 1, ens_size
+   if (ens_size > 1) write(field_name,'(A,I2)') "field_",imem
+
+   call nc_define_double_variable(ncid, field_name, (/ 'X' /) , routine)
+   call nc_add_attribute_to_variable(ncid, field_name, 'long_name', quantity_string, routine)
+   call nc_add_attribute_to_variable(ncid, field_name, '_FillValue', MISSING_R8, routine)
+   call nc_add_attribute_to_variable(ncid, field_name, 'missing_value', MISSING_R8, routine)
+
+enddo
+
+! Leave define mode so we can fill the variables.
+call nc_end_define_mode(ncid, routine)
+
+! Fill the dimension variable, then the data field
+call nc_put_variable(ncid, 'X', X, routine)
+
+do imem = 1, ens_size
+   if (ens_size > 1) write(field_name,'(A,I2)') "field_",imem
+
+   call nc_put_variable(ncid, field_name, field(:, imem), routine)
+enddo
+
+! close and return
+call nc_close_file(ncid, routine)
+
+end subroutine write_netcdf_output_and_close
 
 !-------------------------------------------------------------------------------
 ! End of test_interpolate_mod
