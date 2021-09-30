@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 module test_interpolate_mod
 
@@ -10,45 +9,33 @@ module test_interpolate_mod
 ! interpolation test routines for threed cartesian locations.
 !-------------------------------------------------------------------------------
 
-use             types_mod, only : r8, i8, MISSING_R8, metadatalength
+use             types_mod, only : r8, i8, MISSING_R8
 
-use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
-                                  initialize_utilities, finalize_utilities,     &
-                                  find_namelist_in_file, check_namelist_read,   &
+use         utilities_mod, only : error_handler, E_MSG, E_ERR, &
                                   E_MSG, open_file, close_file, do_output
 
 use  netcdf_utilities_mod, only : nc_check, nc_create_file, nc_close_file, &
                                   nc_end_define_mode
 
-use          location_mod, only : location_type, set_location, write_location,  &
-                                  get_dist, get_location, LocationDims
+use          location_mod, only : location_type, set_location
+                                 
 
-use          obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity
+use          obs_kind_mod, only : get_index_for_quantity
 
 use  ensemble_manager_mod, only : ensemble_type
 
-use model_check_utilities_mod, only : test_single_interpolation, &
-                                      find_closest_gridpoint, &
-                                      count_error_codes, &
+use model_check_utilities_mod, only : count_error_codes, &
                                       verify_consistent_istatus
 
-use             model_mod, only : get_model_size, &
-                                  get_state_meta_data, &
-                                  model_interpolate
+use             model_mod, only : model_interpolate
 
 use netcdf
 
 implicit none
 private
 
-public :: test_interpolate_single, &
-          test_interpolate_range, &
-          find_closest_gridpoint
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+public :: setup_location, &
+          test_interpolate_range
 
 ! for messages
 character(len=512) :: string1, string2
@@ -160,8 +147,7 @@ do i = 1, nx
             if (verbose) then
                write(string1,*) 'interpolation return code was', ios_out
                write(string2,'(''i,j,k,X,Y,Z'',3(1x,i6),3(1x,f14.6))') i,j,k,X(i),Y(j),Z(k)
-               call error_handler(E_MSG, routine, string1, &
-                                  source, revision, revdate, text2=string2)
+               call error_handler(E_MSG, routine, string1, text2=string2)
             endif
          endif
       enddo
@@ -277,41 +263,18 @@ end function test_interpolate_range
 
 
 !-------------------------------------------------------------------------------
-!> Do a single interpolation on a given location and kind.
-!> Returns the interpolated values and ios_out.
-!> Returns the number of ensemble members that passed.
+! convert an array of reals into a location for this type
 
-function test_interpolate_single( ens_handle,       &
-                                  ens_size,         &
-                                  vertcoord_string, &
-                                  xval,             &
-                                  yval,             &
-                                  zval,             &
-                                  quantity_string,  &
-                                  interp_vals,      &
-                                  ios_out)
+function setup_location(vals, vertcoord_string)
 
-type(ensemble_type),intent(inout) :: ens_handle
-integer            ,intent(in)    :: ens_size
-character(len=*)   ,intent(in)    :: vertcoord_string
-real(r8)           ,intent(in)    :: xval
-real(r8)           ,intent(in)    :: yval
-real(r8)           ,intent(in)    :: zval
-character(len=*)   ,intent(in)    :: quantity_string
-real(r8)           ,intent(out)   :: interp_vals(ens_size)
-integer            ,intent(out)   :: ios_out(ens_size)
+real(r8),         intent(in) :: vals(:)
+character(len=*), intent(in) :: vertcoord_string
+type(location_type)          :: setup_location
 
-integer :: test_interpolate_single
+setup_location = set_location(vals(1), vals(2), vals(3))
 
-type(location_type) :: location
+end function setup_location
 
-location = set_location(xval, yval, zval)
-
-test_interpolate_single = test_single_interpolation(ens_handle, ens_size, &
-                               location, vertcoord_string, &
-                               quantity_string, interp_vals, ios_out)
-
-end function test_interpolate_single
 
 !-------------------------------------------------------------------------------
 ! End of test_interpolate_mod

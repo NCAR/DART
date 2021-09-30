@@ -18,7 +18,9 @@ use     mpi_utilities_mod, only : my_task_id, task_count, &
 use          location_mod, only : location_type, &
                                   write_location, &
                                   get_dist, &
-                                  set_location
+                                  query_location, &
+                                  has_vertical_choice, &
+                                  convert_vertical_state
 
 use          obs_kind_mod, only : get_name_for_quantity, &
                                   get_index_for_quantity
@@ -38,6 +40,7 @@ public :: test_single_interpolation, &
           verify_consistent_istatus
 
 ! for messages
+character(len=*), parameter :: routine = ''  ! this filename not important in context
 character(len=512) :: string1, string2, string3
 
 contains
@@ -50,7 +53,6 @@ contains
 function test_single_interpolation(ens_handle,       &
                                    ens_size,         &
                                    location,         &
-                                   vertcoord_string, &
                                    quantity_string,  &
                                    interp_vals,      &
                                    ios_out)
@@ -58,7 +60,6 @@ function test_single_interpolation(ens_handle,       &
 type(ensemble_type)   , intent(inout) :: ens_handle
 integer               , intent(in)    :: ens_size
 type(location_type)   , intent(in)    :: location
-character(len=*)      , intent(in)    :: vertcoord_string
 character(len=*)      , intent(in)    :: quantity_string
 real(r8)              , intent(out)   :: interp_vals(ens_size)
 integer               , intent(out)   :: ios_out(ens_size)
@@ -137,10 +138,9 @@ end subroutine count_error_codes
 !> for every variable in each domain. This could help ensure grid
 !> staggering is being handled correctly.
 
-subroutine find_closest_gridpoint(loc_of_interest, vertcoord_string, quantity_string, ens_handle)
+subroutine find_closest_gridpoint(location, quantity_string, ens_handle)
 
-real(r8),            intent(in) :: loc_of_interest(:)
-character(len=*),    intent(in) :: vertcoord_string
+type(location_type), intent(in) :: location
 character(len=*),    intent(in) :: quantity_string
 type(ensemble_type), intent(in) :: ens_handle
 
@@ -149,9 +149,6 @@ type(ensemble_type), intent(in) :: ens_handle
 ! The vertcoord_string argument is required to make the interface consistent with
 ! test_interpolate_threed_sphere.f90
 
-character(len=*), parameter :: routine = ''  ! name not important in context
-
-type(location_type)   :: location
 type(location_type)   :: loc1
 integer               :: i, quantity_index, var_qty, myvars, num_tasks
 integer(i8)           :: closest_index, state_index
@@ -170,7 +167,6 @@ real(r8),   parameter :: FARAWAY = huge(r8)
 !>@todo there should be arrays of length state_structure_mod:get_num_variables(domid)
 !>      get_num_domains(), get_num_variables() ...
 
-location = set_location(loc_of_interest)
 
 ! for single task this is equal to model_size.
 ! for multiple tasks this is the share of the state
@@ -272,12 +268,72 @@ end subroutine find_closest_gridpoint
 
 !-------------------------------------------------------------------------------
 
+subroutine do_vertical_convert(location, ens_handle)
+type(location_type), intent(in) :: location
+type(ensemble_type), intent(inout) :: ens_handle
+
+integer :: i, vert_type, myvars, var_qty, istatus
+integer(i8) :: state_index
+type(location_type) :: loc1
+type(location_type), allocatable :: loclist(:)
+integer,             allocatable :: qtylist(:)
+integer(i8),         allocatable :: indexlist(:)
+
+! if this location type includes more than a single vertical coordinate,
+! use the convert routine to convert all the verticals to match the
+! 'location of interest'.
+
+if (.not. has_vertical_choice()) return
+
+! type to convert into
+vert_type = nint(query_location(location))
+
+
+! how much of the state vector is on my task?
+myvars = ens_handle%my_num_vars
+
+write(string1,*) 'Converting vertical coordinates to match vertical of location of interest'
+call write_location(0, location, charstring=string2)
+call error_handler(E_MSG,routine,string1,text2=string2,text3=string3)
+call error_handler(E_MSG,routine,'')
+
+allocate(loclist(myvars), qtylist(myvars), indexlist(myvars))
+
+! set up the arrays needed for vertical conversion
+VERT_CONVERT_SETUP : do i = 1, myvars
+
+   ! get the global index number for the next item on my task
+   state_index = ens_handle%my_vars(i)
+
+   call get_state_meta_data(state_index, loc1, var_qty)
+
+   loclist(i) = loc1
+   qtylist(i) = var_qty
+   indexlist(i) = state_index
+
+enddo VERT_CONVERT_SETUP
+
+! try to convert state locations to match the vertical of the test location
+call convert_vertical_state(ens_handle, myvars, loclist, qtylist, indexlist, &
+                            vert_type, istatus)
+
+
+deallocate(loclist, qtylist, indexlist)
+
+if (istatus /= 0) then
+   write(string1,*)'unable to convert vertical of state items'
+   call error_handler(E_MSG, routine, string1)
+endif
+
+end subroutine do_vertical_convert
+
+!-------------------------------------------------------------------------------
+
 subroutine verify_consistent_istatus(ens_size, field, ios_out)
  integer,  intent(in) :: ens_size
  real(r8), intent(in) :: field(ens_size)
  integer,  intent(in) :: ios_out(ens_size)
 
-character(len=*), parameter :: routine = ''  ! name not important in context
 integer :: i
 
 do i = 1, ens_size

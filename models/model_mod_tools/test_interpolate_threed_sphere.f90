@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 module test_interpolate_mod
 
@@ -10,47 +9,37 @@ module test_interpolate_mod
 ! interpolation test routines for threed sphere locations.
 !-------------------------------------------------------------------------------
 
-use             types_mod, only : r8, i8, MISSING_R8, metadatalength
+use             types_mod, only : r8, i8, MISSING_R8
 
-use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
-                                  initialize_utilities, finalize_utilities,     &
-                                  find_namelist_in_file, check_namelist_read,   &
+use         utilities_mod, only : error_handler, E_MSG, E_ERR, &
                                   E_MSG, open_file, close_file, do_output
  
+use     mpi_utilities_mod, only : my_task_id, task_count, send_to, receive_from
+
 use  netcdf_utilities_mod, only : nc_check, nc_create_file, nc_close_file, &
                                   nc_end_define_mode
 
-use          location_mod, only : location_type, set_location, write_location,  &
-                                  get_dist, get_location, LocationDims, &
+use          location_mod, only : location_type, set_location, &
                                   VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, &
                                   VERTISPRESSURE, VERTISHEIGHT, VERTISSCALEHEIGHT, &
                                   query_location
 
-use          obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity
+use          obs_kind_mod, only : get_index_for_quantity
 
 use  ensemble_manager_mod, only : ensemble_type
 
-use model_check_utilities_mod, only : test_single_interpolation, &
-                                      count_error_codes, &
+use model_check_utilities_mod, only : count_error_codes, &
                                       verify_consistent_istatus
 
-use             model_mod, only : get_model_size, &
-                                  get_state_meta_data, &
-                                  model_interpolate
+use             model_mod, only : model_interpolate
 
 use netcdf
 
 implicit none
 private
 
-public :: test_interpolate_single, &
-          test_interpolate_range, &
-          find_closest_gridpoint
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+public :: setup_location, &
+          test_interpolate_range
 
 ! for messages
 character(len=512) :: string1, string2, string3
@@ -184,8 +173,7 @@ do ilon = 1, nlon
                write(string1,*) 'interpolation return code was', ios_out
                write(string2,'(''ilon,jlat,kvert,lon,lat,vert'',3(1x,i6),3(1x,f14.6))') &
                                  ilon,jlat,kvert,lon(ilon),lat(jlat),vert(kvert)
-               call error_handler(E_MSG, routine, string1, &
-                                  source, revision, revdate, text2=string2)
+               call error_handler(E_MSG, routine, string1, text2=string2)
             endif
  
          endif
@@ -304,48 +292,26 @@ end function test_interpolate_range
 
 
 !-------------------------------------------------------------------------------
-!> Do a single interpolation on a given location and kind.
-!> Returns the interpolated values and ios_out.
-!> Returns the number of ensemble members that passed.
+! convert an array of reals into a location for this type
 
-function test_interpolate_single( ens_handle,       &
-                                  ens_size,         &
-                                  vertcoord_string, &
-                                  lonval,           &
-                                  latval,           &
-                                  vertval,          &
-                                  quantity_string,  &
-                                  interp_vals,      &
-                                  ios_out)
+function setup_location(vals, vertcoord_string)
 
-type(ensemble_type),intent(inout) :: ens_handle
-integer            ,intent(in)    :: ens_size
-character(len=*)   ,intent(in)    :: vertcoord_string
-real(r8)           ,intent(in)    :: lonval
-real(r8)           ,intent(in)    :: latval
-real(r8)           ,intent(in)    :: vertval
-character(len=*)   ,intent(in)    :: quantity_string
-real(r8)           ,intent(out)   :: interp_vals(ens_size)
-integer            ,intent(out)   :: ios_out(ens_size)
+real(r8),         intent(in) :: vals(:)
+character(len=*), intent(in) :: vertcoord_string
+type(location_type)          :: setup_location
 
-integer :: test_interpolate_single
+integer :: vert_type
 
-type(location_type) :: location
-integer :: vertcoord
+vert_type = get_location_index(vertcoord_string)
+setup_location  = set_location((/ vals, real(vert_type,r8) /))
 
-vertcoord = get_location_index(vertcoord_string)
-location = set_location(lonval, latval, vertval, vertcoord)
-
-test_interpolate_single = test_single_interpolation(ens_handle, ens_size, &
-                               location, vertcoord_string, &
-                               quantity_string, interp_vals, ios_out)
-
-end function test_interpolate_single
+end function setup_location
 
 
 !-------------------------------------------------------------------------------
 !> need to convert the character string for the test vertical coordinate into
 !> the corresponding dart index.
+!> TODO: FIXME - there should be a function in the locations mod for this.
 
 function  get_location_index(test_vertcoord)
 
@@ -371,112 +337,6 @@ select case (test_vertcoord)
 end select
 
 end function  get_location_index
-
-!-----------------------------------------------------------------------
-!> Expensive exhaustive search to find the indices into the
-!> state vector of a particular lon/lat/vert. At present, only for a
-!> single variable - could be extended to identify the closest location
-!> for every variable in each domain. This could help ensure grid
-!> staggering is being handled correctly.
-!> This differs from model_mod_tools:find_closest_gridpoint in that
-!> this version has to do something with the vertical coordinate system.
-!> Right now it is not perfect because it will indicate that something
-!> at the same horizontal location and pressure = 1000 is at exactly
-!> the same location as something with height = 1000 ... ugh.
-
-subroutine find_closest_gridpoint(loc_of_interest, vertcoord_string, quantity_string)
-
-real(r8),         intent(in) :: loc_of_interest(:)
-character(len=*), intent(in) :: vertcoord_string
-character(len=*), intent(in) :: quantity_string
-
-character(len=*), parameter :: routine = ''   ! name not important in context
-
-type(location_type)   :: location, loc0, loc1
-integer(i8)           :: i
-integer               :: quantity_index, var_type, vert_type
-real(r8)              :: closest, rlon, rlat, rvert
-logical               :: matched
-real(r8), allocatable :: thisdist(:)
-real(r8),   parameter :: FARAWAY = huge(r8)
-character(len=metadatalength) :: myquantity
-
-!>@todo there should be arrays of length state_structure_mod:get_num_variables(domid)
-!>      get_num_domains(), get_num_variables() ...
-
-vert_type = get_location_index(vertcoord_string)
-location  = set_location((/ loc_of_interest, real(vert_type,r8) /))
-
-allocate( thisdist(get_model_size()) )
-thisdist  = FARAWAY
-matched   = .false.
-
-! Trying to support the ability to specify matching a particular QUANTITY.
-! With staggered grids, the closest gridpoint might not be of the quantity
-! of interest.
-
-quantity_index  = get_index_for_quantity(quantity_string)
-rlon  = loc_of_interest(1)
-rlat  = loc_of_interest(2)
-rvert = loc_of_interest(3)
-
-write(string1,'("Checking for the indices into the state vector that are close to")')
-call write_location(0, location, charstring=string2)
-write(string3,'("for (",A,") variables.")')trim(quantity_string)
-call error_handler(E_MSG,routine,string1,text2=string2,text3=string3)
-call error_handler(E_MSG,routine,'')
-
-! Since there can be/will be multiple variables with
-! identical distances, we will just cruise once through
-! the array and come back to find all the 'identical' values.
-
-DISTANCE : do i = 1,get_model_size()
-
-   call get_state_meta_data(i, loc1, var_type)
-
-   if (var_type .ne. quantity_index) cycle DISTANCE
-
-   ! Grab the vert_type from the grid and
-   ! set out target location to have the same.
-   ! Compute the distance.
-
-   vert_type   = nint(query_location(loc1))
-   loc0        = set_location(rlon, rlat, rvert, vert_type)
-   thisdist(i) = get_dist( loc1, loc0, no_vert=.false.)
-   matched     = .true.
-
-enddo DISTANCE
-
-if (.not. matched) then
-   write(string1,*)'No state vector elements of type "'//trim(quantity_string)//'"'
-   call error_handler(E_MSG, routine, string1)
-   deallocate( thisdist )
-   return
-endif
-
-closest = minval(thisdist)
-
-! Now that we know the distances ... report
-! If more than one quantity has the same distance, report all.
-! Be aware that if 'approximate_distance' is .true., everything
-! in the box has a single location.
-
-REPORT: do i = 1,get_model_size()
-
-   if ( thisdist(i) == closest ) then
-      call get_state_meta_data(i, loc1, var_type)
-      myquantity = get_name_for_quantity(var_type)
-
-      call write_location(0, loc1, charstring=string1)
-      write(string2,'(A,I12,A)')' is index ',i,' ('//trim(myquantity)//')'
-      call error_handler(E_MSG, routine, string1,text2=string2)
-   endif
-
-enddo REPORT
-
-deallocate( thisdist )
-
-end subroutine find_closest_gridpoint
 
 !-------------------------------------------------------------------------------
 ! End of test_interpolate_mod

@@ -45,16 +45,52 @@ use distributed_state_mod, only : create_state_window, free_state_window
 
 use             model_mod, only : get_model_size, get_state_meta_data
 
-use  test_interpolate_mod, only : test_interpolate_single, &
-                                  test_interpolate_range, &
-                                  find_closest_gridpoint
+use  test_interpolate_mod, only : setup_location, &
+                                  test_interpolate_range
+
+use model_check_utilities_mod, only : test_single_interpolation, &
+                                      find_closest_gridpoint, &
+                                      count_error_codes, &
+                                      verify_consistent_istatus
 
 implicit none
 
 character(len=*), parameter :: source = 'model_mod_check.f90'
 
 
-integer, parameter :: MAX_TESTS = 7
+! TODO: FIXME
+!  tests should have string names, i think.  adding tests that
+!  need to be in a particular order make the numbering system
+!  confusing.  you wouldn't be able to simply give a max test 
+!  number anymore but you could also change the order if there 
+!  are dependencies without changing the meaning of test numbers.
+!  
+!  e.g. this program should test vertical conversion and get close.
+!  also read and write time, etc.  it should try
+!  all 18 routines required in a model_mod:
+!
+! public :: get_model_size, &
+!           get_state_meta_data,  &
+!           model_interpolate, &
+!           shortest_time_between_assimilations, &
+!           static_init_model, &
+!           init_conditions,    &
+!           adv_1step, &
+!           nc_write_model_atts, &
+!           pert_model_copies, &
+!           nc_write_model_vars, &
+!           init_time, &
+!           get_close_obs, &
+!           get_close_state, &
+!           end_model, &
+!           convert_vertical_obs, &
+!           convert_vertical_state, &
+!           read_model_time, &
+!           write_model_time
+! 
+!  nsc.
+
+integer, parameter :: MAX_TESTS = 8
 
 ! this is max number of domains times number of ensemble members
 ! if you have more than one domain and your ensemble members are
@@ -124,6 +160,9 @@ real(r8), allocatable :: interp_vals(:)
 ! misc. variables
 integer :: idom, imem, num_passed, num_failed, num_domains, idomain
 logical :: cartesian = .false.
+logical :: ensemble_init = .false.
+
+type(location_type) :: location_of_interest
 
 ! message strings
 character(len=512) :: my_base, my_desc
@@ -199,15 +238,17 @@ endif
 
 !----------------------------------------------------------------------
 ! read/write restart files
+! NEW CHANGE - separate these into 2 tests.
 !----------------------------------------------------------------------
 
 if (tests_to_run(2)) then
 
    call print_test_message('TEST 2', &
-                           'Read and write restart file', starting=.true.)
+                           'Read restart file', starting=.true.)
 
    ! Set up the ensemble storage
    call init_ensemble_manager(ens_handle, num_ens, model_size)
+   ensemble_init = .true.
 
    ! how much of state vector is on this task
    ! for single task this is equal to model_size.
@@ -224,12 +265,27 @@ if (tests_to_run(2)) then
    ! test reading and writing the full state vector from a file
    call do_read_test(ens_handle)
 
-   call do_write_test(ens_handle)
-
    call print_model_time(model_time)
 
  
    call print_test_message('TEST 2', ending=.true.)
+
+endif
+
+if (tests_to_run(8)) then
+
+   call print_test_message('TEST 8', &
+                           'Write restart file', starting=.true.)
+
+   ! Set up the ensemble storage
+   if (.not. ensemble_init) &
+      call init_ensemble_manager(ens_handle, num_ens, model_size)
+
+   ! test writing the full state vector from a file
+
+   call do_write_test(ens_handle)
+
+   call print_test_message('TEST 8', ending=.true.)
 
 endif
 
@@ -272,23 +328,19 @@ if (tests_to_run(4)) then
    if (my_task_id() == 0) then
       allocate(interp_vals(num_ens), ios_out(num_ens))
    
-      call print_info_message('Interpolating '//trim(quantity_of_interest), &
-                              ' at "loc_of_interest" location')
    
-      num_passed = test_interpolate_single( ens_handle,            &
-                                            num_ens,               &
-                                            interp_test_vertcoord, &
-                                            loc_of_interest(1),    &
-                                            loc_of_interest(2),    &
-                                            loc_of_interest(3),    &
-                                            quantity_of_interest,  &
-                                            interp_vals,           &
-                                            ios_out )
-   
+      location_of_interest = setup_location(loc_of_interest, interp_test_vertcoord)
+
+      call write_location(0,location_of_interest,charstring=string3)
+      call print_info_message('Interpolating '//trim(quantity_of_interest)//' at ', string3)
+
+      num_passed = test_single_interpolation(ens_handle, num_ens, &
+                                             location_of_interest, &
+                                             quantity_of_interest, interp_vals, ios_out)
+
       ! test_interpolate_single reports individual interpolation failures internally
-      if (num_passed == num_ens) then
+      if (num_passed == num_ens) &
          call print_info_message('interpolation successful for all ensemble members.')
-      endif
 
       deallocate(interp_vals, ios_out)
    endif
@@ -375,8 +427,9 @@ if (tests_to_run(7)) then
                            'Finding the state vector index closest to a given location.', &
                             starting=.true.)
 
-   call find_closest_gridpoint(loc_of_interest, &
-                               interp_test_vertcoord, &
+   location_of_interest = setup_location(loc_of_interest, interp_test_vertcoord)
+
+   call find_closest_gridpoint(location_of_interest, &
                                quantity_of_interest, &
                                ens_handle)
 
