@@ -474,14 +474,14 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
 
 .. container:: routine
 
-   *call convert_vertical_state(state_handle, num, locs, loc_qtys, loc_types, which_vert, status)*
+   *call convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, which_vert, status)*
    ::
 
       type(ensemble_type), intent(in)  :: state_handle
       integer,             intent(in)  :: num
       type(location_type), intent(in)  :: locs(:)
       integer,             intent(in)  :: loc_qtys(:)
-      integer,             intent(in)  :: loc_types(:)
+      integer(i8),         intent(in)  :: loc_indx(:)
       integer,             intent(in)  :: which_vert
       integer,             intent(out) :: status(:)
 
@@ -498,7 +498,7 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
    +------------------+--------------------------------------------------------------------------------------------------+
    | ``loc_qtys``     | the array of state quantities.                                                                   |
    +------------------+--------------------------------------------------------------------------------------------------+
-   | ``loc_types``    | the array of state types.                                                                        |
+   | ``loc_indx``     | the array of state vector indices.                                                               |
    +------------------+--------------------------------------------------------------------------------------------------+
    | ``which_vert``   | the desired vertical coordinate system. There is a table in the ``location_mod.f90`` that        |
    |                  | relates integers to vertical coordinate systems.                                                 |

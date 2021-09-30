@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 30 2021 :: Bug fix for very large models. Tag v9.11.11**
+
+- mpi_utilties_mod using correct check for message length > SNDRCV_MAXSIZE
+- new developers test for large message sizes
+- State vector IO updated to use i8 for state indexing
+- WRF model_mod now using i8  
+
 **September 21 2021 :: Bug fix for perfect_model_obs. Tag v9.11.10**
 
 - perfect_model_obs now exits cleanly when no filenames are given
