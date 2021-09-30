@@ -19,7 +19,8 @@ use          location_mod, only : location_type, &
                                   write_location, &
                                   get_dist, &
                                   query_location, &
-                                  has_vertical_choice
+                                  has_vertical_choice, &
+                                  is_vertical
 
 use          obs_kind_mod, only : get_name_for_quantity, &
                                   get_index_for_quantity
@@ -37,7 +38,8 @@ private
 public :: test_single_interpolation, &
           find_closest_gridpoint, &
           count_error_codes, &
-          verify_consistent_istatus
+          verify_consistent_istatus, &
+          do_vertical_convert
 
 ! for messages
 character(len=*), parameter :: routine = ''  ! this filename not important in context
@@ -285,7 +287,7 @@ subroutine do_vertical_convert(location, ens_handle)
 type(location_type), intent(in) :: location
 type(ensemble_type), intent(inout) :: ens_handle
 
-integer :: i, vert_type, myvars, var_qty, istatus
+integer :: i, vert_type, myvars, var_qty, istatus, after_type
 integer(i8) :: state_index
 type(location_type) :: loc1
 type(location_type), allocatable :: loclist(:)
@@ -330,13 +332,29 @@ enddo VERT_CONVERT_SETUP
 call convert_vertical_state(ens_handle, myvars, loclist, qtylist, indexlist, &
                             vert_type, istatus)
 
+if (istatus /= 0) then
+   write(string1,*)'unable to convert vertical of state items, istatus = ', istatus
+   deallocate(loclist, qtylist, indexlist)
+   call error_handler(E_MSG, routine, string1)
+   return
+endif
+
+! ok, here is where the loclist array should now have different vertical coords.
+! set up the arrays needed for vertical conversion
+VERT_CONVERT_CHECK : do i = 1, myvars
+
+   after_type = nint(query_location(loclist(i)))
+
+   if (after_type /= vert_type .and. is_vertical(loclist(i), "UNDEFINED")) then
+      write(string1,*) 'vertical type did not convert, wanted ', vert_type
+      write(string2,*) 'state vector index ', indexlist(i), ' is ', after_type
+      call error_handler(E_MSG, routine, string1, text2=string2) 
+   endif
+
+enddo VERT_CONVERT_CHECK
+
 
 deallocate(loclist, qtylist, indexlist)
-
-if (istatus /= 0) then
-   write(string1,*)'unable to convert vertical of state items'
-   call error_handler(E_MSG, routine, string1)
-endif
 
 end subroutine do_vertical_convert
 

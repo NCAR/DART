@@ -41,7 +41,8 @@ use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
                                   get_restart_filename, set_file_metadata, &
                                   set_io_copy_flag, READ_COPY, WRITE_COPY
 
-use distributed_state_mod, only : create_state_window, free_state_window
+use distributed_state_mod, only : create_state_window, free_state_window, &
+                                  create_mean_window, free_mean_window
 
 use             model_mod, only : get_model_size, get_state_meta_data
 
@@ -51,7 +52,8 @@ use  test_interpolate_mod, only : setup_location, &
 use model_check_utilities_mod, only : test_single_interpolation, &
                                       find_closest_gridpoint, &
                                       count_error_codes, &
-                                      verify_consistent_istatus
+                                      verify_consistent_istatus, &
+                                      do_vertical_convert
 
 implicit none
 
@@ -90,7 +92,7 @@ character(len=*), parameter :: source = 'model_mod_check.f90'
 ! 
 !  nsc.
 
-integer, parameter :: MAX_TESTS = 8
+integer, parameter :: MAX_TESTS = 9
 
 ! this is max number of domains times number of ensemble members
 ! if you have more than one domain and your ensemble members are
@@ -427,7 +429,8 @@ if (tests_to_run(7)) then
                            'Finding the state vector index closest to a given location.', &
                             starting=.true.)
 
-   call create_state_window(ens_handle)
+   ! this is usually the ens mean. use member 1 for now.
+   call create_mean_window(ens_handle, 1, .false.)  
 
    location_of_interest = setup_location(loc_of_interest, interp_test_vertcoord)
 
@@ -435,9 +438,32 @@ if (tests_to_run(7)) then
                                quantity_of_interest, &
                                ens_handle)
 
-   call create_state_window(ens_handle)
+   call free_mean_window()
 
    call print_test_message('TEST 7', ending=.true.)
+
+endif
+
+!----------------------------------------------------------------------
+! Test vertical conversion if there are multiple choices for vert type
+!----------------------------------------------------------------------
+
+if (tests_to_run(9)) then
+
+   call print_test_message('TEST 9', &
+                           'Converting the vertical coordinate', &
+                            starting=.true.)
+
+   ! this is usually the ens mean. use member 1 for now.
+   call create_mean_window(ens_handle, 1, .false.)  
+
+   location_of_interest = setup_location(loc_of_interest, interp_test_vertcoord)
+
+   call do_vertical_convert(location_of_interest, ens_handle)
+
+   call free_mean_window()
+
+   call print_test_message('TEST 9', ending=.true.)
 
 endif
 
