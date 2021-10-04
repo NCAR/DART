@@ -1115,7 +1115,7 @@ observation_on_grid = .true.
 ! that observation is in the half grid
 if ( periodic_x .and. periodic_y ) then
    if ( (obs_location(1) < xf(1)) .or. (obs_location(1) > xf(nip1)) .or. &
-        (obs_location(2) < yf(1)) .or. (obs_location(2) > yf(njp1i)) ) then
+        (obs_location(2) < yf(1)) .or. (obs_location(2) > yf(njp1)) ) then
 
       observation_on_grid = .false.
 
