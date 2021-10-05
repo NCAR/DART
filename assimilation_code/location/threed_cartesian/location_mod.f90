@@ -8,7 +8,7 @@ module location_mod
 ! Has interfaces to convert spherical lat/lon coords in degrees,
 ! plus a radius, into cartesian coords.
 
-use      types_mod, only : r8, i8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD
+use      types_mod, only : r8, i8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD, OBSTYPELENGTH
 use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            E_MSG, open_file, close_file, set_output,       &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
@@ -313,7 +313,7 @@ vert_normalization(VERTISHEIGHT)      = vert_normalization_height
 ! It overrides the defaults above.
 
 if (special_vert_normalization_obs_types(1) /= 'null' .or. &
-    special_vert_normalization_heights(1)       /= missing_r8 .or. &
+    special_vert_normalization_heights(1)   /= missing_r8) then
 
    ! FIXME: add code to check for mismatched length lists.  are we going to force
    ! users to specify all 4 values for any obs type that is not using the defaults?
@@ -416,6 +416,10 @@ end subroutine initialize_module
 
 function get_dist(loc1, loc2, type1, kind2)
 
+! JDL I don't think I need to include the no_vert variable, but keep this 
+! in mind in case problems arise later on.  Probbably also don't need kind2 since 
+! we are just looking at heights
+
 ! returns the distance between 2 locations
 
 ! the names are correct here - the first location gets the corresponding
@@ -432,6 +436,8 @@ real(r8)                        :: get_dist
 real(r8) :: diff(3), next_diff(3)
 logical  :: below_L1(3), below_L2(3)
 real(r8) :: square_dist, this_dist
+!logical  :: comp_h_only ! Only comput the horizontal component
+
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -442,13 +448,16 @@ diff(IY) = loc1%y - loc2%y
 diff(IZ) = loc1%z - loc2%z
 
 ! hope for the simple case first
+! JDL - In this instance you will want to pass 
+! on what the vertical normmalization component is...
 if (.not. any_periodic) then
    if (debug > 0) write(0,*)  'non-periodic distance: '
-   get_dist = dist_3d(diff)
+   get_dist = dist_3d(diff,type1=type1)
    return
+
 else
   if (debug > 0) write(0,*)  'periodic distance: '
-  square_dist = dist_3d_sq(diff)
+  square_dist = dist_3d_sq(diff,type1=type1)
   if (debug > 0) write(0,*)  'non-periodic 0 sq_dist, dist: ', square_dist, sqrt(square_dist)
 endif
 
@@ -495,7 +504,7 @@ if (xyz_periodic) then
             next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
          endif
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic XYZ dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -528,7 +537,7 @@ if (xy_periodic) then
          endif
       endif
 
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic XY dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -561,7 +570,7 @@ if (xz_periodic) then
             next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
          endif
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic XZ dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -593,7 +602,7 @@ if (yz_periodic) then
             next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
          endif
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic YZ dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -615,7 +624,8 @@ if (x_periodic) then
       else
          next_diff(IX) = loopy%offset(IX) + next_diff(IX)
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
+
   if (debug > 0) write(0,*)  'periodic X dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -637,7 +647,7 @@ if (y_periodic) then
          next_diff(IY) = loopy%offset(IY) + next_diff(IY)    
       endif
 
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
 
   if (debug > 0) write(0,*)  'periodic Y dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
@@ -660,7 +670,7 @@ if (z_periodic) then
       else
          next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic Y dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -687,14 +697,31 @@ end function get_dist
 ! return the 3d distance given the separation along each axis
 
 !pure function dist_3d(separation)
-function dist_3d(separation) result(val)
+!function dist_3d(separation) result(val)
+function dist_3d(separation,type1) result(val)
 
 real(r8), intent(in) :: separation(3)
-real(r8) :: val
+real(r8) :: val, vert_normal
+integer, optional,   intent(in) :: type1 ! JDL Addition
+!--- JDL Update Function to account for Normalization in Vertical
+!--- JDL Addition to Account for Vertical Normalization
+if (allocated(per_type_vert_norm)) then
+   if (.not. present(type1)) then
+      write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization'
+      call error_handler(E_MSG, 'get_dist', msgstring, source)
+   endif 
+   print*,'JDL type1 = ',type1
+   vert_normalization = separation(IZ)/per_type_vert_norm(VERTISHEIGHT, type1)
+else
+   vert_normalization = separation(IZ)/vert_normalization(VERTISHEIGHT)
+endif
+!--- JDL End Addition for Vertical Normalization
+
 
 val = sqrt(separation(IX)*separation(IX) + &
            separation(IY)*separation(IY) + &
-           separation(IZ)*separation(IZ) )
+           vert_normal*vert_normal )
+           !separation(IZ)*separation(IZ) )
 
 if (debug > 0) write(0,*)  'dist_3d called, distance computed: ', val
 if (debug > 0) write(0,*)  'XYZ separations: ', separation
@@ -706,14 +733,31 @@ end function dist_3d
 ! (saves doing a square root)
 
 !pure function dist_3d_sq(separation)
-function dist_3d_sq(separation) result(val)
+!function dist_3d_sq(separation) result(val)
+function dist_3d_sq(separation,type1) result(val)
 
 real(r8), intent(in) :: separation(3)
-real(r8) :: val
+real(r8) :: val, vert_normal
+integer, optional,   intent(in) :: type1 ! JDL Addition
+
+!--- JDL Update Function to account for Normalization in Vertical
+!--- JDL Addition to Account for Vertical Normalization
+if (allocated(per_type_vert_norm)) then
+   if (.not. present(type1)) then
+      write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization'
+      call error_handler(E_MSG, 'get_dist', msgstring, source)
+   endif 
+   print*,'JDL type1 = ',type1
+   vert_normal = separation(IZ) / per_type_vert_norm(VERTISHEIGHT, type1)
+else
+   vert_normal = separation(IZ) / vert_normalization(VERTISHEIGHT)
+endif
+!--- JDL End Addition for Vertical Normalization
 
 val = separation(IX)*separation(IX) + &
       separation(IY)*separation(IY) + &
-      separation(IZ)*separation(IZ)
+      vert_normal * vert_normal
+      !separation(IZ)*separation(IZ)
 
 if (debug > 0) write(0,*)  'dist_3d_sq called, distance computed: ', val
 if (debug > 0) write(0,*)  'XYZ separations: ', separation
@@ -1403,11 +1447,11 @@ this_maxdist = gc%box(bt)%maxdist
 !> but should give the right answer.
 if(.true.) then
    if (present(dist)) then
-      call exhaustive_collect(gc%box(bt), base_loc, locs, &
+      call exhaustive_collect(gc%box(bt), base_loc, base_type, locs, &
                               num_close, close_ind, dist)
    else
       allocate(cdist(size(locs)))
-      call exhaustive_collect(gc%box(bt), base_loc, locs, &
+      call exhaustive_collect(gc%box(bt), base_loc, base_type, locs, &
                               num_close, close_ind, cdist)
       deallocate(cdist)
    endif
@@ -1418,7 +1462,7 @@ endif
 ! exhaustive search
 if(compare_to_correct) then
    allocate(cclose_ind(size(locs)), cdist(size(locs)))
-   call exhaustive_collect(gc%box(bt), base_loc, locs, &
+   call exhaustive_collect(gc%box(bt), base_loc, base_type, locs, &
                            cnum_close, cclose_ind, cdist)
 endif
 
@@ -1477,7 +1521,7 @@ do i = start_x, end_x
 
             ! Only compute distance if dist is present
             if(present(dist)) then
-               this_dist = get_dist(base_loc, locs(t_ind))
+               this_dist = get_dist(base_loc, locs(t_ind), type1=base_type)
 !write(0,*)  'this_dist = ', this_dist
                ! If this loc's distance is less than cutoff, add it in list
                if(this_dist <= this_maxdist) then
@@ -1656,6 +1700,9 @@ if (end_z > nz) end_z = nz
 !write(0,*)  'x: ', start_x, end_x
 !write(0,*)  'y: ', start_y, end_y
 !write(0,*)  'z: ', start_z, end_z
+! JDL WARNING STATEMENT IN CASE YOU HAPPEN TO CALL GET_DIST() FROM THIS SUBROUTINE
+! YOU SHOULDN'T BE USING THIS SUBROUTINE
+print*,'JDL IF YOUR HERE MAKE SURE TO WORK ON FIND_NEAREST SUBROUTINE'
 
 ! Next, loop through each box that is close to this box
 do i = start_x, end_x
@@ -1673,7 +1720,7 @@ do i = start_x, end_x
             t_ind = box%loc_box(st - 1 + l)
 !write(0,*)  'l, t_ind = ', l, t_ind
 
-            this_dist = get_dist(base_loc, loc_list(t_ind))
+            this_dist = get_dist(base_loc, loc_list(t_ind)) !JDL Probably do not need to include base type here because this is never called during DA (OR IT SHOULDNT BE) 
 !write(0,*)  'this_dist = ', this_dist
             ! If this loc's distance is less than current nearest, it's new nearest
             if(this_dist <= dist) then
@@ -2215,13 +2262,14 @@ end function is_location_in_region
 
 !---------------------------------------------------------------------------
 
-subroutine exhaustive_collect(box, base_loc, loc_list, num_close, close_ind, close_dist)
+subroutine exhaustive_collect(box, base_loc, base_type, loc_list, num_close, close_ind, close_dist)
 
 ! For validation, it is useful to be able to compare against exact
 ! exhaustive search
 
 type(box_type),        intent(in)  :: box
 type(location_type),   intent(in)  :: base_loc, loc_list(:)
+integer,               intent(in)  :: base_type ! JDL Addition
 integer,               intent(out) :: num_close
 integer,               intent(out) :: close_ind(:)
 real(r8),              intent(out) :: close_dist(:)
@@ -2231,7 +2279,7 @@ integer :: i
 
 num_close = 0
 do i = 1, box%num
-   this_dist = get_dist(base_loc, loc_list(i))
+   this_dist = get_dist(base_loc, loc_list(i), type1=base_type)
    if(this_dist <= box%maxdist) then
       ! Add this loc to correct list
       num_close = num_close + 1
