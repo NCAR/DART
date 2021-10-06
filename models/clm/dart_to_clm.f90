@@ -377,15 +377,14 @@ integer, intent(in) :: ncid_clm
 
 character(len=*), parameter :: routine = 'update_snow'
 
-! @fixme Take out indices once assigned to allocatable variables
-integer  ::  snlsno(ncolumn)  ! Negative number of 'filled' snow layers
-integer  ::  nlevsno          ! Max possible snow layers  
-real(r8) ::  h2osno_pr(ncolumn),         h2osno_po(ncolumn)
-real(r8) ::  snowdp_pr(ncolumn),         snowdp_po(ncolumn)
-real(r8) ::  dzsno_pr(nlevsno,ncolumn),  dzsno_po(nlevsno,ncolumn)
-real(r8) ::  h2oliq_pr(nlevsno,ncolumn), h2oliq_po(nlevsno,ncolumn)
-real(r8) ::  h2oice_pr(nlevsno,ncolumn), h2oice_po(nlevsno,ncolumn)
-real(r8) ::  gain_dzsno(nlevsno,ncolumn)
+integer  ::  snlsno  ! Negative number of 'filled' snow layers
+integer  ::  nlevsno ! Max possible snow layers  
+real(r8) ::  h2osno_pr, h2osno_po
+real(r8) ::  snowdp_pr, snowdp_po
+real(r8) ::  dzsno_pr,  dzsno_po
+real(r8) ::  h2oliq_pr, h2oliq_po
+real(r8) ::  h2oice_pr, h2oice_po
+real(r8) ::  gain_dzsno
 
 real(r8) :: snowden, wt_swe, wt_liq, wt_ice
 real(r8) :: gain_h2oice
@@ -408,19 +407,22 @@ real(r8), allocatable :: clm_DZSNO(:,:)
 real(r8), allocatable :: clm_H2OLIQ(:,:)
 real(r8), allocatable :: clm_H2OICE(:,:)
 
-character(len=512) :: string1, string2
+character(len=512) :: string1, string2, string3
 
-!@fixme Check existence for snow related variables required to be
+! Check existence for snow related variables required to be
 ! in DART state and CLM domain (restart,history,vector history)
 ! If they do not exist, throw error immediately, provide guidance.
-! Also use this opportunity to locate proper SWE and snow depth clm
-! variables. Multiple names and multiple domains (restart, vectory history)
-! can be used for SWE or snow depth.
-!@fixme
+! Also use this opportunity to locate proper SWE (H2OSNO) and snow depth clm
+! variables. The H2OSNO variable (vectory history) is required for repartitioning.
+! There are mutliple 'snow depth' variable names depending on clm version.
 
 !The SWE variable must come from H2OSNO vector history
-!@fixme  Need to load ncid for clm vector history file
-elseif (nc_variable_exists(!@fixme ncid_clm_vhist, 'H2OSNO', clm_H2OSNO, routine)   
+!and it must exist in the 'DART' state because we need 
+!the posterior value. If H2OSNO exists in DART state
+!it also exists in clm domain
+
+! Check for appropriate clm variables to reprartition snow
+if (nc_variable_exists(ncid_clm, 'H2OSNO') then
    call nc_get_variable(ncid_clm, 'H2OSNO',  clm_H2OSNO, routine)
 else
    write(string1,*)'Snow repartitioning requires clm SWE variable'
@@ -439,7 +441,7 @@ else
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
-
+! List of prognostic CLM snow related variables that are required for updating
 if (nc_variable_exists(ncid_clm, 'SNLSNO')) then
    call nc_get_variable(ncid_clm, 'SNLSNO',  clm_SNLSNO)
 else
@@ -475,31 +477,52 @@ else
    call error_handler(E_ERR,routine,string1,source)
 endif
 
-! Variables associated with dart_posterior.nc
+! Check for required variables within dart_posterior.nc
+! H2OSNO is absolutely necessary because it includes the posterior SWE
+! which is the basis for the entire reprartitioning algorithm
 if (nc_variable_exists(ncid_dart, 'H2OSNO')) then
    call nc_get_variable(ncid_dart, 'H2OSNO',  dart_H2OSNO, routine)
 else
    write(string1,*)'Snow repartitioning requires a SWE variable in DART state'
-   write(string2,*)'Check that H2OSNO variable is in DART model_nml as vector'
-   call error_handler(E_ERR,routine,string1,source)
+   write(string2,*)'Check that H2OSNO variable is in DART model_nml as vector history'
+   call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
-if (nc_variable_exists(ncid_dart, 'DZSNO')) then
-   call nc_get_variable(ncid_dart, 'DZSNO', dart_DZSNO)
-else
-   write(string1,*)'Snow repartitioning requires "DZSNO" within DART state'
-endif
-
+! These variables need to be updated by DART before repartitioning. We will overwrite the
+! snow layers only with the repartitioning method.  Subsurface layers keep
+! traditional DART update.
 if (nc_variable_exists(ncid_dart, 'H2OSOI_LIQ')) then
    call nc_get_variable(ncid_dart, 'H2OSOI_LIQ', dart_H2OLIQ)
 else
    write(string1,*)'Snow repartitioning requires "H2OSOI_LIQ" within DART state'
+   call error_handler(E_ERR,routine,string1,source)
 endif
 
 if (nc_variable_exists(ncid_dart, 'H2OSOI_ICE')) then
    call nc_get_variable(ncid_dart, 'H2OSOI_ICE', dart_H2OICE)
 else
    write(string1,*)'Snow repartitioning requires "H2OSOI_ICE" within DART state'
+   call error_handler(E_ERR,routine,string1,source)
+endif
+
+! The DART posterior for  DZSNO and SNOWDEPTH will be completely
+! overwritten by the repartitioning, call these variables here
+! to initialize them, and to remind the user these will be updated.
+if (nc_variable_exists(ncid_dart, 'DZSNO')) then
+   call nc_get_variable(ncid_dart, 'DZSNO', dart_DZSNO)
+else
+   write(string1,*)'Snow repartitioning requires "DZSNO" within DART state'
+   call error_handler(E_ERR,routine,string1,source)
+endif
+
+if (nc_variable_exists(ncid_dart, 'SNOW_DEPTH')) then
+   call nc_get_variable(ncid_dart, 'SNOW_DEPTH',  dart_SNOWDP)
+elseif (nc_variable_exists(ncid_dart, 'SNOWDP')) then
+   call nc_get_variable(ncid_dart, 'SNOWDP',  dart_SNOWDP)
+else
+   write(string1,*)'Snow repartitioning requires clm snow depth variable'
+   write(string2,*)'Check model_nml within input.nml for "SNOW_DEPTH" or "SNOWDP"'
+   call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
 
@@ -521,7 +544,7 @@ where ( dzsno_pr < 0.0_r8)  dzsno_pr = 0.0_r8
 where (h2oliq_pr < 0.0_r8) h2oliq_pr = 0.0_r8
 where (h2oice_pr < 0.0_r8) h2oice_pr = 0.0_r8
 
-! Important that H2OSNO posterior is taken from DART(dart_posterior.nc)
+! Important that H2OSNO posterior is taken from DART state (dart_posterior.nc)
 ! whereas all other snow variables are taken from prior clm_restart.nc 
 ! such that repartitioning H2OSNO increment can be based on prior snow distribution
 
@@ -537,7 +560,7 @@ h2oice_po = h2oice_pr
 
 
 ! Grab column varsize for PARTITION loop
-call Compatible_Variables('H2OSOI_ICE', ncid_dart, ncid_clm, varsize)
+call nc_get_variable_size(ncid_clm, 'H2OSOI_ICE', varsize, routine)
 
 PARTITION: do icolumn = 1,varsize(2)
       
@@ -610,10 +633,12 @@ PARTITION: do icolumn = 1,varsize(2)
             ! Apply the increment for liquid, ice and depth for each layer.
             h2oliq_po(ilayer,icolumn) = h2oliq_pr(ilayer,icolumn) + gain_h2oliq
             h2oice_po(ilayer,icolumn) = h2oice_pr(ilayer,icolumn) + gain_h2oice
-
+            
+            ! @fixme if needed
             ! BMR @fixme what happens to other snow layer heights?
             !  zsno (middle of snow layer) and zisno (top of snow layer)
-            
+            ! @fixme if needed            
+
              dzsno_po(ilayer,icolumn) =  dzsno_pr(ilayer,icolumn) + gain_dzsno(ilayer,icolumn)
          enddo
 
@@ -639,6 +664,7 @@ enddo PARTITION
 ! Update the 'clm_array' with repartitioned 'dart_array' similar to 
 ! subroutine replace_values_2D, but with snow variables
 
+!@fixme This needs to check for SNOW_DEPTH or SNOWDP
 VarID=get_varid_from_varname(dom_id, 'SNOW_DEPTH')
 
 ! Identify location of missing_values and FillValues to prevent updates (masking)  
@@ -648,6 +674,7 @@ if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,spe
 !@fixme I am following the same usage as in subroutine 'replace_values_2D'
 if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,special)
 
+!@fixme This also needs to check for SNOW_DEPTH or SNOWDP
 ! Make sure variables in both files are identical in shape, etc.
 call Compatible_Variables('SNOW_DEPTH', ncid_dart, ncid_clm, varsize)
 where(dart_SNOWDP /= special) clm_SNOWDP = dart_SNOWDP
