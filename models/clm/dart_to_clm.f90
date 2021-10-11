@@ -64,6 +64,7 @@ use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_put_variable, &
                                  nc_close_file, &
                                  nc_variable_exists, &
+                                 nc_get_dimension_size, &
                                  NF90_MAX_NAME, NF90_MAX_VAR_DIMS
 
 implicit none
@@ -377,22 +378,11 @@ integer, intent(in) :: ncid_clm
 
 character(len=*), parameter :: routine = 'update_snow'
 
-integer  ::  snlsno  ! Negative number of 'filled' snow layers
-integer  ::  nlevsno ! Max possible snow layers  
-real(r8) ::  h2osno_pr, h2osno_po
-real(r8) ::  snowdp_pr, snowdp_po
-real(r8) ::  dzsno_pr,  dzsno_po
-real(r8) ::  h2oliq_pr, h2oliq_po
-real(r8) ::  h2oice_pr, h2oice_po
-real(r8) ::  gain_dzsno
-
-real(r8) :: snowden, wt_swe, wt_liq, wt_ice
-real(r8) :: gain_h2oice
-real(r8) :: gain_h2oliq
-real(r8) :: gain_h2osno
-
+! Max possible snow layers (nlevsno)
+integer  :: nlevsno 
 integer  :: icolumn, ilayer, c
 integer  :: VarID, varsize(2)
+real(r8) :: snowden, wt_swe, wt_liq, wt_ice
 
 real(r8), allocatable :: dart_H2OSNO(:)
 real(r8), allocatable :: dart_SNOWDP(:)
@@ -407,7 +397,23 @@ real(r8), allocatable :: clm_DZSNO(:,:)
 real(r8), allocatable :: clm_H2OLIQ(:,:)
 real(r8), allocatable :: clm_H2OICE(:,:)
 
-character(len=512) :: string1, string2, string3
+real(r8), allocatable :: snlsno(:)
+real(r8), allocatable :: h2osno_pr(:)
+real(r8), allocatable :: h2osno_po(:)
+real(r8), allocatable :: snowdp_pr(:)
+real(r8), allocatable :: snowdp_po(:)
+real(r8), allocatable :: dzsno_pr(:,:)
+real(r8), allocatable :: dzsno_po(:,:)
+real(r8), allocatable :: h2oliq_pr(:,:)
+real(r8), allocatable :: h2oliq_po(:,:)
+real(r8), allocatable :: h2oice_pr(:,:)
+real(r8), allocatable :: h2oice_po(:,:)
+real(r8), allocatable :: gain_dzsno(:,:)
+real(r8) :: gain_h2oice, gain_h2oliq, gain_h2osno
+
+
+character(len=512) :: string1, string2
+real(r8) :: special
 
 ! Check existence for snow related variables required to be
 ! in DART state and CLM domain (restart,history,vector history)
@@ -422,7 +428,7 @@ character(len=512) :: string1, string2, string3
 !it also exists in clm domain
 
 ! Check for appropriate clm variables to reprartition snow
-if (nc_variable_exists(ncid_clm, 'H2OSNO') then
+if (nc_variable_exists(ncid_clm, 'H2OSNO')) then
    call nc_get_variable(ncid_clm, 'H2OSNO',  clm_H2OSNO, routine)
 else
    write(string1,*)'Snow repartitioning requires clm SWE variable'
@@ -650,16 +656,20 @@ PARTITION: do icolumn = 1,varsize(2)
 
 enddo PARTITION
 
+deallocate(h2osno_pr, h2osno_po, snowdp_pr, dzsno_pr, h2oliq_pr, h2oice_pr, gain_dzsno)
+
 
 ! Update the 'dart_array' (dart_posterior.nc) with the repartitioned values
  dart_SNOWDP = snowdp_po
  dart_DZSNO  = dzsno_po
+deallocate(snowdp_po, dzsno_po)
+
 
 ! Important to update only the manually repartitioned above surface layers
 ! Keep the DART posterior subsurface values
  dart_H2OLIQ(1:nlevsno,:) =h2oliq_po(1:nlevsno,:)  
  dart_H2OICE(1:nlevsno,:) =h2oice_po(1:nlevsno,:)
-
+deallocate(h2oliq_po, h2oice_po)
 
 ! Update the 'clm_array' with repartitioned 'dart_array' similar to 
 ! subroutine replace_values_2D, but with snow variables
