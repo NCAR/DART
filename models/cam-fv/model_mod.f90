@@ -233,9 +233,9 @@ real(r8), allocatable :: phis(:, :)
 integer :: vertical_localization_type = VERTISPRESSURE
 
 ! flag used to know if the vertical unit system has numbers
-! that get larger as you move away from the earth's surface
-! (e.g. height) or smaller (e.g. pressure)
-logical :: higher_is_smaller
+! that change in the positive direction as you move away from the earth's surface
+! (e.g. height) or negative (e.g. pressure)
+logical :: higher_is_decreasing
 
 ! commonly used numbers that we'll set in static_init_model
 real(r8) :: ref_model_top_pressure
@@ -844,7 +844,7 @@ do imem=1,ens_size
    ! do the horizontal interpolation for each ensemble member.
    ! call one at a time to avoid creating temporary arrays
    call quad_lon_lat_evaluate(interp_handle, lon_fract, lat_fract, &
-                              quad_vals(:,imem), interp_vals(imem), status_array(imem))
+                              quad_vals(imem,:), interp_vals(imem), status_array(imem))
 end do
 
 if (using_chemistry) &
@@ -3090,7 +3090,7 @@ if (no_normalization_of_scale_heights) then
                                         iloc, jloc, level_one, surface_pressure, status1)
       if (status1 /= 0) goto 200
 
-      scaleheight_val = log(surface_pressure(1))
+      scaleheight_val = -log(surface_pressure(1))
 
    else
 
@@ -3101,7 +3101,7 @@ if (no_normalization_of_scale_heights) then
                                qty, pressure_array, my_status)
       if (any(my_status /= 0)) goto 200
    
-      scaleheight_val = log(pressure_array(vloc))
+      scaleheight_val = -log(pressure_array(vloc))
 
    endif
 
@@ -3449,7 +3449,7 @@ if (no_normalization_of_scale_heights) then
       endif
    endif
    
-   scaleheight_val = log(pressure_array(1))
+   scaleheight_val = -log(pressure_array(1))
 
 else
 
@@ -3584,7 +3584,8 @@ call error_handler(E_MSG, 'init_discard_high_obs', string1, source, revision, re
 ! incoming observations which have vertical units of scale height.
 ! so far we have localized in scale height but never had obs
 ! which had an incoming vertical unit of scale height.
-no_assim_above_scaleh = scale_height(no_assim_above_pressure, ref_surface_pressure, .false.)
+no_assim_above_scaleh = scale_height(no_assim_above_pressure, ref_surface_pressure, &
+                                     no_normalization_of_scale_heights)
 write(string1, out_fmt) &
    ' ... which is equivalent to scale height   ', no_assim_above_scaleh
 call error_handler(E_MSG, 'init_discard_high_obs', string1, source, revision, revdate)
@@ -3621,7 +3622,8 @@ if (table_type == HIGH_TOP_TABLE .and. &
 
 ! convert to vertical localization units
 call convert_vertical_level_generic(real(model_damping_ends_at_level, r8), &
-                                         vertical_localization_type, ramp_end, string3, no_norm=.false.)
+                                    vertical_localization_type, ramp_end, string3, &
+                                    no_norm=no_normalization_of_scale_heights)
 
 ! check for conversion errors
 if (ramp_end == MISSING_R8) then
@@ -3632,7 +3634,8 @@ endif
 
 ! this value only used for print statement, unused otherwise
 call convert_vertical_level_generic(1.0_r8, vertical_localization_type, &
-                                    model_top, string3, no_norm=.false.)
+                                    model_top, string3, &
+                                    no_norm=no_normalization_of_scale_heights)
 
 ! check for conversion errors
 if (model_top == MISSING_R8) then
@@ -3651,7 +3654,8 @@ call error_handler(E_MSG, routine, &
    string1, source, revision, revdate, text2=string1, text3=string2)
 
 write(string1, out_fmt) 'For reference, model top is ', model_top, ' '//trim(string3)
-call error_handler(E_MSG, routine, string1, source, revision, revdate)
+write(string2, out_fmt) '  NOTE; negative values are the result of no_normalization_of_scale_heights = .true. '
+call error_handler(E_MSG, routine, string1, source, revision, revdate, text2=string2)
 
 end subroutine init_damping_ramp_info
 
@@ -3682,6 +3686,10 @@ real(r8) :: vert_localize_dist, ramp_start, norm, vert_norm, vert_only_dist
 real(r8) :: horiz_dist, ramp_dist, ramp_width
 type(location_type) :: this_loc, ramp_start_loc, loc1, loc2
 logical, save :: onetime = .true.
+! Change the 0s in the tests of pr_X below, in order to see diagnostic prints (a managable number).
+integer, save :: pr_b = 0
+integer, save :: pr_r = 0
+integer, save :: pr_a = 0
 
 
 ! do the easy cases first - either above the ramp end
@@ -3691,6 +3699,9 @@ logical, save :: onetime = .true.
 ! FIXME: test this!!!
 ! is it above the ramp end? set damp dist to something
 ! large enough to turn off all impacts.  is vert_localize_dist enough?
+! KDR it's 0.3 in my tests on 2021-9-5.
+!     cutoff*vert_norm_scaleheight = 0.15*1.5 = .225, so "yes" in this case.
+! ? Are those values used to set the maxdist in the gc?
 vert_localize_dist = get_maxdist(gc, obs_type)
 if (.false. .and. onetime) then
    print *, 'vert_localize_dist = ', vert_localize_dist
@@ -3700,6 +3711,11 @@ endif
 if (v_above(test_value, ramp_end)) then
    extra_dist = vert_localize_dist
    above_ramp_start = .true.
+   if (my_task_id() == 0 .and. pr_a < 0 ) then
+      print *, 'v_above = true; pr_count, ramp_end, test_value ', &
+               pr_a, ramp_end, test_value
+      pr_a = pr_a + 1
+   endif
    return
 endif
 
@@ -3713,17 +3729,24 @@ vert_norm = 1.0_r8 / norm               ! units now: loc units/rad
 
 ramp_start = v_down(ramp_end, vert_norm * vert_localize_dist)
 
-!print *, 'computing ramp start: ramp_end, vert_norm, vert_localize_dist', &
-!                    ramp_start, ramp_end, vert_norm, vert_localize_dist
+if (onetime .and. my_task_id() == 0 ) then
+   print *, 'ramp start, ramp_end, vert_norm, vert_localize_dist', &
+             ramp_start, ramp_end, vert_norm, vert_localize_dist
+   onetime = .false.
+endif
 
 if (.not. v_above(test_value, ramp_start)) then
+   if (my_task_id() == 0 .and. pr_b < 0) then
+      print *, '   test_value ',test_value, ' is below ramp_start (and below ramp_end)'
+      pr_b = pr_b + 1
+   endif
    extra_dist = 0.0_r8
    above_ramp_start = .false.
    return
 endif
 
 
-! ok, we're somewhere inbetween.  compute horiz and vert distances
+! ok, we're somewhere in between.  compute horiz and vert distances
 ! and see what the ramping factor needs to be.
 
 !print *, 'test value within ramp range: ', ramp_start, test_value, ramp_end
@@ -3733,28 +3756,16 @@ above_ramp_start = .true.
 this_loc       = set_location(0.0_r8, 0.0_r8, test_value, vertical_localization_type)
 ramp_start_loc = set_location(0.0_r8, 0.0_r8, ramp_start, vertical_localization_type)
 
-! do we need this?  i think so.   radians
-vert_only_dist = get_dist(ramp_start_loc, this_loc, obs_type)
-
-! we need this to compute what?
-if (vert_only_dist > total_dist) then
-   !print *, 'unexpected, vert larger than total:  ', vert_only_dist, total_dist
-   !print *, 'obs_type, vert_norm = ', obs_type, vert_norm
-   horiz_dist = 0.0_r8
-else
-   horiz_dist = sqrt(total_dist**2 - vert_only_dist**2)
-endif
-
 ramp_dist  = v_difference(test_value, ramp_start)
 ramp_width = v_difference(ramp_end,   ramp_start)
 extra_dist = (ramp_dist / ramp_width) * vert_localize_dist
 
-! DEBUG - disable for now
-if (.false. .and. above_ramp_start) then
-   print *, 'ramp s/v/e: ', ramp_start, test_value, ramp_end
-   print *, 'v, h:       ', vert_only_dist, horiz_dist
-   print *, 'rampd, tot: ', ramp_dist, ramp_width
-   print *, 'ed, return: ', extra_dist, above_ramp_start
+if (my_task_id() == 0 .and. pr_r < 0) then
+!    print *, 'In the ramp layer:'
+   print *, 'ramp start, value, end: ', ramp_start, test_value, ramp_end
+!    print *, '   rampd, tot: ', ramp_dist, ramp_width
+   print *, '   extra dist, return above_ramp_start: ', extra_dist, above_ramp_start
+   pr_r = pr_r + 1
 endif
 
 end function above_ramp_start
@@ -3776,23 +3787,19 @@ end function above_ramp_start
 subroutine init_sign_of_vert_units()
 
 if (vertical_localization_type == VERTISHEIGHT) then 
-   higher_is_smaller = .false.
+   higher_is_decreasing = .false.
 
 else if (vertical_localization_type == VERTISSCALEHEIGHT) then 
-   ! FIXME: note from nick on scale height:
-   !  If no_normalization_of_scale_heights is true, then SH=log(pressure), 
-   !  and scale height will decrease with increasing height. 
-   !  However, if it is false then SH= -1*log(pressure/surface_pressure) 
-   !  and it will increase with increasing height. 
+   !  If no_normalization_of_scale_heights is false SH == log(surface_pressure/pressure),
+   !  scale height will increase (go in the positive direction) with increasing height.
+   !  If it is true, then SH= - log(pressure), which also goes in the positive direction
+   !  with increasing height (decreasing pressure); from large negative values to small negatives.
+   !  Math reminder; log(1/pressure) == - log(pressure).
 
-   if (no_normalization_of_scale_heights) then 
-      higher_is_smaller = .true.
-   else
-      higher_is_smaller = .false.
-   endif
+   higher_is_decreasing = .false.
 
 else
-   higher_is_smaller = .true.
+   higher_is_decreasing = .true.
 
 endif
 
@@ -3806,7 +3813,7 @@ pure function v_above(a, b)
 real(r8), intent(in) :: a, b
 logical :: v_above
 
-if (higher_is_smaller) then
+if (higher_is_decreasing) then
    v_above = (a < b)
 else
    v_above = (a > b)
@@ -3824,7 +3831,7 @@ pure function v_down(a, b)
 real(r8), intent(in) :: a, b
 real(r8) :: v_down
 
-if (higher_is_smaller) then
+if (higher_is_decreasing) then
    v_down = (a + b)
 else
    v_down = (a - b)
@@ -4031,7 +4038,7 @@ if (.not. present(ens_handle)) then
 endif
 
 ! does the base obs need conversion first?
-vert_type = query_location(base_loc)
+vert_type = nint(query_location(base_loc))
 
 if (vert_type /= vertical_localization_type) then
    call convert_vert_one_obs(ens_handle, base_loc, base_type, &
@@ -4052,7 +4059,7 @@ call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
 do i=1, num_close
    this = close_ind(i)
 
-   vert_type = query_location(locs(this))
+   vert_type = nint(query_location(locs(this)))
 !print *, 'close_s, vval, vtype = ', i, query_location(locs(this), 'VLOC'), vert_type
 
    if (vert_type /= vertical_localization_type) then
@@ -4126,7 +4133,7 @@ real(r8), parameter :: tiny = epsilon(1.0_r8)
 real(r8) :: diff
 
 if (skip_norm) then
-   scale_height = log(p_above)
+   scale_height = -log(p_above)
    return
 endif
 
@@ -4141,8 +4148,7 @@ else if (diff <= tiny .or. p_above <= 0.0_r8) then
    scale_height = MISSING_R8
 
 else
-   ! normal computation - should be safe now
-   scale_height = -log(p_above / p_surface )
+   scale_height = log(p_surface / p_above )
 
 endif
 
