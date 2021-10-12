@@ -27,8 +27,8 @@ crop_region=true
 instrument=VIIRS 
 
 # webpage credentials
-username=dares_team_member
-password=dart_2009BAMS
+username=XXXXXXXX
+password=XXXXXXXX
 web_page=https://oceandata.sci.gsfc.nasa.gov/api/file_search
 
 touch ~/.netrc
