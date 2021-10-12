@@ -1,4 +1,4 @@
-function plot_connections(x, ROUTE_FILE, fig_pos, show_gauges_legend, colorbar_title)
+function plot_connections(x, ROUTE_FILE, fig_pos, colorbar_title, tiny_flow)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -11,17 +11,20 @@ function plot_connections(x, ROUTE_FILE, fig_pos, show_gauges_legend, colorbar_t
 %
 % ** fig_pos: Position of the figure; could be separate or a subplot
 %
-% ** show_gauges_legend: Option to display the legend of the gauges
+% ** colorbar_title: title of the colorbar (usually units "cms", "m", ...)
 %
-% ** colorbar_title: title of the colorbar (usuallu units "cms", "m", ...)
+% ** tiny_flow: low flow conditions (e.g., 10cm for streamflow, 1mm for bucket)
+%
+% NOTE: THIS FUNCTION REQUIRES 'cbrewer'. THIS CAN BE DOWNLOADED FROM: 
+% https://www.mathworks.com/matlabcentral/fileexchange/34087-cbrewer-colorbrewer-schemes-for-matlab 
 %
 %   example: x                  = mean(ncread('all_preassim_mean.nc', 'qlink1'), 2);
 %            ROUTE_FILE         = 'RouteLink.nc';
 %            fig_pos            = get(gca, 'position');
-%            show_gauges_legend = true;
 %            colorbar_title     = 'cms';
+%            tiny_flow          = 10;
 %
-%            plot_connections(x, ROUTE_FILE, fig_pos, show_gauges_legend, colorbar_title);
+%            plot_connections(x, ROUTE_FILE, fig_pos, colorbar_title, tiny_flow);
 %
 % DART $Id: plot_connections.m $
 
@@ -37,65 +40,59 @@ fromIndsEnd   = double(ncread(ROUTE_FILE, 'fromIndsEnd'));
 no_up_links   = fromIndsStart == 0;
 num_up_links  = fromIndsEnd - fromIndsStart + 1; num_up_links(no_up_links) = 0;
 
-gauges_from_routelink = strtrim(ncread(ROUTE_FILE, 'gages')');
-gauges_manual         = gauges_2_indices(gauges_from_routelink);
+xL = -80.7; %round(min(LON), 2); 
+xR = -76.1; %round(max(LON), 2);
+yB = 33.60; %round(min(LAT), 2); 
+yT = 36.90; %round(max(LAT), 2);
 
-xL = round(min(LON), 2); xR = round(max(LON), 2);
-yB = round(min(LAT), 2); yT = round(max(LAT), 2);
-
-marker_set = {'o', '<', '*', 'd', '>', '^', 'p', 'v', 'h', 's', '.', '+'};
 
 %%
 xlabel('Longitude', 'FontSize', 13)
 ylabel('Latitude', 'FontSize', 13)
 
 set(gca, 'FontSize', 16, 'XLim', [xL, xR], 'YLim', [yB, yT], ...
-         'YTick', linspace(yB, yT, 5), ...
+         'YTick', [34.4250, 35.2500, 36.0750], ...
          'YTickLabelRotation', 90); grid on; hold on
     
 % make sure we are not in a "single" situation
 x  = double(x);
-Nx = length(x);
 
-bL = [  30, 144, 255 ]/255;
-rD = [ 255,  51,  51 ]/255;
-gR = [   0, 153,   0 ]/255;
-pR = [ 153,  51, 255 ]/255;
-oR = [ 255, 153,  51 ]/255;
-lB = [ 153, 255, 255 ]/255;
-lR = [ 255, 153, 153 ]/255;
-lG = [ 153, 255, 204 ]/255;
-lP = [ 204, 153, 255 ]/255;
-lO = [ 255, 204, 153 ]/255;
+pos_links = sort(x(x>tiny_flow));
+zer_links = x>=-tiny_flow & x<=tiny_flow;
+neg_links = sort(x(x<-tiny_flow));
 
-% choose a colormap
-if min(x) < -0.1 % increment situation
-    cmap = [pR; lP; bL; lB; gR; lG; oR; lO; rD; lR]; 
+pos_len = length(pos_links);
+neg_len = length(neg_links);
+
+if numel(find(x<0)) / n_links * 100 > 5  % negative values less than 5% of all links
+
+    cmap = [ ...
+             flipud(cbrewer('seq', 'Reds', length(neg_links), 'PCHIP')); ...
+             [.8, .8, .8]; ...
+             cbrewer('seq', 'Blues', length(pos_links), 'PCHIP') ...
+           ]; 
+    size_cmap = size(cmap, 1);
 else
-    cmap = jet;
+    mval = abs(x);
+    cmap = hsv(n_links); %sstpal(n_links) %cbrewer('div', 'Spectral', n_links, 'PCHIP');
+    
+    size_cmap = size(cmap, 1);
+    
+    cmap(1, :) = [.8, .8, .8]; % Grey color for zero reaches!    
 end
-size_cmap = size(cmap, 1);
 
-cn = (x - min(x))/(max(x)-min(x));
-cn = ceil(cn * size_cmap);
+z = x;
+y = abs(x);
+b = (z - min(z))/(max(z)-min(z));
+d = (y - min(y))/(max(y)-min(y));
+
+cn = ceil(b * size_cmap);
 cn = max(cn, 1);
-
-if min(x) < -0.1
-    m_cn = mode(cn);
-    Np = length(cn(cn >= m_cn));
-    Nn = Nx - Np;
-    lw = [linspace(1, 3, Np), linspace(1, 3, Nn)];
-else
-    lw = cn/max(cn) * 3 + 1;
-end
+lw = d * 8 + .1;
  
-cmap(size_cmap+1, :) = [150, 150, 150]/255; % Grey color for zero reaches!
+cn(zer_links) = neg_len + 1; 
 
-zero_links = x > -.001 & x < .001;
-cn(zero_links) = size(cmap, 1); 
-lw(zero_links) = 1.0;
-
-for i = 1:n_links
+for i = 55000:n_links %1:n_links (to speed things up, only show major streams)
     % ith link
     lon_i = LON(i);
     lat_i = LAT(i);
@@ -111,112 +108,92 @@ for i = 1:n_links
         S = line(p1, p2); set(S, 'color', col_i, 'LineWidth', wid_i);
     end  
 end
- 
-if length(gauges_manual) <= 10
 
-    Legend_str = cell(1); 
-    for k = 1:length(gauges_manual)
-        x_loc_gauge = LON( gauges_manual(k,1) );
-        y_loc_gauge = LAT( gauges_manual(k,1) );
+if pos_len > 0 && neg_len > 0 
 
-        leg.H(k) = plot( x_loc_gauge, y_loc_gauge, marker_set{k}, ...
-              'Color', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 10); hold on
+    colormap(gca, cmap)
+    hc = colorbar; 
+    
+    hc1 = neg_len / size_cmap;
 
-        Legend_str{k} = [num2str(gauges_manual(k,1)), '; ', num2str(gauges_manual(k,2))];
+    hc_major = [0, neg_len, neg_len+1, neg_len+1+pos_len];
 
-        %text(x_loc_gauge, y_loc_gauge-0.01, num2str(gauges_manual(k,1)), 'FontSize', 9, 'Color', 'k');
-        %text(x_loc_gauge, y_loc_gauge+0.01, num2str(gauges_manual(k,2)), 'FontSize', 9, 'Color', 'k');
-    end
-    if show_gauges_legend, legend(leg.H, Legend_str, 'Location', 'NorthEast'); end
-else
+    zer_point = hc_major(3);
+    if hc1 > 0.5
+        neg_points = [1, ceil(neg_len/3), ceil(2*neg_len/3)];
+        neg_labels = neg_links(neg_points)';
 
-    % Too many gauges: not enough symbols
-    for k = 1:length(gauges_manual)
-        x_loc_gauge = LON( gauges_manual(k,1) );
-        y_loc_gauge = LAT( gauges_manual(k,1) );
+        pos_points = [ceil(pos_len/2), pos_len];
+        pos_labels = pos_links(pos_points)';
 
-        plot( x_loc_gauge, y_loc_gauge, marker_set{1}, ...
-              'Color', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 10); hold on
-    end
-    warning('Number of gauges is large. The image will be cluttered!!')
-end
-
-[~, uni_cols] = unique(cn); 
-num_colors    = length(uni_cols);
-col_levels    = cmap(cn(uni_cols), :);
-
-[~, r] = sort(x(uni_cols));
-
-colormap(gca, col_levels(r,:));
-
-hc = colorbar; 
-
-hc_cubes  = min(6, num_colors); 
-hc_range  = linspace(0, num_colors, hc_cubes);
-hc_ticks  = hc_range/num_colors;
-
-hc_range(1)  = 1; 
-hc_range     = ceil(hc_range); 
-hc_full_cols = sort(round(x(uni_cols), 3));
-
-ind_tmp = find(hc_full_cols == 0);
-bob     = hc_range - ind_tmp;
-
-pos_tmp = abs(bob) == min( abs(bob) ) ;
-
-hc_range(pos_tmp) = ind_tmp;
-hc_ticks(pos_tmp) = ind_tmp/num_colors; 
-
-hc_labels_tmp = hc_full_cols(hc_range);
-
-if max(x) < 10
-    if find(pos_tmp) ~= 1 % inc. scenario
-        hc_labels = '';
-        for k = 1:hc_cubes
-            hc_labels(k, :) = sprintf('%9.4f', hc_labels_tmp(k));
-        end
-        hc_labels(pos_tmp, :) = '< |0.001|';
     else
-        hc_labels = '';
-        for k = 1:hc_cubes
-            hc_labels(k, :) = sprintf('%7.3f', hc_labels_tmp(k));
-        end
-        if min(x) == 0 && max(x) == 0
-            hc_labels(pos_tmp, :) = 'Exact 0';
-        else
-            hc_labels(pos_tmp, :) = '< 0.001';
-        end
+
+        neg_points = [1, ceil(neg_len/2)];
+        neg_labels = neg_links(neg_points)';
+
+        pos_points = [ceil(pos_len/3), ceil(2*pos_len/3), pos_len];
+        pos_labels = pos_links(pos_points)';
+
     end
+    hc_labels  = [neg_labels, 0, pos_labels];
+    hc_labels  = round(hc_labels, 3, 'significant');
+
+    hc_locate  = [hc_major(1), neg_points(2:end), ...
+                    zer_point, pos_points+neg_len+1] / size_cmap;
+                
 else
-    hc_labels = hc_labels_tmp;
+    
+    [~, uni_cols] = unique(cn); 
+    num_colors    = length(uni_cols);
+    col_levels    = cmap(cn(uni_cols), :);
+
+    [~, r] = sort(mval(uni_cols));
+
+    colormap(gca, col_levels(r,:));
+
+    hc = colorbar; 
+
+    hc_cubes   = min(7, num_colors); 
+    hc_range   = linspace(0, num_colors, hc_cubes);
+    hc_locate  = hc_range/num_colors;
+
+    hc_range(1)  = 1; 
+    hc_range     = ceil(hc_range); 
+    hc_full_cols = sort(round(mval(uni_cols), 5));
+
+    ind_tmp = find(hc_full_cols == 0);
+    bob     = hc_range - ind_tmp;
+
+    if size(ind_tmp, 1) > 0
+        pos_tmp = find(abs(bob) == min(abs(bob))) ;
+        pos_tmp = pos_tmp(end);
+
+        hc_range(pos_tmp) = ind_tmp;
+    end
+
+    hc_labels_tmp = hc_full_cols(hc_range);
+
+    hc_labels = round(hc_labels_tmp, 3, 'significant');
+    
 end
 
 hc_pos(1) = fig_pos(1) + .96*fig_pos(3);
 hc_pos(2) = fig_pos(2) + .03*fig_pos(4);
 hc_pos(3) = fig_pos(3) * .04;
-hc_pos(4) = fig_pos(4) * .25;
+hc_pos(4) = fig_pos(4) * .30;
 
-set(hc, 'YTick', hc_ticks, 'YTickLabel', hc_labels, 'Position', hc_pos, 'FontSize', 12);    
-set(get(hc, 'title'), 'String', colorbar_title)
+set(hc, 'YTick', hc_locate, 'YTickLabel', hc_labels, 'Position', hc_pos, 'FontSize', 12)
 
+set(get(hc, 'title'), 'String', colorbar_title, 'FontSize', 14)
 
+% text(-80.4, 34.0, 'SC', 'FontSize', 20, 'FontWeight', 'Bold')
+% text(-80.4, 36.0, 'NC', 'FontSize', 20, 'FontWeight', 'Bold')
+% text(-80.4, 36.7, 'VA', 'FontSize', 20, 'FontWeight', 'Bold')
 
-function obs_ind_id = gauges_2_indices(gauges)
-
-n_links = length(gauges);
-
-k = 0;
-for i = 1:n_links
-    ob_id = gauges(i, :);
-    
-    if sum( isspace(ob_id) ) ~= 10
-        k = k + 1;
-        obs_ind_id(k, :) = [i, str2double(ob_id)]; %#ok
-    end
-end
 
 
 % % <next few lines under version control, do not edit>
 % % $URL: $
 % % $Revision: $
 % % $Date: $
+

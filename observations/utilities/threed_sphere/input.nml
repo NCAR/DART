@@ -210,9 +210,9 @@
 &obs_info_nml
    filename_in             = 'obs_seq.out'
    filelist_in             = ''
-   counts_only             = .false.
-   calendar                = 'Gregorian'
    filenames_from_terminal = .false.
+   calendar                = 'Gregorian'
+   csv_style_output        = .false.
    output_file             = ''
 /
 

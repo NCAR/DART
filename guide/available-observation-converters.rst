@@ -7,7 +7,7 @@ into the format required by DART.
 
 Each directory has at least one converter:
 
--  ``AIRS``: :doc:`/observations/obs_converters/AIRS/AIRS`
+-  ``AIRS``: :doc:`/observations/obs_converters/AIRS/README`
 -  ``Aviso+/CMEMS``: :doc:`../observations/obs_converters/AVISO/AVISO`
 -  ``Ameriflux``: :doc:`../observations/obs_converters/Ameriflux/level4_to_obs`
 -  ``cice``: :doc:`../observations/obs_converters/cice/cice_to_obs`
@@ -23,6 +23,7 @@ Each directory has at least one converter:
 -  ``NCEP``: (prepbufr -> ascii) :doc:`../observations/obs_converters/NCEP/prep_bufr/prep_bufr`
 -  ``NCEP``: (ascii -> obs_seq) :doc:`../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs`
 -  ``ROMS``: :doc:`../observations/obs_converters/ROMS/ROMS`
+-  ``SIF``: :doc:`../observations/obs_converters/SIF/SIF_to_obs_netcdf`
 -  ``SSEC``: :doc:`../observations/obs_converters/SSEC/SSEC`
 -  ``SST``: :doc:`../observations/obs_converters/SST/SST`
 -  ``SSUSI``: :doc:`../observations/obs_converters/SSUSI/convert_f16_edr_dsk`

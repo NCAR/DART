@@ -285,8 +285,9 @@ References
 .. toctree::
    :hidden:
 
-   observations/obs_converters/AIRS/AIRS
    observations/obs_converters/AIRS/README
+   observations/obs_converters/AIRS/convert_airs_L2
+   observations/obs_converters/AIRS/convert_amsu_L1
    observations/obs_converters/AVISO/AVISO
    observations/obs_converters/Ameriflux/level4_to_obs
    observations/obs_converters/CHAMP/work/README
@@ -308,6 +309,7 @@ References
    observations/obs_converters/NCEP/prep_bufr/prep_bufr
    observations/obs_converters/NCEP/ascii_to_obs/create_real_obs
    observations/obs_converters/ROMS/ROMS
+   observations/obs_converters/SIF/SIF_to_obs_netcdf
    observations/obs_converters/SSEC/SSEC
    observations/obs_converters/SST/SST
    observations/obs_converters/SSUSI/convert_f16_edr_dsk
@@ -463,7 +465,6 @@ References
    assimilation_code/programs/advance_time/advance_time
    assimilation_code/programs/model_mod_check/model_mod_check
    assimilation_code/programs/closest_member_tool/closest_member_tool
-   assimilation_code/programs/restart_file_tool/restart_file_tool
    assimilation_code/programs/filter/filter
    assimilation_code/programs/obs_keep_a_few/obs_keep_a_few
    assimilation_code/programs/create_obs_sequence/create_obs_sequence
@@ -524,9 +525,6 @@ References
    :caption: non-compiling models
    :hidden:
          
-   models/cam-old/cam_to_dart
-   models/cam-old/readme
-   models/cam-old/dart_to_cam
    models/MITgcm_ocean/trans_pv_sv
    models/MITgcm_ocean/create_ocean_obs
    models/MITgcm_ocean/trans_sv_pv

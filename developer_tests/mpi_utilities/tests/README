@@ -1,8 +1,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 Greetings.  This README file contains information about the programs
 in this directory, and troubleshooting help if you are trying to get
@@ -11,11 +9,9 @@ the MPI option in DART to compile and run.
 
 INTRODUCTION:
 
-Starting with the Jamaica release of DART there is an option to use MPI
-in the filter program, to do the data assimilation step in parallel on a
-parallel machine.  There is also the option to have the model advance in
-parallel as well.  This is controlled by the 'async' namelist setting in
-the &filter_nml namelist section of the input.nml file.
+Most models with a large state vector DART need to use MPI in
+the filter program to do the data assimilation step in parallel 
+on a multiprocessor machine. 
 
 The default settings compile DART without MPI, but if you want to enable
 that option you need to have a working MPI library and run-time system.
@@ -26,28 +22,28 @@ are multiple Fortran compilers or if MPI is not installed in a standard
 directory.
 
 This directory contains some small test programs which use both MPI and
-the netCDF libraries.  It may be simpler to debug any build problems here,
-and if you need to submit a problem report to your system admin people
+the netCDF libraries.  It may be simpler to debug any build problems here.
+If you need to submit a problem report to your system admin people
 these single executables are much simpler than the entire DART build tree.
 
-Be sure that the file $DART/mkmf/mkmf.template has been updated for your
-particular system and compiler.  We supply a default file but generally
-you find the mkmf.template.compiler.system file which is closest to your
-setup, copy it over mkmf.template, and then update the location of the
+Be sure that the file $DART/build_templates/mkmf.template has been updated 
+for your particular system and compiler. Usually you find the 
+mkmf.template.compiler.system file which is closest to your setup, 
+copy it to mkmf.template, and then update the location of the
 netCDF libraries (since they are often not installed in a location searched
 by default).  If your system uses the 'module' commands to select
 different versions, make sure you have consistent versions of the Fortran
 compiler, the netCDF libraries, and the MPI libraries.
 
-There are 2 places where you may need to customize files in the 
-$DART/mpi_utilities directory.  First, some systems come with only an 
-include file for parameters; some come with only a Fortran 90 module.   
-Second, some systems require an interface block to declare the use of
-the system() function; others will not compile if it is specified.
-There are large block comments at the top of the test file in this
-directory - ftest_mpi.f90.  If you can get it compiled here, then you
-know what changes (if any) you have to make in the mpi_utilities_mod.f90
-and null_mpi_utilities_mod.f90 files in the $DART/mpi_utilities directory.
+We provide a script that tries to fix compiler dependicies in the code,
+called 'fixsystem'.  It is in the assimilation_code/modules/utilities
+directory. It modifies the mpi_utilities_mod.f90 and null_mpi_utilities_mod.f90
+files as needed.  If you have a different compiler you may need to
+add cases to the script and/or to the modules.  You can debug here
+with ftest_mpi.f90 file which is a smaller, standalone test program.
+Once you get the right declarations, interface blocks, routine
+calling sequence, etc, you can make the same modifications to the
+mpi_utilities_mod.f90 file and then DART should build for you.
 
 
 
@@ -60,19 +56,19 @@ almost infinite number of permutations of batch queue systems, compilers,
 and mpi libraries.
 
 Examples of batch queue systems:  PBS, LSF, LoadLeveler
-Examples of compiler vendors: Intel (ifort), PGI (pgf90), Absoft (f95)
+Examples of compiler vendors: Intel (ifort), PGI (pgf90), GNU (gfortran)
 Examples of MPI libraries:  mpich, LAM, OpenMPI, MPT
 
 
 Make sure that the closest mkmf.template.compiler.system file has 
-been copied over to $DART/mkmf/mkmf.template.
+been copied to $DART/mkmf/mkmf.template.
 
 Type:  make
 to compile the programs.
 
 Type:  make check
 to run the programs interactively and look for errors.  Note that on
-some larger systems it is prohibited to run MPI programs on the login
+some larger systems it can be prohibited to run MPI programs on the login
 nodes; they can only be submitted to a batch system.  If the f90 and nc
 programs run but the mpi program fails, you still might be ok.  Move
 on to 'make batch' before declaring an emergency.
@@ -100,9 +96,17 @@ ftest_nc.f90 is a (non-mpi) Fortran 90 program which uses the netCDF libraries.
 It can be used to test that the netcdf libs are installed and that you
 have the proper setting for the NETCDF variable in your mkmf.template.
 
-'make check' will try to build and run both of these programs interactively.
+ftest_onesided.f90 is a Fortran 90 program which uses the one-sided 
+MPI communication routine MPI_Get().  DART makes extensive use of
+this when running large models.  It is unusual, but is is possible
+that the MPI libraries are installed with options that prevent
+one-sided calls from working.  This program verifies this routine
+is functional.
+
+'make check' will try to build and run these programs interactively.
+
 'make batch' will submit them to the batch system to execute them.  If you
-have problems, keep reading below for more help in diagnosing exactly where
+have problems keep reading below for more help in diagnosing exactly where
 things are going wrong.
 
 
@@ -127,9 +131,7 @@ by some of the DART code and is called from the mpi module, so if you
 need to comment this block in or out, you are editing the same files.
 If you get an error trying to link your program and the message seems
 related to 'undefined external _system_' (or some close permutation of
-that message), go into BOTH mpi_utilities_mod.f90 and 
-null_mpi_utilities_mod.f90 and comment in (or out) the interface block
-near the comment which has 'BUILD TIP 2'.
+that message), check the comments related to this.
 
 3. Compiler wrappers
 
@@ -192,19 +194,18 @@ this program to debug netcdf problems.  Try: make ftest_nc (to compile), then:
 ./ftest_nc to run.  It should create a small netcdf file called ftestdata.nc
 which can be dumped with "ncdump ftestdata.nc".
 
-ftest_stop.f90 and ftest_go.f90 are MPI test programs for the async=4
-MPI model advance option.  If you are using async = 4 for filter and
-are having problems, try running this pair.  In particular pay attention
-to the 'hostname' of the script and compare it to the Process 0 message
-from ftest_stop.  If they are *not* the same, you will need a patch to
-your runme script.  Email us for more help.  Try:  make async4
-to run this test.  You may have to edit the Makefile to select the
-proper batch system.
+ftest_onesided.f90 is an MPI program that uses the MPI routine MPI_Get()
+to copy data from remote tasks.  DART uses this feature and on some systems
+it is possible that basic MPI functions work but one-sided functions have
+problems.  If this test fails, submit it to your system support group.
 
+ftest_sendrecv.f90 is an MPI program that uses other DART modules to
+test MPI_Send() and MPI_Recv() communication calls.  The other DART
+modules must be able to be compiled before you can run and use this test.
 
-ctest.c is a C language program.  The Fortran executables have no dependency
-on C, but if there is any question about whether there is a working C
-compiler on the system, try:  make ctest.
+ctest.c is a C language program.  DART is written completely in Fortran
+so this is not needed to build DART.  But if there is any question about 
+whether there is a working C compiler on the system, try:  make ctest.
 
 ctest_mpi.c is a C language program which uses the C versions of the MPI
 library calls.  DART does not have any C code in it, but it is possible
@@ -222,13 +223,9 @@ not, that might be a useful clue.  Try: make ctest_nc (to compile), then:
 ./ctest_nc to run.  It should create a small netcdf file called ctestdata.nc
 which can be dumped with "ncdump ctestdata.nc".
 
-Any questions, email me at:  nancy@ucar.edu
+Any questions, email the DART team at:  dart@ucar.edu
 
 
-Good luck -
+Good Luck -
 nancy collins
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

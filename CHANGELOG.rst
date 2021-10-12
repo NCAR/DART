@@ -22,13 +22,105 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 30 2021 :: Bug fix for very large models. Tag v9.11.11**
+
+- mpi_utilties_mod using correct check for message length > SNDRCV_MAXSIZE
+- new developers test for large message sizes
+- State vector IO updated to use i8 for state indexing
+- WRF model_mod now using i8  
+
+**September 21 2021 :: Bug fix for perfect_model_obs. Tag v9.11.10**
+
+- perfect_model_obs now exits cleanly when no filenames are given
+  for the input_state_files or output_state_files namelist options. 
+
+**August 30 2021 :: Repository clean-up and DART registration form. Tag: v9.11.9**
+
+*removed obsolete code:*
+
+- cam-old
+- restart_file_tool
+- html boilerplate from pre-readthedocs documentation
+- null versions of clamp_mod and vert_convert_mod
+- io test harnesses
+- jekyll website
+
+*removed experimental code:*
+
+- pnetcdf (for restart files)
+- filter.separate_seq (split obs_seq across cores)
+
+**August 26 2021 :: NAG compiler fixes and updates to developer tests Tag: v9.11.8**
+
+- bug fix for fixsytem for the NAG compiler
+- new developer test for mpi one-sided communication
+- removed obsolete async 4 developer tests 
+
+**August 19 2021 :: WRF-Hydro diagnostics Tag: v9.11.7**
+
+- Improved DART diagnostic routines for WRF-Hydro
+
+**August 10 2021 :: Documentation and GitHub template update Tag: v9.11.6**
+
+- External forward operator documentation
+- Typo fixes for GitHub templates 
+
+**August 5 2021 :: bug fix for obs_seq_to_netcdf and grabbufr.x Tag: v9.11.5**
+
+- obs_seq_to_netcdf now works correctly with mulitple obs_seq per epoch.
+- grabbufr.x STAT function returns correctly for long filenames when using PGI
+
+**July 23 2021 :: bug fix for wrf non-initialized unique levels. Tag: v9.11.4**
+
+- The array uniquek is now initialized to an invalid level to prevent random
+  reasonable level values in the array.
+
+**June 24 2021 :: bug fix for cam-fv model_interpolate. Tag: v.9.11.3**
+
+- cam-fv model_interpolate now passes the correct array slice of quad_vals
+  to quad_lon_lat_evaluate
+
+**June 24 2021 :: latest version of local particle filter.  Tag: v9.11.2**
+
+- latest version of particle filter from Jon Potterjoy
+- new mpi routine get_global_max
+
+**June 18 2021 :: build fixes for PGI compiler and intel compiler osx. Tag: v9.11.1**
+
+- mkmf.templates fixes for intel.osx and pgi
+- input.nml fix for obs_total_error
+- path_names fix for test_quad_*_interp 
+
+**June 8 2021 :: New observation converter for Solar Induced Fluorescence (SIF).  Tag: v9.11.0**
+
+- Converter for harmonized SIF retrievals
+
+**Jun 7 2021 :: fix typos in POP documentation Tag: v9.10.6**
+
+- fix some spelling mistakes, does not change meaning.
+
+**May 18 2021 :: updated process to generate obs on a sphere.  Tag: v9.10.5**
+
+- Matlab scripts and new scripts for cam-fv make it simpler to
+  generate synthetic observations evenly spaced around the sphere.
+- Moved create_sphere_obs into the even_sphere directory.
+
+**May 10 2021 :: obs_info support for identity obs Tag: v9.10.4**
+
+- programs/obs_utils/obs_info.f90 now supports reporting identity obs
+
+**May 6 2021 :: fix AMSUA converter bug. Tag: v9.10.3**
+
+- AIRS/convert_amsu_L1.f90 correctly handles multiple input files 
+- separated AIRS/README, convert_amsu_L1, and convert_airs_L2 documentation
+
 **May 4 2021 :: issue and pull request templates.  Tag: v9.10.2**
 
 *Github changes*
 
 - Templates for pull requests, bug reports and feature requests
 
-*Documenation updates*
+*Documentation updates*
 
 - Removed outdated instructions for checking out a tag
 

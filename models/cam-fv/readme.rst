@@ -272,6 +272,8 @@ The indenting shows which scripts are used by, or associated with, another scrip
        obs_seq_tool_series.csh           Script to process a series of obs_seq.final files,
                                          to change any of the properties available to obs_sequence_tool.
        spinup_single_sst.25              Same as cesm2_1/spinup_single, but uses a high resolution SST dataset.
+    synth_obs_locs_to_seqs.csh           Take text output from, e.g. even_sphere.m, and create obs_seq.in files
+                                         for use in perfect_model_obs.
  
 The scripts  in cesm#_# will handle, for that CESM version;
 

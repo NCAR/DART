@@ -1,0 +1,16 @@
+
+&convert_amsu_L1_nml
+   l1_files           = ''
+   l1_file_list       = ''
+   outputfile         = 'obs_seq.amsua'
+   append_output      = .true.
+   channel_list       = 'null'
+   along_track_thin   = 0
+   cross_track_thin   = 0
+   lon1               =   0.0
+   lon2               = 360.0
+   lat1               = -90.0
+   lat2               =  90.0
+   verbose            = 0
+  /
+

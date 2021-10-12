@@ -1,0 +1,52 @@
+&preprocess_nml
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
+   quantity_files          = '../../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90',
+                             '../../../../assimilation_code/modules/observations/land_quantities_mod.f90',
+                             '../../../../assimilation_code/modules/observations/ocean_quantities_mod.f90',
+  obs_type_files           = '../../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_GWD_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   /
+
+
+&obs_kind_nml
+   /
+
+&location_nml
+   /
+
+&obs_def_gps_nml
+   max_gpsro_obs = 10000
+   /
+
+&utilities_nml
+   module_details = .false.
+   termlevel      = 2
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  
+   /
+
+# This is an intentional subset of obs_diag and is intended
+# to provide guidance on where and when I should create the
+# test observations.
+
+&obs_diag_nml
+   first_bin_center =  2007, 1, 1, 6, 0, 0
+   last_bin_center  =  2007, 1, 3, 0, 0, 0
+   hlevel     = 10, 50, 100, 2000
+   plevel     = 1000, 900, 700, 400, 10, 1
+   mlevel     = 1, 2, 3, 4
+   /
+
+   Nregions   = 4
+   lonlim1    =   0.0,   0.0,   0.0, 235.0
+   lonlim2    = 360.0, 360.0, 360.0, 295.0
+   latlim1    =  20.0, -80.0, -20.0,  25.0
+   latlim2    =  80.0, -20.0,  20.0,  55.0
