@@ -87,6 +87,7 @@ namelist /dart_to_clm_nml/ dart_to_clm_input_file, &
 !----------------------------------------------------------------------
 
 integer            :: iunit, io, dom_restart, ivar, rank, irank
+integer            :: nlevsno, ICE_varsize(2)
 integer            :: ncid_dart, ncid_clm
 type(time_type)    :: dart_time, clm_time
 
@@ -146,16 +147,15 @@ dom_restart = 1
 
 UPDATE : do ivar=1, get_num_variables(dom_restart)
   
-  ! If repartitioning SWE then skip applying snow variable updates for now
+  ! If repartitioning SWE then skip applying snow variable updates within UPDATE loop
   ! The snow variable updates will be performed in 'update_snow'
   if (repartition_SWE) then
    varname = get_variable_name(dom_restart,ivar)
    select case (varname)
       case ('SNOWDP', 'SNOW_DEPTH', 'DZSNO', 'H2OSOI_LIQ', 'H2OSOI_ICE')
-         string2 = trim(source)//' '//trim(varname)
-         write(string1,*)'intentionally not updating '//trim(string2)
-         write(string3,*)'posterior is coming from repartitioning of H2OSNO.'
-         call error_handler(E_MSG, 'dart_to_clm', string1, text2=string3)
+         write(string1,*)'re-partitioning of SWE is enabled for '//trim(varname)
+         write(string2,*)'posterior is coming from repartitioning of H2OSNO.'
+         call error_handler(E_MSG, 'dart_to_clm', string1, text2=string2)
          cycle UPDATE
       case default
       ! do nothing -- proceed to default DART update subroutines:
@@ -183,8 +183,24 @@ enddo UPDATE
  ! Manually repartition snow layer variables with H2OSNO variable
 
   if (repartition_SWE) then
+ 
+ ! Pass in the soil/snow and column dimensions to update_snow subroutine
+     if (nc_variable_exists(ncid_clm, 'H2OSOI_ICE')) then
+        call nc_get_variable_size(ncid_clm, 'H2OSOI_ICE', ICE_varsize, source)
+     else
+        write(string1,*)'Snow repartitioning requires "H2OSOI_ICE" variable'
+        call error_handler(E_ERR,source,string1,source)
+     endif
 
-  call update_snow(dom_restart, ncid_dart, ncid_clm)
+
+     if (nc_variable_exists(ncid_clm, 'levsno')) then
+        nlevsno = nc_get_dimension_size(ncid_clm, 'levsno')
+     else
+        write(string1,*)'Snow repartitioning requires clm snow layer attribute "levsno"'
+        call error_handler(E_ERR,source,string1,source)
+     endif
+
+     call update_snow(dom_restart, ncid_dart, ncid_clm, ICE_varsize(2), ICE_varsize(1), nlevsno)
 
   endif
 
@@ -297,7 +313,7 @@ end subroutine replace_values_2D
 
 !------------------------------------------------------------------
 
-subroutine update_snow(dom_id, ncid_dart, ncid_clm)
+subroutine update_snow(dom_id, ncid_dart, ncid_clm, ncolumn, nlevel, nlevsno)
 
 !> This repartitions snow layer variables based upon DART update of diagnostic H2OSNO 
 !> variable.  This subroutine expects H2OSNO variable is available, as well as 
@@ -375,40 +391,43 @@ subroutine update_snow(dom_id, ncid_dart, ncid_clm)
 integer, intent(in) :: dom_id
 integer, intent(in) :: ncid_dart
 integer, intent(in) :: ncid_clm
-
+integer             :: ncid_clm_vhist
 character(len=*), parameter :: routine = 'update_snow'
 
-! Max possible snow layers (nlevsno)
-integer  :: nlevsno 
-integer  :: icolumn, ilayer, c
+! Total columns (ncolumn), soil/snow levels (nlevel) and snow levels (nlevsno)
+integer  :: ncolumn, nlevel, nlevsno
+integer  :: icolumn, ilevel, c
 integer  :: VarID, varsize(2)
 real(r8) :: snowden, wt_swe, wt_liq, wt_ice
 
-real(r8), allocatable :: dart_H2OSNO(:)
-real(r8), allocatable :: dart_SNOWDP(:)
-real(r8), allocatable :: dart_DZSNO(:,:)
-real(r8), allocatable :: dart_H2OLIQ(:,:)
-real(r8), allocatable :: dart_H2OICE(:,:)
+integer  :: ivar
+character(len=NF90_MAX_NAME) :: varname
 
-real(r8), allocatable :: clm_H2OSNO(:)
-real(r8), allocatable :: clm_SNLSNO(:)
-real(r8), allocatable :: clm_SNOWDP(:)
-real(r8), allocatable :: clm_DZSNO(:,:)
-real(r8), allocatable :: clm_H2OLIQ(:,:)
-real(r8), allocatable :: clm_H2OICE(:,:)
+real(r8) :: dart_H2OSNO(ncolumn)
+real(r8) :: dart_SNOWDP(ncolumn)
+real(r8) :: dart_DZSNO(nlevsno,ncolumn)
+real(r8) :: dart_H2OLIQ(nlevel,ncolumn)
+real(r8) :: dart_H2OICE(nlevel,ncolumn)
 
-real(r8), allocatable :: snlsno(:)
-real(r8), allocatable :: h2osno_pr(:)
-real(r8), allocatable :: h2osno_po(:)
-real(r8), allocatable :: snowdp_pr(:)
-real(r8), allocatable :: snowdp_po(:)
-real(r8), allocatable :: dzsno_pr(:,:)
-real(r8), allocatable :: dzsno_po(:,:)
-real(r8), allocatable :: h2oliq_pr(:,:)
-real(r8), allocatable :: h2oliq_po(:,:)
-real(r8), allocatable :: h2oice_pr(:,:)
-real(r8), allocatable :: h2oice_po(:,:)
-real(r8), allocatable :: gain_dzsno(:,:)
+real(r8) :: clm_H2OSNO(ncolumn)  !(column,time) for vector history
+real(r8) :: clm_SNLSNO(ncolumn)
+real(r8) :: clm_SNOWDP(ncolumn)
+real(r8) :: clm_DZSNO(nlevsno,ncolumn)
+real(r8) :: clm_H2OLIQ(nlevel,ncolumn)
+real(r8) :: clm_H2OICE(nlevel,ncolumn)
+
+real(r8) :: snlsno(ncolumn)
+real(r8) :: h2osno_pr(ncolumn)
+real(r8) :: h2osno_po(ncolumn)
+real(r8) :: snowdp_pr(ncolumn)
+real(r8) :: snowdp_po(ncolumn)
+real(r8) :: dzsno_pr(nlevsno,ncolumn)
+real(r8) :: dzsno_po(nlevsno,ncolumn)
+real(r8) :: h2oliq_pr(nlevel,ncolumn)
+real(r8) :: h2oliq_po(nlevel,ncolumn)
+real(r8) :: h2oice_pr(nlevel,ncolumn)
+real(r8) :: h2oice_po(nlevel,ncolumn)
+real(r8) :: gain_dzsno(nlevsno,ncolumn)
 real(r8) :: gain_h2oice, gain_h2oliq, gain_h2osno
 
 
@@ -427,16 +446,65 @@ real(r8) :: special
 !the posterior value. If H2OSNO exists in DART state
 !it also exists in clm domain
 
-! Check for appropriate clm variables to reprartition snow
-if (nc_variable_exists(ncid_clm, 'H2OSNO')) then
-   call nc_get_variable(ncid_clm, 'H2OSNO',  clm_H2OSNO, routine)
+
+if (verbose > 0) then
+
+   ! restart domain    
+   domain1 : do ivar=1, get_num_variables(1)
+   varname = get_variable_name(1,ivar)
+   write(string1,*)'CLM domain 1 variable:  "'//trim(varname)//'"' 
+   call error_handler(E_MSG, routine, string1, source)
+   enddo domain1
+  
+   ! history domain   
+   domain2 : do ivar=1, get_num_variables(2)
+   varname = get_variable_name(2,ivar)
+   write(string1,*)'CLM domain 2 variable: "'//trim(varname)//'"' 
+   call error_handler(E_MSG, routine, string1, source)
+   enddo domain2
+
+   ! history vector domain   
+   domain3 : do ivar=1, get_num_variables(3)
+   varname = get_variable_name(3,ivar)
+   write(string1,*)'CLM domain 3 variable: "'//trim(varname)//'"'
+   call error_handler(E_MSG, routine, string1, source)
+   enddo domain3
+
+endif
+!@fixme
+write(string1,*)'Line number 461'
+call error_handler(E_MSG, routine, string1, source)
+
+! Check for appropriate clm variables to repartition snow
+! H2OSNO must come for history vector
+
+ncid_clm_vhist= nc_open_file_readonly('clm_vector_history.nc', 'confirming H2OSNO is in clm_vectory_history.nc')
+!@fixme
+write(string1,*)'Line number 467'
+write(string2,*)'ncid_clm_vhist value: ', ncid_clm_vhist
+call error_handler(E_MSG, routine, string1, source, text2=string2)
+
+if (nc_variable_exists(ncid_clm_vhist, 'H2OSNO')) then
+!@fixme
+write(string1,*)'Line number 474'
+call error_handler(E_MSG, routine, string1, source)
+
+   call nc_get_variable(ncid_clm_vhist, 'H2OSNO',  clm_H2OSNO)
+!@fixme
+write(string1,*)'Line number 479'
+call error_handler(E_MSG, routine, string1, source)
+
 else
    write(string1,*)'Snow repartitioning requires clm SWE variable'
    write(string2,*)'Check for "H2OSNO" within clm vector history'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
+!@fixme
+write(string1,*)'Line number 488'
+call error_handler(E_MSG, routine, string1, source)
 
-!Multiple options for clm snow depth variable
+! Multiple options for clm snow depth variable
+! Remaining variables come from restart file
 if (nc_variable_exists(ncid_clm, 'SNOW_DEPTH')) then
    call nc_get_variable(ncid_clm, 'SNOW_DEPTH',  clm_SNOWDP)
 elseif (nc_variable_exists(ncid_clm, 'SNOWDP')) then
@@ -446,6 +514,9 @@ else
    write(string2,*)'Check restart/history files for "SNOW_DEPTH" or "SNOWDP"'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
+!@fixme
+write(string1,*)'Line number 503'
+call error_handler(E_MSG, routine, string1, source)
 
 ! List of prognostic CLM snow related variables that are required for updating
 if (nc_variable_exists(ncid_clm, 'SNLSNO')) then
@@ -475,13 +546,10 @@ else
    write(string1,*)'Snow repartitioning requires clm snow layer variable "H2OSOI_ICE"'
    call error_handler(E_ERR,routine,string1,source)
 endif
+   !@fixme
+   write(string1,*)'Line number 542'
+   call error_handler(E_MSG, routine, string1, source)
 
-if (nc_variable_exists(ncid_clm, 'levsno')) then
-   nlevsno = nc_get_dimension_size(ncid_clm, 'levsno')
-else
-   write(string1,*)'Snow repartitioning requires clm snow layer attribute "levsno"'
-   call error_handler(E_ERR,routine,string1,source)
-endif
 
 ! Check for required variables within dart_posterior.nc
 ! H2OSNO is absolutely necessary because it includes the posterior SWE
@@ -493,6 +561,10 @@ else
    write(string2,*)'Check that H2OSNO variable is in DART model_nml as vector history'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
+
+!@fixme
+write(string1,*)'Line number 557'
+call error_handler(E_MSG, routine, string1, source)
 
 ! These variables need to be updated by DART before repartitioning. We will overwrite the
 ! snow layers only with the repartitioning method.  Subsurface layers keep
@@ -510,6 +582,9 @@ else
    write(string1,*)'Snow repartitioning requires "H2OSOI_ICE" within DART state'
    call error_handler(E_ERR,routine,string1,source)
 endif
+!@fixme
+write(string1,*)'Line number 577'
+call error_handler(E_MSG, routine, string1, source)
 
 ! The DART posterior for  DZSNO and SNOWDEPTH will be completely
 ! overwritten by the repartitioning, call these variables here
@@ -533,8 +608,9 @@ endif
 
 
 ! END clm variable and DART state checks
-
-
+!@fixme
+write(string1,*)'Line number 603'
+call error_handler(E_MSG, routine, string1, source)
 
 h2osno_pr=clm_H2OSNO
 snlsno=clm_SNLSNO
@@ -562,13 +638,13 @@ h2oice_po = h2oice_pr
 
 
 ! Adjust the variables to be consistent with the updated H2OSNO
-! Remember: snlsno has the NEGATIVE of the number of snow layers. 
+! Remember: snlsno has the NEGATIVE of the number of snow layers.
+!@fixme 
+write(string1,*)'Line number 633'
+call error_handler(E_MSG, routine, string1, source)
 
 
-! Grab column varsize for PARTITION loop
-call nc_get_variable_size(ncid_clm, 'H2OSOI_ICE', varsize, routine)
-
-PARTITION: do icolumn = 1,varsize(2)
+PARTITION: do icolumn = 1,ncolumn
       
    if (h2osno_po(icolumn) < 0.0_r8) then  ! If there IS NOT snow in column...
 
@@ -576,11 +652,11 @@ PARTITION: do icolumn = 1,varsize(2)
       
       ! Force any existing layers to be near zero but not exactly zero
       ! Leave layer aggregation/initialization to CLM
-      do ilayer=1,-snlsno(icolumn)
+      do ilevel=1,-snlsno(icolumn)
 
-         h2oliq_po(ilayer,icolumn) = 0.0_r8
-         h2oice_po(ilayer,icolumn) = 0.00001_r8
-          dzsno_po(ilayer,icolumn) = 0.00000001_r8   !@fixme. Re-visit these values.
+         h2oliq_po(ilevel,icolumn) = 0.0_r8
+         h2oice_po(ilevel,icolumn) = 0.00001_r8
+          dzsno_po(ilevel,icolumn) = 0.00000001_r8   !@fixme. Re-visit these values.
 
       enddo
 
@@ -595,28 +671,28 @@ PARTITION: do icolumn = 1,varsize(2)
 
             ! In CLM 4 nlevsno  =5, but in CLM5 =12
             
-            ilayer = nlevsno-c+1     ! Loop through each snow layer 
+            ilevel = nlevsno-c+1     ! Loop through each snow layer 
 
             ! Calculate the snow density for each layer
-            if ( dzsno_pr(ilayer,icolumn) > 0.0_r8) then
-               snowden = (h2oliq_pr(ilayer,icolumn) + h2oice_pr(ilayer,icolumn)) / &
-                           dzsno_pr(ilayer,icolumn)
+            if ( dzsno_pr(ilevel,icolumn) > 0.0_r8) then
+               snowden = (h2oliq_pr(ilevel,icolumn) + h2oice_pr(ilevel,icolumn)) / &
+                           dzsno_pr(ilevel,icolumn)
             else
                snowden = 0.0_r8
             endif
 
             ! Calculate the fraction of the SWE in this layer
             if ( h2osno_pr(icolumn) > 0.0_r8 ) then
-               wt_swe = (h2oliq_pr(ilayer,icolumn) + h2oice_pr(ilayer,icolumn)) / &
+               wt_swe = (h2oliq_pr(ilevel,icolumn) + h2oice_pr(ilevel,icolumn)) / &
                                 h2osno_pr(icolumn)
             else
                wt_swe = 0.0_r8
             endif
  
             ! Calculate the fraction of liquid (and ice) water in this layer  
-            if ( (h2oliq_pr(ilayer,icolumn) + h2oice_pr(ilayer,icolumn)) > 0.0_r8) then
-               wt_liq = h2oliq_pr(ilayer,icolumn) / &
-                       (h2oliq_pr(ilayer,icolumn) + h2oice_pr(ilayer,icolumn))
+            if ( (h2oliq_pr(ilevel,icolumn) + h2oice_pr(ilevel,icolumn)) > 0.0_r8) then
+               wt_liq = h2oliq_pr(ilevel,icolumn) / &
+                       (h2oliq_pr(ilevel,icolumn) + h2oice_pr(ilevel,icolumn))
                wt_ice = 1.0_r8 - wt_liq
             else
                wt_liq = 0.0_r8
@@ -631,21 +707,21 @@ PARTITION: do icolumn = 1,varsize(2)
             
             ! Calculate increment for each layer depth, using prior snow density
             if ( snowden > 0.0_r8 ) then
-               gain_dzsno(ilayer,icolumn) = gain_h2osno / snowden
+               gain_dzsno(ilevel,icolumn) = gain_h2osno / snowden
             else
-               gain_dzsno(ilayer,icolumn) = 0.0_r8
+               gain_dzsno(ilevel,icolumn) = 0.0_r8
             endif
             
             ! Apply the increment for liquid, ice and depth for each layer.
-            h2oliq_po(ilayer,icolumn) = h2oliq_pr(ilayer,icolumn) + gain_h2oliq
-            h2oice_po(ilayer,icolumn) = h2oice_pr(ilayer,icolumn) + gain_h2oice
+            h2oliq_po(ilevel,icolumn) = h2oliq_pr(ilevel,icolumn) + gain_h2oliq
+            h2oice_po(ilevel,icolumn) = h2oice_pr(ilevel,icolumn) + gain_h2oice
             
             ! @fixme if needed
             ! BMR @fixme what happens to other snow layer heights?
             !  zsno (middle of snow layer) and zisno (top of snow layer)
             ! @fixme if needed            
 
-             dzsno_po(ilayer,icolumn) =  dzsno_pr(ilayer,icolumn) + gain_dzsno(ilayer,icolumn)
+             dzsno_po(ilevel,icolumn) =  dzsno_pr(ilevel,icolumn) + gain_dzsno(ilevel,icolumn)
          enddo
 
       endif
@@ -656,20 +732,21 @@ PARTITION: do icolumn = 1,varsize(2)
 
 enddo PARTITION
 
-deallocate(h2osno_pr, h2osno_po, snowdp_pr, dzsno_pr, h2oliq_pr, h2oice_pr, gain_dzsno)
+!@fixme
+write(string1,*)'Line number 699'
+call error_handler(E_MSG, routine, string1, source)
+
 
 
 ! Update the 'dart_array' (dart_posterior.nc) with the repartitioned values
  dart_SNOWDP = snowdp_po
  dart_DZSNO  = dzsno_po
-deallocate(snowdp_po, dzsno_po)
 
 
 ! Important to update only the manually repartitioned above surface layers
 ! Keep the DART posterior subsurface values
  dart_H2OLIQ(1:nlevsno,:) =h2oliq_po(1:nlevsno,:)  
  dart_H2OICE(1:nlevsno,:) =h2oice_po(1:nlevsno,:)
-deallocate(h2oliq_po, h2oice_po)
 
 ! Update the 'clm_array' with repartitioned 'dart_array' similar to 
 ! subroutine replace_values_2D, but with snow variables
@@ -689,7 +766,6 @@ if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,spe
 call Compatible_Variables('SNOW_DEPTH', ncid_dart, ncid_clm, varsize)
 where(dart_SNOWDP /= special) clm_SNOWDP = dart_SNOWDP
 call nc_put_variable(ncid_clm, 'SNOW_DEPTH', clm_SNOWDP, routine)
-deallocate(dart_SNOWDP, clm_SNOWDP)
 
 
 VarID=get_varid_from_varname(dom_id, 'DZSNO')
@@ -700,7 +776,6 @@ if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,spe
 call Compatible_Variables('DZSNO', ncid_dart, ncid_clm, varsize)
 where(dart_DZSNO /= special) clm_DZSNO = dart_DZSNO
 call nc_put_variable(ncid_clm, 'DZSNO', clm_DZSNO, routine)
-deallocate(dart_DZSNO, clm_DZSNO)
 
 
 VarID=get_varid_from_varname(dom_id, 'H2OSOI_LIQ')
@@ -711,7 +786,6 @@ if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,spe
 call Compatible_Variables('H2OSOI_LIQ', ncid_dart, ncid_clm, varsize)
 where(dart_H2OLIQ /= special) clm_H2OLIQ = dart_H2OLIQ
 call nc_put_variable(ncid_clm, 'H2OSOI_LIQ', clm_H2OLIQ, routine)
-deallocate(dart_H2OLIQ, clm_H2OLIQ)
 
 
 VarID=get_varid_from_varname(dom_id, 'H2OSOI_ICE')
@@ -722,7 +796,6 @@ if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,spe
 call Compatible_Variables('H2OSOI_ICE', ncid_dart, ncid_clm, varsize)
 where(dart_H2OICE /= special) clm_H2OICE = dart_H2OICE
 call nc_put_variable(ncid_clm, 'H2OSOI_ICE', clm_H2OICE, routine)
-deallocate(dart_H2OICE, clm_H2OICE)
 
 
 end subroutine update_snow
@@ -767,7 +840,7 @@ DimCheck : do irank = 1,clm_numdims
    if ( clm_dimlengths(irank) /= dart_dimlengths(irank) ) then
       write(string1,*)'Variable dimension lengths not identical and must be.'
       write(string2,*)'CLM  "'//trim(varname)//'" dim=',irank, ', length=',clm_dimlengths(irank)
-      write(string2,*)'DART "'//trim(varname)//'" dim=',irank, ', length=',dart_dimlengths(irank)
+      write(string3,*)'DART "'//trim(varname)//'" dim=',irank, ', length=',dart_dimlengths(irank)
       call error_handler(E_ERR, routine, string1, source, text2=string2, text3=string3)
    endif
 
@@ -775,7 +848,7 @@ DimCheck : do irank = 1,clm_numdims
    if ( clm_dimnames(irank) /= dart_dimnames(irank) ) then
       write(string1,*)'Variable dimension names not identical and must be.'
       write(string2,*)'CLM  "'//trim(varname)//'" dim=',irank, ', name=',clm_dimnames(irank)
-      write(string2,*)'DART "'//trim(varname)//'" dim=',irank, ', name=',dart_dimnames(irank)
+      write(string3,*)'DART "'//trim(varname)//'" dim=',irank, ', name=',dart_dimnames(irank)
       call error_handler(E_ERR, routine, string1, source, text2=string2, text3=string3)
    endif
 
