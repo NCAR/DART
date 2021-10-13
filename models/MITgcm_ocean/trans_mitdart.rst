@@ -1,212 +1,91 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>program trans_sv_pv</TITLE>
-<link rel="stylesheet" type="text/css" href="../../docs/html/doc.css"> 
-<link href="../../docs/images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+PROGRAM *trans_sv_pv*
+=====================
 
-<center>
-<A HREF="#Modules">MODULES</A> /
-<A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>PROGRAM <em class=program>trans_sv_pv</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+*trans_sv_pv* is responsible for converting a DART 'initial conditions' file
+to a set of model 'snapshot' files and appropriate namelist files: *data.cal*
+and *data*. This is easier than the reverse process because the DART initial
+conditions file have a header that contains the valid time for the
+accompanying state. This same header also has the 'advance-to' time.
+*trans_sv_pv* uses this information to write out appropriate *&CAL_NML* and
+*&PARM03* namelists in *data.cal.DART* and *data.DART*, respectively. The rest
+of the information in *data* is preserved, so it is possible to simply replace
+*data* with the new *data.DART*.
 
-<P>
-   <em class="program">trans_sv_pv</em> is responsible for converting a DART
-   'initial conditions' file to a set of model 'snapshot' files and appropriate
-   namelist files:
-   <em class="file">data.cal</em> and 
-   <em class="file">data</em>. 
-   This is easier than the reverse process because the DART initial conditions file
-   have a header that contains the valid time for the accompanying state. This
-   same header also has the 'advance-to' time. 
-   <em class="program">trans_sv_pv</em> uses this information to write out
-   appropriate 
-   <em class="unix">&amp;CAL_NML</em> and
-   <em class="unix">&amp;PARM03</em> namelists in 
-   <em class="file">data.cal.DART</em> and 
-   <em class="file">data.DART</em>, respectively. The rest of the information
-   in <em class="file">data</em> is preserved, so it is possible to simply replace
-   <em class="file">data</em> with the new <em class="file">data.DART</em>.
-   <BR><BR>
-   The input filename is hardwired to that expected by 
-   <em class="program">filter</em> and the output filenames are able to be
-   renamed into those defined by the
-   <em class="file">data</em><em class="unix">&amp;PARM05</em> namelist specifying
-   the filenames to use to cold-start the ocean model. 
-   The output filename is comprised of 4 parts: the variable name, the startDate_1
-   component (YYYYMMDD), the startDate_2 component (HHMMSS), and the extension (.data
-   for the data and .meta for the metadata). The startDate_1 and startDate_2 pieces
-   are identical in format to that used by identically named variables in the 
-   <em class="file">data.cal</em><em class="unix">&amp;CAL_NML</em> namelist.
-</P>
+The input filename is hardwired to that expected by *filter* and the output
+filenames are able to be renamed into those defined by the *data&PARM05*
+namelist specifying the filenames to use to cold-start the ocean model. The
+output filename is comprised of 4 parts: the variable name, the startDate_1
+component (YYYYMMDD), the startDate_2 component (HHMMSS), and the extension
+(.data for the data and .meta for the metadata). The startDate_1 and
+startDate_2 pieces are identical in format to that used by identically named
+variables in the *data.cal&CAL_NML* namelist.
 
-<H2>Usage</H2>
-<P>
-   There must be several input files in the current working directory;
-   most of these are required by the <em class="unix">model_mod</em>
-   interface.  The input filename is hardwired to
-   <em class="file">assim_model_state_ic</em>.
-   Assuming the time tag in the input file is set to 06Z&nbsp;23&nbsp;July&nbsp;1996, this 
-   example creates output files named<br>
-   <em class="file">S.19960723.060000.[data,meta]</em><br>
-   <em class="file">T.19960723.060000.[data,meta]</em><br>
-   <em class="file">U.19960723.060000.[data,meta]</em><br>
-   <em class="file">V.19960723.060000.[data,meta]</em><br>
-   <em class="file">Eta.19960723.060000.[data,meta]</em><br>
-   <em class="file">data.cal.DART</em>, and<br>
-   <em class="file">data.DART</em>
-</P>
-<div class="unix">
-mv some_DART_ics_input_file assim_model_state_ic<br>
-./trans_sv_pv <br>
-cp data.cal.DART data.cal<br>
-cp data.DART     data
-</div><br>
+Usage
+-----
 
-<!--==================================================================-->
+There must be several input files in the current working directory; most of
+these are required by the *model_mod* interface. The input filename is
+hardwired to *assim_model_state_ic*. Assuming the time tag in the input file
+is set to 06Z 23 July 1996, this example creates output files named
 
-<A NAME="Modules"></A>
-<HR>
-<H2>MODULES USED</H2>
-<PRE>
-types_mod
-utilities_mod
-model_mod
-assim_model_mod
-time_manager_mod
-</PRE>
+*S.19960723.060000.[data,meta]*
+*T.19960723.060000.[data,meta]*
+*U.19960723.060000.[data,meta]*
+*V.19960723.060000.[data,meta]*
+*Eta.19960723.060000.[data,meta]*
+*data.cal.DART*, and
+*data.DART*
 
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST ====================-->
-<!--==================================================================-->
+.. code-block::
 
-<A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>
-This program has no namelist of its own, but some of the underlying modules 
-require namelists to be read, even if the values are not used.
-To avoid duplication and, possibly, some inconsistency
-in the documentation; only a list of the required namelists is provided -
-with a hyperlink to the full documentation for each namelist.
-</P>
+   mv some_DART_ics_input_file assim_model_state_ic
+   ./trans_sv_pv
+   cp data.cal.DART data.cal
+   cp data.DART data
 
-<TABLE border="0" cellpadding="10" width=100%>
-<TR><TH align="left">Namelist</TH><TH align="left">Primary Purpose</TH></TR>
-<TR><TD valign="top"><a 
-    href="../../assimilation_code/modules/utilities/utilities_mod.html#Namelist">utilities_nml</a></TD>
-    <TD>set the termination level and file name for the run-time log</TD></TR>
+NAMELIST
+--------
 
-<TR><TD valign="top"><a href="model_mod.html#namelist_cal_nml">CAL_NML</a></TD>
-    <TD>must be read, values are not used. The <em class="file">data.cal.DART</em> 
-        file has an updated namelist to be used for the model advance.
-</TD></TR>
+This program has no namelist of its own, but some of the underlying modules
+require namelists to be read, even if the values are not used. To avoid
+duplication and, possibly, some inconsistency in the documentation; only a list
+of the required namelists is provided - with a hyperlink to the full
+documentation for each namelist.
 
-<TR><TD valign="top"><a href="model_mod.html#namelist_parm03">PARM03</a></TD>
-    <TD>must be read, values are not used, The <em class="file">data.DART</em> is
-        an 'identical' version of <em class="file">data</em> with the exception of
-        the <em class="unix">PARM03</em> namelist. The parameters 
-       <em class="unix">endTime</em>,
-       <em class="unix">dumpFreq</em>, and
-       <em class="unix">taveFreq</em> reflect the amount of time needed to advance
-       the model.
-       The parameter <em class="unix">startTime</em> is set to 0.0, which
-       is required to force the model to read the startup files specified by
-       <em class="unix">PARM05</em>
-  </TD></TR>
++--------------------------------------+--------------------------------------+
+| Namelist                             | Primary Purpose                      |
++======================================+======================================+
+| `utilities_nml <.                    | set the termination level and file   |
+| ./../assimilation_code/modules/utili | name for the run-time log            |
+| ties/utilities_mod.html#Namelist>`__ |                                      |
++--------------------------------------+--------------------------------------+
+| `CAL_NML                             | must be read, values are not used.   |
+| <model_mod.html#namelist_cal_nml>`__ | The *data.cal.DART* file has an      |
+|                                      | updated namelist to be used for the  |
+|                                      | model advance.                       |
++--------------------------------------+--------------------------------------+
+| `PARM03                              | must be read, values are not used,   |
+|  <model_mod.html#namelist_parm03>`__ | The *data.DART* is an 'identical'    |
+|                                      | version of *data* with the exception |
+|                                      | of the *PARM03* namelist. The        |
+|                                      | parameters *endTime*, *dumpFreq*,    |
+|                                      | and *taveFreq* reflect the amount of |
+|                                      | time needed to advance the model.    |
+|                                      | The parameter *startTime* is set to  |
+|                                      | 0.0, which is required to force the  |
+|                                      | model to read the startup files      |
+|                                      | specified by *PARM05*                |
++--------------------------------------+--------------------------------------+
+| `PARM04                              | ocean model grid parameters, read -  |
+|  <model_mod.html#namelist_parm04>`__ | never changed.                       |
++--------------------------------------+--------------------------------------+
 
-<TR><TD valign="top"><a href="model_mod.html#namelist_parm04">PARM04</a></TD>
-    <TD>ocean model grid parameters, read - never changed.</TD></TR>
-</table>
+FILES
+-----
 
-<!--==================================================================-->
-<!-- Describe the Files Used by this module.                          -->
-<!--==================================================================-->
+-  input namelist files: *data, data.cal, input.nml*
+-  output namelist files: *data.cal.DART, data.DART*
+-  input data file: *assim_model_state_ic*
+-  output data files: *[S,T,U,V,Eta].YYYYMMDD.HHMMSS.[data,meta]*
 
-<A NAME="FilesUsed"></A>
-<HR>
-<H2>FILES</H2>
-<UL>
-    <LI>input namelist files: <em class="file">data, data.cal, input.nml</em></LI>
-    <LI>output namelist files: <em class="file">data.cal.DART, data.DART</em></LI>
-    <LI>input data file: <em class="file">assim_model_state_ic</em></LI>
-    <LI>output data files: 
-       <em class="file">[S,T,U,V,Eta].YYYYMMDD.HHMMSS.[data,meta]</em></LI>
-</UL>
-
-<!--==================================================================-->
-<!-- Cite references, if need be.                                     -->
-<!--==================================================================-->
-
-<A NAME="References"></A>
-<HR>
-<H2>REFERENCES</H2>
-<ul>
-<li> none </li>
-</ul>
-
-<!--==================================================================-->
-<!-- Describe all the error conditions and codes.                     -->
-<!--==================================================================-->
-
-<A NAME="Errors"></A>
-<HR>
-<H2>ERROR CODES and CONDITIONS</H2>
-<P>
-There are no error conditions specific to 
-<em class="program">trans_sv_pv</em>.
-</P>
-
-<H2>KNOWN BUGS</H2>
-<P>
-There are no known bugs.
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<HR>
-<H2>FUTURE PLANS</H2>
-<P>
-I may put in a routine to change the <em class="unix">PARM05</em>
-namelist parameters defining the input file names. The hack in
-<em class="program">advance_model.csh</em> to grep out the filenames
-from the namelist and rename the files at the shell level is ugly.
-<br>
-<br>
-Feel free to suggest improvements.
-</P>
-
-<!--==================================================================-->
-<!-- Legalese & Metadata                                              -->
-<!--==================================================================-->
-
-<A NAME="Legalese"></A>
-<HR>
-<H2>Terms of Use</H2>
-
-<P>
-DART software - Copyright UCAR. This open source software is provided
-by UCAR, "as is", without charge, subject to all terms of use at
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
-http://www.image.ucar.edu/DAReS/DART/DART_download</a>
-</P>
-
-<!--==================================================================-->
-
-</BODY>
-</HTML>
