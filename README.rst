@@ -317,6 +317,7 @@ References
    observations/obs_converters/gnd_gps_vtec/README
    observations/obs_converters/gps/gps
    observations/obs_converters/ok_mesonet/ok_mesonet
+   observations/obs_converters/ocean_color/README
    observations/obs_converters/quikscat/QuikSCAT
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
