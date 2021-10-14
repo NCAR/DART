@@ -330,8 +330,53 @@ echo "`date` -- END FILTER"
 # Block 7: Put the DART posterior into the CLM restart file. The CLM
 # restart file is also the prior for the next forecast.
 #=========================================================================
-
 unlink clm_restart.nc
+
+# Identify if SWE re-partitioning is necessary
+set  REPARTITION = `grep repartition_swe input.nml`
+set  REPARTITION = `echo $MYSTRING | sed -e "s/repartition_swe//g"`
+set  REPARTITION = `echo $MYSTRING | sed -e "s/[= .]//g"`
+
+
+if ($REPARTITION== "true") then
+   
+   # Track the ensemble count to locate matching vector analysis file
+   @ enscount = 1
+
+   foreach RESTART ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
+    
+     set POSTERIOR_RESTART = `echo $RESTART | sed -e "s/${CASE}.//"`
+     set POSTERIOR_VECTOR  = `printf analysis_member_00%02d_d03.nc $enscount`
+     
+     # Confirm that vector analysis file exists
+
+     if (! -e $POSTERIOR_VECTOR) then
+        echo "ERROR: Could not find $POSTERIOR_VECTOR "
+        echo "When SWE re-partitioning is enabled"
+        echo "the analysis stage must be output"
+        echo "in 'stages_to_write' within filter_nml"
+        exit 7
+     endif
+        
+     ${LINK} $POSTERIOR_RESTART  dart_posterior.nc
+     ${LINK} $POSTERIOR_VECTOR  dart_posterior_vector.nc
+     ${LINK} $RESTART   clm_restart.nc
+
+     ${EXEROOT}/dart_to_clm >& /dev/null
+
+     if ($status != 0) then
+        echo "ERROR: dart_to_clm failed for $RESTART"
+        exit 7
+     endif
+
+     unlink dart_posterior.nc
+     unlink dart_posterior_vector.nc
+     unlink clm_restart.nc
+     @ enscount ++
+  end
+
+
+else
 
 foreach RESTART ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
 
@@ -344,15 +389,18 @@ foreach RESTART ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
 
    if ($status != 0) then
       echo "ERROR: dart_to_clm failed for $RESTART"
-      exit 7
+        exit 8
    endif
 
    unlink dart_posterior.nc
    unlink clm_restart.nc
 end
 
+endif
+
 # Remove the copies that we no longer need. The posterior values are
 # in the DART diagnostic files for the appropriate 'stage'.
+\rm -f clm2_*.r.${LND_DATE_EXT}.nc
 \rm -f clm2_*.h0.${LND_DATE_EXT}.nc
 \rm -f clm2_*.h2.${LND_DATE_EXT}.nc
 
