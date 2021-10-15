@@ -430,9 +430,10 @@ real(r8) :: special
 ! Check existence for snow related variables required to be
 ! in DART state and CLM domain (restart,history,vector history)
 ! If they do not exist, throw error immediately, provide guidance.
-! Also use this opportunity to locate proper SWE (H2OSNO) and snow depth clm
-! variables. The H2OSNO variable (vectory history) is required for repartitioning.
-! There are mutliple 'snow depth' variable names depending on clm version.
+! Also use this opportunity to locate proper SWE (H2OSNO) and snow
+! depth clm variables. The H2OSNO variable (vectory history) is 
+! required for repartitioning.  There are mutliple 'snow depth' 
+! variable names depending on clm version.
 
 !The SWE variable must come from H2OSNO vector history
 !and it must exist in the 'DART' state because we need 
@@ -465,38 +466,11 @@ if (verbose > 0) then
 
 endif
 
-! Check for appropriate clm variables to repartition snow
-! H2OSNO must come for history vector
-
-ncid_clm_vector= nc_open_file_readonly('clm_vector_history.nc', 'confirm H2OSNO is in clm_vectory_history.nc')
-ncid_dart_vector= nc_open_file_readonly('dart_posterior_vector.nc', 'confirm H2OSNO is in dart_posterior_vector.nc')
-
-!@ fixme    Check to make sure this clm_vectory_history.nc file is updated for each ensemble member
-!@ fixme    within assimilate.csh --- I think this is linked to ensemble_0001 only.
+! Check that all appropriate clm variables are available to repartition snow
+! All variables are derived from restart file, except H2OSNO (history vector)
 
 
-if (nc_variable_exists(ncid_clm_vector, 'H2OSNO')) then
-
-   call nc_get_variable(ncid_clm_vector, 'H2OSNO',  clm_H2OSNO)
-
-else
-   write(string1,*)'Snow repartitioning requires clm SWE variable'
-   write(string2,*)'Check for "H2OSNO" within clm vector history'
-   call error_handler(E_ERR,routine,string1,source,text2=string2)
-endif
-
-! Multiple options for clm snow depth variable
-! Remaining variables come from restart file
-if (nc_variable_exists(ncid_clm, 'SNOW_DEPTH')) then
-   call nc_get_variable(ncid_clm, 'SNOW_DEPTH',  clm_SNOWDP)
-elseif (nc_variable_exists(ncid_clm, 'SNOWDP')) then
-   call nc_get_variable(ncid_clm, 'SNOWDP',  clm_SNOWDP)
-else
-   write(string1,*)'Snow repartitioning requires clm snow depth variable'
-   write(string2,*)'Check restart/history files for "SNOW_DEPTH" or "SNOWDP"'
-   call error_handler(E_ERR,routine,string1,source,text2=string2)
-endif
-
+!@fixme   Create list for these checks
 ! List of prognostic CLM snow related variables that are required for updating
 if (nc_variable_exists(ncid_clm, 'SNLSNO')) then
    call nc_get_variable(ncid_clm, 'SNLSNO',  clm_SNLSNO)
@@ -525,25 +499,36 @@ else
    write(string1,*)'Snow repartitioning requires clm snow layer variable "H2OSOI_ICE"'
    call error_handler(E_ERR,routine,string1,source)
 endif
+!@fixme
 
+ncid_clm_vector= nc_open_file_readonly('clm_vector_history.nc', \
+                 'confirm H2OSNO is in clm_vectory_history.nc')
 
-! Check for required variables within dart_posterior_vector.nc
-! H2OSNO is absolutely necessary because it includes the posterior SWE
-! which is the basis for the entire reprartitioning algorithm
-
-
-if (nc_variable_exists(ncid_dart_vector, 'H2OSNO')) then
-   call nc_get_variable(ncid_dart_vector, 'H2OSNO',  dart_H2OSNO, routine)
+if (nc_variable_exists(ncid_clm_vector, 'H2OSNO')) then
+   call nc_get_variable(ncid_clm_vector, 'H2OSNO',  clm_H2OSNO)
 else
-   write(string1,*)'Snow repartitioning requires a SWE variable in DART state'
-   write(string2,*)'Check that H2OSNO is in DART model_nml as vector history'
+   write(string1,*)'Snow repartitioning requires clm SWE variable'
+   write(string2,*)'Check for "H2OSNO" within clm vector history'
+   call error_handler(E_ERR,routine,string1,source,text2=string2)
+endif
+
+! Multiple options for clm snow depth variable
+if (nc_variable_exists(ncid_clm, 'SNOW_DEPTH')) then
+   call nc_get_variable(ncid_clm, 'SNOW_DEPTH',  clm_SNOWDP)
+elseif (nc_variable_exists(ncid_clm, 'SNOWDP')) then
+   call nc_get_variable(ncid_clm, 'SNOWDP',  clm_SNOWDP)
+else
+   write(string1,*)'Snow repartitioning requires clm snow depth variable'
+   write(string2,*)'Check restart/history files for "SNOW_DEPTH" or "SNOWDP"'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
 
-! These variables need to be updated by DART before repartitioning. We will overwrite the
-! snow layers only with the repartitioning method.  Subsurface layers keep
-! traditional DART update.
+! Check for DART state posterior variables.
+! H2OSNO posterior comes from dart_posterior_vector.nc
+! whereas all other variables come from dart_posterior.nc
+
+!@fixme   Create a list here to condense things
 if (nc_variable_exists(ncid_dart, 'H2OSOI_LIQ')) then
    call nc_get_variable(ncid_dart, 'H2OSOI_LIQ', dart_H2OLIQ)
 else
@@ -558,16 +543,27 @@ else
    call error_handler(E_ERR,routine,string1,source)
 endif
 
-! The DART posterior for  DZSNO and SNOWDEPTH will be completely
-! overwritten by the repartitioning, call these variables here
-! to initialize them, and to remind the user these will be updated.
 if (nc_variable_exists(ncid_dart, 'DZSNO')) then
    call nc_get_variable(ncid_dart, 'DZSNO', dart_DZSNO)
 else
    write(string1,*)'Snow repartitioning requires "DZSNO" within DART state'
    call error_handler(E_ERR,routine,string1,source)
 endif
+!@fixme
 
+
+ncid_dart_vector= nc_open_file_readonly('dart_posterior_vector.nc', \
+                 'confirm H2OSNO is in dart_posterior_vector.nc')
+
+if (nc_variable_exists(ncid_dart_vector, 'H2OSNO')) then
+   call nc_get_variable(ncid_dart_vector, 'H2OSNO',  dart_H2OSNO, routine)
+else
+   write(string1,*)'Snow repartitioning requires a SWE variable in DART state'
+   write(string2,*)'Check that H2OSNO is in DART model_nml as vector history'
+   call error_handler(E_ERR,routine,string1,source,text2=string2)
+endif
+
+! Multiple options for snow depth variable
 if (nc_variable_exists(ncid_dart, 'SNOW_DEPTH')) then
    call nc_get_variable(ncid_dart, 'SNOW_DEPTH',  dart_SNOWDP)
 elseif (nc_variable_exists(ncid_dart, 'SNOWDP')) then
@@ -596,9 +592,8 @@ where ( dzsno_pr < 0.0_r8)  dzsno_pr = 0.0_r8
 where (h2oliq_pr < 0.0_r8) h2oliq_pr = 0.0_r8
 where (h2oice_pr < 0.0_r8) h2oice_pr = 0.0_r8
 
-! Important that H2OSNO posterior is taken from DART state (dart_posterior.nc)
-! whereas all other snow variables are taken from prior clm_restart.nc 
-! such that repartitioning H2OSNO increment can be based on prior snow distribution
+! The  H2OSNO posterior is taken from DART analysis stage (dart_posterior_vector.nc)
+! The repartitioning of the updated H2OSNO is based on prior snow relative distribution
 
 h2osno_po = dart_H2OSNO  
 snowdp_po = snowdp_pr
@@ -609,10 +604,6 @@ h2oice_po = h2oice_pr
 
 ! Adjust the variables to be consistent with the updated H2OSNO
 ! Remember: snlsno has the NEGATIVE of the number of snow layers.
-!@fixme 
-write(string1,*)'Line number 633'
-call error_handler(E_MSG, routine, string1, source)
-
 
 PARTITION: do icolumn = 1,ncolumn
       
@@ -705,13 +696,13 @@ enddo PARTITION
 
 
 
-! Update the 'dart_array' (dart_posterior.nc) with the repartitioned values
+! Update all layers in the 'dart_array' (dart_posterior.nc) with the repartitioned values
  dart_SNOWDP = snowdp_po
  dart_DZSNO  = dzsno_po
 
 
-! Important to update only the manually repartitioned above surface layers
-! Keep the DART posterior subsurface values
+! Important to update only the manually repartitioned above surface (snow) layers
+! Keep the subsurface layer values than come from DART posterior
  dart_H2OLIQ(1:nlevsno,:) =h2oliq_po(1:nlevsno,:)  
  dart_H2OICE(1:nlevsno,:) =h2oice_po(1:nlevsno,:)
 

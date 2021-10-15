@@ -332,16 +332,15 @@ echo "`date` -- END FILTER"
 #=========================================================================
 # Unlink any potentially pre-existing links
 unlink clm_restart.nc
-unlink dart_posterior.nc
-unlink dart_posterior_vector.nc
+unlink clm_vector_history.nc
 
 # Identify if SWE re-partitioning is necessary
 set  REPARTITION = `grep repartition_swe input.nml`
-set  REPARTITION = `echo $MYSTRING | sed -e "s/repartition_swe//g"`
-set  REPARTITION = `echo $MYSTRING | sed -e "s/[= .]//g"`
+set  REPARTITION = `echo $REPARTITION | sed -e "s/repartition_swe//g"`
+set  REPARTITION = `echo $REPARTITION | sed -e "s/[= .]//g"`
 
 
-if ($REPARTITION== "true") then
+if ($REPARTITION == "true") then
    
    # Track the ensemble count to locate matching vector analysis file
    @ enscount = 1
@@ -350,20 +349,22 @@ if ($REPARTITION== "true") then
     
      set POSTERIOR_RESTART = `echo $RESTART | sed -e "s/${CASE}.//"`
      set POSTERIOR_VECTOR  = `printf analysis_member_00%02d_d03.nc $enscount`
+     set CLM_VECTOR        = `printf ${CASE}.clm2_00%02d.h2.${LND_DATE_EXT}.nc $enscount` 
      
-     # Confirm that vector analysis file exists
+     # Confirm that H2OSNO prior/posterior files exist
 
-     if (! -e $POSTERIOR_VECTOR) then
-        echo "ERROR in assimilate.csh: Could not find $POSTERIOR_VECTOR "
-        echo "When SWE re-partitioning is enabled"
-        echo "the analysis stage must be output in"
-        echo "'stages_to_write' within filter_nml"
+     if (! -e $POSTERIOR_VECTOR || ! -e $CLM_VECTOR) then
+        echo "ERROR: assimilate.csh could not find $POSTERIOR_VECTOR or $CLM_VECTOR"
+        echo "When SWE re-partitioning is enabled H2OSNO must be"
+        echo "within vector history file (h2). Also the analysis"
+        echo "stage must be output in 'stages_to_write' within filter_nml"
         exit 7
      endif
         
      ${LINK} $POSTERIOR_RESTART  dart_posterior.nc
      ${LINK} $POSTERIOR_VECTOR  dart_posterior_vector.nc
      ${LINK} $RESTART   clm_restart.nc
+     ${LINK} $CLM_VECTOR   clm_vector_history.nc
 
      ${EXEROOT}/dart_to_clm >& /dev/null
 
@@ -371,10 +372,12 @@ if ($REPARTITION== "true") then
         echo "ERROR: dart_to_clm failed for $RESTART"
         exit 7
      endif
+     
+     foreach LIST (clm_restart.nc clm_vector_history.nc dart_posterior.nc \
+              dart_posterior_vector.nc clm_restart.nc )
 
-     unlink dart_posterior.nc
-     unlink dart_posterior_vector.nc
-     unlink clm_restart.nc
+             unlink $LIST
+     end
      @ enscount ++
   end
 
