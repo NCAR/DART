@@ -187,16 +187,9 @@ enddo UPDATE
  ! Pass in the soil/snow and column dimensions to update_snow subroutine
      if (nc_variable_exists(ncid_clm, 'H2OSOI_ICE')) then
         call nc_get_variable_size(ncid_clm, 'H2OSOI_ICE', ICE_varsize, source)
-     else
-        write(string1,*)'Snow repartitioning requires "H2OSOI_ICE" variable'
-        call error_handler(E_ERR,source,string1,source)
-     endif
-
-
-     if (nc_variable_exists(ncid_clm, 'levsno')) then
         nlevsno = nc_get_dimension_size(ncid_clm, 'levsno')
      else
-        write(string1,*)'Snow repartitioning requires clm snow layer attribute "levsno"'
+        write(string1,*)'Snow repartitioning requires "H2OSOI_ICE" variable'
         call error_handler(E_ERR,source,string1,source)
      endif
 
@@ -391,7 +384,7 @@ subroutine update_snow(dom_id, ncid_dart, ncid_clm, ncolumn, nlevel, nlevsno)
 integer, intent(in) :: dom_id
 integer, intent(in) :: ncid_dart
 integer, intent(in) :: ncid_clm
-integer             :: ncid_clm_vhist
+integer             :: ncid_clm_vector, ncid_dart_vector
 character(len=*), parameter :: routine = 'update_snow'
 
 ! Total columns (ncolumn), soil/snow levels (nlevel) and snow levels (nlevsno)
@@ -471,37 +464,26 @@ if (verbose > 0) then
    enddo domain3
 
 endif
-!@fixme
-write(string1,*)'Line number 461'
-call error_handler(E_MSG, routine, string1, source)
 
 ! Check for appropriate clm variables to repartition snow
 ! H2OSNO must come for history vector
 
-ncid_clm_vhist= nc_open_file_readonly('clm_vector_history.nc', 'confirming H2OSNO is in clm_vectory_history.nc')
-!@fixme
-write(string1,*)'Line number 467'
-write(string2,*)'ncid_clm_vhist value: ', ncid_clm_vhist
-call error_handler(E_MSG, routine, string1, source, text2=string2)
+ncid_clm_vector= nc_open_file_readonly('clm_vector_history.nc', 'confirm H2OSNO is in clm_vectory_history.nc')
+ncid_dart_vector= nc_open_file_readonly('dart_posterior_vector.nc', 'confirm H2OSNO is in dart_posterior_vector.nc')
 
-if (nc_variable_exists(ncid_clm_vhist, 'H2OSNO')) then
-!@fixme
-write(string1,*)'Line number 474'
-call error_handler(E_MSG, routine, string1, source)
+!@ fixme    Check to make sure this clm_vectory_history.nc file is updated for each ensemble member
+!@ fixme    within assimilate.csh --- I think this is linked to ensemble_0001 only.
 
-   call nc_get_variable(ncid_clm_vhist, 'H2OSNO',  clm_H2OSNO)
-!@fixme
-write(string1,*)'Line number 479'
-call error_handler(E_MSG, routine, string1, source)
+
+if (nc_variable_exists(ncid_clm_vector, 'H2OSNO')) then
+
+   call nc_get_variable(ncid_clm_vector, 'H2OSNO',  clm_H2OSNO)
 
 else
    write(string1,*)'Snow repartitioning requires clm SWE variable'
    write(string2,*)'Check for "H2OSNO" within clm vector history'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
-!@fixme
-write(string1,*)'Line number 488'
-call error_handler(E_MSG, routine, string1, source)
 
 ! Multiple options for clm snow depth variable
 ! Remaining variables come from restart file
@@ -514,9 +496,6 @@ else
    write(string2,*)'Check restart/history files for "SNOW_DEPTH" or "SNOWDP"'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
-!@fixme
-write(string1,*)'Line number 503'
-call error_handler(E_MSG, routine, string1, source)
 
 ! List of prognostic CLM snow related variables that are required for updating
 if (nc_variable_exists(ncid_clm, 'SNLSNO')) then
@@ -546,25 +525,21 @@ else
    write(string1,*)'Snow repartitioning requires clm snow layer variable "H2OSOI_ICE"'
    call error_handler(E_ERR,routine,string1,source)
 endif
-   !@fixme
-   write(string1,*)'Line number 542'
-   call error_handler(E_MSG, routine, string1, source)
 
 
-! Check for required variables within dart_posterior.nc
+! Check for required variables within dart_posterior_vector.nc
 ! H2OSNO is absolutely necessary because it includes the posterior SWE
 ! which is the basis for the entire reprartitioning algorithm
-if (nc_variable_exists(ncid_dart, 'H2OSNO')) then
-   call nc_get_variable(ncid_dart, 'H2OSNO',  dart_H2OSNO, routine)
+
+
+if (nc_variable_exists(ncid_dart_vector, 'H2OSNO')) then
+   call nc_get_variable(ncid_dart_vector, 'H2OSNO',  dart_H2OSNO, routine)
 else
    write(string1,*)'Snow repartitioning requires a SWE variable in DART state'
-   write(string2,*)'Check that H2OSNO variable is in DART model_nml as vector history'
+   write(string2,*)'Check that H2OSNO is in DART model_nml as vector history'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
-!@fixme
-write(string1,*)'Line number 557'
-call error_handler(E_MSG, routine, string1, source)
 
 ! These variables need to be updated by DART before repartitioning. We will overwrite the
 ! snow layers only with the repartitioning method.  Subsurface layers keep
@@ -582,9 +557,6 @@ else
    write(string1,*)'Snow repartitioning requires "H2OSOI_ICE" within DART state'
    call error_handler(E_ERR,routine,string1,source)
 endif
-!@fixme
-write(string1,*)'Line number 577'
-call error_handler(E_MSG, routine, string1, source)
 
 ! The DART posterior for  DZSNO and SNOWDEPTH will be completely
 ! overwritten by the repartitioning, call these variables here
@@ -608,9 +580,7 @@ endif
 
 
 ! END clm variable and DART state checks
-!@fixme
-write(string1,*)'Line number 603'
-call error_handler(E_MSG, routine, string1, source)
+
 
 h2osno_pr=clm_H2OSNO
 snlsno=clm_SNLSNO
@@ -732,9 +702,6 @@ PARTITION: do icolumn = 1,ncolumn
 
 enddo PARTITION
 
-!@fixme
-write(string1,*)'Line number 699'
-call error_handler(E_MSG, routine, string1, source)
 
 
 

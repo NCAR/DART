@@ -330,7 +330,10 @@ echo "`date` -- END FILTER"
 # Block 7: Put the DART posterior into the CLM restart file. The CLM
 # restart file is also the prior for the next forecast.
 #=========================================================================
+# Unlink any potentially pre-existing links
 unlink clm_restart.nc
+unlink dart_posterior.nc
+unlink dart_posterior_vector.nc
 
 # Identify if SWE re-partitioning is necessary
 set  REPARTITION = `grep repartition_swe input.nml`
@@ -351,10 +354,10 @@ if ($REPARTITION== "true") then
      # Confirm that vector analysis file exists
 
      if (! -e $POSTERIOR_VECTOR) then
-        echo "ERROR: Could not find $POSTERIOR_VECTOR "
+        echo "ERROR in assimilate.csh: Could not find $POSTERIOR_VECTOR "
         echo "When SWE re-partitioning is enabled"
-        echo "the analysis stage must be output"
-        echo "in 'stages_to_write' within filter_nml"
+        echo "the analysis stage must be output in"
+        echo "'stages_to_write' within filter_nml"
         exit 7
      endif
         
