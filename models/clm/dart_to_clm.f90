@@ -143,6 +143,7 @@ call print_time( clm_time,'dart_to_clm:DART model time',logfileunit)
 ! There are some dependencies on the state structure, which come from the shapefile,
 ! and then the two files in question must also be compatible ...
 
+
 dom_restart = 1
 
 UPDATE : do ivar=1, get_num_variables(dom_restart)
@@ -150,6 +151,8 @@ UPDATE : do ivar=1, get_num_variables(dom_restart)
   ! If repartitioning SWE then skip applying snow variable updates within UPDATE loop
   ! The snow variable updates will be performed in 'update_snow'
   if (repartition_SWE) then
+
+
    varname = get_variable_name(dom_restart,ivar)
    select case (varname)
       case ('SNOWDP', 'SNOW_DEPTH', 'DZSNO', 'H2OSOI_LIQ', 'H2OSOI_ICE')
@@ -166,11 +169,9 @@ UPDATE : do ivar=1, get_num_variables(dom_restart)
    rank = get_num_dims(dom_restart,ivar)
 
    if (rank == 1) then
-
       call replace_values_1D(dom_restart, ivar, ncid_dart, ncid_clm)
 
    elseif (rank == 2) then
-
       call replace_values_2D(dom_restart, ivar, ncid_dart, ncid_clm)
 
    else
@@ -395,6 +396,8 @@ real(r8) :: snowden, wt_swe, wt_liq, wt_ice
 
 integer  :: ivar
 character(len=NF90_MAX_NAME) :: varname
+character(len=512) :: string1, string2
+real(r8) :: special
 
 real(r8) :: dart_H2OSNO(ncolumn)
 real(r8) :: dart_SNOWDP(ncolumn)
@@ -422,10 +425,6 @@ real(r8) :: h2oice_pr(nlevel,ncolumn)
 real(r8) :: h2oice_po(nlevel,ncolumn)
 real(r8) :: gain_dzsno(nlevsno,ncolumn)
 real(r8) :: gain_h2oice, gain_h2oliq, gain_h2osno
-
-
-character(len=512) :: string1, string2
-real(r8) :: special
 
 ! Check existence for snow related variables required to be
 ! in DART state and CLM domain (restart,history,vector history)
@@ -466,49 +465,28 @@ if (verbose > 0) then
 
 endif
 
-! Check that all appropriate clm variables are available to repartition snow
-! All variables are derived from restart file, except H2OSNO (history vector)
+! BEGIN clm variable and DART state checks for snow repartitioning
 
-
-!@fixme   Create list for these checks
-! List of prognostic CLM snow related variables that are required for updating
-if (nc_variable_exists(ncid_clm, 'SNLSNO')) then
-   call nc_get_variable(ncid_clm, 'SNLSNO',  clm_SNLSNO)
+if (nc_variable_exists(ncid_clm, 'SNLSNO') .and. nc_variable_exists(ncid_clm, 'DZSNO') .and. &
+    nc_variable_exists(ncid_clm, 'H2OSOI_LIQ') .and. nc_variable_exists(ncid_clm, 'H2OSOI_ICE')) then                             
+    call nc_get_variable(ncid_clm, 'SNLSNO',  clm_SNLSNO)
+    call nc_get_variable(ncid_clm, 'DZSNO',  clm_DZSNO)
+    call nc_get_variable(ncid_clm, 'H2OSOI_LIQ',  clm_H2OLIQ)
+    call nc_get_variable(ncid_clm, 'H2OSOI_ICE',  clm_H2OICE)
 else
-   write(string1,*)'Snow repartitioning requires clm snow layer variable "SNLSNO"'
-   call error_handler(E_ERR,routine,string1,source)
+    write(string1,*)'Snow repartitioning requires clm variables: '
+    write(string2,*)'SNLSNO, DZSNO, H2OSOI_LIQ, H2OSOI_ICE'
+    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
-if (nc_variable_exists(ncid_clm, 'DZSNO')) then
-   call nc_get_variable(ncid_clm, 'DZSNO',  clm_DZSNO)
-else
-   write(string1,*)'Snow repartitioning requires clm snow layer depth variable "DZSNO"'
-   call error_handler(E_ERR,routine,string1,source)
-endif
-
-if (nc_variable_exists(ncid_clm, 'H2OSOI_LIQ')) then
-   call nc_get_variable(ncid_clm, 'H2OSOI_LIQ',  clm_H2OLIQ)
-else
-   write(string1,*)'Snow repartitioning requires clm snow variable "H2OSOI_LIQ"'
-   call error_handler(E_ERR,routine,string1,source)
-endif
-
-if (nc_variable_exists(ncid_clm, 'H2OSOI_ICE')) then
-   call nc_get_variable(ncid_clm, 'H2OSOI_ICE',  clm_H2OICE)
-else
-   write(string1,*)'Snow repartitioning requires clm snow layer variable "H2OSOI_ICE"'
-   call error_handler(E_ERR,routine,string1,source)
-endif
-!@fixme
-
-ncid_clm_vector= nc_open_file_readonly('clm_vector_history.nc', \
+ncid_clm_vector= nc_open_file_readonly('clm_vector_history.nc', &
                  'confirm H2OSNO is in clm_vectory_history.nc')
 
 if (nc_variable_exists(ncid_clm_vector, 'H2OSNO')) then
    call nc_get_variable(ncid_clm_vector, 'H2OSNO',  clm_H2OSNO)
 else
    write(string1,*)'Snow repartitioning requires clm SWE variable'
-   write(string2,*)'Check for "H2OSNO" within clm vector history'
+   write(string2,*)'Check for H2OSNO within clm vector history'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
@@ -528,37 +506,24 @@ endif
 ! H2OSNO posterior comes from dart_posterior_vector.nc
 ! whereas all other variables come from dart_posterior.nc
 
-!@fixme   Create a list here to condense things
-if (nc_variable_exists(ncid_dart, 'H2OSOI_LIQ')) then
-   call nc_get_variable(ncid_dart, 'H2OSOI_LIQ', dart_H2OLIQ)
+if (nc_variable_exists(ncid_dart, 'H2OSOI_LIQ') .and. nc_variable_exists(ncid_dart, 'DZSNO') &
+    .and. nc_variable_exists(ncid_dart, 'H2OSOI_ICE')) then
+    call nc_get_variable(ncid_dart, 'DZSNO',  dart_DZSNO)
+    call nc_get_variable(ncid_dart, 'H2OSOI_LIQ',  dart_H2OLIQ)
+    call nc_get_variable(ncid_dart, 'H2OSOI_ICE',  dart_H2OICE)
 else
-   write(string1,*)'Snow repartitioning requires "H2OSOI_LIQ" within DART state'
-   call error_handler(E_ERR,routine,string1,source)
+    write(string1,*)'Snow repartitioning requires dart state variables: '
+    write(string2,*)'DZSNO, H2OSOI_LIQ, H2OSOI_ICE'
+    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
-if (nc_variable_exists(ncid_dart, 'H2OSOI_ICE')) then
-   call nc_get_variable(ncid_dart, 'H2OSOI_ICE', dart_H2OICE)
-else
-   write(string1,*)'Snow repartitioning requires "H2OSOI_ICE" within DART state'
-   call error_handler(E_ERR,routine,string1,source)
-endif
-
-if (nc_variable_exists(ncid_dart, 'DZSNO')) then
-   call nc_get_variable(ncid_dart, 'DZSNO', dart_DZSNO)
-else
-   write(string1,*)'Snow repartitioning requires "DZSNO" within DART state'
-   call error_handler(E_ERR,routine,string1,source)
-endif
-!@fixme
-
-
-ncid_dart_vector= nc_open_file_readonly('dart_posterior_vector.nc', \
+ncid_dart_vector= nc_open_file_readonly('dart_posterior_vector.nc', &
                  'confirm H2OSNO is in dart_posterior_vector.nc')
 
 if (nc_variable_exists(ncid_dart_vector, 'H2OSNO')) then
    call nc_get_variable(ncid_dart_vector, 'H2OSNO',  dart_H2OSNO, routine)
 else
-   write(string1,*)'Snow repartitioning requires a SWE variable in DART state'
+   write(string1,*)'Snow repartitioning requires H2OSNO in DART state'
    write(string2,*)'Check that H2OSNO is in DART model_nml as vector history'
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
@@ -574,9 +539,7 @@ else
    call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
-
 ! END clm variable and DART state checks
-
 
 h2osno_pr=clm_H2OSNO
 snlsno=clm_SNLSNO
@@ -584,7 +547,6 @@ snowdp_pr=clm_SNOWDP
 dzsno_pr=clm_DZSNO
 h2oliq_pr=clm_H2OLIQ
 h2oice_pr=clm_H2OICE
-
 
 where (h2osno_pr < 0.0_r8) h2osno_pr = 0.0_r8
 where (snowdp_pr < 0.0_r8) snowdp_pr = 0.0_r8
@@ -694,9 +656,7 @@ PARTITION: do icolumn = 1,ncolumn
 enddo PARTITION
 
 
-
-
-! Update all layers in the 'dart_array' (dart_posterior.nc) with the repartitioned values
+! Update the 'dart_array' (dart_posterior.nc) with the repartitioned values
  dart_SNOWDP = snowdp_po
  dart_DZSNO  = dzsno_po
 
@@ -709,23 +669,30 @@ enddo PARTITION
 ! Update the 'clm_array' with repartitioned 'dart_array' similar to 
 ! subroutine replace_values_2D, but with snow variables
 
-!@fixme This needs to check for SNOW_DEPTH or SNOWDP
-VarID=get_varid_from_varname(dom_id, 'SNOW_DEPTH')
+! UPDATE SNOW DEPTH 
+if (nc_variable_exists(ncid_dart, 'SNOW_DEPTH')) then
+   VarID=get_varid_from_varname(dom_id, 'SNOW_DEPTH')
+else
+   VarID=get_varid_from_varname(dom_id, 'SNOWDP')
+endif
 
 ! Identify location of missing_values and FillValues to prevent updates (masking)  
-if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
-
 !@fixme Is this right using 'get_has_missing_value' instead of 'get_has_FillValue' ??
 !@fixme I am following the same usage as in subroutine 'replace_values_2D'
+if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
 if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,special)
 
-!@fixme This also needs to check for SNOW_DEPTH or SNOWDP
-! Make sure variables in both files are identical in shape, etc.
-call Compatible_Variables('SNOW_DEPTH', ncid_dart, ncid_clm, varsize)
-where(dart_SNOWDP /= special) clm_SNOWDP = dart_SNOWDP
-call nc_put_variable(ncid_clm, 'SNOW_DEPTH', clm_SNOWDP, routine)
+if (nc_variable_exists(ncid_dart, 'SNOW_DEPTH')) then
+   call Compatible_Variables('SNOW_DEPTH', ncid_dart, ncid_clm, varsize)
+   where(dart_SNOWDP /= special) clm_SNOWDP = dart_SNOWDP
+   call nc_put_variable(ncid_clm, 'SNOW_DEPTH', clm_SNOWDP, routine)
+else
+   call Compatible_Variables('SNOWDP', ncid_dart, ncid_clm, varsize)
+   where(dart_SNOWDP /= special) clm_SNOWDP = dart_SNOWDP
+   call nc_put_variable(ncid_clm, 'SNOWDP', clm_SNOWDP, routine)
+endif
 
-
+! UPDATE SNOW LAYER THICKNESS
 VarID=get_varid_from_varname(dom_id, 'DZSNO')
 ! Identify location of missing_values and FillValues to prevent updates (masking)  
 if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
@@ -735,7 +702,7 @@ call Compatible_Variables('DZSNO', ncid_dart, ncid_clm, varsize)
 where(dart_DZSNO /= special) clm_DZSNO = dart_DZSNO
 call nc_put_variable(ncid_clm, 'DZSNO', clm_DZSNO, routine)
 
-
+! UPDATE LIQUID LAYER
 VarID=get_varid_from_varname(dom_id, 'H2OSOI_LIQ')
 ! Identify location of missing_values and FillValues to prevent updates (masking)  
 if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
@@ -745,7 +712,7 @@ call Compatible_Variables('H2OSOI_LIQ', ncid_dart, ncid_clm, varsize)
 where(dart_H2OLIQ /= special) clm_H2OLIQ = dart_H2OLIQ
 call nc_put_variable(ncid_clm, 'H2OSOI_LIQ', clm_H2OLIQ, routine)
 
-
+! UPDATE ICE LAYER
 VarID=get_varid_from_varname(dom_id, 'H2OSOI_ICE')
 ! Identify location of missing_values and FillValues to prevent updates (masking)  
 if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)

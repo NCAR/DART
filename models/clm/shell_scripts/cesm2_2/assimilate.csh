@@ -332,7 +332,7 @@ echo "`date` -- END FILTER"
 #=========================================================================
 # Unlink any potentially pre-existing links
 unlink clm_restart.nc
-unlink clm_vector_history.nc
+unlink dart_posterior.nc
 
 # Identify if SWE re-partitioning is necessary
 set  REPARTITION = `grep repartition_swe input.nml`
@@ -341,7 +341,7 @@ set  REPARTITION = `echo $REPARTITION | sed -e "s/[= .]//g"`
 
 
 if ($REPARTITION == "true") then
-   
+unlink clm_vector_history   
    # Track the ensemble count to locate matching vector analysis file
    @ enscount = 1
 
@@ -374,7 +374,7 @@ if ($REPARTITION == "true") then
      endif
      
      foreach LIST (clm_restart.nc clm_vector_history.nc dart_posterior.nc \
-              dart_posterior_vector.nc clm_restart.nc )
+              dart_posterior_vector.nc )
 
              unlink $LIST
      end
