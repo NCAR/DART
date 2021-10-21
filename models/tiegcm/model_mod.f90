@@ -22,8 +22,8 @@ use time_manager_mod, only : time_type, set_calendar_type, set_time_missing,    
                              operator(>),  operator(<), operator(/),                &
                              operator(/=), operator(<=)
 
-use     location_mod, only : location_type, get_close_maxdist_init,                 &
-                             get_close_obs_init, loc_get_close_obs => get_close_obs,&
+use     location_mod, only : location_type,                                         &
+                             loc_get_close_obs => get_close_obs,                    &
                              set_location, get_location, query_location,            &
                              get_dist, vert_is_height, horiz_dist_only,             &
                              get_close_type, vert_is_undef, VERTISUNDEF,            &
@@ -50,6 +50,13 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 use mpi_utilities_mod,only : my_task_id
 
+use default_model_mod, only : adv_1step,                                &
+                              init_conditions => fail_init_conditions,  &
+                              init_time => fail_init_time
+                              nc_write_model_vars
+
+use state_structure_mod, only : add_domain
+
 use typesizes
 use netcdf
 
@@ -58,33 +65,32 @@ private
 
 !DART mandatory public interfaces
 public :: get_model_size,         &
-          adv_1step,              &
           get_state_meta_data,    &
           model_interpolate,      &
           get_model_time_step,    &
           end_model,              &
           static_init_model,      &
-          init_time,              &
-          init_conditions,        &
           nc_write_model_atts,    &
           nc_write_model_vars,    &
           pert_model_state,       &
-          get_close_maxdist_init, &
-          get_close_obs_init,     &
           get_close_obs,          &
-          ens_mean_for_model
+          get_close_state
+
+!DART pass through interfaces
+public :: adv_1step,              &
+          init_conditions,        &
+          init_time
 
 !TIEGCM specific routines
-public :: tiegcm_to_dart_vector, &
-          dart_vector_to_tiegcm, &
-          get_f107_value,        &
-          test_interpolate
+public :: get_f107_value
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   '$URL$'
-character(len=32 ), parameter :: revision = '$Revision$'
-character(len=128), parameter :: revdate  = '$Date$'
+character(len=256), parameter :: source   = 'tiegcm/model_mod.f90'
+character(len=32 ), parameter :: revision = ''
+character(len=128), parameter :: revdate  = ''
+
+! global domain id to be used by routines in state_structure_mod
+integer :: domain_id
 
 !-------------------------------------------------------------------------------
 ! namelist with default values
@@ -110,35 +116,6 @@ namelist /model_nml/ tiegcm_restart_file_name, &
                      tiegcm_secondary_file_name, tiegcm_namelist_file_name, &
                      variables, debug, estimate_f10_7, assimilation_period_seconds
 
-!-------------------------------------------------------------------------------
-! Everything needed to describe a variable
-
-type progvartype
-   private
-   character(len=NF90_MAX_NAME) :: varname
-   character(len=NF90_MAX_NAME) :: long_name
-   character(len=NF90_MAX_NAME) :: units
-   character(len=obstypelength), dimension(NF90_MAX_VAR_DIMS) :: dimnames
-   integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens ! ntime, [nlev,] nlat, nlon
-   integer  :: rank
-   integer  :: varsize     ! prod(dimlens(1:rank))
-   integer  :: index1      ! location in dart state vector of first occurrence
-   integer  :: indexN      ! location in dart state vector of last  occurrence
-   character(len=obstypelength) :: verticalvar
-   character(len=obstypelength) :: kind_string
-   integer  :: dart_kind
-   integer  :: xtype
-   integer  :: rangeRestricted
-   real(r8) :: minvalue
-   real(r8) :: maxvalue
-   real(r8) :: missingR8
-   real(r4) :: missingR4
-   logical  :: has_missing_value
-   logical  :: update  ! is this a state variable (updateable)
-   character(len=NF90_MAX_NAME) :: origin
-end type progvartype
-
-type(progvartype), dimension(max_num_variables) :: progvar
 integer :: nfields  ! number of tiegcm variables in DART state
 
 !-------------------------------------------------------------------------------
@@ -146,6 +123,7 @@ integer :: nfields  ! number of tiegcm variables in DART state
 
 integer                               :: nilev, nlev, nlon, nlat
 real(r8),dimension(:),    allocatable :: lons, lats, levs, ilevs, plevs, pilevs
+! HK are plevs, pilves per ensemble member
 real(r8)                              :: TIEGCM_missing_value !! global attribute
 real(r8)                              :: TIEGCM_reference_pressure
 integer                               :: time_step_seconds
@@ -175,8 +153,7 @@ logical  :: include_vTEC_in_state = .false.
 real(r8)        :: f10_7
 type(time_type) :: state_time ! module-storage declaration of current model time
 
-integer                :: model_size
-real(r8), allocatable  :: ens_mean(:)
+integer                :: model_size ! the state vector length
 
 ! FOR NOW OBS LOCATIONS ARE EXPECTED GIVEN IN HEIGHT [m],
 ! AND SO VERTICAL LOCALIZATION COORDINATE IS *always* HEIGHT
@@ -197,34 +174,14 @@ integer, parameter :: BOUNDED_BELOW = 1 ! ... minimum, but no maximum
 integer, parameter :: BOUNDED_ABOVE = 2 ! ... maximum, but no minimum
 integer, parameter :: BOUNDED_BOTH  = 3 ! ... minimum and maximum
 
-interface prog_var_to_vector
-   module procedure var1d_to_vector
-   module procedure var2d_to_vector
-   module procedure var3d_to_vector
-   module procedure var4d_to_vector
-end interface
-
-interface apply_attributes
-   module procedure apply_attributes_1D
-   module procedure apply_attributes_2D
-   module procedure apply_attributes_3D
-   module procedure apply_attributes_4D
-end interface
 
 !===============================================================================
 contains
 !===============================================================================
 
-
-
 subroutine static_init_model()
 !-------------------------------------------------------------------------------
 !
-! Called to do one time initialization of the model. As examples,
-! might define information about the model size or model timestep.
-! In models that require pre-computed static data, for instance
-! spherical harmonic weights, these would also be computed here.
-! Can be a NULL INTERFACE for the simplest models.
 
 integer :: iunit, io
 real(r8) :: total_steps
@@ -260,30 +217,17 @@ call read_TIEGCM_definition(tiegcm_restart_file_name)
 call read_TIEGCM_secondary(tiegcm_secondary_file_name)
 
 ! error-check and convert namelist input to variable_table
-! and the 'progvar' database in the scope of the module
 call verify_variables(variables, nfields)
 
-! Compute overall model size
+!HK There are two files and a calculated variable VTEC:
+! tiegcm_restart_file_name
+! tiegcm_secondary_file_name
+! calcualted variable VTEC
+domain_id = add_domain('file.nc', nfields, var_names, update_list)
 
-model_size = progvar(nfields)%indexN
-
-if (do_output() .and. (debug > 0)) then
-   write(*,*) 'nlon  = ', nlon
-   write(*,*) 'nlat  = ', nlat
-   write(*,*) 'nlev  = ', nlev
-   write(*,*) 'nilev = ', nilev
-   write(*,*) 'model_size = ', model_size
-   if (estimate_f10_7) &
-   write(*,*) 'estimating f10.7 ... init value ',f10_7
-endif
-
-allocate (ens_mean(model_size))
-ens_mean = MISSING_R8
-
-! Might as well use the Gregorian Calendar
 call set_calendar_type('Gregorian')
 
-! Convert the last year/doy/hour/minute to a dart time.
+! Convert the last year/day/hour/minute to a dart time.
 state_time = get_state_time(tiegcm_restart_file_name)
 
 ! Ensure assimilation_period is a multiple of the dynamical timestep
@@ -328,61 +272,6 @@ end subroutine static_init_model
 
 !-------------------------------------------------------------------------------
 
-
-subroutine init_conditions(x)
-! Returns a model state vector, x, that is some sort of appropriate
-! initial condition for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter
-! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used this can be a NULL INTERFACE.
-
-real(r8), intent(out) :: x(:)
-
-if ( .not. module_initialized ) call static_init_model
-
-write(string1,*) 'no good way to specify initial conditions'
-call error_handler(E_ERR,'init_conditions',string1,source,revision,revdate)
-
-x(:) = MISSING_R8 ! just to silence compiler messages
-
-end subroutine init_conditions
-
-
-!-------------------------------------------------------------------------------
-
-
-subroutine adv_1step(x, time)
-! Does a single timestep advance of the model. The input value of
-! the vector x is the starting condition and x is updated to reflect
-! the changed state after a timestep. The time argument is intent
-! in and is used for models that need to know the date/time to
-! compute a timestep, for instance for radiation computations.
-! This interface is only called if the namelist parameter
-! async is set to 0 in perfect_model_obs of filter or if the
-! program integrate_model is to be used to advance the model
-! state as a separate executable. If one of these options
-! is not going to be used (the model will only be advanced as
-! a separate model-specific executable), this can be a
-! NULL INTERFACE.
-
-real(r8),        intent(inout) :: x(:)
-type(time_type), intent(in)    :: time
-
-write(string1,*) 'TIEGCM cannot be advanced as a subroutine from within DART.'
-write(string2,*) 'check your input.nml setting of "async" and try again.'
-call error_handler(E_ERR,'adv_1step',string1,source,revision,revdate)
-
-! just to silence compiler messages
-
-x(:) = MISSING_R8
-call print_time(time)
-
-end subroutine adv_1step
-
-
-!-------------------------------------------------------------------------------
-
-
 function get_model_size()
 ! Returns the size of the model as an integer. Required for all
 ! applications.
@@ -396,48 +285,26 @@ get_model_size = model_size
 end function get_model_size
 
 
-!-------------------------------------------------------------------------------
-
-
-subroutine init_time(time)
-! Companion interface to init_conditions. Returns a time that is somehow
-! appropriate for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter
-! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no
-! synthetic data experiments using perfect_model_obs are planned,
-! this can be a NULL INTERFACE.
-
-type(time_type), intent(out) :: time
-
-if ( .not. module_initialized ) call static_init_model
-
-write(string1,*) 'no good way to specify initial time'
-call error_handler(E_ERR,'init_time',string1,source,revision,revdate)
-
-! for now, just set to 0
-time = set_time(0,0)
-
-end subroutine init_time
-
 
 !-------------------------------------------------------------------------------
 
 
-subroutine model_interpolate(x, location, ikind, obs_val, istatus)
-! Given a state vector, a location, and a model state variable type,
+subroutine model_interpolate(state_handle, ens_size, location, iqty, obs_val, istatus)
+! Given  a location, and a model state variable qty,
 ! interpolates the state variable field to that location and returns
-! the value in obs_val. The istatus variable should be returned as
+! the value in obs_val for each ensemble member.
+! The istatus variable should be returned as
 ! 0 unless there is some problem in computing the interpolation in
-! which case an alternate value should be returned. The ikind variable
-! is a model specific integer that specifies the type of field (for
+! which case an alternate value should be returned. The iqty variable
+! is a integer that specifies the qty of field (for
 ! instance temperature, zonal wind component, etc.).
 
-real(r8),            intent(in) :: x(:)
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
-integer,             intent(in) :: ikind
-real(r8),           intent(out) :: obs_val
-integer,            intent(out) :: istatus
+integer,             intent(in) :: obs_kind
+integer,            intent(out) :: istatus(ens_size)
+real(r8),           intent(out) :: obs_val(ens_size) !< array of interpolated values
 
 integer  :: ivar
 integer  :: i, which_vert
@@ -501,8 +368,8 @@ if ((ikind == QTY_PRESSURE) .and. (vert_is_level(location))) then
    ! I cannot figure out how to generically decide when to
    ! use plevs vs. pilevs 
    if (level <= nlev) then
-      obs_val = plevs(level)
-      istatus = 0
+      obs_val(:) = plevs(level)
+      istatus(:) = 0
    endif
    return
 endif
@@ -772,9 +639,6 @@ subroutine end_model()
 ! Does any shutdown and clean-up needed for model. Can be a NULL
 ! INTERFACE if the model has no need to clean up storage, etc.
 
-if ( .not. module_initialized ) call static_init_model
-
-
 end subroutine end_model
 
 
@@ -926,154 +790,6 @@ if (has_tiegcm_namelist) then
 
 endif
 
-!-------------------------------------------------------------------------------
-! Here is the extensible part. The simplest scenario is to output the state vector,
-! parsing the state vector into model-specific parts is complicated, and you need
-! to know the geometry, the output variables (PS,U,V,T,Q,...) etc. We're skipping
-! complicated part.
-!-------------------------------------------------------------------------------
-
-if ( output_state_vector ) then
-
-   !----------------------------------------------------------------------------
-   ! Create a variable for the state vector
-   !----------------------------------------------------------------------------
-
-  ! Define the state vector coordinate variable and some attributes.
-   call nc_check(nf90_def_var(ncid=ncid,name='StateVariable', xtype=nf90_int, &
-              dimids=StateVarDimID, varid=StateVarVarID), &
-              'nc_write_model_atts', 'statevariable def_var')
-   call nc_check(nf90_put_att(ncid, StateVarVarID, 'long_name', 'State Variable ID'), &
-              'nc_write_model_atts', 'statevariable long_name')
-   call nc_check(nf90_put_att(ncid, StateVarVarID, 'units',     'indexical'), &
-              'nc_write_model_atts', 'statevariable units')
-   call nc_check(nf90_put_att(ncid, StateVarVarID, 'valid_range', (/ 1, model_size /)), &
-              'nc_write_model_atts', 'statevariable valid_range')
-
-   ! Define the actual (3D) state vector, which gets filled as time goes on ...
-   call nc_check(nf90_def_var(ncid=ncid, name='state', xtype=nf90_real, &
-              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
-              varid=StateVarID), 'nc_write_model_atts', 'state def_var')
-   call nc_check(nf90_put_att(ncid, StateVarID, 'long_name', 'model state or fcopy'), &
-              'nc_write_model_atts', 'state long_name')
-
-   ! Leave define mode so we can fill the coordinate variable.
-   call nc_check(nf90_enddef(ncid), 'nc_write_model_atts', 'state enddef')
-
-   ! Fill the state variable coordinate variable
-   call nc_check(nf90_put_var(ncid, StateVarVarID, (/ (i,i=1,model_size) /) ), &
-              'nc_write_model_atts', 'state put_var')
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to process the reshaped variables.
-   !----------------------------------------------------------------------------
-   ! Define the dimensions IDs
-   !----------------------------------------------------------------------------
-
-   call nc_check(nf90_def_dim(ncid= ncid ,  name='lon', &
-             & len =  nlon,  dimid= lonDimID), 'nc_write_model_atts lon')
-   call nc_check(nf90_def_dim(ncid= ncid ,  name='lat', &
-             & len =  nlat,  dimid= latDimID), 'nc_write_model_atts lat')
-   call nc_check(nf90_def_dim(ncid= ncid ,  name='lev', &
-             & len =  nlev,  dimid= levDimID), 'nc_write_model_atts lev')
-   call nc_check(nf90_def_dim(ncid= ncid ,  name='ilev', &
-             & len = nilev,  dimid=ilevDimID), 'nc_write_model_atts ilev')
-
-   !----------------------------------------------------------------------------
-   ! Create the (empty) Variables and the Attributes
-   !----------------------------------------------------------------------------
-
-   call nc_check(nf90_def_var(ncid, name='lon', &
-             & xtype=nf90_double, dimids=lonDimID, varid=lonVarID),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, lonVarID, &
-             & 'long_name', 'geographic longitude (-west, +east)'),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, lonVarID, 'units', 'degrees_east'),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, lonVarID, 'valid_range', &
-             & (/ -180.0_r8, 180.0_r8 /)),'nc_write_model_atts')
-
-   call nc_check(nf90_def_var(ncid, name='lat', &
-             & xtype=nf90_double, dimids=latDimID, varid=latVarID),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, latVarID, &
-             & 'long_name', 'geographic latitude (-south +north)'),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, latVarID, 'units', 'degrees_north'),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, latVarID, 'valid_range', &
-             & (/ -90.0_r8, 90.0_r8 /)),'nc_write_model_atts')
-
-   call nc_check(nf90_def_var(ncid, name='lev', &
-             & xtype=nf90_double, dimids=levDimID, varid=levVarID),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, levVarID, 'long_name', 'midpoint levels'),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, levVarID, 'short_name', 'ln(p0/p)'),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, levVarID, 'units', ''),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, levVarID, 'positive', 'up'),&
-             'nc_write_model_atts')
-
-   call nc_check(nf90_def_var(ncid, name='ilev', &
-             & xtype=nf90_double, dimids=ilevDimID, varid=ilevVarID),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, ilevVarID, 'long_name', 'interface levels'),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, ilevVarID, 'short_name', 'ln(p0/p)'),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, ilevVarID, 'units', ''),&
-             'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncid, ilevVarID, 'positive', 'up'),&
-             'nc_write_model_atts')
-
-   !----------------------------------------------------------------------------
-   ! Create the (empty) Variables and their Attributes
-   !----------------------------------------------------------------------------
-
-   do ivar=1, nfields
-
-      varname = trim(progvar(ivar)%varname)
-
-      ! match shape of the variable to the dimension IDs
-
-      call define_var_dims(ivar, ncid, MemberDimID, unlimitedDimID, myndims, mydimids)
-
-      ! define the variable and set the attributes
-
-      call nc_check(nf90_def_var(ncid=ncid,name=trim(varname),xtype=progvar(ivar)%xtype, &
-                    dimids = mydimids(1:myndims), varid=VarID),&
-                    'nc_write_model_atts', trim(varname)//' def_var' )
-
-      call nc_check(nf90_put_att(ncid,VarID,'long_name',trim(progvar(ivar)%long_name)), &
-           'nc_write_model_atts', trim(varname)//' put_att long_name' )
-      call nc_check(nf90_put_att(ncid,VarID,'units',    trim(progvar(ivar)%units)), &
-           'nc_write_model_atts', trim(varname)//' put_att units' )
-      call nc_check(nf90_put_att(ncid,VarID,'DART_kind',trim(progvar(ivar)%kind_string)), &
-           'nc_write_model_atts', trim(varname)//' put_att dart_kind' )
-   enddo
-
-   call nc_check(nf90_enddef(ncid), 'nc_write_model_atts', 'reshaped enddef')
-
-   !----------------------------------------------------------------------------
-   ! Fill the variables
-   !----------------------------------------------------------------------------
-   allocate(temp_lon(size(lons)))  ! Convert longitudes back to a monotonic array
-   temp_lon = lons                 ! instead of [180 ... 355,0 ... 175]
-   where(temp_lon >= 180.0_r8) temp_lon = temp_lon - 360.0_r8
-
-   call nc_check(nf90_put_var(ncid, lonVarID, temp_lon),'nc_write_model_atts','put_var lons')
-   call nc_check(nf90_put_var(ncid, latVarID, lats),'nc_write_model_atts','put_var lats')
-   call nc_check(nf90_put_var(ncid, levVarID, levs),'nc_write_model_atts','put_var levs')
-   call nc_check(nf90_put_var(ncid,ilevVarID,ilevs),'nc_write_model_atts','put_var ilevs')
-
-   deallocate(temp_lon)
-
-endif
 
 !-------------------------------------------------------------------------------
 ! Fill the variables we can
@@ -1098,149 +814,6 @@ ierr = 0 ! If we got here, things went well.
 
 end function nc_write_model_atts
 
-
-!-------------------------------------------------------------------------------
-
-
-function nc_write_model_vars( ncid, statevec, copyindex, timeindex ) result (ierr)
-! TJH 24 Oct 2006 -- Writes the model variables to a netCDF file.
-!
-! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-
-integer,                intent(in) :: ncid
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr ! return value of function
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarID
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
-character(len=NF90_MAX_NAME)          :: varname
-character(len=NF90_MAX_NAME),dimension(NF90_MAX_VAR_DIMS) :: dimnames
-integer :: i, ivar, VarID, ncNdims, dimlen
-integer :: TimeDimID, CopyDimID
-
-if ( .not. module_initialized ) call static_init_model
-
-!-------------------------------------------------------------------------------
-! make sure ncid refers to an open netCDF file,
-!-------------------------------------------------------------------------------
-
-ierr = -1 ! assume things go poorly
-
-call nc_check(nf90_Inquire(ncid, nDimensions, nVariables, &
-                  nAttributes, unlimitedDimID), 'nc_write_model_vars', 'inquire')
-
-call nc_check(nf90_inq_dimid(ncid, 'copy', dimid=CopyDimID), &
-            'nc_write_model_vars', 'inq_dimid copy ')
-
-call nc_check(nf90_inq_dimid(ncid, 'time', dimid=TimeDimID), &
-            'nc_write_model_vars', 'inq_dimid time ')
-
-if ( output_state_vector ) then
-
-   call nc_check(NF90_inq_varid(ncid, 'state', StateVarID), &
-          'nc_write_model_vars', 'state inq_varid' )
-   call nc_check(NF90_put_var(ncid, StateVarID, statevec,  &
-                start=(/ 1, copyindex, timeindex /)), &
-          'nc_write_model_vars', 'state put_var')
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to process the reshaped variables.
-   !----------------------------------------------------------------------------
-
-   do ivar = 1,nfields
-
-      varname = trim(progvar(ivar)%varname)
-      string2 = trim(varname)
-
-      ! Ensure netCDF variable is conformable with progvar quantity.
-      ! The TIME and Copy dimensions are intentionally not queried.
-      ! This requires that Time is the unlimited dimension (the last one in Fortran),
-      ! and that 'copy' is the second-to-last. The variables declared in the DART
-      ! diagnostic files are required to have the same shape as in the source
-      ! restart file. If Time is present there, it must also be the 'last' one.
-
-      call nc_check(nf90_inq_varid(ncid, varname, VarID), &
-            'nc_write_model_vars', 'inq_varid '//trim(string2))
-
-      call nc_check(nf90_inquire_variable(ncid,VarID,dimids=dimIDs,ndims=ncNdims), &
-            'nc_write_model_vars', 'inquire '//trim(string2))
-
-      ! This block creates the netCDF control information for the hyperslab indexing
-      mystart(:) = 1
-      mycount(:) = 1
-      DimCheck : do i = 1,ncNdims
-
-         write(string1,'(A,i2,A)') 'inquire dimension ',i,trim(string2)
-         call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), name=dimnames(i), &
-                      len=dimlen), 'nc_write_model_vars', trim(string1))
-
-         ! Dont care about the length of these two, setting to 1 later.
-         if (dimIDs(i) == CopyDimID) cycle DimCheck
-         if (dimIDs(i) == TimeDimID) cycle DimCheck
-
-         if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-            write(string1,*)trim(string2),' dim/dimlen ',i,dimlen, &
-                                     ' not ',progvar(ivar)%dimlens(i)
-            write(string2,*)' but it should be.'
-            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
-                            source, revision, revdate, text2=string2)
-         endif
-
-         mycount(i) = dimlen
-
-      enddo DimCheck
-
-      where(dimIDs == CopyDimID) mystart = copyindex
-      where(dimIDs == CopyDimID) mycount = 1
-      where(dimIDs == TimeDimID) mystart = timeindex
-      where(dimIDs == TimeDimID) mycount = 1
-
-      if (do_output() .and. (debug > 3)) then
-         write(string1,*)'nc_write_model_vars',trim(progvar(ivar)%varname), &
-                         ' file id ',ncid
-         write(string2,*)'nc_write_model_vars '//trim(varname)//' start is ', &
-                         mystart(1:ncNdims)
-         write(string3,*)'nc_write_model_vars '//trim(varname)//' count is ', &
-                         mycount(1:ncNdims)
-         call error_handler(E_MSG, 'nc_write_model_vars', string1, &
-                    text2=string2, text3=string3)
-      endif
-
-      ! Now that we have the hyperslab indices ... it is easy.
-
-      call vector_to_prog_var(statevec, ivar, ncid, VarID, ncNdims, &
-                              mystart, mycount, limit=.false.)
-
-   enddo
-
-endif
-
-!-------------------------------------------------------------------------------
-! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-
-if (do_output() .and. (debug > 1)) &
-   write (*,*) 'nc_write_model_vars: Finished filling variables '
-
-call nc_check(nf90_sync(ncid), 'nc_write_model_vars', 'sync')
-
-if (do_output() .and. (debug > 1)) &
-   write (*,*) 'nc_write_model_vars: netCDF file is synched '
-
-ierr = 0 ! If we got here, things went well.
-
-end function nc_write_model_vars
 
 
 !-------------------------------------------------------------------------------
@@ -1291,6 +864,21 @@ end do
 
 end subroutine pert_model_state
 
+!-------------------------------------------------------------------------------
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, state_handle)
+
+type(get_close_type),          intent(in)     :: gc
+type(location_type),           intent(inout)  :: base_loc, locs(:)
+integer,                       intent(in)     :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)     :: loc_indx(:)
+integer,                       intent(out)    :: num_close, close_ind(:)
+real(r8),            optional, intent(out)    :: dist(:)
+type(ensemble_type), optional, intent(in)     :: state_handle
+
+call error_handler(E_ERR, 'watch out', 'not done yetc')
+
+end subroutine get_close_state
 
 !-------------------------------------------------------------------------------
 
@@ -1379,342 +967,9 @@ end subroutine get_close_obs
 
 !-------------------------------------------------------------------------------
 
-
-subroutine ens_mean_for_model(filter_ens_mean)
-! Stores provided ensemble mean within the module for later use
-
-real(r8), intent(in) :: filter_ens_mean(:)
-
-if ( .not. module_initialized ) call static_init_model
-
-ens_mean = filter_ens_mean
-
-! The most current model time must be read from 
-! tiegcm_restart_p.nc after each forecast step. 
-! state_time is used by get_state_meta_data to determine
-! the location of the f10_7 parameter (local noon)
-! The ens_mean_for_model() is called after each forecast step.
-
-state_time = get_state_time(tiegcm_restart_file_name)
-
-end subroutine ens_mean_for_model
-
-
 !===============================================================================
 ! TIEGCM public routines
 !===============================================================================
-
-
-subroutine tiegcm_to_dart_vector(statevec, model_time)
-!
-! Read TIEGCM restart file fields and pack it into a DART vector
-!
-real(r8), dimension(:), intent(out) :: statevec
-type(time_type),        intent(out) :: model_time
-
-integer :: ncid, ncid1, ncid2, VarID, i, ivar
-integer :: time_dimlen, dimlen, ncNdims
-integer :: LonDimID, LatDimID, LevDimID, IlevDimID, TimeDimID
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
-character(len=512) :: filename
-
-real(r8), allocatable, dimension(:)       :: temp1D
-real(r8), allocatable, dimension(:,:)     :: temp2D
-real(r8), allocatable, dimension(:,:,:)   :: temp3D
-real(r8), allocatable, dimension(:,:,:,:) :: temp4D
-
-if ( .not. module_initialized ) call static_init_model
-
-! All variables come from either the restart or secondary file.
-! Just open them both. 
-! Since the restart and secondary files have already had their metadata
-! checked and compared favorably, we do not need to check sizes again.
-
-call nc_check(nf90_open(tiegcm_restart_file_name, NF90_NOWRITE, ncid1), &
-              'tiegcm_to_dart_vector','open '//trim(tiegcm_restart_file_name))
-
-call nc_check(nf90_open(tiegcm_secondary_file_name, NF90_NOWRITE, ncid2), &
-              'tiegcm_to_dart_vector','open '//trim(tiegcm_secondary_file_name))
-
-! state_time is set by static_init_model()
-model_time = state_time
-
-! Loop over all variables in DART state.
-ReadVariable: do ivar = 1,nfields
-
-   ! Handle the special and CALCULATE cases first.
-
-   if (trim(progvar(ivar)%varname) == 'f10_7') then
-      statevec( progvar(ivar)%index1 ) = f10_7
-      cycle ReadVariable
-   endif
-
-   ! ZG is already a module variable that is required and comes from
-   ! the tiegcm_s.nc (aka "secondary" file).
-   if (trim(progvar(ivar)%varname) == 'ZG') then
-      call prog_var_to_vector(ivar, ZG, statevec)
-      ! deallocate(ZG)
-      ! FIXME After the create_vtec() rewrite, ZG could be deallocated.
-      ! It can be accessed directly from the DART state
-      ! maybe should also be removed from the read_tiegcm_seconday() routine
-      cycle ReadVariable
-   endif
-
-   ! VTEC is a 'CALCULATE'
-   if (trim(progvar(ivar)%varname) == 'VTEC') then
-      allocate(temp2D(nlon,nlat))
-      call create_vtec(ncid, time_dimlen, temp2D)
-      call prog_var_to_vector(ivar, temp2D, statevec)
-      deallocate(temp2D)
-      cycle ReadVariable
-   endif
-
-   ! Check to see which file contains the variable.
-   if     (variable_table(ivar,VT_ORIGININDX) == 'RESTART') then
-      ncid     = ncid1
-      filename = tiegcm_restart_file_name
-
-      call get_diminfo(filename, ncid, LonDimID=LonDimID, LatDimID=LatDimID, &
-                  LevDimID=LevDimID, iLevDimID=iLevDimID, &
-                 TimeDimID=TimeDimID, ntimes=time_dimlen)
-
-   elseif (variable_table(ivar,VT_ORIGININDX) == 'SECONDARY') then
-      ncid     = ncid2
-      filename = tiegcm_secondary_file_name
-
-      call get_diminfo(filename, ncid, LonDimID=LonDimID, LatDimID=LatDimID, &
-                  LevDimID=LevDimID, iLevDimID=iLevDimID, &
-                 TimeDimID=TimeDimID, ntimes=time_dimlen)
-
-   else ! MUST be a CALCULATE we do not know how to calculate
-      string1 = 'unknown operation to calculate variable '//trim(progvar(ivar)%varname)
-      string2 = 'valid options are "RESTART", "SECONDARY", or "CALCULATE"'
-      call error_handler(E_ERR, 'tiegcm_to_dart_vector', string1, &
-                 source, revision, revdate, text2=string2)
-   endif
-
-   string2 = trim(filename)//' '//trim(progvar(ivar)%varname)
-
-   call nc_check(nf90_inq_varid(ncid, trim(progvar(ivar)%varname), VarID), &
-          'tiegcm_to_dart_vector', 'inq_varid '//trim(string2))
-
-   call nc_check(nf90_inquire_variable(ncid,VarID,dimids=dimIDs,ndims=ncNdims), &
-            'tiegcm_to_dart_vector', 'inquire '//trim(string2))
-
-   if (ncNdims /= progvar(ivar)%rank) then
-      write(string1,*)trim(string2),'has ',ncNDims,'dimensions.'
-      write(string3,*)'same thing in DART has ',progvar(ivar)%rank,' dimensions.'
-      call error_handler(E_ERR, 'tiegcm_to_dart_vector', string1, &
-                      source, revision, revdate, text2=string3)
-   endif
-
-   mystart(:) = 1
-   mycount(:) = 1
-   DimCheck : do i = 1,progvar(ivar)%rank
-
-      write(string1,'(a,i2,A)') 'inquire dimension ',i,trim(string2)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-               'tiegcm_to_dart_vector', trim(string1))
-
-      ! Check the shape of the variable
-      if ( dimIDs(i) == LevDimID ) dimlen = dimlen - 1
-
-      if ( dimIDs(i) == TimeDimID ) then
-         dimlen = 1
-      elseif ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(string2),' has dim/dimlen ',i,dimlen
-         write(string3,*)' expected dimlen of ', progvar(ivar)%dimlens(i)
-         call error_handler(E_ERR, 'tiegcm_to_dart_vector', string1, &
-                         source, revision, revdate, text2=string3)
-      endif
-
-      mycount(i) = dimlen
-
-   enddo DimCheck
-
-   ! Get the hyperslab with the most current (last) time.
-
-   where(dimIDs == TimeDimID) mystart = time_dimlen
-   where(dimIDs == TimeDimID) mycount = 1
-   where(dimIDs ==  LonDimID) mycount = nlon
-   where(dimIDs ==  LatDimID) mycount = nlat
-   where(dimIDs ==  LevDimID) mycount = nlev
-   where(dimIDs == iLevDimID) mycount = nilev
-
-   if (do_output() .and. (debug > 3)) then
-      write(*,*)'tiegcm_to_dart_vector:',trim(string2)
-      write(*,*)'tiegcm_to_dart_vector: start ',mystart(1:ncNdims)
-      write(*,*)'tiegcm_to_dart_vector: count ',mycount(1:ncNdims)
-      write(*,*)
-   endif
-
-   if     (progvar(ivar)%rank == 1) then
-      allocate(temp1D(mycount(1)))
-      call nc_check(nf90_get_var(ncid, VarID, values=temp1D, &
-              start = mystart(1:ncNdims), count = mycount(1:ncNdims)), &
-              'tiegcm_to_dart_vector', 'get_var '//trim(string2))
-      call apply_attributes(ivar, ncid, VarID, temp1D)
-      call prog_var_to_vector(ivar, temp1D, statevec)
-      deallocate(temp1D)
-
-   elseif (progvar(ivar)%rank == 2) then
-      allocate(temp2D(mycount(1), mycount(2)))
-      call nc_check(nf90_get_var(ncid, VarID, values=temp2D, &
-              start = mystart(1:ncNdims), count = mycount(1:ncNdims)), &
-              'tiegcm_to_dart_vector', 'get_var '//trim(string2))
-      call apply_attributes(ivar, ncid, VarID, temp2D)
-      call prog_var_to_vector(ivar, temp2D, statevec)
-      deallocate(temp2D)
-
-   elseif (progvar(ivar)%rank == 3) then
-      allocate(temp3D(mycount(1), mycount(2), mycount(3)))
-      call nc_check(nf90_get_var(ncid, VarID, values=temp3D, &
-              start = mystart(1:ncNdims), count = mycount(1:ncNdims)), &
-              'tiegcm_to_dart_vector', 'get_var '//trim(string2))
-      call apply_attributes(ivar, ncid, VarID, temp3D)
-      call prog_var_to_vector(ivar, temp3D, statevec)
-      deallocate(temp3D)
-
-   elseif (progvar(ivar)%rank == 4) then
-      allocate(temp4D(mycount(1), mycount(2), mycount(3), mycount(4)))
-      call nc_check(nf90_get_var(ncid, VarID, values=temp4D, &
-              start = mystart(1:ncNdims), count = mycount(1:ncNdims)), &
-              'tiegcm_to_dart_vector', 'get_var '//trim(string2))
-      call apply_attributes(ivar, ncid, VarID, temp4D)
-      call prog_var_to_vector(ivar, temp4D, statevec)
-      deallocate(temp4D)
-   else
-      write(string1,*) trim(string2),' has unsupported number of dims (', &
-                                     progvar(ivar)%rank,')'
-      call error_handler(E_ERR, 'tiegcm_to_dart_vector', string1, &
-                         source, revision, revdate)
-   endif
-
-enddo ReadVariable
-
-call nc_check( nf90_close(ncid1), 'tiegcm_to_dart_vector', 'close restart')
-call nc_check( nf90_close(ncid2), 'tiegcm_to_dart_vector', 'close secondary')
-
-end subroutine tiegcm_to_dart_vector
-
-
-!-------------------------------------------------------------------------------
-
-
-subroutine dart_vector_to_tiegcm(statevec, dart_time)
-! Updates TIEGCM restart file fields with the reshaped variables
-! in the DART state vector. The variable MISSING attribute has to be
-! reinstated ... etc.
-
-real(r8), dimension(:), intent(in) :: statevec
-type(time_type),        intent(in) :: dart_time
-
-integer :: i, ivar
-integer :: ncid, VarID, TimeDimID, LevDimID
-integer :: dimlen, ncNdims
-integer :: timeindex
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
-character(len=NF90_MAX_NAME) :: varname
-character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimnames
-
-if ( .not. module_initialized ) call static_init_model
-
-call nc_check(nf90_open(tiegcm_restart_file_name,NF90_WRITE,ncid),'dart_vector_to_tiegcm','open')
-
-call get_diminfo(tiegcm_restart_file_name, ncid, LevDimID=LevDimID, &
-                 TimeDimID=TimeDimID, ntimes=timeindex)
-
-if ( state_time /= dart_time ) then
-   call print_time( dart_time,'DART   current time',logfileunit)
-   call print_time(state_time,'TIEGCM current time',logfileunit)
-   call print_time( dart_time,'DART   current time')
-   call print_time(state_time,'TIEGCM current time')
-   write(string1,*)trim(tiegcm_restart_file_name),' DART time /= TIEGCM time. FATAL error.'
-   call error_handler(E_ERR,'dart_vector_to_tiegcm',string1,source,revision,revdate)
-endif
-
-if (do_output() .and. (debug > 0)) then
-   call print_date(state_time,'dart_vector_to_tiegcm: date in restart file '//trim(tiegcm_restart_file_name))
-   call print_time(state_time,'dart_vector_to_tiegcm: time in restart file '//trim(tiegcm_restart_file_name))
-   call print_date(state_time,'dart_vector_to_tiegcm: date in restart file '//trim(tiegcm_restart_file_name),logfileunit)
-   call print_time(state_time,'dart_vector_to_tiegcm: time in restart file '//trim(tiegcm_restart_file_name),logfileunit)
-endif
-
-UPDATE : do ivar = 1,nfields
-
-   varname = trim(progvar(ivar)%varname)
-   string2 = trim(tiegcm_restart_file_name)//' '//trim(varname)
-
-   ! Skip the variables that are not supposed to be updated.
-   if ( .not. progvar(ivar)%update ) cycle UPDATE
-
-   ! Ensure netCDF variable is conformable with DART progvar quantity.
-   ! At the same time, create the mystart(:) and mycount(:) arrays.
-
-   call nc_check(nf90_inq_varid(ncid, varname, VarID), &
-                 'dart_vector_to_tiegcm', 'inq_varid '//trim(string2))
-
-   call nc_check(nf90_inquire_variable(ncid,VarID,dimids=dimIDs,ndims=ncNdims), &
-                 'dart_vector_to_tiegcm', 'inquire '//trim(string2))
-
-   mystart(:) = 1
-   mycount(:) = 1
-   DimCheck : do i = 1,ncNdims
-
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-      call nc_check(nf90_inquire_dimension(ncid,dimIDs(i),name=dimnames(i),len=dimlen), &
-                    'dart_vector_to_tiegcm', string1)
-
-      ! Dont care about the length of Time Dimension, setting to 1 later.
-      if (dimIDs(i) == TimeDimID) cycle DimCheck
-      if (dimIDs(i) == LevDimID) dimlen = dimlen - 1
-
-      if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(string2),' dim/dimlen ',i,dimlen
-         write(string2,*)'expected it to be ',progvar(ivar)%dimlens(i)
-         call error_handler(E_ERR, 'dart_vector_to_tiegcm', string1, &
-                      source, revision, revdate, text2=string2)
-      endif
-
-      mycount(i) = dimlen
-
-   enddo DimCheck
-
-   if (dimIDs(ncNdims) /= TimeDimID) then
-      write(string1,*) trim(string2),&
-         ' required to have "Time" as the last/unlimited dimension'
-      write(string2,*)' last dimension is ',trim(dimnames(ncNdims))
-      call error_handler(E_ERR, 'dart_vector_to_tiegcm', string1, &
-                   source, revision, revdate, text2=string2)
-   endif
-
-   where(dimIDs == TimeDimID) mystart = timeindex
-   where(dimIDs == TimeDimID) mycount = 1
-
-   if (do_output() .and. (debug > 3)) then
-      write(*,*)'dart_vector_to_tiegcm '//trim(varname)//' start is ',mystart(1:ncNdims)
-      write(*,*)'dart_vector_to_tiegcm '//trim(varname)//' count is ',mycount(1:ncNdims)
-      do i = 1,NcNdims
-         write(*,*)'dart_vector_to_tiegcm '//trim(varname)//' dim ',&
-                   i,' is ',trim(dimnames(i))
-      enddo
-   endif
-
-   ! When limit=.true. the top layer of the variables with 'lev' as the 
-   ! vertical coordinate are not updated - and - the range of values for
-   ! each variable is limited as per the namelist settings.
-   call vector_to_prog_var(statevec, ivar, ncid, VarID, ncNdims, &
-                           mystart, mycount, limit=.true.)
-
-enddo UPDATE
-
-call nc_check(nf90_sync( ncid), 'dart_vector_to_tiegcm', 'sync')
-call nc_check(nf90_close(ncid), 'dart_vector_to_tiegcm', 'close')
-
-end subroutine dart_vector_to_tiegcm
-
-
-!-------------------------------------------------------------------------------
 
 
 function get_f107_value(x)
@@ -1747,34 +1002,6 @@ endif
 
 end function get_f107_value
 
-
-!-------------------------------------------------------------------------------
-
-
-subroutine test_interpolate(x, locarray)
-! This is used to debug other functions. Used by check_model_mod - ONLY.
-! Not use in any other DART program.
-
-real(r8), dimension(:), intent(in) :: x
-real(r8), dimension(3), intent(in) :: locarray
-
-type(location_type) :: location
-real(r8) :: obs_val
-integer  :: istatus
-
-location = set_location(locarray(1), locarray(2), locarray(3), VERTISHEIGHT)
-
-call model_interpolate(x, location, QTY_PRESSURE, obs_val, istatus)
-
-write(*,*)'test_interpolate: PRESSURE value at ',locarray, &
-          ' is ',obs_val,' status is ',istatus,' (0 is good)'
-
-call model_interpolate(x, location, QTY_VERTICAL_TEC, obs_val, istatus)
-
-write(*,*)'test_interpolate: VERTICAL_TEC value at ',locarray, &
-          ' is ',obs_val,' status is ',istatus,' (0 is good)'
-
-end subroutine test_interpolate
 
 
 !===============================================================================
@@ -2304,311 +1531,7 @@ if (do_output() .and. (debug > 99)) then
    enddo
 endif
 
-!-------------------------------------------------------------------------------
-! Now that we know how many variables, etc., fill metadata structure 'progvar'
-! tiegcm_to_dart_vector() uses this structure to figure out what to put in the
-! DART state vector.
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_open(tiegcm_restart_file_name, NF90_NOWRITE, ncid1), &
-              'verify_variables','open '//trim(tiegcm_restart_file_name))
-
-call nc_check(nf90_open(tiegcm_secondary_file_name, NF90_NOWRITE, ncid2), &
-              'verify_variables','open '//trim(tiegcm_secondary_file_name))
-
-index1  = 1;
-indexN  = 0;
-FillLoop : do ivar = 1, ngood
-
-   varname = trim(variable_table(ivar,VT_VARNAMEINDX))
-
-   ! Check to see which file contains the variable.
-   if     (variable_table(ivar,VT_ORIGININDX) == 'RESTART') then
-      ncid     = ncid1
-      filename = tiegcm_restart_file_name
-   elseif (variable_table(ivar,VT_ORIGININDX) == 'SECONDARY') then
-      ncid     = ncid2
-      filename = tiegcm_secondary_file_name
-   elseif (variable_table(ivar,VT_ORIGININDX) == 'CALCULATE') then
-      ncid     = -1
-      filename = 'calculate'
-   else
-      write(string1,'(''unknown option ['',a,''] for variable '',a)') &
-                             trim(variable_table(ivar,VT_ORIGININDX)), trim(varname)
-      string2 = 'valid options are "RESTART", "SECONDARY", or "CALCULATE"'
-      call error_handler(E_ERR, 'verify_variables', string1, &
-                 source, revision, revdate, text2=string2)
-   endif
-
-   progvar(ivar)%varname           = varname
-   progvar(ivar)%long_name         = 'blank'
-   progvar(ivar)%units             = 'blank'
-   progvar(ivar)%dimnames          = 'blank'
-   progvar(ivar)%dimlens           = -1
-   progvar(ivar)%rank              = -1
-   progvar(ivar)%varsize           = -1
-   progvar(ivar)%index1            = -1
-   progvar(ivar)%indexN            = -1
-   progvar(ivar)%verticalvar       = 'undefined'
-   progvar(ivar)%kind_string       = trim(variable_table(ivar,VT_KINDINDX))
-   progvar(ivar)%dart_kind         = get_index_for_quantity( progvar(ivar)%kind_string )
-   progvar(ivar)%xtype             = -1
-   progvar(ivar)%missingR8         = MISSING_R8
-   progvar(ivar)%missingR4         = MISSING_R4
-   progvar(ivar)%rangeRestricted   = BOUNDED_NONE
-   progvar(ivar)%minvalue          = MISSING_R8
-   progvar(ivar)%maxvalue          = MISSING_R8
-   progvar(ivar)%has_missing_value = .false.
-   progvar(ivar)%update            = .false.
-   progvar(ivar)%origin            = trim(filename)
-
-   if ((variable_table(ivar,VT_STATEINDX)  == 'UPDATE') .and. &
-       (variable_table(ivar,VT_ORIGININDX) == 'RESTART')) progvar(ivar)%update = .true.
-
-   ! Convert the information in columns 3 and 4 into the appropriate variables
-   call SetVariableLimits(ivar)
-
-   if (trim(varname) == 'f10_7') then
-      ! parameter to estimate, value comes from tiegcm.nml
-      varsize = 1
-      progvar(ivar)%long_name         = '10.7 cm daily solar flux'
-      progvar(ivar)%units             = 'none'
-      progvar(ivar)%dimnames(1)       = 'parameter'
-      progvar(ivar)%dimlens(1)        = 0
-      progvar(ivar)%rank              = 0
-      progvar(ivar)%varsize           = varsize
-      progvar(ivar)%index1            = index1
-      progvar(ivar)%indexN            = index1 + varsize - 1
-      progvar(ivar)%xtype             = NF90_DOUBLE
-      index1                          = index1 + varsize ! sets up for next variable
-
-      cycle FillLoop
-   endif
-
-   if (trim(varname) == 'VTEC') then
-      ! 2D variable not in netCDF file, but useful to be part of state.
-      varsize = nlon*nlat*1
-      progvar(ivar)%long_name         = 'Total Electron Content'
-      progvar(ivar)%units             = 'TECU'
-      progvar(ivar)%dimnames(1:3)     = (/'lon ','lat ','time'/)
-      progvar(ivar)%dimlens(1:3)      = (/nlon,  nlat,      1 /)
-      progvar(ivar)%rank              = 3
-      progvar(ivar)%varsize           = varsize
-      progvar(ivar)%index1            = index1
-      progvar(ivar)%indexN            = index1 + varsize - 1
-      progvar(ivar)%xtype             = NF90_DOUBLE
-      index1                          = index1 + varsize ! sets up for next variable
-
-      cycle FillLoop
-   endif
-
-   if (ncid < 0 ) then
-      write(string1,'(a,'' is supposed to be calculated.'')') trim(varname)
-      string2 = 'Not supported at this time.'
-      call error_handler(E_ERR, 'verify_variables', string1, &
-                 source,revision,revdate, text2=string2)
-   endif
-
-   if (trim(varname) == 'ZG') ivarZG = ivar
-
-   ! Now that the "special" cases are handled, just read the information
-   ! from the input netCDF file and insert into our structure.
-
-   string2 = trim(filename)//' '//trim(varname)
-
-   ncerr = NF90_inq_varid(ncid, trim(varname), VarID)
-   if (ncerr /= NF90_NOERR) then
-      write(string1,'(''No variable '',a,'' in '',a)') trim(varname), trim(filename)
-      string2 = 'If variable name is unexpected, check against input namelist.'
-      string3 = 'Make sure each variable has a DART kind, min, and max values.'
-      call error_handler(E_ERR, 'verify_variables', string1, &
-      source,revision,revdate, text2=string2, text3=string3)
-   endif
-
-   call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs, &
-                 ndims=progvar(ivar)%rank, xtype=progvar(ivar)%xtype), &
-            'verify_variables', 'inquire '//trim(string2))
-
-   ! If the long_name and/or units attributes are set, get them.
-   ! They are not REQUIRED to exist but are nice to use if they are present.
-
-   if( nf90_inquire_attribute(    ncid, VarID, 'long_name') == NF90_NOERR ) then
-      call nc_check( nf90_get_att(ncid, VarID, 'long_name' , progvar(ivar)%long_name), &
-                  'verify_variables', 'get_att long_name '//trim(string2))
-   else
-      progvar(ivar)%long_name = varname
-   endif
-
-   if ( trim(varname) == 'ZG' )  then
-      progvar(ivar)%units = 'meters'  ! converted as necessary in read_TIEGCM_secondary
-   elseif( nf90_inquire_attribute(    ncid, VarID, 'units') == NF90_NOERR )  then
-      call nc_check( nf90_get_att(ncid, VarID, 'units' , progvar(ivar)%units), &
-                  'verify_variables', 'get_att units '//trim(string2))
-   else
-      progvar(ivar)%units = 'unknown'
-   endif
-
-   ! Saving any FillValue so I can use it when I read and write ...
-
-   if (progvar(ivar)%xtype == NF90_DOUBLE) then
-      if (nf90_get_att(ncid, VarID, 'missing_value' , spvalR8) == NF90_NOERR) then
-         progvar(ivar)%missingR8         = spvalR8
-         progvar(ivar)%has_missing_value = .true.
-      endif
-   elseif (progvar(ivar)%xtype == NF90_FLOAT) then
-      if (nf90_get_att(ncid, VarID, 'missing_value' , spvalR4) == NF90_NOERR) then
-         progvar(ivar)%missingR4         = spvalR4
-         progvar(ivar)%has_missing_value = .true.
-      endif
-   else
-      ! The missing_value and _FillValue attributes, specifically ...
-      write(string1,*)'do not support variables of type ',progvar(ivar)%xtype
-      call error_handler(E_ERR,'verify_variables',string1,source,revision,revdate)
-   endif
-
-   varsize = 1
-   dimlen  = 1
-   DimensionLoop : do i = 1,progvar(ivar)%rank
-
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimlen), &
-                                          'verify_variables', string1)
-      ! tiegcm_to_dart_vector() only reads the latest time step, so no matter how many
-      ! time steps are defined, the time dimension is only 1
-      if (trim(dimname) == 'time') dimlen = 1
-
-      ! record what kind of vertical coordinate system is used for this variable
-      if (trim(dimname) ==  'lev') progvar(ivar)%verticalvar =  'lev'
-      if (trim(dimname) == 'ilev') progvar(ivar)%verticalvar = 'ilev'
-
-      ! TN,UN,VN,O1,O2 actually have useless 'top' levels.
-      if (trim(dimname) ==  'lev') dimlen = dimlen - 1
-
-      progvar(ivar)%dimlens( i) = dimlen
-      progvar(ivar)%dimnames(i) = dimname
-
-      varsize = varsize * dimlen
-
-   enddo DimensionLoop
-
-   progvar(ivar)%varsize = varsize
-   progvar(ivar)%index1  = index1
-   progvar(ivar)%indexN  = index1 + varsize - 1
-   index1                = index1 + varsize      ! sets up for next variable
-
-enddo FillLoop
-
-ReportLoop : do ivar = 1, ngood
-if (do_output() .and. (debug > 2)) then
-   write(logfileunit,*)
-   write(logfileunit,*)trim(progvar(ivar)%varname),' variable number ',ivar
-   write(logfileunit,*)'long_name         ',trim(progvar(ivar)%long_name)
-   write(logfileunit,*)'units             ',trim(progvar(ivar)%units)
-   write(logfileunit,*)'dimnames          ',progvar(ivar)%dimnames(1:progvar(ivar)%rank)
-   write(logfileunit,*)'dimlens           ',progvar(ivar)%dimlens( 1:progvar(ivar)%rank)
-   write(logfileunit,*)'rank              ',progvar(ivar)%rank
-   write(logfileunit,*)'varsize           ',progvar(ivar)%varsize
-   write(logfileunit,*)'index1            ',progvar(ivar)%index1
-   write(logfileunit,*)'indexN            ',progvar(ivar)%indexN
-   write(logfileunit,*)'dart_kind         ',progvar(ivar)%dart_kind
-   write(logfileunit,*)'kind_string       ',trim(progvar(ivar)%kind_string)
-   write(logfileunit,*)'verticalvar       ',trim(progvar(ivar)%verticalvar)
-   write(logfileunit,*)'xtype             ',progvar(ivar)%xtype
-   write(logfileunit,*)'rangeRestricted   ',progvar(ivar)%rangeRestricted
-   write(logfileunit,*)'minvalue          ',progvar(ivar)%minvalue
-   write(logfileunit,*)'maxvalue          ',progvar(ivar)%maxvalue
-   write(logfileunit,*)'missingR8         ',progvar(ivar)%missingR8
-   write(logfileunit,*)'missingR4         ',progvar(ivar)%missingR4
-   write(logfileunit,*)'has_missing_value ',progvar(ivar)%has_missing_value
-   write(logfileunit,*)'update            ',progvar(ivar)%update
-   write(logfileunit,*)'origin            ',trim(progvar(ivar)%origin)
-
-   write(    *      ,*)
-   write(    *      ,*)trim(progvar(ivar)%varname),' variable number ',ivar
-   write(    *      ,*)'long_name         ',trim(progvar(ivar)%long_name)
-   write(    *      ,*)'units             ',trim(progvar(ivar)%units)
-   write(    *      ,*)'dimnames          ',progvar(ivar)%dimnames(1:progvar(ivar)%rank)
-   write(    *      ,*)'dimlens           ',progvar(ivar)%dimlens( 1:progvar(ivar)%rank)
-   write(    *      ,*)'rank              ',progvar(ivar)%rank
-   write(    *      ,*)'varsize           ',progvar(ivar)%varsize
-   write(    *      ,*)'index1            ',progvar(ivar)%index1
-   write(    *      ,*)'indexN            ',progvar(ivar)%indexN
-   write(    *      ,*)'dart_kind         ',progvar(ivar)%dart_kind
-   write(    *      ,*)'kind_string       ',trim(progvar(ivar)%kind_string)
-   write(    *      ,*)'verticalvar       ',trim(progvar(ivar)%verticalvar)
-   write(    *      ,*)'xtype             ',progvar(ivar)%xtype
-   write(    *      ,*)'rangeRestricted   ',progvar(ivar)%rangeRestricted
-   write(    *      ,*)'minvalue          ',progvar(ivar)%minvalue
-   write(    *      ,*)'maxvalue          ',progvar(ivar)%maxvalue
-   write(    *      ,*)'missingR8         ',progvar(ivar)%missingR8
-   write(    *      ,*)'missingR4         ',progvar(ivar)%missingR4
-   write(    *      ,*)'has_missing_value ',progvar(ivar)%has_missing_value
-   write(    *      ,*)'update            ',progvar(ivar)%update
-   write(    *      ,*)'origin            ',trim(progvar(ivar)%origin)
-endif
-enddo ReportLoop
-
-call nc_check(nf90_close(ncid1), 'verify_variables', &
-        'close '//trim(tiegcm_restart_file_name))
-call nc_check(nf90_close(ncid2), 'verify_variables', &
-        'close '//trim(tiegcm_secondary_file_name))
-
 end subroutine verify_variables
-
-
-!-------------------------------------------------------------------------------
-
-
-subroutine define_var_dims(ivar, ncid, memberdimid, unlimiteddimid, ndims, dimids)
-! I am trying to preserve the original shape of the variable as much as possible.
-!
-! the netCDF declarations look like : variable(time,       level, lat, lon) becomes
-!                                     variable(time, copy, level, lat, lon)
-!
-! Since 'time' or 'Time' is the unlimited dimension in both ... I can skip it
-! in the DEFDIM loop.
-
-integer,               intent(in)  :: ivar, ncid, memberdimid, unlimiteddimid
-integer,               intent(out) :: ndims
-integer, dimension(:), intent(out) :: dimids
-
-integer :: i, mydimid
-
-ndims = 0
-
-DEFDIM : do i = 1,progvar(ivar)%rank
-
-   if ((trim(progvar(ivar)%dimnames(i)) == 'Time') .or. &
-       (trim(progvar(ivar)%dimnames(i)) == 'time')) cycle DEFDIM
-
-   call nc_check(nf90_inq_dimid(ncid=ncid,name=progvar(ivar)%dimnames(i),dimid=mydimid), &
-          'define_var_dims','inq_dimid '//trim(progvar(ivar)%dimnames(i)))
-
-   ndims         = ndims + 1
-   dimids(ndims) = mydimid
-
-enddo DEFDIM
-
-ndims = ndims + 1               ! The next-to-last dimension is 'copy'
-dimids(ndims) = memberdimid
-ndims = ndims + 1               ! The last dimension is unlimited == time
-dimids(ndims) = unlimitedDimid
-
-if (do_output() .and. (debug > 99)) then
-   write(logfileunit,*)
-   write(logfileunit,*)'define_var_dims knowledge'
-   write(logfileunit,*)trim(progvar(ivar)%varname),' has dimnames ', &
-                       progvar(ivar)%dimnames(1:progvar(ivar)%rank)
-   write(logfileunit,*)' thus dimids ',dimids(1:ndims)
-   write(     *     ,*)
-   write(     *     ,*)'define_var_dims knowledge'
-   write(     *     ,*)trim(progvar(ivar)%varname),' has dimnames ', &
-                       progvar(ivar)%dimnames(1:progvar(ivar)%rank)
-   write(     *     ,*)' thus dimids ',dimids(1:ndims)
-endif
-
-return
-end subroutine define_var_dims
 
 
 !-------------------------------------------------------------------------------
@@ -2912,788 +1835,6 @@ end function get_height
 
 !-------------------------------------------------------------------------------
 
-
-function get_index(ivar, indx1, indx2, indx3, indx4, knownindex)
-!
-! returns the statevector index for a lon,lat[,lev[,time]]
-!
-! This module preserves the number of dimension in the TIEGCM netCDF file.
-! NE(time, ilev, lat, lon) becomes a fortran variable
-! NE(lon, lat, ilev,    1)
-!
-! Because DART preserves "time"  as a singleton dimension.
-! There is no point requesting the "time" index.
-! Put another way, you can call this routine with two indices
-! for a rank 3 variable, as long as the last dimension is 1
-
-integer,           intent(in) :: ivar
-integer, optional, intent(in) :: indx1
-integer, optional, intent(in) :: indx2
-integer, optional, intent(in) :: indx3
-integer, optional, intent(in) :: indx4
-integer, optional, intent(in) :: knownindex
-integer                       :: get_index
-
-integer :: ndim1, ndim2, ndim3
-integer :: ix1, ix2, ix3, ix4
-
-real(r8) :: height
-
-! Set default values, then use input value
-
-ix1 = 1
-ix2 = 1
-ix3 = 1
-ix4 = 1
-
-if ( present(indx1) ) ix1 = indx1
-if ( present(indx2) ) ix2 = indx2
-if ( present(indx3) ) ix3 = indx3
-if ( present(indx4) ) ix4 = indx4
-
-if     (progvar(ivar)%rank == 0) then ! scalars
-
-   get_index = progvar(ivar)%index1
-
-   if ( present(indx1) .or. present(indx2) .or. present(indx3) .or. present(indx4) ) then
-      write(string1,*) trim(progvar(ivar)%varname),'called with extra optional arguments.'
-      write(string2,*) ' dim1 ', present(indx1), ' dim2 ', present(indx2), &
-                       ' dim3 ', present(indx3), ' dim4 ', present(indx4)
-      call error_handler(E_ERR, 'get_index', string1, &
-            source, revision, revdate, text2=string2)
-   endif
-
-elseif (progvar(ivar)%rank == 1) then
-
-   get_index = progvar(ivar)%index1 - 1 + ix1
-
-   if ( present(indx2) .or. present(indx3) .or. present(indx4) ) then
-      write(string1,*) trim(progvar(ivar)%varname),'called with extra optional arguments.'
-      write(string2,*) ' dim2 ', present(indx2), ' dim3 ', present(indx3), &
-                       ' dim4 ', present(indx4)
-      call error_handler(E_ERR, 'get_index', string1, &
-            source, revision, revdate, text2=string2)
-   endif
-
-elseif (progvar(ivar)%rank == 2) then
-
-   ndim1     = progvar(ivar)%dimlens(1)
-   get_index = progvar(ivar)%index1 - 1 + ix1 + &
-                                         (ix2-1) *  ndim1
-
-   if ( present(indx3) .or. present(indx4) ) then
-      write(string1,*) trim(progvar(ivar)%varname),'called with extra optional arguments.'
-      write(string2,*) 'dim3 ',present(indx3), ' dim4 ', present(indx4)
-      call error_handler(E_ERR, 'get_index', string1, &
-            source, revision, revdate, text2=string2)
-   endif
-
-elseif (progvar(ivar)%rank == 3) then
-
-   ndim1     = progvar(ivar)%dimlens(1)
-   ndim2     = progvar(ivar)%dimlens(2)
-   get_index = progvar(ivar)%index1 - 1 + ix1 + &
-                                         (ix2-1) *  ndim1 + &
-                                         (ix3-1) * (ndim1*ndim2)
-
-   if ( present(indx4) ) then
-      write(string1,*) trim(progvar(ivar)%varname),'called with an extra optional argument.'
-      write(string2,*) 'dim4 ', present(indx4)
-      call error_handler(E_ERR, 'get_index', string1, &
-            source, revision, revdate, text2=string2)
-   endif
-
-elseif (progvar(ivar)%rank == 4) then ! Fortran shape is lon.lat.lev.time
-
-   ndim1     = progvar(ivar)%dimlens(1)
-   ndim2     = progvar(ivar)%dimlens(2)
-   ndim3     = progvar(ivar)%dimlens(3)
-   get_index = progvar(ivar)%index1 - 1 + ix1 + &
-                                         (ix2-1) *  ndim1 + &
-                                         (ix3-1) * (ndim1*ndim2) + &
-                                         (ix4-1) * (ndim1*ndim2*ndim3)
-
-else
-   write(string1,*) trim(progvar(ivar)%varname)//' has unsupported shape.'
-   call error_handler(E_ERR, 'get_index', string1, source, revision, revdate )
-endif
-
-! This is useful when testing
-if (present(knownindex)) then
-   if (knownindex /= get_index) then
-
-      if (present(indx1) .and. present(indx2) .and. present(indx3) .and. present(indx4)) then
-         height = get_height(ivar, indx1, indx2, indx3)
-         write(*,*)'index_in, loni, lati, levi, timei', &
-             knownindex, indx1, indx2, indx3, indx4, lons(indx1), lats(indx2), height
-      else if (present(indx1) .and. present(indx2) .and. present(indx3)) then
-         height = get_height(ivar, indx1, indx2, indx3)
-         write(*,*)'index_in, loni, lati, levi', &
-             knownindex, indx1, indx2, indx3, lons(indx1), lats(indx2), height
-      else if (present(indx1) .and. present(indx2)) then
-         write(*,*)'index_in, loni, lati', &
-             knownindex, indx1, indx2, lons(indx1), lats(indx2)
-      else if (present(indx1)) then
-         write(*,*)'index_in, loni', &
-             knownindex, indx1, lons(indx1)
-      else 
-         write(*,*)'index_in', &
-             knownindex
-      endif
-
-      write(string1,*)'FAILURE ... original index /= get_index() value'
-      write(string2,*)'original index = ',knownindex
-      write(string3,*)'get_index()    = ',get_index
-      call error_handler(E_ERR,'get_index', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
-   endif
-endif
-
-end function get_index
-
-
-!-------------------------------------------------------------------------------
-
-
-subroutine vector_to_prog_var(statevec, ivar, ncid, VarID, numdims, &
-                              mystart, mycount, limit)
-! Unpacks a DART state vector into appropriate variable shape and then writes it
-! to the netCDF file. The shape of the variable is specified by the 'mycount' array.
-! If 'limit' has a value of TRUE, the min/max values of the variable are
-! restricted to those values specified in the 'progvar' array.
-! Typically, the DART files (true_state.nc, preassim.nc, analysis.nc)
-! are not restricted, but the files for TIEGCM may be.
-
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: ivar
-integer,                intent(in) :: ncid
-integer,                intent(in) :: VarID
-integer,                intent(in) :: numdims
-integer,  dimension(:), intent(in) :: mystart
-integer,  dimension(:), intent(inout) :: mycount
-logical,                intent(in) :: limit
-
-real(r8)                                    :: data_0d
-real(r8), allocatable, dimension(:)         :: data_1d_array
-real(r8), allocatable, dimension(:,:)       :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
-real(r8), allocatable, dimension(:,:,:,:)   :: data_4d_array
-real(r8), allocatable, dimension(:,:,:,:,:) :: data_5d_array
-
-integer :: icount, idim1, idim2, idim3, idim4, idim5
-
-if ( progvar(ivar)%rank == 0 ) then  ! handle scalars
-
-   data_0d = statevec(progvar(ivar)%index1)
-
-   ! We only want to apply the limits when converting for TIEGCM
-   ! In general, we do not apply limits for DART diagnostics.
-   if ( limit ) then
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_ABOVE ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         if ((data_0d /= MISSING_R8) .and. &
-             (data_0d > progvar(ivar)%maxvalue)) &
-              data_0d = progvar(ivar)%maxvalue
-      endif
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_BELOW ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         if ((data_0d /= MISSING_R8) .and. &
-             (data_0d < progvar(ivar)%minvalue)) &
-              data_0d = progvar(ivar)%minvalue
-      endif
-
-      if ( progvar(ivar)%has_missing_value ) then
-         if (data_0d == MISSING_R8) data_0d = progvar(ivar)%missingR8
-      endif
-
-   endif
-
-   call nc_check(nf90_put_var(ncid, VarID, (/ data_0d /), &
-           start = mystart(1:numdims), count=mycount(1:numdims)), &
-           'vector_to_prog_var', 'put_var '//trim(progvar(ivar)%varname))
-
-elseif ( numdims == 1 ) then
-
-   allocate(data_1d_array( mycount(1) ))
-
-   icount = progvar(ivar)%index1
-
-   do idim1 = 1, mycount(1)
-      data_1d_array(idim1) = statevec(icount)
-      icount = icount + 1
-   enddo
-
-   if ( (icount-1) /= progvar(ivar)%indexN ) then
-      write(string1, *) trim(progvar(ivar)%varname), 'supposed to end at ', &
-                             progvar(ivar)%indexN
-      write(string2, *) 'it ended at ',icount-1
-      call error_handler(E_ERR, 'vector_to_prog_var', string1, &
-                source, revision, revdate, text2=string2)
-   endif
-
-   if ( limit ) then
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_ABOVE ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_1d_array /= MISSING_R8) .and. &
-                (data_1d_array > progvar(ivar)%maxvalue)) &
-                 data_1d_array = progvar(ivar)%maxvalue
-      endif
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_BELOW ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_1d_array /= MISSING_R8) .and. &
-                (data_1d_array < progvar(ivar)%minvalue)) &
-                 data_1d_array = progvar(ivar)%minvalue
-      endif
-
-      if ( progvar(ivar)%has_missing_value ) then
-         where (data_1d_array == MISSING_R8) data_1d_array = progvar(ivar)%missingR8
-      endif
-
-   endif
-
-   call nc_check(nf90_put_var(ncid, VarID, data_1d_array, &
-           start = mystart(1:numdims), count=mycount(1:numdims)), &
-           'vector_to_prog_var', 'put_var '//trim(progvar(ivar)%varname))
-   deallocate(data_1d_array)
-
-elseif ( numdims == 2 ) then
-
-   allocate(data_2d_array(mycount(1), mycount(2)))
-
-   icount = progvar(ivar)%index1
-
-   do idim2 = 1, mycount(2)
-   do idim1 = 1, mycount(1)
-      data_2d_array(idim1,idim2) = statevec(icount)
-      icount = icount + 1
-   enddo
-   enddo
-
-   if ( (icount-1) /= progvar(ivar)%indexN ) then
-      write(string1, *) trim(progvar(ivar)%varname), 'supposed to end at ', &
-                             progvar(ivar)%indexN
-      write(string2, *) 'it ended at ',icount-1
-      call error_handler(E_ERR, 'vector_to_prog_var', string1, &
-                source, revision, revdate, text2=string2)
-   endif
-
-   if ( limit ) then
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_ABOVE ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_2d_array /= MISSING_R8) .and. &
-                (data_2d_array > progvar(ivar)%maxvalue)) &
-                 data_2d_array = progvar(ivar)%maxvalue
-      endif
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_BELOW ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_2d_array /= MISSING_R8) .and. &
-                (data_2d_array < progvar(ivar)%minvalue)) &
-                 data_2d_array = progvar(ivar)%minvalue
-      endif
-
-      if ( progvar(ivar)%has_missing_value ) then
-         where (data_2d_array == MISSING_R8) data_2d_array = progvar(ivar)%missingR8
-      endif
-   endif
-
-   call nc_check(nf90_put_var(ncid, VarID, data_2d_array, &
-           start = mystart(1:numdims), count=mycount(1:numdims)), &
-           'vector_to_prog_var', 'put_var '//trim(progvar(ivar)%varname))
-   deallocate(data_2d_array)
-
-elseif ( numdims == 3 ) then
-
-   allocate(data_3d_array( mycount(1), mycount(2), mycount(3) ))
-
-   icount = progvar(ivar)%index1
-
-   do idim3 = 1, mycount(3)
-   do idim2 = 1, mycount(2)
-   do idim1 = 1, mycount(1)
-      data_3d_array(idim1,idim2,idim3) = statevec(icount)
-      icount = icount + 1
-   enddo
-   enddo
-   enddo
-
-   if ( (icount-1) /= progvar(ivar)%indexN ) then
-      write(string1, *) trim(progvar(ivar)%varname), 'supposed to end at ', &
-                             progvar(ivar)%indexN
-      write(string2, *) 'it ended at ',icount-1
-      call error_handler(E_ERR, 'vector_to_prog_var', string1, &
-                source, revision, revdate, text2=string2)
-   endif
-
-   if ( limit ) then
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_ABOVE ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_3d_array /= MISSING_R8) .and. &
-                (data_3d_array > progvar(ivar)%maxvalue)) &
-                 data_3d_array = progvar(ivar)%maxvalue
-      endif
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_BELOW ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_3d_array /= MISSING_R8) .and. &
-                (data_3d_array < progvar(ivar)%minvalue)) &
-                 data_3d_array = progvar(ivar)%minvalue
-      endif
-
-      if ( progvar(ivar)%has_missing_value ) then
-         where (data_3d_array == MISSING_R8) data_3d_array = progvar(ivar)%missingR8
-      endif
-
-   endif
-
-   if (do_output() .and. (debug > 3)) then
-      write(string2,*)trim(progvar(ivar)%varname)//' start is ',mystart(1:numdims)
-      write(string3,*)trim(progvar(ivar)%varname)//' count is ',mycount(1:numdims)
-      call error_handler(E_MSG,'vector_to_prog_var',' ',text2=string2,text3=string3)
-   endif
-
-   call nc_check(nf90_put_var(ncid, VarID, data_3d_array, &
-           start = mystart(1:numdims), count=mycount(1:numdims)), &
-           'vector_to_prog_var', 'put_var '//trim(progvar(ivar)%varname))
-   deallocate(data_3d_array)
-
-elseif ( numdims == 4 ) then
-
-   allocate(data_4d_array( mycount(1), mycount(2), mycount(3), mycount(4) ))
-
-   icount = progvar(ivar)%index1
-
-   do idim4 = 1, mycount(4)
-   do idim3 = 1, mycount(3)
-   do idim2 = 1, mycount(2)
-   do idim1 = 1, mycount(1)
-      data_4d_array(idim1,idim2,idim3,idim4) = statevec(icount)
-      icount = icount + 1
-   enddo
-   enddo
-   enddo
-   enddo
-
-   if ( (icount-1) /= progvar(ivar)%indexN ) then
-      write(string1, *) trim(progvar(ivar)%varname), 'supposed to end at ', &
-                             progvar(ivar)%indexN
-      write(string2, *) 'it ended at ',icount-1
-      call error_handler(E_ERR, 'vector_to_prog_var', string1, &
-                source, revision, revdate, text2=string2)
-   endif
-
-   if ( limit ) then
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_ABOVE ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_4d_array /= MISSING_R8) .and. &
-                (data_4d_array > progvar(ivar)%maxvalue)) &
-                 data_4d_array = progvar(ivar)%maxvalue
-      endif
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_BELOW ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_4d_array /= MISSING_R8) .and. &
-                (data_4d_array < progvar(ivar)%minvalue)) &
-                 data_4d_array = progvar(ivar)%minvalue
-      endif
-
-      if ( progvar(ivar)%has_missing_value ) then
-         where (data_4d_array == MISSING_R8) data_4d_array = progvar(ivar)%missingR8
-      endif
-
-   endif
-
-   if (do_output() .and. (debug > 3)) then
-      write(string2,*)trim(progvar(ivar)%varname)//' start is ',mystart(1:numdims)
-      write(string3,*)trim(progvar(ivar)%varname)//' count is ',mycount(1:numdims)
-      call error_handler(E_MSG,'vector_to_prog_var',' ',text2=string2,text3=string3)
-   endif
-
-   call nc_check(nf90_put_var(ncid, VarID, data_4d_array(:,:,1:mycount(3),:), &
-           start = mystart(1:numdims), count=mycount(1:numdims)), &
-           'vector_to_prog_var', 'put_var '//trim(progvar(ivar)%varname))
-
-   deallocate(data_4d_array)
-
-elseif ( numdims == 5 ) then
-
-   allocate(data_5d_array( mycount(1), mycount(2), mycount(3), mycount(4), mycount(5) ))
-
-   icount = progvar(ivar)%index1
-
-   do idim5 = 1, mycount(5)
-   do idim4 = 1, mycount(4)
-   do idim3 = 1, mycount(3)
-   do idim2 = 1, mycount(2)
-   do idim1 = 1, mycount(1)
-      data_5d_array(idim1,idim2,idim3,idim4,idim5) = statevec(icount)
-      icount = icount + 1
-   enddo
-   enddo
-   enddo
-   enddo
-   enddo
-
-   if ( (icount-1) /= progvar(ivar)%indexN ) then
-      write(string1, *) trim(progvar(ivar)%varname), 'supposed to end at ', &
-                             progvar(ivar)%indexN
-      write(string2, *) 'it ended at ',icount-1
-      call error_handler(E_ERR, 'vector_to_prog_var', string1, &
-                source, revision, revdate, text2=string2)
-   endif
-
-   if ( limit ) then
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_ABOVE ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_5d_array /= MISSING_R8) .and. &
-                (data_5d_array > progvar(ivar)%maxvalue)) &
-                 data_5d_array = progvar(ivar)%maxvalue
-      endif
-
-      if ((progvar(ivar)%rangeRestricted == BOUNDED_BELOW ) .or. &
-          (progvar(ivar)%rangeRestricted == BOUNDED_BOTH )) then
-         where ((data_5d_array /= MISSING_R8) .and. &
-                (data_5d_array < progvar(ivar)%minvalue)) &
-                 data_5d_array = progvar(ivar)%minvalue
-      endif
-
-      if ( progvar(ivar)%has_missing_value ) then
-         where (data_5d_array == MISSING_R8) data_5d_array = progvar(ivar)%missingR8
-      endif
-
-   endif
-
-   if (do_output() .and. (debug > 3)) then
-      write(string2,*)trim(progvar(ivar)%varname)//' start is ',mystart(1:numdims)
-      write(string3,*)trim(progvar(ivar)%varname)//' count is ',mycount(1:numdims)
-      call error_handler(E_MSG,'vector_to_prog_var',' ',text2=string2,text3=string3)
-   endif
-
-   call nc_check(nf90_put_var(ncid, VarID, data_5d_array, &
-           start = mystart(1:numdims), count=mycount(1:numdims)), &
-           'vector_to_prog_var', 'put_var '//trim(progvar(ivar)%varname))
-   deallocate(data_5d_array)
-
-else
-
-   write(string1,*)'cannot handle tiegcm variables with ',numdims,' dimensions.'
-   write(string2,*)trim(progvar(ivar)%varname),' has rank ', &
-                        progvar(ivar)%dimnames(1:progvar(ivar)%rank)
-   call error_handler(E_ERR, 'vector_to_prog_var', string1, &
-             source, revision, revdate, text2=string2)
-
-endif
-
-end subroutine vector_to_prog_var
-
-!===============================================================================
-! These routines are overloaded to prog_var_to_vector()
-!===============================================================================
-
-subroutine var1d_to_vector(ifield, var, x)
-integer,  intent(in)  :: ifield
-real(r8), intent(in)  :: var(:)
-real(r8), intent(out) ::   x(:)
-
-integer :: icount, idim1
-
-if (size(var) /= progvar(ifield)%varsize) then
-   write(string1, *) trim(progvar(ifield)%varname), &
-              'is supposed to have size ',progvar(ifield)%varsize
-   write(string2, *) 'it has size ',size(var)
-   call error_handler(E_ERR, 'prog_var_to_vector:1D', string1, &
-              source, revision, revdate, text2=string2)
-endif
-
-icount = progvar(ifield)%index1
-
-do idim1 = 1,size(var,1)
-!  write(8,*)'var ',ifield, icount, idim1
-   x(icount) = var(idim1)
-   icount = icount + 1
-enddo
-
-if ( (icount-1) /= progvar(ifield)%indexN ) then
-   write(string1, *) trim(progvar(ifield)%varname), 'supposed to end at ', &
-                          progvar(ifield)%indexN
-   write(string2, *) 'it ended at ',icount-1
-   call error_handler(E_ERR, 'prog_var_to_vector:1D', string1, &
-              source, revision, revdate, text2=string2)
-endif
-
-end subroutine var1d_to_vector
-
-!-------------------------------------------------------------------------------
-
-subroutine var2d_to_vector(ifield, var, x)
-integer,  intent(in)  :: ifield
-real(r8), intent(in)  :: var(:,:)
-real(r8), intent(out) :: x(:)
-
-integer :: icount,idim1,idim2
-
-if (size(var) /= progvar(ifield)%varsize) then
-   write(string1, *) trim(progvar(ifield)%varname), &
-              'is supposed to have size ',progvar(ifield)%varsize
-   write(string2, *) 'it has size ',size(var)
-   call error_handler(E_ERR, 'prog_var_to_vector:2D', string1, &
-              source, revision, revdate, text2=string2)
-endif
-
-icount = progvar(ifield)%index1
-
-do idim2 = 1,size(var,2)
-do idim1 = 1,size(var,1)
-!  write(8,*)'var ',ifield, icount, idim1, idim2
-   x(icount) = var(idim1,idim2)
-   icount = icount + 1
-enddo
-enddo
-
-if ( (icount-1) /= progvar(ifield)%indexN ) then
-   write(string1, *) trim(progvar(ifield)%varname), 'supposed to end at ', &
-                          progvar(ifield)%indexN
-   write(string2, *) 'it ended at ',icount-1
-   call error_handler(E_ERR, 'prog_var_to_vector:2D', string1, &
-              source, revision, revdate, text2=string2)
-endif
-
-end subroutine var2d_to_vector
-
-!-------------------------------------------------------------------------------
-
-subroutine var3d_to_vector(ifield, var, x)
-integer,  intent(in)  :: ifield
-real(r8), intent(in)  :: var(:,:,:)
-real(r8), intent(out) :: x(:)
-
-integer :: icount,idim1,idim2,idim3
-
-if (size(var) /= progvar(ifield)%varsize) then
-   write(string1, *) trim(progvar(ifield)%varname), &
-              'is supposed to have size ',progvar(ifield)%varsize
-   write(string2, *) 'it has size ',size(var)
-   call error_handler(E_ERR, 'prog_var_to_vector:3D', string1, &
-              source, revision, revdate, text2=string2)
-endif
-
-icount = progvar(ifield)%index1
-
-do idim3 = 1,size(var,3)
-do idim2 = 1,size(var,2)
-do idim1 = 1,size(var,1)
-!  write(8,*)'var ',ifield, icount, idim1, idim2, idim3
-   x(icount) = var(idim1,idim2,idim3)
-   icount = icount + 1
-enddo
-enddo
-enddo
-
-if ( (icount-1) /= progvar(ifield)%indexN ) then
-   write(string1, *) trim(progvar(ifield)%varname), 'supposed to end at ', &
-                          progvar(ifield)%indexN
-   write(string2, *) 'it ended at ',icount-1
-   call error_handler(E_ERR, 'prog_var_to_vector:3D', string1, &
-              source, revision, revdate, text2=string2)
-endif
-
-end subroutine var3d_to_vector
-
-!-------------------------------------------------------------------------------
-
-subroutine var4d_to_vector(ifield, var, x)
-integer,  intent(in)  :: ifield
-real(r8), intent(in)  :: var(:,:,:,:)
-real(r8), intent(out) :: x(:)
-
-integer :: icount,idim1,idim2,idim3,idim4
-
-if (size(var) /= progvar(ifield)%varsize) then
-   write(string1, *) trim(progvar(ifield)%varname), &
-              'is supposed to have size ',progvar(ifield)%varsize
-   write(string2, *) 'it has size ',size(var)
-   call error_handler(E_ERR, 'prog_var_to_vector:4D', string1, &
-              source, revision, revdate, text2=string2)
-endif
-
-icount = progvar(ifield)%index1
-
-do idim4 = 1,size(var,4)
-do idim3 = 1,size(var,3)
-do idim2 = 1,size(var,2)
-do idim1 = 1,size(var,1)
-   x(icount) = var(idim1,idim2,idim3,idim4)
-   icount = icount + 1
-enddo
-enddo
-enddo
-enddo
-
-if ( (icount-1) /= progvar(ifield)%indexN ) then
-   write(string1, *) trim(progvar(ifield)%varname), 'supposed to end at ', &
-                          progvar(ifield)%indexN
-   write(string2, *) 'it ended at ',icount-1
-   call error_handler(E_ERR, 'prog_var_to_vector:4D', string1, &
-              source, revision, revdate, text2=string2)
-endif
-
-end subroutine var4d_to_vector
-
-!-------------------------------------------------------------------------------
-
-
-function FindVar_by_kind(ikind)
-! Finds the first variable of the appropriate DART KIND
-!
-! FIXME There is some confusion about using the T-minus-1 variables
-! in this construct. Both TN and TN_NM have the same dart_kind,
-! so we use the first one ... but it is not guaranteed that TN
-! must preceed TN_NM, for example.
-
-integer, intent(in) :: ikind
-integer             :: FindVar_by_kind
-
-integer :: ivar 
-
-FindVar_by_kind = -1
-
-VARLOOP : do ivar = 1,nfields
-   if (progvar(ivar)%dart_kind == ikind) then
-      FindVar_by_kind = ivar
-      return
-   endif
-enddo VARLOOP
-
-if (do_output() .and. (debug > 99)) then
-   write(string1, *) 'unable to find a variable with a DART kind of ',ikind
-   call error_handler(E_MSG, 'FindVar_by_kind', string1, source, revision, revdate )
-endif
-
-end function FindVar_by_kind
-
-
-!-------------------------------------------------------------------------------
-
-
-function Find_Variable_by_index(myindx, msgstring)
-! Given an index into the DART state vector, return the index of metadata
-! variable 'progvar' responsible for this portion of the state vector
-integer,          intent(in) :: myindx
-character(len=*), intent(in) :: msgstring
-integer                      :: Find_Variable_by_index
-
-integer :: ivar
-
-Find_Variable_by_index = -1
-
-FindIndex : do ivar = 1,nfields
-   if ((myindx >= progvar(ivar)%index1)  .and. &
-       (myindx <= progvar(ivar)%indexN)) then
-      Find_Variable_by_index = ivar
-      exit FindIndex
-   endif
-enddo FindIndex
-
-if (Find_Variable_by_index < 0) then
-   write(string1,*)'index ',myindx,' is out of range of all variables.'
-   write(string2,*)'model size is ',model_size
-   call error_handler(E_ERR, 'Find_Variable_by_index'//trim(msgstring), string1, &
-                      source, revision, revdate, text2=string2 )
-endif
-
-end function Find_Variable_by_index
-
-
-!-------------------------------------------------------------------------------
-
-
-subroutine get_diminfo(filename, ncid, LonDimID, LatDimID, LevDimID, iLevDimID, &
-                       TimeDimID, ntimes)
-! Just make sure the dimensions of the netCDF file match those
-! that were used for static_init_model()
-
-character(len=*),  intent(in)  :: filename
-integer,           intent(in)  :: ncid
-integer, optional, intent(out) :: LonDimID
-integer, optional, intent(out) :: LatDimID
-integer, optional, intent(out) :: LevDimID
-integer, optional, intent(out) :: iLevDimID
-integer, optional, intent(out) :: TimeDimID
-integer, optional, intent(out) :: ntimes
-
-integer :: dimlen, DimID, DimID2
-
-call nc_check(nf90_inq_dimid(ncid, 'lon', DimID), 'get_diminfo', 'inq_dimid lon')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
-   'get_diminfo', 'inquire_dimension lon')
-
-if (dimlen /= nlon) then
-   write(string1, *) trim(filename), ' dim_lon = ',dimlen, ' DART expects ',nlon
-   call error_handler(E_ERR,'get_diminfo',string1,source,revision,revdate)
-endif
-if (present(LonDimID)) LonDimID = DimID
-
-call nc_check(nf90_inq_dimid(ncid, 'lat', DimID), 'get_diminfo', 'inq_dimid lat')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
-   'get_diminfo', 'inquire_dimension lat')
-if (dimlen /= nlat) then
-   write(string1, *) trim(filename), ' dim_lat = ',dimlen, ' DART expects ',nlat
-   call error_handler(E_ERR,'get_diminfo',string1,source,revision,revdate)
-endif
-if (present(LatDimID)) LatDimID = DimID
-
-! TIEGCM has a useless top level for everything defined on 'lev'
-! 'nlev' had a local value (i.e. in DART) that is 1 less than 'nilev'
-
-call nc_check(nf90_inq_dimid(ncid, 'lev', DimID), 'get_diminfo', 'inq_dimid lev')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
-   'get_diminfo', 'inquire_dimension lev')
-if (dimlen /= (nlev+1)) then
-   write(string1, *) trim(filename), ' dim_lev = ',dimlen, ' DART expects ',nlev
-   call error_handler(E_ERR,'get_diminfo',string1,source,revision,revdate)
-endif
-if (present(LevDimID)) LevDimID = DimID
-
-
-call nc_check(nf90_inq_dimid(ncid, 'ilev', DimID), 'get_diminfo', 'inq_dimid ilev')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
-   'get_diminfo', 'inquire_dimension ilev')
-if (dimlen .ne. nilev) then
-   write(string1, *) trim(filename), ' dim_ilev = ',dimlen, ' DART expects ',nilev
-   call error_handler(E_ERR,'get_diminfo',string1,source,revision,revdate)
-endif
-if (present(iLevDimID)) iLevDimID = DimID
-
-
-call nc_check(nf90_inq_dimid(ncid, 'time', DimID), 'get_diminfo', 'inq_dimid time')
-call nc_check(nf90_inquire(ncid, unlimitedDimId = DimID2), &
-   'get_diminfo', 'inquire id of unlimited dimension')
-if (DimID /= DimID2) then
-   write(string1, *) trim(filename), 'has an unlimited dimension ID of ',DimID2
-   write(string2, *) 'and a time dimension ID of ',DimID, &
-                     '. DART requires them to be the same.'
-   call error_handler(E_ERR, 'get_diminfo', string1, &
-              source, revision, revdate, text2=string2)
-endif
-if (present(TimeDimID)) TimeDimID = DimID
-
-
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
-   'get_diminfo', 'inquire_dimension time')
-if (present(ntimes)) ntimes = dimlen
-
-end subroutine get_diminfo
-
-
-
 function get_state_time(filename, ncfileid, lasttime)
 ! Gets the latest time in the netCDF file.
 character(len=*),  intent(in) :: filename
@@ -3774,189 +1915,7 @@ endif
 end function get_state_time
 
 
-
-
-subroutine SetVariableLimits(ivar)
-
-! Convert the information in the variable_table into appropriate
-! numerical limits for each variable.
-! If the limit does not apply, it is set to MISSING_R8, even if
-! it is the maximum that does not apply.
-
-integer, intent(in) :: ivar
-
-integer  :: ios
-real(r8) :: minvalue, maxvalue
-
-! set the default values
-
-minvalue = MISSING_R8
-maxvalue = MISSING_R8
-progvar(ivar)%minvalue = MISSING_R8
-progvar(ivar)%maxvalue = MISSING_R8
-
-read(variable_table(ivar,VT_MINVALINDX),*,iostat=ios) minvalue
-if (ios == 0) progvar(ivar)%minvalue = minvalue
-
-read(variable_table(ivar,VT_MAXVALINDX),*,iostat=ios) maxvalue
-if (ios == 0) progvar(ivar)%maxvalue = maxvalue
-
-! rangeRestricted == BOUNDED_NONE  == 0 ... unlimited range
-! rangeRestricted == BOUNDED_BELOW == 1 ... minimum, but no maximum
-! rangeRestricted == BOUNDED_ABOVE == 2 ... maximum, but no minimum
-! rangeRestricted == BOUNDED_BOTH  == 3 ... minimum and maximum
-
-if (   (progvar(ivar)%minvalue /= MISSING_R8) .and. &
-       (progvar(ivar)%maxvalue /= MISSING_R8) ) then
-   progvar(ivar)%rangeRestricted = BOUNDED_BOTH
-
-elseif (progvar(ivar)%maxvalue /= MISSING_R8) then
-   progvar(ivar)%rangeRestricted = BOUNDED_ABOVE
-
-elseif (progvar(ivar)%minvalue /= MISSING_R8) then
-   progvar(ivar)%rangeRestricted = BOUNDED_BELOW
-
-else
-   progvar(ivar)%rangeRestricted = BOUNDED_NONE
-
-endif
-
-if (do_output() .and. (debug > 99)) then
-   if (progvar(ivar)%rangeRestricted == BOUNDED_NONE) then
-      write(*,*)'TJH ',trim(progvar(ivar)%varname),' has no limits.'
-   elseif (progvar(ivar)%rangeRestricted == BOUNDED_BELOW) then
-      write(*,*)'TJH ',trim(progvar(ivar)%varname),' has min ',progvar(ivar)%minvalue
-   elseif (progvar(ivar)%rangeRestricted == BOUNDED_ABOVE) then
-      write(*,*)'TJH ',trim(progvar(ivar)%varname),' has max ',progvar(ivar)%maxvalue
-   elseif (progvar(ivar)%rangeRestricted == BOUNDED_BOTH) then
-      write(*,*)'TJH ',trim(progvar(ivar)%varname),' has min ',progvar(ivar)%minvalue, &
-                                                   ' and max ',progvar(ivar)%maxvalue
-   else
-      write(string1,*)'Unable to determine if ',trim(progvar(ivar)%varname), &
-                      ' is range-restricted.'
-      write(string2,*)'minimum value string is ',trim(variable_table(ivar,3))
-      write(string3,*)'maximum value string is ',trim(variable_table(ivar,4))
-      call error_handler(E_ERR,'SetVariableLimits',string1, &
-         source,revision,revdate,text2=string2,text3=string3)
-   endif
-endif
-
-! Check to make sure min is less than max if both are specified.
-
-if ( progvar(ivar)%rangeRestricted == BOUNDED_BOTH ) then
-   if (maxvalue < minvalue) then
-      write(string1,*)'&model_nml state_variable input error for ', &
-                      trim(progvar(ivar)%varname)
-      write(string2,*)'minimum value (',minvalue,') must be less than '
-      write(string3,*)'maximum value (',maxvalue,')'
-      call error_handler(E_ERR,'SetVariableLimits',string1, &
-         source,revision,revdate,text2=string2,text3=string3)
-   endif
-endif
-
-end subroutine SetVariableLimits
-
-
-
-subroutine apply_attributes_1D(ivar, ncid, VarID, temp1D)
-! The missing value attributes have been determined by verify_variables()
-
-integer,  intent(in)    :: ivar
-integer,  intent(in)    :: ncid
-integer,  intent(in)    :: VarID
-real(r8), intent(inout) :: temp1D(:)
-
-integer  :: nfrc
-real(r8) :: missr8
-real(r4) :: missr4
-
-if (progvar(ivar)%xtype == NF90_FLOAT) then
-   nfrc = nf90_get_att(ncid, VarID, 'missing_value', missr4)
-   if (nfrc == NF90_NOERR) where (temp1D == missr4) temp1D = MISSING_R8
-elseif (progvar(ivar)%xtype == NF90_DOUBLE) then
-   nfrc = nf90_get_att(ncid, VarID, 'missing_value', missr8)
-   if (nfrc == NF90_NOERR) where (temp1D == missr8) temp1D = MISSING_R8
-endif
-
-end subroutine apply_attributes_1D
-
-
-subroutine apply_attributes_2D(ivar, ncid, VarID, temp2D)
-! The missing value attributes have been determined by verify_variables()
-
-integer,  intent(in)    :: ivar
-integer,  intent(in)    :: ncid
-integer,  intent(in)    :: VarID
-real(r8), intent(inout) :: temp2D(:,:)
-
-integer  :: nfrc
-real(r8) :: missr8
-real(r4) :: missr4
-
-if (progvar(ivar)%xtype == NF90_FLOAT) then
-   nfrc = nf90_get_att(ncid, VarID, 'missing_value', missr4)
-   if (nfrc == NF90_NOERR) where (temp2D == missr4) temp2D = MISSING_R8
-elseif (progvar(ivar)%xtype == NF90_DOUBLE) then
-   nfrc = nf90_get_att(ncid, VarID, 'missing_value', missr8)
-   if (nfrc == NF90_NOERR) where (temp2D == missr8) temp2D = MISSING_R8
-endif
-
-end subroutine apply_attributes_2D
-
-
-subroutine apply_attributes_3D(ivar, ncid, VarID, temp3D)
-! The missing value attributes have been determined by verify_variables()
-
-integer,  intent(in)    :: ivar
-integer,  intent(in)    :: ncid
-integer,  intent(in)    :: VarID
-real(r8), intent(inout) :: temp3D(:,:,:)
-
-integer  :: nfrc
-real(r8) :: missr8
-real(r4) :: missr4
-
-if (progvar(ivar)%xtype == NF90_FLOAT) then
-   nfrc = nf90_get_att(ncid, VarID, 'missing_value', missr4)
-   if (nfrc == NF90_NOERR) where (temp3D == missr4) temp3D = MISSING_R8
-elseif (progvar(ivar)%xtype == NF90_DOUBLE) then
-   nfrc = nf90_get_att(ncid, VarID, 'missing_value', missr8)
-   if (nfrc == NF90_NOERR) where (temp3D == missr8) temp3D = MISSING_R8
-endif
-
-end subroutine apply_attributes_3D
-
-
-subroutine apply_attributes_4D(ivar, ncid, VarID, temp4D)
-! The missing value attributes have been determined by verify_variables()
-
-integer,  intent(in)    :: ivar
-integer,  intent(in)    :: ncid
-integer,  intent(in)    :: VarID
-real(r8), intent(inout) :: temp4D(:,:,:,:)
-
-integer  :: nfrc
-real(r8) :: missr8
-real(r4) :: missr4
-
-if (progvar(ivar)%xtype == NF90_FLOAT) then
-   nfrc = nf90_get_att(ncid, VarID, 'missing_value', missr4)
-   if (nfrc == NF90_NOERR) where (temp4D == missr4) temp4D = MISSING_R8
-elseif (progvar(ivar)%xtype == NF90_DOUBLE) then
-   nfrc = nf90_get_att(ncid, VarID, 'missing_value', missr8)
-   if (nfrc == NF90_NOERR) where (temp4D == missr8) temp4D = MISSING_R8
-endif
-
-end subroutine apply_attributes_4D
-
-
 !===============================================================================
 ! End of model_mod
 !===============================================================================
 end module model_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
