@@ -210,6 +210,7 @@ integer :: nz               = 10
 !--- JDL: Additional Items for Vertical Localization
 !------------------------------------------------------------------------
 ! Namelist with default values
+!--- horiz_dist_only is currently ignored (JDL)
 ! horiz_dist_only == .true.            -> Only the great circle horizontal distance is
 !                                         computed in get_dist.
 ! horiz_dist_only == .false.           -> Square root of sum of squared horizontal and
@@ -220,7 +221,7 @@ integer :: nz               = 10
 !                                         normalization values
 ! special_vert_normalization_pressure  -> must give all 4 values for each type listed
 
-logical  :: horiz_dist_only                 = .true. ! JDL While DEFAULT - You'll want false
+!logical  :: horiz_dist_only                 = .true. ! JDL While DEFAULT - You'll want false
 real(r8) :: vert_normalization_height       = 10000.0_r8
 integer, parameter :: MAX_ITEMS = 500
 character(len=OBSTYPELENGTH) :: special_vert_normalization_obs_types(MAX_ITEMS)
@@ -231,7 +232,8 @@ namelist /location_nml/ &
    x_is_periodic, min_x_for_periodic, max_x_for_periodic,   &
    y_is_periodic, min_y_for_periodic, max_y_for_periodic,   &
    z_is_periodic, min_z_for_periodic, max_z_for_periodic,   &
-   nx, ny, nz, horiz_dist_only, vert_normalization_height,  &
+   !nx, ny, nz, horiz_dist_only, vert_normalization_height,  &
+   nx, ny, nz, vert_normalization_height,                   &
    special_vert_normalization_obs_types,                    &
    special_vert_normalization_heights, debug
 
@@ -355,19 +357,19 @@ if (special_vert_normalization_obs_types(1) /= 'null' .or. &
    endif
 
 endif
-if (horiz_dist_only) then
-      call error_handler(E_MSG,'location_mod:', &
-      'Ignoring vertical separation when computing distances; horizontal distances only', &
-      source)
-else
-   call error_handler(E_MSG,'location_mod:', &
-      'Including vertical separation when computing distances:', source)
-   write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', vert_normalization_height
-   call error_handler(E_MSG,'location_mod:',msgstring,source)
+!if (horiz_dist_only) then
+!      call error_handler(E_MSG,'location_mod:', &
+!      'Ignoring vertical separation when computing distances; horizontal distances only', &
+!      source)
+!else
+call error_handler(E_MSG,'location_mod:', &
+   'Including vertical separation when computing distances:', source)
+write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', vert_normalization_height
+call error_handler(E_MSG,'location_mod:',msgstring,source)
 
-   if (allocated(per_type_vert_norm)) then
-      typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
-      do i = 1, typecount
+if (allocated(per_type_vert_norm)) then
+   typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
+   do i = 1, typecount
          !if ((per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) .or. &
          !    (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) .or. &
          !    (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) .or. &
@@ -396,18 +398,18 @@ else
           !     call error_handler(E_MSG,'location_mod:',msgstring,source)
           !  endif
          ! JDL - Strip Down to Just VERTISHEIGHT Right Now (CM1 is in meter coordinates only right now)
-         if    (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
-            write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_name_for_type_of_obs(i))
+      if    (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
+         write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_name_for_type_of_obs(i))
+         call error_handler(E_MSG,'location_mod:',msgstring,source)
+         if (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
+            write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz meter: ', &
+                  per_type_vert_norm(VERTISHEIGHT, i)
             call error_handler(E_MSG,'location_mod:',msgstring,source)
-            if (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
-               write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz meter: ', &
-                     per_type_vert_norm(VERTISHEIGHT, i)
-               call error_handler(E_MSG,'location_mod:',msgstring,source)
-            endif
          endif
-      enddo
-   endif
+      endif
+   enddo
 endif
+!endif
 
 
 end subroutine initialize_module
@@ -710,10 +712,12 @@ if (allocated(per_type_vert_norm)) then
       write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization'
       call error_handler(E_MSG, 'get_dist', msgstring, source)
    endif 
-   print*,'JDL type1 = ',type1
-   vert_normalization = separation(IZ)/per_type_vert_norm(VERTISHEIGHT, type1)
+   vert_normal = separation(IZ)/per_type_vert_norm(VERTISHEIGHT, type1)
+   !print*,'JDL per_type non-periodic = ',per_type_vert_norm(VERTISHEIGHT, type1)
 else
-   vert_normalization = separation(IZ)/vert_normalization(VERTISHEIGHT)
+   vert_normal = separation(IZ)/vert_normalization(VERTISHEIGHT)
+   !print*,'JDL standard norm non-periodic = ',vert_normalization(VERTISHEIGHT)
+
 endif
 !--- JDL End Addition for Vertical Normalization
 
@@ -747,10 +751,11 @@ if (allocated(per_type_vert_norm)) then
       write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization'
       call error_handler(E_MSG, 'get_dist', msgstring, source)
    endif 
-   print*,'JDL type1 = ',type1
    vert_normal = separation(IZ) / per_type_vert_norm(VERTISHEIGHT, type1)
+   !print*,'JDL per_type = ',per_type_vert_norm(VERTISHEIGHT, type1)
 else
    vert_normal = separation(IZ) / vert_normalization(VERTISHEIGHT)
+   !print*,'JDL standard norm = ',vert_normalization(VERTISHEIGHT)
 endif
 !--- JDL End Addition for Vertical Normalization
 
