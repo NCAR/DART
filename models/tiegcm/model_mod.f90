@@ -43,8 +43,7 @@ use     obs_kind_mod, only : QTY_U_WIND_COMPONENT,           &
                              QTY_1D_PARAMETER,               &
                              QTY_GEOPOTENTIAL_HEIGHT,        &
                              QTY_GEOMETRIC_HEIGHT,           &
-                             QTY_VERTICAL_TEC,               &! total electron content
-                             get_index_for_quantity, get_name_for_quantity
+                             QTY_VERTICAL_TEC                ! total electron content
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -53,9 +52,10 @@ use mpi_utilities_mod,only : my_task_id
 use default_model_mod, only : adv_1step,                                &
                               init_conditions => fail_init_conditions,  &
                               init_time => fail_init_time,              &
-                              nc_write_model_vars
+                              nc_write_model_vars,                      &
+                              pert_model_copies
 
-use state_structure_mod, only : add_domain
+use state_structure_mod, only : add_domain, get_dart_vector_index
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -69,19 +69,23 @@ private
 public :: get_model_size,         &
           get_state_meta_data,    &
           model_interpolate,      &
-          get_model_time_step,    &
           end_model,              &
           static_init_model,      &
           nc_write_model_atts,    &
           nc_write_model_vars,    &
-          pert_model_state,       &
           get_close_obs,          &
-          get_close_state
+          get_close_state,        &
+          shortest_time_between_assimilations, &
+          convert_vertical_obs,   &
+          convert_vertical_state, &
+          read_model_time,        &
+          write_model_time
 
 !DART pass through interfaces
 public :: adv_1step,              &
           init_conditions,        &
-          init_time
+          init_time,              &
+          pert_model_copies
 
 !TIEGCM specific routines
 public :: get_f107_value
@@ -216,7 +220,7 @@ endif
 
 call read_TIEGCM_namelist(tiegcm_namelist_file_name)
 call read_TIEGCM_definition(tiegcm_restart_file_name)
-call read_TIEGCM_secondary(tiegcm_secondary_file_name)
+!HK call read_TIEGCM_secondary(tiegcm_secondary_file_name)
 
 ! error-check and convert namelist input to variable_table
 call verify_variables(variables, nfields)
@@ -230,7 +234,7 @@ call verify_variables(variables, nfields)
 call set_calendar_type('Gregorian')
 
 ! Convert the last year/day/hour/minute to a dart time.
-state_time = get_state_time(tiegcm_restart_file_name)
+state_time = read_model_time(tiegcm_restart_file_name)
 
 ! Ensure assimilation_period is a multiple of the dynamical timestep
 ! The time is communicated to TIEGCM through their "STOP" variable,
@@ -430,20 +434,20 @@ endif
 ! At present, vert_interp will simply fail because height is a negative number.
 if (iqty == QTY_PRESSURE) then
 
-!HK  enesmble size
-   call vert_interp(obs_val(1)),lon_below,lat_below,height,iqty,'ilev',-1,val(1,1),istatus)
-   if (istatus == 0) &
-   call vert_interp(obs_val(1),lon_below,lat_above,height,iqty,'ilev',-1,val(1,2),istatus)
-   if (istatus == 0) &
-   call vert_interp(obs_val(1),lon_above,lat_below,height,iqty,'ilev',-1,val(2,1),istatus)
-   if (istatus == 0) &
-   call vert_interp(obs_val(1),lon_above,lat_above,height,iqty,'ilev',-1,val(2,2),istatus)
+!HK  enesmble size vs column
+   !call vert_interp(obs_val(:),lon_below,lat_below,height,iqty,'ilev',-1,val(1,1),istatus(1))
+   !if (istatus(1) == 0) &
+   !call vert_interp(obs_val(:),lon_below,lat_above,height,iqty,'ilev',-1,val(1,2),istatus(1))
+   !if (istatus(1) == 0) &
+   !call vert_interp(obs_val(:),lon_above,lat_below,height,iqty,'ilev',-1,val(2,1),istatus(1))
+   !if (istatus(1) == 0) &
+   !call vert_interp(obs_val(:),lon_above,lat_above,height,iqty,'ilev',-1,val(2,2),istatus(1))
 
    ! Now that we have the four surrounding points and their relative weights,
    ! actually perform the bilinear horizontal interpolation to get the value at the
    ! (arbitrary) desired location.
 
-   if (istatus == 0) then
+   if (istatus(1) == 0) then
       do i = 1, 2
          a(i) = lon_fract * val(2, i) + (1.0_r8 - lon_fract) * val(1, i)
       end do
@@ -457,21 +461,22 @@ endif
 ! FindVar_by_kind would fail with iqty == QTY_PRESSURE, so we have
 ! to calculate the pressure separately before this part.
 
-ivar = FindVar_by_kind(iqty)
-if (ivar < 0) return ! as a failure
+!HK
+!ivar = FindVar_by_kind(iqty)
+!if (ivar < 0) return ! as a failure
 
 ! Now, need to find the values for the four corners
 
-if ((progvar(ivar)%rank == 3) .or. (which_vert == VERTISUNDEF)) then ! (time, lat, lon)
+if ( which_vert == VERTISUNDEF ) then ! (time, lat, lon)
    ! time is always a singleton dimension
 
-   val(1,1) = x(get_index(ivar, indx1=lon_below, indx2=lat_below, indx3=1))
-   val(1,2) = x(get_index(ivar, indx1=lon_below, indx2=lat_above, indx3=1))
-   val(2,1) = x(get_index(ivar, indx1=lon_above, indx2=lat_below, indx3=1))
-   val(2,2) = x(get_index(ivar, indx1=lon_above, indx2=lat_above, indx3=1))
-   istatus  = 0
+   !val(1,1) = x(get_dart_vector_index(ivar, indx1=lon_below, indx2=lat_below, indx3=1))
+   !val(1,2) = x(get_dart_vector_index(ivar, indx1=lon_below, indx2=lat_above, indx3=1))
+   !val(2,1) = x(get_dart_vector_index(ivar, indx1=lon_above, indx2=lat_below, indx3=1))
+   !val(2,2) = x(get_dart_vector_index(ivar, indx1=lon_above, indx2=lat_above, indx3=1))
+   !istatus  = 0
 
-elseif ((progvar(ivar)%rank == 4) .and. (vert_is_level(location))) then
+elseif (which_vert == VERTISLEVEL) then
 
    ! one use of model_interpolate is to allow other modules/routines
    ! the ability to 'count' the model levels. To do this, create observations
@@ -479,35 +484,34 @@ elseif ((progvar(ivar)%rank == 4) .and. (vert_is_level(location))) then
    ! When the interpolation fails, you've gone one level too far. 
    ! The only geometric height variable we have is ZG, and its a 4D variable.
 
-   val(1,1) = x(get_index(ivar, indx1=lon_below, indx2=lat_below, indx3=level))
-   val(1,2) = x(get_index(ivar, indx1=lon_below, indx2=lat_above, indx3=level))
-   val(2,1) = x(get_index(ivar, indx1=lon_above, indx2=lat_below, indx3=level))
-   val(2,2) = x(get_index(ivar, indx1=lon_above, indx2=lat_above, indx3=level))
-   istatus = 0
+   !val(1,1) = x(get_dart_vector_index(ivar, indx1=lon_below, indx2=lat_below, indx3=level))
+   !val(1,2) = x(get_dart_vector_index(ivar, indx1=lon_below, indx2=lat_above, indx3=level))
+   !val(2,1) = x(get_dart_vector_index(ivar, indx1=lon_above, indx2=lat_below, indx3=level))
+   !val(2,2) = x(get_dart_vector_index(ivar, indx1=lon_above, indx2=lat_above, indx3=level))
+   !istatus = 0
 
-elseif ((progvar(ivar)%rank == 4) .and. (which_vert == VERTISHEIGHT)) then
+elseif (which_vert == VERTISHEIGHT) then
 
    ! vert_interp() interpolates the state column to
    ! the same vertical height as the observation.
    ! THEN, it is the same as the 2D case.
-!HK Yo ensemble size
-   call vert_interp(obs_val(1), lon_below, lat_below, height, iqty, &
-             progvar(ivar)%verticalvar, ivar, val(1,1), istatus)
-   if (istatus == 0) &
-   call vert_interp(obs_val(1), lon_below, lat_above, height, iqty, &
-             progvar(ivar)%verticalvar, ivar, val(1,2), istatus)
-   if (istatus == 0) &
-   call vert_interp(obs_val(1), lon_above, lat_below, height, iqty, &
-             progvar(ivar)%verticalvar, ivar, val(2,1), istatus)
-   if (istatus == 0) &
-   call vert_interp(obs_val(1), lon_above, lat_above, height, iqty, &
-             progvar(ivar)%verticalvar, ivar, val(2,2), istatus)
+!HK Yo ensemble size vs column
+   !call vert_interp(obs_val(:), lon_below, lat_below, height, iqty, &
+   !          progvar(ivar)%verticalvar, ivar, val(1,1), istatus(1))
+   !if (istatus(1) == 0) &
+   !call vert_interp(obs_val(:), lon_below, lat_above, height, iqty, &
+   !          progvar(ivar)%verticalvar, ivar, val(1,2), istatus(1))
+   !if (istatus(1) == 0) &
+   !call vert_interp(obs_val(:), lon_above, lat_below, height, iqty, &
+   !          progvar(ivar)%verticalvar, ivar, val(2,1), istatus(1))
+   !if (istatus(1) == 0) &
+   !call vert_interp(obs_val(:), lon_above, lat_above, height, iqty, &
+   !          progvar(ivar)%verticalvar, ivar, val(2,2), istatus(1))
 
 else
 
-   write(string1,*)trim(progvar(ivar)%varname),'has unsupported rank',progvar(ivar)%rank
-   write(string2,*)trim(progvar(ivar)%varname),'or unsupported vertical system ', &
-                   which_vert, 'for that rank.'
+   write(string1,*)'has failed'
+   write(string2,*)'for some reason'
    call error_handler(E_ERR,'model_interpolate', string1, &
               source, revision, revdate, text2=string2)
 
@@ -517,7 +521,7 @@ endif
 ! actually perform the bilinear interpolation to get the value at the
 ! (arbitrary) desired location.
 
-if (istatus == 0) then
+if (istatus(1) == 0) then
    do i = 1, 2
       a(i) = lon_fract * val(2, i) + (1.0_r8 - lon_fract) * val(1, i)
    end do
@@ -528,21 +532,12 @@ end subroutine model_interpolate
 
 
 !-------------------------------------------------------------------------------
+function shortest_time_between_assimilations()
+type(time_type) :: shortest_time_between_assimilations
 
+shortest_time_between_assimilations = time_step
 
-function get_model_time_step()
-! Returns the the time step of the model; the smallest increment
-! in time that the model is capable of advancing the state in a given
-! implementation. This interface is required for all applications.
-
-type(time_type) :: get_model_time_step
-
-if ( .not. module_initialized ) call static_init_model
-
-get_model_time_step = time_step
-
-end function get_model_time_step
-
+end function shortest_time_between_assimilations
 
 !-------------------------------------------------------------------------------
 
@@ -555,7 +550,7 @@ subroutine get_state_meta_data(index_in, location, var_kind)
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
 
-integer,             intent(in)  :: index_in
+integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_kind
 
@@ -567,74 +562,6 @@ real(r8) :: height, longitude
 
 if ( .not. module_initialized ) call static_init_model
 
-ivar   = Find_Variable_by_index(index_in,'get_state_meta_data')
-relindx = index_in - progvar(ivar)%index1 + 1
-
-if     (progvar(ivar)%rank == 0) then  ! scalars ... no location
-   ! f10_7 is most accurately located at local noon at equator.
-   ! 360.0 degrees in 86400 seconds, 43200 secs == 12:00 UTC == longitude 0.0
-
-   call get_time(state_time, seconds, days)
-   longitude = 360.0_r8 * real(seconds,r8) / 86400.0_r8 - 180.0_r8
-   if (longitude < 0.0_r8) longitude = longitude + 360.0_r8
-   location = set_location(longitude, 0.0_r8,  400000.0_r8, VERTISUNDEF)
-
-elseif (progvar(ivar)%rank == 1) then  ! time?
-   write(string1,*)trim(progvar(ivar)%varname),'has unsupported shape (1D)'
-   write(string2,*)'dimension ('//trim(progvar(ivar)%dimnames(1))// &
-                   ') ... unknown location'
-   call error_handler(E_ERR,'get_state_meta_data', string1, &
-              source, revision, revdate, text2=string2)
-
-elseif (progvar(ivar)%rank == 2) then  ! something, and time? lat & lon but no time?
-   write(string1,*)trim(progvar(ivar)%varname), &
-                   'has unsupported shape (2D) ... unknown location'
-   write(string2,*)'dimension 1 = ('//trim(progvar(ivar)%dimnames(1))//')'
-   write(string3,*)'dimension 2 = ('//trim(progvar(ivar)%dimnames(2))//')'
-   call error_handler(E_ERR,'get_state_meta_data', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
-
-elseif (progvar(ivar)%rank == 3) then  ! [Fortran ordering] = lon, lat, time
-   ! The time dimension is always length 1, so it really doesn't matter.
-
-   lat_index = 1 + (relindx - 1) / nlon ! relies on integer arithmetic
-   lon_index = relindx - (lat_index-1) * nlon
-
-   if (do_output() .and. (debug > 3)) then
-      absindx = get_index(ivar, indx1=lon_index, indx2=lat_index, knownindex=index_in)
-   endif
-
-   if (trim(progvar(ivar)%varname) == 'VTEC') then
-      ! assign arbitrary height to allow for localization
-      location = set_location(lons(lon_index), lats(lat_index), 300000.0_r8, VERTISHEIGHT)
-   else
-      location = set_location(lons(lon_index), lats(lat_index), 0.0_r8, VERTISUNDEF)
-   endif
-
-elseif (progvar(ivar)%rank == 4) then  ! [Fortran ordering] = lon, lat, lev, time
-
-   lev_index = 1 + (relindx - 1) / (nlon * nlat)
-   remainder = relindx - (lev_index-1) * nlon * nlat
-   lat_index = 1 + (remainder - 1) / nlon
-   lon_index = remainder - (lat_index-1) * nlon
-   height    = get_height(ivar, lon_index, lat_index, lev_index)
-
-   if (do_output() .and. (debug > 3)) then
-      absindx = get_index( ivar, indx1=lon_index, indx2=lat_index, &
-                           indx3=lev_index, knownindex=index_in)
-   endif
-
-   location  = set_location(lons(lon_index), lats(lat_index), height, VERTISHEIGHT)
-
-else
-   write(string1,*)'Problem with DART variable ',trim(progvar(ivar)%varname)
-   write(string2,*)'has unsupported number (',progvar(ivar)%rank,') of dimensions.'
-   call error_handler(E_ERR,'get_state_meta_data', string1, &
-                      source, revision, revdate, text2=string2)
-endif
-
-! If the type is wanted, return it
-if(present(var_kind)) var_kind = progvar(ivar)%dart_kind
 
 end subroutine get_state_meta_data
 
@@ -652,7 +579,8 @@ end subroutine end_model
 !-------------------------------------------------------------------------------
 
 
-function nc_write_model_atts( ncid ) result (ierr)
+subroutine nc_write_model_atts( ncid, dom_id ) 
+
 ! TJH 20 Dec 2013 -- Writes the model-specific attributes to a netCDF file.
 !     This includes coordinate variables and some metadata, but NOT
 !     the model state vector. We do have to allocate SPACE for the model
@@ -666,7 +594,9 @@ function nc_write_model_atts( ncid ) result (ierr)
 !     is query, verify, and fill ...
 
 integer, intent(in)  :: ncid      ! netCDF file identifier
-integer              :: ierr          ! return value of function
+integer, intent(in)  :: dom_id
+integer              :: ierr          ! return value of function !HK Nope
+
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
@@ -741,12 +671,6 @@ if ( TimeDimID /= unlimitedDimId ) then
    call error_handler(E_ERR,'nc_write_model_atts', string1, source, revision, revdate)
 endif
 
-!-------------------------------------------------------------------------------
-! Define the model size / state variable dimension / whatever ...
-!-------------------------------------------------------------------------------
-call nc_check(nf90_def_dim(ncid=ncid, name='StateVariable', &
-                        len=model_size, dimid = StateVarDimID),&
-       'nc_write_model_atts', 'state def_dim')
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes
@@ -819,57 +743,8 @@ if (do_output() .and. (debug > 1)) &
 
 ierr = 0 ! If we got here, things went well.
 
-end function nc_write_model_atts
+end subroutine nc_write_model_atts
 
-
-
-!-------------------------------------------------------------------------------
-
-
-subroutine pert_model_state(state, pert_state, interf_provided)
-! Perturbs a model state for generating initial ensembles.
-! The perturbed state is returned in pert_state.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding an O(0.1) magnitude perturbation to each
-! model state variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.
-
-real(r8), intent(in)    :: state(:)
-real(r8), intent(out)   :: pert_state(:)
-logical,  intent(out)   :: interf_provided
-
-integer                 :: i, variable_type
-type(location_type)     :: temp_loc
-
-if ( .not. module_initialized ) call static_init_model
-
-! An interface is provided
-interf_provided = .true.
-
-! If first call initialize random sequence
-! CAUTION: my_task_id is NOT ensemble member number
-! For example, my_task_id will be in [0,N-1]
-! if a single instance of the model using N MPI tasks.
-
-if(first_pert_call) then
-   call init_random_seq(random_seq,my_task_id())
-   first_pert_call = .false.
-endif
-
-do i = 1, get_model_size()
-   call get_state_meta_data(i, temp_loc, variable_type)
-   if(variable_type == QTY_1D_PARAMETER) then
-      pert_state(i) = random_gaussian(random_seq,state(i),20.0_r8)
-   else
-      ! FIXME ... is this really what you want to do - no variability in the states.
-      pert_state(i) = state(i)
-   endif
-end do
-
-end subroutine pert_model_state
 
 !-------------------------------------------------------------------------------
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
@@ -890,8 +765,8 @@ end subroutine get_close_state
 !-------------------------------------------------------------------------------
 
 
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                            num_close, close_ind, dist)
+subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                         num_close, close_ind, dist, state_handle)
 ! Given a DART ob (referred to as "base") and a set of obs priors or
 ! state variables returns the subset of close ones to the "base" ob, their
 ! indices, and their distances to the "base" ob...
@@ -908,66 +783,67 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
 ! arrays within filter_assim. In other words, these modifications will only
 ! matter within filter_assim, but will not propagate backwards to filter.
 
-type(get_close_type), intent(in)     :: gc
-type(location_type),  intent(inout)  :: base_obs_loc, obs_loc(:)
-integer,              intent(in)     :: base_obs_kind, obs_kind(:)
-integer,              intent(out)    :: num_close, close_ind(:)
-real(r8),             intent(out)    :: dist(:)
+type(get_close_type),          intent(in)     :: gc
+type(location_type),           intent(inout)  :: base_loc, locs(:)
+integer,                       intent(in)     :: base_type, loc_qtys(:), loc_types(:)
+integer,                       intent(out)    :: num_close, close_ind(:)
+real(r8),            optional, intent(out)    :: dist(:)
+type(ensemble_type), optional, intent(in)     :: state_handle
 
 integer                              :: k, t_ind
 
-! Finds all the locations or observations that are close.
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                                           num_close, close_ind, dist)
-
-! Make the ZG part of the state vector far from everything so it does not get updated.
-! Scroll through all the obs_loc(:) and obs_kind(:) elements
-
-do k = 1,num_close
-   t_ind  = close_ind(k)
-   if (obs_kind(t_ind) == QTY_GEOMETRIC_HEIGHT) then
-      if (do_output() .and. (debug > 99)) then
-         write(     *     ,*)'get_close_obs ZG distance is ', &
-                     dist(k),' changing to ',10.0_r8 * PI
-         write(logfileunit,*)'get_close_obs ZG distance is ', &
-                     dist(k),' changing to ',10.0_r8 * PI
-      endif
-      dist(k) = 10.0_r8 * PI
-   endif
-enddo
-
-
-if (estimate_f10_7) then
-   do k = 1, num_close
-
-      t_ind  = close_ind(k)
-
-      ! This was part of an experimental setup - if the distance is LARGE,
-      ! the state variables will not be updated. By increasing the distance,
-      ! the values in the DART vector will remain unchanged. If you allow
-      ! the DART vector to be updated, the posterior observation operators
-      ! will be impacted - which is usually the desire. You can then avoid
-      ! impacting the tiegcm forecast through the input.nml 'NO_COPY_BACK' feature.
-
-      if (    (obs_kind(t_ind) == QTY_MOLEC_OXYGEN_MIXING_RATIO) &
-         .or. (obs_kind(t_ind) == QTY_U_WIND_COMPONENT) &
-         .or. (obs_kind(t_ind) == QTY_V_WIND_COMPONENT) &
-         .or. (obs_kind(t_ind) == QTY_TEMPERATURE) ) then
-      !  dist(k) = 10.0_r8 * PI
-
-      elseif  (obs_kind(t_ind) == QTY_1D_PARAMETER) then
-         ! f10_7 is given a location of latitude 0.0 and the longitude
-         ! of local noon. By decreasing the distance from the observation
-         ! to the dynamic f10_7 location we are allowing the already close
-         ! observations to have a larger impact in the parameter estimation.
-         ! 0.25 is heuristic. The 'close' observations have already been 
-         ! determined by the cutoff. Changing the distance here does not
-         ! allow more observations to impact anything.
-         dist(k) = dist(k)*0.25_r8
-      endif
-
-   enddo
-endif
+!HK! Finds all the locations or observations that are close.
+!HKcall loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+!HK                                           num_close, close_ind)
+!HK
+!HK! Make the ZG part of the state vector far from everything so it does not get updated.
+!HK! Scroll through all the obs_loc(:) and obs_kind(:) elements
+!HK
+!HKdo k = 1,num_close
+!HK   t_ind  = close_ind(k)
+!HK   if (obs_kind(t_ind) == QTY_GEOMETRIC_HEIGHT) then
+!HK      if (do_output() .and. (debug > 99)) then
+!HK         write(     *     ,*)'get_close_obs ZG distance is ', &
+!HK                     dist(k),' changing to ',10.0_r8 * PI
+!HK         write(logfileunit,*)'get_close_obs ZG distance is ', &
+!HK                     dist(k),' changing to ',10.0_r8 * PI
+!HK      endif
+!HK      dist(k) = 10.0_r8 * PI
+!HK   endif
+!HKenddo
+!HK
+!HK
+!HKif (estimate_f10_7) then
+!HK   do k = 1, num_close
+!HK
+!HK      t_ind  = close_ind(k)
+!HK
+!HK      ! This was part of an experimental setup - if the distance is LARGE,
+!HK      ! the state variables will not be updated. By increasing the distance,
+!HK      ! the values in the DART vector will remain unchanged. If you allow
+!HK      ! the DART vector to be updated, the posterior observation operators
+!HK      ! will be impacted - which is usually the desire. You can then avoid
+!HK      ! impacting the tiegcm forecast through the input.nml 'NO_COPY_BACK' feature.
+!HK
+!HK      if (    (obs_kind(t_ind) == QTY_MOLEC_OXYGEN_MIXING_RATIO) &
+!HK         .or. (obs_kind(t_ind) == QTY_U_WIND_COMPONENT) &
+!HK         .or. (obs_kind(t_ind) == QTY_V_WIND_COMPONENT) &
+!HK         .or. (obs_kind(t_ind) == QTY_TEMPERATURE) ) then
+!HK      !  dist(k) = 10.0_r8 * PI
+!HK
+!HK      elseif  (obs_kind(t_ind) == QTY_1D_PARAMETER) then
+!HK         ! f10_7 is given a location of latitude 0.0 and the longitude
+!HK         ! of local noon. By decreasing the distance from the observation
+!HK         ! to the dynamic f10_7 location we are allowing the already close
+!HK         ! observations to have a larger impact in the parameter estimation.
+!HK         ! 0.25 is heuristic. The 'close' observations have already been 
+!HK         ! determined by the cutoff. Changing the distance here does not
+!HK         ! allow more observations to impact anything.
+!HK         dist(k) = dist(k)*0.25_r8
+!HK      endif
+!HK
+!HK   enddo
+!HKendif
 
 end subroutine get_close_obs
 
@@ -993,12 +869,7 @@ if ( .not. module_initialized ) call static_init_model
 
 if (estimate_f10_7) then
 
-   VARLOOP : do ivar = 1,nfields
-      if (progvar(ivar)%varname == 'f10_7') then
-         get_f107_value = x(progvar(ivar)%index1)
-         return
-      endif
-   enddo VARLOOP
+ !HK get_state of f10_7
 
    call error_handler(E_ERR,'get_f107_value', 'no f10_7 in DART state', &
         source, revision, revdate)
@@ -1336,64 +1207,6 @@ end subroutine read_TIEGCM_definition
 !-------------------------------------------------------------------------------
 
 
-subroutine read_TIEGCM_secondary(file_name)
-! Read TIEGCM geometric height (ZG) from a tiegcm secondary output file
-
-character(len=*), intent(in):: file_name
-
-integer :: ncid
-integer :: TimeDimID, time_dimlen, VarID
-
-real(r8) :: spvalR8, spvalR4
-
-if( .not. file_exist(file_name)) then
-  write(string1,*) trim(file_name),' not available.'
-  call error_handler(E_ERR,'read_TIEGCM_secondary',string1,source,revision,revdate)
-endif
-
-call error_handler(E_MSG,'read_TIEGCM_secondary:', &
-           'reading secondary ['//trim(file_name)//']')
-
-call nc_check(nf90_open(file_name, NF90_NOWRITE, ncid), 'read_TIEGCM_secondary', 'open')
-
-call get_diminfo(file_name, ncid, TimeDimID=TimeDimID, ntimes=time_dimlen)
-
-allocate(ZG(nlon,nlat,nilev)) ! comes from module storage
-
-!... actually read the target variable
-call nc_check(nf90_inq_varid(ncid, 'ZG', VarID), 'read_TIEGCM_secondary', 'inq_varid ZG')
-call nc_check(nf90_get_var(ncid, VarID, values=ZG,  &
-                         start = (/ 1, 1, 1, time_dimlen /),    &
-                         count = (/ nlon, nlat, nilev, 1 /)),    &
-                         'read_TIEGCM_secondary', 'get_var ZG')
-
-if (nf90_get_att(ncid, VarID, 'missing_value' , spvalR8) == NF90_NOERR) then
-   where(ZG == spvalR8) ZG = MISSING_R8
-endif
-
-! ... check units and convert them to meters if need be.
-if (nf90_get_att(ncid, VarID, 'units' , string1) == NF90_NOERR) then
-   if(trim(string1) == 'cm') then
-      call error_handler(E_MSG,'read_TIEGCM_secondary:', &
-          'Converting ZG from cm to meters.')
-      where(ZG /= MISSING_R8) ZG = ZG/100.0_r8
-   elseif(trim(string1) == 'm') then
-      call error_handler(E_MSG,'read_TIEGCM_secondary:', &
-          'ZG already in meters.')
-   else
-      call error_handler(E_ERR,'read_TIEGCM_secondary', &
-          'ZG has unknown units',source, revision, revdate,text2=string1)
-   endif
-endif
-
-call nc_check(nf90_close(ncid),'read_TIEGCM_secondary', 'close')
-
-end subroutine read_TIEGCM_secondary
-
-
-!-------------------------------------------------------------------------------
-
-
 subroutine verify_variables( variables, ngood )
 ! This routine checks the user input against the variables available in the
 ! input netcdf file to see if it is possible to construct the DART state vector
@@ -1474,10 +1287,11 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   if( get_index_for_quantity(dartstr) < 0 ) then
-      write(string1,'(''No obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_variables',string1,source,revision,revdate)
-   endif
+   !HK
+   !if( get_dart_vector_index_for_quantity(dartstr) < 0 ) then
+   !   write(string1,'(''No obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
+   !   call error_handler(E_ERR,'verify_variables',string1,source,revision,revdate)
+   !endif
 
    ngood = ngood + 1
 
@@ -1635,9 +1449,38 @@ deallocate( delta_ZG, NE_middle )
 
 end subroutine create_vtec
 
+!-------------------------------------------------------------------------------
+
+subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
+                                which_vert, status)
+
+type(ensemble_type), intent(in)    :: state_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer,             intent(in)    :: loc_types(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: status(:)
+
+end subroutine convert_vertical_obs
 
 !-------------------------------------------------------------------------------
 
+subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
+                                  which_vert, istatus)
+
+type(ensemble_type), intent(in)    :: state_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer(i8),         intent(in)    :: loc_indx(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: istatus
+
+
+end subroutine convert_vertical_state
+
+!-------------------------------------------------------------------------------
 
 subroutine vert_interp(x, lon_index, lat_index, height, iqty, vertstagger, &
                        ivar, val, istatus)
@@ -1667,101 +1510,101 @@ frac_lev   = MISSING_R8
 lev_top    = 0
 lev_bottom = 0
 
-if ( vertstagger == 'ilev') then
-
-   zgrid_bottom = x(get_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=1    ))
-   zgrid_top    = x(get_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=nilev))
-
-   ! cannot extrapolate below bottom or beyond top ... fail ...
-   if ((zgrid_bottom > height) .or. (zgrid_top < height)) return
-
-   ! Figure out what level is above/below, and by how much
-   h_loop_interface : do k = 2, nilev
-
-      zgrid = x(get_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=k))
-
-      if (height <= zgrid) then
-         lev_top    = k
-         lev_bottom = lev_top - 1
-         delta_z    = zgrid - x(get_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=lev_bottom))
-         frac_lev   = (zgrid - height)/delta_z
-         exit h_loop_interface
-      endif
-
-   enddo h_loop_interface
-
-elseif ( vertstagger == 'lev') then
-   ! Variable is on level midpoints, not ilevels.
-   ! Get height as the average of the ilevels.
-
-   ! ilev index    1      2      3      4    ...  27    28    29
-   ! ilev value  -7.00, -6.50, -6.00, -5.50, ... 6.00, 6.50, 7.00 ;
-   !  lev value     -6.75, -6.25, -5.75, -5.25, ... 6.25, 6.75
-   !  lev index        1      2      3      4    ...  27    28
-
-   !mid_level 1
-   zgrid_bottom = (x(get_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=1)) + &
-                   x(get_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=2))) / 2.0_r8
-
-   !mid_level nlev
-   zgrid_top    = (x(get_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=nilev-1)) + &
-                   x(get_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=nilev))) / 2.0_r8
-
-   ! cannot extrapolate below bottom or beyond top ... fail ...
-   if ((zgrid_bottom > height) .or. (zgrid_top < height)) return
-
-   ! Figure out what level is above/below, and by how much
-   h_loop_midpoint: do k = 2, nilev-1
-
-     lev_bottom = k-1
-     lev_top    = k
-
-     zgrid_lower = &
-             (x(get_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k-1 )) + &
-              x(get_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k   ))) / 2.0_r8
-
-     zgrid_upper = &
-             (x(get_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k  )) + &
-              x(get_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k+1))) / 2.0_r8
-
-     if (height  <= zgrid_upper) then
-        if (zgrid_upper == zgrid_lower) then ! avoid divide by zero
-           frac_lev = 0.0_r8  ! the fraction does not matter ...
-        else
-           delta_z  = zgrid_upper - zgrid_lower
-           frac_lev = (zgrid_upper - height)/delta_z
-        endif
-        exit h_loop_midpoint
-     endif
-
-   enddo h_loop_midpoint
-
-else
-   write(string1,*)'Unknown vertical stagger ',trim(vertstagger)
-   call error_handler(E_MSG,'vert_interp:', string1, source, revision, revdate )
-endif
-
-! Check to make sure we didn't fall through the h_loop ... unlikely (impossible?)
-if ( (frac_lev == MISSING_R8) .or. (lev_top == 0) .or. (lev_bottom == 0) ) then
-   write(string1,*)'Should not be here ... fell through loop.'
-   call error_handler(E_MSG,'vert_interp:', string1, source, revision, revdate )
-   return
-endif
-
-istatus = 0 ! If we made it this far, it worked.
-
-if (iqty == QTY_PRESSURE) then ! log-linear interpolation in height
-
-   val_top    = plevs(lev_top)     !pressure at midpoint [Pa]
-   val_bottom = plevs(lev_bottom)  !pressure at midpoint [Pa]
-   val        = exp(frac_lev * log(val_bottom) + (1.0 - frac_lev) * log(val_top))
-
-else ! simple linear interpolation in height
-
-   val_top    = x(get_index(ivar, indx1=lon_index, indx2=lat_index, indx3=lev_top))
-   val_bottom = x(get_index(ivar, indx1=lon_index, indx2=lat_index, indx3=lev_bottom))
-   val        =     frac_lev *     val_bottom  + (1.0 - frac_lev) *     val_top
-endif
+!HK if ( vertstagger == 'ilev') then
+!HK 
+!HK    zgrid_bottom = x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=1    ))
+!HK    zgrid_top    = x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=nilev))
+!HK 
+!HK    ! cannot extrapolate below bottom or beyond top ... fail ...
+!HK    if ((zgrid_bottom > height) .or. (zgrid_top < height)) return
+!HK 
+!HK    ! Figure out what level is above/below, and by how much
+!HK    h_loop_interface : do k = 2, nilev
+!HK 
+!HK       zgrid = x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=k))
+!HK 
+!HK       if (height <= zgrid) then
+!HK          lev_top    = k
+!HK          lev_bottom = lev_top - 1
+!HK          delta_z    = zgrid - x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=lev_bottom))
+!HK          frac_lev   = (zgrid - height)/delta_z
+!HK          exit h_loop_interface
+!HK       endif
+!HK 
+!HK    enddo h_loop_interface
+!HK 
+!HK elseif ( vertstagger == 'lev') then
+!HK    ! Variable is on level midpoints, not ilevels.
+!HK    ! Get height as the average of the ilevels.
+!HK 
+!HK    ! ilev index    1      2      3      4    ...  27    28    29
+!HK    ! ilev value  -7.00, -6.50, -6.00, -5.50, ... 6.00, 6.50, 7.00 ;
+!HK    !  lev value     -6.75, -6.25, -5.75, -5.25, ... 6.25, 6.75
+!HK    !  lev index        1      2      3      4    ...  27    28
+!HK 
+!HK    !mid_level 1
+!HK    zgrid_bottom = (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=1)) + &
+!HK                    x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=2))) / 2.0_r8
+!HK 
+!HK    !mid_level nlev
+!HK    zgrid_top    = (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=nilev-1)) + &
+!HK                    x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=nilev))) / 2.0_r8
+!HK 
+!HK    ! cannot extrapolate below bottom or beyond top ... fail ...
+!HK    if ((zgrid_bottom > height) .or. (zgrid_top < height)) return
+!HK 
+!HK    ! Figure out what level is above/below, and by how much
+!HK    h_loop_midpoint: do k = 2, nilev-1
+!HK 
+!HK      lev_bottom = k-1
+!HK      lev_top    = k
+!HK 
+!HK      zgrid_lower = &
+!HK              (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k-1 )) + &
+!HK               x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k   ))) / 2.0_r8
+!HK 
+!HK      zgrid_upper = &
+!HK              (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k  )) + &
+!HK               x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k+1))) / 2.0_r8
+!HK 
+!HK      if (height  <= zgrid_upper) then
+!HK         if (zgrid_upper == zgrid_lower) then ! avoid divide by zero
+!HK            frac_lev = 0.0_r8  ! the fraction does not matter ...
+!HK         else
+!HK            delta_z  = zgrid_upper - zgrid_lower
+!HK            frac_lev = (zgrid_upper - height)/delta_z
+!HK         endif
+!HK         exit h_loop_midpoint
+!HK      endif
+!HK 
+!HK    enddo h_loop_midpoint
+!HK 
+!HK else
+!HK    write(string1,*)'Unknown vertical stagger ',trim(vertstagger)
+!HK    call error_handler(E_MSG,'vert_interp:', string1, source, revision, revdate )
+!HK endif
+!HK 
+!HK ! Check to make sure we didn't fall through the h_loop ... unlikely (impossible?)
+!HK if ( (frac_lev == MISSING_R8) .or. (lev_top == 0) .or. (lev_bottom == 0) ) then
+!HK    write(string1,*)'Should not be here ... fell through loop.'
+!HK    call error_handler(E_MSG,'vert_interp:', string1, source, revision, revdate )
+!HK    return
+!HK endif
+!HK 
+!HK istatus = 0 ! If we made it this far, it worked.
+!HK 
+!HK if (iqty == QTY_PRESSURE) then ! log-linear interpolation in height
+!HK 
+!HK    val_top    = plevs(lev_top)     !pressure at midpoint [Pa]
+!HK    val_bottom = plevs(lev_bottom)  !pressure at midpoint [Pa]
+!HK    val        = exp(frac_lev * log(val_bottom) + (1.0 - frac_lev) * log(val_top))
+!HK 
+!HK else ! simple linear interpolation in height
+!HK 
+!HK    val_top    = x(get_dart_vector_index(ivar, indx1=lon_index, indx2=lat_index, indx3=lev_top))
+!HK    val_bottom = x(get_dart_vector_index(ivar, indx1=lon_index, indx2=lat_index, indx3=lev_bottom))
+!HK    val        =     frac_lev *     val_bottom  + (1.0 - frac_lev) *     val_top
+!HK endif
 
 end subroutine vert_interp
 
@@ -1795,59 +1638,59 @@ real(r8)            :: get_height
 
 integer  ::  index1,  index2
 
-if (trim(progvar(ivar)%verticalvar) == 'ilev') then
-
-   if (levindex > nilev) then
-      write(string1,*)'requesting out-of-bounds level [',levindex,']'
-      write(string2,*)'for variable ',trim(progvar(ivar)%varname)
-      call error_handler(E_ERR,'get_height', string1, &
-                         source, revision, revdate, text2=string2)
-   endif
-
-     index1 = get_index(ivarZG, indx1=lonindex, indx2=latindex, indx3=levindex)
-     get_height = ens_mean(index1)
-
-elseif (trim(progvar(ivar)%verticalvar) == 'lev') then
-
-   if (levindex > nlev) then
-      write(string1,*)'requesting out-of-bounds level [',levindex,']'
-      write(string2,*)'for variable ',trim(progvar(ivar)%varname)
-      call error_handler(E_ERR,'get_height', string1, &
-                         source, revision, revdate, text2=string2)
-   endif
-
-   ! Since ZG is defined for level interfaces, requests for heights on 
-   ! midpoints must be calculated.
-   !
-   ! incoming index  1 should be an average of ZG ilev 1+2
-   ! incoming index  2 should be an average of ZG ilev 2+3
-   ! ...
-   ! incoming index 28 should be an average of ZG ilev 28+29
-   ! incoming index 29 is not possible
-
-   index1     = get_index(ivarZG, indx1=lonindex, indx2=latindex, indx3=levindex   )
-   index2     = get_index(ivarZG, indx1=lonindex, indx2=latindex, indx3=levindex+1 )
-   get_height = (ens_mean(index1) + ens_mean(index2)) / 2.0_r8
-
-else
-   write(string1,*)'unknown vertical coordinate system <', &
-                                  trim(progvar(ivar)%verticalvar),'>'
-   write(string2,*)'on variable ',trim(progvar(ivar)%varname)
-   call error_handler(E_ERR,'get_height', string1, &
-                      source, revision, revdate, text2=string2)
-endif
+!HK if (trim(progvar(ivar)%verticalvar) == 'ilev') then
+!HK 
+!HK    if (levindex > nilev) then
+!HK       write(string1,*)'requesting out-of-bounds level [',levindex,']'
+!HK       write(string2,*)'for variable ',trim(progvar(ivar)%varname)
+!HK       call error_handler(E_ERR,'get_height', string1, &
+!HK                          source, revision, revdate, text2=string2)
+!HK    endif
+!HK 
+!HK      index1 = get_dart_vector_index(ivarZG, indx1=lonindex, indx2=latindex, indx3=levindex)
+!HK      get_height = ens_mean(index1)
+!HK 
+!HK elseif (trim(progvar(ivar)%verticalvar) == 'lev') then
+!HK 
+!HK    if (levindex > nlev) then
+!HK       write(string1,*)'requesting out-of-bounds level [',levindex,']'
+!HK       write(string2,*)'for variable ',trim(progvar(ivar)%varname)
+!HK       call error_handler(E_ERR,'get_height', string1, &
+!HK                          source, revision, revdate, text2=string2)
+!HK    endif
+!HK 
+!HK    ! Since ZG is defined for level interfaces, requests for heights on 
+!HK    ! midpoints must be calculated.
+!HK    !
+!HK    ! incoming index  1 should be an average of ZG ilev 1+2
+!HK    ! incoming index  2 should be an average of ZG ilev 2+3
+!HK    ! ...
+!HK    ! incoming index 28 should be an average of ZG ilev 28+29
+!HK    ! incoming index 29 is not possible
+!HK 
+!HK    index1     = get_dart_vector_index(ivarZG, indx1=lonindex, indx2=latindex, indx3=levindex   )
+!HK    index2     = get_dart_vector_index(ivarZG, indx1=lonindex, indx2=latindex, indx3=levindex+1 )
+!HK    get_height = (ens_mean(index1) + ens_mean(index2)) / 2.0_r8
+!HK 
+!HK else
+!HK    write(string1,*)'unknown vertical coordinate system <', &
+!HK                                   trim(progvar(ivar)%verticalvar),'>'
+!HK    write(string2,*)'on variable ',trim(progvar(ivar)%varname)
+!HK    call error_handler(E_ERR,'get_height', string1, &
+!HK                       source, revision, revdate, text2=string2)
+!HK endif
 
 end function get_height
 
 
 !-------------------------------------------------------------------------------
 
-function get_state_time(filename, ncfileid, lasttime)
+function read_model_time(filename, ncfileid, lasttime)
 ! Gets the latest time in the netCDF file.
 character(len=*),  intent(in) :: filename
 integer, optional, intent(in) :: ncfileid
 integer, optional, intent(in) :: lasttime
-type(time_type) :: get_state_time
+type(time_type) :: read_model_time
 
 integer :: ncid, TimeDimID, time_dimlen, DimID, dimlen, VarID
 
@@ -1861,42 +1704,42 @@ if ( present(ncfileid) ) then
    ncid = ncfileid
 else
    call nc_check(nf90_open(filename, NF90_NOWRITE, ncid), &
-              'get_state_time','open '//trim(filename))
+              'read_model_time','open '//trim(filename))
 endif
 
 call nc_check(nf90_inq_dimid(ncid, 'time', TimeDimID), &
-        'get_state_time', 'inquire id of time')
+        'read_model_time', 'inquire id of time')
 call nc_check(nf90_inquire_dimension(ncid, TimeDimID, len=time_dimlen ), &
-        'get_state_time', 'inquire_dimension time')
+        'read_model_time', 'inquire_dimension time')
 call nc_check(nf90_inq_dimid(ncid, 'mtimedim', DimID), &
-        'get_state_time', 'inq_dimid mtimedim')
+        'read_model_time', 'inq_dimid mtimedim')
 call nc_check(nf90_inquire_dimension(ncid,     DimID, len=dimlen), &
-        'get_state_time', 'inquire_dimension mtimedim')
+        'read_model_time', 'inquire_dimension mtimedim')
 
 if (present(lasttime)) then
    if (lasttime /= time_dimlen) then
       write(string1, *) trim(filename), ' last time index is ', &
                         time_dimlen, ' desired ', lasttime
-      call error_handler(E_ERR,'get_state_time',string1,source,revision,revdate)
+      call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
    endif
 endif
 
 if (dimlen /= nmtime) then
    write(string1, *) trim(filename), ' mtimedim = ',dimlen, ' DART expects ', nmtime
-   call error_handler(E_ERR,'get_state_time',string1,source,revision,revdate)
+   call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
 endif
 
 allocate(mtimetmp(dimlen, time_dimlen), yeartmp(time_dimlen))
 
 !... get mtime
 call nc_check(nf90_inq_varid(ncid, 'mtime', VarID), &
-        'get_state_time', 'inquire id of time')
+        'read_model_time', 'inquire id of time')
 call nc_check(nf90_get_var(ncid, VarID, values=mtimetmp), &
-        'get_state_time', 'get_var mtime')
+        'read_model_time', 'get_var mtime')
 
 !... get year
-call nc_check(nf90_inq_varid(ncid, 'year', VarID), 'get_state_time', 'inq_varid year')
-call nc_check(nf90_get_var(ncid, VarID, values=yeartmp), 'get_state_time', 'get_var year')
+call nc_check(nf90_inq_varid(ncid, 'year', VarID), 'read_model_time', 'inq_varid year')
+call nc_check(nf90_get_var(ncid, VarID, values=yeartmp), 'read_model_time', 'get_var year')
 
 ! pick off the latest/last
 mtime = mtimetmp(:,time_dimlen)
@@ -1906,21 +1749,37 @@ deallocate(mtimetmp,yeartmp)
 
 doy   =  mtime(1)
 utsec = (mtime(2)*60 + mtime(3))*60
-get_state_time = set_time(utsec, doy-1) + set_date(year, 1, 1)  ! Jan 1 of whatever year.
+read_model_time = set_time(utsec, doy-1) + set_date(year, 1, 1)  ! Jan 1 of whatever year.
 
 if (do_output()) then
-   write(*,*) trim(filename)//':get_state_time: tiegcm [year, doy, hour, minute]', &
+   write(*,*) trim(filename)//':read_model_time: tiegcm [year, doy, hour, minute]', &
             year, mtime
-   call print_date(get_state_time, str=trim(filename)//':get_state_time: date ')
-   call print_time(get_state_time, str=trim(filename)//':get_state_time: time ')
+   call print_date(read_model_time, str=trim(filename)//':read_model_time: date ')
+   call print_time(read_model_time, str=trim(filename)//':read_model_time: time ')
 endif
 
 if ( .not. present(ncfileid) ) then
-   call nc_check(nf90_close(ncid), 'get_state_time', 'close '//trim(filename))
+   call nc_check(nf90_close(ncid), 'read_model_time', 'close '//trim(filename))
 endif
 
-end function get_state_time
+end function read_model_time
 
+!-------------------------------------------------------------------------------
+subroutine write_model_time(ncid, dart_time)
+
+use typeSizes
+use netcdf
+
+integer,         intent(in) :: ncid
+type(time_type), intent(in) :: dart_time
+
+integer :: dim_ids(2), var_id, ret
+integer :: year, month, day, hour, minute, second
+character(len=19) :: timestring
+
+
+
+end subroutine write_model_time
 
 !===============================================================================
 ! End of model_mod
