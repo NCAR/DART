@@ -12,7 +12,7 @@ module model_mod
 !
 !-------------------------------------------------------------------------------
 
-use        types_mod, only : r4, r8, MISSING_R8, MISSING_R4, PI, &
+use        types_mod, only : r4, r8, i8, MISSING_R8, MISSING_R4, PI, &
                              earth_radius, gravity, obstypelength
 
 use time_manager_mod, only : time_type, set_calendar_type, set_time_missing,        &
@@ -24,10 +24,10 @@ use time_manager_mod, only : time_type, set_calendar_type, set_time_missing,    
 
 use     location_mod, only : location_type,                                         &
                              loc_get_close_obs => get_close_obs,                    &
-                             set_location, get_location, query_location,            &
-                             get_dist, vert_is_height, horiz_dist_only,             &
-                             get_close_type, vert_is_undef, VERTISUNDEF,            &
-                             VERTISPRESSURE, VERTISHEIGHT, vert_is_level
+                             set_location, get_location,                            &
+                             get_dist, query_location,                              &
+                             get_close_type, VERTISUNDEF,                           &
+                             VERTISPRESSURE, VERTISHEIGHT, VERTISLEVEL
 
 use    utilities_mod, only : file_exist, open_file, close_file, logfileunit,        &
                              error_handler, E_ERR, E_MSG, E_WARN, nmlfileunit,      &
@@ -52,10 +52,12 @@ use mpi_utilities_mod,only : my_task_id
 
 use default_model_mod, only : adv_1step,                                &
                               init_conditions => fail_init_conditions,  &
-                              init_time => fail_init_time
+                              init_time => fail_init_time,              &
                               nc_write_model_vars
 
 use state_structure_mod, only : add_domain
+
+use ensemble_manager_mod, only : ensemble_type
 
 use typesizes
 use netcdf
@@ -153,7 +155,7 @@ logical  :: include_vTEC_in_state = .false.
 real(r8)        :: f10_7
 type(time_type) :: state_time ! module-storage declaration of current model time
 
-integer                :: model_size ! the state vector length
+integer(i8)           :: model_size ! the state vector length
 
 ! FOR NOW OBS LOCATIONS ARE EXPECTED GIVEN IN HEIGHT [m],
 ! AND SO VERTICAL LOCALIZATION COORDINATE IS *always* HEIGHT
@@ -223,7 +225,7 @@ call verify_variables(variables, nfields)
 ! tiegcm_restart_file_name
 ! tiegcm_secondary_file_name
 ! calcualted variable VTEC
-domain_id = add_domain('file.nc', nfields, var_names, update_list)
+!domain_id = add_domain('file.nc', nfields, var_names, update_list)
 
 call set_calendar_type('Gregorian')
 
@@ -276,7 +278,7 @@ function get_model_size()
 ! Returns the size of the model as an integer. Required for all
 ! applications.
 
-integer :: get_model_size
+integer(i8) :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -302,7 +304,7 @@ subroutine model_interpolate(state_handle, ens_size, location, iqty, obs_val, is
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
-integer,             intent(in) :: obs_kind
+integer,             intent(in) :: iqty
 integer,            intent(out) :: istatus(ens_size)
 real(r8),           intent(out) :: obs_val(ens_size) !< array of interpolated values
 
@@ -328,7 +330,7 @@ obs_val = MISSING_R8
 ! The get_expected_gnd_gps_vtec() tries to interpolate QTY_GEOPOTENTIAL_HEIGHT
 ! when it does, this will kill it. 
 
-if ( ikind == QTY_GEOPOTENTIAL_HEIGHT ) then
+if ( iqty == QTY_GEOPOTENTIAL_HEIGHT ) then
    write(string1,*)'QTY_GEOPOTENTIAL_HEIGHT currently unsupported'
    call error_handler(E_ERR,'model_interpolate',string1,source, revision, revdate)
 endif
@@ -339,11 +341,15 @@ lon_lat_lev = get_location(location)
 lon         = lon_lat_lev(1) ! degree
 lat         = lon_lat_lev(2) ! degree
 
-if(     vert_is_height(location) ) then
+which_vert = nint(query_location(location))
+
+!HK overdoing these if statments - I don't think the vertical location
+! changes thoughout this routine, check once and be done.
+if( which_vert == VERTISHEIGHT ) then
    height = lon_lat_lev(3)
-elseif( vert_is_level(location) ) then
+elseif( which_vert == VERTISLEVEL ) then
    level  = int(lon_lat_lev(3))
-elseif( vert_is_undef(location) ) then
+elseif( which_vert == VERTISUNDEF) then
    height = MISSING_R8
    level  = -1
 else
@@ -353,11 +359,11 @@ else
 endif
 
 ! Check to make sure vertical level is possible.
-if (vert_is_level(location)) then
+if (which_vert == VERTISLEVEL) then
    if ((level < 1) .or. (level > nilev)) return
 endif
 
-if ((ikind == QTY_PRESSURE) .and. (vert_is_level(location))) then
+if ((iqty == QTY_PRESSURE) .and. (which_vert == VERTISLEVEL)) then
    ! Some variables need plevs, some need pilevs
    ! We only need the height (aka level)
    ! the obs_def_upper_atm_mod.f90:get_expected_O_N2_ratio routines queries
@@ -422,15 +428,16 @@ endif
 
 ! FIXME ... is it possible to try to get a pressure with which_vert == undefined
 ! At present, vert_interp will simply fail because height is a negative number.
-if (ikind == QTY_PRESSURE) then
+if (iqty == QTY_PRESSURE) then
 
-   call vert_interp(x,lon_below,lat_below,height,ikind,'ilev',-1,val(1,1),istatus)
+!HK  enesmble size
+   call vert_interp(obs_val(1)),lon_below,lat_below,height,iqty,'ilev',-1,val(1,1),istatus)
    if (istatus == 0) &
-   call vert_interp(x,lon_below,lat_above,height,ikind,'ilev',-1,val(1,2),istatus)
+   call vert_interp(obs_val(1),lon_below,lat_above,height,iqty,'ilev',-1,val(1,2),istatus)
    if (istatus == 0) &
-   call vert_interp(x,lon_above,lat_below,height,ikind,'ilev',-1,val(2,1),istatus)
+   call vert_interp(obs_val(1),lon_above,lat_below,height,iqty,'ilev',-1,val(2,1),istatus)
    if (istatus == 0) &
-   call vert_interp(x,lon_above,lat_above,height,ikind,'ilev',-1,val(2,2),istatus)
+   call vert_interp(obs_val(1),lon_above,lat_above,height,iqty,'ilev',-1,val(2,2),istatus)
 
    ! Now that we have the four surrounding points and their relative weights,
    ! actually perform the bilinear horizontal interpolation to get the value at the
@@ -447,15 +454,15 @@ if (ikind == QTY_PRESSURE) then
 endif
 
 ! If it is not pressure ...
-! FindVar_by_kind would fail with ikind == QTY_PRESSURE, so we have
+! FindVar_by_kind would fail with iqty == QTY_PRESSURE, so we have
 ! to calculate the pressure separately before this part.
 
-ivar = FindVar_by_kind(ikind)
+ivar = FindVar_by_kind(iqty)
 if (ivar < 0) return ! as a failure
 
 ! Now, need to find the values for the four corners
 
-if ((progvar(ivar)%rank == 3) .or. (vert_is_undef(location))) then ! (time, lat, lon)
+if ((progvar(ivar)%rank == 3) .or. (which_vert == VERTISUNDEF)) then ! (time, lat, lon)
    ! time is always a singleton dimension
 
    val(1,1) = x(get_index(ivar, indx1=lon_below, indx2=lat_below, indx3=1))
@@ -478,22 +485,22 @@ elseif ((progvar(ivar)%rank == 4) .and. (vert_is_level(location))) then
    val(2,2) = x(get_index(ivar, indx1=lon_above, indx2=lat_above, indx3=level))
    istatus = 0
 
-elseif ((progvar(ivar)%rank == 4) .and. (vert_is_height(location))) then
+elseif ((progvar(ivar)%rank == 4) .and. (which_vert == VERTISHEIGHT)) then
 
    ! vert_interp() interpolates the state column to
    ! the same vertical height as the observation.
    ! THEN, it is the same as the 2D case.
-
-   call vert_interp(x, lon_below, lat_below, height, ikind, &
+!HK Yo ensemble size
+   call vert_interp(obs_val(1), lon_below, lat_below, height, iqty, &
              progvar(ivar)%verticalvar, ivar, val(1,1), istatus)
    if (istatus == 0) &
-   call vert_interp(x, lon_below, lat_above, height, ikind, &
+   call vert_interp(obs_val(1), lon_below, lat_above, height, iqty, &
              progvar(ivar)%verticalvar, ivar, val(1,2), istatus)
    if (istatus == 0) &
-   call vert_interp(x, lon_above, lat_below, height, ikind, &
+   call vert_interp(obs_val(1), lon_above, lat_below, height, iqty, &
              progvar(ivar)%verticalvar, ivar, val(2,1), istatus)
    if (istatus == 0) &
-   call vert_interp(x, lon_above, lat_above, height, ikind, &
+   call vert_interp(obs_val(1), lon_above, lat_above, height, iqty, &
              progvar(ivar)%verticalvar, ivar, val(2,2), istatus)
 
 else
@@ -1632,7 +1639,7 @@ end subroutine create_vtec
 !-------------------------------------------------------------------------------
 
 
-subroutine vert_interp(x, lon_index, lat_index, height, ikind, vertstagger, &
+subroutine vert_interp(x, lon_index, lat_index, height, iqty, vertstagger, &
                        ivar, val, istatus)
 ! returns the value at an arbitrary height on an existing horizontal grid location.
 ! istatus == 0 is a 'good' return code.
@@ -1641,7 +1648,7 @@ real(r8),         intent(in)  :: x(:)
 integer,          intent(in)  :: lon_index
 integer,          intent(in)  :: lat_index
 real(r8),         intent(in)  :: height
-integer,          intent(in)  :: ikind
+integer,          intent(in)  :: iqty
 character(len=*), intent(in)  :: vertstagger
 integer,          intent(in)  :: ivar
 real(r8),         intent(out) :: val
@@ -1743,7 +1750,7 @@ endif
 
 istatus = 0 ! If we made it this far, it worked.
 
-if (ikind == QTY_PRESSURE) then ! log-linear interpolation in height
+if (iqty == QTY_PRESSURE) then ! log-linear interpolation in height
 
    val_top    = plevs(lev_top)     !pressure at midpoint [Pa]
    val_bottom = plevs(lev_bottom)  !pressure at midpoint [Pa]
