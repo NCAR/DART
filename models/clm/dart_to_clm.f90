@@ -624,6 +624,8 @@ PARTITION: do icolumn = 1,ncolumn
             
             ! Calculate the increment for each layer for SWE, liq and ice assuming identical
             ! layer % distribution as prior
+            ! If there is no increment (h2osno_pr-h2osno_po=0) then gain =0
+            ! and the column will not be re-partitioned. 
             gain_h2osno = (h2osno_po(icolumn) - h2osno_pr(icolumn)) * wt_swe
             gain_h2oliq = gain_h2osno * wt_liq
             gain_h2oice = gain_h2osno * wt_ice
@@ -645,12 +647,30 @@ PARTITION: do icolumn = 1,ncolumn
             ! @fixme if needed            
 
              dzsno_po(ilevel,icolumn) =  dzsno_pr(ilevel,icolumn) + gain_dzsno(ilevel,icolumn)
+            
+            if (verbose > 2 .and. abs(gain_h2osno) > 0.0_r8) then
+               ! Output diagnostics for active snow columns in which SWE is updated
+               ! by DART.  These columns undergo re-partitioning.
+               ! column,level,active snow layers,SWE,ice mass,liq mass,snow thickness 
+               ! PRIOR:     icolumn,ilevel,snlsno,h2osno_pr,h2oice_pr,h2oliq_pr,dzsno_pr
+               ! POSTERIOR: icolumn,ilevel,snlsno,h2osno_po,h2oice_po,h2oliq_po,dzsno_po
+               
+               call error_handler(E_MSG,routine,'  ',source)           
+               write (string1,*)'PRIOR: ',icolumn,ilevel,snlsno(icolumn),h2osno_pr(icolumn),&
+                                h2oice_pr(ilevel,icolumn),h2oliq_pr(ilevel,icolumn),&
+                                dzsno_pr(ilevel,icolumn)
+               write (string2,*)'POST : ',icolumn,ilevel,snlsno(icolumn),h2osno_po(icolumn),&        
+                                h2oice_po(ilevel,icolumn),h2oliq_po(ilevel,icolumn),&
+                                dzsno_po(ilevel,icolumn)
+               call error_handler(E_MSG,routine,string1,source,text2=string2)
+            endif
+             
          enddo
 
       endif
       ! Apply increment of layer depths to total column snow height
       snowdp_po(icolumn) = snowdp_pr(icolumn) + sum(gain_dzsno(:,icolumn))
-
+      
    endif
 
 enddo PARTITION
