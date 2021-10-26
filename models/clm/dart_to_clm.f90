@@ -669,8 +669,17 @@ PARTITION: do icolumn = 1,ncolumn
 
       endif
       ! Apply increment of layer depths to total column snow height
-      snowdp_po(icolumn) = snowdp_pr(icolumn) + sum(gain_dzsno(:,icolumn))
-      
+      ! *only if* active snow layer exists.  This avoids
+      ! inadvertently 'creating' new snow layer from round-off errors in gain_dzsno
+      ! Also, only sum the gain of layers that are known to be active.
+
+      if (snlsno(icolumn) < 0.0_r8) then
+         snowdp_po(icolumn) = snowdp_pr(icolumn) + sum(gain_dzsno(nlevsno+1+snlsno(icolumn):nlevsno,icolumn))
+      else
+         snowdp_po(icolumn) = snowdp_pr(icolumn)
+      endif
+
+
    endif
 
 enddo PARTITION
