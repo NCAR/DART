@@ -8,18 +8,25 @@ into the format required by DART.
 Each directory has at least one converter:
 
 -  ``AIRS``: :doc:`/observations/obs_converters/AIRS/README`
+-  ``AURA``: See ``DART/observations/obs_converters/AURA``
 -  ``Aviso+/CMEMS``: :doc:`../observations/obs_converters/AVISO/AVISO`
 -  ``Ameriflux``: :doc:`../observations/obs_converters/Ameriflux/level4_to_obs`
+-  ``CHAMP``: :doc:`../observations/obs_converters/CHAMP/work/README`
 -  ``cice``: :doc:`../observations/obs_converters/cice/cice_to_obs`
+-  ``CNOFS``: See ``DART/observations/obs_converters/CNOFS``
+-  ``CONAGUA``: :doc:`../observations/obs_converters/CONAGUA/README`
 -  ``COSMOS``: :doc:`../observations/obs_converters/COSMOS/COSMOS_to_obs`
 -  ``DWL``: :doc:`../observations/obs_converters/DWL/dwl_to_obs`
+-  ``GMI``: :doc:`../observations/obs_converters/GMI/README`
 -  ``GOES``: :doc:`../observations/obs_converters/GOES/README`
 -  ``GPSPW``: :doc:`../observations/obs_converters/GPSPW/README`
+-  ``GRACE``: See ``DART/observations/obs_converters/GRACE``
 -  ``GSI2DART``: :doc:`../observations/obs_converters/GSI2DART/readme`
 -  ``GTSPP``: :doc:`../observations/obs_converters/GTSPP/GTSPP`
 -  ``MADIS``: :doc:`../observations/obs_converters/MADIS/MADIS`
 -  ``MIDAS``: :doc:`../observations/obs_converters/MIDAS/MIDAS_to_obs`
 -  ``MODIS``: :doc:`../observations/obs_converters/MODIS/MOD15A2_to_obs`
+-  ``MPD``: See ``DART/observations/obs_converters/MPD``
 -  ``NCEP``: (prepbufr -> ascii) :doc:`../observations/obs_converters/NCEP/prep_bufr/prep_bufr`
 -  ``NCEP``: (ascii -> obs_seq) :doc:`../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs`
 -  ``ROMS``: :doc:`../observations/obs_converters/ROMS/ROMS`
@@ -32,9 +39,10 @@ Each directory has at least one converter:
 -  ``GPS``: :doc:`../observations/obs_converters/gps/gps`
 -  ``ok_mesonet``: :doc:`../observations/obs_converters/ok_mesonet/ok_mesonet`
 -  ``QuikSCAT``: :doc:`../observations/obs_converters/quikscat/QuikSCAT`
--  ``Radar``: :doc:`../observations/obs_converters/radar/radar`
+-  ``Radar``: :doc:`../observations/obs_converters/radar/README`
 -  ``snow``: :doc:`../observations/obs_converters/snow/snow_to_obs`
 -  ``Text``: :doc:`../observations/obs_converters/text/text_to_obs`
+-  ``text_GITM``: See ``DART/observations/obs_converters/text_GITM``
 -  ``tpw``: :doc:`../observations/obs_converters/tpw/tpw`
 -  ``Tropical Cyclones``: :doc:`../observations/obs_converters/tropical_cyclone/tc_to_obs`
 -  ``Var (little-r)``: :doc:`../observations/obs_converters/var/littler_tf_dart`
