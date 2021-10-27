@@ -320,7 +320,7 @@ References
    observations/obs_converters/quikscat/QuikSCAT
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
-   observations/obs_converters/radar/radar
+   observations/obs_converters/radar/README
    observations/obs_converters/snow/snow_to_obs
    observations/obs_converters/text/text_to_obs
    observations/obs_converters/tpw/tpw

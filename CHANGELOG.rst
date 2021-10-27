@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**October 27 2021 :: Observation converter documentation update. Tag: v9.11.12**
+
+- Improved documentation for radar observation converters
+
 **September 30 2021 :: Bug fix for very large models. Tag v9.11.11**
 
 - mpi_utilties_mod using correct check for message length > SNDRCV_MAXSIZE
