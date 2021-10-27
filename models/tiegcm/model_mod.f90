@@ -56,7 +56,8 @@ use default_model_mod, only : adv_1step,                                &
                               nc_write_model_vars,                      &
                               pert_model_copies
 
-use state_structure_mod, only : add_domain, get_dart_vector_index, state_structure_info
+use state_structure_mod, only : add_domain, get_dart_vector_index, add_dimension_to_variable, &
+                                finished_adding_domain, state_structure_info
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -145,6 +146,7 @@ character(len=obstypelength) :: variable_table(MAX_NUM_VARIABLES, MAX_NUM_COLUMN
 ! include_vTEC = .true.  vTEC must be calculated from other vars
 ! include_vTEC = .false. just ignore vTEC altogether
 
+!HK why are there two of these?
 logical  :: include_vTEC = .true.
 logical  :: include_vTEC_in_state = .false.
 
@@ -1300,10 +1302,11 @@ if ( estimate_f10_7 ) then
    string1 = 'Estimating f10_7 is not supported.'
    string2 = 'This feature is under development.'
    string3 = 'If you want to experiment with this, change E_ERR to E_MSG in "get_variables_in_domain".'
-   call error_handler(E_ERR, 'get_variables_in_domain:', string1, &
+   call error_handler(E_MSG, 'get_variables_in_domain:', string1, &
                       source, revision, revdate, text2=string2, text3=string3)
 
    nfields = nfields + 1
+   nfields_constructed = nfields_constructed+1
    variable_table(nfields,VT_VARNAMEINDX) = 'f10_7'
    variable_table(nfields,VT_KINDINDX)    = 'QTY_1D_PARAMETER'
    variable_table(nfields,VT_MINVALINDX)  = 'NA'
@@ -1352,11 +1355,11 @@ endif
 
 call load_up_state_structure_from_file('tiegcm_restart_p.nc', nfields_restart, 'RESTART', RESTART_DOM)
 call load_up_state_structure_from_file('tiegcm_s.nc', nfields_secondary, 'SECONDARY', SECONDARY_DOM)
-call load_up_calculated_variables()
+call load_up_calculated_variables(nfields_constructed, 'CALCULATE', CONSTRUCT_DOM)
 
 call state_structure_info(RESTART_DOM)
 call state_structure_info(SECONDARY_DOM)
-
+!call state_structure_info(CONSTRUCT_DOM) !HK state_structure_info is broken for spec domains
 
 end subroutine verify_variables
 
@@ -1417,6 +1420,8 @@ integer,          intent(in) :: nvar ! number of variables in domain
 character(len=*), intent(in) :: domain_name ! restart, secondary
 integer,          intent(in) :: domain_num
 
+integer :: i,j
+
 character(len=NF90_MAX_NAME), allocatable :: var_names(:)
 real(r8), allocatable :: clamp_vals(:,:)
 integer, allocatable :: kind_list(:)
@@ -1446,12 +1451,16 @@ enddo
 
 domain_id(domain_num) = add_domain(nvar, var_names, kind_list, clamp_vals, update_list)
 
+do i = 1, nvar ! HK f10_7 and VTEC and anything else?
+  if (var_names(i) == 'f10_7') then
+    ! dimensions to match what? Lanai has single value f10_7
+    call add_dimension_to_variable(domain_id(domain_num), i, 'parameter', 1)
+  endif
 
-do i = 1, nvar ! HK f10_7 and VTEC?
-! dimensions to match what? Lanai has single value f10_7
-
-  call add_dimension_to_variable(dom_id, var_id=i, dim_name='parameter', dim_size=1)
-
+  !HK I don't understand why VTEC is a state variable vs. calculating it on the fly.
+  if(var_names(i) == 'VTEC') then
+     call error_handler(E_MSG,'load_up_calculated_variables', 'VTEC not sure yet.')
+  endif
 enddo
 
 call finished_adding_domain(domain_id(domain_num))
