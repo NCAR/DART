@@ -20,6 +20,7 @@ implicit none
 private
 
 public :: update_inflation,                                 do_obs_inflate,     &
+          update_single_state_space_inflation,                                  &
           do_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,        &
           adaptive_inflate_init,    adaptive_inflate_type,                      &
                                     deterministic_inflate,  solve_quadratic,    &
@@ -94,6 +95,10 @@ character(len=512) :: string1, string2
 
 ! Flag indicating whether module has been initialized
 logical :: initialized = .false.
+
+! Used for precision tests in inflation update routines
+real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaNs/Inf
+
 
 !===============================================================================
 
@@ -644,6 +649,61 @@ inflate_sd = new_inflate_sd
 if(inflate_sd < inflate_handle%sd_lower_bound) inflate_sd = inflate_handle%sd_lower_bound
 
 end subroutine update_inflation
+
+!-------------------------------------------------------------------------------
+!> Computes updatea inflation mean and inflation sd for single state space inflation
+
+subroutine update_single_state_space_inflation(inflate, inflate_mean, inflate_sd, &
+   ss_inflate_base, orig_obs_prior_mean, orig_obs_prior_var, obs, obs_err_var, &
+   ens_size, inflate_only)
+
+! Computes update values for the inflation (inflate_mean) and its standard
+! deviation (inflate_sd)
+
+type(adaptive_inflate_type), intent(in)    :: inflate
+real(r8),                   intent(inout)  :: inflate_mean
+real(r8),                   intent(inout)  :: inflate_sd
+real(r8),                   intent(in)     :: ss_inflate_base
+real(r8),                   intent(in)     :: orig_obs_prior_mean
+real(r8),                   intent(in)     :: orig_obs_prior_var
+real(r8),                   intent(in)     :: obs
+real(r8),                   intent(in)     :: obs_err_var
+integer,                    intent(in)     :: ens_size
+logical,                    intent(in)     :: inflate_only
+
+real(r8) :: gamma, ens_var_deflate, r_var, r_mean
+
+! If either inflation or sd is not positive, not really doing inflation
+if(inflate_mean > 0.0_r8 .and. inflate_sd > 0.0_r8) then
+   ! For case with single spatial inflation, use gamma = 1.0_r8
+   gamma = 1.0_r8
+   ! Deflate the inflated variance; required for efficient single pass
+   ! This is one of many places that assumes linear state/obs relation
+   ! over range of ensemble; Essentially, we are removing the inflation
+   ! which has already been applied in filter to see what inflation should
+   ! have been needed.
+   ens_var_deflate = orig_obs_prior_var / &
+      (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
+
+   ! If this is inflate_only (i.e. posterior) remove impact of this obs.
+   ! This is simulating independent observation by removing its impact.
+   if(inflate_only .and. &
+         ens_var_deflate               > small .and. &
+         obs_err_var                   > small .and. &
+         obs_err_var - ens_var_deflate > small ) then
+      r_var = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
+      r_mean = r_var *(orig_obs_prior_mean / ens_var_deflate - obs / obs_err_var)
+   else
+      r_var = ens_var_deflate
+      r_mean = orig_obs_prior_mean
+   endif
+
+   ! Update the inflation mean value and standard deviation
+   call update_inflation(inflate, inflate_mean, inflate_sd, &
+      r_mean, r_var, ens_size, obs, obs_err_var, gamma)
+endif
+
+end subroutine update_single_state_space_inflation
 
 
 !-------------------------------------------------------------------------------

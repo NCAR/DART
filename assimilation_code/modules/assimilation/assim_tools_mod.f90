@@ -56,7 +56,7 @@ use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,    
 
 use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_inflate,    &
                                  do_varying_ss_inflate,                                   &
-                                 update_inflation,                                        &
+                                 update_inflation, update_single_state_space_inflation,   &
                                  inflate_ens, adaptive_inflate_type,                      &
                                  deterministic_inflate, solve_quadratic
 
@@ -703,45 +703,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
          ! Compute updated values for single state space inflation
          SINGLE_SS_INFLATE: if(local_single_ss_inflate) then
-            ss_inflate_base = ens_handle%copies(ENS_SD_COPY, 1)
             ! Update for each group separately
             do group = 1, num_groups
-               ! If either inflation or sd is not positive, not really doing inflation
-               if(my_inflate > 0.0_r8 .and. my_inflate_sd > 0.0_r8) then
-                  ! For case with single spatial inflation, use gamma = 1.0_r8
-                  ! See adaptive inflation module for details
-                  gamma = 1.0_r8
-                  ! Deflate the inflated variance; required for efficient single pass
-                  ! This is one of many places that assumes linear state/obs relation
-                  ! over range of ensemble; Essentially, we are removing the inflation
-                  ! which has already been applied in filter to see what inflation should
-                  ! have been needed.
-                  ens_obs_mean = orig_obs_prior_mean(group)
-                  ens_obs_var = orig_obs_prior_var(group)
-                  ! gamma is hardcoded as 1.0, so no test is needed here.
-                  ens_var_deflate = ens_obs_var / &
-                     (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
-
-                  ! If this is inflate_only (i.e. posterior) remove impact of this obs.
-                  ! This is simulating independent observation by removing its impact.
-                  if(inflate_only .and. &
-                        ens_var_deflate               > small .and. &
-                        obs_err_var                   > small .and. &
-                        obs_err_var - ens_var_deflate > small ) then
-                     r_var = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
-                     r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
-                  else
-                     r_var = ens_var_deflate
-                     r_mean = ens_obs_mean
-                  endif
-
-                  if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-                  ! Update the inflation value
-                  call update_inflation(inflate, my_inflate, my_inflate_sd, &
-                     r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
-                  if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_inflation_C', &
-                                                      t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-               endif
+               call update_single_state_space_inflation(inflate, my_inflate, my_inflate_sd, &
+                  ens_handle%copies(ENS_SD_COPY, 1), orig_obs_prior_mean(group), &
+                  orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, inflate_only)
             end do
          endif SINGLE_SS_INFLATE
 
