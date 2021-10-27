@@ -43,7 +43,8 @@ use     obs_kind_mod, only : QTY_U_WIND_COMPONENT,           &
                              QTY_1D_PARAMETER,               &
                              QTY_GEOPOTENTIAL_HEIGHT,        &
                              QTY_GEOMETRIC_HEIGHT,           &
-                             QTY_VERTICAL_TEC                ! total electron content
+                             QTY_VERTICAL_TEC,               &! total electron content
+                             get_index_for_quantity
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -55,7 +56,7 @@ use default_model_mod, only : adv_1step,                                &
                               nc_write_model_vars,                      &
                               pert_model_copies
 
-use state_structure_mod, only : add_domain, get_dart_vector_index
+use state_structure_mod, only : add_domain, get_dart_vector_index, state_structure_info
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -95,9 +96,6 @@ character(len=256), parameter :: source   = 'tiegcm/model_mod.f90'
 character(len=32 ), parameter :: revision = ''
 character(len=128), parameter :: revdate  = ''
 
-! global domain id to be used by routines in state_structure_mod
-integer :: domain_id
-
 !-------------------------------------------------------------------------------
 ! namelist with default values
 ! output_state_vector = .true.  results in a "state-vector"   netCDF file
@@ -114,22 +112,20 @@ integer            :: debug = 0
 logical            :: estimate_f10_7 = .false.
 integer            :: assimilation_period_seconds = 3600
 
-integer, parameter :: max_num_variables = 30
-integer, parameter :: max_num_columns = 6
-character(len=NF90_MAX_NAME) :: variables(max_num_variables * max_num_columns) = ' '
+integer, parameter :: MAX_NUM_VARIABLES = 30
+integer, parameter :: MAX_NUM_COLUMNS = 6
+character(len=NF90_MAX_NAME) :: variables(MAX_NUM_VARIABLES * MAX_NUM_COLUMNS) = ' '
 
 namelist /model_nml/ tiegcm_restart_file_name, &
                      tiegcm_secondary_file_name, tiegcm_namelist_file_name, &
                      variables, debug, estimate_f10_7, assimilation_period_seconds
-
-integer :: nfields  ! number of tiegcm variables in DART state
 
 !-------------------------------------------------------------------------------
 ! define model parameters
 
 integer                               :: nilev, nlev, nlon, nlat
 real(r8),dimension(:),    allocatable :: lons, lats, levs, ilevs, plevs, pilevs
-! HK are plevs, pilves per ensemble member
+! HK are plevs, pilves per ensemble member?
 real(r8)                              :: TIEGCM_missing_value !! global attribute
 real(r8)                              :: TIEGCM_reference_pressure
 integer                               :: time_step_seconds
@@ -144,7 +140,7 @@ integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
 integer, parameter :: VT_ORIGININDX   = 5 ! ... file of origin
 integer, parameter :: VT_STATEINDX    = 6 ! ... update (state) or not
 
-character(len=obstypelength) :: variable_table(max_num_variables, max_num_columns)
+character(len=obstypelength) :: variable_table(MAX_NUM_VARIABLES, MAX_NUM_COLUMNS)
 
 ! include_vTEC = .true.  vTEC must be calculated from other vars
 ! include_vTEC = .false. just ignore vTEC altogether
@@ -160,6 +156,12 @@ real(r8)        :: f10_7
 type(time_type) :: state_time ! module-storage declaration of current model time
 
 integer(i8)           :: model_size ! the state vector length
+integer :: nfields  ! number of tiegcm variables in DART state
+! global domain id to be used by routines in state_structure_mod
+integer :: domain_id(3) ! restart, secondary, calculate
+integer, parameter :: RESTART_DOM = 1
+integer, parameter :: SECONDARY_DOM = 2
+integer, parameter :: CONSTRUCT_DOM = 3
 
 ! FOR NOW OBS LOCATIONS ARE EXPECTED GIVEN IN HEIGHT [m],
 ! AND SO VERTICAL LOCALIZATION COORDINATE IS *always* HEIGHT
@@ -222,14 +224,16 @@ call read_TIEGCM_namelist(tiegcm_namelist_file_name)
 call read_TIEGCM_definition(tiegcm_restart_file_name)
 !HK call read_TIEGCM_secondary(tiegcm_secondary_file_name)
 
-! error-check and convert namelist input to variable_table
-call verify_variables(variables, nfields)
+! error-check, convert namelist input to variable_table, and build the
+! state structure
+call verify_variables()
 
 !HK There are two files and a calculated variable VTEC:
 ! tiegcm_restart_file_name
 ! tiegcm_secondary_file_name
 ! calcualted variable VTEC
-!domain_id = add_domain('file.nc', nfields, var_names, update_list)
+
+call error_handler(E_ERR,'static_init_model', 'end of')
 
 call set_calendar_type('Gregorian')
 
@@ -1205,37 +1209,30 @@ end subroutine read_TIEGCM_definition
 
 
 !-------------------------------------------------------------------------------
+! Fill up the variable_table from the namelist item 'variables'
+! The namelist item variables is where a user specifies
+! which variables they want in the DART state:
+! variable name, dart qty, clamping min, clamping max, origin file, update or not
 
+subroutine verify_variables()
 
-subroutine verify_variables( variables, ngood )
-! This routine checks the user input against the variables available in the
-! input netcdf file to see if it is possible to construct the DART state vector
-! specified by the input.nml:model_nml:variables  variable.
-!
-! There is an additional complication that if the user requests VTEC to be part
-! of the state, there are good scientific reasons to include the variables
-! that are used to derive VTEC to be part of the DART state. So, if VTEC is
-! included, then there are other variables that get included even if not
-! explicitly mentioned in model_nml:variables
-
-character(len=*), intent(in)  :: variables(:)
-integer,          intent(out) :: ngood
+integer :: nfields_restart       ! number of variables from restart file
+integer :: nfields_secondary     ! number of variables from secondary file
+integer :: nfields_constructed   ! number of constructed state variables
 
 integer  :: i, nrows, ncols
 integer  :: ivar, index1, indexN, varsize
 integer  :: ncid, ncid1, ncid2, ncerr, VarID, dimlen
-real(r8) :: spvalR8, spvalR4
 
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+!HK obstypelength vs NF90_MAX_NAME?
 character(len=NF90_MAX_NAME) :: varname
 character(len=NF90_MAX_NAME) :: dartstr
 character(len=NF90_MAX_NAME) :: minvalstring
 character(len=NF90_MAX_NAME) :: maxvalstring
 character(len=NF90_MAX_NAME) :: filename
 character(len=NF90_MAX_NAME) :: state_or_aux
-character(len=obstypelength) :: dimname
 
-nrows = size(variable_table,1)
+nrows = size(variable_table,1) !HK these are MAX_NUM_VARIABLES, MAX_NUM_COLUMNS
 ncols = size(variable_table,2)
 
 ! Convert the (input) 1D array "variables" into a table with six columns.
@@ -1248,8 +1245,12 @@ ncols = size(variable_table,2)
 ! Column 5 is the file of origin 'restart' or 'secondary' or 'calculate'
 ! Column 6 is whether or not the variable should be updated in the restart file.
 
-ngood = 0
-MyLoop : do i = 1, nrows
+nfields = 0
+nfields_restart = 0
+nfields_secondary = 0
+nfields_constructed = 0
+
+ROWLOOP : do i = 1, nrows
 
    varname      = trim(variables(ncols*i - 5))
    dartstr      = trim(variables(ncols*i - 4))
@@ -1259,7 +1260,7 @@ MyLoop : do i = 1, nrows
    state_or_aux = trim(variables(ncols*i    ))
 
    call to_upper(filename)
-   call to_upper(state_or_aux)
+   call to_upper(state_or_aux) ! update or not
 
    variable_table(i,VT_VARNAMEINDX) = trim(varname)
    variable_table(i,VT_KINDINDX)    = trim(dartstr)
@@ -1269,50 +1270,46 @@ MyLoop : do i = 1, nrows
    variable_table(i,VT_STATEINDX)   = trim(state_or_aux)
 
    ! If the first element is empty, we have found the end of the list.
-   if ((variable_table(i,1) == ' ') ) exit MyLoop
+   if ((variable_table(i,1) == ' ') ) exit ROWLOOP
 
    ! Any other condition is an error.
    if ( any(variable_table(i,:) == ' ') ) then
       string1 = 'input.nml &model_nml:variables not fully specified.'
       string2 = 'Must be 6 entries per variable, last known variable name is'
       string3 = trim(variable_table(i,1))
-      call error_handler(E_ERR,'verify_variables',string1, &
+      call error_handler(E_ERR,'get_variables_in_domain',string1, &
           source,revision,revdate,text2=string2,text3=string3)
    endif
 
-   ! Make sure variable exists in netCDF file, as long as it is not vTEC.
-   ! vTEC gets constructed.
+   nfields=nfields+1
+   if (variable_table(i,VT_ORIGININDX) == 'RESTART') nfields_restart = nfields_restart+1
+   if (variable_table(i,VT_ORIGININDX) == 'SECONDARY') nfields_secondary = nfields_secondary+1
+   if (variable_table(i,VT_ORIGININDX) == 'CALCULATE') nfields_constructed = nfields_constructed+1
 
-   if (varname == 'VTEC') include_vTEC_in_state = .true.
+enddo ROWLOOP
 
-   ! Make sure DART kind is valid
+! Make sure variable exists in netCDF file, as long as it is not vTEC.
+! vTEC gets constructed.
 
-   !HK
-   !if( get_dart_vector_index_for_quantity(dartstr) < 0 ) then
-   !   write(string1,'(''No obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-   !   call error_handler(E_ERR,'verify_variables',string1,source,revision,revdate)
-   !endif
+if (varname == 'VTEC') include_vTEC_in_state = .true.
 
-   ngood = ngood + 1
-
-enddo MyLoop
 
 ! Do we need to augment the state vector with the parameter to estimate?
 if ( estimate_f10_7 ) then
 
    string1 = 'Estimating f10_7 is not supported.'
    string2 = 'This feature is under development.'
-   string3 = 'If you want to experiment with this, change E_ERR to E_MSG in "verify_variables".'
-   call error_handler(E_ERR, 'verify_variables:', string1, &
+   string3 = 'If you want to experiment with this, change E_ERR to E_MSG in "get_variables_in_domain".'
+   call error_handler(E_ERR, 'get_variables_in_domain:', string1, &
                       source, revision, revdate, text2=string2, text3=string3)
 
-   ngood = ngood + 1
-   variable_table(ngood,VT_VARNAMEINDX) = 'f10_7'
-   variable_table(ngood,VT_KINDINDX)    = 'QTY_1D_PARAMETER'
-   variable_table(ngood,VT_MINVALINDX)  = 'NA'
-   variable_table(ngood,VT_MAXVALINDX)  = 'NA'
-   variable_table(ngood,VT_ORIGININDX)  = 'CALCULATE'
-   variable_table(ngood,VT_STATEINDX)   = 'UPDATE'
+   nfields = nfields + 1
+   variable_table(nfields,VT_VARNAMEINDX) = 'f10_7'
+   variable_table(nfields,VT_KINDINDX)    = 'QTY_1D_PARAMETER'
+   variable_table(nfields,VT_MINVALINDX)  = 'NA'
+   variable_table(nfields,VT_MAXVALINDX)  = 'NA'
+   variable_table(nfields,VT_ORIGININDX)  = 'CALCULATE'
+   variable_table(nfields,VT_STATEINDX)   = 'UPDATE'
 
 endif
 
@@ -1334,7 +1331,7 @@ endif
 
 ! Record the contents of the DART state vector
 if (do_output() .and. (debug > 99)) then
-   do i = 1,ngood
+   do i = 1,nfields
       write(*,'(''variable'',i4,'' is '',a12,1x,a32,4(1x,a20))') i, &
              trim(variable_table(i,1)), &
              trim(variable_table(i,2)), &
@@ -1352,8 +1349,62 @@ if (do_output() .and. (debug > 99)) then
    enddo
 endif
 
+
+call load_up_state_structure_from_file('tiegcm_restart_p.nc', nfields_restart, 'RESTART', RESTART_DOM)
+call load_up_state_structure_from_file('tiegcm_s.nc', nfields_secondary, 'SECONDARY', SECONDARY_DOM)
+
+call state_structure_info(RESTART_DOM)
+call state_structure_info(SECONDARY_DOM)
+
+
 end subroutine verify_variables
 
+!-------------------------------------------------------------------------------
+subroutine load_up_state_structure_from_file(filename, nvar, domain_name, domain_num)
+
+character(len=*), intent(in) :: filename ! filename to read from
+integer,          intent(in) :: nvar ! number of variables in domain
+character(len=*), intent(in) :: domain_name ! restart, secondary
+integer,          intent(in) :: domain_num
+
+integer :: i,j
+
+character(len=NF90_MAX_NAME), allocatable :: var_names(:)
+real(r8), allocatable :: clamp_vals(:,:)
+integer, allocatable :: kind_list(:)
+logical, allocatable :: update_list(:)
+
+
+allocate(var_names(nvar), kind_list(nvar), &
+     clamp_vals(nvar,2), update_list(nvar))
+
+update_list(:) = .true. ! default to update state variable
+clamp_vals(:,:) = MISSING_R8 ! default to no clamping
+
+j = 0
+do i = 1, nfields
+   if (variable_table(i,VT_ORIGININDX) == trim(domain_name)) then
+      j = j+1
+      var_names(j) = variable_table(i, VT_VARNAMEINDX)
+      kind_list(j) = get_index_for_quantity(variable_table(i, VT_KINDINDX))
+      if (variable_table(i, VT_MINVALINDX) /= 'NA') then
+         read(variable_table(i, VT_MINVALINDX), '(d16.8)') clamp_vals(j,1)
+      endif
+      if (variable_table(i, VT_MAXVALINDX) /= 'NA') then
+        read(variable_table(i, VT_MAXVALINDX), '(d16.8)') clamp_vals(j,2)
+      endif
+      if (variable_table(i, VT_STATEINDX) == 'NO_COPY_BACK') then
+         update_list(j) = .false.
+      endif
+   endif
+enddo
+
+domain_id(domain_num) = add_domain(filename, nvar, &
+                          var_names, kind_list, clamp_vals, update_list)
+
+deallocate(var_names, kind_list, clamp_vals, update_list)
+
+end subroutine load_up_state_structure_from_file
 
 !-------------------------------------------------------------------------------
 
