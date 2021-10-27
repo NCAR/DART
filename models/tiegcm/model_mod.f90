@@ -1352,6 +1352,7 @@ endif
 
 call load_up_state_structure_from_file('tiegcm_restart_p.nc', nfields_restart, 'RESTART', RESTART_DOM)
 call load_up_state_structure_from_file('tiegcm_s.nc', nfields_secondary, 'SECONDARY', SECONDARY_DOM)
+call load_up_calculated_variables()
 
 call state_structure_info(RESTART_DOM)
 call state_structure_info(SECONDARY_DOM)
@@ -1360,6 +1361,8 @@ call state_structure_info(SECONDARY_DOM)
 end subroutine verify_variables
 
 !-------------------------------------------------------------------------------
+! Adds a domain to the state structure from a netcdf file
+! Called from verify_variables
 subroutine load_up_state_structure_from_file(filename, nvar, domain_name, domain_num)
 
 character(len=*), intent(in) :: filename ! filename to read from
@@ -1405,6 +1408,55 @@ domain_id(domain_num) = add_domain(filename, nvar, &
 deallocate(var_names, kind_list, clamp_vals, update_list)
 
 end subroutine load_up_state_structure_from_file
+!-------------------------------------------------------------------------------
+! calcualted variables do not have a netcdf file
+! HK or do they? What happens for multiple assimilation cycles?
+subroutine load_up_calculated_variables(nvar, domain_name, domain_num)
+
+integer,          intent(in) :: nvar ! number of variables in domain
+character(len=*), intent(in) :: domain_name ! restart, secondary
+integer,          intent(in) :: domain_num
+
+character(len=NF90_MAX_NAME), allocatable :: var_names(:)
+real(r8), allocatable :: clamp_vals(:,:)
+integer, allocatable :: kind_list(:)
+logical, allocatable :: update_list(:)
+
+
+allocate(var_names(nvar), kind_list(nvar), &
+     clamp_vals(nvar,2), update_list(nvar))
+
+j = 0
+do i = 1, nfields
+   if (variable_table(i,VT_ORIGININDX) == domain_name) then
+      j = j+1
+      var_names(j) = variable_table(i, VT_VARNAMEINDX)
+      kind_list(j) = get_index_for_quantity(variable_table(i, VT_KINDINDX))
+      if (variable_table(i, VT_MINVALINDX) /= 'NA') then
+         read(variable_table(i, VT_MINVALINDX), '(d16.8)') clamp_vals(j,1)
+      endif
+      if (variable_table(i, VT_MAXVALINDX) /= 'NA') then
+        read(variable_table(i, VT_MAXVALINDX), '(d16.8)') clamp_vals(j,2)
+      endif
+      if (variable_table(i, VT_STATEINDX) == 'NO_COPY_BACK') then
+         update_list(j) = .false.
+      endif
+   endif
+enddo
+
+domain_id(domain_num) = add_domain(nvar, var_names, kind_list, clamp_vals, update_list)
+
+
+do i = 1, nvar ! HK f10_7 and VTEC?
+! dimensions to match what? Lanai has single value f10_7
+
+  call add_dimension_to_variable(dom_id, var_id=i, dim_name='parameter', dim_size=1)
+
+enddo
+
+call finished_adding_domain(domain_id(domain_num))
+
+end subroutine load_up_calculated_variables
 
 !-------------------------------------------------------------------------------
 
