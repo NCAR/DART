@@ -1637,13 +1637,14 @@ num_dims = get_io_num_unique_dims(dom_id)
 write(*,'('' Number of dimensions  : '',I2)') num_dims
 write(*,'('' unlimdimid            : '',I2)') get_unlimited_dimid(dom_id)
 do jdim = 1, num_dims
-   write(*,200) jdim, &
-             get_original_dim_ID(     dom_id,jdim), &
+   write(*,199) jdim, &
+             !get_original_dim_ID(     dom_id,jdim), &
              get_io_unique_dim_length(dom_id,jdim), &
         trim(get_io_unique_dim_name(  dom_id,jdim))
 enddo
 write(*,*)
 
+199 format(4x,i2,', length = ',I8,', name = "',A,'"')
 200 format(4x,i2,': dim_id =',I2,', length = ',I8,', name = "',A,'"')
 201 format(4x,i2,':         ',2x,'  length = ',I8,', name = "',A,'"')
 

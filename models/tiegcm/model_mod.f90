@@ -57,7 +57,8 @@ use default_model_mod, only : adv_1step,                                &
                               pert_model_copies
 
 use state_structure_mod, only : add_domain, get_dart_vector_index, add_dimension_to_variable, &
-                                finished_adding_domain, state_structure_info
+                                finished_adding_domain, state_structure_info, &
+                                get_domain_size
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -234,8 +235,6 @@ call verify_variables()
 ! tiegcm_restart_file_name
 ! tiegcm_secondary_file_name
 ! calcualted variable VTEC
-
-call error_handler(E_ERR,'static_init_model', 'end of')
 
 call set_calendar_type('Gregorian')
 
@@ -1357,9 +1356,8 @@ call load_up_state_structure_from_file('tiegcm_restart_p.nc', nfields_restart, '
 call load_up_state_structure_from_file('tiegcm_s.nc', nfields_secondary, 'SECONDARY', SECONDARY_DOM)
 call load_up_calculated_variables(nfields_constructed, 'CALCULATE', CONSTRUCT_DOM)
 
-call state_structure_info(RESTART_DOM)
-call state_structure_info(SECONDARY_DOM)
-!call state_structure_info(CONSTRUCT_DOM) !HK state_structure_info is broken for spec domains
+model_size = get_domain_size(RESTART_DOM) + get_domain_size(SECONDARY_DOM) &
+                          + get_domain_size(CONSTRUCT_DOM)
 
 end subroutine verify_variables
 
@@ -1430,6 +1428,9 @@ logical, allocatable :: update_list(:)
 
 allocate(var_names(nvar), kind_list(nvar), &
      clamp_vals(nvar,2), update_list(nvar))
+
+update_list(:) = .true. ! default to update state variable
+clamp_vals(:,:) = MISSING_R8 ! default to no clamping
 
 j = 0
 do i = 1, nfields
