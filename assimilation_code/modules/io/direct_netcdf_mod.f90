@@ -91,7 +91,8 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_missing_value, get_add_offset, get_xtype, &
                                  get_index_start, get_index_end , get_num_dims, &
                                  create_diagnostic_structure, &
-                                 end_diagnostic_structure
+                                 end_diagnostic_structure, get_parameter_value, &
+                                 is_parameter_estimate
 
 use io_filenames_mod,     only : get_restart_filename, inherit_copy_units, &
                                  stage_metadata_type, get_file_description, &
@@ -837,12 +838,28 @@ integer,  intent(in)    :: domain
 integer :: i
 integer(i8) :: istart, iend
 integer(i8) :: var_size
+integer :: num_dims
 integer, allocatable :: dims(:)
+integer, allocatable :: slice_start(:) ! slice of variable
 integer :: ret, var_id
-
 logical :: missing_possible
 
 missing_possible = get_missing_ok_status()
+
+! check for a calcluated domain - set don't read these variables
+if ( is_parameter_estimate(domain) ) then
+
+   istart = 1
+
+   do i = start_var, end_var
+      var_size = get_variable_size(domain, i)
+      iend = istart + var_size - 1
+      var_block(istart:iend) = get_parameter_value(domain, i)
+      istart = istart + var_size
+   end do
+
+   return
+endif
 
 istart = 1
 
@@ -852,10 +869,19 @@ do i = start_var, end_var
    iend = istart + var_size - 1
 
    ! number of dimensions and length of each
-   allocate(dims(get_io_num_dims(domain, i)))
+   num_dims = get_io_num_dims(domain, i)
+   allocate(dims(num_dims))
+   allocate(slice_start(num_dims))
+   slice_start(:) = 1 ! default to read all dimensions start at 1
 
    dims = get_io_dim_lengths(domain, i)
 
+   ! read latest time slice - hack to get started with tiegcm
+   ! not sure if it will always be the last time slice
+   slice_start(num_dims) = dims(num_dims)
+   dims(num_dims) = 1
+   print*, 'dims', dims, 'slice start', slice_start
+ 
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
 
@@ -866,7 +892,7 @@ do i = start_var, end_var
 
    istart = istart + var_size
 
-   deallocate(dims)
+   deallocate(dims, slice_start)
 
 enddo
 
@@ -909,8 +935,11 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
    ! open netcdf file
    if (query_read_copy(name_handle, copy)) then
       netcdf_filename = get_restart_filename(name_handle, copy, domain)
-      ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
-      call nc_check(ret, 'read_transpose_single_task: opening', netcdf_filename)
+print*, 'netcdf filename ', netcdf_filename
+      if (.not. is_parameter_estimate(domain)) then
+         ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
+         call nc_check(ret, 'read_transpose_single_task: opening', netcdf_filename)
+      endif
    endif
 
    block_size = get_domain_size(domain)
@@ -919,9 +948,12 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
 
    if (query_read_copy(name_handle, copy)) then
       call read_variables(ncfile, vector, 1, get_num_variables(domain), domain)
-      ! close netcdf file
-      ret = nf90_close(ncfile)
-      call nc_check(ret, 'read_transpose_single_task: closing', netcdf_filename)
+
+      if (.not. is_parameter_estimate(domain)) then
+         ! close netcdf file
+         ret = nf90_close(ncfile)
+         call nc_check(ret, 'read_transpose_single_task: closing', netcdf_filename)
+      endif
       state_ens_handle%copies(copy, istart:iend) = vector
 
    endif

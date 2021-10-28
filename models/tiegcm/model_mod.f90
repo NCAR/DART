@@ -1359,6 +1359,10 @@ call load_up_calculated_variables(nfields_constructed, 'CALCULATE', CONSTRUCT_DO
 model_size = get_domain_size(RESTART_DOM) + get_domain_size(SECONDARY_DOM) &
                           + get_domain_size(CONSTRUCT_DOM)
 
+print*, 'restart size', get_domain_size(RESTART_DOM)
+print*, 'secondary size', get_domain_size(SECONDARY_DOM)
+print*, 'constructed size', get_domain_size(CONSTRUCT_DOM)
+
 end subroutine verify_variables
 
 !-------------------------------------------------------------------------------
@@ -1450,7 +1454,7 @@ do i = 1, nfields
    endif
 enddo
 
-domain_id(domain_num) = add_domain(nvar, var_names, kind_list, clamp_vals, update_list)
+domain_id(domain_num) = add_domain(nvar, var_names, kind_list, clamp_vals, update_list, .true.)
 
 do i = 1, nvar ! HK f10_7 and VTEC and anything else?
   if (var_names(i) == 'f10_7') then
@@ -1460,7 +1464,7 @@ do i = 1, nvar ! HK f10_7 and VTEC and anything else?
 
   !HK I don't understand why VTEC is a state variable vs. calculating it on the fly.
   if(var_names(i) == 'VTEC') then
-     call error_handler(E_MSG,'load_up_calculated_variables', 'VTEC not sure yet.')
+     call error_handler(E_ERR,'load_up_calculated_variables', 'VTEC not sure yet.')
   endif
 enddo
 
