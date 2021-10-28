@@ -308,6 +308,10 @@ type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
 type(obs_sequence_type),     intent(in)    :: obs_seq
 integer,                     intent(in)    :: keys(:)
 integer,                     intent(in)    :: ens_size, num_groups, obs_val_index
+! JLA: At present, this only needs to be inout because of the possible use of
+! non-determinstic obs_space adaptive inflation that is not currently supported.
+! Implementing that would require communication of the info about the inflation
+! values as each observation updated them.
 type(adaptive_inflate_type), intent(inout) :: inflate
 integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, ENS_INF_COPY
 integer,                     intent(in)    :: ENS_INF_SD_COPY
@@ -392,6 +396,9 @@ integer(i8)    :: t_limit(Ntimers)  ! limit on number printed
 real(digits12), allocatable :: elapse_array(:)
 
 integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
+
+! Just to make sure multiple tasks are running for tests
+write(*, *) 'my_task_id ', my_task_id()
 
 ! timing disabled by default
 timing(:)  = .false.
@@ -559,8 +566,6 @@ do i = 1, ens_handle%my_num_vars
 end do
 if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'get_state_meta_data')
 
-!call test_get_state_meta_data(my_state_loc, ens_handle%my_num_vars)
-
 !> optionally convert all state location verticals
 if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
    if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
@@ -570,10 +575,6 @@ if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
    endif
    if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'convert_vertical_state')
 endif
-
-! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING
-! INCREMENTS. OWNING PE WOULD SHIP IT'S PRIOR TO THIS ONE
-! BEFORE EACH INCREMENT.
 
 ! Get mean and variance of each group's observation priors for adaptive inflation
 ! Important that these be from before any observations have been used
@@ -682,56 +683,35 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
       obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
+
       ! Only value of 0 for DART QC field should be assimilated
       IF_QC_IS_OKAY: if(nint(obs_qc) ==0) then
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
 
          ! Compute the prior mean and variance for this observation
+         ! Note that these are before DA starts, so can be different from current obs_prior
          orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
             OBS_PRIOR_MEAN_END, owners_index)
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
 
-         ! Compute observation space increments for each group
-         do group = 1, num_groups
-            grp_bot = grp_beg(group)
-            grp_top = grp_end(group)
-            call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
-               obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
-               my_inflate_sd, net_a(group))
-         end do
-
-         ! Compute updated values for single state space inflation
-         SINGLE_SS_INFLATE: if(local_single_ss_inflate) then
-            ! Update for each group separately
-            do group = 1, num_groups
-               call update_single_state_space_inflation(inflate, my_inflate, my_inflate_sd, &
-                  ens_handle%copies(ENS_SD_COPY, 1), orig_obs_prior_mean(group), &
-                  orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, inflate_only)
-            end do
-         endif SINGLE_SS_INFLATE
-
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
       ! What gets broadcast depends on what kind of inflation is being done
-      !>@todo it should also depend on if vertical is being converted.  the last
-      !>two values aren't needed unless vertical conversion is happening.
-      !>@todo FIXME: this is messy, but should we have 6 different broadcasts,
-      !>the three below and three more which omit the 2 localization values?
-      !>how much does this cost in time? time this and see.
+      !@todo it should also depend on if vertical is being converted.
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
       if(local_varying_ss_inflate) then
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, &
             orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
             scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
-
       else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, &
+           orig_obs_prior_mean, orig_obs_prior_var, &
            net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
            scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
       else
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, &
            net_a, scalar1=obs_qc, &
            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
       endif
@@ -742,18 +722,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! I don't store this obs; receive the obs prior and increment from broadcast
       ! Also get qc and inflation information if needed
       ! also a converted vertical coordinate if needed
-      !>@todo FIXME see the comment in the broadcast_send() section about
-      !>the cost of sending unneeded values
       if(local_varying_ss_inflate) then
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, &
             orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
             scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
       else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, &
+            orig_obs_prior_mean, orig_obs_prior_var, &
             net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
             scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
       else
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, &
            net_a, scalar1=obs_qc, &
            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
       endif
@@ -775,6 +754,25 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !> because that's what we pass into the get_close_xxx() routines below.
    if (is_doing_vertical_conversion) &
       call set_vertical(base_obs_loc, vertvalue_obs_in_localization_coord, whichvert_obs_in_localization_coord)
+
+   ! Compute observation space increments for each group
+   do group = 1, num_groups
+      grp_bot = grp_beg(group)
+      grp_top = grp_end(group)
+      call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
+         obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
+         my_inflate_sd, net_a(group))
+   end do
+
+   ! Compute updated values for single state space inflation
+   if(local_single_ss_inflate) then
+      ! Update for each group separately
+      do group = 1, num_groups
+         call update_single_state_space_inflation(inflate, my_inflate, my_inflate_sd, &
+            ens_handle%copies(ENS_SD_COPY, 1), orig_obs_prior_mean(group), &
+            orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, inflate_only)
+      end do
+   endif
    
    ! Can compute prior mean and variance of obs for each group just once here
    do group = 1, num_groups
