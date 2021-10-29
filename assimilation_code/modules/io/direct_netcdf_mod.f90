@@ -1146,8 +1146,10 @@ COPIES: do c = 1, ens_size
 
       if (query_read_copy(name_handle, my_copy)) then
          netcdf_filename = get_restart_filename(name_handle, my_copy, domain)
-         ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
-         call nc_check(ret, 'read_transpose opening', netcdf_filename)
+         if (.not. is_parameter_estimate(domain)) then
+           ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
+           call nc_check(ret, 'read_transpose opening', netcdf_filename)
+         endif
       endif
 
    endif
@@ -1244,8 +1246,10 @@ COPIES: do c = 1, ens_size
    ! close netcdf file
    if (is_reader) then
       if (query_read_copy(name_handle, my_copy)) then
-         ret = nf90_close(ncfile)
-         call nc_check(ret, 'read_transpose closing', netcdf_filename)
+         if (.not. is_parameter_estimate(domain)) then
+           ret = nf90_close(ncfile)
+           call nc_check(ret, 'read_transpose closing', netcdf_filename)
+         endif
       endif
    endif
 
