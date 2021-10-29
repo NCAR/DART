@@ -1538,7 +1538,7 @@ do i = 1, num
         height = (height1 + height2) / 2.0_r8
    
       case default
-       call error_handler(E_ERR, 'get_height', 'expecting ilev or ilat dimension')
+       call error_handler(E_ERR, 'convert_vertical_state', 'expecting ilev or ilat dimension')
    
    end select
    
@@ -1676,81 +1676,6 @@ lev_bottom = 0
 !HK endif
 
 end subroutine vert_interp
-
-
-!-------------------------------------------------------------------------------
-
-
-function get_height(ivar, lonindex, latindex, levindex)
-! TIEGCM's 'natural' vertical coordinate is pressure, DART needs it in height.
-!
-! Need the ensemble mean value of ZG for this location.
-!
-! ZG exists on ilev coordinates ... "interface levels"
-! Variables that have the same vertical coordinate system are easy.
-! All the variables on "midpoint levels" must be computed.
-!
-! ilev:long_name = "interface levels" ;
-!  lev:long_name = "midpoint levels" ;
-!
-! For example ... IF:
-! ilev index    1      2      3      4    ...  27    28    29
-! ilev value  -7.00, -6.50, -6.00, -5.50, ... 6.00, 6.50, 7.00 ;
-!  lev value      -6.75, -6.25, -5.75, -5.25, ... 6.25, 6.75;
-!  lev index        1      2      3      4    ...  27    28
-
-integer, intent(in) :: ivar
-integer, intent(in) :: lonindex
-integer, intent(in) :: latindex
-integer, intent(in) :: levindex
-real(r8)            :: get_height
-
-integer  ::  index1,  index2
-
-!HK if (trim(progvar(ivar)%verticalvar) == 'ilev') then
-!HK 
-!HK    if (levindex > nilev) then
-!HK       write(string1,*)'requesting out-of-bounds level [',levindex,']'
-!HK       write(string2,*)'for variable ',trim(progvar(ivar)%varname)
-!HK       call error_handler(E_ERR,'get_height', string1, &
-!HK                          source, revision, revdate, text2=string2)
-!HK    endif
-!HK 
-!HK      index1 = get_dart_vector_index(ivarZG, indx1=lonindex, indx2=latindex, indx3=levindex)
-!HK      get_height = ens_mean(index1)
-!HK 
-!HK elseif (trim(progvar(ivar)%verticalvar) == 'lev') then
-!HK 
-!HK    if (levindex > nlev) then
-!HK       write(string1,*)'requesting out-of-bounds level [',levindex,']'
-!HK       write(string2,*)'for variable ',trim(progvar(ivar)%varname)
-!HK       call error_handler(E_ERR,'get_height', string1, &
-!HK                          source, revision, revdate, text2=string2)
-!HK    endif
-!HK 
-!HK    ! Since ZG is defined for level interfaces, requests for heights on 
-!HK    ! midpoints must be calculated.
-!HK    !
-!HK    ! incoming index  1 should be an average of ZG ilev 1+2
-!HK    ! incoming index  2 should be an average of ZG ilev 2+3
-!HK    ! ...
-!HK    ! incoming index 28 should be an average of ZG ilev 28+29
-!HK    ! incoming index 29 is not possible
-!HK 
-!HK    index1     = get_dart_vector_index(ivarZG, indx1=lonindex, indx2=latindex, indx3=levindex   )
-!HK    index2     = get_dart_vector_index(ivarZG, indx1=lonindex, indx2=latindex, indx3=levindex+1 )
-!HK    get_height = (ens_mean(index1) + ens_mean(index2)) / 2.0_r8
-!HK 
-!HK else
-!HK    write(string1,*)'unknown vertical coordinate system <', &
-!HK                                   trim(progvar(ivar)%verticalvar),'>'
-!HK    write(string2,*)'on variable ',trim(progvar(ivar)%varname)
-!HK    call error_handler(E_ERR,'get_height', string1, &
-!HK                       source, revision, revdate, text2=string2)
-!HK endif
-
-end function get_height
-
 
 !-------------------------------------------------------------------------------
 
