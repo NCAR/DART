@@ -58,11 +58,13 @@ use default_model_mod, only : adv_1step,                                &
 
 use state_structure_mod, only : add_domain, get_dart_vector_index, add_dimension_to_variable, &
                                 finished_adding_domain, state_structure_info, &
-                                get_domain_size
+                                get_domain_size, set_parameter_value
 
 use ensemble_manager_mod, only : ensemble_type
 
-use typesizes
+use netcdf_utilities_mod, only : nc_synchronize_file
+
+use typesizes  !HK do we needs these with netcdf_utilities_mod?
 use netcdf
 
 implicit none
@@ -582,43 +584,13 @@ end subroutine end_model
 
 
 !-------------------------------------------------------------------------------
-
+! Writes the model-specific attributes to a netCDF file.
+! What should go in here?
 
 subroutine nc_write_model_atts( ncid, dom_id ) 
 
-! TJH 20 Dec 2013 -- Writes the model-specific attributes to a netCDF file.
-!     This includes coordinate variables and some metadata, but NOT
-!     the model state vector. We do have to allocate SPACE for the model
-!     state vector, but that variable gets filled as the model advances.
-!
-! TJH 20 Dec 2013 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-
 integer, intent(in)  :: ncid      ! netCDF file identifier
 integer, intent(in)  :: dom_id
-integer              :: ierr          ! return value of function !HK Nope
-
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-
-integer :: StateVarDimID   ! netCDF pointer to state variable dimension (model size)
-integer :: MemberDimID     ! netCDF pointer to dimension of ensemble    (ens_size)
-integer :: TimeDimID       ! netCDF pointer to time dimension           (unlimited)
-
-integer :: StateVarVarID   ! netCDF pointer to state variable coordinate array
-integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
-
-integer :: myndims
-integer :: ivar, VarID
-integer, dimension(NF90_MAX_VAR_DIMS) :: mydimids
-character(len=NF90_MAX_NAME) :: varname
-
-integer :: lonDimID, latDimID, levDimID, ilevDimID
-integer :: lonVarID, latVarID, levVarID, ilevVarID
 
 !-------------------------------------------------------------------------------
 ! variables for the namelist output
@@ -629,72 +601,8 @@ integer :: LineLenDimID, nlinesDimID, nmlVarID
 integer :: nlines, linelen
 logical :: has_tiegcm_namelist
 
-!-------------------------------------------------------------------------------
-! we are going to need these to record the creation date in the netCDF file.
-! This is entirely optional, but nice.
-!-------------------------------------------------------------------------------
-
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1
-
-real(r8), allocatable :: temp_lon(:)
-
-integer :: i
 
 if ( .not. module_initialized ) call static_init_model
-
-!-------------------------------------------------------------------------------
-! make sure ncid refers to an open netCDF file,
-! and then put into define mode.
-!-------------------------------------------------------------------------------
-
-ierr = -1 ! assume things go poorly
-
-call nc_check(nf90_Inquire(ncid, nDimensions, nVariables, &
-              nAttributes, unlimitedDimID), 'nc_write_model_atts','inquire')
-call nc_check(nf90_Redef(ncid),'nc_write_model_atts','redef')
-
-!-------------------------------------------------------------------------------
-! We need the dimension ID for the number of copies/ensemble members, and
-! we might as well check to make sure that Time is the Unlimited dimension.
-! Our job is create the 'model size' dimension.
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_inq_dimid(ncid=ncid, name='NMLlinelen', dimid = linelenDimID), &
-       'nc_write_model_atts', 'inq_dimid NMLlinelen')
-call nc_check(nf90_inq_dimid(ncid=ncid, name='copy', dimid=MemberDimID),&
-       'nc_write_model_atts', 'inq_dimid copy')
-call nc_check(nf90_inq_dimid(ncid=ncid, name='time', dimid=  TimeDimID),&
-       'nc_write_model_atts', 'inq_dimid time')
-
-if ( TimeDimID /= unlimitedDimId ) then
-   write(string1,*)'Time Dimension ID ',TimeDimID, &
-                     ' should equal Unlimited Dimension ID',unlimitedDimID
-   call error_handler(E_ERR,'nc_write_model_atts', string1, source, revision, revdate)
-endif
-
-
-!-------------------------------------------------------------------------------
-! Write Global Attributes
-!-------------------------------------------------------------------------------
-
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
-
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date' ,str1    ),&
-       'nc_write_model_atts', 'creation put')
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'model_source'  ,source  ),&
-       'nc_write_model_atts', 'source put')
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'model_revision',revision),&
-       'nc_write_model_atts', 'revision put')
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'model_revdate' ,revdate ),&
-       'nc_write_model_atts', 'revdate put')
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'model','TIEGCM'         ),&
-       'nc_write_model_atts', 'model put')
 
 !-------------------------------------------------------------------------------
 ! Determine shape of namelist.
@@ -708,45 +616,41 @@ else
   has_tiegcm_namelist = .false.
 endif
 
-if (has_tiegcm_namelist) then
-   allocate(textblock(nlines))
-   textblock = ''
-
-   call nc_check(nf90_def_dim(ncid=ncid, name='tiegcmNMLnlines', &
-          len = nlines, dimid = nlinesDimID), &
-          'nc_write_model_atts', 'def_dim tiegcmNMLnlines')
-
-   call nc_check(nf90_def_var(ncid,name='tiegcm_nml', xtype=nf90_char, &
-          dimids = (/ linelenDimID, nlinesDimID /), varid=nmlVarID), &
-          'nc_write_model_atts', 'def_var tiegcm_namelist')
-
-   call nc_check(nf90_put_att(ncid, nmlVarID, 'long_name', &
-          'contents of '//trim(tiegcm_namelist_file_name)), &
-          'nc_write_model_atts', 'put_att tiegcm_namelist')
-
-endif
-
-
-!-------------------------------------------------------------------------------
-! Fill the variables we can
-!-------------------------------------------------------------------------------
-
-if (has_tiegcm_namelist) then
-   call file_to_text(tiegcm_namelist_file_name, textblock)
-   call nc_check(nf90_put_var(ncid, nmlVarID, textblock ), &
-                 'nc_write_model_atts', 'put_var nmlVarID')
-   deallocate(textblock)
-endif
+! HK the netcdf calls need updating to use netcdf utilities
+!if (has_tiegcm_namelist) then
+!   allocate(textblock(nlines))
+!   textblock = ''
+!
+!   call nc_check(nf90_def_dim(ncid=ncid, name='tiegcmNMLnlines', &
+!          len = nlines, dimid = nlinesDimID), &
+!          'nc_write_model_atts', 'def_dim tiegcmNMLnlines')
+!
+!   call nc_check(nf90_def_var(ncid,name='tiegcm_nml', xtype=nf90_char, &
+!          dimids = (/ linelenDimID, nlinesDimID /), varid=nmlVarID), &
+!          'nc_write_model_atts', 'def_var tiegcm_namelist')
+!
+!   call nc_check(nf90_put_att(ncid, nmlVarID, 'long_name', &
+!          'contents of '//trim(tiegcm_namelist_file_name)), &
+!          'nc_write_model_atts', 'put_att tiegcm_namelist')
+!
+!endif
+!
+!
+!!-------------------------------------------------------------------------------
+!! Fill the variables we can
+!!-------------------------------------------------------------------------------
+!
+!if (has_tiegcm_namelist) then
+!   call file_to_text(tiegcm_namelist_file_name, textblock)
+!   call nc_check(nf90_put_var(ncid, nmlVarID, textblock ), &
+!                 'nc_write_model_atts', 'put_var nmlVarID')
+!   deallocate(textblock)
+!endif
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
-
-call nc_check(nf90_sync(ncid), 'nc_write_model_atts', 'sync')
-if (do_output() .and. (debug > 1)) &
-     write (*,*) 'nc_write_model_atts: netCDF file ', ncid, ' is synched '
-
-ierr = 0 ! If we got here, things went well.
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 
@@ -1460,6 +1364,7 @@ do i = 1, nvar ! HK f10_7 and VTEC and anything else?
   if (var_names(i) == 'f10_7') then
     ! dimensions to match what? Lanai has single value f10_7
     call add_dimension_to_variable(domain_id(domain_num), i, 'parameter', 1)
+    call set_parameter_value(domain_id(domain_num), i, f10_7)
   endif
 
   !HK I don't understand why VTEC is a state variable vs. calculating it on the fly.

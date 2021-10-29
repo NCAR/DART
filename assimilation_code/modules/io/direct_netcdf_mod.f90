@@ -885,7 +885,7 @@ do i = start_var, end_var
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
 
-   ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=dims)
+   ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=dims, start=slice_start)
    call nc_check(ret, 'read_variables: nf90_get_var',trim(get_variable_name(domain,i)) )
 
    if (missing_possible) call set_dart_missing_value(var_block(istart:iend), domain, i)
@@ -1554,7 +1554,9 @@ logical,  intent(in)    :: force_copy
 
 integer(i8) :: istart, iend, var_size
 integer :: i, ret, var_id
+integer :: num_dims
 integer, allocatable :: dims(:)
+integer, allocatable :: slice_start(:) ! slice of variable
 
 logical :: missing_possible
 
@@ -1586,19 +1588,29 @@ do i = start_var, end_var
       endif
      
       ! number of dimensions and length of each
-      allocate(dims(get_io_num_dims(domain, i)))
+      num_dims = get_io_num_dims(domain, i)
+      allocate(dims(num_dims))
+      allocate(slice_start(num_dims))
+      slice_start(:) = 1 ! default to read all dimensions start at 1
 
       dims = get_io_dim_lengths(domain, i)
+      ! write to latest time slice - hack to get started with tiegcm
+      ! not sure if it will always be the last time slice
+      ! What about if you are creating a new file? dimensions for input vs output
+      slice_start(num_dims) = dims(num_dims)
+      dims(num_dims) = 1
+      print*, 'dims', dims, 'slice start', slice_start
+
 !>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
       call nc_check(ret, 'write_variables:', 'nf90_inq_varid "'//trim(get_variable_name(domain,i))//'"')
 
       if (missing_possible) call set_model_missing_value(var_block(istart:iend), domain, i)
 
-      ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
+      ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims, start=slice_start)
       call nc_check(ret, 'write_variables:', 'nf90_put_var "'//trim(get_variable_name(domain,i))//'"')
 
-      deallocate(dims)
+      deallocate(dims, slice_start)
    endif
 
    istart = istart + var_size
@@ -1649,7 +1661,7 @@ write(msgstring,*) 'Creating output file ', trim(filename)
 call error_handler(E_ALLMSG, routine, msgstring)
 
 ! What file options do you want?
-create_mode = ior(NF90_CLOBBER, NF90_64BIT_OFFSET)
+create_mode = ior(NF90_CLOBBER, NF90_CLASSIC_MODEL)
 ret = nf90_create(filename, create_mode, ncfile_out)
 call nc_check(ret, routine, 'nf90_create "'//trim(filename)//'"')
 

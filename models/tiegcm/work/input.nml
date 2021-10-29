@@ -144,7 +144,6 @@
                'O2',    'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
                'TN',    'QTY_TEMPERATURE',               '0.0',     '6000.0',  'restart',    'NO_COPY_BACK',
                'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary',  'NO_COPY_BACK',
-               'VTEC',  'QTY_VERTICAL_TEC',              'NA',      'NA',      'calculate',  'NO_COPY_BACK' 
    /
 
 
@@ -286,9 +285,9 @@
    /
 
 &model_mod_check_nml
-   input_state_files     = "tiegcm_restart_p.nc"
-   output_state_files    = "mmc_output.nc"
-   test1thru             = 1
+   input_state_files     = "tiegcm_restart_p.nc", "tiegcm_s.nc"
+   output_state_files    = "mmc_output_p.nc", "mmc_output_s.nc", "params.nc"
+   test1thru             = 2
    run_tests             = 0,1,2,3,4,5,7
    x_ind                 = 36288
    loc_of_interest       = 240.0, 12.49, 200000.0

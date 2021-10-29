@@ -1569,7 +1569,7 @@ function get_parameter_value(dom_id, var_id)
 
 integer, intent(in)  :: dom_id ! domain identifier
 integer, intent(in)  :: var_id ! order from add_domain_from_spec
-logical :: get_parameter_value
+real(r8) :: get_parameter_value
 
 
 if ( .not. state%domain(dom_id)%parameter_estimate) then
