@@ -95,9 +95,6 @@ public :: adv_1step,              &
           init_time,              &
           pert_model_copies
 
-!TIEGCM specific routines
-public :: get_f107_value
-
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = 'tiegcm/model_mod.f90'
 character(len=32 ), parameter :: revision = ''
@@ -796,38 +793,6 @@ end subroutine get_close_obs
 
 
 !-------------------------------------------------------------------------------
-
-!===============================================================================
-! TIEGCM public routines
-!===============================================================================
-
-
-function get_f107_value(x)
-real(r8), dimension(:), intent(in) :: x
-real(r8)                           :: get_f107_value
-
-integer :: ivar
-
-if ( .not. module_initialized ) call static_init_model
-
-! If the f10_7 is part of the DART state, return that value.
-! If it is not part of the DART state, just return the value from
-! the TIEGCM namelist.
-
-if (estimate_f10_7) then
-
- !HK get_state of f10_7
-
-   call error_handler(E_ERR,'get_f107_value', 'no f10_7 in DART state', &
-        source, revision, revdate)
-
-else
-   get_f107_value = f10_7
-endif
-
-end function get_f107_value
-
-
 
 !===============================================================================
 ! Routines below here are private to the module
