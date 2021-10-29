@@ -58,7 +58,7 @@ use default_model_mod, only : adv_1step,                                &
 
 use state_structure_mod, only : add_domain, get_dart_vector_index, add_dimension_to_variable, &
                                 finished_adding_domain, state_structure_info, &
-                                get_domain_size, set_parameter_value
+                                get_domain_size, set_parameter_value, get_model_variable_indices
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -549,7 +549,7 @@ end function shortest_time_between_assimilations
 !-------------------------------------------------------------------------------
 
 
-subroutine get_state_meta_data(index_in, location, var_kind)
+subroutine get_state_meta_data(index_in, location, var_qty)
 ! Given an integer index into the state vector structure, returns the
 ! associated location. A second intent(out) optional argument kind
 ! can be returned if the model has more than one type of field (for
@@ -559,16 +559,24 @@ subroutine get_state_meta_data(index_in, location, var_kind)
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer, optional,   intent(out) :: var_kind
+integer, optional,   intent(out) :: var_qty
 
 integer  :: remainder
 integer  :: relindx, absindx
 integer  :: lon_index, lat_index, lev_index
+integer  :: local_qty, var_id, dom_id
 integer  :: ivar, seconds, days
 real(r8) :: height, longitude
 
 if ( .not. module_initialized ) call static_init_model
 
+call get_model_variable_indices(index_in, lon_index, lat_index, lev_index, var_id=var_id, dom_id=dom_id, kind_index=local_qty)
+
+!HK check for f10.7 by varname?
+
+!location  = set_location(lons(lon_index), lats(lat_index), height, VERTISHEIGHT)
+
+if(present(var_qty)) var_qty = local_qty
 
 end subroutine get_state_meta_data
 
