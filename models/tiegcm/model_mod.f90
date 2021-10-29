@@ -59,7 +59,7 @@ use default_model_mod, only : adv_1step,                                &
 use state_structure_mod, only : add_domain, get_dart_vector_index, add_dimension_to_variable, &
                                 finished_adding_domain, state_structure_info, &
                                 get_domain_size, set_parameter_value, get_model_variable_indices, &
-                                get_num_dims, get_dim_name
+                                get_num_dims, get_dim_name, get_variable_name
 
 use distributed_state_mod, only : get_state
 
@@ -568,18 +568,45 @@ integer  :: remainder
 integer  :: relindx, absindx
 integer  :: lon_index, lat_index, lev_index
 integer  :: local_qty, var_id, dom_id
-integer  :: ivar, seconds, days
-real(r8) :: height, longitude
+integer  :: seconds, days ! for f10.7 location
+real(r8) :: longitude ! for f10.7 location
+character(len=NF90_MAX_NAME) :: dim_name
+integer  :: d
 
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, lev_index, var_id=var_id, dom_id=dom_id, kind_index=local_qty)
 
-!HK check for f10.7 by varname?
-
-!location  = set_location(lons(lon_index), lats(lat_index), height, VERTISHEIGHT)
-
 if(present(var_qty)) var_qty = local_qty
+
+!HK check for f10.7 by varname?
+if (get_variable_name(dom_id, var_id) == 'f10_7') then
+   ! f10_7 is most accurately located at local noon at equator.
+   ! 360.0 degrees in 86400 seconds, 43200 secs == 12:00 UTC == longitude 0.0
+
+   call get_time(state_time, seconds, days)
+   longitude = 360.0_r8 * real(seconds,r8) / 86400.0_r8 - 180.0_r8
+   if (longitude < 0.0_r8) longitude = longitude + 360.0_r8
+   location = set_location(longitude, 0.0_r8,  400000.0_r8, VERTISUNDEF)
+   return
+end if
+
+! search for either ilev or lev
+dim_name = 'null'
+do d = 1, get_num_dims(dom_id, var_id)
+   dim_name = get_dim_name(dom_id, var_id, d)
+   if (dim_name == 'ilev' .or. dim_name == 'lev') exit
+enddo
+
+select case (trim(dim_name))
+   case ('ilev')
+      location  = set_location(lons(lon_index), lats(lat_index), ilevs(lev_index), VERTISLEVEL)
+   case ('lev') ! height on midpoint
+      location  = set_location(lons(lon_index), lats(lat_index), levs(lev_index), VERTISLEVEL)
+   case default
+    call error_handler(E_ERR, 'convert_vertical_state', 'expecting ilev or ilat dimension')
+    ! HK TODO 2D variables.
+end select
 
 end subroutine get_state_meta_data
 
@@ -695,7 +722,7 @@ subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
 ! vertical coordinates to a common coordinate.
 ! FOR NOW VERTICAL LOCALIZATION IS DONE ONLY IN HEIGHT (ZG)
 ! OBS VERTICAL LOCATION IS GIVEN IN HEIGHT (model_interpolate)
-! STATE VERTICAL LOCATION IS GIVEN IN HEIGHT (get_state_meta_data)
+! STATE VERTICAL LOCATION IS GIVEN IN HEIGHT
 
 ! Note that both base_obs_loc and obs_loc are intent(inout), meaning that these
 ! locations are possibly modified here and returned as such to the calling
