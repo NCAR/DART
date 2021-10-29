@@ -791,8 +791,73 @@ integer                              :: k, t_ind
 
 end subroutine get_close_obs
 
+!-------------------------------------------------------------------------------
+
+subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
+                                which_vert, status)
+
+type(ensemble_type), intent(in)    :: state_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer,             intent(in)    :: loc_types(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: status(:)
+
+end subroutine convert_vertical_obs
 
 !-------------------------------------------------------------------------------
+! HK what can you localize in? height only?
+subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
+                                  which_vert, istatus)
+
+type(ensemble_type), intent(in)    :: state_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer(i8),         intent(in)    :: loc_indx(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: istatus
+
+integer :: var_id, dom_id, lon_index, lat_index, lev_index
+integer :: i, d
+real(r8) :: height(1), height1(1), height2(1)
+character(len=NF90_MAX_NAME) :: dim_name
+
+istatus = 0
+
+do i = 1, num
+
+   call get_model_variable_indices(loc_indx(i), lon_index, lat_index, lev_index, var_id=var_id, dom_id=dom_id)
+   
+   ! search for either ilev or lev
+   dim_name = 'null'
+   do d = 1, get_num_dims(dom_id, var_id)
+      dim_name = get_dim_name(dom_id, var_id, d)
+      if (dim_name == 'ilev' .or. dim_name == 'lev') exit
+   enddo
+   
+   select case (trim(dim_name))
+      case ('ilev')
+         height = get_state(loc_indx(i), state_handle)
+   
+      case ('lev') ! height on midpoint
+        height1 = get_state(loc_indx(i), state_handle)
+        height2 = get_state(get_dart_vector_index(lon_index, lat_index, loc_indx(i)+1, dom_id, var_id), state_handle)
+        height = (height1 + height2) / 2.0_r8
+   
+      case default
+       call error_handler(E_ERR, 'convert_vertical_state', 'expecting ilev or ilat dimension')
+   
+   end select
+   
+   locs(i) = set_location(lons(lon_index), lats(lat_index), height(1), VERTISHEIGHT)
+
+end do
+
+!-------------------------------------------------------------------------------
+end subroutine convert_vertical_state
+
 
 !===============================================================================
 ! Routines below here are private to the module
@@ -1474,72 +1539,6 @@ deallocate( delta_ZG, NE_middle )
 
 end subroutine create_vtec
 
-!-------------------------------------------------------------------------------
-
-subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
-                                which_vert, status)
-
-type(ensemble_type), intent(in)    :: state_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer,             intent(in)    :: loc_types(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status(:)
-
-end subroutine convert_vertical_obs
-
-!-------------------------------------------------------------------------------
-! HK what can you localize in? height only?
-subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
-                                  which_vert, istatus)
-
-type(ensemble_type), intent(in)    :: state_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer(i8),         intent(in)    :: loc_indx(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: istatus
-
-integer :: var_id, dom_id, lon_index, lat_index, lev_index
-integer :: i, d
-real(r8) :: height(1), height1(1), height2(1)
-character(len=NF90_MAX_NAME) :: dim_name
-
-istatus = 0
-
-do i = 1, num
-
-   call get_model_variable_indices(loc_indx(i), lon_index, lat_index, lev_index, var_id=var_id, dom_id=dom_id)
-   
-   ! search for either ilev or lev
-   dim_name = 'null'
-   do d = 1, get_num_dims(dom_id, var_id)
-      dim_name = get_dim_name(dom_id, var_id, d)
-      if (dim_name == 'ilev' .or. dim_name == 'lev') exit
-   enddo
-   
-   select case (trim(dim_name))
-      case ('ilev')
-         height = get_state(loc_indx(i), state_handle)
-   
-      case ('lev') ! height on midpoint
-        height1 = get_state(loc_indx(i), state_handle)
-        height2 = get_state(get_dart_vector_index(lon_index, lat_index, loc_indx(i)+1, dom_id, var_id), state_handle)
-        height = (height1 + height2) / 2.0_r8
-   
-      case default
-       call error_handler(E_ERR, 'convert_vertical_state', 'expecting ilev or ilat dimension')
-   
-   end select
-   
-   locs(i) = set_location(lons(lon_index), lats(lat_index), height(1), VERTISHEIGHT)
-
-end do
-
-
-end subroutine convert_vertical_state
 
 !-------------------------------------------------------------------------------
 
