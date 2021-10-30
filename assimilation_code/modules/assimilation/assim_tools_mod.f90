@@ -57,6 +57,7 @@ use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,    
 use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_inflate,    &
                                  do_varying_ss_inflate,                                   &
                                  update_inflation, update_single_state_space_inflation,   &
+                                 update_varying_state_space_inflation,                    &
                                  inflate_ens, adaptive_inflate_type,                      &
                                  deterministic_inflate, solve_quadratic
 
@@ -326,13 +327,9 @@ real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
 real(r8) :: reg_factor, impact_factor
 real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
 real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
-real(r8) :: varying_ss_inflate, varying_ss_inflate_sd
-real(r8) :: ss_inflate_base, obs_qc, cutoff_rev, cutoff_orig
-real(r8) :: gamma, ens_obs_mean, ens_obs_var, ens_var_deflate
-real(r8) :: r_mean, r_var
+real(r8) :: obs_qc, cutoff_rev, cutoff_orig
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
 real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
-real(r8) :: diff_sd, outlier_ratio
 real(r8) :: vertvalue_obs_in_localization_coord, whichvert_real
 real(r8), allocatable :: close_obs_dist(:)
 real(r8), allocatable :: close_state_dist(:)
@@ -375,7 +372,6 @@ type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
 type(time_type)      :: obs_time, this_obs_time
 
-logical :: do_adapt_inf_update
 logical :: allow_missing_in_state
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
@@ -642,44 +638,23 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
-      ! What gets broadcast depends on what kind of inflation is being done
-      !@todo it should also depend on if vertical is being converted.
+      ! orig_obs_prior_mean and orig_obs_prior_var only used with adaptive inflation
+      ! my_inflate and my_inflate_sd only used with single state space inflation
+      ! vertvalue_obs_in_localization_coord and whichvert_real only used for vertical
+      ! coordinate transformation
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
-      if(local_varying_ss_inflate) then
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
-            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
-      else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, &
-           orig_obs_prior_mean, orig_obs_prior_var, &
-           net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
-           scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
-      else
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, &
-           net_a, scalar1=obs_qc, &
-           scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
-      endif
+      call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior,    &
+         net_a, orig_obs_prior_mean, orig_obs_prior_var,                   &
+         scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
+         scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
 
    ! Next block is done by processes that do NOT own this observation
    !-----------------------------------------------------------------------
    else
-      ! I don't store this obs; receive the obs prior and increment from broadcast
-      ! Also get qc and inflation information if needed
-      ! also a converted vertical coordinate if needed
-      if(local_varying_ss_inflate) then
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
-            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
-      else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, &
-            orig_obs_prior_mean, orig_obs_prior_var, &
-            net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
-            scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
-      else
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, &
-           net_a, scalar1=obs_qc, &
-           scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
-      endif
+      call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior,    &
+         net_a, orig_obs_prior_mean, orig_obs_prior_var,                   & 
+         scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
+         scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
       whichvert_obs_in_localization_coord = nint(whichvert_real)
 
    endif
@@ -876,15 +851,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
       endif
 
-      ! Get the initial values of inflation for this variable if state varying inflation
-      if(local_varying_ss_inflate) then
-         varying_ss_inflate    = ens_handle%copies(ENS_INF_COPY,    state_index)
-         varying_ss_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, state_index)
-      else
-         varying_ss_inflate    = 0.0_r8
-         varying_ss_inflate_sd = 0.0_r8
-      endif
-
       ! Compute the distance and covariance factor
       cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
          base_obs_loc, base_obs_type, my_state_loc(state_index), my_state_kind(state_index))
@@ -905,19 +871,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       do group = 1, num_groups
          grp_bot = grp_beg(group)
          grp_top = grp_end(group)
-         ! Do update of state, correl only needed for varying ss inflate
-         if(local_varying_ss_inflate .and. varying_ss_inflate > 0.0_r8 .and. &
-            varying_ss_inflate_sd > 0.0_r8) then
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-               ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
-               increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
-         else
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-               ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
-               increment(grp_bot:grp_top), reg_coef(group), net_a(group))
-         endif
+         ! Do update of state, correl only needed for varying ss inflate but compute for all
+         call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+            obs_prior_var(group), obs_inc(grp_bot:grp_top), &
+            ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
+            increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
       end do
 
       ! Compute an information factor for impact of this observation on this state
@@ -941,64 +899,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       ! Compute spatially-varying state space inflation
       if(local_varying_ss_inflate) then
-         ! base is the initial inflate value for this state variable
-         ss_inflate_base = ens_handle%copies(ENS_SD_COPY, state_index)
-         ! Loop through each group to update inflation estimate
-         GroupInflate: do group = 1, num_groups
-            if(varying_ss_inflate > 0.0_r8 .and. varying_ss_inflate_sd > 0.0_r8) then
-               ! Gamma is less than 1 for varying ss, see adaptive inflate module
-               gamma = reg_factor * abs(correl(group))
-               ! Deflate the inflated variance using the INITIAL state inflate
-               ! value (before these obs started gumming it up).
-               ens_obs_mean = orig_obs_prior_mean(group)
-               ens_obs_var =  orig_obs_prior_var(group)
-
-               ! Remove the impact of inflation to allow efficient single pass with assim.
-               if ( abs(gamma) > small ) then
-                  ens_var_deflate = ens_obs_var / &
-                     (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
-               else
-                  ens_var_deflate = ens_obs_var
-               endif
-
-               ! If this is inflate only (i.e. posterior) remove impact of this obs.
-               if(inflate_only .and. &
-                     ens_var_deflate               > small .and. &
-                     obs_err_var                   > small .and. &
-                     obs_err_var - ens_var_deflate > small ) then
-                  r_var  = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
-                  r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
-               else
-                  r_var = ens_var_deflate
-                  r_mean = ens_obs_mean
-               endif
-
-               ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
-               ! Update the inflation values
-               call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
-                  r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
-            else
-               ! if we don't go into the previous if block, make sure these
-               ! have good values going out for the block below
-               r_mean = orig_obs_prior_mean(group)
-               r_var =  orig_obs_prior_var(group)
-            endif
-
-            ! Update adaptive values if posterior outlier_ratio test doesn't fail.
-            ! Match code in obs_space_diags() in filter.f90
-            do_adapt_inf_update = .true.
-            if (inflate_only) then
-               diff_sd = sqrt(obs_err_var + r_var)
-               if (diff_sd > 0.0_r8) then
-                  outlier_ratio = abs(obs(1) - r_mean) / diff_sd
-                  do_adapt_inf_update = (outlier_ratio <= 3.0_r8)
-               endif
-            endif
-            if (do_adapt_inf_update) then
-               ens_handle%copies(ENS_INF_COPY, state_index) = varying_ss_inflate
-               ens_handle%copies(ENS_INF_SD_COPY, state_index) = varying_ss_inflate_sd
-            endif
-         end do GroupInflate
+         do group = 1, num_groups
+            call update_varying_state_space_inflation(inflate,                     &
+               ens_handle%copies(ENS_INF_COPY, state_index),                       &
+               ens_handle%copies(ENS_INF_SD_COPY, state_index),                    &
+               ens_handle%copies(ENS_SD_COPY, state_index),                        &
+               orig_obs_prior_mean(group), orig_obs_prior_var(group), obs(1),      &
+               obs_err_var, grp_size, reg_factor, correl(group), inflate_only)
+         end do
       endif
 
    end do STATE_UPDATE

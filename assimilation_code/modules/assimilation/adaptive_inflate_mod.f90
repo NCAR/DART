@@ -19,18 +19,18 @@ use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, send_minmax_
 implicit none
 private
 
-public :: update_inflation,                                 do_obs_inflate,     &
-          update_single_state_space_inflation,                                  &
-          do_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,        &
-          adaptive_inflate_init,    adaptive_inflate_type,                      &
-                                    deterministic_inflate,  solve_quadratic,    &
-          log_inflation_info,       get_minmax_task_zero,   mean_from_restart,  &
-          sd_from_restart,                                                      &
-          output_inf_restart,       get_inflate_mean,       get_inflate_sd,     &
-          get_is_prior,             get_is_posterior,       do_ss_inflate,      &
-          set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy, &
+public :: update_inflation,                                 do_obs_inflate,           &
+          update_single_state_space_inflation, update_varying_state_space_inflation,  &
+          do_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,              &
+          adaptive_inflate_init,    adaptive_inflate_type,                            &
+                                    deterministic_inflate,  solve_quadratic,          &
+          log_inflation_info,       get_minmax_task_zero,   mean_from_restart,        &
+          sd_from_restart,                                                            &
+          output_inf_restart,       get_inflate_mean,       get_inflate_sd,           &
+          get_is_prior,             get_is_posterior,       do_ss_inflate,            &
+          set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy,  &
           get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options, &
-          print_inflation_restart_filename, &
+          print_inflation_restart_filename,                                           &
           PRIOR_INF, POSTERIOR_INF, NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION, &
           SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD, ENHANCED_SS_INFLATION
 
@@ -657,9 +657,6 @@ subroutine update_single_state_space_inflation(inflate, inflate_mean, inflate_sd
    ss_inflate_base, orig_obs_prior_mean, orig_obs_prior_var, obs, obs_err_var, &
    ens_size, inflate_only)
 
-! Computes update values for the inflation (inflate_mean) and its standard
-! deviation (inflate_sd)
-
 type(adaptive_inflate_type), intent(in)    :: inflate
 real(r8),                   intent(inout)  :: inflate_mean
 real(r8),                   intent(inout)  :: inflate_sd
@@ -704,6 +701,87 @@ if(inflate_mean > 0.0_r8 .and. inflate_sd > 0.0_r8) then
 endif
 
 end subroutine update_single_state_space_inflation
+
+!-------------------------------------------------------------------------------
+!> Computes updatea inflation mean and inflation sd for varying state space inflation
+
+subroutine update_varying_state_space_inflation(inflate, inflate_mean_inout, inflate_sd_inout, &
+   ss_inflate_base, orig_obs_prior_mean, orig_obs_prior_var, obs, obs_err_var, &
+   ens_size, reg_factor, correl, inflate_only)
+
+type(adaptive_inflate_type), intent(in)    :: inflate
+real(r8),                    intent(inout) :: inflate_mean_inout
+real(r8),                    intent(inout) :: inflate_sd_inout
+real(r8),                    intent(in)    :: ss_inflate_base
+real(r8),                    intent(in)    :: orig_obs_prior_mean
+real(r8),                    intent(in)    :: orig_obs_prior_var
+real(r8),                    intent(in)    :: obs
+real(r8),                    intent(in)    :: obs_err_var
+integer,                     intent(in)    :: ens_size
+real(r8),                    intent(in)    :: reg_factor
+real(r8),                    intent(in)    :: correl
+logical,                     intent(in)    :: inflate_only
+
+real(r8) :: inflate_mean, inflate_sd, gamma, ens_var_deflate, r_var, r_mean
+real(r8) :: diff_sd, outlier_ratio
+logical  :: do_adapt_inf_update
+
+! Copy the inflate_mean and inflate_sd which can be changed by update_inflation
+inflate_mean = inflate_mean_inout
+inflate_sd = inflate_sd_inout
+
+if(inflate_mean > 0.0_r8 .and. inflate_sd > 0.0_r8) then
+   ! Gamma is less than 1 for varying ss, see adaptive inflate module
+   gamma = reg_factor * abs(correl)
+
+   ! Remove the impact of inflation to allow efficient single pass with assim.
+   if ( abs(gamma) > small ) then
+      ens_var_deflate = orig_obs_prior_var / &
+         (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
+   else
+      ens_var_deflate = orig_obs_prior_var
+   endif
+
+   ! If this is inflate only (i.e. posterior) remove impact of this obs.
+   if(inflate_only .and. &
+         ens_var_deflate               > small .and. &
+         obs_err_var                   > small .and. &
+         obs_err_var - ens_var_deflate > small ) then
+      r_var  = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
+      r_mean = r_var *(orig_obs_prior_mean / ens_var_deflate - obs / obs_err_var)
+   else
+      r_var = ens_var_deflate
+      r_mean = orig_obs_prior_mean
+   endif
+
+   ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
+   ! Update the inflation values
+   call update_inflation(inflate, inflate_mean, inflate_sd, &
+      r_mean, r_var, ens_size, obs, obs_err_var, gamma)
+else
+   ! if we don't go into the previous if block, make sure these
+   ! have good values going out for the block below
+   r_mean = orig_obs_prior_mean
+   r_var =  orig_obs_prior_var
+endif
+
+! Update adaptive values if posterior outlier_ratio test doesn't fail.
+! Match code in obs_space_diags() in filter.f90
+do_adapt_inf_update = .true.
+if (inflate_only) then
+   diff_sd = sqrt(obs_err_var + r_var)
+   if (diff_sd > 0.0_r8) then
+      outlier_ratio = abs(obs - r_mean) / diff_sd
+! JLA: ********** Magic number of 3 sd outlier here needs to be addressed *********
+      do_adapt_inf_update = (outlier_ratio <= 3.0_r8)
+   endif
+endif
+if (do_adapt_inf_update) then
+   inflate_mean_inout = inflate_mean
+   inflate_sd_inout = inflate_sd
+endif
+
+end subroutine update_varying_state_space_inflation
 
 
 !-------------------------------------------------------------------------------
