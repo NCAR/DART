@@ -382,51 +382,14 @@ logical :: local_varying_ss_inflate
 logical :: local_ss_inflate
 logical :: local_obs_inflate
 
-! timing related vars:
-! set timing(N) true to collect and print timing info
-integer, parameter :: Ntimers = 5
-integer, parameter :: MLOOP  = 1  ! main assimilation loop
-integer, parameter :: LG_GRN = 2  ! large section timings
-integer, parameter :: SM_GRN = 3  ! inner loops - use carefully!
-integer, parameter :: GC     = 4  ! get_close() related loops
-logical        :: timing(Ntimers)   ! enable or disable w/ this
-real(digits12) :: t_base(Ntimers)   ! storage for time info
-integer(i8)    :: t_items(Ntimers)  ! count of number of calls
-integer(i8)    :: t_limit(Ntimers)  ! limit on number printed
-real(digits12), allocatable :: elapse_array(:)
-
 integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
 
 ! Just to make sure multiple tasks are running for tests
 write(*, *) 'my_task_id ', my_task_id()
 
-! timing disabled by default
-timing(:)  = .false.
-t_base(:)  = 0.0_r8
-t_items(:) = 0_i8
-t_limit(:) = 0_i8
-
 ! how about this?  look for imbalances in the tasks
 allocate(n_close_state_items(obs_ens_handle%num_vars), &
          n_close_obs_items(  obs_ens_handle%num_vars))
-
-! turn these on carefully - they can generate a lot of output!
-! also, to be readable - at least with ifort:
-!  setenv FORT_FMT_RECL 1024
-! so output lines don't wrap.
-
-!timing(MLOOP)  = .true.
-!timing(LG_GRN) = .true.
-
-if (timing(MLOOP)) allocate(elapse_array(obs_ens_handle%num_vars))
-
-! use maxitems limit here or drown in output.
-!timing(SM_GRN) = .false.
-!t_limit(SM_GRN) = 4_i8
-
-!timing(GC) = .true.
-!t_limit(GC) = 4_i8
-
 
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
@@ -541,7 +504,6 @@ call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_o
 
 if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
    ! convert the vertical of all my observations to the localization coordinate
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    if (obs_ens_handle%my_num_vars > 0) then
       call convert_vertical_obs(ens_handle, obs_ens_handle%my_num_vars, my_obs_loc, &
                                 my_obs_kind, my_obs_type, get_vertical_localization_coord(), vstatus)
@@ -552,7 +514,6 @@ if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
          endif
       enddo
    endif 
-   if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'convert_vertical_obs')
 endif
 
 ! Get info on my number and indices for state
@@ -560,20 +521,16 @@ my_num_state = get_my_num_vars(ens_handle)
 call get_my_vars(ens_handle, my_state_indx)
 
 ! Get the location and kind of all my state variables
-if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
 do i = 1, ens_handle%my_num_vars
    call get_state_meta_data(my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
-if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'get_state_meta_data')
 
 !> optionally convert all state location verticals
 if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    if (ens_handle%my_num_vars > 0) then
       call convert_vertical_state(ens_handle, ens_handle%my_num_vars, my_state_loc, my_state_kind,  &
                                   my_state_indx, get_vertical_localization_coord(), istatus)
    endif
-   if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'convert_vertical_state')
 endif
 
 ! Get mean and variance of each group's observation priors for adaptive inflation
@@ -623,18 +580,8 @@ endif
 
 allow_missing_in_state = get_missing_ok_status()
 
-! use MLOOP for the overall outer loop times; LG_GRN is for
-! sections inside the overall loop, including the total time
-! for the state_update and obs_update loops.  use SM_GRN for
-! sections inside those last 2 loops and be careful - they will
-! be called nobs * nstate * ntasks.
-
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
-
-   if (timing(MLOOP))  call start_timer(t_base(MLOOP))
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
-
    ! Some compilers do not like mod by 0, so test first.
    if (print_every_nth_obs > 0) nth_obs = mod(i, print_every_nth_obs)
 
@@ -687,14 +634,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Only value of 0 for DART QC field should be assimilated
       IF_QC_IS_OKAY: if(nint(obs_qc) ==0) then
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
-
-         ! Compute the prior mean and variance for this observation
          ! Note that these are before DA starts, so can be different from current obs_prior
          orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
             OBS_PRIOR_MEAN_END, owners_index)
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
-
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
@@ -742,13 +686,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !-----------------------------------------------------------------------
 
    ! Everybody is doing this section, cycle if qc is bad
-   if(nint(obs_qc) /= 0) then
-      if (timing(MLOOP)) then
-         write(msgstring, '(A32,I7)') 'sequential obs cycl: obs', keys(i)
-         call read_timer(t_base(MLOOP), msgstring, elapsed = elapse_array(i))
-      endif
-      cycle SEQUENTIAL_OBS
-   endif
+   if(nint(obs_qc) /= 0) cycle SEQUENTIAL_OBS
 
    !> all tasks must set the converted vertical values into the 'base' version of this loc
    !> because that's what we pass into the get_close_xxx() routines below.
@@ -762,6 +700,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
          obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
          my_inflate_sd, net_a(group))
+
+      ! Also compute prior mean and variance of obs for efficiency here
+      obs_prior_mean(group) = sum(obs_prior(grp_bot:grp_top)) / grp_size
+      obs_prior_var(group) = sum((obs_prior(grp_bot:grp_top) - obs_prior_mean(group))**2) / &
+         (grp_size - 1)
+      if (obs_prior_var(group) < 0.0_r8) obs_prior_var(group) = 0.0_r8
    end do
 
    ! Compute updated values for single state space inflation
@@ -774,16 +718,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       end do
    endif
    
-   ! Can compute prior mean and variance of obs for each group just once here
-   do group = 1, num_groups
-      grp_bot = grp_beg(group)
-      grp_top = grp_end(group)
-      obs_prior_mean(group) = sum(obs_prior(grp_bot:grp_top)) / grp_size
-      obs_prior_var(group) = sum((obs_prior(grp_bot:grp_top) - obs_prior_mean(group))**2) / &
-         (grp_size - 1)
-      if (obs_prior_var(group) < 0.0_r8) obs_prior_var(group) = 0.0_r8
-   end do
-
    ! If we are doing adaptive localization then we need to know the number of
    ! other observations that are within the localization radius.  We may need
    ! to shrink it, and so we need to know this before doing get_close() for the
@@ -794,15 +728,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
 
    if (.not. close_obs_caching) then
-      if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
       call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
                          my_obs_loc, my_obs_kind, my_obs_type, &
                          num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
-      if (timing(GC)) then
-         write(msgstring, '(A32,3I7)') 'gc_ob_NC:nobs,tot,obs# ', num_close_obs, obs_ens_handle%my_num_vars, keys(i)
-         call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
-      endif
-
    else
 
       if (base_obs_loc == last_base_obs_loc) then
@@ -811,14 +739,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_obs_dist(:) = last_close_obs_dist(:)
          num_close_obs_cached = num_close_obs_cached + 1
       else
-         if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
          call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
                             my_obs_loc, my_obs_kind, my_obs_type, &
                             num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
-         if (timing(GC)) then
-            write(msgstring, '(A32,3I7)') 'gc_ob_C: nobs,tot,obs# ', num_close_obs, obs_ens_handle%my_num_vars, keys(i)
-            call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
-         endif
 
          last_base_obs_loc      = base_obs_loc
          last_num_close_obs     = num_close_obs
@@ -829,9 +752,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 
    n_close_obs_items(i) = num_close_obs
-    !print*, 'base_obs _oc', base_obs_loc, 'rank ', my_task_id()
-    !call test_close_obs_dist(close_obs_dist, num_close_obs, i)
-    !print*, 'num close ', num_close_obs
 
    ! set the cutoff default, keep a copy of the original value, and avoid
    ! looking up the cutoff in a list if the incoming obs is an identity ob
@@ -848,13 +768,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! For adaptive localization, need number of other obs close to the chosen observation
    if(adaptive_localization_threshold > 0) then
 
-      if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
-
       ! this does a cross-task sum, so all tasks must make this call.
       total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
                                         close_obs_dist, cutoff_rev*2.0_r8)
-      if (timing(GC)) call read_timer(t_base(GC), 'count_close', t_items(GC), t_limit(GC), do_sync=.false.)
-
 
       ! Want expected number of close observations to be reduced to some threshold;
       ! accomplish this by cutting the size of the cutoff distance.
@@ -921,14 +837,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Now everybody updates their close states
    ! Find state variables on my process that are close to observation being assimilated
    if (.not. close_obs_caching) then
-      if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
       call get_close_state(gc_state, base_obs_loc, base_obs_type, &
                            my_state_loc, my_state_kind, my_state_indx, &
                            num_close_states, close_state_ind, close_state_dist, ens_handle)
-      if (timing(GC)) then
-         write(msgstring, '(A32,3I7)') 'gc_st_NC:nsts,tot,obs# ', num_close_states, ens_handle%my_num_vars, keys(i)
-         call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
-      endif
    else
       if (base_obs_loc == last_base_states_loc) then
          num_close_states    = last_num_close_states
@@ -936,14 +847,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_state_dist(:) = last_close_state_dist(:)
          num_close_states_cached = num_close_states_cached + 1
       else
-         if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
          call get_close_state(gc_state, base_obs_loc, base_obs_type, &
                               my_state_loc, my_state_kind, my_state_indx, &
                               num_close_states, close_state_ind, close_state_dist, ens_handle)
-         if (timing(GC)) then
-            write(msgstring, '(A32,3I7)') 'gc_st_C: nsts,tot,obs# ', num_close_states, ens_handle%my_num_vars, keys(i)
-            call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
-         endif
 
          last_base_states_loc     = base_obs_loc
          last_num_close_states    = num_close_states
@@ -958,13 +864,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !call test_close_obs_dist(close_state_dist, num_close_states, i)
    !call test_state_copies(ens_handle, 'beforeupdates')
 
-   if (timing(LG_GRN)) then
-      write(msgstring, '(A32,I7)') 'before_state_update: obs', keys(i)
-      call read_timer(t_base(LG_GRN), msgstring)
-   endif
-
    ! Loop through to update each of my state variables that is potentially close
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
@@ -1001,7 +901,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! If no weight is indicated, no more to do with this state variable
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
 
-      if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
       ! Loop through groups to update the state variable ensemble members
       do group = 1, num_groups
          grp_bot = grp_beg(group)
@@ -1020,8 +919,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                increment(grp_bot:grp_top), reg_coef(group), net_a(group))
          endif
       end do
-      if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_from_obs_inc_S', &
-                                          t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
 
       ! Compute an information factor for impact of this observation on this state
       if(num_groups == 1) then
@@ -1078,11 +975,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
                ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
                ! Update the inflation values
-               if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
                call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
                   r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
-               if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_inflation_V', &
-                                                   t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
             else
                ! if we don't go into the previous if block, make sure these
                ! have good values going out for the block below
@@ -1108,17 +1002,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
    end do STATE_UPDATE
-   if (timing(LG_GRN)) then
-      write(msgstring, '(A32,I7)') 'state_update: obs', keys(i)
-      call read_timer(t_base(LG_GRN), msgstring)
-   endif
 
    !call test_state_copies(ens_handle, 'after_state_updates')
 
    !------------------------------------------------------
 
    ! Now everybody updates their obs priors (only ones after this one)
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    OBS_UPDATE: do j = 1, num_close_obs
       obs_index = close_obs_ind(j)
 
@@ -1144,7 +1033,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
          if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
 
-         if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
          ! Loop through and update ensemble members in each group
          do group = 1, num_groups
             grp_bot = grp_beg(group)
@@ -1154,8 +1042,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                 obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
                 increment(grp_bot:grp_top), reg_coef(group), net_a(group))
          end do
-         if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_from_obs_inc_O', &
-                                             t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
 
          ! FIXME: could we move the if test for inflate only to here?
 
@@ -1179,17 +1065,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          endif
       endif
    end do OBS_UPDATE
-   if (timing(LG_GRN)) then
-      write(msgstring, '(A32,I7)') 'obs_update: obs', keys(i)
-      call read_timer(t_base(LG_GRN), msgstring)
-   endif
 
    !call test_state_copies(ens_handle, 'after_obs_updates')
 
-   if (timing(MLOOP)) then
-      write(msgstring, '(A32,I7)') 'sequential obs loop: obs', keys(i)
-      call read_timer(t_base(MLOOP), msgstring, elapsed = elapse_array(i))
-   endif
 end do SEQUENTIAL_OBS
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
@@ -1202,21 +1080,6 @@ end if
 call destroy_obs(observation)
 call get_close_destroy(gc_state)
 call get_close_destroy(gc_obs)
-
-! print some stats about the assimilation
-! (if interesting, could print exactly which obs # was fastest and slowest)
-if (my_task_id() == 0 .and. timing(MLOOP)) then
-   write(msgstring, *) 'average assim time: ', sum(elapse_array) / size(elapse_array)
-   call error_handler(E_MSG,'filter_assim:',msgstring)
-
-   write(msgstring, *) 'minimum assim time: ', minval(elapse_array)
-   call error_handler(E_MSG,'filter_assim:',msgstring)
-
-   write(msgstring, *) 'maximum assim time: ', maxval(elapse_array)
-   call error_handler(E_MSG,'filter_assim:',msgstring)
-endif
-
-if (timing(MLOOP)) deallocate(elapse_array)
 
 ! do some stats - being aware that unless we do a reduce() operation
 ! this is going to be per-task.  so only print if something interesting
