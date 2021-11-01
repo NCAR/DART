@@ -742,7 +742,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
    ! For adaptive localization, need number of other obs close to the chosen observation
    if(adaptive_localization_threshold > 0) then
-
       ! this does a cross-task sum, so all tasks must make this call.
       total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
                                         close_obs_dist, cutoff_rev*2.0_r8)
@@ -750,62 +749,35 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Want expected number of close observations to be reduced to some threshold;
       ! accomplish this by cutting the size of the cutoff distance.
       if(total_num_close_obs > adaptive_localization_threshold) then
-
          cutoff_rev = revised_distance(cutoff_rev*2.0_r8, adaptive_localization_threshold, &
                                        total_num_close_obs, base_obs_loc, &
                                        adaptive_cutoff_floor*2.0_r8) / 2.0_r8
-
-         if ( output_localization_diagnostics ) then
-
-            ! to really know how many obs are left now, you have to
-            ! loop over all the obs, again, count how many kinds are
-            ! going to be assim, and explicitly check the distance and
-            ! see if it's closer than the new cutoff ( times 2 ), and
-            ! then do a global sum to get the total.  since this costs,
-            ! do it only when diagnostics are requested.
-
-            ! this does a cross-task sum, so all tasks must make this call.
-            rev_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
-                                              close_obs_dist, cutoff_rev*2.0_r8)
-
-
-            ! GSR output the new cutoff
-            ! Here is what we might want:
-            ! time, ob index #, ob location, new cutoff, the assimilate obs count, owner (which process has this ob)
-            ! obs_time, obs_val_index, base_obs_loc, cutoff_rev, total_num_close_obs, owner
-            ! break up the time into secs and days, and break up the location into lat, lon and height
-            ! nsc - the min info here that can't be extracted from the obs key is:
-            !  key (obs#), total_num_close_obs (close w/ original cutoff), revised cutoff & new count
-            if (my_task_id() == 0) then
-               call get_obs_def(observation, obs_def)
-               this_obs_time = get_obs_def_time(obs_def)
-               call get_time(this_obs_time,secs,days)
-               call write_location(-1, base_obs_loc, charstring=base_loc_text)
-
-               write(localization_unit,'(i12,1x,i5,1x,i8,1x,A,2(f14.5,1x,i12))') i, secs, days, &
-                     trim(base_loc_text), cutoff_orig, total_num_close_obs, cutoff_rev, rev_num_close_obs
-            endif
-         endif
-
       endif
+   endif
 
-   else if (output_localization_diagnostics) then
-
-      ! if you aren't adapting but you still want to know how many obs are within the
-      ! localization radius, set the diag output.  this could be large, use carefully.
-
-      ! this does a cross-task sum, so all tasks must make this call.
-      total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
+   if ( output_localization_diagnostics ) then
+      ! Warning, this can be costly and generate large output
+      ! This is referred to as revised in case adaptive localization was done
+      rev_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
                                         close_obs_dist, cutoff_rev*2.0_r8)
 
+      ! Output diagnostic information about the number of close obs
       if (my_task_id() == 0) then
-         call get_obs_def(observation, obs_def)
          this_obs_time = get_obs_def_time(obs_def)
          call get_time(this_obs_time,secs,days)
          call write_location(-1, base_obs_loc, charstring=base_loc_text)
 
-         write(localization_unit,'(i12,1x,i5,1x,i8,1x,A,f14.5,1x,i12)') i, secs, days, &
-               trim(base_loc_text), cutoff_rev, total_num_close_obs
+         ! If adaptive localization did something, output info about what it did
+         ! Probably would be more consistent to just output for all observations
+         if(adaptive_localization_threshold > 0 .and. &
+            total_num_close_obs > adaptive_localization_threshold) then
+            write(localization_unit,'(i12,1x,i5,1x,i8,1x,A,2(f14.5,1x,i12))') i, secs, days, &
+               trim(base_loc_text), cutoff_orig, total_num_close_obs, cutoff_rev, rev_num_close_obs
+         else
+            ! Full diagnostics 
+            write(localization_unit,'(i12,1x,i5,1x,i8,1x,A,f14.5,1x,i12)') i, secs, days, &
+               trim(base_loc_text), cutoff_rev, rev_num_close_obs
+         endif
       endif
    endif
 
