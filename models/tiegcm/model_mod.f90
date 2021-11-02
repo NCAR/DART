@@ -168,6 +168,16 @@ integer, parameter :: RESTART_DOM = 1
 integer, parameter :: SECONDARY_DOM = 2
 integer, parameter :: CONSTRUCT_DOM = 3
 
+! lon and lat grid specs. 2.5 degree or 5 degree grid
+bot_lon        = MISSING_R8
+delta_lon      = MISSING_R8
+zero_lon_index = MISSING_R8
+top_lon        = MISSING_R8
+bot_lat        = MISSING_R8
+top_lat        = MISSING_R8
+delta_lat      = MISSING_R8
+
+
 ! FOR NOW OBS LOCATIONS ARE EXPECTED GIVEN IN HEIGHT [m],
 ! AND SO VERTICAL LOCALIZATION COORDINATE IS *always* HEIGHT
 ! (note that gravity adjusted geopotential height (ZG)
@@ -180,13 +190,6 @@ logical               :: first_pert_call = .true.
 type(random_seq_type) :: random_seq
 character(len=512)    :: string1, string2, string3
 logical, save         :: module_initialized = .false.
-
-! Codes for restricting the range of a variable
-integer, parameter :: BOUNDED_NONE  = 0 ! ... unlimited range
-integer, parameter :: BOUNDED_BELOW = 1 ! ... minimum, but no maximum
-integer, parameter :: BOUNDED_ABOVE = 2 ! ... maximum, but no minimum
-integer, parameter :: BOUNDED_BOTH  = 3 ! ... minimum and maximum
-
 
 !===============================================================================
 contains
@@ -326,15 +329,24 @@ integer  :: zero_lon_index
 real(r8) :: lon_fract, lat_fract
 real(r8) :: lon, lat, lon_lat_lev(3)
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
-real(r8) :: val(2,2), a(2)
+real(r8), dimension(ens_size) :: val11, val12, val21, val22
 real(r8) :: height
-integer  :: level
+integer  :: level, bogus_level
+integer  :: dom_id, var_id
 
 if ( .not. module_initialized ) call static_init_model
 
 ! Default for failure return
-istatus = 1
-obs_val = MISSING_R8
+istatus(:) = 1
+obs_val(:) = MISSING_R8
+
+! Failure codes
+! 11 QTY_GEOPOTENTIAL_HEIGHT is unsupported
+! 22 unsupported veritcal coordinate
+! 33 level given < or > model levels
+! 44 quantity not part of the state
+! 55 outside state (can not extrapolate above or below)
+! 66 unknown vertical stagger
 
 ! GITM uses a vtec routine in obs_def_upper_atm_mod:get_expected_gnd_gps_vtec()
 ! TIEGCM has its own vtec routine, so we should use it. This next block ensures that.
@@ -342,95 +354,49 @@ obs_val = MISSING_R8
 ! when it does, this will kill it. 
 
 if ( iqty == QTY_GEOPOTENTIAL_HEIGHT ) then
+   istatus(:) = 11
    write(string1,*)'QTY_GEOPOTENTIAL_HEIGHT currently unsupported'
    call error_handler(E_ERR,'model_interpolate',string1,source, revision, revdate)
 endif
 
-! Get the position
 
+! Get the position
 lon_lat_lev = get_location(location)
 lon         = lon_lat_lev(1) ! degree
 lat         = lon_lat_lev(2) ! degree
+height      = lon_lat_lev(3) ! level (int) or height (real)
+level       = int(lon_lat_lev(3))  ! HK can I just convert lon_lat_lev to int always?
+
 
 which_vert = nint(query_location(location))
+print*, 'which_vert', which_vert
 
-!HK overdoing these if statments - I don't think the vertical location
-! changes thoughout this routine, check once and be done.
-if( which_vert == VERTISHEIGHT ) then
-   height = lon_lat_lev(3)
-elseif( which_vert == VERTISLEVEL ) then
-   level  = int(lon_lat_lev(3))
-elseif( which_vert == VERTISUNDEF) then
-   height = MISSING_R8
-   level  = -1
-else
-   which_vert = nint(query_location(location))
-   write(string1,*) 'vertical coordinate type:',which_vert,' cannot be handled'
-   call error_handler(E_ERR,'model_interpolate',string1,source,revision,revdate)
-endif
+call compute_bracketing_lat_indices(lat, lat_below, lat_above, lat_fract)
+call compute_bracketing_lon_indices(lon, lon_below, lon_above, lon_fract)
 
-! Check to make sure vertical level is possible.
-if (which_vert == VERTISLEVEL) then
-   if ((level < 1) .or. (level > nilev)) return
-endif
-
-if ((iqty == QTY_PRESSURE) .and. (which_vert == VERTISLEVEL)) then
-   ! Some variables need plevs, some need pilevs
-   ! We only need the height (aka level)
-   ! the obs_def_upper_atm_mod.f90:get_expected_O_N2_ratio routines queries
-   ! for the pressure at the model levels - EXACTLY - so ...
-   ! FIXME ... at present ... the only time model_interpolate
-   ! gets called with QTY_PRESSURE is to calculate density, which
-   ! requires other variables that only live on the midpoints.
-   ! I cannot figure out how to generically decide when to
-   ! use plevs vs. pilevs 
-   if (level <= nlev) then
-      obs_val(:) = plevs(level)
-      istatus(:) = 0
-   endif
-   return
-endif
-
-! Get lon and lat grid specs
-bot_lon        = lons(1)                         ! 180.
-delta_lon      = abs((lons(1)-lons(2)))          ! 5. or 2.5
-zero_lon_index = int(bot_lon/delta_lon) + 1      ! 37 or 73
-top_lon        = lons(nlon)                      ! 175. or 177.5
-bot_lat        = lats(1)                         !
-top_lat        = lats(nlat)                      !
-delta_lat      = abs((lats(1)-lats(2)))          !
-
-! Compute bracketing lon indices:
-! TIEGCM [-180 175]  DART [180, 185, ..., 355, 0, 5, ..., 175]
-if(lon > top_lon .and. lon < bot_lon) then     ! at wraparound point [175 < lon < 180]
-   lon_below = nlon
-   lon_above = 1
-   lon_fract = (lon - top_lon) / delta_lon
-elseif (lon >= bot_lon) then                  ! [180 <= lon <= 360]
-   lon_below = int((lon - bot_lon) / delta_lon) + 1
-   lon_above = lon_below + 1
-   lon_fract = (lon - lons(lon_below)) / delta_lon
-else                                           ! [0 <= lon <= 175 ]
-   lon_below = int((lon - 0.0_r8) / delta_lon) + zero_lon_index
-   lon_above = lon_below + 1
-   lon_fract = (lon - lons(lon_below)) / delta_lon
-endif
-
-! Compute neighboring lat rows: TIEGCM [-87.5, 87.5] DART [-90, 90]
-! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE IS NOT GREAT!
-if(lat >= bot_lat .and. lat <= top_lat) then ! -87.5 <= lat <= 87.5
-   lat_below = int((lat - bot_lat) / delta_lat) + 1
-   lat_above = lat_below + 1
-   lat_fract = (lat - lats(lat_below) ) / delta_lat
-else if(lat < bot_lat) then ! South of bottom lat
-   lat_below = 1
-   lat_above = 1
-   lat_fract = 1.0_r8
-else                        ! North of top lat
-   lat_below = nlat
-   lat_above = nlat
-   lat_fract = 1.0_r8
-endif
+! Pressure is not part of the state vector
+! pressure is static data on plevs/pilevs
+if ( iqty == QTY_PRESSURE) then
+   if (which_vert == VERTISLEVEL) then
+      ! Some variables need plevs, some need pilevs
+      ! We only need the height (aka level)
+      ! the obs_def_upper_atm_mod.f90:get_expected_O_N2_ratio routines queries
+      ! for the pressure at the model levels - EXACTLY - so ...
+      ! FIXME ... at present ... the only time model_interpolate
+      ! gets called with QTY_PRESSURE is to calculate density, which
+      ! requires other variables that only live on the midpoints.
+      ! I cannot figure out how to generically decide when to
+      ! use plevs vs. pilevs
+      if (level <= nlev) then !HK can you get level < 0?
+         obs_val(:) = plevs(level)
+         istatus(:) = 0
+         return
+      else
+         istatus(:) = 33
+         return
+      endif
+    endif
+   
 
 ! If PRESSURE; calculate the pressure from several variables.
 ! vert_interp() interpolates the state column to
@@ -439,104 +405,79 @@ endif
 
 ! FIXME ... is it possible to try to get a pressure with which_vert == undefined
 ! At present, vert_interp will simply fail because height is a negative number.
-if (iqty == QTY_PRESSURE) then
 
-!HK  enesmble size vs column
-   !call vert_interp(obs_val(:),lon_below,lat_below,height,iqty,'ilev',-1,val(1,1),istatus(1))
-   !if (istatus(1) == 0) &
-   !call vert_interp(obs_val(:),lon_below,lat_above,height,iqty,'ilev',-1,val(1,2),istatus(1))
-   !if (istatus(1) == 0) &
-   !call vert_interp(obs_val(:),lon_above,lat_below,height,iqty,'ilev',-1,val(2,1),istatus(1))
-   !if (istatus(1) == 0) &
-   !call vert_interp(obs_val(:),lon_above,lat_above,height,iqty,'ilev',-1,val(2,2),istatus(1))
+!call vert_interp(obs_val(:),lon_below,lat_below,height,iqty,'ilev',-1,val(1,1),istatus(1))
+!if (istatus(1) == 0) &
+!call vert_interp(obs_val(:),lon_below,lat_above,height,iqty,'ilev',-1,val(1,2),istatus(1))
+!if (istatus(1) == 0) &
+!call vert_interp(obs_val(:),lon_above,lat_below,height,iqty,'ilev',-1,val(2,1),istatus(1))
+!if (istatus(1) == 0) &
+!call vert_interp(obs_val(:),lon_above,lat_above,height,iqty,'ilev',-1,val(2,2),istatus(1))
+    return
 
-   ! Now that we have the four surrounding points and their relative weights,
-   ! actually perform the bilinear horizontal interpolation to get the value at the
-   ! (arbitrary) desired location.
+endif
 
-   if (istatus(1) == 0) then
-      do i = 1, 2
-         a(i) = lon_fract * val(2, i) + (1.0_r8 - lon_fract) * val(1, i)
-      end do
-      obs_val = lat_fract * a(2) + (1.0_r8 - lat_fract) * a(1)
-   endif
-
+! check if qty is in the state vector
+call find_qty_in_state(iqty, dom_id, var_id)
+if (dom_id < 0 ) then
+   istatus(:) = 44
    return
 endif
 
-! If it is not pressure ...
-! FindVar_by_kind would fail with iqty == QTY_PRESSURE, so we have
-! to calculate the pressure separately before this part.
+if( which_vert == VERTISHEIGHT ) then
 
-!HK
-!ivar = FindVar_by_kind(iqty)
-!if (ivar < 0) return ! as a failure
+! vert_interp() interpolates the state column to
+! the same vertical height as the observation.
+! THEN, it is the same as the 2D case.
+!HK Yo ensemble size vs column
+!call vert_interp(obs_val(:), lon_below, lat_below, height, iqty, &
+!          progvar(ivar)%verticalvar, ivar, val(1,1), istatus(1))
+!if (istatus(1) == 0) &
+!call vert_interp(obs_val(:), lon_below, lat_above, height, iqty, &
+!          progvar(ivar)%verticalvar, ivar, val(1,2), istatus(1))
+!if (istatus(1) == 0) &
+!call vert_interp(obs_val(:), lon_above, lat_below, height, iqty, &
+!          progvar(ivar)%verticalvar, ivar, val(2,1), istatus(1))
+!if (istatus(1) == 0) &
+!call vert_interp(obs_val(:), lon_above, lat_above, height, iqty, &
+!          progvar(ivar)%verticalvar, ivar, val(2,2), istatus(1))
 
-! Now, need to find the values for the four corners
-
-if ( which_vert == VERTISUNDEF ) then ! (time, lat, lon)
-   ! time is always a singleton dimension
-
-   !val(1,1) = x(get_dart_vector_index(ivar, indx1=lon_below, indx2=lat_below, indx3=1))
-   !val(1,2) = x(get_dart_vector_index(ivar, indx1=lon_below, indx2=lat_above, indx3=1))
-   !val(2,1) = x(get_dart_vector_index(ivar, indx1=lon_above, indx2=lat_below, indx3=1))
-   !val(2,2) = x(get_dart_vector_index(ivar, indx1=lon_above, indx2=lat_above, indx3=1))
-   !istatus  = 0
-
-elseif (which_vert == VERTISLEVEL) then
+elseif( which_vert == VERTISLEVEL) then
+   ! Check to make sure vertical level is possible.
+   if ((level < 1) .or. (level > nilev)) then
+     istatus(:) = 33
+     return
+   endif
 
    ! one use of model_interpolate is to allow other modules/routines
    ! the ability to 'count' the model levels. To do this, create observations
    ! with locations on model levels and 'interpolate' for QTY_GEOMETRIC_HEIGHT.
-   ! When the interpolation fails, you've gone one level too far. 
-   ! The only geometric height variable we have is ZG, and its a 4D variable.
+   ! When the interpolation fails, you've gone one level too far.
+   ! HK why does it have to be QTY_GEOMETRIC_HEIGHT?
 
-   !val(1,1) = x(get_dart_vector_index(ivar, indx1=lon_below, indx2=lat_below, indx3=level))
-   !val(1,2) = x(get_dart_vector_index(ivar, indx1=lon_below, indx2=lat_above, indx3=level))
-   !val(2,1) = x(get_dart_vector_index(ivar, indx1=lon_above, indx2=lat_below, indx3=level))
-   !val(2,2) = x(get_dart_vector_index(ivar, indx1=lon_above, indx2=lat_above, indx3=level))
-   !istatus = 0
+   val11(:) = get_state(get_dart_vector_index(lon_below, lat_below, level, domain_id(dom_id), var_id ), state_handle)
+   val12(:) = get_state(get_dart_vector_index(lon_below, lat_above, level, domain_id(dom_id), var_id ), state_handle)
+   val21(:) = get_state(get_dart_vector_index(lon_above, lat_below, level, domain_id(dom_id), var_id ), state_handle)
+   val22(:) = get_state(get_dart_vector_index(lon_above, lat_above, level, domain_id(dom_id), var_id ), state_handle)
+   istatus = 0
+   obs_val(:) = interpolate(ens_size, val11, val12, vall21, val22)
 
-elseif (which_vert == VERTISHEIGHT) then
-
-   ! vert_interp() interpolates the state column to
-   ! the same vertical height as the observation.
-   ! THEN, it is the same as the 2D case.
-!HK Yo ensemble size vs column
-   !call vert_interp(obs_val(:), lon_below, lat_below, height, iqty, &
-   !          progvar(ivar)%verticalvar, ivar, val(1,1), istatus(1))
-   !if (istatus(1) == 0) &
-   !call vert_interp(obs_val(:), lon_below, lat_above, height, iqty, &
-   !          progvar(ivar)%verticalvar, ivar, val(1,2), istatus(1))
-   !if (istatus(1) == 0) &
-   !call vert_interp(obs_val(:), lon_above, lat_below, height, iqty, &
-   !          progvar(ivar)%verticalvar, ivar, val(2,1), istatus(1))
-   !if (istatus(1) == 0) &
-   !call vert_interp(obs_val(:), lon_above, lat_above, height, iqty, &
-   !          progvar(ivar)%verticalvar, ivar, val(2,2), istatus(1))
-
+elseif( which_vert == VERTISUNDEF) then
+   bogus_level  = -1  !HK what should this be?  Do only 2D fields have VERTISUNDEF?
+   vall11(:) = get_state( get_dart_vector_index(lon_below, lat_below, bogus_level, domain_id(dom_id), var_id), state_handle)
+   val12(:) = x(get_dart_vector_index(lon_below, lat_above, bogus_level, domain_id(dom_id), var_id), state_handle)
+   val21(:) = x(get_dart_vector_index(lon_above, lat_below, bogus_level, domain_id(dom_id), var_id), state_handle)
+   val22(:) = x(get_dart_vector_index(lon_above, lat_above, bogus_level, domain_id(dom_id), var_id), state_handle)
+   istatus(:) = 0
+   obs_val(:) = interpolate(ens_size, val11, val12, vall21, val22)
 else
 
-   write(string1,*)'has failed'
-   write(string2,*)'for some reason'
-   call error_handler(E_ERR,'model_interpolate', string1, &
-              source, revision, revdate, text2=string2)
+   write(string1,*) 'vertical coordinate type:',which_vert,' cannot be handled'
+   call error_handler(E_ERR,'model_interpolate',string1,source,revision,revdate)
 
-endif
-
-! Now that we have the four surrounding points and their relative weights,
-! actually perform the bilinear interpolation to get the value at the
-! (arbitrary) desired location.
-
-if (istatus(1) == 0) then
-   do i = 1, 2
-      a(i) = lon_fract * val(2, i) + (1.0_r8 - lon_fract) * val(1, i)
-   end do
-   obs_val = lat_fract * a(2) + (1.0_r8 - lat_fract) * a(1)
 endif
 
 end subroutine model_interpolate
-
 
 !-------------------------------------------------------------------------------
 function shortest_time_between_assimilations()
@@ -855,9 +796,103 @@ do i = 1, num
 
 end do
 
-!-------------------------------------------------------------------------------
 end subroutine convert_vertical_state
 
+!-------------------------------------------------------------------------------
+
+function read_model_time(filename, ncfileid, lasttime)
+! Gets the latest time in the netCDF file.
+character(len=*),  intent(in) :: filename
+integer, optional, intent(in) :: ncfileid
+integer, optional, intent(in) :: lasttime
+type(time_type) :: read_model_time
+
+integer :: ncid, TimeDimID, time_dimlen, DimID, dimlen, VarID
+
+integer,  parameter         :: nmtime = 3
+integer,  dimension(nmtime) :: mtime  ! day, hour, minute
+integer                     :: year, doy, utsec
+integer, allocatable, dimension(:,:) :: mtimetmp
+integer, allocatable, dimension(:)   :: yeartmp
+
+if ( present(ncfileid) ) then
+   ncid = ncfileid
+else
+   call nc_check(nf90_open(filename, NF90_NOWRITE, ncid), &
+              'read_model_time','open '//trim(filename))
+endif
+
+call nc_check(nf90_inq_dimid(ncid, 'time', TimeDimID), &
+        'read_model_time', 'inquire id of time')
+call nc_check(nf90_inquire_dimension(ncid, TimeDimID, len=time_dimlen ), &
+        'read_model_time', 'inquire_dimension time')
+call nc_check(nf90_inq_dimid(ncid, 'mtimedim', DimID), &
+        'read_model_time', 'inq_dimid mtimedim')
+call nc_check(nf90_inquire_dimension(ncid,     DimID, len=dimlen), &
+        'read_model_time', 'inquire_dimension mtimedim')
+
+if (present(lasttime)) then
+   if (lasttime /= time_dimlen) then
+      write(string1, *) trim(filename), ' last time index is ', &
+                        time_dimlen, ' desired ', lasttime
+      call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
+   endif
+endif
+
+if (dimlen /= nmtime) then
+   write(string1, *) trim(filename), ' mtimedim = ',dimlen, ' DART expects ', nmtime
+   call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
+endif
+
+allocate(mtimetmp(dimlen, time_dimlen), yeartmp(time_dimlen))
+
+!... get mtime
+call nc_check(nf90_inq_varid(ncid, 'mtime', VarID), &
+        'read_model_time', 'inquire id of time')
+call nc_check(nf90_get_var(ncid, VarID, values=mtimetmp), &
+        'read_model_time', 'get_var mtime')
+
+!... get year
+call nc_check(nf90_inq_varid(ncid, 'year', VarID), 'read_model_time', 'inq_varid year')
+call nc_check(nf90_get_var(ncid, VarID, values=yeartmp), 'read_model_time', 'get_var year')
+
+! pick off the latest/last
+mtime = mtimetmp(:,time_dimlen)
+year  = yeartmp(   time_dimlen)
+
+deallocate(mtimetmp,yeartmp)
+
+doy   =  mtime(1)
+utsec = (mtime(2)*60 + mtime(3))*60
+read_model_time = set_time(utsec, doy-1) + set_date(year, 1, 1)  ! Jan 1 of whatever year.
+
+if (do_output()) then
+   write(*,*) trim(filename)//':read_model_time: tiegcm [year, doy, hour, minute]', &
+            year, mtime
+   call print_date(read_model_time, str=trim(filename)//':read_model_time: date ')
+   call print_time(read_model_time, str=trim(filename)//':read_model_time: time ')
+endif
+
+if ( .not. present(ncfileid) ) then
+   call nc_check(nf90_close(ncid), 'read_model_time', 'close '//trim(filename))
+endif
+
+end function read_model_time
+
+!-------------------------------------------------------------------------------
+subroutine write_model_time(ncid, dart_time)
+
+use typeSizes
+use netcdf
+
+integer,         intent(in) :: ncid
+type(time_type), intent(in) :: dart_time
+
+integer :: dim_ids(2), var_id, ret
+integer :: year, month, day, hour, minute, second
+character(len=19) :: timestring
+
+end subroutine write_model_time
 
 !===============================================================================
 ! Routines below here are private to the module
@@ -1079,6 +1114,8 @@ subroutine read_TIEGCM_definition(file_name)
 ! ilev(:), nilev
 ! plevs(:)
 ! pilevs(:)
+! Converts the tiegcm longitude (-+180) to (0 360)
+! Sets the grid specs
 
 character(len=*), intent(in) :: file_name
 integer  :: ncid, VarID, DimID, TimeDimID
@@ -1108,6 +1145,7 @@ if( TimeDimID /= DimID ) then
 endif
 
 ! longitude - TIEGCM uses values +/- 180, DART uses values [0,360]
+! HK check this against "Compute bracketing lon indices"
 
 call nc_check(nf90_inq_dimid(ncid, 'lon', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid lon')
@@ -1146,7 +1184,7 @@ call nc_check(nf90_inq_dimid(ncid, 'lev', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid lev')
 call nc_check(nf90_inquire_dimension(ncid, DimID, len=nlev), 'read_TIEGCM_definition', &
                   'inquire_dimension lev')
-nlev = nlev - 1 ! top level is not viable
+nlev = nlev - 1 ! top level is not viable !HK what does this mean?
 allocate(levs(nlev), plevs(nlev))
 
 call nc_check(nf90_inq_varid(ncid, 'lev', VarID), 'read_TIEGCM_definition', &
@@ -1178,8 +1216,17 @@ if ((nlev+1) .ne. nilev) then
               source, revision, revdate, text2=string2, text3=string3)
 endif
 
-end subroutine read_TIEGCM_definition
 
+! Get lon and lat grid specs !HK these are static
+bot_lon        = lons(1)                         ! 180.
+delta_lon      = abs((lons(1)-lons(2)))          ! 5. or 2.5
+zero_lon_index = int(bot_lon/delta_lon) + 1      ! 37 or 73
+top_lon        = lons(nlon)                      ! 175. or 177.5
+bot_lat        = lats(1)                         !
+top_lat        = lats(nlat)                      !
+delta_lat      = abs((lats(1)-lats(2)))          !
+
+end subroutine read_TIEGCM_definition
 
 !-------------------------------------------------------------------------------
 ! Fill up the variable_table from the namelist item 'variables'
@@ -1669,103 +1716,126 @@ lev_bottom = 0
 end subroutine vert_interp
 
 !-------------------------------------------------------------------------------
+subroutine find_qty_in_state(iqty, which_dom, var_id)
+! Finds the first variable of the appropriate DART KIND
+!
+! Note from FindVar_by_kind:
+! FIXME There is some confusion about using the T-minus-1 variables
+! in this construct. Both TN and TN_NM have the same dart_kind,
+! so we use the first one ... but it is not guaranteed that TN
+! must preceed TN_NM, for example.
+! HK we can force X rather than X_MN
 
-function read_model_time(filename, ncfileid, lasttime)
-! Gets the latest time in the netCDF file.
-character(len=*),  intent(in) :: filename
-integer, optional, intent(in) :: ncfileid
-integer, optional, intent(in) :: lasttime
-type(time_type) :: read_model_time
+integer, intent(in)  :: iqty
+integer, intent(out) :: which_dom
+integer, intent(out) :: var_id
 
-integer :: ncid, TimeDimID, time_dimlen, DimID, dimlen, VarID
+integer :: num_same_kind, id
 
-integer,  parameter         :: nmtime = 3
-integer,  dimension(nmtime) :: mtime  ! day, hour, minute
-integer                     :: year, doy, utsec
-integer, allocatable, dimension(:,:) :: mtimetmp
-integer, allocatable, dimension(:)   :: yeartmp
+which_dom = -1
+var_id = -1
 
-if ( present(ncfileid) ) then
-   ncid = ncfileid
-else
-   call nc_check(nf90_open(filename, NF90_NOWRITE, ncid), &
-              'read_model_time','open '//trim(filename))
-endif
+!HK can you ever have the same variable in restart and secondary?
+!   I don't think so
+do id = 1, 3 ! RESTART_DOM, SECONDARY_DOM, CONSTRUCT_DOM
 
-call nc_check(nf90_inq_dimid(ncid, 'time', TimeDimID), &
-        'read_model_time', 'inquire id of time')
-call nc_check(nf90_inquire_dimension(ncid, TimeDimID, len=time_dimlen ), &
-        'read_model_time', 'inquire_dimension time')
-call nc_check(nf90_inq_dimid(ncid, 'mtimedim', DimID), &
-        'read_model_time', 'inq_dimid mtimedim')
-call nc_check(nf90_inquire_dimension(ncid,     DimID, len=dimlen), &
-        'read_model_time', 'inquire_dimension mtimedim')
-
-if (present(lasttime)) then
-   if (lasttime /= time_dimlen) then
-      write(string1, *) trim(filename), ' last time index is ', &
-                        time_dimlen, ' desired ', lasttime
-      call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
+   num_same_kind = get_num_varids_from_kind(domain_id(id), iqty)
+   if (num_same_kind) == 0 cycle
+   if (num_same_kind) > 1 ) then ! need to pick which one you want
+     which_dom = id
+     print*, 'Do something sensible here'
+   else !
+      which_dom = id
+      var_id = get_varid_from_kind(domain_id(id), iqty)
    endif
-endif
+enddo
 
-if (dimlen /= nmtime) then
-   write(string1, *) trim(filename), ' mtimedim = ',dimlen, ' DART expects ', nmtime
-   call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
-endif
-
-allocate(mtimetmp(dimlen, time_dimlen), yeartmp(time_dimlen))
-
-!... get mtime
-call nc_check(nf90_inq_varid(ncid, 'mtime', VarID), &
-        'read_model_time', 'inquire id of time')
-call nc_check(nf90_get_var(ncid, VarID, values=mtimetmp), &
-        'read_model_time', 'get_var mtime')
-
-!... get year
-call nc_check(nf90_inq_varid(ncid, 'year', VarID), 'read_model_time', 'inq_varid year')
-call nc_check(nf90_get_var(ncid, VarID, values=yeartmp), 'read_model_time', 'get_var year')
-
-! pick off the latest/last
-mtime = mtimetmp(:,time_dimlen)
-year  = yeartmp(   time_dimlen)
-
-deallocate(mtimetmp,yeartmp)
-
-doy   =  mtime(1)
-utsec = (mtime(2)*60 + mtime(3))*60
-read_model_time = set_time(utsec, doy-1) + set_date(year, 1, 1)  ! Jan 1 of whatever year.
-
-if (do_output()) then
-   write(*,*) trim(filename)//':read_model_time: tiegcm [year, doy, hour, minute]', &
-            year, mtime
-   call print_date(read_model_time, str=trim(filename)//':read_model_time: date ')
-   call print_time(read_model_time, str=trim(filename)//':read_model_time: time ')
-endif
-
-if ( .not. present(ncfileid) ) then
-   call nc_check(nf90_close(ncid), 'read_model_time', 'close '//trim(filename))
-endif
-
-end function read_model_time
+end subroutine find_qty_in_state
 
 !-------------------------------------------------------------------------------
-subroutine write_model_time(ncid, dart_time)
+! find enclosing lon indices
+! Compute bracketing lon indices:
+! TIEGCM [-180 175]  DART [180, 185, ..., 355, 0, 5, ..., 175]
+! HK in read_TIEGCM_definition the longitudes are converted to 0 to 360
+subroutine compute_bracketing_lon_indices(lon, idx_below, idx_above, fraction)
 
-use typeSizes
-use netcdf
+real(r8), intent(in)  :: lon ! longitude
+integer,  intent(out) :: idx_below, idx_below ! index in lons()
+real(r8), intent(out) :: fraction ! fraction to use for interpolation
 
-integer,         intent(in) :: ncid
-type(time_type), intent(in) :: dart_time
+if(lon > top_lon .and. lon < bot_lon) then     ! at wraparound point [175 < lon < 180]
+   idx_below = nlon
+   idx_above = 1
+   fraction = (lon - top_lon) / delta_lon
+elseif (lon >= bot_lon) then                  ! [180 <= lon <= 360]
+   idx_below = int((lon - bot_lon) / delta_lon) + 1
+   idx_above = idx_below + 1
+   idx_fract = (lon - lons(idx_below)) / delta_lon
+else                                           ! [0 <= lon <= 175 ]
+   idx_below = int((lon - 0.0_r8) / delta_lon) + zero_lon_index
+   idx_above = idx_below + 1
+   fraction = (lon - lons(idx_below)) / delta_lon
+endif
 
-integer :: dim_ids(2), var_id, ret
-integer :: year, month, day, hour, minute, second
-character(len=19) :: timestring
 
+end subroutine compute_bracketing_lon_indices
 
+!-------------------------------------------------------------------------------
+! Compute neighboring lat rows: TIEGCM [-87.5, 87.5] DART [-90, 90]
+! HK note from model_interpolate: What should be done?
+! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE IS NOT GREAT!
+subroutine compute_bracketing_lat_indices(lat, idx_below, idx_above, fraction)
 
-end subroutine write_model_time
+real(r8), intent(in)  :: lat ! latitude
+integer,  intent(out) :: idx_below, idx_below ! index in lats()
+real(r8), intent(out) :: fraction ! fraction to use for interpolation
 
+if(lat >= bot_lat .and. lat <= top_lat) then ! -87.5 <= lat <= 87.5
+   idx_below = int((lat - bot_lat) / delta_lat) + 1
+   idx_above = lat_below + 1
+   fraction = (lat - lats(idx_below) ) / delta_lat
+else if(lat < bot_lat) then ! South of bottom lat
+   idx_below = 1
+   idx_above = 1
+   fraction = 1.0_r8
+else                        ! North of top lat
+   idx_below = nlat
+   idx_above = nlat
+   fraction = 1.0_r8
+endif
+
+end subroutine compute_bracketing_lat_indices
+
+!-------------------------------------------------------------------------------
+function interpolate(n, val11, val12, vall21, val22) return(obs_val)
+
+integer, intent(in) :: n ! number of ensemble members
+real(r8), dimension(nvals), intent(in) :: val11, val12, vall21, val22
+real(r8), dimension(nvals) :: obs_val
+
+real(r8) :: a(n, 2)
+
+a(:, 1) = lon_fract * val21(:) + (1.0_r8 - lon_fract) * val11(:)
+a(:, 2) = lon_fract * val22(:) + (1.0_r8 - lon_fract) * val12(:)
+
+obs_val(:) = lat_fract * a(:,2) + (1.0_r8 - lat_fract) * a(:,1)
+
+end function interpolate
+
+!-------------------------------------------------------------------------------
+function ilev_or_lev(dom_id, var_id) return(dim_name)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: var_id
+
+! search for either ilev or lev
+dim_name = 'null'
+do d = 1, get_num_dims(dom_id, var_id)
+   dim_name = get_dim_name(dom_id, var_id, d)
+   if (dim_name == 'ilev' .or. dim_name == 'lev') exit
+enddo
+
+end function ilev_or_lev
 !===============================================================================
 ! End of model_mod
 !===============================================================================
