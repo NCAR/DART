@@ -530,11 +530,7 @@ if (get_variable_name(dom_id, var_id) == 'f10_7') then
 end if
 
 ! search for either ilev or lev
-dim_name = 'null'
-do d = 1, get_num_dims(dom_id, var_id)
-   dim_name = get_dim_name(dom_id, var_id, d)
-   if (dim_name == 'ilev' .or. dim_name == 'lev') exit
-enddo
+dim_name = ilev_or_lev(dom_id, var_id)
 
 select case (trim(dim_name))
    case ('ilev')
@@ -542,7 +538,7 @@ select case (trim(dim_name))
    case ('lev') ! height on midpoint
       location  = set_location(lons(lon_index), lats(lat_index), levs(lev_index), VERTISLEVEL)
    case default
-    call error_handler(E_ERR, 'convert_vertical_state', 'expecting ilev or ilat dimension')
+    call error_handler(E_ERR, 'get_state_meta_data', 'expecting ilev or ilat dimension')
     ! HK TODO 2D variables.
 end select
 
@@ -643,7 +639,7 @@ integer,                       intent(out)    :: num_close, close_ind(:)
 real(r8),            optional, intent(out)    :: dist(:)
 type(ensemble_type), optional, intent(in)     :: state_handle
 
-call error_handler(E_ERR, 'watch out', 'not done yetc')
+call error_handler(E_ERR, 'watch out', 'not done yet')
 
 end subroutine get_close_state
 
@@ -677,6 +673,8 @@ type(ensemble_type), optional, intent(in)     :: state_handle
 
 integer                              :: k, t_ind
 
+
+call error_handler(E_ERR, 'watch out', 'not done yet')
 !HK! Finds all the locations or observations that are close.
 !HKcall loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
 !HK                                           num_close, close_ind)
@@ -745,6 +743,8 @@ integer,             intent(in)    :: loc_types(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: status(:)
 
+
+call error_handler(E_ERR, 'watch out', 'not done yet')
 end subroutine convert_vertical_obs
 
 !-------------------------------------------------------------------------------
@@ -765,6 +765,8 @@ integer :: i, d
 real(r8) :: height(1), height1(1), height2(1)
 character(len=NF90_MAX_NAME) :: dim_name
 
+call error_handler(E_ERR, 'watch out', 'not done yet')
+
 istatus = 0
 
 do i = 1, num
@@ -772,15 +774,11 @@ do i = 1, num
    call get_model_variable_indices(loc_indx(i), lon_index, lat_index, lev_index, var_id=var_id, dom_id=dom_id)
    
    ! search for either ilev or lev
-   dim_name = 'null'
-   do d = 1, get_num_dims(dom_id, var_id)
-      dim_name = get_dim_name(dom_id, var_id, d)
-      if (dim_name == 'ilev' .or. dim_name == 'lev') exit
-   enddo
+   dim_name = ilev_or_lev(dom_id, var_id)
    
    select case (trim(dim_name))
       case ('ilev')
-         height = get_state(loc_indx(i), state_handle)
+         height = get_state(loc_indx(i), state_handle) !HK this is the value of the variale, not the height. 
    
       case ('lev') ! height on midpoint
         height1 = get_state(loc_indx(i), state_handle)
@@ -1827,6 +1825,7 @@ function ilev_or_lev(dom_id, var_id) return(dim_name)
 
 integer, intent(in) :: dom_id
 integer, intent(in) :: var_id
+character(len=NF90_MAX_NAME) :: dim_name
 
 ! search for either ilev or lev
 dim_name = 'null'
