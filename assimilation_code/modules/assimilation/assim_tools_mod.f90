@@ -77,7 +77,7 @@ private
 public :: filter_assim, &
           set_assim_tools_trace, &
           test_state_copies, &
-          update_ens_from_weights  ! Jeff thinks this routine is in the wild.
+          update_ens_from_weights
 
 ! Indicates if module initialization subroutine has been called yet
 logical :: module_initialized = .false.
@@ -688,31 +688,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, inflate_only)
       end do
    endif
-   
-   if (.not. close_obs_caching) then
-      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
-                         my_obs_loc, my_obs_kind, my_obs_type, &
-                         num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
-   else
-
-      if (base_obs_loc == last_base_obs_loc) then
-         num_close_obs     = last_num_close_obs
-         close_obs_ind(:)  = last_close_obs_ind(:)
-         close_obs_dist(:) = last_close_obs_dist(:)
-         num_close_obs_cached = num_close_obs_cached + 1
-      else
-         call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
-                            my_obs_loc, my_obs_kind, my_obs_type, &
-                            num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
-
-         last_base_obs_loc      = base_obs_loc
-         last_num_close_obs     = num_close_obs
-         last_close_obs_ind(:)  = close_obs_ind(:)
-         last_close_obs_dist(:) = close_obs_dist(:)
-         num_close_obs_calls_made = num_close_obs_calls_made +1
-      endif
-   endif
-
+  
+   ! Adaptive localization needs number of other observations within localization radius.
+   ! Do get_close_obs first, even though state space increments are computed before obs increments.
+   ! JLA: ens_handle doesn't ever appear to be used. Get rid of it. Should be obs_ens_handle anyway?
+   call  get_close_obs_cached(close_obs_caching, gc_obs, base_obs_loc, base_obs_type,      &
+      my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
+      ens_handle, last_base_obs_loc, last_num_close_obs, last_close_obs_ind,               &
+      last_close_obs_dist, num_close_obs_cached, num_close_obs_calls_made)
    n_close_obs_items(i) = num_close_obs
 
    ! set the cutoff default, keep a copy of the original value, and avoid
@@ -725,35 +708,16 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       cutoff_orig = cutoff
    endif
 
+   ! JLA, could also cache for adaptive_localization which may be expensive?
    call adaptive_localization_and_diags(cutoff_orig, cutoff_rev, adaptive_localization_threshold, &
       adaptive_cutoff_floor, num_close_obs, close_obs_ind, close_obs_dist, my_obs_type, &
       i, base_obs_loc, obs_def, localization_unit)
 
-   ! Now everybody updates their close states
    ! Find state variables on my process that are close to observation being assimilated
-   if (.not. close_obs_caching) then
-      call get_close_state(gc_state, base_obs_loc, base_obs_type, &
-                           my_state_loc, my_state_kind, my_state_indx, &
-                           num_close_states, close_state_ind, close_state_dist, ens_handle)
-   else
-      if (base_obs_loc == last_base_states_loc) then
-         num_close_states    = last_num_close_states
-         close_state_ind(:)  = last_close_state_ind(:)
-         close_state_dist(:) = last_close_state_dist(:)
-         num_close_states_cached = num_close_states_cached + 1
-      else
-         call get_close_state(gc_state, base_obs_loc, base_obs_type, &
-                              my_state_loc, my_state_kind, my_state_indx, &
-                              num_close_states, close_state_ind, close_state_dist, ens_handle)
-
-         last_base_states_loc     = base_obs_loc
-         last_num_close_states    = num_close_states
-         last_close_state_ind(:)  = close_state_ind(:)
-         last_close_state_dist(:) = close_state_dist(:)
-         num_close_states_calls_made = num_close_states_calls_made + 1
-      endif
-   endif
-
+   call  get_close_state_cached(close_obs_caching, gc_state, base_obs_loc, base_obs_type,      &
+      my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
+      ens_handle, last_base_states_loc, last_num_close_states, last_close_state_ind,               &
+      last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
    n_close_state_items(i) = num_close_states
    !print*, 'num close state', num_close_states
    !call test_close_obs_dist(close_state_dist, num_close_states, i)
@@ -2626,109 +2590,101 @@ my_obs_time = get_obs_def_time(obs_def)
 end subroutine get_my_obs_loc
 
 !--------------------------------------------------------------------
-!> wrappers for timers
-!>
-!> t_space is where we store the time information 
-!> itemcount is the running count of how many times we've been called
-!> maxitems is a limit on the number of times we want this timer to print.
-!> do_sync overrides the default for whether we want to do a task sync
-!> or not.  right now this code defaults to yes, sync before getting
-!> the time.  for very large processor counts this increases overhead.
+!> Get close obs from cache if appropriate. Cache new get_close_obs info
+!> if requested.
 
-subroutine start_timer(t_space, itemcount, maxitems, do_sync)
- real(digits12), intent(out) :: t_space
- integer(i8),    intent(inout), optional :: itemcount
- integer(i8),    intent(in),    optional :: maxitems
- logical,        intent(in),    optional :: do_sync
+subroutine get_close_obs_cached(close_obs_caching, gc_obs, base_obs_loc, base_obs_type, &
+   my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
+   ens_handle, last_base_obs_loc, last_num_close_obs, last_close_obs_ind,               &
+   last_close_obs_dist, num_close_obs_cached, num_close_obs_calls_made)
 
-logical :: sync_me
+logical, intent(in) :: close_obs_caching
+type(get_close_type),          intent(in)  :: gc_obs
+type(location_type),           intent(inout) :: base_obs_loc, my_obs_loc(:)
+integer,                       intent(in)  :: base_obs_type, my_obs_kind(:), my_obs_type(:)
+integer,                       intent(out) :: num_close_obs, close_obs_ind(:)
+real(r8),                      intent(out) :: close_obs_dist(:)
+type(ensemble_type),           intent(in)  :: ens_handle
+type(location_type), intent(inout) :: last_base_obs_loc
+integer, intent(inout) :: last_num_close_obs
+integer, intent(inout) :: last_close_obs_ind(:)
+real(r8), intent(inout) :: last_close_obs_dist(:)
+integer, intent(inout) :: num_close_obs_cached, num_close_obs_calls_made
 
-if (present(itemcount) .and. present(maxitems)) then
-  itemcount = itemcount + 1
-  if (itemcount > maxitems) then
-     ! if called enough, this can roll over the integer limit.  
-     ! set itemcount to maxitems+1 here to avoid this.
-     ! also, go ahead and set the time because there is
-     ! an option to print large time values even if over the
-     ! number of calls limit in read_timer()
+! This logic could be arranged to make code less redundant
+if (.not. close_obs_caching) then
+   call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
+                      my_obs_loc, my_obs_kind, my_obs_type, &
+                      num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
+else
+   if (base_obs_loc == last_base_obs_loc) then
+      num_close_obs     = last_num_close_obs
+      close_obs_ind(:)  = last_close_obs_ind(:)
+      close_obs_dist(:) = last_close_obs_dist(:)
+      num_close_obs_cached = num_close_obs_cached + 1
+   else
+      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
+                         my_obs_loc, my_obs_kind, my_obs_type, &
+                         num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
 
-     itemcount = maxitems + 1
-     call start_mpi_timer(t_space)
-     return
-  endif
+      last_base_obs_loc      = base_obs_loc
+      last_num_close_obs     = num_close_obs
+      last_close_obs_ind(:)  = close_obs_ind(:)
+      last_close_obs_dist(:) = close_obs_dist(:)
+      num_close_obs_calls_made = num_close_obs_calls_made +1
+   endif
 endif
 
-sync_me = .true.
-if (present(do_sync)) sync_me = do_sync
-
-if (sync_me) call task_sync()
-call start_mpi_timer(t_space)
-
-end subroutine start_timer
+end subroutine get_close_obs_cached
 
 !--------------------------------------------------------------------
-!>
-!> t_space is where we store the time information 
-!> label is the string to print out with the time.  limited to ~60 chars.
-!> itemcount is the running count of how many times we've been called
-!> maxitems is a limit on the number of times we want this timer to print.
-!> do_sync overrides the default for whether we want to do a task sync
-!> or not.  right now this code defaults to yes, sync before getting
-!> the time.  for very large processor counts this increases overhead.
-!> elapsed is an optional return of the value instead of only printing here
+!> Get close state from cache if appropriate. Cache new get_close_state info
+!> if requested.
 
-subroutine read_timer(t_space, label, itemcount, maxitems, do_sync, elapsed)
- real(digits12),   intent(in) :: t_space
- character(len=*), intent(in) :: label
- integer(i8),      intent(inout), optional :: itemcount
- integer(i8),      intent(in),    optional :: maxitems
- logical,          intent(in),    optional :: do_sync
- real(digits12),   intent(out),   optional :: elapsed
+subroutine get_close_state_cached(close_obs_caching, gc_state, base_obs_loc, base_obs_type, &
+   my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
+   ens_handle, last_base_states_loc, last_num_close_states, last_close_state_ind,               &
+   last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
 
-real(digits12) :: interval
-logical :: sync_me
-character(len=132) :: buffer
+logical, intent(in) :: close_obs_caching
+type(get_close_type),          intent(in)    :: gc_state
+type(location_type),           intent(inout) :: base_obs_loc, my_state_loc(:)
+integer,                       intent(in)    :: base_obs_type, my_state_kind(:)
+integer(i8),                   intent(in)    :: my_state_indx(:)
+integer,                       intent(out)   :: num_close_states, close_state_ind(:)
+real(r8),                      intent(out)   :: close_state_dist(:)
+type(ensemble_type),           intent(in)    :: ens_handle
+type(location_type), intent(inout) :: last_base_states_loc
+integer, intent(inout) :: last_num_close_states
+integer, intent(inout) :: last_close_state_ind(:)
+real(r8), intent(inout) :: last_close_state_dist(:)
+integer, intent(inout) :: num_close_states_cached, num_close_states_calls_made
 
-! if interval time (in seconds) is > this, go ahead and
-! print even if item count is over limit.
-integer(i8), parameter :: T_ALWAYS_PRINT = 1.0_r8
-
-! get the time first and then figure out what we're doing
-
-interval = read_mpi_timer(t_space)
-
-sync_me = .true.
-if (present(do_sync)) sync_me = do_sync
-
-! if there's a limit on number of prints don't allow sync 
-! because if we return early we could hang everyone else.
-if (present(maxitems)) sync_me = .false.
-
-! print out large values no matter what
-! (large is defined above locally in this routine)
-if (present(itemcount) .and. present(maxitems)) then
-  if (interval < T_ALWAYS_PRINT .and. itemcount > maxitems) return
-endif
-
-! if syncing, wait and read the timer again
-if (sync_me) then
-   call task_sync()
-   interval = read_mpi_timer(t_space)
-endif
-
-if (sync_me) then
-   if (my_task_id() == 0) then
-      write(buffer,'(A75,F15.8)') "timer: "//trim(label)//" time ", interval
-      write(*,*) buffer
-   endif
+! This logic could be arranged to make code less redundant
+if (.not. close_obs_caching) then
+   call get_close_state(gc_state, base_obs_loc, base_obs_type, &
+                      my_state_loc, my_state_kind, my_state_indx, &
+                      num_close_states, close_state_ind, close_state_dist, ens_handle)
 else
-   write(buffer,'(A75,F15.8,A6,I7)') "timer: "//trim(label)//" time ", interval, " rank ", my_task_id()
-   write(*,*) buffer
+   if (base_obs_loc == last_base_states_loc) then
+      num_close_states     = last_num_close_states
+      close_state_ind(:)  = last_close_state_ind(:)
+      close_state_dist(:) = last_close_state_dist(:)
+      num_close_states_cached = num_close_states_cached + 1
+   else
+      call get_close_state(gc_state, base_obs_loc, base_obs_type, &
+                         my_state_loc, my_state_kind, my_state_indx, &
+                         num_close_states, close_state_ind, close_state_dist, ens_handle)
+
+      last_base_states_loc      = base_obs_loc
+      last_num_close_states     = num_close_states
+      last_close_state_ind(:)  = close_state_ind(:)
+      last_close_state_dist(:) = close_state_dist(:)
+      num_close_states_calls_made = num_close_states_calls_made +1
+   endif
 endif
 
-if (present(elapsed)) elapsed = interval
-
-end subroutine read_timer
+end subroutine get_close_state_cached
 
 !--------------------------------------------------------------------
 !> log what the user has selected via the namelist choices
