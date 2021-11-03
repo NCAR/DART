@@ -749,6 +749,8 @@ integer,             intent(out)   :: status(:)
 
 
 call error_handler(E_ERR, 'watch out', 'not done yet')
+status(:) = 1
+
 end subroutine convert_vertical_obs
 
 !-------------------------------------------------------------------------------
@@ -768,8 +770,12 @@ integer :: var_id, dom_id, lon_index, lat_index, lev_index
 integer :: i, d
 real(r8) :: height(1), height1(1), height2(1)
 character(len=NF90_MAX_NAME) :: dim_name
+integer(i8) :: height_idx
 
-call error_handler(E_ERR, 'watch out', 'not done yet')
+
+if  ( which_vert /= VERTISHEIGHT ) then
+   call error_handler(E_ERR,'convert_vertical_state', 'only supports VERTISHEIGHT')
+endif
 
 istatus = 0
 
@@ -782,11 +788,17 @@ do i = 1, num
    
    select case (trim(dim_name))
       case ('ilev')
-         height = get_state(loc_indx(i), state_handle) !HK this is the value of the variale, not the height.
+         height_idx = get_dart_vector_index(lon_index, lat_index, lev_index, &
+                                            domain_id(SECONDARY_DOM), ivarZG)
+         height = get_state(height_idx, state_handle) !HK this is the value of the variale, not the height.
    
       case ('lev') ! height on midpoint
-        height1 = get_state(loc_indx(i), state_handle)
-        height2 = get_state(loc_indx(i)+1, state_handle) ! this is wrong needs to be height
+        height_idx = get_dart_vector_index(lon_index, lat_index, lev_index, &
+                                   domain_id(SECONDARY_DOM), ivarZG)
+        height1 = get_state(height_idx, state_handle)
+        height_idx = get_dart_vector_index(lon_index, lat_index, lev_index+1, &
+                           domain_id(SECONDARY_DOM), ivarZG)
+        height2 = get_state(height_idx, state_handle) ! this is wrong needs to be height
         height = (height1 + height2) / 2.0_r8
    
       case default
