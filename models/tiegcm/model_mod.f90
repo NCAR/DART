@@ -677,60 +677,60 @@ type(ensemble_type), optional, intent(in)     :: state_handle
 
 integer                              :: k, t_ind
 
+call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                       num_close, close_ind, dist)
 
-call error_handler(E_ERR, 'watch out', 'not done yet')
-!HK! Finds all the locations or observations that are close.
-!HKcall loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-!HK                                           num_close, close_ind)
-!HK
-!HK! Make the ZG part of the state vector far from everything so it does not get updated.
-!HK! Scroll through all the obs_loc(:) and obs_kind(:) elements
-!HK
-!HKdo k = 1,num_close
-!HK   t_ind  = close_ind(k)
-!HK   if (obs_kind(t_ind) == QTY_GEOMETRIC_HEIGHT) then
-!HK      if (do_output() .and. (debug > 99)) then
-!HK         write(     *     ,*)'get_close_obs ZG distance is ', &
-!HK                     dist(k),' changing to ',10.0_r8 * PI
-!HK         write(logfileunit,*)'get_close_obs ZG distance is ', &
-!HK                     dist(k),' changing to ',10.0_r8 * PI
-!HK      endif
-!HK      dist(k) = 10.0_r8 * PI
-!HK   endif
-!HKenddo
-!HK
-!HK
-!HKif (estimate_f10_7) then
-!HK   do k = 1, num_close
-!HK
-!HK      t_ind  = close_ind(k)
-!HK
-!HK      ! This was part of an experimental setup - if the distance is LARGE,
-!HK      ! the state variables will not be updated. By increasing the distance,
-!HK      ! the values in the DART vector will remain unchanged. If you allow
-!HK      ! the DART vector to be updated, the posterior observation operators
-!HK      ! will be impacted - which is usually the desire. You can then avoid
-!HK      ! impacting the tiegcm forecast through the input.nml 'NO_COPY_BACK' feature.
-!HK
-!HK      if (    (obs_kind(t_ind) == QTY_MOLEC_OXYGEN_MIXING_RATIO) &
-!HK         .or. (obs_kind(t_ind) == QTY_U_WIND_COMPONENT) &
-!HK         .or. (obs_kind(t_ind) == QTY_V_WIND_COMPONENT) &
-!HK         .or. (obs_kind(t_ind) == QTY_TEMPERATURE) ) then
-!HK      !  dist(k) = 10.0_r8 * PI
-!HK
-!HK      elseif  (obs_kind(t_ind) == QTY_1D_PARAMETER) then
-!HK         ! f10_7 is given a location of latitude 0.0 and the longitude
-!HK         ! of local noon. By decreasing the distance from the observation
-!HK         ! to the dynamic f10_7 location we are allowing the already close
-!HK         ! observations to have a larger impact in the parameter estimation.
-!HK         ! 0.25 is heuristic. The 'close' observations have already been 
-!HK         ! determined by the cutoff. Changing the distance here does not
-!HK         ! allow more observations to impact anything.
-!HK         dist(k) = dist(k)*0.25_r8
-!HK      endif
-!HK
-!HK   enddo
-!HKendif
+! Make the ZG part of the state vector far from everything so it does not get updated.
+! Scroll through all the obs_loc(:) and obs_kind(:) elements
+
+do k = 1,num_close
+   t_ind  = close_ind(k)
+   if (loc_types(t_ind) == QTY_GEOMETRIC_HEIGHT) then
+      if (do_output() .and. (debug > 99)) then
+         write(     *     ,*)'get_close_obs ZG distance is ', &
+                     dist(k),' changing to ',10.0_r8 * PI
+         write(logfileunit,*)'get_close_obs ZG distance is ', &
+                     dist(k),' changing to ',10.0_r8 * PI
+      endif
+      dist(k) = 10.0_r8 * PI
+   endif
+enddo
+
+
+if (estimate_f10_7) then
+   do k = 1, num_close
+
+      t_ind  = close_ind(k)
+
+     !HK what is the goal of this if statement? Just to demonstrate how to not impact
+     !HK state variables?
+
+      ! This was part of an experimental setup - if the distance is LARGE,
+      ! the state variables will not be updated. By increasing the distance,
+      ! the values in the DART vector will remain unchanged. If you allow
+      ! the DART vector to be updated, the posterior observation operators
+      ! will be impacted - which is usually the desire. You can then avoid
+      ! impacting the tiegcm forecast through the input.nml 'NO_COPY_BACK' feature.
+
+      if (    (loc_types(t_ind) == QTY_MOLEC_OXYGEN_MIXING_RATIO) &
+         .or. (loc_types(t_ind) == QTY_U_WIND_COMPONENT) &
+         .or. (loc_types(t_ind) == QTY_V_WIND_COMPONENT) &
+         .or. (loc_types(t_ind) == QTY_TEMPERATURE) ) then
+      !  dist(k) = 10.0_r8 * PI
+
+      elseif  (loc_types(t_ind) == QTY_1D_PARAMETER) then
+         ! f10_7 is given a location of latitude 0.0 and the longitude
+         ! of local noon. By decreasing the distance from the observation
+         ! to the dynamic f10_7 location we are allowing the already close
+         ! observations to have a larger impact in the parameter estimation.
+         ! 0.25 is heuristic. The 'close' observations have already been 
+         ! determined by the cutoff. Changing the distance here does not
+         ! allow more observations to impact anything.
+         dist(k) = dist(k)*0.25_r8
+      endif
+
+   enddo
+endif
 
 end subroutine get_close_obs
 
