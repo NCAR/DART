@@ -698,37 +698,18 @@ enddo
 
 
 if (estimate_f10_7) then
+! f10_7 is given a location of latitude 0.0 and the longitude
+! of local noon. By decreasing the distance from the observation
+! to the dynamic f10_7 location we are allowing the already close
+! observations to have a larger impact in the parameter estimation.
+! 0.25 is heuristic. The 'close' observations have already been
+! determined by the cutoff. Changing the distance here does not
+! allow more observations to impact anything.
    do k = 1, num_close
-
       t_ind  = close_ind(k)
-
-     !HK what is the goal of this if statement? Just to demonstrate how to not impact
-     !HK state variables?
-
-      ! This was part of an experimental setup - if the distance is LARGE,
-      ! the state variables will not be updated. By increasing the distance,
-      ! the values in the DART vector will remain unchanged. If you allow
-      ! the DART vector to be updated, the posterior observation operators
-      ! will be impacted - which is usually the desire. You can then avoid
-      ! impacting the tiegcm forecast through the input.nml 'NO_COPY_BACK' feature.
-
-      if (    (loc_types(t_ind) == QTY_MOLEC_OXYGEN_MIXING_RATIO) &
-         .or. (loc_types(t_ind) == QTY_U_WIND_COMPONENT) &
-         .or. (loc_types(t_ind) == QTY_V_WIND_COMPONENT) &
-         .or. (loc_types(t_ind) == QTY_TEMPERATURE) ) then
-      !  dist(k) = 10.0_r8 * PI
-
-      elseif  (loc_types(t_ind) == QTY_1D_PARAMETER) then
-         ! f10_7 is given a location of latitude 0.0 and the longitude
-         ! of local noon. By decreasing the distance from the observation
-         ! to the dynamic f10_7 location we are allowing the already close
-         ! observations to have a larger impact in the parameter estimation.
-         ! 0.25 is heuristic. The 'close' observations have already been 
-         ! determined by the cutoff. Changing the distance here does not
-         ! allow more observations to impact anything.
+      if  (loc_types(t_ind) == QTY_1D_PARAMETER) then
          dist(k) = dist(k)*0.25_r8
       endif
-
    enddo
 endif
 
