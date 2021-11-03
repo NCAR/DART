@@ -13,7 +13,7 @@ module model_mod
 !-------------------------------------------------------------------------------
 
 use        types_mod, only : r4, r8, i8, MISSING_R8, MISSING_R4, PI, &
-                             earth_radius, gravity, obstypelength
+                             earth_radius, gravity, obstypelength, MISSING_I
 
 use time_manager_mod, only : time_type, set_calendar_type, set_time_missing,        &
                              set_time, get_time, print_time,                        &
@@ -59,7 +59,9 @@ use default_model_mod, only : adv_1step,                                &
 use state_structure_mod, only : add_domain, get_dart_vector_index, add_dimension_to_variable, &
                                 finished_adding_domain, state_structure_info, &
                                 get_domain_size, set_parameter_value, get_model_variable_indices, &
-                                get_num_dims, get_dim_name, get_variable_name
+                                get_num_dims, get_dim_name, get_variable_name, &
+                                get_varid_from_varname, get_num_varids_from_kind, &
+                                get_varid_from_kind
 
 use distributed_state_mod, only : get_state
 
@@ -169,13 +171,13 @@ integer, parameter :: SECONDARY_DOM = 2
 integer, parameter :: CONSTRUCT_DOM = 3
 
 ! lon and lat grid specs. 2.5 degree or 5 degree grid
-bot_lon        = MISSING_R8
-delta_lon      = MISSING_R8
-zero_lon_index = MISSING_R8
-top_lon        = MISSING_R8
-bot_lat        = MISSING_R8
-top_lat        = MISSING_R8
-delta_lat      = MISSING_R8
+real(r8)  :: bot_lon        = MISSING_R8
+real(r8)  :: top_lon        = MISSING_R8
+real(r8)  :: delta_lon      = MISSING_R8
+real(r8)  :: bot_lat        = MISSING_R8
+real(r8)  :: top_lat        = MISSING_R8
+real(r8)  :: delta_lat      = MISSING_R8
+integer   :: zero_lon_index = MISSING_I
 
 
 ! FOR NOW OBS LOCATIONS ARE EXPECTED GIVEN IN HEIGHT [m],
@@ -395,8 +397,9 @@ if ( iqty == QTY_PRESSURE) then
          istatus(:) = 33
          return
       endif
-    endif
-   
+   elseif (which_vert == VERTISHEIGHT) then
+
+
 
 ! If PRESSURE; calculate the pressure from several variables.
 ! vert_interp() interpolates the state column to
@@ -405,8 +408,7 @@ if ( iqty == QTY_PRESSURE) then
 
 ! FIXME ... is it possible to try to get a pressure with which_vert == undefined
 ! At present, vert_interp will simply fail because height is a negative number.
-
-!call vert_interp(obs_val(:),lon_below,lat_below,height,iqty,'ilev',-1,val(1,1),istatus(1))
+!call vert_interp(state_handle,lon_below,lat_below,height,iqty,'ilev',-1,val(1,1),istatus(1))
 !if (istatus(1) == 0) &
 !call vert_interp(obs_val(:),lon_below,lat_above,height,iqty,'ilev',-1,val(1,2),istatus(1))
 !if (istatus(1) == 0) &
@@ -415,7 +417,9 @@ if ( iqty == QTY_PRESSURE) then
 !call vert_interp(obs_val(:),lon_above,lat_above,height,iqty,'ilev',-1,val(2,2),istatus(1))
     return
 
-endif
+   endif ! which vert
+
+endif ! end of QTY_PRESSURE
 
 ! check if qty is in the state vector
 call find_qty_in_state(iqty, dom_id, var_id)
@@ -460,16 +464,16 @@ elseif( which_vert == VERTISLEVEL) then
    val21(:) = get_state(get_dart_vector_index(lon_above, lat_below, level, domain_id(dom_id), var_id ), state_handle)
    val22(:) = get_state(get_dart_vector_index(lon_above, lat_above, level, domain_id(dom_id), var_id ), state_handle)
    istatus = 0
-   obs_val(:) = interpolate(ens_size, val11, val12, vall21, val22)
+   obs_val(:) = interpolate(ens_size, lon_fract, lat_fract, val11, val12, val21, val22)
 
 elseif( which_vert == VERTISUNDEF) then
    bogus_level  = -1  !HK what should this be?  Do only 2D fields have VERTISUNDEF?
-   vall11(:) = get_state( get_dart_vector_index(lon_below, lat_below, bogus_level, domain_id(dom_id), var_id), state_handle)
-   val12(:) = x(get_dart_vector_index(lon_below, lat_above, bogus_level, domain_id(dom_id), var_id), state_handle)
-   val21(:) = x(get_dart_vector_index(lon_above, lat_below, bogus_level, domain_id(dom_id), var_id), state_handle)
-   val22(:) = x(get_dart_vector_index(lon_above, lat_above, bogus_level, domain_id(dom_id), var_id), state_handle)
+   val11(:) = get_state(get_dart_vector_index(lon_below, lat_below, bogus_level, domain_id(dom_id), var_id), state_handle)
+   val12(:) = get_state(get_dart_vector_index(lon_below, lat_above, bogus_level, domain_id(dom_id), var_id), state_handle)
+   val21(:) = get_state(get_dart_vector_index(lon_above, lat_below, bogus_level, domain_id(dom_id), var_id), state_handle)
+   val22(:) = get_state(get_dart_vector_index(lon_above, lat_above, bogus_level, domain_id(dom_id), var_id), state_handle)
    istatus(:) = 0
-   obs_val(:) = interpolate(ens_size, val11, val12, vall21, val22)
+   obs_val(:) = interpolate(ens_size, lon_fract, lat_fract, val11, val12, val21, val22)
 else
 
    write(string1,*) 'vertical coordinate type:',which_vert,' cannot be handled'
@@ -778,11 +782,11 @@ do i = 1, num
    
    select case (trim(dim_name))
       case ('ilev')
-         height = get_state(loc_indx(i), state_handle) !HK this is the value of the variale, not the height. 
+         height = get_state(loc_indx(i), state_handle) !HK this is the value of the variale, not the height.
    
       case ('lev') ! height on midpoint
         height1 = get_state(loc_indx(i), state_handle)
-        height2 = get_state(get_dart_vector_index(lon_index, lat_index, loc_indx(i)+1, dom_id, var_id), state_handle)
+        height2 = get_state(loc_indx(i)+1, state_handle) ! this is wrong needs to be height
         height = (height1 + height2) / 2.0_r8
    
       case default
@@ -1380,6 +1384,9 @@ print*, 'restart size', get_domain_size(RESTART_DOM)
 print*, 'secondary size', get_domain_size(SECONDARY_DOM)
 print*, 'constructed size', get_domain_size(CONSTRUCT_DOM)
 
+! set ivar. ZG is in the secondary domain
+ivarZG = get_varid_from_varname(domain_id(SECONDARY_DOM), 'ZG')
+
 end subroutine verify_variables
 
 !-------------------------------------------------------------------------------
@@ -1587,129 +1594,47 @@ end subroutine create_vtec
 
 !-------------------------------------------------------------------------------
 
-subroutine vert_interp(x, lon_index, lat_index, height, iqty, vertstagger, &
-                       ivar, val, istatus)
+subroutine vert_interp(state_handle, n, dom_id, var_id, lon_index, lat_index, height, iqty, &
+                       val, istatus)
 ! returns the value at an arbitrary height on an existing horizontal grid location.
 ! istatus == 0 is a 'good' return code.
 
-real(r8),         intent(in)  :: x(:)
+type(ensemble_type), intent(in) :: state_handle
+integer,          intent(in)  :: n ! ensemble_size
+integer,          intent(in)  :: dom_id
+integer,          intent(in)  :: var_id
 integer,          intent(in)  :: lon_index
 integer,          intent(in)  :: lat_index
 real(r8),         intent(in)  :: height
 integer,          intent(in)  :: iqty
-character(len=*), intent(in)  :: vertstagger
-integer,          intent(in)  :: ivar
 real(r8),         intent(out) :: val
-integer,          intent(out) :: istatus
+integer,          intent(out) :: istatus(n)
 
-integer  :: k, lev_top, lev_bottom
-real(r8) :: zgrid, delta_z, zgrid_top, zgrid_bottom
-real(r8) :: zgrid_upper, zgrid_lower
 real(r8) :: val_top, val_bottom, frac_lev
+logical  :: on_lev
 
 ! Presume the worst. Failure.
 istatus    = 1
 val        = MISSING_R8
-delta_z    = MISSING_R8
-frac_lev   = MISSING_R8
-lev_top    = 0
-lev_bottom = 0
 
-!HK if ( vertstagger == 'ilev') then
-!HK 
-!HK    zgrid_bottom = x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=1    ))
-!HK    zgrid_top    = x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=nilev))
-!HK 
-!HK    ! cannot extrapolate below bottom or beyond top ... fail ...
-!HK    if ((zgrid_bottom > height) .or. (zgrid_top < height)) return
-!HK 
-!HK    ! Figure out what level is above/below, and by how much
-!HK    h_loop_interface : do k = 2, nilev
-!HK 
-!HK       zgrid = x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=k))
-!HK 
-!HK       if (height <= zgrid) then
-!HK          lev_top    = k
-!HK          lev_bottom = lev_top - 1
-!HK          delta_z    = zgrid - x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=lev_bottom))
-!HK          frac_lev   = (zgrid - height)/delta_z
-!HK          exit h_loop_interface
-!HK       endif
-!HK 
-!HK    enddo h_loop_interface
-!HK 
-!HK elseif ( vertstagger == 'lev') then
-!HK    ! Variable is on level midpoints, not ilevels.
-!HK    ! Get height as the average of the ilevels.
-!HK 
-!HK    ! ilev index    1      2      3      4    ...  27    28    29
-!HK    ! ilev value  -7.00, -6.50, -6.00, -5.50, ... 6.00, 6.50, 7.00 ;
-!HK    !  lev value     -6.75, -6.25, -5.75, -5.25, ... 6.25, 6.75
-!HK    !  lev index        1      2      3      4    ...  27    28
-!HK 
-!HK    !mid_level 1
-!HK    zgrid_bottom = (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=1)) + &
-!HK                    x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=2))) / 2.0_r8
-!HK 
-!HK    !mid_level nlev
-!HK    zgrid_top    = (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=nilev-1)) + &
-!HK                    x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=nilev))) / 2.0_r8
-!HK 
-!HK    ! cannot extrapolate below bottom or beyond top ... fail ...
-!HK    if ((zgrid_bottom > height) .or. (zgrid_top < height)) return
-!HK 
-!HK    ! Figure out what level is above/below, and by how much
-!HK    h_loop_midpoint: do k = 2, nilev-1
-!HK 
-!HK      lev_bottom = k-1
-!HK      lev_top    = k
-!HK 
-!HK      zgrid_lower = &
-!HK              (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k-1 )) + &
-!HK               x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k   ))) / 2.0_r8
-!HK 
-!HK      zgrid_upper = &
-!HK              (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k  )) + &
-!HK               x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k+1))) / 2.0_r8
-!HK 
-!HK      if (height  <= zgrid_upper) then
-!HK         if (zgrid_upper == zgrid_lower) then ! avoid divide by zero
-!HK            frac_lev = 0.0_r8  ! the fraction does not matter ...
-!HK         else
-!HK            delta_z  = zgrid_upper - zgrid_lower
-!HK            frac_lev = (zgrid_upper - height)/delta_z
-!HK         endif
-!HK         exit h_loop_midpoint
-!HK      endif
-!HK 
-!HK    enddo h_loop_midpoint
-!HK 
-!HK else
-!HK    write(string1,*)'Unknown vertical stagger ',trim(vertstagger)
-!HK    call error_handler(E_MSG,'vert_interp:', string1, source, revision, revdate )
-!HK endif
-!HK 
-!HK ! Check to make sure we didn't fall through the h_loop ... unlikely (impossible?)
-!HK if ( (frac_lev == MISSING_R8) .or. (lev_top == 0) .or. (lev_bottom == 0) ) then
-!HK    write(string1,*)'Should not be here ... fell through loop.'
-!HK    call error_handler(E_MSG,'vert_interp:', string1, source, revision, revdate )
-!HK    return
-!HK endif
-!HK 
-!HK istatus = 0 ! If we made it this far, it worked.
-!HK 
-!HK if (iqty == QTY_PRESSURE) then ! log-linear interpolation in height
-!HK 
-!HK    val_top    = plevs(lev_top)     !pressure at midpoint [Pa]
-!HK    val_bottom = plevs(lev_bottom)  !pressure at midpoint [Pa]
-!HK    val        = exp(frac_lev * log(val_bottom) + (1.0 - frac_lev) * log(val_top))
-!HK 
-!HK else ! simple linear interpolation in height
-!HK 
-!HK    val_top    = x(get_dart_vector_index(ivar, indx1=lon_index, indx2=lat_index, indx3=lev_top))
-!HK    val_bottom = x(get_dart_vector_index(ivar, indx1=lon_index, indx2=lat_index, indx3=lev_bottom))
-!HK    val        =     frac_lev *     val_bottom  + (1.0 - frac_lev) *     val_top
-!HK endif
+if (iqty == QTY_PRESSURE) then ! log-linear interpolation in height
+
+  call compute_bracketing_level(state_handle, height, .true., n, dom_id, var_id, lat_index, lon_index, val_bottom, val_top, frac_lev, istatus)
+
+! HK this needs level index
+   !val_top    = plevs(lev_top)     !pressure at midpoint [Pa]
+   !val_bottom = plevs(lev_bottom)  !pressure at midpoint [Pa]
+   !val        = exp(frac_lev * log(val_bottom) + (1.0 - frac_lev) * log(val_top))
+
+else ! simple linear interpolation in height
+
+   on_lev = ilev_or_lev(dom_id, var_id) == 'ilev'
+   call compute_bracketing_level(state_handle, height, on_lev, n, dom_id, var_id, lat_index, lon_index, val_bottom, val_top, frac_lev, istatus)
+
+   !val_top    = x(get_dart_vector_index(ivar, indx1=lon_index, indx2=lat_index, indx3=lev_top))
+   !val_bottom = x(get_dart_vector_index(ivar, indx1=lon_index, indx2=lat_index, indx3=lev_bottom))
+   !val        =     frac_lev *     val_bottom  + (1.0 - frac_lev) *     val_top
+endif
 
 end subroutine vert_interp
 
@@ -1738,8 +1663,8 @@ var_id = -1
 do id = 1, 3 ! RESTART_DOM, SECONDARY_DOM, CONSTRUCT_DOM
 
    num_same_kind = get_num_varids_from_kind(domain_id(id), iqty)
-   if (num_same_kind) == 0 cycle
-   if (num_same_kind) > 1 ) then ! need to pick which one you want
+   if (num_same_kind == 0 ) cycle
+   if (num_same_kind  > 1 ) then ! need to pick which one you want
      which_dom = id
      print*, 'Do something sensible here'
    else !
@@ -1758,7 +1683,7 @@ end subroutine find_qty_in_state
 subroutine compute_bracketing_lon_indices(lon, idx_below, idx_above, fraction)
 
 real(r8), intent(in)  :: lon ! longitude
-integer,  intent(out) :: idx_below, idx_below ! index in lons()
+integer,  intent(out) :: idx_below, idx_above ! index in lons()
 real(r8), intent(out) :: fraction ! fraction to use for interpolation
 
 if(lon > top_lon .and. lon < bot_lon) then     ! at wraparound point [175 < lon < 180]
@@ -1768,7 +1693,7 @@ if(lon > top_lon .and. lon < bot_lon) then     ! at wraparound point [175 < lon 
 elseif (lon >= bot_lon) then                  ! [180 <= lon <= 360]
    idx_below = int((lon - bot_lon) / delta_lon) + 1
    idx_above = idx_below + 1
-   idx_fract = (lon - lons(idx_below)) / delta_lon
+   fraction = (lon - lons(idx_below)) / delta_lon
 else                                           ! [0 <= lon <= 175 ]
    idx_below = int((lon - 0.0_r8) / delta_lon) + zero_lon_index
    idx_above = idx_below + 1
@@ -1779,18 +1704,133 @@ endif
 end subroutine compute_bracketing_lon_indices
 
 !-------------------------------------------------------------------------------
+subroutine compute_bracketing_level(state_handle, height, on_ilev, n, dom_id, var_id, lon_index, lat_index, &
+                                    lev_bottom, lev_top, frac_lev, istatus)
+
+type(ensemble_type), intent(in) :: state_handle
+real(r8), intent(in)  :: height
+logical,  intent(in)  :: on_ilev ! lev or ilev
+integer,  intent(in)  :: n ! ensemble size
+integer,  intent(in)  :: dom_id
+integer,  intent(in)  :: var_id
+integer,  intent(in)  :: lon_index
+integer,  intent(in)  :: lat_index
+real(r8),  intent(out) :: lev_bottom
+real(r8),  intent(out) :: lev_top
+real(r8),  intent(out) :: frac_lev
+integer,  intent(out)  :: istatus(n)
+
+
+integer  :: k, i
+real(r8) :: zgrid, delta_z, zgrid_top(n), zgrid_bottom(n)
+real(r8) :: zgrid_upper(n), zgrid_lower(n)
+
+istatus    = 1
+frac_lev   = MISSING_R8
+lev_top    = -1
+lev_bottom = -1
+
+if ( on_ilev ) then
+
+   zgrid_bottom(:) = get_state(get_dart_vector_index(lon_index,lat_index,1, dom_id, var_id), state_handle)
+   zgrid_top(:)  = get_state(get_dart_vector_index(lon_index,lat_index,nilev, dom_id, var_id), state_handle)
+
+   ! cannot extrapolate below bottom or beyond top
+   do i = 1, n
+      if ((zgrid_bottom(i) > height) .or. (zgrid_top(i) < height)) then
+        istatus(i) = 55
+      endif
+   enddo
+   if (any(istatus /= 0)) return ! failure
+
+   ! Figure out what level is above/below, and by how much
+   h_loop_interface : do k = 2, nilev
+
+      !zgrid = x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=k))
+
+      if (height <= zgrid) then ! HK this is per ensemble member?
+         lev_top    = k
+         lev_bottom = lev_top - 1
+        ! delta_z    = zgrid - x(get_dart_vector_index(ivarZG,indx1=lon_index,indx2=lat_index,indx3=lev_bottom))
+        ! frac_lev   = (zgrid - height)/delta_z
+
+call error_handler(E_ERR, 'watch out', 'not done yet')
+
+         exit h_loop_interface
+      endif
+
+   enddo h_loop_interface
+
+else
+   ! Variable is on level midpoints, not ilevels.
+   ! Get height as the average of the ilevels.
+
+   ! ilev index    1      2      3      4    ...  27    28    29
+   ! ilev value  -7.00, -6.50, -6.00, -5.50, ... 6.00, 6.50, 7.00 ;
+   !  lev value     -6.75, -6.25, -5.75, -5.25, ... 6.25, 6.75
+   !  lev index        1      2      3      4    ...  27    28
+
+   !mid_level 1
+   zgrid_bottom = get_state(get_dart_vector_index(lon_index,lat_index,1,dom_id, var_id), state_handle) + &
+                  get_state(get_dart_vector_index(lon_index,lat_index,2,dom_id, var_id), state_handle) / 2.0_r8
+
+   !mid_level nlev
+   zgrid_top = get_state(get_dart_vector_index(lon_index,lat_index,nilev-1,dom_id, var_id), state_handle) + &
+               get_state(get_dart_vector_index(lon_index,lat_index,nilev,dom_id, var_id), state_handle) / 2.0_r8
+
+   ! cannot extrapolate below bottom or beyond top
+   do i = 1, n
+      if ((zgrid_bottom(i) > height) .or. (zgrid_top(i) < height)) then
+        istatus(i) = 55
+      endif
+   enddo
+   if (any(istatus /= 0)) return ! failure
+
+   ! Figure out what level is above/below, and by how much
+   h_loop_midpoint: do k = 2, nilev-1  !HK this is per ensemble member?
+
+     lev_bottom = k-1
+     lev_top    = k
+
+
+call error_handler(E_ERR, 'watch out', 'not done yet')
+   !  zgrid_lower = &
+   !          (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k-1 )) + &
+   !           x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k   ))) / 2.0_r8
+
+    ! zgrid_upper = &
+    !         (x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k  )) + &
+    !          x(get_dart_vector_index(ivarZG, indx1=lon_index, indx2=lat_index, indx3=k+1))) / 2.0_r8
+
+     if (height  <= zgrid_upper(1)) then  ! HK ens_size
+        if (zgrid_upper(1) == zgrid_lower(1)) then ! avoid divide by zero
+        !   frac_lev = 0.0_r8  ! the fraction does not matter ...
+        else
+           !delta_z  = zgrid_upper - zgrid_lower
+           !frac_lev = (zgrid_upper - height)/delta_z
+        endif
+        exit h_loop_midpoint
+     endif
+
+   enddo h_loop_midpoint
+
+endif
+
+end subroutine compute_bracketing_level
+
+!-------------------------------------------------------------------------------
 ! Compute neighboring lat rows: TIEGCM [-87.5, 87.5] DART [-90, 90]
 ! HK note from model_interpolate: What should be done?
 ! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE IS NOT GREAT!
 subroutine compute_bracketing_lat_indices(lat, idx_below, idx_above, fraction)
 
 real(r8), intent(in)  :: lat ! latitude
-integer,  intent(out) :: idx_below, idx_below ! index in lats()
+integer,  intent(out) :: idx_below, idx_above ! index in lats()
 real(r8), intent(out) :: fraction ! fraction to use for interpolation
 
 if(lat >= bot_lat .and. lat <= top_lat) then ! -87.5 <= lat <= 87.5
    idx_below = int((lat - bot_lat) / delta_lat) + 1
-   idx_above = lat_below + 1
+   idx_above = idx_below + 1
    fraction = (lat - lats(idx_below) ) / delta_lat
 else if(lat < bot_lat) then ! South of bottom lat
    idx_below = 1
@@ -1805,11 +1845,12 @@ endif
 end subroutine compute_bracketing_lat_indices
 
 !-------------------------------------------------------------------------------
-function interpolate(n, val11, val12, vall21, val22) return(obs_val)
+function interpolate(n, lon_fract, lat_fract, val11, val12, val21, val22) result(obs_val)
 
-integer, intent(in) :: n ! number of ensemble members
-real(r8), dimension(nvals), intent(in) :: val11, val12, vall21, val22
-real(r8), dimension(nvals) :: obs_val
+integer,  intent(in) :: n ! number of ensemble members
+real(r8), intent(in) :: lon_fract, lat_fract
+real(r8), dimension(n), intent(in) :: val11, val12, val21, val22
+real(r8), dimension(n) :: obs_val
 
 real(r8) :: a(n, 2)
 
@@ -1821,12 +1862,13 @@ obs_val(:) = lat_fract * a(:,2) + (1.0_r8 - lat_fract) * a(:,1)
 end function interpolate
 
 !-------------------------------------------------------------------------------
-function ilev_or_lev(dom_id, var_id) return(dim_name)
+function ilev_or_lev(dom_id, var_id) result(dim_name)
 
 integer, intent(in) :: dom_id
 integer, intent(in) :: var_id
 character(len=NF90_MAX_NAME) :: dim_name
 
+integer :: d
 ! search for either ilev or lev
 dim_name = 'null'
 do d = 1, get_num_dims(dom_id, var_id)
