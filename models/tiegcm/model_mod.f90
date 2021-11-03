@@ -46,8 +46,6 @@ use     obs_kind_mod, only : QTY_U_WIND_COMPONENT,           &
                              QTY_VERTICAL_TEC,               &! total electron content
                              get_index_for_quantity
 
-use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-
 use mpi_utilities_mod,only : my_task_id
 
 use default_model_mod, only : adv_1step,                                &
@@ -104,8 +102,6 @@ character(len=128), parameter :: revdate  = ''
 
 !-------------------------------------------------------------------------------
 ! namelist with default values
-! output_state_vector = .true.  results in a "state-vector"   netCDF file
-! output_state_vector = .false. results in a "prognostic-var" netCDF file
 
 ! IMPORTANT: Change output file names in tiegcm.nml to match these names
 ! i.e.  OUTPUT='tiegcm_restart_p.nc'
@@ -113,7 +109,6 @@ character(len=128), parameter :: revdate  = ''
 character(len=256) :: tiegcm_restart_file_name   = 'tiegcm_restart_p.nc'
 character(len=256) :: tiegcm_secondary_file_name = 'tiegcm_s.nc'
 character(len=256) :: tiegcm_namelist_file_name  = 'tiegcm.nml'
-logical            :: output_state_vector = .false.
 integer            :: debug = 0
 logical            :: estimate_f10_7 = .false.
 integer            :: assimilation_period_seconds = 3600
@@ -132,7 +127,6 @@ namelist /model_nml/ tiegcm_restart_file_name, &
 integer                               :: nilev, nlev, nlon, nlat
 real(r8),dimension(:),    allocatable :: lons, lats, levs, ilevs, plevs, pilevs
 ! HK are plevs, pilves per ensemble member?
-real(r8)                              :: TIEGCM_missing_value !! global attribute
 real(r8)                              :: TIEGCM_reference_pressure
 integer                               :: time_step_seconds
 integer                               :: time_step_days
@@ -188,8 +182,6 @@ integer   :: zero_lon_index = MISSING_I
 real(r8), allocatable, dimension(:,:,:) :: ZG
 integer               :: ivarZG
 
-logical               :: first_pert_call = .true.
-type(random_seq_type) :: random_seq
 character(len=512)    :: string1, string2, string3
 logical, save         :: module_initialized = .false.
 
@@ -228,11 +220,10 @@ endif
 
 ! Read in TIEGCM namelist input file (just for definition)
 ! Read in TIEGCM grid definition etc from TIEGCM restart file
-! Read in TIEGCM auxiliary variables from TIEGCM 'secondary' file
+! Read in TIEGCM auxiliary variables from TIEGCM 'secondary' file ! HK this means ZG is static data not per ensemble?
 
 call read_TIEGCM_namelist(tiegcm_namelist_file_name)
 call read_TIEGCM_definition(tiegcm_restart_file_name)
-!HK call read_TIEGCM_secondary(tiegcm_secondary_file_name)
 
 ! error-check, convert namelist input to variable_table, and build the
 ! state structure
@@ -324,8 +315,7 @@ integer,             intent(in) :: iqty
 integer,            intent(out) :: istatus(ens_size)
 real(r8),           intent(out) :: obs_val(ens_size) !< array of interpolated values
 
-integer  :: ivar
-integer  :: i, which_vert
+integer  :: which_vert
 integer  :: lat_below, lat_above, lon_below, lon_above
 integer  :: zero_lon_index
 real(r8) :: lon_fract, lat_fract
@@ -728,6 +718,10 @@ integer,             intent(in)    :: loc_types(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: status(:)
 
+
+if  ( which_vert /= VERTISHEIGHT ) then
+   call error_handler(E_ERR,'convert_vertical_state', 'only supports VERTISHEIGHT')
+endif
 
 call error_handler(E_ERR, 'watch out', 'not done yet')
 status(:) = 1
@@ -1236,7 +1230,7 @@ integer :: nfields_secondary     ! number of variables from secondary file
 integer :: nfields_constructed   ! number of constructed state variables
 
 integer  :: i, nrows, ncols
-integer  :: ivar, index1, indexN, varsize
+integer  :: index1, indexN, varsize
 integer  :: ncid, ncid1, ncid2, ncerr, VarID, dimlen
 
 !HK obstypelength vs NF90_MAX_NAME?
