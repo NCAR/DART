@@ -316,7 +316,7 @@ integer,            intent(out) :: istatus(ens_size)
 real(r8),           intent(out) :: obs_val(ens_size) !< array of interpolated values
 
 integer  :: which_vert
-integer  :: lat_below, lat_above, lon_below, lon_above
+integer  :: lat_below, lat_above, lon_below, lon_above ! these are indices
 integer  :: zero_lon_index
 real(r8) :: lon_fract, lat_fract
 real(r8) :: lon, lat, lon_lat_lev(3)
@@ -382,31 +382,35 @@ if ( iqty == QTY_PRESSURE) then
       if (level <= nlev) then !HK can you get level < 0?
          obs_val(:) = plevs(level)
          istatus(:) = 0
-         return
       else
          istatus(:) = 33
-         return
       endif
    elseif (which_vert == VERTISHEIGHT) then
 
+      ! If PRESSURE; calculate the pressure from several variables. HK I don't understand this.
+      ! vert_interp() interpolates the state column to
+      ! the same vertical height as the observation.
+      ! THEN, it is the same as the 2D case.
 
-! If PRESSURE; calculate the pressure from several variables.
-! vert_interp() interpolates the state column to
-! the same vertical height as the observation.
-! THEN, it is the same as the 2D case.
+      ! FIXME ... is it possible to try to get a pressure with which_vert == undefined
+      ! At present, vert_interp will simply fail because height is a negative number.
 
-! FIXME ... is it possible to try to get a pressure with which_vert == undefined
-! At present, vert_interp will simply fail because height is a negative number.
-!call vert_interp(state_handle,lon_below,lat_below,height,iqty,'ilev',-1,val(1,1),istatus(1))
-!if (istatus(1) == 0) &
-!call vert_interp(obs_val(:),lon_below,lat_above,height,iqty,'ilev',-1,val(1,2),istatus(1))
-!if (istatus(1) == 0) &
-!call vert_interp(obs_val(:),lon_above,lat_below,height,iqty,'ilev',-1,val(2,1),istatus(1))
-!if (istatus(1) == 0) &
-!call vert_interp(obs_val(:),lon_above,lat_above,height,iqty,'ilev',-1,val(2,2),istatus(1))
-    return
+      call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_below, height, iqty, val11, istatus)
+      if (any(istatus /= 0)) return  !HK bail at the first failure
+      call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_above, height, iqty, val12, istatus)
+      if (any(istatus /= 0)) return
+      call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_below, height, iqty, val21, istatus)
+      if (any(istatus /= 0)) return
+      call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_above, height, iqty, val22, istatus)
+   
+   else
+
+      write(string1,*) 'vertical coordinate type:',which_vert,' cannot be handled'
+      call error_handler(E_ERR,'model_interpolate',string1,source,revision,revdate)
 
    endif ! which vert
+
+   return
 
 endif ! end of QTY_PRESSURE
 
@@ -419,21 +423,18 @@ endif
 
 if( which_vert == VERTISHEIGHT ) then
 
-! vert_interp() interpolates the state column to
-! the same vertical height as the observation.
-! THEN, it is the same as the 2D case.
-!HK Yo ensemble size vs column
-!call vert_interp(obs_val(:), lon_below, lat_below, height, iqty, &
-!          progvar(ivar)%verticalvar, ivar, val(1,1), istatus(1))
-!if (istatus(1) == 0) &
-!call vert_interp(obs_val(:), lon_below, lat_above, height, iqty, &
-!          progvar(ivar)%verticalvar, ivar, val(1,2), istatus(1))
-!if (istatus(1) == 0) &
-!call vert_interp(obs_val(:), lon_above, lat_below, height, iqty, &
-!          progvar(ivar)%verticalvar, ivar, val(2,1), istatus(1))
-!if (istatus(1) == 0) &
-!call vert_interp(obs_val(:), lon_above, lat_above, height, iqty, &
-!          progvar(ivar)%verticalvar, ivar, val(2,2), istatus(1))
+   ! vert_interp() interpolates the state column to
+   ! the same vertical height as the observation.
+   ! THEN, it is the same as the 2D case.
+
+   call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_below, height, iqty, val11, istatus)
+   if (any(istatus /= 0)) return  !HK bail at the first failure
+   call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_above, height, iqty, val12, istatus)
+   if (any(istatus /= 0)) return
+   call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_below, height, iqty, val21, istatus)
+   if (any(istatus /= 0)) return
+   call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_above, height, iqty, val22, istatus)
+
 
 elseif( which_vert == VERTISLEVEL) then
    ! Check to make sure vertical level is possible.
