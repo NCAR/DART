@@ -390,7 +390,6 @@ if ( iqty == QTY_PRESSURE) then
    elseif (which_vert == VERTISHEIGHT) then
 
 
-
 ! If PRESSURE; calculate the pressure from several variables.
 ! vert_interp() interpolates the state column to
 ! the same vertical height as the observation.
@@ -1597,18 +1596,26 @@ integer,          intent(in)  :: iqty
 real(r8),         intent(out) :: val(n)
 integer,          intent(out) :: istatus(n)
 
+logical :: is_pressure
+character(len=NF90_MAX_NAME) :: vertstagger
+
 ! Presume the worst. Failure.
 istatus    = 1
 val        = MISSING_R8
 
-if (iqty == QTY_PRESSURE) then ! log-linear interpolation in height
+is_pressure = (iqty == QTY_PRESSURE)
+if (is_pressure) then
+   vertstagger = 'ilev'  !HK what should this be? Does it matter?
+else
+   vertstagger = ilev_or_lev(dom_id, var_id)
+endif
 
-  call vert_interp_log_linear(state_handle, height, n, lat_index, lon_index, val, istatus)
-
-else ! simple linear interpolation in height
-
-   call vert_interp_simple_linear(state_handle, height, n, lat_index, lon_index, &
-                                  dom_id, var_id, val, istatus)
+if (vertstagger == 'ilev') then
+  call vert_interp_ilev(state_handle, height, n, lat_index, lon_index, is_pressure, &
+                          dom_id, var_id, val, istatus)
+elseif (vertstagger == 'lev') then
+  call vert_interp_lev(state_handle, height, n, lat_index, lon_index, is_pressure, &
+                          dom_id, var_id, val, istatus)
 endif
 
 end subroutine vert_interp
@@ -1680,14 +1687,16 @@ end subroutine compute_bracketing_lon_indices
 
 !-------------------------------------------------------------------------------
 ! on ilev
-subroutine vert_interp_log_linear(state_handle, height, n, lon_index, lat_index, &
-                                     val, istatus)
+subroutine vert_interp_ilev(state_handle, height, n, lon_index, lat_index, is_pressure, &
+                                    dom_id, var_id, val, istatus)
 
 type(ensemble_type), intent(in) :: state_handle
 real(r8), intent(in)  :: height
 integer,  intent(in)  :: n ! ensemble size
 integer,  intent(in)  :: lon_index
 integer,  intent(in)  :: lat_index
+logical,  intent(in)  :: is_pressure
+integer,  intent(in)  :: dom_id, var_id
 real(r8), intent(out) :: val(n) ! interpolated value
 integer,  intent(out) :: istatus(n)
 
@@ -1750,16 +1759,32 @@ found = .false.
    delta_z(:) = zgrid(:) - z2(2)
    frac_lev(:) = (zgrid(:) - height)/delta_z(:)
 
-val_top(:)    = plevs(lev_top(:))     !pressure at midpoint [Pa]
-val_bottom(:) = plevs(lev_bottom(:))  !pressure at midpoint [Pa]
 
-val(:)        = exp(frac_lev(:) * log(val_bottom(:)) + (1.0 - frac_lev(:)) * log(val_top(:)))
+   if (is_pressure) then ! get fom plevs (pilevs?) array TODO Lanai is always plves
 
-end subroutine vert_interp_log_linear
+      val_top(:)    = plevs(lev_top(:))     !pressure at midpoint [Pa]
+      val_bottom(:) = plevs(lev_bottom(:))  !pressure at midpoint [Pa]
+      val(:)        = exp(frac_lev(:) * log(val_bottom(:)) + (1.0 - frac_lev(:)) * log(val_top(:)))
+  
+   else  ! get from state vector
+
+      do i = 1, n
+        indx_top(:) = get_dart_vector_index(lon_index,lat_index,lev_top(i), dom_id, var_id)
+        indx_bottom(i) = get_dart_vector_index(lon_index,lat_index,lev_bottom(i), dom_id, var_id)
+      enddo
+
+      call get_state_array(val_top, indx_top(:), state_handle)
+      call get_state_array(val_bottom, indx_bottom(:), state_handle)
+
+      val(:) = frac_lev(:) * val_bottom(:)  + (1.0 - frac_lev(:)) * val_top(:)
+
+   endif
+
+end subroutine vert_interp_ilev
 
 !-------------------------------------------------------------------------------
 ! on lev
-subroutine vert_interp_simple_linear(state_handle, height, n, lon_index, lat_index, &
+subroutine vert_interp_lev(state_handle, height, n, lon_index, lat_index, is_pressure, &
                                      dom_id, var_id, val, istatus)
 
 type(ensemble_type), intent(in) :: state_handle
@@ -1767,6 +1792,7 @@ real(r8), intent(in)  :: height
 integer,  intent(in)  :: n ! ensemble size
 integer,  intent(in)  :: lon_index
 integer,  intent(in)  :: lat_index
+logical,  intent(in)  :: is_pressure
 integer,  intent(in)  :: dom_id, var_id
 real(r8), intent(out) :: val(n)  ! interpolated value
 integer,  intent(out) :: istatus(n)
@@ -1856,9 +1882,16 @@ found = .false.
       frac_lev = (zgrid - height)/delta_z
    endwhere
 
+if (is_pressure) then ! get fom plevs (pilevs?) array TODO Lanai is always plves
+
+   val_top(:)    = plevs(lev_top(:))     !pressure at midpoint [Pa]
+   val_bottom(:) = plevs(lev_bottom(:))  !pressure at midpoint [Pa]
+   val(:)        = exp(frac_lev(:) * log(val_bottom(:)) + (1.0 - frac_lev(:)) * log(val_top(:)))
+
+else ! get from state vector
 
    do i = 1, n
-     indx_top(:) = get_dart_vector_index(lon_index,lat_index,lev_top(i), domain_id(SECONDARY_DOM), ivarZG)
+     indx_top(:) = get_dart_vector_index(lon_index,lat_index,lev_top(i), dom_id, var_id)
      indx_bottom(i) = get_dart_vector_index(lon_index,lat_index,lev_bottom(i), dom_id, var_id)
    enddo
 
@@ -1867,7 +1900,9 @@ found = .false.
 
    val(:) = frac_lev(:) * val_bottom(:)  + (1.0 - frac_lev(:)) * val_top(:)
 
-end subroutine vert_interp_simple_linear
+endif
+
+end subroutine vert_interp_lev
 
 !-------------------------------------------------------------------------------
 ! Compute neighboring lat rows: TIEGCM [-87.5, 87.5] DART [-90, 90]
