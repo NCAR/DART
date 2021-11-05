@@ -664,8 +664,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
    ! Compute observation space increments for each group
    do group = 1, num_groups
-      grp_bot = grp_beg(group)
-      grp_top = grp_end(group)
+      grp_bot = grp_beg(group); grp_top = grp_end(group)
       call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
          obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
          my_inflate_sd, net_a(group))
@@ -717,9 +716,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ens_handle, last_base_states_loc, last_num_close_states, last_close_state_ind,               &
       last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
    n_close_state_items(i) = num_close_states
-   !print*, 'num close state', num_close_states
    !call test_close_obs_dist(close_state_dist, num_close_states, i)
-   !call test_state_copies(ens_handle, 'beforeupdates')
 
    ! Loop through to update each of my state variables that is potentially close
    STATE_UPDATE: do j = 1, num_close_states
@@ -737,8 +734,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       ! Loop through groups to update the state variable ensemble members
       do group = 1, num_groups
-         grp_bot = grp_beg(group)
-         grp_top = grp_end(group)
+         grp_bot = grp_beg(group); grp_top = grp_end(group)
          ! Do update of state, correl only needed for varying ss inflate but compute for all
          call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
             obs_prior_var(group), obs_inc(grp_bot:grp_top), &
@@ -753,7 +749,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          final_factor = min(cov_factor, reg_factor)
       endif
 
-!PAR NEED TO TURN STUFF OFF MORE EFFICEINTLY
       ! If doing full assimilation, update the state variable ensemble with weighted increments
       if(.not. inflate_only) then
          ens_handle%copies(1:ens_size, state_index) = &
@@ -771,59 +766,46 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                obs_err_var, grp_size, final_factor, correl(group), inflate_only)
          end do
       endif
-
    end do STATE_UPDATE
 
-   !call test_state_copies(ens_handle, 'after_state_updates')
+   if(.not. inflate_only) then
+      ! Now everybody updates their obs priors (only ones after this one)
+      OBS_UPDATE: do j = 1, num_close_obs
+         obs_index = close_obs_ind(j)
 
-   !------------------------------------------------------
+         ! Only have to update obs that have not yet been used
+         if(my_obs_indx(obs_index) > i) then
 
-   ! Now everybody updates their obs priors (only ones after this one)
-   OBS_UPDATE: do j = 1, num_close_obs
-      obs_index = close_obs_ind(j)
+            ! If forward observation operator failed, no need to update unassimilated observations
+            if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
 
-      ! Only have to update obs that have not yet been used
-      if(my_obs_indx(obs_index) > i) then
+            ! Compute the covariance localization and adjust_obs_impact factors
+            cov_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
+               my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev, adjust_obs_impact, obs_impact_table)
+            if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
 
-         ! If the forward observation operator failed, no need to
-         ! update the unassimilated observations
-         if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
+            ! Loop through and update ensemble members in each group
+            do group = 1, num_groups
+               grp_bot = grp_beg(group); grp_top = grp_end(group)
+               call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+                  obs_prior_var(group), obs_inc(grp_bot:grp_top), &
+                  obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
+                  increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+            end do
 
-         ! Compute the covariance localization and adjust_obs_impact factors
-         cov_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
-            my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev, adjust_obs_impact, obs_impact_table)
-         if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
+            ! Compute an information factor for impact of this observation on this state
+            if(num_groups <= 1) then
+               final_factor = cov_factor
+            else 
+               reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, my_state_indx(state_index))
+               final_factor = min(cov_factor, reg_factor)
+            endif
 
-         ! Loop through and update ensemble members in each group
-         do group = 1, num_groups
-            grp_bot = grp_beg(group)
-            grp_top = grp_end(group)
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-                obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
-                increment(grp_bot:grp_top), reg_coef(group), net_a(group))
-         end do
-
-         ! FIXME: could we move the if test for inflate only to here?
-
-         ! Compute an information factor for impact of this observation on this state
-         if(num_groups <= 1) then
-            final_factor = cov_factor
-         else 
-            reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, my_state_indx(state_index))
-            final_factor = min(cov_factor, reg_factor)
-         endif
-
-         ! Only update state if indicated (otherwise just getting inflation)
-         if(.not. inflate_only) then
             obs_ens_handle%copies(1:ens_size, obs_index) = &
-              obs_ens_handle%copies(1:ens_size, obs_index) + final_factor * increment
+               obs_ens_handle%copies(1:ens_size, obs_index) + final_factor * increment
          endif
-      endif
-   end do OBS_UPDATE
-
-   !call test_state_copies(ens_handle, 'after_obs_updates')
-
+      end do OBS_UPDATE
+   endif
 end do SEQUENTIAL_OBS
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
