@@ -324,7 +324,7 @@ logical,                     intent(in)    :: inflate_only
 ! changed the ensemble sized things here to allocatable
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
-real(r8) :: reg_factor, impact_factor
+real(r8) :: impact_factor, reg_factor, final_factor
 real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
 real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
 real(r8) :: obs_qc, cutoff_rev, cutoff_orig
@@ -536,8 +536,6 @@ if(local_ss_inflate) then
    end do
 endif
 
-! The computations in the two get_close_maxdist_init are redundant
-
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
    call get_close_init(gc_state, my_num_state, 2.0_r8*cutoff, my_state_loc, 2.0_r8*cutoff_list)
@@ -727,28 +725,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
-      ! the "any" is an expensive test when you do it for every ob.  don't test
-      ! if we know there aren't going to be missing values in the state.
       if ( allow_missing_in_state ) then
-         ! Some models can take evasive action if one or more of the ensembles have
-         ! a missing value. Generally means 'do nothing' (as opposed to DIE)
+         ! Don't allow update of state ensemble with any missing values
          if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
       endif
 
-      ! Compute the distance and covariance factor
-      cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
-         base_obs_loc, base_obs_type, my_state_loc(state_index), my_state_kind(state_index))
-
-      ! if external impact factors supplied, factor them in here
-      ! FIXME: this would execute faster for 0.0 impact factors if
-      ! we check for that before calling comp_cov_factor.  but it makes
-      ! the logic more complicated - this is simpler if we do it after.
-      if (adjust_obs_impact) then
-         impact_factor = obs_impact_table(base_obs_type, my_state_kind(state_index))
-         cov_factor = cov_factor * impact_factor
-      endif
-
-      ! If no weight is indicated, no more to do with this state variable
+      ! Compute the covariance localization and adjust_obs_impact factors
+      cov_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_state_loc(state_index), &
+         my_state_kind(state_index), close_state_dist(j), cutoff_rev, adjust_obs_impact, obs_impact_table)
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
 
       ! Loop through groups to update the state variable ensemble members
@@ -762,23 +746,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
       end do
 
-      ! Compute an information factor for impact of this observation on this state
-      if(num_groups == 1) then
-          reg_factor = 1.0_r8
-      else
-         ! Pass the time along with the index for possible diagnostic output
-         ! Compute regression factor for this obs-state pair
+      if(num_groups <= 1) then
+         final_factor = cov_factor
+      else 
          reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, my_state_indx(state_index))
+         final_factor = min(cov_factor, reg_factor)
       endif
-
-      ! The final factor is the minimum of group regression factor and localization cov_factor
-      reg_factor = min(reg_factor, cov_factor)
 
 !PAR NEED TO TURN STUFF OFF MORE EFFICEINTLY
       ! If doing full assimilation, update the state variable ensemble with weighted increments
       if(.not. inflate_only) then
          ens_handle%copies(1:ens_size, state_index) = &
-            ens_handle%copies(1:ens_size, state_index) + reg_factor * increment
+            ens_handle%copies(1:ens_size, state_index) + final_factor * increment
       endif
 
       ! Compute spatially-varying state space inflation
@@ -789,7 +768,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ens_handle%copies(ENS_INF_SD_COPY, state_index),                    &
                ens_handle%copies(ENS_SD_COPY, state_index),                        &
                orig_obs_prior_mean(group), orig_obs_prior_var(group), obs(1),      &
-               obs_err_var, grp_size, reg_factor, correl(group), inflate_only)
+               obs_err_var, grp_size, final_factor, correl(group), inflate_only)
          end do
       endif
 
@@ -810,19 +789,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          ! update the unassimilated observations
          if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
 
-         ! Compute the distance and the covar_factor
-         cov_factor = comp_cov_factor(close_obs_dist(j), cutoff_rev, &
-            base_obs_loc, base_obs_type, my_obs_loc(obs_index), my_obs_kind(obs_index))
-
-         ! if external impact factors supplied, factor them in here
-         ! FIXME: this would execute faster for 0.0 impact factors if
-         ! we check for that before calling comp_cov_factor.  but it makes
-         ! the logic more complicated - this is simpler if we do it after.
-         if (adjust_obs_impact) then
-            impact_factor = obs_impact_table(base_obs_type, my_obs_kind(obs_index))
-            cov_factor = cov_factor * impact_factor
-         endif
-
+         ! Compute the covariance localization and adjust_obs_impact factors
+         cov_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
+            my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev, adjust_obs_impact, obs_impact_table)
          if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
 
          ! Loop through and update ensemble members in each group
@@ -838,22 +807,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          ! FIXME: could we move the if test for inflate only to here?
 
          ! Compute an information factor for impact of this observation on this state
-         if(num_groups == 1) then
-             reg_factor = 1.0_r8
-         else
-            ! Pass the time along with the index for possible diagnostic output
-            ! Compute regression factor for this obs-state pair
-            ! Negative indicates that this is an observation index
-            reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, -1*my_obs_indx(obs_index))
+         if(num_groups <= 1) then
+            final_factor = cov_factor
+         else 
+            reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, my_state_indx(state_index))
+            final_factor = min(cov_factor, reg_factor)
          endif
-
-         ! Final weight is min of group and localization factors
-         reg_factor = min(reg_factor, cov_factor)
 
          ! Only update state if indicated (otherwise just getting inflation)
          if(.not. inflate_only) then
             obs_ens_handle%copies(1:ens_size, obs_index) = &
-              obs_ens_handle%copies(1:ens_size, obs_index) + reg_factor * increment
+              obs_ens_handle%copies(1:ens_size, obs_index) + final_factor * increment
          endif
       endif
    end do OBS_UPDATE
@@ -2219,6 +2183,47 @@ do i = 1, ens_size
 end do
 
 end subroutine update_ens_from_weights
+
+!-------------------------------------------------------------
+
+function cov_and_impact_factors(base_obs_loc, base_obs_type, state_loc, state_kind, &
+dist, cutoff_rev, adjust_obs_impact, obs_impact_table)
+
+! Computes the cov_factor and multiplies by obs_impact_factor if selected
+
+real(r8) :: cov_and_impact_factors
+type(location_type), intent(in) :: base_obs_loc
+integer, intent(in) :: base_obs_type
+type(location_type), intent(in) :: state_loc
+integer, intent(in) :: state_kind
+real(r8), intent(in) :: dist
+real(r8), intent(in) :: cutoff_rev
+logical, intent(in)  :: adjust_obs_impact
+real(r8), intent(in) :: obs_impact_table(:, 0:)
+
+real(r8) :: impact_factor, cov_factor
+
+! Get external impact factors, cycle if impact of this ob on this state is zerio
+if (adjust_obs_impact) then
+   ! Get the impact factor from the table if requested
+   impact_factor = obs_impact_table(base_obs_type, state_kind)
+   if(impact_factor <= 0.0_r8) then
+      ! Avoid the cost of computing cov_factor if impact is 0
+      cov_and_impact_factors = 0.0_r8
+      return
+   endif
+else
+   impact_factor = 1.0_r8
+endif
+
+! Compute the covariance factor
+cov_factor = comp_cov_factor(dist, cutoff_rev, &
+   base_obs_loc, base_obs_type, state_loc, state_kind)
+
+! Combine the impact_factor and the cov_factor
+cov_and_impact_factors = cov_factor * impact_factor
+
+end function cov_and_impact_factors
 
 
 !------------------------------------------------------------------------
