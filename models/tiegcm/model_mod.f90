@@ -24,10 +24,12 @@ use time_manager_mod, only : time_type, set_calendar_type, set_time_missing,    
 
 use     location_mod, only : location_type,                                         &
                              loc_get_close_obs => get_close_obs,                    &
+                             loc_get_close_state => get_close_state,                &
                              set_location, get_location,                            &
                              get_dist, query_location,                              &
                              get_close_type, VERTISUNDEF,                           &
-                             VERTISPRESSURE, VERTISHEIGHT, VERTISLEVEL
+                             VERTISPRESSURE, VERTISHEIGHT, VERTISLEVEL,             &
+                             vertical_localization_on, set_vertical
 
 use    utilities_mod, only : file_exist, open_file, close_file, logfileunit,        &
                              error_handler, E_ERR, E_MSG, E_WARN, nmlfileunit,      &
@@ -310,8 +312,8 @@ type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
 integer,             intent(in) :: iqty
-integer,            intent(out) :: istatus(ens_size)
 real(r8),           intent(out) :: obs_val(ens_size) !< array of interpolated values
+integer,            intent(out) :: istatus(ens_size)
 
 integer  :: which_vert
 integer  :: lat_below, lat_above, lon_below, lon_above ! these are indices
@@ -620,6 +622,11 @@ end subroutine nc_write_model_atts
 
 
 !-------------------------------------------------------------------------------
+! For vertical distance computations, general philosophy is to convert all
+! vertical coordinates to a common coordinate.
+! FOR NOW VERTICAL LOCALIZATION IS DONE ONLY IN HEIGHT (ZG)
+! OBS VERTICAL LOCATION IS GIVEN IN HEIGHT (model_interpolate)
+! STATE VERTICAL LOCATION IS GIVEN IN HEIGHT
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, state_handle)
 
@@ -631,7 +638,52 @@ integer,                       intent(out)    :: num_close, close_ind(:)
 real(r8),            optional, intent(out)    :: dist(:)
 type(ensemble_type), optional, intent(in)     :: state_handle
 
-call error_handler(E_ERR, 'watch out', 'not done yet')
+integer :: k, q_ind
+integer :: n
+integer :: istatus
+
+n = size(locs)
+
+if (vertical_localization_on()) then ! need to get height
+  call convert_vertical_state(state_handle, n, locs, loc_qtys, loc_indx, VERTISHEIGHT, istatus)  ! HK Do we care about istatus?
+endif
+
+call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                       num_close, close_ind, dist)
+
+! Make the ZG part of the state vector far from everything so it does not get updated.
+! Scroll through all the obs_loc(:) and obs_kind(:) elements
+
+do k = 1,num_close
+   q_ind  = close_ind(k)
+   if (loc_qtys(q_ind) == QTY_GEOMETRIC_HEIGHT) then
+      if (do_output() .and. (debug > 99)) then
+         write(     *     ,*)'get_close_obs ZG distance is ', &
+                     dist(k),' changing to ',10.0_r8 * PI
+         write(logfileunit,*)'get_close_obs ZG distance is ', &
+                     dist(k),' changing to ',10.0_r8 * PI
+      endif
+      dist(k) = 10.0_r8 * PI
+   endif
+enddo
+
+
+if (estimate_f10_7) then
+! f10_7 is given a location of latitude 0.0 and the longitude
+! of local noon. By decreasing the distance from the observation
+! to the dynamic f10_7 location we are allowing the already close
+! observations to have a larger impact in the parameter estimation.
+! 0.25 is heuristic. The 'close' observations have already been
+! determined by the cutoff. Changing the distance here does not
+! allow more observations to impact anything.
+   do k = 1, num_close
+      q_ind  = close_ind(k)
+      if  (loc_qtys(q_ind) == QTY_1D_PARAMETER) then
+         dist(k) = dist(k)*0.25_r8
+      endif
+   enddo
+endif
+
 
 end subroutine get_close_state
 
@@ -663,43 +715,8 @@ integer,                       intent(out)    :: num_close, close_ind(:)
 real(r8),            optional, intent(out)    :: dist(:)
 type(ensemble_type), optional, intent(in)     :: state_handle
 
-integer                              :: k, t_ind
-
 call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
                        num_close, close_ind, dist)
-
-! Make the ZG part of the state vector far from everything so it does not get updated.
-! Scroll through all the obs_loc(:) and obs_kind(:) elements
-
-do k = 1,num_close
-   t_ind  = close_ind(k)
-   if (loc_types(t_ind) == QTY_GEOMETRIC_HEIGHT) then
-      if (do_output() .and. (debug > 99)) then
-         write(     *     ,*)'get_close_obs ZG distance is ', &
-                     dist(k),' changing to ',10.0_r8 * PI
-         write(logfileunit,*)'get_close_obs ZG distance is ', &
-                     dist(k),' changing to ',10.0_r8 * PI
-      endif
-      dist(k) = 10.0_r8 * PI
-   endif
-enddo
-
-
-if (estimate_f10_7) then
-! f10_7 is given a location of latitude 0.0 and the longitude
-! of local noon. By decreasing the distance from the observation
-! to the dynamic f10_7 location we are allowing the already close
-! observations to have a larger impact in the parameter estimation.
-! 0.25 is heuristic. The 'close' observations have already been
-! determined by the cutoff. Changing the distance here does not
-! allow more observations to impact anything.
-   do k = 1, num_close
-      t_ind  = close_ind(k)
-      if  (loc_types(t_ind) == QTY_1D_PARAMETER) then
-         dist(k) = dist(k)*0.25_r8
-      endif
-   enddo
-endif
 
 end subroutine get_close_obs
 
@@ -716,13 +733,35 @@ integer,             intent(in)    :: loc_types(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: status(:)
 
+integer  :: current_vert_type, i
+real(r8) :: height(1)
+integer  :: local_status(1)
 
-if  ( which_vert /= VERTISHEIGHT ) then
-   call error_handler(E_ERR,'convert_vertical_state', 'only supports VERTISHEIGHT')
+character(len=*), parameter :: routine = 'convert_vertical_obs'
+
+! HK are all the obs in height?
+if ( which_vert == VERTISHEIGHT .or. which_vert == VERTISUNDEF) then
+  status(:) = 0
+  return
 endif
 
-call error_handler(E_ERR, 'watch out', 'not done yet')
-status(:) = 1
+! HK can I just call model_interpolate here?
+do i = 1, num
+   current_vert_type = nint(query_location(locs(i)))
+   if (( current_vert_type == which_vert ) .or. &
+       ( current_vert_type == VERTISUNDEF)) then
+      status(i) = 0
+      cycle
+   endif
+
+  call model_interpolate(state_handle, 1, locs(i), QTY_GEOMETRIC_HEIGHT, height, local_status )
+  
+  if (local_status(1) == 0) then
+     call set_vertical(locs(i), height(1), VERTISHEIGHT)
+  endif
+  status(i) = local_status(1)
+
+enddo
 
 end subroutine convert_vertical_obs
 
@@ -750,7 +789,7 @@ if  ( which_vert /= VERTISHEIGHT ) then
    call error_handler(E_ERR,'convert_vertical_state', 'only supports VERTISHEIGHT')
 endif
 
-istatus = 0
+istatus = 0 !HK what are you doing with this?
 
 do i = 1, num
 
@@ -763,7 +802,7 @@ do i = 1, num
       case ('ilev')
          height_idx = get_dart_vector_index(lon_index, lat_index, lev_index, &
                                             domain_id(SECONDARY_DOM), ivarZG)
-         height = get_state(height_idx, state_handle) !HK this is the value of the variale, not the height.
+         height = get_state(height_idx, state_handle)
    
       case ('lev') ! height on midpoint
         height_idx = get_dart_vector_index(lon_index, lat_index, lev_index, &
@@ -771,12 +810,11 @@ do i = 1, num
         height1 = get_state(height_idx, state_handle)
         height_idx = get_dart_vector_index(lon_index, lat_index, lev_index+1, &
                            domain_id(SECONDARY_DOM), ivarZG)
-        height2 = get_state(height_idx, state_handle) ! this is wrong needs to be height
+        height2 = get_state(height_idx, state_handle)
         height = (height1 + height2) / 2.0_r8
    
       case default
        call error_handler(E_ERR, 'convert_vertical_state', 'expecting ilev or ilat dimension')
-   
    end select
    
    locs(i) = set_location(lons(lon_index), lats(lat_index), height(1), VERTISHEIGHT)
