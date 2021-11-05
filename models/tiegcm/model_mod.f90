@@ -178,8 +178,6 @@ integer   :: zero_lon_index = MISSING_I
 ! AND SO VERTICAL LOCALIZATION COORDINATE IS *always* HEIGHT
 ! (note that gravity adjusted geopotential height (ZG)
 !  read in from "tiegcm_s.nc" *WARNING* ZG is 'cm', DART is mks)
-
-real(r8), allocatable, dimension(:,:,:) :: ZG
 integer               :: ivarZG
 
 character(len=512)    :: string1, string2, string3
@@ -1487,96 +1485,96 @@ end subroutine load_up_calculated_variables
 !-------------------------------------------------------------------------------
 
 
-subroutine create_vtec( ncid, last_time, vTEC)
-!
-! Create the vTEC from constituents in the netCDF file.
-!
-
-integer,                  intent(in)  :: ncid
-integer,                  intent(in)  :: last_time
-real(r8), dimension(:,:), intent(out) :: vTEC
-
-real(r8), allocatable, dimension(:,:,:) :: NE, TI, TE
-real(r8), allocatable, dimension(:,:,:) :: NEm_extended, ZG_extended
-real(r8), allocatable, dimension(:,:)   :: GRAVITYtop, Tplasma, Hplasma
-real(r8), allocatable, dimension(:)     :: delta_ZG, NE_middle
-
-real(r8), PARAMETER :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
-real(r8), PARAMETER :: omass      = 2.678e-26_r8 ! mass of atomic oxgen kg
-
-real(r8) :: earth_radiusm
-integer  :: VarID, nlev10, j, k
-
-allocate( NE(nlon,nlat,nilev), NEm_extended(nlon,nlat,nilev+10), &
-          ZG_extended(nlon,nlat,nilev+10))
-allocate( TI(nlon,nlat,nlev), TE(nlon,nlat,nlev) )
-allocate( GRAVITYtop(nlon,nlat), Tplasma(nlon,nlat), Hplasma(nlon,nlat) )
-allocate( delta_ZG(nlev+9), NE_middle(nlev+9) )
-
-!... NE (interfaces)
-call nc_check(nf90_inq_varid(ncid, 'NE', VarID), 'create_vtec', 'inq_varid NE')
-call nc_check(nf90_get_var(ncid, VarID, values=NE,     &
-                   start = (/    1,    1,     1, last_time /),   &
-                   count = (/ nlon, nlat, nilev,         1 /)),&
-                   'create_vtec', 'get_var NE')
-
-!... ZG (interfaces) already read into the module and converted to metres
-
-!... TI (midpoints)
-call nc_check(nf90_inq_varid(ncid, 'TI', VarID), 'create_vtec', 'inq_varid TI')
-call nc_check(nf90_get_var(ncid, VarID, values=TI,     &
-                   start = (/    1,    1,    1, last_time /),   &
-                   count = (/ nlon, nlat, nlev,         1 /)), &
-                   'create_vtec', 'get_var TI')
-
-!... TE (midpoints)
-call nc_check(nf90_inq_varid(ncid, 'TE', VarID), 'create_vtec', 'inq_varid TE')
-call nc_check(nf90_get_var(ncid, VarID, values=TE,     &
-                   start = (/    1,    1,    1, last_time /),   &
-                   count = (/ nlon, nlat, nlev,         1 /)), &
-                   'create_vtec', 'get_var TE')
-
-! Construct vTEC given the parts
-
-earth_radiusm = earth_radius * 1000.0_r8 ! Convert earth_radius in km to m
-NE            = NE * 1.0e+6_r8           ! Convert NE in #/cm^3 to #/m^3
-
-! Gravity at the top layer
-GRAVITYtop(:,:) = gravity * (earth_radiusm / (earth_radiusm + ZG(:,:,nilev))) ** 2
-
-! Plasma Temperature
-Tplasma(:,:) = (TI(:,:,nlev-1) + TE(:,:,nlev-1)) / 2.0_r8
-
-! Compute plasma scale height
-Hplasma = (2.0_r8 * k_constant / omass ) * Tplasma / GRAVITYtop
-
-! NE is extrapolated to 10 more layers
-nlev10  = nlev + 10
-
- ZG_extended(:,:,1:nilev) = ZG
-NEm_extended(:,:,1:nilev) = NE
-
-do j = nlev, nlev10
-   NEm_extended(:,:,j) = NEm_extended(:,:,j-1) * exp(-0.5_r8)
-    ZG_extended(:,:,j) =  ZG_extended(:,:,j-1) + Hplasma(:,:) / 2.0_r8
-enddo
-
-! finally calculate vTEC - one gridcell at a time.
-
-do j = 1, nlat
-do k = 1, nlon
-    delta_ZG(1:(nlev10-1)) =  ZG_extended(k,j,2:nlev10) -  ZG_extended(k,j,1:(nlev10-1))
-   NE_middle(1:(nlev10-1)) = (NEm_extended(k,j,2:nlev10) + NEm_extended(k,j,1:(nlev10-1))) / 2.0_r8
-   vTEC(k,j) = sum(NE_middle * delta_ZG) * 1.0e-16_r8 ! Convert to TECU (1.0e+16 #/m^2)
-enddo
-enddo
-
-deallocate( NE, NEm_extended, ZG_extended)
-deallocate( TI, TE )
-deallocate( GRAVITYtop, Tplasma, Hplasma )
-deallocate( delta_ZG, NE_middle )
-
-end subroutine create_vtec
+!HK subroutine create_vtec( ncid, last_time, vTEC)
+!HK !
+!HK ! Create the vTEC from constituents in the netCDF file.
+!HK !
+!HK 
+!HK integer,                  intent(in)  :: ncid
+!HK integer,                  intent(in)  :: last_time
+!HK real(r8), dimension(:,:), intent(out) :: vTEC
+!HK 
+!HK real(r8), allocatable, dimension(:,:,:) :: NE, TI, TE
+!HK real(r8), allocatable, dimension(:,:,:) :: NEm_extended, ZG_extended
+!HK real(r8), allocatable, dimension(:,:)   :: GRAVITYtop, Tplasma, Hplasma
+!HK real(r8), allocatable, dimension(:)     :: delta_ZG, NE_middle
+!HK 
+!HK real(r8), PARAMETER :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
+!HK real(r8), PARAMETER :: omass      = 2.678e-26_r8 ! mass of atomic oxgen kg
+!HK 
+!HK real(r8) :: earth_radiusm
+!HK integer  :: VarID, nlev10, j, k
+!HK 
+!HK allocate( NE(nlon,nlat,nilev), NEm_extended(nlon,nlat,nilev+10), &
+!HK           ZG_extended(nlon,nlat,nilev+10))
+!HK allocate( TI(nlon,nlat,nlev), TE(nlon,nlat,nlev) )
+!HK allocate( GRAVITYtop(nlon,nlat), Tplasma(nlon,nlat), Hplasma(nlon,nlat) )
+!HK allocate( delta_ZG(nlev+9), NE_middle(nlev+9) )
+!HK 
+!HK !... NE (interfaces)
+!HK call nc_check(nf90_inq_varid(ncid, 'NE', VarID), 'create_vtec', 'inq_varid NE')
+!HK call nc_check(nf90_get_var(ncid, VarID, values=NE,     &
+!HK                    start = (/    1,    1,     1, last_time /),   &
+!HK                    count = (/ nlon, nlat, nilev,         1 /)),&
+!HK                    'create_vtec', 'get_var NE')
+!HK 
+!HK !... ZG (interfaces) already read into the module and converted to metres
+!HK 
+!HK !... TI (midpoints)
+!HK call nc_check(nf90_inq_varid(ncid, 'TI', VarID), 'create_vtec', 'inq_varid TI')
+!HK call nc_check(nf90_get_var(ncid, VarID, values=TI,     &
+!HK                    start = (/    1,    1,    1, last_time /),   &
+!HK                    count = (/ nlon, nlat, nlev,         1 /)), &
+!HK                    'create_vtec', 'get_var TI')
+!HK 
+!HK !... TE (midpoints)
+!HK call nc_check(nf90_inq_varid(ncid, 'TE', VarID), 'create_vtec', 'inq_varid TE')
+!HK call nc_check(nf90_get_var(ncid, VarID, values=TE,     &
+!HK                    start = (/    1,    1,    1, last_time /),   &
+!HK                    count = (/ nlon, nlat, nlev,         1 /)), &
+!HK                    'create_vtec', 'get_var TE')
+!HK 
+!HK ! Construct vTEC given the parts
+!HK 
+!HK earth_radiusm = earth_radius * 1000.0_r8 ! Convert earth_radius in km to m
+!HK NE            = NE * 1.0e+6_r8           ! Convert NE in #/cm^3 to #/m^3
+!HK 
+!HK ! Gravity at the top layer
+!HK GRAVITYtop(:,:) = gravity * (earth_radiusm / (earth_radiusm + ZG(:,:,nilev))) ** 2
+!HK 
+!HK ! Plasma Temperature
+!HK Tplasma(:,:) = (TI(:,:,nlev-1) + TE(:,:,nlev-1)) / 2.0_r8
+!HK 
+!HK ! Compute plasma scale height
+!HK Hplasma = (2.0_r8 * k_constant / omass ) * Tplasma / GRAVITYtop
+!HK 
+!HK ! NE is extrapolated to 10 more layers
+!HK nlev10  = nlev + 10
+!HK 
+!HK  ZG_extended(:,:,1:nilev) = ZG
+!HK NEm_extended(:,:,1:nilev) = NE
+!HK 
+!HK do j = nlev, nlev10
+!HK    NEm_extended(:,:,j) = NEm_extended(:,:,j-1) * exp(-0.5_r8)
+!HK     ZG_extended(:,:,j) =  ZG_extended(:,:,j-1) + Hplasma(:,:) / 2.0_r8
+!HK enddo
+!HK 
+!HK ! finally calculate vTEC - one gridcell at a time.
+!HK 
+!HK do j = 1, nlat
+!HK do k = 1, nlon
+!HK     delta_ZG(1:(nlev10-1)) =  ZG_extended(k,j,2:nlev10) -  ZG_extended(k,j,1:(nlev10-1))
+!HK    NE_middle(1:(nlev10-1)) = (NEm_extended(k,j,2:nlev10) + NEm_extended(k,j,1:(nlev10-1))) / 2.0_r8
+!HK    vTEC(k,j) = sum(NE_middle * delta_ZG) * 1.0e-16_r8 ! Convert to TECU (1.0e+16 #/m^2)
+!HK enddo
+!HK enddo
+!HK 
+!HK deallocate( NE, NEm_extended, ZG_extended)
+!HK deallocate( TI, TE )
+!HK deallocate( GRAVITYtop, Tplasma, Hplasma )
+!HK deallocate( delta_ZG, NE_middle )
+!HK 
+!HK end subroutine create_vtec
 
 
 !-------------------------------------------------------------------------------
