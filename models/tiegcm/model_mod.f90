@@ -61,7 +61,7 @@ use state_structure_mod, only : add_domain, get_dart_vector_index, add_dimension
                                 get_domain_size, set_parameter_value, get_model_variable_indices, &
                                 get_num_dims, get_dim_name, get_variable_name, &
                                 get_varid_from_varname, get_num_varids_from_kind, &
-                                get_varid_from_kind
+                                get_varid_from_kind, get_varids_from_kind
 
 use distributed_state_mod, only : get_state, get_state_array
 
@@ -1677,7 +1677,9 @@ integer, intent(in)  :: iqty
 integer, intent(out) :: which_dom
 integer, intent(out) :: var_id
 
-integer :: num_same_kind, id
+integer :: num_same_kind, id, k
+integer, allocatable :: multiple_kinds(:), n
+character(NF90_MAX_NAME) :: varname
 
 which_dom = -1
 var_id = -1
@@ -1690,7 +1692,22 @@ do id = 1, 3 ! RESTART_DOM, SECONDARY_DOM, CONSTRUCT_DOM
    if (num_same_kind == 0 ) cycle
    if (num_same_kind  > 1 ) then ! need to pick which one you want
      which_dom = id
-     print*, 'Do something sensible here'
+     allocate(multiple_kinds(num_same_kind))
+     call get_varids_from_kind(domain_id(id), iqty, multiple_kinds)
+     do k = 1, num_same_kind
+       varname = adjustl(get_variable_name(domain_id(id), multiple_kinds(k)))
+       n = len(trim(varname))
+       if (n <= 2) then ! variable name can not be X_MN
+          var_id = multiple_kinds(k)
+          exit
+       elseif (trim(varname(n-2:n)) == '_NM') then ! variable name is _MN
+          cycle ! assuming we want the X, not the X_MN
+       else
+         var_id = multiple_kinds(k)
+         exit
+       endif
+     enddo
+     deallocate(multiple_kinds)
    else !
       which_dom = id
       var_id = get_varid_from_kind(domain_id(id), iqty)
