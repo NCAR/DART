@@ -1798,7 +1798,7 @@ found = .false.
 
    call get_state_array(z2(:), indx_bottom(:), state_handle)
 
-   delta_z(:) = zgrid(:) - z2(2)
+   delta_z(:) = zgrid(:) - z2(:)
    frac_lev(:) = (zgrid(:) - height)/delta_z(:)
 
 
