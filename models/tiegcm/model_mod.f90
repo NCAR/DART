@@ -379,11 +379,14 @@ if ( iqty == QTY_PRESSURE) then
       ! requires other variables that only live on the midpoints.
       ! I cannot figure out how to generically decide when to
       ! use plevs vs. pilevs
-      if (level <= nlev) then !HK can you get level < 0?
+
+      ! Check to make sure vertical level is possible.
+      if ((level < 1) .or. (level > nlev)) then
+         istatus(:) = 33
+         return
+      else
          obs_val(:) = plevs(level)
          istatus(:) = 0
-      else
-         istatus(:) = 33
       endif
    elseif (which_vert == VERTISHEIGHT) then
 
@@ -394,6 +397,7 @@ if ( iqty == QTY_PRESSURE) then
 
       ! FIXME ... is it possible to try to get a pressure with which_vert == undefined
       ! At present, vert_interp will simply fail because height is a negative number.
+      ! HK what are you supposed to do for pressure with VERTISUNDEF? level 1?
 
       call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_below, height, iqty, val11, istatus)
       if (any(istatus /= 0)) return  !HK bail at the first failure
@@ -402,7 +406,7 @@ if ( iqty == QTY_PRESSURE) then
       call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_below, height, iqty, val21, istatus)
       if (any(istatus /= 0)) return
       call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_above, height, iqty, val22, istatus)
-   
+      obs_val(:) = interpolate(ens_size, lon_fract, lat_fract, val11, val12, val21, val22)
    else
 
       write(string1,*) 'vertical coordinate type:',which_vert,' cannot be handled'
@@ -434,8 +438,8 @@ if( which_vert == VERTISHEIGHT ) then
    call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_below, height, iqty, val21, istatus)
    if (any(istatus /= 0)) return
    call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_above, height, iqty, val22, istatus)
-
-
+   obs_val(:) = interpolate(ens_size, lon_fract, lat_fract, val11, val12, val21, val22)
+   istatus = 0
 elseif( which_vert == VERTISLEVEL) then
    ! Check to make sure vertical level is possible.
    if ((level < 1) .or. (level > nilev)) then
@@ -453,17 +457,18 @@ elseif( which_vert == VERTISLEVEL) then
    val12(:) = get_state(get_dart_vector_index(lon_below, lat_above, level, domain_id(dom_id), var_id ), state_handle)
    val21(:) = get_state(get_dart_vector_index(lon_above, lat_below, level, domain_id(dom_id), var_id ), state_handle)
    val22(:) = get_state(get_dart_vector_index(lon_above, lat_above, level, domain_id(dom_id), var_id ), state_handle)
-   istatus = 0
    obs_val(:) = interpolate(ens_size, lon_fract, lat_fract, val11, val12, val21, val22)
+   istatus = 0
 
 elseif( which_vert == VERTISUNDEF) then
-   bogus_level  = -1  !HK what should this be?  Do only 2D fields have VERTISUNDEF?
+   bogus_level  = 1  !HK what should this be?  Do only 2D fields have VERTISUNDEF?
    val11(:) = get_state(get_dart_vector_index(lon_below, lat_below, bogus_level, domain_id(dom_id), var_id), state_handle)
    val12(:) = get_state(get_dart_vector_index(lon_below, lat_above, bogus_level, domain_id(dom_id), var_id), state_handle)
    val21(:) = get_state(get_dart_vector_index(lon_above, lat_below, bogus_level, domain_id(dom_id), var_id), state_handle)
    val22(:) = get_state(get_dart_vector_index(lon_above, lat_above, bogus_level, domain_id(dom_id), var_id), state_handle)
-   istatus(:) = 0
    obs_val(:) = interpolate(ens_size, lon_fract, lat_fract, val11, val12, val21, val22)
+   istatus(:) = 0
+
 else
 
    write(string1,*) 'vertical coordinate type:',which_vert,' cannot be handled'
@@ -802,15 +807,15 @@ do i = 1, num
       case ('ilev')
          height_idx = get_dart_vector_index(lon_index, lat_index, lev_index, &
                                             domain_id(SECONDARY_DOM), ivarZG)
-         height = get_state(height_idx, state_handle)
+         height = get_state(height_idx, state_handle)/100.0_r8
    
       case ('lev') ! height on midpoint
         height_idx = get_dart_vector_index(lon_index, lat_index, lev_index, &
                                    domain_id(SECONDARY_DOM), ivarZG)
-        height1 = get_state(height_idx, state_handle)
+        height1 = get_state(height_idx, state_handle)/100.0_r8
         height_idx = get_dart_vector_index(lon_index, lat_index, lev_index+1, &
                            domain_id(SECONDARY_DOM), ivarZG)
-        height2 = get_state(height_idx, state_handle)
+        height2 = get_state(height_idx, state_handle)/100.0_r8
         height = (height1 + height2) / 2.0_r8
    
       case default
@@ -1753,9 +1758,9 @@ lev_bottom = -1
 found = .false.
 
    zgrid_bottom(:) = get_state(get_dart_vector_index(lon_index,lat_index,1, &
-                               domain_id(SECONDARY_DOM), ivarZG), state_handle)
+                               domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8
    zgrid_top(:) = get_state(get_dart_vector_index(lon_index,lat_index, nilev, &
-                               domain_id(SECONDARY_DOM), ivarZG), state_handle)
+                               domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8
 
    ! cannot extrapolate below bottom or beyond top
    do i = 1, n
@@ -1763,13 +1768,13 @@ found = .false.
         istatus(i) = 55
       endif
    enddo
-   if (any(istatus /= 0)) return ! fail if any ensemble member fails
+   if (any(istatus == 55)) return ! fail if any ensemble member fails
 
    ! Figure out what level is above/below, and by how much
    h_loop_interface : do k = 2, nilev
 
       zgrid(:) = get_state(get_dart_vector_index(lon_index,lat_index,k, &
-                            domain_id(SECONDARY_DOM), ivarZG), state_handle)
+                            domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8
 
       ! per ensemble member
       do i = 1, n
@@ -1817,6 +1822,8 @@ found = .false.
 
    endif
 
+  istatus(:) = 0
+
 end subroutine vert_interp_ilev
 
 !-------------------------------------------------------------------------------
@@ -1860,16 +1867,16 @@ found = .false.
    !  lev index        1      2      3      4    ...  27    28
 
    !mid_level 1
-   zgrid_lower(:) = (get_state(get_dart_vector_index(lon_index,lat_index,1, &
-                          domain_id(SECONDARY_DOM), ivarZG), state_handle)     +  &
-                    get_state(get_dart_vector_index(lon_index,lat_index,2, &
-                          domain_id(SECONDARY_DOM), ivarZG), state_handle) ) / 2.0_r8
+   zgrid_lower(:) = ( (get_state(get_dart_vector_index(lon_index,lat_index,1, &
+                          domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8)     +  &
+                    (get_state(get_dart_vector_index(lon_index,lat_index,2, &
+                          domain_id(SECONDARY_DOM), ivarZG), state_handle) /100.0_r8)  ) / 2.0_r8
 
    !mid_level nlev
-   zgrid_upper(:) = (get_state(get_dart_vector_index(lon_index,lat_index,nilev-1, &
-                             domain_id(SECONDARY_DOM), ivarZG), state_handle)     +  &
-                     get_state(get_dart_vector_index(lon_index,lat_index,nilev, &
-                          domain_id(SECONDARY_DOM), ivarZG), state_handle) ) / 2.0_r8
+   zgrid_upper(:) = ( (get_state(get_dart_vector_index(lon_index,lat_index,nilev-1, &
+                             domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8)     +  &
+                     (get_state(get_dart_vector_index(lon_index,lat_index,nilev, &
+                          domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8) ) / 2.0_r8
 
    ! cannot extrapolate below bottom or beyond top
    do i = 1, n
@@ -1877,15 +1884,15 @@ found = .false.
         istatus(i) = 55
       endif
    enddo
-   if (any(istatus /= 0)) return ! ! fail if any ensemble member fails
+   if (any(istatus == 55)) return ! ! fail if any ensemble member fails
 
    ! Figure out what level is above/below, and by how much
    h_loop_midpoint: do k = 2, nilev-1
 
-    zgrid_upper(:) = (get_state(get_dart_vector_index(lon_index,lat_index,k, &
-                          domain_id(SECONDARY_DOM), ivarZG), state_handle)     +  &
-                       get_state(get_dart_vector_index(lon_index,lat_index,k+1, &
-                          domain_id(SECONDARY_DOM), ivarZG), state_handle) ) / 2.0_r8
+    zgrid_upper(:) = ( (get_state(get_dart_vector_index(lon_index,lat_index,k, &
+                          domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8 )     +  &
+                       (get_state(get_dart_vector_index(lon_index,lat_index,k+1, &
+                          domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8) ) / 2.0_r8
 
       ! per ensemble member
       do i = 1, n
@@ -1900,16 +1907,16 @@ found = .false.
 
    enddo h_loop_midpoint
 
-   zgrid_lower(:) = (get_state(get_dart_vector_index(lon_index,lat_index,k-1, &
-                         domain_id(SECONDARY_DOM), ivarZG), state_handle)     +  &
-                      get_state(get_dart_vector_index(lon_index,lat_index,k, &
-                         domain_id(SECONDARY_DOM), ivarZG), state_handle) ) / 2.0_r8
+   zgrid_lower(:) = ( (get_state(get_dart_vector_index(lon_index,lat_index,k-1, &
+                         domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8)     +  &
+                      (get_state(get_dart_vector_index(lon_index,lat_index,k, &
+                         domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8) ) / 2.0_r8
 
 
-   zgrid_upper(:) = (get_state(get_dart_vector_index(lon_index,lat_index,k, &
-                         domain_id(SECONDARY_DOM), ivarZG), state_handle)     +  &
-                      get_state(get_dart_vector_index(lon_index,lat_index,k+1, &
-                         domain_id(SECONDARY_DOM), ivarZG), state_handle) ) / 2.0_r8
+   zgrid_upper(:) = ( (get_state(get_dart_vector_index(lon_index,lat_index,k, &
+                         domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8)     +  &
+                      (get_state(get_dart_vector_index(lon_index,lat_index,k+1, &
+                         domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8) ) / 2.0_r8
 
    delta_z(:) = zgrid_upper(:) - zgrid_lower(:)
 
@@ -1938,6 +1945,8 @@ else ! get from state vector
    val(:) = frac_lev(:) * val_bottom(:)  + (1.0 - frac_lev(:)) * val_top(:)
 
 endif
+
+istatus(:) = 0
 
 end subroutine vert_interp_lev
 
