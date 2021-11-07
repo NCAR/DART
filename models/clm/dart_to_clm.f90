@@ -155,7 +155,7 @@ UPDATE : do ivar=1, get_num_variables(dom_restart)
 
    varname = get_variable_name(dom_restart,ivar)
    select case (varname)
-      case ('SNOWDP', 'SNOW_DEPTH', 'DZSNO', 'H2OSOI_LIQ', 'H2OSOI_ICE')
+      case ('SNOWDP', 'SNOW_DEPTH', 'DZSNO', 'ZSNO', 'ZISNO', 'H2OSOI_LIQ', 'H2OSOI_ICE')
          write(string1,*)'re-partitioning of SWE is enabled for '//trim(varname)
          write(string2,*)'posterior is coming from repartitioning of H2OSNO.'
          call error_handler(E_MSG, 'dart_to_clm', string1, text2=string2)
@@ -312,6 +312,7 @@ subroutine update_snow(dom_id, ncid_dart, ncid_clm, ncolumn, nlevel, nlevsno)
 !> This repartitions snow layer variables based upon DART update of diagnostic H2OSNO 
 !> variable.  This subroutine expects H2OSNO variable is available, as well as 
 !> prognostic clm variables: SNOWDP/SNOW_DEPTH, DZSNO, H2OSOI_LIQ, H2OSOI_ICE
+!>                           ZSNO and ZISNO
 
 ! The posterior snow water equivalent (H2OSNO) cannot be zero or negative
 ! because H2OSNO is used to calculate the snow density -- which is used
@@ -323,12 +324,6 @@ subroutine update_snow(dom_id, ncid_dart, ncid_clm, ncolumn, nlevel, nlevsno)
 ! @fixme  Alternatively could automatically set all snow related variables to
 !  zero, when H2OSNO posterior is zero/negative.
 
-
-! @fixme What about snow layer depth variables of middle of layer depth (ZSNO)
-!  and top interface depth (ZISNO).  Does this create inconsistency when 
-!  DZSNO is updated?
-
-! The repartitioning of the snow layer variables maintains prior distribution
 ! Pseudo-code below:  Note this reparitioning is only applied to snow layers
 ! and subsurface layers are left unchanged
 !
@@ -380,7 +375,12 @@ subroutine update_snow(dom_id, ncid_dart, ncid_clm, ncolumn, nlevel, nlevsno)
 !    double DZSNO(column, levsno) ;
 !            DZSNO:long_name = "snow layer thickness" ;
 !            DZSNO:units = "m" ;
-
+!    double ZSNO(column, levsno) ;
+!	     ZSNO:long_name = "snow layer depth" ;
+!	     ZSNO:units = "m" ;
+!    double ZISNO(column, levsno) ;
+!            ZISNO:long_name = "snow interface depth at the top of the given layer" ;
+!            ZISNO:units = "m" ;
 
 integer, intent(in) :: dom_id
 integer, intent(in) :: ncid_dart
@@ -402,6 +402,8 @@ real(r8) :: special
 real(r8) :: dart_H2OSNO(ncolumn)
 real(r8) :: dart_SNOWDP(ncolumn)
 real(r8) :: dart_DZSNO(nlevsno,ncolumn)
+real(r8) :: dart_ZSNO(nlevsno,ncolumn)
+real(r8) :: dart_ZISNO(nlevsno,ncolumn)
 real(r8) :: dart_H2OLIQ(nlevel,ncolumn)
 real(r8) :: dart_H2OICE(nlevel,ncolumn)
 
@@ -409,6 +411,8 @@ real(r8) :: clm_H2OSNO(ncolumn)  !(column,time) for vector history
 real(r8) :: clm_SNLSNO(ncolumn)
 real(r8) :: clm_SNOWDP(ncolumn)
 real(r8) :: clm_DZSNO(nlevsno,ncolumn)
+real(r8) :: clm_ZSNO(nlevsno,ncolumn)
+real(r8) :: clm_ZISNO(nlevsno,ncolumn)
 real(r8) :: clm_H2OLIQ(nlevel,ncolumn)
 real(r8) :: clm_H2OICE(nlevel,ncolumn)
 
@@ -468,14 +472,17 @@ endif
 ! BEGIN clm variable and DART state checks for snow repartitioning
 
 if (nc_variable_exists(ncid_clm, 'SNLSNO') .and. nc_variable_exists(ncid_clm, 'DZSNO') .and. &
-    nc_variable_exists(ncid_clm, 'H2OSOI_LIQ') .and. nc_variable_exists(ncid_clm, 'H2OSOI_ICE')) then                             
+    nc_variable_exists(ncid_clm, 'H2OSOI_LIQ') .and. nc_variable_exists(ncid_clm, 'H2OSOI_ICE') &
+    .and. nc_variable_exists(ncid_clm, 'ZSNO') .and. nc_variable_exists(ncid_clm, 'ZISNO')) then                             
     call nc_get_variable(ncid_clm, 'SNLSNO',  clm_SNLSNO)
     call nc_get_variable(ncid_clm, 'DZSNO',  clm_DZSNO)
+    call nc_get_variable(ncid_clm, 'ZSNO',  clm_ZSNO)
+    call nc_get_variable(ncid_clm, 'ZISNO',  clm_ZISNO)
     call nc_get_variable(ncid_clm, 'H2OSOI_LIQ',  clm_H2OLIQ)
     call nc_get_variable(ncid_clm, 'H2OSOI_ICE',  clm_H2OICE)
 else
     write(string1,*)'Snow repartitioning requires clm variables: '
-    write(string2,*)'SNLSNO, DZSNO, H2OSOI_LIQ, H2OSOI_ICE'
+    write(string2,*)'SNLSNO, DZSNO, ZSNO, ZISNO, H2OSOI_LIQ, H2OSOI_ICE,'
     call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
@@ -507,13 +514,16 @@ endif
 ! whereas all other variables come from dart_posterior.nc
 
 if (nc_variable_exists(ncid_dart, 'H2OSOI_LIQ') .and. nc_variable_exists(ncid_dart, 'DZSNO') &
-    .and. nc_variable_exists(ncid_dart, 'H2OSOI_ICE')) then
+    .and. nc_variable_exists(ncid_dart, 'H2OSOI_ICE') .and. nc_variable_exists(ncid_dart, 'ZSNO') &
+    .and. nc_variable_exists(ncid_dart, 'ZISNO')) then
     call nc_get_variable(ncid_dart, 'DZSNO',  dart_DZSNO)
+    call nc_get_variable(ncid_dart, 'ZSNO',  dart_ZSNO)
+    call nc_get_variable(ncid_dart, 'ZISNO',  dart_ZISNO)
     call nc_get_variable(ncid_dart, 'H2OSOI_LIQ',  dart_H2OLIQ)
     call nc_get_variable(ncid_dart, 'H2OSOI_ICE',  dart_H2OICE)
 else
     write(string1,*)'Snow repartitioning requires dart state variables: '
-    write(string2,*)'DZSNO, H2OSOI_LIQ, H2OSOI_ICE'
+    write(string2,*)'DZSNO, ZSNO, ZISNO, H2OSOI_LIQ, H2OSOI_ICE'
     call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
@@ -545,12 +555,16 @@ h2osno_pr=clm_H2OSNO
 snlsno=clm_SNLSNO
 snowdp_pr=clm_SNOWDP
 dzsno_pr=clm_DZSNO
+zsno_pr=clm_ZSNO
+zisno_pr=clm_ZISNO
 h2oliq_pr=clm_H2OLIQ
 h2oice_pr=clm_H2OICE
 
 where (h2osno_pr < 0.0_r8) h2osno_pr = 0.0_r8
 where (snowdp_pr < 0.0_r8) snowdp_pr = 0.0_r8
 where ( dzsno_pr < 0.0_r8)  dzsno_pr = 0.0_r8
+where ( zsno_pr < 0.0_r8)    zsno_pr = 0.0_r8
+where ( zisno_pr < 0.0_r8)  zisno_pr = 0.0_r8
 where (h2oliq_pr < 0.0_r8) h2oliq_pr = 0.0_r8
 where (h2oice_pr < 0.0_r8) h2oice_pr = 0.0_r8
 
@@ -560,6 +574,8 @@ where (h2oice_pr < 0.0_r8) h2oice_pr = 0.0_r8
 h2osno_po = dart_H2OSNO  
 snowdp_po = snowdp_pr
 dzsno_po =  dzsno_pr
+zsno_po = zsno_pr
+zisno_po = zisno_pr
 h2oliq_po = h2oliq_pr
 h2oice_po = h2oice_pr
 
@@ -641,27 +657,43 @@ PARTITION: do icolumn = 1,ncolumn
             h2oliq_po(ilevel,icolumn) = h2oliq_pr(ilevel,icolumn) + gain_h2oliq
             h2oice_po(ilevel,icolumn) = h2oice_pr(ilevel,icolumn) + gain_h2oice
             
-            ! @fixme if needed
-            ! BMR @fixme what happens to other snow layer heights?
-            !  zsno (middle of snow layer) and zisno (top of snow layer)
-            ! @fixme if needed            
+            ! Important to update snow layer dimensions because CLM code relies
+            ! on snow layer thickness for compaction/aggregation snow algorithm
+            ! to function properly            
 
              dzsno_po(ilevel,icolumn) =  dzsno_pr(ilevel,icolumn) + gain_dzsno(ilevel,icolumn)
+             
+            ! For consistency with updated dzsno_po (thickness)
+            ! Update zsno_po (middle depth) and zisno (top interface depth)
+                     
+
+            zisno_po(ilevel,icolumn) = sum(dzsno_po(ilevel:nlevsno,icolumn))*-1
             
+            if (ilevel = nlevsno) then
+               zsno_po(ilevel,icolumn) = zisno_po(ilevel,icolumn)/2 
+            else
+               zsno_po(ilevel,icolumn) = sum(zisno_po(ilevel:ilevel+1,icolumn))/2
+            endif
+ 
             if (verbose > 2 .and. abs(gain_h2osno) > 0.0_r8) then
                ! Output diagnostics for active snow columns in which SWE is updated
                ! by DART.  These columns undergo re-partitioning.
-               ! column,level,active snow layers,SWE,ice mass,liq mass,snow thickness 
-               ! PRIOR:     icolumn,ilevel,snlsno,h2osno_pr,h2oice_pr,h2oliq_pr,dzsno_pr
-               ! POSTERIOR: icolumn,ilevel,snlsno,h2osno_po,h2oice_po,h2oliq_po,dzsno_po
-               
+               ! column,level,active snow layers,SWE,ice mass,liq mass,
+               ! thickness,interface,middle 
+               ! PRIOR: icolumn,ilevel,snlsno,h2osno_pr,h2oice_pr,h2oliq_pr,
+               !        dzsno_pr, zisno_pr, zsno_pr
+               ! POSTERIOR: icolumn,ilevel,snlsno,h2osno_po,h2oice_po,h2oliq_po,
+               !             dzsno_po, zisno_po, zsno_po
+
                call error_handler(E_MSG,routine,'  ',source)           
                write (string1,*)'PRIOR: ',icolumn,ilevel,snlsno(icolumn),h2osno_pr(icolumn),&
                                 h2oice_pr(ilevel,icolumn),h2oliq_pr(ilevel,icolumn),&
-                                dzsno_pr(ilevel,icolumn)
+                                dzsno_pr(ilevel,icolumn),zisno_pr(ilevel,icolumn),&
+                                zsno_pr(ilevel,icolumn)
                write (string2,*)'POST : ',icolumn,ilevel,snlsno(icolumn),h2osno_po(icolumn),&        
                                 h2oice_po(ilevel,icolumn),h2oliq_po(ilevel,icolumn),&
-                                dzsno_po(ilevel,icolumn)
+                                dzsno_po(ilevel,icolumn),zisno_po(ilevel,icolumn),&
+                                zsno_po(ilevel,icolumn)
                call error_handler(E_MSG,routine,string1,source,text2=string2)
             endif
              
@@ -688,8 +720,8 @@ enddo PARTITION
 ! Update the 'dart_array' (dart_posterior.nc) with the repartitioned values
  dart_SNOWDP = snowdp_po
  dart_DZSNO  = dzsno_po
-
-
+ dart_ZSNO   = zsno_po
+ dart_ZISNO  = zisno_po
 ! Important to update only the manually repartitioned above surface (snow) layers
 ! Keep the subsurface layer values than come from DART posterior
  dart_H2OLIQ(1:nlevsno,:) =h2oliq_po(1:nlevsno,:)  
@@ -730,6 +762,24 @@ if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,spe
 call Compatible_Variables('DZSNO', ncid_dart, ncid_clm, varsize)
 where(dart_DZSNO /= special) clm_DZSNO = dart_DZSNO
 call nc_put_variable(ncid_clm, 'DZSNO', clm_DZSNO, routine)
+
+VarID=get_varid_from_varname(dom_id, 'ZSNO')
+! Identify location of missing_values and FillValues to prevent updates (masking)  
+if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
+if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,special)
+! Make sure variables in both files are identical in shape, etc.
+call Compatible_Variables('ZSNO', ncid_dart, ncid_clm, varsize)
+where(dart_ZSNO /= special) clm_ZSNO = dart_ZSNO
+call nc_put_variable(ncid_clm, 'ZSNO', clm_ZSNO, routine)
+
+VarID=get_varid_from_varname(dom_id, 'ZISNO')
+! Identify location of missing_values and FillValues to prevent updates (masking)  
+if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
+if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,special)
+! Make sure variables in both files are identical in shape, etc.
+call Compatible_Variables('ZISNO', ncid_dart, ncid_clm, varsize)
+where(dart_ZISNO /= special) clm_ZISNO = dart_ZISNO
+call nc_put_variable(ncid_clm, 'ZISNO', clm_ZISNO, routine)
 
 ! UPDATE LIQUID LAYER
 VarID=get_varid_from_varname(dom_id, 'H2OSOI_LIQ')
