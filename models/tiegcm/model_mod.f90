@@ -361,7 +361,6 @@ level       = int(lon_lat_lev(3))  ! HK can I just convert lon_lat_lev to int al
 
 
 which_vert = nint(query_location(location))
-print*, 'which_vert', which_vert
 
 call compute_bracketing_lat_indices(lat, lat_below, lat_above, lat_fract)
 call compute_bracketing_lon_indices(lon, lon_below, lon_above, lon_fract)
@@ -1214,7 +1213,9 @@ call nc_check(nf90_inq_dimid(ncid, 'lev', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid lev')
 call nc_check(nf90_inquire_dimension(ncid, DimID, len=nlev), 'read_TIEGCM_definition', &
                   'inquire_dimension lev')
-nlev = nlev - 1 ! top level is not viable !HK what does this mean?
+call error_handler(E_MSG,'read_TIEGCM_definition using nlev', 'How many levels do you want?')
+!nlev = nlev - 1 ! top level is not viable !HK what does this mean?
+
 allocate(levs(nlev), plevs(nlev))
 
 call nc_check(nf90_inq_varid(ncid, 'lev', VarID), 'read_TIEGCM_definition', &
@@ -1242,7 +1243,7 @@ if ((nlev+1) .ne. nilev) then
    write(string1,*) 'number of midpoints should be 1 less than number of interfaces.'
    write(string2,*) 'number of midpoints  is nlev  = ',nlev
    write(string3,*) 'number of interfaces is nilev = ',nilev
-   call error_handler(E_ERR,'read_TIEGCM_definition', string1, &
+   call error_handler(E_MSG,'read_TIEGCM_definition', string1, &
               source, revision, revdate, text2=string2, text3=string3)
 endif
 
