@@ -423,6 +423,10 @@ real(r8) :: snowdp_pr(ncolumn)
 real(r8) :: snowdp_po(ncolumn)
 real(r8) :: dzsno_pr(nlevsno,ncolumn)
 real(r8) :: dzsno_po(nlevsno,ncolumn)
+real(r8) :: zsno_pr(nlevsno,ncolumn)
+real(r8) :: zsno_po(nlevsno,ncolumn)
+real(r8) :: zisno_pr(nlevsno,ncolumn)
+real(r8) :: zisno_po(nlevsno,ncolumn)
 real(r8) :: h2oliq_pr(nlevel,ncolumn)
 real(r8) :: h2oliq_po(nlevel,ncolumn)
 real(r8) :: h2oice_pr(nlevel,ncolumn)
@@ -560,11 +564,10 @@ zisno_pr=clm_ZISNO
 h2oliq_pr=clm_H2OLIQ
 h2oice_pr=clm_H2OICE
 
+! Likely unnecessary check coming from clm restart file
 where (h2osno_pr < 0.0_r8) h2osno_pr = 0.0_r8
 where (snowdp_pr < 0.0_r8) snowdp_pr = 0.0_r8
 where ( dzsno_pr < 0.0_r8)  dzsno_pr = 0.0_r8
-where ( zsno_pr < 0.0_r8)    zsno_pr = 0.0_r8
-where ( zisno_pr < 0.0_r8)  zisno_pr = 0.0_r8
 where (h2oliq_pr < 0.0_r8) h2oliq_pr = 0.0_r8
 where (h2oice_pr < 0.0_r8) h2oice_pr = 0.0_r8
 
@@ -660,19 +663,23 @@ PARTITION: do icolumn = 1,ncolumn
             ! Important to update snow layer dimensions because CLM code relies
             ! on snow layer thickness for compaction/aggregation snow algorithm
             ! to function properly            
-
-             dzsno_po(ilevel,icolumn) =  dzsno_pr(ilevel,icolumn) + gain_dzsno(ilevel,icolumn)
+            
+            ! Only update snow layer dimensions if H2OSNO has been adjusted 
+            
+            if (abs(gain_h2osno) > 0.0_r8) then
+               dzsno_po(ilevel,icolumn) =  dzsno_pr(ilevel,icolumn) + gain_dzsno(ilevel,icolumn)
              
-            ! For consistency with updated dzsno_po (thickness)
-            ! Update zsno_po (middle depth) and zisno (top interface depth)
+               ! For consistency with updated dzsno_po (thickness)
+               ! Update zsno_po (middle depth) and zisno (top interface depth)
                      
 
-            zisno_po(ilevel,icolumn) = sum(dzsno_po(ilevel:nlevsno,icolumn))*-1
+               zisno_po(ilevel,icolumn) = sum(dzsno_po(ilevel:nlevsno,icolumn))*-1.0_r8
             
-            if (ilevel = nlevsno) then
-               zsno_po(ilevel,icolumn) = zisno_po(ilevel,icolumn)/2 
-            else
-               zsno_po(ilevel,icolumn) = sum(zisno_po(ilevel:ilevel+1,icolumn))/2
+               if (ilevel ==  nlevsno) then
+                  zsno_po(ilevel,icolumn) = zisno_po(ilevel,icolumn)/2.0_r8 
+               else
+                  zsno_po(ilevel,icolumn) = sum(zisno_po(ilevel:ilevel+1,icolumn))/2.0_r8
+               endif
             endif
  
             if (verbose > 2 .and. abs(gain_h2osno) > 0.0_r8) then
@@ -703,9 +710,10 @@ PARTITION: do icolumn = 1,ncolumn
       ! Apply increment of layer depths to total column snow height
       ! *only if* active snow layer exists.  This avoids
       ! inadvertently 'creating' new snow layer from round-off errors in gain_dzsno
-      ! Also, only sum the gain of layers that are known to be active.
+      ! Also, only sum the gain of layers that are known to be active
+      ! and recieved an H2OSNO adjustment
 
-      if (snlsno(icolumn) < 0.0_r8) then
+      if (snlsno(icolumn) < 0.0_r8 .and. abs(gain_h2osno) > 0.0_r8) then
          snowdp_po(icolumn) = snowdp_pr(icolumn) + sum(gain_dzsno(nlevsno+1+snlsno(icolumn):nlevsno,icolumn))
       else
          snowdp_po(icolumn) = snowdp_pr(icolumn)
