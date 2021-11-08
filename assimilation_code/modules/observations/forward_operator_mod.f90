@@ -258,8 +258,8 @@ else ! distributed state
 
    if(isprior) call add_obs_index_inner_domain(global_obs_num)
 
-write(my_task_id() + 50, *) 'my_task_id ', my_task_id()
-write(my_task_id() + 50, *) 'getting my copy ', j, ' global obs ', global_obs_num
+!write(my_task_id() + 50, *) 'my_task_id ', my_task_id()
+!write(my_task_id() + 50, *) 'getting my copy ', j, ' global obs ', global_obs_num
   
    call get_obs_from_key(seq, keys(global_obs_num), observation)
    call get_obs_def(observation, obs_def)

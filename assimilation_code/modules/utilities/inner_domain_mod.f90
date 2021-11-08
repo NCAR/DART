@@ -6,7 +6,9 @@ module inner_domain_mod
 
 ! This is a pragmatic implementation with limited error checking. 
 
-use types_mod,             only : r8, i8, missing_r8
+use types_mod,     only : r8, i8, missing_r8
+
+use utilities_mod, only : error_handler, E_ERR
 
 implicit none
 
@@ -43,6 +45,13 @@ end type inner_domain_type
 
 type(inner_domain_type), save :: inner_domain
 
+! Only allow inputs from get_state when computing prior forward operators
+logical, save                 :: active
+
+! Error message storage
+character(len=512)          :: string1
+character(len=*), parameter :: source = 'inner_domain_mod.f90'
+
 contains
 
 !--------------------------------------------------------------------
@@ -54,6 +63,9 @@ subroutine init_inner_domain(max_num_obs, ens_size)
 
 integer, intent(in) :: max_num_obs
 integer, intent(in) :: ens_size
+
+! Now active
+active = .true.
 
 ! Currently no variables stored
 inner_domain%max_num_obs = max_num_obs
@@ -82,6 +94,9 @@ inner_domain%num_obs     = 0
 deallocate(inner_domain%obs_index, inner_domain%num_vars, &
    inner_domain%obs_ens, inner_domain%var_index, inner_domain%ens)
 
+! No longer active
+active = .false.
+
 end subroutine clear_inner_domain
 
 !--------------------------------------------------------------------
@@ -92,12 +107,14 @@ subroutine add_obs_index_inner_domain(obs_index)
 
 integer, intent(in) :: obs_index
 
+! If not active don't allow input
+if(.not. active) return
+
 ! Make sure that there is enough room
 inner_domain%num_obs = inner_domain%num_obs + 1
 if(inner_domain%num_obs > inner_domain%max_num_obs) then
-   ! Use error handler
-   write(*, *) 'Exceeded max_num_obs in inner_domain_mod subroutine add_obs_index_inner_domain'
-   stop
+   string1 = 'Exceeded max_num_obs in inner_domain mod'
+   call error_handler(E_ERR, 'add_obs_index_inner_domain', string1, source)
 endif
 
 inner_domain%obs_index(inner_domain%num_obs) = obs_index
@@ -114,11 +131,13 @@ subroutine add_obs_ens_inner_domain(obs_index, obs_vals)
 integer,  intent(in) :: obs_index
 real(r8), intent(in) :: obs_vals(:)
 
+! If not active don't allow input
+if(.not. active) return
+
 ! Make sure that the index agrees with the one to be loaded
 if(inner_domain%obs_index(inner_domain%num_obs) .ne. obs_index) then
-   ! Use error handler
-   write(*, *) 'Indexing error in add_obs_ens_inner_domain'
-   stop
+   string1 = 'Indexing error'
+   call error_handler(E_ERR, 'add_obs_ens_inner_domain', string1, source)
 endif
 
 inner_domain%obs_ens(:, inner_domain%num_obs) = obs_vals
@@ -138,13 +157,15 @@ real(r8),    intent(in)  :: vals(:)
 
 integer :: cur_obs
 
+! If not active don't allow input
+if(.not. active) return
+
 ! Make sure there is room for another variable
 cur_obs = inner_domain%num_obs
 inner_domain%num_vars(cur_obs) = inner_domain%num_vars(cur_obs) + 1
 if(inner_domain%num_vars(cur_obs) > max_num_vars) then
-   ! Use error handler
-   write(*, *) 'Exceeded max_num_vars in inner_domain_mod subroutine add_var_inner_domain'
-   stop
+   string1 = 'Exceeded max_num_vars'
+   call error_handler(E_ERR, 'add_var_inner_domain', string1, source)
 endif
 
 inner_domain%var_index(inner_domain%num_vars(cur_obs), cur_obs) = var_index
@@ -178,8 +199,8 @@ num_obs = inner_domain%num_obs
 if(size(obs_index) >= num_obs) then
    obs_index(1:num_obs) = inner_domain%obs_index(1:num_obs)
 else
-   write(*, *) 'obs_index too large in get_obs_index_inner_domain'
-   stop
+   string1 = 'obs_index too big'
+   call error_handler(E_ERR, 'get_obs_index_inner_domain', string1, source)
 endif
 
 end subroutine get_obs_index_inner_domain
@@ -195,8 +216,8 @@ real(r8), intent(out) :: obs_ens(:)
 
 ! Check for out of range
 if(n_obs > inner_domain%num_obs) then
-   write(*, *) 'input n greater that number of obs available in get_obs_ens_inner_domain'
-   stop
+   string1 = 'input n_obs greater than nunber of obs available'
+   call error_handler(E_ERR, 'get_obs_ens_inner_domain', string1, source)
 endif
 
 obs_ens = inner_domain%obs_ens(:, n_obs)
@@ -216,8 +237,8 @@ integer, intent(out) :: num_vars
 
 ! Check for out of range
 if(n_obs > inner_domain%num_obs) then
-   write(*, *) 'input n_obs greater that number of obs available in get_var_index_inner_domain'
-   stop
+   string1 = 'input n_obs greater than nunber of obs available'
+   call error_handler(E_ERR, 'get_var_index_inner_domain', string1, source)
 endif
 
 ! Should put in more error checks for storage size for initial testing?
@@ -239,13 +260,13 @@ real(r8), intent(out) :: ens(:)
 
 ! Lots more error checking for now
 if(n_obs > inner_domain%num_obs) then
-   write(*, *) 'n_obs exceeds num_obs in get_var_ens_inner_domain'
-   stop
+   string1 = 'n_obs exceeds num_obs'
+   call error_handler(E_ERR, 'get_var_ens_inner_domain', string1, source)
 endif
 
 if(n_var > inner_domain%num_vars(n_obs)) then
-   write(*, *) 'n_far exceeds num_vars in get_var_ens_inner_domain'
-   stop
+   string1 = 'n_var exceeds num_vars'
+   call error_handler(E_ERR, 'get_var_ens_inner_domain', string1, source)
 endif
 
 ens = inner_domain%ens(:, n_var, n_obs)

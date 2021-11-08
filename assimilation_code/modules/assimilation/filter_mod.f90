@@ -882,6 +882,9 @@ AdvanceTime : do
            OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
            isprior=.true., prior_qc_copy=prior_qc_copy)
 
+   ! Check on the inner domain info
+   call output_inner_domain_info(50 + my_task_id())
+
    ! Clear the inner domain info (should be done later when it's being used elsewhere)
    call clear_inner_domain 
 

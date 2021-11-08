@@ -80,7 +80,7 @@ if (current_win == MEAN_WINDOW) then
 else if (current_win == STATE_WINDOW) then
    call get_fwd(x, my_index, ens_handle)
    call add_var_inner_domain(my_index, x)
-write(my_task_id() + 50, *) 'Getting state variable ', my_index
+   !write(my_task_id() + 50, *) 'Getting state variable ', my_index
 else
    call error_handler(E_ERR, 'get_state',' No window currently open')
 endif
