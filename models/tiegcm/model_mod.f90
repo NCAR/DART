@@ -1348,12 +1348,6 @@ if (varname == 'VTEC') include_vTEC_in_state = .true.
 ! Do we need to augment the state vector with the parameter to estimate?
 if ( estimate_f10_7 ) then
 
-   string1 = 'Estimating f10_7 is not supported.'
-   string2 = 'This feature is under development.'
-   string3 = 'If you want to experiment with this, change E_ERR to E_MSG in "get_variables_in_domain".'
-   call error_handler(E_MSG, 'get_variables_in_domain:', string1, &
-                      source, revision, revdate, text2=string2, text3=string3)
-
    nfields = nfields + 1
    nfields_constructed = nfields_constructed+1
    variable_table(nfields,VT_VARNAMEINDX) = 'f10_7'

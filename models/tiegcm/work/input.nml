@@ -1,6 +1,8 @@
+&quality_control_nml
+/
+
 &state_vector_io_nml
    /
-
 
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
@@ -32,48 +34,66 @@
    /
 
 &filter_nml
-   async                    = 0,
-   adv_ens_command          = "../shell_scripts/advance_model.csh",
-   ens_size                 = 80
-   start_from_restart       = .true.
-   output_restart           = .true.
-   obs_sequence_in_name     = "obs_seq.out"
-   obs_sequence_out_name    = "obs_seq.final"
-   restart_in_file_name     = "filter_ics"
-   restart_out_file_name    = "filter_restart"
-   init_time_days           = -1
-   init_time_seconds        = -1
-   first_obs_days           = -1
-   first_obs_seconds        = -1
-   last_obs_days            = -1
-   last_obs_seconds         = -1
-   num_output_state_members = 80
-   num_output_obs_members   = 80
-   output_interval          = 1
-   num_groups               = 1
-   input_qc_threshold       =  3.0
-   outlier_threshold        =  3.0
-   distributed_state        = .true.
-   compute_posterior        = .true.
-   output_forward_op_errors = .false.
-   output_timestamps        = .false.
-   output_inflation         = .true.
-   trace_execution          = .true.
-   silence                  = .false.
+   single_file_in               = .false.,
+   input_state_files            = ''
+   input_state_file_list        = ''
+   init_time_days               = 0,
+   init_time_seconds            = 0,
+   perturb_from_single_instance = .false.,
+   perturbation_amplitude       = 0.2,
 
-   inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
-   inf_output_restart          = .true.,                  .true.
-   inf_deterministic           = .true.,                  .true.
-   inf_initial                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
-   inf_upper_bound             = 1000000.0,               1000000.0
-   inf_damping                 = 1.0,                     1.0
-   inf_sd_initial              = 0.0,                     0.0
+   stages_to_write              = 'output'
+
+   single_file_out              = .false.,
+   output_state_files           = ''
+   output_state_file_list       = ''
+   output_interval              = 1,
+   output_members               = .true.
+   num_output_state_members     = 0,
+   output_mean                  = .true.
+   output_sd                    = .true.
+   write_all_stages_at_end      = .false.
+   compute_posterior            = .true.
+
+   ens_size                     = 20,
+   num_groups                   = 1,
+   distributed_state            = .true.
+
+   async                        = 0,
+   adv_ens_command              = "./advance_model.csh",
+   tasks_per_model_advance      = 1
+
+   obs_sequence_in_name         = "obs_seq.out",
+   obs_sequence_out_name        = "obs_seq.final",
+   num_output_obs_members       = 0,
+   first_obs_days               = -1,
+   first_obs_seconds            = -1,
+   last_obs_days                = -1,
+   last_obs_seconds             = -1,
+   obs_window_days              = -1,
+   obs_window_seconds           = -1,
+
+   inf_flavor                  = 0,                       0,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_initial                 = 1.0,                     1.0,
+   inf_lower_bound             = 0.0,                     1.0,
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
    inf_sd_lower_bound          = 0.0,                     0.0
-   inf_sd_max_change           = 1.05,                    1.05
+   inf_sd_max_change           = 1.05,                    1.05,
+
+   trace_execution              = .false.,
+   output_timestamps            = .false.,
+   output_forward_op_errors     = .false.,
+   write_obs_every_cycle        = .false.,
+   silence                      = .false.,
+
+   allow_missing_clm            = .false.
    /
+
 
 &smoother_nml
    num_lags              = 0
@@ -287,11 +307,11 @@
 &model_mod_check_nml
    input_state_files     = "tiegcm_restart_p.nc", "tiegcm_s.nc"
    output_state_files    = "mmc_output_p.nc", "mmc_output_s.nc", "params.nc"
-   test1thru             = 2
+   test1thru             = 4
    run_tests             = 0,1,2,3,4,5,7
-   x_ind                 = 36288
+   x_ind                 = 676513
    loc_of_interest       = 240.0, 12.49, 200000.0
-   quantity_of_interest  = 'QTY_ELECTRON_DENSITY'
+   quantity_of_interest  = 'QTY_DENSITY_ION_OP'
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 50000.0
@@ -299,6 +319,6 @@
    interp_test_latrange  = 30.0,   47.0
    interp_test_vertrange = 200000.0, 300000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
-   verbose               = .true.
+   verbose               = .false.
    /
 
