@@ -1864,7 +1864,7 @@ integer :: lev_top(n)
 real(r8) :: frac_lev(n)
 
 integer  :: k, i
-real(r8) :: zgrid(n), delta_z(n)
+real(r8) :: delta_z(n)
 real(r8) :: zgrid_upper(n), zgrid_lower(n)
 integer(i8)  :: indx_top(n), indx_bottom(n) ! state vector indices
 logical  :: found(n) ! track which ensemble members have been located
@@ -1941,7 +1941,7 @@ found = .false.
    where (zgrid_upper == zgrid_lower)  ! avoid divide by zero ! HK does this happen?
       frac_lev = 0
    elsewhere
-      frac_lev = (zgrid - height)/delta_z
+      frac_lev = (zgrid_upper - height)/delta_z
    endwhere
 
 if (is_pressure) then ! get fom plevs (pilevs?) array TODO Lanai is always plves
