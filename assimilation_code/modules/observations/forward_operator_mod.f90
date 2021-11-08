@@ -47,6 +47,9 @@ use quality_control_mod,   only : check_outlier_threshold, get_dart_qc, &
                                   DARTQC_ASSIM_GOOD_FOP, DARTQC_EVAL_GOOD_FOP, &
                                   DARTQC_NOT_IN_NAMELIST
 
+use inner_domain_mod,      only : init_inner_domain, add_obs_index_inner_domain, &
+                                  add_obs_ens_inner_domain
+
 !------------------------------------------------------------------------------
 
 implicit none
@@ -243,12 +246,20 @@ else ! distributed state
       my_copy_indices(i) = i  ! copy-complete fwd operator so indices are 1 to ens_size
    enddo
 
+   ! Initialize the inner_domain struture
+   if(isprior) call init_inner_domain(obs_fwd_op_ens_handle%my_num_vars, ens_size)
+
    ! Loop through all my observations in the set
    MY_OBSERVATIONS: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
 
    ! convert the local obs number to global obs number
    global_obs_num = obs_fwd_op_ens_handle%my_vars(j) 
    thiskey(1) = keys(global_obs_num)
+
+   if(isprior) call add_obs_index_inner_domain(global_obs_num)
+
+write(my_task_id() + 50, *) 'my_task_id ', my_task_id()
+write(my_task_id() + 50, *) 'getting my copy ', j, ' global obs ', global_obs_num
   
    call get_obs_from_key(seq, keys(global_obs_num), observation)
    call get_obs_def(observation, obs_def)
@@ -283,6 +294,9 @@ else ! distributed state
    call get_expected_obs_distrib_state(seq, thiskey, &
       dummy_time, isprior, istatus, &
       assimilate_this_ob, evaluate_this_ob, ens_handle, num_copies_to_calc, my_copy_indices, expected_obs)
+
+   ! Put this in inner domain if this is prior   
+   if(isprior) call add_obs_ens_inner_domain(global_obs_num, expected_obs)
 
       obs_fwd_op_ens_handle%copies(1:num_copies_to_calc, j) = expected_obs
 

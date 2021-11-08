@@ -92,6 +92,8 @@ use forward_operator_mod,  only : get_obs_ens_distrib_state
 
 use quality_control_mod,   only : initialize_qc
 
+use inner_domain_mod,      only : clear_inner_domain, output_inner_domain_info
+
 !------------------------------------------------------------------------------
 
 implicit none
@@ -879,6 +881,9 @@ AdvanceTime : do
            OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
            OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
            isprior=.true., prior_qc_copy=prior_qc_copy)
+
+   ! Clear the inner domain info (should be done later when it's being used elsewhere)
+   call clear_inner_domain 
 
    call timestamp_message('After  computing prior observation values')
    call     trace_message('After  computing prior observation values')
