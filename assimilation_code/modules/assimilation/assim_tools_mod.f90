@@ -1133,7 +1133,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                diff_sd = sqrt(obs_err_var + r_var)
                if (diff_sd > 0.0_r8) then
                   outlier_ratio = abs(obs(1) - r_mean) / diff_sd
-                  do_adapt_inf_update = (outlier_ratio <= 3.0_r8)
+                  ! Outlier thresholds already enforced by posterior forward operators
+                  !do_adapt_inf_update = (outlier_ratio <= 3.0_r8)
+                  ! Always update the posterior, no matter what the group outlier_ratio
+                  do_adapt_inf_update = .true.
                endif
             endif
             if (do_adapt_inf_update) then
