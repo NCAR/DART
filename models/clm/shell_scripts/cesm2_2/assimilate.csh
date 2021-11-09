@@ -337,10 +337,10 @@ unlink dart_posterior.nc
 # Identify if SWE re-partitioning is necessary
 set  REPARTITION = `grep repartition_swe input.nml`
 set  REPARTITION = `echo $REPARTITION | sed -e "s/repartition_swe//g"`
-set  REPARTITION = `echo $REPARTITION | sed -e "s/[= .]//g"`
+set  REPARTITION = `echo $REPARTITION | sed -e "s/=//g"`
 
 
-if ($REPARTITION == "true") then
+if ($REPARTITION != 0) then
 unlink clm_vector_history   
    # Track the ensemble count to locate matching vector analysis file
    @ enscount = 1
