@@ -705,13 +705,13 @@ end subroutine update_single_state_space_inflation
 !-------------------------------------------------------------------------------
 !> Computes updatea inflation mean and inflation sd for varying state space inflation
 
-subroutine update_varying_state_space_inflation(inflate, inflate_mean_inout, inflate_sd_inout, &
+subroutine update_varying_state_space_inflation(inflate, inflate_mean, inflate_sd, &
    ss_inflate_base, orig_obs_prior_mean, orig_obs_prior_var, obs, obs_err_var, &
    ens_size, reg_factor, correl, inflate_only)
 
 type(adaptive_inflate_type), intent(in)    :: inflate
-real(r8),                    intent(inout) :: inflate_mean_inout
-real(r8),                    intent(inout) :: inflate_sd_inout
+real(r8),                    intent(inout) :: inflate_mean
+real(r8),                    intent(inout) :: inflate_sd
 real(r8),                    intent(in)    :: ss_inflate_base
 real(r8),                    intent(in)    :: orig_obs_prior_mean
 real(r8),                    intent(in)    :: orig_obs_prior_var
@@ -722,13 +722,9 @@ real(r8),                    intent(in)    :: reg_factor
 real(r8),                    intent(in)    :: correl
 logical,                     intent(in)    :: inflate_only
 
-real(r8) :: inflate_mean, inflate_sd, gamma, ens_var_deflate, r_var, r_mean
+real(r8) :: gamma, ens_var_deflate, r_var, r_mean
 real(r8) :: diff_sd, outlier_ratio
 logical  :: do_adapt_inf_update
-
-! Copy the inflate_mean and inflate_sd which can be changed by update_inflation
-inflate_mean = inflate_mean_inout
-inflate_sd = inflate_sd_inout
 
 if(inflate_mean > 0.0_r8 .and. inflate_sd > 0.0_r8) then
    ! Gamma is less than 1 for varying ss, see adaptive inflate module
@@ -758,27 +754,6 @@ if(inflate_mean > 0.0_r8 .and. inflate_sd > 0.0_r8) then
    ! Update the inflation values
    call update_inflation(inflate, inflate_mean, inflate_sd, &
       r_mean, r_var, ens_size, obs, obs_err_var, gamma)
-else
-   ! if we don't go into the previous if block, make sure these
-   ! have good values going out for the block below
-   r_mean = orig_obs_prior_mean
-   r_var =  orig_obs_prior_var
-endif
-
-! Update adaptive values if posterior outlier_ratio test doesn't fail.
-! Match code in obs_space_diags() in filter.f90
-do_adapt_inf_update = .true.
-if (inflate_only) then
-   diff_sd = sqrt(obs_err_var + r_var)
-   if (diff_sd > 0.0_r8) then
-      outlier_ratio = abs(obs - r_mean) / diff_sd
-! JLA: ********** Magic number of 3 sd outlier here needs to be addressed *********
-      do_adapt_inf_update = (outlier_ratio <= 3.0_r8)
-   endif
-endif
-if (do_adapt_inf_update) then
-   inflate_mean_inout = inflate_mean
-   inflate_sd_inout = inflate_sd
 endif
 
 end subroutine update_varying_state_space_inflation
