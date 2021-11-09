@@ -67,7 +67,11 @@ use distributed_state_mod, only : get_state, get_state_array
 
 use ensemble_manager_mod, only : ensemble_type
 
-use netcdf_utilities_mod, only : nc_synchronize_file
+use netcdf_utilities_mod, only : nc_synchronize_file, nc_add_global_attribute, &
+                                 nc_add_global_creation_time, nc_begin_define_mode, &
+                                 nc_define_dimension, nc_end_define_mode, &
+                                 nc_put_variable,nc_add_attribute_to_variable, &
+                                 nc_define_real_variable, nc_define_character_variable
 
 use typesizes  !HK do we needs these with netcdf_utilities_mod?
 use netcdf
@@ -571,8 +575,55 @@ integer :: LineLenDimID, nlinesDimID, nmlVarID
 integer :: nlines, linelen
 logical :: has_tiegcm_namelist
 
+character(len=*), parameter :: routine = 'nc_write_model_atts'
 
 if ( .not. module_initialized ) call static_init_model
+
+! Write Global Attributes
+call nc_begin_define_mode(ncid, routine)
+
+call nc_add_global_creation_time(ncid, routine)
+
+call nc_add_global_attribute(ncid, "model_source", source, routine)
+call nc_add_global_attribute(ncid, "model", "TIEGCM", routine)
+
+
+! define grid dimensions
+call nc_define_dimension(ncid, 'lon',  nlon,  routine)
+call nc_define_dimension(ncid, 'lat',  nlat,  routine)
+call nc_define_dimension(ncid, 'lev',  nlev,  routine)
+call nc_define_dimension(ncid, 'ilev', nilev, routine)
+
+! define grid variables
+! longitude
+call nc_define_real_variable(     ncid, 'lon', (/ 'lon' /), routine)
+call nc_add_attribute_to_variable(ncid, 'lon', 'long_name', 'geographic longitude (-west, +east)',  routine)
+call nc_add_attribute_to_variable(ncid, 'lon', 'units', 'degrees_east', routine)
+
+! latitude
+call nc_define_real_variable(     ncid, 'lat', (/ 'lat' /),  routine)
+call nc_add_attribute_to_variable(ncid, 'lat', 'long_name', 'geographic latitude (-south, +north)', routine)
+call nc_add_attribute_to_variable(ncid, 'lat', 'units',     'degrees_north', routine)
+
+! levs
+call nc_define_real_variable(     ncid, 'lev', (/ 'lev' /), routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'long_name',      'midpoint levels', routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'short name',     'ln(p0/p)', routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'positive',       'up', routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'standard_name',  'atmosphere_ln_pressure_coordinate', routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'formula_terms',  'p0: p0 lev: lev', routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'formula',  'p(k) = p0 * exp(-lev(k))', routine)
+
+
+! ilevs
+call nc_define_real_variable(     ncid, 'ilev', (/ 'ilev' /), routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'long_name',      'interface levels', routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'short name',     'ln(p0/p)', routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'positive',       'up', routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'standard_name',  'atmosphere_ln_pressure_coordinate', routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'formula_terms',  'p0: p0 lev: ilev', routine)
+call nc_add_attribute_to_variable(ncid, 'lev',  'formula',         'p(k) = p0 * exp(-ilev(k))', routine)
+
 
 !-------------------------------------------------------------------------------
 ! Determine shape of namelist.
@@ -587,23 +638,32 @@ else
 endif
 
 ! HK the netcdf calls need updating to use netcdf utilities
-!if (has_tiegcm_namelist) then
-!   allocate(textblock(nlines))
-!   textblock = ''
+if (has_tiegcm_namelist) then
+   allocate(textblock(nlines))
+   textblock = ''
 !
 !   call nc_check(nf90_def_dim(ncid=ncid, name='tiegcmNMLnlines', &
 !          len = nlines, dimid = nlinesDimID), &
 !          'nc_write_model_atts', 'def_dim tiegcmNMLnlines')
-!
+
+    call nc_define_dimension(ncid, 'tiegcmNMLnlines',  nlines,  routine)
+    call nc_define_dimension(ncid, 'linelen',  linelen,  routine)
+
 !   call nc_check(nf90_def_var(ncid,name='tiegcm_nml', xtype=nf90_char, &
 !          dimids = (/ linelenDimID, nlinesDimID /), varid=nmlVarID), &
 !          'nc_write_model_atts', 'def_var tiegcm_namelist')
+
+    call nc_define_character_variable(ncid, 'tiegcm_nml', (/ 'linelen', 'tiegcmNMLnlines' /), routine)
+
 !
 !   call nc_check(nf90_put_att(ncid, nmlVarID, 'long_name', &
 !          'contents of '//trim(tiegcm_namelist_file_name)), &
 !          'nc_write_model_atts', 'put_att tiegcm_namelist')
 !
-!endif
+    call nc_add_attribute_to_variable(ncid, 'tiegcm_nml', 'long_name', &
+            'contents of '//trim(tiegcm_namelist_file_name), routine)
+
+endif
 !
 !
 !!-------------------------------------------------------------------------------
@@ -617,10 +677,25 @@ endif
 !   deallocate(textblock)
 !endif
 
-!-------------------------------------------------------------------------------
-! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-call nc_synchronize_file(ncid)
+call nc_end_define_mode(ncid, routine)
+
+! Fill in the coordiante variables
+
+where (lons > 180.0_r8) lons = lons - 360.0_r8
+call nc_put_variable(ncid, 'lon',  lons,  routine)
+call nc_put_variable(ncid, 'lat',  lats,  routine)
+call nc_put_variable(ncid, 'lev',  levs,   routine)
+call nc_put_variable(ncid, 'ilev', ilevs,  routine)
+
+! Fill tiegcm in namelist variable
+if (has_tiegcm_namelist) then
+   call file_to_text(tiegcm_namelist_file_name, textblock)
+   call nc_put_variable(ncid, 'tiegcm_nml', textblock,  routine)
+endif
+
+! flush any pending i/o to disk
+call nc_synchronize_file(ncid, routine)
+deallocate(textblock)
 
 end subroutine nc_write_model_atts
 
