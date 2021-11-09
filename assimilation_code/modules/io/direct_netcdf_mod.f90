@@ -880,7 +880,6 @@ do i = start_var, end_var
    ! not sure if it will always be the last time slice
    slice_start(num_dims) = dims(num_dims)
    dims(num_dims) = 1
-   print*, 'dims', dims, 'slice start', slice_start
  
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
@@ -935,7 +934,6 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
    ! open netcdf file
    if (query_read_copy(name_handle, copy)) then
       netcdf_filename = get_restart_filename(name_handle, copy, domain)
-print*, 'netcdf filename ', netcdf_filename
       if (.not. is_parameter_estimate(domain)) then
          ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
          call nc_check(ret, 'read_transpose_single_task: opening', netcdf_filename)
@@ -1603,7 +1601,6 @@ do i = start_var, end_var
       ! What about if you are creating a new file? dimensions for input vs output
       slice_start(num_dims) = dims(num_dims)
       dims(num_dims) = 1
-      print*, 'dims', dims, 'slice start', slice_start
 
 !>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)

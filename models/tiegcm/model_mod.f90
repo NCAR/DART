@@ -570,7 +570,7 @@ integer, intent(in)  :: dom_id
 ! variables for the namelist output
 !-------------------------------------------------------------------------------
 
-character(len=129), allocatable, dimension(:) :: textblock
+character(len=70), allocatable, dimension(:) :: textblock
 integer :: LineLenDimID, nlinesDimID, nmlVarID
 integer :: nlines, linelen
 logical :: has_tiegcm_namelist
@@ -632,56 +632,27 @@ call nc_add_attribute_to_variable(ncid, 'lev',  'formula',         'p(k) = p0 * 
 
 call find_textfile_dims(tiegcm_namelist_file_name, nlines, linelen)
 if (nlines > 0) then
-  has_tiegcm_namelist = .true.
-else
-  has_tiegcm_namelist = .false.
-endif
-
-! HK the netcdf calls need updating to use netcdf utilities
-if (has_tiegcm_namelist) then
+   has_tiegcm_namelist = .true.
    allocate(textblock(nlines))
    textblock = ''
-!
-!   call nc_check(nf90_def_dim(ncid=ncid, name='tiegcmNMLnlines', &
-!          len = nlines, dimid = nlinesDimID), &
-!          'nc_write_model_atts', 'def_dim tiegcmNMLnlines')
-
-    call nc_define_dimension(ncid, 'tiegcmNMLnlines',  nlines,  routine)
-    call nc_define_dimension(ncid, 'linelen',  linelen,  routine)
-
-!   call nc_check(nf90_def_var(ncid,name='tiegcm_nml', xtype=nf90_char, &
-!          dimids = (/ linelenDimID, nlinesDimID /), varid=nmlVarID), &
-!          'nc_write_model_atts', 'def_var tiegcm_namelist')
-
-    call nc_define_character_variable(ncid, 'tiegcm_nml', (/ 'linelen', 'tiegcmNMLnlines' /), routine)
-
-!
-!   call nc_check(nf90_put_att(ncid, nmlVarID, 'long_name', &
-!          'contents of '//trim(tiegcm_namelist_file_name)), &
-!          'nc_write_model_atts', 'put_att tiegcm_namelist')
-!
-    call nc_add_attribute_to_variable(ncid, 'tiegcm_nml', 'long_name', &
-            'contents of '//trim(tiegcm_namelist_file_name), routine)
-
+   call nc_define_dimension(ncid, 'tiegcmNMLnlines',  nlines,  routine)
+   call nc_define_dimension(ncid, 'linelen',  len(textblock(1)),  routine)
+   call nc_define_character_variable(ncid, 'tiegcm_nml', (/ 'linelen', 'tiegcmNMLnlines' /), routine)
+   call nc_add_attribute_to_variable(ncid, 'tiegcm_nml', 'long_name', &
+         'contents of '//trim(tiegcm_namelist_file_name), routine)
+else
+   has_tiegcm_namelist = .false.
 endif
-!
-!
-!!-------------------------------------------------------------------------------
-!! Fill the variables we can
-!!-------------------------------------------------------------------------------
-!
-!if (has_tiegcm_namelist) then
-!   call file_to_text(tiegcm_namelist_file_name, textblock)
-!   call nc_check(nf90_put_var(ncid, nmlVarID, textblock ), &
-!                 'nc_write_model_atts', 'put_var nmlVarID')
-!   deallocate(textblock)
-!endif
 
 call nc_end_define_mode(ncid, routine)
 
-! Fill in the coordiante variables
+!-------------------------------------------------------------------------------
+! Write variables
+!-------------------------------------------------------------------------------
 
-where (lons > 180.0_r8) lons = lons - 360.0_r8
+! Fill in the coordinate variables
+
+where (lons >= 180.0_r8) lons = lons - 360.0_r8
 call nc_put_variable(ncid, 'lon',  lons,  routine)
 call nc_put_variable(ncid, 'lat',  lats,  routine)
 call nc_put_variable(ncid, 'lev',  levs,   routine)
@@ -690,12 +661,12 @@ call nc_put_variable(ncid, 'ilev', ilevs,  routine)
 ! Fill tiegcm in namelist variable
 if (has_tiegcm_namelist) then
    call file_to_text(tiegcm_namelist_file_name, textblock)
-   call nc_put_variable(ncid, 'tiegcm_nml', textblock,  routine)
+   call nc_put_variable(ncid, 'tiegcm_nml', textblock, routine)
 endif
 
 ! flush any pending i/o to disk
 call nc_synchronize_file(ncid, routine)
-deallocate(textblock)
+if (has_tiegcm_namelist) deallocate(textblock)
 
 end subroutine nc_write_model_atts
 
