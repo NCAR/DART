@@ -637,7 +637,7 @@ if (nlines > 0) then
    textblock = ''
    call nc_define_dimension(ncid, 'tiegcmNMLnlines',  nlines,  routine)
    call nc_define_dimension(ncid, 'linelen',  len(textblock(1)),  routine)
-   call nc_define_character_variable(ncid, 'tiegcm_nml', (/ 'linelen', 'tiegcmNMLnlines' /), routine)
+   call nc_define_character_variable(ncid, 'tiegcm_nml', (/ 'linelen        ', 'tiegcmNMLnlines' /), routine)
    call nc_add_attribute_to_variable(ncid, 'tiegcm_nml', 'long_name', &
          'contents of '//trim(tiegcm_namelist_file_name), routine)
 else
@@ -1448,10 +1448,6 @@ call load_up_calculated_variables(nfields_constructed, 'CALCULATE', CONSTRUCT_DO
 
 model_size = get_domain_size(RESTART_DOM) + get_domain_size(SECONDARY_DOM) &
                           + get_domain_size(CONSTRUCT_DOM)
-
-print*, 'restart size', get_domain_size(RESTART_DOM)
-print*, 'secondary size', get_domain_size(SECONDARY_DOM)
-print*, 'constructed size', get_domain_size(CONSTRUCT_DOM)
 
 ! set ivar. ZG is in the secondary domain
 ivarZG = get_varid_from_varname(domain_id(SECONDARY_DOM), 'ZG')
