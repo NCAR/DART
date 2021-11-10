@@ -15,7 +15,7 @@ use utilities_mod,        only : open_file, close_file, error_handler, E_ERR, E_
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
 use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, send_minmax_to
-use adaptive_inflate_mod, only : set_from_string
+use adaptive_inflate_mod, only : set_from_string, SINGLE_SS_INFLATION
 
 implicit none
 private
@@ -70,9 +70,11 @@ contains
 !-------------------------------------------------------------------------------
 !> Make sure the combination of hybrid options are legal
 
-subroutine validate_hybrid_options(hyb_flavor, hyb_ens_size, hyb_initial_from_restart, hyb_sd_initial_from_restart, & 
-                                   do_hybrid, output_hybrid)
+subroutine validate_hybrid_options(inf_flavor, hyb_flavor, hyb_ens_size, & 
+                  hyb_initial_from_restart, hyb_sd_initial_from_restart, & 
+                  do_hybrid, output_hybrid)
 
+integer, intent(in)    :: inf_flavor(2)
 integer, intent(in)    :: hyb_flavor
 integer, intent(in)    :: hyb_ens_size
 logical, intent(inout) :: hyb_initial_from_restart
@@ -91,13 +93,24 @@ endif
 
 ! Check to see if state space hybrid is turned on
 if (hyb_flavor /= NO_HYBRID) do_hybrid = .true.
+   
+! Adaptive hybrid scheme is only spatially-constant for now, 
+! Inflation is relied on to spread the information properly in space
+! Only support hybrid with inf-flavors 0, 2, 4, 5 (1 is deprecated)
+if (do_hybrid .and. hyb_flavor >= SINGLE_SS_HYBRID) then 
+   if (inf_flavor(1) == SINGLE_SS_INFLATION .or. inf_flavor(2) == SINGLE_SS_INFLATION) then 
+      write(string1, '(A, i2, A)') 'Adaptive hybrid scheme does not support inf_flavor:', SINGLE_SS_HYBRID, ' (i.e., spatially-uniform inflation)' 
+      call error_handler(E_ERR, 'validate_hybrid_options:', string1, source)
+   endif
+endif
+ 
 
 ! Check the size of the climatological ensemble
 ! We need this to be fairly large ~O(1000)
 if (do_hybrid .and. hyb_ens_size < clim_size_accept) then 
    write(string1, '(A, i5, 2A, i5, A)') 'Climatology ensemble is of size ', hyb_ens_size, '. The recommended sample size ', &
                        'should be at least ', clim_size_accept, ' for statistical robustness.' 
-   call error_handler(E_MSG, 'validate_hybrid_options:', string1)
+   call error_handler(E_MSG, 'validate_hybrid_options:', string1, source)
 endif
 
 if (do_hybrid) output_hybrid = .true.
@@ -141,7 +154,6 @@ hybrid_handle%mean_from_restart = mean_from_restart
 hybrid_handle%sd_from_restart   = sd_from_restart
 
 ! give these distinctive values; if inflation is being used
-! (e.g. inf_flavor > 0) then they should be set in all cases.
 hybrid_handle%minmax_mean(:) = MISSING_R8
 hybrid_handle%minmax_sd(:)   = MISSING_R8
 
@@ -243,7 +255,7 @@ real(r8), parameter :: small_diff = 1.0e-8
 integer  :: k, find_index(1)
 real(r8) :: m, v, d2, ss, Y, Z, Y2, Z2
 real(r8) :: a, b, c, a0, a1, a2, a3
-real(r8) :: Q, R, G, H, theta 
+real(r8) :: Q, R, G, H, theta, fs 
 real(r8) :: disc, sol(3), abssep(3)
 real(r8) :: mulfac, addfac, PIfac
 real(r8) :: new_weight, new_weight_sd
@@ -253,10 +265,19 @@ if(weight_sd <= 0.0_r8) return
 
 m  = weight
 v  = weight_sd**2
-d2 = (obs - x)**2 
-ss = se2 - ss2 
+d2 = (obs - x)**2
 
-print *, 'ss: ', ss
+! Rescaling factor so that the total variance of the 
+! rescaled static covariance  more  appropriately  estimated  
+! the total forecast-error variance
+fs = 1.0_r8
+!if (d2 > so2) fs = max( 0.01_r8, (d2 - so2) / ss2 )
+
+ss = se2 - fs * ss2 
+
+!print *, 'fs: ', fs
+!print *, 'd2: ', d2
+!print *, 'ss: ', ss
 
 if (ss == 0.0_r8 .or. abs(ss) <= small_diff) then
    ! If the ensemble and static variances are very close 
@@ -270,7 +291,7 @@ if (ss == 0.0_r8 .or. abs(ss) <= small_diff) then
 endif
 
 ! Simplify coefficients
-Y  = so2+ss2
+Y  = so2+fs*ss2
 Z  = rho*ss
 Y2 = Y**2
 Z2 = Z**2
@@ -295,15 +316,15 @@ R = ( 2.0_r8 * a**3 - 9.0_r8 * a * b + 27.0_r8 * c ) / 54.0_r8
 
 disc = R**2 - Q**3
 
-print *, 'disc: ', disc
-print *, 'Q: ', Q, ' R: ', R
+!print *, 'disc: ', disc
+!print *, 'Q: ', Q, ' R: ', R
 
 ! Find cubic roots
 if (disc < 0.0_r8) then
    ! 3 distict real roots
  
    theta = acos( R / sqrt(Q**3) ) / 3.0_r8  
-   print *, 'theta: ', theta
+   !print *, 'theta: ', theta
 
    mulfac = - 2.0_r8 * sqrt(Q)
    addfac = - a / 3.0_r8
@@ -315,7 +336,7 @@ if (disc < 0.0_r8) then
   
    abssep = abs(sol - m)
 
-   print *, 'sol: ', sol
+   !print *, 'sol: ', sol
 
    ! Closest root
    find_index = minloc(abssep)
@@ -331,13 +352,13 @@ else
       H = Q / G
    endif
    
-   print *, 'G: ', G, 'H: ', H
+   !print *, 'G: ', G, 'H: ', H
    
    new_weight = G + H - a / 3.0_r8
 
 endif
 
-print *, 'new_weight = ', new_weight
+!print *, 'new_weight = ', new_weight, ' d2 = ', d2, ' se2 = ', se2, ' ss2 = ', ss2, ' so2 = ', so2 
 
 ! Make sure weight satisfies constraints
 weight = new_weight
