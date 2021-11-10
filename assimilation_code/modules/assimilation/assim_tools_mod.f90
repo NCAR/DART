@@ -323,8 +323,8 @@ logical,                     intent(in)    :: inflate_only
 
 ! changed the ensemble sized things here to allocatable
 
-real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
-real(r8) :: impact_factor, reg_factor, final_factor
+real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size), updated_ens(ens_size)
+real(r8) :: reg_factor, final_factor
 real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
 real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
 real(r8) :: obs_qc, cutoff_rev, cutoff_orig
@@ -638,7 +638,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! coordinate transformation
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
       call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior,    &
-         net_a, orig_obs_prior_mean, orig_obs_prior_var,                   &
+         orig_obs_prior_mean, orig_obs_prior_var,                          &
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
 
@@ -646,7 +646,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !-----------------------------------------------------------------------
    else
       call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior,    &
-         net_a, orig_obs_prior_mean, orig_obs_prior_var,                   & 
+         orig_obs_prior_mean, orig_obs_prior_var,                          & 
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
       whichvert_obs_in_localization_coord = nint(whichvert_real)
@@ -727,36 +727,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
       endif
 
-      ! Compute the covariance localization and adjust_obs_impact factors
-      cov_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_state_loc(state_index), &
-         my_state_kind(state_index), close_state_dist(j), cutoff_rev, adjust_obs_impact, obs_impact_table)
-      if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
-
-      ! Loop through groups to update the state variable ensemble members
-      do group = 1, num_groups
-         grp_bot = grp_beg(group); grp_top = grp_end(group)
-         ! Do update of state, correl only needed for varying ss inflate but compute for all
-         call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-            obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-            ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
-            increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
-      end do
-
-      if(num_groups <= 1) then
-         final_factor = cov_factor
-      else 
-         reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, my_state_indx(state_index))
-         final_factor = min(cov_factor, reg_factor)
-      endif
+      call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
+         updated_ens, my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
+         obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+         close_state_dist(j), cutoff_rev, net_a, adjust_obs_impact, obs_impact_table, &
+         grp_size, grp_beg, grp_end, i, my_state_indx(state_index), final_factor, correl)
 
       ! If doing full assimilation, update the state variable ensemble with weighted increments
-      if(.not. inflate_only) then
-         ens_handle%copies(1:ens_size, state_index) = &
-            ens_handle%copies(1:ens_size, state_index) + final_factor * increment
-      endif
+      if(.not. inflate_only) ens_handle%copies(1:ens_size, state_index) = updated_ens
 
       ! Compute spatially-varying state space inflation
-      if(local_varying_ss_inflate) then
+      if(local_varying_ss_inflate .and. final_factor > 0.0_r8) then
          do group = 1, num_groups
             call update_varying_state_space_inflation(inflate,                     &
                ens_handle%copies(ENS_INF_COPY, state_index),                       &
@@ -779,30 +760,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             ! If forward observation operator failed, no need to update unassimilated observations
             if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
 
-            ! Compute the covariance localization and adjust_obs_impact factors
-            cov_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
-               my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev, adjust_obs_impact, obs_impact_table)
-            if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
+            call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+               updated_ens, my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
+               obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+               close_obs_dist(j), cutoff_rev, net_a, adjust_obs_impact, obs_impact_table, &
+               grp_size, grp_beg, grp_end, i, -1*my_obs_indx(obs_index), final_factor, correl)
 
-            ! Loop through and update ensemble members in each group
-            do group = 1, num_groups
-               grp_bot = grp_beg(group); grp_top = grp_end(group)
-               call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-                  obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-                  obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
-                  increment(grp_bot:grp_top), reg_coef(group), net_a(group))
-            end do
-
-            ! Compute an information factor for impact of this observation on this state
-            if(num_groups <= 1) then
-               final_factor = cov_factor
-            else 
-               reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, my_state_indx(state_index))
-               final_factor = min(cov_factor, reg_factor)
-            endif
-
-            obs_ens_handle%copies(1:ens_size, obs_index) = &
-               obs_ens_handle%copies(1:ens_size, obs_index) + final_factor * increment
+            obs_ens_handle%copies(1:ens_size, obs_index) = updated_ens
          endif
       end do OBS_UPDATE
    endif
@@ -2165,6 +2129,76 @@ do i = 1, ens_size
 end do
 
 end subroutine update_ens_from_weights
+!---------------------------------------------------------------
+
+subroutine obs_updates_ens(ens_size, num_groups, ens, updated_ens, ens_loc, ens_kind, &
+   obs_prior, obs_inc, obs_prior_mean, obs_prior_var, obs_loc, obs_type, obs_time, &
+   dist, cutoff_rev, net_a, adjust_obs_impact, obs_impact_table, &
+   grp_size, grp_beg, grp_end, reg_factor_obs_index, reg_factor_ens_index, &
+   final_factor, correl)
+
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: num_groups
+real(r8),            intent(in)  :: ens(ens_size)
+real(r8),            intent(out) :: updated_ens(ens_size)
+type(location_type), intent(in)  :: ens_loc
+integer,             intent(in)  :: ens_kind
+real(r8),            intent(in)  :: obs_prior(ens_size)
+real(r8),            intent(in)  :: obs_inc(ens_size)
+real(r8),            intent(in)  :: obs_prior_mean(num_groups)
+real(r8),            intent(in)  :: obs_prior_var(num_groups)
+type(location_type), intent(in)  :: obs_loc
+integer,             intent(in)  :: obs_type
+type(time_type),     intent(in)  :: obs_time
+real(r8),            intent(in)  :: dist
+real(r8),            intent(in)  :: cutoff_rev
+real(r8),            intent(inout)  :: net_a(num_groups)
+logical,             intent(in)  :: adjust_obs_impact
+real(r8),            intent(in)  :: obs_impact_table(:, :)
+integer,             intent(in)  :: grp_size
+integer,             intent(in)  :: grp_beg(num_groups)
+integer,             intent(in)  :: grp_end(num_groups)
+integer,             intent(in)  :: reg_factor_obs_index
+integer(i8),             intent(in)  :: reg_factor_ens_index
+real(r8),            intent(out) :: final_factor
+real(r8),            intent(out) :: correl(num_groups)
+
+real(r8) :: reg_coef(num_groups), increment(ens_size)
+real(r8) :: cov_factor, reg_factor
+integer  :: group, grp_bot, grp_top
+
+! Compute the covariance localization and adjust_obs_impact factors
+cov_factor = cov_and_impact_factors(obs_loc, obs_type, ens_loc, &
+   ens_kind, dist, cutoff_rev, adjust_obs_impact, obs_impact_table)
+
+! If no impact, don't do anything else
+if(cov_factor <= 0.0_r8) then
+   final_factor = cov_factor
+   updated_ens = ens
+   return
+endif
+
+! Loop through groups to update the state variable ensemble members
+do group = 1, num_groups
+   grp_bot = grp_beg(group); grp_top = grp_end(group)
+   ! Do update of state, correl only needed for varying ss inflate but compute for all
+   call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+      obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+      increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+end do
+
+if(num_groups <= 1) then
+   final_factor = cov_factor
+else
+   reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, &
+      reg_factor_obs_index, reg_factor_ens_index)
+   final_factor = min(cov_factor, reg_factor)
+endif
+
+! Get the updated ensemble
+updated_ens = ens + final_factor * increment
+
+end subroutine obs_updates_ens
 
 !-------------------------------------------------------------
 
