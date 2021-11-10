@@ -1690,10 +1690,10 @@ else
 endif
 
 if (vertstagger == 'ilev') then
-  call vert_interp_ilev(state_handle, height, n, lat_index, lon_index, is_pressure, &
+  call vert_interp_ilev(state_handle, height, n, lon_index, lat_index, is_pressure, &
                           dom_id, var_id, val, istatus)
 elseif (vertstagger == 'lev') then
-  call vert_interp_lev(state_handle, height, n, lat_index, lon_index, is_pressure, &
+  call vert_interp_lev(state_handle, height, n, lon_index, lat_index, is_pressure, &
                           dom_id, var_id, val, istatus)
 endif
 
