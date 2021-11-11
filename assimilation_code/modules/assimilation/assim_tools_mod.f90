@@ -323,10 +323,10 @@ logical,                     intent(in)    :: inflate_only
 
 ! changed the ensemble sized things here to allocatable
 
-real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size), updated_ens(ens_size)
-real(r8) :: reg_factor, final_factor
-real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
-real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
+real(r8) :: obs_prior(ens_size), obs_inc(ens_size), updated_ens(ens_size)
+real(r8) :: final_factor
+real(r8) :: net_a(num_groups), correl(num_groups)
+real(r8) :: obs(1), obs_err_var, my_inflate, my_inflate_sd
 real(r8) :: obs_qc, cutoff_rev, cutoff_orig
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
 real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
@@ -1374,7 +1374,7 @@ end subroutine obs_increment_kernel
 
 
 subroutine update_from_obs_inc(obs, obs_prior_mean, obs_prior_var, obs_inc, &
-               state, ens_size, state_inc, reg_coef, net_a, correl_out)
+               state, ens_size, state_inc, reg_coef, net_a_in, correl_out)
 !========================================================================
 
 ! Does linear regression of a state variable onto an observation and
@@ -1385,12 +1385,12 @@ real(r8),           intent(in)    :: obs(ens_size), obs_inc(ens_size)
 real(r8),           intent(in)    :: obs_prior_mean, obs_prior_var
 real(r8),           intent(in)    :: state(ens_size)
 real(r8),           intent(out)   :: state_inc(ens_size), reg_coef
-real(r8),           intent(inout) :: net_a
+real(r8),           intent(in) :: net_a_in
 real(r8), optional, intent(inout) :: correl_out
 
 real(r8) :: obs_state_cov, intermed
 real(r8) :: restoration_inc(ens_size), state_mean, state_var, correl
-real(r8) :: factor, exp_true_correl, mean_factor
+real(r8) :: factor, exp_true_correl, mean_factor, net_a
 
 
 ! For efficiency, just compute regression coefficient here unless correl is needed
@@ -1465,7 +1465,7 @@ state_inc = reg_coef * obs_inc
 ! Spread restoration algorithm option.
 if(spread_restoration) then
    ! Don't use this to reduce spread at present (should revisit this line)
-   if(net_a > 1.0_r8) net_a = 1.0_r8
+   net_a = min(net_a_in, 1.0_r8)
 
    ! Default restoration increment is 0.0
    restoration_inc = 0.0_r8
@@ -2152,14 +2152,14 @@ integer,             intent(in)  :: obs_type
 type(time_type),     intent(in)  :: obs_time
 real(r8),            intent(in)  :: dist
 real(r8),            intent(in)  :: cutoff_rev
-real(r8),            intent(inout)  :: net_a(num_groups)
+real(r8),            intent(in)  :: net_a(num_groups)
 logical,             intent(in)  :: adjust_obs_impact
 real(r8),            intent(in)  :: obs_impact_table(:, :)
 integer,             intent(in)  :: grp_size
 integer,             intent(in)  :: grp_beg(num_groups)
 integer,             intent(in)  :: grp_end(num_groups)
 integer,             intent(in)  :: reg_factor_obs_index
-integer(i8),             intent(in)  :: reg_factor_ens_index
+integer(i8),         intent(in)  :: reg_factor_ens_index
 real(r8),            intent(out) :: final_factor
 real(r8),            intent(out) :: correl(num_groups)
 
