@@ -13,6 +13,9 @@ _site/
 # Nuisance files
 
 # Makefile
+Makefile
+!developer_tests/time_manager/Makefile
+!developer_tests/mpi_utilities/tests/Makefile
 build_templates/mkmf.template
 dart_log.*
 mkmf.template
@@ -69,6 +72,55 @@ restart_file_tool
 system_simulation
 rttov_test
 rttov_unit_tests
+wakeup_filter
+mpas_dart_obs_preprocess
+update_bc
+update_mpas_states
+advance_cymdh
+cice_to_dart
+dart_to_cice
+
+# Observation converter exectutables
+convert_aviso
+level4_to_obs
+CHAMP_density_text_to_obs
+CNOFS_text_to_obs
+CONAGUA_convert_streamflow
+COSMOS_development
+COSMOS_to_obs
+convert_gpspw
+convert_daily_grace
+gtspp_to_obs
+thinned_gtspp_to_obs
+convert_madis_acars
+convert_madis_marine
+convert_madis_mesonet
+convert_madis_metar
+convert_madis_profiler
+convert_madis_rawin
+convert_madis_satwnd
+MIDAS_to_obs
+MOD15A2_to_obs
+convert_saber_cdf
+SIF_to_obs_netcdf
+oi_sst_to_obs
+sst_to_obs
+convert_f16_edr_dsk
+wod_to_obs
+cice_to_obs
+modis_ist_to_obs_netcdf
+seaice_aggre_to_obs_netcdf
+gnd_gps_vtec_text_to_obs
+create_obs_radar_sequence
+snow_to_obs
+snow_to_obs_netcdf
+tec_to_obs
+text_to_obs
+text_to_obs
+convert_gpspw
+convert_tpw
+tc_to_obs
+
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables
