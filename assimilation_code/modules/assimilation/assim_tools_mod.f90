@@ -324,6 +324,7 @@ logical,                     intent(in)    :: inflate_only
 ! changed the ensemble sized things here to allocatable
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), updated_ens(ens_size)
+real(r8) :: obs_likelihood(ens_size)
 real(r8) :: final_factor
 real(r8) :: net_a(num_groups), correl(num_groups)
 real(r8) :: obs(1), obs_err_var, my_inflate, my_inflate_sd
@@ -666,14 +667,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    do group = 1, num_groups
       grp_bot = grp_beg(group); grp_top = grp_end(group)
       call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
-         obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
-         my_inflate_sd, net_a(group))
-
-      ! Also compute prior mean and variance of obs for efficiency here
-      obs_prior_mean(group) = sum(obs_prior(grp_bot:grp_top)) / grp_size
-      obs_prior_var(group) = sum((obs_prior(grp_bot:grp_top) - obs_prior_mean(group))**2) / &
-         (grp_size - 1)
-      if (obs_prior_var(group) < 0.0_r8) obs_prior_var(group) = 0.0_r8
+         obs_err_var, base_obs_type, obs_inc(grp_bot:grp_top), obs_prior_mean(group), obs_prior_var(group), &
+         obs_likelihood(grp_bot:grp_top), net_a(group))
    end do
 
    ! Compute updated values for single state space inflation
@@ -862,8 +857,8 @@ end subroutine filter_assim
 
 !-------------------------------------------------------------
 
-subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc, &
-   inflate, my_cov_inflate, my_cov_inflate_sd, net_a)
+subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_type, &
+   obs_inc, prior_mean, prior_var, likelihood, net_a)
 
 ! Given the ensemble prior for an observation, the observation, and
 ! the observation error variance, computes increments and adjusts
@@ -871,46 +866,36 @@ subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc, &
 
 integer,                     intent(in)    :: ens_size
 real(r8),                    intent(in)    :: ens_in(ens_size), obs, obs_var
+integer,                     intent(in)    :: obs_type
 real(r8),                    intent(out)   :: obs_inc(ens_size)
-type(adaptive_inflate_type), intent(inout) :: inflate
-real(r8),                    intent(inout) :: my_cov_inflate, my_cov_inflate_sd
+real(r8),                    intent(out)   :: prior_mean, prior_var
+real(r8),                    intent(out)   :: likelihood(ens_size)
 real(r8),                    intent(out)   :: net_a
 
-real(r8) :: ens(ens_size), inflate_inc(ens_size)
-real(r8) :: prior_mean, prior_var, new_val(ens_size)
+real(r8) :: ens(ens_size), new_val(ens_size)
 integer  :: i, ens_index(ens_size), new_index(ens_size)
 
-real(r8) :: rel_weights(ens_size)
+! Most general observation space algorithms require:
+!   1. A class of prior continuous distribution which may require a number of parameters
+!   2. A class of likelihood functions which may require a number of parameters
+!   3. A specific method for computing a continous posterior which could have parameters
+! The EnKF is an exception since it cannot be expressed as a QCEF
+! Some of this information might need to be on a per obs basis so needs to be in obs_sequence file
+! Examples include the mean and variance for a normal likelihood
+! Other parts of the information could be on a per observation type basis. For instance 
+! a tracer might have a bounded normal prior or likelihood with bounds fixed for that type.
 
 ! Copy the input ensemble to something that can be modified
 ens = ens_in
 
-! Null value of net spread change factor is 1.0
-net_a = 0.0_r8
-
 ! Compute prior variance and mean from sample
 prior_mean = sum(ens) / ens_size
 prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+prior_var = max(prior_var, 0.0_r8)
 
-! If observation space inflation is being done, compute the initial
-! increments and update the inflation factor and its standard deviation
-! as needed. my_cov_inflate < 0 means don't do any of this.
-if(do_obs_inflate(inflate)) then
-   ! If my_cov_inflate_sd is <= 0, just retain current my_cov_inflate setting
-   if(my_cov_inflate_sd > 0.0_r8) &
-      ! Gamma set to 1.0 because no distance for observation space
-      call update_inflation(inflate, my_cov_inflate, my_cov_inflate_sd, prior_mean, &
-         prior_var, ens_size, obs, obs_var, gamma_corr = 1.0_r8)
-
-   ! Now inflate the ensemble and compute a preliminary inflation increment
-   call inflate_ens(inflate, ens, prior_mean, my_cov_inflate, prior_var)
-   ! Keep the increment due to inflation alone
-   inflate_inc = ens - ens_in
-
-   ! Need to recompute variance if non-deterministic inflation (mean is unchanged)
-   if(.not. deterministic_inflate(inflate)) &
-      prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
-endif
+! For now, only relateive likelihood allowed is normal: this is computed again in obs_increment_rank_histogram
+! Should have a more general routine to compute likelihoods for a variety of choices
+likelihood = exp(-1.0_r8 * (ens - obs)**2 / (2.0_r8 * obs_var))
 
 ! If obs_var == 0, delta function.  The mean becomes obs value with no spread.
 ! If prior_var == 0, obs has no effect.  The increments are 0.
@@ -942,48 +927,30 @@ else
    ! obs_var or the prior_var is 0, so the individual routines no longer need
    ! to have code to test for those cases.
    if(filter_kind == 1) then
+      ! Null value of net spread change factor is 1.0
+      net_a = 0.0_r8
       call obs_increment_eakf(ens, ens_size, prior_mean, prior_var, &
          obs, obs_var, obs_inc, net_a)
    else if(filter_kind == 2) then
       call obs_increment_enkf(ens, ens_size, prior_var, obs, obs_var, obs_inc)
-   else if(filter_kind == 3) then
-      call obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
-   else if(filter_kind == 4) then
-      call obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
-   else if(filter_kind == 5) then
-      call obs_increment_ran_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
-   else if(filter_kind == 6) then
-      call obs_increment_det_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
-   else if(filter_kind == 7) then
-      call obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
+      ! To minimize regression errors for this non-deterministic update, can sort to minimize increments
+      if (sort_obs_inc) then
+         new_val = ens_in + obs_inc
+         ! Sorting to make increments as small as possible
+         call index_sort(ens_in, ens_index, ens_size)
+         call index_sort(new_val, new_index, ens_size)
+         do i = 1, ens_size
+            obs_inc(ens_index(i)) = new_val(new_index(i)) - ens_in(ens_index(i))
+         end do
+      endif
    else if(filter_kind == 8) then
       call obs_increment_rank_histogram(ens, ens_size, prior_var, obs, obs_var, obs_inc)
    else
       call error_handler(E_ERR,'obs_increment', &
-              'Illegal value of filter_kind in assim_tools namelist [1-8 OK]', source)
+              'Illegal value of filter_kind in assim_tools namelist [1, 2, 8 OK]', source)
    endif
 endif
 
-! Add in the extra increments if doing observation space covariance inflation
-if(do_obs_inflate(inflate)) obs_inc = obs_inc + inflate_inc
-
-! To minimize regression errors, may want to sort to minimize increments
-! This makes sense for any of the non-deterministic algorithms
-! By doing it here, can take care of both standard non-deterministic updates
-! plus non-deterministic obs space covariance inflation. This is expensive, so
-! don't use it if it's not needed.
-if (sort_obs_inc) then
-   new_val = ens_in + obs_inc
-   ! Sorting to make increments as small as possible
-   call index_sort(ens_in, ens_index, ens_size)
-   call index_sort(new_val, new_index, ens_size)
-   do i = 1, ens_size
-      obs_inc(ens_index(i)) = new_val(new_index(i)) - ens_in(ens_index(i))
-   end do
-endif
-
-! Get the net change in spread if obs space inflation was used
-if(do_obs_inflate(inflate)) net_a = net_a * sqrt(my_cov_inflate)
 
 end subroutine obs_increment
 
@@ -1010,220 +977,6 @@ a = sqrt(var_ratio)
 obs_inc = a * (ens - prior_mean) + new_mean - ens
 
 end subroutine obs_increment_eakf
-
-
-subroutine obs_increment_ran_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
-!========================================================================
-!
-! Forms a random sample of the Gaussian from the update equations.
-! This is very close to what a true 'ENSEMBLE' Kalman Filter would
-! look like. Note that outliers, multimodality, etc., get tossed.
-
-integer,   intent(in)  :: ens_size
-real(r8),  intent(in)  :: prior_mean, prior_var
-real(r8),  intent(in)  :: ens(ens_size), obs, obs_var
-real(r8),  intent(out) :: obs_inc(ens_size)
-
-real(r8) :: new_mean, var_ratio
-real(r8) :: temp_mean, temp_var, new_ens(ens_size), new_var
-integer  :: i
-
-var_ratio = obs_var / (prior_var + obs_var)
-new_var = var_ratio * prior_var
-new_mean  = var_ratio * (prior_mean  + prior_var*obs / obs_var)
-
-! This will reproduce exactly for multiple runs with the same task count,
-! but WILL NOT reproduce for a different number of MPI tasks.
-! To make it independent of the number of MPI tasks, it would need to
-! use the global ensemble number or something else that remains constant
-! as the processor count changes.  this is not currently an argument to
-! this function and so we are not trying to make it task-count invariant.
-
-! Form a random sample from the updated distribution
-! Then adjust the mean (what about adjusting the variance?)!
-! Definitely need to sort with this; sort is done in main obs_increment
-if(first_inc_ran_call) then
-   call init_random_seq(inc_ran_seq, my_task_id() + 1)
-   first_inc_ran_call = .false.
-endif
-
-do i = 1, ens_size
-   new_ens(i) = random_gaussian(inc_ran_seq, new_mean, sqrt(prior_var*var_ratio))
-end do
-
-! Adjust the mean of the new ensemble
-temp_mean = sum(new_ens) / ens_size
-new_ens(:) = new_ens(:) - temp_mean + new_mean
-
-! Compute prior variance and mean from sample
-temp_var  = sum((new_ens - new_mean)**2) / (ens_size - 1)
-! Adjust the variance, also
-new_ens = (new_ens - new_mean) * sqrt(new_var / temp_var) + new_mean
-
-! Get the increments
-obs_inc = new_ens - ens
-
-end subroutine obs_increment_ran_kf
-
-
-
-subroutine obs_increment_det_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
-!========================================================================
-!
-! Does a deterministic ensemble layout for the updated Gaussian.
-! Note that all outliers, multimodal behavior, etc. get tossed.
-
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: prior_mean, prior_var
-real(r8), intent(in)  :: ens(ens_size), obs, obs_var
-real(r8), intent(out) :: obs_inc(ens_size)
-
-real(r8) :: new_mean, var_ratio, temp_var, new_ens(ens_size), new_var
-integer :: i
-
-var_ratio = obs_var / (prior_var + obs_var)
-new_var = var_ratio * prior_var
-new_mean = var_ratio * (prior_mean  + prior_var*obs / obs_var)
-
-! Want a symmetric distribution with kurtosis 3 and variance new_var and mean new_mean
-if(ens_size /= 20) then
-   write(*, *) 'EXPERIMENTAL version obs_increment_det_kf only works for ens_size 20 now'
-   stop
-endif
-
-! This has kurtosis of 3.0, verify again from initial uniform
-!new_ens(1) = -2.146750_r8
-!new_ens(2) = -1.601447_r8
-!new_ens(3) = -1.151582_r8
-!new_ens(4) = -0.7898650_r8
-!new_ens(5) = -0.5086292_r8
-!new_ens(6) = -0.2997678_r8
-!new_ens(7) = -0.1546035_r8
-!new_ens(8) = -6.371084E-02_r8
-!new_ens(9) = -1.658448E-02_r8
-!new_ens(10) = -9.175255E-04_r8
-
-! This has kurtosis of 3.0, verify again from initial inverse gaussian
-!new_ens(1) = -2.188401_r8
-!new_ens(2) = -1.502174_r8
-!new_ens(3) = -1.094422_r8
-!new_ens(4) = -0.8052422_r8
-!new_ens(5) = -0.5840152_r8
-!new_ens(6) = -0.4084518_r8
-!new_ens(7) = -0.2672727_r8
-!new_ens(8) = -0.1547534_r8
-!new_ens(9) = -6.894587E-02_r8
-!new_ens(10) = -1.243549E-02_r8
-
-! This has kurtosis of 2.0, verify again
-new_ens(1) = -1.789296_r8
-new_ens(2) = -1.523611_r8
-new_ens(3) = -1.271505_r8
-new_ens(4) = -1.033960_r8
-new_ens(5) = -0.8121864_r8
-new_ens(6) = -0.6077276_r8
-new_ens(7) = -0.4226459_r8
-new_ens(8) = -0.2598947_r8
-new_ens(9) = -0.1242189_r8
-new_ens(10) = -2.539018E-02_r8
-
-! This has kurtosis of 1.7, verify again
-!new_ens(1) = -1.648638_r8
-!new_ens(2) = -1.459415_r8
-!new_ens(3) = -1.272322_r8
-!new_ens(4) = -1.087619_r8
-!new_ens(5) = -0.9056374_r8
-!new_ens(6) = -0.7268229_r8
-!new_ens(7) = -0.5518176_r8
-!new_ens(8) = -0.3816142_r8
-!new_ens(9) = -0.2179997_r8
-!new_ens(10) = -6.538583E-02_r8
-do i = 11, 20
-   new_ens(i) = -1.0_r8 * new_ens(20 + 1 - i)
-end do
-
-! Right now, this ensemble has mean 0 and some variance
-! Compute prior variance and mean from sample
-temp_var  = sum((new_ens)**2) / (ens_size - 1)
-
-! Adjust the variance of this ensemble to match requirements and add in the mean
-new_ens = new_ens * sqrt(new_var / temp_var) + new_mean
-
-! Get the increments
-obs_inc = new_ens - ens
-
-end subroutine obs_increment_det_kf
-
-
-
-
-subroutine obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
-!------------------------------------------------------------------------
-!
-! A observation space only particle filter implementation for a
-! two step sequential update filter. Second version, 2 October, 2003.
-
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: ens(ens_size), obs, obs_var
-real(r8), intent(out) :: obs_inc(ens_size)
-
-real(r8) :: weight(ens_size), rel_weight(ens_size), cum_weight(0:ens_size)
-real(r8) :: base, frac, new_val(ens_size), weight_sum
-integer  :: i, j, indx(ens_size)
-
-! Begin by computing a weight for each of the prior ensemble members
-do i = 1, ens_size
-   weight(i) = exp(-1.0_r8 * (ens(i) - obs)**2 / (2.0_r8 * obs_var))
-end do
-
-! Compute relative weight for each ensemble member
-weight_sum = sum(weight)
-do i = 1, ens_size
-   rel_weight(i) = weight(i) / weight_sum
-end do
-
-! Compute cumulative weights at boundaries
-cum_weight(0) = 0.0_r8
-do i = 1, ens_size
-   cum_weight(i) = cum_weight(i - 1) + rel_weight(i)
-!   write(*,'(1x,i3,3(e10.4,1x))') i, weight(i), rel_weight(i), cum_weight(i)
-end do
-! Fix up for round-off error if any
-cum_weight(ens_size) = 1.0_r8
-
-! Do a deterministic implementation: just divide interval into ens_size parts and see
-! which interval this is in (careful to offset; not start at 0)
-base = 1.0_r8 / (ens_size * 2.0_r8)
-
-do i = 1, ens_size
-
-   frac = base + (i - 1.0_r8) / ens_size
-
-   ! Now search in the cumulative range to see where this frac falls
-   ! Can make this search more efficient by limiting base
-   do j = 1, ens_size
-      if(cum_weight(j - 1) < frac .and. frac < cum_weight(j)) then
-         indx(i) = j
-!         write(*, *) i, frac, 'gets index ', j
-         goto 111
-      end if
-   end do
-
-111 continue
-
-end do
-
-! Set the new values for the ensemble members
-do i = 1, ens_size
-   new_val(i) = ens(indx(i))
-!   write(*, *) 'new_val ', i, new_val(i)
-end do
-
-! Generate increments
-obs_inc = new_val - ens
-
-end subroutine obs_increment_particle
-
 
 
 subroutine obs_increment_enkf(ens, ens_size, prior_var, obs, obs_var, obs_inc)
@@ -1287,92 +1040,6 @@ end do
 end subroutine obs_increment_enkf
 
 
-
-subroutine obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
-!========================================================================
-! subroutine obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
-!
-
-! Kernel version of obs increment
-
-integer, intent(in)             :: ens_size
-real(r8), intent(in)            :: ens(ens_size), obs, obs_var
-real(r8), intent(out)           :: obs_inc(ens_size)
-
-real(r8) :: obs_var_inv
-real(r8) :: prior_mean, prior_cov_inv, new_cov, prior_cov
-real(r8) :: sx
-real(r8) :: weight(ens_size), new_mean(ens_size)
-real(r8) :: cum_weight, total_weight, cum_frac(ens_size)
-real(r8) :: unif, norm, new_member(ens_size)
-
-integer :: i, j, kernel
-
-! Compute mt_rinv_y (obs error normalized by variance)
-obs_var_inv = 1.0_r8 / obs_var
-
-! Compute prior mean and covariance
-sx         = sum(ens)
-prior_mean = sx / ens_size
-prior_cov  = sum((ens - prior_mean)**2) / (ens_size - 1)
-
-prior_cov     = prior_cov / 10.0_r8     ! For kernels, scale the prior covariance
-prior_cov_inv = 1.0_r8 / prior_cov
-
-! Compute new covariance once for these kernels
-new_cov = 1.0_r8 / (prior_cov_inv + obs_var_inv)
-
-! New mean is computed ens_size times as is weight
-do i = 1, ens_size
-   new_mean(i) = new_cov*(prior_cov_inv * ens(i) + obs / obs_var)
-   weight(i) =  2.71828_r8 ** (-0.5_r8 * (ens(i)**2 * prior_cov_inv + &
-      obs**2 * obs_var_inv - new_mean(i)**2 / new_cov))
-end do
-
-! Compute total weight
-total_weight = sum(weight)
-cum_weight   = 0.0_r8
-do i = 1, ens_size
-   cum_weight  = cum_weight + weight(i)
-   cum_frac(i) = cum_weight / total_weight
-end do
-
-! If this is first time through, need to initialize the random sequence.
-! This will reproduce exactly for multiple runs with the same task count,
-! but WILL NOT reproduce for a different number of MPI tasks.
-! To make it independent of the number of MPI tasks, it would need to
-! use the global ensemble number or something else that remains constant
-! as the processor count changes.  this is not currently an argument to
-! this function and so we are not trying to make it task-count invariant.
-if(first_inc_ran_call) then
-   call init_random_seq(inc_ran_seq, my_task_id() + 1)
-   first_inc_ran_call = .false.
-endif
-
-! Generate a uniform random number and a Gaussian for each new member
-do i = 1, ens_size
-   unif = random_uniform(inc_ran_seq)
-   ! Figure out which kernel it's in
-   whichk: do j = 1, ens_size
-      if(unif < cum_frac(j)) then
-         kernel = j
-         exit whichk
-      end if
-   end do whichk
-
-   ! Next calculate a unit normal in this kernel
-   norm = random_gaussian(inc_ran_seq, 0.0_r8, sqrt(new_cov))
-   ! Now generate the new ensemble member
-   new_member(i) = new_mean(kernel) + norm
-end do
-
-! Generate the increments
-obs_inc = new_member - ens
-
-end subroutine obs_increment_kernel
-
-
-
 subroutine update_from_obs_inc(obs, obs_prior_mean, obs_prior_var, obs_inc, &
                state, ens_size, state_inc, reg_coef, net_a_in, correl_out)
 !========================================================================
@@ -1385,7 +1052,7 @@ real(r8),           intent(in)    :: obs(ens_size), obs_inc(ens_size)
 real(r8),           intent(in)    :: obs_prior_mean, obs_prior_var
 real(r8),           intent(in)    :: state(ens_size)
 real(r8),           intent(out)   :: state_inc(ens_size), reg_coef
-real(r8),           intent(in) :: net_a_in
+real(r8),           intent(in)    :: net_a_in
 real(r8), optional, intent(inout) :: correl_out
 
 real(r8) :: obs_state_cov, intermed
@@ -1569,178 +1236,6 @@ else if(abs(expected_true_correl) > abs(scorrel)) then
 endif
 
 end subroutine get_correction_from_table
-
-
-
-subroutine obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weight)
-!------------------------------------------------------------------------
-!
-! An observation space update that uses a set of boxcar kernels plus two
-! half-gaussians on the wings to represent the prior distribution. If N is
-! the ensemble size, 1/(N+1) of the mass is placed between each ensemble
-! member. This is reminiscent of the ranked historgram approach for
-! evaluating ensembles. The prior distribution on the wings is
-! represented by a half gaussian with mean being the outermost ensemble
-! member (left or right) and variance being somewhat arbitrarily chosen
-! as half the total ensemble sample variance. A particle
-! filter like algorithm is then used for the update. The weight associated
-! with each prior ensemble member is computed by evaluating the likelihood.
-! For the interior, the domain for each boxcar is divided in half and each
-! half is associated with the nearest ensemble member. The updated mass in
-! each half box is the product of the prior mass and the ensemble weight.
-! In the wings, the observation likelihood gaussian is convolved with the
-! prior gaussian to get an updated weighted gaussian that is assumed to
-! represent the posterior outside of the outermost ensemble members. The
-! updated ensemble members are chosen so that 1/(N+1) of the updated
-! mass is between each member and also on the left and right wings. This
-! algorithm is able to deal well with outliers, bimodality and other
-! non-gaussian behavior in observation space. It could also be modified to
-! deal with non-gaussian likelihoods in the future.
-
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: ens(ens_size), obs, obs_var
-real(r8), intent(out) :: obs_inc(ens_size)
-real(r8), intent(out) :: rel_weight(ens_size)
-
-integer  :: i, e_ind(ens_size), lowest_box, j
-real(r8) :: sx, prior_mean, prior_var, prior_var_d2
-real(r8) :: var_ratio, new_var, new_sd, umass, left_weight, right_weight
-real(r8) :: mass(2*ens_size), weight(ens_size), cumul_mass(0:2*ens_size)
-real(r8) :: new_mean_left, new_mean_right, prod_weight_left, prod_weight_right
-real(r8) :: new_ens(ens_size), mass_sum, const_term
-real(r8) :: x(1:2*ens_size - 1), sort_inc(ens_size)
-
-! The factor a is not defined for this filter for now (could it be???)
-
-! The relative weights could be used for a multi-dimensional particle-type
-! update using update_ens_from_weights. There are algorithmic challenges
-! with outliers so this is not currently a supported option. For now,
-! rel_weight is simply set to 0 and is unused elsewhere.
-rel_weight = 0.0_r8
-
-! Do an index sort of the ensemble members; Need sorted ensemble
-call index_sort(ens, e_ind, ens_size)
-
-! Prior distribution is boxcar in the central bins with 1/(n+1) density
-! in each intermediate bin. BUT, distribution on the wings is a normal with
-! 1/(n + 1) of the mass on each side.
-
-! Begin by computing a weight for each of the prior ensemble membersA
-! This is just evaluating the gaussian likelihood
-const_term = 1.0_r8 / (sqrt(2.0_r8 * PI) * sqrt(obs_var))
-do i = 1, ens_size
-   weight(i) = const_term * exp(-1.0_r8 * (ens(i) - obs)**2 / (2.0_r8 * obs_var))
-end do
-
-! Compute the points that bound all the updated mass boxes; start with ensemble
-do i = 1, ens_size
-   x(2*i - 1) = ens(e_ind(i))
-end do
-! Compute the mid-point interior boundaries; these are halfway between ensembles
-do i = 2, 2*ens_size - 2, 2
-   x(i) = (x(i - 1) + x(i + 1)) / 2.0_r8
-end do
-
-! Compute the s.d. of the ensemble for getting the gaussian wings
-sx         = sum(ens)
-prior_mean = sx / ens_size
-prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
-
-! Need to normalize the wings so they have 1/(ens_size + 1) mass outside
-! Since 1/2 of a normal is outside, need to multiply by 2 / (ens_size + 1)
-
-! Need some sort of width for the boundary kernel, try 1/2 the VAR for now
-prior_var_d2 = prior_var / 2.0_r8
-
-! Compute the product of the obs error gaussian with the prior gaussian (EAKF)
-! Left wing first
-var_ratio = obs_var / (prior_var_d2 + obs_var)
-new_var = var_ratio * prior_var_d2
-new_sd = sqrt(new_var)
-new_mean_left  = var_ratio * (ens(e_ind(1))  + prior_var_d2*obs / obs_var)
-new_mean_right  = var_ratio * (ens(e_ind(ens_size))  + prior_var_d2*obs / obs_var)
-! REMEMBER, this product has an associated weight which must be taken into account
-! See Anderson and Anderson for this weight term (or tutorial kernel filter)
-prod_weight_left =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(1))**2 / prior_var_d2 + &
-      obs**2 / obs_var - new_mean_left**2 / new_var)) / sqrt(2.0_r8 * PI)
-
-prod_weight_right =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(ens_size))**2 / prior_var_d2 + &
-      obs**2 / obs_var - new_mean_right**2 / new_var)) / sqrt(2.0_r8 * PI)
-
-! Split into 2*ens_size domains; mass in each is computed
-! Start by computing mass in the outermost (gaussian) regions
-mass(1) = norm_cdf(ens(e_ind(1)), new_mean_left, new_sd) * &
-   prod_weight_left * (2.0_r8 / (ens_size + 1.0_r8))
-mass(2*ens_size) = (1.0_r8 - norm_cdf(ens(e_ind(ens_size)), new_mean_right, &
-   new_sd)) * prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
-
-! Compute mass in the inner half boxes that have ensemble point on the left
-do i = 2, 2*ens_size - 2, 2
-   mass(i) = (1.0_r8 / (2.0_r8 * (ens_size + 1.0_r8))) * weight(e_ind(i/2))
-end do
-
-! Now right inner half boxes
-do i = 3, 2*ens_size - 1, 2
-   mass(i) = (1.0_r8 / (2.0_r8 * (ens_size + 1.0_r8))) * weight(e_ind(i/2 + 1))
-end do
-
-! Now normalize the mass in the different bins
-mass_sum = sum(mass)
-mass = mass / mass_sum
-
-! Find cumulative mass at each box boundary and middle boundary
-cumul_mass(0) = 0.0_r8
-do i = 1, 2*ens_size
-   cumul_mass(i) = cumul_mass(i - 1) + mass(i)
-end do
-
-! Get resampled ensemble, Need 1/(ens_size + 1) between each
-umass = 1.0_r8 / (ens_size + 1.0_r8)
-
-! Begin search at bottom of lowest box, but then update for efficiency
-lowest_box = 1
-
-! Find each new ensemble members location
-do i = 1, ens_size
-   ! If it's in the inner or outer range have to use normal
-   if(umass < cumul_mass(1)) then
-      ! In the first normal box
-      left_weight = (1.0_r8 / mass_sum) * prod_weight_left * (2.0_r8 / (ens_size + 1.0_r8))
-      call weighted_norm_inv(left_weight, new_mean_left, new_sd, umass, new_ens(i))
-   else if(umass > cumul_mass(2*ens_size - 1)) then
-      ! In the last normal box; Come in from the outside
-      right_weight = (1.0_r8 / mass_sum) * prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
-      call weighted_norm_inv(right_weight, new_mean_right, new_sd, 1.0_r8 - umass, new_ens(i))
-      new_ens(i) = new_mean_right + (new_mean_right - new_ens(i))
-   else
-      ! In one of the inner uniform boxes.
-      FIND_BOX:do j = lowest_box, 2 * ens_size - 2
-         ! Find the box that this mass is in
-         if(umass >= cumul_mass(j) .and. umass <= cumul_mass(j + 1)) then
-            new_ens(i) = x(j) + ((umass - cumul_mass(j)) / (cumul_mass(j+1) - cumul_mass(j))) * &
-               (x(j + 1) - x(j))
-            ! Don't need to search lower boxes again
-            lowest_box = j
-            exit FIND_BOX
-         end if
-      end do FIND_BOX
-   endif
-   ! Want equally partitioned mass in update with exception that outermost boxes have half
-   umass = umass + 1.0_r8 / (ens_size + 1.0_r8)
-end do
-
-! Can now compute sorted increments
-do i = 1, ens_size
-   sort_inc(i) = new_ens(i) - ens(e_ind(i))
-end do
-
-! Now, need to convert to increments for unsorted
-do i = 1, ens_size
-   obs_inc(e_ind(i)) = sort_inc(i)
-end do
-
-end subroutine obs_increment_boxcar
-
 
 
 subroutine obs_increment_rank_histogram(ens, ens_size, prior_var, &
