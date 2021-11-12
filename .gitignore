@@ -79,6 +79,7 @@ update_mpas_states
 advance_cymdh
 cice_to_dart
 dart_to_cice
+column_rand
 
 # Observation converter exectutables
 convert_aviso
