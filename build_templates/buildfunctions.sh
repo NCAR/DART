@@ -188,7 +188,7 @@ fi
 #  dartsrc - source files
 #-------------------------
 function modelbuild() {
- $DART/build_templates/mkmf -x $m -p $1 $DART/models/$MODEL/src/programs/$1.f90 \
+ $DART/build_templates/mkmf -x $m -p $1 $DART/models/$MODEL/$1.f90 \
      $dartsrc
 }
 
