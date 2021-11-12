@@ -5,15 +5,14 @@ set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
 
-MODEL=cice
+MODEL=wrf
 LOCATION=threed_sphere
 source $DART/build_templates/buildfunctions.sh
 
 # clean the directory
 \rm -f *.o *.mod Makefile .cppdefs
 
-
-programs=(
+programs=( \
 closest_member_tool \
 filter \
 model_mod_check \
@@ -22,7 +21,7 @@ perturb_single_instance \
 wakeup_filter
 )
 
-serial_programs=(
+serial_programs=( \
 advance_time \
 create_fixed_network_seq \
 create_obs_sequence \
@@ -36,9 +35,19 @@ obs_seq_verify \
 obs_sequence_tool
 )
 
+
+#radiance_obs_to_netcdf \  # needs rttov
+
 model_serial_programs=(
-cice_to_dart
-dart_to_cice
+add_pert_where_high_refl \
+advance_cymdh \
+convertdate \
+ensemble_init \
+pert_wrf_bc \
+replace_wrf_fields \
+select \
+update_wrf_bc \
+wrf_dart_obs_preprocess
 )
 
 arguments "$@"
