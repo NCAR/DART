@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 declare -a programs
 declare -a serial_programs
@@ -88,19 +88,50 @@ single_prog=$1
 #-------------------------
 function findsrc() {
 
-local core=$(find $DART/src/core -type f -name "*.f90") 
-local modelsrc=$(find $DART/models/$MODEL/src -type d -name programs -prune -o -type f -name "*.f90" -print)
-local loc="$DART/src/location/$LOCATION \
-           $DART/src/model_mod_tools/test_interpolate_$LOCATION.f90"
-local misc="$DART/src/location/utilities \
-            $DART/models/utilities/default_model_mod.f90 \
-            $DART/observations/forward_operators/obs_def_mod.f90 \
-            $DART/observations/forward_operators/obs_def_utilities_mod.f90"
+### local core=$(find $DART/src/core -type f -name "*.f90") 
+### local modelsrc=$(find $DART/models/$MODEL/src -type d -name programs -prune -o -type f -name "*.f90" -print)
+### local loc="$DART/src/location/$LOCATION \
+###            $DART/src/model_mod_tools/test_interpolate_$LOCATION.f90"
+### local misc="$DART/src/location/utilities \
+###             $DART/models/utilities/default_model_mod.f90 \
+###             $DART/observations/forward_operators/obs_def_mod.f90 \
+###             $DART/observations/forward_operators/obs_def_utilities_mod.f90"
+### 
+### mpi=$DART/src/$mpisrc
+### window=$DART/src/$windowsrc
+### 
+### dartsrc="${core} ${modelsrc} ${misc} ${loc} ${mpi} ${window}"
 
-mpi=$DART/src/$mpisrc
-window=$DART/src/$windowsrc
 
-dartsrc="${core} ${modelsrc} ${misc} ${loc} ${mpi} ${window}"
+local core=$(find $DART/assimilation_code -type d -name programs -prune -o -type f -name "*.f90" -print)
+local modelsrc=$(find $DART/models/$MODEL -type f -name "*.f90" -print)
+local loc=
+
+# remove null/mpi from list
+mpi=$DART/assimilation_code/modules/utilities/mpi_utilities_mod.f90
+nullmpi=$DART/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+nullwin=$DART/assimilation_code/modules/utilities/null_win_mod.f90
+craywin=$DART/assimilation_code/modules/utilities/cray_win_mod.f90
+nocraywin=$DART/assimilation_code/modules/utilities/no_cray_win_mod.f90
+
+if [ $mpisrc == "mpi" ]; then
+
+   core=${core//$nullmpi/}
+   core=${core//$nullwin/}
+   if [ windowsrc == "craywin" ]; then
+       core=${core//$nocraywin/}
+   else #nocraywin
+       core=${core//$craywin/}
+   fi
+else #nompi
+
+   core=${core//$mpi/}
+   core=${core//$nocraywin/}
+   core=${core//$craywin/}
+fi
+
+echo $core
+
 }
 
 #-------------------------
@@ -233,6 +264,8 @@ for p in ${programs[@]}; do
   echo "Building " $p " build " $i " of " $n
   dartbuild $p 
   ((i++))
+
+exit 32
 done
 
 for p in ${model_programs[@]}; do
