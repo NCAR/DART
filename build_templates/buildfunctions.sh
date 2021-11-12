@@ -88,24 +88,14 @@ single_prog=$1
 #-------------------------
 function findsrc() {
 
-### local core=$(find $DART/src/core -type f -name "*.f90") 
-### local modelsrc=$(find $DART/models/$MODEL/src -type d -name programs -prune -o -type f -name "*.f90" -print)
-### local loc="$DART/src/location/$LOCATION \
-###            $DART/src/model_mod_tools/test_interpolate_$LOCATION.f90"
-### local misc="$DART/src/location/utilities \
-###             $DART/models/utilities/default_model_mod.f90 \
-###             $DART/observations/forward_operators/obs_def_mod.f90 \
-###             $DART/observations/forward_operators/obs_def_utilities_mod.f90"
-### 
-### mpi=$DART/src/$mpisrc
-### window=$DART/src/$windowsrc
-### 
-### dartsrc="${core} ${modelsrc} ${misc} ${loc} ${mpi} ${window}"
-
-
-local core=$(find $DART/assimilation_code -type d -name programs -prune -o -type f -name "*.f90" -print)
+local core=$(find $DART/assimilation_code/modules -type d -name observations -prune -o -type f -name "*.f90" -print)
+local loc="$DART/assimilation_code/location/$LOCATION \
+          $DART/assimilation_code/location/utilities/ \
+          $DART/models/model_mod_tools/test_interpolate_$LOCATION.f90"
 local modelsrc=$(find $DART/models/$MODEL -type f -name "*.f90" -print)
-local loc=
+local misc="$DART/models/utilities/default_model_mod.f90"
+
+#obs_def_mod and obs_kind_mod in current directory
 
 # remove null/mpi from list
 mpi=$DART/assimilation_code/modules/utilities/mpi_utilities_mod.f90
@@ -130,7 +120,18 @@ else #nompi
    core=${core//$craywin/}
 fi
 
-echo $core
+dartsrc="${core} ${modelsrc} ${loc} ${misc}"
+# remove nuisance files
+nuisance=(\
+"$DART/assimilation_code/modules/assimilation/assim_tools_mod.pf.f90"
+"$DART/assimilation_code/modules/assimilation/filter_mod.dopplerfold.f90"
+"$DART/assimilation_code/modules/utilities/null_restart_pnetcdf_mod.f90"
+)
+
+for nus in  ${nuisance[@]}; do
+echo $nus
+ dartsrc=${dartsrc//$nus/}
+done
 
 }
 
