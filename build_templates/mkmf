@@ -157,7 +157,7 @@ print MAKEFILE "\n.DEFAULT:\n\t-touch \$@\n";
 #the at sign prevents the command from being echoed to the terminal.
 print MAKEFILE "all: fixsys $opt_p\n"; # first target should be program, so you can type just 'make'
 print MAKEFILE "fixsys: \n";
-print MAKEFILE "\t@ (cd ${opt_a}assimilation_code/modules/utilities\; ./fixsystem \$(FC) )\n" ;
+print MAKEFILE "\t@ (cd $ENV{DART}/assimilation_code/modules/utilities\; ./fixsystem \$(FC) )\n" ;
 #end change nsc 02aug2013
 
 #if cppdefs flag is present, look for changes in cppdefs
