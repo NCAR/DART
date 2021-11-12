@@ -477,6 +477,7 @@ if (verbose > 0) then
 
 endif
 
+
 ! BEGIN clm variable and DART state checks for snow repartitioning
 
 if (nc_variable_exists(ncid_clm, 'SNLSNO') .and. nc_variable_exists(ncid_clm, 'DZSNO') .and. &
@@ -614,18 +615,8 @@ PARTITION: do icolumn = 1,ncolumn
       
       if (snlsno(icolumn) < 0) then  ! If there IS snow in the column ...
 
-         if (repartition_swe == 1) then ! SWE partitioned to all active layers...
-             partition_layer = -snlsno(icolumn)
-         elseif (repartition_swe == 2) then  ! SWE partitioned to bottom layer only...
-             partition_layer = 1 
-         else
-             write(string1,*)'repartition_swe option within dart_to_clm_nml'
-             write(string2,*)'must be an integer of 0, 1 or 2'
-             call error_handler(E_ERR,routine,string1,source,text2=string2)
-         endif
 
-         do c = 1,partition_layer   ! Identify total snow layers to repartition
-                                    ! Will loop only once if partition_swe = 2
+         do c = 1,-snlsno(icolumn)   ! Identify total snow layers to repartition
             
             ! In CLM 4 nlevsno  =5, but in CLM5 =12
             ilevel = nlevsno-c+1     ! Loop through each snow layer 
@@ -642,9 +633,12 @@ PARTITION: do icolumn = 1,ncolumn
             if (h2osno_pr(icolumn) > 0.0_r8 .and. repartition_swe==1) then
                 wt_swe = (h2oliq_pr(ilevel,icolumn) + h2oice_pr(ilevel,icolumn)) / &
                           h2osno_pr(icolumn)
-            ! Force all SWE to bottom layer if partition_swe = 2
-            elseif (h2osno_pr(icolumn) > 0.0_r8 .and. repartition_swe==2) then
+            ! Force all SWE to bottom layer if repartition_swe = 2
+            ! *AND* if level is bottom snow layer
+            elseif (h2osno_pr(icolumn) > 0.0_r8 .and. repartition_swe==2 &
+                    .and. ilevel==nlevsno ) then
                 wt_swe = 1.0_r8
+            ! For all other cases do not allow for snow layer to be adjusted
             else
                 wt_swe = 0.0_r8
             endif
@@ -660,12 +654,18 @@ PARTITION: do icolumn = 1,ncolumn
             endif
             
             ! Calculate the increment for each layer for SWE, liq and ice assuming identical
-            ! layer % distribution as prior
-            ! If there is no increment (h2osno_pr-h2osno_po=0) then gain =0
-            ! and the column will not be re-partitioned. 
-            gain_h2osno = (h2osno_po(icolumn) - h2osno_pr(icolumn)) * wt_swe
-            gain_h2oliq = gain_h2osno * wt_liq
-            gain_h2oice = gain_h2osno * wt_ice
+            ! layer distribution as the prior 
+            ! If there is no increment of column SWE (h2osno_pr-h2osno_po=0) then force gain =0
+            ! and the column will not be re-partitioned for any layers
+            if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) > 0.0_r8) then 
+               gain_h2osno = (h2osno_po(icolumn) - h2osno_pr(icolumn)) * wt_swe
+               gain_h2oliq = gain_h2osno * wt_liq
+               gain_h2oice = gain_h2osno * wt_ice
+            else
+               gain_h2osno = 0.0_r8
+               gain_h2oliq = 0.0_r8
+               gain_h2oice = 0.0_r8
+            endif
             
             ! Calculate increment for each layer depth, using prior snow density
             if (snowden > 0.0_r8 ) then
@@ -682,13 +682,13 @@ PARTITION: do icolumn = 1,ncolumn
             ! on snow layer thickness for compaction/aggregation snow algorithm
             ! to function properly            
             
-            ! Only update snow layer dimensions if H2OSNO has been adjusted 
-            
-            if (abs(gain_h2osno) > 0.0_r8) then
+            ! Only update snow layer dimensions if column H2OSNO has been adjusted 
+            if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) > 0.0_r8) then
+                
                 dzsno_po(ilevel,icolumn) =  dzsno_pr(ilevel,icolumn) + gain_dzsno(ilevel,icolumn)
              
-                ! For consistency with updated dzsno_po (thickness)
-                ! Update zsno_po (middle depth) and zisno (top interface depth)
+                ! For consistency  with updated dzsno_po (thickness)
+                ! update zsno_po (middle depth) and zisno (top interface depth)
              
                 zisno_po(ilevel,icolumn) = sum(dzsno_po(ilevel:nlevsno,icolumn))*-1.0_r8
             
@@ -698,8 +698,9 @@ PARTITION: do icolumn = 1,ncolumn
                     zsno_po(ilevel,icolumn) = sum(zisno_po(ilevel:ilevel+1,icolumn))/2.0_r8
                 endif
             endif
- 
-            if (verbose > 2 .and. abs(gain_h2osno) > 0.0_r8) then
+            
+            if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) &
+                > 0.0_r8 .and. verbose > 2) then
                ! Output diagnostics for active snow columns in which SWE is updated
                ! by DART.  These columns undergo re-partitioning.
                ! column,level,active snow layers,SWE,ice mass,liq mass,
@@ -736,8 +737,8 @@ PARTITION: do icolumn = 1,ncolumn
       ! Only sum the gain of layers that are known to be active
       ! and recieved an H2OSNO adjustment.  This eliminates operating
       ! on columns that do not require re-partitioning
-
-      if (snlsno(icolumn) < 0.0_r8 .and. abs(gain_h2osno) > 0.0_r8) then
+      if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) & 
+          > 0.0_r8 .and. snlsno(icolumn) < 0.0_r8) then
          snowdp_po(icolumn) = snowdp_pr(icolumn) + sum(gain_dzsno(nlevsno+1+snlsno(icolumn):nlevsno,icolumn))
       else
          snowdp_po(icolumn) = snowdp_pr(icolumn)
