@@ -128,6 +128,13 @@ else #nompi
 fi
 
 dartsrc="${core} ${modelsrc} ${loc} ${misc}"
+
+# remove model specific programs from source list
+all_modprogs=("${model_programs[@]}" "${model_serial_programs[@]}")
+for modprog in ${all_modprogs[@]}; do
+ dartsrc=${dartsrc//$modprog/}
+done
+
 # remove nuisance files
 nuisance=(\
 "$DART/assimilation_code/modules/assimilation/assim_tools_mod.pf.f90"
