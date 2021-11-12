@@ -93,7 +93,7 @@ local loc="$DART/assimilation_code/location/$LOCATION \
           $DART/assimilation_code/location/utilities/ \
           $DART/models/model_mod_tools/test_interpolate_$LOCATION.f90"
 local modelsrc=$(find $DART/models/$MODEL -type f -name "*.f90" -print)
-local misc="$DART/models/utilities/default_model_mod.f90 \
+local misc="$DART/models/utilities/ \
             $DART/models/model_mod_tools/model_check_utilities_mod.f90 \
             $DART/observations/forward_operators/obs_def_mod.f90 \
             $DART//observations/forward_operators/obs_def_utilities_mod.f90 \
