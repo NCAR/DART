@@ -5,33 +5,28 @@ set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
 
-MODEL=cm1
-LOCATION=threed_cartesian
+MODEL=null_model
+LOCATION=oned
 source $DART/build_templates/buildfunctions.sh
-
-# clean the directory
-\rm -f *.o *.mod Makefile .cppdefs
 
 programs=( \
 closest_member_tool \
 filter \
 model_mod_check \
-perfect_model_obs \
-perturb_single_instance \
-wakeup_filter
+perfect_model_obs
 )
 
 serial_programs=( \
-advance_time \
 create_fixed_network_seq \
 create_obs_sequence \
 fill_inflation_restart \
+integrate_model \
 obs_common_subset \
 obs_diag \
-obs_seq_to_netcdf \
 obs_sequence_tool
 )
 
+# quickbuild arguments
 arguments "$@"
 
 # clean the directory
@@ -40,7 +35,7 @@ arguments "$@"
 # build and run preprocess before making any other DART executables
 buildpreprocess
 
-# build DART
+# build 
 buildit
 
 # clean up

@@ -5,8 +5,8 @@ set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
 
-MODEL=cm1
-LOCATION=threed_cartesian
+MODEL=mpas_atm
+LOCATION=threed_sphere
 source $DART/build_templates/buildfunctions.sh
 
 # clean the directory
@@ -28,8 +28,17 @@ create_obs_sequence \
 fill_inflation_restart \
 obs_common_subset \
 obs_diag \
+obs_selection \
+obs_seq_coverage \
 obs_seq_to_netcdf \
+obs_seq_verify \
 obs_sequence_tool
+)
+
+model_serial_programs=(\
+mpas_dart_obs_preprocess \
+update_bc \
+update_mpas_states
 )
 
 arguments "$@"
