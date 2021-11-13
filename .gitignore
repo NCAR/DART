@@ -80,6 +80,7 @@ advance_cymdh
 cice_to_dart
 dart_to_cice
 column_rand
+pert_sounding
 
 # Observation converter exectutables
 convert_aviso

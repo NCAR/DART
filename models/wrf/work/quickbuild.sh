@@ -39,15 +39,18 @@ obs_sequence_tool
 #radiance_obs_to_netcdf \  # needs rttov
 
 model_serial_programs=(
-add_pert_where_high_refl \
-advance_cymdh \
-convertdate \
-ensemble_init \
-pert_wrf_bc \
-replace_wrf_fields \
+WRF_DART_utilities/add_pert_where_high_refl \
+WRF_DART_utilities/advance_cymdh \ 
+WRF_DART_utilities/convertdate \
+WRF_DART_utilities/ensemble_init \
+WRF_BC/pert_wrf_bc \
+WRF_DART_utilities/replace_wrf_fields \
 select \
-update_wrf_bc \
-wrf_dart_obs_preprocess
+WRF_BC/update_wrf_bc \
+WRF_DART_utilities/wrf_dart_obs_preprocess \
+WRF_DART_utilities/extract \
+experiments/Radar/IC/sounding_perturbation/pert_sounding \
+WRF_DART_utilities/grid_refl_obs
 )
 
 arguments "$@"

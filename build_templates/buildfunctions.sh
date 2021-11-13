@@ -92,7 +92,7 @@ local core=$(find $DART/assimilation_code/modules -type d -name observations -pr
 local loc="$DART/assimilation_code/location/$LOCATION \
           $DART/assimilation_code/location/utilities/ \
           $DART/models/model_mod_tools/test_interpolate_$LOCATION.f90"
-local modelsrc=$(find $DART/models/$MODEL -type f -name "*.f90" -print)
+local modelsrc=$(find $DART/models/$MODEL -type d -name $EXCLUDE -prune -o -type f -name "*.f90" -print)
 local misc="$DART/models/utilities/ \
             $DART/models/model_mod_tools/model_check_utilities_mod.f90 \
             $DART/observations/forward_operators/obs_def_mod.f90 \
@@ -132,7 +132,8 @@ dartsrc="${core} ${modelsrc} ${loc} ${misc}"
 # remove model specific programs from source list
 all_modprogs=("${model_programs[@]}" "${model_serial_programs[@]}")
 for modprog in ${all_modprogs[@]}; do
- dartsrc=${dartsrc//$modprog/}
+ mp=$DART/models/$MODEL/$modprog".f90"
+ dartsrc=${dartsrc//$mp/}
 done
 
 # remove nuisance files
@@ -142,6 +143,7 @@ nuisance=(\
 "$DART/assimilation_code/modules/utilities/null_restart_pnetcdf_mod.f90"
 "$DART/assimilation_code/modules/utilities/pnetcdf_utilities_mod.f90"
 "$DART/assimilation_code/modules/utilities/restart_pnetcdf_mod.f90"
+"$DART/models/bgrid_solo/fms_src/shared/time_manager/time_manager.f90"
 )
 
 for nus in  ${nuisance[@]}; do
@@ -188,7 +190,7 @@ fi
 #  dartsrc - source files
 #-------------------------
 function modelbuild() {
- $DART/build_templates/mkmf -x $m -p $1 $DART/models/$MODEL/$1.f90 \
+ $DART/build_templates/mkmf -x $m -p $(basename $1) $DART/models/$MODEL/$1.f90 \
      $dartsrc
 }
 
