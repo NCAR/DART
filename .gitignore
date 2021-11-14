@@ -122,6 +122,9 @@ text_to_obs
 convert_gpspw
 convert_tpw
 tc_to_obs
+id_set_def_stdin
+ps_id_stdin
+ps_rand_local
 
 
 # Directories to NOT IGNORE ... same as executable names
