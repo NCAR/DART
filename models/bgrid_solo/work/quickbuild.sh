@@ -5,8 +5,10 @@ set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
 
-MODEL=lorenz_96
-LOCATION=oned
+MODEL=bgrid_solo
+LOCATION=threed_sphere
+EXCLUDE=fms_src
+EXTRA=extra_source
 source $DART/build_templates/buildfunctions.sh
 
 programs=( \
@@ -30,7 +32,7 @@ model_serial_programs=( \
 column_rand \
 id_set_def_stdin \
 ps_id_stdin \
-ps_rand_local.f90
+ps_rand_local
 )
 
 # quickbuild arguments

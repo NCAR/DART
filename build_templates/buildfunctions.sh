@@ -174,8 +174,9 @@ else
  program=$DART/assimilation_code/programs/$1
 fi
 
- $DART/build_templates/mkmf -x $m -p $1 \
+ $DART/build_templates/mkmf -x -a $DART $m -p $1 \
      $dartsrc \
+     $EXTRA \
      $program
 }
 
@@ -190,7 +191,8 @@ fi
 #  dartsrc - source files
 #-------------------------
 function modelbuild() {
- $DART/build_templates/mkmf -x $m -p $(basename $1) $DART/models/$MODEL/$1.f90 \
+ $DART/build_templates/mkmf -x -a $DART $m -p $(basename $1) $DART/models/$MODEL/$1.f90 \
+     $EXTRA \
      $dartsrc
 }
 
