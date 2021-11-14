@@ -7,6 +7,7 @@ set -e
 
 MODEL=mpas_atm
 LOCATION=threed_sphere
+EXTRA="$DART/assimilation_code/location/threed_cartesian/xyz_location_mod.f90"
 source $DART/build_templates/buildfunctions.sh
 
 # clean the directory
@@ -38,7 +39,7 @@ obs_sequence_tool
 model_serial_programs=(\
 mpas_dart_obs_preprocess \
 update_bc \
-update_mpas_states
+update_mpas_states \
 )
 
 arguments "$@"
