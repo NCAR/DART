@@ -2,6 +2,8 @@
 
 declare -a programs
 
+source $DART/build_templates/buildpreprocess.sh
+
 mpisrc="null_mpi"
 windowsrc=""
 m=""
@@ -69,34 +71,68 @@ single_prog=$1
 #-------------------------
 function findconvsrc() {
 
-local core=$(find $DART/src/core -type f -name "*.f90") 
-#local modelsrc=$(find $DART/models/$MODEL/src -type d -name programs -prune -o -type f -name "*.f90" -print)
-local modelsrc="$DART/models/template/model_mod.f90"
+local core=$(find $DART/assimilation_code/modules -type d -name observations -prune -o -type f -name "*.f90" -print)
 local conv="$DART/observations/obs_converters/$CONVERTER"
-local loc="$DART/src/location/$LOCATION \
-           $DART/src/model_mod_tools/test_interpolate_$LOCATION.f90"
-local misc="$DART/src/location/utilities \
-            $DART/models/utilities/default_model_mod.f90 \
+local modelsrc="$DART/models/template/model_mod.f90"
+local loc="$DART/assimilation_code/location/$LOCATION \
+          $DART/assimilation_code/location/utilities/ \
+          $DART/models/model_mod_tools/test_interpolate_$LOCATION.f90"
+local misc="$DART/models/utilities/ \
+            $DART/models/model_mod_tools/model_check_utilities_mod.f90 \
             $DART/observations/forward_operators/obs_def_mod.f90 \
-            $DART/observations/forward_operators/obs_def_utilities_mod.f90 \
-            $DART/observations/obs_converters/utilities"
+            $DART//observations/forward_operators/obs_def_utilities_mod.f90 \
+            $DART/assimilation_code/modules/observations/obs_kind_mod.f90 \
+            $DART/assimilation_code/modules/observations/obs_sequence_mod.f90 \
+            $DART/assimilation_code/modules/observations/forward_operator_mod.f90 \
+            $DART/observations/obs_converters/utilities/obs_utilities_mod.f90"
 local obserrsrc=$DART/observations/obs_converters/obs_error/$OBS_ERROR"_obs_err_mod.f90"
-local dew="$DART/observations/obs_converters/obs_error/dewpoint_obs_err_mod.f90 \
-           $DART/observations/obs_converters/MADIS/meteor_mod.f90"
 
+# remove null/mpi from list
+mpi=$DART/assimilation_code/modules/utilities/mpi_utilities_mod.f90
+nullmpi=$DART/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+nullwin=$DART/assimilation_code/modules/utilities/null_win_mod.f90
+craywin=$DART/assimilation_code/modules/utilities/cray_win_mod.f90
+nocraywin=$DART/assimilation_code/modules/utilities/no_cray_win_mod.f90
 
-mpi=$DART/src/$mpisrc
-window=$DART/src/$windowsrc  # TODO be carefull of this for null window
+if [ $mpisrc == "mpi" ]; then
 
-local conv=$(find $DART/observations/obs_converters/$CONVERTER -type f -name "*.f90" ) 
+   core=${core//$nullmpi/}
+   core=${core//$nullwin/}
+   if [ windowsrc == "craywin" ]; then
+       core=${core//$nocraywin/}
+   else #nocraywin
+       core=${core//$craywin/}
+   fi
+else #nompi
+
+   core=${core//$mpi/}
+   core=${core//$nocraywin/}
+   core=${core//$craywin/}
+fi
+
+convsrc="${core} ${conv} ${obserrsrc} ${modelsrc} ${misc} ${loc}"
+
+# remove nuisance files
+nuisance=(\
+"$DART/assimilation_code/modules/assimilation/assim_tools_mod.pf.f90"
+"$DART/assimilation_code/modules/assimilation/filter_mod.dopplerfold.f90"
+"$DART/assimilation_code/modules/utilities/null_restart_pnetcdf_mod.f90"
+"$DART/assimilation_code/modules/utilities/pnetcdf_utilities_mod.f90"
+"$DART/assimilation_code/modules/utilities/restart_pnetcdf_mod.f90"
+"$DART/models/bgrid_solo/fms_src/shared/time_manager/time_manager.f90"
+)
+
+for nus in  ${nuisance[@]}; do
+ convsrc=${convsrc//$nus/}
+done
 
 # remove converter {main.f90} from list
+local conv=$(find $DART/observations/obs_converters/$CONVERTER -type f -name "*.f90" ) 
+
 for p in ${programs[@]}; do
   prog=$DART/observations/obs_converters/$CONVERTER/$p.f90
   conv=${conv//$prog/}
 done
-
-convsrc="${core} ${conv} ${obserrsrc} ${dew} ${modelsrc} ${misc} ${loc} ${mpi} ${window}"
 
 }
 
