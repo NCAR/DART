@@ -64,41 +64,6 @@ esac
 single_prog=$1
 }
 
-
-#-------------------------
-# Build and run preprocess
-# Arguements: 
-#  none
-# Globals:
-#  DART - root of DART
-#-------------------------
-function buildpreprocess() {
-
- # run preprocess if it is in the current directory
- if [ -f preprocess ]; then
-   echo "already there"
-   ./preprocess
-   return
- fi
-
-# link to preprocess if it is already built
-if [ -f $DART/src/programs/preprocess/preprocess ]; then
-   echo "not there but built"
-   ln -s $DART/src/programs/preprocess/preprocess .
-   ./preprocess 
-   return
-fi
-
- # build preproces
- cd $DART/src/programs/preprocess
- $DART/build_templates/mkmf -x -p $DART/src/programs/preprocess/preprocess \
-      -a $DART $DART/src/programs/preprocess/path_names_preprocess
- cd -
- ln -s $DART/src/programs/preprocess/preprocess .
- ./preprocess
-}
-
-
 #-------------------------
 # Converter findsrc
 #-------------------------

@@ -5,6 +5,8 @@ declare -a serial_programs
 declare -a model_programs
 declare -a model_serial_programs
 
+source $DART/build_templates/buildpreprocess.sh
+
 #-------------------------
 # print usage and exit
 #-------------------------
@@ -195,41 +197,6 @@ function modelbuild() {
  $DART/build_templates/mkmf -x -a $DART $m -p $(basename $1) $DART/models/$MODEL/$1.f90 \
      $EXTRA \
      $dartsrc
-}
-
-#-------------------------
-# Build and run preprocess
-# Arguements: 
-#  none
-# Globals:
-#  DART - root of DART
-#-------------------------
-function buildpreprocess() {
-
- local pp_dir=$DART/assimilation_code/programs/preprocess
-
- # run preprocess if it is in the current directory
- if [ -f preprocess ]; then
-   echo "already there"
-   ./preprocess
-   return
- fi
-
-# link to preprocess if it is already built
-if [ -f $pp_dir/preprocess ]; then
-   echo "not there but built"
-   ln -s $pp_dir/preprocess .
-   ./preprocess 
-   return
-fi
-
- # build preproces
- cd $pp_dir
- $DART/build_templates/mkmf -x -p $pp_dir/preprocess \
-      -a $DART $pp_dir/path_names_preprocess
- cd -
- ln -s $pp_dir/preprocess .
- ./preprocess
 }
 
 #-------------------------
