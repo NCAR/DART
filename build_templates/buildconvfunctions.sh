@@ -51,7 +51,6 @@ if [ $# -gt 2 ]; then
 fi
 
 
-# if the first argument is mpi or nompi
 case $1 in
   help)
     print_usage
@@ -72,7 +71,7 @@ single_prog=$1
 function findconvsrc() {
 
 local core=$(find $DART/assimilation_code/modules -type d -name observations -prune -o -type f -name "*.f90" -print)
-local conv="$DART/observations/obs_converters/$CONVERTER"
+local conv=$(find $DART/observations/obs_converters/$CONVERTER -type f -name "*.f90" )
 local modelsrc="$DART/models/template/model_mod.f90"
 local loc="$DART/assimilation_code/location/$LOCATION \
           $DART/assimilation_code/location/utilities/ \
@@ -126,13 +125,13 @@ for nus in  ${nuisance[@]}; do
  convsrc=${convsrc//$nus/}
 done
 
-# remove converter {main.f90} from list
-local conv=$(find $DART/observations/obs_converters/$CONVERTER -type f -name "*.f90" ) 
+# remove converter(s) {main.f90} from list
 
 for p in ${programs[@]}; do
   prog=$DART/observations/obs_converters/$CONVERTER/$p.f90
-  conv=${conv//$prog/}
+  convsrc=${convsrc//$prog/}
 done
+
 
 }
 
@@ -144,13 +143,11 @@ function dartbuild() {
 local program
 
 if [ $1 == "obs_diag" ]; then
- echo "Doing obs_diag" 
- program=$DART/src/programs/obs_diag/$LOCATION
+ program=$DART/assimilation_code/programs/obs_diag/$LOCATION
 else
- program=$DART/src/programs/$1
+ program=$DART/assimilation_code/programs/$1
 fi
 
-echo $1.f90
  $DART/build_templates/mkmf -x $m -p $1 \
      $convsrc \
      $program \
