@@ -225,6 +225,9 @@ foreach $target ( @targets ) {
 	 $path = '' if $path eq './';
 	 $object = "$name.o";
 	 $source_of{$object} = "$path$name$suffix" if( $suffix && !$source_of{$object} );
+#check for namelist files in the path and add it to the list
+         $nml = "${path}${name}.nml";
+         push @nml_list, $nml if -e $nml;
       }
       closedir DIR;
       $scanned{$target} = 1;
