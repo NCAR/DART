@@ -281,22 +281,6 @@ foreach $target ( @targets ) {
    }
 }
 
-#before proceeding, dump namelist file if any
-if ( @nml_list ) {
-  unlink $nmlfile if -e $nmlfile;
-  open NMLFILE, ">$nmlfile";
-  foreach ( @nml_list ) {
-    open THISNML, "$_";
-    while (<THISNML>) {
-      print NMLFILE;
-    }
-    close THISNML;
-  }
-  close NMLFILE;
-} else {
-print "Did not find any namelist files - not touching $nmlfile\n";
-}
-
 delete $source_of{''};
 my @dirs = keys %scanned;
 my @sources = values %source_of;
