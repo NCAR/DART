@@ -7,6 +7,8 @@ set -e
 
 CONVERTER=var
 LOCATION=threed_sphere
+EXTRA="$DART/models/wrf/model_mod.f90 \
+       $DART/models/wrf/module_map_utils.f90"
 source $DART/build_templates/buildconvfunctions.sh
 
 programs=( \
