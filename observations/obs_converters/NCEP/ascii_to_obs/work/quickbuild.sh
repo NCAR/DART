@@ -5,7 +5,7 @@ set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
 
-CONVERTER=DWL
+CONVERTER="NCEP/ascii_to_obs"
 LOCATION=threed_sphere
 source $DART/build_templates/buildconvfunctions.sh
 
