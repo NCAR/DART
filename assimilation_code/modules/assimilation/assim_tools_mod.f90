@@ -900,9 +900,6 @@ prior_mean = sum(ens) / ens_size
 prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 prior_var = max(prior_var, 0.0_r8)
 
-! Should have a more general routine to compute likelihoods for a variety of choices
-!likelihood = exp(-1.0_r8 * (ens - obs)**2 / (2.0_r8 * obs_var))
-
 ! If obs_var == 0, delta function.  The mean becomes obs value with no spread.
 ! If prior_var == 0, obs has no effect.  The increments are 0.
 ! If both obs_var and prior_var == 0 there is no right thing to do, so Stop.
@@ -957,12 +954,13 @@ else
    !--------------------------------------------------------------------------
    else if(filter_kind == 101) then
       ! Bounded normal RHF with hard-coded bounds specified here
-      is_bounded = .true.
-      bound = (/-20, 20/)
+      is_bounded = .false.
+      bound = (/-10.0_r8, 13.0_r8/)
       ! Test bounded normal likelihood; Could use an arbitrary likelihood
       do i = 1, ens_size
          likelihood(i) = get_truncated_normal_like(ens(i), obs, obs_var, is_bounded, bound)
       end do
+      !likelihood = exp(-1.0_r8 * (ens - obs)**2 / (2.0_r8 * obs_var))
       call obs_increment_bounded_norm_rhf(ens, likelihood, ens_size, prior_var, &
          obs, obs_var, obs_inc, is_bounded, bound)
    !--------------------------------------------------------------------------
