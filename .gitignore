@@ -127,7 +127,8 @@ ps_id_stdin
 ps_rand_local
 convert_roms_obs
 create_sphere_obs
-
+convert_ok_mesonet
+read_geo
 
 
 # Directories to NOT IGNORE ... same as executable names
