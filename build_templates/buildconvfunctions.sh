@@ -149,9 +149,11 @@ else
 fi
 
  $DART/build_templates/mkmf -x $m -p $1 \
+     $EXTRA \
      $convsrc \
      $program \
      $DART/observations/obs_converters/$CONVERTER/$1.f90
+
 }
 
 #-------------------------

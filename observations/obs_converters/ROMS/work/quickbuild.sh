@@ -7,6 +7,7 @@ set -e
 
 CONVERTER=ROMS
 LOCATION=threed_sphere
+EXTRA="$DART/models/ROMS/model_mod.f90"
 source $DART/build_templates/buildconvfunctions.sh
 
 programs=( \
