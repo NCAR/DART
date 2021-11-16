@@ -7,6 +7,7 @@ set -e
 
 CONVERTER=even_sphere
 LOCATION=threed_sphere
+EXTRA="$DART/observations/obs_converters/obs_error/ncep_obs_err_mod.f90"
 source $DART/build_templates/buildconvfunctions.sh
 
 programs=( \

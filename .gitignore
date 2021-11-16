@@ -125,6 +125,9 @@ tc_to_obs
 id_set_def_stdin
 ps_id_stdin
 ps_rand_local
+convert_roms_obs
+create_sphere_obs
+
 
 
 # Directories to NOT IGNORE ... same as executable names
