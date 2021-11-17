@@ -6,8 +6,8 @@ set -e
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
 
 CONVERTER=MADIS
-OBS_ERROR=ncep
 LOCATION=threed_sphere
+EXTRA=obs_errors.path_names
 source $DART/build_templates/buildconvfunctions.sh
 
 programs=( \

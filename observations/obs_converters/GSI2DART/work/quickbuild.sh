@@ -9,6 +9,10 @@ CONVERTER=GSI2DART
 LOCATION=threed_sphere
 source $DART/build_templates/buildconvfunctions.sh
 
+# overwrite mpi variables
+mpisrc=mpi
+m="-w" 
+
 programs=( \
 gsi_to_dart
 )
