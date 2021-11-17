@@ -72,7 +72,6 @@ function findconvsrc() {
 
 local core=$(find $DART/assimilation_code/modules -type d -name observations -prune -o -type f -name "*.f90" -print)
 local conv=$(find $DART/observations/obs_converters/$CONVERTER -type f -name "*.f90" )
-local convF90=$(find $DART/observations/obs_converters/$CONVERTER -type f -name "*.F90" )
 local modelsrc="$DART/models/template/model_mod.f90"
 local loc="$DART/assimilation_code/location/$LOCATION \
           $DART/assimilation_code/location/utilities/ \

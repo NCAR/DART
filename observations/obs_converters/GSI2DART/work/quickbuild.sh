@@ -23,6 +23,10 @@ arguments "$@"
 # clean the directory
 \rm -f *.o *.mod Makefile .cppdefs
 
+# run the c preprocessor on  enkf/kinds.F90
+\rm -f ../enkf/mykinds.f90
+cpp -P -D_REAL8_ -traditional-cpp ../enkf/kinds.F90 > ../enkf/mykinds.f90
+
 # build and run preprocess before making any other DART executables
 buildpreprocess
 
