@@ -133,7 +133,6 @@ for p in ${programs[@]}; do
   convsrc=${convsrc//$prog/}
 done
 
-
 }
 
 #-------------------------
@@ -149,7 +148,7 @@ else
  program=$DART/assimilation_code/programs/$1
 fi
 
- $DART/build_templates/mkmf -a $DART -x $m -p $1 \
+ $DART/build_templates/mkmf -x $m -p $(basename $1) \
      $EXTRA \
      $convsrc \
      $program \
