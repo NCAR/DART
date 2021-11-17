@@ -8,7 +8,7 @@ set -e
 MODEL=bgrid_solo
 LOCATION=threed_sphere
 EXCLUDE=fms_src
-EXTRA=extra_source
+EXTRA=extra_source.path_names
 source $DART/build_templates/buildfunctions.sh
 
 programs=( \
