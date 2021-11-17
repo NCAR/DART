@@ -148,7 +148,7 @@ else
  program=$DART/assimilation_code/programs/$1
 fi
 
- $DART/build_templates/mkmf -x $m -p $(basename $1) \
+ $DART/build_templates/mkmf -a $DART -x $m -p $(basename $1) \
      $EXTRA \
      $convsrc \
      $program \

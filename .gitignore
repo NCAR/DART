@@ -131,6 +131,9 @@ convert_ok_mesonet
 read_geo
 convert_aura
 dwl_to_obs
+create_real_obs
+prepbufr_to_obs
+convert_pb_netcdf
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables
