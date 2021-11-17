@@ -12,7 +12,6 @@ source $DART/build_templates/buildconvfunctions.sh
 programs=( \
 create_real_obs \
 prepbufr_to_obs \
-real_obs_mod \
 )
 
 # build arguments
