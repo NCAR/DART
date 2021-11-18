@@ -4,11 +4,12 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildfunctions.sh
 
 MODEL=wrf_hydro
 LOCATION=threed_sphere
 EXTRA="$DART/models/wrf/module_map_utils.f90"
-source $DART/build_templates/buildfunctions.sh
+
 
 # clean the directory
 \rm -f *.o *.mod Makefile .cppdefs

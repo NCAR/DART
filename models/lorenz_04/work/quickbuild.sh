@@ -4,10 +4,11 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildfunctions.sh
 
 MODEL=lorenz_04
 LOCATION=oned
-source $DART/build_templates/buildfunctions.sh
+
 
 programs=( \
 closest_member_tool \

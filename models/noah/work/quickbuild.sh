@@ -4,11 +4,12 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildfunctions.sh
 
 MODEL=noah
 LOCATION=threed_sphere
 EXTRA=extra_source.path_names
-source $DART/build_templates/buildfunctions.sh
+
 
 # clean the directory
 \rm -f *.o *.mod Makefile .cppdefs

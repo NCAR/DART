@@ -4,11 +4,12 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildfunctions.sh
 
 MODEL=mpas_atm
 LOCATION=threed_sphere
 EXTRA="$DART/assimilation_code/location/threed_cartesian/xyz_location_mod.f90"
-source $DART/build_templates/buildfunctions.sh
+
 
 # clean the directory
 \rm -f *.o *.mod Makefile .cppdefs
