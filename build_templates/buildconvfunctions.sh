@@ -1,9 +1,35 @@
 #!/bin/bash
 
-declare -a programs
+#-------------------------
+# Build functions for observation converters
+#-------------------------
+# Globals:
+#  DART - path to DART directory
+#         expected in the enviroment
+#  LOCATION - location module to use
+#             set by quickbuild.sh
+#  LIBRARIES - additional libraries to link to
+#              for example libprepbufr.a
+#              set by quickbuild.sh
+#  EXTRA - other source files that
+#          are not in $CONVERTER
+#          for example, a specific model_mod
+#          set by quickbuild.sh
+#
+#  convsrc - created by findconvsrc
+#  programs - array of programs names to build
+#             set by quickbuild.sh
+#
+# The GSI obs converter needs mpi
+#  mpisrc="null_mpi"
+#  windowsrc=""
+#  m=""
+#-------------------------
 
+declare -a programs
 source $DART/build_templates/buildpreprocess.sh
 
+# Defaults
 mpisrc="null_mpi"
 windowsrc=""
 m=""
@@ -27,23 +53,22 @@ function print_usage() {
 }
 
 
-#-------------------------
+#--------------------------
 # Remove programs, .o. .mod
-#-------------------------
+#--------------------------
 cleanup() {
 \rm -f *.o *.mod Makefile
 
-for p in ${programs[@]}; do  
+for p in ${programs[@]}; do 
   \rm -f $p
 done
 }
 
 #-------------------------
-# parse quicbuild.sh arguments:
-#   nompi - compile without mpi
+# parse quickbuild.sh arguments:
 #   help - print usage and exit
 #   program_name - compile single program
-#   clean - remove programs
+#   clean - remove programs, .o .mod makefile
 #-------------------------
 function arguments() {
 
@@ -67,7 +92,7 @@ single_prog=$1
 }
 
 #-------------------------
-# Converter findsrc
+# Collect src needed to build converter
 #-------------------------
 function findconvsrc() {
 
@@ -88,11 +113,11 @@ local misc="$DART/models/utilities/ \
 local obserrsrc=$DART/observations/obs_converters/obs_error/$OBS_ERROR"_obs_err_mod.f90"
 
 # remove null/mpi from list
-mpi=$DART/assimilation_code/modules/utilities/mpi_utilities_mod.f90
-nullmpi=$DART/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
-nullwin=$DART/assimilation_code/modules/utilities/null_win_mod.f90
-craywin=$DART/assimilation_code/modules/utilities/cray_win_mod.f90
-nocraywin=$DART/assimilation_code/modules/utilities/no_cray_win_mod.f90
+local mpi=$DART/assimilation_code/modules/utilities/mpi_utilities_mod.f90
+local nullmpi=$DART/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+local nullwin=$DART/assimilation_code/modules/utilities/null_win_mod.f90
+local craywin=$DART/assimilation_code/modules/utilities/cray_win_mod.f90
+local nocraywin=$DART/assimilation_code/modules/utilities/no_cray_win_mod.f90
 
 if [ $mpisrc == "mpi" ]; then
 
@@ -136,11 +161,15 @@ done
 }
 
 #-------------------------
+# Build a program 
+# Arguements: 
+#  program name
 #-------------------------
 function dartbuild() {
 
 #look in $program directory for {main}.f90 
 local program
+local mkmf_libs
 
 if [ $1 == "obs_diag" ]; then
  program=$DART/assimilation_code/programs/obs_diag/$LOCATION
@@ -164,7 +193,7 @@ fi
 }
 
 #-------------------------
-# buld converter
+# build converter programs
 #-------------------------
 buildconv() {
 

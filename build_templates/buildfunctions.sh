@@ -1,5 +1,28 @@
 #!/bin/bash 
 
+#-------------------------
+# Build functions for DART
+#-------------------------
+# Globals:
+#  DART - path to DART directory
+#       - expected in the enviroment
+#  LOCATION - location module to use
+#             set by quickbuild.sh
+#  EXTRA - other source files that
+#          are not in $CONVERTER
+#          for example, a specific model_mod
+#          set by quickbuild.sh
+#  EXCLUDE - directories in model dir to exclude
+#            from the collection of .f90 files
+#            set by quickbuild.sh
+#  dartsrc - created by findsrc
+#  programs, serial_programs, model_programs, model_serial_programs
+#          - arrays of program names to build
+#            set by quickbuild.sh
+#-------------------------
+
+EXTRA=""
+
 declare -a programs
 declare -a serial_programs
 declare -a model_programs
@@ -30,6 +53,9 @@ function print_usage() {
   exit
 }
 
+#--------------------------
+# Remove programs, .o. .mod
+#--------------------------
 cleanup() {
 \rm -f *.o *.mod Makefile
 all_programs=("${programs[@]}" "${model_programs[@]}" "${serial_programs[@]}" "${model_serial_programs[@]}")
@@ -81,12 +107,6 @@ single_prog=$1
 
 #-------------------------
 # Collect the source files needed to build DART
-# Globals:
-#  dartsrc - created buy this function
-#  LOCATION - stores the location module
-#  DART - expected in the enviroment
-#  mpisrc  - quickbuild argument
-#  windosrc - just no_cray win 
 #-------------------------
 function findsrc() {
 
@@ -159,11 +179,6 @@ done
 # Build a program 
 # Arguements: 
 #  program name
-# Globals:
-#  DART - root of DART
-#  dartsrc - source files
-#  LOCATION - location mod (3D sphere, oned, etc.)
-#  m - mpi mkmf wrapper
 #-------------------------
 function dartbuild() {
 
@@ -171,7 +186,6 @@ function dartbuild() {
 local program
 
 if [ $1 == "obs_diag" ]; then
- echo "Doing obs_diag" 
  program=$DART/assimilation_code/programs/obs_diag/$LOCATION
 else
  program=$DART/assimilation_code/programs/$1
@@ -188,10 +202,6 @@ fi
 # looks in $DART/models/$MODEL/src/programs for {main}.f90 
 # Arguements: 
 #  program name
-#  mpi wrapper arg for mkmf
-# Globals:
-#  DART - root of DART
-#  dartsrc - source files
 #-------------------------
 function modelbuild() {
  $DART/build_templates/mkmf -x -a $DART $m -p $(basename $1) $DART/models/$MODEL/$1.f90 \
@@ -201,10 +211,6 @@ function modelbuild() {
 
 #-------------------------
 # Build executables
-# Globals:
-#  programs - array of DART programs
-#  model_programs - array of model specific programs 
-#  single_prog - name of a single program to build
 #-------------------------
 function buildit() {
 
