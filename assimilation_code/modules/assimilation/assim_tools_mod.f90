@@ -76,8 +76,7 @@ private
 
 public :: filter_assim, &
           set_assim_tools_trace, &
-          test_state_copies, &
-          update_ens_from_weights
+          test_state_copies
 
 ! Indicates if module initialization subroutine has been called yet
 logical :: module_initialized = .false.
@@ -327,11 +326,12 @@ logical,                     intent(in)    :: inflate_only
 ! changed the ensemble sized things here to allocatable
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), updated_ens(ens_size)
-real(r8) :: obs_likelihood(ens_size)
+real(r8) :: orig_obs_likelihood(ens_size)
 real(r8) :: final_factor
 real(r8) :: net_a(num_groups), correl(num_groups)
 real(r8) :: obs(1), obs_err_var, my_inflate, my_inflate_sd
 real(r8) :: obs_qc, cutoff_rev, cutoff_orig
+real(r8) :: orig_obs_prior(ens_size)
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
 real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
 real(r8) :: vertvalue_obs_in_localization_coord, whichvert_real
@@ -339,6 +339,8 @@ real(r8), allocatable :: close_obs_dist(:)
 real(r8), allocatable :: close_state_dist(:)
 real(r8), allocatable :: last_close_obs_dist(:)
 real(r8), allocatable :: last_close_state_dist(:)
+real(r8), allocatable :: all_my_orig_obs_priors(:, :)
+real(r8), allocatable :: state_likelihood(:, :)
 
 integer(i8) :: state_index
 integer(i8), allocatable :: my_state_indx(:)
@@ -540,6 +542,15 @@ if(local_ss_inflate) then
    end do
 endif
 
+! Keep the original obsevation prior ensemble before any obs have been used
+! Needed to compute the likelihoods for multi-obs state space QCEFs. 
+allocate(all_my_orig_obs_priors(ens_size, my_num_obs), state_likelihood(ens_size, my_num_state))
+do i = 1, my_num_obs
+   all_my_orig_obs_priors(:, i) = obs_ens_handle%copies(1:ens_size, i)
+end do
+! State likelihoods start as all 1 (no information)
+state_likelihood = 1.0_r8
+
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
    call get_close_init(gc_state, my_num_state, 2.0_r8*cutoff, my_state_loc, 2.0_r8*cutoff_list)
@@ -633,6 +644,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             OBS_PRIOR_MEAN_END, owners_index)
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
+         ! Also need the original obs prior ensemble for multi-obs state QCEF
+         orig_obs_prior = all_my_orig_obs_priors(:, owners_index)
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
@@ -642,7 +655,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! coordinate transformation
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
       call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior,    &
-         orig_obs_prior_mean, orig_obs_prior_var,                          &
+         orig_obs_prior, orig_obs_prior_mean, orig_obs_prior_var,          &
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
 
@@ -650,7 +663,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !-----------------------------------------------------------------------
    else
       call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior,    &
-         orig_obs_prior_mean, orig_obs_prior_var,                          & 
+         orig_obs_prior, orig_obs_prior_mean, orig_obs_prior_var,          & 
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
       whichvert_obs_in_localization_coord = nint(whichvert_real)
@@ -671,8 +684,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       grp_bot = grp_beg(group); grp_top = grp_end(group)
       call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
          obs_err_var, base_obs_type, obs_inc(grp_bot:grp_top), obs_prior_mean(group), obs_prior_var(group), &
-         obs_likelihood(grp_bot:grp_top), net_a(group))
+         net_a(group))
    end do
+
+   ! Need to compute the likelihoods for the original prior ensemble for multi-obs state QCEF
+   ! No thought about groups yet. Note that obs_err_var is only param we have for now
+   call get_obs_likelihood(orig_obs_prior, ens_size, obs(1), obs_err_var, &
+      base_obs_type, orig_obs_likelihood)
 
    ! Compute updated values for single state space inflation
    if(local_single_ss_inflate) then
@@ -733,6 +751,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       ! If doing full assimilation, update the state variable ensemble with weighted increments
       if(.not. inflate_only) ens_handle%copies(1:ens_size, state_index) = updated_ens
+
+      ! Update the likelihood for this state variable
+      !!!!call update_state_like(prior_state_index_sort(:, state_index), state_likelihood(:, j), &
+         !!!orig_obs_like, prior_state_mass(:, state_index), ens_size, final_factor)
 
       ! Compute spatially-varying state space inflation
       if(local_varying_ss_inflate .and. final_factor > 0.0_r8) then
@@ -854,6 +876,8 @@ deallocate(close_state_dist,      &
 
 deallocate(n_close_state_items, &
            n_close_obs_items)
+
+deallocate(all_my_orig_obs_priors, state_likelihood)
 ! end dealloc
 
 end subroutine filter_assim
@@ -861,7 +885,7 @@ end subroutine filter_assim
 !-------------------------------------------------------------
 
 subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_type, &
-   obs_inc, prior_mean, prior_var, likelihood, net_a)
+   obs_inc, prior_mean, prior_var, net_a)
 
 ! Given the ensemble prior for an observation, the observation, and
 ! the observation error variance, computes increments and adjusts
@@ -872,10 +896,9 @@ real(r8),                    intent(in)    :: ens_in(ens_size), obs, obs_var
 integer,                     intent(in)    :: obs_type
 real(r8),                    intent(out)   :: obs_inc(ens_size)
 real(r8),                    intent(out)   :: prior_mean, prior_var
-real(r8),                    intent(out)   :: likelihood(ens_size)
 real(r8),                    intent(out)   :: net_a
 
-real(r8) :: ens(ens_size), new_val(ens_size)
+real(r8) :: ens(ens_size), new_val(ens_size), likelihood(ens_size)
 integer  :: i, ens_index(ens_size), new_index(ens_size)
 
 ! Declarations for bounded rank histogram filter
@@ -1779,6 +1802,34 @@ end do
 end subroutine find_bounded_norm_rhf_post
 
 
+subroutine get_obs_likelihood(obs_prior, ens_size, obs, obs_err_var, &
+      base_obs_type, likelihood)
+!------------------------------------------------------------------------
+! Generic wrapper routine to control what kind of likelihood is computed for a given obs type
+! For initial test it will just use the truncated normal likelihood
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: obs_prior(ens_size)
+real(r8), intent(in)  :: obs
+real(r8), intent(in)  :: obs_err_var
+integer,  intent(in)  :: base_obs_type
+real(r8), intent(out) :: likelihood(ens_size)
+
+integer  :: i
+logical  :: is_bounded(2)
+real(r8) :: bound(2)
+
+! For now just do a truncated normal likelihood (just a normal if no bounds)
+is_bounded = .false.
+bound = -99.9_r8
+
+do i = 1, ens_size
+   likelihood(i) = get_truncated_normal_like(obs_prior(i), obs, obs_err_var, is_bounded, bound)
+end do
+
+end subroutine get_obs_likelihood
+
+
+
 ! Computes a normal or truncated normal (above and/or below) likelihood.
 function get_truncated_normal_like(x, obs, obs_var, is_bounded, bound)
 !------------------------------------------------------------------------
@@ -1814,130 +1865,67 @@ end function get_truncated_normal_like
 
 
 
-subroutine update_ens_from_weights(ens, ens_size, rel_weight, ens_inc)
-!------------------------------------------------------------------------
-! Given relative weights for an ensemble, compute increments for the
-! ensemble members. Assumes that prior distributon is equal uniform mass
-! between each ensemble member. On the edges, have a normal with the
-! sample mean and s.d. BUT normalized by a factor alpha so that only
-! 1/(2*ens_size) of the total mass lies on each flank.
+subroutine update_state_like(prior_state_index_sort, state_like, like, prior_state_mass, ens_size, alpha)
+!-----------------------------------------------------------------------------------------------
+! Computes cumulative localized likelihood for a given state variable ensmble
+integer,  intent(in)              :: prior_state_index_sort(ens_size)
+real(r8), intent(inout)           :: state_like(ens_size + 1)
+real(r8), intent(in)              :: like(ens_size)
+real(r8), intent(in)              :: prior_state_mass(ens_size + 1)
+integer,  intent(in)              :: ens_size
+real(r8), intent(in)              :: alpha
 
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: ens(ens_size), rel_weight(ens_size)
-real(r8), intent(out) :: ens_inc(ens_size)
+real(r8) :: weight(ens_size + 1), post_mass(ens_size + 1), loc_like(ens_size), s_like(ens_size)
+real(r8) :: total_post_mass
 
-integer  :: i, j, lowest_box
-integer  :: e_ind(ens_size)
-real(r8) :: x(1:2*ens_size - 1), cumul_mass(1:2*ens_size - 1), new_ens(ens_size)
-real(r8) :: sort_inc(ens_size), updated_mass(2 * ens_size)
-real(r8) :: sx, prior_mean, prior_var, prior_sd, mass
-real(r8) :: total_mass_left, total_mass_right, alpha(2)
+integer :: i, lo, hi, num_smooth
+real(r8) :: smooth_like(ens_size)
 
-! Initialize assim_tools_module if needed
-if (.not. module_initialized) call assim_tools_init()
+integer, parameter :: smooth_width = 0
 
-call error_handler(E_ERR,'update_ens_from_weight','Routine needs testing.', &
-           source, text2='Talk to Jeff before using.')
+! Sort the likelihood for this state variable
+s_like = like(prior_state_index_sort)
 
-! Do an index sort of the ensemble members
-call index_sort(ens, e_ind, ens_size)
+! First compute the localized piecewise constant likelihood for this state variable
+! Get the weight for each of the intervals
+weight(1) = s_like(1)
+do i = 2, ens_size
+   weight(i) = (s_like(i) + s_like(i-1)) / 2.0_r8
+end do
+weight(ens_size + 1) = s_like(ens_size)
 
-! Have half boxes between all ensembles in the interior
-! Total number of mass boxes is 2*ens_size
+! Posterior probability in each bin by multiplying by likelihood
+post_mass = prior_state_mass * weight
+! Normalize the total posterior mass
+total_post_mass = sum(post_mass)
 
-! Compute the points that bound all the updated mass boxes; start with ensemble
+! GEFFQ localization
+! Total post mass is the denominator in Bayes and the normalizing factor for the localization
 do i = 1, ens_size
-   x(2*i - 1) = ens(e_ind(i))
-end do
-! Compute the mid-point interior boundaries; these are halfway between ensembles
-do i = 2, 2*ens_size - 2, 2
-   x(i) = (x(i - 1) + x(i + 1)) / 2.0_r8
+   loc_like(i) = alpha * s_like(i) + (1 - alpha) * total_post_mass
 end do
 
-! Compute the mean and s.d. of the prior ensemble to handle wings
-sx         = sum(ens)
-prior_mean = sx / ens_size
-prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
-prior_sd = sqrt(prior_var)
-
-! Need to normalize the wings so they have 1/(2*ens_size) mass outside
-! Use cdf to find out how much mass is left of 1st member, right of last
-total_mass_left = norm_cdf(ens(e_ind(1)), prior_mean, prior_sd)
-total_mass_right = 1.0_r8 - norm_cdf(ens(e_ind(ens_size)), prior_mean, prior_sd)
-
-! Find the mass in each division given the initial equal partition and the weights
-updated_mass(1) = rel_weight(e_ind(1)) / (2.0_r8 * ens_size)
-updated_mass(2 * ens_size) = rel_weight(e_ind(ens_size)) / (2.0_r8 * ens_size)
-do i = 2, 2*ens_size - 2, 2
-   updated_mass(i) = rel_weight(e_ind(i / 2)) / (2.0_r8 * ens_size)
+! Now recompute the weights; Look at algebra for simpler way
+weight(1) = loc_like(1)
+do i = 2, ens_size
+   weight(i) = (loc_like(i) + loc_like(i-1)) / 2.0_r8
 end do
-do i = 3, 2*ens_size - 1, 2
-   updated_mass(i) = rel_weight(e_ind((i+1) / 2)) / (2.0_r8 * ens_size)
-end do
+weight(ens_size + 1) = loc_like(ens_size)
 
-! Normalize the mass; (COULD IT EVER BE 0 necessitating error check?)
-updated_mass = updated_mass / sum(updated_mass)
+! The weight is the values of the piecewise constant localized likelihood
+! Take the product with the existing likelihood
+state_like = state_like * weight
 
-! Find a normalization factor to get tail mass right
-if(total_mass_left > 0.0_r8) then
-   alpha(1) = updated_mass(1) / total_mass_left
-else
-   alpha(1) = 0.0_r8
-endif
-if(total_mass_right > 0.0_r8) then
-   alpha(2) = updated_mass(2 * ens_size) / total_mass_right
-else
-   alpha(2) = 0.0_r8
-endif
+! Avoid underflow with lots of obs by normalizing 
+! Which way is better?
+state_like = state_like / (sum(state_like) / ens_size)
+!***************************** Maybe this instead *****
+!!!state_like = state_like / maxval(state_like)
 
-! Find cumulative mass at each box boundary and middle boundary
-cumul_mass(1) = updated_mass(1)
-do i = 2, 2*ens_size - 1
-   cumul_mass(i) = cumul_mass(i - 1) + updated_mass(i)
-end do
+end subroutine update_state_like
 
-! Get resampled position an inefficient way
-! Need 1/ens_size between each EXCEPT for outers which get half of this
-mass = 1.0_r8 / (2.0_r8 * ens_size)
 
-do i = 1, ens_size
-   ! If it's in the inner or outer range have to use normal
-   if(mass < cumul_mass(1)) then
-      ! In the first normal box
-      call weighted_norm_inv(alpha(1), prior_mean, prior_sd, mass, new_ens(i))
-   else if(mass > cumul_mass(2*ens_size - 1)) then
-      ! In the last normal box; Come in from the outside
-      call weighted_norm_inv(alpha(2), prior_mean, prior_sd, 1.0_r8 - mass, new_ens(i))
-      new_ens(i) = prior_mean + (prior_mean - new_ens(i))
-   else
-      ! In one of the inner uniform boxes. Make this much more efficient search?
-      lowest_box = 1
-      FIND_BOX:do j = lowest_box, 2 * ens_size - 2
-         ! Find the box that this mass is in
-         if(mass >= cumul_mass(j) .and. mass <= cumul_mass(j + 1)) then
-            new_ens(i) = x(j) + ((mass - cumul_mass(j)) / (cumul_mass(j+1) - cumul_mass(j))) * &
-               (x(j + 1) - x(j))
-            ! Don't need to search lower boxes again
-            lowest_box = j
-            exit FIND_BOX
-         end if
-      end do FIND_BOX
-   endif
-   ! Want equally partitioned mass in update with exception that outermost boxes have half
-   mass = mass + 1.0_r8 / ens_size
-end do
 
-! Can now compute sorted increments
-do i = 1, ens_size
-   sort_inc(i) = new_ens(i) - ens(e_ind(i))
-end do
-
-! Now, need to convert to increments for unsorted
-do i = 1, ens_size
-   ens_inc(e_ind(i)) = sort_inc(i)
-end do
-
-end subroutine update_ens_from_weights
 !---------------------------------------------------------------
 
 subroutine obs_updates_ens(ens_size, num_groups, ens, updated_ens, ens_loc, ens_kind, &
