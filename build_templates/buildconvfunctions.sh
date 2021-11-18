@@ -46,8 +46,7 @@ function print_usage() {
   echo "  buildconverter.sh clean         : clean the build" 
   echo "  buildconverter.sh help          : print help message"
   echo "   " 
-  echo "  buildconverter.sh [program]     : optional argument " 
-  echo "                                    [program] build a single program"
+  echo "  buildconverter.sh [program]     : build a single program"
   echo "   " 
   exit
 }
