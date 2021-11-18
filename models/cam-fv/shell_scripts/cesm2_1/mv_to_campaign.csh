@@ -32,7 +32,7 @@
 #   https://www2.cisl.ucar.edu/sites/default/files/CISL_GlobusCLI_Nov2018.html
 
 # Get CASE environment variables from the central variables file.
-cd /glade/work/raeder/Exp/f.e21.FHIST_BGC.f09_025.CAM6assim.011
+cd YOUR_CASEROOT
 source ./data_scripts.csh
 cd -
 
