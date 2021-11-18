@@ -198,13 +198,22 @@ fi
 buildconv() {
 
 findconvsrc
+
+if [ ! -z "$single_prog" ] ; then # build a single program
+    if [[ " ${programs[*]} " =~ " ${single_prog} " ]]; then
+       echo "building dart program " $single_prog
+       dartbuild $single_prog
+       exit
+    fi
+fi
+
+# if no single program argument, build everything
 i=1
 for p in ${programs[@]}; do
   echo "Building " $p " build " $i " of " ${#programs[@]}
   dartbuild $p
   ((i++))
 done
-
 
 }
 
