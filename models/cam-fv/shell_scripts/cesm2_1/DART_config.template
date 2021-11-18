@@ -201,6 +201,7 @@ foreach script (compress.csh           \
                 purge.csh              \
                 repack_project.csh     \
                 repack_st_arch.csh     \
+                repack_st_noglobus.csh \
                 submit_compress.csh    \
                 submit_compress_hist.csh)
    if (-f ${DART_SCRIPTS_DIR}/${script}) then
