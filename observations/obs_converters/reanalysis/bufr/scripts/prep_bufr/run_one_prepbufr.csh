@@ -17,8 +17,8 @@
 # usage: $0 unique_subdir_name year month day
 #
 
-if ( $# != 4 ) then
-  echo usage: $0 unique_subdir_name year month day
+if ( $# != 5 ) then
+  echo usage: $0 unique_subdir_name year month day day_num
   exit -1
 endif
 
@@ -40,7 +40,7 @@ cp -f ../input.nml .
 
 # and now call the script that actually does the work
 
-./my_prepbufr.csh $2 $3 $4 
+./my_prepbufr.csh $2 $3 $4  >& ../run_one_prepbufr.$5
 
 # clean up things which don't have any log info in them
 

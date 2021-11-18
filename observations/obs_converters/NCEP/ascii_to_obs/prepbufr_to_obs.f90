@@ -394,14 +394,14 @@ obsloop:  do
    ! (this should be deprecated eventually when we start putting dates
    ! as well as times in the intermediate ascii files.  for now, keep it.)
    if(time == 3.0_r8 .and. daily) then
-      if (debug) write(*,*) 'invalid time.  hours = ', time
+      if (debug) write(*,*) 'invalid time. "daily" and hours = ', time
       iskip(fail_3Z) = iskip(fail_3Z) + 1
       cycle obsloop 
    endif 
 
    ! reject obs outside the current time window
    if(time < bin_beg .or. time > bin_end) then
-      if (debug) write(*,*) 'invalid time.  hours = ', time
+      if (debug) write(*,*) 'invalid time. Outside bin; hours = ', time
       iskip(fail_timerange) = iskip(fail_timerange) + 1
       cycle obsloop
    endif
@@ -409,7 +409,7 @@ obsloop:  do
    ! reject locations outside the valid values (shouldn't happen)
    if((lon > 360.0_r8) .or. (lon <   0.0_r8) .or.  &
       (lat >  90.0_r8) .or. (lat < -90.0_r8)) then
-      if (debug) write(*,*) 'invalid location.  lon,lat = ', lon, lat
+      if (debug) write(*,*) 'invalid location. Out of this world  lon,lat = ', lon, lat
       iskip(fail_badloc) = iskip(fail_badloc) + 1
       cycle obsloop
    endif
@@ -417,7 +417,7 @@ obsloop:  do
    ! reject observations outside the bounding box
    if(lat < lat1 .or. lat > lat2 .or. & 
      .not. is_longitude_between(lon, lon1, lon2)) then
-      if (debug) write(*,*) 'invalid location.  lon,lat = ', lon, lat
+      if (debug) write(*,*) 'invalid location. Outside box  lon,lat = ', lon, lat
       iskip(fail_areabox) = iskip(fail_areabox) + 1
       cycle obsloop
    endif

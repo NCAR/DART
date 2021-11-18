@@ -1,0 +1,383 @@
+#!/bin/tcsh 
+# KDR -v writes all the commands to the error file, which is distracting.
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: multi_parallel.lsf 9948 2016-03-03 22:30:57Z nancy $
+#
+# Driver script for the parallel version.  Submit this script
+# to your batch system and it will invoke the 'prepbufr_to_obs'
+# executable once for each conversion day.
+#
+# this one does N conversions in parallel from a command script.
+#
+#--------------------------------------------------------------
+# DESCRIPTION:
+#
+#  This script is used to generate 4 6H files (3:01Z to 3:00Z of next day). 
+#  It reads decoded NCEP reanalysis PREPBUFR text/ascii data
+#  and writes DART obs_seq files.
+#
+#--------------------------------------------------------------
+
+#==========================================================================
+# SLURM directives             sbatch script.csh
+# sinfo     information about the whole slurm system
+# squeue    information about running jobs
+# sbatch    submit a job
+# scancel   kill a job
+#
+#SBATCH --ignore-pbs
+#SBATCH --job-name=ascibuf1
+#SBATCH --ntasks=36
+#SBATCH --ntasks-per-node=36
+#SBATCH --time=09:00:00
+#SBATCH -A P86850054
+#SBATCH -p dav
+#SBATCH -C casper
+#SBATCH -e ascibuf1.%j.err
+#SBATCH -o ascibuf1.%j.out
+#
+#==========================================================================
+# PBS directives                qsub script.csh
+#
+# qstat    information on running jobs
+# qsub     submit a job
+# qdel     kill a job
+# qpeek    see output from a running job
+#
+#PBS -N ascibuf1
+# This form of "anything.YYYY-M-D.M-D" will be parsed into start and end dates. 
+#PBS -N kdr_multi.2020-4-1.12-31
+#PBS -l walltime=08:00:00
+#PBS -q regular
+#PBS -l select=1:ncpus=36:mpiprocs=36
+# #PBS -l select=1:ncpus=36:mpiprocs=36:mem=109GB
+#PBS -A P86850054
+#
+#==========================================================================
+# LSF directives                bsub < script.csh
+#
+# bstat    information on running jobs
+# bsub     submit a job
+# bdel     kill a job
+# bpeek    see output from a running job
+#
+#BSUB -J ascibuf1
+#BSUB -o ascibuf1.%J.log
+#BSUB -q small
+#BSUB -n 16
+#BSUB -W 0:10:00
+#BSUB -P P86850054
+#
+#==========================================================================
+
+# USER SETTINGS HERE
+
+# Set year, month, days for to pass as args to prepbufr_to_obs
+# 
+# note that this script creates files { 06, 12, 18, 00 } for each day
+# with the last 00 being the following day.
+#
+# to change this to { 00, 06, 12, 18 } (which makes more sense)
+# i would need to change the /3/ in the namelist below to /18/
+# but then also sort out the dates (start at startday-1, end at endday).
+
+# on casper this seems to be taking about 40-60 mins for one
+# set of files (4/day with 18 tasks).  max wallclock is 24 hrs.
+# change the script to try 36 tasks/node (one full node)?
+
+set JOB_line = (`echo $PBS_JOBNAME | sed -e "s#\.# #g"`)
+
+@ s = $#JOB_line - 1
+set start_date = (`echo $JOB_line[$s] | sed -e "s#-# #g"`)
+set start_year  = $start_date[1]
+set start_month = $start_date[2]
+set start_day   = $start_date[3]
+echo "start_year = end_year = $start_year, start_month = $start_month, start_day = $start_day"
+
+set end_date = (`echo $JOB_line[$#JOB_line] | sed -e "s#-# #g"`)
+set end_year    = $start_year
+set end_month   = $end_date[1]
+set end_day     =  $end_date[2]
+echo "end_month = $end_month, end_day = $end_day"
+
+# should match the mpiprocs=X setting above
+# or ntasks-per-node
+set njobs = 36
+
+# where to put tmp files
+setenv TMPDIR /glade/scratch/$USER/temp
+
+# where executables are found
+setenv EXEDIR .
+
+# END USER SETTINGS
+
+
+# set things that vary between batch systems here.
+
+if ($?SLURM_JOB_ID) then
+  echo running SLURM
+  setenv SLURM true
+  setenv RUNCMD "srun --multi-prog"
+  setenv EXEDIR casper
+else if ($?PBS_NODEFILE) then
+  echo running PBS
+  setenv PBS true
+  setenv MPI_SHEPHERD true
+  setenv RUNCMD "mpiexec_mpt launch_cf.sh"
+else if ($?LSB_HOSTS) then
+  echo running LSF
+  setenv LSF true
+  setenv MP_PGMMODEL mpmd
+  setenv RUNCMD "mpirun.lsf -cmdfile"
+  setenv EXEDIR ibm
+else
+  echo running without a batch system
+  setenv NOBATCH true
+  setenv RUNCMD "csh"
+endif
+
+mkdir -p $TMPDIR
+
+
+echo job started at `date`
+
+# convert the start and stop times to gregorian days, so we can
+# compute total number of days including rolling over month and
+# year boundaries.  make sure all values have leading 0s if they
+# are < 10.  do the end time first so we can use the same values
+# to set the initial day while we are doing the total day calc.
+
+# the output of advance time with the -g input is:
+#   gregorian_day_number  seconds
+# use $var[1] to return just the day number
+
+set mon2=`printf %02d $end_month`
+set day2=`printf %02d $end_day`
+set end_d=(`echo ${end_year}${mon2}${day2}00 0 -g | $EXEDIR/advance_time`)
+
+set mon2=`printf %02d $start_month`
+set day2=`printf %02d $start_day`
+set start_d=(`echo ${start_year}${mon2}${day2}00 0 -g | $EXEDIR/advance_time`)
+
+# the output of this call is a string YYYYMMDDHH
+# see below for help in how to easily parse this up into words
+set curday=`echo ${start_year}${mon2}${day2}00 0 | $EXEDIR/advance_time`
+
+# how many total days are going to be processed (for the loop counter)
+# note that the parens below are necessary; otherwise the computation
+# does total = end - (start+1), or total = end - start - 1, which is
+# not how elementary math usually works on a computer (left to right
+# evaluation of ops with equal priority is most common.)
+@ totaldays = ( $end_d[1] - $start_d[1] ) + 1
+
+# echo this to help log what this batch job is converting
+echo converting files for $totaldays days
+echo starting at $start_year $start_month $start_day
+echo ending at $end_year $end_month $end_day
+echo ""
+
+# This needs to be defined outside of the echo to the cmdfile because of the $.  
+# I couldn't find a way to escape it correctly when it was in the command.
+set rm_list = 'if ($status == 0) rm input.nml ./prepbufr_to_obs dart_log.nml dart_log.out'
+
+# loop over each day
+set d=1
+while ( $d <= $totaldays )
+
+  rm -f mycmdfile
+
+  set j=1
+  while ( $j <= $njobs && $d <= $totaldays)
+
+    # parse out the parts from a string which is YYYYMMDDHH
+    # use cut with the byte option to pull out columns 1-4, 5-6, and 7-8
+    # then bc to strip off leading blanks
+    set  year=`echo $curday | cut -b1-4`
+    set month=`echo $curday | cut -b5-6`
+    set   day=`echo $curday | cut -b7-8`
+  
+    # numeric month/day (no leading 0)
+    set nummonth=`echo $month | bc`
+    set   numday=`echo $day | bc`
+
+    # figure out the next day; the output is YYYYMMDD00
+    set nextday=`echo ${year}${month}${day}00 +1d | $EXEDIR/advance_time`
+
+    set  nyear=`echo $nextday | cut -b1-4`
+    set nmonth=`echo $nextday | cut -b5-6`
+    set   nday=`echo $nextday | cut -b7-8`
+  
+    # numeric next month/day (no leading 0)
+    set numnmonth=`echo $nmonth | bc`
+    set   numnday=`echo $nday | bc`
+  
+    # status/debug - comment in or out as desired.
+    echo starting processing for ${year} ${nummonth} ${numday}
+  
+    # Subdirectory base name.
+    set tdir = workdir_${year}_${month}_${day}
+  
+    # make the dir, cd in, and link the executable and sed'd namelist file there
+    mkdir -p $tdir
+    cd $tdir
+    ls core* >& /dev/null
+    if ($status == 0) then
+       echo "Core files exit in workdir_ directories; fix and resubmit"
+       exit 17
+    endif
+    ln -sf ../$EXEDIR/prepbufr_to_obs .
+    sed -e "s/SYYYY/$year/" \
+        -e "s/SMM/$nummonth/"  \
+        -e "s/SDD/$numday/"  \
+        -e "s/SHH/3/"  \
+        -e "s/EYYYY/$nyear/" \
+        -e "s/EMM/$numnmonth/"  \
+        -e "s/EDD/$numnday/"  \
+        -e "s/EHH/3/"  \
+    ../input.nml.template >! input.nml
+    
+    cd ..
+    echo starting day $day 
+    # KDR All of the output from this is ending up (scrambled) in the .o##### file of this job.
+    # And the command does not progress beyond prepbufr_to_obs.
+    # 
+    # set cmd="csh -c 'cd $tdir; ./prepbufr_to_obs; rm input.nml ./prepbufr_to_obs dart_log.nml dart_log.out; cd ..; rmdir $tdir'" 
+    set cmd="csh -c 'cd $tdir; ./prepbufr_to_obs >>& dart_log.out; $rm_list ; cd ..; rmdir $tdir'" 
+    if ( $?SLURM ) then
+       @ k = $j - 1
+       echo "$k $cmd" >> mycmdfile
+    else
+       echo "$cmd" >> mycmdfile
+    endif
+  
+    # advance the day
+    set curday=$nextday
+  
+    # advance the loop counter
+    @ d += 1
+
+    # advance the concurrent job counter
+    @ j += 1
+  end
+
+  echo running jobs:
+  cat mycmdfile
+
+  # the system seems to want the same number of commands in each
+  # invocation of the command file as there are cpus on the node.
+  # if we aren't running an even multiple of real tasks compared
+  # to the cpu count, pad the rest of the script with a call to 'date'
+  # This might be avoided (at least on PBS) by using the '-n $j' argument to mpiexec_mpt.
+  # There can be problems if these short jobs finish almost instantly, so add in a 'sleep'.
+
+  # avoid echoing the filename by making wc read stdin
+  set j=`cat mycmdfile | wc -l`
+  @ j += 1
+  while ( $j <= $njobs )
+    if ( $?SLURM ) then
+       @ k = $j - 1
+       echo "$k date; sleep 1 " >> mycmdfile
+    else
+       echo "date; sleep 1 " >> mycmdfile
+    endif
+    @ j += 1
+  end
+
+  echo $RUNCMD ./mycmdfile
+
+  # actually launch the jobs here
+  $RUNCMD ./mycmdfile 
+
+end
+
+# Check the output files.
+# Output directory base name.
+set dir_line = `grep -m 1 output_filename_base input.nml.template | sed -e "s#'# #g" `
+set tdir = $dir_line[3]
+
+set missing = false
+set curday=`echo ${start_year}${mon2}${day2}00 0 | $EXEDIR/advance_time`
+# loop over each day
+set d=1
+while ( $d <= $totaldays )
+    set  year=`echo $curday | cut -b1-4`
+    set month=`echo $curday | cut -b5-6`
+    set   day=`echo $curday | cut -b7-8`
+  
+    set num_files = `ls -1 ${tdir}${year}${month}${day}* | wc -l` 
+    if ($num_files[1] != 4) then
+       if ($curday[1] == $end_d[1]) then
+          set missing = "$missing and last"
+       else    
+          echo "$tdir is missing files for $day"
+          set missing = true
+       endif
+    endif
+
+    # advance the day; the output is YYYYMMDD00
+    set curday=`echo ${year}${month}${day}00 +1d | $EXEDIR/advance_time`
+  
+    # advance the loop counter
+    @ d += 1
+
+end
+
+echo $missing | grep true 
+if ($status == 0) then
+   echo "Some days do not have 4 files"
+
+   echo $missing | grep last
+   if ($status == 0) then
+      echo "last day does not have 4 files"
+   endif
+else
+   echo "All expected temp_obs files exist"
+endif
+
+# <RANT>
+# cshell is ridiculous.  i want to avoid standard error messages
+# in batch scripts because they create an entire error file which
+# if it exists i have to look to see what errors have happened.  
+# in this case it's not an error if there are no files that match 
+# the wildcard.
+# i want to just redirect stderr for this command to /dev/null,
+# and keep track of the number of actual files it finds.  i can't
+# figure out how to redirect stderr without redirecting stdout too.
+# i'll repeat myself: cshell is defective.  
+# </RANT>
+# cshell responds; 
+# syntax like (ls workdir* > listing) >& /dev/null
+# prints nothing if no workdirs are found and sends the error to /dev/null in any case.
+# p.s. the -v in the top line of this script writes every command
+# from every loop into the error file.
+# 
+
+# this will remove empty dirs.  any dirs that aren't empty
+# had some sort of error - list those.
+rmdir workdir_* >& /dev/null
+
+# grep out lines like: ls: cannot access workdir_*: No such file or directory
+# Failing to find any workdirs results in a one line report: ls: No match.
+# which leads to nleft = 1, which is the same as when there is 1 workdir left.
+# set nleft=`ls -d workdir_* |& fgrep -v 'cannot access' |& wc -l`
+# if ( $nleft > 0 ) then
+ls -d workdir_*  >& /dev/null
+if ($status == 0) then
+   echo non-empty workdir_ directories left:
+   ls -ld workdir_*
+endif
+
+echo job ended at `date`
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/NCEP/prep_bufr/work/multi_parallel.lsf $
+# $Revision: 9948 $
+# $Date: 2016-03-03 15:30:57 -0700 (Thu, 03 Mar 2016) $
+
