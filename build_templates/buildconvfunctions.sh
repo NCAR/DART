@@ -7,7 +7,8 @@ source $DART/build_templates/buildpreprocess.sh
 mpisrc="null_mpi"
 windowsrc=""
 m=""
-
+LIBRARIES=""
+EXTRA=""
 
 #-------------------------
 # print usage and exit
@@ -147,7 +148,7 @@ else
  program=$DART/assimilation_code/programs/$1
 fi
 
- $DART/build_templates/mkmf -a $DART -x $m -p $(basename $1) \
+ $DART/build_templates/mkmf -a $DART -x $m -p $(basename $1) -l $LIBRARIES \
      $EXTRA \
      $convsrc \
      $program \

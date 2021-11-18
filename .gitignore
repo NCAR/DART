@@ -140,6 +140,9 @@ prepbufr.x
 prepbufr_03Z.x
 bufrlib.a
 gsi_to_dart
+convert_cosmic_gps_cdf
+convert_cosmic_ionosphere
+convert_gpsro_bufr
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables
