@@ -18,10 +18,8 @@ you generate wrong output. </rant>
 here are 3 places in particular where human intervention
 is required and takes a while:
 
-1) getting the NCEP+ACARS bufr files off the HPSS.  you have to
-know which Annnnn dataset contains the ACARS.  this has changed
-over the years so there's no easy way to script what you need
-to start with.  
+1) getting the NCEP+ACARS bufr files.  you have to
+ask CISL (Chifan ~2021) for the dataset that contains the ACARS.  
 
 2) knowing which GPS satellites have data during your time
 period, and which of the 3 levels of processing you should use.
@@ -68,6 +66,8 @@ ncep with acars:
  2) if your time period is other, use this procedure:
  - email chifan (in DSS) and ask for the DS 090.0 prepqm 
    tar files *with ncep+acars observations*.  
+   Include the day after your desired time span to accommodate
+   the windows used in obs_seq files.
    it usually takes less than a day for him to extract them 
    onto glade scratch. 
    The tar files will contain files prepqmYYMMDDHH.no_ship_id.gz.
@@ -124,7 +124,7 @@ gps:
  - The data are freely available, but somewhat hidden and scattered.  Go to
       https://www.cosmic.ucar.edu/what-we-do/data-processing-center/data
    and click on a link for a COSMIC mission, or look in the 'data' row
-   of the table of non-COSMIC missions.
+   of the table of non-COSMIC missions.  See also kdr_multi_parallel.batch, below.
 
  setup on a partition with a lot of space:
  - mkdir /glade/scratch/$USER/gps_conversion/{work,cosmic,shell_scripts}. 
@@ -136,8 +136,8 @@ gps:
    into the scratch gps_conversion/shell_scripts directory.
  - cd into the scratch shell_scripts directory.
    the jobs will be started from here.
- - edit my_gpsro_to_obsseq.csh to be sure it has the right scratch 
-   directory path, cdaac password, etc.
+ - edit gpsro_to_obsseq.csh to be sure it has the right scratch 
+   directory paths, data paths, etc. 
  - open a browser to:
       https://www.cosmic.ucar.edu/what-we-do/data-processing-center/data/
    A list (2021-9-3) of the locations of the data available for 2020-...
@@ -152,12 +152,13 @@ gps:
    which are usually in the level2 directories.
    Don't replicate processing levels for the same satellite 
    or you'll create duplicate obs.
- - edit my_multi_parallel.batch to set the satlist and the
-   start/end times.  
+ - edit my_multi_parallel.batch (or kdr_...) to set the satlist and the start/end times.  
+   Include the day after your desired time span to accommodate the windows 
+   used in obs_seq files.
 
  download and convert:
  - for testing, run with a single day or two. set these in 
-   my_multi_parallel.batch:
+   my_multi_parallel.batch (or kdr_multi_parallel.batch):
       set do_download = 'yes'
       set do_convert  = 'yes'
       set do_delete   = 'no'
@@ -177,6 +178,7 @@ gps:
  - set the start/end dates in 'move_there' and run it to move
    files into:
       /glade/p/cisl/dares/Observations/GPS/local-allsats-2019/YYYYMM
+      (2019 is the year the directory was set up and first used).
  - set the start/end dates in clean_here and run it to remove all
    the work directories.
 
@@ -195,15 +197,17 @@ airs:
    we use AIRS2RET.006 data for temperature and moisture.  
    (AIRX2RET.006 is the L2 product with radiance data in it.)
  - Get a list of files to fetch via Data Access: Subset/Get Data (the last option)
+   Include the day after your desired time span to accomodate the windows 
+   used in obs_seq files.
    It looks like it will start the data fetch process, 
    but only generates a list of files for use by wget.
    Wget is used in scripts described below, 
    but this page links to instructions for using it, if needed.
-   It's also possible to, "click here" to authorize (or maybe gain access to) 
+   It's also possible to "click here" to authorize (or maybe gain access to) 
    'NASA GESDISC DATA ARCHIVE' application, if you haven't already done that. 
  - Use shell_scripts/convert_airs_L2.csh to fetch the files.
    (it can convert to obs_seq format, but there's a faster, parallel program for that; 
-   AIRS/shell_scripts/multi_parallel.batch).
+   AIRS/shell_scripts/multi_parallel.batch.ksh).
    pick start and end dates.  there are 240 files/day, 
    and a month takes about 2 hours to download onto a glade disk (2020).
    (the rest of these instructions assume you're doing this process month by month.)
@@ -236,9 +240,17 @@ airs:
    a module to get them.  the ones i built a long time ago no longer work.
  - in the public repo, reanalysis branch : 
       observations/obs_converters/reanalysis/AIRS/shell_scripts
-   there's a 'multi_parallel.batch' script that runs the converter.  you can set
-   start/end times, and submit it to the batch queue.  it now does a year in
-   less than an hour, running in parallel.  files are created in 
+   there are:
+      multi_parallel.batch.ksh   script that runs the converter.  
+                                 you can set start/end times, 
+      dodaily.sh                 called by multi_ for each day.
+      input.nml.template         used to create an input.nml in each day's directory
+                                 tailored for that day.
+      
+   Make sure these files are in .../Observations/AIRS/work and have the right variable values.
+   submit multi_parallel.batch to the batch queue.  
+   it now does a year in less than an hour, running in parallel.  
+   files are created in 
       ../AIRS_sub9x10_nceperrs/YYYYMM/ dirs.
 
 merge:
@@ -254,6 +266,10 @@ merge:
       ncep - NCEP+ACARS/YYYMM_6H/obs_seqYYYYMMDDHH
       gps  - GPS/local-allsats-YYYY/YYYMM/obs_seq.gpsro_YYYYMMDD
       airs - AIRS/AIRS_24_sub9x10_nceperrs/YYYYMM/obs_seq.AIRS.YYYYMMDD.out
+ - set input.nml.template:obs_def_gps_nml:max_gpsro_obs to at least twice
+   the number of GPS obs in the all of the GPS input files 
+   to be merged for a single time window.
+   This may require using a large memory queue.
  - submit to batch queue
  - files end up in NCEP+ACARS+GPS+AIRS/Thinned_x9x10/YYYYMM_6H_CESM directory
    with cesm-style dates in the filenames:  obs_seq.YYYY-MM-DD-SSSSS

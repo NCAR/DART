@@ -23,15 +23,16 @@ cd $1
 if [ ! -d $2 ]; then mkdir -p $2; fi
 
 # do the merge
-./obs_sequence_tool
+./obs_sequence_tool 
+if [ $status == 0 ] then
+   # remove the executables and what we expect to see.  
+   rm -f advance_time obs_sequence_tool
+   rm -f dart_log.out dart_log.nml olist input.nml
+   # Otherwise, leave files that will cause the calling scripts to fail
+   # because this directory still exists.
+fi
 
-# remove the executables and what we
-# expect to see.  if nothing else is
-# there, remove the dir.
-rm -f advance_time obs_sequence_tool
-rm -f dart_log.out dart_log.nml olist input.nml
-
-# will fail if dir not empty.
+# Try to remove the dir.  will fail if dir not empty.
 cd ..
 rmdir $1
 
