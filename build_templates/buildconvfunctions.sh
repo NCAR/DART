@@ -148,7 +148,14 @@ else
  program=$DART/assimilation_code/programs/$1
 fi
 
- $DART/build_templates/mkmf -a $DART -x $m -p $(basename $1) -l $LIBRARIES \
+# Additional libraries
+if [ ! -z $LIBRARIES ]; then
+  mkmf_libs="-l $LIBRARIES"
+else
+  mkmf_libs=""
+fi
+ 
+ $DART/build_templates/mkmf -a $DART -x $m $mkmf_libs -p $(basename $1)  \
      $EXTRA \
      $convsrc \
      $program \
