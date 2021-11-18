@@ -4,10 +4,11 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildconvfunctions.sh
 
 CONVERTER=gnd_gps_vtec
 LOCATION=threed_sphere
-source $DART/build_templates/buildconvfunctions.sh
+
 
 programs=( \
 gnd_gps_vtec_text_to_obs \

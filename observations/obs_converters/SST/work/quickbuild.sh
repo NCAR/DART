@@ -4,10 +4,11 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildconvfunctions.sh
 
 CONVERTER=SST
 LOCATION=threed_sphere
-source $DART/build_templates/buildconvfunctions.sh
+
 
 programs=( \
 oi_sst_to_obs \

@@ -4,11 +4,12 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildconvfunctions.sh
 
 CONVERTER=AIRS
 LOCATION=threed_sphere
 EXTRA="$DART/observations/obs_converters/obs_error/ncep_obs_err_mod.f90"
-source $DART/build_templates/buildconvfunctions.sh
+
 
 programs=( \
 L1_AMSUA_to_netcdf

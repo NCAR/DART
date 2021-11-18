@@ -4,13 +4,14 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildconvfunctions.sh
 
 CONVERTER=ok_mesonet
 LOCATION=threed_sphere
 EXTRA="$DART/observations/obs_converters/obs_error/dewpoint_obs_err_mod.f90
        $DART/observations/obs_converters/obs_error/ncep_obs_err_mod.f90
        $DART/observations/obs_converters/MADIS/meteor_mod.f90"
-source $DART/build_templates/buildconvfunctions.sh
+
 
 programs=( \
 convert_ok_mesonet \

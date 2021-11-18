@@ -4,11 +4,12 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildconvfunctions.sh
 
 CONVERTER=MADIS
 LOCATION=threed_sphere
 EXTRA=obs_errors.path_names
-source $DART/build_templates/buildconvfunctions.sh
+
 
 programs=( \
 convert_madis_acars \

@@ -4,11 +4,12 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildconvfunctions.sh
 
 CONVERTER="NCEP/netcdf"
 LOCATION=threed_sphere
 EXTRA=obs_error.path_names
-source $DART/build_templates/buildconvfunctions.sh
+
 
 programs=( \
 convert_pb_netcdf \

@@ -4,10 +4,11 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+source $DART/build_templates/buildconvfunctions.sh
 
 CONVERTER=GTSPP
 LOCATION=threed_sphere
-source $DART/build_templates/buildconvfunctions.sh
+
 
 programs=( \
 thinned_gtspp_to_obs \

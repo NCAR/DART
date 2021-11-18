@@ -4,8 +4,9 @@ main() {
 set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
-
 source $DART/build_templates/buildconvfunctions.sh
+
+
 CONVERTER=gps
 LOCATION=threed_sphere
 LIBRARIES="../../NCEP/prep_bufr/lib/bufrlib.a"  
