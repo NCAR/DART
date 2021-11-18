@@ -11,7 +11,9 @@
 #               DART observations and outputs a daily DART obs_seq file.
 #
 # can be used standalone but intended to be called by one of the two
-# convert_xxx_gpsro.csh scripts in this same directory.
+# convert_xxx_gpsro.csh or *multi_parallel.batch scripts in this same directory.
+# If standalone for debugging; run from the shell_scripts directory 
+# ./gpsro_to_obsseq.csh YYYYMMDD ../cosmic/YYYYMMDD yes yes no ./satlist |& tee interactive_YYYYMMDD.out
 #
 # requires 6 args:
 #    $1 - analysis date (yyyymmdd format)
@@ -21,14 +23,14 @@
 #    $5 - yes to delete RO data when finished.  no to keep original files.
 #    $6 - file containing the names of the satellites to get data from
 #
-# update DART_DIR in this script to match your system, and if
-# downloading, set your CDAAC web page user name and password.
+# update DART_DIR in this script to match your system
 #
 # edit the input.nml in the work directory to select any options;
 # it will be copied to the various places it is needed.
 #
 # the processing directory name is relative to the 'work' directory.
 #
+# (2021 update: see satlist, below, for a new list)
 # the options for satellite names, and available data times are:
 #
 #    cosmic:      all 6 COSMIC : 2006.194 - now*
@@ -50,6 +52,18 @@
 #  - only select one of reprocessed or realtime for a satellite 
 #    or you will get duplicated observations.
 #
+# The new satlist format can be seen in this example
+#
+#    cosmic2  nrt/level2/YYYY/DDD/atmPrf_nrt
+#    geoopt   noaa/nrt/level2/YYYY/DDD/atmPrf_nrt
+#    spire    noaa/nrt/level2/YYYY/DDD/atmPrf_postProc
+#    metopa   postProc/level2/YYYY/DDD/atmPrf_postProc
+#    metopb   postProc/level2/YYYY/DDD/atmPrf_postProc
+#    metopc   postProc/level2/YYYY/DDD/atmPrf_postProc
+#    kompsat5 postProc/level2/YYYY/DDD/atmPrf_postProc
+#    paz      postProc/level2/YYYY/DDD/atmPrf_postProc
+#    tdx      postProc/level2/YYYY/DDD/atmPrf_postProc
+#    tsx      postProc/level2/YYYY/DDD/atmPrf_postProc
 #
 #     created June 2008, Ryan Torn NCAR/MMM
 #     updated Nov  2008, nancy collins ncar/cisl
@@ -66,8 +80,10 @@
 #   
 #   Here is one recipe for fetching one cosmic realtime atmPrf tar file for one day:
 #   
-#   wget -q --http-user=xxxx --http-passwd=xxxx \
-#         http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservice/data/cosmicrt/atmPrf/2018.017
+#   wget -q \
+#        https://data.cosmic.ucar.edu/gnss-ro/SAT/PATHFRAG_YYYY_DDD.tar.gz
+#   with SAT and PATHFRAG filled with values from the satlist (above)
+#   and all of the YYYY and DDD replaced by the year and 3 digit day.
 #   
 # at various times we've used some of these flags, although most of them
 # are unneeded at this time.
@@ -106,23 +122,23 @@
 # examples because it's not worked for me.
 
 # top level directory (root where observations/gps dir is found)
-setenv DART_DIR    /home/user/DART
-set cdaac_user    = username
-set cdaac_pw      = password
+# setenv DART_DIR    /home/user/DART
+# KDR: this choice is based on the instruction in the NCEP+ACARS+GPS+AIRS README
+#      to copy scripts and programs from the $DART repository 
+#      to the scratch gps_conversion directories.
+setenv DART_DIR /glade/scratch/raeder/gps_conversion
 
 # cdaac download site, daily tar files:
-set gps_repository_path = 'http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservice/data'
+set gps_repository_path = 'https://data.cosmic.ucar.edu/gnss-ro'
 
-# example daily tar file name:
-#http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservice/data/tsx/atmPrf/2017.213
-
-setenv DART_WORK_DIR  $DART_DIR/observations/obs_converters/gps/work
+# setenv DART_WORK_DIR  $DART_DIR/observations/obs_converters/gps/work
+setenv DART_WORK_DIR  $DART_DIR/work
 setenv CONV_PROG      convert_cosmic_gps_cdf
 setenv DATE_PROG      advance_time
 setenv DOWNLOAD_DIR   rawdata
 
-# options on wget command:
-set wget_cmd = "wget -q --http-user=$cdaac_user --http-passwd=$cdaac_pw" 
+# options on wget command (See file header for options):
+set wget_cmd = "wget -q" 
 
 # set to no if you don't want as much output.
 set chatty=yes
@@ -134,10 +150,11 @@ endif
 
 set datea   = $1     # target date, YYYYMMDD
 set datadir = $2     # under what directory to process the files
+                     # KDR; ../cosmic/$year$mo$day
 set downld  = $3     # download?  'yes' or 'no'
 set convert = $4     # convert?   'yes' or 'no'
 set cleanup = $5     # delete downloaded files at end? 'yes' or 'no'
-set satlist = $6     # file with list of satellites to use
+set satlist = $6     # full pathname of file with list of satellites to use
 
 
 if ( $chatty == 'yes' ) then
@@ -231,24 +248,16 @@ if ( $downld == 'yes' ) then
    cd $datadir
    echo 'current dir now ' `pwd`
 
-   if ( ! $?cdaac_user || ! $?cdaac_pw ) then
-      echo "You must set cdaac_user to your username for the cdaac web site"
-      echo "and set cdaac_pw to your password, then rerun this script. "
-      exit -1
-   endif
-
    if ( $chatty == 'yes' ) then
       echo 'starting raw file download at' `date`
    endif
    
-   if ( ! -d $DOWNLOAD_DIR ) then
-     echo 'creating new download directory: ' $DOWNLOAD_DIR
-     mkdir -p $DOWNLOAD_DIR
-   else
+   if ( -d $DOWNLOAD_DIR ) then
      echo 'existing directory found, cleaning up before new download'
      rm -fr $DOWNLOAD_DIR
-     mkdir -p $DOWNLOAD_DIR
    endif
+   echo 'creating new download directory: ' $DOWNLOAD_DIR
+   mkdir -p $DOWNLOAD_DIR
    
    cd $DOWNLOAD_DIR
    ln -sf $DART_WORK_DIR/input.nml .
@@ -259,20 +268,32 @@ if ( $downld == 'yes' ) then
    echo 'downloading tar file of obs for date: ' $datea ', which is julian day: ' $jyyyydd
 
    # do this loop once for each satellite source you've selected
-   foreach sat ( `cat ../$satlist` )
+   # foreach sat ( `cat ../$satlist` )
+   set num_sats = `wc -l ../$satlist`
+   set s = 1
+   while ($s <= $num_sats[1])
+      # Extract a line of satellite info.
+      # satlist passed in is './satlist'.  Find it in ../satlist = .$satlist
+      set sat_line = (`sed -n ${s}p .$satlist`)
+      set sat = $sat_line[1]
+      set pathfrag = `echo $sat_line[2] | sed -e "s#YYYY#$yyyy#;s#DDD#$mday#"`
       if ( $chatty == 'yes' ) then
-         echo 'copying data files from satellite: ' $sat
+         echo 'copying data files from satellite: ' $sat $pathfrag
       endif
        
       # get and untar, leaving all files in the current dir
       set day_file = daily_${sat}_${yyyy}_${mday}
-      $wget_cmd -O $day_file $gps_repository_path/$sat/atmPrf/${yyyy}.${mday}
+      echo "Fetching $gps_repository_path/${sat}/${pathfrag}_${yyyy}.${mday}.tar.gz"
+      $wget_cmd -O $day_file $gps_repository_path/${sat}/${pathfrag}_${yyyy}_${mday}.tar.gz
+      # old $wget_cmd -O $day_file $gps_repository_path/$sat/atmPrf/${yyyy}.${mday}
+
       if ( -z $day_file ) then
-         echo no data available/downloaded for satellite $sat on $yyyy $mday
+         echo "  no data available/downloaded for satellite $sat on $yyyy $mday"
          rm $day_file
       else
-         tar -xf $day_file --strip-components=3    # remove long path
+         tar -xf $day_file 
       endif
+      @ s++
    end
    rm input.nml dart_log.*
    
@@ -318,16 +339,16 @@ if ( $convert == 'yes') then
    
    ./$CONV_PROG >>! convert_output_log
 
-   rm -rf flist
    if ( -e obs_seq.gpsro ) then
        mv obs_seq.gpsro obs_seq.gpsro_${datea}
+       rm -rf flist
    
       if ( $chatty == 'yes' ) then
          echo "all observations for day in file obs_seq.gpsro_${datea} at " `date`
       endif
    else
       if ( $chatty == 'yes' ) then
-         echo "no obs found for date $datea, or conversion failed.'
+         echo "no obs found for date $datea, or conversion failed."
       endif
    endif
 

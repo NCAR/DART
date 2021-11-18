@@ -1,10 +1,10 @@
-This needs to be adapted to use the satlist format used in kdr_multi_parallel.batch.
-
 #!/bin/tcsh
 #
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 #
 # Driver script for the parallel version.  Submit this script
 # to your batch system and it will invoke the 'gpsro_to_obsseq.csh'
@@ -33,7 +33,7 @@ This needs to be adapted to use the satlist format used in kdr_multi_parallel.ba
 #SBATCH -n 8
 #SBATCH --ntasks-per-node=8
 #SBATCH --time=00:10:00
-#SBATCH -A P86850054
+#SBATCH -A your_account
 #SBATCH -p dav
 #SBATCH -C casper
 #SBATCH -e gpsobs1.%j.err
@@ -47,11 +47,12 @@ This needs to be adapted to use the satlist format used in kdr_multi_parallel.ba
 # qdel     kill a job
 # qpeek    see output from a running job
 #
-#PBS -N gpsobs1         
-#PBS -l walltime=04:00:00
+# This form of "anything.YYYY-M-D.M-D" will be parsed into start and end dates. 
+#PBS -N gpsobs.2020-2-1.12-31
+#PBS -l walltime=08:00:00
 #PBS -q regular
 #PBS -l select=1:ncpus=36:mpiprocs=36
-#PBS -A P86850054
+#PBS -A your_account
 #
 #==========================================================================
 # LSF directives                bsub < script.csh
@@ -66,27 +67,34 @@ This needs to be adapted to use the satlist format used in kdr_multi_parallel.ba
 #BSUB -q small
 #BSUB -n 16
 #BSUB -W 0:10:00
-#BSUB -P P86850054
+#BSUB -P your_account
 #
 #==========================================================================
 
 # USER SETTINGS HERE
 
-# Set year, month, days for to pass as args to gpsro_to_obsseq.csh
-set start_year  = 2016
-set start_month =    1
-set start_day   =    1
+# Set years, months, days to pass as args to gpsro_to_obsseq.csh.
+set JOB_line = (`echo $PBS_JOBNAME | sed -e "s#\.# #g"`)
 
-set end_year    = 2017
-set end_month   =   12
-set end_day     =   31
+@ s = $#JOB_line - 1
+set start_date = (`echo $JOB_line[$s] | sed -e "s#-# #g"`)
+set start_year  = $start_date[1]
+set start_month = $start_date[2]
+set start_day   = $start_date[3]
+echo "start_year = end_year = $start_year, start_month = $start_month, start_day = $start_day"
+
+set end_date = (`echo $JOB_line[$#JOB_line] | sed -e "s#-# #g"`)
+set end_year    = $start_year
+set end_month   = $end_date[1]
+set end_day     =  $end_date[2]
+echo "end_month = $end_month, end_day = $end_day"
 
 # should match the mpiprocs=X setting above
 set njobs = 36
 
 # where to download the data and do the conversions, relative to
-# this shell_scripts directory.  the script below will add YYYYMM
-# to the end of this string.
+# the shell_scripts directory containing these scripts.  
+# the script below will add /YYYYMM to the end of this string.
 set datadir = ../cosmic
 
 # for each day: 
@@ -112,42 +120,61 @@ set do_delete   = 'yes'
 # data is reprocessed and new obs arrive.
 # check the CDAAC web site for the currently available days.  
 #
-# log in here: http://cdaac-www.cosmic.ucar.edu/cdaac/login/
-# go to 'data center' then 'data access' for the current
-# table of satellites and days that have data files.
+# 
+# go to https://www.cosmic.ucar.edu/what-we-do/data-processing-center/data/
+# for the current table of satellites and days that have data files.
+# these dates were current as of Sep 2021.  '+' = updated 2021-9
 #
-# these dates were current as of May 2016:
-#
-# name_to_use    date range           what instrument?
-# -----------    ----------           ---------------
-# champ2016    2001.138 - 2008.279    CHAMP
-# cnofs        2010.060 - 2011.365    Air Force C/NOFS
-# cnofsrt      2012.001 - 2015.193      "    (realtime)
-# cosmic2013   2006.112 - 2014.120    COSMIC, reprocessed
-# cosmic       2014.121 - 2015.364      "    (not reprocessed yet)
-# cosmicrt     2014.181 - 2016.123      "    (realtime)
-# gpsmet       1995.111 - 1997.047    ?
-# gpsmetas     1995.237 - 1997.016    ?
-# grace        2007.059 - 2015.364    Grace-A
-# kompsat5rt   2015.305 - 2016.123    ?
-# metopa2016   2007.274 - 2015.365    Metop-A/GRAS, reprocessed 2016
-# metopb       2013.032 - 2015.059    Metop-B/GRAS 
-# sacc         2006.068 - 2011.215    Argentinan SAC-C
-# saccrt       2011.329 - 2013.226      "    (realtime)
-# tsx          2008.041 - 2015.333    German TerraSAR-X
+#  name_to_use    date range           what instrument?
+#  -----------    ----------           ---------------
+#  champ2016    2001.138 - 2008.279    CHAMP
+#  cnofs        2010.060 - 2011.365    Air Force C/NOFS
+#  cnofsrt      2012.001 - 2015.193      "    (realtime)
+#  cosmic2013   2006.112 - 2014.120    COSMIC, reprocessed
+#+ cosmic1      2014.121 - 2020.122      "    (not reprocessed yet?)
+#+ cosmic2      2019.275 - 2021.?      
+#  cosmicrt     2014.181 - 2016.123      "    (realtime)
+#+ geoopt       2020.351 - 2021.014
+#  gpsmet       1995.111 - 1997.047    ?
+#  gpsmetas     1995.237 - 1997.016    ?
+#+ grace        2007.059 - 2017.334    Grace-A
+#+ kompsat5rt   2015.305 - 2021.059    ?
+#+ metopa       2016.001 - 2021.059    
+#+ metopb       2016.001 - 2021.059    Metop-B/GRAS 
+#+ metopc       2019.195 - 2021.059    
+#  metopa2016   2007.274 - 2015.365    Metop-A/GRAS, reprocessed 2016
+#+ metopb2016   2013.032 - 2015.365    
+#+ paz          2018.130 - 2021.059    
+#+ spire        2020.352 - 2021.015 
+#  sacc         2006.068 - 2011.215    Argentinan SAC-C
+#  saccrt       2011.329 - 2013.226      "    (realtime)
+#+ tdx          2016.001 - 2021.059
+#+ tsx          2008.041 - 2021.059    German TerraSAR-X
 #
 
 # which satellites to include:
 
-# 2010 obs:
-
+# The pathnames of the data are no longer uniform, 
+# so specify the pathname after the satellite name.
+# _YYYY_MM.tar.gz will be appended in gpsro_to_obsseq.csh
 rm -fr satlist
-echo cosmic      >> satlist
-echo grace       >> satlist
-echo kompsat5    >> satlist
-echo metopa      >> satlist
-echo metopb      >> satlist
-echo tsx         >> satlist
+touch satlist
+echo cosmic2        nrt/level2/YYYY/DDD/atmPrf_nrt       >> satlist
+echo geoopt    noaa/nrt/level2/YYYY/DDD/atmPrf_nrt       >> satlist
+echo spire     noaa/nrt/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+echo metopa    postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+echo metopb    postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+echo metopc    postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+echo kompsat5  postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+echo paz       postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+echo tdx       postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+echo tsx       postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+
+# echo cosmic      >> satlist
+# echo grace       >> satlist
+# echo metopa      >> satlist
+# echo metopb      >> satlist
+# echo tsx         >> satlist
 
 # END USER SETTINGS
 
@@ -182,7 +209,7 @@ mkdir -p $TMPDIR
 # and link to a working advance_time
 
 cp satlist ../work
-ln -sf ../work/advance_time
+if ( ! -f advance_time) ln -sf ../work/advance_time .
 if ( ! -f input.nml ) then
   echo \&utilities_nml > input.nml
   echo / >> input.nml
@@ -202,6 +229,7 @@ echo job started at `date`
 
 set mon2=`printf %02d $end_month`
 set day2=`printf %02d $end_day`
+# Gregorian date
 set end_d=(`echo ${end_year}${mon2}${day2}00 0 -g | ./advance_time`)
 
 set mon2=`printf %02d $start_month`
@@ -219,12 +247,11 @@ set curday=`echo ${start_year}${mon2}${day2}00 0 | ./advance_time`
 # evaluation of ops with equal priority is most common.)
 @ totaldays = ( $end_d[1] - $start_d[1] ) + 1
 
-echo This script is going to run for $totalsteps days.
-echo Starting at $start_year $start_month $start_day
-echo Ending at $end_year $end_month $end_day 
-echo ''
-
-
+# echo this to help log what this batch job is converting
+echo converting files for $totaldays days
+echo starting at $start_year $start_month $start_day
+echo ending at $end_year $end_month $end_day
+echo ""
 # loop over each day
 set d=1
 while ( $d <= $totaldays )
@@ -253,8 +280,7 @@ while ( $d <= $totaldays )
   
     # create a command file where each line calls a script with
     # unique arguments, including a unique work directory name.
-    # FIXME: remove the 'my' when this works.
-    echo "csh ./my_gpsro_to_obsseq.csh $tdate $datadir/$tdate $do_download $do_convert $do_delete ./satlist" >> mycmdfile
+    echo "csh ./gpsro_to_obsseq.csh $tdate $datadir/$tdate $do_download $do_convert $do_delete ./satlist" >> mycmdfile
   
     # advance the day; the output is YYYYMMDD00
     set curday=`echo ${year}${month}${day}00 +1d | ./advance_time`

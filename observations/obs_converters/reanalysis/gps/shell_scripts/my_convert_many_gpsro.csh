@@ -1,3 +1,5 @@
+This needs to be adapted to use the satlist format used in kdr_multi_parallel.batch.
+
 #!/bin/csh
 #
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is

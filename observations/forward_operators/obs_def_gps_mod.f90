@@ -99,6 +99,7 @@ logical, save :: module_initialized = .false.
 ! the local has no additional metadata; the nonlocal needs one of these
 ! allocated and filled in.
 integer :: max_gpsro_obs = 100000
+integer :: space_gpsro_obs 
 
 type gps_nonlocal_type
    private
@@ -145,10 +146,11 @@ if (do_nml_file()) write(nmlfileunit, nml=obs_def_gps_nml)
 if (do_nml_term()) write(     *     , nml=obs_def_gps_nml)
 
 ! find max number of gps obs which can be stored, and initialize type
-allocate(gps_data(max_gpsro_obs), stat = rc)
+space_gpsro_obs = 2 * max_gpsro_obs
+allocate(gps_data(space_gpsro_obs), stat = rc)
 if (rc /= 0) then
    write(string1, *) 'initial allocation failed for gps observation data,', &
-                       'itemcount = ', max_gpsro_obs
+                       'itemcount = 2 x max_gpsro_obs = ', space_gpsro_obs
    call error_handler(E_ERR,'initialize_module', string1, &
                       source, revision, revdate)
 endif
@@ -171,8 +173,8 @@ if ( .not. module_initialized ) call initialize_module
 keycount = keycount + 1
 gpskey = keycount
 
-if(gpskey > max_gpsro_obs) then
-   write(string1, *) 'key (',gpskey,') exceeds max_gpsro_obs (',max_gpsro_obs,')'
+if(gpskey > space_gpsro_obs) then
+   write(string1, *) 'key (',gpskey,') exceeds 2 x max_gpsro_obs (',space_gpsro_obs,')'
    string2 = 'Increase max_gpsro_obs in input.nml &obs_def_gps_nml namelist.'
    call error_handler(E_ERR,'read_gpsro_ref', string1, &
                       source, revision, revdate, text2=string2)
