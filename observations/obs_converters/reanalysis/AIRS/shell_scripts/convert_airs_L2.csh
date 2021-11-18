@@ -13,7 +13,7 @@
 #               DART observations, and outputs a daily DART obs_seq file.
 #
 # can be used standalone but intended to be called by one of the two
-# convert_xxx_airs_L2.csh scripts in this same directory.
+# convert_xxx_airs_L2.csh scripts, or multi_parallel.batch (not .ksh), in this same directory.
 #
 # requires 5 args:
 #    $1 - analysis date (yyyymmdd format)
@@ -22,10 +22,14 @@
 #    $4 - yes to convert AIRS L2 data to an obs_seq file.  no to skip convert.
 #    $5 - yes to delete AIRS L2 data when finished.  no to keep original files.
 #
-# update DART_DIR in this script to match your system, and if
-# downloading, set your web page user name and password.
+# update DART_DIR in this script to match your system, 
+# and if downloading, set your web page user name and password.
+# (No longer needed in 2021).
 #
-# edit the input.nml in the work directory to select any options;
+# edit the input.nml in the work directory (copied from ./input.nml(.template))
+# [KDR; the template file has output_file = OUTDIR/YYYYMM/obs_seq.AIRS.YYYYMMDD.out,
+#       which is expecting the scripts to replace the CAPs, which they don't do.]
+# to select any options;
 # it will be copied to the various places it is needed.
 #
 # the processing directory name is relative to the 'work' directory.
@@ -67,6 +71,20 @@ setenv DATE_PROG      advance_time
 setenv DOWNLOAD_DIR   /glade/work/nancy/AIRS_data
 
 # their example wget command:
+# 2021; check the cookies requirement
+#       Make the date_time part of the file name an variable, set with AIRS_repository_path?
+#       Context; the get_files and downloads* filename in the README refer to 
+#       $obs/AIRS/Daily_raw_files/get_files:       
+#         wget
+#         x  --background
+#            --load-cookies /glade/u/home/nancy/.urs_cookies
+#            --save-cookies /glade/u/home/nancy/.urs_cookies
+#         x  --no-verbose
+#            --auth-no-challenge=on
+#            --keep-session-cookies
+#            --content-disposition
+#            -i downloads*.txt
+
 touch ~/.urs_cookies
 set wget_cmd = "wget --load-cookies ~/.urs_cookies --save-cookies ~/.urs_cookies --auth-no-challenge=on --keep-session-cookies --content-disposition -i ./subset_AIRX2RET_V006_20180813_220243.txt"
 # that last filename is a text file with a list of files
@@ -135,6 +153,7 @@ endif
 # copy over the date program and the converter from
 # the work dir to the data processing directory.
 # also the merge program and template for that.
+# Make this conditional on $convert ?
 cp -fv ./$DATE_PROG ./$CONV_PROG $datadir
 
 ########################################################################
@@ -161,10 +180,10 @@ if ( $downld == 'yes' ) then
    cd $DOWNLOAD_DIR
    ln -sf $DART_WORK_DIR/input.nml .
    
+   echo 'downloading tar file of obs for date: ' $datea 
    set yyyy    = `echo $datea | cut -b1-4`
    set mm      = `echo $datea | cut -b5-6`
    set dd      = `echo $datea | cut -b7-8`
-   echo 'downloading tar file of obs for date: ' $datea '
    set dstring = ${yyyy}.${mm}.${dd}
 
    # get and untar, leaving all files in the current dir

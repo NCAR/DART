@@ -7,27 +7,28 @@
 /
 
 &convert_airs_L2_nml
-   datadir            = '',
    l2_files           = '',
    l2_file_list       = 'flist' ,
-   outputdir          = '.',
+   outputfile         = 'OUTDIR/YYYYMM/obs_seq.AIRS.YYYYMMDD.out',
    min_MMR_threshold  = 1.0e-30
    top_pressure_level = 0.0001,
-   along_track_thin   = 4,
-   cross_track_thin   = 4,
+   along_track_thin   = 9,
+   cross_track_thin   = 10,
    lon1               =   0.0, 
    lon2               = 360.0, 
    lat1               = -90.0, 
    lat2               =  90.0
+   use_NCEP_errs      = .true.
+   version            = 6
  /
 
 &obs_sequence_tool_nml
    filename_seq         = '',
    filename_seq_list    = 'obs_flist',
-   filename_out         = 'OUTDIR/obs_seq.YYYYMMDD',
-   first_obs_days       = GREG1
+   filename_out         = '../output_obs_seq/obs_seq.AIRS.20100701.out',
+   first_obs_days       = 149565
    first_obs_seconds    = 0,
-   last_obs_days        = GREG1
+   last_obs_days        = 149565
    last_obs_seconds     = 86399,
    gregorian_cal        = .true.,
  /
