@@ -714,8 +714,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
          updated_ens, my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
          obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-         close_state_dist(j), cutoff_rev, net_a, &
-         grp_size, grp_beg, grp_end, i, my_state_indx(state_index), final_factor, correl)
+         close_state_dist(j), cutoff_rev, net_a, grp_size, grp_beg, grp_end, i, &
+          my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate)
 
       ! If doing full assimilation, update the state variable ensemble with weighted increments
       if(.not. inflate_only) ens_handle%copies(1:ens_size, state_index) = updated_ens
@@ -747,8 +747,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
                updated_ens, my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
                obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-               close_obs_dist(j), cutoff_rev, net_a, &
-               grp_size, grp_beg, grp_end, i, -1*my_obs_indx(obs_index), final_factor, correl)
+               close_obs_dist(j), cutoff_rev, net_a, grp_size, grp_beg, grp_end, i, &
+               -1*my_obs_indx(obs_index), final_factor, correl, .false.)
 
             obs_ens_handle%copies(1:ens_size, obs_index) = updated_ens
          endif
@@ -2099,10 +2099,9 @@ end subroutine update_ens_from_weights
 !---------------------------------------------------------------
 
 subroutine obs_updates_ens(ens_size, num_groups, ens, updated_ens, ens_loc, ens_kind, &
-   obs_prior, obs_inc, obs_prior_mean, obs_prior_var, obs_loc, obs_type, obs_time, &
-   dist, cutoff_rev, net_a, &
-   grp_size, grp_beg, grp_end, reg_factor_obs_index, reg_factor_ens_index, &
-   final_factor, correl)
+   obs_prior, obs_inc, obs_prior_mean, obs_prior_var, obs_loc, obs_type, obs_time,    &
+   dist, cutoff_rev, net_a, grp_size, grp_beg, grp_end, reg_factor_obs_index,         &
+   reg_factor_ens_index, final_factor, correl, correl_needed)
 
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: num_groups
@@ -2127,6 +2126,7 @@ integer,             intent(in)  :: reg_factor_obs_index
 integer(i8),         intent(in)  :: reg_factor_ens_index
 real(r8),            intent(out) :: final_factor
 real(r8),            intent(out) :: correl(num_groups)
+logical,             intent(in)  :: correl_needed
 
 real(r8) :: reg_coef(num_groups), increment(ens_size)
 real(r8) :: cov_factor, reg_factor
@@ -2146,10 +2146,16 @@ endif
 ! Loop through groups to update the state variable ensemble members
 do group = 1, num_groups
    grp_bot = grp_beg(group); grp_top = grp_end(group)
-   ! Do update of state, correl only needed for varying ss inflate but compute for all
-   call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-      obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
-      increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+   ! Do update of state, correl only needed for varying ss inflate
+   if(correl_needed) then
+      call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+         obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+         increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+   else
+      call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+         obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+         increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+   endif
 end do
 
 if(num_groups <= 1) then
