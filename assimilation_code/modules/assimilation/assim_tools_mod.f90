@@ -340,11 +340,12 @@ real(r8), allocatable :: close_state_dist(:)
 real(r8), allocatable :: last_close_obs_dist(:)
 real(r8), allocatable :: last_close_state_dist(:)
 real(r8), allocatable :: all_my_orig_obs_priors(:, :)
-real(r8), allocatable :: state_likelihood(:, :)
+real(r8), allocatable :: state_likelihood(:, :), prior_state_mass(:, :), prior_state_ens(:, :)
 
 integer(i8) :: state_index
 integer(i8), allocatable :: my_state_indx(:)
 integer(i8), allocatable :: my_obs_indx(:)
+integer,     allocatable :: prior_state_index_sort(:, :)
 
 integer :: my_num_obs, i, j, owner, owners_index, my_num_state
 integer :: obs_mean_index, obs_var_index
@@ -542,14 +543,29 @@ if(local_ss_inflate) then
    end do
 endif
 
+!--------------------------------------------------------------------------
 ! Keep the original obsevation prior ensemble before any obs have been used
 ! Needed to compute the likelihoods for multi-obs state space QCEFs. 
-allocate(all_my_orig_obs_priors(ens_size, my_num_obs), state_likelihood(ens_size, my_num_state))
+allocate(all_my_orig_obs_priors(ens_size, my_num_obs), state_likelihood(ens_size + 1, my_num_state), &
+   prior_state_mass(ens_size + 1, my_num_state), prior_state_ens(ens_size, my_num_state),            &
+   prior_state_index_sort(ens_size, my_num_state))
 do i = 1, my_num_obs
    all_my_orig_obs_priors(:, i) = obs_ens_handle%copies(1:ens_size, i)
 end do
+
 ! State likelihoods start as all 1 (no information)
 state_likelihood = 1.0_r8
+
+! Just a naive prior_state_index_sort for now; will be highly inefficient
+! Initialize the sorting index; Eventually this could be carried over for efficiency
+do j = 1, ens_size
+   prior_state_index_sort(j, :) = j
+end do
+
+! For MARHF the prior state mass is uniformly distributed
+prior_state_mass = 1.0_r8 / (ens_size + 1.0_r8)
+
+!--------------------------------------------------------------------------
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -753,8 +769,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       if(.not. inflate_only) ens_handle%copies(1:ens_size, state_index) = updated_ens
 
       ! Update the likelihood for this state variable
-      !!!!call update_state_like(prior_state_index_sort(:, state_index), state_likelihood(:, j), &
-         !!!orig_obs_like, prior_state_mass(:, state_index), ens_size, final_factor)
+      call update_state_like(prior_state_index_sort(:, j), state_likelihood(:, j), &
+         orig_obs_likelihood, prior_state_mass(:, j), ens_size, final_factor)
 
       ! Compute spatially-varying state space inflation
       if(local_varying_ss_inflate .and. final_factor > 0.0_r8) then
@@ -791,6 +807,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       end do OBS_UPDATE
    endif
 end do SEQUENTIAL_OBS
+
+!--------------------------------------------------------------------------------
+! Now do the marginal adjustment steps
+! First get the update posterior with the likelihood
+
+!--------------------------------------------------------------------------------
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
 if(local_single_ss_inflate) then
@@ -877,7 +899,8 @@ deallocate(close_state_dist,      &
 deallocate(n_close_state_items, &
            n_close_obs_items)
 
-deallocate(all_my_orig_obs_priors, state_likelihood)
+deallocate(all_my_orig_obs_priors, state_likelihood, prior_state_mass, prior_state_ens, &
+   prior_state_index_sort)
 ! end dealloc
 
 end subroutine filter_assim
@@ -1878,8 +1901,7 @@ real(r8), intent(in)              :: alpha
 real(r8) :: weight(ens_size + 1), post_mass(ens_size + 1), loc_like(ens_size), s_like(ens_size)
 real(r8) :: total_post_mass
 
-integer :: i, lo, hi, num_smooth
-real(r8) :: smooth_like(ens_size)
+integer :: i
 
 integer, parameter :: smooth_width = 0
 
