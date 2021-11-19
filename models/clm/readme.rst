@@ -191,17 +191,29 @@ However, updating the prognostic variables
 (*T_SOISNO, H2OSOI_LIQ, H2OSOI_ICE, DZSNO, ZSNO, ZISNO*)
 through their ensemble covariance with the update to *H2OSNO*, for example
 will generally not result in a posterior SWE (calculated from the prognostic 
-variables) that matches the posterior SWE in *H2OSNO*. Consequently, a 
-partitition function should be used to redistribute the posterior SWE into
-the appropriate prognostic variables. **This is under development.**
-Note that we have not attempted to include any of the snow property
-variables (grain radius, carbon content, etc) in the DART state.
+variables) that matches the posterior SWE in *H2OSNO*.
+
+**In order to address this challenge,** a snow repartitition function has been
+created in ``dart_to_clm`` that redistributes the posterior SWE into
+the appropriate prognostic variables. This **guarantees** that the posterior
+SWE of the prognostic snow variables matches the posterior SWE in H2OSNO.
+**When snow related variables are being updated within an assimilation it is
+recommended to invoke this repartitioning function by setting the namelist 
+option ``repartition_swe = 1 or 2`` within ``&dart_to_clm_nml``**. See the 
+:doc:`dart_to_clm` for more details describing the repartitioning function including
+guidance on how to set up a case that repartitions snow. Note that we have not
+attempted to include any of the snow property variables most important to controlling
+albedo (eg. grain radius, carbon, dust) within the DART state.  To what extent adjusting
+mass and dimensional properties of snow layers indirectly influences the
+albedo properties is an active scientific question. See the :doc:`dart_to_clm`
+for more details on how to implement ``repartition_swe`` if conserving albedo
+is important for your application.  
 
 The snow formulation in CLM is complex. Reducing the amount of snow through
 assimilation is well-defined. Creating snow when there is none is 
 **a limited capability** in CLM-DART. If snow exists for a subset of ensemble
 members at a given location, then it is possible to adjust ensemble members
-with a value of zero to a non-zero value. On the other hand, 
+with a value of zero to a non-zero value.  On the other hand, 
 **if all ensemble members do not have snow, or at least one member has a FillValue**,
 the statistical assumptions for ensemble data assimilation are
 not valid and the snow variables remain at zero. The best method would be to alter the
@@ -211,7 +223,7 @@ snow - maybe we should just use the values from some other member - but when
 does that stop being acceptable? 10 ensemble members? 20? The distributions
 become multimodal, and the logical end result is that you could wind up using
 1 ensemble member to declare the snow for all the remaining members. That seems
-like a bad idea.
+like a bad idea.  
 
 Similar logic applies to the variables related to plant growth. If the LAI
 observations indicates there should be something growing and nothing has

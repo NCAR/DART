@@ -5,11 +5,9 @@
 program dart_to_clm
 
 !----------------------------------------------------------------------
-! purpose: Update the CLM restart file with the DART posterior. If the
-!          DART posterior _FillValue exists replace it with original
-!          CLM value. If repartition_swe = .true. then perform snow_update
-!          which repartitions prognostic snow-related variables from 
-!          H2OSNO (a diagnostic variable).
+! purpose: Update the CLM restart file with the DART posterior. If need
+!          be, take the posterior SWE (a diagnostic variable) and
+!          repartition it into prognostic snow layers.
 !
 ! method: Read DART posterior and replace the valid values in the
 !         CLM restart file. Anything with a DART posterior _FillValue 
@@ -76,14 +74,18 @@ character(len=*), parameter :: source = 'dart_to_clm.f90'
 !------------------------------------------------------------------
 
 character(len=256) :: dart_to_clm_input_file = 'dart_posterior.nc'
-! @fixme  character(len=256) :: dart_to_clm_vector_file = 'dart_posterior_vector.nc'
 character(len=256) :: dart_to_clm_output_file = 'clm_restart.nc'
 integer            :: repartition_swe = 0
+character(len=256) :: repartition_vhist_file = 'clm_vector_history.nc'
+character(len=256) :: repartition_analysis_file = 'dart_posterior_vector.nc'
 integer            :: verbose = 0
 
 namelist /dart_to_clm_nml/ dart_to_clm_input_file, &
                            dart_to_clm_output_file, &
-                           repartition_swe, verbose
+                           repartition_swe, &
+                           repartition_vhist_file, &
+                           repartition_analysis_file, &
+                           verbose
 
 !----------------------------------------------------------------------
 
@@ -149,8 +151,9 @@ dom_restart = 1
 
 UPDATE : do ivar=1, get_num_variables(dom_restart)
   
-  ! If repartitioning SWE then skip applying snow variable updates within UPDATE loop
-  ! The snow variable updates will be performed in 'update_snow'
+  ! If repartitioning SWE is enabled, then skip applying snow variable updates
+  ! within UPDATE loop which applies un-repartitioned DART posterior
+  ! The repartitioned snow variable updates will be performed in 'update_snow'
   if (repartition_swe > 0.0_r8) then
 
 
@@ -194,7 +197,7 @@ enddo UPDATE
         write(string1,*)'Snow repartitioning requires "H2OSOI_ICE" variable'
         call error_handler(E_ERR,source,string1,source)
      endif
-
+     
      call update_snow(dom_restart, ncid_dart, ncid_clm, ICE_varsize(2), &
                       ICE_varsize(1), nlevsno, repartition_swe)
 
@@ -394,7 +397,7 @@ character(len=*), parameter :: routine = 'update_snow'
 ! Need repartition_swe to distinguish between all-layer(1) and bottom layer(2)
 ! SWE partitioning
 integer, intent(in) :: ncolumn, nlevel, nlevsno, repartition_swe
-integer  :: icolumn, ilevel, c, partition_layer
+integer  :: icolumn, ilevel, c
 integer  :: VarID, varsize(2)
 real(r8) :: snowden, wt_swe, wt_liq, wt_ice
 
@@ -446,11 +449,6 @@ real(r8) :: gain_h2oice, gain_h2oliq, gain_h2osno
 ! required for repartitioning.  There are mutliple 'snow depth' 
 ! variable names depending on clm version.
 
-!The SWE variable must come from H2OSNO vector history
-!and it must exist in the 'DART' state because we need 
-!the posterior value. If H2OSNO exists in DART state
-!it also exists in clm domain
-
 
 if (verbose > 0) then
 
@@ -495,8 +493,8 @@ else
     call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
-ncid_clm_vector= nc_open_file_readonly('clm_vector_history.nc', &
-                 'confirm H2OSNO is in clm_vectory_history.nc')
+ncid_clm_vector= nc_open_file_readonly(repartition_vhist_file, &
+                 'confirm H2OSNO is in clm_vector_history.nc')
 
 if (nc_variable_exists(ncid_clm_vector, 'H2OSNO')) then
    call nc_get_variable(ncid_clm_vector, 'H2OSNO',  clm_H2OSNO)
@@ -519,8 +517,8 @@ endif
 
 
 ! Check for DART state posterior variables.
-! H2OSNO posterior comes from dart_posterior_vector.nc
-! whereas all other variables come from dart_posterior.nc
+! H2OSNO posterior comes from dart_posterior_vector.nc (filter analysis stage)
+! whereas all other posterior variables come from dart_posterior.nc
 
 if (nc_variable_exists(ncid_dart, 'H2OSOI_LIQ') .and. nc_variable_exists(ncid_dart, 'DZSNO') &
     .and. nc_variable_exists(ncid_dart, 'H2OSOI_ICE') .and. nc_variable_exists(ncid_dart, 'ZSNO') &
@@ -536,7 +534,7 @@ else
     call error_handler(E_ERR,routine,string1,source,text2=string2)
 endif
 
-ncid_dart_vector= nc_open_file_readonly('dart_posterior_vector.nc', &
+ncid_dart_vector= nc_open_file_readonly(repartition_analysis_file, &
                  'confirm H2OSNO is in dart_posterior_vector.nc')
 
 if (nc_variable_exists(ncid_dart_vector, 'H2OSNO')) then
@@ -592,6 +590,17 @@ h2oice_po = h2oice_pr
 ! Adjust the variables to be consistent with the updated H2OSNO
 ! Remember: snlsno has the NEGATIVE of the number of snow layers.
 
+! The posterior snow water equivalent (h2osno_po) cannot be zero or negative
+! because H2OSNO is used to calculate the snow density -- which is used
+! to calculate the snow layer depth.
+! However the posterior H2OSNO values received from DART can be zero/negative
+! *therefore*  negative values of H2OSNO produced by DART, are set to prior value
+! when calculating the snow density
+
+! Alternatively could automatically set all snow related variables to
+! zero, when H2OSNO posterior is zero/negative. Currently not implmented.
+
+
 PARTITION: do icolumn = 1,ncolumn
       
    if (h2osno_po(icolumn) < 0.0_r8) then  ! If there IS NOT snow in column...
@@ -603,8 +612,8 @@ PARTITION: do icolumn = 1,ncolumn
       do ilevel=1,-snlsno(icolumn)
 
          h2oliq_po(ilevel,icolumn) = 0.0_r8
-         h2oice_po(ilevel,icolumn) = 0.00001_r8
-          dzsno_po(ilevel,icolumn) = 0.00000001_r8   !@fixme. Re-visit these values.
+         h2oice_po(ilevel,icolumn) = 0.00000001_r8
+          dzsno_po(ilevel,icolumn) = 0.00000001_r8   
 
       enddo
 
@@ -618,7 +627,7 @@ PARTITION: do icolumn = 1,ncolumn
 
          do c = 1,-snlsno(icolumn)   ! Identify total snow layers to repartition
             
-            ! In CLM 4 nlevsno  =5, but in CLM5 =12
+            ! In CLM4 nlevsno=5, but in CLM5 nlevsno=12
             ilevel = nlevsno-c+1     ! Loop through each snow layer 
 
             ! Calculate the snow density for each layer
@@ -638,7 +647,7 @@ PARTITION: do icolumn = 1,ncolumn
             elseif (h2osno_pr(icolumn) > 0.0_r8 .and. repartition_swe==2 &
                     .and. ilevel==nlevsno ) then
                 wt_swe = 1.0_r8
-            ! For all other cases do not allow for snow layer to be adjusted
+            ! For all other cases do not allow snow layer to be adjusted
             else
                 wt_swe = 0.0_r8
             endif
@@ -653,8 +662,8 @@ PARTITION: do icolumn = 1,ncolumn
                  wt_ice = 0.0_r8
             endif
             
-            ! Calculate the increment for each layer for SWE, liq and ice assuming identical
-            ! layer distribution as the prior 
+            ! Calculate the increment for each layer for SWE, assuming identical
+            ! layer distribution (liq,ice) as the prior 
             ! If there is no increment of column SWE (h2osno_pr-h2osno_po=0) then force gain =0
             ! and the column will not be re-partitioned for any layers
             if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) > 0.0_r8) then 
@@ -688,7 +697,7 @@ PARTITION: do icolumn = 1,ncolumn
                 dzsno_po(ilevel,icolumn) =  dzsno_pr(ilevel,icolumn) + gain_dzsno(ilevel,icolumn)
              
                 ! For consistency  with updated dzsno_po (thickness)
-                ! update zsno_po (middle depth) and zisno (top interface depth)
+                ! also update zsno_po (middle depth) and zisno (top interface depth)
              
                 zisno_po(ilevel,icolumn) = sum(dzsno_po(ilevel:nlevsno,icolumn))*-1.0_r8
             
@@ -701,7 +710,7 @@ PARTITION: do icolumn = 1,ncolumn
             
             if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) &
                 > 0.0_r8 .and. verbose > 2) then
-               ! Output diagnostics for active snow columns in which SWE is updated
+               ! Diagnostic output for active snow columns in which SWE is updated
                ! by DART.  These columns undergo re-partitioning.
                ! column,level,active snow layers,SWE,ice mass,liq mass,
                ! thickness,interface,middle 
@@ -733,7 +742,8 @@ PARTITION: do icolumn = 1,ncolumn
          enddo
       
       endif
-
+      
+      ! Update the total snow depth variable to match updates to layers 
       ! Only sum the gain of layers that are known to be active
       ! and recieved an H2OSNO adjustment.  This eliminates operating
       ! on columns that do not require re-partitioning
@@ -756,7 +766,7 @@ enddo PARTITION
  dart_ZSNO   = zsno_po
  dart_ZISNO  = zisno_po
 ! Important to update only the manually repartitioned above surface (snow) layers
-! Keep the subsurface layer values than come from DART posterior
+! Keep the subsurface layer values that come from (unpartitioned) DART posterior
  dart_H2OLIQ(1:nlevsno,:) =h2oliq_po(1:nlevsno,:)  
  dart_H2OICE(1:nlevsno,:) =h2oice_po(1:nlevsno,:)
 
@@ -771,8 +781,8 @@ else
 endif
 
 ! Identify location of missing_values and FillValues to prevent updates (masking)  
-!@fixme Is this right using 'get_has_missing_value' instead of 'get_has_FillValue' ??
-!@fixme I am following the same usage as in subroutine 'replace_values_2D'
+! Is this right using 'get_has_missing_value' instead of 'get_has_FillValue' ??
+! I am following the same usage as in subroutine 'replace_values_2D'
 if (get_has_missing_value(dom_id,VarID)) call get_missing_value(dom_id,VarID,special)
 if (get_has_missing_value(dom_id,VarID)) call get_FillValue(    dom_id,VarID,special)
 
