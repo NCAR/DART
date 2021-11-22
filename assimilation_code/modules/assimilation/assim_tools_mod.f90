@@ -1598,24 +1598,8 @@ real(r8), intent(in)  :: bound(2)
 ! code that only has a piecewise constant likelihood and has already sorted the ensemble.
 
 real(r8) :: sort_ens(ens_size), sort_ens_like(ens_size), post(ens_size)
-real(r8) :: piece_const_like(0:ens_size), post_weight(0:ens_size)
-real(r8) :: tail_mean(2), tail_sd(2), inv_tail_amp(2), bound_quantile(2)
-real(r8) :: prior_inv_tail_amp(2)
-real(r8) :: prior_sd, base_prior_prob
+real(r8) :: piece_const_like(0:ens_size)
 integer  :: i, sort_ind(ens_size)
-
-! Save to avoid a modestly expensive computation redundancy
-real(r8), save :: dist_for_unit_sd
-
-! For unit normal, find distance from mean to where cdf is 1/(ens_size+1).
-! Saved to avoid redundant computation for repeated calls with same ensemble size
-if(bounded_norm_rhf_ens_size /= ens_size) then
-   call norm_inv(1.0_r8 / (ens_size + 1.0_r8), dist_for_unit_sd)
-   ! This will be negative, want it to be a distance so make it positive
-   dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
-   ! Keep a record of the ensemble size used to compute dist_for_unit_sd
-   bounded_norm_rhf_ens_size = ens_size
-endif
 
 ! If all ensemble members are identical, this algorithm becomes undefined, so fail
 if(prior_var <= 0.0_r8) then
@@ -1640,6 +1624,48 @@ end do
 ! Likelihoods for outermost regions (bounded or unbounded); just outermost ensemble like
 piece_const_like(0) = sort_ens_like(1)
 piece_const_like(ens_size) = sort_ens_like(ens_size)
+
+call ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_var, &
+   post, is_bounded, bound)
+
+! These are increments for sorted ensemble; convert to increments for unsorted
+do i = 1, ens_size
+   obs_inc(sort_ind(i)) = post(i) - ens(sort_ind(i))
+end do
+
+end subroutine obs_increment_bounded_norm_rhf
+
+
+
+subroutine ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_var, &
+   post, is_bounded, bound)
+!-----------------------------------------------------------------------
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: sort_ens(ens_size)
+real(r8), intent(in)  :: piece_const_like(0:ens_size)
+real(r8), intent(in)  :: prior_var
+real(r8), intent(out) :: post(ens_size)
+logical,  intent(in)  :: is_bounded(2)
+real(r8), intent(in)  :: bound(2)
+
+real(r8) :: post_weight(0:ens_size)
+real(r8) :: tail_mean(2), tail_sd(2), inv_tail_amp(2), bound_quantile(2)
+real(r8) :: prior_inv_tail_amp(2)
+real(r8) :: prior_sd, base_prior_prob
+integer  :: i
+
+! Save to avoid a modestly expensive computation redundancy
+real(r8), save :: dist_for_unit_sd
+
+! For unit normal, find distance from mean to where cdf is 1/(ens_size+1).
+! Saved to avoid redundant computation for repeated calls with same ensemble size
+if(bounded_norm_rhf_ens_size /= ens_size) then
+   call norm_inv(1.0_r8 / (ens_size + 1.0_r8), dist_for_unit_sd)
+   ! This will be negative, want it to be a distance so make it positive
+   dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
+   ! Keep a record of the ensemble size used to compute dist_for_unit_sd
+   bounded_norm_rhf_ens_size = ens_size
+endif
 
 ! Fail if lower bound is larger than smallest ensemble member 
 if(is_bounded(1)) then
@@ -1700,12 +1726,7 @@ inv_tail_amp(2) = prior_inv_tail_amp(2) / (post_weight(ens_size) * (ens_size + 1
 call find_bounded_norm_rhf_post(sort_ens, ens_size, post_weight, tail_mean, tail_sd, &
    inv_tail_amp, bound, is_bounded, post)
 
-! These are increments for sorted ensemble; convert to increments for unsorted
-do i = 1, ens_size
-   obs_inc(sort_ind(i)) = post(i) - ens(sort_ind(i))
-end do
-
-end subroutine obs_increment_bounded_norm_rhf
+end subroutine ens_increment_bounded_norm_rhf
 
 
 subroutine find_bounded_norm_rhf_post(ens, ens_size, post_weight, tail_mean, &
