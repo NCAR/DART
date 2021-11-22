@@ -16,7 +16,7 @@ use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_o
                                  find_namelist_in_file, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
-use       sort_mod,       only : index_sort 
+use       sort_mod,       only : index_sort, index_insertion_sort 
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
@@ -340,7 +340,7 @@ real(r8), allocatable :: close_state_dist(:)
 real(r8), allocatable :: last_close_obs_dist(:)
 real(r8), allocatable :: last_close_state_dist(:)
 real(r8), allocatable :: all_my_orig_obs_priors(:, :)
-real(r8), allocatable :: state_likelihood(:, :), prior_state_mass(:, :), prior_state_ens(:, :)
+real(r8), allocatable :: piece_const_like(:, :), prior_state_mass(:, :), prior_state_ens(:, :)
 
 integer(i8) :: state_index
 integer(i8), allocatable :: my_state_indx(:)
@@ -543,10 +543,10 @@ if(local_ss_inflate) then
    end do
 endif
 
-!--------------------------------------------------------------------------
+!--------------------------------- QCEFF BLOCK --------------------------------
 ! Keep the original obsevation prior ensemble before any obs have been used
 ! Needed to compute the likelihoods for multi-obs state space QCEFs. 
-allocate(all_my_orig_obs_priors(ens_size, my_num_obs), state_likelihood(ens_size + 1, my_num_state), &
+allocate(all_my_orig_obs_priors(ens_size, my_num_obs), piece_const_like(ens_size + 1, my_num_state), &
    prior_state_mass(ens_size + 1, my_num_state), prior_state_ens(ens_size, my_num_state),            &
    prior_state_index_sort(ens_size, my_num_state))
 do i = 1, my_num_obs
@@ -554,18 +554,26 @@ do i = 1, my_num_obs
 end do
 
 ! State likelihoods start as all 1 (no information)
-state_likelihood = 1.0_r8
+piece_const_like = 1.0_r8
 
-! Just a naive prior_state_index_sort for now; will be highly inefficient
 ! Initialize the sorting index; Eventually this could be carried over for efficiency
 do j = 1, ens_size
    prior_state_index_sort(j, :) = j
 end do
+! Just a naive prior_state_index_sort for now; will be highly inefficient (but maybe not for small ensembles)
+! FOLLOWING BLOCK APPEARS TO GIVE NON_REPRODUCING ERROR 
+! NOTE THAT INDEX_INSERTION_SORT has been wrecked by a general sort refactor at some point
+!!!do i = 1, my_num_state
+!!!write(*, *) 'calling index_insertion_sort', i
+   !!!call index_insertion_sort(prior_state_ens(:, i), prior_state_index_sort(:, i), ens_size)
+!!!write(*, *) 'done with index_insertion_sort'
+!!!end do
 
 ! For MARHF the prior state mass is uniformly distributed
+! For other priors will need to compute quantiles at this point
 prior_state_mass = 1.0_r8 / (ens_size + 1.0_r8)
 
-!--------------------------------------------------------------------------
+!----------------------------- END QCEFF BLOCK --------------------------------
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -660,8 +668,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             OBS_PRIOR_MEAN_END, owners_index)
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
+         !--------------------------------- QCEFF BLOCK --------------------------------
          ! Also need the original obs prior ensemble for multi-obs state QCEF
          orig_obs_prior = all_my_orig_obs_priors(:, owners_index)
+         !----------------------------- END QCEFF BLOCK --------------------------------
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
@@ -703,10 +713,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          net_a(group))
    end do
 
+   !--------------------------------- QCEFF BLOCK --------------------------------
    ! Need to compute the likelihoods for the original prior ensemble for multi-obs state QCEF
    ! No thought about groups yet. Note that obs_err_var is only param we have for now
    call get_obs_likelihood(orig_obs_prior, ens_size, obs(1), obs_err_var, &
       base_obs_type, orig_obs_likelihood)
+   !----------------------------- END QCEFF BLOCK --------------------------------
 
    ! Compute updated values for single state space inflation
    if(local_single_ss_inflate) then
@@ -768,9 +780,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! If doing full assimilation, update the state variable ensemble with weighted increments
       if(.not. inflate_only) ens_handle%copies(1:ens_size, state_index) = updated_ens
 
+      !--------------------------------- QCEFF BLOCK --------------------------------
       ! Update the likelihood for this state variable
-      call update_state_like(prior_state_index_sort(:, j), state_likelihood(:, j), &
-         orig_obs_likelihood, prior_state_mass(:, j), ens_size, final_factor)
+      !!!call update_piece_const_like(prior_state_index_sort(:, j), piece_const_like(:, j), &
+         !!!orig_obs_likelihood, prior_state_mass(:, j), ens_size, final_factor)
+      !----------------------------- END QCEFF BLOCK --------------------------------
 
       ! Compute spatially-varying state space inflation
       if(local_varying_ss_inflate .and. final_factor > 0.0_r8) then
@@ -808,11 +822,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 end do SEQUENTIAL_OBS
 
-!--------------------------------------------------------------------------------
-! Now do the marginal adjustment steps
+!--------------------------------- QCEFF BLOCK --------------------------------
 ! First get the update posterior with the likelihood
-
-!--------------------------------------------------------------------------------
+! Now do the marginal adjustment steps
+!----------------------------- END QCEFF BLOCK --------------------------------
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
 if(local_single_ss_inflate) then
@@ -899,7 +912,7 @@ deallocate(close_state_dist,      &
 deallocate(n_close_state_items, &
            n_close_obs_items)
 
-deallocate(all_my_orig_obs_priors, state_likelihood, prior_state_mass, prior_state_ens, &
+deallocate(all_my_orig_obs_priors, piece_const_like, prior_state_mass, prior_state_ens, &
    prior_state_index_sort)
 ! end dealloc
 
@@ -1000,15 +1013,15 @@ else
    !--------------------------------------------------------------------------
    else if(filter_kind == 101) then
       ! Bounded normal RHF with hard-coded bounds specified here
-      is_bounded = .false.
-      bound = (/-10.0_r8, 13.0_r8/)
+      is_bounded = .true.
+      bound = (/-10.0_r8, 12.8_r8/)
       ! Test bounded normal likelihood; Could use an arbitrary likelihood
       do i = 1, ens_size
          likelihood(i) = get_truncated_normal_like(ens(i), obs, obs_var, is_bounded, bound)
       end do
       !likelihood = exp(-1.0_r8 * (ens - obs)**2 / (2.0_r8 * obs_var))
       call obs_increment_bounded_norm_rhf(ens, likelihood, ens_size, prior_var, &
-         obs, obs_var, obs_inc, is_bounded, bound)
+         obs_inc, is_bounded, bound)
    !--------------------------------------------------------------------------
    else
       call error_handler(E_ERR,'obs_increment', &
@@ -1565,12 +1578,12 @@ end subroutine obs_increment_rank_histogram
 
 
 subroutine obs_increment_bounded_norm_rhf(ens, ens_like, ens_size, prior_var, &
-   obs, obs_var, obs_inc, is_bounded, bound)
+   obs_inc, is_bounded, bound)
 !------------------------------------------------------------------------
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: ens(ens_size)
 real(r8), intent(in)  :: ens_like(ens_size)
-real(r8), intent(in)  :: prior_var, obs, obs_var
+real(r8), intent(in)  :: prior_var
 real(r8), intent(out) :: obs_inc(ens_size)
 logical,  intent(in)  :: is_bounded(2)
 real(r8), intent(in)  :: bound(2)
@@ -1579,12 +1592,17 @@ real(r8), intent(in)  :: bound(2)
 ! is_bounded indicates if a bound exists on left/right and the 
 ! bound value says what the bound is if is_bounded is true
 
-real(r8) :: s_ens(ens_size), sort_ens_like(ens_size), post(ens_size)
-real(r8) :: region_likelihood(0:ens_size), post_weight(0:ens_size)
+! This interface is specifically tailored to the information for just doing observation
+! space. It does the sorting of the ensemble and computes the piecewise constant likelihood. 
+! It then calls  ens_increment_bounded_norm_rhf which is also used by state space QCEFF
+! code that only has a piecewise constant likelihood and has already sorted the ensemble.
+
+real(r8) :: sort_ens(ens_size), sort_ens_like(ens_size), post(ens_size)
+real(r8) :: piece_const_like(0:ens_size), post_weight(0:ens_size)
 real(r8) :: tail_mean(2), tail_sd(2), inv_tail_amp(2), bound_quantile(2)
 real(r8) :: prior_inv_tail_amp(2)
 real(r8) :: prior_sd, base_prior_prob
-integer  :: i, e_ind(ens_size)
+integer  :: i, sort_ind(ens_size)
 
 ! Save to avoid a modestly expensive computation redundancy
 real(r8), save :: dist_for_unit_sd
@@ -1606,27 +1624,27 @@ if(prior_var <= 0.0_r8) then
 endif
 
 ! Do an index sort of the ensemble members; Use prior info for efficiency in the future
-call index_sort(ens, e_ind, ens_size)
+call index_sort(ens, sort_ind, ens_size)
 
 ! Get the sorted ensemble
-s_ens = ens(e_ind)
+sort_ens = ens(sort_ind)
 
 ! Get the sorted likelihood
-sort_ens_like = ens_like(e_ind)
+sort_ens_like = ens_like(sort_ind)
 
 ! Compute the mean likelihood in each interior interval (bin)
 do i = 1, ens_size - 1
-   region_likelihood(i) = (sort_ens_like(i) + sort_ens_like(i + 1)) / 2.0_r8
+   piece_const_like(i) = (sort_ens_like(i) + sort_ens_like(i + 1)) / 2.0_r8
 end do
 
 ! Likelihoods for outermost regions (bounded or unbounded); just outermost ensemble like
-region_likelihood(0) = sort_ens_like(1)
-region_likelihood(ens_size) = sort_ens_like(ens_size)
+piece_const_like(0) = sort_ens_like(1)
+piece_const_like(ens_size) = sort_ens_like(ens_size)
 
 ! Fail if lower bound is larger than smallest ensemble member 
 if(is_bounded(1)) then
    ! Do in two ifs in case the bound is not defined
-   if(s_ens(1) < bound(1)) then
+   if(sort_ens(1) < bound(1)) then
       msgstring = 'Ensemble member less than lower bound'
       call error_handler(E_ERR, 'obs_increment_bounded_norm_rhf', msgstring, source)
    endif
@@ -1634,7 +1652,7 @@ endif
 
 ! Fail if upper bound is smaller than the largest ensemble member 
 if(is_bounded(2)) then
-   if(s_ens(ens_size) > bound(2)) then
+   if(sort_ens(ens_size) > bound(2)) then
       msgstring = 'Ensemble member greater than upper bound'
       call error_handler(E_ERR, 'obs_increment_bounded_norm_rhf', msgstring, source)
    endif
@@ -1643,14 +1661,14 @@ endif
 ! Posterior is prior times likelihood, normalized so the sum of weight is 1
 ! Prior has 1 / (ens_size + 1) probability in each region, so it just normalizes out.
 ! Posterior weights are then just the likelihood in each region normalized
-post_weight = region_likelihood / sum(region_likelihood)
+post_weight = piece_const_like/ sum(piece_const_like)
 
 ! Standard deviation of prior tails is prior ensemble standard deviation
 prior_sd = sqrt(prior_var)
 tail_sd(1:2) = prior_sd
 ! Find a mean so that 1 / (ens_size + 1) probability is in outer regions
-tail_mean(1) = s_ens(1) + dist_for_unit_sd * prior_sd
-tail_mean(2) = s_ens(ens_size) - dist_for_unit_sd * prior_sd
+tail_mean(1) = sort_ens(1) + dist_for_unit_sd * prior_sd
+tail_mean(2) = sort_ens(ens_size) - dist_for_unit_sd * prior_sd
 
 ! If the distribution is bounded, still want 1 / (ens_size + 1) in outer regions
 ! Put an amplitude term (greater than 1) in front of the tail normals 
@@ -1679,12 +1697,12 @@ inv_tail_amp(1) = prior_inv_tail_amp(1) / (post_weight(0) * (ens_size + 1.0_r8))
 inv_tail_amp(2) = prior_inv_tail_amp(2) / (post_weight(ens_size) * (ens_size + 1.0_r8))
 
 ! To reduce code complexity, use a subroutine to find the update ensembles with this info
-call find_bounded_norm_rhf_post(s_ens, ens_size, post_weight, tail_mean, tail_sd, &
+call find_bounded_norm_rhf_post(sort_ens, ens_size, post_weight, tail_mean, tail_sd, &
    inv_tail_amp, bound, is_bounded, post)
 
 ! These are increments for sorted ensemble; convert to increments for unsorted
 do i = 1, ens_size
-   obs_inc(e_ind(i)) = post(i) - ens(e_ind(i))
+   obs_inc(sort_ind(i)) = post(i) - ens(sort_ind(i))
 end do
 
 end subroutine obs_increment_bounded_norm_rhf
@@ -1888,43 +1906,41 @@ end function get_truncated_normal_like
 
 
 
-subroutine update_state_like(prior_state_index_sort, state_like, like, prior_state_mass, ens_size, alpha)
+subroutine update_piece_const_like(prior_state_index_sort, piece_const_like, like, prior_state_mass, ens_size, alpha)
 !-----------------------------------------------------------------------------------------------
-! Computes cumulative localized likelihood for a given state variable ensmble
+! Computes cumulative localized piecewise constant likelihood for a given state variable ensmble
 integer,  intent(in)              :: prior_state_index_sort(ens_size)
-real(r8), intent(inout)           :: state_like(ens_size + 1)
+real(r8), intent(inout)           :: piece_const_like(ens_size + 1)
 real(r8), intent(in)              :: like(ens_size)
 real(r8), intent(in)              :: prior_state_mass(ens_size + 1)
 integer,  intent(in)              :: ens_size
 real(r8), intent(in)              :: alpha
 
-real(r8) :: weight(ens_size + 1), post_mass(ens_size + 1), loc_like(ens_size), s_like(ens_size)
+real(r8) :: weight(ens_size + 1), post_mass(ens_size + 1), loc_like(ens_size), sort_like(ens_size)
 real(r8) :: total_post_mass
 
 integer :: i
 
-integer, parameter :: smooth_width = 0
-
 ! Sort the likelihood for this state variable
-s_like = like(prior_state_index_sort)
+sort_like = like(prior_state_index_sort)
 
 ! First compute the localized piecewise constant likelihood for this state variable
 ! Get the weight for each of the intervals
-weight(1) = s_like(1)
+weight(1) = sort_like(1)
 do i = 2, ens_size
-   weight(i) = (s_like(i) + s_like(i-1)) / 2.0_r8
+   weight(i) = (sort_like(i) + sort_like(i-1)) / 2.0_r8
 end do
-weight(ens_size + 1) = s_like(ens_size)
+weight(ens_size + 1) = sort_like(ens_size)
 
 ! Posterior probability in each bin by multiplying by likelihood
 post_mass = prior_state_mass * weight
 ! Normalize the total posterior mass
 total_post_mass = sum(post_mass)
 
-! GEFFQ localization
+! QCEFF localization
 ! Total post mass is the denominator in Bayes and the normalizing factor for the localization
 do i = 1, ens_size
-   loc_like(i) = alpha * s_like(i) + (1 - alpha) * total_post_mass
+   loc_like(i) = alpha * sort_like(i) + (1 - alpha) * total_post_mass
 end do
 
 ! Now recompute the weights; Look at algebra for simpler way
@@ -1936,15 +1952,15 @@ weight(ens_size + 1) = loc_like(ens_size)
 
 ! The weight is the values of the piecewise constant localized likelihood
 ! Take the product with the existing likelihood
-state_like = state_like * weight
+piece_const_like = piece_const_like * weight
 
 ! Avoid underflow with lots of obs by normalizing 
 ! Which way is better?
-state_like = state_like / (sum(state_like) / ens_size)
+piece_const_like = piece_const_like / (sum(piece_const_like) / ens_size)
 !***************************** Maybe this instead *****
-!!!state_like = state_like / maxval(state_like)
+!!!piece_consttate_like = piece_consttate_like / maxval(piece_const_like)
 
-end subroutine update_state_like
+end subroutine update_piece_const_like
 
 
 
