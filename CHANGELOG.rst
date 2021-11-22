@@ -24,8 +24,8 @@ The changes are now listed with the most recent at the top.
 
 **November 22 2021 :: Bug fix for groups with posterior spatially-varying adaptive inflation. Tag: v9.12.13**
 
-- Removed the additional outlier threshold check for each group when using posterior 
-  spatially-varying adaptive inflation. The outlier threshold is done for the entire ensemble
+- Removed the additional outlier threshold test for each group when using posterior 
+  spatially-varying adaptive inflation. The outlier test is done for the entire ensemble
   when the posterior forward operators are computed.
 
 **October 27 2021 :: Observation converter documentation update. Tag: v9.11.12**
