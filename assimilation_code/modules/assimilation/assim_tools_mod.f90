@@ -384,6 +384,11 @@ logical :: local_obs_inflate
 
 integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
 
+integer  :: reg_post_ind_sort(ens_size)
+logical  :: is_bounded(2)
+real(r8) :: bound(2)
+real(r8) :: post(ens_size), temp_post(ens_size)
+
 ! Just to make sure multiple tasks are running for tests
 write(*, *) 'my_task_id ', my_task_id()
 
@@ -560,14 +565,14 @@ piece_const_like = 1.0_r8
 do j = 1, ens_size
    prior_state_index_sort(j, :) = j
 end do
+
+! Get the prior state ensemble from the ensemble handle
+prior_state_ens(1:ens_size, 1:my_num_state) = ens_handle%copies(1:ens_size, 1:my_num_state)
+
 ! Just a naive prior_state_index_sort for now; will be highly inefficient (but maybe not for small ensembles)
-! FOLLOWING BLOCK APPEARS TO GIVE NON_REPRODUCING ERROR 
-! NOTE THAT INDEX_INSERTION_SORT has been wrecked by a general sort refactor at some point
-!!!do i = 1, my_num_state
-!!!write(*, *) 'calling index_insertion_sort', i
-   !!!call index_insertion_sort(prior_state_ens(:, i), prior_state_index_sort(:, i), ens_size)
-!!!write(*, *) 'done with index_insertion_sort'
-!!!end do
+do i = 1, my_num_state
+   call index_insertion_sort(prior_state_ens(:, i), prior_state_index_sort(:, i), ens_size)
+end do
 
 ! For MARHF the prior state mass is uniformly distributed
 ! For other priors will need to compute quantiles at this point
@@ -782,8 +787,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       !--------------------------------- QCEFF BLOCK --------------------------------
       ! Update the likelihood for this state variable
-      !!!call update_piece_const_like(prior_state_index_sort(:, j), piece_const_like(:, j), &
-         !!!orig_obs_likelihood, prior_state_mass(:, j), ens_size, final_factor)
+      call update_piece_const_like(prior_state_index_sort(:, j), piece_const_like(:, j), &
+         orig_obs_likelihood, prior_state_mass(:, j), ens_size, final_factor)
+write(52, *) i, j, final_factor
       !----------------------------- END QCEFF BLOCK --------------------------------
 
       ! Compute spatially-varying state space inflation
@@ -823,8 +829,34 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 end do SEQUENTIAL_OBS
 
 !--------------------------------- QCEFF BLOCK --------------------------------
-! First get the update posterior with the likelihood
-! Now do the marginal adjustment steps
+
+! Hard to say where to put the info about bounds with current infrastrucutre.
+! Hard code here for now
+
+! Bounded normal RHF with hard-coded bounds specified here
+is_bounded = .false.
+bound = (/-14.0_r8, 16.0_r8/)
+
+do j = 1, my_num_state
+   ! First get the update posterior with the likelihood
+   call state_post_bounded_norm_rhf(prior_state_ens(:, j), prior_state_index_sort(:, j), &
+      piece_const_like(:, j), ens_size, post, is_bounded, bound)
+   ! Now do the marginal adjustment steps for the state posterior
+   ! Get sorting indices for the standard posterior ensemble; Look to do efficient sorting
+   call index_insertion_sort(ens_handle%copies(1:ens_size, j), reg_post_ind_sort, ens_size)
+
+   ! Put in the state space update with the corresponding ranks
+   do i = 1, ens_size
+      ! Post is not already sorted, but maybe for the state space stuff should only work in sorted?
+      ens_handle%copies(reg_post_ind_sort(i), j) = post(prior_state_index_sort(i, j))
+      !!!temp_post(reg_post_ind_sort(i)) = post(prior_state_index_sort(i, j))
+   end do
+
+   do i = 1, ens_size
+      !!!write(41, *) j, i, temp_post(i), ens_handle%copies(i, j), temp_post(i) - ens_handle%copies(i, j)
+   end do
+
+end do
 !----------------------------- END QCEFF BLOCK --------------------------------
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
@@ -1013,7 +1045,7 @@ else
    !--------------------------------------------------------------------------
    else if(filter_kind == 101) then
       ! Bounded normal RHF with hard-coded bounds specified here
-      is_bounded = .true.
+      is_bounded = .false.
       bound = (/-10.0_r8, 12.8_r8/)
       ! Test bounded normal likelihood; Could use an arbitrary likelihood
       do i = 1, ens_size
@@ -1597,7 +1629,7 @@ real(r8), intent(in)  :: bound(2)
 ! It then calls  ens_increment_bounded_norm_rhf which is also used by state space QCEFF
 ! code that only has a piecewise constant likelihood and has already sorted the ensemble.
 
-real(r8) :: sort_ens(ens_size), sort_ens_like(ens_size), post(ens_size)
+real(r8) :: sort_ens(ens_size), sort_ens_like(ens_size), sort_post(ens_size)
 real(r8) :: piece_const_like(0:ens_size)
 integer  :: i, sort_ind(ens_size)
 
@@ -1626,25 +1658,78 @@ piece_const_like(0) = sort_ens_like(1)
 piece_const_like(ens_size) = sort_ens_like(ens_size)
 
 call ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_var, &
-   post, is_bounded, bound)
+   sort_post, is_bounded, bound)
 
 ! These are increments for sorted ensemble; convert to increments for unsorted
 do i = 1, ens_size
-   obs_inc(sort_ind(i)) = post(i) - ens(sort_ind(i))
+   obs_inc(sort_ind(i)) = sort_post(i) - ens(sort_ind(i))
 end do
 
 end subroutine obs_increment_bounded_norm_rhf
 
 
 
-subroutine ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_var, &
+
+subroutine state_post_bounded_norm_rhf(ens, sort_ind, piece_const_like, ens_size, &
    post, is_bounded, bound)
+!------------------------------------------------------------------------
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ens(ens_size)
+integer,  intent(in)  :: sort_ind(ens_size)
+real(r8), intent(in)  :: piece_const_like(0:ens_size)
+real(r8), intent(out) :: post(ens_size)
+logical,  intent(in)  :: is_bounded(2)
+real(r8), intent(in)  :: bound(2)
+
+! Does bounded RHF assuming that the prior in outer regions is part of a normal. 
+! is_bounded indicates if a bound exists on left/right and the 
+! bound value says what the bound is if is_bounded is true
+
+! This interface is specifically tailored to the information for just doing state
+! space. Assumes that a sort index is already available for the ensemble
+! and that the piecewise constant likelihood is also available.
+! For now, however, it assumes that the prior variance must be computed here. 
+! It returns the unsorted posterior ensemble.
+! It then calls  ens_increment_bounded_norm_rhf which is also used by state space QCEFF
+! code that only has a piecewise constant likelihood and has already sorted the ensemble.
+
+real(r8) :: sort_ens(ens_size), sort_post(ens_size)
+real(r8) :: prior_mean, prior_var
+integer  :: i
+
+! Compute prior variance and mean from sample
+prior_mean = sum(ens) / ens_size
+prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+
+! If all ensemble members are identical, this algorithm becomes undefined, so fail
+if(prior_var <= 0.0_r8) then
+      msgstring = 'Ensemble variance <= 0 '
+      call error_handler(E_ERR, 'state_post_bounded_norm_rhf', msgstring, source)
+endif
+
+! Get the sorted ensemble
+sort_ens = ens(sort_ind)
+
+call ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_var, &
+   sort_post, is_bounded, bound)
+
+! These are increments for sorted ensemble; convert to increments for unsorted
+do i = 1, ens_size
+   post(sort_ind(i)) = sort_post(i)
+end do
+
+end subroutine state_post_bounded_norm_rhf
+
+
+
+subroutine ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_var, &
+   sort_post, is_bounded, bound)
 !-----------------------------------------------------------------------
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: sort_ens(ens_size)
 real(r8), intent(in)  :: piece_const_like(0:ens_size)
 real(r8), intent(in)  :: prior_var
-real(r8), intent(out) :: post(ens_size)
+real(r8), intent(out) :: sort_post(ens_size)
 logical,  intent(in)  :: is_bounded(2)
 real(r8), intent(in)  :: bound(2)
 
@@ -1724,13 +1809,13 @@ inv_tail_amp(2) = prior_inv_tail_amp(2) / (post_weight(ens_size) * (ens_size + 1
 
 ! To reduce code complexity, use a subroutine to find the update ensembles with this info
 call find_bounded_norm_rhf_post(sort_ens, ens_size, post_weight, tail_mean, tail_sd, &
-   inv_tail_amp, bound, is_bounded, post)
+   inv_tail_amp, bound, is_bounded, sort_post)
 
 end subroutine ens_increment_bounded_norm_rhf
 
 
 subroutine find_bounded_norm_rhf_post(ens, ens_size, post_weight, tail_mean, &
-   tail_sd, inv_tail_amp, bound, is_bounded, post)
+   tail_sd, inv_tail_amp, bound, is_bounded, sort_post)
 !------------------------------------------------------------------------
 ! Modifying code to make a more general capability top support bounded rhf
 integer,  intent(in)  :: ens_size
@@ -1741,7 +1826,7 @@ real(r8), intent(in)  :: tail_sd(2)
 real(r8), intent(in)  :: inv_tail_amp(2)
 real(r8), intent(in)  :: bound(2)
 logical,  intent(in)  :: is_bounded(2)
-real(r8), intent(out) :: post(ens_size)
+real(r8), intent(out) :: sort_post(ens_size)
 
 ! Given a sorted set of points that bound rhf intervals and a 
 ! posterior weight for each interval, find an updated ensemble. 
@@ -1782,7 +1867,7 @@ do i = 1, ens_size
       ! If the bound and the smallest ensemble member are identical then any posterior 
       ! in the lower interval is set to the value of the smallest ensemble member. 
       if(is_bounded(1) .and. ens(1) == bound(1)) then
-         post(i) = ens(1)
+         sort_post(i) = ens(1)
       else
          !--------------------------------------------------------------------
          ! The obvious way to do this is in this commented block. However, there is a 
@@ -1794,21 +1879,21 @@ do i = 1, ens_size
          !!! smallest_ens_mass = tail_amp(1) * norm_cdf(ens(1), tail_mean(1), tail_sd(1))
          ! Compute the target mass in the tail normal 
          !!! target_mass = smallest_ens_mass_mass + (umass - cumul_mass(1))
-         !!! call weighted_norm_inv(tail_amp(1), tail_mean(1), tail_sd(1), target_mass, post(i))
+         !!! call weighted_norm_inv(tail_amp(1), tail_mean(1), tail_sd(1), target_mass, sort_post(i))
          !--------------------------------------------------------------------
 
          ! Scale out the amplitude factor to safeguard against large amplitudes
          smallest_ens_mass = norm_cdf(ens(1), tail_mean(1), tail_sd(1))
          ! Compute the target mass in the tail normal 
          target_mass = smallest_ens_mass + (umass - cumul_mass(1)) * inv_tail_amp(1)
-         call weighted_norm_inv(1.0_r8, tail_mean(1), tail_sd(1), target_mass, post(i))
+         call weighted_norm_inv(1.0_r8, tail_mean(1), tail_sd(1), target_mass, sort_post(i))
 
          ! If posterior is less than bound, set it to bound. (Only possible thru roundoff).
-         if(is_bounded(1) .and. post(i) < bound(1)) then
+         if(is_bounded(1) .and. sort_post(i) < bound(1)) then
             ! Informative message for now can be turned off when code is mature
-            write(*, *) 'SMALLER THAN BOUND', i, post(i), bound(1)
+            write(*, *) 'SMALLER THAN BOUND', i, sort_post(i), bound(1)
          endif
-         if(is_bounded(1)) post(i) = max(post(i), bound(1))
+         if(is_bounded(1)) sort_post(i) = max(sort_post(i), bound(1))
 
          ! It might be possible to get a posterior from the tail that exceeds the smallest 
          ! prior ensemble member since the cdf and the inverse cdf are not exactly inverses. 
@@ -1819,7 +1904,7 @@ do i = 1, ens_size
    else if(umass > cumul_mass(ens_size)) then
       ! It's in the right tail; will work coming in from the right using symmetry of tail normal
       if(is_bounded(2) .and. ens(ens_size) == bound(2)) then
-         post(i) = ens(ens_size)
+         sort_post(i) = ens(ens_size)
       else
          !--------------------------------------------------------------------
          ! See detailed comment on block for lower tail above
@@ -1827,20 +1912,20 @@ do i = 1, ens_size
          !!! largest_ens_mass = tail_amp(2) * norm_cdf(ens(ens_size), tail_mean(2), tail_sd(2))
          ! Compute the target mass in the tail normal 
          !!! target_mass = largest_ens_mass + (umass - cumul_mass(ens_size))
-         !!! call weighted_norm_inv(tail_amp(2), tail_mean(2), tail_sd(2), target_mass, post(i))
+         !!! call weighted_norm_inv(tail_amp(2), tail_mean(2), tail_sd(2), target_mass, sort_post(i))
          !--------------------------------------------------------------------
 
          ! Find the cdf of the (bounded) tail normal at the largest ensemble member
          largest_ens_mass = norm_cdf(ens(ens_size), tail_mean(2), tail_sd(2))
          ! Compute the target mass in the tail normal 
          target_mass = largest_ens_mass + (umass - cumul_mass(ens_size)) * inv_tail_amp(2)
-         call weighted_norm_inv(1.0_r8, tail_mean(2), tail_sd(2), target_mass, post(i))
+         call weighted_norm_inv(1.0_r8, tail_mean(2), tail_sd(2), target_mass, sort_post(i))
 
         ! If post is larger than bound, set it to bound. (Only possible thru roundoff).
-         if(is_bounded(2) .and. post(i) > bound(2)) then
-            write(*, *) 'BIGGER THAN BOUND', i, post(i), bound(2)
+         if(is_bounded(2) .and. sort_post(i) > bound(2)) then
+            write(*, *) 'BIGGER THAN BOUND', i, sort_post(i), bound(2)
          endif
-         if(is_bounded(2)) post(i) = min(post(i), bound(2))
+         if(is_bounded(2)) sort_post(i) = min(sort_post(i), bound(2))
       endif
 
    !--------------------------------------------------------------------------
@@ -1851,7 +1936,7 @@ do i = 1, ens_size
          if(umass >= cumul_mass(j) .and. umass <= cumul_mass(j + 1)) then
 
             ! Only supporting rectangular quadrature here: Linearly interpolate in mass
-            post(i) = ens(j) + ((umass - cumul_mass(j)) / &
+            sort_post(i) = ens(j) + ((umass - cumul_mass(j)) / &
                (cumul_mass(j+1) - cumul_mass(j))) * (ens(j + 1) - ens(j))
             ! Don't need to search lower boxes again
             lowest_box = j
@@ -1979,7 +2064,7 @@ piece_const_like = piece_const_like * weight
 ! Which way is better?
 piece_const_like = piece_const_like / (sum(piece_const_like) / ens_size)
 !***************************** Maybe this instead *****
-!!!piece_consttate_like = piece_consttate_like / maxval(piece_const_like)
+!!!piece_const_like = piece_const_like / maxval(piece_const_like)
 
 end subroutine update_piece_const_like
 
