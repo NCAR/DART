@@ -10,20 +10,28 @@
 # Sidd Ghosh Feb 22, 2017
 # Slurm added by Kevin Raeder July 6, 2019
 
-if [[ -v PBS_O_WORKDIR ]]; then
-#    echo "launch_cf.sh under PBS"
+# On casper's PBS the PMI_RANK variable is not defined,
+# but  OMPI_COMM_WORLD_LOCAL_RANK is (different 
+# from OMPI_COMM_WORLD_RANK, which is also defined)
+# Also, PBS_O_WORKDIR is defined, so it goes into the wrong section.
+# The system launch_cf.sh (cheyenne only) tests directly for -z {env_var_name}
+# export 
+
+if [ ! -z "$PMI_RANK" ]; then
    line=$(expr $PMI_RANK + 1)
-elif [[ -v SLURM_SUBMIT_DIR ]]; then
-#    echo "launch_cf.sh under slurm"
+#    echo "launch_cf.sh using PMI_RANK with line = $line"
+elif [ ! -z "$OMPI_COMM_WORLD_RANK" ]; then
    line=$(expr $OMPI_COMM_WORLD_RANK + 1)
+#    echo "launch_cf.sh using OMPI_COMM_WORLD_RANK with line = $line"
 else
    echo "Batch environment is unknown"
+   exit 11
 fi
 
 INSTANCE=$(sed -n ${line}p $1)
 
 # The following command showed that 563 tasks are launched within .3 seconds.
-# echo "launching $INSTANCE at "; date --rfc-3339=ns
+echo "launching $INSTANCE at "; date --rfc-3339=ns
 
 eval "$INSTANCE"
 

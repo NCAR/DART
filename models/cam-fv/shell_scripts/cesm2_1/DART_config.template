@@ -210,6 +210,7 @@ foreach script (compress.csh           \
           -e  "s#YOUR_EMAIL#your_email#" \
           -e  "s#YOUR_CASEROOT#your_caseroot#" \
           ${DART_SCRIPTS_DIR}/${script}  > your_caseroot/${script}
+      chmod 755 your_caseroot/${script}
    else
       echo "ERROR: no ${script} in  ${DART_SCRIPTS_DIR}"
       exit 45
@@ -390,11 +391,11 @@ Check the DART configuration:
    in ${CASEROOT}/assimilate.csh.  
    At the very least, copy your inflation files
    in ${RUNDIR} 
-   into the appropriate names:
-      input_priorinf_mean.nc
-      input_priorinf_sd.nc
-      input_postinf_mean.nc 
-      input_postinf_sd.nc   
+#    into the appropriate names:
+#       input_priorinf_mean.nc
+#       input_priorinf_sd.nc
+#       input_postinf_mean.nc 
+#       input_postinf_sd.nc   
    If assimilate.csh does not find inflation files, it will call fill_inflation_restart
    to create some from the inflation values in input.nml.
 

@@ -27,7 +27,8 @@
 #
 # Compression method can depend on the file type, and in the future may include 
 # lossy compression. This script is most often called by assimilate.csh, but can 
-# be run as a batch job.
+# be run as a batch job, which must be submitted from a CASEROOT which has
+# a data_scripts.csh file in it and an updated launch_cf.sh command.
 #
 # Assimilate.csh runs this in 2 places:
 # 1) Every cycle: 
@@ -46,7 +47,7 @@ if ($#argv != 4) then
    echo '   ${scr_dir}/compress.csh command YYYY-MM-DD-SSSS "sets" "stages"'
    echo '   where '
    echo '   sets   = 1 or more of {clm2 cpl cam cice hist dart} to compress, separated by spaces'
-   echo '   stages = 1 or more of stages {input, preassim, postassim, output} to compress.'
+   echo '   stages = 1 or more of stages {input, forecast, preassim, postassim, analysis, output} to compress.'
    echo ' -OR-'
    echo "   edit compress.csh ; qsub compress.csh"
    exit 17

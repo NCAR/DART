@@ -32,6 +32,10 @@ endif
 
 # Get CASE environment variables from the central variables file.
 source ./data_scripts.csh
+if ($status != 0) then
+   echo "data_scripts failed"
+   exit
+endif
 echo "data_CASEROOT    = ${data_CASEROOT}"
 echo "data_NINST       = ${data_NINST}"
 echo "data_scratch     = ${data_scratch}"
@@ -45,8 +49,8 @@ set queue          = $4
 # Check whether there are too many cesm.log files in rundir.
 set num_logs = `ls -1 ${data_scratch}/run/cesm.log* | wc -l`
 
-if ($first_date == $last_date && $num_logs > 3 || \
-    $first_date != $last_date && $num_logs > 2 ) then
+if (($first_date == $last_date && $num_logs[1] > 3) || \
+    ($first_date != $last_date && $num_logs[1] > 2) ) then
    echo "ERROR: too many cesm.log files in ${data_scratch}/run; remove the extraneous"
    exit 20
 endif
@@ -57,7 +61,8 @@ if (-f ${data_scratch}/run/rpointer.atm_0001) then
    if ($status != 0) then
 #     $first_date != $last_date && 
 # ?   This relies on stage_cesm_files.template, which is currently NOT made by setup_advanced.
-      sed -e "s#NO-DATE-YET#$first_date#" stage_cesm_files.template >! stage_cesm_files
+      if (-f stage_cesm_files.template) \
+         sed -e "s#NO-DATE-YET#$first_date#" stage_cesm_files.template >! stage_cesm_files
       if ($status != 0) then
          echo "ERROR: rpointer.atm_0001 has the wrong date, but creating stage_cesm_files failed"
          exit 30
@@ -69,6 +74,7 @@ if (-f ${data_scratch}/run/rpointer.atm_0001) then
          echo "ERROR: stage_cesm_files failed."
          echo "       Check: restart_date, DOUT_S, CONTINUE_RUN, ..."
          exit 40
+      endif
    endif
 endif
 
@@ -174,7 +180,8 @@ cd ${data_CESM_python}/case
 if (-l case_run.py) then
    rm case_run.py
 else
-   echo 'ERROR: case_run.py is not a link.  Make it one'
+   echo 'ERROR: case_run.py is not a link.  Make it one.'
+   echo '       In particular; link it to case_run_only_assim.py or case-run_cam+assim.py'
    exit 100
 endif
 
@@ -182,9 +189,10 @@ echo "Comparing dates for linking"
 if ("$first_date" == "$last_date" ) then
    # Assimilation only; link an assim-only copy to the expected name
    ln -s case_run_only_assim.py case_run.py
+   
    set init_files = `wc -l ${data_scratch}/run/cam_init_files`
    echo "Checking numbers of files " $init_files[1] ${data_NINST}
-   if ( $init_files[1] != ${data_NINST} ) then
+   if ( $init_files[1] > 0 && $init_files[1] != ${data_NINST} ) then
       echo "ERROR: the forecast didn't finish; not enough files in cam_init_files"
       exit 110
    endif
@@ -192,6 +200,9 @@ else
    # Hindcast + assimilation; link the right version to the expected name.
    ln -s case_run_cam+assim.py case_run.py
 endif   
+# If case_run.py is a link that has changed, 
+# it appears that python will no longer (2021-8-27) recompile it.
+python -m py_compile case_run.py
 echo "case_run.py is linked to"
 ls -l case_run.py
 cd -

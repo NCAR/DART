@@ -78,6 +78,14 @@ else if ($?PBS_NODEFILE) then
    echo "tasks_per_node : $NUMTASKS_PERNODE"
    echo " "
 
+   # KDR; debugging differences between 2019-09-30-21600 
+   # before and after cheyenne July down time.
+   # Mick says the old MPT, which was used to build and run the old filter,
+   # was mpt/2.21.
+   module swap mpt/2.21
+   echo "Modules used for this assimilation:"
+   module list
+   echo "-----------------------------------"
 else if ($?LSB_HOSTS) then
 
    # LSF environment variables:
@@ -175,20 +183,13 @@ set REMOVE = '/usr/bin/rm -r'
 # These are of the form "${CASE}.cam_${ensemble_member}.i.2000-01-06-00000.nc"
 # ==============================================================================
 
-# Piping stuff through 'bc' strips off any preceeding zeros.
+# data_{year,month,day,secs} were defined in data_scripts using @,
+# so any leading 0s were stripped off.
 
-set FILE = `head -n 1 rpointer.atm_0001`
-set FILE = $FILE:r
-set ATM_DATE_EXT = $FILE:e
-set ATM_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
-set ATM_YEAR     = `echo $ATM_DATE[1] | bc`
-set ATM_MONTH    = `echo $ATM_DATE[2] | bc`
-set ATM_DAY      = `echo $ATM_DATE[3] | bc`
-set ATM_SECONDS  = `echo $ATM_DATE[4] | bc`
-set ATM_HOUR     = `echo $ATM_DATE[4] / 3600 | bc`
+set ATM_DATE = `printf %4d-%02d-%02d-%05d $data_year $data_month $data_day $data_secs `
 
-echo "valid time of model is $ATM_YEAR $ATM_MONTH $ATM_DAY $ATM_SECONDS (seconds)"
-echo "valid time of model is $ATM_YEAR $ATM_MONTH $ATM_DAY $ATM_HOUR (hours)"
+echo "valid time of model is $data_year $data_month $data_day $data_secs (seconds)"
+echo "                    -> $ATM_DATE"
 
 # Move the hidden restart set back into $rundir so that it is processed properly.
 
@@ -410,7 +411,7 @@ if ($#log_list >= 3) then
       # so there will be no running averages stored in the rh# files.
       # But the h0 files need to be kept if any user specified fields are in them.
       # They will be handled by repack_st_archive.csh and/or purge.csh later.
-      echo "     ${CASE}"'*.{r,rs,rs1,rh*}.*'"${day_time}"
+      echo "     ${CASE}"'*.{r,rs,rs1,rh[0-9]}.*'"${day_time}"
       ${REMOVE}  ${CASE}*.{r,rs,rs1,rh[0-9]}.*${day_time}* &
       # echo "     ${CASE}"'*.{r,rs,rs1,rh0,h0}.*'"${day_time}"
       # ${REMOVE}  ${CASE}*.{r,rs,rs1,rh0,h0}.*${day_time}* &
@@ -489,7 +490,7 @@ endif
 # PERFECT model obs output appends .perfect to the filenames
 # ==============================================================================
 
-set YYYYMM = `printf %04d%02d ${ATM_YEAR} ${ATM_MONTH}`
+set YYYYMM = `printf %04d%02d ${data_year} ${data_month}`
 
 if (! -d ${BASEOBSDIR}/${YYYYMM}_6H_CESM) then
    echo "CESM+DART requires 6 hourly obs_seq files in directories of the form YYYYMM_6H_CESM"
@@ -497,7 +498,7 @@ if (! -d ${BASEOBSDIR}/${YYYYMM}_6H_CESM) then
    exit 70
 endif
 
-set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${ATM_YEAR} ${ATM_MONTH} ${ATM_DAY} ${ATM_SECONDS}`
+set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${data_year} ${data_month} ${data_day} ${data_secs}`
 
 set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}_6H_CESM/${OBSFNAME}
 echo "OBS_FILE = $OBS_FILE"
@@ -545,7 +546,7 @@ set MYSTRING = `grep cam_template_filename input.nml`
 set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
 set CAMINPUT = $MYSTRING[2]
 ${REMOVE} ${CAMINPUT}
-${LINK} ${CASE}.cam_0001.i.${ATM_DATE_EXT}.nc ${CAMINPUT} || exit 90
+${LINK} ${CASE}.cam_0001.i.${ATM_DATE}.nc ${CAMINPUT} || exit 90
 
 # All of the .h0. files contain the same PHIS field, so we can link to any of them.
 set MYSTRING = `grep cam_phis_filename input.nml`
@@ -555,8 +556,8 @@ set CAM_PHIS = $MYSTRING[2]
 if (! -f ${CAM_PHIS}) then
    # -r puts the file with the latest date first in the list.
    # It won't be purged during this cycle by the cleanup (above).
-   set hists = `${LIST} -r ${CASE}.cam_0001.h0.*.nc`
-   ${COPY} $hists ${CAM_PHIS} || exit 100
+   set hists = (`${LIST} -r ${CASE}.cam_0001.h0.*.nc`)
+   ${COPY} $hists[1] ${CAM_PHIS} || exit 100
 endif
 
 # Now, actually check the inflation settings
@@ -791,7 +792,11 @@ if ($input_file_list_name != $output_file_list_name) then
    exit 130
 endif
 
-${LIST} -1 ${CASE}.cam_[0-9][0-9][0-9][0-9].i.${ATM_DATE_EXT}.nc >! $input_file_list_name
+${LIST} -1 ${CASE}.cam_[0-9][0-9][0-9][0-9].i.${ATM_DATE}.nc >! $input_file_list_name
+if ($status != 0) then
+   echo "Failed to find .i. files. Exiting"
+   exit 135
+endif
 
 echo "`date` -- BEGIN FILTER"
 ${LAUNCHCMD} ${EXEROOT}/filter || exit 140
@@ -841,7 +846,7 @@ foreach FILE (`${LIST} ${stages_all}_member_*.nc`)
    if ($status == 0) set type = "i"
 
    ${MOVE} $FILE \
-       ${CASE}.${scomp}_$list[$#list].${type}.${dart_file}.${ATM_DATE_EXT}.nc || exit 150
+       ${CASE}.${scomp}_$list[$#list].${type}.${dart_file}.${ATM_DATE}.nc || exit 150
 end
 
 # Files without instance numbers need to have the scomp part of their names = "dart".
@@ -861,13 +866,13 @@ foreach FILE (`${LIST} ${stages_all}_{mean,sd}*.nc`)
    echo $FILE | grep "put"
    if ($status == 0) set type = "i"
 
-   ${MOVE} $FILE ${CASE}.dart.${type}.${scomp}_$parts[1].${ATM_DATE_EXT}.nc || exit 160
+   ${MOVE} $FILE ${CASE}.dart.${type}.${scomp}_$parts[1].${ATM_DATE}.nc || exit 160
 end
 
 # Rename the observation file and run-time output
 
-${MOVE} obs_seq.final ${CASE}.dart.e.${scomp}_obs_seq_final.${ATM_DATE_EXT} || exit 170
-${MOVE} dart_log.out                 ${scomp}_dart_log.${ATM_DATE_EXT}.out || exit 171
+${MOVE} obs_seq.final ${CASE}.dart.e.${scomp}_obs_seq_final.${ATM_DATE} || exit 170
+${MOVE} dart_log.out                 ${scomp}_dart_log.${ATM_DATE}.out || exit 171
 
 # Rename the inflation files and designate them as 'rh' files - which get
 # reinstated in the run directory by the short-term archiver and are then
@@ -880,7 +885,7 @@ ${MOVE} dart_log.out                 ${scomp}_dart_log.${ATM_DATE_EXT}.out || ex
 foreach FILE (`${LIST} ${stages_all}_{prior,post}inf_*`)
 
    set parts = `echo $FILE | sed -e "s#\.# #g"`
-   ${MOVE} $FILE  ${CASE}.dart.rh.${scomp}_$parts[1].${ATM_DATE_EXT}.nc || exit 180
+   ${MOVE} $FILE  ${CASE}.dart.rh.${scomp}_$parts[1].${ATM_DATE}.nc || exit 180
 
 end
 
@@ -890,7 +895,7 @@ set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
 set MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
 set loc_diag = $MYSTRING[2]
 if (-f $loc_diag) then
-   ${MOVE} $loc_diag  ${scomp}_${loc_diag}.dart.e.${ATM_DATE_EXT} || exit 190
+   ${MOVE} $loc_diag  ${scomp}_${loc_diag}.dart.e.${ATM_DATE} || exit 190
 endif
 
 # Handle regression diagnostics
@@ -899,7 +904,7 @@ set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
 set MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
 set reg_diag = $MYSTRING[2]
 if (-f $reg_diag) then
-   ${MOVE} $reg_diag  ${scomp}_${reg_diag}.dart.e.${ATM_DATE_EXT} || exit 200
+   ${MOVE} $reg_diag  ${scomp}_${reg_diag}.dart.e.${ATM_DATE} || exit 200
 endif
 
 # Then this script will need to feed the files in output_restart_list_file
@@ -920,7 +925,7 @@ set member = 1
 while ( ${member} <= ${ensemble_size} )
 
    set inst_string = `printf _%04d $member`
-   set ATM_INITIAL_FILENAME = ${CASE}.${scomp}${inst_string}.${file_type}.${ATM_DATE_EXT}.nc
+   set ATM_INITIAL_FILENAME = ${CASE}.${scomp}${inst_string}.${file_type}.${ATM_DATE}.nc
 
    ${REMOVE} ${scomp}_initial${inst_string}.nc
    ${LINK} $ATM_INITIAL_FILENAME ${scomp}_initial${inst_string}.nc || exit 210
@@ -1015,7 +1020,7 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
    # Inflation restart file names for all components will be in this one restart file,
    # since the inflation restart files have the component names in them.
 
-   set inf_list = `ls *output_{prior,post}inf_*.${ATM_DATE_EXT}.nc`
+   set inf_list = `ls *output_{prior,post}inf_*.${ATM_DATE}.nc`
    set file_list = 'restart_hist = "./'$inf_list[1]\"
    set i = 2
    while ($i <= $#inf_list)
@@ -1035,7 +1040,7 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
        }
 ___EndOfText
 
-   ncgen -k netCDF-4 -o ${CASE}.dart.r.${scomp}.${ATM_DATE_EXT}.nc inf_restart_list.cdl
+   ncgen -k netCDF-4 -o ${CASE}.dart.r.${scomp}.${ATM_DATE}.nc inf_restart_list.cdl
    if ($status == 0) ${REMOVE} inf_restart_list.cdl
 
    echo "`date` -- END   ARCHIVING LOGIC"
@@ -1077,17 +1082,21 @@ endif
 # Compress the large coupler history files and DART files.
 # ==============================================================================
 
-echo "STARTING: compressing coupler history files at `date`"
-${CASEROOT}/compress.csh gzip $ATM_DATE_EXT "hist" "$stages_all"
-
-if ($status != 0) then
-   echo "ERROR: Compression of coupler history files and DART files failed at `date`"
-   # Ensure the removal of unneeded restart sets and copy of obs_seq.final are finished.
-   wait
-   exit 250
+grep ha2x drv_in >& /dev/null
+if ($status == 0) then
+   echo "STARTING: compressing coupler history files at `date`"
+   ${CASEROOT}/compress.csh gzip $ATM_DATE "hist" "$stages_all"
+   
+   if ($status != 0) then
+      echo "ERROR: Compression of coupler history files and DART files failed at `date`"
+      # Ensure the removal of unneeded restart sets and copy of obs_seq.final are finished.
+      wait
+      exit 250
+   endif
+   
+   echo "FINISHED: compressing coupler history files and DART files at `date`"
 endif
-
-echo "FINISHED: compressing coupler history files and DART files at `date`"
+   
 echo "`date` -- END CAM_ASSIMILATE"
 
 # Ensure the removal of unneeded restart sets and copy of obs_seq.final are finished.

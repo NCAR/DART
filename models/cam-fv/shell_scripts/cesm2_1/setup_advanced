@@ -333,8 +333,8 @@ if ($list[3] !~ '"gregorian"') then
    exit 5
 endif
 setenv sst_grid    /glade/work/raeder/Models/CAM_init/SST/domain.ocn.d025.120821.nc
-setenv sst_year_start $start_year
-setenv sst_year_end   $start_year
+setenv sst_year_start 2011
+setenv sst_year_end   2011
 
 # ==============================================================================
 # job settings:
@@ -451,8 +451,6 @@ cd -
 cd ${CIMEROOT}/../components/cam
 echo "n Using CAM version"
 head -n 5 doc/ChangeLog | tail -n 3
-echo "svn status -u:"
-svn status -u
 echo " " 
 cd -
 
@@ -843,28 +841,45 @@ setenv  data_CESM_python      $CIMEROOT/scripts/lib/CIME
 setenv  data_DOUT_S_ROOT      $archdir
 
 setenv CONTINUE_RUN \`./xmlquery CONTINUE_RUN --value\`
-if (\$CONTINUE_RUN == FALSE) then
+
+if (-f ${data_scratch}/run/rpointer.atm_0001) then
+   # Get date from an rpointer file
+   set FILE = \`head -n 1 \${data_scratch}/run/rpointer.atm_0001\`
+   set ATM_DATE_EXT = \$FILE:r:e
+   set ATM_DATE     = \`echo \$ATM_DATE_EXT | sed -e "s#-# #g"\`
+   setenv d_year   \`echo \$ATM_DATE[1] | bc\`
+   setenv d_month  \`echo \$ATM_DATE[2] | bc\`
+   # These must be defined using @ so that they are numbers (not strings)
+   # which can be used in math expressions.
+   # It appears that they are inherited by the calling scripts,
+   # even though they are not set with setenv.
+   @ data_year  = \$d_year
+   @ data_month = \$d_month
+   @ data_day   = \$ATM_DATE[3]
+   @ data_secs  = \$ATM_DATE[4]
+   # This script is intended to help process the most recently completed month.
+   # The date in the rpointer file should be the first date of the next month,
+   # so set the month and year to the right values for the completed month.
+   # Now it's being used more widely, and should return the unaltered date.
+   # The calling script can then derive what it needs.
+   # if (\$data_month == 1) then
+   #    @ data_month = 12
+   #    @ data_year  = \$data_year - 1
+   # else
+   #    @ data_month = \$data_month - 1
+   # endif
+else if (\$CONTINUE_RUN == FALSE) then
    set START_DATE = \`./xmlquery RUN_START_DATE --value\`
    set parts = \`echo \$START_DATE | sed -e "s#-# #"\`
-   setenv data_year \$parts[1]
-   setenv data_month \$parts[2]
-
-else if (\$CONTINUE_RUN == TRUE) then
-   # Get date from an rpointer file
-   if (! -f \${data_scratch}/run/rpointer.atm_0001) then
-      echo "CONTINUE_RUN = TRUE but "
-      echo "\${data_scratch}/run/rpointer.atm_0001 is missing.  Exiting"
-      exit 19
-   endif
-   set FILE = \`head -n 1 \${data_scratch}/run/rpointer.atm_0001\`
-   set ATM_DATE_EXT = \$FILE:e
-   set ATM_DATE     = \`echo \$ATM_DATE_EXT | sed -e "s#-# #g"\`
-   setenv data_year   \`echo \$ATM_DATE[1] | bc\`
-   setenv data_month  \`echo \$ATM_DATE[2] | bc\`
+   @ data_year  = \$parts[1]
+   @ data_month = \$parts[2]
+   @ data_day   = \$parts[3]
+   @ data_secs  = 0
 
 else
-   echo "env_run.xml: CONTINUE_RUN must be FALSE or TRUE (case sensitive)"
-   exit
+   echo "CONTINUE_RUN = TRUE but "
+   echo "${data_scratch}/run/rpointer.atm_0001 is missing.  Exiting"
+   exit 30
 
 endif
 
@@ -1132,45 +1147,10 @@ while ($inst <= $num_instances)
    # ===========================================================================
    echo '  taxmode = "limit"'                                      >> ${fname}
 
-   # The 1/4 degree avhrr SSTICE files' metadata says that the times are
-   # relative to 1978-01-01 00:00:00, but that the data are valid at the
-   # "center of the day".  The times in the file are whole days, not day.5,
-   # so that's inconsistent.  Fix that by setting an offset in the docn stream text files.
-   # That can't be changed by xml variables or variabls in user_docn_in files.
-   # The data component website (http://esmci.github.io/cime/data_models/input-streams.html)
-   # says 
-   # "if a data set contains daily average data with timestamps for the data 
-   # at the end of the day, it might be appropriate to shift the time axis 
-   # by 12 hours so the data is taken to be at the middle of the day 
-   # instead of the end of the day. 
-   # Note that a positive offset advances the input data time axis forward 
-   # by that number of seconds."
-   # It seems that the avhrr data is defined at the beginnings of the days,
-   # so we want a negative offset to move the axis "left" and make 12 Z
-   # line up with the data.  A test will tell . . .
-   #
-   # Also note the warnings in esmci... about changing related values 
-   # in the env_xxx.xml files when there are user_docn.streams... files.
-   # Summary:
-   # 1) Make sure that preview_namelist has been run to propagate
-   #    the SSTICE pathname from env_run.xml to 
-   #    $CASEROOT/Casedocs/docn.streams.txt.prescribed_####
-   # 2) cp those files into $CASEROOT/user_{same_file_names}
-   # 3) modify them as needed (change offset from 0 to 43200).
-   # 4) If the SSTICE pathname needs to be changed, 
-   #    it must be changed in the user_docn.stream files
-   #    env_run.xml will be ignored for that variable.
-   #    (Or change env_run.xml and repeat 1) - 4)).
-   echo $sst_dataset | grep avhrr 
-   if ($status == 0) then
-      sed -e "s#      0#      43200#"                        \
-          CaseDocs/docn.streams.txt.prescribed${inst_string} \
-              user_docn.streams.txt.prescribed${inst_string}
-   endif
-
    @ inst ++
 
 end
+echo ' '
 
 # ===========================================================================
 set fname = "user_nl_cpl"
@@ -1180,11 +1160,12 @@ set fname = "user_nl_cpl"
 
 # compset J1850G (all active except atm, from lofverstrom) + river (Lindsay)
 # needed this set of forcing.
-echo " histaux_a2x3hr  = .true."   >> ${fname}
-echo " histaux_a2x24hr = .true."   >> ${fname}
-echo " histaux_a2x1hri = .true."   >> ${fname}
-echo " histaux_a2x1hr  = .true."   >> ${fname}
-echo " histaux_r2x     = .true."   >> ${fname}
+# Zagar cases; maybe only save from the TUV OSSE.
+# echo " histaux_a2x3hr  = .true."   >> ${fname}
+# echo " histaux_a2x24hr = .true."   >> ${fname}
+# echo " histaux_a2x1hri = .true."   >> ${fname}
+# echo " histaux_a2x1hr  = .true."   >> ${fname}
+# echo " histaux_r2x     = .true."   >> ${fname}
 # These cause cpl.ha. to be written.
 # The Reanalysis project doesn't need those large files for forcing other components
 # So use defaults (off).
@@ -1194,7 +1175,57 @@ echo " histaux_r2x     = .true."   >> ${fname}
 # No histaux_a2x3hrp (precip)?
 # No histaux_l2x ?
 
+# The 1/4 degree avhrr SSTICE files' metadata says that the times are
+# relative to 1978-01-01 00:00:00, but that the data are valid at the
+# "center of the day".  The times in the file are whole days, not day.5,
+# so that's inconsistent.  Fix that by setting an offset in the docn stream text files.
+# That can't be changed by xml variables or variabls in user_docn_in files.
+# The data component website (http://esmci.github.io/cime/data_models/input-streams.html)
+# says 
+# "if a data set contains daily average data with timestamps for the data 
+# at the end of the day, it might be appropriate to shift the time axis 
+# by 12 hours so the data is taken to be at the middle of the day 
+# instead of the end of the day. 
+# Note that a positive offset advances the input data time axis forward 
+# by that number of seconds."
+# It seems that the avhrr data is defined at the beginnings of the days,
+# so we want a negative offset to move the axis "left" and make 12 Z
+# line up with the data.  A test will tell . . .
+#
+# Also note the warnings in esmci... about changing related values 
+# in the env_xxx.xml files when there are user_docn.streams... files.
+# Summary:
+# 1) Make sure that preview_namelist has been run to propagate
+#    the SSTICE pathname from env_run.xml to 
+#    $CASEROOT/Casedocs/docn.streams.txt.prescribed_####
+# 2) cp those files into $CASEROOT/user_{same_file_names}
+# 3) modify them as needed (change offset from 0 to 43200).
+# 4) If the SSTICE pathname needs to be changed, 
+#    it must be changed in the user_docn.stream files
+#    env_run.xml will be ignored for that variable.
+#    (Or change env_run.xml and repeat 1) - 4)).
+
 ./preview_namelists || exit 75
+
+echo ' '
+echo $sst_dataset | grep avhrr 
+if ($status == 0) then
+   pwd
+   ls -l CaseDocs/docn*
+   if ($status != 0) then
+      date
+      echo "ERROR: No CaseDocs/docn.stream files to modify"
+      exit 85
+   endif
+   @ inst = 1
+   while ($inst <= $num_instances)
+      set inst_string = `printf _%04d $inst`
+      sed -e "s#      0#      43200#"                        \
+          CaseDocs/docn.streams.txt.prescribed${inst_string} \
+          >   user_docn.streams.txt.prescribed${inst_string}
+      @ inst++
+   end
+endif
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists.
@@ -1366,8 +1397,8 @@ else     # CONTINUE_RUN == FALSE
 
 endif
 
-ls *inf*${restart_time}* >& /dev/null
-if ($status != 0) then 
+ls *inf*\${restart_time}* >& /dev/null
+if (\$status != 0) then 
    echo ""
    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
    echo "WARNING:  no inflation files were found for \$restart_time"
@@ -1448,7 +1479,7 @@ Time to check the case.
 
 5) If this case needs to be under git control:
    a) move the CASEROOT directory to temp_name,
-   b) on https://github.com/NCAR/DART_CASES make a branch named $CASE,
+   b) on https://github.com/NCAR/DART_CASES make a branch named $case,
    c) clone that branch into a new, git-controlled CASEROOT,
    d) copy the contents of temp_name back into the git CASEROOT.
 
