@@ -73,7 +73,7 @@ use netcdf_utilities_mod, only : nc_synchronize_file, nc_add_global_attribute, &
                                  nc_put_variable,nc_add_attribute_to_variable, &
                                  nc_define_real_variable, nc_define_character_variable
 
-use typesizes  !HK do we needs these with netcdf_utilities_mod?
+use typesizes  !HK do we need these with netcdf_utilities_mod?
 use netcdf
 
 implicit none
@@ -224,7 +224,7 @@ endif
 
 ! Read in TIEGCM namelist input file (just for definition)
 ! Read in TIEGCM grid definition etc from TIEGCM restart file
-! Read in TIEGCM auxiliary variables from TIEGCM 'secondary' file ! HK this means ZG is static data not per ensemble?
+! Read in TIEGCM auxiliary variables from TIEGCM 'secondary' file
 
 call read_TIEGCM_namelist(tiegcm_namelist_file_name)
 call read_TIEGCM_definition(tiegcm_restart_file_name)
@@ -232,11 +232,6 @@ call read_TIEGCM_definition(tiegcm_restart_file_name)
 ! error-check, convert namelist input to variable_table, and build the
 ! state structure
 call verify_variables()
-
-!HK There are two files and a calculated variable VTEC:
-! tiegcm_restart_file_name
-! tiegcm_secondary_file_name
-! calcualted variable VTEC
 
 call set_calendar_type('Gregorian')
 
@@ -789,7 +784,6 @@ integer  :: local_status(1)
 
 character(len=*), parameter :: routine = 'convert_vertical_obs'
 
-! HK are all the obs in height?
 if ( which_vert == VERTISHEIGHT .or. which_vert == VERTISUNDEF) then
   status(:) = 0
   return

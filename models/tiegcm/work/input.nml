@@ -65,7 +65,7 @@
 
    obs_sequence_in_name         = "obs_seq.out.1",
    obs_sequence_out_name        = "obs_seq.final",
-   num_output_obs_members       = 0,
+   num_output_obs_members       = 20,
    first_obs_days               = -1,
    first_obs_seconds            = -1,
    last_obs_days                = -1,
@@ -189,7 +189,7 @@
    /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'CHAMP_DENSITY', 'GPS_VTEC_EXTRAP', 'GPS_PROFILE'
+   assimilate_these_obs_types = 'CHAMP_DENSITY', 'GPS_VTEC_EXTRAP', 'GPS_PROFILE', 'COSMIC_ELECTRON_DENSITY'
    evaluate_these_obs_types   = 'GND_GPS_VTEC'
    /
 
