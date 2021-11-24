@@ -787,9 +787,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       !--------------------------------- QCEFF BLOCK --------------------------------
       ! Update the likelihood for this state variable
-      call update_piece_const_like(prior_state_index_sort(:, j), piece_const_like(:, j), &
-         orig_obs_likelihood, prior_state_mass(:, j), ens_size, final_factor)
-write(52, *) i, j, final_factor
+      call update_piece_const_like(prior_state_index_sort(:, state_index), piece_const_like(:, state_index), &
+         orig_obs_likelihood, prior_state_mass(:, state_index), ens_size, final_factor)
       !----------------------------- END QCEFF BLOCK --------------------------------
 
       ! Compute spatially-varying state space inflation
