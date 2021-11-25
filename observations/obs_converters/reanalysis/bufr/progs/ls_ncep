@@ -1,0 +1,44 @@
+#!/bin/sh 
+
+# this version counts 6-hour files month by month,
+# for the NCEP+ACARS obs_seq files 
+
+# other versions can count prepqm, temp_obs, 
+# gps/ncep merged files.
+
+if [ $# != 1 ]; then
+  echo usage: $0 year
+  exit 1
+fi
+
+yr=$1
+
+# what's the fixed part of the prefix on these files?
+# directory and non-date leading part of filename:
+
+dir=../../NCEP+ACARS
+pre=obs_seq
+
+let m=1
+while [[ $m -le 12 ]]; do
+
+  mm=`printf %02d $m`
+  
+  dname=${dir}/${yr}${mm}_6H
+  fname=${pre}${yr}${mm}
+  tname=${dname}/${fname}
+  if [[ `ls ${tname}* 2>/dev/null | wc -l` -gt 0 ]]; then
+     echo ${yr}${mm}
+
+     echo -n $mm " 06  "; ls -1 ${tname}??00 2>/dev/null | wc -l
+     echo -n $mm " 12  "; ls -1 ${tname}??06 2>/dev/null | wc -l
+     echo -n $mm " 18  "; ls -1 ${tname}??12 2>/dev/null | wc -l
+     echo -n $mm " 24  "; ls -1 ${tname}??18 2>/dev/null | wc -l
+     echo ''
+  fi
+ 
+  let m=m+1
+done
+
+exit 0
+
