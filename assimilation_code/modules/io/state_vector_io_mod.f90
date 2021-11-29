@@ -37,7 +37,8 @@ use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_f
                                  read_single_file, write_augmented_state, &
                                  initialize_single_file_io, finalize_single_file_io
 
-use types_mod,            only : r8, i4, i8
+
+use types_mod,            only : r8, i4, i8, MISSING_R8
 
 use mpi_utilities_mod,    only : my_task_id, &
                                  broadcast_send, broadcast_recv
